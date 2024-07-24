@@ -24,7 +24,7 @@ import (
 func Test_UseCases(t *testing.T) {
 	t.Run("HeadsChange: new object", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncing, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSyncing, "spaceId")
 
 		s.HeadsChange("id", []string{"head1", "head2"})
 
@@ -33,7 +33,7 @@ func Test_UseCases(t *testing.T) {
 	})
 	t.Run("HeadsChange then HeadsApply: responsible", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncing, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSyncing, "spaceId")
 
 		s.HeadsChange("id", []string{"head1", "head2"})
 
@@ -50,7 +50,7 @@ func Test_UseCases(t *testing.T) {
 	})
 	t.Run("HeadsChange then HeadsApply: not responsible", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncing, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSyncing, "spaceId")
 
 		s.HeadsChange("id", []string{"head1", "head2"})
 
@@ -122,7 +122,7 @@ func TestSyncStatusService_update(t *testing.T) {
 		updateReceiver.EXPECT().UpdateTree(context.Background(), "id2", StatusNotSynced).Return(nil)
 		s.SetUpdateReceiver(updateReceiver)
 
-		s.detailsUpdater.EXPECT().UpdateDetails("id3", domain.ObjectSynced, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails("id3", domain.ObjectSyncStatusSynced, "spaceId")
 		s.synced = []string{"id3"}
 		s.tempSynced["id4"] = struct{}{}
 		s.treeHeads["id"] = treeHeadsEntry{syncStatus: StatusSynced, heads: []string{"headId"}}

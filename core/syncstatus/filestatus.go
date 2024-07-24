@@ -88,41 +88,18 @@ func getFileObjectStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus,
 		objectError      domain.SyncError
 	)
 	switch status {
-	case filesyncstatus.Synced:
-		objectSyncStatus = domain.ObjectSynced
+	case filesyncstatus.Synced, filesyncstatus.SyncedLegacy:
+		objectSyncStatus = domain.ObjectSyncStatusSynced
 	case filesyncstatus.Syncing:
-		objectSyncStatus = domain.ObjectSyncing
+		objectSyncStatus = domain.ObjectSyncStatusSyncing
 	case filesyncstatus.Queued:
-		objectSyncStatus = domain.ObjectQueued
+		objectSyncStatus = domain.ObjectSyncStatusQueued
 	case filesyncstatus.Limited:
-		objectError = domain.Oversized
-		objectSyncStatus = domain.ObjectError
+		objectError = domain.SyncErrorOversized
+		objectSyncStatus = domain.ObjectSyncStatusError
 	case filesyncstatus.Unknown:
-		objectSyncStatus = domain.ObjectError
-		objectError = domain.NetworkError
+		objectSyncStatus = domain.ObjectSyncStatusError
+		objectError = domain.SyncErrorNetworkError
 	}
 	return objectSyncStatus, objectError
-}
-
-func getSyncStatus(status filesyncstatus.Status, bytesLeftPercentage float64) (domain.SpaceSyncStatus, domain.SyncError) {
-	var (
-		spaceStatus domain.SpaceSyncStatus
-		spaceError  domain.SyncError
-	)
-	switch status {
-	case filesyncstatus.Synced:
-		spaceStatus = domain.Synced
-	case filesyncstatus.Syncing, filesyncstatus.Queued:
-		spaceStatus = domain.Syncing
-	case filesyncstatus.Limited:
-		spaceStatus = domain.Synced
-		if bytesLeftPercentage <= limitReachErrorPercentage {
-			spaceStatus = domain.Error
-			spaceError = domain.StorageLimitExceed
-		}
-	case filesyncstatus.Unknown:
-		spaceStatus = domain.Error
-		spaceError = domain.NetworkError
-	}
-	return spaceStatus, spaceError
 }

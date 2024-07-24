@@ -36,7 +36,7 @@ func (s *syncingObjects) Run() error {
 			{
 				RelationKey: bundle.RelationKeySyncStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(domain.Syncing)),
+				Value:       pbtypes.Int64(int64(domain.SpaceSyncStatusSyncing)),
 			},
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
