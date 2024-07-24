@@ -72,7 +72,6 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.nodeStatus = app.MustComponent[NodeStatus](a)
 	n.spaceSyncService = app.MustComponent[Updater](a)
 	n.peerToPeerStatus = app.MustComponent[PeerToPeerStatus](a)
-	n.peerToPeerStatus.RegisterSpace(n.spaceId)
 	return
 }
 
@@ -81,6 +80,7 @@ func (n *clientPeerManager) Name() (name string) {
 }
 
 func (n *clientPeerManager) Run(ctx context.Context) (err error) {
+	go n.peerToPeerStatus.RegisterSpace(n.spaceId)
 	go n.manageResponsiblePeers()
 	return
 }

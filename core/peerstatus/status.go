@@ -102,6 +102,7 @@ func (p *p2pStatus) Init(a *app.App) (err error) {
 			// we need to update status for all spaces that were either added or removed to some local peer
 			// because we start this observer on init we can be sure that the spaceIdsBefore is empty on the first run for peer
 			removed, added := lo.Difference(spaceIdsBefore, spaceIdsAfter)
+			log.Warnf("peer %s space observer: removed: %v, added: %v", peerId, removed, added)
 			err := p.refreshSpaces(lo.Union(removed, added))
 			if errors.Is(err, ErrClosed) {
 				return
@@ -153,6 +154,8 @@ func (p *p2pStatus) resetNotPossibleStatus() {
 	p.refreshAllSpaces()
 }
 
+// RegisterSpace registers spaceId to be monitored for p2p status changes
+// must be called only when p2pStatus is Running
 func (p *p2pStatus) RegisterSpace(spaceId string) {
 	select {
 	case <-p.ctx.Done():
@@ -161,6 +164,8 @@ func (p *p2pStatus) RegisterSpace(spaceId string) {
 	}
 }
 
+// UnregisterSpace unregisters spaceId from monitoring
+// must be called only when p2pStatus is Running
 func (p *p2pStatus) UnregisterSpace(spaceId string) {
 	p.Lock()
 	defer p.Unlock()
@@ -179,7 +184,7 @@ func (p *p2pStatus) worker() {
 			p.processSpaceStatusUpdate(spaceId)
 		case <-timer.C:
 			// todo: looks like we don't need this anymore because we use observer
-			p.refreshAllSpaces()
+			go p.refreshAllSpaces()
 		}
 	}
 }
@@ -230,6 +235,8 @@ func (p *p2pStatus) processSpaceStatusUpdate(spaceId string) {
 	connectionCount := p.countOpenConnections(spaceId)
 	newStatus := p.getResultStatus(p.p2pNotPossible, connectionCount)
 
+	log.Warnf("processSpaceStatusUpdate: spaceId: %s, currentStatus: %v, newStatus: %v, connectionCount: %d", spaceId, currentStatus.status, newStatus, connectionCount)
+
 	if currentStatus.status != newStatus || currentStatus.connectionsCount != connectionCount {
 		p.sendEvent("", spaceId, newStatus.ToPb(), connectionCount)
 		currentStatus.status = newStatus
@@ -253,9 +260,12 @@ func (p *p2pStatus) countOpenConnections(spaceId string) int64 {
 	ctx, cancelFunc := context.WithTimeout(p.ctx, time.Second*10)
 	defer cancelFunc()
 	peerIds := p.peerStore.LocalPeerIds(spaceId)
+	log.Warnf("processSpaceStatusUpdate: spaceId: %s, localPeerIds: %v", spaceId, peerIds)
+
 	for _, peerId := range peerIds {
 		_, err := p.peersConnectionPool.Pick(ctx, peerId)
 		if err != nil {
+			log.Warnf("countOpenConnections space %s failed to get local peer %s from net pool: %v", spaceId, peerId, err)
 			continue
 		}
 		connectionCount++
@@ -265,6 +275,7 @@ func (p *p2pStatus) countOpenConnections(spaceId string) int64 {
 
 // sendEvent sends event to session with sessionToken or broadcast to all sessions if sessionToken is empty
 func (p *p2pStatus) sendEvent(sessionToken string, spaceId string, status pb.EventP2PStatusStatus, count int64) {
+	log.Warnf("sendEvent: sessionToken: %s, spaceId: %s, status: %v, count: %d", sessionToken, spaceId, status, count)
 	event := &pb.Event{
 		Messages: []*pb.EventMessage{
 			{
