@@ -125,11 +125,11 @@ func (s *service) Init(a *app.App) (err error) {
 	s.ds = newDependencyService(s)
 	s.subscriptions = make(map[string]subscription)
 	s.customOutput = map[string]*mb2.MB[*pb.EventMessage]{}
-	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.kanban = a.MustComponent(kanban.CName).(kanban.Service)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.kanban = app.MustComponent[kanban.Service](a)
 	s.recBatch = mb.New(0)
 	s.collectionService = app.MustComponent[CollectionService](a)
-	s.eventSender = a.MustComponent(event.CName).(event.Sender)
+	s.eventSender = app.MustComponent[event.Sender](a)
 	s.ctxBuf = &opCtx{c: s.cache}
 	s.initDebugger()
 	return
