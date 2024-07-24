@@ -97,16 +97,14 @@ func (p *p2pStatus) Init(a *app.App) (err error) {
 	sessionHookRunner.RegisterHook(p.sendStatusForNewSession)
 	p.ctx, p.contextCancel = context.WithCancel(context.Background())
 	p.peerStore.AddObserver(func(peerId string, spaceIds []string, peerRemoved bool) {
-		for _, spaceId := range spaceIds {
-			err = p.refreshSpaceStatus(spaceId)
+		go func() {
+			err := p.refreshSpaces(spaceIds)
 			if errors.Is(err, ErrClosed) {
 				return
+			} else if err != nil {
+				log.Errorf("refreshSpaces failed: %v", err)
 			}
-			if err != nil {
-				// we don't have any other errors for now, added just in case for future
-				log.Error("failed to refresh peer status", "peerId", peerId, "spaceId", spaceId, "error", err)
-			}
-		}
+		}()
 	})
 	return nil
 }
@@ -137,28 +135,18 @@ func (p *p2pStatus) Name() (name string) {
 	return CName
 }
 
-func (p *p2pStatus) refreshSpaceStatus(spaceId string) error {
-	select {
-	case <-p.ctx.Done():
-		return ErrClosed
-	case p.refreshSpaceId <- spaceId:
-
-	}
-	return nil
-}
-
 func (p *p2pStatus) setNotPossibleStatus() {
 	p.Lock()
 	p.p2pNotPossible = true
 	p.Unlock()
-	p.updateAllSpacesP2PStatus()
+	p.refreshAllSpaces()
 }
 
 func (p *p2pStatus) resetNotPossibleStatus() {
 	p.Lock()
 	p.p2pNotPossible = false
 	p.Unlock()
-	p.updateAllSpacesP2PStatus()
+	p.refreshAllSpaces()
 }
 
 func (p *p2pStatus) RegisterSpace(spaceId string) {
@@ -184,33 +172,43 @@ func (p *p2pStatus) worker() {
 		case <-p.ctx.Done():
 			return
 		case spaceId := <-p.refreshSpaceId:
-			p.updateSpaceP2PStatus(spaceId)
+			p.processSpaceStatusUpdate(spaceId)
 		case <-timer.C:
 			// todo: looks like we don't need this anymore because we use observer
-			p.updateAllSpacesP2PStatus()
+			p.refreshAllSpaces()
 		}
 	}
 }
 
-func (p *p2pStatus) updateAllSpacesP2PStatus() {
+func (p *p2pStatus) refreshAllSpaces() {
 	p.Lock()
 	var spaceIds = make([]string, 0, len(p.spaceIds))
 	for spaceId := range p.spaceIds {
 		spaceIds = append(spaceIds, spaceId)
 	}
 	p.Unlock()
+	err := p.refreshSpaces(spaceIds)
+	if errors.Is(err, ErrClosed) {
+		return
+	} else if err != nil {
+		log.Errorf("refreshSpaces failed: %v", err)
+	}
+}
+
+func (p *p2pStatus) refreshSpaces(spaceIds []string) error {
 	for _, spaceId := range spaceIds {
 		select {
 		case <-p.ctx.Done():
-			return
+			return ErrClosed
 		case p.refreshSpaceId <- spaceId:
 
 		}
 	}
+	return nil
 }
 
 // updateSpaceP2PStatus updates status for specific spaceId and sends event if status changed
-func (p *p2pStatus) updateSpaceP2PStatus(spaceId string) {
+func (p *p2pStatus) processSpaceStatusUpdate(spaceId string) {
 	p.Lock()
 	defer p.Unlock()
 	var (

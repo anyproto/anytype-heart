@@ -84,7 +84,7 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 		})
 		f.resetNotPossibleStatus()
 
-		err = f.refreshSpaceStatus("spaceId")
+		err = f.refreshSpaces([]string{"spaceId"})
 		assert.Nil(t, err)
 
 		checkStatus(t, "spaceId", f.p2pStatus, NotConnected)
