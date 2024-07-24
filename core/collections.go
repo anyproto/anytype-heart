@@ -24,9 +24,6 @@ func (mw *Middleware) ObjectCollectionAdd(cctx context.Context, req *pb.RpcObjec
 	if err != nil {
 		return response(pb.RpcObjectCollectionAddResponseError_UNKNOWN_ERROR, err)
 	}
-	if req.WithChat {
-		_, err = mw.addChat(cctx, id)
-	}
 	return response(pb.RpcObjectCollectionAddResponseError_NULL, nil)
 }
 
