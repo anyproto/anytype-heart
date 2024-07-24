@@ -1,55 +1,45 @@
 package domain
 
-type SyncType int32
-
-const (
-	Objects SyncType = 0
-	Files   SyncType = 1
-)
-
 type SpaceSyncStatus int32
 
 const (
-	Synced  SpaceSyncStatus = 0
-	Syncing SpaceSyncStatus = 1
-	Error   SpaceSyncStatus = 2
-	Offline SpaceSyncStatus = 3
-	Unknown SpaceSyncStatus = 4
+	SpaceSyncStatusSynced  SpaceSyncStatus = 0
+	SpaceSyncStatusSyncing SpaceSyncStatus = 1
+	SpaceSyncStatusError   SpaceSyncStatus = 2
+	SpaceSyncStatusOffline SpaceSyncStatus = 3
+	SpaceSyncStatusUnknown SpaceSyncStatus = 4
 )
 
 type ObjectSyncStatus int32
 
 const (
-	ObjectSynced  ObjectSyncStatus = 0
-	ObjectSyncing ObjectSyncStatus = 1
-	ObjectError   ObjectSyncStatus = 2
-	ObjectQueued  ObjectSyncStatus = 3
+	ObjectSyncStatusSynced  ObjectSyncStatus = 0
+	ObjectSyncStatusSyncing ObjectSyncStatus = 1
+	ObjectSyncStatusError   ObjectSyncStatus = 2
+	ObjectSyncStatusQueued  ObjectSyncStatus = 3
 )
 
 type SyncError int32
 
 const (
-	Null                SyncError = 0
-	StorageLimitExceed  SyncError = 1
-	IncompatibleVersion SyncError = 2
-	NetworkError        SyncError = 3
-	Oversized           SyncError = 4
+	SyncErrorNull                SyncError = 0
+	SyncErrorIncompatibleVersion SyncError = 2
+	SyncErrorNetworkError        SyncError = 3
+	SyncErrorOversized           SyncError = 4
 )
 
 type SpaceSync struct {
 	SpaceId   string
 	Status    SpaceSyncStatus
 	SyncError SyncError
-	SyncType  SyncType
 	// MissingObjects is a list of object IDs that are missing, it is not set every time
 	MissingObjects []string
 }
 
-func MakeSyncStatus(spaceId string, status SpaceSyncStatus, syncError SyncError, syncType SyncType) *SpaceSync {
+func MakeSyncStatus(spaceId string, status SpaceSyncStatus, syncError SyncError) *SpaceSync {
 	return &SpaceSync{
 		SpaceId:   spaceId,
 		Status:    status,
 		SyncError: syncError,
-		SyncType:  syncType,
 	}
 }

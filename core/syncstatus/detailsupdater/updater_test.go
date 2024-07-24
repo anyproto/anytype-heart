@@ -33,13 +33,13 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:         pbtypes.String("id"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Synced)),
-				bundle.RelationKeySyncError:  pbtypes.Int64(int64(domain.Null)),
+				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.SpaceSyncStatusSynced)),
+				bundle.RelationKeySyncError:  pbtypes.Int64(int64(domain.SyncErrorNull)),
 			},
 		})
 
 		// when
-		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSynced, domain.Null, "spaceId"}, "id")
+		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSyncStatusSynced, domain.SyncErrorNull, "spaceId"}, "id")
 
 		// then
 		assert.Nil(t, err)
@@ -58,8 +58,8 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(nil)
 
 		// when
-		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects))
-		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSynced, domain.Null, "spaceId"}, "id")
+		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSynced, domain.SyncErrorNull))
+		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSyncStatusSynced, domain.SyncErrorNull, "spaceId"}, "id")
 
 		// then
 		assert.Nil(t, err)
@@ -72,15 +72,15 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:         pbtypes.String("id"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Error)),
-				bundle.RelationKeySyncError:  pbtypes.Int64(int64(domain.NetworkError)),
+				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.SpaceSyncStatusError)),
+				bundle.RelationKeySyncError:  pbtypes.Int64(int64(domain.SyncErrorNetworkError)),
 			},
 		})
 		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(nil)
 
 		// when
-		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects))
-		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSynced, domain.Null, "spaceId"}, "id")
+		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSynced, domain.SyncErrorNull))
+		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSyncStatusSynced, domain.SyncErrorNull, "spaceId"}, "id")
 
 		// then
 		assert.Nil(t, err)
@@ -94,8 +94,8 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		space.EXPECT().DoCtx(fixture.updater.ctx, "id", mock.Anything).Return(nil)
 
 		// when
-		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects))
-		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSynced, domain.Null, "spaceId"}, "id")
+		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSynced, domain.SyncErrorNull))
+		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSyncStatusSynced, domain.SyncErrorNull, "spaceId"}, "id")
 
 		// then
 		assert.Nil(t, err)
@@ -115,8 +115,8 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(nil)
 
 		// when
-		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects))
-		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSynced, domain.Null, "spaceId"}, "id")
+		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSyncing, domain.SyncErrorNull))
+		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSyncStatusSynced, domain.SyncErrorNull, "spaceId"}, "id")
 
 		// then
 		assert.Nil(t, err)
@@ -135,8 +135,8 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(nil)
 
 		// when
-		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Error, domain.NetworkError, domain.Objects))
-		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSynced, domain.Null, "spaceId"}, "id")
+		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusError, domain.SyncErrorNetworkError))
+		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSyncStatusSynced, domain.SyncErrorNull, "spaceId"}, "id")
 
 		// then
 		assert.Nil(t, err)
@@ -155,8 +155,8 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(nil)
 
 		// when
-		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects))
-		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId"}, "id")
+		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSyncing, domain.SyncErrorNull))
+		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSyncStatusSyncing, domain.SyncErrorNull, "spaceId"}, "id")
 
 		// then
 		assert.Nil(t, err)
@@ -175,8 +175,8 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(nil)
 
 		// when
-		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects))
-		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSynced, domain.Null, "spaceId"}, "id")
+		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSynced, domain.SyncErrorNull))
+		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSyncStatusSynced, domain.SyncErrorNull, "spaceId"}, "id")
 
 		// then
 		assert.Nil(t, err)
@@ -197,7 +197,7 @@ func TestSyncStatusUpdater_Run(t *testing.T) {
 		err := fixture.updater.Run(context.Background())
 		fixture.statusUpdater.EXPECT().SendUpdate(mock.Anything).Return().Maybe()
 		assert.Nil(t, err)
-		fixture.updater.UpdateDetails([]string{"id"}, domain.ObjectSynced, domain.Null, "spaceId")
+		fixture.updater.UpdateDetails([]string{"id"}, domain.ObjectSyncStatusSynced, domain.SyncErrorNull, "spaceId")
 
 		// then
 		err = fixture.updater.Close(context.Background())
@@ -210,11 +210,11 @@ func TestSyncStatusUpdater_Run(t *testing.T) {
 
 		// when
 		fixture.service.EXPECT().TechSpaceId().Return("techSpaceId").Times(2)
-		fixture.updater.UpdateDetails([]string{"id"}, domain.ObjectSynced, domain.Null, "spaceId")
-		fixture.updater.UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
+		fixture.updater.UpdateDetails([]string{"id"}, domain.ObjectSyncStatusSynced, domain.SyncErrorNull, "spaceId")
+		fixture.updater.UpdateDetails([]string{"id"}, domain.ObjectSyncStatusSyncing, domain.SyncErrorNull, "spaceId")
 
 		// then
-		assert.Equal(t, &syncStatusDetails{status: domain.ObjectSyncing, syncError: domain.Null, spaceId: "spaceId"}, fixture.updater.entries["id"])
+		assert.Equal(t, &syncStatusDetails{status: domain.ObjectSyncStatusSyncing, syncError: domain.SyncErrorNull, spaceId: "spaceId"}, fixture.updater.entries["id"])
 	})
 }
 
@@ -224,14 +224,14 @@ func TestSyncStatusUpdater_setSyncDetails(t *testing.T) {
 		fixture := newFixture(t)
 
 		// when
-		err := fixture.updater.setSyncDetails(fixture.sb, domain.ObjectError, domain.NetworkError)
+		err := fixture.updater.setSyncDetails(fixture.sb, domain.ObjectSyncStatusError, domain.SyncErrorNetworkError)
 		assert.Nil(t, err)
 
 		// then
 		details := fixture.sb.NewState().CombinedDetails().GetFields()
 		assert.NotNil(t, details)
-		assert.Equal(t, pbtypes.Int64(int64(domain.Error)), details[bundle.RelationKeySyncStatus.String()])
-		assert.Equal(t, pbtypes.Int64(int64(domain.NetworkError)), details[bundle.RelationKeySyncError.String()])
+		assert.Equal(t, pbtypes.Int64(int64(domain.SpaceSyncStatusError)), details[bundle.RelationKeySyncStatus.String()])
+		assert.Equal(t, pbtypes.Int64(int64(domain.SyncErrorNetworkError)), details[bundle.RelationKeySyncError.String()])
 		assert.NotNil(t, details[bundle.RelationKeySyncDate.String()])
 	})
 	t.Run("not set smartblock details, because it doesn't implement interface DetailsSettable", func(t *testing.T) {
@@ -240,7 +240,7 @@ func TestSyncStatusUpdater_setSyncDetails(t *testing.T) {
 
 		// when
 		fixture.sb.SetType(coresb.SmartBlockTypePage)
-		err := fixture.updater.setSyncDetails(editor.NewMissingObject(fixture.sb), domain.ObjectError, domain.NetworkError)
+		err := fixture.updater.setSyncDetails(editor.NewMissingObject(fixture.sb), domain.ObjectSyncStatusError, domain.SyncErrorNetworkError)
 
 		// then
 		assert.Nil(t, err)
@@ -251,7 +251,7 @@ func TestSyncStatusUpdater_setSyncDetails(t *testing.T) {
 
 		// when
 		fixture.sb.SetType(coresb.SmartBlockTypeHome)
-		err := fixture.updater.setSyncDetails(fixture.sb, domain.ObjectError, domain.NetworkError)
+		err := fixture.updater.setSyncDetails(fixture.sb, domain.ObjectSyncStatusError, domain.SyncErrorNetworkError)
 
 		// then
 		assert.Nil(t, err)

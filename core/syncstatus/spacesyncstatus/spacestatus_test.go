@@ -119,12 +119,12 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:         pbtypes.String("id1"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
+				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.SpaceSyncStatusSyncing)),
 				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
 			},
 			{
 				bundle.RelationKeyId:         pbtypes.String("id2"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
+				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.SpaceSyncStatusSyncing)),
 				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
 			},
 		})
@@ -135,15 +135,15 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			filesState:    NewFileState(storeFixture),
 			objectsState:  NewObjectState(storeFixture),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSyncing, domain.SyncErrorNull)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
-		assert.Equal(t, domain.Syncing, status.objectsState.GetSyncStatus("spaceId"))
+		assert.Equal(t, domain.SpaceSyncStatusSyncing, status.objectsState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 2, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Syncing, status.getSpaceSyncStatus(syncStatus.SpaceId))
+		assert.Equal(t, domain.SpaceSyncStatusSyncing, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
 	t.Run("syncing event for files", func(t *testing.T) {
 		// given
@@ -187,15 +187,15 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			filesState:    NewFileState(storeFixture),
 			objectsState:  NewObjectState(storeFixture),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSyncing, domain.SyncErrorNull)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
-		assert.Equal(t, domain.Syncing, status.filesState.GetSyncStatus("spaceId"))
+		assert.Equal(t, domain.SpaceSyncStatusSyncing, status.filesState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 2, status.filesState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Syncing, status.getSpaceSyncStatus(syncStatus.SpaceId))
+		assert.Equal(t, domain.SpaceSyncStatusSyncing, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
 	t.Run("don't send not needed synced event if files or objects are still syncing", func(t *testing.T) {
 		// given
@@ -207,11 +207,11 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		objectsSyncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
-		status.objectsState.SetSyncStatusAndErr(objectsSyncStatus.Status, domain.Null, objectsSyncStatus.SpaceId)
+		objectsSyncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSyncing, domain.SyncErrorNull)
+		status.objectsState.SetSyncStatusAndErr(objectsSyncStatus.Status, domain.SyncErrorNull, objectsSyncStatus.SpaceId)
 
 		// then
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSynced, domain.SyncErrorNull)
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
@@ -240,15 +240,15 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.NetworkError, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusError, domain.SyncErrorNetworkError)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
-		assert.Equal(t, domain.Error, status.objectsState.GetSyncStatus("spaceId"))
+		assert.Equal(t, domain.SpaceSyncStatusError, status.objectsState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Error, status.getSpaceSyncStatus(syncStatus.SpaceId))
+		assert.Equal(t, domain.SpaceSyncStatusError, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
 	t.Run("send storage error event and then reset it", func(t *testing.T) {
 		// given
@@ -273,15 +273,15 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.StorageLimitExceed, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusError, domain.SyncErrorStorageLimitExceed)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
-		assert.Equal(t, domain.Synced, status.filesState.GetSyncStatus("spaceId"))
+		assert.Equal(t, domain.SpaceSyncStatusSynced, status.filesState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.filesState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Synced, status.getSpaceSyncStatus(syncStatus.SpaceId))
+		assert.Equal(t, domain.SpaceSyncStatusSynced, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
 	t.Run("send incompatible error event", func(t *testing.T) {
 		// given
@@ -306,15 +306,15 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.IncompatibleVersion, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusError, domain.SyncErrorIncompatibleVersion)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
-		assert.Equal(t, domain.Error, status.objectsState.GetSyncStatus("spaceId"))
+		assert.Equal(t, domain.SpaceSyncStatusError, status.objectsState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Error, status.getSpaceSyncStatus(syncStatus.SpaceId))
+		assert.Equal(t, domain.SpaceSyncStatusError, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
 	t.Run("send offline event", func(t *testing.T) {
 		// given
@@ -339,15 +339,15 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusOffline, domain.SyncErrorNull)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
-		assert.Equal(t, domain.Offline, status.objectsState.GetSyncStatus("spaceId"))
+		assert.Equal(t, domain.SpaceSyncStatusOffline, status.objectsState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Offline, status.getSpaceSyncStatus(syncStatus.SpaceId))
+		assert.Equal(t, domain.SpaceSyncStatusOffline, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
 	t.Run("send synced event", func(t *testing.T) {
 		// given
@@ -359,20 +359,20 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSyncing, domain.SyncErrorNull)
 		status.objectsState.SetObjectsNumber(syncStatus)
-		status.objectsState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
+		status.objectsState.SetSyncStatusAndErr(syncStatus.Status, domain.SyncErrorNull, syncStatus.SpaceId)
 
 		// then
-		syncStatus = domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
+		syncStatus = domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSynced, domain.SyncErrorNull)
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
-		assert.Equal(t, domain.Synced, status.objectsState.GetSyncStatus("spaceId"))
+		assert.Equal(t, domain.SpaceSyncStatusSynced, status.objectsState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Unknown, status.filesState.GetSyncStatus("spaceId"))
+		assert.Equal(t, domain.SpaceSyncStatusUnknown, status.filesState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.filesState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Synced, status.getSpaceSyncStatus(syncStatus.SpaceId))
+		assert.Equal(t, domain.SpaceSyncStatusSynced, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
 	t.Run("send initial synced event", func(t *testing.T) {
 		// given
@@ -398,7 +398,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			}},
 		})
 		// then
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSynced, domain.SyncErrorNull)
 		status.updateSpaceSyncStatus(syncStatus)
 	})
 
@@ -412,11 +412,11 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		status.objectsState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
-		status.filesState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
+		status.objectsState.SetSyncStatusAndErr(domain.SpaceSyncStatusSynced, domain.SyncErrorNull, "spaceId")
+		status.filesState.SetSyncStatusAndErr(domain.SpaceSyncStatusSynced, domain.SyncErrorNull, "spaceId")
 
 		// then
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSynced, domain.SyncErrorNull)
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
@@ -462,23 +462,23 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:         pbtypes.String("id1"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
+				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.SpaceSyncStatusSyncing)),
 				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
 			},
 			{
 				bundle.RelationKeyId:         pbtypes.String("id2"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Synced)),
+				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.SpaceSyncStatusSynced)),
 				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
 			},
 			{
 				bundle.RelationKeyId:         pbtypes.String("id3"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
+				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.SpaceSyncStatusSyncing)),
 				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
 			},
 		})
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSyncing, domain.SyncErrorNull)
 		status.updateSpaceSyncStatus(syncStatus)
 		status.updateSpaceSyncStatus(syncStatus)
 	})
@@ -492,11 +492,11 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		status.objectsState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
-		status.filesState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
+		status.objectsState.SetSyncStatusAndErr(domain.SpaceSyncStatusSynced, domain.SyncErrorNull, "spaceId")
+		status.filesState.SetSyncStatusAndErr(domain.SpaceSyncStatusSynced, domain.SyncErrorNull, "spaceId")
 
 		// then
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSyncing, domain.SyncErrorNull)
 		status.objectsState.SetObjectsNumber(syncStatus)
 		status.updateSpaceSyncStatus(syncStatus)
 
@@ -528,7 +528,7 @@ func TestSpaceSyncStatus_SendUpdate(t *testing.T) {
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.SpaceSyncStatusSynced, domain.SyncErrorNull)
 
 		// then
 		spaceStatus.SendUpdate(syncStatus)

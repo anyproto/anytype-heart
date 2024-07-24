@@ -133,7 +133,7 @@ func (u *syncStatusUpdater) UpdateSpaceDetails(existing, missing []string, space
 	for _, id := range added {
 		err := u.addToQueue(&syncStatusDetails{
 			objectId: id,
-			status:   domain.ObjectSynced,
+			status:   domain.ObjectSyncStatusSynced,
 			spaceId:  spaceId,
 		})
 		if err != nil {
@@ -143,7 +143,7 @@ func (u *syncStatusUpdater) UpdateSpaceDetails(existing, missing []string, space
 	for _, id := range removed {
 		err := u.addToQueue(&syncStatusDetails{
 			objectId: id,
-			status:   domain.ObjectSyncing,
+			status:   domain.ObjectSyncStatusSyncing,
 			spaceId:  spaceId,
 		})
 		if err != nil {
@@ -166,12 +166,8 @@ func (u *syncStatusUpdater) getSyncingObjects(spaceId string) []string {
 }
 
 func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDetails, objectId string) error {
-	return u.setObjectDetails(syncStatusDetails, objectId)
-}
-
-func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetails, objectId string) error {
 	status := syncStatusDetails.status
-	syncError := domain.Null
+	syncError := domain.SyncErrorNull
 	spc, err := u.spaceService.Get(u.ctx, syncStatusDetails.spaceId)
 	if err != nil {
 		return err
@@ -206,14 +202,14 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 }
 
 func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *types.Struct) bool {
-	layoutsWithoutSyncRelations := []float64{
-		float64(model.ObjectType_participant),
-		float64(model.ObjectType_dashboard),
-		float64(model.ObjectType_spaceView),
-		float64(model.ObjectType_space),
-		float64(model.ObjectType_date),
+	layoutsWithoutSyncRelations := []model.ObjectTypeLayout{
+		model.ObjectType_participant,
+		model.ObjectType_dashboard,
+		model.ObjectType_spaceView,
+		model.ObjectType_space,
+		model.ObjectType_date,
 	}
-	layout := details.Fields[bundle.RelationKeyLayout.String()].GetNumberValue()
+	layout := model.ObjectTypeLayout(pbtypes.GetInt64(details, bundle.RelationKeyLayout.String()))
 	return !slices.Contains(layoutsWithoutSyncRelations, layout)
 }
 
@@ -221,17 +217,17 @@ func mapFileStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domai
 	var syncError domain.SyncError
 	switch status {
 	case filesyncstatus.Syncing:
-		return domain.ObjectSyncing, domain.Null
+		return domain.ObjectSyncStatusSyncing, domain.SyncErrorNull
 	case filesyncstatus.Queued:
-		return domain.ObjectQueued, domain.Null
+		return domain.ObjectSyncStatusQueued, domain.SyncErrorNull
 	case filesyncstatus.Limited:
-		syncError = domain.Oversized
-		return domain.ObjectError, syncError
+		syncError = domain.SyncErrorOversized
+		return domain.ObjectSyncStatusError, syncError
 	case filesyncstatus.Unknown:
-		syncError = domain.NetworkError
-		return domain.ObjectError, syncError
+		syncError = domain.SyncErrorNetworkError
+		return domain.ObjectSyncStatusError, syncError
 	default:
-		return domain.ObjectSynced, domain.Null
+		return domain.ObjectSyncStatusSynced, domain.SyncErrorNull
 	}
 }
 

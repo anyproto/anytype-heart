@@ -144,7 +144,7 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 	s.Lock()
 	s.treeHeads[treeId] = treeHeadsEntry{heads: heads, syncStatus: StatusNotSynced}
 	s.Unlock()
-	s.updateDetails(treeId, domain.ObjectSyncing)
+	s.updateDetails(treeId, domain.ObjectSyncStatusSyncing)
 }
 
 func (s *syncStatusService) ObjectReceive(senderId, treeId string, heads []string) {
@@ -222,9 +222,9 @@ func (s *syncStatusService) update(ctx context.Context) (err error) {
 
 func mapStatus(status SyncStatus) domain.ObjectSyncStatus {
 	if status == StatusSynced {
-		return domain.ObjectSynced
+		return domain.ObjectSyncStatusSynced
 	}
-	return domain.ObjectSyncing
+	return domain.ObjectSyncStatusSyncing
 }
 
 func (s *syncStatusService) HeadsReceive(senderId, treeId string, heads []string) {
