@@ -52,6 +52,18 @@ func NewInternalTestService(t *testing.T) *InternalTestService {
 	return &InternalTestService{Service: s, StoreFixture: objectStore}
 }
 
+func RegisterSubscriptionService(t *testing.T, a *app.App) *InternalTestService {
+	s := New()
+	ctx := context.Background()
+	objectStore := objectstore.NewStoreFixture(t)
+	a.Register(objectStore).
+		Register(kanban.New()).
+		Register(&collectionServiceMock{MockCollectionService: NewMockCollectionService(t)}).
+		Register(testutil.PrepareMock(ctx, a, mock_event.NewMockSender(t))).
+		Register(s)
+	return &InternalTestService{Service: s, StoreFixture: objectStore}
+}
+
 type collectionServiceMock struct {
 	*MockCollectionService
 }
