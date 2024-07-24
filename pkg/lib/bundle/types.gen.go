@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "92392d474aa160716d8f4fb3d0cd6c69a9f35c343ce1c352b65403102e90f1d3"
+const TypeChecksum = "b83ac4cb7ebea453323584e623a3b9c45a4982dbb47cfec034a439142a3547d1"
 const (
 	TypePrefix = "_ot"
 )
@@ -49,6 +49,7 @@ const (
 	TypeKeyFile           domain.TypeKey = "file"
 	TypeKeyProject        domain.TypeKey = "project"
 	TypeKeyChat           domain.TypeKey = "chat"
+	TypeKeyChatDerived    domain.TypeKey = "chatDerived"
 )
 
 var (
@@ -107,6 +108,16 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_ChatObject},
 			Url:           TypePrefix + "chat",
+		},
+		TypeKeyChatDerived: {
+
+			Description:   "A chat derived object",
+			Layout:        model.ObjectType_chatDerived,
+			Name:          "Chat Derived Object",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:           TypePrefix + "chatDerived",
 		},
 		TypeKeyClassNote: {
 

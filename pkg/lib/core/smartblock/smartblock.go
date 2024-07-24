@@ -28,6 +28,7 @@ const (
 	SmartBlockTypeDate              = SmartBlockType(model.SmartBlockType_Date)
 	SmartBlockTypeIdentity          = SmartBlockType(model.SmartBlockType_Identity)
 	SmartBlockTypeChatObject        = SmartBlockType(model.SmartBlockType_ChatObject)
+	SmartBlockTypeChatDerivedObject = SmartBlockType(model.SmartBlockType_ChatDerivedObject)
 
 	SmartBlockTypeWorkspace      = SmartBlockType(model.SmartBlockType_Workspace)
 	SmartBlockTypeWidget         = SmartBlockType(model.SmartBlockType_Widget)

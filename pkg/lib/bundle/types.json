@@ -620,5 +620,20 @@
         "description"
     ],
     "description": "A chat"
+  },
+  {
+    "id": "chatDerived",
+    "name": "Chat Derived Object",
+    "types": [
+      "Page"
+    ],
+    "emoji": "",
+    "hidden": false,
+    "layout": "chatDerived",
+    "relations": [
+      "tag",
+      "description"
+    ],
+    "description": "A chat derived object"
   }
 ]

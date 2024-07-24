@@ -150,6 +150,8 @@ func (s *service) createObjectInSpace(
 		return s.createRelationOption(ctx, space, details)
 	case bundle.TypeKeyChat:
 		return s.createChat(ctx, space, details)
+	case bundle.TypeKeyChatDerived:
+		return s.createChatDerived(ctx, space, details)
 	case bundle.TypeKeyFile:
 		return "", nil, fmt.Errorf("files must be created via fileobject service")
 	}

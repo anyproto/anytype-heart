@@ -35,14 +35,19 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		TemplateId:    req.TemplateId,
 	}
 	id, newDetails, err := creator.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req.ObjectTypeUniqueKey, createReq)
-
+	if err != nil {
+		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
+	}
+	if req.WithChat {
+		_, err = mw.addChat(cctx, id)
+	}
 	if err != nil {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
 	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails, nil)
 }
 
-func (mw *Middleware) addChat(cctx context.Context, objectId, objId string) (string, error) {
+func (mw *Middleware) addChat(cctx context.Context, objectId string) (string, error) {
 	var spaceId string
 	err := mw.doBlockService(func(bs *block.Service) error {
 		sb, err := bs.GetObject(cctx, objectId)
@@ -57,7 +62,7 @@ func (mw *Middleware) addChat(cctx context.Context, objectId, objId string) (str
 	}
 
 	chatDetails := &types.Struct{Fields: map[string]*types.Value{}}
-	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatObject, objId)
+	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatObject, objectId)
 	chatDetails.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(chatUniqueKey.Marshal())
 
 	chatReq := objectcreator.CreateObjectRequest{
@@ -68,7 +73,7 @@ func (mw *Middleware) addChat(cctx context.Context, objectId, objId string) (str
 	chatId, _, err := getService[objectcreator.Service](mw).CreateObject(cctx, spaceId, chatReq)
 
 	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ModifyDetails(objId, func(current *types.Struct) (*types.Struct, error) {
+		return bs.ModifyDetails(objectId, func(current *types.Struct) (*types.Struct, error) {
 			if current == nil {
 				return nil, errors.New("object not found")
 			}
@@ -81,7 +86,7 @@ func (mw *Middleware) addChat(cctx context.Context, objectId, objId string) (str
 }
 
 func (mw *Middleware) ObjectChatAdd(cctx context.Context, req *pb.RpcObjectChatAddRequest) *pb.RpcObjectChatAddResponse {
-	chatId, err := mw.addChat(cctx, req.ObjectId, req.ObjectId)
+	chatId, err := mw.addChat(cctx, req.ObjectId)
 
 	code := mapErrorCode(err,
 		errToCode(err, pb.RpcObjectChatAddResponseError_UNKNOWN_ERROR),
@@ -130,7 +135,12 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 		}
 		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
-
+	if req.WithChat {
+		_, err = mw.addChat(cctx, id)
+	}
+	if err != nil {
+		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
+	}
 	return response(pb.RpcObjectCreateSetResponseError_NULL, id, newDetails, nil)
 }
 
@@ -149,6 +159,12 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 		Details:       req.Details,
 	}
 	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
+	if err != nil {
+		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
+	}
+	if req.WithChat {
+		_, err = mw.addChat(cctx, id)
+	}
 	if err != nil {
 		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
 	}
@@ -249,6 +265,12 @@ func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjec
 	bs := getService[*block.Service](mw)
 
 	id, newDetails, err := bs.CreateObjectFromUrl(cctx, req)
+	if err != nil {
+		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", err, nil)
+	}
+	if req.WithChat {
+		_, err = mw.addChat(cctx, id)
+	}
 	if err != nil {
 		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", err, nil)
 	}
