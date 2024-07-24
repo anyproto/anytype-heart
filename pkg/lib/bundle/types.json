@@ -625,7 +625,7 @@
     "id": "chatDerived",
     "name": "Chat Derived Object",
     "types": [
-      "Page"
+      "ChatDerivedObject"
     ],
     "emoji": "",
     "hidden": false,
