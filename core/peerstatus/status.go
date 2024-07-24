@@ -82,7 +82,8 @@ func (p *p2pStatus) Init(a *app.App) (err error) {
 	localDiscoveryHook.RegisterP2PNotPossible(p.setNotPossibleStatus)
 	localDiscoveryHook.RegisterResetNotPossible(p.resetNotPossibleStatus)
 	sessionHookRunner.RegisterHook(p.sendStatusForNewSession)
-	p.peerStore.AddObserver(func(peerId string, spaceIds []string) {
+	p.ctx, p.contextCancel = context.WithCancel(context.Background())
+	p.peerStore.AddObserver(func(peerId string, spaceIds []string, peerRemoved bool) {
 		for _, spaceId := range spaceIds {
 			err = p.refreshPeerStatus(spaceId)
 			if err == ErrClosed {
@@ -106,7 +107,6 @@ func (p *p2pStatus) sendStatusForNewSession(ctx session.Context) error {
 }
 
 func (p *p2pStatus) Run(ctx context.Context) error {
-	p.ctx, p.contextCancel = context.WithCancel(context.Background())
 	go p.worker()
 	return nil
 }
