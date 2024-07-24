@@ -100,8 +100,10 @@ func (p *p2pStatus) Init(a *app.App) (err error) {
 }
 
 func (p *p2pStatus) sendStatusForNewSession(ctx session.Context) error {
+	p.Lock()
+	defer p.Unlock()
 	for spaceId, space := range p.spaceIds {
-		p.sendEvent(spaceId, mapStatusToEvent(space.status), space.connectionsCount)
+		p.sendEvent(ctx.ID(), spaceId, mapStatusToEvent(space.status), space.connectionsCount)
 	}
 	return nil
 }
@@ -214,7 +216,7 @@ func (p *p2pStatus) updateSpaceP2PStatus(spaceId string) {
 	newStatus, event := p.getResultStatus(p.p2pNotPossible, connectionCount)
 
 	if currentStatus.status != newStatus || currentStatus.connectionsCount != connectionCount {
-		p.sendEvent(spaceId, event, connectionCount)
+		p.sendEvent("", spaceId, event, connectionCount)
 		currentStatus.status = newStatus
 		currentStatus.connectionsCount = connectionCount
 	}
@@ -267,8 +269,9 @@ func mapStatusToEvent(status Status) pb.EventP2PStatusStatus {
 	return pbStatus
 }
 
-func (p *p2pStatus) sendEvent(spaceId string, status pb.EventP2PStatusStatus, count int64) {
-	p.eventSender.Broadcast(&pb.Event{
+// sendEvent sends event to session with sessionToken or broadcast if sessionToken is empty
+func (p *p2pStatus) sendEvent(sessionToken string, spaceId string, status pb.EventP2PStatusStatus, count int64) {
+	event := &pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfP2PStatusUpdate{
@@ -280,5 +283,10 @@ func (p *p2pStatus) sendEvent(spaceId string, status pb.EventP2PStatusStatus, co
 				},
 			},
 		},
-	})
+	}
+	if sessionToken != "" {
+		p.eventSender.SendToSession(sessionToken, event)
+		return
+	}
+	p.eventSender.Broadcast(event)
 }
