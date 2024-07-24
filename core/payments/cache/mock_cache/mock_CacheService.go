@@ -318,12 +318,12 @@ func (_c *MockCacheService_Init_Call) RunAndReturn(run func(*app.App) error) *Mo
 	return _c
 }
 
-// IsCacheEnabled provides a mock function with given fields:
-func (_m *MockCacheService) IsCacheEnabled() bool {
+// IsCacheDisabled provides a mock function with given fields:
+func (_m *MockCacheService) IsCacheDisabled() bool {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for IsCacheEnabled")
+		panic("no return value specified for IsCacheDisabled")
 	}
 
 	var r0 bool
@@ -336,29 +336,74 @@ func (_m *MockCacheService) IsCacheEnabled() bool {
 	return r0
 }
 
-// MockCacheService_IsCacheEnabled_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsCacheEnabled'
-type MockCacheService_IsCacheEnabled_Call struct {
+// MockCacheService_IsCacheDisabled_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsCacheDisabled'
+type MockCacheService_IsCacheDisabled_Call struct {
 	*mock.Call
 }
 
-// IsCacheEnabled is a helper method to define mock.On call
-func (_e *MockCacheService_Expecter) IsCacheEnabled() *MockCacheService_IsCacheEnabled_Call {
-	return &MockCacheService_IsCacheEnabled_Call{Call: _e.mock.On("IsCacheEnabled")}
+// IsCacheDisabled is a helper method to define mock.On call
+func (_e *MockCacheService_Expecter) IsCacheDisabled() *MockCacheService_IsCacheDisabled_Call {
+	return &MockCacheService_IsCacheDisabled_Call{Call: _e.mock.On("IsCacheDisabled")}
 }
 
-func (_c *MockCacheService_IsCacheEnabled_Call) Run(run func()) *MockCacheService_IsCacheEnabled_Call {
+func (_c *MockCacheService_IsCacheDisabled_Call) Run(run func()) *MockCacheService_IsCacheDisabled_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run()
 	})
 	return _c
 }
 
-func (_c *MockCacheService_IsCacheEnabled_Call) Return(enabled bool) *MockCacheService_IsCacheEnabled_Call {
-	_c.Call.Return(enabled)
+func (_c *MockCacheService_IsCacheDisabled_Call) Return(disabled bool) *MockCacheService_IsCacheDisabled_Call {
+	_c.Call.Return(disabled)
 	return _c
 }
 
-func (_c *MockCacheService_IsCacheEnabled_Call) RunAndReturn(run func() bool) *MockCacheService_IsCacheEnabled_Call {
+func (_c *MockCacheService_IsCacheDisabled_Call) RunAndReturn(run func() bool) *MockCacheService_IsCacheDisabled_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsCacheExpired provides a mock function with given fields:
+func (_m *MockCacheService) IsCacheExpired() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsCacheExpired")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockCacheService_IsCacheExpired_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsCacheExpired'
+type MockCacheService_IsCacheExpired_Call struct {
+	*mock.Call
+}
+
+// IsCacheExpired is a helper method to define mock.On call
+func (_e *MockCacheService_Expecter) IsCacheExpired() *MockCacheService_IsCacheExpired_Call {
+	return &MockCacheService_IsCacheExpired_Call{Call: _e.mock.On("IsCacheExpired")}
+}
+
+func (_c *MockCacheService_IsCacheExpired_Call) Run(run func()) *MockCacheService_IsCacheExpired_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockCacheService_IsCacheExpired_Call) Return(expired bool) *MockCacheService_IsCacheExpired_Call {
+	_c.Call.Return(expired)
+	return _c
+}
+
+func (_c *MockCacheService_IsCacheExpired_Call) RunAndReturn(run func() bool) *MockCacheService_IsCacheExpired_Call {
 	_c.Call.Return(run)
 	return _c
 }

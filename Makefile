@@ -66,13 +66,17 @@ test:
 	@echo 'Running tests...'
 	@ANYTYPE_LOG_NOGELF=1 go test -cover github.com/anyproto/anytype-heart/...
 
+test-no-cache:
+	@echo 'Running tests...'
+	@ANYTYPE_LOG_NOGELF=1 go test -count=1 github.com/anyproto/anytype-heart/...
+
 test-integration:
 	@echo 'Running integration tests...'
 	@go test -run=TestBasic -tags=integration -v -count 1 ./tests
 
 test-race:
 	@echo 'Running tests with race-detector...'
-	@ANYTYPE_LOG_NOGELF=1 go test -race github.com/anyproto/anytype-heart/...
+	@ANYTYPE_LOG_NOGELF=1 go test -count=1 -race github.com/anyproto/anytype-heart/...
 
 test-deps:
 	@echo 'Generating test mocks...'

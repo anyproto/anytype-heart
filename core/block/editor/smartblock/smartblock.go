@@ -162,7 +162,6 @@ type SmartBlock interface {
 	CheckSubscriptions() (changed bool)
 	GetDocInfo() DocInfo
 	Restrictions() restriction.Restrictions
-	SetRestrictions(r restriction.Restrictions)
 	ObjectClose(ctx session.Context)
 	ObjectCloseAllSessions()
 
@@ -386,11 +385,7 @@ func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
 func (sb *smartBlock) updateRestrictions() {
-	restrictions := sb.restrictionService.GetRestrictions(sb)
-	sb.SetRestrictions(restrictions)
-}
-
-func (sb *smartBlock) SetRestrictions(r restriction.Restrictions) {
+	r := sb.restrictionService.GetRestrictions(sb)
 	if sb.restrictions.Equal(r) {
 		return
 	}
@@ -457,7 +452,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	recordsCh := make(chan *types.Struct, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
 
-	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
+	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true)
 	sb.setDependentIDs(depIDs)
 
 	var records []database.Record
@@ -547,7 +542,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 }
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
-func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, _ bool) (ids []string) {
+func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier bool) (ids []string) {
 	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.Space(), true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
@@ -638,8 +633,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			s.SetLocalDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(lastModified.Unix()))
 		}
 	}
-
-	sb.beforeStateApply(s)
 
 	if !keepInternalFlags {
 		removeInternalFlags(s)
@@ -784,7 +777,6 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
-	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
 	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
@@ -795,7 +787,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 }
 
 func (sb *smartBlock) CheckSubscriptions() (changed bool) {
-	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
+	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true)
 	changed = sb.setDependentIDs(depIDs)
 
 	if sb.recordsSub == nil {
@@ -1295,11 +1287,6 @@ func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	}
 }
 
-func (sb *smartBlock) beforeStateApply(s *state.State) {
-	sb.setRestrictionsDetail(s)
-	sb.injectLinksDetails(s)
-}
-
 func removeInternalFlags(s *state.State) {
 	flags := internalflag.NewFromState(s)
 
@@ -1460,6 +1447,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(isDeleted))
 	}
 
+	sb.injectLinksDetails(s)
 	sb.updateBackLinks(s)
 }
 
