@@ -131,8 +131,11 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 		f.Close(nil)
 
 		checkStatus(t, "spaceId", f.p2pStatus, Connected)
+		// should not create a problem, cause we already closed
+		f.store.RemoveLocalPeer("peerId")
+
 	})
-	t.Run("send NotConnected status, because we have peer were disconnected", func(t *testing.T) {
+	t.Run("send NotConnected status, because we have peer and then were disconnected", func(t *testing.T) {
 		// given
 		f := newFixture(t, "spaceId", pb.EventP2PStatus_Connected, 1)
 		ctrl := gomock.NewController(t)
@@ -313,6 +316,51 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 	})
 }
 
+func TestP2pStatus_SendToNewSession(t *testing.T) {
+	t.Run("send event only to new session", func(t *testing.T) {
+		// given
+		f := newFixture(t, "spaceId", pb.EventP2PStatus_Connected, 1)
+		ctrl := gomock.NewController(t)
+		peer := mock_peer.NewMockPeer(ctrl)
+		peer.EXPECT().Id().Return("peerId")
+		f.sender.EXPECT().Broadcast(&pb.Event{
+			Messages: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfP2PStatusUpdate{
+						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId:        "spaceId",
+							Status:         pb.EventP2PStatus_Connected,
+							DevicesCounter: 1,
+						},
+					},
+				},
+			},
+		})
+		err := f.pool.AddPeer(context.Background(), peer)
+		assert.Nil(t, err)
+		f.store.UpdateLocalPeer("peerId", []string{"spaceId"})
+		checkStatus(t, "spaceId", f.p2pStatus, Connected)
+
+		f.sender.EXPECT().SendToSession("token1", &pb.Event{
+			Messages: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfP2PStatusUpdate{
+						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId:        "spaceId",
+							Status:         pb.EventP2PStatus_Connected,
+							DevicesCounter: 1,
+						},
+					},
+				},
+			},
+		})
+		err = f.sendStatusForNewSession(session.NewContext(session.WithSession("token1")))
+		assert.Nil(t, err)
+
+		// then
+		f.Close(nil)
+	})
+}
 func TestP2pStatus_UnregisterSpace(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
