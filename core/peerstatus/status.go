@@ -39,9 +39,6 @@ type LocalDiscoveryHook interface {
 
 type PeerToPeerStatus interface {
 	app.ComponentRunnable
-	RefreshPeerStatus(spaceId string) error
-	SetNotPossibleStatus()
-	ResetNotPossibleStatus()
 	RegisterSpace(spaceId string)
 	UnregisterSpace(spaceId string)
 }
@@ -82,12 +79,12 @@ func (p *p2pStatus) Init(a *app.App) (err error) {
 	p.peersConnectionPool = app.MustComponent[pool.Service](a)
 	localDiscoveryHook := app.MustComponent[LocalDiscoveryHook](a)
 	sessionHookRunner := app.MustComponent[session.HookRunner](a)
-	localDiscoveryHook.RegisterP2PNotPossible(p.SetNotPossibleStatus)
-	localDiscoveryHook.RegisterResetNotPossible(p.ResetNotPossibleStatus)
+	localDiscoveryHook.RegisterP2PNotPossible(p.setNotPossibleStatus)
+	localDiscoveryHook.RegisterResetNotPossible(p.resetNotPossibleStatus)
 	sessionHookRunner.RegisterHook(p.sendStatusForNewSession)
 	p.peerStore.AddObserver(func(peerId string, spaceIds []string) {
 		for _, spaceId := range spaceIds {
-			err = p.RefreshPeerStatus(spaceId)
+			err = p.refreshPeerStatus(spaceId)
 			if err == ErrClosed {
 				return
 			}
@@ -126,7 +123,7 @@ func (p *p2pStatus) Name() (name string) {
 	return CName
 }
 
-func (p *p2pStatus) RefreshPeerStatus(spaceId string) error {
+func (p *p2pStatus) refreshPeerStatus(spaceId string) error {
 	select {
 	case <-p.ctx.Done():
 		return ErrClosed
@@ -136,14 +133,14 @@ func (p *p2pStatus) RefreshPeerStatus(spaceId string) error {
 	return nil
 }
 
-func (p *p2pStatus) SetNotPossibleStatus() {
+func (p *p2pStatus) setNotPossibleStatus() {
 	p.Lock()
 	p.p2pNotPossible = true
 	p.Unlock()
 	p.updateAllSpacesP2PStatus()
 }
 
-func (p *p2pStatus) ResetNotPossibleStatus() {
+func (p *p2pStatus) resetNotPossibleStatus() {
 	p.Lock()
 	p.p2pNotPossible = false
 	p.Unlock()
@@ -207,10 +204,12 @@ func (p *p2pStatus) updateSpaceP2PStatus(spaceId string) {
 		ok            bool
 	)
 	if currentStatus, ok = p.spaceIds[spaceId]; !ok {
-		p.spaceIds[spaceId] = &spaceStatus{
-			status:           NotConnected,
-			connectionsCount: -1,
+		currentStatus = &spaceStatus{
+			status:           Unknown,
+			connectionsCount: 0,
 		}
+
+		p.spaceIds[spaceId] = currentStatus
 	}
 	connectionCount := p.countOpenConnections(spaceId)
 	newStatus, event := p.getResultStatus(p.p2pNotPossible, connectionCount)
@@ -269,7 +268,7 @@ func mapStatusToEvent(status Status) pb.EventP2PStatusStatus {
 	return pbStatus
 }
 
-// sendEvent sends event to session with sessionToken or broadcast if sessionToken is empty
+// sendEvent sends event to session with sessionToken or broadcast to all sessions if sessionToken is empty
 func (p *p2pStatus) sendEvent(sessionToken string, spaceId string, status pb.EventP2PStatusStatus, count int64) {
 	event := &pb.Event{
 		Messages: []*pb.EventMessage{
