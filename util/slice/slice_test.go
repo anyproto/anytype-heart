@@ -100,14 +100,3 @@ func TestUnsortedEquals(t *testing.T) {
 	assert.False(t, UnsortedEqual([]string{"a", "b", "c"}, []string{"a", "b"}))
 	assert.False(t, UnsortedEqual([]string{"a", "b", "c"}, []string{"a", "b", "c", "d"}))
 }
-
-func TestContainsAll(t *testing.T) {
-	assert.True(t, ContainsAll([]byte("csabd"), []byte("abc")...))
-	assert.True(t, ContainsAll([]string{}))
-	assert.True(t, ContainsAll([]string{"hello"}))
-	assert.True(t, ContainsAll([]string{"a", "b", "c", "d"}, "a", "c"))
-	assert.True(t, ContainsAll([]string{"a", "b", "c", "d"}, "a", "a"))
-	assert.True(t, ContainsAll([]string{"a", "b", "c"}, "a", "c", "b", "a"))
-	assert.False(t, ContainsAll([]string{}, "z"))
-	assert.False(t, ContainsAll([]string{"y", "x"}, "z"))
-}

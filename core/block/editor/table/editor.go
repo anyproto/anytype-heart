@@ -130,38 +130,40 @@ func (t *editor) TableCreate(s *state.State, req pb.RpcBlockTableCreateRequest) 
 
 	tableBlock.Model().ChildrenIds = []string{columnsLayout.Model().Id, rowsLayout.Model().Id}
 
-	if req.WithHeaderRow {
-		if len(rowIDs) == 0 {
-			return "", fmt.Errorf("no rows to make header row")
-		}
-		headerID := rowIDs[0]
+	if !req.WithHeaderRow {
+		return tableBlock.Model().Id, nil
+	}
 
-		if err := t.RowSetHeader(s, pb.RpcBlockTableRowSetHeaderRequest{
-			TargetId: headerID,
-			IsHeader: true,
-		}); err != nil {
-			return "", fmt.Errorf("row set header: %w", err)
+	if len(rowIDs) == 0 {
+		return "", fmt.Errorf("no rows to make header row")
+	}
+	headerID := rowIDs[0]
+
+	if err := t.RowSetHeader(s, pb.RpcBlockTableRowSetHeaderRequest{
+		TargetId: headerID,
+		IsHeader: true,
+	}); err != nil {
+		return "", fmt.Errorf("row set header: %w", err)
+	}
+
+	if err := t.RowListFill(s, pb.RpcBlockTableRowListFillRequest{
+		BlockIds: []string{headerID},
+	}); err != nil {
+		return "", fmt.Errorf("fill header row: %w", err)
+	}
+
+	row, err := getRow(s, headerID)
+	if err != nil {
+		return "", fmt.Errorf("get header row: %w", err)
+	}
+
+	for _, cellID := range row.Model().ChildrenIds {
+		cell := s.Get(cellID)
+		if cell == nil {
+			return "", fmt.Errorf("get header cell id %s", cellID)
 		}
 
-		if err := t.RowListFill(s, pb.RpcBlockTableRowListFillRequest{
-			BlockIds: []string{headerID},
-		}); err != nil {
-			return "", fmt.Errorf("fill header row: %w", err)
-		}
-
-		row, err := getRow(s, headerID)
-		if err != nil {
-			return "", fmt.Errorf("get header row: %w", err)
-		}
-
-		for _, cellID := range row.Model().ChildrenIds {
-			cell := s.Get(cellID)
-			if cell == nil {
-				return "", fmt.Errorf("get header cell id %s", cellID)
-			}
-
-			cell.Model().BackgroundColor = "grey"
-		}
+		cell.Model().BackgroundColor = "grey"
 	}
 
 	return tableBlock.Model().Id, nil

@@ -237,12 +237,3 @@ func FilterCID(cids []string) []string {
 		return err == nil
 	})
 }
-
-func ContainsAll[T comparable](s []T, items ...T) bool {
-	for _, e := range items {
-		if !slices.Contains(s, e) {
-			return false
-		}
-	}
-	return true
-}

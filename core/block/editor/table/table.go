@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/samber/lo"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/table"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.Logger("anytype-simple-tables")
@@ -264,7 +265,7 @@ func (tb Table) Iterate(f func(b simple.Block, pos CellPosition) bool) error {
 func CheckTableBlocksMove(st *state.State, target string, pos model.BlockPosition, blockIds []string) (string, model.BlockPosition, error) {
 	if t, err := NewTable(st, target); err == nil && t != nil {
 		// we allow moving rows between each other
-		if slice.ContainsAll(t.RowIDs(), append(blockIds, target)...) {
+		if lo.Every(t.RowIDs(), append(blockIds, target)) {
 			if pos == model.Block_Bottom || pos == model.Block_Top {
 				return target, pos, nil
 			}
