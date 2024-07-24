@@ -18,6 +18,10 @@ type InternalTestService struct {
 	*objectstore.StoreFixture
 }
 
+func (s *InternalTestService) Init(a *app.App) error {
+	return s.Service.Init(a)
+}
+
 func NewInternalTestService(t *testing.T) *InternalTestService {
 	s := New()
 	ctx := context.Background()

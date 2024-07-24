@@ -26,13 +26,9 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-const service = "core.syncstatus.spacesyncstatus"
+const CName = "core.syncstatus.spacesyncstatus"
 
-var log = logging.Logger("anytype-mw-space-status")
-
-// nodeconfservice
-// nodestatus
-// GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
+var log = logging.Logger(CName)
 
 type Updater interface {
 	app.ComponentRunnable
@@ -112,7 +108,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 }
 
 func (s *spaceSyncStatus) Name() (name string) {
-	return service
+	return CName
 }
 
 func (s *spaceSyncStatus) sendSyncEventForNewSession(ctx session.Context) error {
