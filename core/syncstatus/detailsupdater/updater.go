@@ -225,18 +225,15 @@ func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *types.Stru
 }
 
 func mapFileStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domain.SyncError) {
-	var syncError domain.SyncError
 	switch status {
 	case filesyncstatus.Syncing:
 		return domain.ObjectSyncStatusSyncing, domain.SyncErrorNull
 	case filesyncstatus.Queued:
 		return domain.ObjectSyncStatusQueued, domain.SyncErrorNull
 	case filesyncstatus.Limited:
-		syncError = domain.SyncErrorOversized
-		return domain.ObjectSyncStatusError, syncError
+		return domain.ObjectSyncStatusError, domain.SyncErrorOversized
 	case filesyncstatus.Unknown:
-		syncError = domain.SyncErrorNetworkError
-		return domain.ObjectSyncStatusError, syncError
+		return domain.ObjectSyncStatusError, domain.SyncErrorNetworkError
 	default:
 		return domain.ObjectSyncStatusSynced, domain.SyncErrorNull
 	}
@@ -250,7 +247,7 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 		return nil
 	}
 	st := sb.NewState()
-	if fileStatus, ok := st.LocalDetails().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
+	if fileStatus, ok := st.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
 		status, syncError = mapFileStatus(filesyncstatus.Status(int(fileStatus.GetNumberValue())))
 	}
 	st.SetDetailAndBundledRelation(bundle.RelationKeySyncStatus, pbtypes.Int64(int64(status)))
