@@ -22,6 +22,19 @@ func (s *InternalTestService) Init(a *app.App) error {
 	return s.Service.Init(a)
 }
 
+func (s *InternalTestService) Run(ctx context.Context) error {
+	err := s.StoreFixture.Run(ctx)
+	if err != nil {
+		return err
+	}
+	return s.Service.Run(ctx)
+}
+
+func (s *InternalTestService) Close(ctx context.Context) (err error) {
+	_ = s.Service.Close(ctx)
+	return s.StoreFixture.Close(ctx)
+}
+
 func NewInternalTestService(t *testing.T) *InternalTestService {
 	s := New()
 	ctx := context.Background()
