@@ -99,7 +99,10 @@ func (p *p2pStatus) Init(a *app.App) (err error) {
 	p.ctx, p.contextCancel = context.WithCancel(context.Background())
 	p.peerStore.AddObserver(func(peerId string, spaceIdsBefore, spaceIdsAfter []string, peerRemoved bool) {
 		go func() {
-			err := p.refreshSpaces(lo.Union(spaceIdsBefore, spaceIdsAfter))
+			// we need to update status for all spaces that were either added or removed to some local peer
+			// because we start this observer on init we can be sure that the spaceIdsBefore is empty on the first run for peer
+			removed, added := lo.Difference(spaceIdsBefore, spaceIdsAfter)
+			err := p.refreshSpaces(lo.Union(removed, added))
 			if errors.Is(err, ErrClosed) {
 				return
 			} else if err != nil {
