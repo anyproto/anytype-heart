@@ -98,8 +98,8 @@ func (p *p2pStatus) Init(a *app.App) (err error) {
 	p.ctx, p.contextCancel = context.WithCancel(context.Background())
 	p.peerStore.AddObserver(func(peerId string, spaceIds []string, peerRemoved bool) {
 		for _, spaceId := range spaceIds {
-			err = p.refreshPeerStatus(spaceId)
-			if err == ErrClosed {
+			err = p.refreshSpaceStatus(spaceId)
+			if errors.Is(err, ErrClosed) {
 				return
 			}
 			if err != nil {
@@ -137,7 +137,7 @@ func (p *p2pStatus) Name() (name string) {
 	return CName
 }
 
-func (p *p2pStatus) refreshPeerStatus(spaceId string) error {
+func (p *p2pStatus) refreshSpaceStatus(spaceId string) error {
 	select {
 	case <-p.ctx.Done():
 		return ErrClosed
@@ -195,7 +195,7 @@ func (p *p2pStatus) worker() {
 func (p *p2pStatus) updateAllSpacesP2PStatus() {
 	p.Lock()
 	var spaceIds = make([]string, 0, len(p.spaceIds))
-	for spaceId, _ := range p.spaceIds {
+	for spaceId := range p.spaceIds {
 		spaceIds = append(spaceIds, spaceId)
 	}
 	p.Unlock()
