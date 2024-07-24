@@ -31,6 +31,19 @@ const (
 	NotConnected Status = 3
 )
 
+func (s Status) ToPb() pb.EventP2PStatusStatus {
+	switch s {
+	case Connected:
+		return pb.EventP2PStatus_Connected
+	case NotConnected:
+		return pb.EventP2PStatus_NotConnected
+	case NotPossible:
+		return pb.EventP2PStatus_NotPossible
+	}
+	// default status is NotConnected
+	return pb.EventP2PStatus_NotConnected
+}
+
 type LocalDiscoveryHook interface {
 	app.Component
 	RegisterP2PNotPossible(hook func())
@@ -90,6 +103,7 @@ func (p *p2pStatus) Init(a *app.App) (err error) {
 				return
 			}
 			if err != nil {
+				// we don't have any other errors for now, added just in case for future
 				log.Error("failed to refresh peer status", "peerId", peerId, "spaceId", spaceId, "error", err)
 			}
 		}
@@ -101,7 +115,7 @@ func (p *p2pStatus) sendStatusForNewSession(ctx session.Context) error {
 	p.Lock()
 	defer p.Unlock()
 	for spaceId, space := range p.spaceIds {
-		p.sendEvent(ctx.ID(), spaceId, mapStatusToEvent(space.status), space.connectionsCount)
+		p.sendEvent(ctx.ID(), spaceId, space.status.ToPb(), space.connectionsCount)
 	}
 	return nil
 }
@@ -212,37 +226,29 @@ func (p *p2pStatus) updateSpaceP2PStatus(spaceId string) {
 		p.spaceIds[spaceId] = currentStatus
 	}
 	connectionCount := p.countOpenConnections(spaceId)
-	newStatus, event := p.getResultStatus(p.p2pNotPossible, connectionCount)
+	newStatus := p.getResultStatus(p.p2pNotPossible, connectionCount)
 
 	if currentStatus.status != newStatus || currentStatus.connectionsCount != connectionCount {
-		p.sendEvent("", spaceId, event, connectionCount)
+		p.sendEvent("", spaceId, newStatus.ToPb(), connectionCount)
 		currentStatus.status = newStatus
 		currentStatus.connectionsCount = connectionCount
 	}
 }
 
-func (p *p2pStatus) getResultStatus(notPossible bool, connectionCount int64) (Status, pb.EventP2PStatusStatus) {
-	var (
-		newStatus Status
-		event     pb.EventP2PStatusStatus
-	)
-
+func (p *p2pStatus) getResultStatus(notPossible bool, connectionCount int64) Status {
 	if notPossible && connectionCount == 0 {
-		return NotPossible, pb.EventP2PStatus_NotPossible
+		return NotPossible
 	}
 	if connectionCount == 0 {
-		event = pb.EventP2PStatus_NotConnected
-		newStatus = NotConnected
+		return NotConnected
 	} else {
-		event = pb.EventP2PStatus_Connected
-		newStatus = Connected
+		return Connected
 	}
-	return newStatus, event
 }
 
 func (p *p2pStatus) countOpenConnections(spaceId string) int64 {
 	var connectionCount int64
-	ctx, cancelFunc := context.WithTimeout(p.ctx, time.Second*20)
+	ctx, cancelFunc := context.WithTimeout(p.ctx, time.Second*10)
 	defer cancelFunc()
 	peerIds := p.peerStore.LocalPeerIds(spaceId)
 	for _, peerId := range peerIds {
@@ -253,19 +259,6 @@ func (p *p2pStatus) countOpenConnections(spaceId string) int64 {
 		connectionCount++
 	}
 	return connectionCount
-}
-
-func mapStatusToEvent(status Status) pb.EventP2PStatusStatus {
-	var pbStatus pb.EventP2PStatusStatus
-	switch status {
-	case Connected:
-		pbStatus = pb.EventP2PStatus_Connected
-	case NotConnected:
-		pbStatus = pb.EventP2PStatus_NotConnected
-	case NotPossible:
-		pbStatus = pb.EventP2PStatus_NotPossible
-	}
-	return pbStatus
 }
 
 // sendEvent sends event to session with sessionToken or broadcast to all sessions if sessionToken is empty
