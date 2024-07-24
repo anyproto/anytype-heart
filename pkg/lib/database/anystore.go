@@ -37,7 +37,7 @@ func (s dateOnlySort) AppendKey(k []byte, v *fastjson.Value) []byte {
 		empty bool
 		ts    int64
 	)
-	if val.Type() == fastjson.TypeNumber {
+	if val != nil && val.Type() == fastjson.TypeNumber {
 		tsFloat, _ := val.Float64()
 		ts = time_util.CutToDay(time.Unix(int64(tsFloat), 0)).Unix()
 	} else {
@@ -97,6 +97,9 @@ func (s emptyPlacementSort) AppendKey(k []byte, v *fastjson.Value) []byte {
 }
 
 func (s emptyPlacementSort) isEmpty(val *fastjson.Value) bool {
+	if val == nil {
+		return true
+	}
 	switch s.valType {
 	case fastjson.TypeNull:
 		return true

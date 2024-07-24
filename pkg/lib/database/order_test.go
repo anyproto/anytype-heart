@@ -253,6 +253,19 @@ func TestKeyOrder_Compare(t *testing.T) {
 		assertCompare(t, asc, a, b, 1)
 	})
 
+	t.Run("desc_date_start key not exists", func(t *testing.T) {
+		a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Int64(date.Unix())}}
+		b := &types.Struct{Fields: map[string]*types.Value{}}
+		asc := &KeyOrder{arena: arena,
+			Key:            "k",
+			Type:           model.BlockContentDataviewSort_Desc,
+			EmptyPlacement: model.BlockContentDataviewSort_Start,
+			IncludeTime:    false,
+			RelationFormat: model.RelationFormat_date,
+		}
+		assertCompare(t, asc, a, b, 1)
+	})
+
 	t.Run("asc_nil_emptylast", func(t *testing.T) {
 		a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("a")}}
 		b := &types.Struct{Fields: map[string]*types.Value{"k": nil}}
@@ -271,6 +284,13 @@ func TestKeyOrder_Compare(t *testing.T) {
 		a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("a")}}
 		b := &types.Struct{Fields: map[string]*types.Value{"k": nil}}
 		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_End, RelationFormat: model.RelationFormat_shorttext}
+		assertCompare(t, asc, a, b, -1)
+	})
+
+	t.Run("desc_nil_emptylast_float", func(t *testing.T) {
+		a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Float64(1)}}
+		b := &types.Struct{Fields: map[string]*types.Value{"k": nil}}
+		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_End, RelationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, -1)
 	})
 
@@ -305,6 +325,13 @@ func TestKeyOrder_Compare(t *testing.T) {
 	t.Run("desc_nil_emptyfirst_float", func(t *testing.T) {
 		a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Float64(1)}}
 		b := &types.Struct{Fields: map[string]*types.Value{"k": nil}}
+		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_Start, RelationFormat: model.RelationFormat_number}
+		assertCompare(t, asc, a, b, 1)
+	})
+
+	t.Run("desc emptyfirst key not exist", func(t *testing.T) {
+		a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Float64(1)}}
+		b := &types.Struct{Fields: map[string]*types.Value{}}
 		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_Start, RelationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, 1)
 	})
