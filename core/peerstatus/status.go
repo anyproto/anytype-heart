@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/net/pool"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -96,9 +97,9 @@ func (p *p2pStatus) Init(a *app.App) (err error) {
 	localDiscoveryHook.RegisterResetNotPossible(p.resetNotPossibleStatus)
 	sessionHookRunner.RegisterHook(p.sendStatusForNewSession)
 	p.ctx, p.contextCancel = context.WithCancel(context.Background())
-	p.peerStore.AddObserver(func(peerId string, spaceIds []string, peerRemoved bool) {
+	p.peerStore.AddObserver(func(peerId string, spaceIdsBefore, spaceIdsAfter []string, peerRemoved bool) {
 		go func() {
-			err := p.refreshSpaces(spaceIds)
+			err := p.refreshSpaces(lo.Union(spaceIdsBefore, spaceIdsAfter))
 			if errors.Is(err, ErrClosed) {
 				return
 			} else if err != nil {

@@ -30,7 +30,7 @@ type service struct {
 func (s *service) Init(a *app.App) (err error) {
 	s.pool = a.MustComponent(pool.CName).(pool.Pool)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
-	s.peerStore.AddObserver(func(peerId string, spaceIds []string, peerRemoved bool) {
+	s.peerStore.AddObserver(func(peerId string, _, spaceIds []string, peerRemoved bool) {
 		select {
 		case s.peerUpdateCh <- struct{}{}:
 		default:

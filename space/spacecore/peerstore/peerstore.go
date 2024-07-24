@@ -33,7 +33,7 @@ func New() PeerStore {
 }
 
 // Observer is a function that will be called when a peer is updated
-type Observer func(peerId string, spaceIds []string, peerRemoved bool)
+type Observer func(peerId string, spaceIdsBefore []string, spaceIdsAfter []string, peerRemoved bool)
 
 type peerStore struct {
 	nodeConf             nodeconf.Service
@@ -62,6 +62,10 @@ func (p *peerStore) AddObserver(observer Observer) {
 func (p *peerStore) UpdateLocalPeer(peerId string, spaceIds []string) {
 	notify := true
 	p.Lock()
+	var (
+		oldIds []string
+		ok     bool
+	)
 	defer func() {
 		observers := p.observers
 		p.Unlock()
@@ -70,10 +74,10 @@ func (p *peerStore) UpdateLocalPeer(peerId string, spaceIds []string) {
 		}
 
 		for _, ob := range observers {
-			ob(peerId, spaceIds, false)
+			ob(peerId, oldIds, spaceIds, false)
 		}
 	}()
-	if oldIds, ok := p.spacesByLocalPeerIds[peerId]; ok {
+	if oldIds, ok = p.spacesByLocalPeerIds[peerId]; ok {
 		slices.Sort(oldIds)
 		slices.Sort(spaceIds)
 		if slices.Equal(oldIds, spaceIds) {
@@ -135,7 +139,7 @@ func (p *peerStore) RemoveLocalPeer(peerId string) {
 	defer func() {
 		observers := p.observers
 		for _, ob := range observers {
-			ob(peerId, spaceIds, true)
+			ob(peerId, spaceIds, nil, true)
 		}
 	}()
 	// TODO: do we need to notify observer here
