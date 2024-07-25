@@ -139,6 +139,7 @@ func (p *p2pStatus) Name() (name string) {
 func (p *p2pStatus) setNotPossibleStatus() {
 	p.Lock()
 	if p.p2pNotPossible {
+		p.Unlock()
 		return
 	}
 	p.p2pNotPossible = true
@@ -149,6 +150,7 @@ func (p *p2pStatus) setNotPossibleStatus() {
 func (p *p2pStatus) resetNotPossibleStatus() {
 	p.Lock()
 	if !p.p2pNotPossible {
+		p.Unlock()
 		return
 	}
 	p.p2pNotPossible = false
