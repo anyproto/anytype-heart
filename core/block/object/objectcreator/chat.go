@@ -17,7 +17,7 @@ import (
 )
 
 func (s *service) createChat(ctx context.Context, space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
-	key, err := domain.NewUniqueKey(smartblock2.SmartBlockTypeChatDerivedObject, bson.NewObjectId().Hex())
+	key, err := domain.NewUniqueKey(smartblock2.SmartBlockTypeChatObject, bson.NewObjectId().Hex())
 	if err != nil {
 		return "", nil, fmt.Errorf("new unique key: %w", err)
 	}
