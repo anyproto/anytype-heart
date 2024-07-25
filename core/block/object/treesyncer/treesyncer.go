@@ -237,6 +237,7 @@ func (t *treeSyncer) updateTree(peerId, id string) {
 	syncTree, ok := tr.(synctree.SyncTree)
 	if !ok {
 		log.Warn("not a sync tree")
+		return
 	}
 	if err = syncTree.SyncWithPeer(ctx, peerId); err != nil {
 		log.Warn("synctree.SyncWithPeer error", zap.Error(err))
