@@ -131,13 +131,14 @@ func (p *peerStore) LocalPeerIds(spaceId string) []string {
 
 func (p *peerStore) RemoveLocalPeer(peerId string) {
 	p.Lock()
-	defer p.Unlock()
 	spaceIds, exists := p.spacesByLocalPeerIds[peerId]
 	if !exists {
+		p.Unlock()
 		return
 	}
 	defer func() {
 		observers := p.observers
+		p.Unlock()
 		for _, ob := range observers {
 			ob(peerId, spaceIds, nil, true)
 		}

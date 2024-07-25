@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/net/pool"
@@ -98,18 +97,15 @@ func (p *p2pStatus) Init(a *app.App) (err error) {
 	sessionHookRunner.RegisterHook(p.sendStatusForNewSession)
 	p.ctx, p.contextCancel = context.WithCancel(context.Background())
 	p.peerStore.AddObserver(func(peerId string, spaceIdsBefore, spaceIdsAfter []string, peerRemoved bool) {
-		go func() {
-			// we need to update status for all spaces that were either added or removed to some local peer
-			// because we start this observer on init we can be sure that the spaceIdsBefore is empty on the first run for peer
-			removed, added := lo.Difference(spaceIdsBefore, spaceIdsAfter)
-			log.Warnf("peer %s space observer: removed: %v, added: %v", peerId, removed, added)
-			err := p.refreshSpaces(lo.Union(removed, added))
-			if errors.Is(err, ErrClosed) {
-				return
-			} else if err != nil {
-				log.Errorf("refreshSpaces failed: %v", err)
-			}
-		}()
+		// we need to update status for all spaces that were either added or removed to some local peer
+		// because we start this observer on init we can be sure that the spaceIdsBefore is empty on the first run for peer
+		removed, added := lo.Difference(spaceIdsBefore, spaceIdsAfter)
+		err := p.refreshSpaces(lo.Union(removed, added))
+		if errors.Is(err, ErrClosed) {
+			return
+		} else if err != nil {
+			log.Errorf("refreshSpaces failed: %v", err)
+		}
 	})
 	return nil
 }
@@ -142,6 +138,9 @@ func (p *p2pStatus) Name() (name string) {
 
 func (p *p2pStatus) setNotPossibleStatus() {
 	p.Lock()
+	if p.p2pNotPossible {
+		return
+	}
 	p.p2pNotPossible = true
 	p.Unlock()
 	p.refreshAllSpaces()
@@ -149,6 +148,9 @@ func (p *p2pStatus) setNotPossibleStatus() {
 
 func (p *p2pStatus) resetNotPossibleStatus() {
 	p.Lock()
+	if !p.p2pNotPossible {
+		return
+	}
 	p.p2pNotPossible = false
 	p.Unlock()
 	p.refreshAllSpaces()
@@ -174,17 +176,12 @@ func (p *p2pStatus) UnregisterSpace(spaceId string) {
 
 func (p *p2pStatus) worker() {
 	defer close(p.workerFinished)
-	timer := time.NewTicker(20 * time.Second)
-	defer timer.Stop()
 	for {
 		select {
 		case <-p.ctx.Done():
 			return
 		case spaceId := <-p.refreshSpaceId:
 			p.processSpaceStatusUpdate(spaceId)
-		case <-timer.C:
-			// todo: looks like we don't need this anymore because we use observer
-			go p.refreshAllSpaces()
 		}
 	}
 }
@@ -235,8 +232,6 @@ func (p *p2pStatus) processSpaceStatusUpdate(spaceId string) {
 	connectionCount := p.countOpenConnections(spaceId)
 	newStatus := p.getResultStatus(p.p2pNotPossible, connectionCount)
 
-	log.Warnf("processSpaceStatusUpdate: spaceId: %s, currentStatus: %v, newStatus: %v, connectionCount: %d", spaceId, currentStatus.status, newStatus, connectionCount)
-
 	if currentStatus.status != newStatus || currentStatus.connectionsCount != connectionCount {
 		p.sendEvent("", spaceId, newStatus.ToPb(), connectionCount)
 		currentStatus.status = newStatus
@@ -256,26 +251,12 @@ func (p *p2pStatus) getResultStatus(notPossible bool, connectionCount int64) Sta
 }
 
 func (p *p2pStatus) countOpenConnections(spaceId string) int64 {
-	var connectionCount int64
-	ctx, cancelFunc := context.WithTimeout(p.ctx, time.Second*10)
-	defer cancelFunc()
 	peerIds := p.peerStore.LocalPeerIds(spaceId)
-	log.Warnf("processSpaceStatusUpdate: spaceId: %s, localPeerIds: %v", spaceId, peerIds)
-
-	for _, peerId := range peerIds {
-		_, err := p.peersConnectionPool.Pick(ctx, peerId)
-		if err != nil {
-			log.Warnf("countOpenConnections space %s failed to get local peer %s from net pool: %v", spaceId, peerId, err)
-			continue
-		}
-		connectionCount++
-	}
-	return connectionCount
+	return int64(len(peerIds))
 }
 
 // sendEvent sends event to session with sessionToken or broadcast to all sessions if sessionToken is empty
 func (p *p2pStatus) sendEvent(sessionToken string, spaceId string, status pb.EventP2PStatusStatus, count int64) {
-	log.Warnf("sendEvent: sessionToken: %s, spaceId: %s, status: %v, count: %d", sessionToken, spaceId, status, count)
 	event := &pb.Event{
 		Messages: []*pb.EventMessage{
 			{
