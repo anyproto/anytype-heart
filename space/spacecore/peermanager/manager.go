@@ -38,7 +38,6 @@ type Updater interface {
 }
 
 type PeerToPeerStatus interface {
-	CheckPeerStatus()
 	RegisterSpace(spaceId string)
 	UnregisterSpace(spaceId string)
 }
@@ -72,7 +71,6 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.nodeStatus = app.MustComponent[NodeStatus](a)
 	n.spaceSyncService = app.MustComponent[Updater](a)
 	n.peerToPeerStatus = app.MustComponent[PeerToPeerStatus](a)
-	n.peerToPeerStatus.RegisterSpace(n.spaceId)
 	return
 }
 
@@ -81,6 +79,7 @@ func (n *clientPeerManager) Name() (name string) {
 }
 
 func (n *clientPeerManager) Run(ctx context.Context) (err error) {
+	go n.peerToPeerStatus.RegisterSpace(n.spaceId)
 	go n.manageResponsiblePeers()
 	return
 }
@@ -169,20 +168,16 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 		peerIds = []string{p.Id()}
 	}
 	peerIds = append(peerIds, n.peerStore.LocalPeerIds(n.spaceId)...)
-	var needUpdate bool
 	for _, peerId := range peerIds {
 		p, err := n.p.pool.Get(ctx, peerId)
 		if err != nil {
 			n.peerStore.RemoveLocalPeer(peerId)
 			log.Warn("failed to get peer from stream pool", zap.String("peerId", peerId), zap.Error(err))
-			needUpdate = true
 			continue
 		}
 		peers = append(peers, p)
 	}
-	if needUpdate {
-		n.peerToPeerStatus.CheckPeerStatus()
-	}
+
 	// set node error if no local peers
 	if len(peers) == 0 {
 		err = fmt.Errorf("failed to get peers for stream")
@@ -216,19 +211,14 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 	}
 	n.spaceSyncService.Refresh(n.spaceId)
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
-	var needUpdate bool
 	for _, peerId := range peerIds {
 		p, err := n.p.pool.Get(n.ctx, peerId)
 		if err != nil {
 			n.peerStore.RemoveLocalPeer(peerId)
 			log.Warn("failed to get local from net pool", zap.String("peerId", peerId), zap.Error(err))
-			needUpdate = true
 			continue
 		}
 		peers = append(peers, p)
-	}
-	if needUpdate {
-		n.peerToPeerStatus.CheckPeerStatus()
 	}
 
 	n.Lock()

@@ -112,9 +112,6 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 		f.conf.EXPECT().NodeIds(f.cm.spaceId).Return([]string{"id"})
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
 		f.cm.fetchResponsiblePeers()
-
-		// then
-		f.peerToPeerStatus.AssertNotCalled(t, "CheckPeerStatus")
 	})
 	t.Run("local peers connected", func(t *testing.T) {
 		// given
@@ -127,23 +124,17 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(newTestPeer("id1"), nil)
 		f.cm.fetchResponsiblePeers()
 
-		// then
-		f.peerToPeerStatus.AssertNotCalled(t, "CheckPeerStatus")
 	})
 	t.Run("local peer not connected", func(t *testing.T) {
 		// given
 		f := newFixtureManager(t, spaceId)
 		f.store.UpdateLocalPeer("peerId", []string{spaceId})
-		f.peerToPeerStatus.EXPECT().CheckPeerStatus().Return()
 
 		// when
 		f.conf.EXPECT().NodeIds(f.cm.spaceId).Return([]string{"id"})
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
 		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(nil, fmt.Errorf("error"))
 		f.cm.fetchResponsiblePeers()
-
-		// then
-		f.peerToPeerStatus.AssertCalled(t, "CheckPeerStatus")
 	})
 }
 
@@ -161,7 +152,6 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, peers, 1)
-		f.peerToPeerStatus.AssertNotCalled(t, "CheckPeerStatus")
 	})
 	t.Run("local peers connected", func(t *testing.T) {
 		// given
@@ -177,13 +167,11 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, peers, 2)
-		f.peerToPeerStatus.AssertNotCalled(t, "CheckPeerStatus")
 	})
 	t.Run("local peer not connected", func(t *testing.T) {
 		// given
 		f := newFixtureManager(t, spaceId)
 		f.store.UpdateLocalPeer("peerId", []string{spaceId})
-		f.peerToPeerStatus.EXPECT().CheckPeerStatus().Return()
 
 		// when
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
@@ -194,7 +182,6 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, peers, 1)
-		f.peerToPeerStatus.AssertCalled(t, "CheckPeerStatus")
 	})
 }
 
