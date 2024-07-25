@@ -22,6 +22,19 @@ func (s *InternalTestService) Init(a *app.App) error {
 	return s.Service.Init(a)
 }
 
+func (s *InternalTestService) Run(ctx context.Context) error {
+	err := s.StoreFixture.Run(ctx)
+	if err != nil {
+		return err
+	}
+	return s.Service.Run(ctx)
+}
+
+func (s *InternalTestService) Close(ctx context.Context) (err error) {
+	_ = s.Service.Close(ctx)
+	return s.StoreFixture.Close(ctx)
+}
+
 func NewInternalTestService(t *testing.T) *InternalTestService {
 	s := New()
 	ctx := context.Background()
@@ -36,6 +49,18 @@ func NewInternalTestService(t *testing.T) *InternalTestService {
 	a.Register(s)
 	err := a.Start(ctx)
 	require.NoError(t, err)
+	return &InternalTestService{Service: s, StoreFixture: objectStore}
+}
+
+func RegisterSubscriptionService(t *testing.T, a *app.App) *InternalTestService {
+	s := New()
+	ctx := context.Background()
+	objectStore := objectstore.NewStoreFixture(t)
+	a.Register(objectStore).
+		Register(kanban.New()).
+		Register(&collectionServiceMock{MockCollectionService: NewMockCollectionService(t)}).
+		Register(testutil.PrepareMock(ctx, a, mock_event.NewMockSender(t))).
+		Register(s)
 	return &InternalTestService{Service: s, StoreFixture: objectStore}
 }
 

@@ -37,6 +37,7 @@ type Updater interface {
 }
 
 type NodeUsage interface {
+	app.Component
 	GetNodeUsage(ctx context.Context) (*files.NodeUsageResponse, error)
 }
 
@@ -56,6 +57,7 @@ type State interface {
 }
 
 type NetworkConfig interface {
+	app.Component
 	GetNetworkMode() pb.RpcAccountNetworkMode
 }
 
@@ -80,12 +82,17 @@ type spaceSyncStatus struct {
 	missingIds    map[string][]string
 	mx            sync.Mutex
 	periodicCall  periodicsync.PeriodicSync
+	loopInterval  time.Duration
 	isLocal       bool
 	finish        chan struct{}
 }
 
 func NewSpaceSyncStatus() Updater {
-	return &spaceSyncStatus{batcher: mb.New[*domain.SpaceSync](0), finish: make(chan struct{})}
+	return &spaceSyncStatus{
+		batcher:      mb.New[*domain.SpaceSync](0),
+		finish:       make(chan struct{}),
+		loopInterval: time.Second * 1,
+	}
 }
 
 func (s *spaceSyncStatus) Init(a *app.App) (err error) {
@@ -103,7 +110,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.isLocal = s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly
 	sessionHookRunner := app.MustComponent[session.HookRunner](a)
 	sessionHookRunner.RegisterHook(s.sendSyncEventForNewSession)
-	s.periodicCall = periodicsync.NewPeriodicSync(1, time.Second*5, s.update, logger.CtxLogger{Logger: log.Desugar()})
+	s.periodicCall = periodicsync.NewPeriodicSyncDuration(s.loopInterval, time.Second*5, s.update, logger.CtxLogger{Logger: log.Desugar()})
 	return
 }
 
@@ -132,12 +139,14 @@ func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	return
 }
 
-func (s *spaceSyncStatus) update(ctx context.Context) error {
-	// TODO: use subscriptions inside middleware instead of this
+func (s *spaceSyncStatus) getMissingIds(spaceId string) []string {
 	s.mx.Lock()
-	missingIds := lo.MapEntries(s.missingIds, func(key string, value []string) (string, []string) {
-		return key, slice.Copy(value)
-	})
+	defer s.mx.Unlock()
+	return slice.Copy(s.missingIds[spaceId])
+}
+
+func (s *spaceSyncStatus) update(ctx context.Context) error {
+	s.mx.Lock()
 	statuses := lo.MapToSlice(s.curStatuses, func(key string, value struct{}) string {
 		delete(s.curStatuses, key)
 		return key
@@ -149,15 +158,12 @@ func (s *spaceSyncStatus) update(ctx context.Context) error {
 		}
 		// if the there are too many updates and this hurts performance,
 		// we may skip some iterations and not do the updates for example
-		s.updateSpaceSyncStatus(spaceId, missingIds[spaceId])
+		s.updateSpaceSyncStatus(spaceId)
 	}
 	return nil
 }
 
 func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
-	s.mx.Lock()
-	missingObjects := s.missingIds[spaceId]
-	s.mx.Unlock()
 	if s.isLocal {
 		s.sendLocalOnlyEventToSession(spaceId, token)
 		return
@@ -167,7 +173,7 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
 		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
 		filesSyncingCount:   s.getFileSyncingObjectsCount(spaceId),
-		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, missingObjects),
+		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, s.getMissingIds(spaceId)),
 	}
 	s.eventSender.SendToSession(token, &pb.Event{
 		Messages: []*pb.EventMessage{{
@@ -180,10 +186,7 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 
 func (s *spaceSyncStatus) sendStartEvent(spaceIds []string) {
 	for _, id := range spaceIds {
-		s.mx.Lock()
-		missingObjects := s.missingIds[id]
-		s.mx.Unlock()
-		s.updateSpaceSyncStatus(id, missingObjects)
+		s.updateSpaceSyncStatus(id)
 	}
 }
 
@@ -248,11 +251,12 @@ func (s *spaceSyncStatus) getBytesLeftPercentage(spaceId string) float64 {
 	return float64(nodeUsage.Usage.BytesLeft) / float64(nodeUsage.Usage.AccountBytesLimit)
 }
 
-func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string, missingObjects []string) {
+func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 	if s.isLocal {
 		s.sendLocalOnlyEvent(spaceId)
 		return
 	}
+	missingObjects := s.getMissingIds(spaceId)
 	params := syncParams{
 		bytesLeftPercentage: s.getBytesLeftPercentage(spaceId),
 		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),

@@ -192,6 +192,9 @@ packages:
     interfaces:
       PeerStatusChecker:
       SyncDetailsUpdater:
+  github.com/anyproto/anytype-heart/core/syncstatus/nodestatus:
+    interfaces:
+      NodeStatus:
   github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus:
     interfaces:
       Updater:
@@ -210,4 +213,6 @@ packages:
   github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus:
     interfaces:
       SpaceIdGetter:
+      NodeUsage:
+      NetworkConfig:
       Updater:
