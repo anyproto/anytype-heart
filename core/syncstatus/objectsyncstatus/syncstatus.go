@@ -174,10 +174,9 @@ func (s *syncStatusService) HeadsApply(senderId, treeId string, heads []string, 
 		// checking if we received the head that we are interested in
 		for _, head := range heads {
 			if idx, found := slices.BinarySearch(curTreeHeads.heads, head); found {
-				curTreeHeads.heads[idx] = ""
+				curTreeHeads.heads = slice.RemoveIndex(curTreeHeads.heads, idx)
 			}
 		}
-		curTreeHeads.heads = slice.RemoveMut(curTreeHeads.heads, "")
 		if len(curTreeHeads.heads) == 0 {
 			curTreeHeads.syncStatus = StatusSynced
 		}
@@ -247,9 +246,10 @@ func (s *syncStatusService) Watch(treeId string) (err error) {
 		if err != nil {
 			return
 		}
-		slices.Sort(heads)
+		headsCopy := slice.Copy(heads)
+		slices.Sort(headsCopy)
 		s.treeHeads[treeId] = treeHeadsEntry{
-			heads:      heads,
+			heads:      headsCopy,
 			syncStatus: StatusUnknown,
 		}
 	}

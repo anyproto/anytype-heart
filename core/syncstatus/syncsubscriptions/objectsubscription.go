@@ -115,7 +115,6 @@ func (o *ObjectSubscription[T]) Iterate(iter func(id string, data T) bool) {
 			return
 		}
 	}
-	return
 }
 
 func (o *ObjectSubscription[T]) read() {

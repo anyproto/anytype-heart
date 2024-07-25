@@ -14,11 +14,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -50,17 +48,13 @@ type NetworkConfig interface {
 }
 
 type spaceSyncStatus struct {
-	eventSender         event.Sender
-	networkConfig       NetworkConfig
-	nodeStatus          nodestatus.NodeStatus
-	nodeConf            nodeconf.Service
-	nodeUsage           NodeUsage
-	store               objectstore.ObjectStore
-	subscriptionService subscription.Service
-	subs                syncsubscriptions.SyncSubscriptions
+	eventSender   event.Sender
+	networkConfig NetworkConfig
+	nodeStatus    nodestatus.NodeStatus
+	nodeConf      nodeconf.Service
+	nodeUsage     NodeUsage
+	subs          syncsubscriptions.SyncSubscriptions
 
-	ctx            context.Context
-	ctxCancel      context.CancelFunc
 	spaceIdGetter  SpaceIdGetter
 	curStatuses    map[string]struct{}
 	missingIds     map[string][]string
@@ -69,7 +63,6 @@ type spaceSyncStatus struct {
 	periodicCall   periodicsync.PeriodicSync
 	loopInterval   time.Duration
 	isLocal        bool
-	finish         chan struct{}
 }
 
 func NewSpaceSyncStatus() Updater {
@@ -84,8 +77,6 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.nodeStatus = app.MustComponent[nodestatus.NodeStatus](a)
 	s.nodeConf = app.MustComponent[nodeconf.Service](a)
 	s.nodeUsage = app.MustComponent[NodeUsage](a)
-	s.subscriptionService = app.MustComponent[subscription.Service](a)
-	s.store = app.MustComponent[objectstore.ObjectStore](a)
 	s.curStatuses = make(map[string]struct{})
 	s.subs = app.MustComponent[syncsubscriptions.SyncSubscriptions](a)
 	s.missingIds = make(map[string][]string)
@@ -118,7 +109,6 @@ func (s *spaceSyncStatus) UpdateMissingIds(spaceId string, ids []string) {
 
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
-	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	s.periodicCall.Run()
 	return
 }
