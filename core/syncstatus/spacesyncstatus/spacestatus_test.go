@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus/mock_nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus/mock_spacesyncstatus"
-	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscritions"
+	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -71,7 +71,7 @@ type fixture struct {
 	nodeUsage           *mock_spacesyncstatus.MockNodeUsage
 	nodeStatus          *mock_nodestatus.MockNodeStatus
 	subscriptionService subscription.Service
-	syncSubs            syncsubscritions.SyncSubscriptions
+	syncSubs            syncsubscriptions.SyncSubscriptions
 	objectStore         *objectstore.StoreFixture
 	spaceIdGetter       *mock_spacesyncstatus.MockSpaceIdGetter
 	eventSender         *mock_event.MockSender
@@ -145,7 +145,7 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 		eventSender:         app.MustComponent[event.Sender](a).(*mock_event.MockSender),
 		subscriptionService: internalSubs,
 		session:             sess,
-		syncSubs:            syncsubscritions.New(),
+		syncSubs:            syncsubscriptions.New(),
 		networkConfig:       networkConfig,
 	}
 	a.Register(fx.syncSubs).

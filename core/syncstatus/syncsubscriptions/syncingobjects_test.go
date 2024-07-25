@@ -1,4 +1,4 @@
-package syncsubscritions
+package syncsubscriptions
 
 import (
 	"testing"
@@ -11,9 +11,9 @@ import (
 func TestCount(t *testing.T) {
 	objSubscription := NewIdSubscription(nil, subscription.SubscribeRequest{})
 	objSubscription.sub = map[string]*entry[struct{}]{
-		"1": newEmptyEntry[struct{}]("1"),
-		"2": newEmptyEntry[struct{}]("2"),
-		"4": newEmptyEntry[struct{}]("4"),
+		"1": newEmptyEntry[struct{}](),
+		"2": newEmptyEntry[struct{}](),
+		"4": newEmptyEntry[struct{}](),
 	}
 	syncing := &syncingObjects{
 		objectSubscription: objSubscription,

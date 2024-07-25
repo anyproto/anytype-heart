@@ -1,4 +1,4 @@
-package syncsubscritions
+package syncsubscriptions
 
 import (
 	"fmt"
@@ -78,7 +78,7 @@ func (s *syncingObjects) Run() error {
 	errFiles := s.fileSubscription.Run()
 	errObjects := s.objectSubscription.Run()
 	if errFiles != nil || errObjects != nil {
-		return fmt.Errorf("error running syncing objects: %v %v", errFiles, errObjects)
+		return fmt.Errorf("error running syncing objects: %w %w", errFiles, errObjects)
 	}
 	return nil
 }

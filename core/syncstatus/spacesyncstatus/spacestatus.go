@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
-	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscritions"
+	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -57,7 +57,7 @@ type spaceSyncStatus struct {
 	nodeUsage           NodeUsage
 	store               objectstore.ObjectStore
 	subscriptionService subscription.Service
-	subs                syncsubscritions.SyncSubscriptions
+	subs                syncsubscriptions.SyncSubscriptions
 
 	ctx            context.Context
 	ctxCancel      context.CancelFunc
@@ -87,7 +87,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.subscriptionService = app.MustComponent[subscription.Service](a)
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
 	s.curStatuses = make(map[string]struct{})
-	s.subs = app.MustComponent[syncsubscritions.SyncSubscriptions](a)
+	s.subs = app.MustComponent[syncsubscriptions.SyncSubscriptions](a)
 	s.missingIds = make(map[string][]string)
 	s.lastSentEvents = make(map[string]pb.EventSpaceSyncStatusUpdate)
 	s.spaceIdGetter = app.MustComponent[SpaceIdGetter](a)

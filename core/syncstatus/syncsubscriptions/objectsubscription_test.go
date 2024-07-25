@@ -1,4 +1,4 @@
-package syncsubscritions
+package syncsubscriptions
 
 import (
 	"context"

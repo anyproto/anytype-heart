@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
-	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscritions"
+	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -55,7 +55,7 @@ type syncStatusUpdater struct {
 	batcher           *mb.MB[string]
 	spaceService      space.Service
 	spaceSyncStatus   SpaceStatusUpdater
-	syncSubscriptions syncsubscritions.SyncSubscriptions
+	syncSubscriptions syncsubscriptions.SyncSubscriptions
 
 	entries map[string]*syncStatusDetails
 	mx      sync.Mutex
@@ -89,7 +89,7 @@ func (u *syncStatusUpdater) Init(a *app.App) (err error) {
 	u.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	u.spaceService = app.MustComponent[space.Service](a)
 	u.spaceSyncStatus = app.MustComponent[SpaceStatusUpdater](a)
-	u.syncSubscriptions = app.MustComponent[syncsubscritions.SyncSubscriptions](a)
+	u.syncSubscriptions = app.MustComponent[syncsubscriptions.SyncSubscriptions](a)
 	return nil
 }
 

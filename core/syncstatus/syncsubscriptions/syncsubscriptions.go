@@ -1,4 +1,4 @@
-package syncsubscritions
+package syncsubscriptions
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/subscription"
 )
 
-const CName = "client.syncstatus.syncsubscritions"
+const CName = "client.syncstatus.syncsubscriptions"
 
 type SyncSubscription interface {
 	Run() error

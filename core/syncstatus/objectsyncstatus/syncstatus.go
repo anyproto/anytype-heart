@@ -186,11 +186,11 @@ func (s *syncStatusService) HeadsApply(senderId, treeId string, heads []string, 
 }
 
 func (s *syncStatusService) update(ctx context.Context) (err error) {
-	var (
-		updateDetailsStatuses []treeStatus
-		updateThreadStatuses  []treeStatus
-	)
 	s.Lock()
+	var (
+		updateDetailsStatuses = make([]treeStatus, 0, len(s.synced))
+		updateThreadStatuses  = make([]treeStatus, 0, len(s.watchers))
+	)
 	if s.updateReceiver == nil {
 		s.Unlock()
 		return

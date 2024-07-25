@@ -20,7 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/mock_detailsupdater"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
-	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscritions"
+	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -352,7 +352,7 @@ func newFixture(t *testing.T) *fixture {
 	updater := New()
 	statusUpdater := mock_detailsupdater.NewMockSpaceStatusUpdater(t)
 
-	syncSub := syncsubscritions.New()
+	syncSub := syncsubscriptions.New()
 
 	ctx := context.Background()
 

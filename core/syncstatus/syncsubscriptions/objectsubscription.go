@@ -1,4 +1,4 @@
-package syncsubscritions
+package syncsubscriptions
 
 import (
 	"context"
@@ -14,16 +14,15 @@ import (
 )
 
 type entry[T any] struct {
-	id   string
 	data T
 }
 
-func newEmptyEntry[T any](id string) *entry[T] {
-	return &entry[T]{id: id}
+func newEmptyEntry[T any]() *entry[T] {
+	return &entry[T]{}
 }
 
-func newEntry[T any](id string, data T) *entry[T] {
-	return &entry[T]{id: id, data: data}
+func newEntry[T any](data T) *entry[T] {
+	return &entry[T]{data: data}
 }
 
 type (
@@ -91,7 +90,7 @@ func (o *ObjectSubscription[T]) Run() error {
 	o.sub = map[string]*entry[T]{}
 	for _, rec := range resp.Records {
 		id, data := o.extract(rec)
-		o.sub[id] = newEntry(id, data)
+		o.sub[id] = newEntry(data)
 	}
 	go o.read()
 	return nil
@@ -100,7 +99,6 @@ func (o *ObjectSubscription[T]) Run() error {
 func (o *ObjectSubscription[T]) Close() {
 	o.cancel()
 	<-o.ch
-	return
 }
 
 func (o *ObjectSubscription[T]) Len() int {
@@ -127,7 +125,7 @@ func (o *ObjectSubscription[T]) read() {
 		defer o.mx.Unlock()
 		switch v := event.Value.(type) {
 		case *pb.EventMessageValueOfSubscriptionAdd:
-			o.sub[v.SubscriptionAdd.Id] = newEmptyEntry[T](v.SubscriptionAdd.Id)
+			o.sub[v.SubscriptionAdd.Id] = newEmptyEntry[T]()
 		case *pb.EventMessageValueOfSubscriptionRemove:
 			delete(o.sub, v.SubscriptionRemove.Id)
 		case *pb.EventMessageValueOfObjectDetailsAmend:
