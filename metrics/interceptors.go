@@ -87,9 +87,7 @@ func SharedTraceInterceptor(ctx context.Context, req any, methodName string, act
 }
 
 func saveAccountStop(event *MethodEvent) error {
-	pool := &fastjson.ArenaPool{}
-	arena := pool.Get()
-	defer pool.Put(arena)
+	arena := &fastjson.Arena{}
 
 	json := arena.NewObject()
 	json.Set("method_name", arena.NewString(event.methodName))
