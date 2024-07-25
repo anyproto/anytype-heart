@@ -574,18 +574,18 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	handleTime := time.Since(st)
 
 	// Reset output buffer
-	for subId, msgs := range s.ctxBuf.outputs {
+	for subId := range s.ctxBuf.outputs {
 		if subId == defaultOutput {
-			s.ctxBuf.outputs[subId] = msgs[:0]
+			s.ctxBuf.outputs[subId] = nil
 		} else if _, ok := s.customOutput[subId]; ok {
-			s.ctxBuf.outputs[subId] = msgs[:0]
+			s.ctxBuf.outputs[subId] = nil
 		} else {
 			delete(s.ctxBuf.outputs, subId)
 		}
 	}
 	for subId := range s.customOutput {
 		if _, ok := s.ctxBuf.outputs[subId]; !ok {
-			s.ctxBuf.outputs[subId] = make([]*pb.EventMessage, 0, 10)
+			s.ctxBuf.outputs[subId] = nil
 		}
 	}
 
