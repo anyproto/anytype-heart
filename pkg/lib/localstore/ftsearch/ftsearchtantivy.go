@@ -136,7 +136,7 @@ func (f *ftSearch2) Run(context.Context) error {
 		true,
 		false,
 		tantivy.IndexRecordOptionWithFreqsAndPositions,
-		tantivy.TokenizerEdgeNgram,
+		tantivy.TokenizerNgram,
 	)
 
 	err = builder.AddTextField(
@@ -175,6 +175,11 @@ func (f *ftSearch2) Run(context.Context) error {
 	}
 
 	err = index.RegisterTextAnalyzerEdgeNgram(tantivy.TokenizerEdgeNgram, 1, 5, 100)
+	if err != nil {
+		return err
+	}
+
+	err = index.RegisterTextAnalyzerNgram(tantivy.TokenizerNgram, 1, 5, false)
 	if err != nil {
 		return err
 	}
