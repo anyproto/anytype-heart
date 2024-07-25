@@ -121,6 +121,40 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		updTester.wait()
 	})
 
+	t.Run("updates to object not in cache", func(t *testing.T) {
+		fx := newUpdateDetailsFixture(t)
+		updTester := newUpdateTester(t, 1, 1)
+
+		fx.subscriptionService.StoreFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:      pbtypes.String("id1"),
+				bundle.RelationKeySpaceId: pbtypes.String("space1"),
+				bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_basic)),
+			},
+		})
+
+		space := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(mock.Anything, "space1").Return(space, nil)
+		space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).Run(func(objectId string, proc func() error) {
+			err := proc()
+			require.NoError(t, err)
+
+			details, err := fx.objectStore.GetDetails(objectId)
+			require.NoError(t, err)
+
+			assert.True(t, pbtypes.GetInt64(details.Details, bundle.RelationKeySyncStatus.String()) == int64(domain.ObjectSyncStatusError))
+			assert.True(t, pbtypes.GetInt64(details.Details, bundle.RelationKeySyncError.String()) == int64(domain.SyncErrorNull))
+			assert.Contains(t, details.Details.GetFields(), bundle.RelationKeySyncDate.String())
+			updTester.done()
+		}).Return(nil).Times(0)
+
+		fx.UpdateDetails("id1", domain.ObjectSyncStatusError, "space1")
+
+		fx.spaceStatusUpdater.EXPECT().Refresh("space1")
+
+		updTester.wait()
+	})
+
 	t.Run("updates in file object", func(t *testing.T) {
 		t.Run("file backup status limited", func(t *testing.T) {
 			fx := newUpdateDetailsFixture(t)
@@ -231,6 +265,10 @@ func TestSyncStatusUpdater_UpdateSpaceDetails(t *testing.T) {
 	assertUpdate("id4", domain.ObjectSyncStatusSynced)
 
 	fx.spaceStatusUpdater.EXPECT().UpdateMissingIds("space1", []string{"id3"})
+	fx.UpdateSpaceDetails([]string{"id1", "id2"}, []string{"id3"}, "space1")
+
+	fx.spaceStatusUpdater.EXPECT().UpdateMissingIds("space1", []string{"id3"})
+	fx.spaceStatusUpdater.EXPECT().Refresh("space1")
 	fx.UpdateSpaceDetails([]string{"id1", "id2"}, []string{"id3"}, "space1")
 
 	updTester.wait()
