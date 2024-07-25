@@ -53,7 +53,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService.OnUploaded(s.onFileUploaded)
 	s.fileSyncService.OnUploadStarted(s.onFileUploadStarted)
 	s.fileSyncService.OnLimited(s.onFileLimited)
-	s.fileSyncService.OnDelete(s.OnFileDelete)
 
 	nodeConfService := app.MustComponent[nodeconf.Service](a)
 	cfg := app.MustComponent[*config.Config](a)

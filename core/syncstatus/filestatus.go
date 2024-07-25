@@ -24,10 +24,6 @@ func (s *service) onFileLimited(objectId string, _ domain.FullFileId, bytesLeftP
 	return s.indexFileSyncStatus(objectId, filesyncstatus.Limited)
 }
 
-func (s *service) OnFileDelete(fileId domain.FullFileId) {
-	s.spaceSyncStatus.Refresh(fileId.SpaceId)
-}
-
 func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {
 	err := cache.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
 		prevStatus := pbtypes.GetInt64(sb.Details(), bundle.RelationKeyFileBackupStatus.String())
