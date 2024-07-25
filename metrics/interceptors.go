@@ -100,7 +100,7 @@ func saveAccountStop(event *MethodEvent) error {
 	data := json.MarshalTo(nil)
 	jsonPath := filepath.Join(Service.getWorkingDir(), accountStopJson)
 	_ = os.Remove(jsonPath)
-	return os.WriteFile(jsonPath, data, 0644)
+	return os.WriteFile(jsonPath, data, 0600)
 }
 
 func trySendAccountStop() error {
