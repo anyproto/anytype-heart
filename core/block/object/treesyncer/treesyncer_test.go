@@ -25,7 +25,6 @@ type fixture struct {
 	missingMock        *mock_objecttree.MockObjectTree
 	existingMock       *mock_synctree.MockSyncTree
 	treeManager        *mock_treemanager.MockTreeManager
-	checker            *mock_treesyncer.MockPeerStatusChecker
 	nodeConf           *mock_nodeconf.MockService
 	syncStatus         *mock_treesyncer.MockSyncedTreeRemover
 	syncDetailsUpdater *mock_treesyncer.MockSyncDetailsUpdater
@@ -36,8 +35,6 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 	treeManager := mock_treemanager.NewMockTreeManager(ctrl)
 	missingMock := mock_objecttree.NewMockObjectTree(ctrl)
 	existingMock := mock_synctree.NewMockSyncTree(ctrl)
-	checker := mock_treesyncer.NewMockPeerStatusChecker(t)
-	checker.EXPECT().Name().Return("checker").Maybe()
 	nodeConf := mock_nodeconf.NewMockService(ctrl)
 	nodeConf.EXPECT().Name().Return("nodeConf").AnyTimes()
 	syncStatus := mock_treesyncer.NewMockSyncedTreeRemover(t)
@@ -45,7 +42,6 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 
 	a := new(app.App)
 	a.Register(testutil.PrepareMock(context.Background(), a, treeManager)).
-		Register(testutil.PrepareMock(context.Background(), a, checker)).
 		Register(testutil.PrepareMock(context.Background(), a, syncStatus)).
 		Register(testutil.PrepareMock(context.Background(), a, nodeConf)).
 		Register(testutil.PrepareMock(context.Background(), a, syncDetailsUpdater))
@@ -58,7 +54,6 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 		missingMock:        missingMock,
 		existingMock:       existingMock,
 		treeManager:        treeManager,
-		checker:            checker,
 		nodeConf:           nodeConf,
 		syncStatus:         syncStatus,
 		syncDetailsUpdater: syncDetailsUpdater,

@@ -60,11 +60,6 @@ type SyncedTreeRemover interface {
 	RemoveAllExcept(senderId string, differentRemoteIds []string)
 }
 
-type PeerStatusChecker interface {
-	app.Component
-	IsPeerOffline(peerId string) bool
-}
-
 type SyncDetailsUpdater interface {
 	app.Component
 	UpdateSpaceDetails(existing, missing []string, spaceId string)
@@ -82,7 +77,6 @@ type treeSyncer struct {
 	treeManager        treemanager.TreeManager
 	isRunning          bool
 	isSyncing          bool
-	peerManager        PeerStatusChecker
 	nodeConf           nodeconf.NodeConf
 	syncedTreeRemover  SyncedTreeRemover
 	syncDetailsUpdater SyncDetailsUpdater
@@ -104,7 +98,6 @@ func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.isSyncing = true
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
-	t.peerManager = app.MustComponent[PeerStatusChecker](a)
 	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
 	t.syncedTreeRemover = app.MustComponent[SyncedTreeRemover](a)
 	t.syncDetailsUpdater = app.MustComponent[SyncDetailsUpdater](a)
