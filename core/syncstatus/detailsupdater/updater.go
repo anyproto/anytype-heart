@@ -150,6 +150,9 @@ func (u *syncStatusUpdater) UpdateSpaceDetails(existing, missing []string, space
 	}
 	u.spaceSyncStatus.UpdateMissingIds(spaceId, missing)
 	ids := u.getSyncingObjects(spaceId)
+
+	// removed contains ids that are not yet marked as syncing
+	// added contains ids that were syncing, but appeared as synced, because they are not in existing list
 	removed, added := slice.DifferenceRemovedAdded(existing, ids)
 	if len(removed)+len(added) == 0 {
 		u.spaceSyncStatus.Refresh(spaceId)
