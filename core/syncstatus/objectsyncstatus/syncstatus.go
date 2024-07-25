@@ -142,7 +142,7 @@ func (s *syncStatusService) Run(ctx context.Context) error {
 
 func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 	s.Lock()
-	s.treeHeads[treeId] = treeHeadsEntry{heads: heads, syncStatus: StatusNotSynced}
+	s.addTreeHead(treeId, heads, StatusNotSynced)
 	s.Unlock()
 	s.updateDetails(treeId, domain.ObjectSyncStatusSyncing)
 }
@@ -229,6 +229,15 @@ func mapStatus(status SyncStatus) domain.ObjectSyncStatus {
 func (s *syncStatusService) HeadsReceive(senderId, treeId string, heads []string) {
 }
 
+func (s *syncStatusService) addTreeHead(treeId string, heads []string, status SyncStatus) {
+	headsCopy := slice.Copy(heads)
+	slices.Sort(headsCopy)
+	s.treeHeads[treeId] = treeHeadsEntry{
+		heads:      headsCopy,
+		syncStatus: status,
+	}
+}
+
 func (s *syncStatusService) Watch(treeId string) (err error) {
 	s.Lock()
 	defer s.Unlock()
@@ -246,12 +255,7 @@ func (s *syncStatusService) Watch(treeId string) (err error) {
 		if err != nil {
 			return
 		}
-		headsCopy := slice.Copy(heads)
-		slices.Sort(headsCopy)
-		s.treeHeads[treeId] = treeHeadsEntry{
-			heads:      headsCopy,
-			syncStatus: StatusUnknown,
-		}
+		s.addTreeHead(treeId, heads, StatusUnknown)
 	}
 
 	s.watchers[treeId] = struct{}{}
