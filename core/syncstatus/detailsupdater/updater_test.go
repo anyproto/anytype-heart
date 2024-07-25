@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscritions"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -31,28 +32,34 @@ import (
 )
 
 type updateTester struct {
-	t           *testing.T
-	waitCh      chan struct{}
-	eventsCount int
+	t              *testing.T
+	waitCh         chan struct{}
+	minEventsCount int
+	maxEventsCount int
 }
 
-func newUpdateTester(t *testing.T, eventsCount int) *updateTester {
-	return &updateTester{t: t, eventsCount: eventsCount, waitCh: make(chan struct{}, eventsCount)}
+func newUpdateTester(t *testing.T, minEventsCount int, maxEventsCount int) *updateTester {
+	return &updateTester{
+		t:              t,
+		minEventsCount: minEventsCount,
+		maxEventsCount: maxEventsCount,
+		waitCh:         make(chan struct{}, maxEventsCount),
+	}
 }
 
 func (t *updateTester) done() {
 	t.waitCh <- struct{}{}
 }
 
-// wait waits for at least one event up to t.eventsCount events
+// wait waits for at least one event up to t.maxEventsCount events
 func (t *updateTester) wait() {
 	timeout := time.After(1 * time.Second)
 	minReceivedTimer := time.After(10 * time.Millisecond)
 	var eventsReceived int
-	for i := 0; i < t.eventsCount; i++ {
+	for i := 0; i < t.maxEventsCount; i++ {
 		select {
 		case <-minReceivedTimer:
-			if eventsReceived > 0 {
+			if eventsReceived >= t.minEventsCount {
 				return
 			}
 		case <-t.waitCh:
@@ -84,7 +91,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 
 	t.Run("updates to the same object", func(t *testing.T) {
 		fx := newUpdateDetailsFixture(t)
-		updTester := newUpdateTester(t, 4)
+		updTester := newUpdateTester(t, 1, 4)
 
 		space := mock_clientspace.NewMockSpace(t)
 		fx.spaceService.EXPECT().Get(mock.Anything, "space1").Return(space, nil)
@@ -114,10 +121,44 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		updTester.wait()
 	})
 
+	t.Run("updates to object not in cache", func(t *testing.T) {
+		fx := newUpdateDetailsFixture(t)
+		updTester := newUpdateTester(t, 1, 1)
+
+		fx.subscriptionService.StoreFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:      pbtypes.String("id1"),
+				bundle.RelationKeySpaceId: pbtypes.String("space1"),
+				bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_basic)),
+			},
+		})
+
+		space := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(mock.Anything, "space1").Return(space, nil)
+		space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).Run(func(objectId string, proc func() error) {
+			err := proc()
+			require.NoError(t, err)
+
+			details, err := fx.objectStore.GetDetails(objectId)
+			require.NoError(t, err)
+
+			assert.True(t, pbtypes.GetInt64(details.Details, bundle.RelationKeySyncStatus.String()) == int64(domain.ObjectSyncStatusError))
+			assert.True(t, pbtypes.GetInt64(details.Details, bundle.RelationKeySyncError.String()) == int64(domain.SyncErrorNull))
+			assert.Contains(t, details.Details.GetFields(), bundle.RelationKeySyncDate.String())
+			updTester.done()
+		}).Return(nil).Times(0)
+
+		fx.UpdateDetails("id1", domain.ObjectSyncStatusError, "space1")
+
+		fx.spaceStatusUpdater.EXPECT().Refresh("space1")
+
+		updTester.wait()
+	})
+
 	t.Run("updates in file object", func(t *testing.T) {
 		t.Run("file backup status limited", func(t *testing.T) {
 			fx := newUpdateDetailsFixture(t)
-			updTester := newUpdateTester(t, 1)
+			updTester := newUpdateTester(t, 1, 1)
 
 			space := mock_clientspace.NewMockSpace(t)
 			fx.spaceService.EXPECT().Get(mock.Anything, "space1").Return(space, nil)
@@ -146,7 +187,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		})
 		t.Run("prioritize object status", func(t *testing.T) {
 			fx := newUpdateDetailsFixture(t)
-			updTester := newUpdateTester(t, 1)
+			updTester := newUpdateTester(t, 1, 1)
 
 			space := mock_clientspace.NewMockSpace(t)
 			fx.spaceService.EXPECT().Get(mock.Anything, "space1").Return(space, nil)
@@ -174,10 +215,63 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			updTester.wait()
 		})
 	})
+
+	// TODO Test DoLockedIfNotExists
 }
 
 func TestSyncStatusUpdater_UpdateSpaceDetails(t *testing.T) {
+	fx := newUpdateDetailsFixture(t)
+	updTester := newUpdateTester(t, 3, 3)
 
+	fx.subscriptionService.StoreFixture.AddObjects(t, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:         pbtypes.String("id1"),
+			bundle.RelationKeySpaceId:    pbtypes.String("space1"),
+			bundle.RelationKeyLayout:     pbtypes.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.ObjectSyncStatusSyncing)),
+		},
+		{
+			bundle.RelationKeyId:         pbtypes.String("id4"),
+			bundle.RelationKeySpaceId:    pbtypes.String("space1"),
+			bundle.RelationKeyLayout:     pbtypes.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.ObjectSyncStatusSyncing)),
+		},
+	})
+
+	space := mock_clientspace.NewMockSpace(t)
+	fx.spaceService.EXPECT().Get(mock.Anything, "space1").Return(space, nil)
+	space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).Return(ocache.ErrExists).Times(0)
+
+	assertUpdate := func(objectId string, status domain.ObjectSyncStatus) {
+		space.EXPECT().DoCtx(mock.Anything, objectId, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
+			sb := smarttest.New(objectId)
+			st := sb.Doc.(*state.State)
+			st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
+			err := apply(sb)
+			require.NoError(t, err)
+
+			det := sb.Doc.LocalDetails()
+			assert.True(t, pbtypes.GetInt64(det, bundle.RelationKeySyncStatus.String()) == int64(status))
+			assert.Contains(t, det.GetFields(), bundle.RelationKeySyncDate.String())
+			assert.Contains(t, det.GetFields(), bundle.RelationKeySyncError.String())
+
+			fx.spaceStatusUpdater.EXPECT().Refresh("space1")
+
+			updTester.done()
+		}).Return(nil).Times(0)
+	}
+
+	assertUpdate("id2", domain.ObjectSyncStatusSyncing)
+	assertUpdate("id4", domain.ObjectSyncStatusSynced)
+
+	fx.spaceStatusUpdater.EXPECT().UpdateMissingIds("space1", []string{"id3"})
+	fx.UpdateSpaceDetails([]string{"id1", "id2"}, []string{"id3"}, "space1")
+
+	fx.spaceStatusUpdater.EXPECT().UpdateMissingIds("space1", []string{"id3"})
+	fx.spaceStatusUpdater.EXPECT().Refresh("space1")
+	fx.UpdateSpaceDetails([]string{"id1", "id2"}, []string{"id3"}, "space1")
+
+	updTester.wait()
 }
 
 func TestSyncStatusUpdater_setSyncDetails(t *testing.T) {
@@ -258,19 +352,20 @@ func newFixture(t *testing.T) *fixture {
 	updater := New()
 	statusUpdater := mock_detailsupdater.NewMockSpaceStatusUpdater(t)
 
-	subscriptionService := subscription.NewInternalTestService(t)
-
 	syncSub := syncsubscritions.New()
 
 	ctx := context.Background()
 
 	a := &app.App{}
-	a.Register(subscriptionService)
+	subscriptionService := subscription.RegisterSubscriptionService(t, a)
 	a.Register(syncSub)
 	a.Register(testutil.PrepareMock(ctx, a, service))
 	a.Register(testutil.PrepareMock(ctx, a, statusUpdater))
 	err := updater.Init(a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+
+	err = a.Start(ctx)
+	require.NoError(t, err)
 
 	return &fixture{
 		syncStatusUpdater:   updater.(*syncStatusUpdater),
