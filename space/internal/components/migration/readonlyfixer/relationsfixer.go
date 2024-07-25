@@ -8,14 +8,18 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+type detailsSettable interface {
+	SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
+}
 
 const MName = "ReadonlyRelationsFixer"
 
@@ -55,7 +59,7 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 			Value: pbtypes.Bool(false),
 		}}
 		e := space.DoCtx(ctx, pbtypes.GetString(r.Details, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
-			if ds, ok := sb.(basic.DetailsSettable); ok {
+			if ds, ok := sb.(detailsSettable); ok {
 				return ds.SetDetails(nil, det, false)
 			}
 			return nil
