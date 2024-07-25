@@ -40,9 +40,9 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	}
 	if req.WithChat {
 		_, err = mw.addChat(cctx, id)
-	}
-	if err != nil {
-		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
+		if err != nil {
+			return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
+		}
 	}
 	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails, nil)
 }
@@ -63,6 +63,9 @@ func (mw *Middleware) addChat(cctx context.Context, objectId string) (string, er
 
 	chatDetails := &types.Struct{Fields: map[string]*types.Value{}}
 	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatObject, objectId)
+	if err != nil {
+		return "", err
+	}
 	chatDetails.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(chatUniqueKey.Marshal())
 
 	chatReq := objectcreator.CreateObjectRequest{
@@ -137,9 +140,9 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 	}
 	if req.WithChat {
 		_, err = mw.addChat(cctx, id)
-	}
-	if err != nil {
-		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
+		if err != nil {
+			return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
+		}
 	}
 	return response(pb.RpcObjectCreateSetResponseError_NULL, id, newDetails, nil)
 }
@@ -164,9 +167,9 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 	}
 	if req.WithChat {
 		_, err = mw.addChat(cctx, id)
-	}
-	if err != nil {
-		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
+		if err != nil {
+			return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
+		}
 	}
 	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, newDetails, nil)
 }
@@ -270,9 +273,9 @@ func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjec
 	}
 	if req.WithChat {
 		_, err = mw.addChat(cctx, id)
-	}
-	if err != nil {
-		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", err, nil)
+		if err != nil {
+			return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", err, nil)
+		}
 	}
 	return response(pb.RpcObjectCreateFromUrlResponseError_NULL, id, nil, newDetails)
 }
