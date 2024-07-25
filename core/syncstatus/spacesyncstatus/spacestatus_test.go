@@ -220,6 +220,40 @@ func Test(t *testing.T) {
 		})
 		defer fx.ctrl.Finish()
 	})
+	t.Run("objects syncing, not sending same event", func(t *testing.T) {
+		fx := newFixture(t, func(fx *fixture) {
+			fx.spaceSyncStatus.loopInterval = 10 * time.Millisecond
+			objs := genSyncingObjects(10, 100, "spaceId")
+			fx.objectStore.AddObjects(t, objs)
+			fx.spaceIdGetter.EXPECT().TechSpaceId().Return("techSpaceId")
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+				Usage: filesync.NodeUsage{
+					BytesLeft:         1000,
+					AccountBytesLimit: 1000,
+				},
+				LocalUsageBytes: 0,
+			}, nil)
+			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().AnyTimes().Return(nodeconf.NetworkCompatibilityStatusOk)
+			fx.eventSender.EXPECT().Broadcast(&pb.Event{
+				Messages: []*pb.EventMessage{{
+					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+							Id:                    "spaceId",
+							SyncingObjectsCounter: 110,
+							Status:                pb.EventSpace_Syncing,
+							Network:               pb.EventSpace_Anytype,
+						},
+					},
+				}},
+			}).Times(1)
+		})
+		fx.Refresh("spaceId")
+		time.Sleep(100 * time.Millisecond)
+		defer fx.ctrl.Finish()
+	})
 	t.Run("local only", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			objs := genSyncingObjects(10, 100, "spaceId")

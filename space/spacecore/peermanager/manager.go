@@ -28,7 +28,7 @@ var (
 
 type NodeStatus interface {
 	app.Component
-	SetNodesStatus(spaceId string, senderId string, status nodestatus.ConnectionStatus)
+	SetNodesStatus(spaceId string, status nodestatus.ConnectionStatus)
 	GetNodeStatus(string) nodestatus.ConnectionStatus
 }
 
@@ -202,12 +202,10 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 	p, err := n.p.pool.GetOneOf(n.ctx, n.responsibleNodeIds)
 	if err == nil {
 		peers = []peer.Peer{p}
-		n.nodeStatus.SetNodesStatus(n.spaceId, p.Id(), nodestatus.Online)
+		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.Online)
 	} else {
 		log.Info("can't get node peers", zap.Error(err))
-		for _, p := range n.responsiblePeers {
-			n.nodeStatus.SetNodesStatus(n.spaceId, p.Id(), nodestatus.ConnectionError)
-		}
+		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.ConnectionError)
 	}
 	n.spaceSyncService.Refresh(n.spaceId)
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
@@ -262,8 +260,4 @@ func (n *clientPeerManager) Close(ctx context.Context) (err error) {
 	n.ctxCancel()
 	n.peerToPeerStatus.UnregisterSpace(n.spaceId)
 	return
-}
-
-func (n *clientPeerManager) IsPeerOffline(senderId string) bool {
-	return n.nodeStatus.GetNodeStatus(n.spaceId) != nodestatus.Online
 }

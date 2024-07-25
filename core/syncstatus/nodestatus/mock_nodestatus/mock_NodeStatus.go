@@ -159,9 +159,9 @@ func (_c *MockNodeStatus_Name_Call) RunAndReturn(run func() string) *MockNodeSta
 	return _c
 }
 
-// SetNodesStatus provides a mock function with given fields: spaceId, senderId, status
-func (_m *MockNodeStatus) SetNodesStatus(spaceId string, senderId string, status nodestatus.ConnectionStatus) {
-	_m.Called(spaceId, senderId, status)
+// SetNodesStatus provides a mock function with given fields: spaceId, status
+func (_m *MockNodeStatus) SetNodesStatus(spaceId string, status nodestatus.ConnectionStatus) {
+	_m.Called(spaceId, status)
 }
 
 // MockNodeStatus_SetNodesStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetNodesStatus'
@@ -171,15 +171,14 @@ type MockNodeStatus_SetNodesStatus_Call struct {
 
 // SetNodesStatus is a helper method to define mock.On call
 //   - spaceId string
-//   - senderId string
 //   - status nodestatus.ConnectionStatus
-func (_e *MockNodeStatus_Expecter) SetNodesStatus(spaceId interface{}, senderId interface{}, status interface{}) *MockNodeStatus_SetNodesStatus_Call {
-	return &MockNodeStatus_SetNodesStatus_Call{Call: _e.mock.On("SetNodesStatus", spaceId, senderId, status)}
+func (_e *MockNodeStatus_Expecter) SetNodesStatus(spaceId interface{}, status interface{}) *MockNodeStatus_SetNodesStatus_Call {
+	return &MockNodeStatus_SetNodesStatus_Call{Call: _e.mock.On("SetNodesStatus", spaceId, status)}
 }
 
-func (_c *MockNodeStatus_SetNodesStatus_Call) Run(run func(spaceId string, senderId string, status nodestatus.ConnectionStatus)) *MockNodeStatus_SetNodesStatus_Call {
+func (_c *MockNodeStatus_SetNodesStatus_Call) Run(run func(spaceId string, status nodestatus.ConnectionStatus)) *MockNodeStatus_SetNodesStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(nodestatus.ConnectionStatus))
+		run(args[0].(string), args[1].(nodestatus.ConnectionStatus))
 	})
 	return _c
 }
@@ -189,7 +188,7 @@ func (_c *MockNodeStatus_SetNodesStatus_Call) Return() *MockNodeStatus_SetNodesS
 	return _c
 }
 
-func (_c *MockNodeStatus_SetNodesStatus_Call) RunAndReturn(run func(string, string, nodestatus.ConnectionStatus)) *MockNodeStatus_SetNodesStatus_Call {
+func (_c *MockNodeStatus_SetNodesStatus_Call) RunAndReturn(run func(string, nodestatus.ConnectionStatus)) *MockNodeStatus_SetNodesStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

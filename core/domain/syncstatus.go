@@ -27,19 +27,3 @@ const (
 	SyncErrorNetworkError        SyncError = 3
 	SyncErrorOversized           SyncError = 4
 )
-
-type SpaceSync struct {
-	SpaceId   string
-	Status    SpaceSyncStatus
-	SyncError SyncError
-	// MissingObjects is a list of object IDs that are missing, it is not set every time
-	MissingObjects []string
-}
-
-func MakeSyncStatus(spaceId string, status SpaceSyncStatus, syncError SyncError) *SpaceSync {
-	return &SpaceSync{
-		SpaceId:   spaceId,
-		Status:    status,
-		SyncError: syncError,
-	}
-}

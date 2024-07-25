@@ -2,7 +2,6 @@ package spacesyncstatus
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -10,10 +9,8 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/periodicsync"
-	"github.com/cheggaaa/mb/v3"
 	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -47,15 +44,6 @@ type SpaceIdGetter interface {
 	AllSpaceIds() []string
 }
 
-type State interface {
-	SetObjectsNumber(status *domain.SpaceSync)
-	SetSyncStatusAndErr(status domain.SpaceSyncStatus, syncError domain.SyncError, spaceId string)
-	GetSyncStatus(spaceId string) domain.SpaceSyncStatus
-	GetSyncObjectCount(spaceId string) int
-	GetSyncErr(spaceId string) domain.SyncError
-	ResetSpaceErrorStatus(spaceId string, syncError domain.SyncError)
-}
-
 type NetworkConfig interface {
 	app.Component
 	GetNetworkMode() pb.RpcAccountNetworkMode
@@ -68,29 +56,24 @@ type spaceSyncStatus struct {
 	nodeConf            nodeconf.Service
 	nodeUsage           NodeUsage
 	store               objectstore.ObjectStore
-	batcher             *mb.MB[*domain.SpaceSync]
 	subscriptionService subscription.Service
 	subs                syncsubscritions.SyncSubscriptions
 
-	filesState   State
-	objectsState State
-
-	ctx           context.Context
-	ctxCancel     context.CancelFunc
-	spaceIdGetter SpaceIdGetter
-	curStatuses   map[string]struct{}
-	missingIds    map[string][]string
-	mx            sync.Mutex
-	periodicCall  periodicsync.PeriodicSync
-	loopInterval  time.Duration
-	isLocal       bool
-	finish        chan struct{}
+	ctx            context.Context
+	ctxCancel      context.CancelFunc
+	spaceIdGetter  SpaceIdGetter
+	curStatuses    map[string]struct{}
+	missingIds     map[string][]string
+	lastSentEvents map[string]pb.EventSpaceSyncStatusUpdate
+	mx             sync.Mutex
+	periodicCall   periodicsync.PeriodicSync
+	loopInterval   time.Duration
+	isLocal        bool
+	finish         chan struct{}
 }
 
 func NewSpaceSyncStatus() Updater {
 	return &spaceSyncStatus{
-		batcher:      mb.New[*domain.SpaceSync](0),
-		finish:       make(chan struct{}),
 		loopInterval: time.Second * 1,
 	}
 }
@@ -106,6 +89,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.curStatuses = make(map[string]struct{})
 	s.subs = app.MustComponent[syncsubscritions.SyncSubscriptions](a)
 	s.missingIds = make(map[string][]string)
+	s.lastSentEvents = make(map[string]pb.EventSpaceSyncStatusUpdate)
 	s.spaceIdGetter = app.MustComponent[SpaceIdGetter](a)
 	s.isLocal = s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly
 	sessionHookRunner := app.MustComponent[session.HookRunner](a)
@@ -191,7 +175,7 @@ func (s *spaceSyncStatus) sendStartEvent(spaceIds []string) {
 }
 
 func (s *spaceSyncStatus) sendLocalOnlyEvent(spaceId string) {
-	s.eventSender.Broadcast(&pb.Event{
+	s.broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
@@ -202,6 +186,26 @@ func (s *spaceSyncStatus) sendLocalOnlyEvent(spaceId string) {
 			},
 		}},
 	})
+}
+
+func eventsEqual(a, b pb.EventSpaceSyncStatusUpdate) bool {
+	return a.Id == b.Id &&
+		a.Status == b.Status &&
+		a.Network == b.Network &&
+		a.Error == b.Error &&
+		a.SyncingObjectsCounter == b.SyncingObjectsCounter
+}
+
+func (s *spaceSyncStatus) broadcast(event *pb.Event) {
+	s.mx.Lock()
+	val := *event.Messages[0].Value.(*pb.EventMessageValueOfSpaceSyncStatusUpdate).SpaceSyncStatusUpdate
+	ev, ok := s.lastSentEvents[val.Id]
+	s.lastSentEvents[val.Id] = val
+	s.mx.Unlock()
+	if ok && eventsEqual(ev, val) {
+		return
+	}
+	s.eventSender.Broadcast(event)
 }
 
 func (s *spaceSyncStatus) sendLocalOnlyEventToSession(spaceId, token string) {
@@ -264,7 +268,7 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 		filesSyncingCount:   s.getFileSyncingObjectsCount(spaceId),
 		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, missingObjects),
 	}
-	s.eventSender.Broadcast(&pb.Event{
+	s.broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 				SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
@@ -305,7 +309,6 @@ func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.E
 		status = pb.EventSpace_Error
 		err = pb.EventSpace_IncompatibleVersion
 	}
-	fmt.Println("[x]: status: connection", params.connectionStatus, ", space id", spaceId, ", compatibility", params.compatibility, ", object number", syncingObjectsCount, ", bytes left", params.bytesLeftPercentage)
 	return &pb.EventSpaceSyncStatusUpdate{
 		Id:                    spaceId,
 		Status:                status,
