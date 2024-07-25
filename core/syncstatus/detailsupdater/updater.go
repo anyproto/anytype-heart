@@ -63,7 +63,7 @@ type syncStatusUpdater struct {
 	finish chan struct{}
 }
 
-func NewUpdater() Updater {
+func New() Updater {
 	return &syncStatusUpdater{
 		batcher: mb.New[string](0),
 		finish:  make(chan struct{}),
@@ -116,6 +116,32 @@ func (u *syncStatusUpdater) addToQueue(details *syncStatusDetails) error {
 	u.entries[details.objectId] = details
 	u.mx.Unlock()
 	return u.batcher.TryAdd(details.objectId)
+}
+
+func (u *syncStatusUpdater) processEvents() {
+	defer close(u.finish)
+
+	for {
+		objectId, err := u.batcher.WaitOne(u.ctx)
+		if err != nil {
+			return
+		}
+		u.updateSpecificObject(objectId)
+	}
+}
+
+func (u *syncStatusUpdater) updateSpecificObject(objectId string) {
+	u.mx.Lock()
+	objectStatus := u.entries[objectId]
+	delete(u.entries, objectId)
+	u.mx.Unlock()
+
+	if objectStatus != nil {
+		err := u.updateObjectDetails(objectStatus, objectId)
+		if err != nil {
+			log.Errorf("failed to update details %s", err)
+		}
+	}
 }
 
 func (u *syncStatusUpdater) UpdateSpaceDetails(existing, missing []string, spaceId string) {
@@ -181,7 +207,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 				return details, nil
 			}
 			if fileStatus, ok := details.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-				status, syncError = mapFileStatus(filesyncstatus.Status(int(fileStatus.GetNumberValue())))
+				status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus.GetNumberValue())))
 			}
 			details.Fields[bundle.RelationKeySyncStatus.String()] = pbtypes.Int64(int64(status))
 			details.Fields[bundle.RelationKeySyncError.String()] = pbtypes.Int64(int64(syncError))
@@ -198,6 +224,24 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 	return spc.DoCtx(u.ctx, objectId, func(sb smartblock.SmartBlock) error {
 		return u.setSyncDetails(sb, status, syncError)
 	})
+}
+
+func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.ObjectSyncStatus, syncError domain.SyncError) error {
+	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
+		return nil
+	}
+	if !u.isLayoutSuitableForSyncRelations(sb.Details()) {
+		return nil
+	}
+	st := sb.NewState()
+	if fileStatus, ok := st.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
+		status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus.GetNumberValue())))
+	}
+	st.SetDetailAndBundledRelation(bundle.RelationKeySyncStatus, pbtypes.Int64(int64(status)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySyncError, pbtypes.Int64(int64(syncError)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySyncDate, pbtypes.Int64(time.Now().Unix()))
+
+	return sb.Apply(st, smartblock.KeepInternalFlags /* do not erase flags */)
 }
 
 var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
@@ -224,6 +268,18 @@ func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *types.Stru
 	return ok
 }
 
+func getSyncStatusForFile(objectStatus domain.ObjectSyncStatus, objectSyncError domain.SyncError, fileStatus filesyncstatus.Status) (domain.ObjectSyncStatus, domain.SyncError) {
+	statusFromFile, errFromFile := mapFileStatus(fileStatus)
+	// If file status is synced, then prioritize object's status, otherwise pick file status
+	if statusFromFile != domain.ObjectSyncStatusSynced {
+		objectStatus = statusFromFile
+	}
+	if errFromFile != domain.SyncErrorNull {
+		objectSyncError = errFromFile
+	}
+	return objectStatus, objectSyncError
+}
+
 func mapFileStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domain.SyncError) {
 	switch status {
 	case filesyncstatus.Syncing:
@@ -236,46 +292,5 @@ func mapFileStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domai
 		return domain.ObjectSyncStatusError, domain.SyncErrorNetworkError
 	default:
 		return domain.ObjectSyncStatusSynced, domain.SyncErrorNull
-	}
-}
-
-func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.ObjectSyncStatus, syncError domain.SyncError) error {
-	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
-		return nil
-	}
-	if !u.isLayoutSuitableForSyncRelations(sb.Details()) {
-		return nil
-	}
-	st := sb.NewState()
-	if fileStatus, ok := st.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-		status, syncError = mapFileStatus(filesyncstatus.Status(int(fileStatus.GetNumberValue())))
-	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeySyncStatus, pbtypes.Int64(int64(status)))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySyncError, pbtypes.Int64(int64(syncError)))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySyncDate, pbtypes.Int64(time.Now().Unix()))
-
-	return sb.Apply(st, smartblock.KeepInternalFlags /* do not erase flags */)
-}
-
-func (u *syncStatusUpdater) processEvents() {
-	defer close(u.finish)
-	updateSpecificObject := func(objectId string) {
-		u.mx.Lock()
-		objectStatus := u.entries[objectId]
-		delete(u.entries, objectId)
-		u.mx.Unlock()
-		if objectStatus != nil {
-			err := u.updateObjectDetails(objectStatus, objectId)
-			if err != nil {
-				log.Errorf("failed to update details %s", err)
-			}
-		}
-	}
-	for {
-		objectId, err := u.batcher.WaitOne(u.ctx)
-		if err != nil {
-			return
-		}
-		updateSpecificObject(objectId)
 	}
 }

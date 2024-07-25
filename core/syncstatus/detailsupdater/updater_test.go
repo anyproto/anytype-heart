@@ -3,44 +3,195 @@ package detailsupdater
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	domain "github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/mock_detailsupdater"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscritions"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
-
+type updateTester struct {
+	t           *testing.T
+	waitCh      chan struct{}
+	eventsCount int
 }
 
-func TestSyncStatusUpdater_Run(t *testing.T) {
+func newUpdateTester(t *testing.T, eventsCount int) *updateTester {
+	return &updateTester{t: t, eventsCount: eventsCount, waitCh: make(chan struct{}, eventsCount)}
+}
+
+func (t *updateTester) done() {
+	t.waitCh <- struct{}{}
+}
+
+// wait waits for at least one event up to t.eventsCount events
+func (t *updateTester) wait() {
+	timeout := time.After(1 * time.Second)
+	minReceivedTimer := time.After(10 * time.Millisecond)
+	var eventsReceived int
+	for i := 0; i < t.eventsCount; i++ {
+		select {
+		case <-minReceivedTimer:
+			if eventsReceived > 0 {
+				return
+			}
+		case <-t.waitCh:
+			eventsReceived++
+		case <-timeout:
+			t.t.Fatal("timeout")
+		}
+	}
+}
+
+func newUpdateDetailsFixture(t *testing.T) *fixture {
+	fx := newFixture(t)
+	fx.spaceService.EXPECT().TechSpaceId().Return("techSpace")
+	err := fx.Run(context.Background())
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := fx.Close(context.Background())
+		require.NoError(t, err)
+	})
+	return fx
+}
+
+func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
+	t.Run("ignore tech space", func(t *testing.T) {
+		fx := newUpdateDetailsFixture(t)
+
+		fx.UpdateDetails("spaceView1", domain.ObjectSyncStatusSynced, "techSpace")
+	})
+
+	t.Run("updates to the same object", func(t *testing.T) {
+		fx := newUpdateDetailsFixture(t)
+		updTester := newUpdateTester(t, 4)
+
+		space := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(mock.Anything, "space1").Return(space, nil)
+		space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).Return(ocache.ErrExists).Times(0)
+		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
+			sb := smarttest.New(objectId)
+			st := sb.Doc.(*state.State)
+			st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
+			err := apply(sb)
+			require.NoError(t, err)
+
+			det := sb.Doc.LocalDetails()
+			assert.Contains(t, det.GetFields(), bundle.RelationKeySyncStatus.String())
+			assert.Contains(t, det.GetFields(), bundle.RelationKeySyncDate.String())
+			assert.Contains(t, det.GetFields(), bundle.RelationKeySyncError.String())
+
+			fx.spaceStatusUpdater.EXPECT().Refresh("space1")
+
+			updTester.done()
+		}).Return(nil).Times(0)
+
+		fx.UpdateDetails("id1", domain.ObjectSyncStatusSyncing, "space1")
+		fx.UpdateDetails("id1", domain.ObjectSyncStatusError, "space1")
+		fx.UpdateDetails("id1", domain.ObjectSyncStatusSyncing, "space1")
+		fx.UpdateDetails("id1", domain.ObjectSyncStatusSynced, "space1")
+
+		updTester.wait()
+	})
+
+	t.Run("updates in file object", func(t *testing.T) {
+		t.Run("file backup status limited", func(t *testing.T) {
+			fx := newUpdateDetailsFixture(t)
+			updTester := newUpdateTester(t, 1)
+
+			space := mock_clientspace.NewMockSpace(t)
+			fx.spaceService.EXPECT().Get(mock.Anything, "space1").Return(space, nil)
+			space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).Return(ocache.ErrExists)
+			space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
+				sb := smarttest.New(objectId)
+				st := sb.Doc.(*state.State)
+				st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_file)))
+				st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, pbtypes.Int64(int64(filesyncstatus.Limited)))
+				err := apply(sb)
+				require.NoError(t, err)
+
+				det := sb.Doc.LocalDetails()
+				assert.True(t, pbtypes.GetInt64(det, bundle.RelationKeySyncStatus.String()) == int64(domain.ObjectSyncStatusError))
+				assert.True(t, pbtypes.GetInt64(det, bundle.RelationKeySyncError.String()) == int64(domain.SyncErrorOversized))
+				assert.Contains(t, det.GetFields(), bundle.RelationKeySyncDate.String())
+
+				fx.spaceStatusUpdater.EXPECT().Refresh("space1")
+
+				updTester.done()
+			}).Return(nil)
+
+			fx.UpdateDetails("id2", domain.ObjectSyncStatusSynced, "space1")
+
+			updTester.wait()
+		})
+		t.Run("prioritize object status", func(t *testing.T) {
+			fx := newUpdateDetailsFixture(t)
+			updTester := newUpdateTester(t, 1)
+
+			space := mock_clientspace.NewMockSpace(t)
+			fx.spaceService.EXPECT().Get(mock.Anything, "space1").Return(space, nil)
+			space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).Return(ocache.ErrExists)
+			space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
+				sb := smarttest.New(objectId)
+				st := sb.Doc.(*state.State)
+				st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_file)))
+				st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, pbtypes.Int64(int64(filesyncstatus.Synced)))
+				err := apply(sb)
+				require.NoError(t, err)
+
+				det := sb.Doc.LocalDetails()
+				assert.True(t, pbtypes.GetInt64(det, bundle.RelationKeySyncStatus.String()) == int64(domain.ObjectSyncStatusSyncing))
+				assert.Contains(t, det.GetFields(), bundle.RelationKeySyncError.String())
+				assert.Contains(t, det.GetFields(), bundle.RelationKeySyncDate.String())
+
+				fx.spaceStatusUpdater.EXPECT().Refresh("space1")
+
+				updTester.done()
+			}).Return(nil)
+
+			fx.UpdateDetails("id3", domain.ObjectSyncStatusSyncing, "space1")
+
+			updTester.wait()
+		})
+	})
+}
+
+func TestSyncStatusUpdater_UpdateSpaceDetails(t *testing.T) {
 
 }
 
 func TestSyncStatusUpdater_setSyncDetails(t *testing.T) {
 	t.Run("set smartblock details", func(t *testing.T) {
 		// given
-		fixture := newFixture(t)
+		fx := newFixture(t)
+		sb := smarttest.New("id")
 
 		// when
-		err := fixture.updater.setSyncDetails(fixture.sb, domain.ObjectSyncStatusError, domain.SyncErrorNetworkError)
+		err := fx.setSyncDetails(sb, domain.ObjectSyncStatusError, domain.SyncErrorNetworkError)
 		assert.Nil(t, err)
 
 		// then
-		details := fixture.sb.NewState().CombinedDetails().GetFields()
+		details := sb.NewState().CombinedDetails().GetFields()
 		assert.NotNil(t, details)
 		assert.Equal(t, pbtypes.Int64(int64(domain.SpaceSyncStatusError)), details[bundle.RelationKeySyncStatus.String()])
 		assert.Equal(t, pbtypes.Int64(int64(domain.SyncErrorNetworkError)), details[bundle.RelationKeySyncError.String()])
@@ -48,22 +199,24 @@ func TestSyncStatusUpdater_setSyncDetails(t *testing.T) {
 	})
 	t.Run("not set smartblock details, because it doesn't implement interface DetailsSettable", func(t *testing.T) {
 		// given
-		fixture := newFixture(t)
+		fx := newFixture(t)
+		sb := smarttest.New("id")
 
 		// when
-		fixture.sb.SetType(coresb.SmartBlockTypePage)
-		err := fixture.updater.setSyncDetails(editor.NewMissingObject(fixture.sb), domain.ObjectSyncStatusError, domain.SyncErrorNetworkError)
+		sb.SetType(coresb.SmartBlockTypePage)
+		err := fx.setSyncDetails(editor.NewMissingObject(sb), domain.ObjectSyncStatusError, domain.SyncErrorNetworkError)
 
 		// then
 		assert.Nil(t, err)
 	})
 	t.Run("not set smartblock details, because it doesn't need details", func(t *testing.T) {
 		// given
-		fixture := newFixture(t)
+		fx := newFixture(t)
+		sb := smarttest.New("id")
 
 		// when
-		fixture.sb.SetType(coresb.SmartBlockTypeHome)
-		err := fixture.updater.setSyncDetails(fixture.sb, domain.ObjectSyncStatusError, domain.SyncErrorNetworkError)
+		sb.SetType(coresb.SmartBlockTypeHome)
+		err := fx.setSyncDetails(sb, domain.ObjectSyncStatusError, domain.SyncErrorNetworkError)
 
 		// then
 		assert.Nil(t, err)
@@ -73,13 +226,13 @@ func TestSyncStatusUpdater_setSyncDetails(t *testing.T) {
 func TestSyncStatusUpdater_isLayoutSuitableForSyncRelations(t *testing.T) {
 	t.Run("isLayoutSuitableForSyncRelations - participant details", func(t *testing.T) {
 		// given
-		fixture := newFixture(t)
+		fx := newFixture(t)
 
 		// when
 		details := &types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(model.ObjectType_participant)),
 		}}
-		isSuitable := fixture.updater.isLayoutSuitableForSyncRelations(details)
+		isSuitable := fx.isLayoutSuitableForSyncRelations(details)
 
 		// then
 		assert.False(t, isSuitable)
@@ -87,13 +240,13 @@ func TestSyncStatusUpdater_isLayoutSuitableForSyncRelations(t *testing.T) {
 
 	t.Run("isLayoutSuitableForSyncRelations - basic details", func(t *testing.T) {
 		// given
-		fixture := newFixture(t)
+		fx := newFixture(t)
 
 		// when
 		details := &types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(model.ObjectType_basic)),
 		}}
-		isSuitable := fixture.updater.isLayoutSuitableForSyncRelations(details)
+		isSuitable := fx.isLayoutSuitableForSyncRelations(details)
 
 		// then
 		assert.True(t, isSuitable)
@@ -101,12 +254,8 @@ func TestSyncStatusUpdater_isLayoutSuitableForSyncRelations(t *testing.T) {
 }
 
 func newFixture(t *testing.T) *fixture {
-	smartTest := smarttest.New("id")
 	service := mock_space.NewMockService(t)
-	updater := &syncStatusUpdater{
-		finish:  make(chan struct{}),
-		entries: map[string]*syncStatusDetails{},
-	}
+	updater := New()
 	statusUpdater := mock_detailsupdater.NewMockSpaceStatusUpdater(t)
 
 	subscriptionService := subscription.NewInternalTestService(t)
@@ -121,20 +270,19 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, service))
 	a.Register(testutil.PrepareMock(ctx, a, statusUpdater))
 	err := updater.Init(a)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
+
 	return &fixture{
-		updater:             updater,
-		sb:                  smartTest,
-		service:             service,
-		statusUpdater:       statusUpdater,
+		syncStatusUpdater:   updater.(*syncStatusUpdater),
+		spaceService:        service,
+		spaceStatusUpdater:  statusUpdater,
 		subscriptionService: subscriptionService,
 	}
 }
 
 type fixture struct {
-	sb                  *smarttest.SmartTest
-	updater             *syncStatusUpdater
-	service             *mock_space.MockService
-	statusUpdater       *mock_detailsupdater.MockSpaceStatusUpdater
+	*syncStatusUpdater
+	spaceService        *mock_space.MockService
+	spaceStatusUpdater  *mock_detailsupdater.MockSpaceStatusUpdater
 	subscriptionService *subscription.InternalTestService
 }

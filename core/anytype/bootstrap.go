@@ -264,7 +264,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(treemanager.New()).
 		Register(block.New()).
 		Register(indexer.New()).
-		Register(detailsupdater.NewUpdater()).
+		Register(detailsupdater.New()).
 		Register(session.NewHookRunner()).
 		Register(spacesyncstatus.NewSpaceSyncStatus()).
 		Register(nodestatus.NewNodeStatus()).
