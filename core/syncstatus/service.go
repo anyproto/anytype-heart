@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
-	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
@@ -39,8 +38,6 @@ type service struct {
 
 	objectStore  objectstore.ObjectStore
 	objectGetter cache.ObjectGetter
-
-	spaceSyncStatus spacesyncstatus.Updater
 }
 
 func New() Service {
@@ -52,7 +49,6 @@ func New() Service {
 func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.spaceSyncStatus = app.MustComponent[spacesyncstatus.Updater](a)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	s.fileSyncService.OnUploaded(s.onFileUploaded)
 	s.fileSyncService.OnUploadStarted(s.onFileUploadStarted)

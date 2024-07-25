@@ -29,9 +29,7 @@ func (s *service) OnFileDelete(fileId domain.FullFileId) {
 }
 
 func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {
-	var spaceId string
 	err := cache.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
-		spaceId = sb.SpaceID()
 		prevStatus := pbtypes.GetInt64(sb.Details(), bundle.RelationKeyFileBackupStatus.String())
 		newStatus := int64(status)
 		if prevStatus == newStatus {
@@ -48,6 +46,5 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 	if err != nil {
 		return fmt.Errorf("update tree: %w", err)
 	}
-	s.spaceSyncStatus.Refresh(spaceId)
 	return nil
 }
