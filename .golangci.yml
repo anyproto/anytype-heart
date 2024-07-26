@@ -13,6 +13,7 @@ issues:
     - pb
   exclude-files:
     - '.*_test.go'
+    - 'mock*'
     - 'testMock/*'
     - 'clientlibrary/service/service.pb.go'
 
