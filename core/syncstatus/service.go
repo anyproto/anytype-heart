@@ -76,7 +76,7 @@ func (s *service) RegisterSpace(space commonspace.Space, sw objectsyncstatus.Sta
 
 	sw.SetUpdateReceiver(s.updateReceiver)
 	s.objectWatchers[space.Id()] = sw
-	s.updateReceiver.spaceId = space.Id()
+	s.updateReceiver.setSpaceId(space.Id())
 }
 
 func (s *service) UnregisterSpace(space commonspace.Space) {
