@@ -148,6 +148,8 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 		syncSubs:            syncsubscriptions.New(),
 		networkConfig:       networkConfig,
 	}
+	fx.spaceIdGetter.EXPECT().TechSpaceId().Return("techSpaceId").Maybe()
+
 	a.Register(fx.syncSubs).
 		Register(testutil.PrepareMock(ctx, a, networkConfig)).
 		Register(testutil.PrepareMock(ctx, a, fx.nodeStatus)).
@@ -225,7 +227,6 @@ func Test(t *testing.T) {
 			fx.spaceSyncStatus.loopInterval = 10 * time.Millisecond
 			objs := genSyncingObjects(10, 100, "spaceId")
 			fx.objectStore.AddObjects(t, objs)
-			fx.spaceIdGetter.EXPECT().TechSpaceId().Return("techSpaceId")
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
@@ -398,7 +399,6 @@ func Test(t *testing.T) {
 		})
 		fx.UpdateMissingIds("spaceId", []string{"missingId"})
 		fx.Refresh("spaceId")
-		fx.spaceIdGetter.EXPECT().TechSpaceId().Return("techSpaceId")
 		fx.eventSender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{{
 				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{

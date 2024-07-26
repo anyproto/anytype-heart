@@ -24,7 +24,7 @@ import (
 func Test_UseCases(t *testing.T) {
 	t.Run("HeadsChange: new object", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSyncing, "spaceId")
+		s.syncDetailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSyncing, "spaceId")
 
 		s.HeadsChange("id", []string{"head1", "head2"})
 
@@ -33,14 +33,14 @@ func Test_UseCases(t *testing.T) {
 	})
 	t.Run("HeadsChange then HeadsApply: responsible", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSyncing, "spaceId")
+		s.syncDetailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSyncing, "spaceId")
 
 		s.HeadsChange("id", []string{"head1", "head2"})
 
 		assert.NotNil(t, s.treeHeads["id"])
 		assert.Equal(t, []string{"head1", "head2"}, s.treeHeads["id"].heads)
 
-		s.service.EXPECT().NodeIds("spaceId").Return([]string{"peerId"})
+		s.nodeConfService.EXPECT().NodeIds("spaceId").Return([]string{"peerId"})
 
 		s.HeadsApply("peerId", "id", []string{"head1", "head2"}, true)
 
@@ -50,14 +50,14 @@ func Test_UseCases(t *testing.T) {
 	})
 	t.Run("HeadsChange then HeadsApply: not responsible", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSyncing, "spaceId")
+		s.syncDetailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSyncing, "spaceId")
 
 		s.HeadsChange("id", []string{"head1", "head2"})
 
 		assert.NotNil(t, s.treeHeads["id"])
 		assert.Equal(t, []string{"head1", "head2"}, s.treeHeads["id"].heads)
 
-		s.service.EXPECT().NodeIds("spaceId").Return([]string{"peerId1"})
+		s.nodeConfService.EXPECT().NodeIds("spaceId").Return([]string{"peerId1"})
 
 		s.HeadsApply("peerId", "id", []string{"head1", "head2"}, true)
 
@@ -68,7 +68,7 @@ func Test_UseCases(t *testing.T) {
 	})
 	t.Run("ObjectReceive: responsible", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
-		s.service.EXPECT().NodeIds("spaceId").Return([]string{"peerId"})
+		s.nodeConfService.EXPECT().NodeIds("spaceId").Return([]string{"peerId"})
 
 		s.ObjectReceive("peerId", "id", []string{"head1", "head2"})
 
@@ -76,13 +76,13 @@ func Test_UseCases(t *testing.T) {
 	})
 	t.Run("ObjectReceive: not responsible, but then sync with responsible", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
-		s.service.EXPECT().NodeIds("spaceId").Return([]string{"peerId1"})
+		s.nodeConfService.EXPECT().NodeIds("spaceId").Return([]string{"peerId1"})
 
 		s.ObjectReceive("peerId", "id", []string{"head1", "head2"})
 
 		require.Contains(t, s.tempSynced, "id")
 
-		s.service.EXPECT().NodeIds("spaceId").Return([]string{"peerId1"})
+		s.nodeConfService.EXPECT().NodeIds("spaceId").Return([]string{"peerId1"})
 
 		s.RemoveAllExcept("peerId1", []string{})
 
@@ -94,16 +94,16 @@ func TestSyncStatusService_Watch_Unwatch(t *testing.T) {
 	t.Run("watch", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
 
-		s.storage.EXPECT().TreeStorage("id").Return(treestorage.NewInMemoryTreeStorage(&treechangeproto.RawTreeChangeWithId{Id: "id"}, []string{"headId"}, nil))
+		s.spaceStorage.EXPECT().TreeStorage("id").Return(treestorage.NewInMemoryTreeStorage(&treechangeproto.RawTreeChangeWithId{Id: "id"}, []string{"head3", "head2", "head1"}, nil))
 		err := s.Watch("id")
 		assert.Nil(t, err)
 		assert.Contains(t, s.watchers, "id")
-		assert.Equal(t, []string{"headId"}, s.treeHeads["id"].heads)
+		assert.Equal(t, []string{"head1", "head2", "head3"}, s.treeHeads["id"].heads, "should be sorted")
 	})
 	t.Run("unwatch", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
 
-		s.storage.EXPECT().TreeStorage("id").Return(treestorage.NewInMemoryTreeStorage(&treechangeproto.RawTreeChangeWithId{Id: "id"}, []string{"headId"}, nil))
+		s.spaceStorage.EXPECT().TreeStorage("id").Return(treestorage.NewInMemoryTreeStorage(&treechangeproto.RawTreeChangeWithId{Id: "id"}, []string{"headId"}, nil))
 		err := s.Watch("id")
 		assert.Nil(t, err)
 
@@ -122,7 +122,7 @@ func TestSyncStatusService_update(t *testing.T) {
 		updateReceiver.EXPECT().UpdateTree(context.Background(), "id2", StatusNotSynced).Return(nil)
 		s.SetUpdateReceiver(updateReceiver)
 
-		s.detailsUpdater.EXPECT().UpdateDetails("id3", domain.ObjectSyncStatusSynced, "spaceId")
+		s.syncDetailsUpdater.EXPECT().UpdateDetails("id3", domain.ObjectSyncStatusSynced, "spaceId")
 		s.synced = []string{"id3"}
 		s.tempSynced["id4"] = struct{}{}
 		s.treeHeads["id"] = treeHeadsEntry{syncStatus: StatusSynced, heads: []string{"headId"}}
@@ -151,7 +151,7 @@ func TestSyncStatusService_RemoveAllExcept(t *testing.T) {
 		f := newFixture(t, "spaceId")
 		f.treeHeads["id"] = treeHeadsEntry{syncStatus: StatusNotSynced, heads: []string{"heads"}}
 
-		f.service.EXPECT().NodeIds(f.spaceId).Return([]string{"peerId"})
+		f.nodeConfService.EXPECT().NodeIds(f.spaceId).Return([]string{"peerId"})
 		f.RemoveAllExcept("peerId", nil)
 
 		assert.Equal(t, StatusSynced, f.treeHeads["id"].syncStatus)
@@ -160,7 +160,7 @@ func TestSyncStatusService_RemoveAllExcept(t *testing.T) {
 		f := newFixture(t, "id")
 		f.treeHeads["id"] = treeHeadsEntry{syncStatus: StatusNotSynced, heads: []string{"heads"}}
 
-		f.service.EXPECT().NodeIds(f.spaceId).Return([]string{"peerId"})
+		f.nodeConfService.EXPECT().NodeIds(f.spaceId).Return([]string{"peerId"})
 		f.RemoveAllExcept("peerId", []string{"id"})
 
 		assert.Equal(t, StatusNotSynced, f.treeHeads["id"].syncStatus)
@@ -169,20 +169,39 @@ func TestSyncStatusService_RemoveAllExcept(t *testing.T) {
 		f := newFixture(t, "spaceId")
 		f.treeHeads["id"] = treeHeadsEntry{syncStatus: StatusNotSynced, heads: []string{"heads"}}
 
-		f.service.EXPECT().NodeIds(f.spaceId).Return([]string{"peerId1"})
+		f.nodeConfService.EXPECT().NodeIds(f.spaceId).Return([]string{"peerId1"})
 		f.RemoveAllExcept("peerId", nil)
 
 		assert.Equal(t, StatusNotSynced, f.treeHeads["id"].syncStatus)
 	})
 }
 
+func TestHeadsChange(t *testing.T) {
+	fx := newFixture(t, "space1")
+	fx.syncDetailsUpdater.EXPECT().UpdateDetails("obj1", domain.ObjectSyncStatusSyncing, "space1")
+	inputHeads := []string{"b", "c", "a"}
+
+	fx.HeadsChange("obj1", inputHeads)
+
+	got, ok := fx.treeHeads["obj1"]
+	require.True(t, ok)
+
+	want := treeHeadsEntry{
+		heads:      []string{"a", "b", "c"},
+		syncStatus: StatusNotSynced,
+	}
+	assert.Equal(t, want, got)
+	assert.Equal(t, []string{"b", "c", "a"}, inputHeads, "heads should be copied")
+
+}
+
 type fixture struct {
 	*syncStatusService
-	service        *mock_nodeconf.MockService
-	storage        *mock_spacestorage.MockSpaceStorage
-	config         *config.Config
-	detailsUpdater *mock_objectsyncstatus.MockUpdater
-	nodeStatus     nodestatus.NodeStatus
+	nodeConfService    *mock_nodeconf.MockService
+	spaceStorage       *mock_spacestorage.MockSpaceStorage
+	config             *config.Config
+	syncDetailsUpdater *mock_objectsyncstatus.MockUpdater
+	nodeStatus         nodestatus.NodeStatus
 }
 
 func newFixture(t *testing.T, spaceId string) *fixture {
@@ -209,11 +228,11 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 	err = statusService.Init(a)
 	assert.Nil(t, err)
 	return &fixture{
-		syncStatusService: statusService.(*syncStatusService),
-		service:           service,
-		storage:           storage,
-		config:            config,
-		detailsUpdater:    detailsUpdater,
-		nodeStatus:        nodeStatus,
+		syncStatusService:  statusService.(*syncStatusService),
+		nodeConfService:    service,
+		spaceStorage:       storage,
+		config:             config,
+		syncDetailsUpdater: detailsUpdater,
+		nodeStatus:         nodeStatus,
 	}
 }
