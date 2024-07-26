@@ -71,9 +71,7 @@ func (s *syncSubscriptions) GetSubscription(id string) (SyncSubscription, error)
 
 func (s *syncSubscriptions) Close(ctx context.Context) (err error) {
 	s.Lock()
-	subs := lo.MapToSlice(s.subs, func(key string, value SyncSubscription) SyncSubscription {
-		return value
-	})
+	subs := lo.Values(s.subs)
 	s.Unlock()
 	for _, sub := range subs {
 		sub.Close()
