@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/tantivy-go/go/tantivy"
 	_ "github.com/anyproto/tantivy-go/go/tantivy"
 	"github.com/blevesearch/bleve/v2/search"
+	"github.com/samber/lo"
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -309,6 +310,9 @@ func (f *ftSearchTantivy) Search(spaceIds []string, highlightFormatter Highlight
 }
 
 func getSpaceIdsQuery(ids []string) string {
+	if len(ids) == 0 || lo.EveryBy(ids, func(id string) bool { return id == "" }) {
+		return ""
+	}
 	var builder strings.Builder
 	var sep string
 
