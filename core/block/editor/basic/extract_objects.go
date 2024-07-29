@@ -104,7 +104,7 @@ func insertBlocksToState(
 ) {
 	rootID := rootBlock.Model().Id
 	descendants := newState.Descendants(rootID)
-	newRoot, newBlocks := reassignSubtreeIds(rootID, append(descendants, rootBlock))
+	newRoot, newBlocks := reassignSubtreeIds(newState, rootID, append(descendants, rootBlock))
 
 	// remove descendant blocks from source object
 	removeBlocks(newState, descendants)
@@ -175,10 +175,36 @@ func createTargetObjectDetails(nameText string, layout model.ObjectTypeLayout) *
 }
 
 // reassignSubtreeIds makes a copy of a subtree of blocks and assign a new id for each block
-func reassignSubtreeIds(rootId string, blocks []simple.Block) (string, []simple.Block) {
+func reassignSubtreeIds(s *state.State, rootId string, blocks []simple.Block) (string, []simple.Block) {
 	res := make([]simple.Block, 0, len(blocks))
 	mapping := map[string]string{}
+	custom := map[string]struct{}{}
+
 	for _, b := range blocks {
+		if d, ok := b.(duplicatable); ok {
+			id, visitedIds, newBlocks, err := d.Duplicate(s)
+			if err != nil {
+				log.Errorf("failed to perform custom duplicate: %v", err)
+				continue
+			}
+
+			for _, newBlock := range newBlocks {
+				res = append(res, newBlock)
+				custom[newBlock.Model().Id] = struct{}{}
+			}
+			for _, id := range visitedIds {
+				// we do not need new id, as correct children are already set
+				mapping[id] = ""
+			}
+			mapping[b.Model().Id] = id
+		}
+	}
+
+	for _, b := range blocks {
+		_, found := mapping[b.Model().Id]
+		if found {
+			continue
+		}
 		newId := bson.NewObjectId().Hex()
 		mapping[b.Model().Id] = newId
 
@@ -188,6 +214,9 @@ func reassignSubtreeIds(rootId string, blocks []simple.Block) (string, []simple.
 	}
 
 	for _, b := range res {
+		if _, hasCorrectChildren := custom[b.Model().Id]; hasCorrectChildren {
+			continue
+		}
 		for i, id := range b.Model().ChildrenIds {
 			b.Model().ChildrenIds[i] = mapping[id]
 		}
