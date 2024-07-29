@@ -423,7 +423,7 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 			Highlight: highlight,
 			Score:     result.Score,
 		}
-		if highlightFormatter == ftsearch.JSONHighlightFormatter {
+		if highlightFormatter == ftsearch.JSONHighlightFormatter && highlight != "" {
 			res.Highlight, res.HighlightRanges = jsonHighlightToRanges(highlight)
 		}
 		if result.Score < minFulltextScore && len(res.HighlightRanges) == 0 {
