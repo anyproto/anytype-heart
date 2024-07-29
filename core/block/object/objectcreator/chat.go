@@ -4,25 +4,18 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *service) createChat(ctx context.Context, space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
-	key, err := domain.NewUniqueKey(smartblock2.SmartBlockTypeChatObject, bson.NewObjectId().Hex())
-	if err != nil {
-		return "", nil, fmt.Errorf("new unique key: %w", err)
-	}
-
-	createState := state.NewDocWithUniqueKey("", nil, key).(*state.State)
+	createState := state.NewDoc("", nil).(*state.State)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.String(model.ObjectType_chat.String())
 	createState.SetDetails(details)
 
