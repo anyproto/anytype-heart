@@ -304,8 +304,8 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 			// Use general file layout. It will be changed for proper layout after indexing
 			bundle.RelationKeyLayout.String():             pbtypes.Int64(int64(model.ObjectType_file)),
 			bundle.RelationKeyFileIndexingStatus.String(): pbtypes.Int64(int64(model.FileIndexingStatus_NotIndexed)),
-			bundle.RelationKeySyncStatus.String():         pbtypes.Int64(int64(domain.ObjectQueued)),
-			bundle.RelationKeySyncError.String():          pbtypes.Int64(int64(domain.Null)),
+			bundle.RelationKeySyncStatus.String():         pbtypes.Int64(int64(domain.ObjectSyncStatusQueued)),
+			bundle.RelationKeySyncError.String():          pbtypes.Int64(int64(domain.SyncErrorNull)),
 			bundle.RelationKeyFileBackupStatus.String():   pbtypes.Int64(int64(filesyncstatus.Queued)),
 		},
 	}

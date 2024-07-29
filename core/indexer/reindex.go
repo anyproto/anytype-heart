@@ -207,11 +207,11 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 
 func (i *indexer) addSyncDetails(space clientspace.Space) {
 	typesForSyncRelations := helper.SyncRelationsSmartblockTypes()
-	syncStatus := domain.ObjectSynced
-	syncError := domain.Null
+	syncStatus := domain.ObjectSyncStatusSynced
+	syncError := domain.SyncErrorNull
 	if i.config.IsLocalOnlyMode() {
-		syncStatus = domain.ObjectError
-		syncError = domain.NetworkError
+		syncStatus = domain.ObjectSyncStatusError
+		syncError = domain.SyncErrorNetworkError
 	}
 	ids, err := i.getIdsForTypes(space, typesForSyncRelations...)
 	if err != nil {

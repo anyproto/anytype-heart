@@ -470,6 +470,32 @@ func TestInjectLocalDetails(t *testing.T) {
 	// TODO More tests
 }
 
+func TestInjectDerivedDetails(t *testing.T) {
+	const (
+		id      = "id"
+		spaceId = "testSpace"
+	)
+	t.Run("links are updated on injection", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+		fx.store.EXPECT().GetInboundLinksByID(id).Return(nil, nil)
+
+		st := state.NewDoc("id", map[string]simple.Block{
+			id:         simple.New(&model.Block{Id: id, ChildrenIds: []string{"dataview", "link"}}),
+			"dataview": simple.New(&model.Block{Id: "dataview", Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{TargetObjectId: "some_set"}}}),
+			"link":     simple.New(&model.Block{Id: "link", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "some_obj"}}}),
+		}).NewState()
+		st.AddRelationLinks(&model.RelationLink{Key: bundle.RelationKeyAssignee.String(), Format: model.RelationFormat_object})
+		st.SetDetail(bundle.RelationKeyAssignee.String(), pbtypes.String("Kirill"))
+
+		// when
+		fx.injectDerivedDetails(st, spaceId, smartblock.SmartBlockTypePage)
+
+		// then
+		assert.Len(t, pbtypes.GetStringList(st.LocalDetails(), bundle.RelationKeyLinks.String()), 3)
+	})
+}
+
 type fixture struct {
 	store              *mock_objectstore.MockObjectStore
 	restrictionService *mock_restriction.MockService

@@ -81,6 +81,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -265,7 +266,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(treemanager.New()).
 		Register(block.New()).
 		Register(indexer.New()).
-		Register(detailsupdater.NewUpdater()).
+		Register(detailsupdater.New()).
 		Register(session.NewHookRunner()).
 		Register(spacesyncstatus.NewSpaceSyncStatus()).
 		Register(nodestatus.NewNodeStatus()).
@@ -279,6 +280,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(collection.New()).
 		Register(subscription.New()).
+		Register(syncsubscriptions.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).
 		Register(importer.New()).

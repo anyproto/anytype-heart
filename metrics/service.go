@@ -3,6 +3,7 @@ package metrics
 
 import (
 	"context"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -37,7 +38,9 @@ type SamplableEvent interface {
 
 type MetricsService interface {
 	InitWithKeys(inHouseKey string)
-	SetAppVersion(v string)
+	SetWorkingDir(workingDir string, accountId string)
+	SetAppVersion(path string)
+	getWorkingDir() string
 	SetStartVersion(v string)
 	SetDeviceId(t string)
 	SetPlatform(p string)
@@ -58,6 +61,7 @@ type service struct {
 	userId         string
 	deviceId       string
 	platform       string
+	workingDir     string
 	clients        [1]*client
 	alreadyRunning bool
 }
@@ -83,6 +87,18 @@ func NewService() MetricsService {
 			},
 		},
 	}
+}
+
+func (s *service) SetWorkingDir(workingDir string, accountId string) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.workingDir = filepath.Join(workingDir, accountId)
+}
+
+func (s *service) getWorkingDir() string {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.workingDir
 }
 
 func (s *service) InitWithKeys(inHouseKey string) {

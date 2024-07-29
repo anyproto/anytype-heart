@@ -71,6 +71,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	if err := s.stop(); err != nil {
 		return nil, errors.Join(ErrFailedToStopApplication, err)
 	}
+	metrics.Service.SetWorkingDir(req.RootPath, req.Id)
 
 	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath)
 }
