@@ -1413,6 +1413,7 @@ message Rpc {
                 string templateId = 3;
                 string spaceId = 4;
                 string objectTypeUniqueKey = 5;
+                bool withChat = 6;
             }
 
             message Response {
@@ -1439,6 +1440,7 @@ message Rpc {
             message Request {
                 google.protobuf.Struct details = 1;
                 string spaceId = 2;
+                bool withChat = 3;
             }
 
             message Response {
@@ -1516,6 +1518,7 @@ message Rpc {
                 string templateId = 3; // optional template id for creating from template
                 repeated anytype.model.InternalFlag internalFlags = 4;
                 string spaceId = 5;
+                bool withChat = 6;
             }
 
             message Response {
@@ -1571,6 +1574,7 @@ message Rpc {
                 string url = 3;
                 google.protobuf.Struct details = 4;
                 bool addPageContent = 5;
+                bool withChat = 6;
             }
 
             message Response {

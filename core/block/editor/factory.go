@@ -158,6 +158,8 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	sb := f.produceSmartblock(space)
 	switch sbType {
 	case coresb.SmartBlockTypePage,
+		coresb.SmartBlockTypeChatObject,
+		coresb.SmartBlockTypeChatDerivedObject,
 		coresb.SmartBlockTypeDate,
 		coresb.SmartBlockTypeBundledRelation,
 		coresb.SmartBlockTypeBundledObjectType,
