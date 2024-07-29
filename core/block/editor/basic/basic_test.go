@@ -379,7 +379,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 		t.Run("moving non-root table block '"+block+"' leads to error", func(t *testing.T) {
 			// given
 			sb := getSB()
-			b := NewBasic(sb, nil, converter.NewLayoutConverter())
+			b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 			st := sb.NewState()
 
 			// when
@@ -394,7 +394,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("no error on moving root table block", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 
 		// when
@@ -408,7 +408,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("no error on moving one row between another", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 
 		// when
@@ -422,7 +422,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("moving rows with incorrect position leads to error", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 
 		// when
@@ -435,7 +435,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("moving rows and some other blocks between another leads to error", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 
 		// when
@@ -448,7 +448,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("moving the row between itself leads to error", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 
 		// when
@@ -461,7 +461,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("moving table block from invalid table leads to error", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 		st.Unlink("columns")
 
@@ -477,7 +477,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 		t.Run("moving a block to '"+block+"' block leads to moving it under the table", func(t *testing.T) {
 			// given
 			sb := getSB()
-			b := NewBasic(sb, nil, converter.NewLayoutConverter())
+			b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 			st := sb.NewState()
 
 			// when
@@ -492,7 +492,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("moving a block to the invalid table leads to moving it under the table", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 		st.Unlink("columns")
 
