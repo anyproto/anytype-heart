@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -232,6 +233,11 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 			position = model.Block_Bottom
 			targetBlockId = template.HeaderLayoutId
 		}
+	}
+
+	targetBlockId, position, err = table.CheckTableBlocksMove(srcState, targetBlockId, position, blockIds)
+	if err != nil {
+		return err
 	}
 
 	var replacementCandidate simple.Block
