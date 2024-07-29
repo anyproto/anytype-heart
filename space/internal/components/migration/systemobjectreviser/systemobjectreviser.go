@@ -10,9 +10,9 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -21,6 +21,10 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+type detailsSettable interface {
+	SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
+}
 
 const MName = "SystemObjectReviser"
 
@@ -99,7 +103,7 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 	if len(details) != 0 {
 		log.Debug("updating system object", zap.String("source", source), zap.String("space", space.Id()))
 		if err := space.DoCtx(ctx, pbtypes.GetString(localObject, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
-			if ds, ok := sb.(basic.DetailsSettable); ok {
+			if ds, ok := sb.(detailsSettable); ok {
 				return ds.SetDetails(nil, details, false)
 			}
 			return nil

@@ -32,7 +32,7 @@ func newDUFixture(t *testing.T) *duFixture {
 
 	store := objectstore.NewStoreFixture(t)
 
-	b := NewBasic(sb, store, converter.NewLayoutConverter())
+	b := NewBasic(sb, store, converter.NewLayoutConverter(), nil)
 
 	return &duFixture{
 		sb:    sb,
