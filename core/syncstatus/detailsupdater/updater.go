@@ -207,7 +207,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 				details = &types.Struct{Fields: map[string]*types.Value{}}
 			}
 			if !u.isLayoutSuitableForSyncRelations(details) {
-				return details, nil
+				return details, false, nil
 			}
 			if fileStatus, ok := details.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
 				status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus.GetNumberValue())))
