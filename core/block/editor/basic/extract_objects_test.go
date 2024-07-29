@@ -394,6 +394,84 @@ func TestExtractObjects(t *testing.T) {
 	})
 }
 
+func TestBuildBlock(t *testing.T) {
+	const target = "target"
+
+	for _, tc := range []struct {
+		name          string
+		input, output *model.Block
+	}{
+		{
+			name:  "nil",
+			input: nil,
+			output: &model.Block{Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+				TargetBlockId: target,
+				Style:         model.BlockContentLink_Page,
+			}}},
+		},
+		{
+			name: "link",
+			input: &model.Block{Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+				Style:     model.BlockContentLink_Dashboard,
+				CardStyle: model.BlockContentLink_Card,
+			}}},
+			output: &model.Block{Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+				TargetBlockId: target,
+				Style:         model.BlockContentLink_Dashboard,
+				CardStyle:     model.BlockContentLink_Card,
+			}}},
+		},
+		{
+			name: "bookmark",
+			input: &model.Block{Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{
+				Type:  model.LinkPreview_Image,
+				State: model.BlockContentBookmark_Fetching,
+			}}},
+			output: &model.Block{Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{
+				TargetObjectId: target,
+				Type:           model.LinkPreview_Image,
+				State:          model.BlockContentBookmark_Fetching,
+			}}},
+		},
+		{
+			name: "file",
+			input: &model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{
+				Type: model.BlockContentFile_Image,
+			}}},
+			output: &model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{
+				TargetObjectId: target,
+				Type:           model.BlockContentFile_Image,
+			}}},
+		},
+		{
+			name: "dataview",
+			input: &model.Block{Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				IsCollection: true,
+				Source:       []string{"ot-note"},
+			}}},
+			output: &model.Block{Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				TargetObjectId: target,
+				IsCollection:   true,
+				Source:         []string{"ot-note"},
+			}}},
+		},
+		{
+			name: "other",
+			input: &model.Block{Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{
+				IsHeader: true,
+			}}},
+			output: &model.Block{Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+				TargetBlockId: target,
+				Style:         model.BlockContentLink_Page,
+			}}},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.output, buildBlock(tc.input, target))
+		})
+	}
+}
+
 type fixture struct {
 	t     *testing.T
 	ctrl  *gomock.Controller
