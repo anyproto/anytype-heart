@@ -169,6 +169,13 @@ func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountC
 	}
 }
 
+func (mw *Middleware) AccountEventSubscriptionReady(_ context.Context, _ *pb.RpcAccountEventSubscriptionReadyRequest) *pb.RpcAccountEventSubscriptionReadyResponse {
+	mw.applicationService.GetEventSender().Flush()
+	return &pb.RpcAccountEventSubscriptionReadyResponse{
+		Error: &pb.RpcAccountEventSubscriptionReadyResponseError{},
+	}
+}
+
 func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context, req *pb.RpcAccountRecoverFromLegacyExportRequest) *pb.RpcAccountRecoverFromLegacyExportResponse {
 	resp, err := mw.applicationService.RecoverFromLegacy(req)
 	code := mapErrorCode(err,

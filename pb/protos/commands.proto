@@ -694,6 +694,22 @@ message Rpc {
             }
         }
 
+        message EventSubscriptionReady {
+            message Request {
+            }
+            message Response {
+                Error error = 1;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                    }
+                }
+            }
+        }
+
         message Recover {
             /**
             * Front end to middleware request-to-start-search of an accounts for a recovered mnemonic.

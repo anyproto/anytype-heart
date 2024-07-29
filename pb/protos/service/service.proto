@@ -46,6 +46,7 @@ service ClientCommands {
     rpc AccountConfigUpdate (anytype.Rpc.Account.ConfigUpdate.Request) returns (anytype.Rpc.Account.ConfigUpdate.Response);
     rpc AccountRecoverFromLegacyExport(anytype.Rpc.Account.RecoverFromLegacyExport.Request) returns (anytype.Rpc.Account.RecoverFromLegacyExport.Response);
     rpc AccountChangeNetworkConfigAndRestart (anytype.Rpc.Account.ChangeNetworkConfigAndRestart.Request) returns (anytype.Rpc.Account.ChangeNetworkConfigAndRestart.Response);
+    rpc AccountEventSubscriptionReady(anytype.Rpc.Account.EventSubscriptionReady.Request) returns (anytype.Rpc.Account.EventSubscriptionReady.Response);
 
     // Space
     // ***

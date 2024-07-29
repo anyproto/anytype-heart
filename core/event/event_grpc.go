@@ -19,7 +19,8 @@ var log = logging.Logger("anytype-grpc")
 
 func NewGrpcSender() *GrpcSender {
 	gs := &GrpcSender{
-		shutdownCh: make(chan string),
+		sessionEvents: map[string][]*pb.Event{},
+		shutdownCh:    make(chan string),
 	}
 
 	go func() {
@@ -32,10 +33,12 @@ func NewGrpcSender() *GrpcSender {
 }
 
 type GrpcSender struct {
-	ServerMutex sync.RWMutex
-	Servers     map[string]SessionServer
-
-	shutdownCh chan string
+	ServerMutex   sync.RWMutex
+	Servers       map[string]SessionServer
+	flushMx       sync.Mutex
+	flushed       bool
+	sessionEvents map[string][]*pb.Event
+	shutdownCh    chan string
 }
 
 func (es *GrpcSender) Init(_ *app.App) (err error) {
@@ -67,15 +70,47 @@ func (es *GrpcSender) sendEvent(server SessionServer, event *pb.Event) {
 	if len(event.Messages) == 0 {
 		return
 	}
-	go func() {
-		err := server.Server.Send(event)
-		if err != nil {
-			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
-				es.shutdownCh <- server.Token
-			}
-			log.Errorf("failed to send event: %s", err)
+	es.flushMx.Lock()
+	if !es.flushed {
+		defer es.flushMx.Unlock()
+		curEvents := es.sessionEvents[server.Token]
+		curEvents = append(curEvents, event)
+		es.sessionEvents[server.Token] = curEvents
+		return
+	}
+	es.flushMx.Unlock()
+	go es.sendServerEvent(server, event)
+}
+
+func (es *GrpcSender) sendServerEvent(server SessionServer, event *pb.Event) {
+	err := server.Server.Send(event)
+	if err != nil {
+		if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
+			es.shutdownCh <- server.Token
 		}
-	}()
+		log.Errorf("failed to send event: %s", err)
+	}
+}
+
+func (es *GrpcSender) Flush() {
+	es.flushMx.Lock()
+	if es.flushed {
+		es.flushMx.Unlock()
+		return
+	}
+	es.flushed = true
+	es.flushMx.Unlock()
+	// here we can read from map without lock, because there can be no more reads
+	for token, events := range es.sessionEvents {
+		s, ok := es.Servers[token]
+		if !ok {
+			continue
+		}
+		for _, event := range events {
+			go es.sendServerEvent(s, event)
+		}
+	}
+	es.sessionEvents = nil
 }
 
 func (es *GrpcSender) Broadcast(event *pb.Event) {

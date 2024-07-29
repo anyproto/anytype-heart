@@ -62,6 +62,10 @@
     - [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request)
     - [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response)
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error)
+    - [Rpc.Account.EventSubscriptionReady](#anytype-Rpc-Account-EventSubscriptionReady)
+    - [Rpc.Account.EventSubscriptionReady.Request](#anytype-Rpc-Account-EventSubscriptionReady-Request)
+    - [Rpc.Account.EventSubscriptionReady.Response](#anytype-Rpc-Account-EventSubscriptionReady-Response)
+    - [Rpc.Account.EventSubscriptionReady.Response.Error](#anytype-Rpc-Account-EventSubscriptionReady-Response-Error)
     - [Rpc.Account.GetConfig](#anytype-Rpc-Account-GetConfig)
     - [Rpc.Account.GetConfig.Get](#anytype-Rpc-Account-GetConfig-Get)
     - [Rpc.Account.GetConfig.Get.Request](#anytype-Rpc-Account-GetConfig-Get-Request)
@@ -1165,6 +1169,7 @@
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
+    - [Rpc.Account.EventSubscriptionReady.Response.Error.Code](#anytype-Rpc-Account-EventSubscriptionReady-Response-Error-Code)
     - [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
@@ -1860,6 +1865,7 @@
 | AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request) | [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response) |  |
 | AccountRecoverFromLegacyExport | [Rpc.Account.RecoverFromLegacyExport.Request](#anytype-Rpc-Account-RecoverFromLegacyExport-Request) | [Rpc.Account.RecoverFromLegacyExport.Response](#anytype-Rpc-Account-RecoverFromLegacyExport-Response) |  |
 | AccountChangeNetworkConfigAndRestart | [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request) | [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response) |  |
+| AccountEventSubscriptionReady | [Rpc.Account.EventSubscriptionReady.Request](#anytype-Rpc-Account-EventSubscriptionReady-Request) | [Rpc.Account.EventSubscriptionReady.Response](#anytype-Rpc-Account-EventSubscriptionReady-Response) |  |
 | SpaceDelete | [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request) | [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response) | Space *** |
 | SpaceInviteGenerate | [Rpc.Space.InviteGenerate.Request](#anytype-Rpc-Space-InviteGenerate-Request) | [Rpc.Space.InviteGenerate.Response](#anytype-Rpc-Space-InviteGenerate-Response) |  |
 | SpaceInviteGetCurrent | [Rpc.Space.InviteGetCurrent.Request](#anytype-Rpc-Space-InviteGetCurrent-Request) | [Rpc.Space.InviteGetCurrent.Response](#anytype-Rpc-Space-InviteGetCurrent-Response) |  |
@@ -2916,6 +2922,57 @@ Middleware-to-front-end response for an account creation request, that can conta
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-EventSubscriptionReady"></a>
+
+### Rpc.Account.EventSubscriptionReady
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-EventSubscriptionReady-Request"></a>
+
+### Rpc.Account.EventSubscriptionReady.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-EventSubscriptionReady-Response"></a>
+
+### Rpc.Account.EventSubscriptionReady.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.EventSubscriptionReady.Response.Error](#anytype-Rpc-Account-EventSubscriptionReady-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-EventSubscriptionReady-Response-Error"></a>
+
+### Rpc.Account.EventSubscriptionReady.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.EventSubscriptionReady.Response.Error.Code](#anytype-Rpc-Account-EventSubscriptionReady-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -18933,6 +18990,18 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_NOT_RUNNING | 4 |  |
+
+
+
+<a name="anytype-Rpc-Account-EventSubscriptionReady-Response-Error-Code"></a>
+
+### Rpc.Account.EventSubscriptionReady.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
 
 
 
