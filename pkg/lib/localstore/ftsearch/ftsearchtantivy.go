@@ -32,10 +32,15 @@ import (
 )
 
 func TantivyNew() FTSearch {
-	return new(ftSearch2)
+	return new(ftSearchTantivy)
 }
 
-type ftSearch2 struct {
+var specialChars = map[rune]struct{}{
+	'+': {}, '-': {}, '&': {}, '|': {}, '!': {}, '(': {}, ')': {}, '{': {}, '}': {},
+	'[': {}, ']': {}, '^': {}, '"': {}, '~': {}, '*': {}, '?': {}, ':': {},
+}
+
+type ftSearchTantivy struct {
 	rootPath   string
 	ftsPath    string
 	builderId  string
@@ -44,7 +49,7 @@ type ftSearch2 struct {
 	parserPool *fastjson.ParserPool
 }
 
-func (f *ftSearch2) BatchDeleteObjects(ids []string) error {
+func (f *ftSearchTantivy) BatchDeleteObjects(ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -66,20 +71,20 @@ func (f *ftSearch2) BatchDeleteObjects(ids []string) error {
 	return nil
 }
 
-func (f *ftSearch2) DeleteObject(objectId string) error {
+func (f *ftSearchTantivy) DeleteObject(objectId string) error {
 	return f.index.DeleteDocuments(fieldIdRaw, objectId)
 }
 
 var ftsDir2 = "fts_tantivy"
 
-func (f *ftSearch2) Init(a *app.App) error {
-	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
+func (f *ftSearchTantivy) Init(a *app.App) error {
+	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
 	f.ftsPath = filepath.Join(repoPath, ftsDir2, ftsVer)
 	return tantivy.LibInit("release")
 }
 
-func (f *ftSearch2) cleanUpOldIndexes() {
+func (f *ftSearchTantivy) cleanUpOldIndexes() {
 	if strings.HasSuffix(f.rootPath, ftsDir2) {
 		dirs, err := os.ReadDir(f.rootPath)
 		if err == nil {
@@ -93,11 +98,11 @@ func (f *ftSearch2) cleanUpOldIndexes() {
 	}
 }
 
-func (f *ftSearch2) Name() (name string) {
+func (f *ftSearchTantivy) Name() (name string) {
 	return CName
 }
 
-func (f *ftSearch2) Run(context.Context) error {
+func (f *ftSearchTantivy) Run(context.Context) error {
 	builder, err := tantivy.NewSchemaBuilder()
 	if err != nil {
 		return err
@@ -192,7 +197,7 @@ func (f *ftSearch2) Run(context.Context) error {
 	return nil
 }
 
-func (f *ftSearch2) Index(doc SearchDoc) error {
+func (f *ftSearchTantivy) Index(doc SearchDoc) error {
 	metrics.ObjectFTUpdatedCounter.Inc()
 	tantivyDoc, err := f.convertDoc(doc)
 	if err != nil {
@@ -203,7 +208,7 @@ func (f *ftSearch2) Index(doc SearchDoc) error {
 	return res
 }
 
-func (f *ftSearch2) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
+func (f *ftSearchTantivy) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	document := tantivy.NewDocument()
 	err := document.AddField(fieldId, doc.Id, f.index)
 	if err != nil {
@@ -228,7 +233,7 @@ func (f *ftSearch2) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	return document, nil
 }
 
-func (f *ftSearch2) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error) {
+func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error) {
 	if len(docs) == 0 {
 		return nil
 	}
@@ -258,7 +263,7 @@ func (f *ftSearch2) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDoc
 	return f.index.AddAndConsumeDocuments(tantivyDocs...)
 }
 
-func (f *ftSearch2) Search(spaceIds []string, highlightFormatter HighlightFormatter, query string) (results search.DocumentMatchCollection, err error) {
+func (f *ftSearchTantivy) Search(spaceIds []string, highlightFormatter HighlightFormatter, query string) (results search.DocumentMatchCollection, err error) {
 	spaceIdsQuery := getSpaceIdsQuery(spaceIds)
 	if spaceIdsQuery == "" {
 		query = escapeQuery(query)
@@ -304,74 +309,48 @@ func (f *ftSearch2) Search(spaceIds []string, highlightFormatter HighlightFormat
 }
 
 func getSpaceIdsQuery(ids []string) string {
-	builder := strings.Builder{}
-	last := len(ids) - 1
-	for i, id := range ids {
-		if id == "" {
-			continue
-		}
-		if i == 0 {
-			builder.WriteString("(")
-			builder.WriteString(fieldSpace)
-			builder.WriteString(":")
-			builder.WriteString(id)
-			if i == last {
-				builder.WriteString(")")
-			}
-		} else if i == last {
-			builder.WriteString(" OR ")
-			builder.WriteString(fieldSpace)
-			builder.WriteString(":")
-			builder.WriteString(id)
-			builder.WriteString(")")
-		} else {
-			builder.WriteString(" OR ")
-			builder.WriteString(fieldSpace)
-			builder.WriteString(":")
-			builder.WriteString(id)
-		}
+	var builder strings.Builder
+	var sep string
+
+	builder.WriteString("(")
+	for _, id := range ids {
+		builder.WriteString(sep)
+		builder.WriteString(fieldSpace)
+		builder.WriteString(":")
+		builder.WriteString(id)
+		sep = " OR "
 	}
+	builder.WriteString(")")
 	return builder.String()
 }
 
-func (f *ftSearch2) Delete(id string) error {
+func (f *ftSearchTantivy) Delete(id string) error {
 	return f.BatchDeleteObjects([]string{id})
 }
 
-func (f *ftSearch2) DocCount() (uint64, error) {
+func (f *ftSearchTantivy) DocCount() (uint64, error) {
 	return f.index.NumDocs()
 }
 
-func (f *ftSearch2) Close(ctx context.Context) error {
+func (f *ftSearchTantivy) Close(ctx context.Context) error {
 	f.schema = nil
 	f.index.Free()
 	return nil
 }
 
-func (f *ftSearch2) cleanupBleve() {
+func (f *ftSearchTantivy) cleanupBleve() {
 	_ = os.RemoveAll(filepath.Join(f.rootPath, ftsDir))
 }
 
 func escapeQuery(query string) string {
-	specialChars := []rune{'+', '-', '&', '|', '!', '(', ')', '{', '}', '[', ']', '^', '"', '~', '*', '?', ':'}
-
 	var escapedQuery strings.Builder
 
 	for _, char := range query {
-		if contains(specialChars, char) {
+		if _, found := specialChars[char]; found {
 			escapedQuery.WriteRune('\\')
 		}
 		escapedQuery.WriteRune(char)
 	}
 
 	return escapedQuery.String()
-}
-
-func contains(slice []rune, char rune) bool {
-	for _, item := range slice {
-		if item == char {
-			return true
-		}
-	}
-	return false
 }

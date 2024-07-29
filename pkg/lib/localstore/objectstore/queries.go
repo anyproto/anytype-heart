@@ -455,9 +455,7 @@ func getSpaceIdsFromFilter(fltr database.Filter) []string {
 func iterateOverAndFilters(fs []database.Filter) []string {
 	var spaceIds []string
 	for _, f := range fs {
-		if newSpaceIds := getSpaceIdsFromFilter(f); len(newSpaceIds) != 0 {
-			spaceIds = append(spaceIds, newSpaceIds...)
-		}
+		spaceIds = append(spaceIds, getSpaceIdsFromFilter(f)...)
 	}
 	return spaceIds
 }

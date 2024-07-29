@@ -5,29 +5,29 @@ import (
 
 	"github.com/anyproto/tantivy-go/go/tantivy"
 	"github.com/blevesearch/bleve/v2/search"
-	"github.com/valyala/fastjson"
 )
 
 const docLimit = 10000
 
-func (f *ftSearch2) NewAutoBatcher(maxDocs int, maxSizeBytes uint64) AutoBatcher {
-	return &ftIndexBatcher2{
+func (f *ftSearchTantivy) NewAutoBatcher(maxDocs int, maxSizeBytes uint64) AutoBatcher {
+	return &ftIndexBatcherTantivy{
 		index: f.index,
 	}
 }
 
-func (f *ftSearch2) Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error) {
+func (f *ftSearchTantivy) Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error) {
 	result, err := f.index.Search(fmt.Sprintf("%s:%s", fieldId, objectId), docLimit, false, fieldId)
 	if err != nil {
 		return err
 	}
 
-	var p fastjson.Parser
+	var parser = f.parserPool.Get()
+	defer f.parserPool.Put(parser)
 	searchResult, err := tantivy.GetSearchResults(
 		result,
 		f.schema,
 		func(json string) (*search.DocumentMatch, error) {
-			value, err := p.Parse(json)
+			value, err := parser.Parse(json)
 			if err != nil {
 				return nil, err
 			}
@@ -48,7 +48,6 @@ func (f *ftSearch2) Iterate(objectId string, fields []string, shouldContinue fun
 
 	var text, title, spaceId string
 	for _, hit := range searchResult {
-		text, title, spaceId = "", "", ""
 		if hit.Fields != nil {
 			if hit.Fields[fieldText] != nil {
 				text, _ = hit.Fields[fieldText].(string)
@@ -73,20 +72,24 @@ func (f *ftSearch2) Iterate(objectId string, fields []string, shouldContinue fun
 	return nil
 }
 
-type ftIndexBatcher2 struct {
+type ftIndexBatcherTantivy struct {
 	index      *tantivy.Index
 	deleteIds  []string
 	updateDocs []*tantivy.Document
 }
 
 // Add adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
-func (f *ftIndexBatcher2) UpdateDoc(searchDoc SearchDoc) error {
+func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
+	err := f.DeleteDoc(searchDoc.Id)
+	if err != nil {
+		return err
+	}
 	doc := tantivy.NewDocument()
 	if doc == nil {
 		return fmt.Errorf("failed to create document")
 	}
 
-	err := doc.AddField(fieldId, searchDoc.Id, f.index)
+	err = doc.AddField(fieldId, searchDoc.Id, f.index)
 	if err != nil {
 		return err
 	}
@@ -116,7 +119,7 @@ func (f *ftIndexBatcher2) UpdateDoc(searchDoc SearchDoc) error {
 }
 
 // Finish indexes the remaining documents in the batch.
-func (f *ftIndexBatcher2) Finish() error {
+func (f *ftIndexBatcherTantivy) Finish() error {
 	err := f.index.DeleteDocuments(fieldIdRaw, f.deleteIds...)
 	if err != nil {
 		return err
@@ -125,7 +128,7 @@ func (f *ftIndexBatcher2) Finish() error {
 }
 
 // Delete adds a delete operation to the batcher
-func (f *ftIndexBatcher2) DeleteDoc(id string) error {
+func (f *ftIndexBatcherTantivy) DeleteDoc(id string) error {
 	f.deleteIds = append(f.deleteIds, id)
 	return nil
 }
