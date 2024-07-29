@@ -7,6 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.9.2
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
+	github.com/anyproto/any-store v0.0.0-20240719163025-8a3657f8e01c
 	github.com/anyproto/any-sync v0.4.22
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
@@ -41,7 +42,6 @@ require (
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hbagdi/go-unsplash v0.0.0-20230414214043-474fc02c9119
 	github.com/huandu/skiplist v1.2.0
 	github.com/improbable-eng/grpc-web v0.15.0
@@ -113,7 +113,6 @@ require (
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/alexbrainman/goissue34681 v0.0.0-20191006012335-3fc7a47baff5 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
-	github.com/anyproto/any-store v0.0.0-20240719163025-8a3657f8e01c // indirect
 	github.com/anyproto/go-chash v0.1.0 // indirect
 	github.com/anyproto/go-slip10 v1.0.0 // indirect
 	github.com/anyproto/go-slip21 v1.0.0 // indirect
@@ -176,6 +175,7 @@ require (
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/holiman/uint256 v1.2.4 // indirect
