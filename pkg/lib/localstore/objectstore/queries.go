@@ -472,7 +472,7 @@ func (s *dsObjectStore) QueryObjectIDs(q database.Query) (ids []string, total in
 	for _, rec := range recs {
 		ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
 	}
-	return ids, 0, nil
+	return ids, len(recs), nil
 }
 
 func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err error) {

@@ -5,257 +5,141 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/accountdata"
-	"github.com/anyproto/any-sync/commonspace/object/acl/list"
-	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestate"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/mock_spacestorage"
-	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus/mock_objectsyncstatus"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
-func Test_HeadsChange(t *testing.T) {
+func Test_UseCases(t *testing.T) {
 	t.Run("HeadsChange: new object", func(t *testing.T) {
-		// given
-		s := newFixture(t)
-		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
+		s := newFixture(t, "spaceId")
+		s.syncDetailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSyncing, "spaceId")
 
-		// when
 		s.HeadsChange("id", []string{"head1", "head2"})
 
-		// then
 		assert.NotNil(t, s.treeHeads["id"])
 		assert.Equal(t, []string{"head1", "head2"}, s.treeHeads["id"].heads)
 	})
-	t.Run("local only", func(t *testing.T) {
-		// given
-		s := newFixture(t)
-		s.config.NetworkMode = pb.RpcAccount_LocalOnly
-		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectError, domain.NetworkError, "spaceId")
+	t.Run("HeadsChange then HeadsApply: responsible", func(t *testing.T) {
+		s := newFixture(t, "spaceId")
+		s.syncDetailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSyncing, "spaceId")
 
-		// when
 		s.HeadsChange("id", []string{"head1", "head2"})
 
-		// then
 		assert.NotNil(t, s.treeHeads["id"])
 		assert.Equal(t, []string{"head1", "head2"}, s.treeHeads["id"].heads)
-	})
-	t.Run("HeadsChange: update existing object", func(t *testing.T) {
-		// given
-		s := newFixture(t)
-		s.config.NetworkMode = pb.RpcAccount_DefaultConfig
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
-		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk).Times(2)
 
-		// when
-		s.HeadsChange("id", []string{"head1", "head2"})
-		s.HeadsChange("id", []string{"head3"})
+		s.nodeConfService.EXPECT().NodeIds("spaceId").Return([]string{"peerId"})
 
-		// then
-		assert.NotNil(t, s.treeHeads["id"])
-		assert.Equal(t, []string{"head3"}, s.treeHeads["id"].heads)
-	})
-	t.Run("HeadsChange: node offline", func(t *testing.T) {
-		// given
-		s := newFixture(t)
-		s.service.EXPECT().NodeIds("spaceId").Return([]string{"peerId"})
-		s.nodeStatus.SetNodesStatus("spaceId", "peerId", nodestatus.ConnectionError)
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectError, domain.NetworkError, "spaceId")
-		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk).Times(2)
+		s.HeadsApply("peerId", "id", []string{"head1", "head2"}, true)
 
-		// when
-		s.HeadsChange("id", []string{"head1", "head2"})
-		s.HeadsChange("id", []string{"head3"})
-
-		// then
-		assert.NotNil(t, s.treeHeads["id"])
-		assert.Equal(t, []string{"head3"}, s.treeHeads["id"].heads)
-	})
-	t.Run("HeadsChange: network incompatible", func(t *testing.T) {
-		// given
-		s := newFixture(t)
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectError, domain.IncompatibleVersion, "spaceId")
-		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusIncompatible).Times(1)
-
-		// when
-		s.HeadsChange("id", []string{"head3"})
-
-		// then
-		assert.NotNil(t, s.treeHeads["id"])
-		assert.Equal(t, []string{"head3"}, s.treeHeads["id"].heads)
-	})
-}
-
-func TestSyncStatusService_HeadsReceive(t *testing.T) {
-	t.Run("HeadsReceive: heads not changed ", func(t *testing.T) {
-		// given
-		s := newFixture(t)
-
-		// when
-		s.HeadsReceive("peerId", "id", []string{"head1", "head2"})
-
-		// then
-		_, ok := s.treeHeads["id"]
-		assert.False(t, ok)
-	})
-	t.Run("HeadsReceive: object synced", func(t *testing.T) {
-		// given
-		s := newFixture(t)
-
-		// when
-		s.treeHeads["id"] = treeHeadsEntry{
-			syncStatus: StatusSynced,
-		}
-		s.HeadsReceive("peerId", "id", []string{"head1", "head2"})
-
-		// then
 		assert.NotNil(t, s.treeHeads["id"])
 		assert.Equal(t, StatusSynced, s.treeHeads["id"].syncStatus)
+		assert.Equal(t, s.synced, []string{"id"})
 	})
-	t.Run("HeadsReceive: sender in not responsible", func(t *testing.T) {
-		// given
-		s := newFixture(t)
-		s.service.EXPECT().NodeIds(s.spaceId).Return([]string{"peerId2"})
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
-		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
+	t.Run("HeadsChange then HeadsApply: not responsible", func(t *testing.T) {
+		s := newFixture(t, "spaceId")
+		s.syncDetailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSyncing, "spaceId")
 
-		// when
-		s.HeadsChange("id", []string{"head1"})
-		s.HeadsReceive("peerId", "id", []string{"head2"})
+		s.HeadsChange("id", []string{"head1", "head2"})
 
-		// then
+		assert.NotNil(t, s.treeHeads["id"])
+		assert.Equal(t, []string{"head1", "head2"}, s.treeHeads["id"].heads)
+
+		s.nodeConfService.EXPECT().NodeIds("spaceId").Return([]string{"peerId1"})
+
+		s.HeadsApply("peerId", "id", []string{"head1", "head2"}, true)
+
 		assert.NotNil(t, s.treeHeads["id"])
 		assert.Equal(t, StatusNotSynced, s.treeHeads["id"].syncStatus)
+		assert.Contains(t, s.tempSynced, "id")
+		assert.Nil(t, s.synced)
 	})
-	t.Run("HeadsReceive: object is synced", func(t *testing.T) {
-		// given
-		s := newFixture(t)
-		s.service.EXPECT().NodeIds(s.spaceId).Return([]string{"peerId"})
-		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
+	t.Run("ObjectReceive: responsible", func(t *testing.T) {
+		s := newFixture(t, "spaceId")
+		s.nodeConfService.EXPECT().NodeIds("spaceId").Return([]string{"peerId"})
 
-		// when
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
-		s.HeadsChange("id", []string{"head1"})
-		s.HeadsReceive("peerId", "id", []string{"head1"})
+		s.ObjectReceive("peerId", "id", []string{"head1", "head2"})
 
-		// then
-		assert.NotNil(t, s.treeHeads["id"])
-		assert.Equal(t, StatusSynced, s.treeHeads["id"].syncStatus)
+		assert.Equal(t, s.synced, []string{"id"})
+	})
+	t.Run("ObjectReceive: not responsible, but then sync with responsible", func(t *testing.T) {
+		s := newFixture(t, "spaceId")
+		s.nodeConfService.EXPECT().NodeIds("spaceId").Return([]string{"peerId1"})
+
+		s.ObjectReceive("peerId", "id", []string{"head1", "head2"})
+
+		require.Contains(t, s.tempSynced, "id")
+
+		s.nodeConfService.EXPECT().NodeIds("spaceId").Return([]string{"peerId1"})
+
+		s.RemoveAllExcept("peerId1", []string{})
+
+		assert.Equal(t, s.synced, []string{"id"})
 	})
 }
 
-func TestSyncStatusService_Watch(t *testing.T) {
-	t.Run("Watch: object exist", func(t *testing.T) {
-		// given
-		s := newFixture(t)
+func TestSyncStatusService_Watch_Unwatch(t *testing.T) {
+	t.Run("watch", func(t *testing.T) {
+		s := newFixture(t, "spaceId")
 
-		// when
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
-		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-		s.HeadsChange("id", []string{"head1"})
+		s.spaceStorage.EXPECT().TreeStorage("id").Return(treestorage.NewInMemoryTreeStorage(&treechangeproto.RawTreeChangeWithId{Id: "id"}, []string{"head3", "head2", "head1"}, nil))
 		err := s.Watch("id")
-
-		// then
 		assert.Nil(t, err)
-		_, ok := s.watchers["id"]
-		assert.True(t, ok)
+		assert.Contains(t, s.watchers, "id")
+		assert.Equal(t, []string{"head1", "head2", "head3"}, s.treeHeads["id"].heads, "should be sorted")
 	})
-	t.Run("Watch: object not exist", func(t *testing.T) {
-		// given
-		s := newFixture(t)
-		accountKeys, err := accountdata.NewRandom()
-		assert.Nil(t, err)
-		acl, err := list.NewTestDerivedAcl("spaceId", accountKeys)
-		assert.Nil(t, err)
+	t.Run("unwatch", func(t *testing.T) {
+		s := newFixture(t, "spaceId")
 
-		root, err := objecttree.CreateObjectTreeRoot(objecttree.ObjectTreeCreatePayload{
-			PrivKey:       accountKeys.SignKey,
-			ChangeType:    "changeType",
-			ChangePayload: nil,
-			SpaceId:       "spaceId",
-			IsEncrypted:   true,
-		}, acl)
-		storage, err := treestorage.NewInMemoryTreeStorage(root, []string{"head1"}, nil)
-		assert.Nil(t, err)
-
-		s.storage.EXPECT().TreeStorage("id").Return(storage, nil)
-
-		// when
-		err = s.Watch("id")
-
-		// then
-		assert.Nil(t, err)
-		_, ok := s.watchers["id"]
-		assert.True(t, ok)
-		assert.NotNil(t, s.treeHeads["id"])
-		assert.Equal(t, StatusUnknown, s.treeHeads["id"].syncStatus)
-	})
-}
-
-func TestSyncStatusService_Unwatch(t *testing.T) {
-	t.Run("Unwatch: object exist", func(t *testing.T) {
-		// given
-		s := newFixture(t)
-
-		// when
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
-		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-		s.HeadsChange("id", []string{"head1"})
+		s.spaceStorage.EXPECT().TreeStorage("id").Return(treestorage.NewInMemoryTreeStorage(&treechangeproto.RawTreeChangeWithId{Id: "id"}, []string{"headId"}, nil))
 		err := s.Watch("id")
 		assert.Nil(t, err)
 
 		s.Unwatch("id")
-
-		// then
-		_, ok := s.watchers["id"]
-		assert.False(t, ok)
+		assert.NotContains(t, s.watchers, "id")
+		assert.Equal(t, []string{"headId"}, s.treeHeads["id"].heads)
 	})
 }
 
 func TestSyncStatusService_update(t *testing.T) {
 	t.Run("update: got updates on objects", func(t *testing.T) {
-		// given
-		s := newFixture(t)
+		s := newFixture(t, "spaceId")
 		updateReceiver := NewMockUpdateReceiver(t)
 		updateReceiver.EXPECT().UpdateNodeStatus().Return()
-		updateReceiver.EXPECT().UpdateTree(context.Background(), "id", StatusNotSynced).Return(nil)
+		updateReceiver.EXPECT().UpdateTree(context.Background(), "id", StatusSynced).Return(nil)
+		updateReceiver.EXPECT().UpdateTree(context.Background(), "id2", StatusNotSynced).Return(nil)
 		s.SetUpdateReceiver(updateReceiver)
 
-		// when
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
-		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk).Times(2)
-		s.HeadsChange("id", []string{"head1"})
-		err := s.Watch("id")
-		assert.Nil(t, err)
-		err = s.update(context.Background())
-
-		// then
-		assert.Nil(t, err)
-		updateReceiver.AssertCalled(t, "UpdateTree", context.Background(), "id", StatusNotSynced)
+		s.syncDetailsUpdater.EXPECT().UpdateDetails("id3", domain.ObjectSyncStatusSynced, "spaceId")
+		s.synced = []string{"id3"}
+		s.tempSynced["id4"] = struct{}{}
+		s.treeHeads["id"] = treeHeadsEntry{syncStatus: StatusSynced, heads: []string{"headId"}}
+		s.treeHeads["id2"] = treeHeadsEntry{syncStatus: StatusNotSynced, heads: []string{"headId"}}
+		s.watchers["id"] = struct{}{}
+		s.watchers["id2"] = struct{}{}
+		err := s.update(context.Background())
+		require.NoError(t, err)
 	})
 }
 
 func TestSyncStatusService_Run(t *testing.T) {
 	t.Run("successful run", func(t *testing.T) {
-		// given
-		s := newFixture(t)
+		s := newFixture(t, "spaceId")
 
-		// when
 		err := s.Run(context.Background())
 
-		// then
 		assert.Nil(t, err)
 		err = s.Close(context.Background())
 		assert.Nil(t, err)
@@ -264,81 +148,67 @@ func TestSyncStatusService_Run(t *testing.T) {
 
 func TestSyncStatusService_RemoveAllExcept(t *testing.T) {
 	t.Run("no existing id", func(t *testing.T) {
-		// given
-		f := newFixture(t)
-		f.treeHeads["heads"] = treeHeadsEntry{syncStatus: StatusNotSynced}
+		f := newFixture(t, "spaceId")
+		f.treeHeads["id"] = treeHeadsEntry{syncStatus: StatusNotSynced, heads: []string{"heads"}}
 
-		// when
-		f.service.EXPECT().NodeIds(f.spaceId).Return([]string{"peerId"})
+		f.nodeConfService.EXPECT().NodeIds(f.spaceId).Return([]string{"peerId"})
 		f.RemoveAllExcept("peerId", nil)
 
-		// then
-		assert.Equal(t, StatusSynced, f.treeHeads["heads"].syncStatus)
+		assert.Equal(t, StatusSynced, f.treeHeads["id"].syncStatus)
 	})
 	t.Run("same ids", func(t *testing.T) {
-		// given
-		f := newFixture(t)
-		f.treeHeads["heads1"] = treeHeadsEntry{syncStatus: StatusNotSynced}
+		f := newFixture(t, "id")
+		f.treeHeads["id"] = treeHeadsEntry{syncStatus: StatusNotSynced, heads: []string{"heads"}}
 
-		// when
-		f.service.EXPECT().NodeIds(f.spaceId).Return([]string{"peerId"})
-		f.RemoveAllExcept("peerId", []string{"heads", "heads"})
+		f.nodeConfService.EXPECT().NodeIds(f.spaceId).Return([]string{"peerId"})
+		f.RemoveAllExcept("peerId", []string{"id"})
 
-		// then
-		assert.Equal(t, StatusSynced, f.treeHeads["heads1"].syncStatus)
+		assert.Equal(t, StatusNotSynced, f.treeHeads["id"].syncStatus)
 	})
 	t.Run("sender not responsible", func(t *testing.T) {
-		// given
-		f := newFixture(t)
-		f.treeHeads["heads1"] = treeHeadsEntry{syncStatus: StatusNotSynced}
+		f := newFixture(t, "spaceId")
+		f.treeHeads["id"] = treeHeadsEntry{syncStatus: StatusNotSynced, heads: []string{"heads"}}
 
-		// when
-		f.service.EXPECT().NodeIds(f.spaceId).Return([]string{})
-		f.RemoveAllExcept("peerId", []string{"heads"})
+		f.nodeConfService.EXPECT().NodeIds(f.spaceId).Return([]string{"peerId1"})
+		f.RemoveAllExcept("peerId", nil)
 
-		// then
-		assert.Equal(t, StatusNotSynced, f.treeHeads["heads1"].syncStatus)
+		assert.Equal(t, StatusNotSynced, f.treeHeads["id"].syncStatus)
 	})
-	t.Run("current state is outdated", func(t *testing.T) {
-		// given
-		f := newFixture(t)
-		f.treeHeads["heads1"] = treeHeadsEntry{syncStatus: StatusNotSynced, stateCounter: 1}
+}
 
-		// when
-		f.service.EXPECT().NodeIds(f.spaceId).Return([]string{})
-		f.RemoveAllExcept("peerId", []string{"heads"})
+func TestHeadsChange(t *testing.T) {
+	fx := newFixture(t, "space1")
+	fx.syncDetailsUpdater.EXPECT().UpdateDetails("obj1", domain.ObjectSyncStatusSyncing, "space1")
+	inputHeads := []string{"b", "c", "a"}
 
-		// then
-		assert.Equal(t, StatusNotSynced, f.treeHeads["heads1"].syncStatus)
-	})
-	t.Run("tree is not synced", func(t *testing.T) {
-		// given
-		f := newFixture(t)
-		f.treeHeads["heads"] = treeHeadsEntry{syncStatus: StatusNotSynced}
+	fx.HeadsChange("obj1", inputHeads)
 
-		// when
-		f.service.EXPECT().NodeIds(f.spaceId).Return([]string{})
-		f.RemoveAllExcept("peerId", []string{"heads"})
+	got, ok := fx.treeHeads["obj1"]
+	require.True(t, ok)
 
-		// then
-		assert.Equal(t, StatusNotSynced, f.treeHeads["heads"].syncStatus)
-	})
+	want := treeHeadsEntry{
+		heads:      []string{"a", "b", "c"},
+		syncStatus: StatusNotSynced,
+	}
+	assert.Equal(t, want, got)
+	assert.Equal(t, []string{"b", "c", "a"}, inputHeads, "heads should be copied")
+
 }
 
 type fixture struct {
 	*syncStatusService
-	service        *mock_nodeconf.MockService
-	storage        *mock_spacestorage.MockSpaceStorage
-	config         *config.Config
-	detailsUpdater *mock_objectsyncstatus.MockUpdater
-	nodeStatus     nodestatus.NodeStatus
+	nodeConfService    *mock_nodeconf.MockService
+	spaceStorage       *mock_spacestorage.MockSpaceStorage
+	config             *config.Config
+	syncDetailsUpdater *mock_objectsyncstatus.MockUpdater
+	nodeStatus         nodestatus.NodeStatus
 }
 
-func newFixture(t *testing.T) *fixture {
+func newFixture(t *testing.T, spaceId string) *fixture {
 	ctrl := gomock.NewController(t)
 	service := mock_nodeconf.NewMockService(ctrl)
 	storage := mock_spacestorage.NewMockSpaceStorage(ctrl)
-	spaceState := &spacestate.SpaceState{SpaceId: "spaceId"}
+	spaceState := &spacestate.SpaceState{SpaceId: spaceId}
 	config := &config.Config{}
 	detailsUpdater := mock_objectsyncstatus.NewMockUpdater(t)
 	nodeStatus := nodestatus.NewNodeStatus()
@@ -354,18 +224,15 @@ func newFixture(t *testing.T) *fixture {
 	err := nodeStatus.Init(a)
 	assert.Nil(t, err)
 
-	syncStatusService := &syncStatusService{
-		treeHeads: map[string]treeHeadsEntry{},
-		watchers:  map[string]struct{}{},
-	}
-	err = syncStatusService.Init(a)
+	statusService := NewSyncStatusService()
+	err = statusService.Init(a)
 	assert.Nil(t, err)
 	return &fixture{
-		syncStatusService: syncStatusService,
-		service:           service,
-		storage:           storage,
-		config:            config,
-		detailsUpdater:    detailsUpdater,
-		nodeStatus:        nodeStatus,
+		syncStatusService:  statusService.(*syncStatusService),
+		nodeConfService:    service,
+		spaceStorage:       storage,
+		config:             config,
+		syncDetailsUpdater: detailsUpdater,
+		nodeStatus:         nodeStatus,
 	}
 }

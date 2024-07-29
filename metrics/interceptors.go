@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/valyala/fastjson"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc"
 
@@ -21,6 +22,8 @@ const (
 	unexpectedErrorCode = -1
 	parsingErrorCode    = -2
 	accountSelect       = "AccountSelect"
+	accountStop         = "AccountStop"
+	accountStopJson     = "account_stop.json"
 )
 
 var (
@@ -61,16 +64,96 @@ func SharedTraceInterceptor(ctx context.Context, req any, methodName string, act
 	start := time.Now().UnixMilli()
 	resp, err := actualCall(ctx, req)
 	delta := time.Now().UnixMilli() - start
+	var event *MethodEvent
 	if methodName == accountSelect {
 		if hotSync {
-			SendMethodEvent(methodName+"Hot", err, resp, delta)
+			event = toEvent(methodName+"Hot", err, resp, delta)
 		} else {
-			SendMethodEvent(methodName+"Cold", err, resp, delta)
+			event = toEvent(methodName+"Cold", err, resp, delta)
 		}
+		_ = trySendAccountStop()
 	} else {
-		SendMethodEvent(methodName, err, resp, delta)
+		event = toEvent(methodName, err, resp, delta)
+	}
+
+	if event != nil {
+		if methodName == accountStop {
+			_ = saveAccountStop(event)
+		} else {
+			Service.Send(event)
+		}
 	}
 	return resp, err
+}
+
+func saveAccountStop(event *MethodEvent) error {
+	arena := &fastjson.Arena{}
+
+	json := arena.NewObject()
+	json.Set("method_name", arena.NewString(event.methodName))
+	json.Set("middle_time", arena.NewNumberInt(int(event.middleTime)))
+	json.Set("error_code", arena.NewNumberInt(int(event.errorCode)))
+	json.Set("description", arena.NewString(event.description))
+
+	data := json.MarshalTo(nil)
+	jsonPath := filepath.Join(Service.getWorkingDir(), accountStopJson)
+	_ = os.Remove(jsonPath)
+	return os.WriteFile(jsonPath, data, 0600)
+}
+
+func trySendAccountStop() error {
+	jsonPath := filepath.Join(Service.getWorkingDir(), accountStopJson)
+	data, err := os.ReadFile(jsonPath)
+	if err != nil {
+		return err
+	}
+
+	_ = os.Remove(jsonPath)
+
+	parsedJson, err := fastjson.ParseBytes(data)
+	if err != nil {
+		return err
+	}
+
+	Service.Send(&MethodEvent{
+		methodName:  string(parsedJson.GetStringBytes("method_name")),
+		middleTime:  parsedJson.GetInt64("middle_time"),
+		errorCode:   parsedJson.GetInt64("error_code"),
+		description: string(parsedJson.GetStringBytes("description")),
+	})
+
+	return nil
+}
+
+func toEvent(method string, err error, resp any, delta int64) *MethodEvent {
+	if !lo.Contains(excludedMethods, method) {
+		if err != nil {
+			return &MethodEvent{
+				methodName:  method,
+				errorCode:   unexpectedErrorCode,
+				description: err.Error(),
+			}
+		}
+		errorCode, description, err := reflection.GetError(resp)
+		if err != nil {
+			return &MethodEvent{
+				methodName: method,
+				errorCode:  parsingErrorCode,
+			}
+		}
+		if errorCode > 0 {
+			return &MethodEvent{
+				methodName:  method,
+				errorCode:   errorCode,
+				description: description,
+			}
+		}
+		return &MethodEvent{
+			methodName: method,
+			middleTime: delta,
+		}
+	}
+	return nil
 }
 
 func LongMethodsInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
@@ -148,58 +231,4 @@ func dirExists(path string) (bool, error) {
 
 func stackTraceHasMethod(method string, stackTrace []byte) bool {
 	return bytes.Contains(stackTrace, []byte("core.(*Middleware)."+method+"("))
-}
-
-func SendMethodEvent(method string, err error, resp any, delta int64) {
-	if !lo.Contains(excludedMethods, method) {
-		if err != nil {
-			sendUnexpectedError(method, err.Error())
-		}
-		errorCode, description, err := reflection.GetError(resp)
-		if err != nil {
-			sendErrorParsingError(method)
-		}
-		if errorCode > 0 {
-			sendExpectedError(method, errorCode, description)
-		}
-		sendSuccess(method, delta)
-	}
-}
-
-func sendSuccess(method string, delta int64) {
-	Service.Send(
-		&MethodEvent{
-			methodName: method,
-			middleTime: delta,
-		},
-	)
-}
-
-func sendExpectedError(method string, code int64, description string) {
-	Service.Send(
-		&MethodEvent{
-			methodName:  method,
-			errorCode:   code,
-			description: description,
-		},
-	)
-}
-
-func sendErrorParsingError(method string) {
-	Service.Send(
-		&MethodEvent{
-			methodName: method,
-			errorCode:  parsingErrorCode,
-		},
-	)
-}
-
-func sendUnexpectedError(method string, description string) {
-	Service.Send(
-		&MethodEvent{
-			methodName:  method,
-			errorCode:   unexpectedErrorCode,
-			description: description,
-		},
-	)
 }

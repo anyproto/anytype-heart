@@ -5,8 +5,6 @@ package mock_detailsupdater
 import (
 	app "github.com/anyproto/any-sync/app"
 
-	domain "github.com/anyproto/anytype-heart/core/domain"
-
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -114,35 +112,69 @@ func (_c *MockSpaceStatusUpdater_Name_Call) RunAndReturn(run func() string) *Moc
 	return _c
 }
 
-// SendUpdate provides a mock function with given fields: status
-func (_m *MockSpaceStatusUpdater) SendUpdate(status *domain.SpaceSync) {
-	_m.Called(status)
+// Refresh provides a mock function with given fields: spaceId
+func (_m *MockSpaceStatusUpdater) Refresh(spaceId string) {
+	_m.Called(spaceId)
 }
 
-// MockSpaceStatusUpdater_SendUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SendUpdate'
-type MockSpaceStatusUpdater_SendUpdate_Call struct {
+// MockSpaceStatusUpdater_Refresh_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Refresh'
+type MockSpaceStatusUpdater_Refresh_Call struct {
 	*mock.Call
 }
 
-// SendUpdate is a helper method to define mock.On call
-//   - status *domain.SpaceSync
-func (_e *MockSpaceStatusUpdater_Expecter) SendUpdate(status interface{}) *MockSpaceStatusUpdater_SendUpdate_Call {
-	return &MockSpaceStatusUpdater_SendUpdate_Call{Call: _e.mock.On("SendUpdate", status)}
+// Refresh is a helper method to define mock.On call
+//   - spaceId string
+func (_e *MockSpaceStatusUpdater_Expecter) Refresh(spaceId interface{}) *MockSpaceStatusUpdater_Refresh_Call {
+	return &MockSpaceStatusUpdater_Refresh_Call{Call: _e.mock.On("Refresh", spaceId)}
 }
 
-func (_c *MockSpaceStatusUpdater_SendUpdate_Call) Run(run func(status *domain.SpaceSync)) *MockSpaceStatusUpdater_SendUpdate_Call {
+func (_c *MockSpaceStatusUpdater_Refresh_Call) Run(run func(spaceId string)) *MockSpaceStatusUpdater_Refresh_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*domain.SpaceSync))
+		run(args[0].(string))
 	})
 	return _c
 }
 
-func (_c *MockSpaceStatusUpdater_SendUpdate_Call) Return() *MockSpaceStatusUpdater_SendUpdate_Call {
+func (_c *MockSpaceStatusUpdater_Refresh_Call) Return() *MockSpaceStatusUpdater_Refresh_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *MockSpaceStatusUpdater_SendUpdate_Call) RunAndReturn(run func(*domain.SpaceSync)) *MockSpaceStatusUpdater_SendUpdate_Call {
+func (_c *MockSpaceStatusUpdater_Refresh_Call) RunAndReturn(run func(string)) *MockSpaceStatusUpdater_Refresh_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateMissingIds provides a mock function with given fields: spaceId, ids
+func (_m *MockSpaceStatusUpdater) UpdateMissingIds(spaceId string, ids []string) {
+	_m.Called(spaceId, ids)
+}
+
+// MockSpaceStatusUpdater_UpdateMissingIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateMissingIds'
+type MockSpaceStatusUpdater_UpdateMissingIds_Call struct {
+	*mock.Call
+}
+
+// UpdateMissingIds is a helper method to define mock.On call
+//   - spaceId string
+//   - ids []string
+func (_e *MockSpaceStatusUpdater_Expecter) UpdateMissingIds(spaceId interface{}, ids interface{}) *MockSpaceStatusUpdater_UpdateMissingIds_Call {
+	return &MockSpaceStatusUpdater_UpdateMissingIds_Call{Call: _e.mock.On("UpdateMissingIds", spaceId, ids)}
+}
+
+func (_c *MockSpaceStatusUpdater_UpdateMissingIds_Call) Run(run func(spaceId string, ids []string)) *MockSpaceStatusUpdater_UpdateMissingIds_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockSpaceStatusUpdater_UpdateMissingIds_Call) Return() *MockSpaceStatusUpdater_UpdateMissingIds_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockSpaceStatusUpdater_UpdateMissingIds_Call) RunAndReturn(run func(string, []string)) *MockSpaceStatusUpdater_UpdateMissingIds_Call {
 	_c.Call.Return(run)
 	return _c
 }

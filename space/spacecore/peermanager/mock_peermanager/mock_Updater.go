@@ -7,8 +7,6 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 
-	domain "github.com/anyproto/anytype-heart/core/domain"
-
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -162,6 +160,39 @@ func (_c *MockUpdater_Name_Call) RunAndReturn(run func() string) *MockUpdater_Na
 	return _c
 }
 
+// Refresh provides a mock function with given fields: spaceId
+func (_m *MockUpdater) Refresh(spaceId string) {
+	_m.Called(spaceId)
+}
+
+// MockUpdater_Refresh_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Refresh'
+type MockUpdater_Refresh_Call struct {
+	*mock.Call
+}
+
+// Refresh is a helper method to define mock.On call
+//   - spaceId string
+func (_e *MockUpdater_Expecter) Refresh(spaceId interface{}) *MockUpdater_Refresh_Call {
+	return &MockUpdater_Refresh_Call{Call: _e.mock.On("Refresh", spaceId)}
+}
+
+func (_c *MockUpdater_Refresh_Call) Run(run func(spaceId string)) *MockUpdater_Refresh_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockUpdater_Refresh_Call) Return() *MockUpdater_Refresh_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockUpdater_Refresh_Call) RunAndReturn(run func(string)) *MockUpdater_Refresh_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx
 func (_m *MockUpdater) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -204,39 +235,6 @@ func (_c *MockUpdater_Run_Call) Return(err error) *MockUpdater_Run_Call {
 }
 
 func (_c *MockUpdater_Run_Call) RunAndReturn(run func(context.Context) error) *MockUpdater_Run_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SendUpdate provides a mock function with given fields: spaceSync
-func (_m *MockUpdater) SendUpdate(spaceSync *domain.SpaceSync) {
-	_m.Called(spaceSync)
-}
-
-// MockUpdater_SendUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SendUpdate'
-type MockUpdater_SendUpdate_Call struct {
-	*mock.Call
-}
-
-// SendUpdate is a helper method to define mock.On call
-//   - spaceSync *domain.SpaceSync
-func (_e *MockUpdater_Expecter) SendUpdate(spaceSync interface{}) *MockUpdater_SendUpdate_Call {
-	return &MockUpdater_SendUpdate_Call{Call: _e.mock.On("SendUpdate", spaceSync)}
-}
-
-func (_c *MockUpdater_SendUpdate_Call) Run(run func(spaceSync *domain.SpaceSync)) *MockUpdater_SendUpdate_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*domain.SpaceSync))
-	})
-	return _c
-}
-
-func (_c *MockUpdater_SendUpdate_Call) Return() *MockUpdater_SendUpdate_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MockUpdater_SendUpdate_Call) RunAndReturn(run func(*domain.SpaceSync)) *MockUpdater_SendUpdate_Call {
 	_c.Call.Return(run)
 	return _c
 }
