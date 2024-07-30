@@ -350,7 +350,7 @@ func (ctx *opCtx) reset() {
 	ctx.groups = ctx.groups[:0]
 	if ctx.outputs == nil {
 		ctx.outputs = map[string][]*pb.EventMessage{
-			defaultOutput: make([]*pb.EventMessage, 0, 10),
+			defaultOutput: nil,
 		}
 	}
 }

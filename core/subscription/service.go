@@ -125,11 +125,11 @@ func (s *service) Init(a *app.App) (err error) {
 	s.ds = newDependencyService(s)
 	s.subscriptions = make(map[string]subscription)
 	s.customOutput = map[string]*mb2.MB[*pb.EventMessage]{}
-	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.kanban = a.MustComponent(kanban.CName).(kanban.Service)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.kanban = app.MustComponent[kanban.Service](a)
 	s.recBatch = mb.New(0)
 	s.collectionService = app.MustComponent[CollectionService](a)
-	s.eventSender = a.MustComponent(event.CName).(event.Sender)
+	s.eventSender = app.MustComponent[event.Sender](a)
 	s.ctxBuf = &opCtx{c: s.cache}
 	s.initDebugger()
 	return
@@ -574,18 +574,18 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	handleTime := time.Since(st)
 
 	// Reset output buffer
-	for subId, msgs := range s.ctxBuf.outputs {
+	for subId := range s.ctxBuf.outputs {
 		if subId == defaultOutput {
-			s.ctxBuf.outputs[subId] = msgs[:0]
+			s.ctxBuf.outputs[subId] = nil
 		} else if _, ok := s.customOutput[subId]; ok {
-			s.ctxBuf.outputs[subId] = msgs[:0]
+			s.ctxBuf.outputs[subId] = nil
 		} else {
 			delete(s.ctxBuf.outputs, subId)
 		}
 	}
 	for subId := range s.customOutput {
 		if _, ok := s.ctxBuf.outputs[subId]; !ok {
-			s.ctxBuf.outputs[subId] = make([]*pb.EventMessage, 0, 10)
+			s.ctxBuf.outputs[subId] = nil
 		}
 	}
 

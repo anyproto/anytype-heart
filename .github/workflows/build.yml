@@ -64,8 +64,9 @@ jobs:
       - name: Install brew and node deps
         run: |
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
+          curl https://raw.githubusercontent.com/Homebrew/homebrew-core/d600b1f7119f6e6a4e97fb83233b313b0468b7e4/Formula/s/swift-protobuf.rb --output swift-protobuf.rb
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install ./protobuf.rb
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies swift-protobuf
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies ./swift-protobuf.rb
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install mingw-w64
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install grpcurl
           npm i -g node-gyp
@@ -117,6 +118,7 @@ jobs:
           which gomobile
       - name: Cross-compile library mac/win
         run: |
+          make download-tantivy-all
           echo $FLAGS
           mkdir -p .release
           echo $SDKROOT
@@ -131,12 +133,13 @@ jobs:
       - name: run perf tests
         run: |
           echo "Running perf tests"
+          make download-tantivy-all
           RUN_COUNT=${{ github.event.inputs.perf-test }}
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             RUN_COUNT=10
           fi          
           cd cmd/perftester/
-          go run main.go $RUN_COUNT
+          CGO_ENABLED="1" go run main.go $RUN_COUNT
         env:
           ANYTYPE_REPORT_MEMORY: 'true'
           TEST_MNEMONIC: ${{ secrets.TEST_MNEMONIC }}
@@ -195,7 +198,7 @@ jobs:
           mv js_${VERSION}_${OSARCH}.zip .release/
           done
         if: github.event_name == 'push'
-      - name: Pack server unix
+      - name: Pack server osx
         run: |
           declare -a arr=("darwin-amd64" "darwin-arm64")
           for i in "${arr[@]}"
@@ -320,10 +323,8 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y protobuf-compiler libprotoc-dev
-          curl -O https://musl.cc/aarch64-linux-musl-cross.tgz
-          curl -O https://musl.cc/x86_64-linux-musl-native.tgz
-          tar xzf aarch64-linux-musl-cross.tgz -C $HOME
-          tar xzf x86_64-linux-musl-native.tgz -C $HOME
+          curl -O https://pub-c60a000d68b544109df4fe5837762101.r2.dev/linux-compiler-musl-x86.zip
+          unzip linux-compiler-musl-x86.zip -d $HOME
           npm i -g node-gyp
       - name: Checkout
         uses: actions/checkout@v3
@@ -355,10 +356,10 @@ jobs:
           make setup-go
       - name: Cross-compile library for linux amd64/arm64
         run: |
+          make download-tantivy-all
           echo $FLAGS
           mkdir -p .release
-          CXX=$HOME/x86_64-linux-musl-native/bin/x86_64-linux-musl-g++ CC=$HOME/x86_64-linux-musl-native/bin/x86_64-linux-musl-gcc gox -cgo -osarch="linux/amd64" -ldflags="$FLAGS -linkmode external -extldflags=-static" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
-          CXX=$HOME/aarch64-linux-musl-cross/bin/aarch64-linux-musl-g++ CC=$HOME/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc gox -cgo -osarch="linux/arm64" -ldflags="$FLAGS -linkmode external -extldflags=-static" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
+          CXX=$HOME/linux-compiler-musl-x86/bin/x86_64-linux-musl-g++ CC=$HOME/linux-compiler-musl-x86/bin/x86_64-linux-musl-gcc gox -cgo -osarch="linux/amd64" -ldflags="$FLAGS -linkmode external -extldflags=-static" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           make protos-server
       - name: Make JS protos
         run: |
@@ -385,7 +386,7 @@ jobs:
           retention-days: 1
       - name: Pack server unix
         run: |
-          declare -a arr=("linux-amd64" "linux-arm64")
+          declare -a arr=("linux-amd64")
           for i in "${arr[@]}"
           do
           OSARCH=${i%.*}

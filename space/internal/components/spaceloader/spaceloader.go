@@ -129,7 +129,7 @@ func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err e
 	case spaceinfo.LocalStatusLoading:
 		// loading in progress, wait channel and retry
 		waitCh := s.loading.loadCh
-		loadErr := s.loading.loadErr
+		loadErr := s.loading.getLoadErr()
 		s.mx.Unlock()
 		if loadErr != nil {
 			return nil, loadErr
@@ -142,7 +142,7 @@ func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err e
 		return s.WaitLoad(ctx)
 	case spaceinfo.LocalStatusMissing:
 		// local missing state means the loader ended with an error
-		err = s.loading.loadErr
+		err = s.loading.getLoadErr()
 	case spaceinfo.LocalStatusOk:
 		sp = s.space
 	default:

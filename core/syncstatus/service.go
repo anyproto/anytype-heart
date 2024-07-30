@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
-	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
@@ -39,8 +38,6 @@ type service struct {
 
 	objectStore  objectstore.ObjectStore
 	objectGetter cache.ObjectGetter
-
-	spaceSyncStatus spacesyncstatus.Updater
 }
 
 func New() Service {
@@ -52,12 +49,10 @@ func New() Service {
 func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.spaceSyncStatus = app.MustComponent[spacesyncstatus.Updater](a)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	s.fileSyncService.OnUploaded(s.onFileUploaded)
 	s.fileSyncService.OnUploadStarted(s.onFileUploadStarted)
 	s.fileSyncService.OnLimited(s.onFileLimited)
-	s.fileSyncService.OnDelete(s.OnFileDelete)
 
 	nodeConfService := app.MustComponent[nodeconf.Service](a)
 	cfg := app.MustComponent[*config.Config](a)
@@ -81,7 +76,7 @@ func (s *service) RegisterSpace(space commonspace.Space, sw objectsyncstatus.Sta
 
 	sw.SetUpdateReceiver(s.updateReceiver)
 	s.objectWatchers[space.Id()] = sw
-	s.updateReceiver.spaceId = space.Id()
+	s.updateReceiver.setSpaceId(space.Id())
 }
 
 func (s *service) UnregisterSpace(space commonspace.Space) {
