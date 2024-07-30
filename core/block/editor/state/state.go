@@ -911,7 +911,7 @@ func (s *State) SetDetails(d *domain.Details) *State {
 }
 
 // SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
-func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value *types.Value) {
+func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value any) {
 	s.AddBundledRelationLinks(key)
 	s.SetDetail(key, value)
 	return

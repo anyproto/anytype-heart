@@ -281,9 +281,9 @@ func (ind *indexer) addBlocks(st *state.State, details *types.Struct, objectId s
 				Mime:           details.GetStringOrDefault(bundle.RelationKeyFileMimeType, ""),
 				TargetObjectId: objectId,
 				Type:           fileType,
-				Size_:          int64(pbtypes.GetFloat64(details, bundle.RelationKeySizeInBytes.String())),
+				Size_:          int64(details.GetFloatOrDefault(bundle.RelationKeySizeInBytes, 0)),
 				State:          model.BlockContentFile_Done,
-				AddedAt:        int64(pbtypes.GetFloat64(details, bundle.RelationKeyFileMimeType.String())),
+				AddedAt:        int64(details.GetFloatOrDefault(bundle.RelationKeyFileMimeType, 0)),
 			},
 		}})
 

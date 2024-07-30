@@ -273,8 +273,8 @@ var WithForcedDescription = func(s *state.State) {
 	RequireHeader(s)
 
 	var align model.BlockAlign
-	if pbtypes.HasField(s.Details(), bundle.RelationKeyLayoutAlign.String()) {
-		alignN := int(pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayoutAlign.String()))
+	if s.Details().Has(bundle.RelationKeyLayoutAlign) {
+		alignN := int(s.Details().GetFloatOrDefault(bundle.RelationKeyLayoutAlign, 0))
 		if alignN >= 0 && alignN <= 2 {
 			align = model.BlockAlign(alignN)
 		}
@@ -363,11 +363,11 @@ var WithNoDescription = StateTransformer(func(s *state.State) {
 var WithNameToFirstBlock = StateTransformer(func(s *state.State) {
 	RequireHeader(s)
 
-	name, ok := s.Details().Fields[bundle.RelationKeyName.String()]
-	if ok && name.GetStringValue() != "" {
+	name, ok := s.Details().GetString(bundle.RelationKeyName)
+	if ok && name != "" {
 		newBlock := simple.New(&model.Block{
 			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{Text: name.GetStringValue()},
+				Text: &model.BlockContentText{Text: name},
 			},
 		})
 		s.Add(newBlock)
@@ -375,7 +375,7 @@ var WithNameToFirstBlock = StateTransformer(func(s *state.State) {
 		if err := s.InsertTo(HeaderLayoutId, model.Block_Bottom, newBlock.Model().Id); err != nil {
 			log.Errorf("WithNameToFirstBlock failed to insert: %s", err)
 		} else {
-			s.RemoveDetail(bundle.RelationKeyName.String())
+			s.RemoveDetail(bundle.RelationKeyName)
 		}
 	}
 })
@@ -384,8 +384,8 @@ var WithFeaturedRelations = StateTransformer(func(s *state.State) {
 	RequireHeader(s)
 
 	var align model.BlockAlign
-	if pbtypes.HasField(s.Details(), bundle.RelationKeyLayoutAlign.String()) {
-		alignN := int(pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayoutAlign.String()))
+	if s.Details().Has(bundle.RelationKeyLayoutAlign) {
+		alignN := int(s.Details().GetFloatOrDefault(bundle.RelationKeyLayoutAlign, 0))
 		if alignN >= 0 && alignN <= 2 {
 			align = model.BlockAlign(alignN)
 		}
@@ -577,8 +577,8 @@ var oldBookmarkRelationBlocks = []string{
 	bundle.RelationKeyCreatedDate.String(),
 }
 
-var oldBookmarkRelations = []string{
-	bundle.RelationKeyUrl.String(),
+var oldBookmarkRelations = []domain.RelationKey{
+	bundle.RelationKeyUrl,
 }
 
 func makeRelationBlock(k string) *model.Block {
@@ -594,7 +594,8 @@ func makeRelationBlock(k string) *model.Block {
 
 var WithBookmarkBlocks = func(s *state.State) {
 	if !s.HasRelation(bundle.RelationKeySource.String()) && s.HasRelation(bundle.RelationKeyUrl.String()) {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySource, s.Details().Fields[bundle.RelationKeyUrl.String()])
+		url := s.Details().GetStringOrDefault(bundle.RelationKeyUrl, "")
+		s.SetDetailAndBundledRelation(bundle.RelationKeySource, url)
 	}
 
 	for _, oldRel := range oldBookmarkRelationBlocks {
