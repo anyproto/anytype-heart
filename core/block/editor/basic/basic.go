@@ -431,7 +431,7 @@ func (bs *basic) AddRelationAndSet(ctx session.Context, req pb.RpcBlockRelationA
 
 func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (err error) {
 	s := bs.NewStateCtx(ctx)
-	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+	fr := s.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
 	frc := make([]string, len(fr))
 	copy(frc, fr)
 	for _, r := range relations {
@@ -451,14 +451,14 @@ func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (
 		}
 	}
 	if len(frc) != len(fr) {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(frc))
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList(frc))
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
 
 func (bs *basic) FeaturedRelationRemove(ctx session.Context, relations ...string) (err error) {
 	s := bs.NewStateCtx(ctx)
-	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+	fr := s.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
 	frc := make([]string, len(fr))
 	copy(frc, fr)
 	for _, r := range relations {
@@ -472,7 +472,7 @@ func (bs *basic) FeaturedRelationRemove(ctx session.Context, relations ...string
 		}
 	}
 	if len(frc) != len(fr) {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(frc))
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList(frc))
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
 }

@@ -132,7 +132,7 @@ func (s *service) createObjectInSpace(
 		return s.createSet(ctx, space, &pb.RpcObjectCreateSetRequest{
 			Details:       details,
 			InternalFlags: req.InternalFlags,
-			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
+			Source:        details.GetStringListOrDefault(bundle.RelationKeySetOf, nil),
 		})
 	case bundle.TypeKeyCollection:
 		var st *state.State

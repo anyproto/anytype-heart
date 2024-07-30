@@ -219,7 +219,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		fx.updateBackLinks(st)
 
 		// then
-		assert.Equal(t, newBackLinks, pbtypes.GetStringList(st.CombinedDetails(), bundle.RelationKeyBacklinks.String()))
+		assert.Equal(t, newBackLinks, st.CombinedDetails().GetStringListOrDefault(bundle.RelationKeyBacklinks, nil))
 	})
 
 	t.Run("back links were found in object store", func(t *testing.T) {
@@ -234,8 +234,8 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 
 		// then
 		details := st.CombinedDetails()
-		assert.NotNil(t, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
-		assert.Equal(t, backLinks, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
+		assert.NotNil(t, details.GetStringListOrDefault(bundle.RelationKeyBacklinks, nil))
+		assert.Equal(t, backLinks, details.GetStringListOrDefault(bundle.RelationKeyBacklinks, nil))
 	})
 
 	t.Run("back links were not found in object store", func(t *testing.T) {
@@ -249,7 +249,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		fx.updateBackLinks(st)
 
 		// then
-		assert.Len(t, pbtypes.GetStringList(st.CombinedDetails(), bundle.RelationKeyBacklinks.String()), 0)
+		assert.Len(t, st.CombinedDetails().GetStringListOrDefault(bundle.RelationKeyBacklinks, nil), 0)
 	})
 
 	t.Run("failure on retrieving back links from the store", func(t *testing.T) {
@@ -263,7 +263,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		fx.updateBackLinks(st)
 
 		// then
-		assert.Len(t, pbtypes.GetStringList(st.CombinedDetails(), bundle.RelationKeyBacklinks.String()), 0)
+		assert.Len(t, st.CombinedDetails().GetStringListOrDefault(bundle.RelationKeyBacklinks, nil), 0)
 	})
 }
 
@@ -389,7 +389,7 @@ func Test_removeInternalFlags(t *testing.T) {
 	t.Run("no flags - no changes", func(t *testing.T) {
 		// given
 		st := state.NewDoc("test", nil).(*state.State)
-		st.SetDetail(bundle.RelationKeyInternalFlags.String(), pbtypes.IntList())
+		st.SetDetail(bundle.RelationKeyInternalFlags, pbtypes.IntList())
 
 		// when
 		removeInternalFlags(st)
@@ -414,7 +414,7 @@ func Test_removeInternalFlags(t *testing.T) {
 		st := state.NewDoc("test", map[string]simple.Block{
 			"title": simple.New(&model.Block{Id: "title"}),
 		}).(*state.State)
-		st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String("some name"))
+		st.SetDetail(bundle.RelationKeyName, pbtypes.String("some name"))
 		flags := defaultInternalFlags()
 		flags.AddToState(st)
 
@@ -486,13 +486,13 @@ func TestInjectDerivedDetails(t *testing.T) {
 			"link":     simple.New(&model.Block{Id: "link", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "some_obj"}}}),
 		}).NewState()
 		st.AddRelationLinks(&model.RelationLink{Key: bundle.RelationKeyAssignee.String(), Format: model.RelationFormat_object})
-		st.SetDetail(bundle.RelationKeyAssignee.String(), pbtypes.String("Kirill"))
+		st.SetDetail(bundle.RelationKeyAssignee, pbtypes.String("Kirill"))
 
 		// when
 		fx.injectDerivedDetails(st, spaceId, smartblock.SmartBlockTypePage)
 
 		// then
-		assert.Len(t, pbtypes.GetStringList(st.LocalDetails(), bundle.RelationKeyLinks.String()), 3)
+		assert.Len(t, st.LocalDetails().GetStringListOrDefault(bundle.RelationKeyLinks, nil), 3)
 	})
 }
 

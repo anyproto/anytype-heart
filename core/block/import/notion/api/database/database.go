@@ -172,7 +172,7 @@ func (ds *Service) getNameAndRelationKeyForTagProperty(databaseProperty property
 }
 
 func (ds *Service) handleNameProperty(databaseProperty property.DatabasePropertyHandler, st *state.State) *common.Snapshot {
-	databaseProperty.SetDetail(bundle.RelationKeyName.String(), st.Details().GetFields())
+	databaseProperty.SetDetail(bundle.RelationKeyName, st.Details().GetFields())
 	relationLinks := &model.RelationLink{
 		Key:    bundle.RelationKeyName.String(),
 		Format: model.RelationFormat_shorttext,

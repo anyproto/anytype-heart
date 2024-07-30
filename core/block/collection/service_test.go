@@ -137,7 +137,7 @@ func TestSetObjectTypeToViews(t *testing.T) {
 					Views: []*model.BlockContentDataviewView{{Id: viewID1}, {Id: viewID2}},
 				}},
 			}))
-			parent.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList([]string{setOf}))
+			parent.SetDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{setOf}))
 			return parent.NewState()
 		}
 

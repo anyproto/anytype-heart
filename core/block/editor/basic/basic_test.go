@@ -164,12 +164,12 @@ func TestBasic_Duplicate(t *testing.T) {
 				AddBlock(simple.New(&model.Block{Id: "f1", Content: &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: "file1_space1"}}})).
 				AddBlock(simple.New(&model.Block{Id: "f2", Content: &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: "file2_space1"}}}))
 			ss := source.NewState()
-			ss.SetDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(tc.spaceIds[0]))
+			ss.SetDetail(bundle.RelationKeySpaceId, pbtypes.String(tc.spaceIds[0]))
 
 			target := smarttest.New("target").
 				AddBlock(simple.New(&model.Block{Id: "target"}))
 			ts := target.NewState()
-			ts.SetDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(tc.spaceIds[1]))
+			ts.SetDetail(bundle.RelationKeySpaceId, pbtypes.String(tc.spaceIds[1]))
 
 			// when
 			newIds, err := NewBasic(source, nil, nil, tc.fos()).Duplicate(ss, ts, "target", model.Block_Inner, []string{"1", "f1"})
@@ -684,14 +684,14 @@ func TestBasic_FeaturedRelationAdd(t *testing.T) {
 	require.NoError(t, b.FeaturedRelationAdd(nil, newRel...))
 
 	res := sb.NewState()
-	assert.Equal(t, newRel, pbtypes.GetStringList(res.Details(), bundle.RelationKeyFeaturedRelations.String()))
+	assert.Equal(t, newRel, res.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil))
 	assert.NotNil(t, res.Pick(template.DescriptionBlockId))
 }
 
 func TestBasic_FeaturedRelationRemove(t *testing.T) {
 	sb := smarttest.New("test")
 	s := sb.NewState()
-	s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyName.String()}))
+	s.SetDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyName.String()}))
 	template.WithDescription(s)
 	require.NoError(t, sb.Apply(s))
 
@@ -699,7 +699,7 @@ func TestBasic_FeaturedRelationRemove(t *testing.T) {
 	require.NoError(t, b.FeaturedRelationRemove(nil, bundle.RelationKeyDescription.String()))
 
 	res := sb.NewState()
-	assert.Equal(t, []string{bundle.RelationKeyName.String()}, pbtypes.GetStringList(res.Details(), bundle.RelationKeyFeaturedRelations.String()))
+	assert.Equal(t, []string{bundle.RelationKeyName.String()}, res.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil))
 	assert.Nil(t, res.PickParentOf(template.DescriptionBlockId))
 }
 

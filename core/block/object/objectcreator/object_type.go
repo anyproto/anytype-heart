@@ -31,7 +31,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	if _, ok := object.Fields[bundle.RelationKeyRecommendedLayout.String()]; !ok {
 		object.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(model.ObjectType_basic))
 	}
-	if len(pbtypes.GetStringList(object, bundle.RelationKeyRecommendedRelations.String())) == 0 {
+	if len(object.GetStringListOrDefault(bundle.RelationKeyRecommendedRelations, nil)) == 0 {
 		err = s.fillRecommendedRelationsFromLayout(ctx, space, object)
 		if err != nil {
 			return "", nil, fmt.Errorf("fill recommended relations: %w", err)

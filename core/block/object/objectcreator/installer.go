@@ -239,7 +239,7 @@ func (s *service) prepareDetailsForInstallingObject(
 		objecttype.SetLastUsedDateForInitialObjectType(sourceId, details)
 	}
 
-	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
+	bundledRelationIds := details.GetStringListOrDefault(bundle.RelationKeyRecommendedRelations, nil)
 	if len(bundledRelationIds) > 0 {
 		recommendedRelationKeys := make([]string, 0, len(bundledRelationIds))
 		for _, id := range bundledRelationIds {
@@ -256,7 +256,7 @@ func (s *service) prepareDetailsForInstallingObject(
 		details.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
 	}
 
-	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyRelationFormatObjectTypes.String())
+	objectTypes := details.GetStringListOrDefault(bundle.RelationKeyRelationFormatObjectTypes, nil)
 
 	if len(objectTypes) > 0 {
 		for i, objectType := range objectTypes {

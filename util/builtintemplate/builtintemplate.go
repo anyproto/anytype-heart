@@ -112,7 +112,7 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(addr.AnytypeMarketplaceWorkspace))
-	st.SetDetail(bundle.RelationKeyOrigin.String(), pbtypes.Int64(int64(model.ObjectOrigin_builtin)))
+	st.SetDetail(bundle.RelationKeyOrigin, pbtypes.Int64(int64(model.ObjectOrigin_builtin)))
 
 	err = b.setObjectTypes(st)
 	if err != nil {

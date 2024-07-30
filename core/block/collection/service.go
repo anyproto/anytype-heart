@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -213,7 +212,7 @@ func (s *Service) setDefaultObjectTypeToViews(st *state.State) {
 		return
 	}
 
-	setOfValue := pbtypes.GetStringList(st.ParentState().Details(), bundle.RelationKeySetOf.String())
+	setOfValue := st.ParentState().Details().GetStringListOrDefault(bundle.RelationKeySetOf, nil)
 	if len(setOfValue) == 0 {
 		return
 	}

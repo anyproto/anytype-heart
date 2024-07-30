@@ -89,7 +89,7 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 }
 
 func migrationSetHidden(st *state.State) {
-	st.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(true))
+	st.SetDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true))
 }
 
 func migrationWithIdentityBlock(st *state.State) {

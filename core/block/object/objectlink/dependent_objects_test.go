@@ -274,9 +274,9 @@ func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
 	}
 	stateWithLinks.AddRelationLinks(relations...)
 	stateWithLinks.SetDetail("relation1", pbtypes.Int64(time.Now().Unix()))
-	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(time.Now().Unix()))
-	stateWithLinks.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String("creator"))
-	stateWithLinks.SetDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String("lastModifiedBy"))
+	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
+	stateWithLinks.SetDetail(bundle.RelationKeyCreator, pbtypes.String("creator"))
+	stateWithLinks.SetDetail(bundle.RelationKeyLastModifiedBy, pbtypes.String("lastModifiedBy"))
 	converter := &fakeConverter{}
 
 	t.Run("details option is turned on: get ids only from details", func(t *testing.T) {

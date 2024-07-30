@@ -186,7 +186,7 @@ func (gr *Builder) appendLinks(
 	edges []*pb.RpcObjectGraphEdge,
 	id string,
 ) []*pb.RpcObjectGraphEdge {
-	links := pbtypes.GetStringList(rec, bundle.RelationKeyLinks.String())
+	links := rec.GetStringListOrDefault(bundle.RelationKeyLinks, nil)
 	for _, link := range links {
 		sbType, err := gr.sbtProvider.Type(spaceID, link)
 		if err != nil {

@@ -54,11 +54,11 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 			switch m.sbType {
 			case smartblock.SmartBlockTypeRelation:
 				if bundle.HasRelation(internalKey) {
-					s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.RelationKey(internalKey).BundledURL()))
+					s.SetDetail(bundle.RelationKeySourceObject, pbtypes.String(domain.RelationKey(internalKey).BundledURL()))
 				}
 			case smartblock.SmartBlockTypeObjectType:
 				if bundle.HasObjectTypeByKey(domain.TypeKey(internalKey)) {
-					s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.TypeKey(internalKey).BundledURL()))
+					s.SetDetail(bundle.RelationKeySourceObject, pbtypes.String(domain.TypeKey(internalKey).BundledURL()))
 				}
 
 			}

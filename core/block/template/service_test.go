@@ -168,7 +168,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 			// then
 			assert.NoError(t, err)
 			assert.Equal(t, BlankTemplateId, st.RootId())
-			assert.Contains(t, pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String()), bundle.RelationKeyTag.String())
+			assert.Contains(t, st.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil), bundle.RelationKeyTag.String())
 			assert.True(t, pbtypes.Exists(st.Details(), bundle.RelationKeyTag.String()))
 		})
 	}

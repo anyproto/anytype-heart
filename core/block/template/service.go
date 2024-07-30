@@ -351,7 +351,7 @@ func buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error
 	if err != nil {
 		return nil, fmt.Errorf("get type id by key: %w", err)
 	}
-	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectTypeId))
+	st.SetDetail(bundle.RelationKeyTargetObjectType, pbtypes.String(targetObjectTypeId))
 	st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
 	for _, rel := range sb.Relations(st) {
 		if rel.DataSource == model.Relation_details && !rel.Hidden {

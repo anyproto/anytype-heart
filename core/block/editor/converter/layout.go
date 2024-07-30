@@ -136,7 +136,7 @@ func (c *layoutConverter) fromNoteToSet(space smartblock.Space, st *state.State)
 }
 
 func (c *layoutConverter) fromAnyToSet(space smartblock.Space, st *state.State) error {
-	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
+	source := st.Details().GetStringListOrDefault(bundle.RelationKeySetOf, nil)
 	if len(source) == 0 && space != nil {
 		defaultTypeID, err := space.GetTypeIdByKey(context.Background(), DefaultSetSource)
 		if err != nil {
@@ -155,11 +155,11 @@ func (c *layoutConverter) fromAnyToSet(space smartblock.Space, st *state.State) 
 }
 
 func addFeaturedRelationSetOf(st *state.State) {
-	fr := pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String())
+	fr := st.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
 	if !slices.Contains(fr, bundle.RelationKeySetOf.String()) {
 		fr = append(fr, bundle.RelationKeySetOf.String())
 	}
-	st.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
+	st.SetDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList(fr))
 }
 
 func (c *layoutConverter) fromSetToCollection(st *state.State) error {
@@ -168,7 +168,7 @@ func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 		return fmt.Errorf("dataview block is not found")
 	}
 	details := st.Details()
-	setSourceIds := pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
+	setSourceIds := details.GetStringListOrDefault(bundle.RelationKeySetOf, nil)
 	spaceId := st.SpaceID()
 
 	c.removeRelationSetOf(st)
@@ -236,7 +236,7 @@ func (c *layoutConverter) fromNoteToAny(st *state.State) error {
 		if textBlock == nil {
 			return nil
 		}
-		st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Model().GetText().GetText()))
+		st.SetDetail(bundle.RelationKeyName, pbtypes.String(textBlock.Model().GetText().GetText()))
 
 		for _, id := range textBlock.Model().ChildrenIds {
 			st.Unlink(id)
@@ -262,9 +262,9 @@ func (c *layoutConverter) fromAnyToNote(st *state.State) error {
 func (c *layoutConverter) removeRelationSetOf(st *state.State) {
 	st.RemoveDetail(bundle.RelationKeySetOf.String())
 
-	fr := pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String())
+	fr := st.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
 	fr = slice.RemoveMut(fr, bundle.RelationKeySetOf.String())
-	st.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
+	st.SetDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList(fr))
 }
 
 func getFirstTextBlock(st *state.State) (simple.Block, error) {

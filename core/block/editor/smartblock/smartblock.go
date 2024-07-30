@@ -1247,7 +1247,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	creator := st.Details().GetStringOrDefault(bundle.RelationKeyCreator, "")
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
-	links := pbtypes.GetStringList(sb.LocalDetails(), bundle.RelationKeyLinks.String())
+	links := sb.LocalDetails().GetStringListOrDefault(bundle.RelationKeyLinks, nil)
 	// so links will have this order
 	// 1. Simple blocks: links, mentions in the text
 	// 2. Relations(format==Object)

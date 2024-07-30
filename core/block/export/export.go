@@ -818,7 +818,7 @@ func (e *export) addObjectType(objectTypeId string, derivedObjects []database.Re
 	if bundle.IsInternalType(key) {
 		return derivedObjects, typesAndTemplates, nil
 	}
-	recommendedRelations := pbtypes.GetStringList(objectTypeDetails.Details, bundle.RelationKeyRecommendedRelations.String())
+	recommendedRelations := objectTypeDetails.Details.GetStringListOrDefault(bundle.RelationKeyRecommendedRelations, nil)
 	for _, relation := range recommendedRelations {
 		if relation == addr.MissingObject {
 			continue
@@ -958,7 +958,7 @@ func (e *export) addTemplates(id string, derivedObjects []database.Record, types
 }
 
 func (e *export) handleSetOfRelation(object *types.Struct, derivedObjects []database.Record) ([]database.Record, error) {
-	setOfList := pbtypes.GetStringList(object, bundle.RelationKeySetOf.String())
+	setOfList := object.GetStringListOrDefault(bundle.RelationKeySetOf, nil)
 	if len(setOfList) > 0 {
 		types, err := e.objectStore.Query(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{

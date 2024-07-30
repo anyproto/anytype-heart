@@ -52,7 +52,7 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	if details.GetInt64OrDefault(bundle.RelationKeyRelationFormat, 0) == int64(model.RelationFormat_status) {
 		object.Fields[bundle.RelationKeyRelationMaxCount.String()] = pbtypes.Int64(1)
 	}
-	// objectTypes := pbtypes.GetStringList(object, bundle.RelationKeyRelationFormatObjectTypes.String())
+	// objectTypes := object.GetStringListOrDefault(bundle.RelationKeyRelationFormatObjectTypes, nil)
 	// todo: check the objectTypes
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 
