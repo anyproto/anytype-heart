@@ -400,3 +400,23 @@ func (c *MethodEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent 
 	properties.Set("description", arena.NewString(c.description))
 	return event
 }
+
+type LongMethodEvent struct {
+	baseInfo
+	methodName string
+	middleTime int64
+	stack      string
+}
+
+func (c *LongMethodEvent) GetBackend() anymetry.MetricsBackend {
+	return inhouse
+}
+
+func (c *LongMethodEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
+	event, properties := setupProperties(arena, "LongMethodEvent")
+
+	properties.Set("methodName", arena.NewString(c.methodName))
+	properties.Set("middleTime", arena.NewNumberInt(int(c.middleTime)))
+	properties.Set("stack", arena.NewString(c.stack))
+	return event
+}

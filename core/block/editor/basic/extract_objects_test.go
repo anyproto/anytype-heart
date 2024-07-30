@@ -59,7 +59,7 @@ func (tts testTemplateService) CreateTemplateStateWithDetails(id string, details
 		template.InitTemplate(st, template.WithEmpty,
 			template.WithDefaultFeaturedRelations,
 			template.WithFeaturedRelations,
-			template.WithRequiredRelations(),
+			template.WithRequiredRelations,
 			template.WithTitle,
 		)
 		return st, nil
@@ -290,7 +290,7 @@ func TestExtractObjects(t *testing.T) {
 				ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyNote.String()).Marshal(),
 			}
 			ctx := session.NewContext()
-			linkIds, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, creator, ts, req)
+			linkIds, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, ts, req)
 			assert.NoError(t, err)
 
 			var gotBlockIds []string
@@ -323,6 +323,153 @@ func TestExtractObjects(t *testing.T) {
 
 		assert.Contains(t, fields, bundle.RelationKeyName.String())
 	})
+	t.Run("add custom link block", func(t *testing.T) {
+		fixture := newFixture(t)
+		defer fixture.cleanUp()
+		creator := testCreator{objects: map[string]*smarttest.SmartTest{}}
+		sb := makeTestObject()
+		creator.Add(sb)
+
+		ts := testTemplateService{templates: map[string]*state.State{}}
+		tmpl := makeTemplateState()
+		ts.AddTemplate("template", tmpl)
+
+		req := pb.RpcBlockListConvertToObjectsRequest{
+			ContextId:           "test",
+			BlockIds:            []string{"1"},
+			ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyNote.String()).Marshal(),
+			Block: &model.Block{Id: "newId", Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					CardStyle: model.BlockContentLink_Card,
+				},
+			}},
+		}
+		ctx := session.NewContext()
+		_, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, ts, req)
+		assert.NoError(t, err)
+		var block *model.Block
+		for _, block = range sb.Blocks() {
+			if block.GetLink() != nil {
+				break
+			}
+		}
+		assert.NotNil(t, block)
+		assert.Equal(t, block.GetLink().GetCardStyle(), model.BlockContentLink_Card)
+	})
+	t.Run("add custom link block for multiple blocks", func(t *testing.T) {
+		fixture := newFixture(t)
+		defer fixture.cleanUp()
+		creator := testCreator{objects: map[string]*smarttest.SmartTest{}}
+		sb := makeTestObject()
+		creator.Add(sb)
+
+		ts := testTemplateService{templates: map[string]*state.State{}}
+		tmpl := makeTemplateState()
+		ts.AddTemplate("template", tmpl)
+
+		req := pb.RpcBlockListConvertToObjectsRequest{
+			ContextId:           "test",
+			BlockIds:            []string{"1", "2"},
+			ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyNote.String()).Marshal(),
+			Block: &model.Block{Id: "newId", Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					CardStyle: model.BlockContentLink_Card,
+				},
+			}},
+		}
+		ctx := session.NewContext()
+		_, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, ts, req)
+		assert.NoError(t, err)
+		var addedBlocks []*model.Block
+		for _, message := range sb.Results.Events {
+			for _, eventMessage := range message {
+				if blockAdd := eventMessage.Msg.GetBlockAdd(); blockAdd != nil {
+					addedBlocks = append(addedBlocks, blockAdd.Blocks...)
+				}
+			}
+		}
+		assert.Len(t, addedBlocks, 2)
+		assert.NotEqual(t, addedBlocks[0].Id, addedBlocks[1].Id)
+		assert.NotEqual(t, addedBlocks[0].GetLink().GetTargetBlockId(), addedBlocks[1].GetLink().GetTargetBlockId())
+	})
+}
+
+func TestBuildBlock(t *testing.T) {
+	const target = "target"
+
+	for _, tc := range []struct {
+		name          string
+		input, output *model.Block
+	}{
+		{
+			name:  "nil",
+			input: nil,
+			output: &model.Block{Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+				TargetBlockId: target,
+				Style:         model.BlockContentLink_Page,
+			}}},
+		},
+		{
+			name: "link",
+			input: &model.Block{Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+				Style:     model.BlockContentLink_Dashboard,
+				CardStyle: model.BlockContentLink_Card,
+			}}},
+			output: &model.Block{Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+				TargetBlockId: target,
+				Style:         model.BlockContentLink_Dashboard,
+				CardStyle:     model.BlockContentLink_Card,
+			}}},
+		},
+		{
+			name: "bookmark",
+			input: &model.Block{Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{
+				Type:  model.LinkPreview_Image,
+				State: model.BlockContentBookmark_Fetching,
+			}}},
+			output: &model.Block{Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{
+				TargetObjectId: target,
+				Type:           model.LinkPreview_Image,
+				State:          model.BlockContentBookmark_Fetching,
+			}}},
+		},
+		{
+			name: "file",
+			input: &model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{
+				Type: model.BlockContentFile_Image,
+			}}},
+			output: &model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{
+				TargetObjectId: target,
+				Type:           model.BlockContentFile_Image,
+			}}},
+		},
+		{
+			name: "dataview",
+			input: &model.Block{Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				IsCollection: true,
+				Source:       []string{"ot-note"},
+			}}},
+			output: &model.Block{Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				TargetObjectId: target,
+				IsCollection:   true,
+				Source:         []string{"ot-note"},
+			}}},
+		},
+		{
+			name: "other",
+			input: &model.Block{Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{
+				IsHeader: true,
+			}}},
+			output: &model.Block{Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+				TargetBlockId: target,
+				Style:         model.BlockContentLink_Page,
+			}}},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.output, buildBlock(tc.input, target))
+		})
+	}
 }
 
 type fixture struct {

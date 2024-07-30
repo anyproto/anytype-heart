@@ -21,12 +21,11 @@ type updateReceiver struct {
 	eventSender event.Sender
 
 	nodeConfService nodeconf.Service
-	sync.Mutex
-	nodeConnected bool
-	lastStatus    map[string]pb.EventStatusThreadSyncStatus
-	objectStore   objectstore.ObjectStore
-	nodeStatus    nodestatus.NodeStatus
-	spaceId       string
+	lock            sync.Mutex
+	nodeConnected   bool
+	objectStore     objectstore.ObjectStore
+	nodeStatus      nodestatus.NodeStatus
+	spaceId         string
 }
 
 func newUpdateReceiver(
@@ -41,7 +40,6 @@ func newUpdateReceiver(
 	}
 	return &updateReceiver{
 		nodeConfService: nodeConfService,
-		lastStatus:      make(map[string]pb.EventStatusThreadSyncStatus),
 		eventSender:     eventSender,
 		objectStore:     objectStore,
 		nodeStatus:      nodeStatus,
@@ -50,21 +48,8 @@ func newUpdateReceiver(
 
 func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status objectsyncstatus.SyncStatus) error {
 	objStatusEvent := r.getObjectSyncStatus(objId, status)
-	if !r.isStatusUpdated(objId, objStatusEvent) {
-		return nil
-	}
 	r.notify(objId, objStatusEvent)
 	return nil
-}
-
-func (r *updateReceiver) isStatusUpdated(objectID string, objStatus pb.EventStatusThreadSyncStatus) bool {
-	r.Lock()
-	defer r.Unlock()
-	if lastObjStatus, ok := r.lastStatus[objectID]; ok && objStatus == lastObjStatus {
-		return false
-	}
-	r.lastStatus[objectID] = objStatus
-	return true
 }
 
 func (r *updateReceiver) getFileStatus(fileId string) (filesyncstatus.Status, error) {
@@ -104,27 +89,22 @@ func (r *updateReceiver) getObjectSyncStatus(objectId string, status objectsyncs
 	return pb.EventStatusThread_Syncing
 }
 
-func (r *updateReceiver) ClearLastObjectStatus(objectID string) {
-	r.Lock()
-	defer r.Unlock()
-	delete(r.lastStatus, objectID)
-}
-
 func (r *updateReceiver) isNodeConnected() bool {
-	r.Lock()
-	defer r.Unlock()
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	return r.nodeConnected
 }
 
-func (r *updateReceiver) UpdateNodeConnection(online bool) {
-	r.Lock()
-	defer r.Unlock()
-	r.nodeConnected = online
+func (r *updateReceiver) setSpaceId(spaceId string) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.spaceId = spaceId
 }
 
 func (r *updateReceiver) UpdateNodeStatus() {
-	r.Lock()
-	defer r.Unlock()
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	r.nodeConnected = r.nodeStatus.GetNodeStatus(r.spaceId) == nodestatus.Online
 }
 

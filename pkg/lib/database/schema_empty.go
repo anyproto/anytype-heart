@@ -18,7 +18,3 @@ func (sch *emptySchema) RequiredRelations() []*model.RelationLink {
 func (sch *emptySchema) ListRelations() []*model.RelationLink {
 	return nil
 }
-
-func (sch *emptySchema) String() string {
-	return ""
-}

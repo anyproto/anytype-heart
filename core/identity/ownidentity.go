@@ -157,7 +157,6 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 
 func (s *ownProfileSubscription) close() {
 	s.componentCtxCancel()
-	close(s.globalNameUpdatedCh)
 }
 
 func (s *ownProfileSubscription) enqueuePush() {

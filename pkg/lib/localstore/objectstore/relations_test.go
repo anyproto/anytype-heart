@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	context2 "context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,7 +78,7 @@ func TestGetRelationById(t *testing.T) {
 		relationID := "derivedFrom(name)"
 		relation.Id = relationID
 		relObject := relation.ToStruct()
-		err := s.UpdateObjectDetails(relation.Id, relObject)
+		err := s.UpdateObjectDetails(context2.Background(), relation.Id, relObject)
 		require.NoError(t, err)
 
 		got, err := s.GetRelationByID(relationID)

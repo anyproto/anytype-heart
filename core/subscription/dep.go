@@ -109,7 +109,6 @@ var ignoredKeys = map[string]struct{}{
 	bundle.RelationKeyId.String():                {},
 	bundle.RelationKeySpaceId.String():           {}, // relation format for spaceId has mistakenly set to Object instead of shorttext
 	bundle.RelationKeyFeaturedRelations.String(): {}, // relation format for featuredRelations has mistakenly set to Object instead of shorttext
-	bundle.RelationKeyLinks.String():             {}, // skip links because it's aggregated from other relations and blocks
 }
 
 func (ds *dependencyService) isRelationObject(key string) bool {

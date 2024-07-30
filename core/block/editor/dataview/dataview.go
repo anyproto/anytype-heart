@@ -2,8 +2,10 @@ package dataview
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/globalsign/mgo/bson"
 	"github.com/google/uuid"
 
@@ -21,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -428,7 +429,7 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 func (d *sdataview) injectActiveViews(info smartblock.ApplyInfo) (err error) {
 	s := info.State
 	views, err := d.objectStore.GetActiveViews(d.Id())
-	if badgerhelper.IsNotFound(err) {
+	if errors.Is(err, anystore.ErrDocNotFound) {
 		return nil
 	}
 	if err != nil {

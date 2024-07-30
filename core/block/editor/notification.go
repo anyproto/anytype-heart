@@ -5,11 +5,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 type NotificationObject struct {
 	smartblock.SmartBlock
 }
+
+// required relations for notifications beside the bundle.RequiredInternalRelations
+var notificationsRequiredRelations = []domain.RelationKey{}
 
 func NewNotificationObject(sb smartblock.SmartBlock) *NotificationObject {
 	return &NotificationObject{
@@ -30,6 +34,7 @@ func (n *NotificationObject) CreationStateMigration(ctx *smartblock.InitContext)
 }
 
 func (n *NotificationObject) Init(ctx *smartblock.InitContext) (err error) {
+	ctx.RequiredInternalRelationKeys = notificationsRequiredRelations
 	if err = n.SmartBlock.Init(ctx); err != nil {
 		return
 	}

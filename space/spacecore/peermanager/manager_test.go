@@ -17,7 +17,6 @@ import (
 	"go.uber.org/mock/gomock"
 	"storj.io/drpc"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager/mock_peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
@@ -92,17 +91,88 @@ func TestClientPeerManager_GetResponsiblePeers_Deadline(t *testing.T) {
 func Test_fetchResponsiblePeers(t *testing.T) {
 	spaceId := "spaceId"
 	t.Run("node offline", func(t *testing.T) {
+		f := newFixtureManager(t, spaceId)
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("failed"))
+		f.updater.EXPECT().Refresh(spaceId)
+		f.cm.fetchResponsiblePeers()
+		require.Equal(t, f.cm.nodeStatus.GetNodeStatus("spaceId"), nodestatus.ConnectionError)
+	})
+	t.Run("no local peers", func(t *testing.T) {
+		f := newFixtureManager(t, spaceId)
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.updater.EXPECT().Refresh(spaceId)
+		f.cm.fetchResponsiblePeers()
+		require.Equal(t, f.cm.nodeStatus.GetNodeStatus("spaceId"), nodestatus.Online)
+	})
+	t.Run("local peers connected", func(t *testing.T) {
+		// given
+		f := newFixtureManager(t, spaceId)
+		f.store.UpdateLocalPeer("peerId", []string{spaceId})
+
+		// when
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(newTestPeer("id1"), nil)
+		f.updater.EXPECT().Refresh(spaceId)
+		f.cm.fetchResponsiblePeers()
+
+	})
+	t.Run("local peer not connected", func(t *testing.T) {
+		// given
+		f := newFixtureManager(t, spaceId)
+		f.store.UpdateLocalPeer("peerId", []string{spaceId})
+
+		// when
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(nil, fmt.Errorf("error"))
+		f.updater.EXPECT().Refresh(spaceId)
+		f.cm.fetchResponsiblePeers()
+	})
+}
+
+func Test_getStreamResponsiblePeers(t *testing.T) {
+	spaceId := "spaceId"
+	t.Run("no local peers", func(t *testing.T) {
 		// given
 		f := newFixtureManager(t, spaceId)
 
 		// when
-		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("failed"))
-		status := domain.MakeSyncStatus(f.cm.spaceId, domain.Offline, domain.Null, domain.Objects)
-		f.updater.EXPECT().SendUpdate(status)
-		f.cm.fetchResponsiblePeers()
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Get(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		peers, err := f.cm.getStreamResponsiblePeers(context.Background())
 
 		// then
-		f.updater.AssertCalled(t, "SendUpdate", status)
+		assert.Nil(t, err)
+		assert.Len(t, peers, 1)
+	})
+	t.Run("local peers connected", func(t *testing.T) {
+		// given
+		f := newFixtureManager(t, spaceId)
+		f.store.UpdateLocalPeer("peerId", []string{spaceId})
+
+		// when
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(newTestPeer("id1"), nil)
+		f.pool.EXPECT().Get(f.cm.ctx, "id").Return(newTestPeer("id"), nil)
+		peers, err := f.cm.getStreamResponsiblePeers(context.Background())
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, peers, 2)
+	})
+	t.Run("local peer not connected", func(t *testing.T) {
+		// given
+		f := newFixtureManager(t, spaceId)
+		f.store.UpdateLocalPeer("peerId", []string{spaceId})
+
+		// when
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(nil, fmt.Errorf("error"))
+		f.pool.EXPECT().Get(f.cm.ctx, "id").Return(newTestPeer("id"), nil)
+		peers, err := f.cm.getStreamResponsiblePeers(context.Background())
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, peers, 1)
 	})
 }
 
@@ -183,11 +253,12 @@ func (t *testPeer) CloseChan() <-chan struct{} {
 }
 
 type fixture struct {
-	cm      *clientPeerManager
-	pool    *mock_pool.MockPool
-	store   peerstore.PeerStore
-	conf    *mock_nodeconf.MockService
-	updater *mock_peermanager.MockUpdater
+	cm               *clientPeerManager
+	pool             *mock_pool.MockPool
+	store            peerstore.PeerStore
+	conf             *mock_nodeconf.MockService
+	updater          *mock_peermanager.MockUpdater
+	peerToPeerStatus *mock_peermanager.MockPeerToPeerStatus
 }
 
 func newFixtureManager(t *testing.T, spaceId string) *fixture {
@@ -202,20 +273,24 @@ func newFixtureManager(t *testing.T, spaceId string) *fixture {
 	assert.Nil(t, err)
 	store := peerstore.New()
 	updater := mock_peermanager.NewMockUpdater(t)
+	peerToPeerStatus := mock_peermanager.NewMockPeerToPeerStatus(t)
 	cm := &clientPeerManager{
-		p:                provider,
-		spaceId:          spaceId,
-		peerStore:        store,
-		watchingPeers:    map[string]struct{}{},
-		ctx:              context.Background(),
-		nodeStatus:       ns,
-		spaceSyncService: updater,
+		responsibleNodeIds: []string{"nodeId"},
+		p:                  provider,
+		spaceId:            spaceId,
+		peerStore:          store,
+		watchingPeers:      map[string]struct{}{},
+		ctx:                context.Background(),
+		nodeStatus:         ns,
+		spaceSyncService:   updater,
+		peerToPeerStatus:   peerToPeerStatus,
 	}
 	return &fixture{
-		cm:      cm,
-		pool:    pool,
-		store:   store,
-		conf:    conf,
-		updater: updater,
+		cm:               cm,
+		pool:             pool,
+		store:            store,
+		conf:             conf,
+		updater:          updater,
+		peerToPeerStatus: peerToPeerStatus,
 	}
 }

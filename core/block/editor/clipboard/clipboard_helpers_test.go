@@ -13,6 +13,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
@@ -216,7 +218,9 @@ func checkBlockMarksDebug(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*m
 func newFixture(t *testing.T, sb smartblock.SmartBlock) Clipboard {
 	file := file.NewMockFile(t)
 	file.EXPECT().UploadState(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	return NewClipboard(sb, file, nil, nil, nil, nil)
+	fos := mock_fileobject.NewMockService(t)
+	fos.EXPECT().GetFileIdFromObject(mock.Anything).Return(domain.FullFileId{}, fmt.Errorf("no fileId")).Maybe()
+	return NewClipboard(sb, file, nil, nil, nil, fos)
 }
 
 func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) ([]string, bool) {

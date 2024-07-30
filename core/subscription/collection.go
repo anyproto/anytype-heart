@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/anyproto/any-store/query"
 	"github.com/cheggaaa/mb"
 	"github.com/gogo/protobuf/types"
 
@@ -124,6 +125,21 @@ func (c *collectionObserver) FilterObject(g *types.Struct) bool {
 	return ok
 }
 
+// AnystoreSort called only once when subscription is created
+func (c *collectionObserver) AnystoreFilter() query.Filter {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	path := []string{bundle.RelationKeyId.String()}
+	filter := make(query.Or, 0, len(c.idsSet))
+	for id := range c.idsSet {
+		filter = append(filter, query.Key{
+			Path:   path,
+			Filter: query.NewComp(query.CompOpEq, id),
+		})
+	}
+	return filter
+}
+
 func (c *collectionObserver) String() string {
 	return "collectionObserver"
 }
@@ -151,6 +167,10 @@ func (c *collectionSub) getActiveRecords() (res []*types.Struct) {
 
 func (c *collectionSub) hasDep() bool {
 	return c.sortedSub.hasDep()
+}
+
+func (c *collectionSub) getDep() subscription {
+	return c.sortedSub.depSub
 }
 
 func (c *collectionSub) close() {

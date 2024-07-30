@@ -62,7 +62,7 @@ func (bs *basic) ExtractBlocksToObjects(
 			return nil, fmt.Errorf("create child object: %w", err)
 		}
 
-		linkID, err := bs.changeToBlockWithLink(newState, rootBlock, objectID)
+		linkID, err := bs.changeToBlockWithLink(newState, rootBlock, objectID, req.Block)
 		if err != nil {
 			return nil, fmt.Errorf("create link to object %s: %w", objectID, err)
 		}
@@ -117,19 +117,43 @@ func insertBlocksToState(
 	objState.Set(simple.New(rootB))
 }
 
-func (bs *basic) changeToBlockWithLink(newState *state.State, blockToChange simple.Block, objectID string) (string, error) {
+func (bs *basic) changeToBlockWithLink(newState *state.State, blockToReplace simple.Block, objectID string, linkBlock *model.Block) (string, error) {
 	return bs.CreateBlock(newState, pb.RpcBlockCreateRequest{
-		TargetId: blockToChange.Model().Id,
-		Block: &model.Block{
-			Content: &model.BlockContentOfLink{
-				Link: &model.BlockContentLink{
-					TargetBlockId: objectID,
-					Style:         model.BlockContentLink_Page,
-				},
-			},
-		},
+		TargetId: blockToReplace.Model().Id,
+		Block:    buildBlock(linkBlock, objectID),
 		Position: model.Block_Replace,
 	})
+}
+
+func buildBlock(b *model.Block, targetID string) (result *model.Block) {
+	fallback := &model.Block{
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: targetID,
+				Style:         model.BlockContentLink_Page,
+			},
+		},
+	}
+
+	if b == nil {
+		return fallback
+	}
+	result = pbtypes.CopyBlock(b)
+
+	switch v := result.Content.(type) {
+	case *model.BlockContentOfLink:
+		v.Link.TargetBlockId = targetID
+	case *model.BlockContentOfBookmark:
+		v.Bookmark.TargetObjectId = targetID
+	case *model.BlockContentOfFile:
+		v.File.TargetObjectId = targetID
+	case *model.BlockContentOfDataview:
+		v.Dataview.TargetObjectId = targetID
+	default:
+		result = fallback
+	}
+
+	return
 }
 
 func removeBlocks(state *state.State, descendants []simple.Block) {

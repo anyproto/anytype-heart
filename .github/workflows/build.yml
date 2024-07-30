@@ -10,7 +10,7 @@ on:
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
-        default: 'self-hosted'
+        default: 'ARM64'
       perf-test:
         description: 'Run perf test times'
         required: true
@@ -32,11 +32,11 @@ permissions:
 name: Build
 jobs:
   build:
-    runs-on: ${{ github.event_name == 'push' && 'macos-11' || (github.event.inputs.run-on-runner || 'self-hosted') }}
+    runs-on: ${{ github.event_name == 'push' && 'macos-12' || (github.event.inputs.run-on-runner || 'ARM64') }}
     steps:
       - name: validate agent
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "self-hosted" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "ARM64" ]]; then
             echo "Invalid runner"
             exit 1
           fi
@@ -44,7 +44,7 @@ jobs:
         uses: actions/setup-go@v1
         with:
           go-version: 1.22
-        if: github.event.inputs.run-on-runner != 'self-hosted' && github.event_name != 'schedule'
+        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Setup GO
         run: |
           go version
@@ -60,16 +60,17 @@ jobs:
           git fetch
           git checkout db6184738b77fbd5089e5fa1112177f391c91b24
           go install github.com/mitchellh/gox
-        if: github.event.inputs.run-on-runner != 'self-hosted' && github.event_name != 'schedule'
+        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Install brew and node deps
         run: |
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
+          curl https://raw.githubusercontent.com/Homebrew/homebrew-core/d600b1f7119f6e6a4e97fb83233b313b0468b7e4/Formula/s/swift-protobuf.rb --output swift-protobuf.rb
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install ./protobuf.rb
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies swift-protobuf
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies ./swift-protobuf.rb
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install mingw-w64
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install grpcurl
           npm i -g node-gyp
-        if: github.event.inputs.run-on-runner != 'self-hosted' && github.event_name != 'schedule'
+        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -79,6 +80,9 @@ jobs:
           key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-${{ matrix.go-version }}-
+      - name: Install old MacOS SDK (for backward compatibility of CGO)
+        run: source .github/install_macos_sdk.sh 10.15
+        if: runner.os == 'macOS' && startsWith(runner.os_version, '12')
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
@@ -97,7 +101,6 @@ jobs:
           fi
           echo VERSION=${VERSION} >> $GITHUB_ENV
           echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
-          echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           echo $(pwd)/deps >> $GITHUB_PATH
           echo "${GOBIN}" >> $GITHUB_PATH
@@ -115,9 +118,14 @@ jobs:
           which gomobile
       - name: Cross-compile library mac/win
         run: |
+          make download-tantivy-all
           echo $FLAGS
           mkdir -p .release
-          gox -cgo -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
+          echo $SDKROOT
+          gox -cgo -ldflags="$FLAGS" -osarch="darwin/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
+          export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+          echo $SDKROOT
+          gox -cgo -ldflags="$FLAGS" -osarch="darwin/arm64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           make protos-server
           CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           ls -lha .
@@ -125,12 +133,13 @@ jobs:
       - name: run perf tests
         run: |
           echo "Running perf tests"
+          make download-tantivy-all
           RUN_COUNT=${{ github.event.inputs.perf-test }}
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             RUN_COUNT=10
           fi          
           cd cmd/perftester/
-          go run main.go $RUN_COUNT
+          CGO_ENABLED="1" go run main.go $RUN_COUNT
         env:
           ANYTYPE_REPORT_MEMORY: 'true'
           TEST_MNEMONIC: ${{ secrets.TEST_MNEMONIC }}
@@ -189,7 +198,7 @@ jobs:
           mv js_${VERSION}_${OSARCH}.zip .release/
           done
         if: github.event_name == 'push'
-      - name: Pack server unix
+      - name: Pack server osx
         run: |
           declare -a arr=("darwin-amd64" "darwin-arm64")
           for i in "${arr[@]}"
@@ -314,10 +323,8 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y protobuf-compiler libprotoc-dev
-          curl -O https://musl.cc/aarch64-linux-musl-cross.tgz
-          curl -O https://musl.cc/x86_64-linux-musl-native.tgz
-          tar xzf aarch64-linux-musl-cross.tgz -C $HOME
-          tar xzf x86_64-linux-musl-native.tgz -C $HOME
+          curl -O https://pub-c60a000d68b544109df4fe5837762101.r2.dev/linux-compiler-musl-x86.zip
+          unzip linux-compiler-musl-x86.zip -d $HOME
           npm i -g node-gyp
       - name: Checkout
         uses: actions/checkout@v3
@@ -349,10 +356,10 @@ jobs:
           make setup-go
       - name: Cross-compile library for linux amd64/arm64
         run: |
+          make download-tantivy-all
           echo $FLAGS
           mkdir -p .release
-          CXX=$HOME/x86_64-linux-musl-native/bin/x86_64-linux-musl-g++ CC=$HOME/x86_64-linux-musl-native/bin/x86_64-linux-musl-gcc gox -cgo -osarch="linux/amd64" -ldflags="$FLAGS -linkmode external -extldflags=-static" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
-          CXX=$HOME/aarch64-linux-musl-cross/bin/aarch64-linux-musl-g++ CC=$HOME/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc gox -cgo -osarch="linux/arm64" -ldflags="$FLAGS -linkmode external -extldflags=-static" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
+          CXX=$HOME/linux-compiler-musl-x86/bin/x86_64-linux-musl-g++ CC=$HOME/linux-compiler-musl-x86/bin/x86_64-linux-musl-gcc gox -cgo -osarch="linux/amd64" -ldflags="$FLAGS -linkmode external -extldflags=-static" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           make protos-server
       - name: Make JS protos
         run: |
@@ -379,7 +386,7 @@ jobs:
           retention-days: 1
       - name: Pack server unix
         run: |
-          declare -a arr=("linux-amd64" "linux-arm64")
+          declare -a arr=("linux-amd64")
           for i in "${arr[@]}"
           do
           OSARCH=${i%.*}
