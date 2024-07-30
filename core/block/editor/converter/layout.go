@@ -202,7 +202,7 @@ func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) 
 	}
 	ids := make([]string, 0, len(records))
 	for _, record := range records {
-		ids = append(ids, pbtypes.GetString(record.Details, bundle.RelationKeyId.String()))
+		ids = append(ids, record.Details.GetStringOrDefault(bundle.RelationKeyId, ""))
 	}
 	return ids, nil
 }

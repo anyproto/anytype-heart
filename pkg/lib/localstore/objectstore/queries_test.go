@@ -733,8 +733,8 @@ func TestQuery(t *testing.T) {
 		sort.Slice(want, func(i, j int) bool {
 			a := makeDetails(want[i])
 			b := makeDetails(want[j])
-			idA := pbtypes.GetString(a, bundle.RelationKeyId.String())
-			idB := pbtypes.GetString(b, bundle.RelationKeyId.String())
+			idA := a.GetStringOrDefault(bundle.RelationKeyId, "")
+			idB := b.GetStringOrDefault(bundle.RelationKeyId, "")
 			// Desc order
 			return idA > idB
 		})
@@ -767,8 +767,8 @@ func TestQuery(t *testing.T) {
 		sort.Slice(want, func(i, j int) bool {
 			a := makeDetails(want[i])
 			b := makeDetails(want[j])
-			idA := pbtypes.GetString(a, bundle.RelationKeyId.String())
-			idB := pbtypes.GetString(b, bundle.RelationKeyId.String())
+			idA := a.GetStringOrDefault(bundle.RelationKeyId, "")
+			idB := b.GetStringOrDefault(bundle.RelationKeyId, "")
 			return idA < idB
 		})
 		assertRecordsEqual(t, want[:15], recs)
@@ -803,8 +803,8 @@ func TestQuery(t *testing.T) {
 		sort.Slice(want, func(i, j int) bool {
 			a := makeDetails(want[i])
 			b := makeDetails(want[j])
-			idA := pbtypes.GetString(a, bundle.RelationKeyId.String())
-			idB := pbtypes.GetString(b, bundle.RelationKeyId.String())
+			idA := a.GetStringOrDefault(bundle.RelationKeyId, "")
+			idB := b.GetStringOrDefault(bundle.RelationKeyId, "")
 			return idA < idB
 		})
 		assertRecordsEqual(t, want[offset:offset+limit], recs)
@@ -1074,7 +1074,7 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 		for {
 			select {
 			case rec := <-recordsCh:
-				name := pbtypes.GetString(rec, bundle.RelationKeyName.String())
+				name := rec.GetStringOrDefault(bundle.RelationKeyName, "")
 				num, err := strconv.Atoi(name)
 				require.NoError(t, err)
 				require.Equal(t, prev+1, num)

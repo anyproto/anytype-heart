@@ -46,7 +46,7 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 		fileKeys []*pb.ChangeFileKeys
 	)
 	if workspaceSnapshot != nil { // we use space icon for import collection
-		icon = pbtypes.GetString(workspaceSnapshot.Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
+		icon = workspaceSnapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyIconImage, "")
 		fileKeys = lo.Filter(workspaceSnapshot.Snapshot.FileKeys, func(item *pb.ChangeFileKeys, index int) bool { return item.Hash == icon })
 	}
 	collectionName := params.GetCollectionTitle() // collection name should be the name of experience

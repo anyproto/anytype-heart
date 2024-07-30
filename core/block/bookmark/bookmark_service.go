@@ -93,7 +93,7 @@ func (s *service) Name() (name string) {
 var log = logging.Logger("anytype-mw-bookmark")
 
 func (s *service) CreateObjectAndFetch(ctx context.Context, spaceId string, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
-	source := pbtypes.GetString(req.Details, bundle.RelationKeySource.String())
+	source := req.Details.GetStringOrDefault(bundle.RelationKeySource, "")
 	var res ContentFuture
 	if source != "" {
 		u, err := uri.NormalizeURI(source)
@@ -122,7 +122,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 	if err != nil {
 		return "", nil, fmt.Errorf("get bookmark type id: %w", err)
 	}
-	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
+	url := details.GetStringOrDefault(bundle.RelationKeySource, "")
 
 	records, err := s.store.Query(database.Query{
 		Sorts: []*model.BlockContentDataviewSort{

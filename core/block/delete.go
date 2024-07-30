@@ -72,7 +72,7 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 		st := b.NewState()
 		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(true))
 		if sbType == coresb.SmartBlockTypeRelation {
-			relationKey = pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
+			relationKey = st.Details().GetStringOrDefault(bundle.RelationKeyRelationKey, "")
 		}
 		return b.Apply(st)
 	})

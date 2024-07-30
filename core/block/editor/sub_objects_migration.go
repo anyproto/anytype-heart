@@ -56,7 +56,7 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 			if pbtypes.GetBool(info.Details, migratedKey) {
 				return
 			}
-			uniqueKeyRaw := pbtypes.GetString(info.Details, bundle.RelationKeyUniqueKey.String())
+			uniqueKeyRaw := info.Details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
 			id, err := m.migrateSubObject(context.Background(), uniqueKeyRaw, info.Details, info.Type)
 			if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 				log.With("objectID", id).Errorf("failed to migrate subobject: %v", err)

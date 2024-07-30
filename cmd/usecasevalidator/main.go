@@ -221,18 +221,18 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			return nil, fmt.Errorf("failed to extract snapshot from file %s: %w", f.Name, err)
 		}
 
-		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
-		name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
+		id := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		name := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 
 		info.objects[id] = objectInfo{
-			Type:   pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyType.String()),
+			Type:   snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyType, ""),
 			Name:   name,
 			SbType: smartblock.SmartBlockType(snapshot.SbType),
 		}
 
 		switch snapshot.SbType {
 		case model.SmartBlockType_STRelation:
-			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+			uk := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
 			key := strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)
 			info.relations[id] = domain.RelationKey(key)
 			format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
@@ -240,7 +240,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
 			}
 		case model.SmartBlockType_STType:
-			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+			uk := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
 			key := strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)
 			info.types[id] = domain.TypeKey(key)
 			if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
@@ -262,9 +262,9 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 				}
 			}
 		case model.SmartBlockType_Template:
-			info.templates[id] = pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyTargetObjectType.String())
+			info.templates[id] = snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyTargetObjectType, "")
 		case model.SmartBlockType_STRelationOption:
-			info.options[id] = domain.RelationKey(pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
+			info.options[id] = domain.RelationKey(snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
 		case model.SmartBlockType_FileObject:
 			info.files = append(info.files, id)
 		}
@@ -418,7 +418,7 @@ func extractSnapshotAndType(data []byte, name string) (s *pb.SnapshotWithType, i
 
 func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	isValid := true
-	id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	id := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 	for _, v := range validators {
 		if e := v(snapshot, info); e != nil {
 			if errors.Is(e, errSkipObject) {
@@ -430,14 +430,14 @@ func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	}
 	if !isValid {
 		return fmt.Errorf("object '%s' (name: '%s') is invalid: %w",
-			id[len(id)-4:], pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String()), err)
+			id[len(id)-4:], snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, ""), err)
 	}
 	return nil
 }
 
 func insertAnalyticsData(s *pb.ChangeSnapshot, info *useCaseInfo) {
 	root := s.Data.Blocks[0]
-	id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
+	id := s.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 	f := root.GetFields().GetFields()
 
 	if f == nil {

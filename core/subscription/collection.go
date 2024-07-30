@@ -235,7 +235,7 @@ func fetchEntries(cache *cache, objectStore objectstore.ObjectStore, ids []strin
 	}
 	for _, r := range recs {
 		e := &entry{
-			id:   pbtypes.GetString(r.Details, bundle.RelationKeyId.String()),
+			id:   r.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
 			data: r.Details,
 		}
 		res = append(res, e)

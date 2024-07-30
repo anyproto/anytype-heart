@@ -344,7 +344,7 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, creator, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()))
+		assert.Equal(t, creator, s.LocalDetails().GetStringOrDefault(bundle.RelationKeyCreator, ""))
 		assert.Equal(t, creationDate, pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()))
 	})
 
@@ -363,7 +363,7 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, creator, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()))
+		assert.Equal(t, creator, s.LocalDetails().GetStringOrDefault(bundle.RelationKeyCreator, ""))
 		assert.NotNil(t, s.GetRelationLinks().Get(bundle.RelationKeyCreator.String()))
 		assert.Equal(t, creationDate, pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()))
 		assert.NotNil(t, s.GetRelationLinks().Get(bundle.RelationKeyCreatedDate.String()))
@@ -463,7 +463,7 @@ func TestInjectLocalDetails(t *testing.T) {
 
 		require.NoError(t, err)
 
-		assert.Equal(t, fx.source.creator, pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyCreator.String()))
+		assert.Equal(t, fx.source.creator, st.LocalDetails().GetStringOrDefault(bundle.RelationKeyCreator, ""))
 		assert.Equal(t, fx.source.createdDate, pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeyCreatedDate.String()))
 	})
 

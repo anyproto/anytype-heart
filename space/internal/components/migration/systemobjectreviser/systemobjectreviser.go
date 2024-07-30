@@ -87,14 +87,14 @@ func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string)
 
 	details := make(map[string]*types.Struct, len(records))
 	for _, record := range records {
-		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		id := record.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 		details[id] = record.Details
 	}
 	return details, nil
 }
 
 func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
-	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
+	source := localObject.GetStringOrDefault(bundle.RelationKeySourceObject, "")
 	marketObject, found := marketObjects[source]
 	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {
 		return false, nil
@@ -102,7 +102,7 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 	details := buildDiffDetails(marketObject, localObject)
 	if len(details) != 0 {
 		log.Debug("updating system object", zap.String("source", source), zap.String("space", space.Id()))
-		if err := space.DoCtx(ctx, pbtypes.GetString(localObject, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
+		if err := space.DoCtx(ctx, localObject.GetStringOrDefault(bundle.RelationKeyId, ""), func(sb smartblock.SmartBlock) error {
 			if ds, ok := sb.(detailsSettable); ok {
 				return ds.SetDetails(nil, details, false)
 			}
@@ -115,7 +115,7 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 }
 
 func isSystemObject(details *types.Struct) bool {
-	rawKey := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
+	rawKey := details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
 	uk, err := domain.UnmarshalUniqueKey(rawKey)
 	if err != nil {
 		return false

@@ -320,7 +320,7 @@ func newSubDebugger() *subDebugger {
 func (d *subDebugger) addEvent(msg *pb.EventMessage) {
 	var name string
 	if v := msg.GetObjectDetailsSet(); v != nil {
-		name = pbtypes.GetString(v.Details, bundle.RelationKeyName.String())
+		name = v.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	}
 
 	ent := newDebugEntry(msg)

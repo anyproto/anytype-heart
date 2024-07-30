@@ -71,7 +71,7 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	for _, objectsSnapshot := range subObjectsSnapshots {
 		sbType := pt.getSmartBlockTypeAndID(objectsSnapshot)
 		resultSnapshots = append(resultSnapshots, &common.Snapshot{
-			Id:       pbtypes.GetString(objectsSnapshot.Details, bundle.RelationKeyId.String()),
+			Id:       objectsSnapshot.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
 			SbType:   sbType,
 			Snapshot: &pb.ChangeSnapshot{Data: objectsSnapshot},
 		})
@@ -180,7 +180,7 @@ func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 		}
 	}
 	if key == "" {
-		key = pbtypes.GetString(snapshot.GetDetails(), bundle.RelationKeyRelationKey.String())
+		key = snapshot.GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, "")
 	}
 	subObjectsSnapshots = append(subObjectsSnapshots, pt.provideRelationOptionsSnapshots(key, propObject, relation)...)
 	if err := pt.setDetails(propObject, key, details); err != nil {
@@ -393,7 +393,7 @@ func peopleItemOptions(property *property.PeopleItem, rel string, relation *prop
 		}
 		details, optSnapshot := provideRelationOptionSnapshot(po.Name, "", rel)
 		peopleOptions = append(peopleOptions, optSnapshot)
-		optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
+		optionID = details.GetStringOrDefault(bundle.RelationKeyId, "")
 		po.ID = optionID
 	}
 	relation.WriteToRelationsOptionsMap(rel, peopleOptions)
@@ -412,7 +412,7 @@ func multiselectItemOptions(property *property.MultiSelectItem, rel string, rela
 			continue
 		}
 		details, optSnapshot := provideRelationOptionSnapshot(so.Name, so.Color, rel)
-		optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
+		optionID = details.GetStringOrDefault(bundle.RelationKeyId, "")
 		so.ID = optionID
 		multiSelectOptions = append(multiSelectOptions, optSnapshot)
 	}
@@ -430,7 +430,7 @@ func selectItemOptions(property *property.SelectItem, rel string, relation *prop
 		return nil
 	}
 	details, optSnapshot := provideRelationOptionSnapshot(property.Select.Name, property.Select.Color, rel)
-	optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
+	optionID = details.GetStringOrDefault(bundle.RelationKeyId, "")
 	property.Select.ID = optionID
 	relation.WriteToRelationsOptionsMap(rel, []*model.SmartBlockSnapshotBase{optSnapshot})
 	return optSnapshot
@@ -446,7 +446,7 @@ func statusItemOptions(property *property.StatusItem, rel string, relation *prop
 		return nil
 	}
 	details, optSnapshot := provideRelationOptionSnapshot(property.Status.Name, property.Status.Color, rel)
-	optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
+	optionID = details.GetStringOrDefault(bundle.RelationKeyId, "")
 	property.Status.ID = optionID
 	relation.WriteToRelationsOptionsMap(rel, []*model.SmartBlockSnapshotBase{optSnapshot})
 	return optSnapshot
@@ -455,8 +455,8 @@ func statusItemOptions(property *property.StatusItem, rel string, relation *prop
 func isOptionAlreadyExist(optName, rel string, relation *property.PropertiesStore) (bool, string) {
 	options := relation.ReadRelationsOptionsMap(rel)
 	for _, option := range options {
-		name := pbtypes.GetString(option.Details, bundle.RelationKeyName.String())
-		id := pbtypes.GetString(option.Details, bundle.RelationKeyId.String())
+		name := option.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+		id := option.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 		if optName == name {
 			return true, id
 		}

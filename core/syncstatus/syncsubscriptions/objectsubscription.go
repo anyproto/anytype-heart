@@ -44,7 +44,7 @@ func NewIdSubscription(service subscription.Service, request subscription.Subscr
 		service: service,
 		ch:      make(chan struct{}),
 		extract: func(t *types.Struct) (string, struct{}) {
-			return pbtypes.GetString(t, bundle.RelationKeyId.String()), struct{}{}
+			return t.GetStringOrDefault(bundle.RelationKeyId, ""), struct{}{}
 		},
 		update: func(s string, value *types.Value, s2 struct{}) struct{} {
 			return struct{}{}

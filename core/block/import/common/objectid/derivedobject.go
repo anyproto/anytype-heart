@@ -40,7 +40,7 @@ func (d *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn 
 	if id != "" {
 		return id, payload, nil
 	}
-	rawUniqueKey := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+	rawUniqueKey := sn.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
 	uniqueKey, err := domain.UnmarshalUniqueKey(rawUniqueKey)
 	if err != nil {
 		uniqueKey, err = domain.NewUniqueKey(sn.SbType, sn.Snapshot.Data.Key)

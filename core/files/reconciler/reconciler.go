@@ -134,7 +134,7 @@ func (r *reconciler) FileObjectHook(id domain.FullID) func(applyInfo smartblock.
 			return fmt.Errorf("need to rebind: %w", err)
 		}
 		if ok {
-			fileId := domain.FileId(pbtypes.GetString(applyInfo.State.Details(), bundle.RelationKeyFileId.String()))
+			fileId := domain.FileId(applyInfo.State.Details().GetStringOrDefault(bundle.RelationKeyFileId, ""))
 			return r.rebindQueue.Add(&queueItem{ObjectId: id.ObjectID, FileId: domain.FullFileId{FileId: fileId, SpaceId: id.SpaceID}})
 		}
 		return nil
@@ -151,7 +151,7 @@ func (r *reconciler) needToRebind(details *types.Struct) (bool, error) {
 	if backupStatus != filesyncstatus.Synced {
 		return false, nil
 	}
-	fileId := domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String()))
+	fileId := domain.FileId(details.GetStringOrDefault(bundle.RelationKeyFileId, ""))
 	return r.deletedFiles.Has(fileId.String())
 }
 
@@ -197,7 +197,7 @@ func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
 
 	haveIds := map[domain.FileId]struct{}{}
 	for _, rec := range records {
-		fileId := domain.FileId(pbtypes.GetString(rec.Details, bundle.RelationKeyFileId.String()))
+		fileId := domain.FileId(rec.Details.GetStringOrDefault(bundle.RelationKeyFileId, ""))
 		if fileId.Valid() {
 			haveIds[fileId] = struct{}{}
 		}

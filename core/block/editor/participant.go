@@ -69,7 +69,7 @@ func (p *participant) ModifyProfileDetails(profileDetails *types.Struct) (err er
 		bundle.RelationKeyDescription.String(),
 		bundle.RelationKeyIconImage.String(),
 		bundle.RelationKeyGlobalName.String())
-	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyId.String()))
+	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(profileDetails.GetStringOrDefault(bundle.RelationKeyId, ""))
 	return p.modifyDetails(details)
 }
 

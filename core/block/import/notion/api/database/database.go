@@ -121,7 +121,7 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 
 func (ds *Service) fillImportContext(d Database, req *api.NotionImportContext, id string, databaseSnapshot *common.Snapshot) {
 	req.NotionDatabaseIdsToAnytype[d.ID] = id
-	req.DatabaseNameToID[d.ID] = pbtypes.GetString(databaseSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
+	req.DatabaseNameToID[d.ID] = databaseSnapshot.Snapshot.GetData().GetDetails().GetStringOrDefault(bundle.RelationKeyName, "")
 	if d.Parent.DatabaseID != "" {
 		req.PageTree.ParentPageToChildIDs[d.Parent.DatabaseID] = append(req.PageTree.ParentPageToChildIDs[d.Parent.DatabaseID], d.ID)
 	}
@@ -196,7 +196,7 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 		rel, sn = ds.getRelationSnapshot(relationKey, databaseProperty, name)
 		relations.WriteToRelationsMap(databaseProperty.GetID(), rel)
 	}
-	relKey := pbtypes.GetString(rel.GetDetails(), bundle.RelationKeyRelationKey.String())
+	relKey := rel.GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, "")
 	databaseProperty.SetDetail(relKey, st.Details().GetFields())
 	relationLinks := &model.RelationLink{
 		Key:    relKey,
@@ -225,7 +225,7 @@ func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty prop
 		Key:         relationKey,
 	}
 	snapshot := &common.Snapshot{
-		Id: pbtypes.GetString(relationDetails, bundle.RelationKeyId.String()),
+		Id: relationDetails.GetStringOrDefault(bundle.RelationKeyId, ""),
 		Snapshot: &pb.ChangeSnapshot{
 			Data: relationSnapshot,
 		},

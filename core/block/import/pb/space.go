@@ -111,7 +111,7 @@ func (s *SpaceImport) filterObjects(objectTypesToImport widget.ImportWidgetFlags
 			rootObjects = append(rootObjects, snapshot.Id)
 			continue
 		}
-		if spaceDashboardID := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeySpaceDashboardId.String()); spaceDashboardID != "" {
+		if spaceDashboardID := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeySpaceDashboardId, ""); spaceDashboardID != "" {
 			rootObjects = append(rootObjects, spaceDashboardID)
 			continue
 		}

@@ -1,12 +1,22 @@
 package domain
 
-import "golang.org/x/exp/slices"
+import (
+	"errors"
+	"fmt"
+
+	"golang.org/x/exp/slices"
+)
 
 func (d *GenericMap[K]) Len() int {
 	return len(d.data)
 }
 
 func (d *GenericMap[K]) Set(key K, value any) {
+	// TODO TEMP
+	v := SomeValue(value)
+	if err := v.Validate(); err != nil {
+		panic(err)
+	}
 	d.data[key] = value
 }
 
@@ -73,6 +83,7 @@ func (d *GenericMap[K]) GetStringList(key K) ([]string, bool) {
 	return d.Get(key).StringList()
 }
 
+// TODO StringList in pbtypes return []string{singleValue} for string values
 func (d *GenericMap[K]) GetStringListOrDefault(key K, def []string) []string {
 	return d.Get(key).StringListOrDefault(def)
 }
@@ -103,6 +114,16 @@ func (d *GenericMap[K]) CopyWithoutKeys(keys []K) *GenericMap[K] {
 	return &GenericMap[K]{data: newData}
 }
 
+func (d *GenericMap[K]) CopyOnlyWithKeys(keys []K) *GenericMap[K] {
+	newData := make(map[K]any, len(d.data))
+	for k, v := range d.data {
+		if slices.Contains(keys, k) {
+			newData[k] = v
+		}
+	}
+	return &GenericMap[K]{data: newData}
+}
+
 func (d *GenericMap[K]) Equal(other *GenericMap[K]) bool {
 	if d.Len() != other.Len() {
 		return false
@@ -119,6 +140,15 @@ func (d *GenericMap[K]) Equal(other *GenericMap[K]) bool {
 	return true
 }
 
+func (d *GenericMap[K]) Merge(other *GenericMap[K]) *GenericMap[K] {
+	res := d.ShallowCopy()
+	other.Iterate(func(k K, v any) bool {
+		res.Set(k, v)
+		return true
+	})
+	return res
+}
+
 type Value struct {
 	ok    bool
 	value any
@@ -126,6 +156,20 @@ type Value struct {
 
 func SomeValue(value any) Value {
 	return Value{ok: true, value: value}
+}
+
+var ErrInvalidValue = fmt.Errorf("invalid value")
+
+func (v Value) Validate() error {
+	if !v.ok {
+		return errors.Join(ErrInvalidValue, fmt.Errorf("value is none"))
+	}
+	switch v.value.(type) {
+	case bool, string, float64, []string, []float64:
+		return nil
+	default:
+		return errors.Join(ErrInvalidValue, fmt.Errorf("value is of invalid type %T", v.value))
+	}
 }
 
 func (v Value) Ok() bool {

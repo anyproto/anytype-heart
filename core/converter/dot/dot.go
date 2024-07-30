@@ -94,19 +94,19 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	}
 	d.nodes[st.RootId()] = n
 	n.SetStyle(cgraph.FilledNodeStyle)
-	n.SetLabel(pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
-	image := pbtypes.GetString(st.Details(), bundle.RelationKeyIconImage.String())
+	n.SetLabel(st.Details().GetStringOrDefault(bundle.RelationKeyName, ""))
+	image := st.Details().GetStringOrDefault(bundle.RelationKeyIconImage, "")
 	if image != "" {
 		n.Set("iconImage", image)
 		// n.SetImage(image+".jpg")
 	}
 
-	iconEmoji := pbtypes.GetString(st.Details(), bundle.RelationKeyIconEmoji.String())
+	iconEmoji := st.Details().GetStringOrDefault(bundle.RelationKeyIconEmoji, "")
 	if iconEmoji != "" {
 		n.Set("iconEmoji", iconEmoji)
 	}
 
-	desc := pbtypes.GetString(st.Details(), bundle.RelationKeyDescription.String())
+	desc := st.Details().GetStringOrDefault(bundle.RelationKeyDescription, "")
 	if desc != "" {
 		n.Set("description", desc)
 	}

@@ -189,7 +189,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 
 	for _, snapshot := range sn.Snapshots {
 		if snapshot.SbType == sb.SmartBlockTypeRelation {
-			name := pbtypes.GetString(snapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
+			name := snapshot.Snapshot.GetData().GetDetails().GetStringOrDefault(bundle.RelationKeyName, "")
 			assert.True(t, name == "name" || name == "price")
 		}
 	}
@@ -199,7 +199,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 		// only objects created from rows
 		if snapshot.SbType != sb.SmartBlockTypeRelation &&
 			lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) &&
-			pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String()) == "transpose Transpose" {
+			snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "") == "transpose Transpose" {
 			collection = snapshot
 		}
 	}
@@ -229,7 +229,7 @@ func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
 
 	for _, snapshot := range sn.Snapshots {
 		if snapshot.SbType == sb.SmartBlockTypeRelation {
-			name := pbtypes.GetString(snapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
+			name := snapshot.Snapshot.GetData().GetDetails().GetStringOrDefault(bundle.RelationKeyName, "")
 			assert.True(t, name == "Field 1" || name == "Field 2")
 		}
 	}
@@ -330,10 +330,10 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {
 
 	assert.Len(t, subObjects, 2)
 
-	name := pbtypes.GetString(subObjects[0].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	name := subObjects[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	assert.True(t, name == "Field 1")
 
-	name = pbtypes.GetString(subObjects[1].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	name = subObjects[1].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	assert.True(t, name == "Field 2")
 }
 
@@ -433,22 +433,22 @@ func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOff(t *testing.
 	}
 	assert.Len(t, subObjects, 6)
 
-	name := pbtypes.GetString(subObjects[0].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	name := subObjects[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	assert.True(t, name == "Field 1")
 
-	name = pbtypes.GetString(subObjects[1].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	name = subObjects[1].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	assert.True(t, name == "Field 2")
 
-	name = pbtypes.GetString(subObjects[2].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	name = subObjects[2].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	assert.True(t, name == "Field 3")
 
-	name = pbtypes.GetString(subObjects[3].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	name = subObjects[3].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	assert.True(t, name == "Field 4")
 
-	name = pbtypes.GetString(subObjects[4].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	name = subObjects[4].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	assert.True(t, name == "Field 5")
 
-	name = pbtypes.GetString(subObjects[5].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	name = subObjects[5].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	assert.True(t, name == "Field 6")
 }
 
@@ -585,19 +585,19 @@ func Test_findUniqueRelationWithSpaces(t *testing.T) {
 	}
 	assert.Len(t, subObjects, 5)
 
-	name := pbtypes.GetString(subObjects[0].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	name := subObjects[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	assert.True(t, name == "Text")
 
-	name = pbtypes.GetString(subObjects[1].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	name = subObjects[1].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	assert.True(t, name == "Text 1")
 
-	name = pbtypes.GetString(subObjects[2].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	name = subObjects[2].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	assert.True(t, name == "Text 3")
 
-	name = pbtypes.GetString(subObjects[3].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	name = subObjects[3].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	assert.True(t, name == "Text 2")
 
-	name = pbtypes.GetString(subObjects[4].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	name = subObjects[4].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
 	assert.True(t, name == "Text 4")
 }
 
@@ -700,7 +700,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 			}
 		}
 		assert.Len(t, objects, 1)
-		assert.Equal(t, pbtypes.GetString(objects[0].Snapshot.Data.Details, bundle.RelationKeyName.String()), "differentcolumnnumber")
+		assert.Equal(t, objects[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, ""), "differentcolumnnumber")
 		numberOfCSVColumns := lo.CountBy(objects[0].Snapshot.Data.Blocks, func(item *model.Block) bool { return item.GetTableColumn() != nil })
 		assert.Equal(t, numberOfCSVColumns, 3)
 		numberOfCSVRows := lo.CountBy(objects[0].Snapshot.Data.Blocks, func(item *model.Block) bool { return item.GetTableRow() != nil })

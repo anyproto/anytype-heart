@@ -41,7 +41,7 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 		Version: 1,
 		Proc: func(s *state.State) {
 			if t.Type() == coresb.SmartBlockTypeTemplate && (len(t.ObjectTypeKeys()) != 2) {
-				targetObjectTypeId := pbtypes.GetString(s.Details(), bundle.RelationKeyTargetObjectType.String())
+				targetObjectTypeId := s.Details().GetStringOrDefault(bundle.RelationKeyTargetObjectType, "")
 				if targetObjectTypeId != "" {
 					uniqueKey, err := t.objectStore.GetUniqueKeyById(targetObjectTypeId)
 					if err == nil && uniqueKey.SmartblockType() != coresb.SmartBlockTypeObjectType {

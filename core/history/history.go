@@ -92,7 +92,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	details := make([]*model.ObjectViewDetailsSet, 0, len(meta))
 	for _, m := range meta {
 		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      pbtypes.GetString(m.Details, bundle.RelationKeyId.String()),
+			Id:      m.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
 			Details: m.Details,
 		})
 	}
@@ -217,7 +217,7 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	details := make([]*model.ObjectViewDetailsSet, 0, len(meta))
 	for _, m := range meta {
 		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      pbtypes.GetString(m.Details, bundle.RelationKeyId.String()),
+			Id:      m.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
 			Details: m.Details,
 		})
 	}

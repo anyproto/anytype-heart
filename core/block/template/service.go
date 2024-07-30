@@ -241,7 +241,7 @@ func (s *service) TemplateCloneInSpace(space clientspace.Space, id string) (temp
 		st.SetLocalDetails(nil)
 		st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(id))
 
-		targetObjectTypeBundledId := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
+		targetObjectTypeBundledId := st.Details().GetStringOrDefault(bundle.RelationKeyTargetObjectType, "")
 		targetObjectTypeKey, err := bundle.TypeKeyFromUrl(targetObjectTypeBundledId)
 		if err != nil {
 			return fmt.Errorf("get target object type key: %w", err)
@@ -321,7 +321,7 @@ func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *s
 }
 
 func (s *service) updateTypeKey(st *state.State) (err error) {
-	objectTypeId := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
+	objectTypeId := st.Details().GetStringOrDefault(bundle.RelationKeyTargetObjectType, "")
 	if objectTypeId != "" {
 		var uniqueKey domain.UniqueKey
 		uniqueKey, err = s.store.GetUniqueKeyById(objectTypeId)

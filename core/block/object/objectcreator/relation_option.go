@@ -25,7 +25,7 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 		return "", nil, fmt.Errorf("use name instead of relationOptionText")
 	} else if pbtypes.GetString(details, "name") == "" {
 		return "", nil, fmt.Errorf("name is empty")
-	} else if pbtypes.GetString(details, bundle.RelationKeyRelationKey.String()) == "" {
+	} else if details.GetStringOrDefault(bundle.RelationKeyRelationKey, "") == "" {
 		return "", nil, fmt.Errorf("invalid relation Key: unknown enum")
 	}
 
@@ -44,7 +44,7 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 }
 
 func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct) (domain.UniqueKey, error) {
-	uniqueKey := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
+	uniqueKey := details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
 	if uniqueKey == "" {
 		return domain.NewUniqueKey(sbType, bson.NewObjectId().Hex())
 	}

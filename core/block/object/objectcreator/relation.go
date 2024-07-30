@@ -30,12 +30,12 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 		return "", nil, fmt.Errorf("invalid relation format: unknown enum")
 	}
 
-	if pbtypes.GetString(details, bundle.RelationKeyName.String()) == "" {
+	if details.GetStringOrDefault(bundle.RelationKeyName, "") == "" {
 		return "", nil, fmt.Errorf("missing relation name")
 	}
 
 	object = pbtypes.CopyStruct(details, false)
-	key := pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
+	key := details.GetStringOrDefault(bundle.RelationKeyRelationKey, "")
 	if key == "" {
 		key = bson.NewObjectId().Hex()
 	} else if bundle.HasRelation(key) {

@@ -635,7 +635,7 @@ func (s *Service) RemoveListOption(optionIds []string, checkInObjects bool) erro
 		if checkInObjects {
 			err := cache.Do(s, id, func(b smartblock.SmartBlock) error {
 				st := b.NewState()
-				relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
+				relKey := st.Details().GetStringOrDefault(bundle.RelationKeyRelationKey, "")
 
 				records, err := s.objectStore.Query(database.Query{
 					Filters: []*model.BlockContentDataviewFilter{

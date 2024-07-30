@@ -326,7 +326,7 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
 
 	if snapshot.SbType == model.SmartBlockType_SubObject {
 		details := snapshot.Snapshot.Data.Details
-		originalId := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
+		originalId := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 		var sourceObjectId string
 		// migrate old sub objects into real objects
 		if snapshot.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyObjectType.URL() {
@@ -347,7 +347,7 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
 			return "", fmt.Errorf("unknown sub object type %s", snapshot.Snapshot.Data.ObjectTypes[0])
 		}
 		if sourceObjectId != "" {
-			if pbtypes.GetString(details, bundle.RelationKeySourceObject.String()) == "" {
+			if details.GetStringOrDefault(bundle.RelationKeySourceObject, "") == "" {
 				details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceObjectId)
 			}
 		}
@@ -381,7 +381,7 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
 }
 
 func (p *Pb) normalizeFilePath(snapshot *pb.SnapshotWithType, pbFiles source.Source, path string) error {
-	filePath := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeySource.String())
+	filePath := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeySource, "")
 	fileName, _, err := common.ProvideFileName(filePath, pbFiles, path, p.tempDirProvider)
 	if err != nil {
 		return err
@@ -394,7 +394,7 @@ func (p *Pb) normalizeFilePath(snapshot *pb.SnapshotWithType, pbFiles source.Sou
 }
 
 func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) (string, error) {
-	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	objectID := mo.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 	if objectID == profileID && isMigration {
 		return p.accountService.ProfileObjectId()
 	}
@@ -402,7 +402,7 @@ func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id s
 }
 
 func (p *Pb) setProfileIconOption(mo *pb.SnapshotWithType, profileID string) {
-	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	objectID := mo.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 	if objectID != profileID {
 		return
 	}
@@ -438,7 +438,7 @@ func (p *Pb) injectImportDetails(sn *pb.SnapshotWithType) {
 	if sn.Snapshot.Data.Details == nil || sn.Snapshot.Data.Details.Fields == nil {
 		sn.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	if id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String()); id != "" {
+	if id := sn.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, ""); id != "" {
 		sn.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
 	}
 	p.setSourceFilePath(sn)
@@ -449,8 +449,8 @@ func (p *Pb) injectImportDetails(sn *pb.SnapshotWithType) {
 }
 
 func (p *Pb) setSourceFilePath(sn *pb.SnapshotWithType) {
-	spaceId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySpaceId.String())
-	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	spaceId := sn.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeySpaceId, "")
+	id := sn.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 	sourceFilePath := filepath.Join(spaceId, id)
 	sn.Snapshot.Data.Details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(sourceFilePath)
 }
@@ -465,7 +465,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot, allErrors *commo
 	oldToNewID := make(map[string]string, len(snapshots))
 	fileIDs := make([]string, 0)
 	for _, snapshot := range snapshots {
-		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
+		id := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 		oldToNewID[id] = snapshot.Id
 		fileIDs = append(fileIDs, lo.Map(snapshot.Snapshot.GetFileKeys(), func(item *pb.ChangeFileKeys, index int) string {
 			return item.Hash

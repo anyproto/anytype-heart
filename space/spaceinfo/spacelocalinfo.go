@@ -22,7 +22,7 @@ func NewSpaceLocalInfo(spaceId string) SpaceLocalInfo {
 
 func NewSpaceLocalInfoFromState(s state.Doc) SpaceLocalInfo {
 	details := s.LocalDetails()
-	spaceInfo := NewSpaceLocalInfo(pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()))
+	spaceInfo := NewSpaceLocalInfo(details.GetStringOrDefault(bundle.RelationKeyTargetSpaceId, ""))
 	spaceInfo.SetReadLimit(uint32(pbtypes.GetInt64(details, bundle.RelationKeyReadersLimit.String()))).
 		SetWriteLimit(uint32(pbtypes.GetInt64(details, bundle.RelationKeyWritersLimit.String()))).
 		SetLocalStatus(LocalStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceLocalStatus.String()))).

@@ -254,10 +254,10 @@ func (s *ownProfileSubscription) handleGlobalNameUpdate(globalName string) {
 func (s *ownProfileSubscription) prepareIdentityProfile() *model.IdentityProfile {
 	return &model.IdentityProfile{
 		Identity:    s.myIdentity,
-		Name:        pbtypes.GetString(s.details, bundle.RelationKeyName.String()),
-		Description: pbtypes.GetString(s.details, bundle.RelationKeyDescription.String()),
-		IconCid:     pbtypes.GetString(s.details, bundle.RelationKeyIconImage.String()),
-		GlobalName:  pbtypes.GetString(s.details, bundle.RelationKeyGlobalName.String()),
+		Name:        s.details.GetStringOrDefault(bundle.RelationKeyName, ""),
+		Description: s.details.GetStringOrDefault(bundle.RelationKeyDescription, ""),
+		IconCid:     s.details.GetStringOrDefault(bundle.RelationKeyIconImage, ""),
+		GlobalName:  s.details.GetStringOrDefault(bundle.RelationKeyGlobalName, ""),
 	}
 }
 
@@ -300,7 +300,7 @@ func (s *ownProfileSubscription) prepareOwnIdentityProfile() (*model.IdentityPro
 	s.detailsLock.Lock()
 	defer s.detailsLock.Unlock()
 
-	iconImageObjectId := pbtypes.GetString(s.details, bundle.RelationKeyIconImage.String())
+	iconImageObjectId := s.details.GetStringOrDefault(bundle.RelationKeyIconImage, "")
 	iconCid, iconEncryptionKeys, err := s.prepareIconImageInfo(iconImageObjectId)
 	if err != nil {
 		return nil, fmt.Errorf("prepare icon image info: %w", err)
@@ -309,11 +309,11 @@ func (s *ownProfileSubscription) prepareOwnIdentityProfile() (*model.IdentityPro
 	identity := s.accountService.AccountID()
 	return &model.IdentityProfile{
 		Identity:           identity,
-		Name:               pbtypes.GetString(s.details, bundle.RelationKeyName.String()),
-		Description:        pbtypes.GetString(s.details, bundle.RelationKeyDescription.String()),
+		Name:               s.details.GetStringOrDefault(bundle.RelationKeyName, ""),
+		Description:        s.details.GetStringOrDefault(bundle.RelationKeyDescription, ""),
 		IconCid:            iconCid,
 		IconEncryptionKeys: iconEncryptionKeys,
-		GlobalName:         pbtypes.GetString(s.details, bundle.RelationKeyGlobalName.String()),
+		GlobalName:         s.details.GetStringOrDefault(bundle.RelationKeyGlobalName, ""),
 	}, nil
 }
 

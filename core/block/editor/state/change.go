@@ -302,7 +302,7 @@ func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 }
 
 func (s *State) changeRelationRemove(rem *pb.ChangeRelationRemove) error {
-	s.RemoveRelation(rem.RelationKey...)
+	s.RemoveRelation(slice.StringsInto[domain.RelationKey](rem.RelationKey)...)
 	return nil
 }
 func migrateObjectTypeIDToKey(old string) (new string) {

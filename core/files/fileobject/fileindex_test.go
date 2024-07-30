@@ -72,7 +72,7 @@ func TestIndexer_buildDetails(t *testing.T) {
 				details, gotTypeKey, err := fx.buildDetails(ctx, id)
 				require.NoError(t, err)
 				assert.Equal(t, typeKey, gotTypeKey)
-				assert.Equal(t, "name", pbtypes.GetString(details, bundle.RelationKeyName.String()))
+				assert.Equal(t, "name", details.GetStringOrDefault(bundle.RelationKeyName, ""))
 				assert.Equal(t, pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)), details.Fields[bundle.RelationKeyFileIndexingStatus.String()])
 			})
 		}
@@ -103,7 +103,7 @@ func TestIndexer_buildDetails(t *testing.T) {
 		details, gotTypeKey, err := fx.buildDetails(ctx, id)
 		require.NoError(t, err)
 		assert.Equal(t, bundle.TypeKeyImage, gotTypeKey)
-		assert.Equal(t, "name", pbtypes.GetString(details, bundle.RelationKeyName.String()))
+		assert.Equal(t, "name", details.GetStringOrDefault(bundle.RelationKeyName, ""))
 		assert.Equal(t, pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)), details.Fields[bundle.RelationKeyFileIndexingStatus.String()])
 	})
 	t.Run("with image fell back to file", func(t *testing.T) {
@@ -136,7 +136,7 @@ func TestIndexer_buildDetails(t *testing.T) {
 				details, gotTypeKey, err := fx.buildDetails(ctx, id)
 				require.NoError(t, err)
 				assert.Equal(t, bundle.TypeKeyImage, gotTypeKey)
-				assert.Equal(t, "name", pbtypes.GetString(details, bundle.RelationKeyName.String()))
+				assert.Equal(t, "name", details.GetStringOrDefault(bundle.RelationKeyName, ""))
 				assert.Equal(t, pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)), details.Fields[bundle.RelationKeyFileIndexingStatus.String()])
 			})
 		}

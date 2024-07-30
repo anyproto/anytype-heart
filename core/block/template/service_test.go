@@ -232,7 +232,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		tmpl.Doc.(*state.State).SetOriginalCreatedTimestamp(sometime)
 		err := tmpl.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyAddedDate.String(), Value: pbtypes.Int64(sometime)}}, false)
 		require.NoError(t, err)
-		
+
 		s := service{picker: &testPicker{tmpl}}
 
 		// when
@@ -362,7 +362,7 @@ func TestBuildTemplateStateFromObject(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotContains(t, pbtypes.GetIntList(st.Details(), bundle.RelationKeyInternalFlags.String()), model.InternalFlag_editorDeleteEmpty)
 		assert.Equal(t, []domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyNote}, st.ObjectTypeKeys())
-		assert.Equal(t, bundle.TypeKeyNote.String(), pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
+		assert.Equal(t, bundle.TypeKeyNote.String(), st.Details().GetStringOrDefault(bundle.RelationKeyTargetObjectType, ""))
 		assert.Nil(t, st.LocalDetails())
 	})
 }

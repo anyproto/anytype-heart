@@ -248,7 +248,7 @@ func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
 		return fmt.Errorf("query deleted objects: %w", err)
 	}
 	for _, rec := range recs {
-		objectId := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
+		objectId := rec.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 		status, err := space.Storage().TreeDeletedStatus(objectId)
 		if err != nil {
 			log.With("spaceId", space.Id(), "objectId", objectId).Warnf("failed to get tree deleted status: %s", err)

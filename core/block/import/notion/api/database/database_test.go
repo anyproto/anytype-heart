@@ -400,7 +400,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[p.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[p.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
 	})
 
 	t.Run("Database has Select property with Tags name", func(t *testing.T) {
@@ -424,7 +424,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
 	})
 
 	t.Run("Page has MultiSelect property with Tags name", func(t *testing.T) {
@@ -447,7 +447,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, properties.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(properties.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+		assert.Equal(t, bundle.RelationKeyTag.String(), properties.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
 	})
 
 	t.Run("Page has MultiSelect property with Tag name", func(t *testing.T) {
@@ -470,7 +470,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
 	})
 
 	t.Run("Page has MultiSelect property with Tag name and Select property with Tags name - MultiSelect is mapped to Tag relation", func(t *testing.T) {
@@ -499,8 +499,8 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
-		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
-		assert.NotEqual(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
+		assert.NotEqual(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
 	})
 
 	t.Run("Page has MultiSelect property with Tag name and Select property with tags name - MultiSelect is mapped to Tag relation", func(t *testing.T) {
@@ -529,8 +529,8 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
-		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
-		assert.NotEqual(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
+		assert.NotEqual(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
 	})
 
 	t.Run("Database has icon emoji - details have relation iconEmoji", func(t *testing.T) {
@@ -546,7 +546,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, snapshot, 1)
-		icon := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyIconEmoji.String())
+		icon := snapshot[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyIconEmoji, "")
 		assert.Equal(t, emoji, icon)
 	})
 	t.Run("Database has custom external icon - details have relation iconImage", func(t *testing.T) {
@@ -564,7 +564,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, snapshot, 1)
-		icon := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
+		icon := snapshot[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyIconImage, "")
 		assert.Equal(t, "url", icon)
 	})
 	t.Run("Database has custom file icon - details have relation iconImage", func(t *testing.T) {
@@ -582,7 +582,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, snapshot, 1)
-		icon := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
+		icon := snapshot[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyIconImage, "")
 		assert.Equal(t, "url", icon)
 	})
 	t.Run("Database doesn't have icon - details don't have neither iconImage nor iconEmoji", func(t *testing.T) {
@@ -595,7 +595,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, snapshot, 1)
-		icon := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
+		icon := snapshot[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyIconImage, "")
 		assert.Equal(t, "", icon)
 	})
 	t.Run("Database has property without name - return relation with name Untitled", func(t *testing.T) {
@@ -618,6 +618,6 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, property.UntitledProperty, pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyName.String()))
+		assert.Equal(t, property.UntitledProperty, req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyName, ""))
 	})
 }

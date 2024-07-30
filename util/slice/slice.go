@@ -237,3 +237,11 @@ func FilterCID(cids []string) []string {
 		return err == nil
 	})
 }
+
+func StringsInto[T ~string](from []string) []T {
+	to := make([]T, len(from))
+	for i, v := range from {
+		to[i] = T(v)
+	}
+	return to
+}

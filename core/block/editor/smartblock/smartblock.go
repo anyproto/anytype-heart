@@ -306,7 +306,7 @@ func (sb *smartBlock) Type() smartblock.SmartBlockType {
 }
 
 func (sb *smartBlock) ObjectTypeID() string {
-	return pbtypes.GetString(sb.Doc.Details(), bundle.RelationKeyType.String())
+	return sb.Doc.Details().GetStringOrDefault(bundle.RelationKeyType, "")
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
@@ -936,7 +936,7 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 		s.RemoveLocalDetail(bundle.RelationKeyProfileOwnerIdentity.String())
 	}
 
-	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) != "" && pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) != 0 {
+	if s.LocalDetails().GetStringOrDefault(bundle.RelationKeyCreator, "") != "" && pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) != 0 {
 		return nil
 	}
 
@@ -1244,7 +1244,7 @@ func (sb *smartBlock) GetDocInfo() DocInfo {
 }
 
 func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
-	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
+	creator := st.Details().GetStringOrDefault(bundle.RelationKeyCreator, "")
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
 	links := pbtypes.GetStringList(sb.LocalDetails(), bundle.RelationKeyLinks.String())
@@ -1263,7 +1263,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	// todo: heads in source and the state may be inconsistent?
 	heads := sb.source.Heads()
 	if len(heads) == 0 {
-		lastChangeId := pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyLastChangeId.String())
+		lastChangeId := st.LocalDetails().GetStringOrDefault(bundle.RelationKeyLastChangeId, "")
 		if lastChangeId != "" {
 			heads = []string{lastChangeId}
 		}
@@ -1404,7 +1404,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	if spaceID != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceID))
 	} else {
-		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided, but in details: %s", id, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String()))
+		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided, but in details: %s", id, s.LocalDetails().GetStringOrDefault(bundle.RelationKeySpaceId, ""))
 	}
 	if ot := s.ObjectTypeKey(); ot != "" {
 		typeID, err := sb.space.GetTypeIdByKey(context.Background(), ot)

@@ -46,7 +46,7 @@ type FileMigrator interface {
 
 type DetailsService interface {
 	Details() *domain.Details
-	SetDetail(key string, value *domain.Details)
+	SetDetail(key domain.RelationKey, value any)
 }
 
 type DetailsHandler interface {

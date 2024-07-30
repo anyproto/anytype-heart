@@ -116,14 +116,14 @@ func (s *SpaceView) initTemplate(st *state.State) {
 
 func (s *SpaceView) GetExistingInviteInfo() (fileCid string, fileKey string) {
 	details := s.CombinedDetails()
-	fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
-	fileKey = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileKey.String())
+	fileCid = details.GetStringOrDefault(bundle.RelationKeySpaceInviteFileCid, "")
+	fileKey = details.GetStringOrDefault(bundle.RelationKeySpaceInviteFileKey, "")
 	return
 }
 
 func (s *SpaceView) RemoveExistingInviteInfo() (fileCid string, err error) {
 	details := s.Details()
-	fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
+	fileCid = details.GetStringOrDefault(bundle.RelationKeySpaceInviteFileCid, "")
 	newState := s.NewState()
 	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid.String(), bundle.RelationKeySpaceInviteFileKey.String())
 	return fileCid, s.Apply(newState)
@@ -231,9 +231,9 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 
 func (s *SpaceView) getSpacePersistentInfo(st *state.State) (info spaceinfo.SpacePersistentInfo) {
 	details := st.CombinedDetails()
-	spaceInfo := spaceinfo.NewSpacePersistentInfo(pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()))
+	spaceInfo := spaceinfo.NewSpacePersistentInfo(details.GetStringOrDefault(bundle.RelationKeyTargetSpaceId, ""))
 	spaceInfo.SetAccountStatus(spaceinfo.AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String()))).
-		SetAclHeadId(pbtypes.GetString(details, bundle.RelationKeyLatestAclHeadId.String()))
+		SetAclHeadId(details.GetStringOrDefault(bundle.RelationKeyLatestAclHeadId, ""))
 	return spaceInfo
 }
 
@@ -248,8 +248,8 @@ var workspaceKeysToCopy = []string{
 
 func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
 	details := s.CombinedDetails()
-	data.Name = pbtypes.GetString(details, bundle.RelationKeyName.String())
-	data.IconImage = pbtypes.GetString(details, bundle.RelationKeyIconImage.String())
+	data.Name = details.GetStringOrDefault(bundle.RelationKeyName, "")
+	data.IconImage = details.GetStringOrDefault(bundle.RelationKeyIconImage, "")
 	return
 }
 

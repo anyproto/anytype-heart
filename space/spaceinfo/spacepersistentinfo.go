@@ -19,9 +19,9 @@ func NewSpacePersistentInfo(spaceId string) SpacePersistentInfo {
 
 func NewSpacePersistentInfoFromState(st state.Doc) SpacePersistentInfo {
 	details := st.CombinedDetails()
-	spaceInfo := NewSpacePersistentInfo(pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()))
+	spaceInfo := NewSpacePersistentInfo(details.GetStringOrDefault(bundle.RelationKeyTargetSpaceId, ""))
 	spaceInfo.SetAccountStatus(AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String()))).
-		SetAclHeadId(pbtypes.GetString(details, bundle.RelationKeyLatestAclHeadId.String()))
+		SetAclHeadId(details.GetStringOrDefault(bundle.RelationKeyLatestAclHeadId, ""))
 	return spaceInfo
 }
 

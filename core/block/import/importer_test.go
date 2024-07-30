@@ -717,7 +717,7 @@ func TestImport_replaceRelationKeyWithNew(t *testing.T) {
 		i.replaceRelationKeyWithNew(option, oldIDToNew)
 
 		// then
-		assert.Equal(t, "key", pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
+		assert.Equal(t, "key", option.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
 	})
 	t.Run("oldIDToNew map have relation id", func(t *testing.T) {
 		// given
@@ -740,7 +740,7 @@ func TestImport_replaceRelationKeyWithNew(t *testing.T) {
 		i.replaceRelationKeyWithNew(option, oldIDToNew)
 
 		// then
-		assert.Equal(t, "newkey", pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
+		assert.Equal(t, "newkey", option.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
 	})
 
 	t.Run("no details", func(t *testing.T) {

@@ -39,7 +39,7 @@ func (bd *BookmarkImporterDecorator) Init(a *app.App) (err error) {
 }
 
 func (bd *BookmarkImporterDecorator) CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *types.Struct, err error) {
-	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
+	url := details.GetStringOrDefault(bundle.RelationKeySource, "")
 	if objectId, newDetails, err = bd.Importer.ImportWeb(nil, &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: url}},
 		UpdateExistingObjects: true,
