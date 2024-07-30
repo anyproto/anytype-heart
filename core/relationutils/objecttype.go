@@ -1,7 +1,6 @@
 package relationutils
 
 import (
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -9,14 +8,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type ObjectType struct {
 	*model.ObjectType
 }
 
-func (ot *ObjectType) BundledTypeDetails() *types.Struct {
+func (ot *ObjectType) BundledTypeDetails() *domain.Details {
 	var (
 		relationIds []string
 	)
@@ -37,23 +35,23 @@ func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 		return nil
 	}
 
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.BundledURL()),
-		bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(model.ObjectType_objectType)),
-		bundle.RelationKeyName.String():                 pbtypes.String(ot.Name),
-		bundle.RelationKeyCreator.String():              pbtypes.String(addr.AnytypeProfileId),
-		bundle.RelationKeyIconEmoji.String():            pbtypes.String(ot.IconEmoji),
-		bundle.RelationKeyUniqueKey.String():            pbtypes.String(uk.Marshal()),
-		bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(relationIds),
-		bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(ot.Layout)),
-		bundle.RelationKeyDescription.String():          pbtypes.String(ot.Description),
-		bundle.RelationKeyId.String():                   pbtypes.String(ot.Url),
-		bundle.RelationKeyIsHidden.String():             pbtypes.Bool(ot.Hidden),
-		bundle.RelationKeyIsArchived.String():           pbtypes.Bool(false),
-		bundle.RelationKeyIsReadonly.String():           pbtypes.Bool(ot.Readonly),
-		bundle.RelationKeySmartblockTypes.String():      pbtypes.IntList(sbTypes...),
-		bundle.RelationKeySpaceId.String():              pbtypes.String(addr.AnytypeMarketplaceWorkspace),
-		bundle.RelationKeyOrigin.String():               pbtypes.Int64(int64(model.ObjectOrigin_builtin)),
-		bundle.RelationKeyRevision.String():             pbtypes.Int64(ot.Revision),
-	}}
+	return domain.NewDetailsFromMap(map[domain.RelationKey]any{
+		bundle.RelationKeyType:                 bundle.TypeKeyObjectType.BundledURL(),
+		bundle.RelationKeyLayout:               float64(model.ObjectType_objectType),
+		bundle.RelationKeyName:                 ot.Name,
+		bundle.RelationKeyCreator:              addr.AnytypeProfileId,
+		bundle.RelationKeyIconEmoji:            ot.IconEmoji,
+		bundle.RelationKeyUniqueKey:            uk.Marshal(),
+		bundle.RelationKeyRecommendedRelations: relationIds,
+		bundle.RelationKeyRecommendedLayout:    float64(ot.Layout),
+		bundle.RelationKeyDescription:          ot.Description,
+		bundle.RelationKeyId:                   ot.Url,
+		bundle.RelationKeyIsHidden:             ot.Hidden,
+		bundle.RelationKeyIsArchived:           false,
+		bundle.RelationKeyIsReadonly:           ot.Readonly,
+		bundle.RelationKeySmartblockTypes:      sbTypes,
+		bundle.RelationKeySpaceId:              addr.AnytypeMarketplaceWorkspace,
+		bundle.RelationKeyOrigin:               int64(model.ObjectOrigin_builtin),
+		bundle.RelationKeyRevision:             ot.Revision,
+	})
 }

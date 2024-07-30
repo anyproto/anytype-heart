@@ -4,8 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -45,7 +43,7 @@ func (v *bundledObjectType) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeBundledObjectType
 }
 
-func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink, p *types.Struct, err error) {
+func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink, p *domain.Details, err error) {
 	ot, err := bundle.GetTypeByUrl(id)
 	if err != nil {
 		return nil, nil, err

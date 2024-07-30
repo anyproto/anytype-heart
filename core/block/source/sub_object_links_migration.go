@@ -66,15 +66,14 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 			continue
 		}
 		if m.canRelationContainObjectValues(rel.Format) {
-			rawValue := s.Details().GetFields()[rel.Key]
+			rawValue := s.Details().Get(domain.RelationKey(rel.Key))
 
-			if oldId := rawValue.GetStringValue(); oldId != "" {
+			if oldId := rawValue.StringOrDefault(""); oldId != "" {
 				newId := m.migrateId(oldId)
 				if oldId != newId {
-					s.SetDetail(rel.Key, pbtypes.String(newId))
+					s.SetDetail(domain.RelationKey(rel.Key), pbtypes.String(newId))
 				}
-			} else if rawIds := rawValue.GetListValue(); rawIds != nil {
-				ids := pbtypes.ListValueToStrings(rawIds)
+			} else if ids := rawValue.StringListOrDefault(nil); len(ids) > 0 {
 				changed := false
 				for i, oldId := range ids {
 					newId := m.migrateId(oldId)
@@ -84,7 +83,7 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 					}
 				}
 				if changed {
-					s.SetDetail(rel.Key, pbtypes.StringList(ids))
+					s.SetDetail(domain.RelationKey(rel.Key), pbtypes.StringList(ids))
 				}
 			}
 		}

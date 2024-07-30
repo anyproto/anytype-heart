@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -54,7 +55,7 @@ func (v *date) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeDate
 }
 
-func (v *date) getDetails(ctx context.Context) (*types.Struct, error) {
+func (v *date) getDetails(ctx context.Context) (*domain.Details, error) {
 	linksRelationId, err := v.space.GetRelationIdByKey(ctx, bundle.RelationKeyLinks)
 	if err != nil {
 		return nil, fmt.Errorf("get links relation id: %w", err)
@@ -63,18 +64,18 @@ func (v *date) getDetails(ctx context.Context) (*types.Struct, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get date type id: %w", err)
 	}
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("Mon Jan  2 2006")),
-		bundle.RelationKeyId.String():         pbtypes.String(v.id),
-		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
-		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_date)),
-		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
-		bundle.RelationKeySpaceId.String():    pbtypes.String(v.SpaceID()),
-		bundle.RelationKeySetOf.String():      pbtypes.StringList([]string{linksRelationId}),
-		bundle.RelationKeyType.String():       pbtypes.String(dateTypeId),
-	}}, nil
+	return domain.NewDetailsFromMap(map[domain.RelationKey]any{
+		bundle.RelationKeyName:       v.t.Format("Mon Jan  2 2006"),
+		bundle.RelationKeyId:         v.id,
+		bundle.RelationKeyIsReadonly: true,
+		bundle.RelationKeyIsArchived: false,
+		bundle.RelationKeyIsHidden:   false,
+		bundle.RelationKeyLayout:     float64(model.ObjectType_date),
+		bundle.RelationKeyIconEmoji:  "📅",
+		bundle.RelationKeySpaceId:    v.SpaceID(),
+		bundle.RelationKeySetOf:      []string{linksRelationId},
+		bundle.RelationKeyType:       dateTypeId,
+	}), nil
 }
 
 // TODO Fix?
