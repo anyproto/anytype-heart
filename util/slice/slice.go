@@ -245,3 +245,11 @@ func StringsInto[T ~string](from []string) []T {
 	}
 	return to
 }
+
+func IntoStrings[T ~string](from []T) []string {
+	to := make([]string, len(from))
+	for i, v := range from {
+		to[i] = string(v)
+	}
+	return to
+}

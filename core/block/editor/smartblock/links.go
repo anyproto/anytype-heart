@@ -29,7 +29,7 @@ func (sb *smartBlock) updateBackLinks(s *state.State) {
 func (sb *smartBlock) injectLinksDetails(s *state.State) {
 	links := sb.navigationalLinks(s)
 	links = slice.RemoveMut(links, sb.Id())
-	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))
+	s.SetLocalDetail(bundle.RelationKeyLinks, pbtypes.StringList(links))
 }
 
 func (sb *smartBlock) navigationalLinks(s *state.State) (ids []string) {
@@ -98,7 +98,7 @@ func (sb *smartBlock) collectRelationLinks(s *state.State) (ids []string) {
 		}
 
 		// Add all object relation values as dependents
-		for _, targetID := range pbtypes.GetStringList(det, rel.Key) {
+		for _, targetID := range det.GetStringListOrDefault(domain.RelationKey(rel.Key), nil) {
 			if targetID != "" {
 				ids = append(ids, targetID)
 			}

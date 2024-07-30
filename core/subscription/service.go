@@ -12,8 +12,8 @@ import (
 	mb2 "github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"golang.org/x/exp/slices"
 	"github.com/valyala/fastjson"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 
@@ -305,7 +305,7 @@ func queryEntries(objectStore objectstore.ObjectStore, f *database.Filters) ([]*
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
 		entries = append(entries, &entry{
-			id:   pbtypes.GetString(r.Details, "id"),
+			id:   r.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
 			data: r.Details,
 		})
 	}
@@ -364,7 +364,7 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
 		entries = append(entries, &entry{
-			id:   pbtypes.GetString(r.Details, "id"),
+			id:   r.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
 			data: r.Details,
 		})
 	}
@@ -465,7 +465,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 		entries := make([]*entry, 0, len(tagGrouper.Records))
 		for _, r := range tagGrouper.Records {
 			entries = append(entries, &entry{
-				id:   pbtypes.GetString(r.Details, "id"),
+				id:   r.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
 				data: r.Details,
 			})
 		}
@@ -542,7 +542,7 @@ func (s *service) recordsHandler() {
 			return
 		}
 		for _, rec := range records {
-			id := pbtypes.GetString(rec.(database.Record).Details, "id")
+			id := rec.(database.Record).Details.GetStringOrDefault(bundle.RelationKeyId, "")
 			// nil previous version
 			nilIfExists(id)
 			entries = append(entries, &entry{

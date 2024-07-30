@@ -896,14 +896,13 @@ func (s *State) SetDetails(d *domain.Details) *State {
 	//	shortenDetailsToLimit(s.rootId, d.Fields)
 	// }
 
-	localKeys := slice.StringsInto[domain.RelationKey](bundle.LocalAndDerivedRelationKeys)
-	local := d.CopyOnlyWithKeys(localKeys)
+	local := d.CopyOnlyWithKeys(bundle.LocalAndDerivedRelationKeys)
 	if local != nil && local.Len() > 0 {
 		local.Iterate(func(k domain.RelationKey, v any) bool {
 			s.SetLocalDetail(k, v)
 			return true
 		})
-		s.details = d.CopyWithoutKeys(localKeys)
+		s.details = d.CopyWithoutKeys(bundle.LocalAndDerivedRelationKeys)
 		return s
 	}
 	s.details = d
@@ -967,7 +966,7 @@ func (s *State) SetDetail(key domain.RelationKey, value any) {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// value = shortenValueToLimit(s.rootId, key, value)
 
-	if slice.FindPos(bundle.LocalAndDerivedRelationKeys, string(key)) > -1 {
+	if slice.FindPos(bundle.LocalAndDerivedRelationKeys, key) > -1 {
 		s.SetLocalDetail(key, value)
 		return
 	}
@@ -1055,16 +1054,14 @@ func (s *State) SetObjectTypeKeys(objectTypeKeys []domain.TypeKey) *State {
 	return s
 }
 
-func (s *State) InjectLocalDetails(localDetails *types.Struct) {
-	for key, v := range localDetails.GetFields() {
+func (s *State) InjectLocalDetails(localDetails *domain.Details) {
+	localDetails.Iterate(func(k domain.RelationKey, v any) bool {
 		if v == nil {
-			continue
+			return true
 		}
-		if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
-			continue
-		}
-		s.SetDetailAndBundledRelation(domain.RelationKey(key), v)
-	}
+		s.SetDetailAndBundledRelation(k, v)
+		return true
+	})
 }
 
 func (s *State) LocalDetails() *domain.Details {

@@ -80,7 +80,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		removedCollectionKeysMap[t] = struct{}{}
 	}
 
-	detailsFromSnapshot := pbtypes.StructCutKeys(snapshot.Data.Details, bundle.LocalAndDerivedRelationKeys)
+	detailsFromSnapshot := pbtypes.StructCutKeys(snapshot.Data.Details, slice.IntoStrings(bundle.LocalAndDerivedRelationKeys))
 	if err := pbtypes.ValidateStruct(detailsFromSnapshot); err != nil {
 		log.Errorf("NewDocFromSnapshot details validation error: %v; details normalized", err)
 		pbtypes.NormalizeStruct(detailsFromSnapshot)
@@ -641,7 +641,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 func (s *State) filterLocalAndDerivedRelations(newRelLinks pbtypes.RelationLinks) pbtypes.RelationLinks {
 	var relLinksWithoutLocal pbtypes.RelationLinks
 	for _, link := range newRelLinks {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, link.Key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(link.Key)) {
 			relLinksWithoutLocal = relLinksWithoutLocal.Append(link)
 		}
 	}
@@ -651,7 +651,7 @@ func (s *State) filterLocalAndDerivedRelations(newRelLinks pbtypes.RelationLinks
 func (s *State) filterLocalAndDerivedRelationsByKey(relationKeys []string) []string {
 	var relKeysWithoutLocal []string
 	for _, key := range relationKeys {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
 			relKeysWithoutLocal = append(relKeysWithoutLocal, key)
 		}
 	}

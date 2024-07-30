@@ -318,7 +318,7 @@ func StructDiffIntoEvents(contextId string, diff *domain.Details) (msgs []*pb.Ev
 }
 
 // StructDiffIntoEvents converts map into events. nil map value converts to Remove event
-func StructDiffIntoEventsWithSubIds(contextId string, diff *domain.Details, keys []string, subIds []string) (msgs []*pb.EventMessage) {
+func StructDiffIntoEventsWithSubIds(contextId string, diff *domain.Details, keys []domain.RelationKey, subIds []string) (msgs []*pb.EventMessage) {
 	if diff.Len() == 0 {
 		return nil
 	}
@@ -329,7 +329,7 @@ func StructDiffIntoEventsWithSubIds(contextId string, diff *domain.Details, keys
 
 	diff.Iterate(func(k domain.RelationKey, v any) bool {
 		key := string(k)
-		if len(keys) > 0 && slice.FindPos(keys, key) == -1 {
+		if len(keys) > 0 && slice.FindPos(keys, k) == -1 {
 			return true
 		}
 		if _, ok := v.(domain.Tombstone); ok {

@@ -15,10 +15,10 @@ type Set struct {
 	flags []int
 }
 
-func NewFromState(st *state.State) Set {
+func NewFromState(st *state.State) *Set {
 	flags := st.Details().GetIntListOrDefault(relationKey, nil)
 
-	return Set{
+	return &Set{
 		flags: flags,
 	}
 }
