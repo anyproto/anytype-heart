@@ -91,7 +91,12 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 	}
 }
 
+// Migrate works only in personal space
 func (m *subObjectsAndProfileLinksMigration) Migrate(s *state.State) {
+	if !m.space.IsPersonal() {
+		return
+	}
+
 	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeProfilePage, "")
 	if err != nil {
 		log.Errorf("migration: failed to create unique key for profile: %s", err)
