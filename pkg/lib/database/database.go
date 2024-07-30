@@ -1,7 +1,6 @@
 package database
 
 import (
-	"github.com/gogo/protobuf/types"
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -21,7 +20,7 @@ const (
 )
 
 type Record struct {
-	Details *types.Struct
+	Details *domain.Details
 	Meta    model.SearchMeta
 }
 
@@ -228,7 +227,7 @@ func ListRelationOptions(store ObjectStore, spaceID string, relationKey string) 
 	})
 
 	for _, rec := range records {
-		options = append(options, relationutils.OptionFromStruct(rec.Details).RelationOption)
+		options = append(options, relationutils.OptionFromDetails(rec.Details).RelationOption)
 	}
 	return
 }

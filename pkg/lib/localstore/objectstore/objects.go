@@ -12,7 +12,6 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/gogo/protobuf/types"
 	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
 
@@ -64,17 +63,17 @@ type ObjectStore interface {
 
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
-	UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error
+	UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error
 	UpdateObjectLinks(id string, links []string) error
-	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
-	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error
+	UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error
+	ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error
 
 	DeleteObject(id domain.FullID) error
 	DeleteDetails(id ...string) error
 	DeleteLinks(id ...string) error
 
-	GetDetails(id string) (*model.ObjectDetails, error)
-	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
+	GetDetails(id string) (*domain.Details, error)
+	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*domain.Details, error)
 	GetUniqueKeyById(id string) (key domain.UniqueKey, err error)
 
 	GetInboundLinksByID(id string) ([]string, error)
@@ -162,7 +161,7 @@ func New() ObjectStore {
 }
 
 type SourceDetailsFromID interface {
-	DetailsFromIdBasedSource(id string) (*types.Struct, error)
+	DetailsFromIdBasedSource(id string) (*domain.Details, error)
 }
 
 func (s *dsObjectStore) Init(a *app.App) (err error) {
@@ -358,23 +357,19 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 
 // GetDetails returns empty struct without errors in case details are not found
 // todo: get rid of this or change the name method!
-func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
+func (s *dsObjectStore) GetDetails(id string) (*domain.Details, error) {
 	doc, err := s.objects.FindId(s.componentCtx, id)
 	if errors.Is(err, anystore.ErrDocNotFound) {
-		return &model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, nil
+		return domain.NewDetails(), nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("find by id: %w", err)
 	}
-	details, err := pbtypes.JsonToProto(doc.Value())
+	details, err := domain.JsonToProto(doc.Value())
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal details: %w", err)
 	}
-	return &model.ObjectDetails{
-		Details: details,
-	}, nil
+	return details, nil
 }
 
 func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
@@ -382,8 +377,8 @@ func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	rawUniqueKey := pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String())
-	if rawUniqueKey == "" {
+	rawUniqueKey, ok := details.GetString(bundle.RelationKeyUniqueKey)
+	if !ok {
 		return nil, fmt.Errorf("object does not have unique key in details")
 	}
 	return domain.UnmarshalUniqueKey(rawUniqueKey)
@@ -473,10 +468,10 @@ func (s *dsObjectStore) FTSearch() ftsearch.FTSearch {
 func (s *dsObjectStore) getObjectInfo(ctx context.Context, spaceID string, id string) (*model.ObjectInfo, error) {
 	details, err := s.sourceService.DetailsFromIdBasedSource(id)
 	if err == nil {
-		details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+		details.Set(bundle.RelationKeyId, id)
 		return &model.ObjectInfo{
 			Id:      id,
-			Details: details,
+			Details: details.ToProto(),
 		}, nil
 	}
 
@@ -484,15 +479,15 @@ func (s *dsObjectStore) getObjectInfo(ctx context.Context, spaceID string, id st
 	if err != nil {
 		return nil, fmt.Errorf("find by id: %w", err)
 	}
-	details, err = pbtypes.JsonToProto(doc.Value())
+	details, err = domain.JsonToProto(doc.Value())
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal details: %w", err)
 	}
-	snippet := pbtypes.GetString(details, bundle.RelationKeySnippet.String())
+	snippet := details.GetStringOrDefault(bundle.RelationKeySnippet, "")
 
 	return &model.ObjectInfo{
 		Id:      id,
-		Details: details,
+		Details: details.ToProto(),
 		Snippet: snippet,
 	}, nil
 }
@@ -519,7 +514,7 @@ func (s *dsObjectStore) getObjectsInfo(ctx context.Context, spaceID string, ids 
 	return objects, nil
 }
 
-func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error) {
+func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*domain.Details, error) {
 	records, err := s.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -548,7 +543,7 @@ func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey domain.Un
 		return nil, fmt.Errorf("multiple objects with unique key %s", uniqueKey)
 	}
 
-	return &model.ObjectDetails{Details: records[0].Details}, nil
+	return records[0].Details, nil
 }
 
 func extractIdFromKey(key string) (id string) {

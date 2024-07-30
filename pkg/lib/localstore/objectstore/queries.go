@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"math"
 	"sort"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/blevesearch/bleve/v2/search"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
@@ -44,9 +43,9 @@ func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey, objectId str
 	return s.queryAnyStore(f, params.Order, uint(limit), 0)
 }
 
-func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64, path domain.ObjectPath, maxLength int, params database.Filters) []database.Record {
+func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float64, path domain.ObjectPath, maxLength int, params database.Filters) []database.Record {
 	var injectedResults []database.Record
-	id := pbtypes.GetString(details, bundle.RelationKeyId.String())
+	id := details.GetStringOrDefault(bundle.RelationKeyId, "")
 	if path.RelationKey != bundle.RelationKeyName.String() {
 		// inject only in case we match the name
 		return nil
@@ -56,15 +55,16 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 		err         error
 	)
 
-	isDeleted := pbtypes.GetBool(details, bundle.RelationKeyIsDeleted.String())
-	isArchived := pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String())
+	isDeleted := details.GetBoolOrDefault(bundle.RelationKeyIsDeleted, false)
+	isArchived := details.GetBoolOrDefault(bundle.RelationKeyIsArchived, false)
 	if isDeleted || isArchived {
 		return nil
 	}
 
-	switch model.ObjectTypeLayout(pbtypes.GetInt64(details, bundle.RelationKeyLayout.String())) {
+	layout := model.ObjectTypeLayout(details.GetIntOrDefault(bundle.RelationKeyLayout, 0))
+	switch layout {
 	case model.ObjectType_relationOption:
-		relationKey = pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
+		relationKey = details.GetStringOrDefault(bundle.RelationKeyRelationKey, "")
 	case model.ObjectType_objectType:
 		relationKey = bundle.RelationKeyType.String()
 	default:
@@ -77,14 +77,21 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 	}
 
 	for _, rec := range recs {
+		relDetails := pbtypes.StructFilterKeys(details.ToProto(), []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyType.String(),
+			bundle.RelationKeyLayout.String(),
+			bundle.RelationKeyRelationOptionColor.String(),
+		})
 		metaInj := model.SearchMeta{
 			RelationKey:     relationKey,
-			RelationDetails: pbtypes.StructFilterKeys(details, []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyType.String(), bundle.RelationKeyLayout.String(), bundle.RelationKeyRelationOptionColor.String()}),
+			RelationDetails: relDetails,
 		}
 
-		detailsCopy := pbtypes.CopyStruct(rec.Details, false)
+		detailsCopy := rec.Details.ShallowCopy()
 		// set the same score as original object
-		detailsCopy.Fields[database.RecordScoreField] = pbtypes.Float64(score)
+		detailsCopy.Set(database.RecordScoreField, score)
 		injectedResults = append(injectedResults, database.Record{
 			Details: detailsCopy,
 			Meta:    metaInj,
@@ -139,7 +146,7 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 		if err != nil {
 			return nil, errors.Join(fmt.Errorf("get doc: %w", err), iter.Close())
 		}
-		details, err := pbtypes.JsonToProto(doc.Value())
+		details, err := domain.JsonToProto(doc.Value())
 		if err != nil {
 			return nil, errors.Join(fmt.Errorf("json to proto: %w", err), iter.Close())
 		}
@@ -177,10 +184,10 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", res.Path.ObjectId)
 					continue
 				}
-				details.Fields[database.RecordIDField] = pbtypes.ToValue(res.Path.ObjectId)
-				details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
+				details.Set(bundle.RelationKeyId, res.Path.ObjectId)
+				details.Set(database.RecordScoreField, res.Score)
 				rec := database.Record{Details: details}
-				if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
+				if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details.ToProto()) {
 					resultObjectMap[res.Path.ObjectId] = struct{}{}
 					records = append(records, rec)
 				}
@@ -192,29 +199,29 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 			log.Errorf("QueryByIds failed to find id: %s", res.Path.ObjectId)
 			continue
 		}
-		details, err := pbtypes.JsonToProto(doc.Value())
+		details, err := domain.JsonToProto(doc.Value())
 		if err != nil {
 			log.Errorf("QueryByIds failed to extract details: %s", res.Path.ObjectId)
 			continue
 		}
-		details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
+		details.Set(database.RecordScoreField, res.Score)
 
 		rec := database.Record{Details: details}
-		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
+		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details.ToProto()) {
 			rec.Meta = res.Model()
 			if rec.Meta.Highlight == "" {
-					title := pbtypes.GetString(details, bundle.RelationKeyName.String())
-					index := strings.Index(strings.ToLower(title), strings.ToLower(ftsSearch))
-					titleArr := []byte(title)
-					if index != -1 {
-						from := int32(text2.UTF16RuneCount(titleArr[:index]))
-						rec.Meta.HighlightRanges = []*model.Range{{
-							From: int32(text2.UTF16RuneCount(titleArr[:from])),
-							To:   from + int32(text2.UTF16RuneCount([]byte(ftsSearch)))}}
-						rec.Meta.Highlight = title
-					}
+				title := details.GetStringOrDefault(bundle.RelationKeyName, "")
+				index := strings.Index(strings.ToLower(title), strings.ToLower(ftsSearch))
+				titleArr := []byte(title)
+				if index != -1 {
+					from := int32(text2.UTF16RuneCount(titleArr[:index]))
+					rec.Meta.HighlightRanges = []*model.Range{{
+						From: int32(text2.UTF16RuneCount(titleArr[:from])),
+						To:   from + int32(text2.UTF16RuneCount([]byte(ftsSearch)))}}
+					rec.Meta.Highlight = title
 				}
-				if _, ok := resultObjectMap[res.Path.ObjectId]; !ok {
+			}
+			if _, ok := resultObjectMap[res.Path.ObjectId]; !ok {
 				records = append(records, rec)
 				resultObjectMap[res.Path.ObjectId] = struct{}{}
 			}
@@ -228,7 +235,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 		// this may happen when we for example have a match in the different tags of the same object,
 		// or we may already have a better match for the same object but in block
 		injectedResults = lo.Filter(injectedResults, func(item database.Record, _ int) bool {
-			id := pbtypes.GetString(item.Details, bundle.RelationKeyId.String())
+			id := item.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 			if _, ok := resultObjectMap[id]; !ok {
 				resultObjectMap[id] = struct{}{}
 				return true
@@ -244,7 +251,8 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	}
 	if params.Order != nil {
 		sort.Slice(records, func(i, j int) bool {
-			return params.Order.Compare(records[i].Details, records[j].Details) == -1
+			// TODO TEMP ToProto
+			return params.Order.Compare(records[i].Details.ToProto(), records[j].Details.ToProto()) == -1
 		})
 	}
 	if limit > 0 {
@@ -445,7 +453,10 @@ func (s *dsObjectStore) QueryObjectIDs(q database.Query) (ids []string, total in
 	}
 	ids = make([]string, 0, len(recs))
 	for _, rec := range recs {
-		ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
+		id, ok := rec.Details.GetString(bundle.RelationKeyId)
+		if ok {
+			ids = append(ids, id)
+		}
 	}
 	return ids, len(recs), nil
 }
@@ -460,7 +471,7 @@ func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err 
 					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
 					continue
 				}
-				details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+				details.Set(bundle.RelationKeyId, id)
 				records = append(records, database.Record{Details: details})
 				continue
 			}
@@ -470,7 +481,7 @@ func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err 
 			log.Infof("QueryByIds failed to find id: %s", id)
 			continue
 		}
-		details, err := pbtypes.JsonToProto(doc.Value())
+		details, err := domain.JsonToProto(doc.Value())
 		if err != nil {
 			log.Errorf("QueryByIds failed to extract details: %s", id)
 			continue

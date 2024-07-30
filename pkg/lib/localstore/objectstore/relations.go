@@ -60,7 +60,7 @@ func (s *dsObjectStore) FetchRelationByKey(spaceID string, key string) (relation
 		return
 	}
 	for _, rec := range records {
-		return relationutils.RelationFromStruct(rec.Details), nil
+		return relationutils.RelationFromDetails(rec.Details), nil
 	}
 	return nil, ErrObjectNotFound
 }
@@ -94,7 +94,7 @@ func (s *dsObjectStore) FetchRelationByKeys(spaceId string, keys ...string) (rel
 	}
 
 	for _, rec := range records {
-		relations = append(relations, relationutils.RelationFromStruct(rec.Details))
+		relations = append(relations, relationutils.RelationFromDetails(rec.Details))
 	}
 	return
 }
@@ -113,11 +113,11 @@ func (s *dsObjectStore) GetRelationByID(id string) (*model.Relation, error) {
 		return nil, err
 	}
 
-	if pbtypes.GetString(det.GetDetails(), bundle.RelationKeyRelationKey.String()) == "" {
+	if _, ok := det.GetString(bundle.RelationKeyRelationKey); !ok {
 		return nil, fmt.Errorf("object %s is not a relation", id)
 	}
 
-	rel := relationutils.RelationFromStruct(det.GetDetails())
+	rel := relationutils.RelationFromDetails(det)
 	return rel.Relation, nil
 }
 
@@ -143,7 +143,7 @@ func (s *dsObjectStore) ListAllRelations(spaceId string) (relations relationutil
 	}
 
 	for _, rec := range relations2 {
-		relations = append(relations, relationutils.RelationFromStruct(rec.Details))
+		relations = append(relations, relationutils.RelationFromDetails(rec.Details))
 	}
 	return
 }
@@ -174,7 +174,7 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 		return nil, ds.ErrNotFound
 	}
 
-	rel := relationutils.RelationFromStruct(records[0].Details)
+	rel := relationutils.RelationFromDetails(records[0].Details)
 
 	return rel.Relation, nil
 }

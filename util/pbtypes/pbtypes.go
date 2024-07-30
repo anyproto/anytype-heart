@@ -65,6 +65,17 @@ func IntList(ints ...int) *types.Value {
 	}
 }
 
+func FloatList(floats []float64) *types.Value {
+	var vals = make([]*types.Value, 0, len(floats))
+	for _, f := range floats {
+		vals = append(vals, Float64(f))
+	}
+
+	return &types.Value{
+		Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+	}
+}
+
 func NilToNullWrapper(v *types.Value) *types.Value {
 	if v == nil || v.Kind == nil {
 		return Null()
@@ -581,4 +592,21 @@ func RelationIdToKey(id string) (string, error) {
 	}
 
 	return "", fmt.Errorf("incorrect id format")
+}
+
+func AnyToProto(v any) *types.Value {
+	switch v := v.(type) {
+	case string:
+		return String(v)
+	case float64:
+		return Float64(v)
+	case bool:
+		return Bool(v)
+	case []string:
+		return StringList(v)
+	case []float64:
+		return FloatList(v)
+	default:
+		return Null()
+	}
 }

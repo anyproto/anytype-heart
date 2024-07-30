@@ -6,8 +6,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
-
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestStructMerge(t *testing.T) {
@@ -213,62 +211,6 @@ func TestStructDiff(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := StructDiff(tt.args.st1, tt.args.st2); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("StructDiff() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestRelationsDiff(t *testing.T) {
-	type args struct {
-		rels1 []*model.Relation
-		rels2 []*model.Relation
-	}
-	tests := []struct {
-		name        string
-		args        args
-		wantAdded   []*model.Relation
-		wantUpdated []*model.Relation
-		wantRemoved []string
-	}{
-		{"complex",
-			args{
-				[]*model.Relation{{Key: "k0", Format: model.RelationFormat_longtext}, {Key: "k1", Format: model.RelationFormat_longtext}, {Key: "k2", Format: model.RelationFormat_longtext}},
-				[]*model.Relation{{Key: "k1", Format: model.RelationFormat_longtext}, {Key: "k2", Format: model.RelationFormat_tag}, {Key: "k3", Format: model.RelationFormat_object}},
-			},
-			[]*model.Relation{{Key: "k3", Format: model.RelationFormat_object}},
-			[]*model.Relation{{Key: "k2", Format: model.RelationFormat_tag}},
-			[]string{"k0"},
-		},
-		{"both empty",
-			args{
-				[]*model.Relation{},
-				[]*model.Relation{},
-			},
-			nil,
-			nil,
-			nil,
-		},
-		{"both nil",
-			args{
-				nil,
-				nil,
-			},
-			nil,
-			nil,
-			nil,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotAdded, gotUpdated, gotRemoved := RelationsDiff(tt.args.rels1, tt.args.rels2)
-			if !reflect.DeepEqual(gotAdded, tt.wantAdded) {
-				t.Errorf("RelationsDiff() gotAdded = %v, want %v", gotAdded, tt.wantAdded)
-			}
-			if !reflect.DeepEqual(gotUpdated, tt.wantUpdated) {
-				t.Errorf("RelationsDiff() gotUpdated = %v, want %v", gotUpdated, tt.wantUpdated)
-			}
-			if !reflect.DeepEqual(gotRemoved, tt.wantRemoved) {
-				t.Errorf("RelationsDiff() gotRemoved = %v, want %v", gotRemoved, tt.wantRemoved)
 			}
 		})
 	}

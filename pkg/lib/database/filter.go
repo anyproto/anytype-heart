@@ -667,7 +667,7 @@ func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFil
 
 	ids := make([]string, 0, len(records))
 	for _, rec := range records {
-		ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
+		ids = append(ids, rec.Details.GetStringOrDefault(bundle.RelationKeyId, ""))
 	}
 	return &FilterNestedIn{
 		Key:                    relationKey,

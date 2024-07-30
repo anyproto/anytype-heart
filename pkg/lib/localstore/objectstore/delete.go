@@ -7,11 +7,9 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *dsObjectStore) DeleteDetails(ids ...string) error {
@@ -43,13 +41,11 @@ func (s *dsObjectStore) DeleteObject(id domain.FullID) error {
 		return errors.Join(txn.Rollback(), err)
 	}
 	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
-	err = s.UpdateObjectDetails(txn.Context(), id.ObjectID, &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():        pbtypes.String(id.ObjectID),
-			bundle.RelationKeySpaceId.String():   pbtypes.String(id.SpaceID),
-			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), // maybe we can store the date instead?
-		},
-	})
+	err = s.UpdateObjectDetails(txn.Context(), id.ObjectID, domain.NewDetailsFromMap(map[domain.RelationKey]any{
+		bundle.RelationKeyId:        id.ObjectID,
+		bundle.RelationKeySpaceId:   id.SpaceID,
+		bundle.RelationKeyIsDeleted: true, // maybe we can store the date instead?
+	}))
 	if err != nil {
 		return rollback(fmt.Errorf("failed to overwrite details and relations: %w", err))
 	}

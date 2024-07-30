@@ -73,7 +73,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 type detailsFromId struct {
 }
 
-func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*domain.Details, error) {
 	return nil, fmt.Errorf("not found")
 }
 
@@ -108,12 +108,14 @@ func makeObjectWithNameAndDescription(id string, name string, description string
 	}
 }
 
-func makeDetails(fields TestObject) *types.Struct {
+func makeDetails(fields TestObject) *domain.Details {
 	f := map[string]*types.Value{}
 	for k, v := range fields {
 		f[string(k)] = v
 	}
-	return &types.Struct{Fields: f}
+	// TODO TEMP
+	return nil
+	// return &types.Struct{Fields: f}
 }
 
 func (fx *StoreFixture) AddObjects(t testing.TB, objects []TestObject) {

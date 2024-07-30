@@ -9,29 +9,29 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func RelationFromStruct(st *types.Struct) *Relation {
-	key := pbtypes.GetString(st, bundle.RelationKeyRelationKey.String())
-	maxCount := int32(pbtypes.GetFloat64(st, bundle.RelationKeyRelationMaxCount.String()))
+func RelationFromDetails(det *domain.Details) *Relation {
+	key := det.GetStringOrDefault(bundle.RelationKeyRelationKey, "")
+	maxCount := int32(det.GetIntOrDefault(bundle.RelationKeyRelationMaxCount, 0))
 	return &Relation{
 		Relation: &model.Relation{
-			Id:               pbtypes.GetString(st, bundle.RelationKeyId.String()),
+			Id:               det.GetStringOrDefault(bundle.RelationKeyId, ""),
 			Key:              key,
-			Format:           model.RelationFormat(pbtypes.GetFloat64(st, bundle.RelationKeyRelationFormat.String())),
-			Name:             pbtypes.GetString(st, bundle.RelationKeyName.String()),
-			DefaultValue:     pbtypes.Get(st, bundle.RelationKeyRelationDefaultValue.String()),
+			Format:           model.RelationFormat(det.GetFloatOrDefault(bundle.RelationKeyRelationFormat, 0)),
+			Name:             det.GetStringOrDefault(bundle.RelationKeyName, ""),
 			DataSource:       model.Relation_details,
-			Hidden:           pbtypes.GetBool(st, bundle.RelationKeyIsHidden.String()),
-			ReadOnly:         pbtypes.GetBool(st, bundle.RelationKeyRelationReadonlyValue.String()),
+			Hidden:           det.GetBoolOrDefault(bundle.RelationKeyIsHidden, false),
+			ReadOnly:         det.GetBoolOrDefault(bundle.RelationKeyRelationReadonlyValue, false),
 			ReadOnlyRelation: false,
 			Multi:            maxCount > 1,
-			ObjectTypes:      pbtypes.GetStringList(st, bundle.RelationKeyRelationFormatObjectTypes.String()),
+			ObjectTypes:      det.GetStringListOrDefault(bundle.RelationKeyRelationFormatObjectTypes, nil),
 			MaxCount:         maxCount,
-			Description:      pbtypes.GetString(st, bundle.RelationKeyDescription.String()),
-			Scope:            model.RelationScope(pbtypes.GetFloat64(st, bundle.RelationKeyScope.String())),
-			Creator:          pbtypes.GetString(st, bundle.RelationKeyCreator.String()),
-			Revision:         pbtypes.GetInt64(st, bundle.RelationKeyRevision.String()),
+			Description:      det.GetStringOrDefault(bundle.RelationKeyDescription, ""),
+			Scope:            model.RelationScope(det.GetFloatOrDefault(bundle.RelationKeyScope, 0)),
+			Creator:          det.GetStringOrDefault(bundle.RelationKeyCreator, ""),
+			Revision:         int64(det.GetIntOrDefault(bundle.RelationKeyRevision, 0)),
 		},
 	}
+
 }
 
 type Relation struct {

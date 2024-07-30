@@ -10,9 +10,9 @@ import (
 	"github.com/anyproto/any-store/query"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"github.com/valyala/fastjson"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -21,22 +21,16 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error {
-	if details == nil {
-		return nil
-	}
-	if details.Fields == nil {
-		return fmt.Errorf("details fields are nil")
-	}
-	if len(details.Fields) == 0 {
+func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error {
+	if details.Len() == 0 {
 		return fmt.Errorf("empty details")
 	}
 	// Ensure ID is set
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	details.Set(bundle.RelationKeyId, id)
 
 	arena := s.arenaPool.Get()
 
-	jsonVal := pbtypes.ProtoToJson(arena, details)
+	jsonVal := domain.ProtoToJson(arena, details)
 	var isModified bool
 	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
 		if jsonutil.Equal(val, jsonVal) {
@@ -57,14 +51,14 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 	return nil
 }
 
-func (s *dsObjectStore) migrateLocalDetails(objectId string, details *types.Struct) bool {
+func (s *dsObjectStore) migrateLocalDetails(objectId string, details *domain.Details) bool {
 	existingLocalDetails, err := s.oldStore.GetLocalDetails(objectId)
 	if err != nil || existingLocalDetails == nil {
 		return false
 	}
 	for k, v := range existingLocalDetails.Fields {
-		if _, ok := details.Fields[k]; !ok {
-			details.Fields[k] = v
+		if ok := details.Has(domain.RelationKey(k)); !ok {
+			details.Set(domain.RelationKey(k), pbtypes.AnyToProto(v))
 		}
 	}
 	return true
@@ -87,7 +81,7 @@ func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
 	return nil
 }
 
-func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
+func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error {
 	if proc == nil {
 		return nil
 	}
@@ -105,19 +99,18 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		return errors.Join(txn.Rollback(), err)
 	}
 
-	var inputDetails *types.Struct
+	var inputDetails *domain.Details
 	doc, err := s.pendingDetails.FindId(txn.Context(), id)
 	if errors.Is(err, anystore.ErrDocNotFound) {
-		inputDetails = pbtypes.EnsureStructInited(inputDetails)
+		inputDetails = domain.NewDetails()
 	} else if err != nil {
 		return rollback(fmt.Errorf("find details: %w", err))
 	} else {
-		inputDetails, err = pbtypes.JsonToProto(doc.Value())
+		inputDetails, err = domain.JsonToProto(doc.Value())
 		if err != nil {
 			return rollback(fmt.Errorf("json to proto: %w", err))
 		}
 	}
-	inputDetails = pbtypes.EnsureStructInited(inputDetails)
 
 	migrated := s.migrateLocalDetails(id, inputDetails)
 
@@ -132,8 +125,8 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		}
 		return txn.Commit()
 	}
-	newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-	jsonVal := pbtypes.ProtoToJson(arena, newDetails)
+	newDetails.Set(bundle.RelationKeyId, id)
+	jsonVal := domain.ProtoToJson(arena, newDetails)
 	_, err = s.pendingDetails.UpsertOne(txn.Context(), jsonVal)
 	if err != nil {
 		return rollback(fmt.Errorf("upsert details: %w", err))
@@ -155,17 +148,16 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 
 // ModifyObjectDetails updates existing details in store using modification function `proc`
 // `proc` should return ErrDetailsNotChanged in case old details are empty or no changes were made
-func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error {
+func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error {
 	if proc == nil {
 		return nil
 	}
 	arena := s.arenaPool.Get()
 	_, err := s.objects.UpsertId(s.componentCtx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
-		inputDetails, err := pbtypes.JsonToProto(val)
+		inputDetails, err := domain.JsonToProto(val)
 		if err != nil {
 			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
 		}
-		inputDetails = pbtypes.EnsureStructInited(inputDetails)
 		newDetails, modified, err := proc(inputDetails)
 		if err != nil {
 			return nil, false, fmt.Errorf("run a modifier: %w", err)
@@ -173,11 +165,10 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 		if !modified {
 			return nil, false, nil
 		}
-		newDetails = pbtypes.EnsureStructInited(newDetails)
 		// Ensure ID is set
-		newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+		newDetails.Set(bundle.RelationKeyId, id)
 
-		jsonVal := pbtypes.ProtoToJson(arena, newDetails)
+		jsonVal := domain.ProtoToJson(arena, newDetails)
 		diff, err := pbtypes.DiffJson(val, jsonVal)
 		if err != nil {
 			return nil, false, fmt.Errorf("diff json: %w", err)
@@ -214,9 +205,9 @@ func (s *dsObjectStore) updateObjectLinks(ctx context.Context, id string, links 
 	return
 }
 
-func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
-	detCopy := pbtypes.CopyStruct(details, false)
-	detCopy.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.Details) {
+	detCopy := details.ShallowCopy()
+	detCopy.Set(bundle.RelationKeyId, id)
 	s.RLock()
 	defer s.RUnlock()
 	if s.onChangeCallback != nil {
