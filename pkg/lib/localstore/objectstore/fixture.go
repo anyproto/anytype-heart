@@ -32,10 +32,10 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	walletService := mock_wallet.NewMockWallet(t)
-	walletService.EXPECT().Name().Return(wallet.CName)
+	walletService.EXPECT().Name().Return(wallet.CName).Maybe()
 	walletService.EXPECT().RepoPath().Return(t.TempDir())
 
-	fullText := ftsearch.New()
+	fullText := ftsearch.TantivyNew()
 	testApp := &app.App{}
 
 	dataStore, err := datastore.NewInMemory()

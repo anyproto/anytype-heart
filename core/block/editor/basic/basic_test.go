@@ -7,6 +7,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -17,6 +18,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -41,7 +45,7 @@ func TestBasic_Create(t *testing.T) {
 	t.Run("generic", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 		id, err := b.CreateBlock(st, pb.RpcBlockCreateRequest{
 			Block: &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "ll"}}},
@@ -55,7 +59,7 @@ func TestBasic_Create(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 		require.NoError(t, smartblock.ObjectApplyTemplate(sb, sb.NewState(), template.WithTitle))
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		s := sb.NewState()
 		id, err := b.CreateBlock(s, pb.RpcBlockCreateRequest{
 			TargetId: template.TitleBlockId,
@@ -76,29 +80,123 @@ func TestBasic_Create(t *testing.T) {
 		}
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 		require.NoError(t, smartblock.ObjectApplyTemplate(sb, sb.NewState(), template.WithTitle))
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		_, err := b.CreateBlock(sb.NewState(), pb.RpcBlockCreateRequest{})
 		assert.ErrorIs(t, err, restriction.ErrRestricted)
 	})
 }
 
 func TestBasic_Duplicate(t *testing.T) {
-	sb := smarttest.New("test")
-	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
-		AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
-		AddBlock(simple.New(&model.Block{Id: "3"}))
+	t.Run("dup blocks to same state", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
+			AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
+			AddBlock(simple.New(&model.Block{Id: "3"}))
 
-	st := sb.NewState()
-	newIds, err := NewBasic(sb, nil, converter.NewLayoutConverter()).Duplicate(st, st, "", 0, []string{"2"})
-	require.NoError(t, err)
+		st := sb.NewState()
+		newIds, err := NewBasic(sb, nil, converter.NewLayoutConverter(), nil).Duplicate(st, st, "", 0, []string{"2"})
+		require.NoError(t, err)
 
-	err = sb.Apply(st)
-	require.NoError(t, err)
+		err = sb.Apply(st)
+		require.NoError(t, err)
 
-	require.Len(t, newIds, 1)
-	s := sb.NewState()
-	assert.Len(t, s.Pick(newIds[0]).Model().ChildrenIds, 1)
-	assert.Len(t, sb.Blocks(), 5)
+		require.Len(t, newIds, 1)
+		s := sb.NewState()
+		assert.Len(t, s.Pick(newIds[0]).Model().ChildrenIds, 1)
+		assert.Len(t, sb.Blocks(), 5)
+	})
+
+	for _, tc := range []struct {
+		name     string
+		fos      func() fileobject.Service
+		spaceIds []string
+		targets  []string
+	}{
+		{
+			name: "dup file block - same space",
+			fos: func() fileobject.Service {
+				return nil
+			},
+			spaceIds: []string{"space1", "space1"},
+			targets:  []string{"file1_space1", "file2_space1"},
+		},
+		{
+			name: "dup file block - other space",
+			fos: func() fileobject.Service {
+				fos := mock_fileobject.NewMockService(t)
+				fos.EXPECT().GetFileIdFromObject("file1_space1").Return(domain.FullFileId{SpaceId: "space1", FileId: "file1"}, nil)
+				fos.EXPECT().CreateFromImport(domain.FullFileId{SpaceId: "space2", FileId: "file1"}, mock.Anything).Return("file1_space2", nil)
+				fos.EXPECT().GetFileIdFromObject("file2_space1").Return(domain.FullFileId{SpaceId: "space1", FileId: "file2"}, nil)
+				fos.EXPECT().CreateFromImport(domain.FullFileId{SpaceId: "space2", FileId: "file2"}, mock.Anything).Return("file2_space2", nil)
+				return fos
+			},
+			spaceIds: []string{"space1", "space2"},
+			targets:  []string{"file1_space2", "file2_space2"},
+		},
+		{
+			name: "dup file block - no target change if failed to retrieve file id",
+			fos: func() fileobject.Service {
+				fos := mock_fileobject.NewMockService(t)
+				fos.EXPECT().GetFileIdFromObject(mock.Anything).Return(domain.FullFileId{}, errors.New("no such file")).Times(2)
+				return fos
+			},
+			spaceIds: []string{"space1", "space2"},
+			targets:  []string{"file1_space1", "file2_space1"},
+		},
+		{
+			name: "dup file block - no target change if failed to create file object",
+			fos: func() fileobject.Service {
+				fos := mock_fileobject.NewMockService(t)
+				fos.EXPECT().GetFileIdFromObject("file1_space1").Return(domain.FullFileId{SpaceId: "space1", FileId: "file1"}, nil)
+				fos.EXPECT().GetFileIdFromObject("file2_space1").Return(domain.FullFileId{SpaceId: "space1", FileId: "file2"}, nil)
+				fos.EXPECT().CreateFromImport(mock.Anything, mock.Anything).Return("", errors.New("creation failure"))
+				return fos
+			},
+			spaceIds: []string{"space1", "space2"},
+			targets:  []string{"file1_space1", "file2_space1"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			source := smarttest.New("source").
+				AddBlock(simple.New(&model.Block{Id: "source", ChildrenIds: []string{"1", "f1"}})).
+				AddBlock(simple.New(&model.Block{Id: "1", ChildrenIds: []string{"f2"}})).
+				AddBlock(simple.New(&model.Block{Id: "f1", Content: &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: "file1_space1"}}})).
+				AddBlock(simple.New(&model.Block{Id: "f2", Content: &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: "file2_space1"}}}))
+			ss := source.NewState()
+			ss.SetDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(tc.spaceIds[0]))
+
+			target := smarttest.New("target").
+				AddBlock(simple.New(&model.Block{Id: "target"}))
+			ts := target.NewState()
+			ts.SetDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(tc.spaceIds[1]))
+
+			// when
+			newIds, err := NewBasic(source, nil, nil, tc.fos()).Duplicate(ss, ts, "target", model.Block_Inner, []string{"1", "f1"})
+			require.NoError(t, err)
+			require.NoError(t, target.Apply(ts))
+
+			// then
+			assert.Len(t, newIds, 2)
+
+			ts = target.NewState()
+			root := ts.Pick("target")
+			assert.Equal(t, newIds, root.Model().ChildrenIds)
+			block1 := ts.Pick(newIds[0])
+			require.NotNil(t, block1)
+			blockChildren := block1.Model().ChildrenIds
+			assert.Len(t, blockChildren, 1)
+
+			for fbID, targetID := range map[string]string{newIds[1]: tc.targets[0], blockChildren[0]: tc.targets[1]} {
+				fb := ts.Pick(fbID)
+				assert.NotNil(t, fb)
+				f, ok := fb.Model().Content.(*model.BlockContentOfFile)
+				assert.True(t, ok)
+				assert.Equal(t, targetID, f.File.TargetObjectId)
+			}
+		})
+	}
+
 }
 
 func TestBasic_Unlink(t *testing.T) {
@@ -108,7 +206,7 @@ func TestBasic_Unlink(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
 			AddBlock(simple.New(&model.Block{Id: "3"}))
 
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 
 		err := b.Unlink(nil, "2")
 		require.NoError(t, err)
@@ -122,7 +220,7 @@ func TestBasic_Unlink(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
 			AddBlock(simple.New(&model.Block{Id: "3"}))
 
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 
 		err := b.Unlink(nil, "2", "3")
 		require.NoError(t, err)
@@ -139,7 +237,7 @@ func TestBasic_Move(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "3"})).
 			AddBlock(simple.New(&model.Block{Id: "4"}))
 
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 
 		err := b.Move(st, st, "4", model.Block_Inner, []string{"3"})
@@ -153,7 +251,7 @@ func TestBasic_Move(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 		require.NoError(t, smartblock.ObjectApplyTemplate(sb, sb.NewState(), template.WithTitle))
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		s := sb.NewState()
 		id1, err := b.CreateBlock(s, pb.RpcBlockCreateRequest{
 			TargetId: template.HeaderLayoutId,
@@ -202,7 +300,7 @@ func TestBasic_Move(t *testing.T) {
 						},
 					),
 				)
-			basic := NewBasic(testDoc, nil, converter.NewLayoutConverter())
+			basic := NewBasic(testDoc, nil, converter.NewLayoutConverter(), nil)
 			state := testDoc.NewState()
 
 			// when
@@ -218,7 +316,7 @@ func TestBasic_Move(t *testing.T) {
 			AddBlock(newTextBlock("1", "", nil)).
 			AddBlock(newTextBlock("2", "one", nil))
 
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 		err := b.Move(st, st, "1", model.Block_InnerFirst, []string{"2"})
 		require.NoError(t, err)
@@ -238,7 +336,7 @@ func TestBasic_Move(t *testing.T) {
 			AddBlock(firstBlock).
 			AddBlock(secondBlock)
 
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 		err := b.Move(st, st, "1", model.Block_InnerFirst, []string{"2"})
 		require.NoError(t, err)
@@ -252,7 +350,7 @@ func TestBasic_Move(t *testing.T) {
 			AddBlock(newTextBlock("1", "", nil)).
 			AddBlock(newTextBlock("2", "one", nil))
 
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 		err := b.Move(st, nil, "1", model.Block_Top, []string{"2"})
 		require.NoError(t, err)
@@ -281,7 +379,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 		t.Run("moving non-root table block '"+block+"' leads to error", func(t *testing.T) {
 			// given
 			sb := getSB()
-			b := NewBasic(sb, nil, converter.NewLayoutConverter())
+			b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 			st := sb.NewState()
 
 			// when
@@ -296,7 +394,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("no error on moving root table block", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 
 		// when
@@ -310,7 +408,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("no error on moving one row between another", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 
 		// when
@@ -324,7 +422,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("moving rows with incorrect position leads to error", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 
 		// when
@@ -337,7 +435,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("moving rows and some other blocks between another leads to error", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 
 		// when
@@ -350,7 +448,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("moving the row between itself leads to error", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 
 		// when
@@ -363,7 +461,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("moving table block from invalid table leads to error", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 		st.Unlink("columns")
 
@@ -379,7 +477,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 		t.Run("moving a block to '"+block+"' block leads to moving it under the table", func(t *testing.T) {
 			// given
 			sb := getSB()
-			b := NewBasic(sb, nil, converter.NewLayoutConverter())
+			b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 			st := sb.NewState()
 
 			// when
@@ -394,7 +492,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 	t.Run("moving a block to the invalid table leads to moving it under the table", func(t *testing.T) {
 		// given
 		sb := getSB()
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		st := sb.NewState()
 		st.Unlink("columns")
 
@@ -418,7 +516,7 @@ func TestBasic_MoveToAnotherObject(t *testing.T) {
 		sb2 := smarttest.New("test2")
 		sb2.AddBlock(simple.New(&model.Block{Id: "test2", ChildrenIds: []string{}}))
 
-		b := NewBasic(sb1, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb1, nil, converter.NewLayoutConverter(), nil)
 
 		srcState := sb1.NewState()
 		destState := sb2.NewState()
@@ -453,7 +551,7 @@ func TestBasic_Replace(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
 		AddBlock(simple.New(&model.Block{Id: "2"}))
-	b := NewBasic(sb, nil, converter.NewLayoutConverter())
+	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 	newId, err := b.Replace(nil, "2", &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "l"}}})
 	require.NoError(t, err)
 	require.NotEmpty(t, newId)
@@ -463,7 +561,7 @@ func TestBasic_SetFields(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
 		AddBlock(simple.New(&model.Block{Id: "2"}))
-	b := NewBasic(sb, nil, converter.NewLayoutConverter())
+	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 
 	fields := &types.Struct{
 		Fields: map[string]*types.Value{
@@ -482,7 +580,7 @@ func TestBasic_Update(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
 		AddBlock(simple.New(&model.Block{Id: "2"}))
-	b := NewBasic(sb, nil, converter.NewLayoutConverter())
+	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 
 	err := b.Update(nil, func(b simple.Block) error {
 		b.Model().BackgroundColor = "test"
@@ -496,7 +594,7 @@ func TestBasic_SetDivStyle(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
 		AddBlock(simple.New(&model.Block{Id: "2", Content: &model.BlockContentOfDiv{Div: &model.BlockContentDiv{}}}))
-	b := NewBasic(sb, nil, converter.NewLayoutConverter())
+	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 
 	err := b.SetDivStyle(nil, model.BlockContentDiv_Dots, "2")
 	require.NoError(t, err)
@@ -507,7 +605,7 @@ func TestBasic_SetDivStyle(t *testing.T) {
 func TestBasic_PasteBlocks(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-	b := NewBasic(sb, nil, converter.NewLayoutConverter())
+	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 	s := sb.NewState()
 	err := b.PasteBlocks(s, "", model.Block_Inner, []simple.Block{
 		simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}),
@@ -534,7 +632,7 @@ func TestBasic_SetRelationKey(t *testing.T) {
 	t.Run("correct", func(t *testing.T) {
 		sb := smarttest.New("test")
 		fillSb(sb)
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		err := b.SetRelationKey(nil, pb.RpcBlockRelationSetKeyRequest{
 			BlockId: "2",
 			Key:     "testRelKey",
@@ -556,7 +654,7 @@ func TestBasic_SetRelationKey(t *testing.T) {
 	t.Run("not relation block", func(t *testing.T) {
 		sb := smarttest.New("test")
 		fillSb(sb)
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		require.Error(t, b.SetRelationKey(nil, pb.RpcBlockRelationSetKeyRequest{
 			BlockId: "1",
 			Key:     "key",
@@ -565,7 +663,7 @@ func TestBasic_SetRelationKey(t *testing.T) {
 	t.Run("relation not found", func(t *testing.T) {
 		sb := smarttest.New("test")
 		fillSb(sb)
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 		require.Error(t, b.SetRelationKey(nil, pb.RpcBlockRelationSetKeyRequest{
 			BlockId: "2",
 			Key:     "not exists",
@@ -581,7 +679,7 @@ func TestBasic_FeaturedRelationAdd(t *testing.T) {
 	s.AddBundledRelationLinks(bundle.RelationKeyDescription)
 	require.NoError(t, sb.Apply(s))
 
-	b := NewBasic(sb, nil, converter.NewLayoutConverter())
+	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 	newRel := []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyName.String()}
 	require.NoError(t, b.FeaturedRelationAdd(nil, newRel...))
 
@@ -597,7 +695,7 @@ func TestBasic_FeaturedRelationRemove(t *testing.T) {
 	template.WithDescription(s)
 	require.NoError(t, sb.Apply(s))
 
-	b := NewBasic(sb, nil, converter.NewLayoutConverter())
+	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 	require.NoError(t, b.FeaturedRelationRemove(nil, bundle.RelationKeyDescription.String()))
 
 	res := sb.NewState()
@@ -634,7 +732,7 @@ func TestBasic_ReplaceLink(t *testing.T) {
 	}
 	require.NoError(t, sb.Apply(s))
 
-	b := NewBasic(sb, nil, converter.NewLayoutConverter())
+	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
 	require.NoError(t, b.ReplaceLink(oldId, newId))
 
 	res := sb.NewState()
