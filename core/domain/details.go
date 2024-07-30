@@ -1,77 +1,77 @@
 package domain
 
-type Details struct {
-	data map[RelationKey]any
+type Details[K comparable] struct {
+	data map[K]any
 }
 
-func (d *Details) Set(key RelationKey, value any) {
+func (d *Details[K]) Set(key K, value any) {
 	d.data[key] = value
 }
 
-func (d *Details) Delete(key RelationKey) {
+func (d *Details[K]) Delete(key K) {
 	delete(d.data, key)
 }
 
-func (d *Details) GetRaw(key RelationKey) (any, bool) {
+func (d *Details[K]) GetRaw(key K) (any, bool) {
 	v, ok := d.data[key]
 	return v, ok
 }
 
-func (d *Details) Get(key RelationKey) Value {
+func (d *Details[K]) Get(key K) Value {
 	v, ok := d.data[key]
 	return Value{ok, v}
 }
 
-func (d *Details) Has(key RelationKey) bool {
+func (d *Details[K]) Has(key K) bool {
 	_, ok := d.data[key]
 	return ok
 }
 
-func (d *Details) GetBool(key RelationKey) (bool, bool) {
+func (d *Details[K]) GetBool(key K) (bool, bool) {
 	return d.Get(key).Bool()
 }
 
-func (d *Details) GetBoolOrDefault(key RelationKey, def bool) bool {
+func (d *Details[K]) GetBoolOrDefault(key K, def bool) bool {
 	return d.Get(key).BoolOrDefault(def)
 }
 
-func (d *Details) GetString(key RelationKey) (string, bool) {
+func (d *Details[K]) GetString(key K) (string, bool) {
 	return d.Get(key).String()
 }
 
-func (d *Details) GetStringOrDefault(key RelationKey, def string) string {
+func (d *Details[K]) GetStringOrDefault(key K, def string) string {
 	return d.Get(key).StringOrDefault(def)
 }
 
-func (d *Details) GetInt(key RelationKey) (int, bool) {
+func (d *Details[K]) GetInt(key K) (int, bool) {
 	return d.Get(key).Int()
 }
 
-func (d *Details) GetIntOrDefault(key RelationKey, def int) int {
+func (d *Details[K]) GetIntOrDefault(key K, def int) int {
 	return d.Get(key).IntOrDefault(def)
 }
 
-func (d *Details) GetFloat(key RelationKey) (float64, bool) {
+func (d *Details[K]) GetFloat(key K) (float64, bool) {
 	return d.Get(key).Float()
 }
 
-func (d *Details) GetFloatOrDefault(key RelationKey, def float64) float64 {
+func (d *Details[K]) GetFloatOrDefault(key K, def float64) float64 {
 	return d.Get(key).FloatOrDefault(def)
 }
 
-func (d *Details) GetStringList(key RelationKey) ([]string, bool) {
+func (d *Details[K]) GetStringList(key K) ([]string, bool) {
 	return d.Get(key).StringList()
 }
 
-func (d *Details) GetStringListOrDefault(key RelationKey, def []string) []string {
+func (d *Details[K]) GetStringListOrDefault(key K, def []string) []string {
 	return d.Get(key).StringListOrDefault(def)
 }
 
-func (d *Details) GetIntList(key RelationKey) ([]int, bool) {
+func (d *Details[K]) GetIntList(key K) ([]int, bool) {
 	return d.Get(key).IntList()
 }
 
-func (d *Details) GetIntListOrDefault(key RelationKey, def []int) []int {
+func (d *Details[K]) GetIntListOrDefault(key K, def []int) []int {
 	return d.Get(key).IntListOrDefault(def)
 }
 
