@@ -14,7 +14,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type edgeType int
@@ -93,7 +92,7 @@ func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 	g.nodes[st.RootId()] = &n
 	// TODO: add relations
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, true, true, false, false, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, false, false, false)
 	for _, depID := range dependentObjectIDs {
 		t, err := g.sbtProvider.Type(st.SpaceID(), depID)
 		if err != nil {

@@ -84,7 +84,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeId))
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(s, space, true, true, false, true, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(s, space, false, true, false)
 	// nolint:errcheck
 	meta, _ := h.objectStore.QueryByID(dependentObjectIDs)
 
@@ -207,7 +207,7 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	if err != nil {
 		return nil, nil, fmt.Errorf("get space: %w", err)
 	}
-	dependentObjectIDs := objectlink.DependentObjectIDs(currState, spc, true, true, false, true, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(currState, spc, false, true, false)
 	meta, err := h.objectStore.QueryByID(dependentObjectIDs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get dependencies: %w", err)

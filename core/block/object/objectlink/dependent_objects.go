@@ -28,17 +28,16 @@ type linkSource interface {
 	HasSmartIds() bool
 }
 
-func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, details, relations, objTypes, creatorModifierWorkspace bool) (ids []string) {
-	if blocks {
-		err := s.Iterate(func(b simple.Block) (isContinue bool) {
-			if ls, ok := b.(linkSource); ok {
-				ids = ls.FillSmartIds(ids)
-			}
-			return true
-		})
-		if err != nil {
-			log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
+func DependentObjectIDs(s *state.State, converter KeyToIDConverter, relations, objTypes, creatorModifierWorkspace bool) (ids []string) {
+	// Blocks
+	err := s.Iterate(func(b simple.Block) (isContinue bool) {
+		if ls, ok := b.(linkSource); ok {
+			ids = ls.FillSmartIds(ids)
 		}
+		return true
+	})
+	if err != nil {
+		log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
 	}
 
 	if objTypes {
@@ -56,10 +55,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 		}
 	}
 
-	var det *domain.Details
-	if details {
-		det = s.CombinedDetails()
-	}
+	det := s.CombinedDetails()
 
 	for _, rel := range s.GetRelationLinks() {
 		// do not index local dates such as lastOpened/lastModified
@@ -70,10 +66,6 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 				continue
 			}
 			ids = append(ids, id)
-		}
-
-		if !details {
-			continue
 		}
 
 		// handle corner cases first for specific formats

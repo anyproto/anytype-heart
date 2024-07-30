@@ -20,7 +20,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -117,7 +116,7 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 
 	// TODO: add relations
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, true, true, false, false, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, false, false, false)
 	for _, depID := range dependentObjectIDs {
 		t, err := d.sbtProvider.Type(st.SpaceID(), depID)
 		if err != nil {
