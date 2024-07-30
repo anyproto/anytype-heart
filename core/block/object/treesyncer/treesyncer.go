@@ -152,9 +152,10 @@ func (t *treeSyncer) ShouldSync(peerId string) bool {
 	return t.isSyncing
 }
 
-func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missing []string) (err error) {
+func (t *treeSyncer) SyncAll(ctx context.Context, p peer.Peer, existing, missing []string) (err error) {
 	t.Lock()
 	defer t.Unlock()
+	peerId := p.Id()
 	isResponsible := slices.Contains(t.nodeConf.NodeIds(t.spaceId), peerId)
 	t.sendSyncEvents(existing, missing, isResponsible)
 	reqExec, exists := t.requestPools[peerId]
@@ -176,7 +177,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 	for _, id := range existing {
 		idCopy := id
 		err = headExec.tryAdd(idCopy, func() {
-			t.updateTree(peerId, idCopy)
+			t.updateTree(p, idCopy)
 		})
 		if err != nil {
 			log.Error("failed to add to head queue", zap.Error(err))
@@ -219,9 +220,16 @@ func (t *treeSyncer) requestTree(peerId, id string) {
 	}
 }
 
-func (t *treeSyncer) updateTree(peerId, id string) {
+func (t *treeSyncer) updateTree(p peer.Peer, id string) {
+	peerId := p.Id()
 	log := log.With(zap.String("treeId", id), zap.String("spaceId", t.spaceId))
 	ctx := peer.CtxWithPeerId(t.mainCtx, peerId)
+	ver, err := peer.CtxProtoVersion(p.Context())
+	if err != nil {
+		log.Warn("can't get proto version", zap.Error(err))
+		return
+	}
+	ctx = peer.CtxWithProtoVersion(ctx, ver)
 	tr, err := t.treeManager.GetTree(ctx, t.spaceId, id)
 	if err != nil {
 		log.Warn("can't load existing tree", zap.Error(err))
@@ -232,7 +240,7 @@ func (t *treeSyncer) updateTree(peerId, id string) {
 		log.Warn("not a sync tree")
 		return
 	}
-	if err = syncTree.SyncWithPeer(ctx, peerId); err != nil {
+	if err = syncTree.SyncWithPeer(ctx, p); err != nil {
 		log.Warn("synctree.SyncWithPeer error", zap.Error(err))
 	} else {
 		log.Debug("success synctree.SyncWithPeer")

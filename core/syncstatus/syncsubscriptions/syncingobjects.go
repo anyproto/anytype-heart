@@ -39,16 +39,6 @@ func (s *syncingObjects) Run() error {
 				Value:       pbtypes.Int64(int64(domain.SpaceSyncStatusSyncing)),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_NotIn,
-				Value: pbtypes.IntList(
-					int(model.ObjectType_file),
-					int(model.ObjectType_image),
-					int(model.ObjectType_video),
-					int(model.ObjectType_audio),
-				),
-			},
-			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(s.spaceId),
