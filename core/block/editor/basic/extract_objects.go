@@ -113,7 +113,13 @@ func insertBlocksToState(
 		objState.Add(b)
 	}
 	rootB := objState.Pick(objState.RootId()).Model()
-	rootB.ChildrenIds = append(rootB.ChildrenIds, newRoot)
+	if hasNoteLayout(objState) {
+		rootB.ChildrenIds = append(rootB.ChildrenIds, newRoot)
+	} else {
+		children := objState.Pick(newRoot).Model().ChildrenIds
+		rootB.ChildrenIds = append(rootB.ChildrenIds, children...)
+	}
+
 	objState.Set(simple.New(rootB))
 }
 
@@ -163,7 +169,9 @@ func removeBlocks(state *state.State, descendants []simple.Block) {
 }
 
 func createTargetObjectDetails(nameText string, layout model.ObjectTypeLayout) *types.Struct {
-	fields := map[string]*types.Value{}
+	fields := map[string]*types.Value{
+		bundle.RelationKeyLayout.String(): pbtypes.Int64(int64(layout)),
+	}
 
 	// Without this check title will be duplicated in template.WithNameToFirstBlock
 	if layout != model.ObjectType_note {
@@ -222,4 +230,8 @@ func reassignSubtreeIds(s *state.State, rootId string, blocks []simple.Block) (s
 		}
 	}
 	return mapping[rootId], res
+}
+
+func hasNoteLayout(s *state.State) bool {
+	return model.ObjectTypeLayout(pbtypes.GetInt64(s.Details(), bundle.RelationKeyLayout.String())) == model.ObjectType_note
 }
