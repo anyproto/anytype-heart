@@ -90,6 +90,9 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) {
 			}
 
 			for _, doc := range objDocs {
+				if err != nil {
+					return fmt.Errorf("batcher delete: %w", err)
+				}
 				err = batcher.UpdateDoc(doc)
 				if err != nil {
 					return fmt.Errorf("batcher add: %w", err)
