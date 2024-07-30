@@ -74,47 +74,6 @@ func StructCutKeys(st *types.Struct, excludeKeys []string) *types.Struct {
 	})
 }
 
-// StructDiff returns pb struct which contains:
-// - st2 fields that not exist in st1
-// - st2 fields that not equal to ones exist in st1
-// - nil map value for st1 fields not exist in st2
-// In case st1 and st2 are equal returns nil
-func StructDiff(st1, st2 *types.Struct) *types.Struct {
-	var diff *types.Struct
-	if st1 == nil {
-		return st2
-	}
-	if st2 == nil {
-		diff = &types.Struct{Fields: map[string]*types.Value{}}
-		for k, _ := range st1.Fields {
-			diff.Fields[k] = nil
-		}
-		return diff
-	}
-
-	for k, v2 := range st2.Fields {
-		v1, ok := st1.Fields[k]
-		if !ok || !v1.Equal(v2) {
-			if diff == nil {
-				diff = &types.Struct{Fields: map[string]*types.Value{}}
-			}
-			diff.Fields[k] = v2
-		}
-	}
-
-	for k, _ := range st1.Fields {
-		_, ok := st2.Fields[k]
-		if !ok {
-			if diff == nil {
-				diff = &types.Struct{Fields: map[string]*types.Value{}}
-			}
-			diff.Fields[k] = nil
-		}
-	}
-
-	return diff
-}
-
 func StructMerge(st1, st2 *types.Struct, copyVals bool) *types.Struct {
 	var res *types.Struct
 	if st1 == nil || st1.Fields == nil {

@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -70,8 +71,8 @@ func (t *GroupTag) MakeGroups() (GroupSlice, error) {
 
 	// single tag groups
 	for _, v := range t.Records {
-		if tagOption := pbtypes.GetString(v.Details, bundle.RelationKeyRelationKey.String()); tagOption == t.Key {
-			optionID := pbtypes.GetString(v.Details, bundle.RelationKeyId.String())
+		if tagOption := v.Details.GetStringOrDefault(bundle.RelationKeyRelationKey, ""); tagOption == t.Key {
+			optionID := v.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 			if !uniqMap[optionID] {
 				uniqMap[optionID] = true
 				groups = append(groups, Group{
@@ -84,7 +85,7 @@ func (t *GroupTag) MakeGroups() (GroupSlice, error) {
 
 	// multiple tag groups
 	for _, rec := range t.Records {
-		tagIDs := slice.Filter(pbtypes.GetStringList(rec.Details, t.Key), func(tagID string) bool { // filter removed options
+		tagIDs := slice.Filter(rec.Details.GetStringListOrDefault(domain.RelationKey(t.Key), nil), func(tagID string) bool { // filter removed options
 			return uniqMap[tagID]
 		})
 

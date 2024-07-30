@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
@@ -69,17 +68,17 @@ func (s *service) FileOffload(ctx context.Context, objectId string, includeNotPi
 	if err != nil {
 		return 0, fmt.Errorf("get object details: %w", err)
 	}
-	return s.fileOffload(ctx, details.GetDetails(), includeNotPinned)
+	return s.fileOffload(ctx, details, includeNotPinned)
 }
 
-func (s *service) fileOffload(ctx context.Context, fileDetails *types.Struct, includeNotPinned bool) (uint64, error) {
-	fileId := pbtypes.GetString(fileDetails, bundle.RelationKeyFileId.String())
+func (s *service) fileOffload(ctx context.Context, fileDetails *domain.Details, includeNotPinned bool) (uint64, error) {
+	fileId := fileDetails.GetStringOrDefault(bundle.RelationKeyFileId, "")
 	if fileId == "" {
 		return 0, fmt.Errorf("empty file id")
 	}
-	backupStatus := filesyncstatus.Status(pbtypes.GetInt64(fileDetails, bundle.RelationKeyFileBackupStatus.String()))
+	backupStatus := filesyncstatus.Status(fileDetails.GetIntOrDefault(bundle.RelationKeyFileBackupStatus, 0))
 	id := domain.FullFileId{
-		SpaceId: pbtypes.GetString(fileDetails, bundle.RelationKeySpaceId.String()),
+		SpaceId: fileDetails.GetStringOrDefault(bundle.RelationKeySpaceId, ""),
 		FileId:  domain.FileId(fileId),
 	}
 
@@ -128,8 +127,8 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 
 		for _, record := range records {
 			fileId := domain.FullFileId{
-				SpaceId: pbtypes.GetString(record.Details, bundle.RelationKeySpaceId.String()),
-				FileId:  domain.FileId(pbtypes.GetString(record.Details, bundle.RelationKeyFileId.String())),
+				SpaceId: record.Details.GetStringOrDefault(bundle.RelationKeySpaceId, ""),
+				FileId:  domain.FileId(record.Details.GetStringOrDefault(bundle.RelationKeyFileId, "")),
 			}
 			_, cids, err := s.getAllExistingFileBlocksCids(ctx, fileId)
 			if err != nil {
@@ -161,7 +160,7 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 		return 0, 0, fmt.Errorf("query file objects by spaceId: %w", err)
 	}
 	for _, record := range records {
-		fileId := pbtypes.GetString(record.Details, bundle.RelationKeyFileId.String())
+		fileId := record.Details.GetStringOrDefault(bundle.RelationKeyFileId, "")
 		size, err := s.offloadFileSafe(ctx, spaceId, fileId, record, includeNotPinned)
 		if err != nil {
 			log.Error("FileSpaceOffload: failed to offload file", zap.String("fileId", fileId), zap.Error(err))

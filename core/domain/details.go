@@ -9,14 +9,26 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+type Tombstone struct{}
+
 type GenericMap[K ~string] struct {
 	data map[K]any
 }
 
 type Details = GenericMap[RelationKey]
 
+// TODO Helpers for frequent fields like id, spaceId, etc?
+
 func NewDetails() *Details {
 	return &GenericMap[RelationKey]{data: make(map[RelationKey]any, 20)}
+}
+
+func NewDetailsFromProto(st *types.Struct) *Details {
+	data := make(map[RelationKey]any, len(st.GetFields()))
+	for k, v := range st.GetFields() {
+		data[RelationKey(k)] = pbtypes.ProtoToAny(v)
+	}
+	return &GenericMap[RelationKey]{data: data}
 }
 
 func NewDetailsWithSize(size int) *Details {
@@ -150,4 +162,47 @@ func ProtoValueToJson(arena *fastjson.Arena, v any) *fastjson.Value {
 	default:
 		return arena.NewNull()
 	}
+}
+
+// StructDiff returns pb struct which contains:
+// - st2 fields that not exist in st1
+// - st2 fields that not equal to ones exist in st1
+// - nil map value for st1 fields not exist in st2
+// In case st1 and st2 are equal returns nil
+func StructDiff(st1, st2 *Details) *Details {
+	var diff *Details
+	if st1 == nil {
+		return st2
+	}
+	if st2 == nil {
+		diff = NewDetails()
+		st1.Iterate(func(k RelationKey, v any) bool {
+			diff.Set(k, Tombstone{})
+			return true
+		})
+		return diff
+	}
+
+	st2.Iterate(func(k2 RelationKey, v2 any) bool {
+		v1 := st1.Get(k2)
+		if !v1.Ok() || !v1.EqualAny(v2) {
+			if diff == nil {
+				diff = NewDetails()
+			}
+			diff.Set(k2, v2)
+		}
+		return true
+	})
+
+	st1.Iterate(func(k RelationKey, _ any) bool {
+		if !st2.Has(k) {
+			if diff == nil {
+				diff = NewDetails()
+			}
+			diff.Set(k, Tombstone{})
+		}
+		return true
+	})
+
+	return diff
 }

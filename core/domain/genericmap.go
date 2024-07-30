@@ -1,5 +1,7 @@
 package domain
 
+import "golang.org/x/exp/slices"
+
 func (d *GenericMap[K]) Len() int {
 	return len(d.data)
 }
@@ -91,9 +93,39 @@ func (d *GenericMap[K]) ShallowCopy() *GenericMap[K] {
 	return &GenericMap[K]{data: newData}
 }
 
+func (d *GenericMap[K]) CopyWithoutKeys(keys []K) *GenericMap[K] {
+	newData := make(map[K]any, len(d.data))
+	for k, v := range d.data {
+		if !slices.Contains(keys, k) {
+			newData[k] = v
+		}
+	}
+	return &GenericMap[K]{data: newData}
+}
+
+func (d *GenericMap[K]) Equal(other *GenericMap[K]) bool {
+	if d.Len() != other.Len() {
+		return false
+	}
+	for k, v := range d.data {
+		otherV, ok := other.data[k]
+		if !ok {
+			return false
+		}
+		if !SomeValue(v).EqualAny(otherV) {
+			return false
+		}
+	}
+	return true
+}
+
 type Value struct {
 	ok    bool
 	value any
+}
+
+func SomeValue(value any) Value {
+	return Value{ok: true, value: value}
 }
 
 func (v Value) Ok() bool {
@@ -135,6 +167,7 @@ func (v Value) StringOrDefault(def string) string {
 	return res
 }
 
+// TODO Store only floats?
 func (v Value) Int() (int, bool) {
 	if !v.ok {
 		return 0, false
@@ -195,6 +228,7 @@ func (v Value) StringListOrDefault(def []string) []string {
 	return res
 }
 
+// TODO Float list instead and []int only as helper
 func (v Value) IntList() ([]int, bool) {
 	if !v.ok {
 		return nil, false
@@ -209,4 +243,91 @@ func (v Value) IntListOrDefault(def []int) []int {
 		return def
 	}
 	return res
+}
+
+func (v Value) EqualAny(other any) bool {
+	return v.Equal(Value{ok: true, value: other})
+}
+
+func (v Value) Equal(other Value) bool {
+	if v.ok != other.ok {
+		return false
+	}
+	if !v.ok {
+		return true
+	}
+
+	{
+		v1, ok1 := v.Bool()
+		v2, ok2 := other.Bool()
+		if ok1 != ok2 {
+			return false
+		}
+		if ok1 {
+			return v1 == v2
+		}
+	}
+
+	{
+		v1, ok1 := v.String()
+		v2, ok2 := other.String()
+		if ok1 != ok2 {
+			return false
+		}
+		if ok1 {
+			return v1 == v2
+		}
+	}
+
+	{
+		v1, ok1 := v.Int()
+		v2, ok2 := other.Int()
+		if ok1 != ok2 {
+			return false
+		}
+		if ok1 {
+			return v1 == v2
+		}
+	}
+
+	{
+		v1, ok1 := v.Float()
+		v2, ok2 := other.Float()
+		if ok1 != ok2 {
+			return false
+		}
+		if ok1 {
+			return v1 == v2
+		}
+	}
+
+	{
+		v1, ok1 := v.StringList()
+		v2, ok2 := other.StringList()
+		if ok1 != ok2 {
+			return false
+		}
+		if ok1 {
+			if len(v1) != len(v2) {
+				return false
+			}
+			return slices.Equal(v1, v2)
+		}
+	}
+
+	{
+		v1, ok1 := v.IntList()
+		v2, ok2 := other.IntList()
+		if ok1 != ok2 {
+			return false
+		}
+		if ok1 {
+			if len(v1) != len(v2) {
+				return false
+			}
+			return slices.Equal(v1, v2)
+		}
+	}
+
+	return false
 }

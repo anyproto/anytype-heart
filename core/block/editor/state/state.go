@@ -50,9 +50,9 @@ type Doc interface {
 	NewStateCtx(ctx session.Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
-	Details() *types.Struct
-	CombinedDetails() *types.Struct
-	LocalDetails() *types.Struct
+	Details() *domain.Details
+	CombinedDetails() *domain.Details
+	LocalDetails() *domain.Details
 
 	GetRelationLinks() pbtypes.RelationLinks
 
@@ -114,8 +114,8 @@ type State struct {
 	changes           []*pb.ChangeContent
 	fileInfo          FileInfo
 	fileKeys          []pb.ChangeFileKeys // Deprecated
-	details           *types.Struct
-	localDetails      *types.Struct
+	details           *domain.Details
+	localDetails      *domain.Details
 	relationLinks     pbtypes.RelationLinks
 	notifications     map[string]*model.Notification
 	deviceStore       map[string]*model.DeviceInfo
@@ -197,7 +197,7 @@ func (s *State) GroupId() string {
 }
 
 func (s *State) SpaceID() string {
-	return pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String())
+	return s.LocalDetails().GetStringOrDefault(bundle.RelationKeySpaceId, "")
 }
 
 func (s *State) Add(b simple.Block) (ok bool) {
@@ -705,8 +705,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
-		if diff := pbtypes.StructDiff(prev, s.details); diff != nil {
-			action.Details = &undo.Details{Before: pbtypes.CopyStruct(prev, false), After: pbtypes.CopyStruct(s.details, false)}
+		if diff := domain.StructDiff(prev, s.details); diff != nil {
+			action.Details = &undo.Details{Before: prev.ShallowCopy(), After: s.details.ShallowCopy()}
 			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.RootId(), diff))...)
 			s.parent.details = s.details
 		} else if !s.details.Equal(s.parent.details) {
@@ -736,7 +736,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 
 	if s.parent != nil && s.localDetails != nil {
 		prev := s.parent.LocalDetails()
-		if diff := pbtypes.StructDiff(prev, s.localDetails); diff != nil {
+		if diff := domain.StructDiff(prev, s.localDetails); diff != nil {
 			msgs = append(msgs, WrapEventMessages(true, StructDiffIntoEvents(s.RootId(), diff))...)
 			s.parent.localDetails = s.localDetails
 		} else if !s.localDetails.Equal(s.parent.localDetails) {
@@ -888,37 +888,6 @@ func (s *State) writeString(buf *bytes.Buffer, l int, id string) {
 			s.writeString(buf, l+1, cid)
 		}
 	}
-}
-
-func (s *State) StringDebug() string {
-	buf := bytes.NewBuffer(nil)
-	fmt.Fprintf(buf, "RootId: %s\n", s.RootId())
-	fmt.Fprintf(buf, "ObjectTypeKeys: %v\n", s.ObjectTypeKeys())
-	fmt.Fprintf(buf, "Relations:\n")
-	for _, rel := range s.relationLinks {
-		fmt.Fprintf(buf, "\t%v\n", rel)
-	}
-
-	fmt.Fprintf(buf, "\nDetails:\n")
-	pbtypes.SortedRange(s.Details(), func(k string, v *types.Value) {
-		fmt.Fprintf(buf, "\t%s:\t%v\n", k, pbtypes.Sprint(v))
-	})
-	fmt.Fprintf(buf, "\nLocal details:\n")
-	pbtypes.SortedRange(s.LocalDetails(), func(k string, v *types.Value) {
-		fmt.Fprintf(buf, "\t%s:\t%v\n", k, pbtypes.Sprint(v))
-	})
-	fmt.Fprintf(buf, "\nBlocks:\n")
-	s.writeString(buf, 0, s.RootId())
-	fmt.Fprintf(buf, "\nCollection:\n")
-	pbtypes.SortedRange(s.Store(), func(k string, v *types.Value) {
-		fmt.Fprintf(buf, "\t%s\n", k)
-		if st := v.GetStructValue(); st != nil {
-			pbtypes.SortedRange(st, func(k string, v *types.Value) {
-				fmt.Fprintf(buf, "\t\t%s:\t%v\n", k, pbtypes.Sprint(v))
-			})
-		}
-	})
-	return buf.String()
 }
 
 func (s *State) SetDetails(d *types.Struct) *State {
@@ -1092,7 +1061,7 @@ func (s *State) InjectLocalDetails(localDetails *types.Struct) {
 	}
 }
 
-func (s *State) LocalDetails() *types.Struct {
+func (s *State) LocalDetails() *domain.Details {
 	if s.localDetails == nil && s.parent != nil {
 		return s.parent.LocalDetails()
 	}
@@ -1100,7 +1069,7 @@ func (s *State) LocalDetails() *types.Struct {
 	return s.localDetails
 }
 
-func (s *State) CombinedDetails() *types.Struct {
+func (s *State) CombinedDetails() *domain.Details {
 	return pbtypes.StructMerge(s.Details(), s.LocalDetails(), false)
 }
 
@@ -1114,7 +1083,7 @@ func (s *State) HasCombinedDetailsKey(key string) bool {
 	return false
 }
 
-func (s *State) Details() *types.Struct {
+func (s *State) Details() *domain.Details {
 	if s.details == nil && s.parent != nil {
 		return s.parent.Details()
 	}

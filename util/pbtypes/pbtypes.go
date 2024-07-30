@@ -280,6 +280,19 @@ func ListValueToStrings(list *types.ListValue) []string {
 	return stringsSlice
 }
 
+func ListValueToFloats(list *types.ListValue) []float64 {
+	if list == nil {
+		return nil
+	}
+	res := make([]float64, 0, len(list.Values))
+	for _, v := range list.Values {
+		if _, ok := v.GetKind().(*types.Value_NumberValue); ok {
+			res = append(res, v.GetNumberValue())
+		}
+	}
+	return res
+}
+
 func HasField(st *types.Struct, key string) bool {
 	if st == nil || st.Fields == nil {
 		return false
@@ -608,5 +621,32 @@ func AnyToProto(v any) *types.Value {
 		return FloatList(v)
 	default:
 		return Null()
+	}
+}
+
+func ProtoToAny(v *types.Value) any {
+	switch v.Kind.(type) {
+	case *types.Value_StringValue:
+		return v.GetStringValue()
+	case *types.Value_NumberValue:
+		return v.GetNumberValue()
+	case *types.Value_BoolValue:
+		return v.GetBoolValue()
+	case *types.Value_ListValue:
+		listValue := v.GetListValue()
+		if listValue == nil || len(listValue.Values) == 0 {
+			return []string{}
+		}
+
+		firstValue := listValue.Values[0]
+		if _, ok := firstValue.GetKind().(*types.Value_StringValue); ok {
+			return ListValueToStrings(listValue)
+		}
+		if _, ok := firstValue.GetKind().(*types.Value_NumberValue); ok {
+			return ListValueToFloats(listValue)
+		}
+		return []string{}
+	default:
+		return nil
 	}
 }

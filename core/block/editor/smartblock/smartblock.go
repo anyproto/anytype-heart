@@ -449,7 +449,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
 	}
-	recordsCh := make(chan *types.Struct, 10)
+	recordsCh := make(chan *domain.Details, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
 
 	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true)
@@ -474,8 +474,8 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 
 	for _, rec := range records {
 		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
-			Details: rec.Details,
+			Id:      rec.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
+			Details: rec.Details.ToProto(),
 		})
 	}
 	go sb.metaListener(recordsCh)
@@ -490,7 +490,7 @@ func (sb *smartBlock) Unlock() {
 	sb.Locker.Unlock()
 }
 
-func (sb *smartBlock) metaListener(ch chan *types.Struct) {
+func (sb *smartBlock) metaListener(ch chan *domain.Details) {
 	for {
 		rec, ok := <-ch
 		if !ok {
@@ -502,11 +502,11 @@ func (sb *smartBlock) metaListener(ch chan *types.Struct) {
 	}
 }
 
-func (sb *smartBlock) onMetaChange(details *types.Struct) {
+func (sb *smartBlock) onMetaChange(details *domain.Details) {
 	if details == nil {
 		return
 	}
-	id := pbtypes.GetString(details, bundle.RelationKeyId.String())
+	id := details.GetStringOrDefault(bundle.RelationKeyId, "")
 	msgs := []*pb.EventMessage{}
 	if v, exists := sb.lastDepDetails[id]; exists {
 		diff := pbtypes.StructDiff(v.Details, details)

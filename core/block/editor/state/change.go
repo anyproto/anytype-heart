@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
 	"golang.org/x/exp/slices"
@@ -81,22 +80,22 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		removedCollectionKeysMap[t] = struct{}{}
 	}
 
-	detailsToSave := pbtypes.StructCutKeys(snapshot.Data.Details, bundle.LocalAndDerivedRelationKeys)
-
-	if err := pbtypes.ValidateStruct(detailsToSave); err != nil {
+	detailsFromSnapshot := pbtypes.StructCutKeys(snapshot.Data.Details, bundle.LocalAndDerivedRelationKeys)
+	if err := pbtypes.ValidateStruct(detailsFromSnapshot); err != nil {
 		log.Errorf("NewDocFromSnapshot details validation error: %v; details normalized", err)
-		pbtypes.NormalizeStruct(detailsToSave)
+		pbtypes.NormalizeStruct(detailsFromSnapshot)
 	}
-
 	if sOpts.uniqueKeyMigration != nil {
 		migrateAddMissingUniqueKey(sOpts.uniqueKeyMigration.sbType, snapshot)
 	}
+
+	details := domain.NewDetailsFromProto(detailsFromSnapshot)
 
 	s := &State{
 		changeId:                 sOpts.changeId,
 		rootId:                   rootId,
 		blocks:                   blocks,
-		details:                  detailsToSave,
+		details:                  details,
 		relationLinks:            snapshot.Data.RelationLinks,
 		objectTypeKeys:           migrateObjectTypeIDsToKeys(snapshot.Data.ObjectTypes),
 		fileKeys:                 fileKeys,
@@ -263,35 +262,31 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 
 func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 	det := s.Details()
-	if det == nil || det.Fields == nil {
-		det = &types.Struct{
-			Fields: make(map[string]*types.Value),
-		}
+	if det == nil {
+		det = domain.NewDetails()
 	}
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// set.Value = shortenValueToLimit(s.rootId, set.Key, set.Value)
-	if s.details == nil || s.details.Fields == nil {
-		s.details = pbtypes.CopyStruct(det, false)
+	if s.details == nil {
+		s.details = det.ShallowCopy()
 	}
 	if set.Value != nil {
-		s.details.Fields[set.Key] = set.Value
+		s.details.Set(domain.RelationKey(set.Key), pbtypes.ProtoToAny(set.Value))
 	} else {
-		delete(s.details.Fields, set.Key)
+		s.details.Delete(domain.RelationKey(set.Key))
 	}
 	return nil
 }
 
 func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 	det := s.Details()
-	if det == nil || det.Fields == nil {
-		det = &types.Struct{
-			Fields: make(map[string]*types.Value),
-		}
+	if det == nil {
+		det = domain.NewDetails()
 	}
-	if s.details == nil || s.details.Fields == nil {
-		s.details = pbtypes.CopyStruct(det, false)
+	if s.details == nil {
+		s.details = det.ShallowCopy()
 	}
-	delete(s.details.Fields, unset.Key)
+	s.details.Delete(domain.RelationKey(unset.Key))
 	return nil
 }
 
@@ -725,36 +720,41 @@ func (s *State) makeStructureChanges(cb *changeBuilder, msg *pb.EventBlockSetChi
 }
 
 func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
-	if s.details == nil || s.details.Fields == nil {
+	if s.details == nil {
 		return nil
 	}
-	var prev *types.Struct
+	var prev *domain.Details
 	if s.parent != nil {
 		prev = s.parent.Details()
 	}
-	if prev == nil || prev.Fields == nil {
-		prev = &types.Struct{Fields: make(map[string]*types.Value)}
+	if prev == nil {
+		prev = domain.NewDetails()
 	}
 	curDetails := s.Details()
-	for k, v := range curDetails.Fields {
-		pv, ok := prev.Fields[k]
-		if !ok || !pv.Equal(v) {
+
+	curDetails.Iterate(func(k domain.RelationKey, v any) bool {
+		prevValue := prev.Get(k)
+		if !prevValue.Ok() || !prevValue.EqualAny(v) {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsSet{
-					DetailsSet: &pb.ChangeDetailsSet{Key: k, Value: v},
+					DetailsSet: &pb.ChangeDetailsSet{Key: string(k), Value: pbtypes.AnyToProto(v)},
 				},
 			})
 		}
-	}
-	for k := range prev.Fields {
-		if _, ok := curDetails.Fields[k]; !ok {
+		return true
+	})
+
+	prev.Iterate(func(k domain.RelationKey, v any) bool {
+		if !curDetails.Has(k) {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsUnset{
-					DetailsUnset: &pb.ChangeDetailsUnset{Key: k},
+					DetailsUnset: &pb.ChangeDetailsUnset{Key: string(k)},
 				},
 			})
 		}
-	}
+		return true
+	})
+
 	return
 }
 
