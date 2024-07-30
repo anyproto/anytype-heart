@@ -16,7 +16,7 @@ type Set struct {
 }
 
 func NewFromState(st *state.State) Set {
-	flags := pbtypes.GetIntList(st.CombinedDetails(), relationKey.String())
+	flags := st.Details().GetIntListOrDefault(relationKey, nil)
 
 	return Set{
 		flags: flags,
@@ -29,7 +29,7 @@ func (s *Set) Add(flag model.InternalFlagValue) {
 	}
 }
 
-func (s Set) Has(flag model.InternalFlagValue) bool {
+func (s *Set) Has(flag model.InternalFlagValue) bool {
 	for _, f := range s.flags {
 		if f == int(flag) {
 			return true
@@ -49,15 +49,15 @@ func (s *Set) Remove(flag model.InternalFlagValue) {
 	s.flags = res
 }
 
-func (s Set) AddToState(st *state.State) {
+func (s *Set) AddToState(st *state.State) {
 	if len(s.flags) == 0 {
-		st.RemoveDetail(relationKey.String())
+		st.RemoveDetail(relationKey)
 		return
 	}
 	st.SetDetailAndBundledRelation(relationKey, pbtypes.IntList(s.flags...))
 }
 
-func (s Set) IsEmpty() bool {
+func (s *Set) IsEmpty() bool {
 	return len(s.flags) == 0
 }
 

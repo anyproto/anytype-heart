@@ -341,7 +341,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 	s.SetObjectTypeKeys(objectTypeKeys)
 	removeInternalFlags(s)
 
-	if pbtypes.GetInt64(bs.CombinedDetails(), bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
+	if bs.CombinedDetails().GetInt64OrDefault(bundle.RelationKeyOrigin, 0) == int64(model.ObjectOrigin_none) {
 		objecttype.UpdateLastUsedDate(bs.Space(), bs.objectStore, objectTypeKeys[0])
 	}
 
@@ -361,7 +361,7 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 	if err != nil {
 		return 0, fmt.Errorf("get object by unique key: %w", err)
 	}
-	rawLayout := pbtypes.GetInt64(typeDetails.GetDetails(), bundle.RelationKeyRecommendedLayout.String())
+	rawLayout := typeDetails.GetDetails().GetInt64OrDefault(bundle.RelationKeyRecommendedLayout, 0)
 	return model.ObjectTypeLayout(rawLayout), nil
 }
 

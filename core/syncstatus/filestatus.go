@@ -26,7 +26,7 @@ func (s *service) onFileLimited(objectId string, _ domain.FullFileId, bytesLeftP
 
 func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {
 	err := cache.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
-		prevStatus := pbtypes.GetInt64(sb.Details(), bundle.RelationKeyFileBackupStatus.String())
+		prevStatus := sb.Details().GetInt64OrDefault(bundle.RelationKeyFileBackupStatus, 0)
 		newStatus := int64(status)
 		if prevStatus == newStatus {
 			return nil

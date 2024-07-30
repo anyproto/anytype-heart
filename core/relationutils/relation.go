@@ -11,7 +11,7 @@ import (
 
 func RelationFromDetails(det *domain.Details) *Relation {
 	key := det.GetStringOrDefault(bundle.RelationKeyRelationKey, "")
-	maxCount := int32(det.GetIntOrDefault(bundle.RelationKeyRelationMaxCount, 0))
+	maxCount := int32(det.GetInt64OrDefault(bundle.RelationKeyRelationMaxCount, 0))
 	return &Relation{
 		Relation: &model.Relation{
 			Id:               det.GetStringOrDefault(bundle.RelationKeyId, ""),
@@ -28,7 +28,7 @@ func RelationFromDetails(det *domain.Details) *Relation {
 			Description:      det.GetStringOrDefault(bundle.RelationKeyDescription, ""),
 			Scope:            model.RelationScope(det.GetFloatOrDefault(bundle.RelationKeyScope, 0)),
 			Creator:          det.GetStringOrDefault(bundle.RelationKeyCreator, ""),
-			Revision:         int64(det.GetIntOrDefault(bundle.RelationKeyRevision, 0)),
+			Revision:         int64(det.GetInt64OrDefault(bundle.RelationKeyRevision, 0)),
 		},
 	}
 

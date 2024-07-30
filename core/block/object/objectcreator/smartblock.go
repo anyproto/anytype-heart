@@ -103,11 +103,11 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	sb.Unlock()
 	id = sb.Id()
 
-	if sbType == coresb.SmartBlockTypeObjectType && pbtypes.GetInt64(newDetails, bundle.RelationKeyLastUsedDate.String()) == 0 {
+	if sbType == coresb.SmartBlockTypeObjectType && newDetails.GetInt64OrDefault(bundle.RelationKeyLastUsedDate, 0) == 0 {
 		objecttype.UpdateLastUsedDate(spc, s.objectStore, domain.TypeKey(
 			strings.TrimPrefix(newDetails.GetStringOrDefault(bundle.RelationKeyUniqueKey, ""), addr.ObjectTypeKeyToIdPrefix)),
 		)
-	} else if pbtypes.GetInt64(newDetails, bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
+	} else if newDetails.GetInt64OrDefault(bundle.RelationKeyOrigin, 0) == int64(model.ObjectOrigin_none) {
 		objecttype.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys[0])
 	}
 

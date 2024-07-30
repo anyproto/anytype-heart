@@ -145,7 +145,7 @@ func (r *reconciler) needToRebind(details *types.Struct) (bool, error) {
 	if pbtypes.GetBool(details, bundle.RelationKeyIsDeleted.String()) {
 		return false, nil
 	}
-	backupStatus := filesyncstatus.Status(pbtypes.GetInt64(details, bundle.RelationKeyFileBackupStatus.String()))
+	backupStatus := filesyncstatus.Status(details.GetInt64OrDefault(bundle.RelationKeyFileBackupStatus, 0))
 	// It makes no sense to rebind file that hasn't been uploaded yet, because this file could be uploading
 	// by another client. When another client will upload this file, FileObjectHook will be called with FileBackupStatus == Synced
 	if backupStatus != filesyncstatus.Synced {

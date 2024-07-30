@@ -13,7 +13,7 @@ import (
 
 func TestSetLastUsedDateForInitialType(t *testing.T) {
 	isLastUsedDateGreater := func(details1, details2 *types.Struct) bool {
-		return pbtypes.GetInt64(details1, bundle.RelationKeyLastUsedDate.String()) > pbtypes.GetInt64(details2, bundle.RelationKeyLastUsedDate.String())
+		return details1.GetInt64OrDefault(bundle.RelationKeyLastUsedDate, 0) > details2.GetInt64OrDefault(bundle.RelationKeyLastUsedDate, 0)
 	}
 
 	t.Run("object types are sorted by lastUsedDate in correct order", func(t *testing.T) {

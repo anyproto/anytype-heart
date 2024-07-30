@@ -98,7 +98,7 @@ func (s *service) CreateTemplateStateWithDetails(
 	details *types.Struct,
 ) (targetState *state.State, err error) {
 	if templateId == BlankTemplateId || templateId == "" {
-		layout := pbtypes.GetInt64(details, bundle.RelationKeyLayout.String())
+		layout := details.GetInt64OrDefault(bundle.RelationKeyLayout, 0)
 		targetState = s.createBlankTemplateState(model.ObjectTypeLayout(layout))
 	} else {
 		targetState, err = s.createCustomTemplateState(templateId)

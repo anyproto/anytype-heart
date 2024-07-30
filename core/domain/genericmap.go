@@ -12,7 +12,9 @@ func (d *GenericMap[K]) Len() int {
 }
 
 func (d *GenericMap[K]) Set(key K, value any) {
-	// TODO TEMP
+	// TODO Convert number value to float, convert number list value to floats
+
+	// TODO TEMP panic
 	v := SomeValue(value)
 	if err := v.Validate(); err != nil {
 		panic(err)
@@ -63,12 +65,12 @@ func (d *GenericMap[K]) GetStringOrDefault(key K, def string) string {
 	return d.Get(key).StringOrDefault(def)
 }
 
-func (d *GenericMap[K]) GetInt(key K) (int, bool) {
-	return d.Get(key).Int()
+func (d *GenericMap[K]) GetInt64(key K) (int64, bool) {
+	return d.Get(key).Int64()
 }
 
-func (d *GenericMap[K]) GetIntOrDefault(key K, def int) int {
-	return d.Get(key).IntOrDefault(def)
+func (d *GenericMap[K]) GetInt64OrDefault(key K, def int64) int64 {
+	return d.Get(key).Int64OrDefault(def)
 }
 
 func (d *GenericMap[K]) GetFloat(key K) (float64, bool) {
@@ -212,22 +214,20 @@ func (v Value) StringOrDefault(def string) string {
 }
 
 // TODO Store only floats?
-func (v Value) Int() (int, bool) {
+func (v Value) Int64() (int64, bool) {
 	if !v.ok {
 		return 0, false
 	}
 	switch v := v.value.(type) {
-	case int:
-		return v, true
 	case float64:
-		return int(v), true
+		return int64(v), true
 	default:
 		return 0, false
 	}
 }
 
-func (v Value) IntOrDefault(def int) int {
-	res, ok := v.Int()
+func (v Value) Int64OrDefault(def int64) int64 {
+	res, ok := v.Int64()
 	if !ok {
 		return def
 	}
@@ -315,17 +315,6 @@ func (v Value) Equal(other Value) bool {
 	{
 		v1, ok1 := v.String()
 		v2, ok2 := other.String()
-		if ok1 != ok2 {
-			return false
-		}
-		if ok1 {
-			return v1 == v2
-		}
-	}
-
-	{
-		v1, ok1 := v.Int()
-		v2, ok2 := other.Int()
 		if ok1 != ok2 {
 			return false
 		}

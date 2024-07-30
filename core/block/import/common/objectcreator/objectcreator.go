@@ -97,7 +97,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	oc.injectImportDetails(sn, origin)
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType)).(*state.State)
-	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(pbtypes.GetInt64(snapshot.Details, bundle.RelationKeyLastModifiedDate.String())))
+	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(snapshot.Details.GetInt64OrDefault(bundle.RelationKeyLastModifiedDate, 0)))
 
 	var filesToDelete []string
 	defer func() {
@@ -172,8 +172,8 @@ func canUpdateObject(sbType coresb.SmartBlockType) bool {
 }
 
 func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin objectorigin.ObjectOrigin) {
-	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
-	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
+	lastModifiedDate := sn.Snapshot.Data.Details.GetInt64OrDefault(bundle.RelationKeyLastModifiedDate, 0)
+	createdDate := sn.Snapshot.Data.Details.GetInt64OrDefault(bundle.RelationKeyCreatedDate, 0)
 	if lastModifiedDate == 0 {
 		if createdDate != 0 {
 			sn.Snapshot.Data.Details.Fields[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Int64(int64(createdDate))
@@ -338,7 +338,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 		})
 	}
 
-	iconOption := pbtypes.GetInt64(st.CombinedDetails(), bundle.RelationKeyIconOption.String())
+	iconOption := st.CombinedDetails().GetInt64OrDefault(bundle.RelationKeyIconOption, 0)
 	if iconOption != 0 {
 		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeyIconOption.String(),

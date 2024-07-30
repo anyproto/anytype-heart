@@ -192,7 +192,7 @@ func extractFullFileIdFromDetails(details *types.Struct) domain.FullFileId {
 // EnsureFileAddedToSyncQueue adds file to sync queue if it is not synced yet, we need to do this
 // after migrating to new sync queue
 func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *types.Struct) error {
-	if pbtypes.GetInt64(details, bundle.RelationKeyFileBackupStatus.String()) == int64(filesyncstatus.Synced) {
+	if details.GetInt64OrDefault(bundle.RelationKeyFileBackupStatus, 0) == int64(filesyncstatus.Synced) {
 		return nil
 	}
 	fullId := domain.FullFileId{

@@ -498,7 +498,7 @@ func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportReques
 		if docID == b.Space().DerivedIDs().Home {
 			filename = "index" + conv.Ext()
 		}
-		lastModifiedDate := pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
+		lastModifiedDate := st.LocalDetails().GetInt64OrDefault(bundle.RelationKeyLastModifiedDate, 0)
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
 			return err
 		}
@@ -877,7 +877,7 @@ func (e *export) getRelation(key string) (*database.Record, error) {
 
 func (e *export) addRelationAndOptions(relation *database.Record, derivedObjects []database.Record, relationKey string) ([]database.Record, error) {
 	derivedObjects = e.addRelation(*relation, derivedObjects)
-	format := pbtypes.GetInt64(relation.Details, bundle.RelationKeyRelationFormat.String())
+	format := relation.Details.GetInt64OrDefault(bundle.RelationKeyRelationFormat, 0)
 	if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
 		relationOptions, err := e.getRelationOptions(relationKey)
 		if err != nil {

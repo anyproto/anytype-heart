@@ -235,7 +235,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			uk := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
 			key := strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)
 			info.relations[id] = domain.RelationKey(key)
-			format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
+			format := snapshot.Snapshot.Data.Details.GetInt64OrDefault(bundle.RelationKeyRelationFormat, 0)
 			if !bundle.HasRelation(key) {
 				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
 			}
@@ -256,7 +256,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			} else if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
 				key := strings.TrimPrefix(id, addr.RelationKeyToIdPrefix)
 				info.relations[id] = domain.RelationKey(key)
-				format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
+				format := snapshot.Snapshot.Data.Details.GetInt64OrDefault(bundle.RelationKeyRelationFormat, 0)
 				if !bundle.HasRelation(key) {
 					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
 				}

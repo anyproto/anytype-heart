@@ -3,6 +3,7 @@ package objectorigin
 import (
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -13,9 +14,9 @@ type ObjectOrigin struct {
 	ImportType model.ImportType
 }
 
-func FromDetails(details *types.Struct) ObjectOrigin {
-	origin := pbtypes.GetInt64(details, bundle.RelationKeyOrigin.String())
-	importType := pbtypes.GetInt64(details, bundle.RelationKeyImportType.String())
+func FromDetails(details *domain.Details) ObjectOrigin {
+	origin := details.GetInt64OrDefault(bundle.RelationKeyOrigin, 0)
+	importType := details.GetInt64OrDefault(bundle.RelationKeyImportType, 0)
 
 	return ObjectOrigin{
 		Origin:     model.ObjectOrigin(origin),

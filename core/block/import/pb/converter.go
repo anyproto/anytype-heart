@@ -442,7 +442,7 @@ func (p *Pb) injectImportDetails(sn *pb.SnapshotWithType) {
 		sn.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
 	}
 	p.setSourceFilePath(sn)
-	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
+	createdDate := sn.Snapshot.Data.Details.GetInt64OrDefault(bundle.RelationKeyCreatedDate, 0)
 	if createdDate == 0 {
 		sn.Snapshot.Data.Details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
 	}

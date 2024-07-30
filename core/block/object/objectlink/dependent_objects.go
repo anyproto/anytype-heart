@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("objectlink")
@@ -58,7 +56,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 		}
 	}
 
-	var det *types.Struct
+	var det *domain.Details
 	if details {
 		det = s.CombinedDetails()
 	}
@@ -81,7 +79,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 		// handle corner cases first for specific formats
 		if rel.Format == model.RelationFormat_date &&
 			!lo.Contains(bundle.LocalAndDerivedRelationKeys, rel.Key) {
-			relInt := pbtypes.GetInt64(det, rel.Key)
+			relInt := det.GetInt64OrDefault(domain.RelationKey(rel.Key), 0)
 			if relInt > 0 {
 				t := time.Unix(relInt, 0)
 				t = t.In(time.Local)
@@ -93,7 +91,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 		if rel.Key == bundle.RelationKeyCreator.String() ||
 			rel.Key == bundle.RelationKeyLastModifiedBy.String() {
 			if creatorModifierWorkspace {
-				v := pbtypes.GetString(det, rel.Key)
+				v := det.GetStringOrDefault(domain.RelationKey(rel.Key), "")
 				ids = append(ids, v)
 			}
 			continue
@@ -107,10 +105,10 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 		}
 
 		if rel.Key == bundle.RelationKeyCoverId.String() {
-			v := pbtypes.GetString(det, rel.Key)
+			v := det.GetStringOrDefault(domain.RelationKey(rel.Key), "")
 			_, err := cid.Decode(v)
 			if err != nil {
-				// this is an exception cause coverId can contains not a file hash but color
+				// this is an exception cause coverId can contain not a file hash but color
 				continue
 			}
 			ids = append(ids, v)
@@ -124,7 +122,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 		}
 
 		// add all object relation values as dependents
-		for _, targetID := range pbtypes.GetStringList(det, rel.Key) {
+		for _, targetID := range det.GetStringListOrDefault(domain.RelationKey(rel.Key), nil) {
 			if targetID == "" {
 				continue
 			}

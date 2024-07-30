@@ -142,8 +142,8 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			details, err := fx.objectStore.GetDetails(objectId)
 			require.NoError(t, err)
 
-			assert.True(t, pbtypes.GetInt64(details.Details, bundle.RelationKeySyncStatus.String()) == int64(domain.ObjectSyncStatusError))
-			assert.True(t, pbtypes.GetInt64(details.Details, bundle.RelationKeySyncError.String()) == int64(domain.SyncErrorNull))
+			assert.True(t, details.Details.GetInt64OrDefault(bundle.RelationKeySyncStatus, 0) == int64(domain.ObjectSyncStatusError))
+			assert.True(t, details.Details.GetInt64OrDefault(bundle.RelationKeySyncError, 0) == int64(domain.SyncErrorNull))
 			assert.Contains(t, details.Details.GetFields(), bundle.RelationKeySyncDate.String())
 			updTester.done()
 		}).Return(nil).Times(0)
@@ -172,8 +172,8 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 				require.NoError(t, err)
 
 				det := sb.Doc.LocalDetails()
-				assert.True(t, pbtypes.GetInt64(det, bundle.RelationKeySyncStatus.String()) == int64(domain.ObjectSyncStatusError))
-				assert.True(t, pbtypes.GetInt64(det, bundle.RelationKeySyncError.String()) == int64(domain.SyncErrorOversized))
+				assert.True(t, det.GetInt64OrDefault(bundle.RelationKeySyncStatus, 0) == int64(domain.ObjectSyncStatusError))
+				assert.True(t, det.GetInt64OrDefault(bundle.RelationKeySyncError, 0) == int64(domain.SyncErrorOversized))
 				assert.Contains(t, det.GetFields(), bundle.RelationKeySyncDate.String())
 
 				fx.spaceStatusUpdater.EXPECT().Refresh("space1")
@@ -201,7 +201,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 				require.NoError(t, err)
 
 				det := sb.Doc.LocalDetails()
-				assert.True(t, pbtypes.GetInt64(det, bundle.RelationKeySyncStatus.String()) == int64(domain.ObjectSyncStatusSyncing))
+				assert.True(t, det.GetInt64OrDefault(bundle.RelationKeySyncStatus, 0) == int64(domain.ObjectSyncStatusSyncing))
 				assert.Contains(t, det.GetFields(), bundle.RelationKeySyncError.String())
 				assert.Contains(t, det.GetFields(), bundle.RelationKeySyncDate.String())
 
@@ -251,7 +251,7 @@ func TestSyncStatusUpdater_UpdateSpaceDetails(t *testing.T) {
 			require.NoError(t, err)
 
 			det := sb.Doc.LocalDetails()
-			assert.True(t, pbtypes.GetInt64(det, bundle.RelationKeySyncStatus.String()) == int64(status))
+			assert.True(t, det.GetInt64OrDefault(bundle.RelationKeySyncStatus, 0) == int64(status))
 			assert.Contains(t, det.GetFields(), bundle.RelationKeySyncDate.String())
 			assert.Contains(t, det.GetFields(), bundle.RelationKeySyncError.String())
 

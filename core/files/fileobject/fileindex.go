@@ -291,11 +291,11 @@ func (ind *indexer) addBlocks(st *state.State, details *types.Struct, objectId s
 	case model.BlockContentFile_Image:
 		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(objectId))
 
-		if pbtypes.GetInt64(details, bundle.RelationKeyWidthInPixels.String()) != 0 {
+		if details.GetInt64OrDefault(bundle.RelationKeyWidthInPixels, 0) != 0 {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyWidthInPixels))
 		}
 
-		if pbtypes.GetInt64(details, bundle.RelationKeyHeightInPixels.String()) != 0 {
+		if details.GetInt64OrDefault(bundle.RelationKeyHeightInPixels, 0) != 0 {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyHeightInPixels))
 		}
 
@@ -303,7 +303,7 @@ func (ind *indexer) addBlocks(st *state.State, details *types.Struct, objectId s
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyCamera))
 		}
 
-		if pbtypes.GetInt64(details, bundle.RelationKeySizeInBytes.String()) != 0 {
+		if details.GetInt64OrDefault(bundle.RelationKeySizeInBytes, 0) != 0 {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeySizeInBytes))
 		}
 		if details.GetStringOrDefault(bundle.RelationKeyMediaArtistName, "") != "" {

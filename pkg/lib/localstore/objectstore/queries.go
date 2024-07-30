@@ -61,7 +61,7 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 		return nil
 	}
 
-	layout := model.ObjectTypeLayout(details.GetIntOrDefault(bundle.RelationKeyLayout, 0))
+	layout := model.ObjectTypeLayout(details.GetInt64OrDefault(bundle.RelationKeyLayout, 0))
 	switch layout {
 	case model.ObjectType_relationOption:
 		relationKey = details.GetStringOrDefault(bundle.RelationKeyRelationKey, "")
