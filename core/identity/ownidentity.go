@@ -50,7 +50,7 @@ type ownProfileSubscription struct {
 
 	detailsLock sync.Mutex
 	gotDetails  bool
-	details     *types.Struct // save details to batch update operation
+	details     *domain.Details // save details to batch update operation
 
 	pushIdentityTimer        *time.Timer // timer for batching
 	pushIdentityBatchTimeout time.Duration
@@ -109,7 +109,7 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 		return err
 	}
 
-	recordsCh := make(chan *types.Struct)
+	recordsCh := make(chan *domain.Details)
 	sub := database.NewSubscription(nil, recordsCh)
 
 	var (
@@ -172,7 +172,7 @@ func (s *ownProfileSubscription) enqueuePush() {
 	}
 }
 
-func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.Struct) {
+func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *domain.Details) {
 	if profileDetails == nil {
 		return
 	}
@@ -183,9 +183,7 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.S
 	}
 
 	if s.details == nil {
-		s.details = &types.Struct{
-			Fields: map[string]*types.Value{},
-		}
+		s.details = domain.NewDetails()
 	}
 	for _, key := range []domain.RelationKey{
 		bundle.RelationKeyId,
@@ -324,7 +322,7 @@ func (s *ownProfileSubscription) prepareIconImageInfo(iconImageObjectId string) 
 	return s.fileAclService.GetInfoForFileSharing(iconImageObjectId)
 }
 
-func (s *ownProfileSubscription) getDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *types.Struct) {
+func (s *ownProfileSubscription) getDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *domain.Details) {
 	select {
 	case <-s.gotDetailsCh:
 
