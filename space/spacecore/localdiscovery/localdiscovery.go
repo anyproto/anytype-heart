@@ -25,6 +25,15 @@ import (
 
 var interfacesSortPriority = []string{"en", "wlan", "wl", "eth", "lo"}
 
+type Hook int
+
+const (
+	PeerToPeerImpossible Hook = 0
+	PeerToPeerPossible   Hook = 1
+)
+
+type HookCallback func()
+
 type localDiscovery struct {
 	server *zeroconf.Server
 	peerId string
@@ -44,10 +53,13 @@ type localDiscovery struct {
 	started     bool
 	notifier    Notifier
 	m           sync.Mutex
+
+	hookMu sync.Mutex
+	hooks  map[Hook][]HookCallback
 }
 
 func New() LocalDiscovery {
-	return &localDiscovery{}
+	return &localDiscovery{hooks: make(map[Hook][]HookCallback, 0)}
 }
 
 func (l *localDiscovery) SetNotifier(notifier Notifier) {
@@ -58,8 +70,8 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.manualStart = a.MustComponent(config.CName).(*config.Config).DontStartLocalNetworkSyncAutomatically
 	l.nodeConf = a.MustComponent(config.CName).(*config.Config).GetNodeConf()
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
-	l.periodicCheck = periodicsync.NewPeriodicSync(30, 0, l.checkAddrs, log)
-	l.drpcServer = a.MustComponent(clientserver.CName).(clientserver.ClientServer)
+	l.periodicCheck = periodicsync.NewPeriodicSync(10, 0, l.checkAddrs, log)
+	l.drpcServer = app.MustComponent[clientserver.ClientServer](a)
 	return
 }
 
@@ -74,6 +86,7 @@ func (l *localDiscovery) Run(ctx context.Context) (err error) {
 
 func (l *localDiscovery) Start() (err error) {
 	if !l.drpcServer.ServerStarted() {
+		l.executeHook(PeerToPeerImpossible)
 		return
 	}
 	l.m.Lock()
@@ -129,8 +142,21 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	return nil
 }
 
+func (l *localDiscovery) RegisterP2PNotPossible(hook func()) {
+	l.hookMu.Lock()
+	defer l.hookMu.Unlock()
+	l.hooks[PeerToPeerImpossible] = append(l.hooks[PeerToPeerImpossible], hook)
+}
+
+func (l *localDiscovery) RegisterResetNotPossible(hook func()) {
+	l.hookMu.Lock()
+	defer l.hookMu.Unlock()
+	l.hooks[PeerToPeerPossible] = append(l.hooks[PeerToPeerPossible], hook)
+}
+
 func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
 	newAddrs, err := addrs.GetInterfacesAddrs()
+	l.notifyPeerToPeerStatus(newAddrs)
 	if err != nil {
 		return
 	}
@@ -217,16 +243,46 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEntry) {
 	defer l.closeWait.Done()
 	newAddrs, err := addrs.GetInterfacesAddrs()
+	l.notifyPeerToPeerStatus(newAddrs)
+
 	if err != nil {
 		return
 	}
-
 	newAddrs.SortWithPriority(interfacesSortPriority)
-
 	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch,
 		zeroconf.ClientWriteTimeout(time.Second*1),
 		zeroconf.SelectIfaces(newAddrs.Interfaces),
 		zeroconf.SelectIPTraffic(zeroconf.IPv4)); err != nil {
 		log.Error("browsing failed", zap.Error(err))
 	}
+}
+
+func (l *localDiscovery) notifyPeerToPeerStatus(newAddrs addrs.InterfacesAddrs) {
+	if l.notifyP2PNotPossible(newAddrs) {
+		l.executeHook(PeerToPeerImpossible)
+	} else {
+		l.executeHook(PeerToPeerPossible)
+	}
+}
+
+func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
+	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces)
+}
+
+func (l *localDiscovery) executeHook(hook Hook) {
+	hooks := l.getHooks(hook)
+	for _, callback := range hooks {
+		callback()
+	}
+}
+
+func (l *localDiscovery) getHooks(hook Hook) []HookCallback {
+	l.hookMu.Lock()
+	defer l.hookMu.Unlock()
+	if hooks, ok := l.hooks[hook]; ok {
+		callback := make([]HookCallback, 0, len(hooks))
+		callback = append(callback, hooks...)
+		return callback
+	}
+	return nil
 }

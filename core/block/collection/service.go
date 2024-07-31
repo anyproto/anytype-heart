@@ -190,9 +190,7 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 
 	newState := state.NewDoc("", nil).NewState().SetDetails(details)
 
-	tmpls := []template.StateTransformer{
-		template.WithRequiredRelations(),
-	}
+	tmpls := []template.StateTransformer{}
 
 	blockContent := template.MakeCollectionDataviewContent()
 	tmpls = append(tmpls,

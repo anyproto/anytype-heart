@@ -3,6 +3,7 @@ package history
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -266,8 +267,36 @@ func isDataviewChange(message simple.EventMessage) bool {
 }
 
 func isRelationsChange(message simple.EventMessage) bool {
-	return message.Msg.GetObjectRelationsAmend() != nil ||
-		message.Msg.GetObjectRelationsRemove() != nil
+	filterLocalAndDerivedRelations(message.Msg.GetObjectRelationsAmend())
+	filterLocalAndDerivedRelationsByKey(message.Msg.GetObjectRelationsRemove())
+	return (message.Msg.GetObjectRelationsAmend() != nil && len(message.Msg.GetObjectRelationsAmend().RelationLinks) > 0) ||
+		(message.Msg.GetObjectRelationsRemove() != nil && len(message.Msg.GetObjectRelationsRemove().RelationKeys) > 0)
+}
+
+func filterLocalAndDerivedRelationsByKey(removedRelations *pb.EventObjectRelationsRemove) {
+	if removedRelations == nil {
+		return
+	}
+	var relKeysWithoutLocal []string
+	for _, key := range removedRelations.RelationKeys {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
+			relKeysWithoutLocal = append(relKeysWithoutLocal, key)
+		}
+	}
+	removedRelations.RelationKeys = relKeysWithoutLocal
+}
+
+func filterLocalAndDerivedRelations(addedRelations *pb.EventObjectRelationsAmend) {
+	if addedRelations == nil {
+		return
+	}
+	var relLinksWithoutLocal pbtypes.RelationLinks
+	for _, link := range addedRelations.RelationLinks {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, link.Key) {
+			relLinksWithoutLocal = relLinksWithoutLocal.Append(link)
+		}
+	}
+	addedRelations.RelationLinks = relLinksWithoutLocal
 }
 
 func isDetailsChange(message simple.EventMessage) bool {

@@ -12,6 +12,8 @@ import (
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
 
+	filestorage "github.com/anyproto/anytype-heart/core/filestorage"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -525,6 +527,53 @@ func (_c *MockFileStorage_Name_Call) Return(name string) *MockFileStorage_Name_C
 }
 
 func (_c *MockFileStorage_Name_Call) RunAndReturn(run func() string) *MockFileStorage_Name_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// NewLocalStoreGarbageCollector provides a mock function with given fields:
+func (_m *MockFileStorage) NewLocalStoreGarbageCollector() filestorage.LocalStoreGarbageCollector {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for NewLocalStoreGarbageCollector")
+	}
+
+	var r0 filestorage.LocalStoreGarbageCollector
+	if rf, ok := ret.Get(0).(func() filestorage.LocalStoreGarbageCollector); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(filestorage.LocalStoreGarbageCollector)
+		}
+	}
+
+	return r0
+}
+
+// MockFileStorage_NewLocalStoreGarbageCollector_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NewLocalStoreGarbageCollector'
+type MockFileStorage_NewLocalStoreGarbageCollector_Call struct {
+	*mock.Call
+}
+
+// NewLocalStoreGarbageCollector is a helper method to define mock.On call
+func (_e *MockFileStorage_Expecter) NewLocalStoreGarbageCollector() *MockFileStorage_NewLocalStoreGarbageCollector_Call {
+	return &MockFileStorage_NewLocalStoreGarbageCollector_Call{Call: _e.mock.On("NewLocalStoreGarbageCollector")}
+}
+
+func (_c *MockFileStorage_NewLocalStoreGarbageCollector_Call) Run(run func()) *MockFileStorage_NewLocalStoreGarbageCollector_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFileStorage_NewLocalStoreGarbageCollector_Call) Return(_a0 filestorage.LocalStoreGarbageCollector) *MockFileStorage_NewLocalStoreGarbageCollector_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFileStorage_NewLocalStoreGarbageCollector_Call) RunAndReturn(run func() filestorage.LocalStoreGarbageCollector) *MockFileStorage_NewLocalStoreGarbageCollector_Call {
 	_c.Call.Return(run)
 	return _c
 }

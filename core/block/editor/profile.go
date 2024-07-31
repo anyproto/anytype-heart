@@ -40,7 +40,7 @@ func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
 	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Profile{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),
+		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
@@ -82,7 +82,6 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 			template.InitTemplate(st,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
 				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
-				template.WithRequiredRelations(),
 				migrationSetHidden,
 			)
 		},

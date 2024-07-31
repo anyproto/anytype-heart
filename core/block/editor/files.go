@@ -14,11 +14,18 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/core/filestorage"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
+// required relations for files beside the bundle.RequiredInternalRelations
+var fileRequiredRelations = append(pageRequiredRelations, []domain.RelationKey{
+	bundle.RelationKeyFileBackupStatus,
+	bundle.RelationKeyFileSyncStatus,
+}...)
+
 func (f *ObjectFactory) newFile(sb smartblock.SmartBlock) *File {
-	basicComponent := basic.NewBasic(sb, f.objectStore, f.layoutConverter)
+	basicComponent := basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService)
 	return &File{
 		SmartBlock:        sb,
 		ChangeReceiver:    sb.(source.ChangeReceiver),
@@ -64,6 +71,8 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 	if ctx.Source.Type() != coresb.SmartBlockTypeFileObject {
 		return fmt.Errorf("source type should be a file")
 	}
+
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, fileRequiredRelations...)
 
 	if ctx.BuildOpts.DisableRemoteLoad {
 		ctx.Ctx = context.WithValue(ctx.Ctx, filestorage.CtxKeyRemoteLoadDisabled, true)

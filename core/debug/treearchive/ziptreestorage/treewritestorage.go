@@ -78,6 +78,10 @@ func (z *zipTreeWriteStorage) GetRawChange(ctx context.Context, id string) (*tre
 	panic("should not be called")
 }
 
+func (z *zipTreeWriteStorage) GetAppendRawChange(ctx context.Context, buf []byte, id string) (*treechangeproto.RawTreeChangeWithId, error) {
+	panic("should not be called")
+}
+
 func (z *zipTreeWriteStorage) HasChange(ctx context.Context, id string) (ok bool, err error) {
 	panic("should not be called")
 }

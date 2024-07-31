@@ -7,13 +7,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -26,6 +29,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -84,6 +90,11 @@ func newFixture(t *testing.T) *fixture {
 	svc := New(testResolveRetryDelay, testResolveRetryDelay)
 
 	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	wallet := mock_wallet.NewMockWallet(t)
+	wallet.EXPECT().Name().Return(wallet2.CName)
+	wallet.EXPECT().RepoPath().Return("repo/path")
+
 	a := new(app.App)
 	a.Register(&dummyConfig{})
 	a.Register(dataStoreProvider)
@@ -100,6 +111,9 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(svc)
 	a.Register(testutil.PrepareMock(ctx, a, spaceIdResolver))
 	a.Register(fileoffloader.New())
+	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
+	a.Register(testutil.PrepareMock(ctx, a, wallet))
+	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
 
 	err = a.Start(ctx)
 	require.NoError(t, err)

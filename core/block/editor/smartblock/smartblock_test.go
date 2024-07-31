@@ -43,8 +43,14 @@ func TestSmartBlock_Init(t *testing.T) {
 	fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	// when
-	fx.init(t, []*model.Block{{Id: id}})
+	initCtx := fx.init(t, []*model.Block{{Id: id}})
 
+	require.NotNil(t, initCtx)
+	require.NotNil(t, initCtx.State)
+	links := initCtx.State.GetRelationLinks()
+	for _, key := range bundle.RequiredInternalRelations {
+		assert.Truef(t, links.Has(key.String()), "missing relation %s", key)
+	}
 	// then
 	assert.Equal(t, id, fx.RootId())
 }
@@ -460,7 +466,34 @@ func TestInjectLocalDetails(t *testing.T) {
 		assert.Equal(t, fx.source.creator, pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyCreator.String()))
 		assert.Equal(t, fx.source.createdDate, pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeyCreatedDate.String()))
 	})
+
 	// TODO More tests
+}
+
+func TestInjectDerivedDetails(t *testing.T) {
+	const (
+		id      = "id"
+		spaceId = "testSpace"
+	)
+	t.Run("links are updated on injection", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+		fx.store.EXPECT().GetInboundLinksByID(id).Return(nil, nil)
+
+		st := state.NewDoc("id", map[string]simple.Block{
+			id:         simple.New(&model.Block{Id: id, ChildrenIds: []string{"dataview", "link"}}),
+			"dataview": simple.New(&model.Block{Id: "dataview", Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{TargetObjectId: "some_set"}}}),
+			"link":     simple.New(&model.Block{Id: "link", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "some_obj"}}}),
+		}).NewState()
+		st.AddRelationLinks(&model.RelationLink{Key: bundle.RelationKeyAssignee.String(), Format: model.RelationFormat_object})
+		st.SetDetail(bundle.RelationKeyAssignee.String(), pbtypes.String("Kirill"))
+
+		// when
+		fx.injectDerivedDetails(st, spaceId, smartblock.SmartBlockTypePage)
+
+		// then
+		assert.Len(t, pbtypes.GetStringList(st.LocalDetails(), bundle.RelationKeyLinks.String()), 3)
+	})
 }
 
 type fixture struct {
@@ -500,7 +533,7 @@ func newFixture(id string, t *testing.T) *fixture {
 	}
 }
 
-func (fx *fixture) init(t *testing.T, blocks []*model.Block) {
+func (fx *fixture) init(t *testing.T, blocks []*model.Block) *InitContext {
 	bm := make(map[string]simple.Block)
 	for _, b := range blocks {
 		bm[b.Id] = simple.New(b)
@@ -508,12 +541,14 @@ func (fx *fixture) init(t *testing.T, blocks []*model.Block) {
 	doc := state.NewDoc(fx.source.id, bm)
 	fx.source.doc = doc
 
-	err := fx.Init(&InitContext{
+	initCtx := &InitContext{
 		Ctx:     context.Background(),
 		SpaceID: "space1",
 		Source:  fx.source,
-	})
+	}
+	err := fx.Init(initCtx)
 	require.NoError(t, err)
+	return initCtx
 }
 
 type sourceStub struct {

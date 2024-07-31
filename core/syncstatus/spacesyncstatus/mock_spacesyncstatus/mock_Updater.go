@@ -7,8 +7,6 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 
-	domain "github.com/anyproto/anytype-heart/core/domain"
-
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -162,48 +160,35 @@ func (_c *MockUpdater_Name_Call) RunAndReturn(run func() string) *MockUpdater_Na
 	return _c
 }
 
-// Reload provides a mock function with given fields: ctx
-func (_m *MockUpdater) Reload(ctx context.Context) error {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Reload")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = rf(ctx)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
+// Refresh provides a mock function with given fields: spaceId
+func (_m *MockUpdater) Refresh(spaceId string) {
+	_m.Called(spaceId)
 }
 
-// MockUpdater_Reload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Reload'
-type MockUpdater_Reload_Call struct {
+// MockUpdater_Refresh_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Refresh'
+type MockUpdater_Refresh_Call struct {
 	*mock.Call
 }
 
-// Reload is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *MockUpdater_Expecter) Reload(ctx interface{}) *MockUpdater_Reload_Call {
-	return &MockUpdater_Reload_Call{Call: _e.mock.On("Reload", ctx)}
+// Refresh is a helper method to define mock.On call
+//   - spaceId string
+func (_e *MockUpdater_Expecter) Refresh(spaceId interface{}) *MockUpdater_Refresh_Call {
+	return &MockUpdater_Refresh_Call{Call: _e.mock.On("Refresh", spaceId)}
 }
 
-func (_c *MockUpdater_Reload_Call) Run(run func(ctx context.Context)) *MockUpdater_Reload_Call {
+func (_c *MockUpdater_Refresh_Call) Run(run func(spaceId string)) *MockUpdater_Refresh_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(string))
 	})
 	return _c
 }
 
-func (_c *MockUpdater_Reload_Call) Return(err error) *MockUpdater_Reload_Call {
-	_c.Call.Return(err)
+func (_c *MockUpdater_Refresh_Call) Return() *MockUpdater_Refresh_Call {
+	_c.Call.Return()
 	return _c
 }
 
-func (_c *MockUpdater_Reload_Call) RunAndReturn(run func(context.Context) error) *MockUpdater_Reload_Call {
+func (_c *MockUpdater_Refresh_Call) RunAndReturn(run func(string)) *MockUpdater_Refresh_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -254,35 +239,36 @@ func (_c *MockUpdater_Run_Call) RunAndReturn(run func(context.Context) error) *M
 	return _c
 }
 
-// SendUpdate provides a mock function with given fields: spaceSync
-func (_m *MockUpdater) SendUpdate(spaceSync *domain.SpaceSync) {
-	_m.Called(spaceSync)
+// UpdateMissingIds provides a mock function with given fields: spaceId, ids
+func (_m *MockUpdater) UpdateMissingIds(spaceId string, ids []string) {
+	_m.Called(spaceId, ids)
 }
 
-// MockUpdater_SendUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SendUpdate'
-type MockUpdater_SendUpdate_Call struct {
+// MockUpdater_UpdateMissingIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateMissingIds'
+type MockUpdater_UpdateMissingIds_Call struct {
 	*mock.Call
 }
 
-// SendUpdate is a helper method to define mock.On call
-//   - spaceSync *domain.SpaceSync
-func (_e *MockUpdater_Expecter) SendUpdate(spaceSync interface{}) *MockUpdater_SendUpdate_Call {
-	return &MockUpdater_SendUpdate_Call{Call: _e.mock.On("SendUpdate", spaceSync)}
+// UpdateMissingIds is a helper method to define mock.On call
+//   - spaceId string
+//   - ids []string
+func (_e *MockUpdater_Expecter) UpdateMissingIds(spaceId interface{}, ids interface{}) *MockUpdater_UpdateMissingIds_Call {
+	return &MockUpdater_UpdateMissingIds_Call{Call: _e.mock.On("UpdateMissingIds", spaceId, ids)}
 }
 
-func (_c *MockUpdater_SendUpdate_Call) Run(run func(spaceSync *domain.SpaceSync)) *MockUpdater_SendUpdate_Call {
+func (_c *MockUpdater_UpdateMissingIds_Call) Run(run func(spaceId string, ids []string)) *MockUpdater_UpdateMissingIds_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*domain.SpaceSync))
+		run(args[0].(string), args[1].([]string))
 	})
 	return _c
 }
 
-func (_c *MockUpdater_SendUpdate_Call) Return() *MockUpdater_SendUpdate_Call {
+func (_c *MockUpdater_UpdateMissingIds_Call) Return() *MockUpdater_UpdateMissingIds_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *MockUpdater_SendUpdate_Call) RunAndReturn(run func(*domain.SpaceSync)) *MockUpdater_SendUpdate_Call {
+func (_c *MockUpdater_UpdateMissingIds_Call) RunAndReturn(run func(string, []string)) *MockUpdater_UpdateMissingIds_Call {
 	_c.Call.Return(run)
 	return _c
 }

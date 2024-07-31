@@ -23,6 +23,7 @@ var smartBlockTypeToKey = map[smartblock.SmartBlockType]string{
 	smartblock.SmartBlockTypeFileObject:         "file", // For migration purposes only
 	smartblock.SmartBlockTypePage:               "page", // For migration purposes only, used for old profile data migration
 	smartblock.SmartBlockTypeNotificationObject: "notification",
+	smartblock.SmartBlockTypeDevicesObject:      "devices",
 }
 
 // UniqueKey is unique key composed of two parts: smartblock type and internal key.

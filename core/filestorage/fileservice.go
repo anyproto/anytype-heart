@@ -39,6 +39,7 @@ type FileStorage interface {
 	fileblockstore.BlockStoreLocal
 	app.ComponentRunnable
 
+	NewLocalStoreGarbageCollector() LocalStoreGarbageCollector
 	LocalDiskUsage(ctx context.Context) (uint64, error)
 	IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error
 }
@@ -141,6 +142,10 @@ func (f *fileStorage) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []ci
 
 func (f *fileStorage) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
 	return f.proxy.NotExistsBlocks(ctx, bs)
+}
+
+func (f *fileStorage) NewLocalStoreGarbageCollector() LocalStoreGarbageCollector {
+	return newFlatStoreGarbageCollector(f.proxy.localStore)
 }
 
 func (f *fileStorage) Close(ctx context.Context) (err error) {

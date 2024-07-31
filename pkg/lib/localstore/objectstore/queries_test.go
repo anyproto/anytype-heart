@@ -174,8 +174,8 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		err := s.fts.Index(ftsearch.SearchDoc{
-			Id:    "id1/b/123",
-			Title: "name",
+			Id:    "id1/r/name",
+			Title: "myname1",
 		})
 		require.NoError(t, err)
 
@@ -202,6 +202,18 @@ func TestQuery(t *testing.T) {
 			assertRecordsMatch(t, []TestObject{
 				obj2,
 				obj3,
+			}, recs)
+		})
+
+		t.Run("fulltext by relation", func(t *testing.T) {
+			recs, err := s.Query(database.Query{
+				FullText: "myname1",
+			})
+			require.NoError(t, err)
+
+			// Full-text engine has its own ordering, so just don't rely on it here and check only the content.
+			assertRecordsMatch(t, []TestObject{
+				obj1,
 			}, recs)
 		})
 
@@ -251,6 +263,24 @@ func TestQuery(t *testing.T) {
 			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		}
 
+		relObjDeleted := TestObject{
+			bundle.RelationKeyId:          pbtypes.String("relid2"),
+			bundle.RelationKeyRelationKey: pbtypes.String("bsonid1"),
+			bundle.RelationKeyName:        pbtypes.String("deletedtag"),
+			bundle.RelationKeyIsDeleted:   pbtypes.Bool(true),
+			bundle.RelationKeyDescription: pbtypes.String("this is a deleted relation's description"),
+			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+		}
+
+		relObjArchived := TestObject{
+			bundle.RelationKeyId:          pbtypes.String("relid3"),
+			bundle.RelationKeyRelationKey: pbtypes.String("bsonid1"),
+			bundle.RelationKeyName:        pbtypes.String("archived"),
+			bundle.RelationKeyIsDeleted:   pbtypes.Bool(true),
+			bundle.RelationKeyDescription: pbtypes.String("this is a archived relation's description"),
+			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+		}
+
 		typeObj := TestObject{
 			bundle.RelationKeyId:          pbtypes.String("typeid1"),
 			bundle.RelationKeyName:        pbtypes.String("typename"),
@@ -258,7 +288,7 @@ func TestQuery(t *testing.T) {
 			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_objectType)),
 		}
 
-		s.AddObjects(t, []TestObject{obj1, obj2, obj3, relObj, typeObj})
+		s.AddObjects(t, []TestObject{obj1, obj2, obj3, relObj, relObjDeleted, relObjArchived, typeObj})
 		err := s.fts.Index(ftsearch.SearchDoc{
 			Id:   "id1/r/description",
 			Text: obj1[bundle.RelationKeyDescription].GetStringValue(),
@@ -283,6 +313,28 @@ func TestQuery(t *testing.T) {
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
+			Id:   "relid2/r/description",
+			Text: relObjDeleted[bundle.RelationKeyDescription].GetStringValue(),
+		})
+		require.NoError(t, err)
+		err = s.fts.Index(ftsearch.SearchDoc{
+			Id:    "relid2/r/name",
+			Title: relObjDeleted[bundle.RelationKeyName].GetStringValue(),
+		})
+		require.NoError(t, err)
+
+		err = s.fts.Index(ftsearch.SearchDoc{
+			Id:   "relid3/r/description",
+			Text: relObjArchived[bundle.RelationKeyDescription].GetStringValue(),
+		})
+		require.NoError(t, err)
+		err = s.fts.Index(ftsearch.SearchDoc{
+			Id:    "relid3/r/name",
+			Title: relObjArchived[bundle.RelationKeyName].GetStringValue(),
+		})
+		require.NoError(t, err)
+
+		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:    "typeid1/r/name",
 			Title: typeObj[bundle.RelationKeyName].GetStringValue(),
 		})
@@ -290,7 +342,7 @@ func TestQuery(t *testing.T) {
 
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:   "id1/b/block1",
-			Text: "this is a cozy block",
+			Text: "this is a beautiful block block",
 		})
 		require.NoError(t, err)
 
@@ -321,23 +373,6 @@ func TestQuery(t *testing.T) {
 				"За зоряною класифікацією Сонце має спектральний клас G2V. Водночас Сонце доволі часто класифікують як жовтий карлик.",
 		})
 		require.NoError(t, err)
-
-		t.Run("full-text relation description (html highlighter)", func(t *testing.T) {
-			recs, err := s.Query(database.Query{
-				Highlighter: ftsearch.HtmlHighlightFormatter,
-				FullText:    "this is the first object description",
-			})
-			require.NoError(t, err)
-			removeScoreFromRecords(recs)
-			assert.ElementsMatch(t, []database.Record{
-				{
-					Details: makeDetails(obj1),
-					Meta: model.SearchMeta{
-						Highlight:   "this is the <mark>first</mark> <mark>object</mark> <mark>description</mark>",
-						RelationKey: "description",
-					},
-				}}, recs)
-		})
 
 		t.Run("full-text relation description", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
@@ -392,64 +427,48 @@ func TestQuery(t *testing.T) {
 				}}, recs)
 		})
 
-		t.Run("full-text block single match short", func(t *testing.T) {
-			recs, err := s.Query(database.Query{
-				FullText: "sa",
-			})
-			require.NoError(t, err)
-			removeScoreFromRecords(recs)
-			assert.ElementsMatch(t, []database.Record{
-				{
-					Details: makeDetails(obj2),
-					Meta: model.SearchMeta{
-						Highlight: "this is a sage block",
-						HighlightRanges: []*model.Range{{
-							From: 10,
-							To:   14,
-						}},
-						BlockId: "321",
-					},
-				}}, recs)
-		})
-
 		t.Run("full-text block multi match", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				FullText: "block",
+				Sorts: []*model.BlockContentDataviewSort{
+					{
+						RelationKey: bundle.RelationKeyId.String(),
+						Type:        model.BlockContentDataviewSort_Asc,
+					},
+				},
 			})
 			require.NoError(t, err)
 			removeScoreFromRecords(recs)
 			assert.ElementsMatch(t, []database.Record{
 				{
-					Details: makeDetails(obj2),
+					Details: makeDetails(obj1),
 					Meta: model.SearchMeta{
-						Highlight: "this is a sage block",
-						HighlightRanges: []*model.Range{{
-							From: 15,
-							To:   20,
-						}},
-						BlockId: "321",
+						Highlight: "this is a beautiful block block",
+						HighlightRanges: []*model.Range{
+							{
+								From: 20,
+								To:   25,
+							},
+							{
+								From: 26,
+								To:   31,
+							},
+						},
+						BlockId: "block1",
 					},
 				},
 				// only one result per object
 				{
-					Details: makeDetails(obj1),
+					Details: makeDetails(obj2),
 					Meta: model.SearchMeta{
-						Highlight: "this is a clever block as it has a lot of text. On the other hand, this block is not very cozy. But because it has multiple mention of word 'block' it will have a higher score.",
+						Highlight: "this is a sage block",
 						HighlightRanges: []*model.Range{
 							{
-								From: 17,
-								To:   22,
-							},
-							{
-								From: 72,
-								To:   77,
-							},
-							{
-								From: 141,
-								To:   146,
+								From: 15,
+								To:   20,
 							},
 						},
-						BlockId: "block2",
+						BlockId: "321",
 					},
 				},
 			}, recs)
@@ -465,23 +484,19 @@ func TestQuery(t *testing.T) {
 				{
 					Details: makeDetails(obj3),
 					Meta: model.SearchMeta{
-						Highlight: "…d the dog sit in the shade? Because it didn’t want to be a hot dog! And what do you call a dog that can do magic? A labracadabrador! Just remember, if your dog is barking at the back door and your cat…",
+						Highlight: "Why did the dog sit in the shade? Because it didn’t want to be a hot dog! And what do you call a dog that can do magic? A labracadabrador! Just",
 						HighlightRanges: []*model.Range{
 							{
-								From: 7,
-								To:   10,
+								From: 12,
+								To:   15,
 							},
 							{
-								From: 64,
-								To:   67,
+								From: 69,
+								To:   72,
 							},
 							{
-								From: 92,
-								To:   95,
-							},
-							{
-								From: 157,
-								To:   160,
+								From: 97,
+								To:   100,
 							},
 						},
 						BlockId: "block1",
@@ -500,15 +515,11 @@ func TestQuery(t *testing.T) {
 				{
 					Details: makeDetails(obj3),
 					Meta: model.SearchMeta{
-						Highlight: "…до кількох сотень кілометрів. Це типова зоря, тому її вивчення допомагає зрозуміти природу зірок загалом. За зоряною класифікацією Сонце має спектральний клас G2V. Водночас Сонце доволі часто класифік…",
+						Highlight: "зрозуміти природу зірок загалом. За зоряною класифікацією Сонце має спектральний",
 						HighlightRanges: []*model.Range{
 							{
-								From: 132,
-								To:   137,
-							},
-							{
-								From: 174,
-								To:   179,
+								From: 58,
+								To:   63,
 							},
 						},
 						BlockId: "block2",
@@ -539,6 +550,40 @@ func TestQuery(t *testing.T) {
 						RelationDetails: pbtypes.StructFilterKeys(makeDetails(relObj), []string{bundle.RelationKeyLayout.String(), bundle.RelationKeyId.String(), bundle.RelationKeyName.String()}),
 					},
 				}}, recs)
+		})
+
+		t.Run("full-text by deleted tag", func(t *testing.T) {
+			recs, err := s.Query(database.Query{
+				FullText: "deleted",
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						Operator:    0,
+						RelationKey: "layout",
+						Condition:   model.BlockContentDataviewFilter_NotIn,
+						Value:       pbtypes.IntList(int(model.ObjectType_relationOption)),
+					},
+				},
+			})
+			require.NoError(t, err)
+			removeScoreFromRecords(recs)
+			assert.Len(t, recs, 0)
+		})
+
+		t.Run("full-text by archived tag", func(t *testing.T) {
+			recs, err := s.Query(database.Query{
+				FullText: "archived",
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						Operator:    0,
+						RelationKey: "layout",
+						Condition:   model.BlockContentDataviewFilter_NotIn,
+						Value:       pbtypes.IntList(int(model.ObjectType_relationOption)),
+					},
+				},
+			})
+			require.NoError(t, err)
+			removeScoreFromRecords(recs)
+			assert.Len(t, recs, 0)
 		})
 
 		t.Run("full-text by type", func(t *testing.T) {
@@ -572,7 +617,6 @@ func TestQuery(t *testing.T) {
 				},
 			}, recs)
 		})
-
 	})
 
 	t.Run("with ascending order and filter", func(t *testing.T) {
@@ -1043,7 +1087,7 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 
 func TestGetSpaceIDFromFilters(t *testing.T) {
 	t.Run("spaceID provided", func(t *testing.T) {
-		spaceID := "myspace"
+		spaceId := "myspace"
 		f := database.FiltersAnd{
 			database.FilterEq{
 				Key:   bundle.RelationKeyCreator.String(),
@@ -1051,7 +1095,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 			},
 			database.FilterEq{
 				Key:   bundle.RelationKeySpaceId.String(),
-				Value: pbtypes.String(spaceID),
+				Value: pbtypes.String(spaceId),
 			},
 			database.FilterNot{
 				Filter: database.FilterEq{
@@ -1060,7 +1104,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 				},
 			},
 		}
-		assert.Equal(t, spaceID, getSpaceIDFromFilter(f))
+		assert.Equal(t, []string{spaceId}, getSpaceIdsFromFilter(f))
 	})
 
 	t.Run("no spaceID provided", func(t *testing.T) {
@@ -1073,16 +1117,16 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 				Key: bundle.RelationKeyType.String(),
 			},
 		}
-		assert.Equal(t, "", getSpaceIDFromFilter(f))
+		assert.Equal(t, 0, len(getSpaceIdsFromFilter(f)))
 	})
 
 	t.Run("filters is filter.FilterEq with spaceID", func(t *testing.T) {
-		spaceID := "open space"
+		spaceId := "open space"
 		f := database.FilterEq{
 			Key:   bundle.RelationKeySpaceId.String(),
-			Value: pbtypes.String(spaceID),
+			Value: pbtypes.String(spaceId),
 		}
-		assert.Equal(t, spaceID, getSpaceIDFromFilter(f))
+		assert.Equal(t, []string{spaceId}, getSpaceIdsFromFilter(f))
 	})
 
 	t.Run("filters is filter.FilterEq without spaceID", func(t *testing.T) {
@@ -1090,11 +1134,33 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 			Key:   bundle.RelationKeySetOf.String(),
 			Value: pbtypes.String("ot-note"),
 		}
-		assert.Equal(t, "", getSpaceIDFromFilter(f))
+		assert.Equal(t, 0, len(getSpaceIdsFromFilter(f)))
+	})
+
+	t.Run("filters is filter.FilterIn with spaceId", func(t *testing.T) {
+		list, err := pbtypes.ValueListWrapper(pbtypes.StringList([]string{"space1"}))
+		assert.NoError(t, err)
+
+		f := database.FilterIn{
+			Key:   bundle.RelationKeySpaceId.String(),
+			Value: list,
+		}
+		assert.Equal(t, []string{"space1"}, getSpaceIdsFromFilter(f))
+	})
+
+	t.Run("filters is filter.FilterIn with many spaceId", func(t *testing.T) {
+		list, err := pbtypes.ValueListWrapper(pbtypes.StringList([]string{"space1", "space2"}))
+		assert.NoError(t, err)
+
+		f := database.FilterIn{
+			Key:   bundle.RelationKeySpaceId.String(),
+			Value: list,
+		}
+		assert.Equal(t, []string{"space1", "space2"}, getSpaceIdsFromFilter(f))
 	})
 
 	t.Run("spaceID is nested in and filters", func(t *testing.T) {
-		spaceID := "secret_space"
+		spaceId := "secret_space"
 		f := database.FiltersAnd{
 			database.FiltersAnd{
 				database.FilterEmpty{Key: "somekey"},
@@ -1104,11 +1170,11 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 					database.FilterEq{Key: "type", Value: pbtypes.String("ot-note")},
 					database.FilterEq{
 						Key:   bundle.RelationKeySpaceId.String(),
-						Value: pbtypes.String(spaceID),
+						Value: pbtypes.String(spaceId),
 					},
 				},
 			},
 		}
-		assert.Equal(t, spaceID, getSpaceIDFromFilter(f))
+		assert.Equal(t, []string{spaceId}, getSpaceIdsFromFilter(f))
 	})
 }

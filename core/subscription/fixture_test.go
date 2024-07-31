@@ -23,16 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/testMock/mockKanban"
 )
 
-type collectionServiceMock struct {
-	*MockCollectionService
-}
-
-func (c *collectionServiceMock) Name() string {
-	return "collectionService"
-}
-
-func (c *collectionServiceMock) Init(a *app.App) error { return nil }
-
 type fixture struct {
 	Service
 	a                 *app.App

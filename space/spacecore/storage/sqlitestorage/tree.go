@@ -158,6 +158,10 @@ func (t *treeStorage) GetRawChange(ctx context.Context, id string) (*treechangep
 	return ch, nil
 }
 
+func (t *treeStorage) GetAppendRawChange(ctx context.Context, buf []byte, id string) (*treechangeproto.RawTreeChangeWithId, error) {
+	return t.GetRawChange(ctx, id)
+}
+
 func (t *treeStorage) HasChange(ctx context.Context, id string) (bool, error) {
 	var res int
 	if err := t.service.stmt.hasChange.QueryRow(id, t.treeId).Scan(&res); err != nil {

@@ -29,10 +29,10 @@ const spaceName = "space1"
 
 func NewStoreFixture(t *testing.T) *StoreFixture {
 	walletService := mock_wallet.NewMockWallet(t)
-	walletService.EXPECT().Name().Return(wallet.CName)
+	walletService.EXPECT().Name().Return(wallet.CName).Maybe()
 	walletService.EXPECT().RepoPath().Return(t.TempDir())
 
-	fullText := ftsearch.New()
+	fullText := ftsearch.TantivyNew()
 	testApp := &app.App{}
 	testApp.Register(walletService)
 	err := fullText.Init(testApp)
@@ -53,6 +53,7 @@ func NewStoreFixture(t *testing.T) *StoreFixture {
 		fts:           fullText,
 		sourceService: &detailsFromId{},
 		db:            db,
+		isClosingCh:   make(chan struct{}),
 	}
 	err = ds.initCache()
 	require.NoError(t, err)

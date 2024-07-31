@@ -7,7 +7,7 @@ import (
 
 const (
 	// ObjectPathSeparator is the separator between object id and block id or relation key
-	objectPathSeparator = "/"
+	ObjectPathSeparator = "/"
 	blockPrefix         = "b"
 	relationPrefix      = "r"
 )
@@ -21,10 +21,10 @@ type ObjectPath struct {
 // String returns the full path, e.g. "objectId-b-blockId" or "objectId-r-relationKey"
 func (o ObjectPath) String() string {
 	if o.HasBlock() {
-		return strings.Join([]string{o.ObjectId, blockPrefix, o.BlockId}, objectPathSeparator)
+		return strings.Join([]string{o.ObjectId, blockPrefix, o.BlockId}, ObjectPathSeparator)
 	}
 	if o.HasRelation() {
-		return strings.Join([]string{o.ObjectId, relationPrefix, o.RelationKey}, objectPathSeparator)
+		return strings.Join([]string{o.ObjectId, relationPrefix, o.RelationKey}, ObjectPathSeparator)
 	}
 	return o.ObjectId
 }
@@ -32,10 +32,10 @@ func (o ObjectPath) String() string {
 // ObjectRelativePath returns the relative path of the object without the object id prefix
 func (o ObjectPath) ObjectRelativePath() string {
 	if o.HasBlock() {
-		return strings.Join([]string{blockPrefix, o.BlockId}, objectPathSeparator)
+		return strings.Join([]string{blockPrefix, o.BlockId}, ObjectPathSeparator)
 	}
 	if o.HasRelation() {
-		return strings.Join([]string{relationPrefix, o.RelationKey}, objectPathSeparator)
+		return strings.Join([]string{relationPrefix, o.RelationKey}, ObjectPathSeparator)
 	}
 	return ""
 }
@@ -67,7 +67,7 @@ func NewObjectPathWithRelation(objectId, relationKey string) ObjectPath {
 }
 
 func NewFromPath(path string) (ObjectPath, error) {
-	parts := strings.Split(path, objectPathSeparator)
+	parts := strings.Split(path, ObjectPathSeparator)
 	if len(parts) == 3 && parts[1] == blockPrefix {
 		return NewObjectPathWithBlock(parts[0], parts[2]), nil
 	}

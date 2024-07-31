@@ -141,6 +141,10 @@ func (t *treeStorage) GetRawChange(ctx context.Context, id string) (raw *treecha
 	return
 }
 
+func (t *treeStorage) GetAppendRawChange(ctx context.Context, buf []byte, id string) (raw *treechangeproto.RawTreeChangeWithId, err error) {
+	return t.GetRawChange(ctx, id)
+}
+
 func (t *treeStorage) HasChange(ctx context.Context, id string) (bool, error) {
 	return hasDB(t.db, t.keys.RawChangeKey(id)), nil
 }

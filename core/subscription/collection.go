@@ -115,10 +115,11 @@ func (c *collectionObserver) updateIDs(ids []string) {
 	}
 }
 
-func (c *collectionObserver) FilterObject(g database.Getter) bool {
+func (c *collectionObserver) FilterObject(g *types.Struct) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	id := g.Get(bundle.RelationKeyId.String()).GetStringValue()
+	val := pbtypes.Get(g, bundle.RelationKeyId.String())
+	id := val.GetStringValue()
 	_, ok := c.idsSet[id]
 	return ok
 }
@@ -150,6 +151,10 @@ func (c *collectionSub) getActiveRecords() (res []*types.Struct) {
 
 func (c *collectionSub) hasDep() bool {
 	return c.sortedSub.hasDep()
+}
+
+func (c *collectionSub) getDep() subscription {
+	return c.sortedSub.depSub
 }
 
 func (c *collectionSub) close() {
@@ -184,7 +189,7 @@ func (s *service) newCollectionSub(
 	entries := obs.listEntries()
 	filtered := entries[:0]
 	for _, e := range entries {
-		if flt.FilterObject(e) {
+		if flt.FilterObject(e.data) {
 			filtered = append(filtered, e)
 		}
 	}

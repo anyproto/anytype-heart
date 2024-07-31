@@ -72,6 +72,10 @@ func (c *virtualCommonSpace) HandleStreamSyncRequest(ctx context.Context, req *s
 	return nil
 }
 
+func (c *virtualCommonSpace) HandleDeprecatedObjectSyncRequest(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
+	return
+}
+
 func (c *virtualCommonSpace) HandleStream(stream spacesyncproto.DRPCSpaceSync_ObjectSyncStreamStream) error {
 	return nil
 }

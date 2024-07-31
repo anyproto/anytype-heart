@@ -78,6 +78,10 @@ func (z *zipTreeReadStorage) GetRawChange(ctx context.Context, id string) (*tree
 	return z.readChange(id)
 }
 
+func (z *zipTreeReadStorage) GetAppendRawChange(ctx context.Context, buf []byte, id string) (*treechangeproto.RawTreeChangeWithId, error) {
+	return z.readChange(id)
+}
+
 func (z *zipTreeReadStorage) HasChange(ctx context.Context, id string) (ok bool, err error) {
 	_, ok = z.files[id]
 	return
