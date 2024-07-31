@@ -55,19 +55,19 @@ type Service interface {
 
 	InitEmptyFileState(st *state.State)
 	DeleteFileData(objectId string) error
-	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
+	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *domain.Details, err error)
 	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
 	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
 	GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error)
-	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
+	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error)
 	MigrateFileIdsInDetails(st *state.State, spc source.Space)
 	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
-	EnsureFileAddedToSyncQueue(id domain.FullID, details *types.Struct) error
+	EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.Details) error
 }
 
 type objectCreatorService interface {
-	CreateSmartBlockFromStateInSpaceWithOptions(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...objectcreator.CreateOption) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromStateInSpaceWithOptions(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...objectcreator.CreateOption) (id string, newDetails *domain.Details, err error)
 }
 
 type service struct {
@@ -182,7 +182,7 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 	return nil
 }
 
-func extractFullFileIdFromDetails(details *types.Struct) domain.FullFileId {
+func extractFullFileIdFromDetails(details *domain.Details) domain.FullFileId {
 	return domain.FullFileId{
 		SpaceId: details.GetStringOrDefault(bundle.RelationKeySpaceId, ""),
 		FileId:  domain.FileId(details.GetStringOrDefault(bundle.RelationKeyFileId, "")),
@@ -191,7 +191,7 @@ func extractFullFileIdFromDetails(details *types.Struct) domain.FullFileId {
 
 // EnsureFileAddedToSyncQueue adds file to sync queue if it is not synced yet, we need to do this
 // after migrating to new sync queue
-func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *types.Struct) error {
+func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.Details) error {
 	if details.GetInt64OrDefault(bundle.RelationKeyFileBackupStatus, 0) == int64(filesyncstatus.Synced) {
 		return nil
 	}
@@ -211,7 +211,7 @@ type CreateRequest struct {
 	FileId                domain.FileId
 	EncryptionKeys        map[string]string
 	ObjectOrigin          objectorigin.ObjectOrigin
-	AdditionalDetails     *types.Struct
+	AdditionalDetails     *domain.Details
 	AsyncMetadataIndexing bool
 }
 
@@ -225,7 +225,7 @@ func (s *service) InitEmptyFileState(st *state.State) {
 	)
 }
 
-func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error) {
+func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *domain.Details, err error) {
 	space, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
@@ -243,7 +243,7 @@ func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest)
 	return id, object, nil
 }
 
-func (s *service) createInSpace(ctx context.Context, space clientspace.Space, req CreateRequest) (id string, object *types.Struct, err error) {
+func (s *service) createInSpace(ctx context.Context, space clientspace.Space, req CreateRequest) (id string, object *domain.Details, err error) {
 	if req.FileId == "" {
 		return "", nil, fmt.Errorf("file hash is empty")
 	}
@@ -297,7 +297,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	return id, object, nil
 }
 
-func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin) *types.Struct {
+func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin) *domain.Details {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyFileId.String(): pbtypes.String(fileId.String()),
@@ -385,7 +385,7 @@ func (s *service) GetObjectIdByFileId(fileId domain.FullFileId) (string, error) 
 	return records[0].Details.GetStringOrDefault(bundle.RelationKeyId, ""), nil
 }
 
-func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error) {
+func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error) {
 	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{

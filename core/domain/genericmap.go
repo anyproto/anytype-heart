@@ -22,6 +22,15 @@ func (d *GenericMap[K]) Set(key K, value any) {
 	d.data[key] = value
 }
 
+type numeric interface {
+	~float64 | ~int64 | ~int // TODO All other
+}
+
+// TODO Test with model types (like layout etc)
+func intoFloat[T numeric](v T) float64 {
+	return float64(v)
+}
+
 func (d *GenericMap[K]) Delete(key K) {
 	delete(d.data, key)
 }

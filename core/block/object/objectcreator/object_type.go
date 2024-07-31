@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -17,8 +16,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) createObjectType(ctx context.Context, space clientspace.Space, details *types.Struct) (id string, newDetails *types.Struct, err error) {
-	if details == nil || details.Fields == nil {
+func (s *service) createObjectType(ctx context.Context, space clientspace.Space, details *domain.Details) (id string, newDetails *domain.Details, err error) {
+	if details == nil {
 		return "", nil, fmt.Errorf("create object type: no data")
 	}
 
@@ -26,10 +25,10 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	if err != nil {
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
-	object := pbtypes.CopyStruct(details, false)
+	object := details.ShallowCopy()
 
-	if _, ok := object.Fields[bundle.RelationKeyRecommendedLayout.String()]; !ok {
-		object.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(model.ObjectType_basic))
+	if !object.Has(bundle.RelationKeyRecommendedLayout) {
+		object.Set(bundle.RelationKeyRecommendedLayout, model.ObjectType_basic)
 	}
 	if len(object.GetStringListOrDefault(bundle.RelationKeyRecommendedRelations, nil)) == 0 {
 		err = s.fillRecommendedRelationsFromLayout(ctx, space, object)
@@ -38,8 +37,8 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 		}
 	}
 
-	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
+	object.Set(bundle.RelationKeyId, id)
+	object.Set(bundle.RelationKeyLayout, model.ObjectType_objectType)
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
@@ -56,7 +55,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	return id, newDetails, nil
 }
 
-func (s *service) fillRecommendedRelationsFromLayout(ctx context.Context, space clientspace.Space, details *types.Struct) error {
+func (s *service) fillRecommendedRelationsFromLayout(ctx context.Context, space clientspace.Space, details *domain.Details) error {
 	rawRecommendedLayout := details.GetInt64OrDefault(bundle.RelationKeyRecommendedLayout, 0)
 	recommendedLayout, err := bundle.GetLayout(model.ObjectTypeLayout(int32(rawRecommendedLayout)))
 	if err != nil {
@@ -70,7 +69,7 @@ func (s *service) fillRecommendedRelationsFromLayout(ctx context.Context, space 
 	if err != nil {
 		return fmt.Errorf("prepare recommended relation ids: %w", err)
 	}
-	details.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
+	details.Set(bundle.RelationKeyRecommendedRelations, recommendedRelationIds)
 	return nil
 }
 

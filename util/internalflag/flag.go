@@ -1,9 +1,8 @@
 package internalflag
 
 import (
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -61,7 +60,7 @@ func (s *Set) IsEmpty() bool {
 	return len(s.flags) == 0
 }
 
-func PutToDetails(details *types.Struct, flags []*model.InternalFlag) *types.Struct {
+func PutToDetails(details *domain.Details, flags []*model.InternalFlag) *domain.Details {
 	ints := make([]int, 0, len(flags))
 	for _, f := range flags {
 		ints = append(ints, int(f.Value))
@@ -69,16 +68,11 @@ func PutToDetails(details *types.Struct, flags []*model.InternalFlag) *types.Str
 	return putToDetails(details, ints)
 }
 
-func putToDetails(details *types.Struct, flags []int) *types.Struct {
+func putToDetails(details *domain.Details, flags []int) *domain.Details {
 	if details == nil {
-		details = &types.Struct{
-			Fields: map[string]*types.Value{},
-		}
+		details = domain.NewDetails()
 	}
-	if details.Fields == nil {
-		details.Fields = map[string]*types.Value{}
-	}
-	details.Fields[relationKey.String()] = pbtypes.IntList(flags...)
+	details.Set(relationKey, flags)
 
 	return details
 }

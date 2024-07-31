@@ -165,7 +165,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 
 func (e *export) exportDocs(ctx context.Context,
 	req pb.RpcObjectListExportRequest,
-	docs map[string]*types.Struct,
+	docs map[string]*domain.Details,
 	wr writer, queue process.Queue,
 	succeed *int64,
 	tasks []process.Task,
@@ -184,7 +184,7 @@ func (e *export) exportDocs(ctx context.Context,
 	return tasks
 }
 
-func (e *export) exportGraphJson(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*types.Struct, succeed int, wr writer, queue process.Queue) int {
+func (e *export) exportGraphJson(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*domain.Details, succeed int, wr writer, queue process.Queue) int {
 	mc := graphjson.NewMultiConverter(e.sbtProvider)
 	mc.SetKnownDocs(docs)
 	var werr error
@@ -194,7 +194,7 @@ func (e *export) exportGraphJson(ctx context.Context, req pb.RpcObjectListExport
 	return succeed
 }
 
-func (e *export) exportDotAndSVG(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*types.Struct, succeed int, wr writer, queue process.Queue) int {
+func (e *export) exportDotAndSVG(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*domain.Details, succeed int, wr writer, queue process.Queue) int {
 	var format = dot.ExportFormatDOT
 	if req.Format == model.Export_SVG {
 		format = dot.ExportFormatSVG
@@ -242,7 +242,7 @@ func isAnyblockExport(format model.ExportFormat) bool {
 	return format == model.Export_Protobuf || format == model.Export_JSON
 }
 
-func (e *export) docsForExport(spaceID string, req pb.RpcObjectListExportRequest) (docs map[string]*types.Struct, err error) {
+func (e *export) docsForExport(spaceID string, req pb.RpcObjectListExportRequest) (docs map[string]*domain.Details, err error) {
 	isProtobuf := isAnyblockExport(req.Format)
 	if len(req.ObjectIds) == 0 {
 		return e.getExistedObjects(spaceID, req.IncludeArchived, isProtobuf)
@@ -254,8 +254,8 @@ func (e *export) docsForExport(spaceID string, req pb.RpcObjectListExportRequest
 	return
 }
 
-func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested bool, includeFiles bool, isProtobuf bool) (map[string]*types.Struct, error) {
-	docs := make(map[string]*types.Struct)
+func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested bool, includeFiles bool, isProtobuf bool) (map[string]*domain.Details, error) {
+	docs := make(map[string]*domain.Details)
 	res, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -315,12 +315,12 @@ func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested 
 	return docs, nil
 }
 
-func (e *export) addDerivedObjects(spaceId string, docs map[string]*types.Struct, includeNested bool) error {
+func (e *export) addDerivedObjects(spaceId string, docs map[string]*domain.Details, includeNested bool) error {
 	derivedObjects, err := e.getRelatedDerivedObjects(docs)
 	if err != nil {
 		return err
 	}
-	derivedObjectsMap := make(map[string]*types.Struct)
+	derivedObjectsMap := make(map[string]*domain.Details)
 	for _, object := range derivedObjects {
 		id := object.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 		derivedObjectsMap[id] = object.Details
@@ -337,7 +337,7 @@ func (e *export) addDerivedObjects(spaceId string, docs map[string]*types.Struct
 	return nil
 }
 
-func (e *export) getNested(spaceID string, id string, docs map[string]*types.Struct) []string {
+func (e *export) getNested(spaceID string, id string, docs map[string]*domain.Details) []string {
 	links, err := e.objectStore.GetOutboundLinksByID(id)
 	if err != nil {
 		log.Errorf("export failed to get outbound links for id: %s", err)
@@ -369,7 +369,7 @@ func (e *export) getNested(spaceID string, id string, docs map[string]*types.Str
 	return nestedDocsIds
 }
 
-func (e *export) fillLinkedFiles(space clientspace.Space, id string, docs map[string]*types.Struct) error {
+func (e *export) fillLinkedFiles(space clientspace.Space, id string, docs map[string]*domain.Details) error {
 	return space.Do(id, func(b sb.SmartBlock) error {
 		b.NewState().IterateLinkedFiles(func(fileObjectId string) {
 			details, err := e.objectStore.GetDetails(fileObjectId)
@@ -384,7 +384,7 @@ func (e *export) fillLinkedFiles(space clientspace.Space, id string, docs map[st
 	})
 }
 
-func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProtobuf bool) (map[string]*types.Struct, error) {
+func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProtobuf bool) (map[string]*domain.Details, error) {
 	res, err := e.objectStore.List(spaceID, false)
 	if err != nil {
 		return nil, err
@@ -396,7 +396,7 @@ func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProto
 		}
 		res = append(res, archivedObjects...)
 	}
-	objectDetails := make(map[string]*types.Struct, len(res))
+	objectDetails := make(map[string]*domain.Details, len(res))
 	for _, info := range res {
 		objectSpaceID := spaceID
 		if spaceID == "" {
@@ -422,7 +422,7 @@ func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProto
 func (e *export) writeMultiDoc(ctx context.Context,
 	mw converter.MultiConverter,
 	wr writer,
-	docs map[string]*types.Struct,
+	docs map[string]*domain.Details,
 	queue process.Queue,
 	includeFiles bool,
 ) (succeed int, err error) {
@@ -461,7 +461,7 @@ func (e *export) writeMultiDoc(ctx context.Context,
 	return
 }
 
-func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportRequest, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string) (err error) {
+func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportRequest, wr writer, docInfo map[string]*domain.Details, queue process.Queue, docID string) (err error) {
 	return cache.Do(e.picker, docID, func(b sb.SmartBlock) error {
 		st := b.NewState()
 		if st.CombinedDetails().GetBoolOrDefault(bundle.RelationKeyIsDeleted, false) {
@@ -687,7 +687,7 @@ func (e *export) cleanupFile(wr writer) {
 	os.Remove(wr.Path())
 }
 
-func (e *export) getRelatedDerivedObjects(objects map[string]*types.Struct) ([]database.Record, error) {
+func (e *export) getRelatedDerivedObjects(objects map[string]*domain.Details) ([]database.Record, error) {
 	derivedObjects, typesAndTemplates, err := e.iterateObjects(objects)
 	if err != nil {
 		return nil, err
@@ -695,7 +695,7 @@ func (e *export) getRelatedDerivedObjects(objects map[string]*types.Struct) ([]d
 	// get derived objects only from types and templates,
 	// because relations currently have only system relations and object type
 	if len(typesAndTemplates) > 0 {
-		derivedObjectsMap := make(map[string]*types.Struct, 0)
+		derivedObjectsMap := make(map[string]*domain.Details, 0)
 		for _, object := range typesAndTemplates {
 			id := object.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 			derivedObjectsMap[id] = object.Details
@@ -710,7 +710,7 @@ func (e *export) getRelatedDerivedObjects(objects map[string]*types.Struct) ([]d
 	return derivedObjects, nil
 }
 
-func (e *export) iterateObjects(objects map[string]*types.Struct,
+func (e *export) iterateObjects(objects map[string]*domain.Details,
 ) (allObjects []database.Record, typesAndTemplates []database.Record, err error) {
 	var relations []string
 	for id, object := range objects {

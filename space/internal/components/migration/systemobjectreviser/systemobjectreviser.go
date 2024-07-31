@@ -27,7 +27,7 @@ type detailsSettable interface {
 
 const MName = "SystemObjectReviser"
 
-var revisionKey = bundle.RelationKeyRevision.String()
+const revisionKey = bundle.RelationKeyRevision
 
 // Migration SystemObjectReviser performs revision of all system object types and relations, so after Migration
 // objects installed in space should correspond to bundled objects from library.
@@ -95,17 +95,19 @@ func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string)
 func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *domain.Details, marketObjects map[string]*domain.Details) (toRevise bool, err error) {
 	source := localObject.GetStringOrDefault(bundle.RelationKeySourceObject, "")
 	marketObject, found := marketObjects[source]
-	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {
+	if !found || !isSystemObject(localObject) || marketObject.GetInt64OrDefault(revisionKey, 0) <= localObject.GetInt64OrDefault(revisionKey, 0) {
 		return false, nil
 	}
 	details := buildDiffDetails(marketObject, localObject)
-	if len(details) != 0 {
+	if details.Len() > 0 {
 		log.Debug("updating system object", zap.String("source", source), zap.String("space", space.Id()))
 		if err := space.DoCtx(ctx, localObject.GetStringOrDefault(bundle.RelationKeyId, ""), func(sb smartblock.SmartBlock) error {
-			if ds, ok := sb.(detailsSettable); ok {
-				return ds.SetDetails(nil, details, false)
-			}
-			return nil
+			st := sb.NewState()
+			details.Iterate(func(key domain.RelationKey, value any) bool {
+				st.SetDetail(key, value)
+				return true
+			})
+			return sb.Apply(st)
 		}); err != nil {
 			return true, fmt.Errorf("failed to update system object %s in space %s: %w", source, space.Id(), err)
 		}
@@ -128,24 +130,26 @@ func isSystemObject(details *domain.Details) bool {
 	return false
 }
 
-func buildDiffDetails(origin, current *domain.Details) (details []*model.Detail) {
-	diff := pbtypes.StructDiff(current, origin)
-	diff = pbtypes.StructFilterKeys(diff, []string{
-		bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(),
-		bundle.RelationKeyIsReadonly.String(), bundle.RelationKeyIsHidden.String(),
-		bundle.RelationKeyRevision.String(), bundle.RelationKeyRelationReadonlyValue.String(),
-		bundle.RelationKeyRelationMaxCount.String(), bundle.RelationKeyTargetObjectType.String(),
+func buildDiffDetails(origin, current *domain.Details) *domain.Details {
+	diff := domain.StructDiff(current, origin)
+	diff = diff.CopyOnlyWithKeys([]domain.RelationKey{
+		bundle.RelationKeyName, bundle.RelationKeyDescription,
+		bundle.RelationKeyIsReadonly, bundle.RelationKeyIsHidden,
+		bundle.RelationKeyRevision, bundle.RelationKeyRelationReadonlyValue,
+		bundle.RelationKeyRelationMaxCount, bundle.RelationKeyTargetObjectType,
 	})
 
-	for key, value := range diff.Fields {
-		if key == bundle.RelationKeyTargetObjectType.String() {
+	details := domain.NewDetails()
+	diff.Iterate(func(key domain.RelationKey, value any) bool {
+		if key == bundle.RelationKeyTargetObjectType {
 			// special case. We don't want to remove the types that was set by user, so only add ones that we have
 			currentList := current.GetStringListOrDefault(bundle.RelationKeyTargetObjectType, nil)
 			missedInCurrent, _ := lo.Difference(origin.GetStringListOrDefault(bundle.RelationKeyTargetObjectType, nil), currentList)
 			currentList = append(currentList, missedInCurrent...)
 			value = pbtypes.StringList(currentList)
 		}
-		details = append(details, &model.Detail{Key: key, Value: value})
-	}
-	return
+		details.Set(key, value)
+		return true
+	})
+	return details
 }

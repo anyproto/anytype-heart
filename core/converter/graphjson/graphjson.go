@@ -3,8 +3,6 @@ package graphjson
 import (
 	"encoding/json"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
@@ -46,7 +44,7 @@ type Graph struct {
 }
 
 type graphjson struct {
-	knownDocs   map[string]*types.Struct
+	knownDocs   map[string]*domain.Details
 	fileHashes  []string
 	imageHashes []string
 	nodes       map[string]*Node
@@ -65,7 +63,7 @@ func NewMultiConverter(
 	}
 }
 
-func (g *graphjson) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
+func (g *graphjson) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	g.knownDocs = docs
 	return g
 }

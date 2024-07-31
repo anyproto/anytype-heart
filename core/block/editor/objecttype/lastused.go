@@ -4,8 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -44,8 +42,8 @@ func UpdateLastUsedDate(spc smartblock.Space, store objectstore.ObjectStore, key
 	}
 }
 
-func SetLastUsedDateForInitialObjectType(id string, details *types.Struct) {
-	if !strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || details == nil || details.Fields == nil {
+func SetLastUsedDateForInitialObjectType(id string, details *domain.Details) {
+	if !strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || details == nil {
 		return
 	}
 
@@ -67,5 +65,5 @@ func SetLastUsedDateForInitialObjectType(id string, details *types.Struct) {
 
 	// we do this trick to order crucial Anytype object types by last date
 	lastUsed := time.Now().Add(time.Duration(-1 * priority * int64(maxInstallationTime))).Unix()
-	details.Fields[bundle.RelationKeyLastUsedDate.String()] = pbtypes.Int64(lastUsed)
+	details.Set(bundle.RelationKeyLastUsedDate, lastUsed)
 }

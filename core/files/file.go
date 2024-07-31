@@ -8,20 +8,18 @@ import (
 	"time"
 
 	"github.com/dhowden/tag"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type File interface {
 	Meta() *FileMeta
 	FileId() domain.FileId
 	Reader(ctx context.Context) (io.ReadSeeker, error)
-	Details(ctx context.Context) (*types.Struct, domain.TypeKey, error)
+	Details(ctx context.Context) (*domain.Details, domain.TypeKey, error)
 	Info() *storage.FileInfo
 }
 
@@ -42,7 +40,7 @@ type FileMeta struct {
 	Added            time.Time
 }
 
-func (f *file) audioDetails(ctx context.Context) (*types.Struct, error) {
+func (f *file) audioDetails(ctx context.Context) (*domain.Details, error) {
 	r, err := f.Reader(ctx)
 	if err != nil {
 		return nil, err
@@ -53,66 +51,59 @@ func (f *file) audioDetails(ctx context.Context) (*types.Struct, error) {
 		return nil, err
 	}
 
-	d := &types.Struct{
-		Fields: map[string]*types.Value{},
-	}
+	d := domain.NewDetails()
 
 	if t.Album() != "" {
-		d.Fields[bundle.RelationKeyAudioAlbum.String()] = pbtypes.String(t.Album())
+		d.Set(bundle.RelationKeyAudioAlbum, t.Album())
 	}
 	if t.Artist() != "" {
-		d.Fields[bundle.RelationKeyAudioArtist.String()] = pbtypes.String(t.Artist())
+		d.Set(bundle.RelationKeyAudioArtist, t.Artist())
 	}
 	if t.Genre() != "" {
-		d.Fields[bundle.RelationKeyAudioGenre.String()] = pbtypes.String(t.Genre())
+		d.Set(bundle.RelationKeyAudioGenre, t.Genre())
 	}
 	if t.Lyrics() != "" {
-		d.Fields[bundle.RelationKeyAudioLyrics.String()] = pbtypes.String(t.Lyrics())
+		d.Set(bundle.RelationKeyAudioLyrics, t.Lyrics())
 	}
 	if n, _ := t.Track(); n != 0 {
-		d.Fields[bundle.RelationKeyAudioAlbumTrackNumber.String()] = pbtypes.Int64(int64(n))
+		d.Set(bundle.RelationKeyAudioAlbumTrackNumber, int64(n))
 	}
 	if t.Year() != 0 {
-		d.Fields[bundle.RelationKeyReleasedYear.String()] = pbtypes.Int64(int64(t.Year()))
+		d.Set(bundle.RelationKeyReleasedYear, int64(t.Year()))
 	}
-	d.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_audio))
+	d.Set(bundle.RelationKeyLayout, float64(model.ObjectType_audio))
 
 	return d, nil
 }
 
-func (f *file) Details(ctx context.Context) (*types.Struct, domain.TypeKey, error) {
+func (f *file) Details(ctx context.Context) (*domain.Details, domain.TypeKey, error) {
 	meta := f.Meta()
 
 	typeKey := bundle.TypeKeyFile
-	commonDetails := calculateCommonDetails(f.fileId, model.ObjectType_file, f.info.LastModifiedDate)
-	commonDetails[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(meta.Media)
-
-	commonDetails[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name)))
-	commonDetails[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(meta.Name), "."))
-	commonDetails[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(meta.Size))
-	commonDetails[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(meta.Added.Unix()))
-
-	t := &types.Struct{
-		Fields: commonDetails,
-	}
+	details := calculateCommonDetails(f.fileId, model.ObjectType_file, f.info.LastModifiedDate)
+	details.Set(bundle.RelationKeyFileMimeType, meta.Media)
+	details.Set(bundle.RelationKeyName, strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name)))
+	details.Set(bundle.RelationKeyFileExt, strings.TrimPrefix(filepath.Ext(meta.Name), "."))
+	details.Set(bundle.RelationKeySizeInBytes, float64(meta.Size))
+	details.Set(bundle.RelationKeyAddedDate, float64(meta.Added.Unix()))
 
 	if meta.Media == "application/pdf" {
 		typeKey = bundle.TypeKeyFile
-		t.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_pdf))
+		details.Set(bundle.RelationKeyLayout, model.ObjectType_pdf)
 	}
 	if strings.HasPrefix(meta.Media, "video") {
 		typeKey = bundle.TypeKeyVideo
-		t.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_video))
+		details.Set(bundle.RelationKeyLayout, model.ObjectType_video)
 	}
 
 	if strings.HasPrefix(meta.Media, "audio") {
 		if audioDetails, err := f.audioDetails(ctx); err == nil {
-			t = pbtypes.StructMerge(t, audioDetails, false)
+			details = details.Merge(audioDetails)
 		}
 		typeKey = bundle.TypeKeyAudio
 	}
 
-	return t, typeKey, nil
+	return details, typeKey, nil
 }
 
 func (f *file) Info() *storage.FileInfo {
@@ -141,11 +132,11 @@ func calculateCommonDetails(
 	fileId domain.FileId,
 	layout model.ObjectTypeLayout,
 	lastModifiedDate int64,
-) map[string]*types.Value {
-	return map[string]*types.Value{
-		bundle.RelationKeyFileId.String():           pbtypes.String(fileId.String()),
-		bundle.RelationKeyIsReadonly.String():       pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(layout)),
-		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(lastModifiedDate),
-	}
+) *domain.Details {
+	return domain.NewDetailsFromMap(map[domain.RelationKey]any{
+		bundle.RelationKeyFileId:           fileId.String(),
+		bundle.RelationKeyIsReadonly:       false,
+		bundle.RelationKeyLayout:           float64(layout),
+		bundle.RelationKeyLastModifiedDate: lastModifiedDate,
+	})
 }

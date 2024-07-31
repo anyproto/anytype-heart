@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -67,7 +66,7 @@ func (s *service) InstallBundledObjects(
 	space clientspace.Space,
 	sourceObjectIds []string,
 	isNewSpace bool,
-) (ids []string, objects []*types.Struct, err error) {
+) (ids []string, objects []*domain.Details, err error) {
 	if space.IsReadOnly() {
 		return
 	}
@@ -107,7 +106,7 @@ func (s *service) InstallBundledObjects(
 	return
 }
 
-func (s *service) installObject(ctx context.Context, space clientspace.Space, installingDetails *types.Struct) (id string, newDetails *types.Struct, err error) {
+func (s *service) installObject(ctx context.Context, space clientspace.Space, installingDetails *domain.Details) (id string, newDetails *domain.Details, err error) {
 	uk, err := domain.UnmarshalUniqueKey(installingDetails.GetStringOrDefault(bundle.RelationKeyUniqueKey, ""))
 	if err != nil {
 		return "", nil, fmt.Errorf("unmarshal unique key: %w", err)
@@ -134,7 +133,7 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 	return id, newDetails, nil
 }
 
-func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds []string) (map[string]*types.Struct, error) {
+func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds []string) (map[string]*domain.Details, error) {
 	existingObjects, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -152,14 +151,14 @@ func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds 
 	if err != nil {
 		return nil, fmt.Errorf("query existing objects: %w", err)
 	}
-	existingObjectMap := make(map[string]*types.Struct, len(existingObjects))
+	existingObjectMap := make(map[string]*domain.Details, len(existingObjects))
 	for _, existingObject := range existingObjects {
 		existingObjectMap[existingObject.Details.GetStringOrDefault(bundle.RelationKeySourceObject, "")] = existingObject.Details
 	}
 	return existingObjectMap, nil
 }
 
-func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clientspace.Space, space clientspace.Space, sourceObjectIDs []string) ([]string, []*types.Struct, error) {
+func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clientspace.Space, space clientspace.Space, sourceObjectIDs []string) ([]string, []*domain.Details, error) {
 	deletedObjects, err := s.queryDeletedObjects(space, sourceObjectIDs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("query deleted objects: %w", err)
@@ -167,7 +166,7 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 
 	archivedObjects, err := s.queryArchivedObjects(space, sourceObjectIDs)
 	if err != nil {
-		log.Errorf("query archived objects: %w", err)
+		log.Errorf("query archived objects: %v", err)
 	}
 
 	deletedObjects = lo.UniqBy(append(deletedObjects, archivedObjects...), func(record database.Record) string {
@@ -176,7 +175,7 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 
 	var (
 		ids     []string
-		objects []*types.Struct
+		objects []*domain.Details
 	)
 	for _, rec := range deletedObjects {
 		id := rec.Details.GetStringOrDefault(bundle.RelationKeyId, "")
@@ -219,8 +218,8 @@ func (s *service) prepareDetailsForInstallingObject(
 	sourceObjectId string,
 	spc clientspace.Space,
 	isNewSpace bool,
-) (*types.Struct, error) {
-	var details *types.Struct
+) (*domain.Details, error) {
+	var details *domain.Details
 	err := sourceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
 		details = b.CombinedDetails()
 		return nil
@@ -231,9 +230,9 @@ func (s *service) prepareDetailsForInstallingObject(
 
 	spaceID := spc.Id()
 	sourceId := details.GetStringOrDefault(bundle.RelationKeyId, "")
-	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(spaceID)
-	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
-	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
+	details.Set(bundle.RelationKeySpaceId, spaceID)
+	details.Set(bundle.RelationKeySourceObject, sourceId)
+	details.Set(bundle.RelationKeyIsReadonly, false)
 
 	if isNewSpace {
 		objecttype.SetLastUsedDateForInitialObjectType(sourceId, details)
@@ -253,7 +252,7 @@ func (s *service) prepareDetailsForInstallingObject(
 		if err != nil {
 			return nil, fmt.Errorf("prepare recommended relation ids: %w", err)
 		}
-		details.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
+		details.Set(bundle.RelationKeyRecommendedRelations, recommendedRelationIds)
 	}
 
 	objectTypes := details.GetStringListOrDefault(bundle.RelationKeyRelationFormatObjectTypes, nil)
@@ -273,7 +272,7 @@ func (s *service) prepareDetailsForInstallingObject(
 			}
 			objectTypes[i] = id
 		}
-		details.Fields[bundle.RelationKeyRelationFormatObjectTypes.String()] = pbtypes.StringList(objectTypes)
+		details.Set(bundle.RelationKeyRelationFormatObjectTypes, objectTypes)
 	}
 
 	return details, nil

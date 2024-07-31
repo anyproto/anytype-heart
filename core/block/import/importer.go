@@ -194,7 +194,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	return rootCollectionID, i.getObjectCount(details, rootCollectionID), resultErr
 }
 
-func (i *Import) getObjectCount(details map[string]*types.Struct, rootCollectionID string) int64 {
+func (i *Import) getObjectCount(details map[string]*domain.Details, rootCollectionID string) int64 {
 	objectsCount := int64(len(details))
 	if rootCollectionID != "" && objectsCount > 0 {
 		objectsCount-- // exclude root collection object from counter
@@ -307,7 +307,7 @@ func (i *Import) createObjects(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	allErrors *common.ConvertError,
 	origin objectorigin.ObjectOrigin,
-) (map[string]*types.Struct, string) {
+) (map[string]*domain.Details, string) {
 	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req, origin)
 	if err != nil {
 		return nil, ""
@@ -463,8 +463,8 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	mode pb.RpcObjectImportRequestMode,
 	allErrors *common.ConvertError,
 	progress process.Progress,
-) map[string]*types.Struct {
-	details := make(map[string]*types.Struct, 0)
+) map[string]*domain.Details {
+	details := make(map[string]*domain.Details, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(fmt.Errorf("%w: %s", common.ErrCancel, err.Error()))

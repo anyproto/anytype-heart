@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/cheggaaa/mb/v3"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -219,7 +218,7 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	}
 	st.AddBundledRelationLinks(keys...)
 
-	details = pbtypes.StructMerge(prevDetails, details, false)
+	details = prevDetails.Merge(details)
 	st.SetDetails(details)
 
 	err = ind.addBlocks(st, details, id.ObjectID)
@@ -229,7 +228,7 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	return nil
 }
 
-func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (details *types.Struct, typeKey domain.TypeKey, err error) {
+func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (details *domain.Details, typeKey domain.TypeKey, err error) {
 	file, err := ind.fileService.FileByHash(ctx, id)
 	if err != nil {
 		return nil, "", err
@@ -262,7 +261,7 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (det
 	return details, typeKey, nil
 }
 
-func (ind *indexer) addBlocks(st *state.State, details *types.Struct, objectId string) error {
+func (ind *indexer) addBlocks(st *state.State, details *domain.Details, objectId string) error {
 	fileType := fileblock.DetectTypeByMIME(details.GetStringOrDefault(bundle.RelationKeyFileMimeType, ""))
 
 	fname := details.GetStringOrDefault(bundle.RelationKeyName, "")

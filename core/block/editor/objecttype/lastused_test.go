@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestSetLastUsedDateForInitialType(t *testing.T) {
@@ -30,7 +29,7 @@ func TestSetLastUsedDateForInitialType(t *testing.T) {
 		rand.Shuffle(len(ots), func(i, j int) {
 			ots[i], ots[j] = ots[j], ots[i]
 		})
-		detailMap := map[string]*types.Struct{}
+		detailMap := map[string]*domain.Details{}
 
 		// when
 		for _, id := range ots {

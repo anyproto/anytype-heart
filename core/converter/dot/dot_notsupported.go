@@ -4,11 +4,10 @@
 package dot
 
 import (
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/converter"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
@@ -32,7 +31,7 @@ const (
 type dot struct {
 }
 
-func (d *dot) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
+func (d *dot) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	return d
 }
 

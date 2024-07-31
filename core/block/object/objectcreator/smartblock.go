@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
@@ -44,7 +43,7 @@ func WithPayload(payload *treestorage.TreeStorageCreatePayload) CreateOption {
 // It will return error if some of the relation keys in `details` not installed in the workspace.
 func (s *service) CreateSmartBlockFromState(
 	ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State,
-) (id string, newDetails *types.Struct, err error) {
+) (id string, newDetails *domain.Details, err error) {
 	spc, err := s.spaceService.Get(ctx, spaceID)
 	if err != nil {
 		return "", nil, err
@@ -54,13 +53,13 @@ func (s *service) CreateSmartBlockFromState(
 
 func (s *service) CreateSmartBlockFromStateInSpace(
 	ctx context.Context, spc clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State,
-) (id string, newDetails *types.Struct, err error) {
+) (id string, newDetails *domain.Details, err error) {
 	return s.CreateSmartBlockFromStateInSpaceWithOptions(ctx, spc, objectTypeKeys, createState)
 }
 
 func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	ctx context.Context, spc clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...CreateOption,
-) (id string, newDetails *types.Struct, err error) {
+) (id string, newDetails *domain.Details, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -180,14 +179,16 @@ func generateRelationKeysFromState(st *state.State) (relationKeys []string) {
 	if st == nil {
 		return
 	}
-	details := st.Details().GetFields()
-	localDetails := st.LocalDetails().GetFields()
-	relationKeys = make([]string, 0, len(details)+len(localDetails))
-	for k := range details {
-		relationKeys = append(relationKeys, k)
-	}
-	for k := range localDetails {
-		relationKeys = append(relationKeys, k)
-	}
+	details := st.Details()
+	localDetails := st.LocalDetails()
+	relationKeys = make([]string, 0, details.Len()+localDetails.Len())
+	details.Iterate(func(k domain.RelationKey, _ any) bool {
+		relationKeys = append(relationKeys, string(k))
+		return true
+	})
+	localDetails.Iterate(func(k domain.RelationKey, _ any) bool {
+		relationKeys = append(relationKeys, string(k))
+		return true
+	})
 	return
 }

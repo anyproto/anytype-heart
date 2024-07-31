@@ -10,7 +10,6 @@ import (
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -44,7 +43,7 @@ type linkInfo struct {
 type dot struct {
 	graph        *cgraph.Graph
 	graphviz     *graphviz.Graphviz
-	knownDocs    map[string]*types.Struct
+	knownDocs    map[string]*domain.Details
 	fileHashes   []string
 	imageHashes  []string
 	exportFormat graphviz.Format
@@ -73,7 +72,7 @@ func NewMultiConverter(
 	}
 }
 
-func (d *dot) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
+func (d *dot) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	d.knownDocs = docs
 	return d
 }

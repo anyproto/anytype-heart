@@ -57,8 +57,8 @@ func (r *updateReceiver) getFileStatus(fileId string) (filesyncstatus.Status, er
 	if err != nil {
 		return filesyncstatus.Unknown, fmt.Errorf("get file details: %w", err)
 	}
-	if v, ok := details.GetDetails().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-		return filesyncstatus.Status(v.GetNumberValue()), nil
+	if v, ok := details.GetInt64(bundle.RelationKeyFileBackupStatus); ok {
+		return filesyncstatus.Status(v), nil
 	}
 	return filesyncstatus.Unknown, fmt.Errorf("no backup status")
 }

@@ -3,13 +3,10 @@ package objectcreator
 import (
 	"context"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -17,7 +14,13 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) createSet(ctx context.Context, space clientspace.Space, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
+type createSetRequest struct {
+	Details       *domain.Details
+	InternalFlags []*model.InternalFlag
+	Source        []string
+}
+
+func (s *service) createSet(ctx context.Context, space clientspace.Space, req createSetRequest) (setID string, newDetails *domain.Details, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
 	dvContent, err := dataview.BlockBySource(s.objectStore, req.Source)
