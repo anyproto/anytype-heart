@@ -191,7 +191,7 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		afterDataviewTime := time.Now()
 		st := ob.NewState()
 
-		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
+		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, pbtypes.Int64(time.Now().Unix()))
 		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}

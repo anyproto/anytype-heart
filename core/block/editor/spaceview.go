@@ -296,7 +296,7 @@ func (s *SpaceView) SetSpaceData(details *types.Struct) error {
 
 func (s *SpaceView) UpdateLastOpenedDate() error {
 	st := s.NewState()
-	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
+	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, pbtypes.Int64(time.Now().Unix()))
 	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
 }
 

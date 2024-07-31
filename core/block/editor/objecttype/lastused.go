@@ -30,14 +30,14 @@ func UpdateLastUsedDate(spc smartblock.Space, store objectstore.ObjectStore, key
 		log.Errorf("failed to get details of type object '%s': %w", key.String(), err)
 		return
 	}
-	id := details.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+	id := details.GetStringOrDefault(bundle.RelationKeyId, "")
 	if id == "" {
 		log.Errorf("failed to get id from details of type object '%s': %w", key.String(), err)
 		return
 	}
 	if err = spc.Do(id, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
-		st.SetLocalDetail(bundle.RelationKeyLastUsedDate.String(), pbtypes.Int64(time.Now().Unix()))
+		st.SetLocalDetail(bundle.RelationKeyLastUsedDate, pbtypes.Int64(time.Now().Unix()))
 		return sb.Apply(st)
 	}); err != nil {
 		log.Errorf("failed to set lastUsedDate to type object '%s': %w", key.String(), err)
