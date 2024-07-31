@@ -171,7 +171,7 @@ type fileObjectMigrator interface {
 }
 
 type RelationGetter interface {
-	GetRelationByKey(key string) (*model.Relation, error)
+	GetRelationByKey(spaceId string, key string) (*model.Relation, error)
 }
 
 type source struct {

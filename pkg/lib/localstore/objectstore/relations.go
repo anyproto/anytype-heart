@@ -148,19 +148,23 @@ func (s *dsObjectStore) ListAllRelations(spaceId string) (relations relationutil
 	return
 }
 
-func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
-	// todo: should pass workspace
+func (s *dsObjectStore) GetRelationByKey(spaceId string, key string) (*model.Relation, error) {
 	q := database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(key),
 			},
 			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
 			},
 		},
 	}
@@ -177,4 +181,34 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 	rel := relationutils.RelationFromDetails(records[0].Details)
 
 	return rel.Relation, nil
+}
+
+func (s *dsObjectStore) GetRelationFormatByKey(key string) (model.RelationFormat, error) {
+	q := database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(key),
+			},
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+		},
+	}
+
+	records, err := s.Query(q)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(records) == 0 {
+		return 0, ds.ErrNotFound
+	}
+
+	rel := relationutils.RelationFromStruct(records[0].Details)
+
+	return rel.Format, nil
 }

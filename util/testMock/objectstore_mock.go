@@ -399,18 +399,33 @@ func (mr *MockObjectStoreMockRecorder) GetRelationByID(arg0 any) *gomock.Call {
 }
 
 // GetRelationByKey mocks base method.
-func (m *MockObjectStore) GetRelationByKey(arg0 string) (*model.Relation, error) {
+func (m *MockObjectStore) GetRelationByKey(arg0, arg1 string) (*model.Relation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRelationByKey", arg0)
+	ret := m.ctrl.Call(m, "GetRelationByKey", arg0, arg1)
 	ret0, _ := ret[0].(*model.Relation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRelationByKey indicates an expected call of GetRelationByKey.
-func (mr *MockObjectStoreMockRecorder) GetRelationByKey(arg0 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) GetRelationByKey(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationByKey", reflect.TypeOf((*MockObjectStore)(nil).GetRelationByKey), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationByKey", reflect.TypeOf((*MockObjectStore)(nil).GetRelationByKey), arg0, arg1)
+}
+
+// GetRelationFormatByKey mocks base method.
+func (m *MockObjectStore) GetRelationFormatByKey(arg0 string) (model.RelationFormat, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRelationFormatByKey", arg0)
+	ret0, _ := ret[0].(model.RelationFormat)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRelationFormatByKey indicates an expected call of GetRelationFormatByKey.
+func (mr *MockObjectStoreMockRecorder) GetRelationFormatByKey(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationFormatByKey", reflect.TypeOf((*MockObjectStore)(nil).GetRelationFormatByKey), arg0)
 }
 
 // GetRelationLink mocks base method.
