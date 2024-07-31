@@ -141,7 +141,7 @@ func (p *Profile) SetDetails(ctx session.Context, details []*model.Detail, showE
 				Value: &pb.EventMessageValueOfAccountDetails{
 					AccountDetails: &pb.EventAccountDetails{
 						ProfileId: p.Id(),
-						Details:   p.Details(),
+						Details:   p.Details().ToProto(),
 					},
 				},
 			},

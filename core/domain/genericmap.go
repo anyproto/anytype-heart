@@ -114,7 +114,7 @@ func (d *GenericMap[K]) ShallowCopy() *GenericMap[K] {
 	return &GenericMap[K]{data: newData}
 }
 
-func (d *GenericMap[K]) CopyWithoutKeys(keys []K) *GenericMap[K] {
+func (d *GenericMap[K]) CopyWithoutKeys(keys ...K) *GenericMap[K] {
 	newData := make(map[K]any, len(d.data))
 	for k, v := range d.data {
 		if !slices.Contains(keys, k) {
@@ -124,7 +124,7 @@ func (d *GenericMap[K]) CopyWithoutKeys(keys []K) *GenericMap[K] {
 	return &GenericMap[K]{data: newData}
 }
 
-func (d *GenericMap[K]) CopyOnlyWithKeys(keys []K) *GenericMap[K] {
+func (d *GenericMap[K]) CopyOnlyWithKeys(keys ...K) *GenericMap[K] {
 	newData := make(map[K]any, len(d.data))
 	for k, v := range d.data {
 		if slices.Contains(keys, k) {

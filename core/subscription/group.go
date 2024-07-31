@@ -3,10 +3,10 @@ package subscription
 import (
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -24,7 +24,7 @@ func (s *service) newGroupSub(id string, relKey string, f *database.Filters, gro
 
 type groupSub struct {
 	id     string
-	relKey string
+	relKey domain.RelationKey
 
 	cache *cache
 
@@ -55,8 +55,8 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 		if _, inSet := gs.set[ctxEntry.id]; inSet {
 			cacheEntry := gs.cache.Get(ctxEntry.id)
 			if !checkGroups && cacheEntry != nil {
-				oldList := pbtypes.GetStringList(cacheEntry.data, gs.relKey)
-				newList := pbtypes.GetStringList(ctxEntry.data, gs.relKey)
+				oldList := cacheEntry.data.GetStringListOrDefault(gs.relKey, nil)
+				newList := ctxEntry.data.GetStringListOrDefault(gs.relKey, nil)
 				checkGroups = !slice.UnsortedEqual(oldList, newList)
 			}
 			if !inFilter {

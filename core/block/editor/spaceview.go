@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -43,7 +42,7 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 
 type spaceService interface {
 	OnViewUpdated(info spaceinfo.SpacePersistentInfo)
-	OnWorkspaceChanged(spaceId string, details *types.Struct)
+	OnWorkspaceChanged(spaceId string, details *domain.Details)
 }
 
 // SpaceView is a wrapper around smartblock.SmartBlock that indicates the current space state
@@ -125,7 +124,7 @@ func (s *SpaceView) RemoveExistingInviteInfo() (fileCid string, err error) {
 	details := s.Details()
 	fileCid = details.GetStringOrDefault(bundle.RelationKeySpaceInviteFileCid, "")
 	newState := s.NewState()
-	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid.String(), bundle.RelationKeySpaceInviteFileKey.String())
+	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid, bundle.RelationKeySpaceInviteFileKey)
 	return fileCid, s.Apply(newState)
 }
 
@@ -237,13 +236,13 @@ func (s *SpaceView) getSpacePersistentInfo(st *state.State) (info spaceinfo.Spac
 	return spaceInfo
 }
 
-var workspaceKeysToCopy = []string{
-	bundle.RelationKeyName.String(),
-	bundle.RelationKeyIconImage.String(),
-	bundle.RelationKeyIconOption.String(),
-	bundle.RelationKeySpaceDashboardId.String(),
-	bundle.RelationKeyCreator.String(),
-	bundle.RelationKeyCreatedDate.String(),
+var workspaceKeysToCopy = []domain.RelationKey{
+	bundle.RelationKeyName,
+	bundle.RelationKeyIconImage,
+	bundle.RelationKeyIconOption,
+	bundle.RelationKeySpaceDashboardId,
+	bundle.RelationKeyCreator,
+	bundle.RelationKeyCreatedDate,
 }
 
 func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
@@ -253,31 +252,27 @@ func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
 	return
 }
 
-func (s *SpaceView) SetSpaceData(details *types.Struct) error {
+func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 	st := s.NewState()
 	var changed bool
-	for k, v := range details.Fields {
+	details.Iterate(func(k domain.RelationKey, v any) bool {
 		if slices.Contains(workspaceKeysToCopy, k) {
 			// Special case for migration to Files as Objects to handle following situation:
 			// - We have an icon in Workspace that was created in pre-Files as Objects version
 			// - We migrate it, change old id to new id
 			// - Now we need to push details to SpaceView. But if we push NEW id, then old clients will not be able to display image
 			// - So we need to push old id
-			if k == bundle.RelationKeyIconImage.String() {
-				fileId, err := s.fileObjectService.GetFileIdFromObject(v.GetStringValue())
+			if k == bundle.RelationKeyIconImage {
+				fileId, err := s.fileObjectService.GetFileIdFromObject(domain.SomeValue(v).StringOrDefault(""))
 				if err == nil {
-					switch v.Kind.(type) {
-					case *types.Value_StringValue:
-						v = pbtypes.String(fileId.FileId.String())
-					case *types.Value_ListValue:
-						v = pbtypes.StringList([]string{fileId.FileId.String()})
-					}
+					v = fileId.FileId.String()
 				}
 			}
 			changed = true
-			st.SetDetailAndBundledRelation(domain.RelationKey(k), v)
+			st.SetDetailAndBundledRelation(k, v)
 		}
-	}
+		return true
+	})
 
 	if changed {
 		if st.ParentState().ParentState() == nil {

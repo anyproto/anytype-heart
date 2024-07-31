@@ -896,13 +896,13 @@ func (s *State) SetDetails(d *domain.Details) *State {
 	//	shortenDetailsToLimit(s.rootId, d.Fields)
 	// }
 
-	local := d.CopyOnlyWithKeys(bundle.LocalAndDerivedRelationKeys)
+	local := d.CopyOnlyWithKeys(bundle.LocalAndDerivedRelationKeys...)
 	if local != nil && local.Len() > 0 {
 		local.Iterate(func(k domain.RelationKey, v any) bool {
 			s.SetLocalDetail(k, v)
 			return true
 		})
-		s.details = d.CopyWithoutKeys(bundle.LocalAndDerivedRelationKeys)
+		s.details = d.CopyWithoutKeys(bundle.LocalAndDerivedRelationKeys...)
 		return s
 	}
 	s.details = d

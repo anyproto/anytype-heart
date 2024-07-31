@@ -3,8 +3,6 @@ package editor
 import (
 	"time"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -63,23 +61,24 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 	return nil
 }
 
-func (p *participant) ModifyProfileDetails(profileDetails *types.Struct) (err error) {
-	details := pbtypes.CopyStructFields(profileDetails,
-		bundle.RelationKeyName.String(),
-		bundle.RelationKeyDescription.String(),
-		bundle.RelationKeyIconImage.String(),
-		bundle.RelationKeyGlobalName.String())
+func (p *participant) ModifyProfileDetails(profileDetails *domain.Details) (err error) {
+	details := profileDetails.CopyOnlyWithKeys(
+		bundle.RelationKeyName,
+		bundle.RelationKeyDescription,
+		bundle.RelationKeyIconImage,
+		bundle.RelationKeyGlobalName,
+	)
 	details.Set(bundle.RelationKeyIdentityProfileLink, pbtypes.String(profileDetails.GetStringOrDefault(bundle.RelationKeyId, "")))
 	return p.modifyDetails(details)
 }
 
 func (p *participant) ModifyIdentityDetails(profile *model.IdentityProfile) (err error) {
-	details := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():        pbtypes.String(profile.Name),
-		bundle.RelationKeyDescription.String(): pbtypes.String(profile.Description),
-		bundle.RelationKeyIconImage.String():   pbtypes.String(profile.IconCid),
-		bundle.RelationKeyGlobalName.String():  pbtypes.String(profile.GlobalName),
-	}}
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]any{
+		bundle.RelationKeyName:        profile.Name,
+		bundle.RelationKeyDescription: profile.Description,
+		bundle.RelationKeyIconImage:   profile.IconCid,
+		bundle.RelationKeyGlobalName:  profile.GlobalName,
+	})
 	return p.modifyDetails(details)
 }
 
@@ -92,9 +91,9 @@ func (p *participant) TryClose(objectTTL time.Duration) (bool, error) {
 	return false, nil
 }
 
-func (p *participant) modifyDetails(newDetails *types.Struct) (err error) {
-	return p.DetailsUpdatable.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
-		return pbtypes.StructMerge(current, newDetails, false), nil
+func (p *participant) modifyDetails(newDetails *domain.Details) (err error) {
+	return p.DetailsUpdatable.UpdateDetails(func(current *domain.Details) (*domain.Details, error) {
+		return current.Merge(newDetails), nil
 	})
 }
 
@@ -104,14 +103,14 @@ func buildParticipantDetails(
 	identity string,
 	permissions model.ParticipantPermissions,
 	status model.ParticipantStatus,
-) *types.Struct {
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyId.String():                     pbtypes.String(id),
-		bundle.RelationKeyIdentity.String():               pbtypes.String(identity),
-		bundle.RelationKeySpaceId.String():                pbtypes.String(spaceId),
-		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
-		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(permissions)),
-		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(status)),
-		bundle.RelationKeyIsHiddenDiscovery.String():      pbtypes.Bool(status != model.ParticipantStatus_Active),
-	}}
+) *domain.Details {
+	return domain.NewDetailsFromMap(map[domain.RelationKey]any{
+		bundle.RelationKeyId:                     id,
+		bundle.RelationKeyIdentity:               identity,
+		bundle.RelationKeySpaceId:                spaceId,
+		bundle.RelationKeyLastModifiedBy:         id,
+		bundle.RelationKeyParticipantPermissions: int64(permissions),
+		bundle.RelationKeyParticipantStatus:      int64(status),
+		bundle.RelationKeyIsHiddenDiscovery:      status != model.ParticipantStatus_Active,
+	})
 }

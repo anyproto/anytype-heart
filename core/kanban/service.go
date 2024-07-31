@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -45,7 +46,7 @@ func (s *service) Init(a *app.App) (err error) {
 		return &GroupStatus{key: key, store: s.objectStore}
 	}
 	s.groupColumns[model.RelationFormat_tag] = func(key string) Grouper {
-		return &GroupTag{Key: key, store: s.objectStore}
+		return &GroupTag{Key: domain.RelationKey(key), store: s.objectStore}
 	}
 	s.groupColumns[model.RelationFormat_checkbox] = func(key string) Grouper {
 		return &GroupCheckBox{}

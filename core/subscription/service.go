@@ -360,7 +360,7 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	sub := s.newSimpleSub(req.SubId, req.Keys, !req.NoDepSubscription)
+	sub := s.newSimpleSub(req.SubId, slice.StringsInto[domain.RelationKey](req.Keys), !req.NoDepSubscription)
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
 		entries = append(entries, &entry{
@@ -672,7 +672,7 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 
 func (s *service) depIdsFromFilter(filters []*model.BlockContentDataviewFilter) (depIds []string) {
 	for _, f := range filters {
-		if s.ds.isRelationObject(f.RelationKey) {
+		if s.ds.isRelationObject(domain.RelationKey(f.RelationKey)) {
 			for _, id := range pbtypes.GetStringListValue(f.Value) {
 				if slice.FindPos(depIds, id) == -1 && id != "" {
 					depIds = append(depIds, id)

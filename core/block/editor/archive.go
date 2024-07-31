@@ -1,8 +1,6 @@
 package editor
 
 import (
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -103,11 +101,9 @@ func (p *Archive) updateObjects(info smartblock.ApplyInfo) (err error) {
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeArchivedIds, archivedIds)
 	for _, removedId := range removedIds {
 		go func(id string) {
-			if err := p.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
-				if current == nil || current.Fields == nil {
-					current = &types.Struct{
-						Fields: map[string]*types.Value{},
-					}
+			if err := p.ModifyLocalDetails(id, func(current *domain.Details) (*domain.Details, error) {
+				if current == nil {
+					current = domain.NewDetails()
 				}
 				current.Set(bundle.RelationKeyIsArchived, pbtypes.Bool(false))
 				return current, nil
@@ -118,11 +114,9 @@ func (p *Archive) updateObjects(info smartblock.ApplyInfo) (err error) {
 	}
 	for _, addedId := range addedIds {
 		go func(id string) {
-			if err := p.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
-				if current == nil || current.Fields == nil {
-					current = &types.Struct{
-						Fields: map[string]*types.Value{},
-					}
+			if err := p.ModifyLocalDetails(id, func(current *domain.Details) (*domain.Details, error) {
+				if current == nil {
+					current = domain.NewDetails()
 				}
 				current.Set(bundle.RelationKeyIsArchived, pbtypes.Bool(true))
 				return current, nil

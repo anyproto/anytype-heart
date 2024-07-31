@@ -42,8 +42,8 @@ const CName = "bookmark"
 type ContentFuture func() *bookmark.ObjectContent
 
 type Service interface {
-	CreateObjectAndFetch(ctx context.Context, spaceId string, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error)
-	CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
+	CreateObjectAndFetch(ctx context.Context, spaceId string, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *domain.Details, err error)
+	CreateBookmarkObject(ctx context.Context, spaceID string, details *domain.Details, getContent ContentFuture) (objectId string, newDetails *domain.Details, err error)
 	UpdateObject(objectId string, getContent *bookmark.ObjectContent) error
 	// TODO Maybe Fetch and FetchBookmarkContent do the same thing differently?
 	FetchAsync(spaceID string, blockID string, params bookmark.FetchParams)
@@ -54,7 +54,7 @@ type Service interface {
 }
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
 }
 
 type DetailsSetter interface {
@@ -92,8 +92,9 @@ func (s *service) Name() (name string) {
 
 var log = logging.Logger("anytype-mw-bookmark")
 
-func (s *service) CreateObjectAndFetch(ctx context.Context, spaceId string, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
-	source := req.Details.GetStringOrDefault(bundle.RelationKeySource, "")
+func (s *service) CreateObjectAndFetch(ctx context.Context, spaceId string, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *domain.Details, err error) {
+	details := domain.NewDetailsFromProto(req.Details)
+	source := details.GetStringOrDefault(bundle.RelationKeySource, "")
 	var res ContentFuture
 	if source != "" {
 		u, err := uri.NormalizeURI(source)
@@ -106,11 +107,11 @@ func (s *service) CreateObjectAndFetch(ctx context.Context, spaceId string, req 
 			return nil
 		}
 	}
-	return s.CreateBookmarkObject(ctx, spaceId, req.Details, res)
+	return s.CreateBookmarkObject(ctx, spaceId, details, res)
 }
 
-func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture) (objectId string, objectDetails *types.Struct, err error) {
-	if details == nil || details.Fields == nil {
+func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, details *domain.Details, getContent ContentFuture) (objectId string, objectDetails *domain.Details, err error) {
+	if details == nil {
 		return "", nil, fmt.Errorf("empty details")
 	}
 
@@ -151,7 +152,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 
 	if len(records) > 0 {
 		rec := records[0]
-		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+		objectId = rec.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 		objectDetails = rec.Details
 	} else {
 		creationState := state.NewDoc("", nil).(*state.State)
