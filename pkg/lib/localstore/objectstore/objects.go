@@ -86,7 +86,7 @@ type ObjectStore interface {
 
 	GetRelationLink(spaceID string, key string) (*model.RelationLink, error)
 	FetchRelationByKey(spaceID string, key string) (relation *relationutils.Relation, err error)
-	FetchRelationByKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error)
+	FetchRelationByKeys(spaceId string, keys ...domain.RelationKey) (relations relationutils.Relations, err error)
 	FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
 	ListAllRelations(spaceId string) (relations relationutils.Relations, err error)
 	GetRelationByID(id string) (relation *model.Relation, err error)

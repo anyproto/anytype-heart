@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -70,7 +69,7 @@ type DetailsSettable interface {
 }
 
 type DetailsUpdatable interface {
-	UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error)
+	UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error)
 }
 
 type Restrictionable interface {
@@ -500,8 +499,9 @@ func (bs *basic) ReplaceLink(oldId, newId string) error {
 	details := s.Details()
 	for _, rel := range rels {
 		if rel.Format == model.RelationFormat_object {
-			if pbtypes.GetString(details, rel.Key) == oldId {
-				s.SetDetail(rel.Key, pbtypes.String(newId))
+			key := domain.RelationKey(rel.Key)
+			if details.GetStringOrDefault(key, "") == oldId {
+				s.SetDetail(key, pbtypes.String(newId))
 			}
 		}
 	}

@@ -65,11 +65,11 @@ func (s *dsObjectStore) FetchRelationByKey(spaceID string, key string) (relation
 	return nil, ErrObjectNotFound
 }
 
-func (s *dsObjectStore) FetchRelationByKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error) {
+func (s *dsObjectStore) FetchRelationByKeys(spaceId string, keys ...domain.RelationKey) (relations relationutils.Relations, err error) {
 	uks := make([]string, 0, len(keys))
 
 	for _, key := range keys {
-		uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
+		uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, string(key))
 		if err != nil {
 			return nil, err
 		}
@@ -100,9 +100,9 @@ func (s *dsObjectStore) FetchRelationByKeys(spaceId string, keys ...string) (rel
 }
 
 func (s *dsObjectStore) FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
-	keys := make([]string, 0, len(links))
+	keys := make([]domain.RelationKey, 0, len(links))
 	for _, l := range links {
-		keys = append(keys, l.Key)
+		keys = append(keys, domain.RelationKey(l.Key))
 	}
 	return s.FetchRelationByKeys(spaceId, keys...)
 }

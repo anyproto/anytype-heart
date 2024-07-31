@@ -144,8 +144,8 @@ type SmartBlock interface {
 	History() undo.History
 	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
-	AddRelationLinks(ctx session.Context, relationIds ...string) (err error)
-	AddRelationLinksToState(s *state.State, relationIds ...string) (err error)
+	AddRelationLinks(ctx session.Context, relationKeys ...domain.RelationKey) (err error)
+	AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error)
 	RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error)
 	SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) error
 	SetIsDeleted()
@@ -189,7 +189,7 @@ type InitContext struct {
 	IsNewObject                  bool
 	Source                       source.Source
 	ObjectTypeKeys               []domain.TypeKey
-	RelationKeys                 []string
+	RelationKeys                 []domain.RelationKey
 	RequiredInternalRelationKeys []domain.RelationKey // bundled relations that MUST be present in the state
 	State                        *state.State
 	Relations                    []*model.Relation
@@ -831,7 +831,7 @@ func (sb *smartBlock) History() undo.History {
 	return sb.undo
 }
 
-func (sb *smartBlock) AddRelationLinks(ctx session.Context, relationKeys ...string) (err error) {
+func (sb *smartBlock) AddRelationLinks(ctx session.Context, relationKeys ...domain.RelationKey) (err error) {
 	s := sb.NewStateCtx(ctx)
 	if err = sb.AddRelationLinksToState(s, relationKeys...); err != nil {
 		return
@@ -839,7 +839,7 @@ func (sb *smartBlock) AddRelationLinks(ctx session.Context, relationKeys ...stri
 	return sb.Apply(s)
 }
 
-func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...string) (err error) {
+func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error) {
 	if len(relationKeys) == 0 {
 		return
 	}

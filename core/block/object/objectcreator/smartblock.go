@@ -175,19 +175,19 @@ func createSmartBlock(
 	})
 }
 
-func generateRelationKeysFromState(st *state.State) (relationKeys []string) {
+func generateRelationKeysFromState(st *state.State) (relationKeys []domain.RelationKey) {
 	if st == nil {
 		return
 	}
 	details := st.Details()
 	localDetails := st.LocalDetails()
-	relationKeys = make([]string, 0, details.Len()+localDetails.Len())
+	relationKeys = make([]domain.RelationKey, 0, details.Len()+localDetails.Len())
 	details.Iterate(func(k domain.RelationKey, _ any) bool {
-		relationKeys = append(relationKeys, string(k))
+		relationKeys = append(relationKeys, k)
 		return true
 	})
 	localDetails.Iterate(func(k domain.RelationKey, _ any) bool {
-		relationKeys = append(relationKeys, string(k))
+		relationKeys = append(relationKeys, k)
 		return true
 	})
 	return
