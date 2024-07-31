@@ -239,18 +239,18 @@ func (ds *Service) getRelationDetails(databaseProperty property.DatabaseProperty
 		name = property.UntitledProperty
 	}
 	details := &types.Struct{Fields: map[string]*types.Value{}}
-	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(databaseProperty.GetFormat()))
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
-	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
-	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(databaseProperty.GetID())
+	details.Set(bundle.RelationKeyRelationFormat, pbtypes.Float64(float64(databaseProperty.GetFormat())))
+	details.Set(bundle.RelationKeyName, pbtypes.String(name))
+	details.Set(bundle.RelationKeyRelationKey, pbtypes.String(key))
+	details.Set(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
+	details.Set(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_relation)))
+	details.Set(bundle.RelationKeySourceFilePath, pbtypes.String(databaseProperty.GetID()))
 	uniqueKey, err := domain.NewUniqueKey(sb.SmartBlockTypeRelation, key)
 	if err != nil {
 		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
+	details.Set(bundle.RelationKeyId, pbtypes.String(uniqueKey.Marshal()))
 	return details
 }
 

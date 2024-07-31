@@ -475,45 +475,6 @@ var WithDataview = func(dataview *model.BlockContentOfDataview, forceViews bool)
 	return WithDataviewID(DataviewBlockId, dataview, forceViews)
 }
 
-var WithNoRootLink = func(targetBlockId string) StateTransformer {
-	return func(s *state.State) {
-		var linkBlockId string
-		s.Iterate(func(b simple.Block) (isContinue bool) {
-			if b, ok := b.(*link.Link); !ok {
-				return true
-			} else {
-				if b.Model().GetLink().TargetBlockId == targetBlockId {
-					linkBlockId = b.Id
-					return false
-				}
-
-				return true
-			}
-		})
-
-		if linkBlockId == "" {
-			return
-		}
-
-		s.Unlink(linkBlockId)
-
-		return
-	}
-}
-
-func WithBlockField(blockId, fieldName string, value *types.Value) StateTransformer {
-	return func(s *state.State) {
-		if b := s.Get(blockId); b != nil {
-			fields := b.Model().Fields
-			if fields == nil || fields.Fields == nil {
-				fields = &types.Struct{Fields: map[string]*types.Value{}}
-			}
-			fields.Fields[fieldName] = value
-			b.Model().Fields = fields
-		}
-	}
-}
-
 func InitTemplate(s *state.State, templates ...StateTransformer) {
 	for _, template := range templates {
 		template(s)

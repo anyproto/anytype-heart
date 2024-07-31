@@ -1,8 +1,6 @@
 package objectorigin
 
 import (
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -28,11 +26,11 @@ func (o ObjectOrigin) IsImported() bool {
 	return o.Origin == model.ObjectOrigin_import
 }
 
-func (o ObjectOrigin) AddToDetails(details *types.Struct) {
+func (o ObjectOrigin) AddToDetails(details *domain.Details) {
 	if o.Origin != model.ObjectOrigin_none {
-		details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(o.Origin))
+		details.Set(bundle.RelationKeyOrigin, pbtypes.Int64(int64(o.Origin)))
 		if o.Origin == model.ObjectOrigin_import || o.Origin == model.ObjectOrigin_usecase {
-			details.Fields[bundle.RelationKeyImportType.String()] = pbtypes.Int64(int64(o.ImportType))
+			details.Set(bundle.RelationKeyImportType, pbtypes.Int64(int64(o.ImportType)))
 		}
 	}
 }

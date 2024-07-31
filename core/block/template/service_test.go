@@ -136,8 +136,8 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 				tmpl := NewTemplateTest(templateName, "")
 				s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
 				details := &types.Struct{Fields: map[string]*types.Value{}}
-				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(addedDetail)
-				details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(addedDetail)
+				details.Set(bundle.RelationKeyName, pbtypes.String(addedDetail))
+				details.Set(bundle.RelationKeyDescription, pbtypes.String(addedDetail))
 
 				// when
 				st, err := s.CreateTemplateStateWithDetails(templateName, details)
@@ -211,7 +211,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 			// given
 			s := service{converter: converter.NewLayoutConverter()}
 			details := &types.Struct{Fields: map[string]*types.Value{}}
-			details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(layout))
+			details.Set(bundle.RelationKeyLayout, pbtypes.Int64(int64(layout)))
 
 			// when
 			st, err := s.CreateTemplateStateWithDetails(BlankTemplateId, details)

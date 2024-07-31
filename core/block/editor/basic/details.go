@@ -96,7 +96,7 @@ func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *type
 		if update.value == nil {
 			delete(newDetails.Fields, update.key)
 		} else {
-			newDetails.Fields[update.key] = update.value
+			newDetails.Set(update.key, update.value)
 		}
 	}
 	return newDetails

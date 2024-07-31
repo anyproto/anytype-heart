@@ -262,7 +262,7 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 func (st *SmartTest) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
 	dets := &types.Struct{Fields: map[string]*types.Value{}}
 	for _, d := range details {
-		dets.Fields[d.Key] = d.Value
+		dets.Set(d.Key, d.Value)
 	}
 	st.Doc.(*state.State).SetDetails(dets)
 	return

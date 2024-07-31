@@ -59,7 +59,7 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 	if req.Details.Fields == nil {
 		req.Details.Fields = map[string]*types.Value{}
 	}
-	req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
+	req.Details.Set(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
 
 	creator := getService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{

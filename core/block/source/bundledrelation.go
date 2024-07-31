@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -46,7 +44,7 @@ func (v *bundledRelation) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeBundledRelation
 }
 
-func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
+func (v *bundledRelation) getDetails(id string) (p *domain.Details, err error) {
 	if !strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return nil, fmt.Errorf("incorrect relation id: not a bundled relation id")
 	}
@@ -57,12 +55,12 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 	}
 	rel.Creator = addr.AnytypeProfileId
 	wrapperRelation := relationutils.Relation{Relation: rel}
-	details := wrapperRelation.ToStruct() // bundle.GetDetailsForBundledRelation(rel)
-	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
-	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)
-	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.BundledURL())
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(model.ObjectOrigin_builtin))
+	details := wrapperRelation.ToDetails() // bundle.GetDetailsForBundledRelation(rel)
+	details.Set(bundle.RelationKeySpaceId, pbtypes.String(addr.AnytypeMarketplaceWorkspace))
+	details.Set(bundle.RelationKeyIsReadonly, pbtypes.Bool(true))
+	details.Set(bundle.RelationKeyType, pbtypes.String(bundle.TypeKeyRelation.BundledURL()))
+	details.Set(bundle.RelationKeyId, pbtypes.String(id))
+	details.Set(bundle.RelationKeyOrigin, pbtypes.Int64(int64(model.ObjectOrigin_builtin)))
 
 	return details, nil
 }
@@ -80,9 +78,10 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 	if err != nil {
 		return nil, err
 	}
-	for k, v := range d.Fields {
-		s.SetDetailAndBundledRelation(domain.RelationKey(k), v)
-	}
+	d.Iterate(func(k domain.RelationKey, v any) bool {
+		s.SetDetailAndBundledRelation(k, v)
+		return true
+	})
 	s.SetObjectTypeKey(bundle.TypeKeyRelation)
 	return s, nil
 }

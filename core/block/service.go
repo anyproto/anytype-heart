@@ -838,7 +838,7 @@ func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetail
 			// if detail wasn't provided in request, we get it from bookmark and set it later in bookmark.UpdateObject
 			// and add to response details
 			shouldUpdate = true
-			objectDetails.Fields[relation] = pbtypes.String(*valueFromBookmark)
+			objectDetails.Set(relation, pbtypes.String(*valueFromBookmark))
 		}
 	}
 	return shouldUpdate
@@ -862,5 +862,5 @@ func (s *Service) enrichDetailsWithOrigin(details *types.Struct, origin model.Ob
 	if details == nil || details.Fields == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
+	details.Set(bundle.RelationKeyOrigin, pbtypes.Int64(int64(origin)))
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/avast/retry-go/v4"
-	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -275,9 +274,10 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	}
 
 	if req.AdditionalDetails != nil {
-		for k, v := range req.AdditionalDetails.GetFields() {
-			createState.SetDetailAndBundledRelation(domain.RelationKey(k), v)
-		}
+		req.AdditionalDetails.Iterate(func(k domain.RelationKey, v any) bool {
+			createState.SetDetailAndBundledRelation(k, v)
+			return true
+		})
 	}
 
 	// Type will be changed after indexing, just use general type File for now
@@ -298,17 +298,15 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 }
 
 func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin) *domain.Details {
-	details := &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyFileId.String(): pbtypes.String(fileId.String()),
-			// Use general file layout. It will be changed for proper layout after indexing
-			bundle.RelationKeyLayout.String():             pbtypes.Int64(int64(model.ObjectType_file)),
-			bundle.RelationKeyFileIndexingStatus.String(): pbtypes.Int64(int64(model.FileIndexingStatus_NotIndexed)),
-			bundle.RelationKeySyncStatus.String():         pbtypes.Int64(int64(domain.ObjectSyncStatusQueued)),
-			bundle.RelationKeySyncError.String():          pbtypes.Int64(int64(domain.SyncErrorNull)),
-			bundle.RelationKeyFileBackupStatus.String():   pbtypes.Int64(int64(filesyncstatus.Queued)),
-		},
-	}
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]any{
+		bundle.RelationKeyFileId: fileId.String(),
+		// Use general file layout. It will be changed for proper layout after indexing
+		bundle.RelationKeyLayout:             int64(model.ObjectType_file),
+		bundle.RelationKeyFileIndexingStatus: int64(model.FileIndexingStatus_NotIndexed),
+		bundle.RelationKeySyncStatus:         int64(domain.ObjectSyncStatusQueued),
+		bundle.RelationKeySyncError:          int64(domain.SyncErrorNull),
+		bundle.RelationKeyFileBackupStatus:   int64(filesyncstatus.Queued),
+	})
 	origin.AddToDetails(details)
 	return details
 }
@@ -415,8 +413,8 @@ func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error
 	if err != nil {
 		return domain.FullFileId{}, fmt.Errorf("get object details: %w", err)
 	}
-	spaceId := details.Details.GetStringOrDefault(bundle.RelationKeySpaceId, "")
-	fileId := details.Details.GetStringOrDefault(bundle.RelationKeyFileId, "")
+	spaceId := details.GetStringOrDefault(bundle.RelationKeySpaceId, "")
+	fileId := details.GetStringOrDefault(bundle.RelationKeyFileId, "")
 	if fileId == "" {
 		return domain.FullFileId{}, ErrEmptyFileId
 	}

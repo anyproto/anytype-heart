@@ -61,8 +61,8 @@ func TestBasic_UpdateDetails(t *testing.T) {
 
 		// when
 		err := f.basic.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
-			current.Fields[bundle.RelationKeyAperture.String()] = pbtypes.String("aperture")
-			current.Fields[bundle.RelationKeyRelationMaxCount.String()] = pbtypes.Int64(5)
+			current.Set(bundle.RelationKeyAperture, pbtypes.String("aperture"))
+			current.Set(bundle.RelationKeyRelationMaxCount, pbtypes.Int64(5))
 			return current, nil
 		})
 
@@ -98,7 +98,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 
 		// when
 		err = f.basic.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
-			current.Fields[bundle.RelationKeySpaceDashboardId.String()] = pbtypes.String("new123")
+			current.Set(bundle.RelationKeySpaceDashboardId, pbtypes.String("new123"))
 			return current, nil
 		})
 

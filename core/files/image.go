@@ -205,10 +205,10 @@ func (i *image) Details(ctx context.Context) (*domain.Details, error) {
 		details.Set(bundle.RelationKeyCreatedDate, float64(imageExif.Created.Unix()))
 	}
 	/*if exif.Latitude != 0.0 {
-		details.Fields["latitude"] = pbtypes.Float64(exif.Latitude)
+		details.Set("latitude",  pbtypes.Float64(exif.Latitude))
 	}
 	if exif.Longitude != 0.0 {
-		details.Fields["longitude"] = pbtypes.Float64(exif.Longitude)
+		details.Set("longitude",  pbtypes.Float64(exif.Longitude))
 	}*/
 	if imageExif.CameraModel != "" {
 		details.Set(bundle.RelationKeyCamera, imageExif.CameraModel)

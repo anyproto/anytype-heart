@@ -65,7 +65,7 @@ func (r *RootCollection) getRootCollectionSnapshot(
 	if detailsStruct.GetFields() == nil {
 		detailsStruct = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	detailsStruct.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_collection))
+	detailsStruct.Set(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_collection)))
 	return &Snapshot{
 		Id:       uuid.New().String(),
 		FileName: collectionName,

@@ -469,8 +469,8 @@ func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
 }
 
 func insertCreatorInfo(s *pb.ChangeSnapshot) {
-	s.Data.Details.Fields[bundle.RelationKeyCreator.String()] = pbtypes.String(addr.AnytypeProfileId)
-	s.Data.Details.Fields[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(addr.AnytypeProfileId)
+	s.Data.Details.Set(bundle.RelationKeyCreator, pbtypes.String(addr.AnytypeProfileId))
+	s.Data.Details.Set(bundle.RelationKeyLastModifiedBy, pbtypes.String(addr.AnytypeProfileId))
 }
 
 func processProfile(data []byte, info *useCaseInfo, spaceDashboardId string) ([]byte, error) {

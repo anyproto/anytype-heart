@@ -212,10 +212,11 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	st.SetObjectTypeKey(typeKey)
 	prevDetails := st.CombinedDetails()
 
-	keys := make([]domain.RelationKey, 0, len(details.Fields))
-	for k := range details.Fields {
-		keys = append(keys, domain.RelationKey(k))
-	}
+	keys := make([]domain.RelationKey, 0, details.Len())
+	details.Iterate(func(k domain.RelationKey, _ any) bool {
+		keys = append(keys, k)
+		return true
+	})
 	st.AddBundledRelationLinks(keys...)
 
 	details = prevDetails.Merge(details)
@@ -257,7 +258,7 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (det
 		typeKey = bundle.TypeKeyImage
 	}
 
-	details.Fields[bundle.RelationKeyFileIndexingStatus.String()] = pbtypes.Int64(int64(model.FileIndexingStatus_Indexed))
+	details.Set(bundle.RelationKeyFileIndexingStatus, int64(model.FileIndexingStatus_Indexed))
 	return details, typeKey, nil
 }
 

@@ -182,7 +182,7 @@ func (m *subObjectsMigration) iterateAllSubObjects(st *state.State, proc func(in
 				}
 
 				details := v.StructValue
-				details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.Marshal())
+				details.Set(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
 
 				proc(smartblock.DocInfo{
 					Links:   nil,

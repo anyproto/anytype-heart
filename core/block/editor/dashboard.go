@@ -106,7 +106,7 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 						Fields: map[string]*types.Value{},
 					}
 				}
-				current.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
+				current.Set(bundle.RelationKeyIsFavorite, pbtypes.Bool(false))
 				return current, nil
 			}); err != nil {
 				log.Errorf("favorite: can't set detail to object: %v", err)
@@ -121,7 +121,7 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 						Fields: map[string]*types.Value{},
 					}
 				}
-				current.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
+				current.Set(bundle.RelationKeyIsFavorite, pbtypes.Bool(true))
 				return current, nil
 			}); err != nil {
 				log.Errorf("favorite: can't set detail to object: %v", err)

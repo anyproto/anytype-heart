@@ -1,12 +1,9 @@
 package relationutils
 
 import (
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func RelationFromDetails(det *domain.Details) *Relation {
@@ -45,29 +42,26 @@ func (r *Relation) RelationLink() *model.RelationLink {
 	}
 }
 
-func (r *Relation) ToStruct() *types.Struct {
-	return &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyCreator.String():                   pbtypes.String(r.GetCreator()),
-			bundle.RelationKeyDescription.String():               pbtypes.String(r.GetDescription()),
-			bundle.RelationKeyId.String():                        pbtypes.String(r.Id),
-			bundle.RelationKeyIsHidden.String():                  pbtypes.Bool(r.GetHidden()),
-			bundle.RelationKeyIsReadonly.String():                pbtypes.Bool(r.GetReadOnlyRelation()),
-			bundle.RelationKeyLayout.String():                    pbtypes.Int64(int64(model.ObjectType_relation)),
-			bundle.RelationKeyName.String():                      pbtypes.String(r.GetName()),
-			bundle.RelationKeyRelationDefaultValue.String():      pbtypes.NilToNullWrapper(r.GetDefaultValue()),
-			bundle.RelationKeyRelationFormat.String():            pbtypes.Float64(float64(r.GetFormat())),
-			bundle.RelationKeyRelationFormatObjectTypes.String(): pbtypes.StringList(r.GetObjectTypes()),
-			bundle.RelationKeyRelationKey.String():               pbtypes.String(r.GetKey()),
-			bundle.RelationKeyRelationMaxCount.String():          pbtypes.Float64(float64(r.GetMaxCount())),
-			bundle.RelationKeyRelationReadonlyValue.String():     pbtypes.Bool(r.GetReadOnly()),
-			bundle.RelationKeyScope.String():                     pbtypes.Float64(float64(r.GetScope())),
-			bundle.RelationKeyType.String():                      pbtypes.String(bundle.TypeKeyRelation.BundledURL()),
-			// TODO Is it ok?
-			bundle.RelationKeyUniqueKey.String(): pbtypes.String(domain.RelationKey(r.GetKey()).URL()),
-			bundle.RelationKeyRevision.String():  pbtypes.Int64(r.GetRevision()),
-		},
-	}
+func (r *Relation) ToDetails() *domain.Details {
+	return domain.NewDetailsFromMap(map[domain.RelationKey]any{
+		bundle.RelationKeyCreator:                   r.GetCreator(),
+		bundle.RelationKeyDescription:               r.GetDescription(),
+		bundle.RelationKeyId:                        r.Id,
+		bundle.RelationKeyIsHidden:                  r.GetHidden(),
+		bundle.RelationKeyIsReadonly:                r.GetReadOnlyRelation(),
+		bundle.RelationKeyLayout:                    int64(model.ObjectType_relation),
+		bundle.RelationKeyName:                      r.GetName(),
+		bundle.RelationKeyRelationDefaultValue:      r.GetDefaultValue(),
+		bundle.RelationKeyRelationFormat:            float64(r.GetFormat()),
+		bundle.RelationKeyRelationFormatObjectTypes: r.GetObjectTypes(),
+		bundle.RelationKeyRelationKey:               r.GetKey(),
+		bundle.RelationKeyRelationMaxCount:          float64(r.GetMaxCount()),
+		bundle.RelationKeyRelationReadonlyValue:     r.GetReadOnly(),
+		bundle.RelationKeyScope:                     float64(r.GetScope()),
+		bundle.RelationKeyType:                      bundle.TypeKeyRelation.BundledURL(),
+		bundle.RelationKeyUniqueKey:                 domain.RelationKey(r.GetKey()).URL(),
+		bundle.RelationKeyRevision:                  r.GetRevision(),
+	})
 }
 
 type Relations []*Relation

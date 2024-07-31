@@ -188,7 +188,7 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 				err := s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
 					now := time.Now().UnixNano()
 					atomic.StoreInt64(&lastOpenedDate, now)
-					details.Fields[bundle.RelationKeyLastOpenedDate.String()] = pbtypes.Int64(now)
+					details.Set(bundle.RelationKeyLastOpenedDate, pbtypes.Int64(now))
 					return details, nil
 				})
 				require.NoError(t, err)
@@ -253,7 +253,7 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 
 func (fx *StoreFixture) givenPendingLocalDetails(t *testing.T) {
 	err := fx.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
-		details.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
+		details.Set(bundle.RelationKeyIsFavorite, pbtypes.Bool(true))
 		return details, nil
 	})
 	require.NoError(t, err)
@@ -374,7 +374,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 
 		// when
 		err := s.ModifyObjectDetails("id", func(details *types.Struct) (*types.Struct, bool, error) {
-			details.Fields[bundle.RelationKeyName.String()] = pbtypes.String("bar")
+			details.Set(bundle.RelationKeyName, pbtypes.String("bar"))
 			return details, true, nil
 		})
 

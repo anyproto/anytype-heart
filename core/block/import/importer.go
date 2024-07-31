@@ -382,7 +382,7 @@ func (i *Import) replaceRelationKeyWithNew(option *common.Snapshot, oldIDToNew m
 	if newRelationID, ok := oldIDToNew[key]; ok {
 		key = strings.TrimPrefix(newRelationID, addr.RelationKeyToIdPrefix)
 	}
-	option.Snapshot.Data.Details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
+	option.Snapshot.Data.Details.Set(bundle.RelationKeyRelationKey, pbtypes.String(key))
 }
 
 func (i *Import) getObjectID(

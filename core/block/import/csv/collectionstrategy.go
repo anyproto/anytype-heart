@@ -77,10 +77,10 @@ func updateDetailsForTransposeCollection(details *types.Struct, transpose bool) 
 	if transpose {
 		source := details.GetStringOrDefault(bundle.RelationKeySourceFilePath, "")
 		source = source + string(filepath.Separator) + transposeSource
-		details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(source)
+		details.Set(bundle.RelationKeySourceFilePath, pbtypes.String(source))
 		name := details.GetStringOrDefault(bundle.RelationKeyName, "")
 		name = name + " " + transposeName
-		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
+		details.Set(bundle.RelationKeyName, pbtypes.String(name))
 	}
 }
 
@@ -173,16 +173,16 @@ func getDefaultRelationName(i int) string {
 
 func getRelationDetails(name, key string, format float64) *types.Struct {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
-	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(format)
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
+	details.Set(bundle.RelationKeyRelationFormat, pbtypes.Float64(format))
+	details.Set(bundle.RelationKeyName, pbtypes.String(name))
+	details.Set(bundle.RelationKeyRelationKey, pbtypes.String(key))
+	details.Set(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_relation)))
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, key)
 	if err != nil {
 		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
+	details.Set(bundle.RelationKeyId, pbtypes.String(uniqueKey.Marshal()))
 	return details
 }
 
@@ -241,14 +241,14 @@ func getDetailsForObject(relationsValues []string, relations []*model.Relation, 
 			break
 		}
 		relation := relations[j]
-		details.Fields[relation.Key] = pbtypes.String(value)
+		details.Set(relation.Key, pbtypes.String(value))
 		relationLinks = append(relationLinks, &model.RelationLink{
 			Key:    relation.Key,
 			Format: relation.Format,
 		})
 	}
-	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(buildSourcePath(path, objectOrderIndex, transpose))
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_basic))
+	details.Set(bundle.RelationKeySourceFilePath, pbtypes.String(buildSourcePath(path, objectOrderIndex, transpose)))
+	details.Set(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_basic)))
 	return details, relationLinks
 }
 
@@ -270,7 +270,7 @@ func provideObjectSnapshot(st *state.State, details *types.Struct) *common.Snaps
 
 func (c *CollectionStrategy) getCollectionSnapshot(details *types.Struct, st *state.State, p string, relations []*model.Relation) *common.Snapshot {
 	details = pbtypes.StructMerge(st.CombinedDetails(), details, false)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+	details.Set(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_collection)))
 
 	for _, relation := range relations {
 		err := common.AddRelationsToDataView(st, &model.RelationLink{

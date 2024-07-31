@@ -125,7 +125,7 @@ func doDetailRule(s *pb.ChangeSnapshot, r rule) {
 	case remove:
 		delete(s.Data.Details.Fields, r.DetailKey)
 	case change, add:
-		s.Data.Details.Fields[r.DetailKey] = r.DetailValue
+		s.Data.Details.Set(r.DetailKey, r.DetailValue)
 	default:
 		fmt.Printf(errInvalidAction, r.Action)
 	}

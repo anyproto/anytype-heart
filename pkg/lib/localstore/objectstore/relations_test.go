@@ -77,7 +77,7 @@ func TestGetRelationById(t *testing.T) {
 		relation := &relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyName)}
 		relationID := "derivedFrom(name)"
 		relation.Id = relationID
-		relObject := relation.ToStruct()
+		relObject := relation.ToDetails()
 		err := s.UpdateObjectDetails(context2.Background(), relation.Id, relObject)
 		require.NoError(t, err)
 

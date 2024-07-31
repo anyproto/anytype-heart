@@ -295,7 +295,7 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		details := &types.Struct{Fields: map[string]*types.Value{}}
 		fx.store.EXPECT().UpdatePendingLocalDetails(id, mock.Anything).
 			Run(func(id string, f func(details *types.Struct) (*types.Struct, error)) {
-				details.Fields[bundle.RelationKeyIsDeleted.String()] = pbtypes.Bool(false)
+				details.Set(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
 			}).
 			Return(nil)
 

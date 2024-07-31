@@ -48,7 +48,8 @@ func TestStructMerge(t *testing.T) {
 		st1 := &types.Struct{Fields: map[string]*types.Value{"key1": {}}}
 		st2 := &types.Struct{Fields: map[string]*types.Value{"key2": {}}}
 		got := StructMerge(st1, st2, false)
-		if len(got.Fields) != 2 || got.Fields["key1"] == nil || got.Fields["key2"] == nil {
+		if len(got.Fields) != 2 || got.Set("key1", = nil || got.Fields["key2"] == nil {
+			)
 			t.Errorf("StructMerge did not correctly merge fields without copying values")
 		}
 	})

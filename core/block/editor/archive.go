@@ -109,7 +109,7 @@ func (p *Archive) updateObjects(info smartblock.ApplyInfo) (err error) {
 						Fields: map[string]*types.Value{},
 					}
 				}
-				current.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(false)
+				current.Set(bundle.RelationKeyIsArchived, pbtypes.Bool(false))
 				return current, nil
 			}); err != nil {
 				log.Errorf("archive: can't set detail to object: %v", err)
@@ -124,7 +124,7 @@ func (p *Archive) updateObjects(info smartblock.ApplyInfo) (err error) {
 						Fields: map[string]*types.Value{},
 					}
 				}
-				current.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(true)
+				current.Set(bundle.RelationKeyIsArchived, pbtypes.Bool(true))
 				return current, nil
 			}); err != nil {
 				log.Errorf("archive: can't set detail to object: %v", err)

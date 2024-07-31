@@ -225,17 +225,17 @@ func (pt *Task) getRelationDetails(key string, name string, propObject property.
 		name = property.UntitledProperty
 	}
 	details := &types.Struct{Fields: map[string]*types.Value{}}
-	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(propObject.GetFormat()))
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
-	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(propObject.GetID())
+	details.Set(bundle.RelationKeyRelationFormat, pbtypes.Float64(float64(propObject.GetFormat())))
+	details.Set(bundle.RelationKeyName, pbtypes.String(name))
+	details.Set(bundle.RelationKeyRelationKey, pbtypes.String(key))
+	details.Set(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_relation)))
+	details.Set(bundle.RelationKeySourceFilePath, pbtypes.String(propObject.GetID()))
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
 		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
+	details.Set(bundle.RelationKeyId, pbtypes.String(uniqueKey.Marshal()))
 	return details
 }
 
@@ -466,7 +466,7 @@ func isOptionAlreadyExist(optName, rel string, relation *property.PropertiesStor
 
 func provideRelationOptionSnapshot(name, color, rel string) (*types.Struct, *model.SmartBlockSnapshotBase) {
 	id, details := getDetailsForRelationOption(name, rel)
-	details.Fields[bundle.RelationKeyRelationOptionColor.String()] = pbtypes.String(api.NotionColorToAnytype[color])
+	details.Set(bundle.RelationKeyRelationOptionColor, pbtypes.String(api.NotionColorToAnytype[color]))
 	optSnapshot := &model.SmartBlockSnapshotBase{
 		Details:     details,
 		ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
@@ -478,16 +478,16 @@ func provideRelationOptionSnapshot(name, color, rel string) (*types.Struct, *mod
 func getDetailsForRelationOption(name, rel string) (string, *types.Struct) {
 	id := bson.NewObjectId().Hex()
 	details := &types.Struct{Fields: map[string]*types.Value{}}
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(rel)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
-	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
+	details.Set(bundle.RelationKeyName, pbtypes.String(name))
+	details.Set(bundle.RelationKeyRelationKey, pbtypes.String(rel))
+	details.Set(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_relationOption)))
+	details.Set(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
 	if err != nil {
 		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return id, details
 	}
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
+	details.Set(bundle.RelationKeyId, pbtypes.String(uniqueKey.Marshal()))
 	return id, details
 }
 

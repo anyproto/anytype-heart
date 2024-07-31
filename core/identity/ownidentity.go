@@ -194,7 +194,7 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.S
 		bundle.RelationKeyIconImage,
 	} {
 		if _, ok := profileDetails.Fields[key.String()]; ok {
-			s.details.Fields[key.String()] = pbtypes.CopyVal(profileDetails.Fields[key.String()])
+			s.details.Set(key.String(), pbtypes.CopyVal(profileDetails.Fields[key.String()]))
 		}
 	}
 	identityProfile := s.prepareIdentityProfile()
@@ -237,7 +237,7 @@ func (s *ownProfileSubscription) handleGlobalNameUpdate(globalName string) {
 			Fields: map[string]*types.Value{},
 		}
 	}
-	s.details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(globalName)
+	s.details.Set(bundle.RelationKeyGlobalName, pbtypes.String(globalName))
 	identityProfile := s.prepareIdentityProfile()
 	s.detailsLock.Unlock()
 
