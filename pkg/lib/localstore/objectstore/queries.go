@@ -284,6 +284,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 }
 
 func (s *dsObjectStore) performQuery(q database.Query) (records []database.Record, err error) {
+	q.FullText = strings.TrimSpace(q.FullText)
 	filters, err := database.NewFilters(q, s)
 	if err != nil {
 		return nil, fmt.Errorf("new filters: %w", err)
