@@ -183,13 +183,13 @@ func (s *dsObjectStore) GetRelationByKey(spaceId string, key string) (*model.Rel
 	return rel.Relation, nil
 }
 
-func (s *dsObjectStore) GetRelationFormatByKey(key string) (model.RelationFormat, error) {
+func (s *dsObjectStore) GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error) {
 	q := database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyRelationKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(key),
+				Value:       pbtypes.String(key.String()),
 			},
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -208,7 +208,7 @@ func (s *dsObjectStore) GetRelationFormatByKey(key string) (model.RelationFormat
 		return 0, ds.ErrNotFound
 	}
 
-	rel := relationutils.RelationFromStruct(records[0].Details)
+	rel := relationutils.RelationFromDetails(records[0].Details)
 
 	return rel.Format, nil
 }

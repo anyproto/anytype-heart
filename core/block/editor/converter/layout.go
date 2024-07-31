@@ -226,9 +226,9 @@ func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
 }
 
 func (c *layoutConverter) fromNoteToAny(st *state.State) error {
-	name, ok := st.Details().Fields[bundle.RelationKeyName.String()]
+	name, ok := st.Details().GetString(bundle.RelationKeyName)
 
-	if !ok || name.GetStringValue() == "" {
+	if !ok || name == "" {
 		textBlock, err := getFirstTextBlock(st)
 		if err != nil {
 			return err
@@ -260,7 +260,7 @@ func (c *layoutConverter) fromAnyToNote(st *state.State) error {
 }
 
 func (c *layoutConverter) removeRelationSetOf(st *state.State) {
-	st.RemoveDetail(bundle.RelationKeySetOf.String())
+	st.RemoveDetail(bundle.RelationKeySetOf)
 
 	fr := st.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
 	fr = slice.RemoveMut(fr, bundle.RelationKeySetOf.String())

@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type SpaceImport struct {
@@ -107,7 +106,7 @@ func (s *SpaceImport) filterObjects(objectTypesToImport widget.ImportWidgetFlags
 			rootObjects = append(rootObjects, snapshot.Id)
 			continue
 		}
-		if pbtypes.GetBool(snapshot.Snapshot.Data.Details, bundle.RelationKeyIsFavorite.String()) {
+		if snapshot.Snapshot.Data.Details.GetBoolOrDefault(bundle.RelationKeyIsFavorite, false) {
 			rootObjects = append(rootObjects, snapshot.Id)
 			continue
 		}

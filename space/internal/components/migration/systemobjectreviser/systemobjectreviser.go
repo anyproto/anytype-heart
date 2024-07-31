@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -66,7 +65,7 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 	return
 }
 
-func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string) (map[string]*types.Struct, error) {
+func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string) (map[string]*domain.Details, error) {
 	records, err := store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -85,7 +84,7 @@ func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string)
 		return nil, err
 	}
 
-	details := make(map[string]*types.Struct, len(records))
+	details := make(map[string]*domain.Details, len(records))
 	for _, record := range records {
 		id := record.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 		details[id] = record.Details
@@ -93,7 +92,7 @@ func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string)
 	return details, nil
 }
 
-func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
+func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *domain.Details, marketObjects map[string]*domain.Details) (toRevise bool, err error) {
 	source := localObject.GetStringOrDefault(bundle.RelationKeySourceObject, "")
 	marketObject, found := marketObjects[source]
 	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {
@@ -114,7 +113,7 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 	return true, nil
 }
 
-func isSystemObject(details *types.Struct) bool {
+func isSystemObject(details *domain.Details) bool {
 	rawKey := details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
 	uk, err := domain.UnmarshalUniqueKey(rawKey)
 	if err != nil {
@@ -129,7 +128,7 @@ func isSystemObject(details *types.Struct) bool {
 	return false
 }
 
-func buildDiffDetails(origin, current *types.Struct) (details []*model.Detail) {
+func buildDiffDetails(origin, current *domain.Details) (details []*model.Detail) {
 	diff := pbtypes.StructDiff(current, origin)
 	diff = pbtypes.StructFilterKeys(diff, []string{
 		bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(),

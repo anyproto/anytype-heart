@@ -91,7 +91,7 @@ type ObjectStore interface {
 	ListAllRelations(spaceId string) (relations relationutils.Relations, err error)
 	GetRelationByID(id string) (relation *model.Relation, err error)
 	GetRelationByKey(spaceId string, key string) (*model.Relation, error)
-	GetRelationFormatByKey(key string) (model.RelationFormat, error)
+	GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error)
 
 	GetObjectType(url string) (*model.ObjectType, error)
 	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error

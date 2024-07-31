@@ -388,7 +388,7 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct
 }
 
 func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, newID string) {
-	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
+	isFavorite := snapshot.Details.GetBoolOrDefault(bundle.RelationKeyIsFavorite, false)
 	if isFavorite {
 		err := oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
 		if err != nil {
@@ -398,7 +398,7 @@ func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, new
 }
 
 func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, newID string) {
-	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
+	isArchive := snapshot.Details.GetBoolOrDefault(bundle.RelationKeyIsArchived, false)
 	if isArchive {
 		err := oc.service.SetPageIsArchived(pb.RpcObjectSetIsArchivedRequest{ContextId: newID, IsArchived: true})
 		if err != nil {

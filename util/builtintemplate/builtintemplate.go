@@ -108,7 +108,7 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 	st := state.NewDocFromSnapshot(id, snapshot).(*state.State)
 	st.SetRootId(id)
 	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled, pbtypes.Bool(true))
-	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
+	st.RemoveDetail(bundle.RelationKeyCreator, bundle.RelationKeyLastModifiedBy)
 	st.SetLocalDetail(bundle.RelationKeyCreator, pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy, pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeySpaceId, pbtypes.String(addr.AnytypeMarketplaceWorkspace))
@@ -173,7 +173,7 @@ func (b *builtinTemplate) validate(st *state.State) (err error) {
 	if st.ObjectTypeKey() != bundle.TypeKeyTemplate {
 		return fmt.Errorf("bundled template validation: %s unexpected object type: %v", st.RootId(), st.ObjectTypeKey())
 	}
-	if !pbtypes.GetBool(cd, bundle.RelationKeyTemplateIsBundled.String()) {
+	if !cd.GetBoolOrDefault(bundle.RelationKeyTemplateIsBundled, false) {
 		return fmt.Errorf("bundled template validation: %s not bundled", st.RootId())
 	}
 	targetObjectTypeID := cd.GetStringOrDefault(bundle.RelationKeyTargetObjectType, "")

@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -141,8 +140,8 @@ func (r *reconciler) FileObjectHook(id domain.FullID) func(applyInfo smartblock.
 	}
 }
 
-func (r *reconciler) needToRebind(details *types.Struct) (bool, error) {
-	if pbtypes.GetBool(details, bundle.RelationKeyIsDeleted.String()) {
+func (r *reconciler) needToRebind(details *domain.Details) (bool, error) {
+	if details.GetBoolOrDefault(bundle.RelationKeyIsDeleted, false) {
 		return false, nil
 	}
 	backupStatus := filesyncstatus.Status(details.GetInt64OrDefault(bundle.RelationKeyFileBackupStatus, 0))

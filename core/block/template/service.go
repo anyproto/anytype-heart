@@ -143,7 +143,7 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 		}
 		targetState = sb.NewState().Copy()
 
-		if pbtypes.GetBool(targetState.LocalDetails(), bundle.RelationKeyIsArchived.String()) {
+		if targetState.LocalDetails().GetBoolOrDefault(bundle.RelationKeyIsArchived, false) {
 			return spacestorage.ErrTreeStorageAlreadyDeleted
 		}
 

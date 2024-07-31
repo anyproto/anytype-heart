@@ -216,17 +216,17 @@ func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo) error {
 	id := s.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 
-	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsArchived.String()) {
+	if s.Snapshot.Data.Details.GetBoolOrDefault(bundle.RelationKeyIsArchived, false) {
 		fmt.Println("WARNING: object", id, " is archived, so it will be skipped")
 		return errSkipObject
 	}
 
-	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsDeleted.String()) {
+	if s.Snapshot.Data.Details.GetBoolOrDefault(bundle.RelationKeyIsDeleted, false) {
 		fmt.Println("WARNING: object", id, " is deleted, so it will be skipped")
 		return errSkipObject
 	}
 
-	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsUninstalled.String()) {
+	if s.Snapshot.Data.Details.GetBoolOrDefault(bundle.RelationKeyIsUninstalled, false) {
 		fmt.Println("WARNING: object", id, " is uninstalled, so it will be skipped")
 		return errSkipObject
 	}

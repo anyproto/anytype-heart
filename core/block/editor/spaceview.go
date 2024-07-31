@@ -152,7 +152,7 @@ func (s *SpaceView) updateAccessType(st *state.State) {
 	if accessType == spaceinfo.AccessTypePersonal {
 		return
 	}
-	isShared := pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsAclShared.String())
+	isShared := st.LocalDetails().GetBoolOrDefault(bundle.RelationKeyIsAclShared, false)
 	shareable := spaceinfo.ShareableStatus(st.LocalDetails().GetInt64OrDefault(bundle.RelationKeySpaceShareableStatus, 0))
 	if isShared || shareable == spaceinfo.ShareableStatusShareable {
 		stateSetAccessType(st, spaceinfo.AccessTypeShared)
