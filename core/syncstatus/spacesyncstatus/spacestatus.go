@@ -265,14 +265,13 @@ type syncParams struct {
 	bytesLeftPercentage float64
 	connectionStatus    nodestatus.ConnectionStatus
 	compatibility       nodeconf.NetworkCompatibilityStatus
-	filesSyncingCount   int
 	objectsSyncingCount int
 }
 
 func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.EventSpaceSyncStatusUpdate {
 	status := pb.EventSpace_Synced
 	err := pb.EventSpace_Null
-	syncingObjectsCount := int64(params.objectsSyncingCount + params.filesSyncingCount)
+	syncingObjectsCount := int64(params.objectsSyncingCount)
 	if syncingObjectsCount > 0 {
 		status = pb.EventSpace_Syncing
 	}
