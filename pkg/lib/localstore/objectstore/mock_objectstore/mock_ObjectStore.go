@@ -1321,9 +1321,9 @@ func (_c *MockObjectStore_GetRelationByID_Call) RunAndReturn(run func(string) (*
 	return _c
 }
 
-// GetRelationByKey provides a mock function with given fields: key
-func (_m *MockObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
-	ret := _m.Called(key)
+// GetRelationByKey provides a mock function with given fields: spaceId, key
+func (_m *MockObjectStore) GetRelationByKey(spaceId string, key string) (*model.Relation, error) {
+	ret := _m.Called(spaceId, key)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetRelationByKey")
@@ -1331,19 +1331,19 @@ func (_m *MockObjectStore) GetRelationByKey(key string) (*model.Relation, error)
 
 	var r0 *model.Relation
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (*model.Relation, error)); ok {
-		return rf(key)
+	if rf, ok := ret.Get(0).(func(string, string) (*model.Relation, error)); ok {
+		return rf(spaceId, key)
 	}
-	if rf, ok := ret.Get(0).(func(string) *model.Relation); ok {
-		r0 = rf(key)
+	if rf, ok := ret.Get(0).(func(string, string) *model.Relation); ok {
+		r0 = rf(spaceId, key)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.Relation)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(key)
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(spaceId, key)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1357,14 +1357,15 @@ type MockObjectStore_GetRelationByKey_Call struct {
 }
 
 // GetRelationByKey is a helper method to define mock.On call
+//   - spaceId string
 //   - key string
-func (_e *MockObjectStore_Expecter) GetRelationByKey(key interface{}) *MockObjectStore_GetRelationByKey_Call {
-	return &MockObjectStore_GetRelationByKey_Call{Call: _e.mock.On("GetRelationByKey", key)}
+func (_e *MockObjectStore_Expecter) GetRelationByKey(spaceId interface{}, key interface{}) *MockObjectStore_GetRelationByKey_Call {
+	return &MockObjectStore_GetRelationByKey_Call{Call: _e.mock.On("GetRelationByKey", spaceId, key)}
 }
 
-func (_c *MockObjectStore_GetRelationByKey_Call) Run(run func(key string)) *MockObjectStore_GetRelationByKey_Call {
+func (_c *MockObjectStore_GetRelationByKey_Call) Run(run func(spaceId string, key string)) *MockObjectStore_GetRelationByKey_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(string), args[1].(string))
 	})
 	return _c
 }
@@ -1374,7 +1375,63 @@ func (_c *MockObjectStore_GetRelationByKey_Call) Return(_a0 *model.Relation, _a1
 	return _c
 }
 
-func (_c *MockObjectStore_GetRelationByKey_Call) RunAndReturn(run func(string) (*model.Relation, error)) *MockObjectStore_GetRelationByKey_Call {
+func (_c *MockObjectStore_GetRelationByKey_Call) RunAndReturn(run func(string, string) (*model.Relation, error)) *MockObjectStore_GetRelationByKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRelationFormatByKey provides a mock function with given fields: key
+func (_m *MockObjectStore) GetRelationFormatByKey(key string) (model.RelationFormat, error) {
+	ret := _m.Called(key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRelationFormatByKey")
+	}
+
+	var r0 model.RelationFormat
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (model.RelationFormat, error)); ok {
+		return rf(key)
+	}
+	if rf, ok := ret.Get(0).(func(string) model.RelationFormat); ok {
+		r0 = rf(key)
+	} else {
+		r0 = ret.Get(0).(model.RelationFormat)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectStore_GetRelationFormatByKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRelationFormatByKey'
+type MockObjectStore_GetRelationFormatByKey_Call struct {
+	*mock.Call
+}
+
+// GetRelationFormatByKey is a helper method to define mock.On call
+//   - key string
+func (_e *MockObjectStore_Expecter) GetRelationFormatByKey(key interface{}) *MockObjectStore_GetRelationFormatByKey_Call {
+	return &MockObjectStore_GetRelationFormatByKey_Call{Call: _e.mock.On("GetRelationFormatByKey", key)}
+}
+
+func (_c *MockObjectStore_GetRelationFormatByKey_Call) Run(run func(key string)) *MockObjectStore_GetRelationFormatByKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_GetRelationFormatByKey_Call) Return(_a0 model.RelationFormat, _a1 error) *MockObjectStore_GetRelationFormatByKey_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockObjectStore_GetRelationFormatByKey_Call) RunAndReturn(run func(string) (model.RelationFormat, error)) *MockObjectStore_GetRelationFormatByKey_Call {
 	_c.Call.Return(run)
 	return _c
 }
