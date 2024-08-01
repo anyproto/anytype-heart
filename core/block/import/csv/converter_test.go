@@ -199,7 +199,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 		// only objects created from rows
 		if snapshot.SbType != sb.SmartBlockTypeRelation &&
 			lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) &&
-			snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "") == "transpose Transpose" {
+			snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName) == "transpose Transpose" {
 			collection = snapshot
 		}
 	}
@@ -330,10 +330,10 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {
 
 	assert.Len(t, subObjects, 2)
 
-	name := subObjects[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+	name := subObjects[0].Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	assert.True(t, name == "Field 1")
 
-	name = subObjects[1].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+	name = subObjects[1].Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	assert.True(t, name == "Field 2")
 }
 
@@ -433,22 +433,22 @@ func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOff(t *testing.
 	}
 	assert.Len(t, subObjects, 6)
 
-	name := subObjects[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+	name := subObjects[0].Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	assert.True(t, name == "Field 1")
 
-	name = subObjects[1].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+	name = subObjects[1].Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	assert.True(t, name == "Field 2")
 
-	name = subObjects[2].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+	name = subObjects[2].Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	assert.True(t, name == "Field 3")
 
-	name = subObjects[3].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+	name = subObjects[3].Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	assert.True(t, name == "Field 4")
 
-	name = subObjects[4].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+	name = subObjects[4].Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	assert.True(t, name == "Field 5")
 
-	name = subObjects[5].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+	name = subObjects[5].Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	assert.True(t, name == "Field 6")
 }
 
@@ -585,19 +585,19 @@ func Test_findUniqueRelationWithSpaces(t *testing.T) {
 	}
 	assert.Len(t, subObjects, 5)
 
-	name := subObjects[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+	name := subObjects[0].Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	assert.True(t, name == "Text")
 
-	name = subObjects[1].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+	name = subObjects[1].Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	assert.True(t, name == "Text 1")
 
-	name = subObjects[2].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+	name = subObjects[2].Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	assert.True(t, name == "Text 3")
 
-	name = subObjects[3].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+	name = subObjects[3].Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	assert.True(t, name == "Text 2")
 
-	name = subObjects[4].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+	name = subObjects[4].Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	assert.True(t, name == "Text 4")
 }
 
@@ -700,7 +700,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 			}
 		}
 		assert.Len(t, objects, 1)
-		assert.Equal(t, objects[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, ""), "differentcolumnnumber")
+		assert.Equal(t, objects[0].Snapshot.Data.Details.GetString(bundle.RelationKeyName), "differentcolumnnumber")
 		numberOfCSVColumns := lo.CountBy(objects[0].Snapshot.Data.Blocks, func(item *model.Block) bool { return item.GetTableColumn() != nil })
 		assert.Equal(t, numberOfCSVColumns, 3)
 		numberOfCSVRows := lo.CountBy(objects[0].Snapshot.Data.Blocks, func(item *model.Block) bool { return item.GetTableRow() != nil })

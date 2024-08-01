@@ -41,7 +41,7 @@ func (e *existingObject) GetIDAndPayload(_ context.Context, spaceID string, sn *
 }
 
 func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snapshot) (string, error) {
-	oldAnytypeID := sn.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyOldAnytypeID, "")
+	oldAnytypeID := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyOldAnytypeID)
 
 	// Check for imported objects
 	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
@@ -85,7 +85,7 @@ func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snap
 }
 
 func (e *existingObject) getExistingObject(spaceID string, sn *common.Snapshot) string {
-	source := sn.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeySourceFilePath, "")
+	source := sn.Snapshot.Data.Details.GetString(bundle.RelationKeySourceFilePath)
 	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -107,8 +107,8 @@ func (e *existingObject) getExistingObject(spaceID string, sn *common.Snapshot) 
 }
 
 func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot) string {
-	name := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
-	key := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyRelationKey, "")
+	name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
+	key := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey)
 	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{

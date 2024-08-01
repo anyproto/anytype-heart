@@ -363,7 +363,7 @@ var WithNoDescription = StateTransformer(func(s *state.State) {
 var WithNameToFirstBlock = StateTransformer(func(s *state.State) {
 	RequireHeader(s)
 
-	name, ok := s.Details().GetString(bundle.RelationKeyName)
+	name, ok := s.Details().TryString(bundle.RelationKeyName)
 	if ok && name != "" {
 		newBlock := simple.New(&model.Block{
 			Content: &model.BlockContentOfText{
@@ -555,7 +555,7 @@ func makeRelationBlock(k string) *model.Block {
 
 var WithBookmarkBlocks = func(s *state.State) {
 	if !s.HasRelation(bundle.RelationKeySource.String()) && s.HasRelation(bundle.RelationKeyUrl.String()) {
-		url := s.Details().GetStringOrDefault(bundle.RelationKeyUrl, "")
+		url := s.Details().GetString(bundle.RelationKeyUrl)
 		s.SetDetailAndBundledRelation(bundle.RelationKeySource, url)
 	}
 

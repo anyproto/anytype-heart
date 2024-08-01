@@ -179,7 +179,7 @@ func TestUploader_Upload(t *testing.T) {
 		assert.Equal(t, res.FileObjectId, fileObjectId)
 		assert.Equal(t, res.Name, "filename")
 
-		fileId := domain.FileId(res.FileObjectDetails.GetStringOrDefault(bundle.RelationKeyFileId, ""))
+		fileId := domain.FileId(res.FileObjectDetails.GetString(bundle.RelationKeyFileId))
 		file, err := fx.fileService.FileByHash(ctx, domain.FullFileId{FileId: fileId, SpaceId: "space1"})
 		require.NoError(t, err)
 

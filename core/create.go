@@ -134,7 +134,7 @@ func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObje
 				},
 			}
 		}
-		key := object.GetStringOrDefault(bundle.RelationKeyRelationKey, "")
+		key := object.GetString(bundle.RelationKeyRelationKey)
 		return &pb.RpcObjectCreateRelationResponse{
 			Error: &pb.RpcObjectCreateRelationResponseError{
 				Code: pb.RpcObjectCreateRelationResponseError_NULL,

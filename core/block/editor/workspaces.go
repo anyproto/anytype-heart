@@ -104,14 +104,14 @@ func (w *Workspaces) SetInviteFileInfo(fileCid string, fileKey string) (err erro
 
 func (w *Workspaces) GetExistingInviteInfo() (fileCid string, fileKey string) {
 	details := w.CombinedDetails()
-	fileCid = details.GetStringOrDefault(bundle.RelationKeySpaceInviteFileCid, "")
-	fileKey = details.GetStringOrDefault(bundle.RelationKeySpaceInviteFileKey, "")
+	fileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
+	fileKey = details.GetString(bundle.RelationKeySpaceInviteFileKey)
 	return
 }
 
 func (w *Workspaces) RemoveExistingInviteInfo() (fileCid string, err error) {
 	details := w.Details()
-	fileCid = details.GetStringOrDefault(bundle.RelationKeySpaceInviteFileCid, "")
+	fileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
 	newState := w.NewState()
 	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid, bundle.RelationKeySpaceInviteFileKey)
 	return fileCid, w.Apply(newState)

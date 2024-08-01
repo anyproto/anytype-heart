@@ -29,7 +29,7 @@ func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
 		return nil, fmt.Errorf("type was removed")
 	}
 
-	rawUniqueKey := details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
+	rawUniqueKey := details.GetString(bundle.RelationKeyUniqueKey)
 	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
 	if err != nil {
 		return nil, fmt.Errorf("get type key from raw unique key: %w", err)
@@ -42,9 +42,9 @@ func (s *dsObjectStore) extractObjectTypeFromDetails(details *domain.Details, ur
 	return &model.ObjectType{
 		Url:        url,
 		Key:        string(objectTypeKey),
-		Name:       details.GetStringOrDefault(bundle.RelationKeyName, ""),
+		Name:       details.GetString(bundle.RelationKeyName),
 		Layout:     model.ObjectTypeLayout(details.GetInt64OrDefault(bundle.RelationKeyRecommendedLayout, 0)),
-		IconEmoji:  details.GetStringOrDefault(bundle.RelationKeyIconEmoji, ""),
+		IconEmoji:  details.GetString(bundle.RelationKeyIconEmoji),
 		IsArchived: details.GetBool(bundle.RelationKeyIsArchived),
 		// we use Page for all custom object types
 		Types:         []model.SmartBlockType{model.SmartBlockType_Page},

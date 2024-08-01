@@ -43,8 +43,8 @@ func (s *service) ProfileInfo() (Profile, error) {
 		return profile, err
 	}
 	if profileDetails != nil {
-		profile.Name = profileDetails.GetStringOrDefault(bundle.RelationKeyName, "")
-		profile.IconImage = profileDetails.GetStringOrDefault(bundle.RelationKeyIconImage, "")
+		profile.Name = profileDetails.GetString(bundle.RelationKeyName)
+		profile.IconImage = profileDetails.GetString(bundle.RelationKeyIconImage)
 	}
 
 	return profile, nil

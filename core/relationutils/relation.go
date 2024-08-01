@@ -7,14 +7,14 @@ import (
 )
 
 func RelationFromDetails(det *domain.Details) *Relation {
-	key := det.GetStringOrDefault(bundle.RelationKeyRelationKey, "")
+	key := det.GetString(bundle.RelationKeyRelationKey)
 	maxCount := int32(det.GetInt64OrDefault(bundle.RelationKeyRelationMaxCount, 0))
 	return &Relation{
 		Relation: &model.Relation{
-			Id:               det.GetStringOrDefault(bundle.RelationKeyId, ""),
+			Id:               det.GetString(bundle.RelationKeyId),
 			Key:              key,
 			Format:           model.RelationFormat(det.GetFloatOrDefault(bundle.RelationKeyRelationFormat, 0)),
-			Name:             det.GetStringOrDefault(bundle.RelationKeyName, ""),
+			Name:             det.GetString(bundle.RelationKeyName),
 			DataSource:       model.Relation_details,
 			Hidden:           det.GetBool(bundle.RelationKeyIsHidden),
 			ReadOnly:         det.GetBool(bundle.RelationKeyRelationReadonlyValue),
@@ -22,9 +22,9 @@ func RelationFromDetails(det *domain.Details) *Relation {
 			Multi:            maxCount > 1,
 			ObjectTypes:      det.GetStringListOrDefault(bundle.RelationKeyRelationFormatObjectTypes, nil),
 			MaxCount:         maxCount,
-			Description:      det.GetStringOrDefault(bundle.RelationKeyDescription, ""),
+			Description:      det.GetString(bundle.RelationKeyDescription),
 			Scope:            model.RelationScope(det.GetFloatOrDefault(bundle.RelationKeyScope, 0)),
-			Creator:          det.GetStringOrDefault(bundle.RelationKeyCreator, ""),
+			Creator:          det.GetString(bundle.RelationKeyCreator),
 			Revision:         int64(det.GetInt64OrDefault(bundle.RelationKeyRevision, 0)),
 		},
 	}

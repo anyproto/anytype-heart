@@ -47,8 +47,8 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 
 	for _, r := range relations {
 		var (
-			name = r.Details.GetStringOrDefault(bundle.RelationKeyName, "")
-			uk   = r.Details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
+			name = r.Details.GetString(bundle.RelationKeyName)
+			uk   = r.Details.GetString(bundle.RelationKeyUniqueKey)
 		)
 
 		format := model.RelationFormat_name[int32(r.Details.GetInt64OrDefault(bundle.RelationKeyRelationFormat, 0))]
@@ -58,7 +58,7 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 			Key:   bundle.RelationKeyRelationReadonlyValue.String(),
 			Value: pbtypes.Bool(false),
 		}}
-		e := space.DoCtx(ctx, r.Details.GetStringOrDefault(bundle.RelationKeyId, ""), func(sb smartblock.SmartBlock) error {
+		e := space.DoCtx(ctx, r.Details.GetString(bundle.RelationKeyId), func(sb smartblock.SmartBlock) error {
 			if ds, ok := sb.(detailsSettable); ok {
 				return ds.SetDetails(nil, det, false)
 			}

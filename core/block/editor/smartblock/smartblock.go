@@ -305,7 +305,7 @@ func (sb *smartBlock) Type() smartblock.SmartBlockType {
 }
 
 func (sb *smartBlock) ObjectTypeID() string {
-	return sb.Doc.Details().GetStringOrDefault(bundle.RelationKeyType, "")
+	return sb.Doc.Details().GetString(bundle.RelationKeyType)
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
@@ -474,7 +474,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 
 	for _, rec := range records {
 		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      rec.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
+			Id:      rec.Details.GetString(bundle.RelationKeyId),
 			Details: rec.Details.ToProto(),
 		})
 	}
@@ -506,7 +506,7 @@ func (sb *smartBlock) onMetaChange(details *domain.Details) {
 	if details == nil {
 		return
 	}
-	id := details.GetStringOrDefault(bundle.RelationKeyId, "")
+	id := details.GetString(bundle.RelationKeyId)
 	msgs := []*pb.EventMessage{}
 	if v, exists := sb.lastDepDetails[id]; exists {
 		diff := domain.StructDiff(v, details)
@@ -933,7 +933,7 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 		s.RemoveLocalDetail(bundle.RelationKeyProfileOwnerIdentity)
 	}
 
-	if s.LocalDetails().GetStringOrDefault(bundle.RelationKeyCreator, "") != "" && s.LocalDetails().GetInt64OrDefault(bundle.RelationKeyCreatedDate, 0) != 0 {
+	if s.LocalDetails().GetString(bundle.RelationKeyCreator) != "" && s.LocalDetails().GetInt64OrDefault(bundle.RelationKeyCreatedDate, 0) != 0 {
 		return nil
 	}
 
@@ -1173,7 +1173,7 @@ func getChangedFileHashes(s *state.State, fileDetailKeys []domain.RelationKey, a
 			for _, detKey := range fileDetailKeys {
 				if list := det.GetStringListOrDefault(detKey, nil); len(list) > 0 {
 					hashes = append(hashes, list...)
-				} else if s := det.GetStringOrDefault(detKey, ""); s != "" {
+				} else if s := det.GetString(detKey); s != "" {
 					hashes = append(hashes, s)
 				}
 			}
@@ -1248,7 +1248,7 @@ func (sb *smartBlock) GetDocInfo() DocInfo {
 }
 
 func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
-	creator := st.Details().GetStringOrDefault(bundle.RelationKeyCreator, "")
+	creator := st.Details().GetString(bundle.RelationKeyCreator)
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
 	links := sb.LocalDetails().GetStringListOrDefault(bundle.RelationKeyLinks, nil)
@@ -1267,7 +1267,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	// todo: heads in source and the state may be inconsistent?
 	heads := sb.source.Heads()
 	if len(heads) == 0 {
-		lastChangeId := st.LocalDetails().GetStringOrDefault(bundle.RelationKeyLastChangeId, "")
+		lastChangeId := st.LocalDetails().GetString(bundle.RelationKeyLastChangeId)
 		if lastChangeId != "" {
 			heads = []string{lastChangeId}
 		}
@@ -1408,7 +1408,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	if spaceID != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceID))
 	} else {
-		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided, but in details: %s", id, s.LocalDetails().GetStringOrDefault(bundle.RelationKeySpaceId, ""))
+		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided, but in details: %s", id, s.LocalDetails().GetString(bundle.RelationKeySpaceId))
 	}
 	if ot := s.ObjectTypeKey(); ot != "" {
 		typeID, err := sb.space.GetTypeIdByKey(context.Background(), ot)

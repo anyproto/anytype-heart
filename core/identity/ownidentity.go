@@ -190,7 +190,7 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *domain.
 		bundle.RelationKeyDescription,
 		bundle.RelationKeyIconImage,
 	} {
-		if v, ok := profileDetails.GetString(key); ok {
+		if v, ok := profileDetails.TryString(key); ok {
 			s.details.Set(key, v)
 		}
 	}
@@ -249,10 +249,10 @@ func (s *ownProfileSubscription) handleGlobalNameUpdate(globalName string) {
 func (s *ownProfileSubscription) prepareIdentityProfile() *model.IdentityProfile {
 	return &model.IdentityProfile{
 		Identity:    s.myIdentity,
-		Name:        s.details.GetStringOrDefault(bundle.RelationKeyName, ""),
-		Description: s.details.GetStringOrDefault(bundle.RelationKeyDescription, ""),
-		IconCid:     s.details.GetStringOrDefault(bundle.RelationKeyIconImage, ""),
-		GlobalName:  s.details.GetStringOrDefault(bundle.RelationKeyGlobalName, ""),
+		Name:        s.details.GetString(bundle.RelationKeyName),
+		Description: s.details.GetString(bundle.RelationKeyDescription),
+		IconCid:     s.details.GetString(bundle.RelationKeyIconImage),
+		GlobalName:  s.details.GetString(bundle.RelationKeyGlobalName),
 	}
 }
 
@@ -295,7 +295,7 @@ func (s *ownProfileSubscription) prepareOwnIdentityProfile() (*model.IdentityPro
 	s.detailsLock.Lock()
 	defer s.detailsLock.Unlock()
 
-	iconImageObjectId := s.details.GetStringOrDefault(bundle.RelationKeyIconImage, "")
+	iconImageObjectId := s.details.GetString(bundle.RelationKeyIconImage)
 	iconCid, iconEncryptionKeys, err := s.prepareIconImageInfo(iconImageObjectId)
 	if err != nil {
 		return nil, fmt.Errorf("prepare icon image info: %w", err)
@@ -304,11 +304,11 @@ func (s *ownProfileSubscription) prepareOwnIdentityProfile() (*model.IdentityPro
 	identity := s.accountService.AccountID()
 	return &model.IdentityProfile{
 		Identity:           identity,
-		Name:               s.details.GetStringOrDefault(bundle.RelationKeyName, ""),
-		Description:        s.details.GetStringOrDefault(bundle.RelationKeyDescription, ""),
+		Name:               s.details.GetString(bundle.RelationKeyName),
+		Description:        s.details.GetString(bundle.RelationKeyDescription),
 		IconCid:            iconCid,
 		IconEncryptionKeys: iconEncryptionKeys,
-		GlobalName:         s.details.GetStringOrDefault(bundle.RelationKeyGlobalName, ""),
+		GlobalName:         s.details.GetString(bundle.RelationKeyGlobalName),
 	}, nil
 }
 

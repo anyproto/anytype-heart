@@ -94,7 +94,7 @@ var log = logging.Logger("anytype-mw-bookmark")
 
 func (s *service) CreateObjectAndFetch(ctx context.Context, spaceId string, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *domain.Details, err error) {
 	details := domain.NewDetailsFromProto(req.Details)
-	source := details.GetStringOrDefault(bundle.RelationKeySource, "")
+	source := details.GetString(bundle.RelationKeySource)
 	var res ContentFuture
 	if source != "" {
 		u, err := uri.NormalizeURI(source)
@@ -123,7 +123,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 	if err != nil {
 		return "", nil, fmt.Errorf("get bookmark type id: %w", err)
 	}
-	url := details.GetStringOrDefault(bundle.RelationKeySource, "")
+	url := details.GetString(bundle.RelationKeySource)
 
 	records, err := s.store.Query(database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
@@ -152,7 +152,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 
 	if len(records) > 0 {
 		rec := records[0]
-		objectId = rec.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		objectId = rec.Details.GetString(bundle.RelationKeyId)
 		objectDetails = rec.Details
 	} else {
 		creationState := state.NewDoc("", nil).(*state.State)

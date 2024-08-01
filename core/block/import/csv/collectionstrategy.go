@@ -74,10 +74,10 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, par
 
 func updateDetailsForTransposeCollection(details *domain.Details, transpose bool) {
 	if transpose {
-		source := details.GetStringOrDefault(bundle.RelationKeySourceFilePath, "")
+		source := details.GetString(bundle.RelationKeySourceFilePath)
 		source = source + string(filepath.Separator) + transposeSource
 		details.Set(bundle.RelationKeySourceFilePath, pbtypes.String(source))
-		name := details.GetStringOrDefault(bundle.RelationKeyName, "")
+		name := details.GetString(bundle.RelationKeyName)
 		name = name + " " + transposeName
 		details.Set(bundle.RelationKeyName, pbtypes.String(name))
 	}

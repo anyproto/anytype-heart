@@ -86,14 +86,14 @@ func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string)
 
 	details := make(map[string]*domain.Details, len(records))
 	for _, record := range records {
-		id := record.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		id := record.Details.GetString(bundle.RelationKeyId)
 		details[id] = record.Details
 	}
 	return details, nil
 }
 
 func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *domain.Details, marketObjects map[string]*domain.Details) (toRevise bool, err error) {
-	source := localObject.GetStringOrDefault(bundle.RelationKeySourceObject, "")
+	source := localObject.GetString(bundle.RelationKeySourceObject)
 	marketObject, found := marketObjects[source]
 	if !found || !isSystemObject(localObject) || marketObject.GetInt64OrDefault(revisionKey, 0) <= localObject.GetInt64OrDefault(revisionKey, 0) {
 		return false, nil
@@ -101,7 +101,7 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 	details := buildDiffDetails(marketObject, localObject)
 	if details.Len() > 0 {
 		log.Debug("updating system object", zap.String("source", source), zap.String("space", space.Id()))
-		if err := space.DoCtx(ctx, localObject.GetStringOrDefault(bundle.RelationKeyId, ""), func(sb smartblock.SmartBlock) error {
+		if err := space.DoCtx(ctx, localObject.GetString(bundle.RelationKeyId), func(sb smartblock.SmartBlock) error {
 			st := sb.NewState()
 			details.Iterate(func(key domain.RelationKey, value any) bool {
 				st.SetDetail(key, value)
@@ -116,7 +116,7 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 }
 
 func isSystemObject(details *domain.Details) bool {
-	rawKey := details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
+	rawKey := details.GetString(bundle.RelationKeyUniqueKey)
 	uk, err := domain.UnmarshalUniqueKey(rawKey)
 	if err != nil {
 		return false

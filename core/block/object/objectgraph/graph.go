@@ -115,7 +115,7 @@ func (gr *Builder) buildGraph(
 ) ([]*domain.Details, []*pb.RpcObjectGraphEdge) {
 	existedNodes := fillExistedNodes(records)
 	for _, rec := range records {
-		sourceId := rec.GetStringOrDefault(bundle.RelationKeyId, "")
+		sourceId := rec.GetString(bundle.RelationKeyId)
 
 		nodes = append(nodes, rec.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...))
 
@@ -166,7 +166,7 @@ func (gr *Builder) appendRelations(
 func fillExistedNodes(records []*domain.Details) map[string]struct{} {
 	existedNodes := make(map[string]struct{}, len(records))
 	for _, rec := range records {
-		id := rec.GetStringOrDefault(bundle.RelationKeyId, "")
+		id := rec.GetString(bundle.RelationKeyId)
 		existedNodes[id] = struct{}{}
 	}
 	return existedNodes

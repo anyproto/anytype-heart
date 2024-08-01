@@ -733,8 +733,8 @@ func TestQuery(t *testing.T) {
 		sort.Slice(want, func(i, j int) bool {
 			a := makeDetails(want[i])
 			b := makeDetails(want[j])
-			idA := a.GetStringOrDefault(bundle.RelationKeyId, "")
-			idB := b.GetStringOrDefault(bundle.RelationKeyId, "")
+			idA := a.GetString(bundle.RelationKeyId)
+			idB := b.GetString(bundle.RelationKeyId)
 			// Desc order
 			return idA > idB
 		})
@@ -767,8 +767,8 @@ func TestQuery(t *testing.T) {
 		sort.Slice(want, func(i, j int) bool {
 			a := makeDetails(want[i])
 			b := makeDetails(want[j])
-			idA := a.GetStringOrDefault(bundle.RelationKeyId, "")
-			idB := b.GetStringOrDefault(bundle.RelationKeyId, "")
+			idA := a.GetString(bundle.RelationKeyId)
+			idB := b.GetString(bundle.RelationKeyId)
 			return idA < idB
 		})
 		assertRecordsEqual(t, want[:15], recs)
@@ -803,8 +803,8 @@ func TestQuery(t *testing.T) {
 		sort.Slice(want, func(i, j int) bool {
 			a := makeDetails(want[i])
 			b := makeDetails(want[j])
-			idA := a.GetStringOrDefault(bundle.RelationKeyId, "")
-			idB := b.GetStringOrDefault(bundle.RelationKeyId, "")
+			idA := a.GetString(bundle.RelationKeyId)
+			idB := b.GetString(bundle.RelationKeyId)
 			return idA < idB
 		})
 		assertRecordsEqual(t, want[offset:offset+limit], recs)

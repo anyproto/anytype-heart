@@ -72,7 +72,7 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	for _, objectsSnapshot := range subObjectsSnapshots {
 		sbType := pt.getRelationOrOptionType(objectsSnapshot)
 		resultSnapshots = append(resultSnapshots, &common.Snapshot{
-			Id: objectsSnapshot.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
+			Id: objectsSnapshot.Details.GetString(bundle.RelationKeyId),
 			Snapshot: &common.SnapshotModel{
 				SbType: sbType,
 				Data:   objectsSnapshot,
@@ -183,7 +183,7 @@ func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 		}
 	}
 	if key == "" {
-		key = snapshot.Details.GetStringOrDefault(bundle.RelationKeyRelationKey, "")
+		key = snapshot.Details.GetString(bundle.RelationKeyRelationKey)
 	}
 	subObjectsSnapshots = append(subObjectsSnapshots, pt.provideRelationOptionsSnapshots(key, propObject, relation)...)
 	if err := pt.setDetails(propObject, key, details); err != nil {
@@ -396,7 +396,7 @@ func peopleItemOptions(property *property.PeopleItem, rel string, relation *prop
 		}
 		details, optSnapshot := provideRelationOptionSnapshot(po.Name, "", rel)
 		peopleOptions = append(peopleOptions, optSnapshot)
-		optionID = details.GetStringOrDefault(bundle.RelationKeyId, "")
+		optionID = details.GetString(bundle.RelationKeyId)
 		po.ID = optionID
 	}
 	relation.WriteToRelationsOptionsMap(rel, peopleOptions)
@@ -415,7 +415,7 @@ func multiselectItemOptions(property *property.MultiSelectItem, rel string, rela
 			continue
 		}
 		details, optSnapshot := provideRelationOptionSnapshot(so.Name, so.Color, rel)
-		optionID = details.GetStringOrDefault(bundle.RelationKeyId, "")
+		optionID = details.GetString(bundle.RelationKeyId)
 		so.ID = optionID
 		multiSelectOptions = append(multiSelectOptions, optSnapshot)
 	}
@@ -433,7 +433,7 @@ func selectItemOptions(property *property.SelectItem, rel string, relation *prop
 		return nil
 	}
 	details, optSnapshot := provideRelationOptionSnapshot(property.Select.Name, property.Select.Color, rel)
-	optionID = details.GetStringOrDefault(bundle.RelationKeyId, "")
+	optionID = details.GetString(bundle.RelationKeyId)
 	property.Select.ID = optionID
 	relation.WriteToRelationsOptionsMap(rel, []*common.StateSnapshot{optSnapshot})
 	return optSnapshot
@@ -449,7 +449,7 @@ func statusItemOptions(property *property.StatusItem, rel string, relation *prop
 		return nil
 	}
 	details, optSnapshot := provideRelationOptionSnapshot(property.Status.Name, property.Status.Color, rel)
-	optionID = details.GetStringOrDefault(bundle.RelationKeyId, "")
+	optionID = details.GetString(bundle.RelationKeyId)
 	property.Status.ID = optionID
 	relation.WriteToRelationsOptionsMap(rel, []*common.StateSnapshot{optSnapshot})
 	return optSnapshot
@@ -458,8 +458,8 @@ func statusItemOptions(property *property.StatusItem, rel string, relation *prop
 func isOptionAlreadyExist(optName, rel string, relation *property.PropertiesStore) (bool, string) {
 	options := relation.ReadRelationsOptionsMap(rel)
 	for _, option := range options {
-		name := option.Details.GetStringOrDefault(bundle.RelationKeyName, "")
-		id := option.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		name := option.Details.GetString(bundle.RelationKeyName)
+		id := option.Details.GetString(bundle.RelationKeyId)
 		if optName == name {
 			return true, id
 		}

@@ -377,7 +377,7 @@ func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	rawUniqueKey, ok := details.GetString(bundle.RelationKeyUniqueKey)
+	rawUniqueKey, ok := details.TryString(bundle.RelationKeyUniqueKey)
 	if !ok {
 		return nil, fmt.Errorf("object does not have unique key in details")
 	}
@@ -483,7 +483,7 @@ func (s *dsObjectStore) getObjectInfo(ctx context.Context, spaceID string, id st
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal details: %w", err)
 	}
-	snippet := details.GetStringOrDefault(bundle.RelationKeySnippet, "")
+	snippet := details.GetString(bundle.RelationKeySnippet)
 
 	return &database.ObjectInfo{
 		Id:      id,

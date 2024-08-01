@@ -171,7 +171,7 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 
 	for _, record := range records {
 		fullId := extractFullFileIdFromDetails(record.Details)
-		id := record.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		id := record.Details.GetString(bundle.RelationKeyId)
 		err := s.addToSyncQueue(id, fullId, false, false)
 		if err != nil {
 			log.Errorf("add to sync queue: %v", err)
@@ -183,8 +183,8 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 
 func extractFullFileIdFromDetails(details *domain.Details) domain.FullFileId {
 	return domain.FullFileId{
-		SpaceId: details.GetStringOrDefault(bundle.RelationKeySpaceId, ""),
-		FileId:  domain.FileId(details.GetStringOrDefault(bundle.RelationKeyFileId, "")),
+		SpaceId: details.GetString(bundle.RelationKeySpaceId),
+		FileId:  domain.FileId(details.GetString(bundle.RelationKeyFileId)),
 	}
 }
 
@@ -196,7 +196,7 @@ func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.D
 	}
 	fullId := domain.FullFileId{
 		SpaceId: id.SpaceID,
-		FileId:  domain.FileId(details.GetStringOrDefault(bundle.RelationKeyFileId, "")),
+		FileId:  domain.FileId(details.GetString(bundle.RelationKeyFileId)),
 	}
 	err := s.addToSyncQueue(id.ObjectID, fullId, false, false)
 	return err
@@ -380,7 +380,7 @@ func (s *service) GetObjectIdByFileId(fileId domain.FullFileId) (string, error) 
 	if len(records) == 0 {
 		return "", ErrObjectNotFound
 	}
-	return records[0].Details.GetStringOrDefault(bundle.RelationKeyId, ""), nil
+	return records[0].Details.GetString(bundle.RelationKeyId), nil
 }
 
 func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error) {
@@ -405,7 +405,7 @@ func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *d
 		return "", nil, ErrObjectNotFound
 	}
 	details := records[0].Details
-	return details.GetStringOrDefault(bundle.RelationKeyId, ""), details, nil
+	return details.GetString(bundle.RelationKeyId), details, nil
 }
 
 func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error) {
@@ -413,8 +413,8 @@ func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error
 	if err != nil {
 		return domain.FullFileId{}, fmt.Errorf("get object details: %w", err)
 	}
-	spaceId := details.GetStringOrDefault(bundle.RelationKeySpaceId, "")
-	fileId := details.GetStringOrDefault(bundle.RelationKeyFileId, "")
+	spaceId := details.GetString(bundle.RelationKeySpaceId)
+	fileId := details.GetString(bundle.RelationKeyFileId)
 	if fileId == "" {
 		return domain.FullFileId{}, ErrEmptyFileId
 	}
@@ -438,7 +438,7 @@ func (s *service) GetFileIdFromObjectWaitLoad(ctx context.Context, objectId stri
 	}
 	err = spc.Do(objectId, func(sb smartblock.SmartBlock) error {
 		details := sb.Details()
-		id.FileId = domain.FileId(details.GetStringOrDefault(bundle.RelationKeyFileId, ""))
+		id.FileId = domain.FileId(details.GetString(bundle.RelationKeyFileId))
 		if id.FileId == "" {
 			return ErrEmptyFileId
 		}

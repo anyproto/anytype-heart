@@ -83,7 +83,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, relations, o
 		if rel.Key == bundle.RelationKeyCreator.String() ||
 			rel.Key == bundle.RelationKeyLastModifiedBy.String() {
 			if creatorModifierWorkspace {
-				v := det.GetStringOrDefault(domain.RelationKey(rel.Key), "")
+				v := det.GetString(domain.RelationKey(rel.Key))
 				ids = append(ids, v)
 			}
 			continue
@@ -97,7 +97,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, relations, o
 		}
 
 		if rel.Key == bundle.RelationKeyCoverId.String() {
-			v := det.GetStringOrDefault(domain.RelationKey(rel.Key), "")
+			v := det.GetString(domain.RelationKey(rel.Key))
 			_, err := cid.Decode(v)
 			if err != nil {
 				// this is an exception cause coverId can contain not a file hash but color

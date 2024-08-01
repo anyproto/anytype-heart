@@ -165,7 +165,7 @@ func (l *Link) ApplyEvent(e *pb.EventBlockSetLink) error {
 func (l *Link) ToText(targetDetails *domain.Details) simple.Block {
 	tb := &model.BlockContentText{}
 	if l.content.TargetBlockId != "" {
-		name := targetDetails.GetStringOrDefault(bundle.RelationKeyName, "")
+		name := targetDetails.GetString(bundle.RelationKeyName)
 		if name == "" {
 			name = "Untitled"
 		}

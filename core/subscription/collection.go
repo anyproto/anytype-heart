@@ -118,7 +118,7 @@ func (c *collectionObserver) updateIDs(ids []string) {
 func (c *collectionObserver) FilterObject(g *domain.Details) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	id := g.GetStringOrDefault(bundle.RelationKeyId, "")
+	id := g.GetString(bundle.RelationKeyId)
 	_, ok := c.idsSet[id]
 	return ok
 }
@@ -234,7 +234,7 @@ func fetchEntries(cache *cache, objectStore objectstore.ObjectStore, ids []strin
 	}
 	for _, r := range recs {
 		e := &entry{
-			id:   r.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
+			id:   r.Details.GetString(bundle.RelationKeyId),
 			data: r.Details,
 		}
 		res = append(res, e)

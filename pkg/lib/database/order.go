@@ -254,7 +254,7 @@ func (ko *KeyOrder) tryExtractSnippet(a *domain.Details, b *domain.Details, av d
 
 func (ko *KeyOrder) trySubstituteSnippet(getter *domain.Details, value domain.Value) domain.Value {
 	if ko.Key == bundle.RelationKeyName.String() && getLayout(getter) == model.ObjectType_note {
-		_, ok := getter.GetString(bundle.RelationKeyName)
+		_, ok := getter.TryString(bundle.RelationKeyName)
 		if !ok {
 			return getter.Get(bundle.RelationKeySnippet)
 		}
@@ -330,8 +330,8 @@ func (co customOrder) AnystoreSort() query.Sort {
 }
 
 func (co customOrder) Compare(a, b *domain.Details) int {
-	aID, okA := co.NeedOrderMap[a.GetStringOrDefault(domain.RelationKey(co.Key), "")]
-	bID, okB := co.NeedOrderMap[b.GetStringOrDefault(domain.RelationKey(co.Key), "")]
+	aID, okA := co.NeedOrderMap[a.GetString(domain.RelationKey(co.Key))]
+	bID, okB := co.NeedOrderMap[b.GetString(domain.RelationKey(co.Key))]
 
 	if okA && okB {
 		if aID == bID {

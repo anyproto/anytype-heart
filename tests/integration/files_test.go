@@ -31,10 +31,10 @@ func TestFiles(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, objectId)
 
-		fileId := details.GetStringOrDefault(bundle.RelationKeyFileId, "")
-		assert.Equal(t, "test_image", details.GetStringOrDefault(bundle.RelationKeyName, ""))
+		fileId := details.GetString(bundle.RelationKeyFileId)
+		assert.Equal(t, "test_image", details.GetString(bundle.RelationKeyName))
 		assert.NotEmpty(t, fileId)
-		assert.NotEmpty(t, details.GetStringOrDefault(bundle.RelationKeyFileMimeType, ""))
+		assert.NotEmpty(t, details.GetString(bundle.RelationKeyFileMimeType))
 		assert.True(t, details.GetInt64OrDefault(bundle.RelationKeySizeInBytes, 0) > 0)
 
 		// Image is available either by object ID or file ID
@@ -53,8 +53,8 @@ func TestFiles(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, objectId)
 
-		fileId := details.GetStringOrDefault(bundle.RelationKeyFileId, "")
-		assert.Equal(t, "files_test", details.GetStringOrDefault(bundle.RelationKeyName, ""))
+		fileId := details.GetString(bundle.RelationKeyFileId)
+		assert.Equal(t, "files_test", details.GetString(bundle.RelationKeyName))
 		assert.NotEmpty(t, fileId)
 		assert.True(t, details.GetInt64OrDefault(bundle.RelationKeySizeInBytes, 0) > 0)
 

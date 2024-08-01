@@ -393,9 +393,9 @@ func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
 	if !ok {
 		return
 	}
-	title = info.GetStringOrDefault(bundle.RelationKeyName, "")
+	title = info.GetString(bundle.RelationKeyName)
 	if title == "" {
-		title = info.GetStringOrDefault(bundle.RelationKeySnippet, "")
+		title = info.GetString(bundle.RelationKeySnippet)
 	}
 	if title == "" {
 		title = docId

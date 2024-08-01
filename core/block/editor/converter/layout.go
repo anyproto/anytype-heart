@@ -202,7 +202,7 @@ func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) 
 	}
 	ids := make([]string, 0, len(records))
 	for _, record := range records {
-		ids = append(ids, record.Details.GetStringOrDefault(bundle.RelationKeyId, ""))
+		ids = append(ids, record.Details.GetString(bundle.RelationKeyId))
 	}
 	return ids, nil
 }
@@ -226,7 +226,7 @@ func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
 }
 
 func (c *layoutConverter) fromNoteToAny(st *state.State) error {
-	name, ok := st.Details().GetString(bundle.RelationKeyName)
+	name, ok := st.Details().TryString(bundle.RelationKeyName)
 
 	if !ok || name == "" {
 		textBlock, err := getFirstTextBlock(st)

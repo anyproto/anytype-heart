@@ -92,7 +92,7 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 	}
 	var storeFavoritedIds = make([]string, 0, len(records))
 	for _, rec := range records {
-		storeFavoritedIds = append(storeFavoritedIds, rec.Details.GetStringOrDefault(bundle.RelationKeyId, ""))
+		storeFavoritedIds = append(storeFavoritedIds, rec.Details.GetString(bundle.RelationKeyId))
 	}
 
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeFavoritedIds, favoritedIds)

@@ -104,7 +104,7 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 
 	if sbType == coresb.SmartBlockTypeObjectType && newDetails.GetInt64OrDefault(bundle.RelationKeyLastUsedDate, 0) == 0 {
 		objecttype.UpdateLastUsedDate(spc, s.objectStore, domain.TypeKey(
-			strings.TrimPrefix(newDetails.GetStringOrDefault(bundle.RelationKeyUniqueKey, ""), addr.ObjectTypeKeyToIdPrefix)),
+			strings.TrimPrefix(newDetails.GetString(bundle.RelationKeyUniqueKey), addr.ObjectTypeKeyToIdPrefix)),
 		)
 	} else if newDetails.GetInt64OrDefault(bundle.RelationKeyOrigin, 0) == int64(model.ObjectOrigin_none) {
 		objecttype.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys[0])

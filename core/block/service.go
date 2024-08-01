@@ -634,7 +634,7 @@ func (s *Service) RemoveListOption(optionIds []string, checkInObjects bool) erro
 		if checkInObjects {
 			err := cache.Do(s, id, func(b smartblock.SmartBlock) error {
 				st := b.NewState()
-				relKey := st.Details().GetStringOrDefault(bundle.RelationKeyRelationKey, "")
+				relKey := st.Details().GetString(bundle.RelationKeyRelationKey)
 
 				records, err := s.objectStore.Query(database.Query{
 					Filters: []*model.BlockContentDataviewFilter{
@@ -830,7 +830,7 @@ func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetail
 
 	for relation, valueFromBookmark := range bookmarkRelationToValue {
 		// Don't change details of the object, if they are provided by client in request
-		if userValue := userDetails.GetStringOrDefault(relation, ""); userValue != "" {
+		if userValue := userDetails.GetString(relation); userValue != "" {
 			*valueFromBookmark = userValue
 		} else {
 			// if detail wasn't provided in request, we get it from bookmark and set it later in bookmark.UpdateObject

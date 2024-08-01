@@ -31,7 +31,7 @@ func (d *dsObjectStore) GetSpaceName(spaceId string) string {
 	}
 	var spaceName string
 	if len(records) > 0 {
-		spaceName = records[0].Details.GetStringOrDefault(bundle.RelationKeyName, "")
+		spaceName = records[0].Details.GetString(bundle.RelationKeyName)
 	}
 	return spaceName
 }

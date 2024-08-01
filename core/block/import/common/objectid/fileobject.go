@@ -25,7 +25,7 @@ func (o *fileObject) GetIDAndPayload(ctx context.Context, spaceId string, sn *co
 		return "", treestorage.TreeStorageCreatePayload{}, err
 	}
 
-	filePath := sn.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeySource, "")
+	filePath := sn.Snapshot.Data.Details.GetString(bundle.RelationKeySource)
 	if filePath != "" {
 		var encryptionKeys map[string]string
 		if sn.Snapshot.Data.FileInfo != nil {
@@ -34,7 +34,7 @@ func (o *fileObject) GetIDAndPayload(ctx context.Context, spaceId string, sn *co
 				encryptionKeys[key.Path] = key.Key
 			}
 		}
-		name := sn.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyName, "")
+		name := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 		fileObjectId, err := uploadFile(ctx, o.blockService, spaceId, name, filePath, origin, encryptionKeys)
 		if err != nil {
 			log.Error("handling file object: upload file", zap.Error(err))

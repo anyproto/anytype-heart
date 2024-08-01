@@ -362,7 +362,7 @@ func TestBuildTemplateStateFromObject(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotContains(t, pbtypes.GetIntList(st.Details(), bundle.RelationKeyInternalFlags.String()), model.InternalFlag_editorDeleteEmpty)
 		assert.Equal(t, []domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyNote}, st.ObjectTypeKeys())
-		assert.Equal(t, bundle.TypeKeyNote.String(), st.Details().GetStringOrDefault(bundle.RelationKeyTargetObjectType, ""))
+		assert.Equal(t, bundle.TypeKeyNote.String(), st.Details().GetString(bundle.RelationKeyTargetObjectType))
 		assert.Nil(t, st.LocalDetails())
 	})
 }

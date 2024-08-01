@@ -95,7 +95,7 @@ func (p *Archive) updateObjects(info smartblock.ApplyInfo) (err error) {
 	}
 	var storeArchivedIds = make([]string, 0, len(records))
 	for _, rec := range records {
-		storeArchivedIds = append(storeArchivedIds, rec.Details.GetStringOrDefault(bundle.RelationKeyId, ""))
+		storeArchivedIds = append(storeArchivedIds, rec.Details.GetString(bundle.RelationKeyId))
 	}
 
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeArchivedIds, archivedIds)

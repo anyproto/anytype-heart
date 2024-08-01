@@ -20,7 +20,7 @@ func newParticipant() *participant {
 }
 
 func (w *participant) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, _ time.Time, _ bool, _ objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
-	participantId := sn.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+	participantId := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyId)
 	splitId := strings.Split(participantId, "_")
 	identity := splitId[len(splitId)-1]
 	newParticipantID := domain.NewParticipantId(spaceID, identity)

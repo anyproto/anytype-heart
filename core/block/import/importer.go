@@ -379,7 +379,7 @@ func (i *Import) replaceRelationKeyWithNew(option *common.Snapshot, oldIDToNew m
 	if option.Snapshot.Data.Details == nil || option.Snapshot.Data.Details.Len() == 0 {
 		return
 	}
-	key := option.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyRelationKey, "")
+	key := option.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey)
 	if newRelationID, ok := oldIDToNew[key]; ok {
 		key = strings.TrimPrefix(newRelationID, addr.RelationKeyToIdPrefix)
 	}
@@ -438,7 +438,7 @@ func (i *Import) getObjectID(
 func (i *Import) extractInternalKey(snapshot *common.Snapshot, oldIDToNew map[string]string) error {
 	newUniqueKey := i.idProvider.GetInternalKey(snapshot.Snapshot.SbType)
 	if newUniqueKey != "" {
-		oldUniqueKey := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
+		oldUniqueKey := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyUniqueKey)
 		if oldUniqueKey == "" {
 			oldUniqueKey = snapshot.Snapshot.Data.Key
 		}

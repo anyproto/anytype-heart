@@ -117,14 +117,14 @@ func (ind *indexer) addToQueueFromObjectStore(ctx context.Context) error {
 		return fmt.Errorf("query: %w", err)
 	}
 	for _, rec := range recs {
-		spaceId := rec.Details.GetStringOrDefault(bundle.RelationKeySpaceId, "")
+		spaceId := rec.Details.GetString(bundle.RelationKeySpaceId)
 		id := domain.FullID{
 			SpaceID:  spaceId,
-			ObjectID: rec.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
+			ObjectID: rec.Details.GetString(bundle.RelationKeyId),
 		}
 		fileId := domain.FullFileId{
 			SpaceId: spaceId,
-			FileId:  domain.FileId(rec.Details.GetStringOrDefault(bundle.RelationKeyFileId, "")),
+			FileId:  domain.FileId(rec.Details.GetString(bundle.RelationKeyFileId)),
 		}
 		// Additional check if we are accidentally migrated file object
 		if !fileId.Valid() {
@@ -263,10 +263,10 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (det
 }
 
 func (ind *indexer) addBlocks(st *state.State, details *domain.Details, objectId string) error {
-	fileType := fileblock.DetectTypeByMIME(details.GetStringOrDefault(bundle.RelationKeyFileMimeType, ""))
+	fileType := fileblock.DetectTypeByMIME(details.GetString(bundle.RelationKeyFileMimeType))
 
-	fname := details.GetStringOrDefault(bundle.RelationKeyName, "")
-	ext := details.GetStringOrDefault(bundle.RelationKeyFileExt, "")
+	fname := details.GetString(bundle.RelationKeyName)
+	ext := details.GetString(bundle.RelationKeyFileExt)
 
 	if ext != "" && !strings.HasSuffix(fname, "."+ext) {
 		fname = fname + "." + ext
@@ -278,7 +278,7 @@ func (ind *indexer) addBlocks(st *state.State, details *domain.Details, objectId
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
 				Name:           fname,
-				Mime:           details.GetStringOrDefault(bundle.RelationKeyFileMimeType, ""),
+				Mime:           details.GetString(bundle.RelationKeyFileMimeType),
 				TargetObjectId: objectId,
 				Type:           fileType,
 				Size_:          int64(details.GetFloatOrDefault(bundle.RelationKeySizeInBytes, 0)),
@@ -299,17 +299,17 @@ func (ind *indexer) addBlocks(st *state.State, details *domain.Details, objectId
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyHeightInPixels))
 		}
 
-		if details.GetStringOrDefault(bundle.RelationKeyCamera, "") != "" {
+		if details.GetString(bundle.RelationKeyCamera) != "" {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyCamera))
 		}
 
 		if details.GetInt64OrDefault(bundle.RelationKeySizeInBytes, 0) != 0 {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeySizeInBytes))
 		}
-		if details.GetStringOrDefault(bundle.RelationKeyMediaArtistName, "") != "" {
+		if details.GetString(bundle.RelationKeyMediaArtistName) != "" {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyMediaArtistName))
 		}
-		if details.GetStringOrDefault(bundle.RelationKeyMediaArtistURL, "") != "" {
+		if details.GetString(bundle.RelationKeyMediaArtistURL) != "" {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyMediaArtistURL))
 		}
 	default:

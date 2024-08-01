@@ -279,7 +279,7 @@ func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested 
 	}
 	ids := make([]string, 0, len(res))
 	for _, r := range res {
-		id := r.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		id := r.Details.GetString(bundle.RelationKeyId)
 		docs[id] = r.Details
 		ids = append(ids, id)
 	}
@@ -321,12 +321,12 @@ func (e *export) addDerivedObjects(spaceId string, docs map[string]*domain.Detai
 	}
 	derivedObjectsMap := make(map[string]*domain.Details)
 	for _, object := range derivedObjects {
-		id := object.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		id := object.Details.GetString(bundle.RelationKeyId)
 		derivedObjectsMap[id] = object.Details
 	}
 	if includeNested {
 		for _, object := range derivedObjects {
-			id := object.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+			id := object.Details.GetString(bundle.RelationKeyId)
 			e.getNested(spaceId, id, derivedObjectsMap)
 		}
 	}
@@ -399,7 +399,7 @@ func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProto
 	for _, info := range res {
 		objectSpaceID := spaceID
 		if spaceID == "" {
-			objectSpaceID = info.Details.GetStringOrDefault(bundle.RelationKeySpaceId, "")
+			objectSpaceID = info.Details.GetString(bundle.RelationKeySpaceId)
 		}
 		sbType, err := e.sbtProvider.Type(objectSpaceID, info.Id)
 		if err != nil {
@@ -506,13 +506,13 @@ func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportReques
 }
 
 func (e *export) provideMarkdownName(s *state.State, wr writer, docID string, conv converter.Converter, spaceId string) string {
-	name := s.Details().GetStringOrDefault(bundle.RelationKeyName, "")
+	name := s.Details().GetString(bundle.RelationKeyName)
 	if name == "" {
 		name = s.Snippet()
 	}
 	path := ""
 	if spaceId == "" {
-		spaceId := s.LocalDetails().GetStringOrDefault(bundle.RelationKeySpaceId, "")
+		spaceId := s.LocalDetails().GetString(bundle.RelationKeySpaceId)
 		path = filepath.Join(spaceDirectory, spaceId)
 	}
 	return wr.Namer().Get(path, docID, name, conv.Ext())
@@ -521,7 +521,7 @@ func (e *export) provideMarkdownName(s *state.State, wr writer, docID string, co
 func (e *export) provideFileName(docID, spaceId string, conv converter.Converter, st *state.State) string {
 	filename := docID + conv.Ext()
 	if spaceId == "" {
-		spaceId := st.LocalDetails().GetStringOrDefault(bundle.RelationKeySpaceId, "")
+		spaceId := st.LocalDetails().GetString(bundle.RelationKeySpaceId)
 		filename = filepath.Join(spaceDirectory, spaceId, filename)
 	}
 	return filename
@@ -530,7 +530,7 @@ func (e *export) provideFileName(docID, spaceId string, conv converter.Converter
 func (e *export) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlock, exportAllSpaces bool) (fileName string, err error) {
 	fullId := domain.FullFileId{
 		SpaceId: fileObject.Space().Id(),
-		FileId:  domain.FileId(fileObject.Details().GetStringOrDefault(bundle.RelationKeyFileId, "")),
+		FileId:  domain.FileId(fileObject.Details().GetString(bundle.RelationKeyFileId)),
 	}
 
 	file, err := e.fileService.FileByHash(ctx, fullId)
@@ -572,7 +572,7 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 		return err
 	}
 	err = cache.Do(e.picker, spc.DerivedIDs().Workspace, func(b sb.SmartBlock) error {
-		spaceDashBoardID = b.CombinedDetails().GetStringOrDefault(bundle.RelationKeySpaceDashboardId, "")
+		spaceDashBoardID = b.CombinedDetails().GetString(bundle.RelationKeySpaceDashboardId)
 		return nil
 	})
 	if err != nil {
@@ -696,7 +696,7 @@ func (e *export) getRelatedDerivedObjects(objects map[string]*domain.Details) ([
 	if len(typesAndTemplates) > 0 {
 		derivedObjectsMap := make(map[string]*domain.Details, 0)
 		for _, object := range typesAndTemplates {
-			id := object.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+			id := object.Details.GetString(bundle.RelationKeyId)
 			derivedObjectsMap[id] = object.Details
 		}
 		iteratedObjects, typesAndTemplates, err := e.iterateObjects(derivedObjectsMap)
@@ -782,7 +782,7 @@ func (e *export) processObject(object *domain.Details,
 			}
 		}
 	}
-	objectTypeId := object.GetStringOrDefault(bundle.RelationKeyType, "")
+	objectTypeId := object.GetString(bundle.RelationKeyType)
 
 	var err error
 	derivedObjects, typesAndTemplates, err = e.addObjectType(objectTypeId, derivedObjects, typesAndTemplates)
@@ -809,7 +809,7 @@ func (e *export) addObjectType(objectTypeId string, derivedObjects []database.Re
 	if objectTypeDetails == nil || objectTypeDetails.Len() == 0 {
 		return derivedObjects, typesAndTemplates, nil
 	}
-	uniqueKey := objectTypeDetails.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
+	uniqueKey := objectTypeDetails.GetString(bundle.RelationKeyUniqueKey)
 	key, err := domain.GetTypeKeyFromRawUniqueKey(uniqueKey)
 	if err != nil {
 		return nil, nil, err
@@ -826,7 +826,7 @@ func (e *export) addObjectType(objectTypeId string, derivedObjects []database.Re
 		if err != nil {
 			return nil, nil, err
 		}
-		relationKey := details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
+		relationKey := details.GetString(bundle.RelationKeyUniqueKey)
 		uniqueKey, err := domain.UnmarshalUniqueKey(relationKey)
 		if err != nil {
 			return nil, nil, err
@@ -889,7 +889,7 @@ func (e *export) addRelationAndOptions(relation *database.Record, derivedObjects
 }
 
 func (e *export) addRelation(relation database.Record, derivedObjects []database.Record) []database.Record {
-	if relationKey := relation.Details.GetStringOrDefault(bundle.RelationKeyRelationKey, ""); relationKey != "" {
+	if relationKey := relation.Details.GetString(bundle.RelationKeyRelationKey); relationKey != "" {
 		if !bundle.HasRelation(domain.RelationKey(relationKey)) {
 			derivedObjects = append(derivedObjects, relation)
 		}

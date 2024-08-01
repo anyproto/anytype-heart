@@ -100,7 +100,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	if p.isRelationDeleted(ctx) {
 		// todo: move this to separate component
 		go func() {
-			err = p.deleteRelationOptions(p.SpaceID(), p.Details().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
+			err = p.deleteRelationOptions(p.SpaceID(), p.Details().GetString(bundle.RelationKeyRelationKey))
 			if err != nil {
 				log.With("err", err).Error("failed to delete relation options")
 			}

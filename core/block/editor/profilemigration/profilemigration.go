@@ -57,7 +57,7 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 	newState := state.NewDocWithUniqueKey(st.RootId(), blocksMap, uk).(*state.State)
 	newState.AddRelationLinks(st.GetRelationLinks()...)
 	newStateDetails := st.Details().ShallowCopy()
-	newName := newStateDetails.GetStringOrDefault(bundle.RelationKeyName, "") + " [migrated]"
+	newName := newStateDetails.GetString(bundle.RelationKeyName) + " [migrated]"
 	newStateDetails.Set(bundle.RelationKeyName, newName)
 	newStateDetails.Set(bundle.RelationKeyIsHidden, false)
 	newState.SetDetails(newStateDetails)

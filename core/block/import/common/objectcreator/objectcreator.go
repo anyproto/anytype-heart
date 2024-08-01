@@ -321,7 +321,7 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	// hand-pick relation because space is a special case
 	var details []*model.Detail
-	spaceDashBoardID := st.CombinedDetails().GetStringOrDefault(bundle.RelationKeySpaceDashboardId, "")
+	spaceDashBoardID := st.CombinedDetails().GetString(bundle.RelationKeySpaceDashboardId)
 	if spaceDashBoardID != "" {
 		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeySpaceDashboardId.String(),
@@ -329,7 +329,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 		})
 	}
 
-	spaceName := st.CombinedDetails().GetStringOrDefault(bundle.RelationKeyName, "")
+	spaceName := st.CombinedDetails().GetString(bundle.RelationKeyName)
 	if spaceName != "" {
 		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeyName.String(),

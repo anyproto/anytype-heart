@@ -537,7 +537,7 @@ func (m *Markdown) setDetails(file *FileInfo, fileName string, details map[strin
 		title, emoji = m.extractTitleAndEmojiFromBlock(file)
 	}
 	details[fileName] = common.GetCommonDetails(fileName, title, emoji, model.ObjectType_basic)
-	file.Title = details[fileName].GetStringOrDefault(bundle.RelationKeyName, "")
+	file.Title = details[fileName].GetString(bundle.RelationKeyName)
 }
 
 func (m *Markdown) extractTitleAndEmojiFromBlock(file *FileInfo) (string, string) {

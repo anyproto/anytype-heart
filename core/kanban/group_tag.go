@@ -71,8 +71,8 @@ func (t *GroupTag) MakeGroups() (GroupSlice, error) {
 
 	// single tag groups
 	for _, v := range t.Records {
-		if tagOption := v.Details.GetStringOrDefault(bundle.RelationKeyRelationKey, ""); tagOption == string(t.Key) {
-			optionID := v.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		if tagOption := v.Details.GetString(bundle.RelationKeyRelationKey); tagOption == string(t.Key) {
+			optionID := v.Details.GetString(bundle.RelationKeyId)
 			if !uniqMap[optionID] {
 				uniqMap[optionID] = true
 				groups = append(groups, Group{

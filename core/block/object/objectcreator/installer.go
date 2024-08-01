@@ -43,7 +43,7 @@ func (s *service) BundledObjectsIdsToInstall(
 		}
 
 		err = marketplaceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
-			uk, err := domain.UnmarshalUniqueKey(b.CombinedDetails().GetStringOrDefault(bundle.RelationKeyUniqueKey, ""))
+			uk, err := domain.UnmarshalUniqueKey(b.CombinedDetails().GetString(bundle.RelationKeyUniqueKey))
 			if err != nil {
 				return err
 			}
@@ -107,7 +107,7 @@ func (s *service) InstallBundledObjects(
 }
 
 func (s *service) installObject(ctx context.Context, space clientspace.Space, installingDetails *domain.Details) (id string, newDetails *domain.Details, err error) {
-	uk, err := domain.UnmarshalUniqueKey(installingDetails.GetStringOrDefault(bundle.RelationKeyUniqueKey, ""))
+	uk, err := domain.UnmarshalUniqueKey(installingDetails.GetString(bundle.RelationKeyUniqueKey))
 	if err != nil {
 		return "", nil, fmt.Errorf("unmarshal unique key: %w", err)
 	}
@@ -153,7 +153,7 @@ func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds 
 	}
 	existingObjectMap := make(map[string]*domain.Details, len(existingObjects))
 	for _, existingObject := range existingObjects {
-		existingObjectMap[existingObject.Details.GetStringOrDefault(bundle.RelationKeySourceObject, "")] = existingObject.Details
+		existingObjectMap[existingObject.Details.GetString(bundle.RelationKeySourceObject)] = existingObject.Details
 	}
 	return existingObjectMap, nil
 }
@@ -170,7 +170,7 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 	}
 
 	deletedObjects = lo.UniqBy(append(deletedObjects, archivedObjects...), func(record database.Record) string {
-		return record.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		return record.Details.GetString(bundle.RelationKeyId)
 	})
 
 	var (
@@ -178,8 +178,8 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 		objects []*domain.Details
 	)
 	for _, rec := range deletedObjects {
-		id := rec.Details.GetStringOrDefault(bundle.RelationKeyId, "")
-		sourceObjectId := rec.Details.GetStringOrDefault(bundle.RelationKeySourceObject, "")
+		id := rec.Details.GetString(bundle.RelationKeyId)
+		sourceObjectId := rec.Details.GetString(bundle.RelationKeySourceObject)
 		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, sourceObjectId, space, false)
 		if err != nil {
 			return nil, nil, fmt.Errorf("prepare details for installing object: %w", err)
@@ -229,7 +229,7 @@ func (s *service) prepareDetailsForInstallingObject(
 	}
 
 	spaceID := spc.Id()
-	sourceId := details.GetStringOrDefault(bundle.RelationKeyId, "")
+	sourceId := details.GetString(bundle.RelationKeyId)
 	details.Set(bundle.RelationKeySpaceId, spaceID)
 	details.Set(bundle.RelationKeySourceObject, sourceId)
 	details.Set(bundle.RelationKeyIsReadonly, false)

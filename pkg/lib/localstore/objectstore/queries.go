@@ -44,7 +44,7 @@ func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey domain.Relati
 
 func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float64, path domain.ObjectPath, maxLength int, params database.Filters) []database.Record {
 	var injectedResults []database.Record
-	id := details.GetStringOrDefault(bundle.RelationKeyId, "")
+	id := details.GetString(bundle.RelationKeyId)
 	if path.RelationKey != bundle.RelationKeyName.String() {
 		// inject only in case we match the name
 		return nil
@@ -63,7 +63,7 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 	layout := model.ObjectTypeLayout(details.GetInt64OrDefault(bundle.RelationKeyLayout, 0))
 	switch layout {
 	case model.ObjectType_relationOption:
-		relationKey = details.GetStringOrDefault(bundle.RelationKeyRelationKey, "")
+		relationKey = details.GetString(bundle.RelationKeyRelationKey)
 	case model.ObjectType_objectType:
 		relationKey = bundle.RelationKeyType.String()
 	default:
@@ -209,7 +209,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 			rec.Meta = res.Model()
 			if rec.Meta.Highlight == "" {
-				title := details.GetStringOrDefault(bundle.RelationKeyName, "")
+				title := details.GetString(bundle.RelationKeyName)
 				index := strings.Index(strings.ToLower(title), strings.ToLower(ftsSearch))
 				titleArr := []byte(title)
 				if index != -1 {
@@ -234,7 +234,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 		// this may happen when we for example have a match in the different tags of the same object,
 		// or we may already have a better match for the same object but in block
 		injectedResults = lo.Filter(injectedResults, func(item database.Record, _ int) bool {
-			id := item.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+			id := item.Details.GetString(bundle.RelationKeyId)
 			if _, ok := resultObjectMap[id]; !ok {
 				resultObjectMap[id] = struct{}{}
 				return true
@@ -451,7 +451,7 @@ func (s *dsObjectStore) QueryObjectIDs(q database.Query) (ids []string, total in
 	}
 	ids = make([]string, 0, len(recs))
 	for _, rec := range recs {
-		id, ok := rec.Details.GetString(bundle.RelationKeyId)
+		id, ok := rec.Details.TryString(bundle.RelationKeyId)
 		if ok {
 			ids = append(ids, id)
 		}

@@ -9,10 +9,10 @@ import (
 func OptionFromDetails(det *domain.Details) *Option {
 	return &Option{
 		RelationOption: &model.RelationOption{
-			Id:          det.GetStringOrDefault(bundle.RelationKeyId, ""),
-			Text:        det.GetStringOrDefault(bundle.RelationKeyName, ""),
-			Color:       det.GetStringOrDefault(bundle.RelationKeyRelationOptionColor, ""),
-			RelationKey: det.GetStringOrDefault(bundle.RelationKeyRelationKey, ""),
+			Id:          det.GetString(bundle.RelationKeyId),
+			Text:        det.GetString(bundle.RelationKeyName),
+			Color:       det.GetString(bundle.RelationKeyRelationOptionColor),
+			RelationKey: det.GetString(bundle.RelationKeyRelationKey),
 		},
 	}
 }

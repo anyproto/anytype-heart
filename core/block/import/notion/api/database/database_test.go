@@ -546,7 +546,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, snapshot, 1)
-		icon := snapshot[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyIconEmoji, "")
+		icon := snapshot[0].Snapshot.Data.Details.GetString(bundle.RelationKeyIconEmoji)
 		assert.Equal(t, emoji, icon)
 	})
 	t.Run("Database has custom external icon - details have relation iconImage", func(t *testing.T) {
@@ -564,7 +564,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, snapshot, 1)
-		icon := snapshot[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyIconImage, "")
+		icon := snapshot[0].Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage)
 		assert.Equal(t, "url", icon)
 	})
 	t.Run("Database has custom file icon - details have relation iconImage", func(t *testing.T) {
@@ -582,7 +582,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, snapshot, 1)
-		icon := snapshot[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyIconImage, "")
+		icon := snapshot[0].Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage)
 		assert.Equal(t, "url", icon)
 	})
 	t.Run("Database doesn't have icon - details don't have neither iconImage nor iconEmoji", func(t *testing.T) {
@@ -595,7 +595,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, snapshot, 1)
-		icon := snapshot[0].Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyIconImage, "")
+		icon := snapshot[0].Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage)
 		assert.Equal(t, "", icon)
 	})
 	t.Run("Database has property without name - return relation with name Untitled", func(t *testing.T) {

@@ -124,7 +124,7 @@ func (s *service) installTemplatesForObjectType(spc clientspace.Space, typeKey d
 	}
 
 	for _, record := range bundledTemplates {
-		id := record.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		id := record.Details.GetString(bundle.RelationKeyId)
 		if _, exists := installedTemplatesIDs[id]; exists {
 			continue
 		}
@@ -170,7 +170,7 @@ func (s *service) listInstalledTemplatesForType(spc clientspace.Space, typeKey d
 	}
 	existingTemplatesMap := map[string]struct{}{}
 	for _, rec := range alreadyInstalledTemplates {
-		sourceObject := rec.Details.GetStringOrDefault(bundle.RelationKeySourceObject, "")
+		sourceObject := rec.Details.GetString(bundle.RelationKeySourceObject)
 		if sourceObject != "" {
 			existingTemplatesMap[sourceObject] = struct{}{}
 		}

@@ -95,7 +95,7 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (d
 		}
 		for _, r := range records {
 			e := &entry{
-				id:   r.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
+				id:   r.Details.GetString(bundle.RelationKeyId),
 				data: r.Details,
 			}
 			ctx.entries = append(ctx.entries, e)

@@ -52,7 +52,7 @@ type textDetails struct {
 func (td *textDetails) DetailsInit(s simple.DetailsService) {
 	td.keys = newDetailKeys(pbtypes.GetStringList(td.Fields, DetailsKeyFieldName))
 	if td.keys.Text != "" {
-		td.SetText(s.Details().GetStringOrDefault(domain.RelationKey(td.keys.Text), ""), nil)
+		td.SetText(s.Details().GetString(domain.RelationKey(td.keys.Text)), nil)
 	}
 	if td.keys.Checked != "" && s.Details().Has(domain.RelationKey(td.keys.Checked)) {
 		checked := s.Details().GetBool(domain.RelationKey(td.keys.Checked))

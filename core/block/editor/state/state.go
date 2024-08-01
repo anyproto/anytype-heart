@@ -197,7 +197,7 @@ func (s *State) GroupId() string {
 }
 
 func (s *State) SpaceID() string {
-	return s.LocalDetails().GetStringOrDefault(bundle.RelationKeySpaceId, "")
+	return s.LocalDetails().GetString(bundle.RelationKeySpaceId)
 }
 
 func (s *State) Add(b simple.Block) (ok bool) {
@@ -1100,7 +1100,7 @@ func (s *State) ObjectTypeKey() domain.TypeKey {
 	if len(objTypes) == 0 && !s.noObjectType {
 		log.Debugf("object %s (%s) has %d object types instead of 1",
 			s.RootId(),
-			s.Details().GetStringOrDefault(bundle.RelationKeyName, ""),
+			s.Details().GetString(bundle.RelationKeyName),
 			len(objTypes),
 		)
 	}
@@ -1177,7 +1177,7 @@ func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
 
 	for _, key := range s.FileRelationKeys() {
 		if key == bundle.RelationKeyCoverId {
-			v := details.GetStringOrDefault(bundle.RelationKeyCoverId, "")
+			v := details.GetString(bundle.RelationKeyCoverId)
 			_, err := cid.Decode(v)
 			if err != nil {
 				// this is an exception cause coverId can contain not a file hash but color
@@ -1302,7 +1302,7 @@ func (s *State) Validate() (err error) {
 
 // IsEmpty returns whether state has any blocks beside template blocks(root, header, title, etc)
 func (s *State) IsEmpty(checkTitle bool) bool {
-	if checkTitle && s.Details().GetStringOrDefault(bundle.RelationKeyName, "") != "" {
+	if checkTitle && s.Details().GetString(bundle.RelationKeyName) != "" {
 		return false
 	}
 	var emptyTextFound bool
@@ -1316,7 +1316,7 @@ func (s *State) IsEmpty(checkTitle bool) bool {
 		emptyTextFound = true
 	}
 
-	if s.Details().GetStringOrDefault(bundle.RelationKeyDescription, "") != "" {
+	if s.Details().GetString(bundle.RelationKeyDescription) != "" {
 		return false
 	}
 

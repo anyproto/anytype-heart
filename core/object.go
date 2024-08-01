@@ -183,7 +183,7 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 			rec.Details = rec.Details.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...)
 		}
 		resultsModels = append(resultsModels, &model.SearchResult{
-			ObjectId: rec.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
+			ObjectId: rec.Details.GetString(bundle.RelationKeyId),
 			Details:  rec.Details.ToProto(),
 			Meta:     []*model.SearchMeta{&(results[i].Meta)},
 		})
@@ -209,7 +209,7 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 		if r.Details == nil {
 			continue
 		}
-		if v := r.Details.GetStringOrDefault(bundle.RelationKeyId, ""); v != "" {
+		if v := r.Details.GetString(bundle.RelationKeyId); v != "" {
 			if v == id {
 				found = true
 				break

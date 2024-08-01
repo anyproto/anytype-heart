@@ -19,10 +19,10 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 		return "", nil, fmt.Errorf("create option: no data")
 	}
 
-	if details.GetStringOrDefault(bundle.RelationKeyName, "") == "" {
+	if details.GetString(bundle.RelationKeyName) == "" {
 		return "", nil, fmt.Errorf("name is empty")
 	}
-	if details.GetStringOrDefault(bundle.RelationKeyRelationKey, "") == "" {
+	if details.GetString(bundle.RelationKeyRelationKey) == "" {
 		return "", nil, fmt.Errorf("relation key is empty")
 	}
 
@@ -41,7 +41,7 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 }
 
 func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *domain.Details) (domain.UniqueKey, error) {
-	uniqueKey := details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
+	uniqueKey := details.GetString(bundle.RelationKeyUniqueKey)
 	if uniqueKey == "" {
 		return domain.NewUniqueKey(sbType, bson.NewObjectId().Hex())
 	}

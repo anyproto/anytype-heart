@@ -423,7 +423,7 @@ type FilterLike struct {
 }
 
 func (l FilterLike) FilterObject(g *domain.Details) bool {
-	val, ok := g.GetString(domain.RelationKey(l.Key))
+	val, ok := g.TryString(domain.RelationKey(l.Key))
 	if !ok {
 		return false
 	}
@@ -516,7 +516,7 @@ func (l FilterAllIn) FilterObject(g *domain.Details) bool {
 	if len(l.Strings) > 0 {
 		// Single string
 		{
-			val, ok := g.GetString(l.Key)
+			val, ok := g.TryString(l.Key)
 			if ok && len(l.Strings) == 1 {
 				return l.Strings[0] == val
 			}
@@ -580,7 +580,7 @@ func (exIn FilterOptionsEqual) FilterObject(g *domain.Details) bool {
 		return false
 	}
 
-	if val, ok := g.GetString(exIn.Key); ok {
+	if val, ok := g.TryString(exIn.Key); ok {
 		_, ok := exIn.Options[val]
 		if !ok {
 			return false
@@ -656,7 +656,7 @@ func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFil
 
 	ids := make([]string, 0, len(records))
 	for _, rec := range records {
-		ids = append(ids, rec.Details.GetStringOrDefault(bundle.RelationKeyId, ""))
+		ids = append(ids, rec.Details.GetString(bundle.RelationKeyId))
 	}
 	return &FilterNestedIn{
 		Key:                    relationKey,

@@ -325,7 +325,7 @@ func (p *Pb) normalizeSnapshot(snapshot *common.SnapshotModel,
 
 	if snapshot.SbType == coresb.SmartBlockTypeSubObject {
 		details := snapshot.Data.Details
-		originalId := snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		originalId := snapshot.Data.Details.GetString(bundle.RelationKeyId)
 		var sourceObjectId string
 		// migrate old sub objects into real objects
 		if snapshot.Data.ObjectTypes[0] == bundle.TypeKeyObjectType.URL() {
@@ -346,7 +346,7 @@ func (p *Pb) normalizeSnapshot(snapshot *common.SnapshotModel,
 			return "", fmt.Errorf("unknown sub object type %s", snapshot.Data.ObjectTypes[0])
 		}
 		if sourceObjectId != "" {
-			if details.GetStringOrDefault(bundle.RelationKeySourceObject, "") == "" {
+			if details.GetString(bundle.RelationKeySourceObject) == "" {
 				details.Set(bundle.RelationKeySourceObject, pbtypes.String(sourceObjectId))
 			}
 		}
@@ -380,7 +380,7 @@ func (p *Pb) normalizeSnapshot(snapshot *common.SnapshotModel,
 }
 
 func (p *Pb) normalizeFilePath(snapshot *common.SnapshotModel, pbFiles source.Source, path string) error {
-	filePath := snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeySource, "")
+	filePath := snapshot.Data.Details.GetString(bundle.RelationKeySource)
 	fileName, _, err := common.ProvideFileName(filePath, pbFiles, path, p.tempDirProvider)
 	if err != nil {
 		return err
@@ -393,7 +393,7 @@ func (p *Pb) normalizeFilePath(snapshot *common.SnapshotModel, pbFiles source.So
 }
 
 func (p *Pb) getIDForUserProfile(snapshot *common.SnapshotModel, profileID string, id string, isMigration bool) (string, error) {
-	objectID := snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+	objectID := snapshot.Data.Details.GetString(bundle.RelationKeyId)
 	if objectID == profileID && isMigration {
 		return p.accountService.ProfileObjectId()
 	}
@@ -401,7 +401,7 @@ func (p *Pb) getIDForUserProfile(snapshot *common.SnapshotModel, profileID strin
 }
 
 func (p *Pb) setProfileIconOption(snapshot *common.SnapshotModel, profileID string) {
-	objectID := snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+	objectID := snapshot.Data.Details.GetString(bundle.RelationKeyId)
 	if objectID != profileID {
 		return
 	}
@@ -437,7 +437,7 @@ func (p *Pb) injectImportDetails(snapshot *common.SnapshotModel) {
 	if snapshot.Data.Details == nil {
 		snapshot.Data.Details = domain.NewDetails()
 	}
-	if id := snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, ""); id != "" {
+	if id := snapshot.Data.Details.GetString(bundle.RelationKeyId); id != "" {
 		snapshot.Data.Details.Set(bundle.RelationKeyOldAnytypeID, pbtypes.String(id))
 	}
 	p.setSourceFilePath(snapshot)
@@ -448,8 +448,8 @@ func (p *Pb) injectImportDetails(snapshot *common.SnapshotModel) {
 }
 
 func (p *Pb) setSourceFilePath(snapshot *common.SnapshotModel) {
-	spaceId := snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeySpaceId, "")
-	id := snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+	spaceId := snapshot.Data.Details.GetString(bundle.RelationKeySpaceId)
+	id := snapshot.Data.Details.GetString(bundle.RelationKeyId)
 	sourceFilePath := filepath.Join(spaceId, id)
 	snapshot.Data.Details.Set(bundle.RelationKeySourceFilePath, pbtypes.String(sourceFilePath))
 }
@@ -464,7 +464,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot, allErrors *commo
 	oldToNewID := make(map[string]string, len(snapshots))
 	fileIDs := make([]string, 0)
 	for _, snapshot := range snapshots {
-		id := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		id := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyId)
 		oldToNewID[id] = snapshot.Id
 		fileIDs = append(fileIDs, lo.Map(snapshot.Snapshot.FileKeys, func(item *pb.ChangeFileKeys, index int) string {
 			return item.Hash

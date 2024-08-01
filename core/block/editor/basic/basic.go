@@ -500,7 +500,7 @@ func (bs *basic) ReplaceLink(oldId, newId string) error {
 	for _, rel := range rels {
 		if rel.Format == model.RelationFormat_object {
 			key := domain.RelationKey(rel.Key)
-			if details.GetStringOrDefault(key, "") == oldId {
+			if details.GetString(key) == oldId {
 				s.SetDetail(key, pbtypes.String(newId))
 			}
 		}

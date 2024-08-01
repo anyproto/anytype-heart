@@ -79,10 +79,10 @@ func (g *graphjson) ImageHashes() []string {
 func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 	n := Node{
 		Id:          st.RootId(),
-		Name:        st.Details().GetStringOrDefault(bundle.RelationKeyName, ""),
-		IconImage:   st.Details().GetStringOrDefault(bundle.RelationKeyIconImage, ""),
-		IconEmoji:   st.Details().GetStringOrDefault(bundle.RelationKeyIconEmoji, ""),
-		Description: st.Details().GetStringOrDefault(bundle.RelationKeyDescription, ""),
+		Name:        st.Details().GetString(bundle.RelationKeyName),
+		IconImage:   st.Details().GetString(bundle.RelationKeyIconImage),
+		IconEmoji:   st.Details().GetString(bundle.RelationKeyIconEmoji),
+		Description: st.Details().GetString(bundle.RelationKeyDescription),
 		Type:        st.ObjectTypeKey(),
 		Layout:      int(st.Details().GetInt64OrDefault(bundle.RelationKeyLayout, 0)),
 	}

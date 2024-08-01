@@ -152,7 +152,7 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 }
 
 func (b *builtinTemplate) setObjectTypes(st *state.State) error {
-	targetObjectTypeID := st.Details().GetStringOrDefault(bundle.RelationKeyTargetObjectType, "")
+	targetObjectTypeID := st.Details().GetString(bundle.RelationKeyTargetObjectType)
 	var targetObjectTypeKey domain.TypeKey
 	if strings.HasPrefix(targetObjectTypeID, addr.BundledObjectTypeURLPrefix) {
 		// todo: remove this hack after fixing bundled templates
@@ -176,7 +176,7 @@ func (b *builtinTemplate) validate(st *state.State) (err error) {
 	if !cd.GetBool(bundle.RelationKeyTemplateIsBundled) {
 		return fmt.Errorf("bundled template validation: %s not bundled", st.RootId())
 	}
-	targetObjectTypeID := cd.GetStringOrDefault(bundle.RelationKeyTargetObjectType, "")
+	targetObjectTypeID := cd.GetString(bundle.RelationKeyTargetObjectType)
 	if targetObjectTypeID == "" || domain.TypeKey(targetObjectTypeID) == st.ObjectTypeKey() {
 		return fmt.Errorf("bundled template validation: %s unexpected target object type: %v", st.RootId(), targetObjectTypeID)
 	}

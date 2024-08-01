@@ -650,11 +650,11 @@ func (r *RollupItem) handleArrayType(key string, details *domain.Details) {
 			ds.SetDetail(key, tempDetails)
 		}
 		if _, ok := object.(*TitleItem); ok {
-			name := tempDetails.GetStringOrDefault(bundle.RelationKeyName, "")
+			name := tempDetails.GetString(bundle.RelationKeyName)
 			result = append(result, name)
 		}
 
-		if v, ok := tempDetails.GetString(domain.RelationKey(key)); ok {
+		if v, ok := tempDetails.TryString(domain.RelationKey(key)); ok {
 			result = append(result, v)
 		} else if v, ok := tempDetails.TryBool(domain.RelationKey(key)); ok {
 			result = append(result, strconv.FormatBool(v))

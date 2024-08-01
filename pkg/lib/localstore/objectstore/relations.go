@@ -113,7 +113,7 @@ func (s *dsObjectStore) GetRelationByID(id string) (*model.Relation, error) {
 		return nil, err
 	}
 
-	if _, ok := det.GetString(bundle.RelationKeyRelationKey); !ok {
+	if _, ok := det.TryString(bundle.RelationKeyRelationKey); !ok {
 		return nil, fmt.Errorf("object %s is not a relation", id)
 	}
 

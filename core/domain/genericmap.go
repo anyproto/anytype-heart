@@ -66,12 +66,12 @@ func (d *GenericMap[K]) GetBool(key K) bool {
 	return d.Get(key).BoolOrDefault(false)
 }
 
-func (d *GenericMap[K]) GetString(key K) (string, bool) {
+func (d *GenericMap[K]) TryString(key K) (string, bool) {
 	return d.Get(key).String()
 }
 
-func (d *GenericMap[K]) GetStringOrDefault(key K, def string) string {
-	return d.Get(key).StringOrDefault(def)
+func (d *GenericMap[K]) GetString(key K) string {
+	return d.Get(key).StringOrDefault("")
 }
 
 func (d *GenericMap[K]) GetInt64(key K) (int64, bool) {
