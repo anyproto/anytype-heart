@@ -85,7 +85,7 @@ func (t *GroupTag) MakeGroups() (GroupSlice, error) {
 
 	// multiple tag groups
 	for _, rec := range t.Records {
-		tagIDs := slice.Filter(rec.Details.GetStringListOrDefault(t.Key, nil), func(tagID string) bool { // filter removed options
+		tagIDs := slice.Filter(rec.Details.GetStringList(t.Key), func(tagID string) bool { // filter removed options
 			return uniqMap[tagID]
 		})
 

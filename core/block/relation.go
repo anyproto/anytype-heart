@@ -23,7 +23,7 @@ func (s *Service) ObjectTypeRelationAdd(ctx context.Context, objectTypeId string
 	}
 	return cache.Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		list := st.Details().GetStringListOrDefault(bundle.RelationKeyRecommendedRelations, nil)
+		list := st.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
 		for _, relKey := range relationKeys {
 			relId, err := b.Space().GetRelationIdByKey(ctx, relKey)
 			if err != nil {
@@ -44,7 +44,7 @@ func (s *Service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 	}
 	return cache.Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		list := st.Details().GetStringListOrDefault(bundle.RelationKeyRecommendedRelations, nil)
+		list := st.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
 		for _, relKey := range relationKeys {
 			relId, err := b.Space().GetRelationIdByKey(ctx, relKey)
 			if err != nil {

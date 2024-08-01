@@ -43,7 +43,7 @@ func (ds *dependencyService) depIdsByEntries(entries []*entry, depKeys []domain.
 	depIds = forceIds
 	for _, e := range entries {
 		for _, k := range depKeys {
-			for _, depId := range e.data.GetStringListOrDefault(k, nil) {
+			for _, depId := range e.data.GetStringList(k) {
 				if depId != "" && slice.FindPos(depIds, depId) == -1 && depId != e.id {
 					depIds = append(depIds, depId)
 				}

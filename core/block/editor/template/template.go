@@ -238,7 +238,7 @@ var WithDefaultFeaturedRelations = func(s *state.State) {
 
 var WithAddedFeaturedRelation = func(key domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
-		var featRels = s.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
+		var featRels = s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 		if slice.FindPos(featRels, key.String()) > -1 {
 			return
 		} else {
@@ -249,7 +249,7 @@ var WithAddedFeaturedRelation = func(key domain.RelationKey) StateTransformer {
 
 var WithRemovedFeaturedRelation = func(key domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
-		var featRels = s.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
+		var featRels = s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 		if slice.FindPos(featRels, key.String()) > -1 {
 			s.SetDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList(slice.RemoveMut(featRels, key.String())))
 			return
@@ -258,7 +258,7 @@ var WithRemovedFeaturedRelation = func(key domain.RelationKey) StateTransformer 
 }
 
 var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.State) {
-	fr := s.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
+	fr := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 
 	if slice.FindPos(fr, bundle.RelationKeyCreator.String()) != -1 {
 		frc := make([]string, len(fr))
@@ -567,7 +567,7 @@ var WithBookmarkBlocks = func(s *state.State) {
 		s.RemoveRelation(oldRel)
 	}
 
-	fr := s.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
+	fr := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 
 	if slice.FindPos(fr, bundle.RelationKeyCreatedDate.String()) == -1 {
 		fr = append(fr, bundle.RelationKeyCreatedDate.String())

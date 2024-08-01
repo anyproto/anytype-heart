@@ -114,7 +114,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, relations, o
 		}
 
 		// add all object relation values as dependents
-		for _, targetID := range det.GetStringListOrDefault(domain.RelationKey(rel.Key), nil) {
+		for _, targetID := range det.GetStringList(domain.RelationKey(rel.Key)) {
 			if targetID == "" {
 				continue
 			}

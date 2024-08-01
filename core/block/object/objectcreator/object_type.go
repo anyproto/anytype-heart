@@ -30,7 +30,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	if !object.Has(bundle.RelationKeyRecommendedLayout) {
 		object.Set(bundle.RelationKeyRecommendedLayout, model.ObjectType_basic)
 	}
-	if len(object.GetStringListOrDefault(bundle.RelationKeyRecommendedRelations, nil)) == 0 {
+	if len(object.GetStringList(bundle.RelationKeyRecommendedRelations)) == 0 {
 		err = s.fillRecommendedRelationsFromLayout(ctx, space, object)
 		if err != nil {
 			return "", nil, fmt.Errorf("fill recommended relations: %w", err)

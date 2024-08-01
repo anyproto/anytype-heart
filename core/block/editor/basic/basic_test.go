@@ -684,7 +684,7 @@ func TestBasic_FeaturedRelationAdd(t *testing.T) {
 	require.NoError(t, b.FeaturedRelationAdd(nil, newRel...))
 
 	res := sb.NewState()
-	assert.Equal(t, newRel, res.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil))
+	assert.Equal(t, newRel, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
 	assert.NotNil(t, res.Pick(template.DescriptionBlockId))
 }
 
@@ -699,7 +699,7 @@ func TestBasic_FeaturedRelationRemove(t *testing.T) {
 	require.NoError(t, b.FeaturedRelationRemove(nil, bundle.RelationKeyDescription.String()))
 
 	res := sb.NewState()
-	assert.Equal(t, []string{bundle.RelationKeyName.String()}, res.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil))
+	assert.Equal(t, []string{bundle.RelationKeyName.String()}, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
 	assert.Nil(t, res.PickParentOf(template.DescriptionBlockId))
 }
 

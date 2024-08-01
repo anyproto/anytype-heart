@@ -53,8 +53,8 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 		if _, inSet := gs.set[ctxEntry.id]; inSet {
 			cacheEntry := gs.cache.Get(ctxEntry.id)
 			if !checkGroups && cacheEntry != nil {
-				oldList := cacheEntry.data.GetStringListOrDefault(gs.relKey, nil)
-				newList := ctxEntry.data.GetStringListOrDefault(gs.relKey, nil)
+				oldList := cacheEntry.data.GetStringList(gs.relKey)
+				newList := ctxEntry.data.GetStringList(gs.relKey)
 				checkGroups = !slice.UnsortedEqual(oldList, newList)
 			}
 			if !inFilter {

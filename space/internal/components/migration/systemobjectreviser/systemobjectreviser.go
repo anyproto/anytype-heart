@@ -143,8 +143,8 @@ func buildDiffDetails(origin, current *domain.Details) *domain.Details {
 	diff.Iterate(func(key domain.RelationKey, value any) bool {
 		if key == bundle.RelationKeyTargetObjectType {
 			// special case. We don't want to remove the types that was set by user, so only add ones that we have
-			currentList := current.GetStringListOrDefault(bundle.RelationKeyTargetObjectType, nil)
-			missedInCurrent, _ := lo.Difference(origin.GetStringListOrDefault(bundle.RelationKeyTargetObjectType, nil), currentList)
+			currentList := current.GetStringList(bundle.RelationKeyTargetObjectType)
+			missedInCurrent, _ := lo.Difference(origin.GetStringList(bundle.RelationKeyTargetObjectType), currentList)
 			currentList = append(currentList, missedInCurrent...)
 			value = pbtypes.StringList(currentList)
 		}

@@ -90,13 +90,13 @@ func (d *GenericMap[K]) GetFloat(key K) float64 {
 	return d.Get(key).FloatOrDefault(0)
 }
 
-func (d *GenericMap[K]) GetStringList(key K) ([]string, bool) {
+func (d *GenericMap[K]) TryStringList(key K) ([]string, bool) {
 	return d.Get(key).StringList()
 }
 
 // TODO StringList in pbtypes return []string{singleValue} for string values
-func (d *GenericMap[K]) GetStringListOrDefault(key K, def []string) []string {
-	return d.Get(key).StringListOrDefault(def)
+func (d *GenericMap[K]) GetStringList(key K) []string {
+	return d.Get(key).StringListOrDefault(nil)
 }
 
 func (d *GenericMap[K]) GetFloatList(key K) ([]float64, bool) {

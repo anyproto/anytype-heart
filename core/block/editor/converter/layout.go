@@ -136,7 +136,7 @@ func (c *layoutConverter) fromNoteToSet(space smartblock.Space, st *state.State)
 }
 
 func (c *layoutConverter) fromAnyToSet(space smartblock.Space, st *state.State) error {
-	source := st.Details().GetStringListOrDefault(bundle.RelationKeySetOf, nil)
+	source := st.Details().GetStringList(bundle.RelationKeySetOf)
 	if len(source) == 0 && space != nil {
 		defaultTypeID, err := space.GetTypeIdByKey(context.Background(), DefaultSetSource)
 		if err != nil {
@@ -155,7 +155,7 @@ func (c *layoutConverter) fromAnyToSet(space smartblock.Space, st *state.State) 
 }
 
 func addFeaturedRelationSetOf(st *state.State) {
-	fr := st.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
+	fr := st.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	if !slices.Contains(fr, bundle.RelationKeySetOf.String()) {
 		fr = append(fr, bundle.RelationKeySetOf.String())
 	}
@@ -168,7 +168,7 @@ func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 		return fmt.Errorf("dataview block is not found")
 	}
 	details := st.Details()
-	setSourceIds := details.GetStringListOrDefault(bundle.RelationKeySetOf, nil)
+	setSourceIds := details.GetStringList(bundle.RelationKeySetOf)
 	spaceId := st.SpaceID()
 
 	c.removeRelationSetOf(st)
@@ -262,7 +262,7 @@ func (c *layoutConverter) fromAnyToNote(st *state.State) error {
 func (c *layoutConverter) removeRelationSetOf(st *state.State) {
 	st.RemoveDetail(bundle.RelationKeySetOf)
 
-	fr := st.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
+	fr := st.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	fr = slice.RemoveMut(fr, bundle.RelationKeySetOf.String())
 	st.SetDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList(fr))
 }

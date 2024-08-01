@@ -1171,7 +1171,7 @@ func getChangedFileHashes(s *state.State, fileDetailKeys []domain.RelationKey, a
 		det := act.Details.After
 		if det != nil {
 			for _, detKey := range fileDetailKeys {
-				if list := det.GetStringListOrDefault(detKey, nil); len(list) > 0 {
+				if list := det.GetStringList(detKey); len(list) > 0 {
 					hashes = append(hashes, list...)
 				} else if s := det.GetString(detKey); s != "" {
 					hashes = append(hashes, s)
@@ -1251,7 +1251,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	creator := st.Details().GetString(bundle.RelationKeyCreator)
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
-	links := sb.LocalDetails().GetStringListOrDefault(bundle.RelationKeyLinks, nil)
+	links := sb.LocalDetails().GetStringList(bundle.RelationKeyLinks)
 	// so links will have this order
 	// 1. Simple blocks: links, mentions in the text
 	// 2. Relations(format==Object)

@@ -20,7 +20,7 @@ func RelationFromDetails(det *domain.Details) *Relation {
 			ReadOnly:         det.GetBool(bundle.RelationKeyRelationReadonlyValue),
 			ReadOnlyRelation: false,
 			Multi:            maxCount > 1,
-			ObjectTypes:      det.GetStringListOrDefault(bundle.RelationKeyRelationFormatObjectTypes, nil),
+			ObjectTypes:      det.GetStringList(bundle.RelationKeyRelationFormatObjectTypes),
 			MaxCount:         maxCount,
 			Description:      det.GetString(bundle.RelationKeyDescription),
 			Scope:            model.RelationScope(det.GetFloat(bundle.RelationKeyScope)),

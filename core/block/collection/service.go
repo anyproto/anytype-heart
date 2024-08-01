@@ -213,7 +213,7 @@ func (s *Service) setDefaultObjectTypeToViews(st *state.State) {
 		return
 	}
 
-	setOfValue := st.ParentState().Details().GetStringListOrDefault(bundle.RelationKeySetOf, nil)
+	setOfValue := st.ParentState().Details().GetStringList(bundle.RelationKeySetOf)
 	if len(setOfValue) == 0 {
 		return
 	}

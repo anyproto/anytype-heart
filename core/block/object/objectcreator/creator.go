@@ -130,7 +130,7 @@ func (s *service) createObjectInSpace(
 		return s.createSet(ctx, space, createSetRequest{
 			Details:       details,
 			InternalFlags: req.InternalFlags,
-			Source:        details.GetStringListOrDefault(bundle.RelationKeySetOf, nil),
+			Source:        details.GetStringList(bundle.RelationKeySetOf),
 		})
 	case bundle.TypeKeyCollection:
 		var st *state.State

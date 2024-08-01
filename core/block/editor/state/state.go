@@ -1205,7 +1205,7 @@ func (s *State) ModifyLinkedObjectsInDetails(modifier func(id string) string) {
 
 func (s *State) modifyIdsInDetail(details *domain.Details, key domain.RelationKey, modifier func(id string) string) {
 	// TODO StringList in pbtypes return []string{singleValue} for string values
-	if ids := details.GetStringListOrDefault(key, nil); len(ids) > 0 {
+	if ids := details.GetStringList(key); len(ids) > 0 {
 		var anyChanges bool
 		for i, oldId := range ids {
 			if oldId == "" {
@@ -1818,7 +1818,7 @@ func (s *State) RemoveRelation(keys ...domain.RelationKey) {
 	s.RemoveDetail(keys...)
 	// remove from the list of featured relations
 	var foundInFeatured bool
-	featuredList := s.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
+	featuredList := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	featuredList = slice.Filter(featuredList, func(s string) bool {
 		if slice.FindPos(keys, domain.RelationKey(s)) == -1 {
 			return true

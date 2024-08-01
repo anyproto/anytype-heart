@@ -98,7 +98,7 @@ func (sb *smartBlock) collectRelationLinks(s *state.State) (ids []string) {
 		}
 
 		// Add all object relation values as dependents
-		for _, targetID := range det.GetStringListOrDefault(domain.RelationKey(rel.Key), nil) {
+		for _, targetID := range det.GetStringList(domain.RelationKey(rel.Key)) {
 			if targetID != "" {
 				ids = append(ids, targetID)
 			}

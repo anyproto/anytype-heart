@@ -53,7 +53,7 @@ func (s *dsObjectStore) extractObjectTypeFromDetails(details *domain.Details, ur
 }
 
 func (s *dsObjectStore) getRelationLinksForRecommendedRelations(details *domain.Details) []*model.RelationLink {
-	recommendedRelationIDs := details.GetStringListOrDefault(bundle.RelationKeyRecommendedRelations, nil)
+	recommendedRelationIDs := details.GetStringList(bundle.RelationKeyRecommendedRelations)
 	relationLinks := make([]*model.RelationLink, 0, len(recommendedRelationIDs))
 	for _, relationID := range recommendedRelationIDs {
 		relation, err := s.GetRelationByID(relationID)

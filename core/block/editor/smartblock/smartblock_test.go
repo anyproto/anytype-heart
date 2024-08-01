@@ -219,7 +219,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		fx.updateBackLinks(st)
 
 		// then
-		assert.Equal(t, newBackLinks, st.CombinedDetails().GetStringListOrDefault(bundle.RelationKeyBacklinks, nil))
+		assert.Equal(t, newBackLinks, st.CombinedDetails().GetStringList(bundle.RelationKeyBacklinks))
 	})
 
 	t.Run("back links were found in object store", func(t *testing.T) {
@@ -234,8 +234,8 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 
 		// then
 		details := st.CombinedDetails()
-		assert.NotNil(t, details.GetStringListOrDefault(bundle.RelationKeyBacklinks, nil))
-		assert.Equal(t, backLinks, details.GetStringListOrDefault(bundle.RelationKeyBacklinks, nil))
+		assert.NotNil(t, details.GetStringList(bundle.RelationKeyBacklinks))
+		assert.Equal(t, backLinks, details.GetStringList(bundle.RelationKeyBacklinks))
 	})
 
 	t.Run("back links were not found in object store", func(t *testing.T) {
@@ -249,7 +249,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		fx.updateBackLinks(st)
 
 		// then
-		assert.Len(t, st.CombinedDetails().GetStringListOrDefault(bundle.RelationKeyBacklinks, nil), 0)
+		assert.Len(t, st.CombinedDetails().GetStringList(bundle.RelationKeyBacklinks), 0)
 	})
 
 	t.Run("failure on retrieving back links from the store", func(t *testing.T) {
@@ -263,7 +263,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		fx.updateBackLinks(st)
 
 		// then
-		assert.Len(t, st.CombinedDetails().GetStringListOrDefault(bundle.RelationKeyBacklinks, nil), 0)
+		assert.Len(t, st.CombinedDetails().GetStringList(bundle.RelationKeyBacklinks), 0)
 	})
 }
 
@@ -492,7 +492,7 @@ func TestInjectDerivedDetails(t *testing.T) {
 		fx.injectDerivedDetails(st, spaceId, smartblock.SmartBlockTypePage)
 
 		// then
-		assert.Len(t, st.LocalDetails().GetStringListOrDefault(bundle.RelationKeyLinks, nil), 3)
+		assert.Len(t, st.LocalDetails().GetStringList(bundle.RelationKeyLinks), 3)
 	})
 }
 

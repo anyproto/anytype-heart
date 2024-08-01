@@ -523,7 +523,7 @@ func (l FilterAllIn) FilterObject(g *domain.Details) bool {
 		}
 		// String list
 		{
-			val, ok := g.GetStringList(l.Key)
+			val, ok := g.TryStringList(l.Key)
 			if ok {
 				return lo.Every(val, l.Strings)
 			}
@@ -587,7 +587,7 @@ func (exIn FilterOptionsEqual) FilterObject(g *domain.Details) bool {
 		}
 		return slices.Contains(exIn.Value, val)
 	}
-	if val, ok := g.GetStringList(exIn.Key); ok {
+	if val, ok := g.TryStringList(exIn.Key); ok {
 		onlyOptions := lo.Filter(val, func(v string, _ int) bool {
 			_, ok := exIn.Options[v]
 			return ok

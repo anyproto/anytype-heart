@@ -430,7 +430,7 @@ func (bs *basic) AddRelationAndSet(ctx session.Context, req pb.RpcBlockRelationA
 
 func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (err error) {
 	s := bs.NewStateCtx(ctx)
-	fr := s.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
+	fr := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	frc := make([]string, len(fr))
 	copy(frc, fr)
 	for _, r := range relations {
@@ -457,7 +457,7 @@ func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (
 
 func (bs *basic) FeaturedRelationRemove(ctx session.Context, relations ...string) (err error) {
 	s := bs.NewStateCtx(ctx)
-	fr := s.Details().GetStringListOrDefault(bundle.RelationKeyFeaturedRelations, nil)
+	fr := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	frc := make([]string, len(fr))
 	copy(frc, fr)
 	for _, r := range relations {
