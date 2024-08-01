@@ -208,7 +208,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
 		assert.Equal(t, objectsInCollection[0], "oldObjectInWidget")
-		assert.False(t, rootCollectionState.Details().GetBoolOrDefault(bundle.RelationKeyIsFavorite, false))
+		assert.False(t, rootCollectionState.Details().GetBool(bundle.RelationKeyIsFavorite))
 
 		rootCollectionState = state.NewDocFromSnapshot("", collection[1].Snapshot).(*state.State)
 		objectsInCollection = rootCollectionState.GetStoreSlice(template.CollectionStoreKey)

@@ -173,7 +173,7 @@ func (b *builtinTemplate) validate(st *state.State) (err error) {
 	if st.ObjectTypeKey() != bundle.TypeKeyTemplate {
 		return fmt.Errorf("bundled template validation: %s unexpected object type: %v", st.RootId(), st.ObjectTypeKey())
 	}
-	if !cd.GetBoolOrDefault(bundle.RelationKeyTemplateIsBundled, false) {
+	if !cd.GetBool(bundle.RelationKeyTemplateIsBundled) {
 		return fmt.Errorf("bundled template validation: %s not bundled", st.RootId())
 	}
 	targetObjectTypeID := cd.GetStringOrDefault(bundle.RelationKeyTargetObjectType, "")

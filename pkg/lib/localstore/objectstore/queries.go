@@ -54,8 +54,8 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 		err         error
 	)
 
-	isDeleted := details.GetBoolOrDefault(bundle.RelationKeyIsDeleted, false)
-	isArchived := details.GetBoolOrDefault(bundle.RelationKeyIsArchived, false)
+	isDeleted := details.GetBool(bundle.RelationKeyIsDeleted)
+	isArchived := details.GetBool(bundle.RelationKeyIsArchived)
 	if isDeleted || isArchived {
 		return nil
 	}

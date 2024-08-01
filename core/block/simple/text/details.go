@@ -55,7 +55,7 @@ func (td *textDetails) DetailsInit(s simple.DetailsService) {
 		td.SetText(s.Details().GetStringOrDefault(domain.RelationKey(td.keys.Text), ""), nil)
 	}
 	if td.keys.Checked != "" && s.Details().Has(domain.RelationKey(td.keys.Checked)) {
-		checked := s.Details().GetBoolOrDefault(domain.RelationKey(td.keys.Checked), false)
+		checked := s.Details().GetBool(domain.RelationKey(td.keys.Checked))
 		td.SetChecked(checked)
 	}
 	return

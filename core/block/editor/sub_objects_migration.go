@@ -53,7 +53,7 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 				return
 			}
 
-			if info.Details.GetBoolOrDefault(migratedKey, false) {
+			if info.Details.GetBool(migratedKey) {
 				return
 			}
 			uniqueKeyRaw := info.Details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")

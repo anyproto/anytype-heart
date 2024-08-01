@@ -387,7 +387,7 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Detai
 }
 
 func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID string) {
-	isFavorite := snapshot.Details.GetBoolOrDefault(bundle.RelationKeyIsFavorite, false)
+	isFavorite := snapshot.Details.GetBool(bundle.RelationKeyIsFavorite)
 	if isFavorite {
 		err := oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
 		if err != nil {
@@ -397,7 +397,7 @@ func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID strin
 }
 
 func (oc *ObjectCreator) setArchived(snapshot *common.StateSnapshot, newID string) {
-	isArchive := snapshot.Details.GetBoolOrDefault(bundle.RelationKeyIsArchived, false)
+	isArchive := snapshot.Details.GetBool(bundle.RelationKeyIsArchived)
 	if isArchive {
 		err := oc.service.SetPageIsArchived(pb.RpcObjectSetIsArchivedRequest{ContextId: newID, IsArchived: true})
 		if err != nil {

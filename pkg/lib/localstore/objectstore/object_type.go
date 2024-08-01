@@ -25,7 +25,7 @@ func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
 		return nil, ErrObjectNotFound
 	}
 
-	if details.GetBoolOrDefault(bundle.RelationKeyIsDeleted, false) {
+	if details.GetBool(bundle.RelationKeyIsDeleted) {
 		return nil, fmt.Errorf("type was removed")
 	}
 
@@ -45,7 +45,7 @@ func (s *dsObjectStore) extractObjectTypeFromDetails(details *domain.Details, ur
 		Name:       details.GetStringOrDefault(bundle.RelationKeyName, ""),
 		Layout:     model.ObjectTypeLayout(details.GetInt64OrDefault(bundle.RelationKeyRecommendedLayout, 0)),
 		IconEmoji:  details.GetStringOrDefault(bundle.RelationKeyIconEmoji, ""),
-		IsArchived: details.GetBoolOrDefault(bundle.RelationKeyIsArchived, false),
+		IsArchived: details.GetBool(bundle.RelationKeyIsArchived),
 		// we use Page for all custom object types
 		Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 		RelationLinks: s.getRelationLinksForRecommendedRelations(details),

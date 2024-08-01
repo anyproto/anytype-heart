@@ -656,7 +656,7 @@ func (r *RollupItem) handleArrayType(key string, details *domain.Details) {
 
 		if v, ok := tempDetails.GetString(domain.RelationKey(key)); ok {
 			result = append(result, v)
-		} else if v, ok := tempDetails.GetBool(domain.RelationKey(key)); ok {
+		} else if v, ok := tempDetails.TryBool(domain.RelationKey(key)); ok {
 			result = append(result, strconv.FormatBool(v))
 		} else if v, ok := tempDetails.GetFloat(domain.RelationKey(key)); ok {
 			result = append(result, strconv.FormatFloat(v, 'f', 0, 64))

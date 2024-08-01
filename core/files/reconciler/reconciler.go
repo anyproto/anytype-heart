@@ -141,7 +141,7 @@ func (r *reconciler) FileObjectHook(id domain.FullID) func(applyInfo smartblock.
 }
 
 func (r *reconciler) needToRebind(details *domain.Details) (bool, error) {
-	if details.GetBoolOrDefault(bundle.RelationKeyIsDeleted, false) {
+	if details.GetBool(bundle.RelationKeyIsDeleted) {
 		return false, nil
 	}
 	backupStatus := filesyncstatus.Status(details.GetInt64OrDefault(bundle.RelationKeyFileBackupStatus, 0))

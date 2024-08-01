@@ -135,7 +135,7 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectCloseAllSessions()
 		st := b.NewState()
-		isFavorite = st.LocalDetails().GetBoolOrDefault(bundle.RelationKeyIsFavorite, false)
+		isFavorite = st.LocalDetails().GetBool(bundle.RelationKeyIsFavorite)
 		if isFavorite {
 			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id.ObjectID})
 		}

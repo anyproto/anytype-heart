@@ -58,12 +58,12 @@ func (d *GenericMap[K]) Has(key K) bool {
 	return ok
 }
 
-func (d *GenericMap[K]) GetBool(key K) (bool, bool) {
+func (d *GenericMap[K]) TryBool(key K) (bool, bool) {
 	return d.Get(key).Bool()
 }
 
-func (d *GenericMap[K]) GetBoolOrDefault(key K, def bool) bool {
-	return d.Get(key).BoolOrDefault(def)
+func (d *GenericMap[K]) GetBool(key K) bool {
+	return d.Get(key).BoolOrDefault(false)
 }
 
 func (d *GenericMap[K]) GetString(key K) (string, bool) {

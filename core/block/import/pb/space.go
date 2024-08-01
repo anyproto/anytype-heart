@@ -106,7 +106,7 @@ func (s *SpaceImport) filterObjects(objectTypesToImport widget.ImportWidgetFlags
 			rootObjects = append(rootObjects, snapshot.Id)
 			continue
 		}
-		if snapshot.Snapshot.Data.Details.GetBoolOrDefault(bundle.RelationKeyIsFavorite, false) {
+		if snapshot.Snapshot.Data.Details.GetBool(bundle.RelationKeyIsFavorite) {
 			rootObjects = append(rootObjects, snapshot.Id)
 			continue
 		}

@@ -504,7 +504,7 @@ func (s *dsObjectStore) getObjectsInfo(ctx context.Context, spaceID string, ids 
 		}
 		if f := info.Details; f != nil {
 			// skip deleted objects
-			if v, ok := f.GetBool(bundle.RelationKeyIsDeleted); ok && v {
+			if v, ok := f.TryBool(bundle.RelationKeyIsDeleted); ok && v {
 				continue
 			}
 		}

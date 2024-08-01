@@ -463,7 +463,7 @@ func (e *export) writeMultiDoc(ctx context.Context,
 func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportRequest, wr writer, docInfo map[string]*domain.Details, queue process.Queue, docID string) (err error) {
 	return cache.Do(e.picker, docID, func(b sb.SmartBlock) error {
 		st := b.NewState()
-		if st.CombinedDetails().GetBoolOrDefault(bundle.RelationKeyIsDeleted, false) {
+		if st.CombinedDetails().GetBool(bundle.RelationKeyIsDeleted) {
 			return nil
 		}
 
@@ -609,7 +609,7 @@ func (e *export) objectValid(sbType smartblock.SmartBlockType, info *database.Ob
 	if strings.HasPrefix(info.Id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(info.Id, addr.BundledRelationURLPrefix) {
 		return false
 	}
-	if info.Details.GetBoolOrDefault(bundle.RelationKeyIsArchived, false) && !includeArchived {
+	if info.Details.GetBool(bundle.RelationKeyIsArchived) && !includeArchived {
 		return false
 	}
 	return true
@@ -987,5 +987,5 @@ func (e *export) handleSetOfRelation(object *domain.Details, derivedObjects []da
 }
 
 func isLinkedObjectExist(rec []database.Record) bool {
-	return len(rec) > 0 && !rec[0].Details.GetBoolOrDefault(bundle.RelationKeyIsDeleted, false)
+	return len(rec) > 0 && !rec[0].Details.GetBool(bundle.RelationKeyIsDeleted)
 }

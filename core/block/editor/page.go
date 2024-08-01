@@ -111,7 +111,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 
 func (p *Page) isRelationDeleted(ctx *smartblock.InitContext) bool {
 	return p.Type() == coresb.SmartBlockTypeRelation &&
-		ctx.State.Details().GetBoolOrDefault(bundle.RelationKeyIsUninstalled, false)
+		ctx.State.Details().GetBool(bundle.RelationKeyIsUninstalled)
 }
 
 func (p *Page) deleteRelationOptions(spaceID string, relationKey string) error {

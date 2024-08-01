@@ -1443,7 +1443,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	// Set isDeleted relation only if isUninstalled is present in details
-	if isUninstalled, ok := s.Details().GetBool(bundle.RelationKeyIsUninstalled); ok {
+	if isUninstalled, ok := s.Details().TryBool(bundle.RelationKeyIsUninstalled); ok {
 		var isDeleted bool
 		if isUninstalled {
 			isDeleted = true
