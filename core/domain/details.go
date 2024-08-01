@@ -64,37 +64,46 @@ func JsonToProto(v *fastjson.Value) (*Details, error) {
 			return
 		}
 		// key is copied
-		val, err := JsonValueToProto(v)
+		err := jsonValueToAny(res, RelationKey(k), v)
 		if err != nil {
 			visitErr = err
 		}
-		res.Set(RelationKey(k), val)
 	})
 	return res, visitErr
 }
 
-func JsonValueToProto(val *fastjson.Value) (any, error) {
+func jsonValueToAny(d *Details, key RelationKey, val *fastjson.Value) error {
 	switch val.Type() {
 	case fastjson.TypeNumber:
-		return val.Float64()
+		v, err := val.Float64()
+		if err != nil {
+			return fmt.Errorf("number: %w", err)
+		}
+		d.SetFloat(key, v)
+		return nil
+
 	case fastjson.TypeString:
 		v, err := val.StringBytes()
 		if err != nil {
-			return nil, fmt.Errorf("string: %w", err)
+			return fmt.Errorf("string: %w", err)
 		}
-		return string(v), nil
+		d.SetString(key, string(v))
+		return nil
 	case fastjson.TypeTrue:
-		return true, nil
+		d.SetBool(key, true)
+		return nil
 	case fastjson.TypeFalse:
-		return false, nil
+		d.SetBool(key, false)
+		return nil
 	case fastjson.TypeArray:
 		arrVals, err := val.Array()
 		if err != nil {
-			return nil, fmt.Errorf("array: %w", err)
+			return fmt.Errorf("array: %w", err)
 		}
 		// Assume string as default type
 		if len(arrVals) == 0 {
-			return []string{}, nil
+			d.SetStringList(key, nil)
+			return nil
 		}
 
 		firstVal := arrVals[0]
@@ -103,27 +112,29 @@ func JsonValueToProto(val *fastjson.Value) (any, error) {
 			for _, arrVal := range arrVals {
 				v, err := arrVal.StringBytes()
 				if err != nil {
-					return nil, fmt.Errorf("array item: string: %w", err)
+					return fmt.Errorf("array item: string: %w", err)
 				}
 				res = append(res, string(v))
 			}
-			return res, nil
+			d.SetStringList(key, res)
+			return nil
 		} else if firstVal.Type() == fastjson.TypeNumber {
 			res := make([]float64, 0, len(arrVals))
 			for _, arrVal := range arrVals {
 				v, err := arrVal.Float64()
 				if err != nil {
-					return nil, fmt.Errorf("array item: number: %w", err)
+					return fmt.Errorf("array item: number: %w", err)
 				}
 				res = append(res, v)
 			}
-			return res, nil
+			d.SetFloatList(key, res)
+			return nil
 		} else {
-			return nil, fmt.Errorf("unsupported array type %s", firstVal.Type())
+			return fmt.Errorf("unsupported array type %s", firstVal.Type())
 		}
 	}
 	// TODO What is the matter with nil value?
-	return nil, nil
+	return fmt.Errorf("unsupported type %s", val.Type())
 }
 
 func ProtoToJson(arena *fastjson.Arena, details *Details) *fastjson.Value {
@@ -180,7 +191,7 @@ func StructDiff(st1, st2 *Details) *Details {
 	if st2 == nil {
 		diff = NewDetails()
 		st1.Iterate(func(k RelationKey, v any) bool {
-			diff.Set(k, Tombstone{})
+			diff.SetUnsafe(k, Tombstone{})
 			return true
 		})
 		return diff
@@ -192,7 +203,7 @@ func StructDiff(st1, st2 *Details) *Details {
 			if diff == nil {
 				diff = NewDetails()
 			}
-			diff.Set(k2, v2)
+			diff.SetUnsafe(k2, v2)
 		}
 		return true
 	})
@@ -202,7 +213,7 @@ func StructDiff(st1, st2 *Details) *Details {
 			if diff == nil {
 				diff = NewDetails()
 			}
-			diff.Set(k, Tombstone{})
+			diff.SetUnsafe(k, Tombstone{})
 		}
 		return true
 	})

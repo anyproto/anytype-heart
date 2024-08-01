@@ -65,5 +65,5 @@ func SetLastUsedDateForInitialObjectType(id string, details *domain.Details) {
 
 	// we do this trick to order crucial Anytype object types by last date
 	lastUsed := time.Now().Add(time.Duration(-1 * priority * int64(maxInstallationTime))).Unix()
-	details.Set(bundle.RelationKeyLastUsedDate, lastUsed)
+	details.SetInt64(bundle.RelationKeyLastUsedDate, lastUsed)
 }

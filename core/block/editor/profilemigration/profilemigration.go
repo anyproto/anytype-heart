@@ -58,8 +58,8 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 	newState.AddRelationLinks(st.GetRelationLinks()...)
 	newStateDetails := st.Details().ShallowCopy()
 	newName := newStateDetails.GetString(bundle.RelationKeyName) + " [migrated]"
-	newStateDetails.Set(bundle.RelationKeyName, newName)
-	newStateDetails.Set(bundle.RelationKeyIsHidden, false)
+	newStateDetails.SetString(bundle.RelationKeyName, newName)
+	newStateDetails.SetBool(bundle.RelationKeyIsHidden, false)
 	newState.SetDetails(newStateDetails)
 	// remove the identity block
 	newState.Unlink(identityBlockId)

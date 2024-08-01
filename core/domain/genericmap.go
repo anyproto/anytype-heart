@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
+
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (d *GenericMap[K]) Len() int {
 	return len(d.data)
 }
 
-func (d *GenericMap[K]) Set(key K, value any) {
+func (d *GenericMap[K]) SetUnsafe(key K, value any) {
 	// TODO Convert number value to float, convert number list value to floats
 
 	// TODO TEMP panic
@@ -21,6 +24,49 @@ func (d *GenericMap[K]) Set(key K, value any) {
 		panic(err)
 	}
 	d.data[key] = value
+}
+
+func (d *GenericMap[K]) SetBool(key K, value bool) {
+	d.data[key] = value
+}
+
+func (d *GenericMap[K]) SetString(key K, value string) {
+	d.data[key] = value
+}
+
+func (d *GenericMap[K]) SetInt64(key K, value int64) {
+	d.data[key] = float64(value)
+}
+
+func (d *GenericMap[K]) SetFloat(key K, value float64) {
+	d.data[key] = value
+}
+
+func (d *GenericMap[K]) SetStringList(key K, value []string) {
+	d.data[key] = value
+}
+
+func (d *GenericMap[K]) SetFloatList(key K, value []float64) {
+	d.data[key] = value
+}
+
+func (d *GenericMap[K]) SetProtoValue(key K, value *types.Value) {
+	switch value.Kind.(type) {
+	case *types.Value_BoolValue:
+		d.SetBool(key, value.GetBoolValue())
+	case *types.Value_StringValue:
+		d.SetString(key, value.GetStringValue())
+	case *types.Value_NumberValue:
+		d.SetFloat(key, value.GetNumberValue())
+	case *types.Value_StructValue:
+		// TODO Not implemented
+	case *types.Value_ListValue:
+		if list := pbtypes.ListValueToFloats(value.GetListValue()); len(list) > 0 {
+			d.SetFloatList(key, list)
+		} else {
+			d.SetStringList(key, pbtypes.ListValueToStrings(value.GetListValue()))
+		}
+	}
 }
 
 func (d *GenericMap[K]) Delete(key K) {
@@ -154,7 +200,7 @@ func (d *GenericMap[K]) Equal(other *GenericMap[K]) bool {
 func (d *GenericMap[K]) Merge(other *GenericMap[K]) *GenericMap[K] {
 	res := d.ShallowCopy()
 	other.Iterate(func(k K, v any) bool {
-		res.Set(k, v)
+		res.SetUnsafe(k, v)
 		return true
 	})
 	return res

@@ -126,7 +126,7 @@ func (s *service) createObjectInSpace(
 			Details: details.ToProto(),
 		})
 	case bundle.TypeKeySet:
-		details.Set(bundle.RelationKeyLayout, model.ObjectType_set)
+		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_set))
 		return s.createSet(ctx, space, createSetRequest{
 			Details:       details,
 			InternalFlags: req.InternalFlags,
@@ -134,7 +134,7 @@ func (s *service) createObjectInSpace(
 		})
 	case bundle.TypeKeyCollection:
 		var st *state.State
-		details.Set(bundle.RelationKeyLayout, model.ObjectType_collection)
+		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
 		_, details, st, err = s.collectionService.CreateCollection(details, req.InternalFlags)
 		if err != nil {
 			return "", nil, err

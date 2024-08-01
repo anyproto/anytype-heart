@@ -286,7 +286,7 @@ type Icon struct {
 
 func SetIcon(details *domain.Details, icon *Icon) *model.RelationLink {
 	if icon.Emoji != nil {
-		details.Set(bundle.RelationKeyIconEmoji, *icon.Emoji)
+		details.SetString(bundle.RelationKeyIconEmoji, *icon.Emoji)
 	}
 	var linkToIconImage string
 	if icon.Type == External && icon.External != nil {
@@ -296,7 +296,7 @@ func SetIcon(details *domain.Details, icon *Icon) *model.RelationLink {
 		linkToIconImage = icon.File.URL
 	}
 	if linkToIconImage != "" {
-		details.Set(bundle.RelationKeyIconImage, linkToIconImage)
+		details.SetString(bundle.RelationKeyIconImage, linkToIconImage)
 		return &model.RelationLink{
 			Key:    bundle.RelationKeyIconImage.String(),
 			Format: model.RelationFormat_file,

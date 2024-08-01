@@ -94,7 +94,7 @@ func applyDetailUpdates(oldDetails *domain.Details, updates []*detailUpdate) *do
 		if update.value == nil {
 			newDetails.Delete(update.key)
 		} else {
-			newDetails.Set(update.key, update.value)
+			newDetails.SetUnsafe(update.key, update.value)
 		}
 	}
 	return newDetails

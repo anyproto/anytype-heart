@@ -146,9 +146,9 @@ func buildDiffDetails(origin, current *domain.Details) *domain.Details {
 			currentList := current.GetStringList(bundle.RelationKeyTargetObjectType)
 			missedInCurrent, _ := lo.Difference(origin.GetStringList(bundle.RelationKeyTargetObjectType), currentList)
 			currentList = append(currentList, missedInCurrent...)
-			value = pbtypes.StringList(currentList)
+			value = currentList
 		}
-		details.Set(key, value)
+		details.SetUnsafe(key, value)
 		return true
 	})
 	return details

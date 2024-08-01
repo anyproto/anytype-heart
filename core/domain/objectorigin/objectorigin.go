@@ -4,7 +4,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type ObjectOrigin struct {
@@ -28,9 +27,9 @@ func (o ObjectOrigin) IsImported() bool {
 
 func (o ObjectOrigin) AddToDetails(details *domain.Details) {
 	if o.Origin != model.ObjectOrigin_none {
-		details.Set(bundle.RelationKeyOrigin, pbtypes.Int64(int64(o.Origin)))
+		details.SetInt64(bundle.RelationKeyOrigin, int64(o.Origin))
 		if o.Origin == model.ObjectOrigin_import || o.Origin == model.ObjectOrigin_usecase {
-			details.Set(bundle.RelationKeyImportType, pbtypes.Int64(int64(o.ImportType)))
+			details.SetInt64(bundle.RelationKeyImportType, int64(o.ImportType))
 		}
 	}
 }

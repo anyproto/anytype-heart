@@ -37,21 +37,21 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	if key == "" {
 		key = domain.RelationKey(bson.NewObjectId().Hex())
 	} else if bundle.HasRelation(key) {
-		object.Set(bundle.RelationKeySourceObject, addr.BundledRelationURLPrefix+key)
+		object.SetString(bundle.RelationKeySourceObject, string(addr.BundledRelationURLPrefix+key))
 	}
 	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, string(key))
 	if err != nil {
 		return "", nil, err
 	}
-	object.Set(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
-	object.Set(bundle.RelationKeyId, id)
-	object.Set(bundle.RelationKeyRelationKey, key)
+	object.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+	object.SetString(bundle.RelationKeyId, id)
+	object.SetString(bundle.RelationKeyRelationKey, string(key))
 	if details.GetInt64(bundle.RelationKeyRelationFormat) == int64(model.RelationFormat_status) {
-		object.Set(bundle.RelationKeyRelationMaxCount, 1)
+		object.SetInt64(bundle.RelationKeyRelationMaxCount, 1)
 	}
 	// objectTypes := object.GetStringListOrDefault(bundle.RelationKeyRelationFormatObjectTypes, nil)
 	// todo: check the objectTypes
-	object.Set(bundle.RelationKeyLayout, model.ObjectType_relation)
+	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)

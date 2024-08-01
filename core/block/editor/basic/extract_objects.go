@@ -165,7 +165,7 @@ func createTargetObjectDetails(nameText string, layout model.ObjectTypeLayout) *
 	details := domain.NewDetails()
 	// Without this check title will be duplicated in template.WithNameToFirstBlock
 	if layout != model.ObjectType_note {
-		details.Set(bundle.RelationKeyName, nameText)
+		details.SetString(bundle.RelationKeyName, nameText)
 	}
 	return details
 }

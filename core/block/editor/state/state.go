@@ -940,7 +940,7 @@ func (s *State) SetLocalDetail(key domain.RelationKey, value any) {
 		log.Errorf("invalid value for pb %s: %v", key, err)
 	}
 
-	s.localDetails.Set(key, value)
+	s.localDetails.SetUnsafe(key, value)
 	return
 }
 
@@ -994,7 +994,7 @@ func (s *State) SetDetail(key domain.RelationKey, value any) {
 		log.Errorf("invalid value for pb %s: %v", key, err)
 	}
 
-	s.details.Set(key, value)
+	s.details.SetUnsafe(key, value)
 	return
 }
 

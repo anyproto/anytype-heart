@@ -26,7 +26,7 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 		return fmt.Errorf("empty details")
 	}
 	// Ensure ID is set
-	details.Set(bundle.RelationKeyId, id)
+	details.SetString(bundle.RelationKeyId, id)
 
 	arena := s.arenaPool.Get()
 
@@ -58,7 +58,7 @@ func (s *dsObjectStore) migrateLocalDetails(objectId string, details *domain.Det
 	}
 	for k, v := range existingLocalDetails.Fields {
 		if ok := details.Has(domain.RelationKey(k)); !ok {
-			details.Set(domain.RelationKey(k), pbtypes.AnyToProto(v))
+			details.SetProtoValue(domain.RelationKey(k), v)
 		}
 	}
 	return true
@@ -125,7 +125,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		}
 		return txn.Commit()
 	}
-	newDetails.Set(bundle.RelationKeyId, id)
+	newDetails.SetString(bundle.RelationKeyId, id)
 	jsonVal := domain.ProtoToJson(arena, newDetails)
 	_, err = s.pendingDetails.UpsertOne(txn.Context(), jsonVal)
 	if err != nil {
@@ -166,7 +166,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 			return nil, false, nil
 		}
 		// Ensure ID is set
-		newDetails.Set(bundle.RelationKeyId, id)
+		newDetails.SetString(bundle.RelationKeyId, id)
 
 		jsonVal := domain.ProtoToJson(arena, newDetails)
 		diff, err := pbtypes.DiffJson(val, jsonVal)
@@ -207,7 +207,7 @@ func (s *dsObjectStore) updateObjectLinks(ctx context.Context, id string, links 
 
 func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.Details) {
 	detCopy := details.ShallowCopy()
-	detCopy.Set(bundle.RelationKeyId, id)
+	detCopy.SetString(bundle.RelationKeyId, id)
 	s.RLock()
 	defer s.RUnlock()
 	if s.onChangeCallback != nil {

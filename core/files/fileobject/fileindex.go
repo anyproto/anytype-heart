@@ -258,7 +258,7 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (det
 		typeKey = bundle.TypeKeyImage
 	}
 
-	details.Set(bundle.RelationKeyFileIndexingStatus, int64(model.FileIndexingStatus_Indexed))
+	details.SetInt64(bundle.RelationKeyFileIndexingStatus, int64(model.FileIndexingStatus_Indexed))
 	return details, typeKey, nil
 }
 

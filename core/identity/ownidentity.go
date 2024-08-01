@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type observerService interface {
@@ -191,7 +190,7 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *domain.
 		bundle.RelationKeyIconImage,
 	} {
 		if v, ok := profileDetails.TryString(key); ok {
-			s.details.Set(key, v)
+			s.details.SetString(key, v)
 		}
 	}
 	identityProfile := s.prepareIdentityProfile()
@@ -232,7 +231,7 @@ func (s *ownProfileSubscription) handleGlobalNameUpdate(globalName string) {
 	if s.details == nil {
 		s.details = domain.NewDetails()
 	}
-	s.details.Set(bundle.RelationKeyGlobalName, pbtypes.String(globalName))
+	s.details.SetString(bundle.RelationKeyGlobalName, globalName)
 	identityProfile := s.prepareIdentityProfile()
 	s.detailsLock.Unlock()
 

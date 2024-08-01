@@ -186,23 +186,23 @@ func (i *image) Details(ctx context.Context) (*domain.Details, error) {
 	}
 
 	if v := pbtypes.Get(largest.GetMeta(), "width"); v != nil {
-		details.Set(bundle.RelationKeyWidthInPixels, v.GetNumberValue())
+		details.SetFloat(bundle.RelationKeyWidthInPixels, v.GetNumberValue())
 	}
 
 	if v := pbtypes.Get(largest.GetMeta(), "height"); v != nil {
-		details.Set(bundle.RelationKeyHeightInPixels, v.GetNumberValue())
+		details.SetFloat(bundle.RelationKeyHeightInPixels, v.GetNumberValue())
 	}
 
 	if largest.Meta != nil {
-		details.Set(bundle.RelationKeyName, strings.TrimSuffix(largest.Name, filepath.Ext(largest.Name)))
-		details.Set(bundle.RelationKeyFileExt, strings.TrimPrefix(filepath.Ext(largest.Name), "."))
-		details.Set(bundle.RelationKeyFileMimeType, largest.Media)
-		details.Set(bundle.RelationKeySizeInBytes, float64(largest.Size_))
-		details.Set(bundle.RelationKeyAddedDate, float64(largest.Added))
+		details.SetString(bundle.RelationKeyName, strings.TrimSuffix(largest.Name, filepath.Ext(largest.Name)))
+		details.SetString(bundle.RelationKeyFileExt, strings.TrimPrefix(filepath.Ext(largest.Name), "."))
+		details.SetString(bundle.RelationKeyFileMimeType, largest.Media)
+		details.SetFloat(bundle.RelationKeySizeInBytes, float64(largest.Size_))
+		details.SetFloat(bundle.RelationKeyAddedDate, float64(largest.Added))
 	}
 
 	if !imageExif.Created.IsZero() {
-		details.Set(bundle.RelationKeyCreatedDate, float64(imageExif.Created.Unix()))
+		details.SetFloat(bundle.RelationKeyCreatedDate, float64(imageExif.Created.Unix()))
 	}
 	/*if exif.Latitude != 0.0 {
 		details.Set("latitude",  pbtypes.Float64(exif.Latitude))
@@ -211,27 +211,27 @@ func (i *image) Details(ctx context.Context) (*domain.Details, error) {
 		details.Set("longitude",  pbtypes.Float64(exif.Longitude))
 	}*/
 	if imageExif.CameraModel != "" {
-		details.Set(bundle.RelationKeyCamera, imageExif.CameraModel)
+		details.SetString(bundle.RelationKeyCamera, imageExif.CameraModel)
 	}
 	if imageExif.ExposureTime != "" {
-		details.Set(bundle.RelationKeyExposure, imageExif.ExposureTime)
+		details.SetString(bundle.RelationKeyExposure, imageExif.ExposureTime)
 	}
 	if imageExif.FNumber != 0 {
-		details.Set(bundle.RelationKeyFocalRatio, imageExif.FNumber)
+		details.SetFloat(bundle.RelationKeyFocalRatio, imageExif.FNumber)
 	}
 	if imageExif.ISO != 0 {
-		details.Set(bundle.RelationKeyCameraIso, float64(imageExif.ISO))
+		details.SetFloat(bundle.RelationKeyCameraIso, float64(imageExif.ISO))
 	}
 	if imageExif.Description != "" {
 		// use non-empty image description as an image name, because it much uglier to use file names for objects
-		details.Set(bundle.RelationKeyName, imageExif.Description)
+		details.SetString(bundle.RelationKeyName, imageExif.Description)
 	}
 	if imageExif.Artist != "" {
 		artistName, artistURL := unpackArtist(imageExif.Artist)
-		details.Set(bundle.RelationKeyMediaArtistName, artistName)
+		details.SetString(bundle.RelationKeyMediaArtistName, artistName)
 
 		if artistURL != "" {
-			details.Set(bundle.RelationKeyMediaArtistURL, artistURL)
+			details.SetString(bundle.RelationKeyMediaArtistURL, artistURL)
 		}
 	}
 	return details, nil

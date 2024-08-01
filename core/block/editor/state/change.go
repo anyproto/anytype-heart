@@ -271,7 +271,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 		s.details = det.ShallowCopy()
 	}
 	if set.Value != nil {
-		s.details.Set(domain.RelationKey(set.Key), pbtypes.ProtoToAny(set.Value))
+		s.details.SetProtoValue(domain.RelationKey(set.Key), set.Value)
 	} else {
 		s.details.Delete(domain.RelationKey(set.Key))
 	}

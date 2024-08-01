@@ -62,18 +62,18 @@ func (s *Set) IsEmpty() bool {
 }
 
 func PutToDetails(details *domain.Details, flags []*model.InternalFlag) *domain.Details {
-	ints := make([]int, 0, len(flags))
+	raw := make([]float64, 0, len(flags))
 	for _, f := range flags {
-		ints = append(ints, int(f.Value))
+		raw = append(raw, float64(f.Value))
 	}
-	return putToDetails(details, ints)
+	return putToDetails(details, raw)
 }
 
-func putToDetails(details *domain.Details, flags []int) *domain.Details {
+func putToDetails(details *domain.Details, flags []float64) *domain.Details {
 	if details == nil {
 		details = domain.NewDetails()
 	}
-	details.Set(relationKey, flags)
+	details.SetFloatList(relationKey, flags)
 
 	return details
 }

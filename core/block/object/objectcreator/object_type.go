@@ -28,7 +28,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	object := details.ShallowCopy()
 
 	if !object.Has(bundle.RelationKeyRecommendedLayout) {
-		object.Set(bundle.RelationKeyRecommendedLayout, model.ObjectType_basic)
+		object.SetInt64(bundle.RelationKeyRecommendedLayout, int64(model.ObjectType_basic))
 	}
 	if len(object.GetStringList(bundle.RelationKeyRecommendedRelations)) == 0 {
 		err = s.fillRecommendedRelationsFromLayout(ctx, space, object)
@@ -37,8 +37,8 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 		}
 	}
 
-	object.Set(bundle.RelationKeyId, id)
-	object.Set(bundle.RelationKeyLayout, model.ObjectType_objectType)
+	object.SetString(bundle.RelationKeyId, id)
+	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
@@ -69,7 +69,7 @@ func (s *service) fillRecommendedRelationsFromLayout(ctx context.Context, space 
 	if err != nil {
 		return fmt.Errorf("prepare recommended relation ids: %w", err)
 	}
-	details.Set(bundle.RelationKeyRecommendedRelations, recommendedRelationIds)
+	details.SetStringList(bundle.RelationKeyRecommendedRelations, recommendedRelationIds)
 	return nil
 }
 

@@ -211,9 +211,9 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			if fileStatus, ok := details.TryFloat(bundle.RelationKeyFileBackupStatus); ok {
 				status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
 			}
-			details.Set(bundle.RelationKeySyncStatus, pbtypes.Int64(int64(status)))
-			details.Set(bundle.RelationKeySyncError, pbtypes.Int64(int64(syncError)))
-			details.Set(bundle.RelationKeySyncDate, pbtypes.Int64(time.Now().Unix()))
+			details.SetInt64(bundle.RelationKeySyncStatus, int64(status))
+			details.SetInt64(bundle.RelationKeySyncError, int64(syncError))
+			details.SetInt64(bundle.RelationKeySyncDate, time.Now().Unix())
 			return details, true, nil
 		})
 	})

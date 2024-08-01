@@ -468,7 +468,7 @@ func (s *dsObjectStore) FTSearch() ftsearch.FTSearch {
 func (s *dsObjectStore) getObjectInfo(ctx context.Context, spaceID string, id string) (*database.ObjectInfo, error) {
 	details, err := s.sourceService.DetailsFromIdBasedSource(id)
 	if err == nil {
-		details.Set(bundle.RelationKeyId, id)
+		details.SetString(bundle.RelationKeyId, id)
 		return &database.ObjectInfo{
 			Id:      id,
 			Details: details,

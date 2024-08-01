@@ -230,9 +230,9 @@ func (s *service) prepareDetailsForInstallingObject(
 
 	spaceID := spc.Id()
 	sourceId := details.GetString(bundle.RelationKeyId)
-	details.Set(bundle.RelationKeySpaceId, spaceID)
-	details.Set(bundle.RelationKeySourceObject, sourceId)
-	details.Set(bundle.RelationKeyIsReadonly, false)
+	details.SetString(bundle.RelationKeySpaceId, spaceID)
+	details.SetString(bundle.RelationKeySourceObject, sourceId)
+	details.SetBool(bundle.RelationKeyIsReadonly, false)
 
 	if isNewSpace {
 		objecttype.SetLastUsedDateForInitialObjectType(sourceId, details)
@@ -252,7 +252,7 @@ func (s *service) prepareDetailsForInstallingObject(
 		if err != nil {
 			return nil, fmt.Errorf("prepare recommended relation ids: %w", err)
 		}
-		details.Set(bundle.RelationKeyRecommendedRelations, recommendedRelationIds)
+		details.SetStringList(bundle.RelationKeyRecommendedRelations, recommendedRelationIds)
 	}
 
 	objectTypes := details.GetStringList(bundle.RelationKeyRelationFormatObjectTypes)
@@ -272,7 +272,7 @@ func (s *service) prepareDetailsForInstallingObject(
 			}
 			objectTypes[i] = id
 		}
-		details.Set(bundle.RelationKeyRelationFormatObjectTypes, objectTypes)
+		details.SetStringList(bundle.RelationKeyRelationFormatObjectTypes, objectTypes)
 	}
 
 	return details, nil

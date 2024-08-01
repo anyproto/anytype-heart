@@ -54,24 +54,24 @@ func (f *file) audioDetails(ctx context.Context) (*domain.Details, error) {
 	d := domain.NewDetails()
 
 	if t.Album() != "" {
-		d.Set(bundle.RelationKeyAudioAlbum, t.Album())
+		d.SetString(bundle.RelationKeyAudioAlbum, t.Album())
 	}
 	if t.Artist() != "" {
-		d.Set(bundle.RelationKeyAudioArtist, t.Artist())
+		d.SetString(bundle.RelationKeyAudioArtist, t.Artist())
 	}
 	if t.Genre() != "" {
-		d.Set(bundle.RelationKeyAudioGenre, t.Genre())
+		d.SetString(bundle.RelationKeyAudioGenre, t.Genre())
 	}
 	if t.Lyrics() != "" {
-		d.Set(bundle.RelationKeyAudioLyrics, t.Lyrics())
+		d.SetString(bundle.RelationKeyAudioLyrics, t.Lyrics())
 	}
 	if n, _ := t.Track(); n != 0 {
-		d.Set(bundle.RelationKeyAudioAlbumTrackNumber, int64(n))
+		d.SetInt64(bundle.RelationKeyAudioAlbumTrackNumber, int64(n))
 	}
 	if t.Year() != 0 {
-		d.Set(bundle.RelationKeyReleasedYear, int64(t.Year()))
+		d.SetInt64(bundle.RelationKeyReleasedYear, int64(t.Year()))
 	}
-	d.Set(bundle.RelationKeyLayout, float64(model.ObjectType_audio))
+	d.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_audio))
 
 	return d, nil
 }
@@ -81,19 +81,19 @@ func (f *file) Details(ctx context.Context) (*domain.Details, domain.TypeKey, er
 
 	typeKey := bundle.TypeKeyFile
 	details := calculateCommonDetails(f.fileId, model.ObjectType_file, f.info.LastModifiedDate)
-	details.Set(bundle.RelationKeyFileMimeType, meta.Media)
-	details.Set(bundle.RelationKeyName, strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name)))
-	details.Set(bundle.RelationKeyFileExt, strings.TrimPrefix(filepath.Ext(meta.Name), "."))
-	details.Set(bundle.RelationKeySizeInBytes, float64(meta.Size))
-	details.Set(bundle.RelationKeyAddedDate, float64(meta.Added.Unix()))
+	details.SetString(bundle.RelationKeyFileMimeType, meta.Media)
+	details.SetString(bundle.RelationKeyName, strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name)))
+	details.SetString(bundle.RelationKeyFileExt, strings.TrimPrefix(filepath.Ext(meta.Name), "."))
+	details.SetFloat(bundle.RelationKeySizeInBytes, float64(meta.Size))
+	details.SetFloat(bundle.RelationKeyAddedDate, float64(meta.Added.Unix()))
 
 	if meta.Media == "application/pdf" {
 		typeKey = bundle.TypeKeyFile
-		details.Set(bundle.RelationKeyLayout, model.ObjectType_pdf)
+		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_pdf))
 	}
 	if strings.HasPrefix(meta.Media, "video") {
 		typeKey = bundle.TypeKeyVideo
-		details.Set(bundle.RelationKeyLayout, model.ObjectType_video)
+		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_video))
 	}
 
 	if strings.HasPrefix(meta.Media, "audio") {

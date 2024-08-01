@@ -90,7 +90,7 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 
 		detailsCopy := rec.Details.ShallowCopy()
 		// set the same score as original object
-		detailsCopy.Set(database.RecordScoreField, score)
+		detailsCopy.SetFloat(database.RecordScoreField, score)
 		injectedResults = append(injectedResults, database.Record{
 			Details: detailsCopy,
 			Meta:    metaInj,
@@ -183,8 +183,8 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", res.Path.ObjectId)
 					continue
 				}
-				details.Set(bundle.RelationKeyId, res.Path.ObjectId)
-				details.Set(database.RecordScoreField, res.Score)
+				details.SetString(bundle.RelationKeyId, res.Path.ObjectId)
+				details.SetFloat(database.RecordScoreField, res.Score)
 				rec := database.Record{Details: details}
 				if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 					resultObjectMap[res.Path.ObjectId] = struct{}{}
@@ -203,7 +203,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 			log.Errorf("QueryByIds failed to extract details: %s", res.Path.ObjectId)
 			continue
 		}
-		details.Set(database.RecordScoreField, res.Score)
+		details.SetFloat(database.RecordScoreField, res.Score)
 
 		rec := database.Record{Details: details}
 		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
@@ -469,7 +469,7 @@ func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err 
 					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
 					continue
 				}
-				details.Set(bundle.RelationKeyId, id)
+				details.SetString(bundle.RelationKeyId, id)
 				records = append(records, database.Record{Details: details})
 				continue
 			}

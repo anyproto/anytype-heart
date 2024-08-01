@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func NewBundledRelation(id string) (s Source) {
@@ -56,11 +55,11 @@ func (v *bundledRelation) getDetails(id string) (p *domain.Details, err error) {
 	rel.Creator = addr.AnytypeProfileId
 	wrapperRelation := relationutils.Relation{Relation: rel}
 	details := wrapperRelation.ToDetails() // bundle.GetDetailsForBundledRelation(rel)
-	details.Set(bundle.RelationKeySpaceId, pbtypes.String(addr.AnytypeMarketplaceWorkspace))
-	details.Set(bundle.RelationKeyIsReadonly, pbtypes.Bool(true))
-	details.Set(bundle.RelationKeyType, pbtypes.String(bundle.TypeKeyRelation.BundledURL()))
-	details.Set(bundle.RelationKeyId, pbtypes.String(id))
-	details.Set(bundle.RelationKeyOrigin, pbtypes.Int64(int64(model.ObjectOrigin_builtin)))
+	details.SetString(bundle.RelationKeySpaceId, addr.AnytypeMarketplaceWorkspace)
+	details.SetBool(bundle.RelationKeyIsReadonly, true)
+	details.SetString(bundle.RelationKeyType, bundle.TypeKeyRelation.BundledURL())
+	details.SetString(bundle.RelationKeyId, id)
+	details.SetInt64(bundle.RelationKeyOrigin, int64(model.ObjectOrigin_builtin))
 
 	return details, nil
 }

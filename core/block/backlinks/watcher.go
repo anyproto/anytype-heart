@@ -200,7 +200,7 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 			}
 		}
 
-		current.Set(bundle.RelationKeyBacklinks, backlinks)
+		current.SetStringList(bundle.RelationKeyBacklinks, backlinks)
 		return current, true, nil
 	}
 

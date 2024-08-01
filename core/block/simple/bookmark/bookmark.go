@@ -53,7 +53,7 @@ func (b *Bookmark) GetContent() *model.BlockContentBookmark {
 
 func (b *Bookmark) ToDetails(origin objectorigin.ObjectOrigin) *domain.Details {
 	details := domain.NewDetails()
-	details.Set(bundle.RelationKeySource, pbtypes.String(b.content.Url))
+	details.SetString(bundle.RelationKeySource, b.content.Url)
 	origin.AddToDetails(details)
 	return details
 }
