@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math"
 	"sort"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/blevesearch/bleve/v2/search"
 	"github.com/gogo/protobuf/types"
@@ -203,18 +203,18 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 			rec.Meta = res.Model()
 			if rec.Meta.Highlight == "" {
-					title := pbtypes.GetString(details, bundle.RelationKeyName.String())
-					index := strings.Index(strings.ToLower(title), strings.ToLower(ftsSearch))
-					titleArr := []byte(title)
-					if index != -1 {
-						from := int32(text2.UTF16RuneCount(titleArr[:index]))
-						rec.Meta.HighlightRanges = []*model.Range{{
-							From: int32(text2.UTF16RuneCount(titleArr[:from])),
-							To:   from + int32(text2.UTF16RuneCount([]byte(ftsSearch)))}}
-						rec.Meta.Highlight = title
-					}
+				title := pbtypes.GetString(details, bundle.RelationKeyName.String())
+				index := strings.Index(strings.ToLower(title), strings.ToLower(ftsSearch))
+				titleArr := []byte(title)
+				if index != -1 {
+					from := int32(text2.UTF16RuneCount(titleArr[:index]))
+					rec.Meta.HighlightRanges = []*model.Range{{
+						From: int32(text2.UTF16RuneCount(titleArr[:from])),
+						To:   from + int32(text2.UTF16RuneCount([]byte(ftsSearch)))}}
+					rec.Meta.Highlight = title
 				}
-				if _, ok := resultObjectMap[res.Path.ObjectId]; !ok {
+			}
+			if _, ok := resultObjectMap[res.Path.ObjectId]; !ok {
 				records = append(records, rec)
 				resultObjectMap[res.Path.ObjectId] = struct{}{}
 			}
