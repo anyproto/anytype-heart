@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -668,33 +667,6 @@ func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSet
 	for _, msg := range msgs {
 		assertTableCells(msg)
 		s.makeStructureChanges(cb, msg)
-	}
-}
-
-func assertTableCells(msg *pb.EventBlockSetChildrenIds) {
-	// length of table cell block id is 49 = len(bson.NewObjectId().Hex()) * 2 + len("-")
-	const cellIdLen = 49
-
-	var (
-		sum       int
-		cellFound bool
-	)
-
-	for _, id := range msg.ChildrenIds {
-		lenId := len(id)
-		sum = sum + lenId
-
-		if lenId == cellIdLen {
-			cellFound = true
-		}
-
-		// if table cell is among children, then all children must be table cells
-		// if all children are table cells, then overall length of ids must divide by 49
-		if cellFound && sum%cellIdLen != 0 {
-			log.Warnf("SetChildrenIds event contains table cells and other blocks. Id: '%s', ChildrenIds: '%v', Stack: '%s'",
-				msg.Id, msg.ChildrenIds, debug.StackCompact(false))
-			return
-		}
 	}
 }
 
