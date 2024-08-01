@@ -202,12 +202,12 @@ type Filters struct {
 }
 
 // ListRelationOptions returns options for specific relation
-func ListRelationOptions(store ObjectStore, spaceID string, relationKey string) (options []*model.RelationOption, err error) {
+func ListRelationOptions(store ObjectStore, spaceID string, relationKey domain.RelationKey) (options []*model.RelationOption, err error) {
 	filters := []*model.BlockContentDataviewFilter{
 		{
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			RelationKey: bundle.RelationKeyRelationKey.String(),
-			Value:       pbtypes.String(relationKey),
+			Value:       pbtypes.String(string(relationKey)),
 		},
 		{
 			Condition:   model.BlockContentDataviewFilter_Equal,

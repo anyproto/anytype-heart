@@ -15,7 +15,7 @@ type Set struct {
 }
 
 func NewFromState(st *state.State) *Set {
-	flags := st.Details().GetIntListOrDefault(relationKey, nil)
+	flags := st.Details().GetFloatListOrDefault(relationKey, nil)
 
 	return &Set{
 		flags: flags,

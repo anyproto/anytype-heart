@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"golang.org/x/exp/slices"
 )
@@ -98,12 +99,12 @@ func (d *GenericMap[K]) GetStringListOrDefault(key K, def []string) []string {
 	return d.Get(key).StringListOrDefault(def)
 }
 
-func (d *GenericMap[K]) GetIntList(key K) ([]int, bool) {
-	return d.Get(key).IntList()
+func (d *GenericMap[K]) GetFloatList(key K) ([]float64, bool) {
+	return d.Get(key).FloatList()
 }
 
-func (d *GenericMap[K]) GetIntListOrDefault(key K, def []int) []int {
-	return d.Get(key).IntListOrDefault(def)
+func (d *GenericMap[K]) GetFloatListOrDefault(key K, def []float64) []float64 {
+	return d.Get(key).FloatListOrDefault(def)
 }
 
 func (d *GenericMap[K]) ShallowCopy() *GenericMap[K] {
@@ -164,6 +165,17 @@ type Value struct {
 	value any
 }
 
+type ValueType int
+
+const (
+	ValueTypeNone ValueType = iota
+	ValueTypeBool
+	ValueTypeString
+	ValueTypeFloat
+	ValueTypeStringList
+	ValueTypeFloatList
+)
+
 func SomeValue(value any) Value {
 	return Value{ok: true, value: value}
 }
@@ -184,6 +196,22 @@ func (v Value) Validate() error {
 
 func (v Value) Ok() bool {
 	return v.ok
+}
+
+func (v Value) IsStringList() bool {
+	if !v.ok {
+		return false
+	}
+	_, ok := v.value.([]string)
+	return ok
+}
+
+func (v Value) IsFloatList() bool {
+	if !v.ok {
+		return false
+	}
+	_, ok := v.value.([]float64)
+	return ok
 }
 
 func (v Value) Bool() (bool, bool) {
@@ -297,8 +325,117 @@ func (v Value) IntListOrDefault(def []int) []int {
 	return res
 }
 
+func (v Value) FloatList() ([]float64, bool) {
+	if !v.ok {
+		return nil, false
+	}
+	l, ok := v.value.([]float64)
+	return l, ok
+}
+
+func (v Value) FloatListOrDefault(def []float64) []float64 {
+	res, ok := v.FloatList()
+	if !ok {
+		return def
+	}
+	return res
+}
+
 func (v Value) EqualAny(other any) bool {
 	return v.Equal(Value{ok: true, value: other})
+}
+
+func (v Value) Type() ValueType {
+	if !v.ok {
+		return ValueTypeNone
+	}
+	switch v.value.(type) {
+	case bool:
+		return ValueTypeBool
+	case string:
+		return ValueTypeString
+	case float64:
+		return ValueTypeFloat
+	case []string:
+		return ValueTypeStringList
+	case []float64:
+		return ValueTypeFloatList
+	default:
+		return ValueTypeNone
+	}
+}
+
+func (v Value) Compare(other Value) int {
+	if !v.ok && other.ok {
+		return -1
+	}
+	if v.ok && !other.ok {
+		return 1
+	}
+	if !v.ok {
+		return 0
+	}
+
+	if v.Type() < other.Type() {
+		return -1
+	}
+	if v.Type() > other.Type() {
+		return 1
+	}
+
+	{
+		v1, ok := v.Bool()
+		v2, _ := other.Bool()
+		if ok {
+			if !v1 && v2 {
+				return -1
+			}
+			if v1 && v2 {
+				return 0
+			}
+			return 1
+		}
+	}
+
+	{
+		v1, ok := v.String()
+		v2, _ := other.String()
+		if ok {
+			return strings.Compare(v1, v2)
+		}
+	}
+
+	{
+		v1, ok := v.Float()
+		v2, _ := other.Float()
+		if ok {
+			if v1 < v2 {
+				return -1
+			}
+			if v1 > v2 {
+				return 1
+			}
+			return 0
+		}
+	}
+
+	{
+		v1, ok := v.StringList()
+		v2, _ := other.StringList()
+		if ok {
+			return slices.Compare(v1, v2)
+		}
+	}
+
+	{
+		v1, ok := v.IntList()
+		v2, _ := other.IntList()
+		if ok {
+			return slices.Compare(v1, v2)
+		}
+	}
+
+	return 0
 }
 
 func (v Value) Equal(other Value) bool {
@@ -371,4 +508,22 @@ func (v Value) Equal(other Value) bool {
 	}
 
 	return false
+}
+
+func (v Value) Match(boolCase func(v bool), floatCase func(v float64), stringCase func(v string), stringListCase func(v []string), floatListCase func(v []float64)) {
+	if !v.ok {
+		return
+	}
+	switch v := v.value.(type) {
+	case bool:
+		boolCase(v)
+	case float64:
+		floatCase(v)
+	case string:
+		stringCase(v)
+	case []string:
+		stringListCase(v)
+	case []float64:
+		floatListCase(v)
+	}
 }
