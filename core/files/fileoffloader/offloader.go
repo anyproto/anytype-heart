@@ -76,7 +76,7 @@ func (s *service) fileOffload(ctx context.Context, fileDetails *domain.Details, 
 	if fileId == "" {
 		return 0, fmt.Errorf("empty file id")
 	}
-	backupStatus := filesyncstatus.Status(fileDetails.GetInt64OrDefault(bundle.RelationKeyFileBackupStatus, 0))
+	backupStatus := filesyncstatus.Status(fileDetails.GetInt64(bundle.RelationKeyFileBackupStatus))
 	id := domain.FullFileId{
 		SpaceId: fileDetails.GetString(bundle.RelationKeySpaceId),
 		FileId:  domain.FileId(fileId),

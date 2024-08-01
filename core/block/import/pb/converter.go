@@ -441,7 +441,7 @@ func (p *Pb) injectImportDetails(snapshot *common.SnapshotModel) {
 		snapshot.Data.Details.Set(bundle.RelationKeyOldAnytypeID, pbtypes.String(id))
 	}
 	p.setSourceFilePath(snapshot)
-	createdDate := snapshot.Data.Details.GetInt64OrDefault(bundle.RelationKeyCreatedDate, 0)
+	createdDate := snapshot.Data.Details.GetInt64(bundle.RelationKeyCreatedDate)
 	if createdDate == 0 {
 		snapshot.Data.Details.Set(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	}

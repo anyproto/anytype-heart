@@ -13,8 +13,8 @@ type ObjectOrigin struct {
 }
 
 func FromDetails(details *domain.Details) ObjectOrigin {
-	origin := details.GetInt64OrDefault(bundle.RelationKeyOrigin, 0)
-	importType := details.GetInt64OrDefault(bundle.RelationKeyImportType, 0)
+	origin := details.GetInt64(bundle.RelationKeyOrigin)
+	importType := details.GetInt64(bundle.RelationKeyImportType)
 
 	return ObjectOrigin{
 		Origin:     model.ObjectOrigin(origin),

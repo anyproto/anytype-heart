@@ -51,7 +51,7 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 			uk   = r.Details.GetString(bundle.RelationKeyUniqueKey)
 		)
 
-		format := model.RelationFormat_name[int32(r.Details.GetInt64OrDefault(bundle.RelationKeyRelationFormat, 0))]
+		format := model.RelationFormat_name[int32(r.Details.GetInt64(bundle.RelationKeyRelationFormat))]
 		log.Debug("setting relationReadonlyValue to FALSE for relation", zap.String("name", name), zap.String("uniqueKey", uk), zap.String("format", format), zap.String("migration", MName))
 
 		det := []*model.Detail{{

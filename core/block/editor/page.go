@@ -159,7 +159,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 						if err != nil {
 							log.Errorf("failed to get object by unique key: %v", err)
 						} else {
-							layout = model.ObjectTypeLayout(otype.GetInt64OrDefault(bundle.RelationKeyRecommendedLayout, 0))
+							layout = model.ObjectTypeLayout(otype.GetInt64(bundle.RelationKeyRecommendedLayout))
 						}
 					}
 				}

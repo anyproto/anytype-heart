@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
@@ -181,7 +180,7 @@ func newSpaceViewFixture(t *testing.T) *spaceViewFixture {
 }
 
 func (f *spaceViewFixture) getAccessType() spaceinfo.AccessType {
-	return spaceinfo.AccessType(f.CombinedDetails().GetInt64OrDefault(bundle.RelationKeySpaceAccessType, 0))
+	return spaceinfo.AccessType(f.CombinedDetails().GetInt64(bundle.RelationKeySpaceAccessType))
 }
 
 func (f *spaceViewFixture) finish() {

@@ -263,7 +263,7 @@ func (ko *KeyOrder) trySubstituteSnippet(getter *domain.Details, value domain.Va
 }
 
 func getLayout(getter *domain.Details) model.ObjectTypeLayout {
-	rawLayout := getter.GetInt64OrDefault(bundle.RelationKeyLayout, 0)
+	rawLayout := getter.GetInt64(bundle.RelationKeyLayout)
 	return model.ObjectTypeLayout(int32(rawLayout))
 }
 

@@ -56,7 +56,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 }
 
 func (s *service) fillRecommendedRelationsFromLayout(ctx context.Context, space clientspace.Space, details *domain.Details) error {
-	rawRecommendedLayout := details.GetInt64OrDefault(bundle.RelationKeyRecommendedLayout, 0)
+	rawRecommendedLayout := details.GetInt64(bundle.RelationKeyRecommendedLayout)
 	recommendedLayout, err := bundle.GetLayout(model.ObjectTypeLayout(int32(rawRecommendedLayout)))
 	if err != nil {
 		return fmt.Errorf("invalid recommended layout %d: %w", rawRecommendedLayout, err)

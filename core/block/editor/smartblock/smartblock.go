@@ -620,12 +620,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if s.ParentState() != nil && s.ParentState().IsTheHeaderChange() {
 		// for the first change allow to set the last modified date from the state
 		// this used for the object imports
-		lastModifiedFromState := s.LocalDetails().GetInt64OrDefault(bundle.RelationKeyLastModifiedDate, 0)
+		lastModifiedFromState := s.LocalDetails().GetInt64(bundle.RelationKeyLastModifiedDate)
 		if lastModifiedFromState > 0 {
 			lastModified = time.Unix(lastModifiedFromState, 0)
 		}
 
-		if existingCreatedDate := s.LocalDetails().GetInt64OrDefault(bundle.RelationKeyCreatedDate, 0); existingCreatedDate == 0 || existingCreatedDate > lastModified.Unix() {
+		if existingCreatedDate := s.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate); existingCreatedDate == 0 || existingCreatedDate > lastModified.Unix() {
 			// this can happen if we don't have creation date in the root change
 			s.SetLocalDetail(bundle.RelationKeyCreatedDate, pbtypes.Int64(lastModified.Unix()))
 		}
@@ -933,7 +933,7 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 		s.RemoveLocalDetail(bundle.RelationKeyProfileOwnerIdentity)
 	}
 
-	if s.LocalDetails().GetString(bundle.RelationKeyCreator) != "" && s.LocalDetails().GetInt64OrDefault(bundle.RelationKeyCreatedDate, 0) != 0 {
+	if s.LocalDetails().GetString(bundle.RelationKeyCreator) != "" && s.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate) != 0 {
 		return nil
 	}
 
@@ -956,7 +956,7 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 		// - When we import object, treeCreateDate is set to time.Now()
 		// - But after push it is changed to original modified date
 		// - So after account recovery we will get treeCreateDate = original modified date, which is not equal to AddedDate
-		if s.Details().GetInt64OrDefault(bundle.RelationKeyAddedDate, 0) == 0 {
+		if s.Details().GetInt64(bundle.RelationKeyAddedDate) == 0 {
 			s.SetDetailAndBundledRelation(bundle.RelationKeyAddedDate, pbtypes.Float64(float64(treeCreatedDate)))
 		}
 	} else {
@@ -1389,7 +1389,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
 	}
 
-	if v, ok := s.Details().GetInt64(bundle.RelationKeyFileBackupStatus); ok {
+	if v, ok := s.Details().TryInt64(bundle.RelationKeyFileBackupStatus); ok {
 		status := filesyncstatus.Status(v)
 		// Clients expect syncstatus constants in this relation
 		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, pbtypes.Int64(int64(status.ToSyncStatus())))

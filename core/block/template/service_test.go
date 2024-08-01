@@ -218,7 +218,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 			// then
 			assert.NoError(t, err)
-			assert.Equal(t, layout, model.ObjectTypeLayout(st.Details().GetInt64OrDefault(bundle.RelationKeyLayout, 0)))
+			assert.Equal(t, layout, model.ObjectTypeLayout(st.Details().GetInt64(bundle.RelationKeyLayout)))
 			assertLayoutBlocks(t, st, layout)
 		})
 	}
@@ -241,8 +241,8 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Zero(t, st.OriginalCreatedTimestamp())
-		assert.Zero(t, st.Details().GetInt64OrDefault(bundle.RelationKeyAddedDate, 0))
-		assert.Zero(t, st.Details().GetInt64OrDefault(bundle.RelationKeyCreatedDate, 0))
+		assert.Zero(t, st.Details().GetInt64(bundle.RelationKeyAddedDate))
+		assert.Zero(t, st.Details().GetInt64(bundle.RelationKeyCreatedDate))
 	})
 }
 

@@ -91,7 +91,7 @@ func (bs *basic) prepareTargetObjectDetails(
 	if err != nil {
 		return nil, err
 	}
-	rawLayout := objType.GetInt64OrDefault(bundle.RelationKeyRecommendedLayout, 0)
+	rawLayout := objType.GetInt64(bundle.RelationKeyRecommendedLayout)
 	details := createTargetObjectDetails(rootBlock.Model().GetText().GetText(), model.ObjectTypeLayout(rawLayout))
 	return details, nil
 }

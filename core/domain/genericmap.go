@@ -74,20 +74,20 @@ func (d *GenericMap[K]) GetString(key K) string {
 	return d.Get(key).StringOrDefault("")
 }
 
-func (d *GenericMap[K]) GetInt64(key K) (int64, bool) {
+func (d *GenericMap[K]) TryInt64(key K) (int64, bool) {
 	return d.Get(key).Int64()
 }
 
-func (d *GenericMap[K]) GetInt64OrDefault(key K, def int64) int64 {
-	return d.Get(key).Int64OrDefault(def)
+func (d *GenericMap[K]) GetInt64(key K) int64 {
+	return d.Get(key).Int64OrDefault(0)
 }
 
-func (d *GenericMap[K]) GetFloat(key K) (float64, bool) {
+func (d *GenericMap[K]) TryFloat(key K) (float64, bool) {
 	return d.Get(key).Float()
 }
 
-func (d *GenericMap[K]) GetFloatOrDefault(key K, def float64) float64 {
-	return d.Get(key).FloatOrDefault(def)
+func (d *GenericMap[K]) GetFloat(key K) float64 {
+	return d.Get(key).FloatOrDefault(0)
 }
 
 func (d *GenericMap[K]) GetStringList(key K) ([]string, bool) {

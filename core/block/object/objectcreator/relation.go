@@ -22,7 +22,7 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 
 	if !details.Has(bundle.RelationKeyRelationFormat) {
 		return "", nil, fmt.Errorf("missing relation format")
-	} else if i, ok := details.GetInt64(bundle.RelationKeyRelationFormat); !ok {
+	} else if i, ok := details.TryInt64(bundle.RelationKeyRelationFormat); !ok {
 		return "", nil, fmt.Errorf("invalid relation format: not a number")
 	} else if model.RelationFormat(int(i)).String() == "" {
 		return "", nil, fmt.Errorf("invalid relation format: unknown enum")
@@ -46,7 +46,7 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	object.Set(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
 	object.Set(bundle.RelationKeyId, id)
 	object.Set(bundle.RelationKeyRelationKey, key)
-	if details.GetInt64OrDefault(bundle.RelationKeyRelationFormat, 0) == int64(model.RelationFormat_status) {
+	if details.GetInt64(bundle.RelationKeyRelationFormat) == int64(model.RelationFormat_status) {
 		object.Set(bundle.RelationKeyRelationMaxCount, 1)
 	}
 	// objectTypes := object.GetStringListOrDefault(bundle.RelationKeyRelationFormatObjectTypes, nil)

@@ -281,9 +281,9 @@ func (ind *indexer) addBlocks(st *state.State, details *domain.Details, objectId
 				Mime:           details.GetString(bundle.RelationKeyFileMimeType),
 				TargetObjectId: objectId,
 				Type:           fileType,
-				Size_:          int64(details.GetFloatOrDefault(bundle.RelationKeySizeInBytes, 0)),
+				Size_:          int64(details.GetFloat(bundle.RelationKeySizeInBytes)),
 				State:          model.BlockContentFile_Done,
-				AddedAt:        int64(details.GetFloatOrDefault(bundle.RelationKeyFileMimeType, 0)),
+				AddedAt:        int64(details.GetFloat(bundle.RelationKeyFileMimeType)),
 			},
 		}})
 
@@ -291,11 +291,11 @@ func (ind *indexer) addBlocks(st *state.State, details *domain.Details, objectId
 	case model.BlockContentFile_Image:
 		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(objectId))
 
-		if details.GetInt64OrDefault(bundle.RelationKeyWidthInPixels, 0) != 0 {
+		if details.GetInt64(bundle.RelationKeyWidthInPixels) != 0 {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyWidthInPixels))
 		}
 
-		if details.GetInt64OrDefault(bundle.RelationKeyHeightInPixels, 0) != 0 {
+		if details.GetInt64(bundle.RelationKeyHeightInPixels) != 0 {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyHeightInPixels))
 		}
 
@@ -303,7 +303,7 @@ func (ind *indexer) addBlocks(st *state.State, details *domain.Details, objectId
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyCamera))
 		}
 
-		if details.GetInt64OrDefault(bundle.RelationKeySizeInBytes, 0) != 0 {
+		if details.GetInt64(bundle.RelationKeySizeInBytes) != 0 {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeySizeInBytes))
 		}
 		if details.GetString(bundle.RelationKeyMediaArtistName) != "" {

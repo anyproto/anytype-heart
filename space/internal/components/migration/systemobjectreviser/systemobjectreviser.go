@@ -95,7 +95,7 @@ func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string)
 func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *domain.Details, marketObjects map[string]*domain.Details) (toRevise bool, err error) {
 	source := localObject.GetString(bundle.RelationKeySourceObject)
 	marketObject, found := marketObjects[source]
-	if !found || !isSystemObject(localObject) || marketObject.GetInt64OrDefault(revisionKey, 0) <= localObject.GetInt64OrDefault(revisionKey, 0) {
+	if !found || !isSystemObject(localObject) || marketObject.GetInt64(revisionKey) <= localObject.GetInt64(revisionKey) {
 		return false, nil
 	}
 	details := buildDiffDetails(marketObject, localObject)

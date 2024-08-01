@@ -208,7 +208,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			if !u.isLayoutSuitableForSyncRelations(details) {
 				return details, false, nil
 			}
-			if fileStatus, ok := details.GetFloat(bundle.RelationKeyFileBackupStatus); ok {
+			if fileStatus, ok := details.TryFloat(bundle.RelationKeyFileBackupStatus); ok {
 				status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
 			}
 			details.Set(bundle.RelationKeySyncStatus, pbtypes.Int64(int64(status)))
@@ -236,7 +236,7 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 		return nil
 	}
 	st := sb.NewState()
-	if fileStatus, ok := st.Details().GetFloat(bundle.RelationKeyFileBackupStatus); ok {
+	if fileStatus, ok := st.Details().TryFloat(bundle.RelationKeyFileBackupStatus); ok {
 		status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
 	}
 	st.SetDetailAndBundledRelation(bundle.RelationKeySyncStatus, pbtypes.Int64(int64(status)))
@@ -265,7 +265,7 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 }
 
 func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *domain.Details) bool {
-	layout := model.ObjectTypeLayout(details.GetInt64OrDefault(bundle.RelationKeyLayout, 0))
+	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyLayout))
 	_, ok := suitableLayouts[layout]
 	return ok
 }

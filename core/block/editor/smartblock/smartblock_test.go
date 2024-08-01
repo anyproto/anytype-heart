@@ -139,7 +139,7 @@ func TestBasic_SetAlign(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, model.Block_AlignRight, st.Get("title").Model().Align)
-		assert.Equal(t, int64(model.Block_AlignRight), st.Details().GetInt64OrDefault(bundle.RelationKeyLayoutAlign, 0))
+		assert.Equal(t, int64(model.Block_AlignRight), st.Details().GetInt64(bundle.RelationKeyLayoutAlign))
 	})
 
 }
@@ -345,7 +345,7 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, creator, s.LocalDetails().GetString(bundle.RelationKeyCreator))
-		assert.Equal(t, creationDate, s.LocalDetails().GetInt64OrDefault(bundle.RelationKeyCreatedDate, 0))
+		assert.Equal(t, creationDate, s.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate))
 	})
 
 	t.Run("both creator and creation date are found", func(t *testing.T) {
@@ -365,7 +365,7 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, creator, s.LocalDetails().GetString(bundle.RelationKeyCreator))
 		assert.NotNil(t, s.GetRelationLinks().Get(bundle.RelationKeyCreator.String()))
-		assert.Equal(t, creationDate, s.LocalDetails().GetInt64OrDefault(bundle.RelationKeyCreatedDate, 0))
+		assert.Equal(t, creationDate, s.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate))
 		assert.NotNil(t, s.GetRelationLinks().Get(bundle.RelationKeyCreatedDate.String()))
 	})
 
@@ -464,7 +464,7 @@ func TestInjectLocalDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, fx.source.creator, st.LocalDetails().GetString(bundle.RelationKeyCreator))
-		assert.Equal(t, fx.source.createdDate, st.LocalDetails().GetInt64OrDefault(bundle.RelationKeyCreatedDate, 0))
+		assert.Equal(t, fx.source.createdDate, st.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate))
 	})
 
 	// TODO More tests

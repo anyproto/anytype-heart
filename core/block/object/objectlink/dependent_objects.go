@@ -71,7 +71,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, relations, o
 		// handle corner cases first for specific formats
 		if rel.Format == model.RelationFormat_date &&
 			!lo.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(rel.Key)) {
-			relInt := det.GetInt64OrDefault(domain.RelationKey(rel.Key), 0)
+			relInt := det.GetInt64(domain.RelationKey(rel.Key))
 			if relInt > 0 {
 				t := time.Unix(relInt, 0)
 				t = t.In(time.Local)

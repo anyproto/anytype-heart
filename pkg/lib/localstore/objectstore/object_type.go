@@ -43,7 +43,7 @@ func (s *dsObjectStore) extractObjectTypeFromDetails(details *domain.Details, ur
 		Url:        url,
 		Key:        string(objectTypeKey),
 		Name:       details.GetString(bundle.RelationKeyName),
-		Layout:     model.ObjectTypeLayout(details.GetInt64OrDefault(bundle.RelationKeyRecommendedLayout, 0)),
+		Layout:     model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyRecommendedLayout)),
 		IconEmoji:  details.GetString(bundle.RelationKeyIconEmoji),
 		IsArchived: details.GetBool(bundle.RelationKeyIsArchived),
 		// we use Page for all custom object types

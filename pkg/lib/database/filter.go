@@ -533,7 +533,7 @@ func (l FilterAllIn) FilterObject(g *domain.Details) bool {
 	if len(l.Floats) > 0 {
 		// Single float
 		{
-			val, ok := g.GetFloat(l.Key)
+			val, ok := g.TryFloat(l.Key)
 			if ok && len(l.Floats) == 1 {
 				return l.Floats[0] == val
 			}

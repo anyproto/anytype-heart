@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestFiles(t *testing.T) {
@@ -35,7 +34,7 @@ func TestFiles(t *testing.T) {
 		assert.Equal(t, "test_image", details.GetString(bundle.RelationKeyName))
 		assert.NotEmpty(t, fileId)
 		assert.NotEmpty(t, details.GetString(bundle.RelationKeyFileMimeType))
-		assert.True(t, details.GetInt64OrDefault(bundle.RelationKeySizeInBytes, 0) > 0)
+		assert.True(t, details.GetInt64(bundle.RelationKeySizeInBytes) > 0)
 
 		// Image is available either by object ID or file ID
 		assertImageAvailableInGateway(t, app, objectId)
@@ -56,7 +55,7 @@ func TestFiles(t *testing.T) {
 		fileId := details.GetString(bundle.RelationKeyFileId)
 		assert.Equal(t, "files_test", details.GetString(bundle.RelationKeyName))
 		assert.NotEmpty(t, fileId)
-		assert.True(t, details.GetInt64OrDefault(bundle.RelationKeySizeInBytes, 0) > 0)
+		assert.True(t, details.GetInt64(bundle.RelationKeySizeInBytes) > 0)
 
 		// File is available either by object ID or file ID
 		assertFileAvailableInGateway(t, app, objectId)

@@ -147,12 +147,12 @@ func (s *SpaceView) SetAclIsEmpty(isEmpty bool) (err error) {
 }
 
 func (s *SpaceView) updateAccessType(st *state.State) {
-	accessType := spaceinfo.AccessType(st.LocalDetails().GetInt64OrDefault(bundle.RelationKeySpaceAccessType, 0))
+	accessType := spaceinfo.AccessType(st.LocalDetails().GetInt64(bundle.RelationKeySpaceAccessType))
 	if accessType == spaceinfo.AccessTypePersonal {
 		return
 	}
 	isShared := st.LocalDetails().GetBool(bundle.RelationKeyIsAclShared)
-	shareable := spaceinfo.ShareableStatus(st.LocalDetails().GetInt64OrDefault(bundle.RelationKeySpaceShareableStatus, 0))
+	shareable := spaceinfo.ShareableStatus(st.LocalDetails().GetInt64(bundle.RelationKeySpaceShareableStatus))
 	if isShared || shareable == spaceinfo.ShareableStatusShareable {
 		stateSetAccessType(st, spaceinfo.AccessTypeShared)
 	} else {
@@ -162,7 +162,7 @@ func (s *SpaceView) updateAccessType(st *state.State) {
 
 func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
 	st := s.NewState()
-	prev := spaceinfo.AccessType(st.LocalDetails().GetInt64OrDefault(bundle.RelationKeySpaceAccessType, 0))
+	prev := spaceinfo.AccessType(st.LocalDetails().GetInt64(bundle.RelationKeySpaceAccessType))
 	if prev == spaceinfo.AccessTypePersonal {
 		return nil
 	}
@@ -183,7 +183,7 @@ func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
 }
 
 func (s *SpaceView) GetSharedSpacesLimit() (limit int) {
-	return int(s.CombinedDetails().GetInt64OrDefault(bundle.RelationKeySharedSpacesLimit, 0))
+	return int(s.CombinedDetails().GetInt64(bundle.RelationKeySharedSpacesLimit))
 }
 
 func (s *SpaceView) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
@@ -231,7 +231,7 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 func (s *SpaceView) getSpacePersistentInfo(st *state.State) (info spaceinfo.SpacePersistentInfo) {
 	details := st.CombinedDetails()
 	spaceInfo := spaceinfo.NewSpacePersistentInfo(details.GetString(bundle.RelationKeyTargetSpaceId))
-	spaceInfo.SetAccountStatus(spaceinfo.AccountStatus(details.GetInt64OrDefault(bundle.RelationKeySpaceAccountStatus, 0))).
+	spaceInfo.SetAccountStatus(spaceinfo.AccountStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus))).
 		SetAclHeadId(details.GetString(bundle.RelationKeyLatestAclHeadId))
 	return spaceInfo
 }
@@ -277,7 +277,7 @@ func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 	if changed {
 		if st.ParentState().ParentState() == nil {
 			// in case prev change was the first one
-			createdDate := details.GetInt64OrDefault(bundle.RelationKeyCreatedDate, 0)
+			createdDate := details.GetInt64(bundle.RelationKeyCreatedDate)
 			if createdDate > 0 {
 				// we use this state field to save the original created date, otherwise we use the one from the underlying objectTree
 				st.SetOriginalCreatedTimestamp(createdDate)

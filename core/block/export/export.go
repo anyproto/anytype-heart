@@ -497,7 +497,7 @@ func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportReques
 		if docID == b.Space().DerivedIDs().Home {
 			filename = "index" + conv.Ext()
 		}
-		lastModifiedDate := st.LocalDetails().GetInt64OrDefault(bundle.RelationKeyLastModifiedDate, 0)
+		lastModifiedDate := st.LocalDetails().GetInt64(bundle.RelationKeyLastModifiedDate)
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
 			return err
 		}
@@ -677,8 +677,8 @@ func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 }
 
 func validLayoutForNonProtobuf(details *domain.Details) bool {
-	return details.GetFloatOrDefault(bundle.RelationKeyLayout, 0) != float64(model.ObjectType_collection) &&
-		details.GetFloatOrDefault(bundle.RelationKeyLayout, 0) != float64(model.ObjectType_set)
+	return details.GetFloat(bundle.RelationKeyLayout) != float64(model.ObjectType_collection) &&
+		details.GetFloat(bundle.RelationKeyLayout) != float64(model.ObjectType_set)
 }
 
 func (e *export) cleanupFile(wr writer) {
@@ -761,8 +761,8 @@ func (e *export) getObjectRelations(state *state.State, relations []string) []st
 }
 
 func (e *export) isObjectWithDataview(details *domain.Details) bool {
-	return details.GetFloatOrDefault(bundle.RelationKeyLayout, 0) == float64(model.ObjectType_collection) ||
-		details.GetFloatOrDefault(bundle.RelationKeyLayout, 0) == float64(model.ObjectType_set)
+	return details.GetFloat(bundle.RelationKeyLayout) == float64(model.ObjectType_collection) ||
+		details.GetFloat(bundle.RelationKeyLayout) == float64(model.ObjectType_set)
 }
 
 func (e *export) processObject(object *domain.Details,
@@ -876,7 +876,7 @@ func (e *export) getRelation(key string) (*database.Record, error) {
 
 func (e *export) addRelationAndOptions(relation *database.Record, derivedObjects []database.Record, relationKey string) ([]database.Record, error) {
 	derivedObjects = e.addRelation(*relation, derivedObjects)
-	format := relation.Details.GetInt64OrDefault(bundle.RelationKeyRelationFormat, 0)
+	format := relation.Details.GetInt64(bundle.RelationKeyRelationFormat)
 	if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
 		relationOptions, err := e.getRelationOptions(relationKey)
 		if err != nil {

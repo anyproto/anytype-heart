@@ -23,11 +23,11 @@ func NewSpaceLocalInfo(spaceId string) SpaceLocalInfo {
 func NewSpaceLocalInfoFromState(s state.Doc) SpaceLocalInfo {
 	details := s.LocalDetails()
 	spaceInfo := NewSpaceLocalInfo(details.GetString(bundle.RelationKeyTargetSpaceId))
-	spaceInfo.SetReadLimit(uint32(details.GetInt64OrDefault(bundle.RelationKeyReadersLimit, 0))).
-		SetWriteLimit(uint32(details.GetInt64OrDefault(bundle.RelationKeyWritersLimit, 0))).
-		SetLocalStatus(LocalStatus(details.GetInt64OrDefault(bundle.RelationKeySpaceLocalStatus, 0))).
-		SetRemoteStatus(RemoteStatus(details.GetInt64OrDefault(bundle.RelationKeySpaceRemoteStatus, 0))).
-		SetShareableStatus(ShareableStatus(details.GetInt64OrDefault(bundle.RelationKeySpaceShareableStatus, 0)))
+	spaceInfo.SetReadLimit(uint32(details.GetInt64(bundle.RelationKeyReadersLimit))).
+		SetWriteLimit(uint32(details.GetInt64(bundle.RelationKeyWritersLimit))).
+		SetLocalStatus(LocalStatus(details.GetInt64(bundle.RelationKeySpaceLocalStatus))).
+		SetRemoteStatus(RemoteStatus(details.GetInt64(bundle.RelationKeySpaceRemoteStatus))).
+		SetShareableStatus(ShareableStatus(details.GetInt64(bundle.RelationKeySpaceShareableStatus)))
 	return spaceInfo
 }
 
