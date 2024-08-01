@@ -154,7 +154,7 @@ func (t *TXT) getBlocksForSnapshot(rc io.ReadCloser) ([]*model.Block, error) {
 }
 
 func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*common.Snapshot, string) {
-	sn := &model.SmartBlockSnapshotBase{
+	sn := &common.SnapshotModelData{
 		Blocks:      blocks,
 		Details:     common.GetCommonDetails(p, "", "", model.ObjectType_basic),
 		ObjectTypes: []string{bundle.TypeKeyPage.String()},
@@ -163,7 +163,7 @@ func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*common.Snapshot, st
 	snapshot := &common.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: p,
-		Snapshot: &pb.ChangeSnapshot{Data: sn},
+		Snapshot: &common.SnapshotModel{Data: sn},
 		SbType:   smartblock.SmartBlockTypePage,
 	}
 	return snapshot, snapshot.Id

@@ -54,7 +54,7 @@ func (c *Converter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReq
 	s := &common.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: url,
-		Snapshot: &pb.ChangeSnapshot{Data: snapshots},
+		Snapshot: &common.SnapshotModel{Data: snapshots},
 	}
 	res := &common.Response{
 		Snapshots: []*common.Snapshot{s},

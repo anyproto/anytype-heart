@@ -70,10 +70,10 @@ func (r *RootCollection) getRootCollectionSnapshot(
 		Id:       uuid.New().String(),
 		FileName: collectionName,
 		SbType:   sb.SmartBlockTypePage,
-		Snapshot: &pb.ChangeSnapshot{
-			Data: &model.SmartBlockSnapshotBase{
+		Snapshot: &SnapshotModel{
+			Data: &SnapshotModelData{
 				Blocks:        st.Blocks(),
-				Details:       detailsStruct.ToProto(),
+				Details:       detailsStruct,
 				ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
 				RelationLinks: st.GetRelationLinks(),
 				Collections:   st.Store(),

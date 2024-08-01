@@ -312,7 +312,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 	return nil, ErrNotAnyBlockExtension
 }
 
-func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
+func (p *Pb) normalizeSnapshot(snapshot *common.Snapshot,
 	id, profileID, path string,
 	isMigration bool,
 	pbFiles source.Source) (string, error) {

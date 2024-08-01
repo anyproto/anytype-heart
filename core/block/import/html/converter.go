@@ -199,7 +199,7 @@ func (h *HTML) updateFilesInLinks(block *model.Block, filesSource source.Source,
 }
 
 func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*common.Snapshot, string) {
-	sn := &model.SmartBlockSnapshotBase{
+	sn := &common.SnapshotModelData{
 		Blocks:      blocks,
 		Details:     common.GetCommonDetails(p, "", "", model.ObjectType_basic),
 		ObjectTypes: []string{bundle.TypeKeyPage.String()},
@@ -208,7 +208,7 @@ func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*common.Snapshot, s
 	snapshot := &common.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: p,
-		Snapshot: &pb.ChangeSnapshot{Data: sn},
+		Snapshot: &common.SnapshotModel{Data: sn},
 		SbType:   smartblock.SmartBlockTypePage,
 	}
 	return snapshot, snapshot.Id

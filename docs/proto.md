@@ -1643,7 +1643,6 @@
   
 - [pb/protos/snapshot.proto](#pb_protos_snapshot-proto)
     - [Profile](#anytype-Profile)
-    - [SnapshotWithType](#anytype-SnapshotWithType)
   
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg_lib_pb_model_protos_localstore-proto)
     - [ObjectDetails](#anytype-model-ObjectDetails)
@@ -25894,22 +25893,6 @@ Precondition: user A and user B opened the same block
 | spaceDashboardId | [string](#string) |  |  |
 | profileId | [string](#string) |  |  |
 | analyticsId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-SnapshotWithType"></a>
-
-### SnapshotWithType
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| sbType | [model.SmartBlockType](#anytype-model-SmartBlockType) |  |  |
-| snapshot | [Change.Snapshot](#anytype-Change-Snapshot) |  |  |
 
 
 
