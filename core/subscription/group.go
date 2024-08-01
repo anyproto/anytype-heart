@@ -1,8 +1,6 @@
 package subscription
 
 import (
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -10,7 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func (s *service) newGroupSub(id string, relKey string, f *database.Filters, groups []*model.BlockContentDataviewGroup) *groupSub {
+func (s *service) newGroupSub(id string, relKey domain.RelationKey, f *database.Filters, groups []*model.BlockContentDataviewGroup) *groupSub {
 	sub := &groupSub{
 		id:     id,
 		relKey: relKey,
@@ -115,7 +113,7 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 	}
 }
 
-func (gs *groupSub) getActiveRecords() (res []*types.Struct) {
+func (gs *groupSub) getActiveRecords() (res []*domain.Details) {
 	return
 }
 

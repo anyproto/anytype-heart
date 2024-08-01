@@ -217,8 +217,8 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 	}
 	indexDetailsTime := time.Now()
 	detailsCount := 0
-	if details.GetFields() != nil {
-		detailsCount = len(details.GetFields())
+	if details != nil {
+		detailsCount = details.Len()
 	}
 
 	if !hasError {

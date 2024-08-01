@@ -512,7 +512,7 @@ func (sb *smartBlock) onMetaChange(details *domain.Details) {
 		diff := domain.StructDiff(v, details)
 		if id == sb.Id() {
 			// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
-			diff = diff.CopyOnlyWithKeys(bundle.LocalRelationsKeys...)
+			diff = diff.CopyOnlyKeys(bundle.LocalRelationsKeys...)
 		}
 
 		msgs = append(msgs, state.StructDiffIntoEvents(id, diff)...)
@@ -869,7 +869,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	// so we don't need to traverse changes every time
 	keys := bundle.LocalAndDerivedRelationKeys
 
-	localDetailsFromStore := details.CopyOnlyWithKeys(keys...)
+	localDetailsFromStore := details.CopyOnlyKeys(keys...)
 
 	s.InjectLocalDetails(localDetailsFromStore)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {

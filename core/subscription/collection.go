@@ -6,12 +6,11 @@ import (
 
 	"github.com/anyproto/any-store/query"
 	"github.com/cheggaaa/mb"
-	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -116,11 +115,10 @@ func (c *collectionObserver) updateIDs(ids []string) {
 	}
 }
 
-func (c *collectionObserver) FilterObject(g *types.Struct) bool {
+func (c *collectionObserver) FilterObject(g *domain.Details) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	val := pbtypes.Get(g, bundle.RelationKeyId.String())
-	id := val.GetStringValue()
+	id := g.GetStringOrDefault(bundle.RelationKeyId, "")
 	_, ok := c.idsSet[id]
 	return ok
 }
@@ -162,7 +160,7 @@ func (c *collectionSub) onChange(ctx *opCtx) {
 	c.sortedSub.onChange(ctx)
 }
 
-func (c *collectionSub) getActiveRecords() (res []*types.Struct) {
+func (c *collectionSub) getActiveRecords() (res []*domain.Details) {
 	return c.sortedSub.getActiveRecords()
 }
 
@@ -180,7 +178,7 @@ func (c *collectionSub) close() {
 }
 
 func (s *service) newCollectionSub(
-	id, collectionID string, keys, filterDepIds []string, flt database.Filter, order database.Order, limit, offset int, disableDepSub bool,
+	id, collectionID string, keys []domain.RelationKey, filterDepIds []string, flt database.Filter, order database.Order, limit, offset int, disableDepSub bool,
 ) (*collectionSub, error) {
 	obs, err := s.newCollectionObserver(collectionID, id)
 	if err != nil {

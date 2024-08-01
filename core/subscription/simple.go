@@ -1,8 +1,6 @@
 package subscription
 
 import (
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
@@ -122,9 +120,9 @@ func (s *simpleSub) getActiveEntries() (res []*entry) {
 	return s.activeEntriesBuf
 }
 
-func (s *simpleSub) getActiveRecords() (res []*types.Struct) {
+func (s *simpleSub) getActiveRecords() (res []*domain.Details) {
 	for id := range s.set {
-		res = append(res, s.cache.Get(id).data.CopyOnlyWithKeys(s.keys...).ToProto())
+		res = append(res, s.cache.Get(id).data.CopyOnlyKeys(s.keys...))
 	}
 	return
 }

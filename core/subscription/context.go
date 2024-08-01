@@ -185,7 +185,7 @@ func (ctx *opCtx) detailsEvents() {
 				Value: &pb.EventMessageValueOfObjectDetailsSet{
 					ObjectDetailsSet: &pb.EventObjectDetailsSet{
 						Id:      curr.id,
-						Details: curr.data.CopyOnlyWithKeys(info.keys).ToProto(),
+						Details: curr.data.CopyOnlyKeys(info.keys...).ToProto(),
 						SubIds:  info.subIds,
 					},
 				},

@@ -62,7 +62,7 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 func (p *participant) ModifyProfileDetails(profileDetails *domain.Details) (err error) {
-	details := profileDetails.CopyOnlyWithKeys(
+	details := profileDetails.CopyOnlyKeys(
 		bundle.RelationKeyName,
 		bundle.RelationKeyDescription,
 		bundle.RelationKeyIconImage,

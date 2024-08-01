@@ -132,7 +132,7 @@ func isSystemObject(details *domain.Details) bool {
 
 func buildDiffDetails(origin, current *domain.Details) *domain.Details {
 	diff := domain.StructDiff(current, origin)
-	diff = diff.CopyOnlyWithKeys(
+	diff = diff.CopyOnlyKeys(
 		bundle.RelationKeyName, bundle.RelationKeyDescription,
 		bundle.RelationKeyIsReadonly, bundle.RelationKeyIsHidden,
 		bundle.RelationKeyRevision, bundle.RelationKeyRelationReadonlyValue,

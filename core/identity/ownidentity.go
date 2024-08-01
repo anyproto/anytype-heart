@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -191,8 +190,8 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *domain.
 		bundle.RelationKeyDescription,
 		bundle.RelationKeyIconImage,
 	} {
-		if _, ok := profileDetails.Fields[key.String()]; ok {
-			s.details.Set(key.String(), pbtypes.CopyVal(profileDetails.Fields[key.String()]))
+		if v, ok := profileDetails.GetString(key); ok {
+			s.details.Set(key, v)
 		}
 	}
 	identityProfile := s.prepareIdentityProfile()
@@ -231,9 +230,7 @@ func (s *ownProfileSubscription) updateGlobalName(globalName string) {
 func (s *ownProfileSubscription) handleGlobalNameUpdate(globalName string) {
 	s.detailsLock.Lock()
 	if s.details == nil {
-		s.details = &types.Struct{
-			Fields: map[string]*types.Value{},
-		}
+		s.details = domain.NewDetails()
 	}
 	s.details.Set(bundle.RelationKeyGlobalName, pbtypes.String(globalName))
 	identityProfile := s.prepareIdentityProfile()
@@ -334,6 +331,6 @@ func (s *ownProfileSubscription) getDetails(ctx context.Context) (identity strin
 	s.detailsLock.Lock()
 	defer s.detailsLock.Unlock()
 
-	detailsCopy := pbtypes.CopyStruct(s.details, true)
+	detailsCopy := s.details.ShallowCopy()
 	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), detailsCopy
 }

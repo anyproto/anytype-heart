@@ -10,7 +10,6 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/util/slice"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -219,7 +218,7 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 	}
 	for _, id := range ids {
 		err := space.DoLockedIfNotExists(id, func() error {
-			return i.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
+			return i.store.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
 				details = helper.InjectsSyncDetails(details, syncStatus, syncError)
 				return details, true, nil
 			})
