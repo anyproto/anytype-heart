@@ -98,29 +98,31 @@ func (bs *basic) prepareTargetObjectDetails(
 }
 
 func insertBlocksToState(
-	newState *state.State,
-	rootBlock simple.Block,
-	objState *state.State,
+	srcState *state.State,
+	srcSubtreeRoot simple.Block,
+	targetState *state.State,
 ) {
-	rootID := rootBlock.Model().Id
-	descendants := newState.Descendants(rootID)
-	newRoot, newBlocks := reassignSubtreeIds(newState, rootID, append(descendants, rootBlock))
+	srcRootId := srcSubtreeRoot.Model().Id
+	descendants := srcState.Descendants(srcRootId)
+	newSubtreeRootId, newBlocks := copySubtreeOfBlocks(srcState, srcRootId, append(descendants, srcSubtreeRoot))
 
 	// remove descendant blocks from source object
-	removeBlocks(newState, descendants)
+	removeBlocks(srcState, descendants)
 
-	for _, b := range newBlocks {
-		objState.Add(b)
+	for _, newBlock := range newBlocks {
+		targetState.Add(newBlock)
 	}
-	rootB := objState.Pick(objState.RootId()).Model()
-	if hasNoteLayout(objState) {
-		rootB.ChildrenIds = append(rootB.ChildrenIds, newRoot)
+
+	targetRootBlock := targetState.Pick(targetState.RootId()).Model()
+	if hasNoteLayout(targetState) {
+		targetRootBlock.ChildrenIds = append(targetRootBlock.ChildrenIds, newSubtreeRootId)
 	} else {
-		children := objState.Pick(newRoot).Model().ChildrenIds
-		rootB.ChildrenIds = append(rootB.ChildrenIds, children...)
+		// text in newSubtree root has already been added to the title
+		children := targetState.Pick(newSubtreeRootId).Model().ChildrenIds
+		targetRootBlock.ChildrenIds = append(targetRootBlock.ChildrenIds, children...)
 	}
 
-	objState.Set(simple.New(rootB))
+	targetState.Set(simple.New(targetRootBlock))
 }
 
 func (bs *basic) changeToBlockWithLink(newState *state.State, blockToReplace simple.Block, objectID string, linkBlock *model.Block) (string, error) {
@@ -182,54 +184,69 @@ func createTargetObjectDetails(nameText string, layout model.ObjectTypeLayout) *
 	return details
 }
 
-// reassignSubtreeIds makes a copy of a subtree of blocks and assign a new id for each block
-func reassignSubtreeIds(s *state.State, rootId string, blocks []simple.Block) (string, []simple.Block) {
-	res := make([]simple.Block, 0, len(blocks))
-	mapping := map[string]string{}
-	custom := map[string]struct{}{}
+// copySubtreeOfBlocks makes a copy of a subtree of blocks and assign a new id for each block
+func copySubtreeOfBlocks(s *state.State, oldRootId string, oldBlocks []simple.Block) (string, []simple.Block) {
+	copiedBlocks := make([]simple.Block, 0, len(oldBlocks))
+	oldToNewIds := map[string]string{}
+	newProcessedIds := map[string]struct{}{}
 
-	for _, b := range blocks {
-		if d, ok := b.(duplicatable); ok {
-			id, visitedIds, newBlocks, err := d.Duplicate(s)
+	// duplicate blocks that can be duplicated
+	for _, oldBlock := range oldBlocks {
+		if d, ok := oldBlock.(duplicatable); ok {
+			newRootId, oldVisitedIds, newBlocks, err := d.Duplicate(s)
 			if err != nil {
-				log.Errorf("failed to perform custom duplicate: %v", err)
+				log.Errorf("failed to perform newProcessedIds duplicate: %v", err)
 				continue
 			}
 
 			for _, newBlock := range newBlocks {
-				res = append(res, newBlock)
-				custom[newBlock.Model().Id] = struct{}{}
+				copiedBlocks = append(copiedBlocks, newBlock)
+				newProcessedIds[newBlock.Model().Id] = struct{}{}
 			}
-			for _, id := range visitedIds {
-				// we do not need new id, as correct children are already set
-				mapping[id] = ""
+
+			for _, id := range oldVisitedIds {
+				// mark id as visited and already set
+				oldToNewIds[id] = ""
 			}
-			mapping[b.Model().Id] = id
+			oldToNewIds[oldBlock.Model().Id] = newRootId
 		}
 	}
 
-	for _, b := range blocks {
-		_, found := mapping[b.Model().Id]
+	// copy blocks that can't be duplicated
+	for _, oldBlock := range oldBlocks {
+		_, found := oldToNewIds[oldBlock.Model().Id]
 		if found {
 			continue
 		}
-		newId := bson.NewObjectId().Hex()
-		mapping[b.Model().Id] = newId
 
-		newBlock := b.Copy()
+		newId := bson.NewObjectId().Hex()
+		oldToNewIds[oldBlock.Model().Id] = newId
+
+		newBlock := oldBlock.Copy()
 		newBlock.Model().Id = newId
-		res = append(res, newBlock)
+
+		copiedBlocks = append(copiedBlocks, newBlock)
 	}
 
-	for _, b := range res {
-		if _, hasCorrectChildren := custom[b.Model().Id]; hasCorrectChildren {
+	// update children ids for copied blocks
+	for _, copiedBlock := range copiedBlocks {
+		if _, hasCorrectChildren := newProcessedIds[copiedBlock.Model().Id]; hasCorrectChildren {
 			continue
 		}
-		for i, id := range b.Model().ChildrenIds {
-			b.Model().ChildrenIds[i] = mapping[id]
+
+		for i, id := range copiedBlock.Model().ChildrenIds {
+			newChildId := oldToNewIds[id]
+			if newChildId == "" {
+				log.With("old id", id).
+					With("parent new id", copiedBlock.Model().Id).
+					With("parent old id", oldToNewIds[copiedBlock.Model().Id]).
+					Warn("empty id is set as new")
+			}
+			copiedBlock.Model().ChildrenIds[i] = newChildId
 		}
 	}
-	return mapping[rootId], res
+
+	return oldToNewIds[oldRootId], copiedBlocks
 }
 
 func hasNoteLayout(s *state.State) bool {

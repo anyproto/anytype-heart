@@ -150,6 +150,7 @@ func TestExtractObjects(t *testing.T) {
 	for _, tc := range []struct {
 		name                 string
 		blockIds             []string
+		typeKey              string
 		templateId           string
 		wantObjectsWithTexts [][]string
 		wantDetails          *types.Struct
@@ -271,6 +272,15 @@ func TestExtractObjects(t *testing.T) {
 				bundle.RelationKeyCoverId.String():           pbtypes.String("poster with Van Damme"),
 			}},
 		},
+		{
+			name:                 "if target layout includes title, root is not added",
+			blockIds:             []string{"1.1"},
+			typeKey:              bundle.TypeKeyTask.String(),
+			wantObjectsWithTexts: [][]string{{"text 1.1.1"}},
+			wantDetails: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String(): pbtypes.String("1.1"),
+			}},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fixture := newFixture(t)
@@ -284,11 +294,15 @@ func TestExtractObjects(t *testing.T) {
 			tmpl := makeTemplateState()
 			ts.AddTemplate("template", tmpl)
 
+			if tc.typeKey == "" {
+				tc.typeKey = bundle.TypeKeyNote.String()
+			}
+
 			req := pb.RpcBlockListConvertToObjectsRequest{
 				ContextId:           "test",
 				BlockIds:            tc.blockIds,
 				TemplateId:          tc.templateId,
-				ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyNote.String()).Marshal(),
+				ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, tc.typeKey).Marshal(),
 			}
 			ctx := session.NewContext()
 			linkIds, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, ts, req)
@@ -485,7 +499,7 @@ func TestReassignSubtreeIds(t *testing.T) {
 		s := generateState("text", blocks)
 
 		// when
-		newRoot, newBlocks := reassignSubtreeIds(s, "text", blocks)
+		newRoot, newBlocks := copySubtreeOfBlocks(s, "text", blocks)
 
 		// then
 		assert.Len(t, newBlocks, len(blocks))
@@ -515,7 +529,7 @@ func TestReassignSubtreeIds(t *testing.T) {
 		s := generateState("parent", blocks)
 
 		// when
-		root, newBlocks := reassignSubtreeIds(s, "parent", blocks)
+		root, newBlocks := copySubtreeOfBlocks(s, "parent", blocks)
 
 		// then
 		assert.Len(t, newBlocks, len(blocks))
@@ -557,7 +571,7 @@ func TestReassignSubtreeIds(t *testing.T) {
 		s := generateState("parent", blocks)
 
 		// when
-		root, newBlocks := reassignSubtreeIds(s, "parent", blocks)
+		root, newBlocks := copySubtreeOfBlocks(s, "parent", blocks)
 
 		// then
 		assert.Len(t, newBlocks, len(blocks))
