@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
@@ -61,7 +60,7 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 		req.Details.Fields = map[string]*types.Value{}
 	}
 	details := domain.NewDetailsFromProto(req.Details)
-	details.Set(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
+	details.SetStringList(bundle.RelationKeySetOf, req.Source)
 
 	creator := getService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{

@@ -28,7 +28,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -347,7 +346,7 @@ func (p *Pb) normalizeSnapshot(snapshot *common.SnapshotModel,
 		}
 		if sourceObjectId != "" {
 			if details.GetString(bundle.RelationKeySourceObject) == "" {
-				details.Set(bundle.RelationKeySourceObject, pbtypes.String(sourceObjectId))
+				details.SetString(bundle.RelationKeySourceObject, sourceObjectId)
 			}
 		}
 		id = originalId
@@ -388,7 +387,7 @@ func (p *Pb) normalizeFilePath(snapshot *common.SnapshotModel, pbFiles source.So
 	if snapshot.Data.Details == nil {
 		snapshot.Data.Details = domain.NewDetails()
 	}
-	snapshot.Data.Details.Set(bundle.RelationKeySource, pbtypes.String(fileName))
+	snapshot.Data.Details.SetString(bundle.RelationKeySource, fileName)
 	return nil
 }
 
@@ -405,7 +404,7 @@ func (p *Pb) setProfileIconOption(snapshot *common.SnapshotModel, profileID stri
 	if objectID != profileID {
 		return
 	}
-	snapshot.Data.Details.Set(bundle.RelationKeyIconOption, pbtypes.Int64(p.getIconOption()))
+	snapshot.Data.Details.SetInt64(bundle.RelationKeyIconOption, p.getIconOption())
 }
 
 func (p *Pb) getIconOption() int64 {
@@ -438,12 +437,12 @@ func (p *Pb) injectImportDetails(snapshot *common.SnapshotModel) {
 		snapshot.Data.Details = domain.NewDetails()
 	}
 	if id := snapshot.Data.Details.GetString(bundle.RelationKeyId); id != "" {
-		snapshot.Data.Details.Set(bundle.RelationKeyOldAnytypeID, pbtypes.String(id))
+		snapshot.Data.Details.SetString(bundle.RelationKeyOldAnytypeID, id)
 	}
 	p.setSourceFilePath(snapshot)
 	createdDate := snapshot.Data.Details.GetInt64(bundle.RelationKeyCreatedDate)
 	if createdDate == 0 {
-		snapshot.Data.Details.Set(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
+		snapshot.Data.Details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
 	}
 }
 
@@ -451,7 +450,7 @@ func (p *Pb) setSourceFilePath(snapshot *common.SnapshotModel) {
 	spaceId := snapshot.Data.Details.GetString(bundle.RelationKeySpaceId)
 	id := snapshot.Data.Details.GetString(bundle.RelationKeyId)
 	sourceFilePath := filepath.Join(spaceId, id)
-	snapshot.Data.Details.Set(bundle.RelationKeySourceFilePath, pbtypes.String(sourceFilePath))
+	snapshot.Data.Details.SetString(bundle.RelationKeySourceFilePath, sourceFilePath)
 }
 
 func (p *Pb) shouldImportSnapshot(snapshot *common.Snapshot, needToImportWidgets bool, importType pb.RpcObjectImportRequestPbParamsType) bool {

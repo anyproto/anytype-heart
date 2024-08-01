@@ -102,7 +102,7 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 				if current == nil {
 					current = domain.NewDetails()
 				}
-				current.Set(bundle.RelationKeyIsFavorite, pbtypes.Bool(false))
+				current.SetBool(bundle.RelationKeyIsFavorite, false)
 				return current, nil
 			}); err != nil {
 				log.Errorf("favorite: can't set detail to object: %v", err)
@@ -115,7 +115,7 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 				if current == nil {
 					current = domain.NewDetails()
 				}
-				current.Set(bundle.RelationKeyIsFavorite, pbtypes.Bool(true))
+				current.SetBool(bundle.RelationKeyIsFavorite, true)
 				return current, nil
 			}); err != nil {
 				log.Errorf("favorite: can't set detail to object: %v", err)

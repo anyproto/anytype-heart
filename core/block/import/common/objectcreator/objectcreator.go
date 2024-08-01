@@ -175,7 +175,7 @@ func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin objecto
 	createdDate := sn.Snapshot.Data.Details.GetInt64(bundle.RelationKeyCreatedDate)
 	if lastModifiedDate == 0 {
 		if createdDate != 0 {
-			sn.Snapshot.Data.Details.Set(bundle.RelationKeyLastModifiedDate, pbtypes.Int64(int64(createdDate)))
+			sn.Snapshot.Data.Details.SetInt64(bundle.RelationKeyLastModifiedDate, createdDate)
 		} else {
 			// we can't fallback to time.Now() because it will be inconsistent with the time used in object tree header.
 			// So instead we should EXPLICITLY set creation date to the snapshot in all importers
@@ -188,8 +188,8 @@ func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin objecto
 		sn.Snapshot.Data.OriginalCreatedTimestamp = createdDate
 	}
 
-	sn.Snapshot.Data.Details.Set(bundle.RelationKeyOrigin, pbtypes.Int64(int64(origin.Origin)))
-	sn.Snapshot.Data.Details.Set(bundle.RelationKeyImportType, pbtypes.Int64(int64(origin.ImportType)))
+	sn.Snapshot.Data.Details.SetInt64(bundle.RelationKeyOrigin, int64(origin.Origin))
+	sn.Snapshot.Data.Details.SetInt64(bundle.RelationKeyImportType, int64(origin.ImportType))
 	// we don't need to inject relatonLinks, they will be automatically injected for bundled relations
 }
 

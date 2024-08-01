@@ -238,54 +238,54 @@ func (ds *Service) getRelationDetails(databaseProperty property.DatabaseProperty
 		name = property.UntitledProperty
 	}
 	details := domain.NewDetails()
-	details.Set(bundle.RelationKeyRelationFormat, pbtypes.Float64(float64(databaseProperty.GetFormat())))
-	details.Set(bundle.RelationKeyName, pbtypes.String(name))
-	details.Set(bundle.RelationKeyRelationKey, pbtypes.String(key))
-	details.Set(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
-	details.Set(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_relation)))
-	details.Set(bundle.RelationKeySourceFilePath, pbtypes.String(databaseProperty.GetID()))
+	details.SetInt64(bundle.RelationKeyRelationFormat, int64(databaseProperty.GetFormat()))
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeyRelationKey, key)
+	details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
+	details.SetString(bundle.RelationKeySourceFilePath, databaseProperty.GetID())
 	uniqueKey, err := domain.NewUniqueKey(sb.SmartBlockTypeRelation, key)
 	if err != nil {
 		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
-	details.Set(bundle.RelationKeyId, pbtypes.String(uniqueKey.Marshal()))
+	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
 	return details
 }
 
 func (ds *Service) getCollectionDetails(d Database) *domain.Details {
 	details := domain.NewDetails()
-	details.Set(bundle.RelationKeySourceFilePath, d.ID)
+	details.SetString(bundle.RelationKeySourceFilePath, d.ID)
 	if len(d.Title) > 0 {
-		details.Set(bundle.RelationKeyName, d.Title[0].PlainText)
+		details.SetString(bundle.RelationKeyName, d.Title[0].PlainText)
 	}
 	if d.Icon != nil && d.Icon.Emoji != nil {
-		details.Set(bundle.RelationKeyIconEmoji, *d.Icon.Emoji)
+		details.SetString(bundle.RelationKeyIconEmoji, *d.Icon.Emoji)
 	}
 
 	if d.Cover != nil {
 		if d.Cover.Type == api.External {
-			details.Set(bundle.RelationKeyCoverId, d.Cover.External.URL)
-			details.Set(bundle.RelationKeyCoverType, 1)
+			details.SetString(bundle.RelationKeyCoverId, d.Cover.External.URL)
+			details.SetInt64(bundle.RelationKeyCoverType, 1)
 		}
 
 		if d.Cover.Type == api.File {
-			details.Set(bundle.RelationKeyCoverId, d.Cover.File.URL)
-			details.Set(bundle.RelationKeyCoverType, 1)
+			details.SetString(bundle.RelationKeyCoverId, d.Cover.File.URL)
+			details.SetInt64(bundle.RelationKeyCoverType, 1)
 		}
 	}
 	if d.Icon != nil {
 		api.SetIcon(details, d.Icon)
 	}
-	details.Set(bundle.RelationKeyCreator, d.CreatedBy.Name)
-	details.Set(bundle.RelationKeyIsArchived, d.Archived)
-	details.Set(bundle.RelationKeyLastModifiedBy, d.LastEditedBy.Name)
-	details.Set(bundle.RelationKeyDescription, api.RichTextToDescription(d.Description))
-	details.Set(bundle.RelationKeyIsFavorite, false)
-	details.Set(bundle.RelationKeyLayout, float64(model.ObjectType_collection))
+	details.SetString(bundle.RelationKeyCreator, d.CreatedBy.Name)
+	details.SetBool(bundle.RelationKeyIsArchived, d.Archived)
+	details.SetString(bundle.RelationKeyLastModifiedBy, d.LastEditedBy.Name)
+	details.SetString(bundle.RelationKeyDescription, api.RichTextToDescription(d.Description))
+	details.SetBool(bundle.RelationKeyIsFavorite, false)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
 
-	details.Set(bundle.RelationKeyLastModifiedDate, float64(d.LastEditedTime.Unix()))
-	details.Set(bundle.RelationKeyCreatedDate, float64(d.CreatedTime.Unix()))
+	details.SetInt64(bundle.RelationKeyLastModifiedDate, d.LastEditedTime.Unix())
+	details.SetInt64(bundle.RelationKeyCreatedDate, d.CreatedTime.Unix())
 	return details
 }
 

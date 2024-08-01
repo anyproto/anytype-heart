@@ -729,7 +729,7 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
 	details := domain.NewDetails()
-	details.Set(bundle.RelationKeySource, url)
+	details.SetString(bundle.RelationKeySource, url)
 	req := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyBookmark,
 		Details:       details,
@@ -836,7 +836,7 @@ func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetail
 			// if detail wasn't provided in request, we get it from bookmark and set it later in bookmark.UpdateObject
 			// and add to response details
 			shouldUpdate = true
-			objectDetails.Set(relation, pbtypes.String(*valueFromBookmark))
+			objectDetails.SetString(relation, *valueFromBookmark)
 		}
 	}
 	return shouldUpdate
@@ -860,5 +860,5 @@ func (s *Service) enrichDetailsWithOrigin(details *domain.Details, origin model.
 	if details == nil {
 		details = domain.NewDetails()
 	}
-	details.Set(bundle.RelationKeyOrigin, pbtypes.Int64(int64(origin)))
+	details.SetInt64(bundle.RelationKeyOrigin, int64(origin))
 }

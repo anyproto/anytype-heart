@@ -68,7 +68,7 @@ func (p *participant) ModifyProfileDetails(profileDetails *domain.Details) (err 
 		bundle.RelationKeyIconImage,
 		bundle.RelationKeyGlobalName,
 	)
-	details.Set(bundle.RelationKeyIdentityProfileLink, pbtypes.String(profileDetails.GetString(bundle.RelationKeyId)))
+	details.SetString(bundle.RelationKeyIdentityProfileLink, profileDetails.GetString(bundle.RelationKeyId))
 	return p.modifyDetails(details)
 }
 

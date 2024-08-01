@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type RootCollection struct {
@@ -65,7 +64,7 @@ func (r *RootCollection) getRootCollectionSnapshot(
 	if detailsStruct == nil {
 		detailsStruct = domain.NewDetails()
 	}
-	detailsStruct.Set(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_collection)))
+	detailsStruct.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
 	return &Snapshot{
 		Id:       uuid.New().String(),
 		FileName: collectionName,
@@ -104,11 +103,11 @@ func (r *RootCollection) addRelations(st *state.State) error {
 
 func (r *RootCollection) getCreateCollectionRequest(collectionName string, icon string, shouldBeFavorite bool) *domain.Details {
 	details := domain.NewDetails()
-	details.Set(bundle.RelationKeySourceFilePath, collectionName)
-	details.Set(bundle.RelationKeyName, collectionName)
-	details.Set(bundle.RelationKeyIsFavorite, shouldBeFavorite)
-	details.Set(bundle.RelationKeyLayout, float64(model.ObjectType_collection))
-	details.Set(bundle.RelationKeyIconImage, icon)
+	details.SetString(bundle.RelationKeySourceFilePath, collectionName)
+	details.SetString(bundle.RelationKeyName, collectionName)
+	details.SetBool(bundle.RelationKeyIsFavorite, shouldBeFavorite)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
+	details.SetString(bundle.RelationKeyIconImage, icon)
 	return details
 }
 

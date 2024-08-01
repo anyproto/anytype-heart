@@ -128,7 +128,7 @@ func (t *DatabaseTitle) GetID() string {
 }
 
 func (t *DatabaseTitle) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), "")
+	details.SetString(domain.RelationKey(key), "")
 }
 
 func (t *DatabaseTitle) GetFormat() model.RelationFormat {
@@ -144,7 +144,7 @@ func (rt *DatabaseRichText) GetID() string {
 }
 
 func (rt *DatabaseRichText) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), "")
+	details.SetString(domain.RelationKey(key), "")
 }
 
 func (rt *DatabaseRichText) GetFormat() model.RelationFormat {
@@ -160,7 +160,7 @@ func (np *DatabaseNumber) GetID() string {
 }
 
 func (np *DatabaseNumber) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), 0)
+	details.SetFloat(domain.RelationKey(key), 0)
 }
 
 func (np *DatabaseNumber) GetFormat() model.RelationFormat {
@@ -176,7 +176,7 @@ func (sp *DatabaseSelect) GetID() string {
 }
 
 func (sp *DatabaseSelect) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), []string{})
+	details.SetStringList(domain.RelationKey(key), []string{})
 }
 
 func (sp *DatabaseSelect) GetFormat() model.RelationFormat {
@@ -192,7 +192,7 @@ func (ms *DatabaseMultiSelect) GetID() string {
 }
 
 func (ms *DatabaseMultiSelect) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), []string{})
+	details.SetStringList(domain.RelationKey(key), []string{})
 }
 
 func (ms *DatabaseMultiSelect) GetFormat() model.RelationFormat {
@@ -208,7 +208,7 @@ func (dp *DatabaseDate) GetID() string {
 }
 
 func (dp *DatabaseDate) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), 0)
+	details.SetFloat(domain.RelationKey(key), 0)
 }
 
 func (dp *DatabaseDate) GetFormat() model.RelationFormat {
@@ -224,7 +224,7 @@ func (rp *DatabaseRelation) GetID() string {
 }
 
 func (rp *DatabaseRelation) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), "")
+	details.SetString(domain.RelationKey(key), "")
 }
 
 func (rp *DatabaseRelation) GetFormat() model.RelationFormat {
@@ -240,7 +240,7 @@ func (p *DatabasePeople) GetID() string {
 }
 
 func (p *DatabasePeople) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), []string{})
+	details.SetStringList(domain.RelationKey(key), []string{})
 }
 
 func (p *DatabasePeople) GetFormat() model.RelationFormat {
@@ -256,7 +256,7 @@ func (f *DatabaseFile) GetID() string {
 }
 
 func (f *DatabaseFile) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), "")
+	details.SetString(domain.RelationKey(key), "")
 }
 
 func (f *DatabaseFile) GetFormat() model.RelationFormat {
@@ -272,7 +272,7 @@ func (c *DatabaseCheckbox) GetID() string {
 }
 
 func (c *DatabaseCheckbox) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), false)
+	details.SetBool(domain.RelationKey(key), false)
 }
 
 func (c *DatabaseCheckbox) GetFormat() model.RelationFormat {
@@ -288,7 +288,7 @@ func (u *DatabaseURL) GetID() string {
 }
 
 func (u *DatabaseURL) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), "")
+	details.SetString(domain.RelationKey(key), "")
 }
 
 func (u *DatabaseURL) GetFormat() model.RelationFormat {
@@ -304,7 +304,7 @@ func (e *DatabaseEmail) GetID() string {
 }
 
 func (e *DatabaseEmail) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), "")
+	details.SetString(domain.RelationKey(key), "")
 }
 
 func (e *DatabaseEmail) GetFormat() model.RelationFormat {
@@ -328,7 +328,7 @@ func (ct *DatabaseCreatedTime) GetID() string {
 }
 
 func (ct *DatabaseCreatedTime) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), 0)
+	details.SetFloat(domain.RelationKey(key), 0)
 }
 
 func (ct *DatabaseCreatedTime) GetFormat() model.RelationFormat {
@@ -344,7 +344,7 @@ func (cb *DatabaseCreatedBy) GetID() string {
 }
 
 func (cb *DatabaseCreatedBy) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), "")
+	details.SetString(domain.RelationKey(key), "")
 }
 
 func (cb *DatabaseCreatedBy) GetFormat() model.RelationFormat {
@@ -360,7 +360,7 @@ func (le *DatabaseLastEditedTime) GetID() string {
 }
 
 func (le *DatabaseLastEditedTime) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), 0)
+	details.SetFloat(domain.RelationKey(key), 0)
 }
 
 func (le *DatabaseLastEditedTime) GetFormat() model.RelationFormat {
@@ -376,7 +376,7 @@ func (lb *DatabaseLastEditedBy) GetID() string {
 }
 
 func (lb *DatabaseLastEditedBy) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), "")
+	details.SetString(domain.RelationKey(key), "")
 }
 
 func (lb *DatabaseLastEditedBy) GetFormat() model.RelationFormat {
@@ -392,7 +392,7 @@ func (sp *DatabaseStatus) GetID() string {
 }
 
 func (sp *DatabaseStatus) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), []string{})
+	details.SetStringList(domain.RelationKey(key), []string{})
 }
 
 func (sp *DatabaseStatus) GetFormat() model.RelationFormat {
@@ -420,7 +420,7 @@ func (v *DatabaseVerification) GetID() string {
 }
 
 func (v *DatabaseVerification) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), []string{})
+	details.SetStringList(domain.RelationKey(key), []string{})
 }
 
 type DatabaseUnique struct {
@@ -436,5 +436,5 @@ func (u *DatabaseUnique) GetID() string {
 }
 
 func (u *DatabaseUnique) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), []string{})
+	details.SetStringList(domain.RelationKey(key), []string{})
 }

@@ -182,7 +182,7 @@ func (m *subObjectsMigration) iterateAllSubObjects(st *state.State, proc func(in
 				}
 
 				details := domain.NewDetailsFromProto(v.StructValue)
-				details.Set(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
+				details.SetString(bundle.RelationKeyUniqueKey, uk.Marshal())
 
 				proc(smartblock.DocInfo{
 					Links:   nil,

@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type DataObject struct {
@@ -117,19 +116,19 @@ func (pt *Task) provideSnapshot(notionBlocks []*model.Block, details *domain.Det
 func (pt *Task) prepareDetails() (*domain.Details, []*model.RelationLink) {
 	details := domain.NewDetails()
 	var relationLinks []*model.RelationLink
-	details.Set(bundle.RelationKeySourceFilePath, pt.p.ID)
+	details.SetString(bundle.RelationKeySourceFilePath, pt.p.ID)
 	if pt.p.Icon != nil {
 		if iconRelationLink := api.SetIcon(details, pt.p.Icon); iconRelationLink != nil {
 			relationLinks = append(relationLinks, iconRelationLink)
 		}
 	}
-	details.Set(bundle.RelationKeyIsArchived, pt.p.Archived)
-	details.Set(bundle.RelationKeyIsFavorite, false)
+	details.SetBool(bundle.RelationKeyIsArchived, pt.p.Archived)
+	details.SetBool(bundle.RelationKeyIsFavorite, false)
 	createdTime := common.ConvertStringToTime(pt.p.CreatedTime)
 	lastEditedTime := common.ConvertStringToTime(pt.p.LastEditedTime)
-	details.Set(bundle.RelationKeyLastModifiedDate, float64(lastEditedTime))
-	details.Set(bundle.RelationKeyCreatedDate, float64(createdTime))
-	details.Set(bundle.RelationKeyLayout, float64(model.ObjectType_basic))
+	details.SetInt64(bundle.RelationKeyLastModifiedDate, lastEditedTime)
+	details.SetInt64(bundle.RelationKeyCreatedDate, createdTime)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_basic))
 	return details, relationLinks
 }
 
@@ -228,17 +227,17 @@ func (pt *Task) getRelationDetails(key string, name string, propObject property.
 		name = property.UntitledProperty
 	}
 	details := domain.NewDetails()
-	details.Set(bundle.RelationKeyRelationFormat, pbtypes.Float64(float64(propObject.GetFormat())))
-	details.Set(bundle.RelationKeyName, pbtypes.String(name))
-	details.Set(bundle.RelationKeyRelationKey, pbtypes.String(key))
-	details.Set(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_relation)))
-	details.Set(bundle.RelationKeySourceFilePath, pbtypes.String(propObject.GetID()))
+	details.SetInt64(bundle.RelationKeyRelationFormat, int64(propObject.GetFormat()))
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeyRelationKey, key)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
+	details.SetString(bundle.RelationKeySourceFilePath, propObject.GetID())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
 		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
-	details.Set(bundle.RelationKeyId, pbtypes.String(uniqueKey.Marshal()))
+	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
 	return details
 }
 
@@ -336,13 +335,13 @@ func handleRelationItem(properties []interface{}, pr *property.RelationItem) {
 func addCoverDetail(p Page, details *domain.Details) {
 	if p.Cover != nil {
 		if p.Cover.Type == api.External {
-			details.Set(bundle.RelationKeyCoverId, p.Cover.External.URL)
-			details.Set(bundle.RelationKeyCoverType, 1)
+			details.SetString(bundle.RelationKeyCoverId, p.Cover.External.URL)
+			details.SetInt64(bundle.RelationKeyCoverType, 1)
 		}
 
 		if p.Cover.Type == api.File {
-			details.Set(bundle.RelationKeyCoverId, p.Cover.File.URL)
-			details.Set(bundle.RelationKeyCoverType, 1)
+			details.SetString(bundle.RelationKeyCoverId, p.Cover.File.URL)
+			details.SetInt64(bundle.RelationKeyCoverType, 1)
 		}
 	}
 }
@@ -469,7 +468,7 @@ func isOptionAlreadyExist(optName, rel string, relation *property.PropertiesStor
 
 func provideRelationOptionSnapshot(name, color, rel string) (*domain.Details, *common.StateSnapshot) {
 	id, details := getDetailsForRelationOption(name, rel)
-	details.Set(bundle.RelationKeyRelationOptionColor, pbtypes.String(api.NotionColorToAnytype[color]))
+	details.SetString(bundle.RelationKeyRelationOptionColor, api.NotionColorToAnytype[color])
 	optSnapshot := &common.StateSnapshot{
 		Details:     details,
 		ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
@@ -481,16 +480,16 @@ func provideRelationOptionSnapshot(name, color, rel string) (*domain.Details, *c
 func getDetailsForRelationOption(name, rel string) (string, *domain.Details) {
 	id := bson.NewObjectId().Hex()
 	details := domain.NewDetails()
-	details.Set(bundle.RelationKeyName, pbtypes.String(name))
-	details.Set(bundle.RelationKeyRelationKey, pbtypes.String(rel))
-	details.Set(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_relationOption)))
-	details.Set(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeyRelationKey, rel)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
+	details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
 	if err != nil {
 		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return id, details
 	}
-	details.Set(bundle.RelationKeyId, pbtypes.String(uniqueKey.Marshal()))
+	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
 	return id, details
 }
 

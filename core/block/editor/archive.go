@@ -105,7 +105,7 @@ func (p *Archive) updateObjects(info smartblock.ApplyInfo) (err error) {
 				if current == nil {
 					current = domain.NewDetails()
 				}
-				current.Set(bundle.RelationKeyIsArchived, pbtypes.Bool(false))
+				current.SetBool(bundle.RelationKeyIsArchived, false)
 				return current, nil
 			}); err != nil {
 				log.Errorf("archive: can't set detail to object: %v", err)
@@ -118,7 +118,7 @@ func (p *Archive) updateObjects(info smartblock.ApplyInfo) (err error) {
 				if current == nil {
 					current = domain.NewDetails()
 				}
-				current.Set(bundle.RelationKeyIsArchived, pbtypes.Bool(true))
+				current.SetBool(bundle.RelationKeyIsArchived, true)
 				return current, nil
 			}); err != nil {
 				log.Errorf("archive: can't set detail to object: %v", err)

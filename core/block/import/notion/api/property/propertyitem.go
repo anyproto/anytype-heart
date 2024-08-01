@@ -80,7 +80,7 @@ func (t *TitleItem) GetTitle() string {
 }
 
 func (t *TitleItem) SetDetail(key string, details *domain.Details) {
-	details.Set(bundle.RelationKeyName, t.GetTitle())
+	details.SetString(bundle.RelationKeyName, t.GetTitle())
 }
 
 func (t *TitleItem) GetPropertyType() ConfigType {
@@ -110,7 +110,7 @@ func (rt *RichTextItem) SetDetail(key string, details *domain.Details) {
 			richText.WriteString("\n")
 		}
 	}
-	details.Set(domain.RelationKey(key), richText.String())
+	details.SetString(domain.RelationKey(key), richText.String())
 }
 
 func (rt *RichTextItem) GetPropertyType() ConfigType {
@@ -134,7 +134,7 @@ type NumberItem struct {
 
 func (np *NumberItem) SetDetail(key string, details *domain.Details) {
 	if np.Number != nil {
-		details.Set(domain.RelationKey(key), *np.Number)
+		details.SetFloat(domain.RelationKey(key), *np.Number)
 	}
 }
 
@@ -164,7 +164,7 @@ type SelectOption struct {
 }
 
 func (sp *SelectItem) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), []string{sp.Select.ID})
+	details.SetStringList(domain.RelationKey(key), []string{sp.Select.ID})
 }
 
 func (sp *SelectItem) GetPropertyType() ConfigType {
@@ -191,7 +191,7 @@ func (ms *MultiSelectItem) SetDetail(key string, details *domain.Details) {
 	for _, so := range ms.MultiSelect {
 		msList = append(msList, so.ID)
 	}
-	details.Set(domain.RelationKey(key), msList)
+	details.SetStringList(domain.RelationKey(key), msList)
 }
 
 func (ms *MultiSelectItem) GetPropertyType() ConfigType {
@@ -216,7 +216,7 @@ type DateItem struct {
 func (dp *DateItem) SetDetail(key string, details *domain.Details) {
 	if dp.Date != nil {
 		date := common.ConvertStringToTime(dp.Date.Start)
-		details.Set(domain.RelationKey(key), date)
+		details.SetInt64(domain.RelationKey(key), date)
 	}
 }
 
@@ -253,17 +253,17 @@ func (f *FormulaItem) SetDetail(key string, details *domain.Details) {
 	switch f.Formula["type"].(string) {
 	case StringFormula:
 		if f.Formula["string"] != nil {
-			details.Set(domain.RelationKey(key), f.Formula["string"].(string))
+			details.SetString(domain.RelationKey(key), f.Formula["string"].(string))
 		}
 	case NumberFormula:
 		if f.Formula["number"] != nil {
 			stringNumber := strconv.FormatFloat(f.Formula["number"].(float64), 'f', 6, 64)
-			details.Set(domain.RelationKey(key), stringNumber)
+			details.SetString(domain.RelationKey(key), stringNumber)
 		}
 	case BooleanFormula:
 		if f.Formula["boolean"] != nil {
 			stringBool := strconv.FormatBool(f.Formula["boolean"].(bool))
-			details.Set(domain.RelationKey(key), stringBool)
+			details.SetString(domain.RelationKey(key), stringBool)
 		}
 	default:
 		return
@@ -299,7 +299,7 @@ func (rp *RelationItem) SetDetail(key string, details *domain.Details) {
 	for _, rel := range rp.Relation {
 		relation = append(relation, rel.ID)
 	}
-	details.Set(domain.RelationKey(key), relation)
+	details.SetStringList(domain.RelationKey(key), relation)
 }
 
 func (rp *RelationItem) GetPropertyType() ConfigType {
@@ -326,7 +326,7 @@ func (p *PeopleItem) SetDetail(key string, details *domain.Details) {
 	for _, people := range p.People {
 		peopleList = append(peopleList, people.ID)
 	}
-	details.Set(domain.RelationKey(key), peopleList)
+	details.SetStringList(domain.RelationKey(key), peopleList)
 }
 
 func (p *PeopleItem) GetPropertyType() ConfigType {
@@ -369,7 +369,7 @@ func (f *FileItem) SetDetail(key string, details *domain.Details) {
 			fileList[i] = fo.File.URL
 		}
 	}
-	details.Set(domain.RelationKey(key), fileList)
+	details.SetStringList(domain.RelationKey(key), fileList)
 }
 
 type CheckboxItem struct {
@@ -380,7 +380,7 @@ type CheckboxItem struct {
 }
 
 func (c *CheckboxItem) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), c.Checkbox)
+	details.SetBool(domain.RelationKey(key), c.Checkbox)
 }
 
 func (c *CheckboxItem) GetPropertyType() ConfigType {
@@ -404,7 +404,7 @@ type URLItem struct {
 
 func (u *URLItem) SetDetail(key string, details *domain.Details) {
 	if u.URL != nil {
-		details.Set(domain.RelationKey(key), *u.URL)
+		details.SetString(domain.RelationKey(key), *u.URL)
 	}
 }
 
@@ -429,7 +429,7 @@ type EmailItem struct {
 
 func (e *EmailItem) SetDetail(key string, details *domain.Details) {
 	if e.Email != nil {
-		details.Set(domain.RelationKey(key), *e.Email)
+		details.SetString(domain.RelationKey(key), *e.Email)
 	}
 }
 
@@ -454,7 +454,7 @@ type PhoneItem struct {
 
 func (p *PhoneItem) SetDetail(key string, details *domain.Details) {
 	if p.Phone != nil {
-		details.Set(domain.RelationKey(key), *p.Phone)
+		details.SetString(domain.RelationKey(key), *p.Phone)
 	}
 }
 
@@ -483,7 +483,7 @@ func (ct *CreatedTimeItem) SetDetail(key string, details *domain.Details) {
 		log.With(zap.String("method", "SetDetail")).Errorf("failed to parse time %v", err)
 		return
 	}
-	details.Set(domain.RelationKey(key), t.Unix())
+	details.SetInt64(domain.RelationKey(key), t.Unix())
 }
 
 func (ct *CreatedTimeItem) GetPropertyType() ConfigType {
@@ -506,7 +506,7 @@ type CreatedByItem struct {
 }
 
 func (cb *CreatedByItem) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), cb.CreatedBy.Name)
+	details.SetString(domain.RelationKey(key), cb.CreatedBy.Name)
 }
 
 func (cb *CreatedByItem) GetPropertyType() ConfigType {
@@ -534,7 +534,7 @@ func (le *LastEditedTimeItem) SetDetail(key string, details *domain.Details) {
 		log.With(zap.String("method", "SetDetail")).Errorf("failed to parse time %v", err)
 		return
 	}
-	details.Set(domain.RelationKey(key), t.Unix())
+	details.SetInt64(domain.RelationKey(key), t.Unix())
 }
 
 func (le *LastEditedTimeItem) GetPropertyType() ConfigType {
@@ -557,7 +557,7 @@ type LastEditedByItem struct {
 }
 
 func (lb *LastEditedByItem) SetDetail(key string, details *domain.Details) {
-	details.Set(domain.RelationKey(key), lb.LastEditedBy.Name)
+	details.SetString(domain.RelationKey(key), lb.LastEditedBy.Name)
 }
 
 func (lb *LastEditedByItem) GetPropertyType() ConfigType {
@@ -586,9 +586,9 @@ type Status struct {
 
 func (sp *StatusItem) SetDetail(key string, details *domain.Details) {
 	if sp.Status != nil {
-		details.Set(domain.RelationKey(key), []string{sp.Status.ID})
+		details.SetStringList(domain.RelationKey(key), []string{sp.Status.ID})
 	} else {
-		details.Set(domain.RelationKey(key), []string{})
+		details.SetStringList(domain.RelationKey(key), []string{})
 	}
 }
 
@@ -629,7 +629,7 @@ type RollupObject struct {
 func (r *RollupItem) SetDetail(key string, details *domain.Details) {
 	switch r.Rollup.Type {
 	case rollupNumber:
-		details.Set(domain.RelationKey(key), r.Rollup.Number)
+		details.SetFloat(domain.RelationKey(key), r.Rollup.Number)
 	case rollupDate:
 		di := DateItem{Date: r.Rollup.Date}
 		di.SetDetail(key, details)
@@ -662,7 +662,7 @@ func (r *RollupItem) handleArrayType(key string, details *domain.Details) {
 			result = append(result, strconv.FormatFloat(v, 'f', 0, 64))
 		}
 	}
-	details.Set(domain.RelationKey(key), result)
+	details.SetStringList(domain.RelationKey(key), result)
 }
 
 func (r *RollupItem) GetPropertyType() ConfigType {
@@ -721,7 +721,7 @@ func (u UniqueIDItem) SetDetail(key string, details *domain.Details) {
 	if u.UniqueID.Prefix != "" {
 		id = u.UniqueID.Prefix + "-" + id
 	}
-	details.Set(domain.RelationKey(key), id)
+	details.SetString(domain.RelationKey(key), id)
 }
 
 func (u UniqueIDItem) GetPropertyType() ConfigType {

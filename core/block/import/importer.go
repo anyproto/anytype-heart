@@ -46,7 +46,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("import")
@@ -383,7 +382,7 @@ func (i *Import) replaceRelationKeyWithNew(option *common.Snapshot, oldIDToNew m
 	if newRelationID, ok := oldIDToNew[key]; ok {
 		key = strings.TrimPrefix(newRelationID, addr.RelationKeyToIdPrefix)
 	}
-	option.Snapshot.Data.Details.Set(bundle.RelationKeyRelationKey, pbtypes.String(key))
+	option.Snapshot.Data.Details.SetString(bundle.RelationKeyRelationKey, key)
 }
 
 func (i *Import) getObjectID(

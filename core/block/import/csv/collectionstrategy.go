@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("import-csv")
@@ -76,10 +75,10 @@ func updateDetailsForTransposeCollection(details *domain.Details, transpose bool
 	if transpose {
 		source := details.GetString(bundle.RelationKeySourceFilePath)
 		source = source + string(filepath.Separator) + transposeSource
-		details.Set(bundle.RelationKeySourceFilePath, pbtypes.String(source))
+		details.SetString(bundle.RelationKeySourceFilePath, source)
 		name := details.GetString(bundle.RelationKeyName)
 		name = name + " " + transposeName
-		details.Set(bundle.RelationKeyName, pbtypes.String(name))
+		details.SetString(bundle.RelationKeyName, name)
 	}
 }
 
@@ -173,16 +172,16 @@ func getDefaultRelationName(i int) string {
 
 func getRelationDetails(name, key string, format float64) *domain.Details {
 	details := domain.NewDetails()
-	details.Set(bundle.RelationKeyRelationFormat, pbtypes.Float64(format))
-	details.Set(bundle.RelationKeyName, pbtypes.String(name))
-	details.Set(bundle.RelationKeyRelationKey, pbtypes.String(key))
-	details.Set(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_relation)))
+	details.SetFloat(bundle.RelationKeyRelationFormat, format)
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeyRelationKey, key)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, key)
 	if err != nil {
 		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
-	details.Set(bundle.RelationKeyId, pbtypes.String(uniqueKey.Marshal()))
+	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
 	return details
 }
 
@@ -241,14 +240,14 @@ func getDetailsForObject(relationsValues []string, relations []*model.Relation, 
 			break
 		}
 		relation := relations[j]
-		details.Set(domain.RelationKey(relation.Key), pbtypes.String(value))
+		details.SetString(domain.RelationKey(relation.Key), value)
 		relationLinks = append(relationLinks, &model.RelationLink{
 			Key:    relation.Key,
 			Format: relation.Format,
 		})
 	}
-	details.Set(bundle.RelationKeySourceFilePath, pbtypes.String(buildSourcePath(path, objectOrderIndex, transpose)))
-	details.Set(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_basic)))
+	details.SetString(bundle.RelationKeySourceFilePath, buildSourcePath(path, objectOrderIndex, transpose))
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_basic))
 	return details, relationLinks
 }
 
@@ -270,7 +269,7 @@ func provideObjectSnapshot(st *state.State, details *domain.Details) *common.Sna
 
 func (c *CollectionStrategy) getCollectionSnapshot(details *domain.Details, st *state.State, p string, relations []*model.Relation) *common.Snapshot {
 	details = st.CombinedDetails().Merge(details)
-	details.Set(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_collection)))
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
 
 	for _, relation := range relations {
 		err := common.AddRelationsToDataView(st, &model.RelationLink{
