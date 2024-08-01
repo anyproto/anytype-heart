@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -18,11 +17,11 @@ import (
 )
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
 }
 
 type TemplateStateCreator interface {
-	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (*state.State, error)
+	CreateTemplateStateWithDetails(templateId string, details *domain.Details) (*state.State, error)
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
@@ -87,7 +86,7 @@ func (bs *basic) prepareTargetObjectDetails(
 	spaceID string,
 	typeUniqueKey domain.UniqueKey,
 	rootBlock simple.Block,
-) (*types.Struct, error) {
+) (*domain.Details, error) {
 	objType, err := bs.objectStore.GetObjectByUniqueKey(spaceID, typeUniqueKey)
 	if err != nil {
 		return nil, err
@@ -162,15 +161,12 @@ func removeBlocks(state *state.State, descendants []simple.Block) {
 	}
 }
 
-func createTargetObjectDetails(nameText string, layout model.ObjectTypeLayout) *types.Struct {
-	fields := map[string]*types.Value{}
-
+func createTargetObjectDetails(nameText string, layout model.ObjectTypeLayout) *domain.Details {
+	details := domain.NewDetails()
 	// Without this check title will be duplicated in template.WithNameToFirstBlock
 	if layout != model.ObjectType_note {
-		fields[bundle.RelationKeyName.String()] = pbtypes.String(nameText)
+		details.Set(bundle.RelationKeyName, nameText)
 	}
-
-	details := &types.Struct{Fields: fields}
 	return details
 }
 

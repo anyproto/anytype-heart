@@ -45,11 +45,19 @@ type Snapshot struct {
 type SnapshotModel struct {
 	SbType   coresb.SmartBlockType
 	LogHeads map[string]string
-	Data     *SnapshotModelData
+	Data     *StateSnapshot
 	FileKeys []*pb.ChangeFileKeys
 }
 
-type SnapshotModelData struct {
+func (sn *SnapshotModel) ToProto() *pb.ChangeSnapshot {
+	return &pb.ChangeSnapshot{
+		Data:     sn.Data.ToProto(),
+		LogHeads: sn.LogHeads,
+		FileKeys: sn.FileKeys,
+	}
+}
+
+type StateSnapshot struct {
 	Blocks                   []*model.Block
 	Details                  *domain.Details
 	FileKeys                 *types.Struct
@@ -61,6 +69,47 @@ type SnapshotModelData struct {
 	Key                      string
 	OriginalCreatedTimestamp int64
 	FileInfo                 *model.FileInfo
+}
+
+func (sn *StateSnapshot) ToProto() *model.SmartBlockSnapshotBase {
+	return &model.SmartBlockSnapshotBase{
+		Blocks:                   sn.Blocks,
+		Details:                  sn.Details.ToProto(),
+		FileKeys:                 sn.FileKeys,
+		ExtraRelations:           sn.ExtraRelations,
+		ObjectTypes:              sn.ObjectTypes,
+		Collections:              sn.Collections,
+		RemovedCollectionKeys:    sn.RemovedCollectionKeys,
+		RelationLinks:            sn.RelationLinks,
+		Key:                      sn.Key,
+		OriginalCreatedTimestamp: sn.OriginalCreatedTimestamp,
+		FileInfo:                 sn.FileInfo,
+	}
+}
+
+func NewStateSnapshotFromProto(sn *model.SmartBlockSnapshotBase) *StateSnapshot {
+	return &StateSnapshot{
+		Blocks:                   sn.Blocks,
+		Details:                  domain.NewDetailsFromProto(sn.Details),
+		FileKeys:                 sn.FileKeys,
+		ExtraRelations:           sn.ExtraRelations,
+		ObjectTypes:              sn.ObjectTypes,
+		Collections:              sn.Collections,
+		RemovedCollectionKeys:    sn.RemovedCollectionKeys,
+		RelationLinks:            sn.RelationLinks,
+		Key:                      sn.Key,
+		OriginalCreatedTimestamp: sn.OriginalCreatedTimestamp,
+		FileInfo:                 sn.FileInfo,
+	}
+}
+
+func NewSnapshotModelFromProto(sn *pb.SnapshotWithType) *SnapshotModel {
+	return &SnapshotModel{
+		SbType:   coresb.SmartBlockType(sn.SbType),
+		LogHeads: sn.Snapshot.LogHeads,
+		Data:     NewStateSnapshotFromProto(sn.Snapshot.Data),
+		FileKeys: sn.Snapshot.FileKeys,
+	}
 }
 
 // Response expected response of each converter, incapsulate blocks snapshots and converting errors

@@ -64,13 +64,13 @@ func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 }
 
 func (s *SpaceImport) objectShouldBeSkipped(item *common.Snapshot) bool {
-	return item.SbType == smartblock.SmartBlockTypeSubObject || item.SbType == smartblock.SmartBlockTypeTemplate ||
-		item.SbType == smartblock.SmartBlockTypeRelation || item.SbType == smartblock.SmartBlockTypeObjectType ||
-		item.SbType == smartblock.SmartBlockTypeRelationOption
+	return item.Snapshot.SbType == smartblock.SmartBlockTypeSubObject || item.Snapshot.SbType == smartblock.SmartBlockTypeTemplate ||
+		item.Snapshot.SbType == smartblock.SmartBlockTypeRelation || item.Snapshot.SbType == smartblock.SmartBlockTypeObjectType ||
+		item.Snapshot.SbType == smartblock.SmartBlockTypeRelationOption
 }
 
 func (s *SpaceImport) getObjectsFromWidget(widgetSnapshot *common.Snapshot, oldToNewID map[string]string) (widget.ImportWidgetFlags, []string) {
-	widgetState := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot).(*state.State)
+	widgetState := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot.ToProto()).(*state.State)
 	var (
 		objectsInWidget     []string
 		objectTypesToImport widget.ImportWidgetFlags

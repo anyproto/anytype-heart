@@ -43,18 +43,18 @@ func (d *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn 
 	rawUniqueKey := sn.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
 	uniqueKey, err := domain.UnmarshalUniqueKey(rawUniqueKey)
 	if err != nil {
-		uniqueKey, err = domain.NewUniqueKey(sn.SbType, sn.Snapshot.Data.Key)
+		uniqueKey, err = domain.NewUniqueKey(sn.Snapshot.SbType, sn.Snapshot.Data.Key)
 		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create unique key from %s and %q: %w", sn.SbType, sn.Snapshot.Data.Key, err)
+			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create unique key from %s and %q: %w", sn.Snapshot.SbType, sn.Snapshot.Data.Key, err)
 		}
 	}
 
 	var key string
 	if d.isDeletedObject(spaceID, uniqueKey.Marshal()) {
 		key = bson.NewObjectId().Hex()
-		uniqueKey, err = domain.NewUniqueKey(sn.SbType, key)
+		uniqueKey, err = domain.NewUniqueKey(sn.Snapshot.SbType, key)
 		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create unique key from %s: %w", sn.SbType, err)
+			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create unique key from %s: %w", sn.Snapshot.SbType, err)
 		}
 	}
 	d.internalKey = key

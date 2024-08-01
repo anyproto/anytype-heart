@@ -387,12 +387,13 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 		snapshots = append(snapshots, &common.Snapshot{
 			Id:       file.PageID,
 			FileName: name,
-			SbType:   smartblock.SmartBlockTypePage,
-			Snapshot: &common.SnapshotModel{Data: &common.SnapshotModelData{
-				Blocks:      file.ParsedBlocks,
-				Details:     details[name],
-				ObjectTypes: []string{bundle.TypeKeyPage.String()},
-			}},
+			Snapshot: &common.SnapshotModel{
+				SbType: smartblock.SmartBlockTypePage,
+				Data: &common.StateSnapshot{
+					Blocks:      file.ParsedBlocks,
+					Details:     details[name],
+					ObjectTypes: []string{bundle.TypeKeyPage.String()},
+				}},
 		})
 	}
 

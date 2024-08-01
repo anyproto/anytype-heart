@@ -69,9 +69,9 @@ func (r *RootCollection) getRootCollectionSnapshot(
 	return &Snapshot{
 		Id:       uuid.New().String(),
 		FileName: collectionName,
-		SbType:   sb.SmartBlockTypePage,
 		Snapshot: &SnapshotModel{
-			Data: &SnapshotModelData{
+			SbType: sb.SmartBlockTypePage,
+			Data: &StateSnapshot{
 				Blocks:        st.Blocks(),
 				Details:       detailsStruct,
 				ObjectTypes:   []string{bundle.TypeKeyCollection.String()},

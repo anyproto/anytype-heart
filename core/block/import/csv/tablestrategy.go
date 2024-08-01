@@ -40,7 +40,7 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *
 	}
 
 	details := common.GetCommonDetails(path, "", "", model.ObjectType_basic)
-	sn := &model.SmartBlockSnapshotBase{
+	sn := &common.StateSnapshot{
 		Blocks:        st.Blocks(),
 		Details:       details,
 		ObjectTypes:   []string{bundle.TypeKeyPage.String()},
@@ -50,9 +50,11 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *
 
 	snapshot := &common.Snapshot{
 		Id:       uuid.New().String(),
-		SbType:   smartblock.SmartBlockTypePage,
 		FileName: path,
-		Snapshot: &pb.ChangeSnapshot{Data: sn},
+		Snapshot: &common.SnapshotModel{
+			SbType: smartblock.SmartBlockTypePage,
+			Data:   sn,
+		},
 	}
 	progress.AddDone(1)
 	return snapshot.Id, []*common.Snapshot{snapshot}, nil

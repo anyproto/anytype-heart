@@ -81,7 +81,7 @@ func (p *Provider) GetIDAndPayload(
 	getExisting bool,
 	origin objectorigin.ObjectOrigin,
 ) (string, treestorage.TreeStorageCreatePayload, error) {
-	if idProvider, ok := p.idProviderBySmartBlockType[sn.SbType]; ok {
+	if idProvider, ok := p.idProviderBySmartBlockType[sn.Snapshot.SbType]; ok {
 		return idProvider.GetIDAndPayload(ctx, spaceID, sn, createdTime, getExisting, origin)
 	}
 	return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("unsupported smartblock to import")

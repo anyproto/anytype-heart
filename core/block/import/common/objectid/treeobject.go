@@ -36,7 +36,7 @@ func (t *treeObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *co
 	}
 	payload, err = spc.CreateTreePayload(ctx, payloadcreator.PayloadCreationParams{
 		Time:           time.Now(),
-		SmartblockType: sn.SbType,
+		SmartblockType: sn.Snapshot.SbType,
 	})
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create tree payload: %w", err)

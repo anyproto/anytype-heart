@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -123,7 +122,7 @@ type builtinObjects interface {
 }
 
 type templateService interface {
-	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (*state.State, error)
+	CreateTemplateStateWithDetails(templateId string, details *domain.Details) (*state.State, error)
 }
 
 type openedObjects struct {
@@ -295,7 +294,7 @@ func (s *Service) SpaceInstallBundledObject(
 	ctx context.Context,
 	spaceId string,
 	sourceObjectId string,
-) (id string, object *types.Struct, err error) {
+) (id string, object *domain.Details, err error) {
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
@@ -315,7 +314,7 @@ func (s *Service) SpaceInstallBundledObjects(
 	ctx context.Context,
 	spaceId string,
 	sourceObjectIds []string,
-) (ids []string, objects []*types.Struct, err error) {
+) (ids []string, objects []*domain.Details, err error) {
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get space: %w", err)
@@ -729,13 +728,11 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
+	details := domain.NewDetails()
+	details.Set(bundle.RelationKeySource, url)
 	req := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyBookmark,
-		Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeySource.String(): pbtypes.String(url),
-			},
-		},
+		Details:       details,
 	}
 	objectId, _, err = s.objectCreator.CreateObject(ctx, spaceID, req)
 	if err != nil {
@@ -763,7 +760,7 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 }
 
 func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCreateFromUrlRequest,
-) (id string, objectDetails *types.Struct, err error) {
+) (id string, objectDetails *domain.Details, err error) {
 	url, err := uri.NormalizeURI(req.Url)
 	if err != nil {
 		return "", nil, err
@@ -772,10 +769,11 @@ func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCrea
 	if err != nil {
 		return "", nil, err
 	}
-	s.enrichDetailsWithOrigin(req.Details, model.ObjectOrigin_webclipper)
+	details := domain.NewDetailsFromProto(req.Details)
+	s.enrichDetailsWithOrigin(details, model.ObjectOrigin_webclipper)
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: objectTypeKey,
-		Details:       req.Details,
+		Details:       details,
 	}
 	id, objectDetails, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
 	if err != nil {
@@ -784,7 +782,7 @@ func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCrea
 
 	res := s.bookmark.FetchBookmarkContent(req.SpaceId, url, req.AddPageContent)
 	content := res()
-	shouldUpdateDetails := s.updateBookmarkContentWithUserDetails(req.Details, objectDetails, content)
+	shouldUpdateDetails := s.updateBookmarkContentWithUserDetails(details, objectDetails, content)
 	if shouldUpdateDetails {
 		err = s.bookmark.UpdateObject(id, content)
 		if err != nil {
@@ -820,19 +818,19 @@ func (s *Service) pasteBlocks(id string, content *bookmark.ObjectContent) error 
 	return nil
 }
 
-func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetails *types.Struct, content *bookmark.ObjectContent) bool {
+func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetails *domain.Details, content *bookmark.ObjectContent) bool {
 	shouldUpdate := false
-	bookmarkRelationToValue := map[string]*string{
-		bundle.RelationKeyName.String():        &content.BookmarkContent.Title,
-		bundle.RelationKeyDescription.String(): &content.BookmarkContent.Description,
-		bundle.RelationKeySource.String():      &content.BookmarkContent.Url,
-		bundle.RelationKeyPicture.String():     &content.BookmarkContent.ImageHash,
-		bundle.RelationKeyIconImage.String():   &content.BookmarkContent.FaviconHash,
+	bookmarkRelationToValue := map[domain.RelationKey]*string{
+		bundle.RelationKeyName:        &content.BookmarkContent.Title,
+		bundle.RelationKeyDescription: &content.BookmarkContent.Description,
+		bundle.RelationKeySource:      &content.BookmarkContent.Url,
+		bundle.RelationKeyPicture:     &content.BookmarkContent.ImageHash,
+		bundle.RelationKeyIconImage:   &content.BookmarkContent.FaviconHash,
 	}
 
 	for relation, valueFromBookmark := range bookmarkRelationToValue {
 		// Don't change details of the object, if they are provided by client in request
-		if userValue := pbtypes.GetString(userDetails, relation); userValue != "" {
+		if userValue := userDetails.GetStringOrDefault(relation, ""); userValue != "" {
 			*valueFromBookmark = userValue
 		} else {
 			// if detail wasn't provided in request, we get it from bookmark and set it later in bookmark.UpdateObject
@@ -858,9 +856,9 @@ func (s *Service) GetLogFields() []zap.Field {
 	return fields
 }
 
-func (s *Service) enrichDetailsWithOrigin(details *types.Struct, origin model.ObjectOrigin) {
-	if details == nil || details.Fields == nil {
-		details = &types.Struct{Fields: map[string]*types.Value{}}
+func (s *Service) enrichDetailsWithOrigin(details *domain.Details, origin model.ObjectOrigin) {
+	if details == nil {
+		details = domain.NewDetails()
 	}
 	details.Set(bundle.RelationKeyOrigin, pbtypes.Int64(int64(origin)))
 }

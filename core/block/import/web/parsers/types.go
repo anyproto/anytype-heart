@@ -13,6 +13,6 @@ func RegisterFunc(p RegisterParser) {
 }
 
 type Parser interface {
-	ParseUrl(url string) (*common.SnapshotModelData, error)
+	ParseUrl(url string) (*common.StateSnapshot, error)
 	MatchUrl(url string) bool
 }

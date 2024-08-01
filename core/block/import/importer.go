@@ -10,7 +10,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -211,8 +210,10 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 		sn := make([]*common.Snapshot, len(req.Snapshots))
 		for i, s := range req.Snapshots {
 			sn[i] = &common.Snapshot{
-				Id:       s.GetId(),
-				Snapshot: &pb.ChangeSnapshot{Data: s.Snapshot},
+				Id: s.GetId(),
+				Snapshot: &common.SnapshotModel{
+					Data: common.NewStateSnapshotFromProto(s.Snapshot),
+				},
 			}
 		}
 		res := &common.Response{
@@ -277,7 +278,7 @@ func (i *Import) ValidateNotionToken(
 	return tv.Validate(ctx, req.GetToken())
 }
 
-func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
+func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *domain.Details, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish(nil)
 	allErrors := common.NewError(0)
@@ -329,7 +330,7 @@ func (i *Import) createObjects(ctx context.Context,
 func (i *Import) getFilesIDs(res *common.Response) []string {
 	fileIDs := make([]string, 0)
 	for _, snapshot := range res.Snapshots {
-		fileIDs = append(fileIDs, lo.Map(snapshot.Snapshot.GetFileKeys(), func(item *pb.ChangeFileKeys, index int) string {
+		fileIDs = append(fileIDs, lo.Map(snapshot.Snapshot.FileKeys, func(item *pb.ChangeFileKeys, index int) string {
 			return item.Hash
 		})...)
 	}
@@ -347,7 +348,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(res.Snapshots))
 	for _, snapshot := range res.Snapshots {
 		// we will get id of relation options after we figure out according relations keys
-		if lo.Contains(snapshot.Snapshot.GetData().GetObjectTypes(), bundle.TypeKeyRelationOption.String()) {
+		if lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyRelationOption.String()) {
 			relationOptions = append(relationOptions, snapshot)
 			continue
 		}
@@ -375,7 +376,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 }
 
 func (i *Import) replaceRelationKeyWithNew(option *common.Snapshot, oldIDToNew map[string]string) {
-	if option.Snapshot.Data.Details == nil || len(option.Snapshot.Data.Details.Fields) == 0 {
+	if option.Snapshot.Data.Details == nil || option.Snapshot.Data.Details.Len() == 0 {
 		return
 	}
 	key := option.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyRelationKey, "")
@@ -396,7 +397,7 @@ func (i *Import) getObjectID(
 ) error {
 
 	// Preload file keys
-	for _, fileKeys := range snapshot.Snapshot.GetFileKeys() {
+	for _, fileKeys := range snapshot.Snapshot.FileKeys {
 		err := i.fileStore.AddFileKeys(domain.FileEncryptionKeys{
 			FileId:         domain.FileId(fileKeys.Hash),
 			EncryptionKeys: fileKeys.Keys,
@@ -405,7 +406,7 @@ func (i *Import) getObjectID(
 			return fmt.Errorf("add file keys: %w", err)
 		}
 	}
-	if fileInfo := snapshot.Snapshot.GetData().GetFileInfo(); fileInfo != nil {
+	if fileInfo := snapshot.Snapshot.Data.FileInfo; fileInfo != nil {
 		keys := make(map[string]string, len(fileInfo.EncryptionKeys))
 		for _, key := range fileInfo.EncryptionKeys {
 			keys[key.Path] = key.Key
@@ -435,7 +436,7 @@ func (i *Import) getObjectID(
 }
 
 func (i *Import) extractInternalKey(snapshot *common.Snapshot, oldIDToNew map[string]string) error {
-	newUniqueKey := i.idProvider.GetInternalKey(snapshot.SbType)
+	newUniqueKey := i.idProvider.GetInternalKey(snapshot.Snapshot.SbType)
 	if newUniqueKey != "" {
 		oldUniqueKey := snapshot.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
 		if oldUniqueKey == "" {
