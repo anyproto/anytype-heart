@@ -133,10 +133,10 @@ func calculateCommonDetails(
 	layout model.ObjectTypeLayout,
 	lastModifiedDate int64,
 ) *domain.Details {
-	return domain.NewDetailsFromMap(map[domain.RelationKey]any{
-		bundle.RelationKeyFileId:           fileId.String(),
-		bundle.RelationKeyIsReadonly:       false,
-		bundle.RelationKeyLayout:           float64(layout),
-		bundle.RelationKeyLastModifiedDate: lastModifiedDate,
-	})
+	det := domain.NewDetails()
+	det.SetString(bundle.RelationKeyFileId, fileId.String())
+	det.SetBool(bundle.RelationKeyIsReadonly, false)
+	det.SetInt64(bundle.RelationKeyLayout, int64(layout))
+	det.SetFloat(bundle.RelationKeyLastModifiedDate, float64(lastModifiedDate))
+	return det
 }

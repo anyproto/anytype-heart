@@ -35,10 +35,6 @@ func NewDetailsWithSize(size int) *Details {
 	return &GenericMap[RelationKey]{data: make(map[RelationKey]any, size)}
 }
 
-func NewDetailsFromMap(data map[RelationKey]any) *Details {
-	return &GenericMap[RelationKey]{data: data}
-}
-
 func (d *GenericMap[K]) ToProto() *types.Struct {
 	if d == nil {
 		return &types.Struct{Fields: map[string]*types.Value{}}
@@ -155,6 +151,10 @@ func ProtoValueToJson(arena *fastjson.Arena, v any) *fastjson.Value {
 		return arena.NewString(v)
 	case float64:
 		return arena.NewNumberFloat64(v)
+
+		// TODO TEMP!
+	case int64:
+		return arena.NewNumberFloat64(float64(v))
 	case bool:
 		if v {
 			return arena.NewTrue()

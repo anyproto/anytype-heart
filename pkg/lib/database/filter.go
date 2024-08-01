@@ -75,6 +75,7 @@ func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, sto
 			Value:            pbtypes.Bool(true),
 		}
 	}
+
 	switch rawFilter.Condition {
 	case model.BlockContentDataviewFilter_Equal,
 		model.BlockContentDataviewFilter_Greater,
@@ -85,7 +86,7 @@ func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, sto
 		return FilterEq{
 			Key:   rawFilter.RelationKey,
 			Cond:  rawFilter.Condition,
-			Value: rawFilter.Value,
+			Value: pbtypes.ProtoToAny(rawFilter.Value),
 		}, nil
 	case model.BlockContentDataviewFilter_Like:
 		return FilterLike{
@@ -411,7 +412,7 @@ func (i FilterIn) AnystoreFilter() query.Filter {
 	for _, v := range i.Value.GetValues() {
 		conds = append(conds, query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, v),
+			Filter: query.NewComp(query.CompOpEq, pbtypes.ProtoToAny(v)),
 		})
 	}
 	return query.Or(conds)

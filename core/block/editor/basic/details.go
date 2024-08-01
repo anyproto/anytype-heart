@@ -28,7 +28,7 @@ var log = logging.Logger("anytype-mw-editor-basic")
 
 type detailUpdate struct {
 	key   domain.RelationKey
-	value any
+	value *types.Value
 }
 
 // TODO REfactor: use DTO
@@ -94,7 +94,7 @@ func applyDetailUpdates(oldDetails *domain.Details, updates []*detailUpdate) *do
 		if update.value == nil {
 			newDetails.Delete(update.key)
 		} else {
-			newDetails.SetUnsafe(update.key, update.value)
+			newDetails.SetProtoValue(update.key, update.value)
 		}
 	}
 	return newDetails

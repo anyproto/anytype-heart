@@ -72,12 +72,11 @@ func (p *participant) ModifyProfileDetails(profileDetails *domain.Details) (err 
 }
 
 func (p *participant) ModifyIdentityDetails(profile *model.IdentityProfile) (err error) {
-	details := domain.NewDetailsFromMap(map[domain.RelationKey]any{
-		bundle.RelationKeyName:        profile.Name,
-		bundle.RelationKeyDescription: profile.Description,
-		bundle.RelationKeyIconImage:   profile.IconCid,
-		bundle.RelationKeyGlobalName:  profile.GlobalName,
-	})
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyName, profile.Name)
+	details.SetString(bundle.RelationKeyDescription, profile.Description)
+	details.SetString(bundle.RelationKeyIconImage, profile.IconCid)
+	details.SetString(bundle.RelationKeyGlobalName, profile.GlobalName)
 	return p.modifyDetails(details)
 }
 
@@ -103,13 +102,13 @@ func buildParticipantDetails(
 	permissions model.ParticipantPermissions,
 	status model.ParticipantStatus,
 ) *domain.Details {
-	return domain.NewDetailsFromMap(map[domain.RelationKey]any{
-		bundle.RelationKeyId:                     id,
-		bundle.RelationKeyIdentity:               identity,
-		bundle.RelationKeySpaceId:                spaceId,
-		bundle.RelationKeyLastModifiedBy:         id,
-		bundle.RelationKeyParticipantPermissions: int64(permissions),
-		bundle.RelationKeyParticipantStatus:      int64(status),
-		bundle.RelationKeyIsHiddenDiscovery:      status != model.ParticipantStatus_Active,
-	})
+	det := domain.NewDetails()
+	det.SetString(bundle.RelationKeyId, id)
+	det.SetString(bundle.RelationKeyIdentity, identity)
+	det.SetString(bundle.RelationKeySpaceId, spaceId)
+	det.SetString(bundle.RelationKeyLastModifiedBy, id)
+	det.SetInt64(bundle.RelationKeyParticipantPermissions, int64(permissions))
+	det.SetInt64(bundle.RelationKeyParticipantStatus, int64(status))
+	det.SetBool(bundle.RelationKeyIsHiddenDiscovery, status != model.ParticipantStatus_Active)
+	return det
 }

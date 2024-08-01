@@ -43,14 +43,13 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 	}
 	h := sha256.Sum256([]byte(sourcePath))
 	hash := hex.EncodeToString(h[:])
-	details := domain.NewDetailsFromMap(map[domain.RelationKey]any{
-		bundle.RelationKeyName:             name,
-		bundle.RelationKeySourceFilePath:   hash,
-		bundle.RelationKeyIconEmoji:        emoji,
-		bundle.RelationKeyCreatedDate:      creationTime,
-		bundle.RelationKeyLastModifiedDate: modTime,
-		bundle.RelationKeyLayout:           float64(layout),
-	})
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeySourceFilePath, hash)
+	details.SetString(bundle.RelationKeyIconEmoji, emoji)
+	details.SetInt64(bundle.RelationKeyCreatedDate, creationTime)
+	details.SetInt64(bundle.RelationKeyLastModifiedDate, modTime)
+	details.SetInt64(bundle.RelationKeyLayout, int64(layout))
 	return details
 }
 

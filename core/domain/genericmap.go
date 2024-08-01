@@ -12,6 +12,9 @@ import (
 )
 
 func (d *GenericMap[K]) Len() int {
+	if d == nil {
+		return 0
+	}
 	return len(d.data)
 }
 
@@ -29,12 +32,14 @@ func (d *GenericMap[K]) SetUnsafe(key K, value any) {
 	d.data[key] = value
 }
 
+// TODO Return itself in case someone want to use chaining
 func (d *GenericMap[K]) SetBool(key K, value bool) {
 	d.data[key] = value
 }
 
-func (d *GenericMap[K]) SetString(key K, value string) {
+func (d *GenericMap[K]) SetString(key K, value string) *GenericMap[K] {
 	d.data[key] = value
+	return d
 }
 
 func (d *GenericMap[K]) SetInt64(key K, value int64) {
@@ -54,6 +59,11 @@ func (d *GenericMap[K]) SetFloatList(key K, value []float64) {
 }
 
 func (d *GenericMap[K]) SetProtoValue(key K, value *types.Value) {
+	if value == nil {
+		// TODO TEMPPP FIX After introducing null values
+		d.SetString(key, "")
+		return
+	}
 	switch value.Kind.(type) {
 	case *types.Value_BoolValue:
 		d.SetBool(key, value.GetBoolValue())
@@ -77,6 +87,9 @@ func (d *GenericMap[K]) Delete(key K) {
 }
 
 func (d *GenericMap[K]) Keys() []K {
+	if d == nil {
+		return nil
+	}
 	keys := make([]K, 0, len(d.data))
 	for k := range d.data {
 		keys = append(keys, k)
@@ -85,6 +98,9 @@ func (d *GenericMap[K]) Keys() []K {
 }
 
 func (d *GenericMap[K]) Iterate(proc func(key K, value any) bool) {
+	if d == nil {
+		return
+	}
 	for k, v := range d.data {
 		if !proc(k, v) {
 			return
@@ -98,11 +114,17 @@ func (d *GenericMap[K]) GetRaw(key K) (any, bool) {
 }
 
 func (d *GenericMap[K]) Get(key K) Value {
+	if d == nil {
+		return Value{}
+	}
 	v, ok := d.data[key]
 	return Value{ok, v}
 }
 
 func (d *GenericMap[K]) Has(key K) bool {
+	if d == nil {
+		return false
+	}
 	_, ok := d.data[key]
 	return ok
 }
@@ -157,6 +179,9 @@ func (d *GenericMap[K]) GetFloatList(key K) []float64 {
 }
 
 func (d *GenericMap[K]) ShallowCopy() *GenericMap[K] {
+	if d == nil {
+		return nil
+	}
 	newData := make(map[K]any, len(d.data))
 	for k, v := range d.data {
 		newData[k] = v
@@ -165,6 +190,9 @@ func (d *GenericMap[K]) ShallowCopy() *GenericMap[K] {
 }
 
 func (d *GenericMap[K]) CopyWithoutKeys(keys ...K) *GenericMap[K] {
+	if d == nil {
+		return nil
+	}
 	newData := make(map[K]any, len(d.data))
 	for k, v := range d.data {
 		if !slices.Contains(keys, k) {
@@ -175,6 +203,9 @@ func (d *GenericMap[K]) CopyWithoutKeys(keys ...K) *GenericMap[K] {
 }
 
 func (d *GenericMap[K]) CopyOnlyKeys(keys ...K) *GenericMap[K] {
+	if d == nil {
+		return nil
+	}
 	newData := make(map[K]any, len(d.data))
 	for k, v := range d.data {
 		if slices.Contains(keys, k) {
@@ -185,6 +216,12 @@ func (d *GenericMap[K]) CopyOnlyKeys(keys ...K) *GenericMap[K] {
 }
 
 func (d *GenericMap[K]) Equal(other *GenericMap[K]) bool {
+	if d == nil && other == nil {
+		return true
+	}
+	if d == nil || other == nil {
+		return false
+	}
 	if d.Len() != other.Len() {
 		return false
 	}
@@ -201,6 +238,9 @@ func (d *GenericMap[K]) Equal(other *GenericMap[K]) bool {
 }
 
 func (d *GenericMap[K]) Merge(other *GenericMap[K]) *GenericMap[K] {
+	if d == nil {
+		return nil
+	}
 	res := d.ShallowCopy()
 	other.Iterate(func(k K, v any) bool {
 		res.SetUnsafe(k, v)
@@ -225,6 +265,10 @@ const (
 	ValueTypeFloatList
 )
 
+func Int64(v int64) Value {
+	return Value{ok: true, value: float64(v)}
+}
+
 func SomeValue(value any) Value {
 	return Value{ok: true, value: value}
 }
@@ -234,6 +278,11 @@ var ErrInvalidValue = fmt.Errorf("invalid value")
 func (v Value) Validate() error {
 	if !v.ok {
 		return errors.Join(ErrInvalidValue, fmt.Errorf("value is none"))
+	}
+
+	// TODO USE type Null struct {}
+	if v.value == nil {
+		return nil
 	}
 	switch v.value.(type) {
 	// TODO TEMPORARILY ALLOW HERE

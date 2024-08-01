@@ -40,12 +40,12 @@ func (m *missingObject) Type() smartblock.SmartBlockType {
 }
 
 func (m *missingObject) getDetails() (p *domain.Details) {
-	return domain.NewDetailsFromMap(map[domain.RelationKey]any{
-		bundle.RelationKeyIsDeleted:  true,
-		bundle.RelationKeyId:         addr.MissingObject,
-		bundle.RelationKeyIsReadonly: true,
-		bundle.RelationKeyIsHidden:   true,
-	})
+	det := domain.NewDetails()
+	det.SetString(bundle.RelationKeyId, addr.MissingObject)
+	det.SetBool(bundle.RelationKeyIsDeleted, true)
+	det.SetBool(bundle.RelationKeyIsReadonly, true)
+	det.SetBool(bundle.RelationKeyIsHidden, true)
+	return det
 }
 
 func (m *missingObject) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {

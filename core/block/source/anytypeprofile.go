@@ -44,16 +44,17 @@ func (v *anytypeProfile) Type() smartblock.SmartBlockType {
 }
 
 func (v *anytypeProfile) getDetails() (p *domain.Details) {
-	return domain.NewDetailsFromMap(map[domain.RelationKey]any{
-		bundle.RelationKeyName:        "Anytype",
-		bundle.RelationKeyDescription: "Authored by Anytype team",
-		bundle.RelationKeyIconImage:   "bafybeihdxbwosreebqthjccgjygystk2mgg3ebrctv2j36xghaawnqrz5e",
-		bundle.RelationKeyId:          v.id,
-		bundle.RelationKeyIsReadonly:  true,
-		bundle.RelationKeyIsArchived:  false,
-		bundle.RelationKeyIsHidden:    true,
-		bundle.RelationKeyLayout:      float64(model.ObjectType_profile),
-	})
+	det := domain.NewDetails()
+
+	det.SetString(bundle.RelationKeyName, "Anytype")
+	det.SetString(bundle.RelationKeyDescription, "Authored by Anytype team")
+	det.SetString(bundle.RelationKeyIconImage, "bafybeihdxbwosreebqthjccgjygystk2mgg3ebrctv2j36xghaawnqrz5e")
+	det.SetString(bundle.RelationKeyId, v.id)
+	det.SetBool(bundle.RelationKeyIsReadonly, true)
+	det.SetBool(bundle.RelationKeyIsArchived, false)
+	det.SetBool(bundle.RelationKeyIsHidden, true)
+	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_profile))
+	return det
 }
 
 func (v *anytypeProfile) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {

@@ -317,17 +317,15 @@ func (mw *Middleware) makeSuggestedDateRecord(ctx context.Context, spaceID strin
 	if err != nil {
 		return database.Record{}, fmt.Errorf("get date type id: %w", err)
 	}
-	d := domain.NewDetailsFromMap(map[domain.RelationKey]any{
-		bundle.RelationKeyId:        id,
-		bundle.RelationKeyName:      t.Format("Mon Jan  2 2006"),
-		bundle.RelationKeyLayout:    int64(model.ObjectType_date),
-		bundle.RelationKeyType:      typeId,
-		bundle.RelationKeyIconEmoji: "📅",
-		bundle.RelationKeySpaceId:   spaceID,
-	})
-
+	det := domain.NewDetails()
+	det.SetString(bundle.RelationKeyId, id)
+	det.SetString(bundle.RelationKeyName, t.Format("Mon Jan  2 2006"))
+	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_date))
+	det.SetString(bundle.RelationKeyType, typeId)
+	det.SetString(bundle.RelationKeyIconEmoji, "📅")
+	det.SetString(bundle.RelationKeySpaceId, spaceID)
 	return database.Record{
-		Details: d,
+		Details: det,
 	}, nil
 }
 

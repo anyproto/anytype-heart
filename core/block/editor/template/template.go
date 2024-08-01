@@ -108,7 +108,7 @@ var WithLayout = func(layout model.ObjectTypeLayout) StateTransformer {
 }
 
 var WithDetailName = func(name string) StateTransformer {
-	return WithDetail(bundle.RelationKeyName, pbtypes.String(name))
+	return WithDetail(bundle.RelationKeyName, name)
 }
 
 var WithDetail = func(key domain.RelationKey, value any) StateTransformer {
@@ -119,7 +119,7 @@ var WithDetail = func(key domain.RelationKey, value any) StateTransformer {
 	}
 }
 
-var WithForcedDetail = func(key domain.RelationKey, value *types.Value) StateTransformer {
+var WithForcedDetail = func(key domain.RelationKey, value any) StateTransformer {
 	return func(s *state.State) {
 		if s.Details() == nil || !s.Details().Has(key) || !s.Details().Get(key).EqualAny(value) {
 			s.SetDetailAndBundledRelation(key, value)
@@ -128,7 +128,7 @@ var WithForcedDetail = func(key domain.RelationKey, value *types.Value) StateTra
 }
 
 var WithDetailIconEmoji = func(iconEmoji string) StateTransformer {
-	return WithDetail(bundle.RelationKeyIconEmoji, pbtypes.String(iconEmoji))
+	return WithDetail(bundle.RelationKeyIconEmoji, iconEmoji)
 }
 
 var RequireHeader = StateTransformer(func(s *state.State) {

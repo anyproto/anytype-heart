@@ -625,6 +625,9 @@ func AnyToProto(v any) *types.Value {
 }
 
 func ProtoToAny(v *types.Value) any {
+	if v == nil {
+		return nil
+	}
 	switch v.Kind.(type) {
 	case *types.Value_StringValue:
 		return v.GetStringValue()

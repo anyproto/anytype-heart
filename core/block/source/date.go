@@ -62,18 +62,18 @@ func (v *date) getDetails(ctx context.Context) (*domain.Details, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get date type id: %w", err)
 	}
-	return domain.NewDetailsFromMap(map[domain.RelationKey]any{
-		bundle.RelationKeyName:       v.t.Format("Mon Jan  2 2006"),
-		bundle.RelationKeyId:         v.id,
-		bundle.RelationKeyIsReadonly: true,
-		bundle.RelationKeyIsArchived: false,
-		bundle.RelationKeyIsHidden:   false,
-		bundle.RelationKeyLayout:     float64(model.ObjectType_date),
-		bundle.RelationKeyIconEmoji:  "📅",
-		bundle.RelationKeySpaceId:    v.SpaceID(),
-		bundle.RelationKeySetOf:      []string{linksRelationId},
-		bundle.RelationKeyType:       dateTypeId,
-	}), nil
+	det := domain.NewDetails()
+	det.SetString(bundle.RelationKeyName, v.t.Format("Mon Jan  2 2006"))
+	det.SetString(bundle.RelationKeyId, v.id)
+	det.SetBool(bundle.RelationKeyIsReadonly, true)
+	det.SetBool(bundle.RelationKeyIsArchived, false)
+	det.SetBool(bundle.RelationKeyIsHidden, false)
+	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_date))
+	det.SetString(bundle.RelationKeyIconEmoji, "📅")
+	det.SetString(bundle.RelationKeySpaceId, v.SpaceID())
+	det.SetStringList(bundle.RelationKeySetOf, []string{linksRelationId})
+	det.SetString(bundle.RelationKeyType, dateTypeId)
+	return det, nil
 }
 
 // TODO Fix?
@@ -81,16 +81,16 @@ func (v *date) DetailsFromId() (*domain.Details, error) {
 	if err := v.parseId(); err != nil {
 		return nil, err
 	}
-	return domain.NewDetailsFromMap(map[domain.RelationKey]any{
-		bundle.RelationKeyName:       v.t.Format("Mon Jan  2 2006"),
-		bundle.RelationKeyId:         v.id,
-		bundle.RelationKeyIsReadonly: true,
-		bundle.RelationKeyIsArchived: false,
-		bundle.RelationKeyIsHidden:   false,
-		bundle.RelationKeyLayout:     float64(model.ObjectType_date),
-		bundle.RelationKeyIconEmoji:  "📅",
-		bundle.RelationKeySpaceId:    v.SpaceID(),
-	}), nil
+	det := domain.NewDetails()
+	det.SetString(bundle.RelationKeyName, v.t.Format("Mon Jan  2 2006"))
+	det.SetString(bundle.RelationKeyId, v.id)
+	det.SetBool(bundle.RelationKeyIsReadonly, true)
+	det.SetBool(bundle.RelationKeyIsArchived, false)
+	det.SetBool(bundle.RelationKeyIsHidden, false)
+	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_date))
+	det.SetString(bundle.RelationKeyIconEmoji, "📅")
+	det.SetString(bundle.RelationKeySpaceId, v.SpaceID())
+	return det, nil
 }
 
 func (v *date) parseId() error {

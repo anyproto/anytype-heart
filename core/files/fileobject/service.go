@@ -298,15 +298,14 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 }
 
 func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin) *domain.Details {
-	details := domain.NewDetailsFromMap(map[domain.RelationKey]any{
-		bundle.RelationKeyFileId: fileId.String(),
-		// Use general file layout. It will be changed for proper layout after indexing
-		bundle.RelationKeyLayout:             int64(model.ObjectType_file),
-		bundle.RelationKeyFileIndexingStatus: int64(model.FileIndexingStatus_NotIndexed),
-		bundle.RelationKeySyncStatus:         int64(domain.ObjectSyncStatusQueued),
-		bundle.RelationKeySyncError:          int64(domain.SyncErrorNull),
-		bundle.RelationKeyFileBackupStatus:   int64(filesyncstatus.Queued),
-	})
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyFileId, fileId.String())
+	// Use general file layout. It will be changed for proper layout after indexing
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_file))
+	details.SetInt64(bundle.RelationKeyFileIndexingStatus, int64(model.FileIndexingStatus_NotIndexed))
+	details.SetInt64(bundle.RelationKeySyncStatus, int64(domain.ObjectSyncStatusQueued))
+	details.SetInt64(bundle.RelationKeySyncError, int64(domain.SyncErrorNull))
+	details.SetInt64(bundle.RelationKeyFileBackupStatus, int64(filesyncstatus.Queued))
 	origin.AddToDetails(details)
 	return details
 }

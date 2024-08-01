@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type Profile struct {
@@ -81,7 +80,7 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
-				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
+				template.WithDetail(bundle.RelationKeyLayoutAlign, float64(model.Block_AlignCenter)),
 				migrationSetHidden,
 			)
 		},

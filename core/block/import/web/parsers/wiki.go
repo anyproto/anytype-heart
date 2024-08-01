@@ -49,11 +49,10 @@ func (w *DumbWikiParser) ParseUrl(url string) (*common.StateSnapshot, error) {
 	if name == "" {
 		name = filepath.Base(url)
 	}
-	details := domain.NewDetailsFromMap(map[domain.RelationKey]any{
-		bundle.RelationKeyName:   name,
-		bundle.RelationKeySource: url,
-		bundle.RelationKeyType:   bundle.TypeKeyBookmark.String(),
-	})
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeySource, url)
+	details.SetString(bundle.RelationKeyType, bundle.TypeKeyBookmark.String())
 	snapshot.Details = details
 	return snapshot, nil
 }

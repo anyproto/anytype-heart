@@ -366,10 +366,10 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 	if err != nil {
 		return convertedOrInternalError("join space", err)
 	}
-	err = a.spaceService.TechSpace().SpaceViewSetData(ctx, spaceId, domain.NewDetailsFromMap(map[domain.RelationKey]any{
-		bundle.RelationKeyName:      invitePayload.SpaceName,
-		bundle.RelationKeyIconImage: invitePayload.SpaceIconCid,
-	}))
+	err = a.spaceService.TechSpace().SpaceViewSetData(ctx, spaceId,
+		domain.NewDetails().
+			SetString(bundle.RelationKeyName, invitePayload.SpaceName).
+			SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid))
 	if err != nil {
 		return convertedOrInternalError("set space data", err)
 	}
