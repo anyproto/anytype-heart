@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/cheggaaa/mb/v3"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -202,15 +201,15 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 	}
 	defer u.spaceSyncStatus.Refresh(syncStatusDetails.spaceId)
 	err = spc.DoLockedIfNotExists(objectId, func() error {
-		return u.objectStore.ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, bool, error) {
-			if details == nil || details.Fields == nil {
-				details = &types.Struct{Fields: map[string]*types.Value{}}
+		return u.objectStore.ModifyObjectDetails(objectId, func(details *domain.Details) (*domain.Details, bool, error) {
+			if details == nil {
+				details = domain.NewDetails()
 			}
 			if !u.isLayoutSuitableForSyncRelations(details) {
 				return details, false, nil
 			}
-			if fileStatus, ok := details.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-				status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus.GetNumberValue())))
+			if fileStatus, ok := details.GetFloat(bundle.RelationKeyFileBackupStatus); ok {
+				status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
 			}
 			details.Set(bundle.RelationKeySyncStatus, pbtypes.Int64(int64(status)))
 			details.Set(bundle.RelationKeySyncError, pbtypes.Int64(int64(syncError)))
@@ -237,8 +236,8 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 		return nil
 	}
 	st := sb.NewState()
-	if fileStatus, ok := st.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-		status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus.GetNumberValue())))
+	if fileStatus, ok := st.Details().GetFloat(bundle.RelationKeyFileBackupStatus); ok {
+		status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
 	}
 	st.SetDetailAndBundledRelation(bundle.RelationKeySyncStatus, pbtypes.Int64(int64(status)))
 	st.SetDetailAndBundledRelation(bundle.RelationKeySyncError, pbtypes.Int64(int64(syncError)))
@@ -265,7 +264,7 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_pdf:            {},
 }
 
-func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *types.Struct) bool {
+func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *domain.Details) bool {
 	layout := model.ObjectTypeLayout(details.GetInt64OrDefault(bundle.RelationKeyLayout, 0))
 	_, ok := suitableLayouts[layout]
 	return ok

@@ -93,7 +93,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	for _, m := range meta {
 		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      m.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
-			Details: m.Details,
+			Details: m.Details.ToProto(),
 		})
 	}
 
@@ -218,7 +218,7 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	for _, m := range meta {
 		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      m.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
-			Details: m.Details,
+			Details: m.Details.ToProto(),
 		})
 	}
 	objectView := &model.ObjectView{
@@ -279,7 +279,7 @@ func filterLocalAndDerivedRelationsByKey(removedRelations *pb.EventObjectRelatio
 	}
 	var relKeysWithoutLocal []string
 	for _, key := range removedRelations.RelationKeys {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
 			relKeysWithoutLocal = append(relKeysWithoutLocal, key)
 		}
 	}
@@ -292,7 +292,7 @@ func filterLocalAndDerivedRelations(addedRelations *pb.EventObjectRelationsAmend
 	}
 	var relLinksWithoutLocal pbtypes.RelationLinks
 	for _, link := range addedRelations.RelationLinks {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, link.Key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(link.Key)) {
 			relLinksWithoutLocal = relLinksWithoutLocal.Append(link)
 		}
 	}

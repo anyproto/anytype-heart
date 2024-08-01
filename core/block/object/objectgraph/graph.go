@@ -2,7 +2,6 @@ package objectgraph
 
 import (
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -16,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.LoggerNotSugared("object-graph")
@@ -36,7 +35,7 @@ var relationsSkipList = []domain.RelationKey{
 }
 
 type Service interface {
-	ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error)
+	ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*domain.Details, []*pb.RpcObjectGraphEdge, error)
 }
 
 type Builder struct {
@@ -64,7 +63,7 @@ func (gr *Builder) Name() (name string) {
 	return CName
 }
 
-func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error) {
+func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*domain.Details, []*pb.RpcObjectGraphEdge, error) {
 	relations, err := gr.objectStore.ListAllRelations(req.SpaceId)
 	if err != nil {
 		return nil, nil, err
@@ -95,7 +94,7 @@ func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, 
 
 	nodes, edges := gr.buildGraph(
 		resp.Records,
-		make([]*types.Struct, 0, len(resp.Records)),
+		make([]*domain.Details, 0, len(resp.Records)),
 		req,
 		relations,
 		make([]*pb.RpcObjectGraphEdge, 0, len(resp.Records)*2),
@@ -108,17 +107,17 @@ func isRelationShouldBeIncludedAsEdge(rel *relationutils.Relation) bool {
 }
 
 func (gr *Builder) buildGraph(
-	records []*types.Struct,
-	nodes []*types.Struct,
+	records []*domain.Details,
+	nodes []*domain.Details,
 	req *pb.RpcObjectGraphRequest,
 	relations relationutils.Relations,
 	edges []*pb.RpcObjectGraphEdge,
-) ([]*types.Struct, []*pb.RpcObjectGraphEdge) {
+) ([]*domain.Details, []*pb.RpcObjectGraphEdge) {
 	existedNodes := fillExistedNodes(records)
 	for _, rec := range records {
 		sourceId := rec.GetStringOrDefault(bundle.RelationKeyId, "")
 
-		nodes = append(nodes, pbtypes.Map(rec, req.Keys...))
+		nodes = append(nodes, rec.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...))
 
 		outgoingRelationLink := make(map[string]struct{}, 10)
 		edges = gr.appendRelations(rec, relations, edges, existedNodes, sourceId, outgoingRelationLink)
@@ -128,21 +127,21 @@ func (gr *Builder) buildGraph(
 }
 
 func (gr *Builder) appendRelations(
-	rec *types.Struct,
+	rec *domain.Details,
 	relations relationutils.Relations,
 	edges []*pb.RpcObjectGraphEdge,
 	existedNodes map[string]struct{},
 	sourceId string,
 	outgoingRelationLink map[string]struct{},
 ) []*pb.RpcObjectGraphEdge {
-	for relKey, relValue := range rec.GetFields() {
-		rel := relations.GetByKey(relKey)
+	rec.Iterate(func(relKey domain.RelationKey, relValue any) bool {
+		rel := relations.GetByKey(string(relKey))
 		if !isRelationShouldBeIncludedAsEdge(rel) {
-			continue
+			return true
 		}
-		stringValues := pbtypes.GetStringListValue(relValue)
+		stringValues := domain.SomeValue(relValue).StringListOrDefault(nil)
 		if len(stringValues) == 0 || isExcludedRelation(rel) {
-			continue
+			return true
 		}
 
 		for _, strValue := range stringValues {
@@ -158,11 +157,13 @@ func (gr *Builder) appendRelations(
 				outgoingRelationLink[strValue] = struct{}{}
 			}
 		}
-	}
+		return true
+	})
+
 	return edges
 }
 
-func fillExistedNodes(records []*types.Struct) map[string]struct{} {
+func fillExistedNodes(records []*domain.Details) map[string]struct{} {
 	existedNodes := make(map[string]struct{}, len(records))
 	for _, rec := range records {
 		id := rec.GetStringOrDefault(bundle.RelationKeyId, "")
@@ -180,7 +181,7 @@ func isExcludedRelation(rel *relationutils.Relation) bool {
 
 func (gr *Builder) appendLinks(
 	spaceID string,
-	rec *types.Struct,
+	rec *domain.Details,
 	outgoingRelationLink map[string]struct{},
 	existedNodes map[string]struct{},
 	edges []*pb.RpcObjectGraphEdge,

@@ -5,12 +5,11 @@ import (
 	"sync"
 
 	"github.com/cheggaaa/mb/v3"
-	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type entry[T any] struct {
@@ -26,8 +25,8 @@ func newEntry[T any](data T) *entry[T] {
 }
 
 type (
-	extract[T any] func(*types.Struct) (string, T)
-	update[T any]  func(string, *types.Value, T) T
+	extract[T any] func(*domain.Details) (string, T)
+	update[T any]  func(string, any, T) T
 	unset[T any]   func([]string, T) T
 )
 
@@ -43,10 +42,10 @@ func NewIdSubscription(service subscription.Service, request subscription.Subscr
 		request: request,
 		service: service,
 		ch:      make(chan struct{}),
-		extract: func(t *types.Struct) (string, struct{}) {
+		extract: func(t *domain.Details) (string, struct{}) {
 			return t.GetStringOrDefault(bundle.RelationKeyId, ""), struct{}{}
 		},
-		update: func(s string, value *types.Value, s2 struct{}) struct{} {
+		update: func(s string, value any, s2 struct{}) struct{} {
 			return struct{}{}
 		},
 		unset: func(strings []string, s struct{}) struct{} {
@@ -146,7 +145,8 @@ func (o *ObjectSubscription[T]) read() {
 			if curEntry == nil {
 				return
 			}
-			_, curEntry.data = o.extract(v.ObjectDetailsSet.Details)
+			// TODO Think about using domain layer structs for events with domain.Details inside
+			_, curEntry.data = o.extract(domain.NewDetailsFromProto(v.ObjectDetailsSet.Details))
 		}
 	}
 	for {
