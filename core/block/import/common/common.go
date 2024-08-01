@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 
@@ -21,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -33,7 +33,7 @@ var randomIcons = []string{"📓", "📕", "📗", "📘", "📙", "📖", "📔
 
 var log = logging.Logger("import")
 
-func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLayout) *types.Struct {
+func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLayout) *domain.Details {
 	creationTime, modTime := filetime.ExtractFileTimes(sourcePath)
 	if name == "" {
 		name = strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
@@ -43,15 +43,15 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 	}
 	h := sha256.Sum256([]byte(sourcePath))
 	hash := hex.EncodeToString(h[:])
-	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():             pbtypes.String(name),
-		bundle.RelationKeySourceFilePath.String():   pbtypes.String(hash),
-		bundle.RelationKeyIconEmoji.String():        pbtypes.String(emoji),
-		bundle.RelationKeyCreatedDate.String():      pbtypes.Int64(creationTime),
-		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(modTime),
-		bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(layout)),
-	}
-	return &types.Struct{Fields: fields}
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]any{
+		bundle.RelationKeyName:             name,
+		bundle.RelationKeySourceFilePath:   hash,
+		bundle.RelationKeyIconEmoji:        emoji,
+		bundle.RelationKeyCreatedDate:      creationTime,
+		bundle.RelationKeyLastModifiedDate: modTime,
+		bundle.RelationKeyLayout:           float64(layout),
+	})
+	return details
 }
 
 func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesIDs []string) error {
@@ -185,7 +185,7 @@ func isBundledObjects(targetObjectID string) bool {
 		return true
 	}
 	rel, err := pbtypes.RelationIdToKey(targetObjectID)
-	if err == nil && bundle.HasRelation(rel) {
+	if err == nil && bundle.HasRelation(domain.RelationKey(rel)) {
 		return true
 	}
 
@@ -230,22 +230,23 @@ func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 
 func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, filesIDs []string) {
 	rels := st.GetRelationLinks()
-	for k, v := range st.Details().GetFields() {
-		relLink := rels.Get(k)
+	st.Details().Iterate(func(k domain.RelationKey, v any) bool {
+		relLink := rels.Get(string(k))
 		if relLink == nil {
-			continue
+			return true
 		}
 		if !isLinkToObject(relLink) {
-			continue
+			return true
 		}
 		if relLink.Key == bundle.RelationKeyFeaturedRelations.String() {
 			// special cases
 			// featured relations have incorrect IDs
-			continue
+			return true
 		}
 		// For example, RelationKeySetOf is handled here
-		handleObjectRelation(st, oldIDtoNew, v, k, filesIDs)
-	}
+		handleObjectRelation(st, oldIDtoNew, domain.SomeValue(v), k, filesIDs)
+		return true
+	})
 }
 
 func isLinkToObject(relLink *model.RelationLink) bool {
@@ -256,16 +257,15 @@ func isLinkToObject(relLink *model.RelationLink) bool {
 		relLink.Format == model.RelationFormat_file
 }
 
-func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v *types.Value, k string, filesIDs []string) {
-	if _, ok := v.GetKind().(*types.Value_StringValue); ok {
-		objectsID := v.GetStringValue()
-		newObjectIDs := getNewObjectsIDForRelation([]string{objectsID}, oldIDtoNew, filesIDs)
+func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v domain.Value, k domain.RelationKey, filesIDs []string) {
+	if objectId, ok := v.String(); ok {
+		newObjectIDs := getNewObjectsIDForRelation([]string{objectId}, oldIDtoNew, filesIDs)
 		if len(newObjectIDs) != 0 {
 			st.SetDetail(k, pbtypes.String(newObjectIDs[0]))
 		}
 		return
 	}
-	objectsIDs := pbtypes.GetStringListValue(v)
+	objectsIDs := v.StringListOrDefault(nil)
 	objectsIDs = getNewObjectsIDForRelation(objectsIDs, oldIDtoNew, filesIDs)
 	st.SetDetail(k, pbtypes.StringList(objectsIDs))
 }

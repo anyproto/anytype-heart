@@ -220,11 +220,11 @@ func (pt *Task) provideRelationOptionsSnapshots(id string, propObject property.O
 	return subObjectsSnapshots
 }
 
-func (pt *Task) getRelationDetails(key string, name string, propObject property.Object) *types.Struct {
+func (pt *Task) getRelationDetails(key string, name string, propObject property.Object) *domain.Details {
 	if name == "" {
 		name = property.UntitledProperty
 	}
-	details := &types.Struct{Fields: map[string]*types.Value{}}
+	details := domain.NewDetails()
 	details.Set(bundle.RelationKeyRelationFormat, pbtypes.Float64(float64(propObject.GetFormat())))
 	details.Set(bundle.RelationKeyName, pbtypes.String(name))
 	details.Set(bundle.RelationKeyRelationKey, pbtypes.String(key))
@@ -464,20 +464,20 @@ func isOptionAlreadyExist(optName, rel string, relation *property.PropertiesStor
 	return false, ""
 }
 
-func provideRelationOptionSnapshot(name, color, rel string) (*types.Struct, *model.SmartBlockSnapshotBase) {
+func provideRelationOptionSnapshot(name, color, rel string) (*domain.Details, *model.SmartBlockSnapshotBase) {
 	id, details := getDetailsForRelationOption(name, rel)
 	details.Set(bundle.RelationKeyRelationOptionColor, pbtypes.String(api.NotionColorToAnytype[color]))
 	optSnapshot := &model.SmartBlockSnapshotBase{
-		Details:     details,
+		Details:     details.ToProto(),
 		ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
 		Key:         id,
 	}
 	return details, optSnapshot
 }
 
-func getDetailsForRelationOption(name, rel string) (string, *types.Struct) {
+func getDetailsForRelationOption(name, rel string) (string, *domain.Details) {
 	id := bson.NewObjectId().Hex()
-	details := &types.Struct{Fields: map[string]*types.Value{}}
+	details := domain.NewDetails()
 	details.Set(bundle.RelationKeyName, pbtypes.String(name))
 	details.Set(bundle.RelationKeyRelationKey, pbtypes.String(rel))
 	details.Set(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_relationOption)))

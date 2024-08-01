@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -389,7 +390,7 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 			SbType:   smartblock.SmartBlockTypePage,
 			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
 				Blocks:      file.ParsedBlocks,
-				Details:     details[name],
+				Details:     details[name].ToProto(),
 				ObjectTypes: []string{bundle.TypeKeyPage.String()},
 			}},
 		})

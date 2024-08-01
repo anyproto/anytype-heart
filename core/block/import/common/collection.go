@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -12,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	simpleDataview "github.com/anyproto/anytype-heart/core/block/simple/dataview"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -50,7 +50,7 @@ func (r *RootCollection) MakeRootCollection(collectionName string,
 		return nil, err
 	}
 
-	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
+	detailsStruct = st.CombinedDetails().Merge(detailsStruct)
 	st.UpdateStoreSlice(template.CollectionStoreKey, targetObjects)
 
 	return r.getRootCollectionSnapshot(collectionName, st, detailsStruct, fileKeys), nil
@@ -59,11 +59,11 @@ func (r *RootCollection) MakeRootCollection(collectionName string,
 func (r *RootCollection) getRootCollectionSnapshot(
 	collectionName string,
 	st *state.State,
-	detailsStruct *types.Struct,
+	detailsStruct *domain.Details,
 	fileKeys []*pb.ChangeFileKeys,
 ) *Snapshot {
-	if detailsStruct.GetFields() == nil {
-		detailsStruct = &types.Struct{Fields: map[string]*types.Value{}}
+	if detailsStruct == nil {
+		detailsStruct = domain.NewDetails()
 	}
 	detailsStruct.Set(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_collection)))
 	return &Snapshot{
@@ -73,7 +73,7 @@ func (r *RootCollection) getRootCollectionSnapshot(
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:        st.Blocks(),
-				Details:       detailsStruct,
+				Details:       detailsStruct.ToProto(),
 				ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
 				RelationLinks: st.GetRelationLinks(),
 				Collections:   st.Store(),
@@ -102,16 +102,14 @@ func (r *RootCollection) addRelations(st *state.State) error {
 	return nil
 }
 
-func (r *RootCollection) getCreateCollectionRequest(collectionName string, icon string, shouldBeFavorite bool) *types.Struct {
-	details := make(map[string]*types.Value, 0)
-	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(collectionName)
-	details[bundle.RelationKeyName.String()] = pbtypes.String(collectionName)
-	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(shouldBeFavorite)
-	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
-	details[bundle.RelationKeyIconImage.String()] = pbtypes.String(icon)
-
-	detailsStruct := &types.Struct{Fields: details}
-	return detailsStruct
+func (r *RootCollection) getCreateCollectionRequest(collectionName string, icon string, shouldBeFavorite bool) *domain.Details {
+	details := domain.NewDetails()
+	details.Set(bundle.RelationKeySourceFilePath, collectionName)
+	details.Set(bundle.RelationKeyName, collectionName)
+	details.Set(bundle.RelationKeyIsFavorite, shouldBeFavorite)
+	details.Set(bundle.RelationKeyLayout, float64(model.ObjectType_collection))
+	details.Set(bundle.RelationKeyIconImage, icon)
+	return details
 }
 
 func ReplaceRelationsInDataView(st *state.State, rel *model.RelationLink) error {
