@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type createSetRequest struct {
@@ -30,7 +29,7 @@ func (s *service) createSet(ctx context.Context, space clientspace.Space, req cr
 
 	newState := state.NewDoc("", nil).NewState()
 	if len(req.Source) > 0 {
-		newState.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
+		newState.SetDetailAndBundledRelation(bundle.RelationKeySetOf, req.Source)
 	}
 	newState.AddDetails(req.Details)
 	newState.BlocksInit(newState)

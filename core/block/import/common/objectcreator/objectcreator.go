@@ -96,7 +96,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 
 	oc.injectImportDetails(sn, origin)
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot.ToProto(), state.WithUniqueKeyMigration(sn.Snapshot.SbType)).(*state.State)
-	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, pbtypes.Int64(snapshot.Details.GetInt64(bundle.RelationKeyLastModifiedDate)))
+	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, snapshot.Details.GetInt64(bundle.RelationKeyLastModifiedDate))
 
 	var filesToDelete []string
 	defer func() {

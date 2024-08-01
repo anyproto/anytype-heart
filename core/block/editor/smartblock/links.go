@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -23,13 +22,13 @@ func (sb *smartBlock) updateBackLinks(s *state.State) {
 		log.With("objectID", sb.Id()).Errorf("failed to get inbound links from object store: %s", err)
 		return
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, pbtypes.StringList(backLinks))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, backLinks)
 }
 
 func (sb *smartBlock) injectLinksDetails(s *state.State) {
 	links := sb.navigationalLinks(s)
 	links = slice.RemoveMut(links, sb.Id())
-	s.SetLocalDetail(bundle.RelationKeyLinks, pbtypes.StringList(links))
+	s.SetLocalDetail(bundle.RelationKeyLinks, links)
 }
 
 func (sb *smartBlock) navigationalLinks(s *state.State) (ids []string) {

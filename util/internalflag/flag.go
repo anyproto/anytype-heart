@@ -5,33 +5,31 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const relationKey = bundle.RelationKeyInternalFlags
 
 type Set struct {
-	flags []int
+	flags []float64
 }
 
 func NewFromState(st *state.State) *Set {
 	flags := st.Details().GetFloatList(relationKey)
 
 	return &Set{
-		flags: slice.FloatsInto[int](flags),
+		flags: flags,
 	}
 }
 
 func (s *Set) Add(flag model.InternalFlagValue) {
 	if !s.Has(flag) {
-		s.flags = append(s.flags, int(flag))
+		s.flags = append(s.flags, float64(flag))
 	}
 }
 
 func (s *Set) Has(flag model.InternalFlagValue) bool {
 	for _, f := range s.flags {
-		if f == int(flag) {
+		if f == float64(flag) {
 			return true
 		}
 	}
@@ -41,7 +39,7 @@ func (s *Set) Has(flag model.InternalFlagValue) bool {
 func (s *Set) Remove(flag model.InternalFlagValue) {
 	res := s.flags[:0]
 	for _, f := range s.flags {
-		if f == int(flag) {
+		if f == float64(flag) {
 			continue
 		}
 		res = append(res, f)
@@ -54,7 +52,7 @@ func (s *Set) AddToState(st *state.State) {
 		st.RemoveDetail(relationKey)
 		return
 	}
-	st.SetDetailAndBundledRelation(relationKey, pbtypes.IntList(s.flags...))
+	st.SetDetailAndBundledRelation(relationKey, s.flags)
 }
 
 func (s *Set) IsEmpty() bool {

@@ -26,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "builtintemplate"
@@ -107,12 +106,12 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 
 	st := state.NewDocFromSnapshot(id, snapshot).(*state.State)
 	st.SetRootId(id)
-	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled, pbtypes.Bool(true))
+	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled, true)
 	st.RemoveDetail(bundle.RelationKeyCreator, bundle.RelationKeyLastModifiedBy)
-	st.SetLocalDetail(bundle.RelationKeyCreator, pbtypes.String(addr.AnytypeProfileId))
-	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy, pbtypes.String(addr.AnytypeProfileId))
-	st.SetLocalDetail(bundle.RelationKeySpaceId, pbtypes.String(addr.AnytypeMarketplaceWorkspace))
-	st.SetDetail(bundle.RelationKeyOrigin, pbtypes.Int64(int64(model.ObjectOrigin_builtin)))
+	st.SetLocalDetail(bundle.RelationKeyCreator, addr.AnytypeProfileId)
+	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy, addr.AnytypeProfileId)
+	st.SetLocalDetail(bundle.RelationKeySpaceId, addr.AnytypeMarketplaceWorkspace)
+	st.SetDetail(bundle.RelationKeyOrigin, int64(model.ObjectOrigin_builtin))
 
 	err = b.setObjectTypes(st)
 	if err != nil {

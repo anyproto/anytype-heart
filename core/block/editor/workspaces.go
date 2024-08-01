@@ -97,8 +97,8 @@ func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migrati
 
 func (w *Workspaces) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
 	st := w.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, pbtypes.String(fileCid))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, pbtypes.String(fileKey))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, fileCid)
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, fileKey)
 	return w.Apply(st)
 }
 

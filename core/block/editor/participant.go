@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var participantRequiredRelations = []domain.RelationKey{
@@ -44,11 +43,11 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, pbtypes.Bool(true))
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, pbtypes.Bool(false))
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, pbtypes.Bool(false))
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_participant)))
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayoutAlign, pbtypes.Int64(int64(model.Block_AlignCenter)))
+	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, true)
+	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, false)
+	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, false)
+	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayout, int64(model.ObjectType_participant))
+	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayoutAlign, int64(model.Block_AlignCenter))
 
 	template.InitTemplate(ctx.State,
 		template.WithEmpty,

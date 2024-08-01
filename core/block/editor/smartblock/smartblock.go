@@ -627,7 +627,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 		if existingCreatedDate := s.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate); existingCreatedDate == 0 || existingCreatedDate > lastModified.Unix() {
 			// this can happen if we don't have creation date in the root change
-			s.SetLocalDetail(bundle.RelationKeyCreatedDate, pbtypes.Int64(lastModified.Unix()))
+			s.SetLocalDetail(bundle.RelationKeyCreatedDate, lastModified.Unix())
 		}
 	}
 
@@ -669,8 +669,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	pushChange := func() error {
 		if !sb.source.ReadOnly() {
 			// We can set details directly in object's state, they'll be indexed correctly
-			st.SetLocalDetail(bundle.RelationKeyLastModifiedBy, pbtypes.String(sb.currentParticipantId))
-			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, pbtypes.Int64(lastModified.Unix()))
+			st.SetLocalDetail(bundle.RelationKeyLastModifiedBy, sb.currentParticipantId)
+			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, lastModified.Unix())
 		}
 		fileDetailsKeys := st.FileRelationKeys()
 		var fileDetailsKeysFiltered []domain.RelationKey
@@ -926,7 +926,7 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 		}
 
 		if creatorIdentityObjectId != "" {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyProfileOwnerIdentity, pbtypes.String(creatorIdentityObjectId))
+			s.SetDetailAndBundledRelation(bundle.RelationKeyProfileOwnerIdentity, creatorIdentityObjectId)
 		}
 	} else {
 		// make sure we don't have this relation for other objects
@@ -943,24 +943,24 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 	}
 
 	if creatorIdentityObjectId != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creatorIdentityObjectId))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, creatorIdentityObjectId)
 	} else {
 		// For derived objects we set current identity
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(sb.currentParticipantId))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, sb.currentParticipantId)
 	}
 
 	if originalCreated := s.OriginalCreatedTimestamp(); originalCreated > 0 {
 		// means we have imported object, so we need to set original created date
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(originalCreated)))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, float64(originalCreated))
 		// Only set AddedDate once because we have a side effect with treeCreatedDate:
 		// - When we import object, treeCreateDate is set to time.Now()
 		// - But after push it is changed to original modified date
 		// - So after account recovery we will get treeCreateDate = original modified date, which is not equal to AddedDate
 		if s.Details().GetInt64(bundle.RelationKeyAddedDate) == 0 {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyAddedDate, pbtypes.Float64(float64(treeCreatedDate)))
+			s.SetDetailAndBundledRelation(bundle.RelationKeyAddedDate, float64(treeCreatedDate))
 		}
 	} else {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(treeCreatedDate)))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, float64(treeCreatedDate))
 	}
 
 	return nil
@@ -1306,17 +1306,17 @@ func removeInternalFlags(s *state.State) {
 }
 
 func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
-	rawRestrictions := make([]int, len(sb.Restrictions().Object))
+	rawRestrictions := make([]float64, len(sb.Restrictions().Object))
 	for i, r := range sb.Restrictions().Object {
-		rawRestrictions[i] = int(r)
+		rawRestrictions[i] = float64(r)
 	}
-	s.SetLocalDetail(bundle.RelationKeyRestrictions, pbtypes.IntList(rawRestrictions...))
+	s.SetLocalDetail(bundle.RelationKeyRestrictions, rawRestrictions)
 
 	// todo: verify this logic with clients
 	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil &&
 		sb.Restrictions().Object.Check(model.Restrictions_Blocks) != nil {
 
-		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, pbtypes.Bool(true))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, true)
 	}
 }
 
@@ -1386,13 +1386,13 @@ func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
 func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt smartblock.SmartBlockType) {
 	id := s.RootId()
 	if id != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyId, id)
 	}
 
 	if v, ok := s.Details().TryInt64(bundle.RelationKeyFileBackupStatus); ok {
 		status := filesyncstatus.Status(v)
 		// Clients expect syncstatus constants in this relation
-		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, pbtypes.Int64(int64(status.ToSyncStatus())))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, int64(status.ToSyncStatus()))
 	}
 
 	if info := s.GetFileInfo(); info.FileId != "" {
@@ -1406,7 +1406,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	if spaceID != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceID))
+		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, spaceID)
 	} else {
 		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided, but in details: %s", id, s.LocalDetails().GetString(bundle.RelationKeySpaceId))
 	}
@@ -1416,7 +1416,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 			log.Errorf("failed to get type id for %s: %v", ot, err)
 		}
 
-		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeID))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyType, typeID)
 	}
 
 	if uki := s.UniqueKeyInternal(); uki != "" {
@@ -1431,7 +1431,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		if err != nil {
 			log.Errorf("failed to get unique key for %s: %v", uki, err)
 		} else {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
+			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, uk.Marshal())
 		}
 	}
 
@@ -1439,7 +1439,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 
 	snippet := s.Snippet()
 	if snippet != "" || s.LocalDetails() != nil {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(snippet))
+		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, snippet)
 	}
 
 	// Set isDeleted relation only if isUninstalled is present in details
@@ -1448,7 +1448,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		if isUninstalled {
 			isDeleted = true
 		}
-		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(isDeleted))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, isDeleted)
 	}
 
 	sb.injectLinksDetails(s)

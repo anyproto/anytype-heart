@@ -159,7 +159,7 @@ func addFeaturedRelationSetOf(st *state.State) {
 	if !slices.Contains(fr, bundle.RelationKeySetOf.String()) {
 		fr = append(fr, bundle.RelationKeySetOf.String())
 	}
-	st.SetDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList(fr))
+	st.SetDetail(bundle.RelationKeyFeaturedRelations, fr)
 }
 
 func (c *layoutConverter) fromSetToCollection(st *state.State) error {
@@ -236,7 +236,7 @@ func (c *layoutConverter) fromNoteToAny(st *state.State) error {
 		if textBlock == nil {
 			return nil
 		}
-		st.SetDetail(bundle.RelationKeyName, pbtypes.String(textBlock.Model().GetText().GetText()))
+		st.SetDetail(bundle.RelationKeyName, textBlock.Model().GetText().GetText())
 
 		for _, id := range textBlock.Model().ChildrenIds {
 			st.Unlink(id)
@@ -264,7 +264,7 @@ func (c *layoutConverter) removeRelationSetOf(st *state.State) {
 
 	fr := st.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	fr = slice.RemoveMut(fr, bundle.RelationKeySetOf.String())
-	st.SetDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList(fr))
+	st.SetDetail(bundle.RelationKeyFeaturedRelations, fr)
 }
 
 func getFirstTextBlock(st *state.State) (simple.Block, error) {

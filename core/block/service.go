@@ -190,7 +190,7 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		afterDataviewTime := time.Now()
 		st := ob.NewState()
 
-		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, pbtypes.Int64(time.Now().Unix()))
+		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, time.Now().Unix())
 		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}
@@ -525,7 +525,7 @@ func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceReques
 			}
 			return true
 		})
-		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, req.Source)
 		return sb.Apply(st, smartblock.NoRestrictions)
 	})
 }

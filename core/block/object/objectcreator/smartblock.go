@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type eventKey int
@@ -74,7 +73,7 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	}
 	sbType := objectTypeKeysToSmartBlockType(objectTypeKeys)
 
-	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spc.Id()))
+	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, spc.Id())
 
 	ev := &metrics.CreateObjectEvent{
 		SetDetailsMs: time.Since(startTime).Milliseconds(),

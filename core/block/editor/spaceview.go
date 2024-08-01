@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var spaceViewLog = logging.Logger("core.block.editor.spaceview")
@@ -141,7 +140,7 @@ func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 
 func (s *SpaceView) SetAclIsEmpty(isEmpty bool) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, pbtypes.Bool(!isEmpty))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, !isEmpty)
 	s.updateAccessType(st)
 	return s.Apply(st)
 }
@@ -166,7 +165,7 @@ func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
 	if prev == spaceinfo.AccessTypePersonal {
 		return nil
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, pbtypes.Int64(int64(acc)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, int64(acc))
 	return s.Apply(st)
 }
 
@@ -178,7 +177,7 @@ func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (
 
 func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, pbtypes.Int64(int64(limit)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, int64(limit))
 	return s.Apply(st)
 }
 
@@ -188,8 +187,8 @@ func (s *SpaceView) GetSharedSpacesLimit() (limit int) {
 
 func (s *SpaceView) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, pbtypes.String(fileCid))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, pbtypes.String(fileKey))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, fileCid)
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, fileKey)
 	return s.Apply(st)
 }
 
@@ -291,10 +290,10 @@ func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 
 func (s *SpaceView) UpdateLastOpenedDate() error {
 	st := s.NewState()
-	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, pbtypes.Int64(time.Now().Unix()))
+	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, time.Now().Unix())
 	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
 }
 
 func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, pbtypes.Int64(int64(accessType)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, int64(accessType))
 }

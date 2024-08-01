@@ -23,6 +23,9 @@ func (d *GenericMap[K]) SetUnsafe(key K, value any) {
 	if err := v.Validate(); err != nil {
 		panic(err)
 	}
+	if v, ok := value.(int64); ok {
+		value = float64(v)
+	}
 	d.data[key] = value
 }
 
@@ -233,6 +236,9 @@ func (v Value) Validate() error {
 		return errors.Join(ErrInvalidValue, fmt.Errorf("value is none"))
 	}
 	switch v.value.(type) {
+	// TODO TEMPORARILY ALLOW HERE
+	case int64:
+		return nil
 	case bool, string, float64, []string, []float64:
 		return nil
 	default:

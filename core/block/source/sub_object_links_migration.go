@@ -54,11 +54,11 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 			switch m.sbType {
 			case smartblock.SmartBlockTypeRelation:
 				if bundle.HasRelation(domain.RelationKey(internalKey)) {
-					s.SetDetail(bundle.RelationKeySourceObject, pbtypes.String(domain.RelationKey(internalKey).BundledURL()))
+					s.SetDetail(bundle.RelationKeySourceObject, domain.RelationKey(internalKey).BundledURL())
 				}
 			case smartblock.SmartBlockTypeObjectType:
 				if bundle.HasObjectTypeByKey(domain.TypeKey(internalKey)) {
-					s.SetDetail(bundle.RelationKeySourceObject, pbtypes.String(domain.TypeKey(internalKey).BundledURL()))
+					s.SetDetail(bundle.RelationKeySourceObject, domain.TypeKey(internalKey).BundledURL())
 				}
 
 			}
@@ -71,7 +71,7 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 			if oldId := rawValue.StringOrDefault(""); oldId != "" {
 				newId := m.migrateId(oldId)
 				if oldId != newId {
-					s.SetDetail(domain.RelationKey(rel.Key), pbtypes.String(newId))
+					s.SetDetail(domain.RelationKey(rel.Key), newId)
 				}
 			} else if ids := rawValue.StringListOrDefault(nil); len(ids) > 0 {
 				changed := false
@@ -83,7 +83,7 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 					}
 				}
 				if changed {
-					s.SetDetail(domain.RelationKey(rel.Key), pbtypes.StringList(ids))
+					s.SetDetail(domain.RelationKey(rel.Key), ids)
 				}
 			}
 		}

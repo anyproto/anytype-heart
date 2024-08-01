@@ -189,9 +189,9 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 		err = space.Do(id, func(sb smartblock.SmartBlock) error {
 			st := sb.NewState()
 			st.SetDetails(installingDetails)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(false))
-			st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
-			st.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, pbtypes.Bool(false))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, false)
+			st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, false)
+			st.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, false)
 			typeKey = domain.TypeKey(st.UniqueKeyInternal())
 
 			ids = append(ids, id)

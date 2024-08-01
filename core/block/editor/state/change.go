@@ -125,9 +125,9 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 
 func (s *State) SetLastModified(ts int64, identityLink string) {
 	if ts > 0 {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedDate, pbtypes.Int64(ts))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedDate, ts)
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, pbtypes.String(identityLink))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, identityLink)
 }
 
 func (s *State) SetChangeId(id string) {

@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID string, err error) {
@@ -30,7 +29,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		}
 		st = b.NewState().Copy()
 		st.SetLocalDetails(nil)
-		st.SetDetail(bundle.RelationKeySourceObject, pbtypes.String(id))
+		st.SetDetail(bundle.RelationKeySourceObject, id)
 		return nil
 	}); err != nil {
 		return
@@ -139,7 +138,7 @@ func (s *Service) CreateLinkToTheNewObject(
 
 func (s *Service) ObjectToSet(id string, source []string) error {
 	return cache.DoState(s, id, func(st *state.State, b basic.CommonOperations) error {
-		st.SetDetail(bundle.RelationKeySetOf, pbtypes.StringList(source))
+		st.SetDetail(bundle.RelationKeySetOf, source)
 		return b.SetObjectTypesInState(st, []domain.TypeKey{bundle.TypeKeySet}, true)
 	})
 }

@@ -4,7 +4,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type SpacePersistentInfo struct {
@@ -26,12 +25,12 @@ func NewSpacePersistentInfoFromState(st state.Doc) SpacePersistentInfo {
 }
 
 func (s *SpacePersistentInfo) UpdateDetails(st *state.State) *SpacePersistentInfo {
-	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, pbtypes.String(s.SpaceID))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, s.SpaceID)
 	if s.AccountStatus != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccountStatus, pbtypes.Int64(int64(*s.AccountStatus)))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccountStatus, int64(*s.AccountStatus))
 	}
 	if s.AclHeadId != "" {
-		st.SetDetailAndBundledRelation(bundle.RelationKeyLatestAclHeadId, pbtypes.String(s.AclHeadId))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLatestAclHeadId, s.AclHeadId)
 	}
 	return s
 }

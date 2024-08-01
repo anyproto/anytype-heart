@@ -1000,7 +1000,7 @@ func (s *State) SetDetail(key domain.RelationKey, value any) {
 
 func (s *State) SetAlign(align model.BlockAlign, ids ...string) (err error) {
 	if len(ids) == 0 {
-		s.SetDetail(bundle.RelationKeyLayoutAlign, pbtypes.Int64(int64(align)))
+		s.SetDetail(bundle.RelationKeyLayoutAlign, int64(align))
 		ids = []string{TitleBlockID, DescriptionBlockID, FeaturedRelationsID}
 	}
 	for _, id := range ids {
@@ -1220,9 +1220,9 @@ func (s *State) modifyIdsInDetail(details *domain.Details, key domain.RelationKe
 		if anyChanges {
 			v := details.Get(key)
 			if _, ok := v.String(); ok {
-				s.SetDetail(key, pbtypes.String(ids[0]))
+				s.SetDetail(key, ids[0])
 			} else if _, ok := v.StringList(); ok {
-				s.SetDetail(key, pbtypes.StringList(ids))
+				s.SetDetail(key, ids)
 			}
 		}
 	}
@@ -1827,7 +1827,7 @@ func (s *State) RemoveRelation(keys ...domain.RelationKey) {
 		return false
 	})
 	if foundInFeatured {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList(featuredList))
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, featuredList)
 	}
 	s.relationLinks = relLinksFiltered
 	return

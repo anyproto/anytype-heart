@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *service) onFileUploadStarted(objectId string, _ domain.FullFileId) error {
@@ -32,7 +31,7 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 			return nil
 		}
 		st := sb.NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, pbtypes.Int64(newStatus))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, newStatus)
 		return sb.Apply(st)
 	})
 	if err != nil {

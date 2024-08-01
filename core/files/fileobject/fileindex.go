@@ -289,7 +289,7 @@ func (ind *indexer) addBlocks(st *state.State, details *domain.Details, objectId
 
 	switch fileType {
 	case model.BlockContentFile_Image:
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(objectId))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, objectId)
 
 		if details.GetInt64(bundle.RelationKeyWidthInPixels) != 0 {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyWidthInPixels))

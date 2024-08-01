@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -239,9 +238,9 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 	if fileStatus, ok := st.Details().TryFloat(bundle.RelationKeyFileBackupStatus); ok {
 		status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeySyncStatus, pbtypes.Int64(int64(status)))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySyncError, pbtypes.Int64(int64(syncError)))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySyncDate, pbtypes.Int64(time.Now().Unix()))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySyncStatus, int64(status))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySyncError, int64(syncError))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySyncDate, time.Now().Unix())
 
 	return sb.Apply(st, smartblock.KeepInternalFlags /* do not erase flags */)
 }
