@@ -74,6 +74,15 @@ func pickRow(s *state.State, id string) (simple.Block, error) {
 	return b, nil
 }
 
+func makeColumn(id string) simple.Block {
+	return simple.New(&model.Block{
+		Id: id,
+		Content: &model.BlockContentOfTableColumn{
+			TableColumn: &model.BlockContentTableColumn{},
+		},
+	})
+}
+
 func pickColumn(s *state.State, id string) (simple.Block, error) {
 	b := s.Pick(id)
 	if b == nil {

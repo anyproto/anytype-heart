@@ -237,8 +237,15 @@ func withChangedChildren(children map[string][]string) testTableOption {
 
 func mkTestTable(columns []string, rows []string, cells [][]string, opts ...testTableOption) *state.State {
 	blocks := mkTestTableBlocks(columns, rows, cells, opts...)
+	o := testTableOptions{}
+	for _, apply := range opts {
+		apply(&o)
+	}
 	s := state.NewDoc("root", nil).NewState()
 	for _, b := range blocks {
+		if children, found := o.children[b.Id]; found {
+			b.ChildrenIds = children
+		}
 		s.Add(simple.New(b))
 	}
 	return s
@@ -252,10 +259,10 @@ func mkTestTableSb(columns []string, rows []string, cells [][]string, opts ...te
 	}
 	sb := smarttest.New("root")
 	for _, b := range blocks {
-		sb.AddBlock(simple.New(b))
 		if children, found := o.children[b.Id]; found {
 			b.ChildrenIds = children
 		}
+		sb.AddBlock(simple.New(b))
 	}
 	return sb
 }
