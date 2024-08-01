@@ -113,7 +113,7 @@ func (w *Workspaces) RemoveExistingInviteInfo() (fileCid string, err error) {
 	details := w.Details()
 	fileCid = details.GetStringOrDefault(bundle.RelationKeySpaceInviteFileCid, "")
 	newState := w.NewState()
-	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid.String(), bundle.RelationKeySpaceInviteFileKey.String())
+	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid, bundle.RelationKeySpaceInviteFileKey)
 	return fileCid, w.Apply(newState)
 }
 
@@ -127,6 +127,6 @@ func (w *Workspaces) onApply(info smartblock.ApplyInfo) error {
 }
 
 func (w *Workspaces) onWorkspaceChanged(state *state.State) {
-	details := pbtypes.CopyStruct(state.CombinedDetails(), true)
+	details := state.CombinedDetails().ShallowCopy()
 	w.spaceService.OnWorkspaceChanged(w.SpaceID(), details)
 }

@@ -126,6 +126,7 @@ func (c *collectionObserver) FilterObject(g *types.Struct) bool {
 }
 
 // AnystoreSort called only once when subscription is created
+// TODO make collectionObserver to satify query.Filter interface
 func (c *collectionObserver) AnystoreFilter() query.Filter {
 	c.lock.RLock()
 	defer c.lock.RUnlock()

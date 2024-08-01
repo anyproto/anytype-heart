@@ -53,7 +53,7 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 				return
 			}
 
-			if pbtypes.GetBool(info.Details, migratedKey) {
+			if info.Details.GetBoolOrDefault(migratedKey, false) {
 				return
 			}
 			uniqueKeyRaw := info.Details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
@@ -114,7 +114,7 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 func (m *subObjectsMigration) migrateSubObject(
 	ctx context.Context,
 	uniqueKeyRaw string,
-	details *types.Struct,
+	details *domain.Details,
 	typeKey domain.TypeKey,
 ) (id string, err error) {
 	uniqueKey, err := domain.UnmarshalUniqueKey(uniqueKeyRaw)
@@ -181,7 +181,7 @@ func (m *subObjectsMigration) iterateAllSubObjects(st *state.State, proc func(in
 					continue
 				}
 
-				details := v.StructValue
+				details := domain.NewDetailsFromProto(v.StructValue)
 				details.Set(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
 
 				proc(smartblock.DocInfo{

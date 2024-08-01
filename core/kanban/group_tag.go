@@ -28,7 +28,7 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 	}
 
 	filterTag := database.FiltersAnd{
-		database.FilterNot{Filter: database.FilterEmpty{Key: string(t.Key)}},
+		database.FilterNot{Filter: database.FilterEmpty{Key: t.Key}},
 	}
 
 	if f == nil {

@@ -253,3 +253,15 @@ func IntoStrings[T ~string](from []T) []string {
 	}
 	return to
 }
+
+type numeric interface {
+	constraints.Integer | constraints.Float
+}
+
+func FloatsInto[T numeric](from []float64) []T {
+	to := make([]T, len(from))
+	for i, v := range from {
+		to[i] = T(v)
+	}
+	return to
+}

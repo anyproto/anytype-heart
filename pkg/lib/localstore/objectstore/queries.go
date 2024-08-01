@@ -34,10 +34,9 @@ func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
 }
 
 // getObjectsWithObjectInRelation returns objects that have a relation with the given object in the value, while also matching the given filters
-func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey, objectId string, limit int, params database.Filters) ([]database.Record, error) {
-	listValue := pbtypes.StringList([]string{objectId})
+func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey domain.RelationKey, objectId string, limit int, params database.Filters) ([]database.Record, error) {
 	f := database.FiltersAnd{
-		database.FilterAllIn{Key: relationKey, Value: listValue.GetListValue()},
+		database.FilterAllIn{Key: relationKey, Strings: []string{objectId}},
 		params.FilterObj,
 	}
 	return s.queryAnyStore(f, params.Order, uint(limit), 0)
@@ -70,7 +69,7 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 	default:
 		return nil
 	}
-	recs, err := s.getObjectsWithObjectInRelation(relationKey, id, maxLength, params)
+	recs, err := s.getObjectsWithObjectInRelation(domain.RelationKey(relationKey), id, maxLength, params)
 	if err != nil {
 		log.Errorf("getInjectedResults failed to get objects with object in relation: %v", err)
 		return nil
@@ -187,7 +186,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 				details.Set(bundle.RelationKeyId, res.Path.ObjectId)
 				details.Set(database.RecordScoreField, res.Score)
 				rec := database.Record{Details: details}
-				if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details.ToProto()) {
+				if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 					resultObjectMap[res.Path.ObjectId] = struct{}{}
 					records = append(records, rec)
 				}
@@ -207,7 +206,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 		details.Set(database.RecordScoreField, res.Score)
 
 		rec := database.Record{Details: details}
-		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details.ToProto()) {
+		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 			rec.Meta = res.Model()
 			if rec.Meta.Highlight == "" {
 				title := details.GetStringOrDefault(bundle.RelationKeyName, "")
@@ -251,8 +250,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	}
 	if params.Order != nil {
 		sort.Slice(records, func(i, j int) bool {
-			// TODO TEMP ToProto
-			return params.Order.Compare(records[i].Details.ToProto(), records[j].Details.ToProto()) == -1
+			return params.Order.Compare(records[i].Details, records[j].Details) == -1
 		})
 	}
 	if limit > 0 {
@@ -425,7 +423,7 @@ func getSpaceIdsFromFilter(fltr database.Filter) []string {
 	switch f := fltr.(type) {
 	case database.FilterEq:
 		if f.Key == bundle.RelationKeySpaceId.String() {
-			return []string{f.Value.GetStringValue()}
+			return []string{domain.SomeValue(f.Value).StringOrDefault("")}
 		}
 	case database.FilterIn:
 		if f.Key == bundle.RelationKeySpaceId.String() {

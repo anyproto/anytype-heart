@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const relationKey = bundle.RelationKeyInternalFlags
@@ -18,7 +19,7 @@ func NewFromState(st *state.State) *Set {
 	flags := st.Details().GetFloatListOrDefault(relationKey, nil)
 
 	return &Set{
-		flags: flags,
+		flags: slice.FloatsInto[int](flags),
 	}
 }
 
