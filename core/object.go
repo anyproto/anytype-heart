@@ -18,6 +18,7 @@ import (
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/notifications"
@@ -31,7 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
@@ -137,7 +138,8 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	var records2 = make([]*types.Struct, 0, len(records))
 	for _, rec := range records {
-		records2 = append(records2, pbtypes.Map(rec.Details, req.Keys...))
+		protoRec := rec.Details.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...)
+		records2 = append(records2, protoRec.ToProto())
 	}
 
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
@@ -178,12 +180,11 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	var resultsModels = make([]*model.SearchResult, 0, len(results))
 	for i, rec := range results {
 		if len(req.Keys) > 0 {
-			rec.Details = pbtypes.StructFilterKeys(rec.Details, req.Keys)
+			rec.Details = rec.Details.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...)
 		}
 		resultsModels = append(resultsModels, &model.SearchResult{
-
-			ObjectId: pbtypes.GetString(rec.Details, database.RecordIDField),
-			Details:  rec.Details,
+			ObjectId: rec.Details.GetStringOrDefault(bundle.RelationKeyId, ""),
+			Details:  rec.Details.ToProto(),
 			Meta:     []*model.SearchMeta{&(results[i].Meta)},
 		})
 	}
@@ -205,11 +206,11 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 	// Don't duplicate search suggestions
 	var found bool
 	for _, r := range records {
-		if r.Details == nil || r.Details.Fields == nil {
+		if r.Details == nil {
 			continue
 		}
-		if v, ok := r.Details.Fields[bundle.RelationKeyId.String()]; ok {
-			if v.GetStringValue() == id {
+		if v := r.Details.GetStringOrDefault(bundle.RelationKeyId, ""); v != "" {
+			if v == id {
 				found = true
 				break
 			}
@@ -316,14 +317,14 @@ func (mw *Middleware) makeSuggestedDateRecord(ctx context.Context, spaceID strin
 	if err != nil {
 		return database.Record{}, fmt.Errorf("get date type id: %w", err)
 	}
-	d := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyId.String():        pbtypes.String(id),
-		bundle.RelationKeyName.String():      pbtypes.String(t.Format("Mon Jan  2 2006")),
-		bundle.RelationKeyLayout.String():    pbtypes.Int64(int64(model.ObjectType_date)),
-		bundle.RelationKeyType.String():      pbtypes.String(typeId),
-		bundle.RelationKeyIconEmoji.String(): pbtypes.String("📅"),
-		bundle.RelationKeySpaceId.String():   pbtypes.String(spaceID),
-	}}
+	d := domain.NewDetailsFromMap(map[domain.RelationKey]any{
+		bundle.RelationKeyId:        id,
+		bundle.RelationKeyName:      t.Format("Mon Jan  2 2006"),
+		bundle.RelationKeyLayout:    int64(model.ObjectType_date),
+		bundle.RelationKeyType:      typeId,
+		bundle.RelationKeyIconEmoji: "📅",
+		bundle.RelationKeySpaceId:   spaceID,
+	})
 
 	return database.Record{
 		Details: d,
@@ -369,8 +370,8 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 
 	return &pb.RpcObjectSearchSubscribeResponse{
 		SubId:        resp.SubId,
-		Records:      resp.Records,
-		Dependencies: resp.Dependencies,
+		Records:      domain.DetailsListToProtos(resp.Records),
+		Dependencies: domain.DetailsListToProtos(resp.Dependencies),
 		Counters:     resp.Counters,
 	}
 }
@@ -471,7 +472,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 	if err != nil {
 		return unknownError(err)
 	}
-	return objectResponse(pb.RpcObjectGraphResponseError_NULL, nodes, edges, nil)
+	return objectResponse(pb.RpcObjectGraphResponseError_NULL, domain.DetailsListToProtos(nodes), edges, nil)
 }
 
 func unknownError(err error) *pb.RpcObjectGraphResponse {
@@ -864,8 +865,8 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
-			d := pbtypes.CopyStruct(current, false)
+		return bs.ModifyDetails(req.ContextId, func(current *domain.Details) (*domain.Details, error) {
+			d := current.ShallowCopy()
 			return internalflag.PutToDetails(d, req.InternalFlags), nil
 		})
 	})

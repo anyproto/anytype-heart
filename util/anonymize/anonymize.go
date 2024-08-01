@@ -175,6 +175,11 @@ func Struct(in *types.Struct) (res *types.Struct) {
 	return
 }
 
+func Details(d *domain.Details) *domain.Details {
+	str := d.ToProto()
+	return domain.NewDetailsFromProto(Struct(str))
+}
+
 func StructValue(in *types.Value) (res *types.Value) {
 	if in == nil {
 		return

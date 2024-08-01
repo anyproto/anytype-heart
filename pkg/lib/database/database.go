@@ -24,6 +24,26 @@ type Record struct {
 	Meta    model.SearchMeta
 }
 
+type ObjectInfo struct {
+	Id              string
+	ObjectTypeUrls  []string
+	Details         *domain.Details
+	Relations       []*model.Relation
+	Snippet         string
+	HasInboundLinks bool
+}
+
+func (info *ObjectInfo) ToProto() *model.ObjectInfo {
+	return &model.ObjectInfo{
+		Id:              info.Id,
+		ObjectTypeUrls:  info.ObjectTypeUrls,
+		Details:         info.Details.ToProto(),
+		Relations:       info.Relations,
+		Snippet:         info.Snippet,
+		HasInboundLinks: info.HasInboundLinks,
+	}
+}
+
 type Query struct {
 	FullText    string
 	Highlighter ftsearch.HighlightFormatter         // default is json

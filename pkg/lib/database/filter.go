@@ -464,19 +464,7 @@ type FilterEmpty struct {
 
 func (e FilterEmpty) FilterObject(g *domain.Details) bool {
 	val := g.Get(e.Key)
-	var ok bool
-	val.Match(func(v bool) {
-		ok = !v
-	}, func(v float64) {
-		ok = v == 0
-	}, func(v string) {
-		ok = v == ""
-	}, func(v []string) {
-		ok = len(v) == 0
-	}, func(v []float64) {
-		ok = len(v) == 0
-	})
-	return ok
+	return val.IsEmpty()
 }
 
 func (e FilterEmpty) AnystoreFilter() query.Filter {

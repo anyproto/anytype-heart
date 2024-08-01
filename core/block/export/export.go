@@ -14,7 +14,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	"github.com/gosimple/slug"
 	"github.com/samber/lo"
@@ -377,7 +376,7 @@ func (e *export) fillLinkedFiles(space clientspace.Space, id string, docs map[st
 				log.Errorf("failed to get details for file object id %s: %v", fileObjectId, err)
 				return
 			}
-			docs[fileObjectId] = details.GetDetails()
+			docs[fileObjectId] = details
 
 		})
 		return nil
@@ -597,7 +596,7 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	return nil
 }
 
-func (e *export) objectValid(sbType smartblock.SmartBlockType, info *model.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
+func (e *export) objectValid(sbType smartblock.SmartBlockType, info *database.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
 	if info.Id == addr.AnytypeProfileId {
 		return false
 	}
@@ -677,7 +676,7 @@ func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeFileObject
 }
 
-func validLayoutForNonProtobuf(details *types.Struct) bool {
+func validLayoutForNonProtobuf(details *domain.Details) bool {
 	return details.GetFloatOrDefault(bundle.RelationKeyLayout, 0) != float64(model.ObjectType_collection) &&
 		details.GetFloatOrDefault(bundle.RelationKeyLayout, 0) != float64(model.ObjectType_set)
 }
@@ -761,12 +760,12 @@ func (e *export) getObjectRelations(state *state.State, relations []string) []st
 	return relations
 }
 
-func (e *export) isObjectWithDataview(details *types.Struct) bool {
+func (e *export) isObjectWithDataview(details *domain.Details) bool {
 	return details.GetFloatOrDefault(bundle.RelationKeyLayout, 0) == float64(model.ObjectType_collection) ||
 		details.GetFloatOrDefault(bundle.RelationKeyLayout, 0) == float64(model.ObjectType_set)
 }
 
-func (e *export) processObject(object *types.Struct,
+func (e *export) processObject(object *domain.Details,
 	derivedObjects []database.Record,
 	typesAndTemplates []database.Record,
 	relations []string,
@@ -807,10 +806,10 @@ func (e *export) addObjectType(objectTypeId string, derivedObjects []database.Re
 	if err != nil {
 		return nil, nil, err
 	}
-	if objectTypeDetails == nil || objectTypeDetails.Details == nil || len(objectTypeDetails.Details.Fields) == 0 {
+	if objectTypeDetails == nil || objectTypeDetails.Len() == 0 {
 		return derivedObjects, typesAndTemplates, nil
 	}
-	uniqueKey := objectTypeDetails.Details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
+	uniqueKey := objectTypeDetails.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
 	key, err := domain.GetTypeKeyFromRawUniqueKey(uniqueKey)
 	if err != nil {
 		return nil, nil, err
@@ -818,7 +817,7 @@ func (e *export) addObjectType(objectTypeId string, derivedObjects []database.Re
 	if bundle.IsInternalType(key) {
 		return derivedObjects, typesAndTemplates, nil
 	}
-	recommendedRelations := objectTypeDetails.Details.GetStringListOrDefault(bundle.RelationKeyRecommendedRelations, nil)
+	recommendedRelations := objectTypeDetails.GetStringListOrDefault(bundle.RelationKeyRecommendedRelations, nil)
 	for _, relation := range recommendedRelations {
 		if relation == addr.MissingObject {
 			continue
@@ -827,7 +826,7 @@ func (e *export) addObjectType(objectTypeId string, derivedObjects []database.Re
 		if err != nil {
 			return nil, nil, err
 		}
-		relationKey := details.Details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
+		relationKey := details.GetStringOrDefault(bundle.RelationKeyUniqueKey, "")
 		uniqueKey, err := domain.UnmarshalUniqueKey(relationKey)
 		if err != nil {
 			return nil, nil, err
@@ -835,10 +834,10 @@ func (e *export) addObjectType(objectTypeId string, derivedObjects []database.Re
 		if bundle.IsSystemRelation(domain.RelationKey(uniqueKey.InternalKey())) {
 			continue
 		}
-		derivedObjects = append(derivedObjects, database.Record{Details: details.Details})
+		derivedObjects = append(derivedObjects, database.Record{Details: details})
 	}
-	derivedObjects = append(derivedObjects, database.Record{Details: objectTypeDetails.Details})
-	typesAndTemplates = append(typesAndTemplates, database.Record{Details: objectTypeDetails.Details})
+	derivedObjects = append(derivedObjects, database.Record{Details: objectTypeDetails})
+	typesAndTemplates = append(typesAndTemplates, database.Record{Details: objectTypeDetails})
 	return derivedObjects, typesAndTemplates, nil
 }
 
@@ -891,7 +890,7 @@ func (e *export) addRelationAndOptions(relation *database.Record, derivedObjects
 
 func (e *export) addRelation(relation database.Record, derivedObjects []database.Record) []database.Record {
 	if relationKey := relation.Details.GetStringOrDefault(bundle.RelationKeyRelationKey, ""); relationKey != "" {
-		if !bundle.HasRelation(relationKey) {
+		if !bundle.HasRelation(domain.RelationKey(relationKey)) {
 			derivedObjects = append(derivedObjects, relation)
 		}
 	}
@@ -957,7 +956,7 @@ func (e *export) addTemplates(id string, derivedObjects []database.Record, types
 	return derivedObjects, typesAndTemplates, nil
 }
 
-func (e *export) handleSetOfRelation(object *types.Struct, derivedObjects []database.Record) ([]database.Record, error) {
+func (e *export) handleSetOfRelation(object *domain.Details, derivedObjects []database.Record) ([]database.Record, error) {
 	setOfList := object.GetStringListOrDefault(bundle.RelationKeySetOf, nil)
 	if len(setOfList) > 0 {
 		types, err := e.objectStore.Query(database.Query{

@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"github.com/golang/snappy"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
@@ -117,7 +116,7 @@ type Source interface {
 
 type SourceIdEndodedDetails interface {
 	Id() string
-	DetailsFromId() (*types.Struct, error)
+	DetailsFromId() (*domain.Details, error)
 }
 
 type IDsLister interface {

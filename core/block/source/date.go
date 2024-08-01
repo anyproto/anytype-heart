@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -79,20 +77,20 @@ func (v *date) getDetails(ctx context.Context) (*domain.Details, error) {
 }
 
 // TODO Fix?
-func (v *date) DetailsFromId() (*types.Struct, error) {
+func (v *date) DetailsFromId() (*domain.Details, error) {
 	if err := v.parseId(); err != nil {
 		return nil, err
 	}
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("Mon Jan  2 2006")),
-		bundle.RelationKeyId.String():         pbtypes.String(v.id),
-		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
-		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_date)),
-		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
-		bundle.RelationKeySpaceId.String():    pbtypes.String(v.SpaceID()),
-	}}, nil
+	return domain.NewDetailsFromMap(map[domain.RelationKey]any{
+		bundle.RelationKeyName:       v.t.Format("Mon Jan  2 2006"),
+		bundle.RelationKeyId:         v.id,
+		bundle.RelationKeyIsReadonly: true,
+		bundle.RelationKeyIsArchived: false,
+		bundle.RelationKeyIsHidden:   false,
+		bundle.RelationKeyLayout:     float64(model.ObjectType_date),
+		bundle.RelationKeyIconEmoji:  "📅",
+		bundle.RelationKeySpaceId:    v.SpaceID(),
+	}), nil
 }
 
 func (v *date) parseId() error {

@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -50,7 +49,7 @@ var (
 )
 
 type Service interface {
-	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (st *state.State, err error)
+	CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error)
 	ObjectApplyTemplate(contextId string, templateId string) error
 	TemplateCreateFromObject(ctx context.Context, id string) (templateId string, err error)
 
@@ -95,7 +94,7 @@ func (s *service) Init(a *app.App) error {
 // Blank template is created in case template object is deleted or blank/empty templateIв is provided
 func (s *service) CreateTemplateStateWithDetails(
 	templateId string,
-	details *types.Struct,
+	details *domain.Details,
 ) (targetState *state.State, err error) {
 	if templateId == BlankTemplateId || templateId == "" {
 		layout := details.GetInt64OrDefault(bundle.RelationKeyLayout, 0)
@@ -113,26 +112,27 @@ func (s *service) CreateTemplateStateWithDetails(
 	return targetState, nil
 }
 
-func extractTargetDetails(originDetails *types.Struct, templateDetails *types.Struct) *types.Struct {
-	targetDetails := pbtypes.CopyStruct(originDetails, true)
+func extractTargetDetails(originDetails *domain.Details, templateDetails *domain.Details) *domain.Details {
+	targetDetails := originDetails.ShallowCopy()
 	if templateDetails == nil {
 		return targetDetails
 	}
-	for key := range originDetails.GetFields() {
-		_, exists := templateDetails.Fields[key]
-		if exists {
-			inTemplateEmpty := pbtypes.IsEmptyValueOrAbsent(templateDetails, key)
-			if key == bundle.RelationKeyLayout.String() {
+	originDetails.Iterate(func(key domain.RelationKey, originalVal any) bool {
+		templateVal := templateDetails.Get(key)
+		if templateVal.Ok() {
+			inTemplateEmpty := templateVal.IsEmpty()
+			if key == bundle.RelationKeyLayout {
 				// layout = 0 is actually basic layout, so it counts
 				inTemplateEmpty = false
 			}
-			inOriginEmpty := pbtypes.IsEmptyValueOrAbsent(originDetails, key)
+			inOriginEmpty := domain.SomeValue(originalVal).IsEmpty()
 			templateValueShouldBePreferred := lo.Contains(templateIsPreferableRelationKeys, domain.RelationKey(key))
 			if !inTemplateEmpty && (inOriginEmpty || templateValueShouldBePreferred) {
-				delete(targetDetails.Fields, key)
+				targetDetails.Delete(key)
 			}
 		}
-	}
+		return true
+	})
 	return targetDetails
 }
 
@@ -153,10 +153,10 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 		}
 
 		targetState.RemoveDetail(
-			bundle.RelationKeyTargetObjectType.String(),
-			bundle.RelationKeyTemplateIsBundled.String(),
-			bundle.RelationKeyOrigin.String(),
-			bundle.RelationKeyAddedDate.String(),
+			bundle.RelationKeyTargetObjectType,
+			bundle.RelationKeyTemplateIsBundled,
+			bundle.RelationKeyOrigin,
+			bundle.RelationKeyAddedDate,
 		)
 		targetState.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(sb.Id()))
 		// original created timestamp is used to set creationDate for imported objects, not for template-based objects
@@ -237,7 +237,7 @@ func (s *service) TemplateCloneInSpace(space clientspace.Space, id string) (temp
 		}
 		objectTypeKeys = b.ObjectTypeKeys()
 		st = b.NewState().Copy()
-		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled.String())
+		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled)
 		st.SetLocalDetails(nil)
 		st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(id))
 
@@ -355,7 +355,7 @@ func buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error
 	st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
 	for _, rel := range sb.Relations(st) {
 		if rel.DataSource == model.Relation_details && !rel.Hidden {
-			st.RemoveDetail(rel.Key)
+			st.RemoveDetail(domain.RelationKey(rel.Key))
 		}
 	}
 	flags := internalflag.NewFromState(st)

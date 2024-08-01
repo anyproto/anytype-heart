@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	anystore "github.com/anyproto/any-store"
@@ -56,8 +55,8 @@ type ObjectStore interface {
 	QueryObjectIDs(q database.Query) (ids []string, total int, err error)
 
 	HasIDs(ids ...string) (exists []string, err error)
-	GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error)
-	List(spaceID string, includeArchived bool) ([]*model.ObjectInfo, error)
+	GetByIDs(spaceID string, ids []string) ([]*database.ObjectInfo, error)
+	List(spaceID string, includeArchived bool) ([]*database.ObjectInfo, error)
 	ListIds() ([]string, error)
 	ListIdsBySpace(spaceId string) ([]string, error)
 
@@ -385,7 +384,7 @@ func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
 	return domain.UnmarshalUniqueKey(rawUniqueKey)
 }
 
-func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*model.ObjectInfo, error) {
+func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*database.ObjectInfo, error) {
 	var filters []*model.BlockContentDataviewFilter
 	if spaceID != "" {
 		filters = append(filters, &model.BlockContentDataviewFilter{
@@ -423,7 +422,7 @@ func (s *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
 	return exists, err
 }
 
-func (s *dsObjectStore) GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error) {
+func (s *dsObjectStore) GetByIDs(spaceID string, ids []string) ([]*database.ObjectInfo, error) {
 	return s.getObjectsInfo(s.componentCtx, spaceID, ids)
 }
 
@@ -466,13 +465,13 @@ func (s *dsObjectStore) FTSearch() ftsearch.FTSearch {
 	return s.fts
 }
 
-func (s *dsObjectStore) getObjectInfo(ctx context.Context, spaceID string, id string) (*model.ObjectInfo, error) {
+func (s *dsObjectStore) getObjectInfo(ctx context.Context, spaceID string, id string) (*database.ObjectInfo, error) {
 	details, err := s.sourceService.DetailsFromIdBasedSource(id)
 	if err == nil {
 		details.Set(bundle.RelationKeyId, id)
-		return &model.ObjectInfo{
+		return &database.ObjectInfo{
 			Id:      id,
-			Details: details.ToProto(),
+			Details: details,
 		}, nil
 	}
 
@@ -486,15 +485,15 @@ func (s *dsObjectStore) getObjectInfo(ctx context.Context, spaceID string, id st
 	}
 	snippet := details.GetStringOrDefault(bundle.RelationKeySnippet, "")
 
-	return &model.ObjectInfo{
+	return &database.ObjectInfo{
 		Id:      id,
-		Details: details.ToProto(),
+		Details: details,
 		Snippet: snippet,
 	}, nil
 }
 
-func (s *dsObjectStore) getObjectsInfo(ctx context.Context, spaceID string, ids []string) ([]*model.ObjectInfo, error) {
-	objects := make([]*model.ObjectInfo, 0, len(ids))
+func (s *dsObjectStore) getObjectsInfo(ctx context.Context, spaceID string, ids []string) ([]*database.ObjectInfo, error) {
+	objects := make([]*database.ObjectInfo, 0, len(ids))
 	for _, id := range ids {
 		info, err := s.getObjectInfo(ctx, spaceID, id)
 		if err != nil {
@@ -503,9 +502,9 @@ func (s *dsObjectStore) getObjectsInfo(ctx context.Context, spaceID string, ids 
 			}
 			return nil, err
 		}
-		if f := info.GetDetails().GetFields(); f != nil {
+		if f := info.Details; f != nil {
 			// skip deleted objects
-			if v := f[bundle.RelationKeyIsDeleted.String()]; v != nil && v.GetBoolValue() {
+			if v, ok := f.GetBool(bundle.RelationKeyIsDeleted); ok && v {
 				continue
 			}
 		}
@@ -545,17 +544,4 @@ func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey domain.Un
 	}
 
 	return records[0].Details, nil
-}
-
-func extractIdFromKey(key string) (id string) {
-	i := strings.LastIndexByte(key, '/')
-	if i == -1 || len(key)-1 == i {
-		return
-	}
-	return key[i+1:]
-}
-
-// bytesToString unmarshalls bytes to string
-func bytesToString(b []byte) (string, error) {
-	return string(b), nil
 }

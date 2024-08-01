@@ -60,12 +60,21 @@ func (s *dsObjectStore) GetWithLinksInfoByID(spaceId string, id string) (*model.
 	if err != nil {
 		return nil, fmt.Errorf("commit txn: %w", err)
 	}
+
+	inboundProto := make([]*model.ObjectInfo, 0, len(inbound))
+	for _, info := range inbound {
+		inboundProto = append(inboundProto, info.ToProto())
+	}
+	outboundProto := make([]*model.ObjectInfo, 0, len(outbound))
+	for _, info := range outbound {
+		outboundProto = append(outboundProto, info.ToProto())
+	}
 	return &model.ObjectInfoWithLinks{
 		Id:   id,
-		Info: page,
+		Info: page.ToProto(),
 		Links: &model.ObjectLinksInfo{
-			Inbound:  inbound,
-			Outbound: outbound,
+			Inbound:  inboundProto,
+			Outbound: outboundProto,
 		},
 	}, nil
 }

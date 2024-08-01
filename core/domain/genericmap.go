@@ -35,7 +35,7 @@ func (d *GenericMap[K]) Keys() []K {
 	return keys
 }
 
-func (d *GenericMap[K]) Iterate(proc func(K, any) bool) {
+func (d *GenericMap[K]) Iterate(proc func(key K, value any) bool) {
 	for k, v := range d.data {
 		if !proc(k, v) {
 			return
@@ -526,4 +526,23 @@ func (v Value) Match(boolCase func(v bool), floatCase func(v float64), stringCas
 	case []float64:
 		floatListCase(v)
 	}
+}
+
+func (v Value) IsEmpty() bool {
+	if !v.ok {
+		return true
+	}
+	var ok bool
+	v.Match(func(v bool) {
+		ok = !v
+	}, func(v float64) {
+		ok = v == 0
+	}, func(v string) {
+		ok = v == ""
+	}, func(v []string) {
+		ok = len(v) == 0
+	}, func(v []float64) {
+		ok = len(v) == 0
+	})
+	return ok
 }

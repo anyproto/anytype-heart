@@ -40,6 +40,9 @@ func NewDetailsFromMap(data map[RelationKey]any) *Details {
 }
 
 func (d *GenericMap[K]) ToProto() *types.Struct {
+	if d == nil {
+		return &types.Struct{Fields: map[string]*types.Value{}}
+	}
 	res := &types.Struct{
 		Fields: make(map[string]*types.Value, len(d.data)),
 	}
@@ -205,4 +208,12 @@ func StructDiff(st1, st2 *Details) *Details {
 	})
 
 	return diff
+}
+
+func DetailsListToProtos(dets []*Details) []*types.Struct {
+	res := make([]*types.Struct, 0, len(dets))
+	for _, d := range dets {
+		res = append(res, d.ToProto())
+	}
+	return res
 }
