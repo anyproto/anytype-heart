@@ -665,7 +665,6 @@ func (s *State) filterLocalAndDerivedRelationsByKey(relationKeys []string) []str
 
 func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {
 	for _, msg := range msgs {
-		assertTableCells(msg)
 		s.makeStructureChanges(cb, msg)
 	}
 }
