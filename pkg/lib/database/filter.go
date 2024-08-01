@@ -540,7 +540,7 @@ func (l FilterAllIn) FilterObject(g *domain.Details) bool {
 		}
 		// Float list
 		{
-			val, ok := g.GetFloatList(l.Key)
+			val, ok := g.TryFloatList(l.Key)
 			if ok {
 				return lo.Every(val, l.Floats)
 			}

@@ -99,12 +99,12 @@ func (d *GenericMap[K]) GetStringList(key K) []string {
 	return d.Get(key).StringListOrDefault(nil)
 }
 
-func (d *GenericMap[K]) GetFloatList(key K) ([]float64, bool) {
+func (d *GenericMap[K]) TryFloatList(key K) ([]float64, bool) {
 	return d.Get(key).FloatList()
 }
 
-func (d *GenericMap[K]) GetFloatListOrDefault(key K, def []float64) []float64 {
-	return d.Get(key).FloatListOrDefault(def)
+func (d *GenericMap[K]) GetFloatList(key K) []float64 {
+	return d.Get(key).FloatListOrDefault(nil)
 }
 
 func (d *GenericMap[K]) ShallowCopy() *GenericMap[K] {
