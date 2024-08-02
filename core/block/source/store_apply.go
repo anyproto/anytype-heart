@@ -28,6 +28,10 @@ func (a *storeApply) Apply() (err error) {
 	maxOrder := a.tx.GetMaxOrder()
 	isEmpty := maxOrder == ""
 	iterErr := a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
+		// Ignore header
+		if change.Id == a.ot.Id() {
+			return true
+		}
 		// not a new change - remember and continue
 		if !change.IsNew && !isEmpty {
 			a.prevChange = change

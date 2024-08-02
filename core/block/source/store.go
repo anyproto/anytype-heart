@@ -20,6 +20,11 @@ import (
 
 var _ updatelistener.UpdateListener = (*store)(nil)
 
+type Store interface {
+	GetStore() *storestate.StoreState
+	ReadStoreDoc(ctx context.Context) (err error)
+}
+
 type PushStoreChangeParams struct {
 	State      *storestate.StoreState
 	Changes    []*pb.StoreChangeContent
@@ -50,8 +55,12 @@ func (s *store) PushChange(params PushChangeParams) (id string, err error) {
 	return "", fmt.Errorf("not supported")
 }
 
-func (s *store) ReadStoreDoc(ctx context.Context, store *storestate.StoreState) (err error) {
-	tx, err := store.NewTx(ctx)
+func (s *store) GetStore() *storestate.StoreState {
+	return s.store
+}
+
+func (s *store) ReadStoreDoc(ctx context.Context) (err error) {
+	tx, err := s.store.NewTx(ctx)
 	if err != nil {
 		return
 	}
