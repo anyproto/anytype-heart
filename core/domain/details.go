@@ -5,8 +5,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/valyala/fastjson"
-
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type GenericMap[K ~string] struct {
@@ -42,7 +40,7 @@ func (d *GenericMap[K]) ToProto() *types.Struct {
 		Fields: make(map[string]*types.Value, len(d.data)),
 	}
 	for k, v := range d.data {
-		res.Fields[string(k)] = pbtypes.AnyToProto(v)
+		res.Fields[string(k)] = v.ToProto()
 	}
 	return res
 }
@@ -132,28 +130,23 @@ func jsonValueToAny(d *Details, key RelationKey, val *fastjson.Value) error {
 	return nil
 }
 
-func ProtoToJson(arena *fastjson.Arena, details *Details) *fastjson.Value {
+func (d *GenericMap[K]) ToJson(arena *fastjson.Arena) *fastjson.Value {
 	obj := arena.NewObject()
-	details.Iterate(func(k RelationKey, v Value) bool {
-		obj.Set(string(k), ProtoValueToJson(arena, v))
+	d.Iterate(func(k K, v Value) bool {
+		obj.Set(string(k), v.ToJson(arena))
 		return true
 	})
 	return obj
 }
 
-func ProtoValueToJson(arena *fastjson.Arena, v any) *fastjson.Value {
-	if v == nil {
+func (v Value) ToJson(arena *fastjson.Arena) *fastjson.Value {
+	switch v := v.value.(type) {
+	case nullValue:
 		return arena.NewNull()
-	}
-	switch v := v.(type) {
 	case string:
 		return arena.NewString(v)
 	case float64:
 		return arena.NewNumberFloat64(v)
-
-		// TODO TEMP!
-	case int64:
-		return arena.NewNumberFloat64(float64(v))
 	case bool:
 		if v {
 			return arena.NewTrue()
@@ -163,13 +156,13 @@ func ProtoValueToJson(arena *fastjson.Arena, v any) *fastjson.Value {
 	case []string:
 		lst := arena.NewArray()
 		for i, it := range v {
-			lst.SetArrayItem(i, ProtoValueToJson(arena, it))
+			lst.SetArrayItem(i, arena.NewString(it))
 		}
 		return lst
 	case []float64:
 		lst := arena.NewArray()
 		for i, it := range v {
-			lst.SetArrayItem(i, ProtoValueToJson(arena, it))
+			lst.SetArrayItem(i, arena.NewNumberFloat64(it))
 		}
 		return lst
 	default:

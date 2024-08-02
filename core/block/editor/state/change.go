@@ -737,7 +737,7 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 		if !prevValue.Ok() || !prevValue.EqualAny(v) {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsSet{
-					DetailsSet: &pb.ChangeDetailsSet{Key: string(k), Value: pbtypes.AnyToProto(v)},
+					DetailsSet: &pb.ChangeDetailsSet{Key: string(k), Value: v.ToProto()},
 				},
 			})
 		}

@@ -30,7 +30,7 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 
 	arena := s.arenaPool.Get()
 
-	jsonVal := domain.ProtoToJson(arena, details)
+	jsonVal := details.ToJson(arena)
 	var isModified bool
 	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
 		if jsonutil.Equal(val, jsonVal) {
@@ -126,7 +126,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		return txn.Commit()
 	}
 	newDetails.SetString(bundle.RelationKeyId, id)
-	jsonVal := domain.ProtoToJson(arena, newDetails)
+	jsonVal := newDetails.ToJson(arena)
 	_, err = s.pendingDetails.UpsertOne(txn.Context(), jsonVal)
 	if err != nil {
 		return rollback(fmt.Errorf("upsert details: %w", err))
@@ -168,7 +168,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 		// Ensure ID is set
 		newDetails.SetString(bundle.RelationKeyId, id)
 
-		jsonVal := domain.ProtoToJson(arena, newDetails)
+		jsonVal := newDetails.ToJson(arena)
 		diff, err := pbtypes.DiffJson(val, jsonVal)
 		if err != nil {
 			return nil, false, fmt.Errorf("diff json: %w", err)

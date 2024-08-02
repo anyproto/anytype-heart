@@ -607,23 +607,6 @@ func RelationIdToKey(id string) (string, error) {
 	return "", fmt.Errorf("incorrect id format")
 }
 
-func AnyToProto(v any) *types.Value {
-	switch v := v.(type) {
-	case string:
-		return String(v)
-	case float64:
-		return Float64(v)
-	case bool:
-		return Bool(v)
-	case []string:
-		return StringList(v)
-	case []float64:
-		return FloatList(v)
-	default:
-		return Null()
-	}
-}
-
 func ProtoToAny(v *types.Value) any {
 	if v == nil {
 		return nil

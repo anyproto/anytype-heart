@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -337,7 +336,7 @@ func StructDiffIntoEventsWithSubIds(contextId string, diff *domain.Details, keys
 			removed = append(removed, key)
 			return true
 		}
-		details = append(details, &pb.EventObjectDetailsAmendKeyValue{Key: key, Value: pbtypes.AnyToProto(v)})
+		details = append(details, &pb.EventObjectDetailsAmendKeyValue{Key: key, Value: v.ToProto()})
 		return true
 	})
 

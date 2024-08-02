@@ -52,11 +52,18 @@ func (d *GenericMap[K]) SetFloatList(key K, value []float64) {
 
 func (d *GenericMap[K]) SetProtoValue(key K, value *types.Value) {
 	if value == nil {
-		// TODO TEMPPP FIX After introducing null values
-		d.SetString(key, "")
+		d.Set(key, Null())
 		return
 	}
 	switch value.Kind.(type) {
+	case *types.Value_NullValue:
+		if key == "relationDefaultValue" {
+
+			d.Set(key, Null())
+		} else {
+
+			d.Set(key, Null())
+		}
 	case *types.Value_BoolValue:
 		d.SetBool(key, value.GetBoolValue())
 	case *types.Value_StringValue:
@@ -496,6 +503,28 @@ func (v Value) Type() ValueType {
 		return ValueTypeFloatList
 	default:
 		return ValueTypeNone
+	}
+}
+
+func (v Value) ToProto() *types.Value {
+	if !v.ok {
+		return pbtypes.Null()
+	}
+	switch v := v.value.(type) {
+	case nullValue:
+		return pbtypes.Null()
+	case bool:
+		return pbtypes.Bool(v)
+	case string:
+		return pbtypes.String(v)
+	case float64:
+		return pbtypes.Float64(v)
+	case []string:
+		return pbtypes.StringList(v)
+	case []float64:
+		return pbtypes.FloatList(v)
+	default:
+		panic("integrity violation")
 	}
 }
 
