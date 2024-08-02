@@ -125,7 +125,7 @@ func extractTargetDetails(originDetails *domain.Details, templateDetails *domain
 				// layout = 0 is actually basic layout, so it counts
 				inTemplateEmpty = false
 			}
-			inOriginEmpty := domain.SomeValue(originalVal).IsEmpty()
+			inOriginEmpty := originalVal.IsEmpty()
 			templateValueShouldBePreferred := lo.Contains(templateIsPreferableRelationKeys, key)
 			if !inTemplateEmpty && (inOriginEmpty || templateValueShouldBePreferred) {
 				targetDetails.Delete(key)

@@ -734,7 +734,7 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 
 	curDetails.Iterate(func(k domain.RelationKey, v domain.Value) bool {
 		prevValue := prev.Get(k)
-		if !prevValue.Ok() || !prevValue.EqualAny(v) {
+		if !prevValue.Ok() || !prevValue.Equal(v) {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsSet{
 					DetailsSet: &pb.ChangeDetailsSet{Key: string(k), Value: v.ToProto()},

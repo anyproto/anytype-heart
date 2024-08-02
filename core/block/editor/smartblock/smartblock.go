@@ -1116,7 +1116,7 @@ func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 
 				before := act.Details.Before.Get(k)
 				// Check that value is actually changed
-				if !before.Ok() || !before.EqualAny(after) {
+				if !before.Ok() || !before.Equal(after) {
 					changed = true
 					return false
 				}

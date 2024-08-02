@@ -121,7 +121,7 @@ var WithDetail = func(key domain.RelationKey, value domain.Value) StateTransform
 
 var WithForcedDetail = func(key domain.RelationKey, value domain.Value) StateTransformer {
 	return func(s *state.State) {
-		if s.Details() == nil || !s.Details().Has(key) || !s.Details().Get(key).EqualAny(value) {
+		if s.Details() == nil || !s.Details().Has(key) || !s.Details().Get(key).Equal(value) {
 			s.SetDetailAndBundledRelation(key, value)
 		}
 	}

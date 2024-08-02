@@ -921,7 +921,7 @@ func (s *State) SetLocalDetail(key domain.RelationKey, value domain.Value) {
 		d := s.parent.Details()
 		if d != nil {
 			// optimisation so we don't need to copy the struct if nothing has changed
-			if prev := d.Get(key); prev.Ok() && prev.EqualAny(value) {
+			if prev := d.Get(key); prev.Ok() && prev.Equal(value) {
 				return
 			}
 		}
@@ -958,7 +958,7 @@ func (s *State) SetDetail(key domain.RelationKey, value domain.Value) {
 		d := s.parent.Details()
 		if d != nil {
 			// optimisation so we don't need to copy the struct if nothing has changed
-			if prev := d.Get(key); prev.Ok() && prev.EqualAny(value) {
+			if prev := d.Get(key); prev.Ok() && prev.Equal(value) {
 				return
 			}
 			s.details = d.Copy()

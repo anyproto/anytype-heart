@@ -243,7 +243,7 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, f
 			return true
 		}
 		// For example, RelationKeySetOf is handled here
-		handleObjectRelation(st, oldIDtoNew, domain.SomeValue(v), k, filesIDs)
+		handleObjectRelation(st, oldIDtoNew, v, k, filesIDs)
 		return true
 	})
 }

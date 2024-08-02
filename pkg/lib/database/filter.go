@@ -351,12 +351,11 @@ func (e FilterEq) FilterObject(g *domain.Details) bool {
 
 func (e FilterEq) filterObject(v domain.Value) bool {
 	// if list := v.GetListValue(); list != nil && e.Value.GetListValue() == nil {
-	filterValue := domain.SomeValue(e.Value)
-	isFilterValueScalar := !filterValue.IsStringList() && !filterValue.IsFloatList()
+	isFilterValueScalar := !e.Value.IsStringList() && !e.Value.IsFloatList()
 	if isFilterValueScalar {
-		if list, ok := v.IntList(); ok {
+		if list, ok := v.FloatList(); ok {
 			for _, lv := range list {
-				if e.filterObject(domain.SomeValue(lv)) {
+				if e.filterObject(domain.Float(lv)) {
 					return true
 				}
 			}
@@ -364,14 +363,14 @@ func (e FilterEq) filterObject(v domain.Value) bool {
 		}
 		if list, ok := v.StringList(); ok {
 			for _, lv := range list {
-				if e.filterObject(domain.SomeValue(lv)) {
+				if e.filterObject(domain.String(lv)) {
 					return true
 				}
 			}
 			return false
 		}
 	}
-	comp := domain.SomeValue(e.Value).Compare(v)
+	comp := e.Value.Compare(v)
 	switch e.Cond {
 	case model.BlockContentDataviewFilter_Equal:
 		return comp == 0

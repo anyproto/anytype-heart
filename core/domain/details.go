@@ -192,7 +192,7 @@ func StructDiff(st1, st2 *Details) *Details {
 
 	st2.Iterate(func(k2 RelationKey, v2 Value) bool {
 		v1 := st1.Get(k2)
-		if !v1.Ok() || !v1.EqualAny(v2) {
+		if !v1.Ok() || !v1.Equal(v2) {
 			if diff == nil {
 				diff = NewDetails()
 			}

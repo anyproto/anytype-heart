@@ -139,7 +139,7 @@ func (gr *Builder) appendRelations(
 		if !isRelationShouldBeIncludedAsEdge(rel) {
 			return true
 		}
-		stringValues := domain.SomeValue(relValue).StringListOrDefault(nil)
+		stringValues := relValue.StringListOrDefault(nil)
 		if len(stringValues) == 0 || isExcludedRelation(rel) {
 			return true
 		}

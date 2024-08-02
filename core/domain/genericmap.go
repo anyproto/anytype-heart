@@ -202,7 +202,7 @@ func (d *GenericMap[K]) Equal(other *GenericMap[K]) bool {
 		if !ok {
 			return false
 		}
-		if !SomeValue(v).EqualAny(otherV) {
+		if !v.Equal(otherV) {
 			return false
 		}
 	}
@@ -266,11 +266,6 @@ func StringList(v []string) Value {
 
 func FloatList(v []float64) Value {
 	return Value{ok: true, value: v}
-}
-
-// TODO Remove!
-func SomeValue(value any) Value {
-	return Value{ok: true, value: value}
 }
 
 var ErrInvalidValue = fmt.Errorf("invalid value")
@@ -479,10 +474,6 @@ func (v Value) FloatListOrDefault(def []float64) []float64 {
 		return def
 	}
 	return res
-}
-
-func (v Value) EqualAny(other any) bool {
-	return v.Equal(Value{ok: true, value: other})
 }
 
 func (v Value) Type() ValueType {

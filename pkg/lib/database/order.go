@@ -237,10 +237,10 @@ func (ko *KeyOrder) tryExtractTag(av domain.Value, bv domain.Value) (domain.Valu
 func (ko *KeyOrder) tryExtractDateTime(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
 	if ko.RelationFormat == model.RelationFormat_date && !ko.IncludeTime {
 		if v, ok := av.Float(); ok {
-			av = domain.SomeValue(time_util.CutToDay(time.Unix(int64(v), 0)))
+			av = domain.Int64(time_util.CutToDay(time.Unix(int64(v), 0)).Unix())
 		}
 		if v, ok := bv.Float(); ok {
-			bv = domain.SomeValue(time_util.CutToDay(time.Unix(int64(v), 0)))
+			bv = domain.Int64(time_util.CutToDay(time.Unix(int64(v), 0)).Unix())
 		}
 	}
 	return av, bv
@@ -281,7 +281,7 @@ func (ko *KeyOrder) GetOptionValue(value domain.Value) domain.Value {
 		res += ko.Options[optID]
 	}
 
-	return domain.SomeValue(res)
+	return domain.String(res)
 }
 
 func newCustomOrder(arena *fastjson.Arena, key string, idsIndices map[string]int, keyOrd *KeyOrder) customOrder {
