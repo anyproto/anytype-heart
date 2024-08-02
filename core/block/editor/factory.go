@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/storeobject"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -193,6 +194,8 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		return f.newParticipant(sb), nil
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
+	case coresb.SmartBlockTypeStore:
+		return storeobject.New(sb), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

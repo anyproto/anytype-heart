@@ -534,6 +534,11 @@
     - [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request)
     - [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response)
     - [Rpc.Broadcast.PayloadEvent.Response.Error](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error)
+    - [Rpc.Chat](#anytype-Rpc-Chat)
+    - [Rpc.Chat.AddMessage](#anytype-Rpc-Chat-AddMessage)
+    - [Rpc.Chat.AddMessage.Request](#anytype-Rpc-Chat-AddMessage-Request)
+    - [Rpc.Chat.AddMessage.Response](#anytype-Rpc-Chat-AddMessage-Response)
+    - [Rpc.Chat.AddMessage.Response.Error](#anytype-Rpc-Chat-AddMessage-Response-Error)
     - [Rpc.Debug](#anytype-Rpc-Debug)
     - [Rpc.Debug.AccountSelectTrace](#anytype-Rpc-Debug-AccountSelectTrace)
     - [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request)
@@ -1288,6 +1293,7 @@
     - [Rpc.BlockWidget.SetTargetId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code)
     - [Rpc.BlockWidget.SetViewId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code)
     - [Rpc.Broadcast.PayloadEvent.Response.Error.Code](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code)
+    - [Rpc.Chat.AddMessage.Response.Error.Code](#anytype-Rpc-Chat-AddMessage-Response-Error-Code)
     - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
@@ -2102,6 +2108,7 @@
 | DeviceSetName | [Rpc.Device.SetName.Request](#anytype-Rpc-Device-SetName-Request) | [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response) |  |
 | DeviceList | [Rpc.Device.List.Request](#anytype-Rpc-Device-List-Request) | [Rpc.Device.List.Response](#anytype-Rpc-Device-List-Response) |  |
 | DeviceNetworkStateSet | [Rpc.Device.NetworkState.Set.Request](#anytype-Rpc-Device-NetworkState-Set-Request) | [Rpc.Device.NetworkState.Set.Response](#anytype-Rpc-Device-NetworkState-Set-Response) |  |
+| ChatAddMessage | [Rpc.Chat.AddMessage.Request](#anytype-Rpc-Chat-AddMessage-Request) | [Rpc.Chat.AddMessage.Response](#anytype-Rpc-Chat-AddMessage-Response) | Chats |
 
  
 
@@ -9836,6 +9843,73 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Broadcast.PayloadEvent.Response.Error.Code](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat"></a>
+
+### Rpc.Chat
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddMessage"></a>
+
+### Rpc.Chat.AddMessage
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddMessage-Request"></a>
+
+### Rpc.Chat.AddMessage.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| message | [string](#string) |  | TODO Use full model |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddMessage-Response"></a>
+
+### Rpc.Chat.AddMessage.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.AddMessage.Response.Error](#anytype-Rpc-Chat-AddMessage-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddMessage-Response-Error"></a>
+
+### Rpc.Chat.AddMessage.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.AddMessage.Response.Error.Code](#anytype-Rpc-Chat-AddMessage-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -20604,6 +20678,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | INTERNAL_ERROR | 3 |  |
+
+
+
+<a name="anytype-Rpc-Chat-AddMessage-Response-Error-Code"></a>
+
+### Rpc.Chat.AddMessage.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 

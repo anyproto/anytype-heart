@@ -7227,6 +7227,32 @@ message Rpc {
             }
         }
     }
+
+    message Chat {
+        message AddMessage {
+            message Request {
+                string chatObjectId = 1;
+                // TODO Use full model
+                string message = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+    }
 }
 
 

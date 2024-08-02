@@ -358,4 +358,7 @@ service ClientCommands {
     rpc DeviceSetName (anytype.Rpc.Device.SetName.Request) returns (anytype.Rpc.Device.SetName.Response);
     rpc DeviceList (anytype.Rpc.Device.List.Request) returns (anytype.Rpc.Device.List.Response);
     rpc DeviceNetworkStateSet (anytype.Rpc.Device.NetworkState.Set.Request) returns (anytype.Rpc.Device.NetworkState.Set.Response);
+
+    // Chats
+    rpc ChatAddMessage (anytype.Rpc.Chat.AddMessage.Request) returns (anytype.Rpc.Chat.AddMessage.Response);
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 var _ updatelistener.UpdateListener = (*store)(nil)
@@ -36,10 +37,16 @@ func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 }
 
 func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
-	return nil, fmt.Errorf("not supported")
+	// Fake state, this kind of objects not support state operations
+
+	st := state.NewDoc(s.id, nil).(*state.State)
+	// Set object type here in order to derive value of Type relation in smartblock.Init
+	st.SetObjectTypeKey(bundle.TypeKeyParticipant)
+	return st, nil
 }
 
 func (s *store) PushChange(params PushChangeParams) (id string, err error) {
+	// TODO Push store changes
 	return "", fmt.Errorf("not supported")
 }
 

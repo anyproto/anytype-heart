@@ -21,6 +21,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -146,7 +147,7 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		return nil, err
 	}
 
-	return &source{
+	src := &source{
 		ObjectTree:         ot,
 		id:                 id,
 		space:              space,
@@ -158,7 +159,20 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		fileService:        s.fileService,
 		objectStore:        s.objectStore,
 		fileObjectMigrator: s.fileObjectMigrator,
-	}, nil
+	}
+	if sbt == smartblock.SmartBlockTypeStore {
+		stateStore, err := storestate.New(ctx, id, s.dbProvider.GetStoreDb(), storestate.DefaultHandler{
+			Name:       "chat",
+			DeleteMode: storestate.DeleteModeDelete,
+			ModifyMode: storestate.ModifyModeUpsert,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("create state store: %w", err)
+		}
+		return &store{source: src, store: stateStore}, nil
+	}
+
+	return src, nil
 }
 
 type ObjectTreeProvider interface {

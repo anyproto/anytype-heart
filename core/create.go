@@ -57,7 +57,7 @@ func (mw *Middleware) addChat(cctx context.Context, objectId, objId string) (str
 	}
 
 	chatDetails := &types.Struct{Fields: map[string]*types.Value{}}
-	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatObject, objId)
+	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeStore, objId)
 	chatDetails.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(chatUniqueKey.Marshal())
 
 	chatReq := objectcreator.CreateObjectRequest{
@@ -66,6 +66,9 @@ func (mw *Middleware) addChat(cctx context.Context, objectId, objId string) (str
 	}
 
 	chatId, _, err := getService[objectcreator.Service](mw).CreateObject(cctx, spaceId, chatReq)
+	if err != nil {
+		return "", err
+	}
 
 	err = mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.ModifyDetails(objId, func(current *types.Struct) (*types.Struct, error) {
