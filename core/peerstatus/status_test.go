@@ -203,10 +203,6 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 		f.setNotPossibleStatus()
 		checkStatus(t, "spaceId", f.p2pStatus, NotPossible)
 
-		f.store.UpdateLocalPeer("peerId", []string{"spaceId"})
-		ctrl := gomock.NewController(t)
-		peer := mock_peer.NewMockPeer(ctrl)
-		peer.EXPECT().Id().Return("peerId")
 		f.sender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{
 				{
@@ -220,10 +216,11 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				},
 			},
 		})
+		f.store.UpdateLocalPeer("peerId", []string{"spaceId"})
+		ctrl := gomock.NewController(t)
+		peer := mock_peer.NewMockPeer(ctrl)
+		peer.EXPECT().Id().Return("peerId")
 		err := f.pool.AddPeer(context.Background(), peer)
-		assert.Nil(t, err)
-
-		err = f.refreshSpaces([]string{"spaceId"})
 		assert.Nil(t, err)
 
 		checkStatus(t, "spaceId", f.p2pStatus, Connected)
@@ -237,13 +234,6 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 		// when
 		checkStatus(t, "spaceId", f.p2pStatus, NotConnected)
 
-		f.store.UpdateLocalPeer("peerId", []string{"spaceId"})
-		ctrl := gomock.NewController(t)
-		peer := mock_peer.NewMockPeer(ctrl)
-		peer.EXPECT().Id().Return("peerId")
-		err := f.pool.AddPeer(context.Background(), peer)
-		assert.Nil(t, err)
-
 		f.sender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{
 				{
@@ -257,8 +247,11 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				},
 			},
 		})
-
-		err = f.refreshSpaces([]string{"spaceId"})
+		f.store.UpdateLocalPeer("peerId", []string{"spaceId"})
+		ctrl := gomock.NewController(t)
+		peer := mock_peer.NewMockPeer(ctrl)
+		peer.EXPECT().Id().Return("peerId")
+		err := f.pool.AddPeer(context.Background(), peer)
 		assert.Nil(t, err)
 
 		checkStatus(t, "spaceId", f.p2pStatus, Connected)
