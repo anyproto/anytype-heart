@@ -90,6 +90,38 @@ func (_c *MockSender_BroadcastToOtherSessions_Call) RunAndReturn(run func(string
 	return _c
 }
 
+// Flush provides a mock function with given fields:
+func (_m *MockSender) Flush() {
+	_m.Called()
+}
+
+// MockSender_Flush_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Flush'
+type MockSender_Flush_Call struct {
+	*mock.Call
+}
+
+// Flush is a helper method to define mock.On call
+func (_e *MockSender_Expecter) Flush() *MockSender_Flush_Call {
+	return &MockSender_Flush_Call{Call: _e.mock.On("Flush")}
+}
+
+func (_c *MockSender_Flush_Call) Run(run func()) *MockSender_Flush_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSender_Flush_Call) Return() *MockSender_Flush_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockSender_Flush_Call) RunAndReturn(run func()) *MockSender_Flush_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Init provides a mock function with given fields: a
 func (_m *MockSender) Init(a *app.App) error {
 	ret := _m.Called(a)

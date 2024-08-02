@@ -76,10 +76,6 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath)
 }
 
-type flusher interface {
-	Flush()
-}
-
 func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, preferYamux bool, networkMode pb.RpcAccountNetworkMode, networkConfigFilePath string) (*model.Account, error) {
 	ctx, task := trace2.NewTask(ctx, "application.start")
 	defer task.End()
