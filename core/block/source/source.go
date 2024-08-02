@@ -162,7 +162,7 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 	}
 	if sbt == smartblock.SmartBlockTypeStore {
 		stateStore, err := storestate.New(ctx, id, s.dbProvider.GetStoreDb(), storestate.DefaultHandler{
-			Name:       "chat",
+			Name:       "chats",
 			DeleteMode: storestate.DeleteModeDelete,
 			ModifyMode: storestate.ModifyModeUpsert,
 		})

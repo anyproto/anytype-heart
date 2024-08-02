@@ -19,3 +19,17 @@ func (mw *Middleware) ChatAddMessage(cctx context.Context, req *pb.RpcChatAddMes
 		},
 	}
 }
+
+func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse {
+	chatService := getService[chats.Service](mw)
+
+	messages, err := chatService.GetMessages(req.ChatObjectId)
+	code := mapErrorCode[pb.RpcChatGetMessagesResponseErrorCode](err)
+	return &pb.RpcChatGetMessagesResponse{
+		Messages: messages,
+		Error: &pb.RpcChatGetMessagesResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}

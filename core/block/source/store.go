@@ -3,7 +3,6 @@ package source
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"slices"
 	"time"
 
@@ -23,6 +22,7 @@ var _ updatelistener.UpdateListener = (*store)(nil)
 type Store interface {
 	GetStore() *storestate.StoreState
 	ReadStoreDoc(ctx context.Context) (err error)
+	PushStoreChange(params PushStoreChangeParams) (id string, err error)
 }
 
 type PushStoreChangeParams struct {
@@ -51,8 +51,7 @@ func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 }
 
 func (s *store) PushChange(params PushChangeParams) (id string, err error) {
-	// TODO Push store changes
-	return "", fmt.Errorf("not supported")
+	return "", nil
 }
 
 func (s *store) GetStore() *storestate.StoreState {
@@ -76,15 +75,33 @@ func (s *store) ReadStoreDoc(ctx context.Context) (err error) {
 }
 
 func (s *store) PushStoreChange(params PushStoreChangeParams) (id string, err error) {
-	return
+	change := &pb.StoreChange{
+		ChangeSet: params.Changes,
+	}
+	data, dataType, err := MarshalStoreChange(change)
+	if err != nil {
+		return
+	}
+	_, err = s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
+		Data:        data,
+		Key:         s.accountKeysService.Account().SignKey,
+		IsSnapshot:  params.DoSnapshot,
+		IsEncrypted: true,
+		DataType:    dataType,
+		Timestamp:   params.Time.Unix(),
+	})
+	if err != nil {
+		return
+	}
+	return "", nil
 }
 
 func (s *store) Update(tree objecttree.ObjectTree) {
-
+	// TODO !!!
 }
 
 func (s *store) Rebuild(tree objecttree.ObjectTree) {
-
+	// TODO !!!
 }
 
 func MarshalStoreChange(change *pb.StoreChange) (result []byte, dataType string, err error) {

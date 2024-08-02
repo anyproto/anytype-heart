@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/storeobject"
 	"github.com/anyproto/anytype-heart/core/wallet"
 )
 
@@ -18,6 +19,7 @@ const CName = "core.block.chats"
 
 type Service interface {
 	AddMessage(chatObjectId string, message string) error
+	GetMessages(chatObjectId string) ([]string, error)
 
 	GetStoreDb() anystore.DB
 
@@ -82,5 +84,20 @@ func (s *service) GetStoreDb() anystore.DB {
 }
 
 func (s *service) AddMessage(chatObjectId string, message string) error {
-	return nil
+	return cache.Do[storeobject.StoreObject](s.objectGetter, chatObjectId, func(sb storeobject.StoreObject) error {
+		return sb.AddMessage(context.Background(), message)
+	})
+}
+
+func (s *service) GetMessages(chatObjectId string) ([]string, error) {
+	var res []string
+	err := cache.Do[storeobject.StoreObject](s.objectGetter, chatObjectId, func(sb storeobject.StoreObject) error {
+		msgs, err := sb.GetMessages(context.Background())
+		if err != nil {
+			return err
+		}
+		res = msgs
+		return nil
+	})
+	return res, err
 }

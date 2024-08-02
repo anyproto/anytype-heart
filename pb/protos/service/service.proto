@@ -361,4 +361,5 @@ service ClientCommands {
 
     // Chats
     rpc ChatAddMessage (anytype.Rpc.Chat.AddMessage.Request) returns (anytype.Rpc.Chat.AddMessage.Response);
+    rpc ChatGetMessages (anytype.Rpc.Chat.GetMessages.Request) returns (anytype.Rpc.Chat.GetMessages.Response);
 }
