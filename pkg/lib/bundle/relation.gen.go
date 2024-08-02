@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "e7b7dc1196702d61efece57fd1db120838fb3d3f40ca3ca5670092f609d56538"
+const RelationChecksum = "fbd6b6c23b4acf4691622d3a124564159191a9e9a7d129ab81b66a3f22e3fce2"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -187,6 +187,8 @@ const (
 	RelationKeySyncStatus                domain.RelationKey = "syncStatus"
 	RelationKeySyncDate                  domain.RelationKey = "syncDate"
 	RelationKeySyncError                 domain.RelationKey = "syncError"
+	RelationKeyHasChat                   domain.RelationKey = "hasChat"
+	RelationKeyChatId                    domain.RelationKey = "chatId"
 )
 
 var (
@@ -423,6 +425,20 @@ var (
 			Key:              "category",
 			Name:             "Category",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyChatId: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Chat id",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brchatId",
+			Key:              "chatId",
+			MaxCount:         1,
+			Name:             "Chat id",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -872,6 +888,20 @@ var (
 			Key:              "globalName",
 			MaxCount:         1,
 			Name:             "Global name",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyHasChat: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Object has a chat",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brhasChat",
+			Key:              "hasChat",
+			MaxCount:         1,
+			Name:             "Has a chat",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2423,7 +2453,7 @@ var (
 			Id:               "_brtoBeDeletedDate",
 			Key:              "toBeDeletedDate",
 			MaxCount:         1,
-			Name:             "Date to delete",
+			Name:             "Date toderived delete",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
