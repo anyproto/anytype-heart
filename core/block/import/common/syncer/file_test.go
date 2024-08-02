@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	block2 "github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/syncer/mock_syncer"
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -119,7 +119,7 @@ func TestFileSyncer_Sync(t *testing.T) {
 
 		// then
 		assert.NotNil(t, err)
-		assert.True(t, errors.Is(err, common.ErrFileLoad))
+		assert.True(t, errors.Is(err, types.ErrFileLoad))
 	})
 	t.Run("file success loaded", func(t *testing.T) {
 		// given

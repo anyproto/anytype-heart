@@ -172,9 +172,7 @@ func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string) (sp 
 }
 
 func (s *spaceFactory) CreateMarketplaceSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error) {
-	ctrl := marketplacespace.NewSpaceController(s.app, s.personalSpaceId)
-	err = ctrl.Start(ctx)
-	return ctrl, err
+	return marketplacespace.NewSpaceController(s.app, s.personalSpaceId), err
 }
 
 func (s *spaceFactory) Name() (name string) {

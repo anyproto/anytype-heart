@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	te "github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
@@ -23,7 +24,7 @@ func NewTableStrategy(tableEditor te.TableEditor) *TableStrategy {
 	return &TableStrategy{tableEditor: tableEditor}
 }
 
-func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress) (string, []*common.Snapshot, error) {
+func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress) (string, []*types.Snapshot, error) {
 	st := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Content: &model.BlockContentOfSmartblock{
@@ -48,14 +49,14 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *
 		RelationLinks: st.GetRelationLinks(),
 	}
 
-	snapshot := &common.Snapshot{
+	snapshot := &types.Snapshot{
 		Id:       uuid.New().String(),
 		SbType:   smartblock.SmartBlockTypePage,
 		FileName: path,
 		Snapshot: &pb.ChangeSnapshot{Data: sn},
 	}
 	progress.AddDone(1)
-	return snapshot.Id, []*common.Snapshot{snapshot}, nil
+	return snapshot.Id, []*types.Snapshot{snapshot}, nil
 }
 
 func (c *TableStrategy) createTable(st *state.State, csvTable [][]string, useFirstRowForHeader bool) error {

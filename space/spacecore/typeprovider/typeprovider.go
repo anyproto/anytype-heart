@@ -172,6 +172,10 @@ func SmartblockTypeFromID(id string) (smartblock.SmartBlockType, error) {
 		return smartblock.SmartBlockTypeParticipant, nil
 	}
 
+	if strings.HasPrefix(id, addr.Snapshot) {
+		return smartblock.SmartBlockTypeSnapshot, nil
+	}
+
 	c, err := cid.Decode(id)
 	if err != nil {
 		return smartblock.SmartBlockTypePage,

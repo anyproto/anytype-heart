@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	types2 "github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	simpleDataview "github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/pb"
@@ -32,7 +33,7 @@ func (r *RootCollection) MakeRootCollection(collectionName string,
 	icon string,
 	fileKeys []*pb.ChangeFileKeys,
 	needToAddDate, shouldBeFavorite bool,
-) (*Snapshot, error) {
+) (*types2.Snapshot, error) {
 	if needToAddDate {
 		importDate := time.Now().Format(time.RFC3339)
 		collectionName = fmt.Sprintf("%s %s", collectionName, importDate)
@@ -61,12 +62,12 @@ func (r *RootCollection) getRootCollectionSnapshot(
 	st *state.State,
 	detailsStruct *types.Struct,
 	fileKeys []*pb.ChangeFileKeys,
-) *Snapshot {
+) *types2.Snapshot {
 	if detailsStruct.GetFields() == nil {
 		detailsStruct = &types.Struct{Fields: map[string]*types.Value{}}
 	}
 	detailsStruct.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_collection))
-	return &Snapshot{
+	return &types2.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: collectionName,
 		SbType:   sb.SmartBlockTypePage,

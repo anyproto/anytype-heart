@@ -8,7 +8,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -26,7 +26,7 @@ type IdAndKeyProvider interface {
 }
 
 type IDProvider interface {
-	GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error)
+	GetIDAndPayload(ctx context.Context, spaceID string, sn *types.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error)
 }
 
 type InternalKeyProvider interface {
@@ -76,7 +76,7 @@ func NewIDProvider(
 func (p *Provider) GetIDAndPayload(
 	ctx context.Context,
 	spaceID string,
-	sn *common.Snapshot,
+	sn *types.Snapshot,
 	createdTime time.Time,
 	getExisting bool,
 	origin objectorigin.ObjectOrigin,

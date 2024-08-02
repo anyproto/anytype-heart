@@ -6,7 +6,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/import/common"
+	types2 "github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 )
 
@@ -50,11 +50,11 @@ func NewDataObject(ctx context.Context,
 }
 
 type Task struct {
-	sn *common.Snapshot
+	sn *types2.Snapshot
 	oc Service
 }
 
-func NewTask(sn *common.Snapshot, oc Service) *Task {
+func NewTask(sn *types2.Snapshot, oc Service) *Task {
 	return &Task{sn: sn, oc: oc}
 }
 

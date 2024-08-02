@@ -1014,6 +1014,11 @@
     - [Rpc.Relation.Options.Request](#anytype-Rpc-Relation-Options-Request)
     - [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response)
     - [Rpc.Relation.Options.Response.Error](#anytype-Rpc-Relation-Options-Response-Error)
+    - [Rpc.Snapshot](#anytype-Rpc-Snapshot)
+    - [Rpc.Snapshot.Open](#anytype-Rpc-Snapshot-Open)
+    - [Rpc.Snapshot.Open.Request](#anytype-Rpc-Snapshot-Open-Request)
+    - [Rpc.Snapshot.Open.Response](#anytype-Rpc-Snapshot-Open-Response)
+    - [Rpc.Snapshot.Open.Response.Error](#anytype-Rpc-Snapshot-Open-Response-Error)
     - [Rpc.Space](#anytype-Rpc-Space)
     - [Rpc.Space.Delete](#anytype-Rpc-Space-Delete)
     - [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request)
@@ -1397,6 +1402,7 @@
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
+    - [Rpc.Snapshot.Open.Response.Error.Code](#anytype-Rpc-Snapshot-Open-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
     - [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code)
     - [Rpc.Space.InviteGetCurrent.Response.Error.Code](#anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code)
@@ -2079,6 +2085,7 @@
 | DeviceSetName | [Rpc.Device.SetName.Request](#anytype-Rpc-Device-SetName-Request) | [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response) |  |
 | DeviceList | [Rpc.Device.List.Request](#anytype-Rpc-Device-List-Request) | [Rpc.Device.List.Response](#anytype-Rpc-Device-List-Response) |  |
 | DeviceNetworkStateSet | [Rpc.Device.NetworkState.Set.Request](#anytype-Rpc-Device-NetworkState-Set-Request) | [Rpc.Device.NetworkState.Set.Response](#anytype-Rpc-Device-NetworkState-Set-Response) |  |
+| SnapshotOpen | [Rpc.Snapshot.Open.Request](#anytype-Rpc-Snapshot-Open-Request) | [Rpc.Snapshot.Open.Response](#anytype-Rpc-Snapshot-Open-Response) |  |
 
  
 
@@ -16773,6 +16780,74 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Snapshot"></a>
+
+### Rpc.Snapshot
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Snapshot-Open"></a>
+
+### Rpc.Snapshot.Open
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Snapshot-Open-Request"></a>
+
+### Rpc.Snapshot.Open.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| zipPath | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Snapshot-Open-Response"></a>
+
+### Rpc.Snapshot.Open.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Snapshot.Open.Response.Error](#anytype-Rpc-Snapshot-Open-Response-Error) |  |  |
+| records | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Snapshot-Open-Response-Error"></a>
+
+### Rpc.Snapshot.Open.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Snapshot.Open.Response.Error.Code](#anytype-Rpc-Snapshot-Open-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space"></a>
 
 ### Rpc.Space
@@ -22095,6 +22170,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Snapshot-Open-Response-Error-Code"></a>
+
+### Rpc.Snapshot.Open.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -28565,6 +28653,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | FileObject | 533 |  |
 | NotificationObject | 535 |  |
 | DevicesObject | 536 |  |
+| Snapshot | 537 |  |
 
 
 

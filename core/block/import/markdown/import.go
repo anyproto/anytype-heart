@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
+	types2 "github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -40,7 +41,7 @@ const (
 	rootCollectionName = "Markdown Import"
 )
 
-func New(tempDirProvider core.TempDirProvider, service *collection.Service) common.Converter {
+func New(tempDirProvider core.TempDirProvider, service *collection.Service) types2.Converter {
 	return &Markdown{blockConverter: newMDConverter(tempDirProvider), service: service}
 }
 
@@ -60,12 +61,12 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 	return nil, 0, 0, nil
 }
 
-func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
+func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*types2.Response, *types2.ConvertError) {
 	paths := m.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil
 	}
-	allErrors := common.NewError(req.Mode)
+	allErrors := types2.NewError(req.Mode)
 	allSnapshots := m.processFiles(req, progress, paths, allErrors)
 	if allErrors.ShouldAbortImport(len(paths), req.Type) {
 		return nil, allErrors
@@ -79,13 +80,13 @@ func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequ
 	}
 
 	if allErrors.IsEmpty() {
-		return &common.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
+		return &types2.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
 	}
-	return &common.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, allErrors
+	return &types2.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, allErrors
 }
 
-func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process.Progress, paths []string, allErrors *common.ConvertError) []*common.Snapshot {
-	var allSnapshots []*common.Snapshot
+func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process.Progress, paths []string, allErrors *types2.ConvertError) []*types2.Snapshot {
+	var allSnapshots []*types2.Snapshot
 	for _, path := range paths {
 		snapshots := m.getSnapshots(req, progress, path, allErrors)
 		if allErrors.ShouldAbortImport(len(paths), req.Type) {
@@ -96,7 +97,7 @@ func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process
 	return allSnapshots
 }
 
-func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot) ([]*common.Snapshot, string, error) {
+func (m *Markdown) createRootCollection(allSnapshots []*types2.Snapshot) ([]*types2.Snapshot, string, error) {
 	targetObjects := m.getObjectIDs(allSnapshots)
 	rootCollection := common.NewRootCollection(m.service)
 	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil, true, true)
@@ -115,7 +116,7 @@ func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot) ([]*com
 func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	path string,
-	allErrors *common.ConvertError) []*common.Snapshot {
+	allErrors *types2.ConvertError) []*types2.Snapshot {
 	importSource := source.GetSource(path)
 	if importSource == nil {
 		return nil
@@ -146,9 +147,9 @@ func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest,
 func (m *Markdown) processImportStep(pathCount int,
 	files map[string]*FileInfo,
 	progress process.Progress,
-	allErrors *common.ConvertError,
+	allErrors *types2.ConvertError,
 	details map[string]*types.Struct,
-	callback func(map[string]*FileInfo, process.Progress, map[string]*types.Struct, *common.ConvertError),
+	callback func(map[string]*FileInfo, process.Progress, map[string]*types.Struct, *types2.ConvertError),
 ) (abortImport bool) {
 	callback(files, progress, details, allErrors)
 	return allErrors.ShouldAbortImport(pathCount, model.Import_Markdown)
@@ -276,11 +277,11 @@ func (m *Markdown) getIdFromPath(path string) (id string) {
 	return b[:len(b)-3]
 }
 
-func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *common.ConvertError) {
+func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *types2.ConvertError) {
 	progress.SetProgressMessage("Start linking database file with pages")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(common.ErrCancel)
+			allErrors.Add(types2.ErrCancel)
 			return
 		}
 
@@ -300,11 +301,11 @@ func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.
 	}
 }
 
-func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *common.ConvertError) {
+func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *types2.ConvertError) {
 	progress.SetProgressMessage("Start linking database with pages")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(common.ErrCancel)
+			allErrors.Add(types2.ErrCancel)
 			return
 		}
 
@@ -337,11 +338,11 @@ func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo, progress pr
 		file.ParsedBlocks = blocks
 	}
 }
-func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *common.ConvertError) {
+func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *types2.ConvertError) {
 	progress.SetProgressMessage("Start creating link blocks")
 	for _, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(common.ErrCancel)
+			allErrors.Add(types2.ErrCancel)
 			return
 		}
 
@@ -369,13 +370,13 @@ func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.Pr
 func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 	progress process.Progress,
 	details map[string]*types.Struct,
-	allErrors *common.ConvertError,
-) []*common.Snapshot {
-	snapshots := make([]*common.Snapshot, 0)
+	allErrors *types2.ConvertError,
+) []*types2.Snapshot {
+	snapshots := make([]*types2.Snapshot, 0)
 	progress.SetProgressMessage("Start creating snapshots")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(common.ErrCancel)
+			allErrors.Add(types2.ErrCancel)
 			return nil
 		}
 
@@ -384,7 +385,7 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 			continue
 		}
 
-		snapshots = append(snapshots, &common.Snapshot{
+		snapshots = append(snapshots, &types2.Snapshot{
 			Id:       file.PageID,
 			FileName: name,
 			SbType:   smartblock.SmartBlockTypePage,
@@ -399,12 +400,12 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 	return snapshots
 }
 
-func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *common.ConvertError) {
+func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *types2.ConvertError) {
 	progress.SetProgressMessage("Start creating root blocks")
 	childBlocks := m.extractChildBlocks(files)
 	for _, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(common.ErrCancel)
+			allErrors.Add(types2.ErrCancel)
 			return
 		}
 
@@ -447,11 +448,11 @@ func (m *Markdown) extractChildBlocks(files map[string]*FileInfo) []string {
 	return childBlocks
 }
 
-func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *common.ConvertError) {
+func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *types2.ConvertError) {
 	progress.SetProgressMessage("Start linking blocks")
 	for _, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(common.ErrCancel)
+			allErrors.Add(types2.ErrCancel)
 			return
 		}
 
@@ -493,12 +494,12 @@ func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress pr
 	}
 }
 
-func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *common.ConvertError) {
+func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *types2.ConvertError) {
 	progress.SetProgressMessage("Start creating file blocks")
 	// process file blocks
 	for _, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(common.ErrCancel)
+			allErrors.Add(types2.ErrCancel)
 			return
 		}
 
@@ -514,11 +515,11 @@ func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo, progress process.
 	}
 }
 
-func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progress, details map[string]*types.Struct, allErrors *common.ConvertError) {
+func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progress, details map[string]*types.Struct, allErrors *types2.ConvertError) {
 	progress.SetProgressMessage("Start creating blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(common.ErrCancel)
+			allErrors.Add(types2.ErrCancel)
 			return
 		}
 
@@ -558,7 +559,7 @@ func (m *Markdown) extractTitleAndEmojiFromBlock(file *FileInfo) (string, string
 	return title, emoji
 }
 
-func (m *Markdown) getObjectIDs(snapshots []*common.Snapshot) []string {
+func (m *Markdown) getObjectIDs(snapshots []*types2.Snapshot) []string {
 	targetObject := make([]string, 0, len(snapshots))
 	for _, snapshot := range snapshots {
 		targetObject = append(targetObject, snapshot.Id)

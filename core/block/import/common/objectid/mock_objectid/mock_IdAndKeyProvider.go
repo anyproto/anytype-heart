@@ -4,16 +4,15 @@ package mock_objectid
 
 import (
 	context "context"
-
-	common "github.com/anyproto/anytype-heart/core/block/import/common"
+	time "time"
 
 	mock "github.com/stretchr/testify/mock"
+
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 
 	objectorigin "github.com/anyproto/anytype-heart/core/domain/objectorigin"
 
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-
-	time "time"
 
 	treestorage "github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 )
@@ -32,7 +31,7 @@ func (_m *MockIdAndKeyProvider) EXPECT() *MockIdAndKeyProvider_Expecter {
 }
 
 // GetIDAndPayload provides a mock function with given fields: ctx, spaceID, sn, createdTime, getExisting, origin
-func (_m *MockIdAndKeyProvider) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
+func (_m *MockIdAndKeyProvider) GetIDAndPayload(ctx context.Context, spaceID string, sn *types.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
 	ret := _m.Called(ctx, spaceID, sn, createdTime, getExisting, origin)
 
 	if len(ret) == 0 {
@@ -42,22 +41,22 @@ func (_m *MockIdAndKeyProvider) GetIDAndPayload(ctx context.Context, spaceID str
 	var r0 string
 	var r1 treestorage.TreeStorageCreatePayload
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, *common.Snapshot, time.Time, bool, objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, *types.Snapshot, time.Time, bool, objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error)); ok {
 		return rf(ctx, spaceID, sn, createdTime, getExisting, origin)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, *common.Snapshot, time.Time, bool, objectorigin.ObjectOrigin) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, *types.Snapshot, time.Time, bool, objectorigin.ObjectOrigin) string); ok {
 		r0 = rf(ctx, spaceID, sn, createdTime, getExisting, origin)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, *common.Snapshot, time.Time, bool, objectorigin.ObjectOrigin) treestorage.TreeStorageCreatePayload); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, *types.Snapshot, time.Time, bool, objectorigin.ObjectOrigin) treestorage.TreeStorageCreatePayload); ok {
 		r1 = rf(ctx, spaceID, sn, createdTime, getExisting, origin)
 	} else {
 		r1 = ret.Get(1).(treestorage.TreeStorageCreatePayload)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, string, *common.Snapshot, time.Time, bool, objectorigin.ObjectOrigin) error); ok {
+	if rf, ok := ret.Get(2).(func(context.Context, string, *types.Snapshot, time.Time, bool, objectorigin.ObjectOrigin) error); ok {
 		r2 = rf(ctx, spaceID, sn, createdTime, getExisting, origin)
 	} else {
 		r2 = ret.Error(2)
@@ -82,9 +81,9 @@ func (_e *MockIdAndKeyProvider_Expecter) GetIDAndPayload(ctx interface{}, spaceI
 	return &MockIdAndKeyProvider_GetIDAndPayload_Call{Call: _e.mock.On("GetIDAndPayload", ctx, spaceID, sn, createdTime, getExisting, origin)}
 }
 
-func (_c *MockIdAndKeyProvider_GetIDAndPayload_Call) Run(run func(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin)) *MockIdAndKeyProvider_GetIDAndPayload_Call {
+func (_c *MockIdAndKeyProvider_GetIDAndPayload_Call) Run(run func(ctx context.Context, spaceID string, sn *types.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin)) *MockIdAndKeyProvider_GetIDAndPayload_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(*common.Snapshot), args[3].(time.Time), args[4].(bool), args[5].(objectorigin.ObjectOrigin))
+		run(args[0].(context.Context), args[1].(string), args[2].(*types.Snapshot), args[3].(time.Time), args[4].(bool), args[5].(objectorigin.ObjectOrigin))
 	})
 	return _c
 }
@@ -94,7 +93,7 @@ func (_c *MockIdAndKeyProvider_GetIDAndPayload_Call) Return(_a0 string, _a1 tree
 	return _c
 }
 
-func (_c *MockIdAndKeyProvider_GetIDAndPayload_Call) RunAndReturn(run func(context.Context, string, *common.Snapshot, time.Time, bool, objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error)) *MockIdAndKeyProvider_GetIDAndPayload_Call {
+func (_c *MockIdAndKeyProvider_GetIDAndPayload_Call) RunAndReturn(run func(context.Context, string, *types.Snapshot, time.Time, bool, objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error)) *MockIdAndKeyProvider_GetIDAndPayload_Call {
 	_c.Call.Return(run)
 	return _c
 }

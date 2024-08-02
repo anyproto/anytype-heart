@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
-	"github.com/anyproto/anytype-heart/core/block/import/common"
+	types2 "github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -50,7 +50,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		p := SpaceImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
-		allSnapshot := []*common.Snapshot{
+		allSnapshot := []*types2.Snapshot{
 			{
 				Id:     "id1",
 				SbType: smartblock2.SmartBlockTypePage,
@@ -87,7 +87,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		p := SpaceImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
-		allSnapshot := []*common.Snapshot{
+		allSnapshot := []*types2.Snapshot{
 			// skip objects
 			{
 				Id:     "id2",
@@ -132,7 +132,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 			},
 		}
 		// set widget
-		widgetSnapshot := &common.Snapshot{
+		widgetSnapshot := &types2.Snapshot{
 			Id:     "widgetID",
 			SbType: smartblock2.SmartBlockTypeWidget,
 			Snapshot: &pb.ChangeSnapshot{
@@ -168,7 +168,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		p := SpaceImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
-		allSnapshot := []*common.Snapshot{
+		allSnapshot := []*types2.Snapshot{
 			// skip objects
 			{
 				Id:     "id2",
@@ -214,7 +214,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// collection widget
-		widgetSnapshot := &common.Snapshot{
+		widgetSnapshot := &types2.Snapshot{
 			Id:     "widgetID",
 			SbType: smartblock2.SmartBlockTypeWidget,
 			Snapshot: &pb.ChangeSnapshot{
@@ -250,7 +250,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		p := SpaceImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
-		allSnapshot := []*common.Snapshot{
+		allSnapshot := []*types2.Snapshot{
 			// skip object
 			{
 				Id:     "id2",
@@ -311,7 +311,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// object with widget
-		widgetSnapshot := &common.Snapshot{
+		widgetSnapshot := &types2.Snapshot{
 			Id:     "widgetID",
 			SbType: smartblock2.SmartBlockTypeWidget,
 			Snapshot: &pb.ChangeSnapshot{

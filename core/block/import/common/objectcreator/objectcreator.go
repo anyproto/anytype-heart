@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/syncer"
+	types2 "github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -40,7 +41,7 @@ var log = logging.Logger("import")
 // Service incapsulate logic with creation of given smartblocks
 type Service interface {
 	//nolint:lll
-	Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error)
+	Create(dataObject *DataObject, sn *types2.Snapshot) (*types.Struct, string, error)
 }
 
 type BlockService interface {
@@ -78,7 +79,7 @@ func New(service BlockService,
 }
 
 // Create creates smart blocks from given snapshots
-func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error) {
+func (oc *ObjectCreator) Create(dataObject *DataObject, sn *types2.Snapshot) (*types.Struct, string, error) {
 	snapshot := sn.Snapshot.Data
 	oldIDtoNew := dataObject.oldIDtoNew
 	fileIDs := dataObject.fileIDs
@@ -156,7 +157,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	syncErr := oc.syncFilesAndLinks(dataObject.newIdsSet, domain.FullID{SpaceID: spaceID, ObjectID: newID}, origin)
 	if syncErr != nil {
-		if errors.Is(syncErr, common.ErrFileLoad) {
+		if errors.Is(syncErr, types2.ErrFileLoad) {
 			return respDetails, newID, syncErr
 		}
 	}
@@ -171,7 +172,7 @@ func canUpdateObject(sbType coresb.SmartBlockType) bool {
 		sbType != coresb.SmartBlockTypeParticipant
 }
 
-func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin objectorigin.ObjectOrigin) {
+func (oc *ObjectCreator) injectImportDetails(sn *types2.Snapshot, origin objectorigin.ObjectOrigin) {
 	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
 	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
 	if lastModifiedDate == 0 {
@@ -436,7 +437,7 @@ func (oc *ObjectCreator) syncFilesAndLinks(newIdsSet map[string]struct{}, id dom
 		err = task()
 		if err != nil {
 			log.With(zap.String("objectId", id.ObjectID)).Errorf("failed to sync: %s", err)
-			if errors.Is(err, common.ErrFileLoad) {
+			if errors.Is(err, types2.ErrFileLoad) {
 				fileLoadErr = err
 			}
 		}

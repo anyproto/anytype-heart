@@ -12,6 +12,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
+	types2 "github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
@@ -36,8 +37,8 @@ func NewDataObject(ctx context.Context, apiKey string, mode pb.RpcObjectImportRe
 }
 
 type Result struct {
-	snapshot []*common.Snapshot
-	ce       *common.ConvertError
+	snapshot []*types2.Snapshot
+	ce       *types2.ConvertError
 }
 
 type Task struct {
@@ -54,14 +55,14 @@ func (pt *Task) ID() string {
 
 func (pt *Task) Execute(data interface{}) interface{} {
 	do := data.(*DataObject)
-	allErrors := common.NewError(do.mode)
+	allErrors := types2.NewError(do.mode)
 	snapshot, subObjectsSnapshots := pt.makeSnapshotFromPages(do, allErrors)
 	if allErrors.ShouldAbortImport(0, model.Import_Notion) {
 		return &Result{ce: allErrors}
 	}
 	pageId := do.request.NotionPageIdsToAnytype[pt.p.ID]
-	resultSnapshots := make([]*common.Snapshot, 0, 1+len(subObjectsSnapshots))
-	sn := &common.Snapshot{
+	resultSnapshots := make([]*types2.Snapshot, 0, 1+len(subObjectsSnapshots))
+	sn := &types2.Snapshot{
 		Id:       pageId,
 		FileName: pt.p.URL,
 		Snapshot: &pb.ChangeSnapshot{Data: snapshot},
@@ -70,7 +71,7 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	resultSnapshots = append(resultSnapshots, sn)
 	for _, objectsSnapshot := range subObjectsSnapshots {
 		sbType := pt.getSmartBlockTypeAndID(objectsSnapshot)
-		resultSnapshots = append(resultSnapshots, &common.Snapshot{
+		resultSnapshots = append(resultSnapshots, &types2.Snapshot{
 			Id:       pbtypes.GetString(objectsSnapshot.Details, bundle.RelationKeyId.String()),
 			SbType:   sbType,
 			Snapshot: &pb.ChangeSnapshot{Data: objectsSnapshot},
@@ -79,7 +80,7 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	return &Result{snapshot: resultSnapshots, ce: allErrors}
 }
 
-func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *common.ConvertError) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase) {
+func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *types2.ConvertError) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase) {
 	details, subObjectsSnapshots, relationLinks := pt.provideDetails(object)
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(object.ctx, pt.p.ID, object.apiKey, pageSize, object.mode)
 	if blocksAndChildrenErr != nil {

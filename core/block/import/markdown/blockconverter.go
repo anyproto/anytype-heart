@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -33,7 +34,7 @@ func newMDConverter(tempDirProvider core.TempDirProvider) *mdConverter {
 	return &mdConverter{tempDirProvider: tempDirProvider}
 }
 
-func (m *mdConverter) markdownToBlocks(importPath string, importSource source.Source, allErrors *common.ConvertError) map[string]*FileInfo {
+func (m *mdConverter) markdownToBlocks(importPath string, importSource source.Source, allErrors *types.ConvertError) map[string]*FileInfo {
 	files := m.processFiles(importPath, allErrors, importSource)
 
 	log.Debug("2. DirWithMarkdownToBlocks: MarkdownToBlocks completed")
@@ -41,7 +42,7 @@ func (m *mdConverter) markdownToBlocks(importPath string, importSource source.So
 	return files
 }
 
-func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertError, importSource source.Source) map[string]*FileInfo {
+func (m *mdConverter) processFiles(importPath string, allErrors *types.ConvertError, importSource source.Source) map[string]*FileInfo {
 	err := importSource.Initialize(importPath)
 	if err != nil {
 		allErrors.Add(err)
@@ -50,7 +51,7 @@ func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertE
 		}
 	}
 	if importSource.CountFilesWithGivenExtensions([]string{".md"}) == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(types.ErrNoObjectsToImport)
 		return nil
 	}
 	fileInfo := m.getFileInfo(importSource, allErrors)
@@ -63,7 +64,7 @@ func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertE
 	return fileInfo
 }
 
-func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *common.ConvertError) map[string]*FileInfo {
+func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *types.ConvertError) map[string]*FileInfo {
 	fileInfo := make(map[string]*FileInfo, 0)
 	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if err := m.fillFilesInfo(fileInfo, fileName, fileReader); err != nil {

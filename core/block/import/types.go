@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
+	types2 "github.com/anyproto/anytype-heart/core/block/import/common/types"
 	_ "github.com/anyproto/anytype-heart/core/block/import/markdown"
 	_ "github.com/anyproto/anytype-heart/core/block/import/pb"
 	_ "github.com/anyproto/anytype-heart/core/block/import/web"
@@ -34,4 +35,5 @@ type Importer interface {
 	ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)
 	// nolint: lll
 	ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) (pb.RpcObjectImportNotionValidateTokenResponseErrorCode, error)
+	ImportSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest) ([]*types2.Snapshot, error)
 }

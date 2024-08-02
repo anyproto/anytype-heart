@@ -9,8 +9,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/objectcreator/mock_blockservice"
+	types2 "github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -41,7 +41,7 @@ func TestObjectCreator_Create(t *testing.T) {
 
 		oldToNew := map[string]string{importedSpaceIdParticipantId: participantId}
 		dataObject := NewDataObject(context.Background(), oldToNew, nil, nil, objectorigin.Import(model.Import_Pb), spaceID)
-		sn := &common.Snapshot{
+		sn := &types2.Snapshot{
 			Id:     importedSpaceIdParticipantId,
 			SbType: coresb.SmartBlockTypeParticipant,
 			Snapshot: &pb.ChangeSnapshot{

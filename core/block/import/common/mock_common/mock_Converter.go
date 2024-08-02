@@ -5,9 +5,9 @@ package mock_common
 import (
 	context "context"
 
-	common "github.com/anyproto/anytype-heart/core/block/import/common"
-
 	mock "github.com/stretchr/testify/mock"
+
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 
 	pb "github.com/anyproto/anytype-heart/pb"
 
@@ -28,31 +28,31 @@ func (_m *MockConverter) EXPECT() *MockConverter_Expecter {
 }
 
 // GetSnapshots provides a mock function with given fields: ctx, req, progress
-func (_m *MockConverter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
+func (_m *MockConverter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*types.Response, *types.ConvertError) {
 	ret := _m.Called(ctx, req, progress)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetSnapshots")
 	}
 
-	var r0 *common.Response
-	var r1 *common.ConvertError
-	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectImportRequest, process.Progress) (*common.Response, *common.ConvertError)); ok {
+	var r0 *types.Response
+	var r1 *types.ConvertError
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectImportRequest, process.Progress) (*types.Response, *types.ConvertError)); ok {
 		return rf(ctx, req, progress)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectImportRequest, process.Progress) *common.Response); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectImportRequest, process.Progress) *types.Response); ok {
 		r0 = rf(ctx, req, progress)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*common.Response)
+			r0 = ret.Get(0).(*types.Response)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *pb.RpcObjectImportRequest, process.Progress) *common.ConvertError); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *pb.RpcObjectImportRequest, process.Progress) *types.ConvertError); ok {
 		r1 = rf(ctx, req, progress)
 	} else {
 		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*common.ConvertError)
+			r1 = ret.Get(1).(*types.ConvertError)
 		}
 	}
 
@@ -79,12 +79,12 @@ func (_c *MockConverter_GetSnapshots_Call) Run(run func(ctx context.Context, req
 	return _c
 }
 
-func (_c *MockConverter_GetSnapshots_Call) Return(_a0 *common.Response, _a1 *common.ConvertError) *MockConverter_GetSnapshots_Call {
+func (_c *MockConverter_GetSnapshots_Call) Return(_a0 *types.Response, _a1 *types.ConvertError) *MockConverter_GetSnapshots_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockConverter_GetSnapshots_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectImportRequest, process.Progress) (*common.Response, *common.ConvertError)) *MockConverter_GetSnapshots_Call {
+func (_c *MockConverter_GetSnapshots_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectImportRequest, process.Progress) (*types.Response, *types.ConvertError)) *MockConverter_GetSnapshots_Call {
 	_c.Call.Return(run)
 	return _c
 }

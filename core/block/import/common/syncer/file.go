@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -44,7 +44,7 @@ func (s *FileSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b sim
 			SpaceId: id.SpaceID,
 		}, origin)
 		if err != nil {
-			return fmt.Errorf("%w: %w", common.ErrFileLoad, err)
+			return fmt.Errorf("%w: %w", types.ErrFileLoad, err)
 		}
 		return nil
 	}
@@ -75,7 +75,7 @@ func (s *FileSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b sim
 		return oserror.TransformError(err)
 	}
 	if err != nil {
-		return fmt.Errorf("%w: %s", common.ErrFileLoad, oserror.TransformError(err).Error())
+		return fmt.Errorf("%w: %s", types.ErrFileLoad, oserror.TransformError(err).Error())
 	}
 	return nil
 }

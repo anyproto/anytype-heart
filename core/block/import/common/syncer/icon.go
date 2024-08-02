@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -45,9 +45,9 @@ func (s *IconSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b sim
 	if err != nil {
 		uplErr := s.updateTextBlock(id, "", b)
 		if uplErr != nil {
-			return fmt.Errorf("%w: %s", common.ErrFileLoad, uplErr.Error())
+			return fmt.Errorf("%w: %s", types.ErrFileLoad, uplErr.Error())
 		}
-		return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
+		return fmt.Errorf("%w: %s", types.ErrFileLoad, err.Error())
 	}
 	if newId == iconImage {
 		return nil
@@ -55,7 +55,7 @@ func (s *IconSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b sim
 
 	err = s.updateTextBlock(id, newId, b)
 	if err != nil {
-		return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
+		return fmt.Errorf("%w: %s", types.ErrFileLoad, err.Error())
 	}
 	return nil
 }
@@ -68,7 +68,7 @@ func (s *IconSyncer) updateTextBlock(id domain.FullID, newId string, b simple.Bl
 			return nil
 		}, b.Model().Id)
 		if upErr != nil {
-			return fmt.Errorf("%w: %s", common.ErrFileLoad, upErr.Error())
+			return fmt.Errorf("%w: %s", types.ErrFileLoad, upErr.Error())
 		}
 		return nil
 	})

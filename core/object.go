@@ -16,7 +16,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
-	"github.com/anyproto/anytype-heart/core/block/import/common"
+	types2 "github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/indexer"
@@ -875,7 +875,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 	originImport := objectorigin.Import(req.Type)
 	res := getService[importer.Importer](mw).Import(cctx, req, originImport, nil)
 	spaceName := getService[objectstore.SpaceNameGetter](mw).GetSpaceName(req.SpaceId)
-	code := common.GetImportErrorCode(res.Err)
+	code := types2.GetImportErrorCode(res.Err)
 	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSend(&model.Notification{
 		Id:      uuid.New().String(),
 		Status:  model.Notification_Created,
@@ -982,5 +982,5 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
 	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace)
-	return response(common.GetGalleryResponseCode(err), err)
+	return response(types2.GetGalleryResponseCode(err), err)
 }

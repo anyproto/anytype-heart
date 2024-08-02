@@ -7,7 +7,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
-	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/database"
@@ -32,7 +32,7 @@ type Notion struct {
 	pgService *page.Service
 }
 
-func New(c *collection.Service) common.Converter {
+func New(c *collection.Service) types.Converter {
 	cl := client.NewClient()
 	return &Notion{
 		search:    search.New(cl),
@@ -41,8 +41,8 @@ func New(c *collection.Service) common.Converter {
 	}
 }
 
-func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
-	ce := common.NewError(req.Mode)
+func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*types.Response, *types.ConvertError) {
+	ce := types.NewError(req.Mode)
 	apiKey := n.getParams(req)
 	if apiKey == "" {
 		ce.Add(fmt.Errorf("failed to extract apikey"))
@@ -63,7 +63,7 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 
 		// always add this error because it's mean that we need to return error to user, even in case IGNORE_ERRORS is turned on
 		// see shouldReturnError
-		ce.Add(common.ErrFailedToReceiveListOfObjects)
+		ce.Add(types.ErrFailedToReceiveListOfObjects)
 		log.With("error", ce.Error()).With("pages", len(pages)).With("dbs", len(db)).Error("import from notion failed")
 		return nil, ce
 	}
@@ -72,10 +72,10 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 	progress.SetTotal(int64(len(db)*numberOfStepsForDatabases+len(pages)*numberOfStepsForPages+len(allProperties)) + stepForSearch)
 
 	if err = progress.TryStep(1); err != nil {
-		return nil, common.NewFromError(common.ErrCancel, req.Mode)
+		return nil, types.NewFromError(types.ErrCancel, req.Mode)
 	}
 	if len(db) == 0 && len(pages) == 0 {
-		return nil, common.NewFromError(common.ErrNoObjectsToImport, req.Mode)
+		return nil, types.NewFromError(types.ErrNoObjectsToImport, req.Mode)
 	}
 
 	notionImportContext := api.NewNotionImportContext()
@@ -97,7 +97,7 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 		return nil, ce
 	}
 
-	var pgs, dbs []*common.Snapshot
+	var pgs, dbs []*types.Snapshot
 
 	if pgSnapshots != nil {
 		pgs = pgSnapshots.Snapshots
@@ -121,15 +121,15 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 		dbs = append(dbs, rootCollectionSnapshot)
 		rootCollectionID = rootCollectionSnapshot.Id
 	}
-	allSnapshots := make([]*common.Snapshot, 0, len(pgs)+len(dbs))
+	allSnapshots := make([]*types.Snapshot, 0, len(pgs)+len(dbs))
 	allSnapshots = append(allSnapshots, pgs...)
 	allSnapshots = append(allSnapshots, dbs...)
 
 	if !ce.IsEmpty() {
-		return &common.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, ce
+		return &types.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, ce
 	}
 
-	return &common.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
+	return &types.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
 }
 
 func (n *Notion) getUniqueProperties(db []database.Database, pages []page.Page) []string {

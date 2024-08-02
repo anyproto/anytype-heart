@@ -7,7 +7,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 
-	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/import/common/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
@@ -66,7 +66,7 @@ func (ds *Service) GetPages(ctx context.Context,
 	pages []Page,
 	notionImportContext *api.NotionImportContext,
 	relations *property.PropertiesStore,
-	progress process.Progress) (*common.Response, *common.ConvertError) {
+	progress process.Progress) (*types.Response, *types.ConvertError) {
 	progress.SetProgressMessage("Start creating pages from notion")
 	convertError := ds.fillNotionImportContext(pages, progress, notionImportContext)
 	if convertError != nil {
@@ -85,20 +85,20 @@ func (ds *Service) GetPages(ctx context.Context,
 
 	allSnapshots, converterError := ds.readResultFromPool(pool, mode, progress)
 	if converterError.IsEmpty() {
-		return &common.Response{Snapshots: allSnapshots}, nil
+		return &types.Response{Snapshots: allSnapshots}, nil
 	}
 
-	return &common.Response{Snapshots: allSnapshots}, converterError
+	return &types.Response{Snapshots: allSnapshots}, converterError
 }
 
-func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress process.Progress) ([]*common.Snapshot, *common.ConvertError) {
-	allSnapshots := make([]*common.Snapshot, 0)
-	ce := common.NewError(mode)
+func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress process.Progress) ([]*types.Snapshot, *types.ConvertError) {
+	allSnapshots := make([]*types.Snapshot, 0)
+	ce := types.NewError(mode)
 
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
 			pool.Stop()
-			return nil, common.NewCancelError(err)
+			return nil, types.NewCancelError(err)
 		}
 		res := r.(*Result)
 		if res.ce != nil {
@@ -145,10 +145,10 @@ func (ds *Service) extractTitleFromPages(page Page) string {
 	return ""
 }
 
-func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progress, importContext *api.NotionImportContext) *common.ConvertError {
+func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progress, importContext *api.NotionImportContext) *types.ConvertError {
 	for _, p := range pages {
 		if err := progress.TryStep(1); err != nil {
-			return common.NewCancelError(err)
+			return types.NewCancelError(err)
 		}
 		importContext.NotionPageIdsToAnytype[p.ID] = bson.NewObjectId().Hex()
 		if p.Parent.PageID != "" {

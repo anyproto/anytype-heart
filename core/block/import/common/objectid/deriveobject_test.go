@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/anyproto/anytype-heart/core/block/import/common"
+	types2 "github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
@@ -30,7 +30,7 @@ func TestDerivedObject_GetIDAndPayload(t *testing.T) {
 		sf := objectstore.NewStoreFixture(t)
 		service := mock_space.NewMockService(t)
 		deriveObject := newDerivedObject(newExistingObject(sf), service, sf)
-		sn := &common.Snapshot{
+		sn := &types2.Snapshot{
 			Id: "oldId",
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{

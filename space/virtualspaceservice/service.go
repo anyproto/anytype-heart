@@ -3,9 +3,12 @@ package virtualspaceservice
 import (
 	"context"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
 const CName = "common.space.virtualspaceservice"
@@ -13,6 +16,7 @@ const CName = "common.space.virtualspaceservice"
 type VirtualSpaceService interface {
 	app.ComponentRunnable
 	RegisterVirtualSpace(spaceID string) (err error)
+	ProvideVirtualSpace(spaceID string, service accountservice.Service, factory objectcache.ObjectFactory) *clientspace.VirtualSpace
 }
 
 type virtualSpaceService struct {
@@ -48,6 +52,12 @@ func (v *virtualSpaceService) cleanupVirtualSpaces(err error) error {
 		}
 	}
 	return nil
+}
+func (v *virtualSpaceService) ProvideVirtualSpace(spaceID string, service accountservice.Service, factory objectcache.ObjectFactory) (err *clientspace.VirtualSpace) {
+	return clientspace.NewVirtualSpace(spaceID, clientspace.VirtualSpaceDeps{
+		ObjectFactory:  factory,
+		AccountService: service,
+	})
 }
 
 func (v *virtualSpaceService) RegisterVirtualSpace(spaceID string) (err error) {

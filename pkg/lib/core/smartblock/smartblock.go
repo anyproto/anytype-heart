@@ -38,6 +38,7 @@ const (
 	SmartBlockTypeMissingObject      = SmartBlockType(model.SmartBlockType_MissingObject)
 	SmartBlockTypeNotificationObject = SmartBlockType(model.SmartBlockType_NotificationObject)
 	SmartBlockTypeDevicesObject      = SmartBlockType(model.SmartBlockType_DevicesObject)
+	SmartBlockTypeSnapshot           = SmartBlockType(model.SmartBlockType_Snapshot)
 )
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")

@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
@@ -28,7 +29,7 @@ type TXT struct {
 	service *collection.Service
 }
 
-func New(service *collection.Service) common.Converter {
+func New(service *collection.Service) types.Converter {
 	return &TXT{service: service}
 }
 
@@ -44,13 +45,13 @@ func (t *TXT) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
+func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*types.Response, *types.ConvertError) {
 	paths := t.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
-	allErrors := common.NewError(req.Mode)
+	allErrors := types.NewError(req.Mode)
 	snapshots, targetObjects := t.getSnapshots(req, progress, paths, allErrors)
 	if allErrors.ShouldAbortImport(len(paths), req.Type) {
 		return nil, allErrors
@@ -70,9 +71,9 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	}
 	progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if allErrors.IsEmpty() {
-		return &common.Response{Snapshots: snapshots, RootCollectionID: rootCollectionID}, nil
+		return &types.Response{Snapshots: snapshots, RootCollectionID: rootCollectionID}, nil
 	}
-	return &common.Response{
+	return &types.Response{
 		Snapshots:        snapshots,
 		RootCollectionID: rootCollectionID,
 	}, allErrors
@@ -81,13 +82,13 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	paths []string,
-	allErrors *common.ConvertError,
-) ([]*common.Snapshot, []string) {
-	snapshots := make([]*common.Snapshot, 0)
+	allErrors *types.ConvertError,
+) ([]*types.Snapshot, []string) {
+	snapshots := make([]*types.Snapshot, 0)
 	targetObjects := make([]string, 0)
 	for _, p := range paths {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(common.ErrCancel)
+			allErrors.Add(types.ErrCancel)
 			return nil, nil
 		}
 		sn, to := t.handleImportPath(p, len(paths), allErrors)
@@ -100,7 +101,7 @@ func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest,
 	return snapshots, targetObjects
 }
 
-func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *common.ConvertError) ([]*common.Snapshot, []string) {
+func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *types.ConvertError) ([]*types.Snapshot, []string) {
 	importSource := source.GetSource(p)
 	defer importSource.Close()
 	err := importSource.Initialize(p)
@@ -112,10 +113,10 @@ func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *common.Conve
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".txt"}); numberOfFiles == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(types.ErrNoObjectsToImport)
 		return nil, nil
 	}
-	snapshots := make([]*common.Snapshot, 0, numberOfFiles)
+	snapshots := make([]*types.Snapshot, 0, numberOfFiles)
 	targetObjects := make([]string, 0, numberOfFiles)
 	iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if filepath.Ext(fileName) != ".txt" {
@@ -153,14 +154,14 @@ func (t *TXT) getBlocksForSnapshot(rc io.ReadCloser) ([]*model.Block, error) {
 	return blocks, nil
 }
 
-func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*common.Snapshot, string) {
+func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*types.Snapshot, string) {
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
 		Details:     common.GetCommonDetails(p, "", "", model.ObjectType_basic),
 		ObjectTypes: []string{bundle.TypeKeyPage.String()},
 	}
 
-	snapshot := &common.Snapshot{
+	snapshot := &types.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: p,
 		Snapshot: &pb.ChangeSnapshot{Data: sn},

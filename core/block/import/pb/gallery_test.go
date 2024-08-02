@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
-	"github.com/anyproto/anytype-heart/core/block/import/common"
+	types2 "github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -63,7 +63,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		p := GalleryImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
-		allSnapshot := []*common.Snapshot{
+		allSnapshot := []*types2.Snapshot{
 			// skip objects
 			{
 				Id:     "id2",
@@ -108,7 +108,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 			},
 		}
 		// set widget
-		widgetSnapshot := &common.Snapshot{
+		widgetSnapshot := &types2.Snapshot{
 			Id:     "widgetID",
 			SbType: smartblock.SmartBlockTypeWidget,
 			Snapshot: &pb.ChangeSnapshot{
@@ -140,7 +140,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		p := GalleryImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
-		allSnapshot := []*common.Snapshot{
+		allSnapshot := []*types2.Snapshot{
 			// favorite page
 			{
 				Id:     "id1",
@@ -179,7 +179,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		}
 
 		// object with widget
-		widgetSnapshot := &common.Snapshot{
+		widgetSnapshot := &types2.Snapshot{
 			Id:     "widgetID",
 			SbType: smartblock.SmartBlockTypeWidget,
 			Snapshot: &pb.ChangeSnapshot{
@@ -223,7 +223,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
 		// object with widget
-		widgetSnapshot := &common.Snapshot{
+		widgetSnapshot := &types2.Snapshot{
 			Id:     "widgetID",
 			SbType: smartblock.SmartBlockTypeWidget,
 			Snapshot: &pb.ChangeSnapshot{
@@ -260,7 +260,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		p := GalleryImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
-		workspace := &common.Snapshot{
+		workspace := &types2.Snapshot{
 			Id:     "workspace",
 			SbType: smartblock.SmartBlockTypeWorkspace,
 			Snapshot: &pb.ChangeSnapshot{
@@ -283,7 +283,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		p := GalleryImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
-		workspace := &common.Snapshot{
+		workspace := &types2.Snapshot{
 			Id:     "workspace",
 			SbType: smartblock.SmartBlockTypeWorkspace,
 			Snapshot: &pb.ChangeSnapshot{
@@ -322,7 +322,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
 		// object with widget
-		widgetSnapshot := &common.Snapshot{
+		widgetSnapshot := &types2.Snapshot{
 			Id:     "widgetID",
 			SbType: smartblock.SmartBlockTypeWidget,
 			Snapshot: &pb.ChangeSnapshot{

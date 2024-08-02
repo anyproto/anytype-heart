@@ -76,6 +76,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/staticsourceprovider"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater"
@@ -243,12 +244,14 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(files.New()).
 		Register(fileoffloader.New()).
 		Register(fileacl.New()).
+		Register(filesync.New()).
+		Register(space.New()).
+		Register(importer.New()).
+		Register(staticsourceprovider.NewSnapshotsProvider()).
 		Register(source.New()).
 		Register(spacefactory.New()).
-		Register(space.New()).
 		Register(deletioncontroller.New()).
 		Register(invitestore.New()).
-		Register(filesync.New()).
 		Register(reconciler.New()).
 		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
 		Register(inviteservice.New()).
@@ -279,7 +282,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(subscription.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).
-		Register(importer.New()).
 		Register(decorator.New()).
 		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).

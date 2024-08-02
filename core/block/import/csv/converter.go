@@ -10,6 +10,7 @@ import (
 	te "github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -25,7 +26,7 @@ const (
 
 type Result struct {
 	objectIDs []string
-	snapshots []*common.Snapshot
+	snapshots []*types.Snapshot
 }
 
 func (r *Result) Merge(r2 *Result) {
@@ -40,7 +41,7 @@ type CSV struct {
 	collectionService *collection.Service
 }
 
-func New(collectionService *collection.Service) common.Converter {
+func New(collectionService *collection.Service) types.Converter {
 	return &CSV{collectionService: collectionService}
 }
 
@@ -56,12 +57,12 @@ func (c *CSV) GetParams(req *pb.RpcObjectImportRequest) *pb.RpcObjectImportReque
 	return nil
 }
 
-func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
+func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*types.Response, *types.ConvertError) {
 	params := c.GetParams(req)
 	if params == nil {
 		return nil, nil
 	}
-	allErrors := common.NewError(req.Mode)
+	allErrors := types.NewError(req.Mode)
 	result := c.createObjectsFromCSVFiles(req, progress, params, allErrors)
 	if allErrors.ShouldAbortImport(len(params.Path), req.Type) {
 		return nil, allErrors
@@ -81,16 +82,16 @@ func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	}
 	progress.SetTotal(int64(len(result.snapshots)))
 	if allErrors.IsEmpty() {
-		return &common.Response{Snapshots: result.snapshots, RootCollectionID: rootCollectionID}, nil
+		return &types.Response{Snapshots: result.snapshots, RootCollectionID: rootCollectionID}, nil
 	}
 
-	return &common.Response{Snapshots: result.snapshots, RootCollectionID: rootCollectionID}, allErrors
+	return &types.Response{Snapshots: result.snapshots, RootCollectionID: rootCollectionID}, allErrors
 }
 
 func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	params *pb.RpcObjectImportRequestCsvParams,
-	allErrors *common.ConvertError,
+	allErrors *types.ConvertError,
 ) *Result {
 	csvMode := params.GetMode()
 	str := c.chooseStrategy(csvMode)
@@ -107,7 +108,7 @@ func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 
 func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	importPath string,
-	allErrors *common.ConvertError,
+	allErrors *types.ConvertError,
 	str Strategy,
 	progress process.Progress,
 ) *Result {
@@ -123,7 +124,7 @@ func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".csv"}); numberOfFiles == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(types.ErrNoObjectsToImport)
 		return nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
@@ -134,14 +135,14 @@ func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 func (c *CSV) getSnapshotsAndObjectsIds(importSource source.Source,
 	params *pb.RpcObjectImportRequestCsvParams,
 	str Strategy,
-	allErrors *common.ConvertError,
+	allErrors *types.ConvertError,
 	progress process.Progress,
 ) *Result {
-	allSnapshots := make([]*common.Snapshot, 0)
+	allSnapshots := make([]*types.Snapshot, 0)
 	allObjectsIds := make([]string, 0)
 	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(common.ErrCancel)
+			allErrors.Add(types.ErrCancel)
 			return false
 		}
 		csvTable, err := c.getCSVTable(fileReader, params.GetDelimiter())

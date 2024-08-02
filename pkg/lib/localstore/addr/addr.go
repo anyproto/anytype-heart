@@ -24,6 +24,8 @@ const (
 	DatePrefix                  = "_date_"
 
 	MissingObject = "_missing_object"
+	Snapshot      = "_snapshot_"
+	VirtualSpace  = "_virtualSpace_"
 )
 
 func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {

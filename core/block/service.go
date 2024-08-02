@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/globalsign/mgo/bson"
@@ -25,11 +26,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -44,10 +47,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/mutex"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -116,6 +121,11 @@ type Service struct {
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
+	vsService                  virtualspaceservice.VirtualSpaceService
+
+	source         source.Lister
+	factory        objectcache.ObjectFactory
+	accountService accountservice.Service
 }
 
 type builtinObjects interface {
@@ -154,6 +164,10 @@ func (s *Service) Init(a *app.App) (err error) {
 
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.app = a
+	s.vsService = app.MustComponent[virtualspaceservice.VirtualSpaceService](a)
+	s.source = app.MustComponent[source.Lister](a)
+	s.accountService = app.MustComponent[accountservice.Service](a)
+	s.factory = app.MustComponent[objectcache.ObjectFactory](a)
 	return
 }
 
@@ -863,4 +877,56 @@ func (s *Service) enrichDetailsWithOrigin(details *types.Struct, origin model.Ob
 		details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
 	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
+}
+
+func (s *Service) SnapshotOpen(ctx context.Context, path string, spaceId string) (obj []*types.Struct, err error) {
+	snapshotId := addr.Snapshot + bson.NewObjectId().Hex()
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return nil, err
+	}
+	ctx = context.WithValue(ctx, "zipPath", path)
+
+	vsId := addr.VirtualSpace + snapshotId // TODO temporary solution with virtual space id
+	vs := s.vsService.ProvideVirtualSpace(vsId, s.accountService, s.factory)
+	err = s.vsService.RegisterVirtualSpace(vs.Id())
+	if err != nil {
+		return nil, err
+	}
+	err = spc.DoCtx(ctx, snapshotId, func(sb smartblock.SmartBlock) error {
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	list := s.source.List()
+	for _, staticObject := range list {
+		err := vs.Do(staticObject.Id(), func(sb smartblock.SmartBlock) error {
+			st, err := staticObject.ReadDoc(ctx, nil, false)
+			if err != nil {
+				return err
+			}
+			return sb.Apply(st.(*state.State))
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	dbRecords, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(vs.Id()),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	pbRecords := make([]*types.Struct, 0, len(dbRecords))
+	for _, record := range dbRecords {
+		pbRecords = append(pbRecords, record.Details)
+	}
+	return pbRecords, nil
 }

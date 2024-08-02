@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -31,6 +32,10 @@ const CName = "source"
 
 func New() Service {
 	return &service{}
+}
+
+type staticSourceProvider interface {
+	GetStaticSource(ctx context.Context, req *pb.RpcObjectImportRequest) ([]StaticSourceParams, error)
 }
 
 type accountService interface {
@@ -47,6 +52,9 @@ type Space interface {
 	StoredIds() []string
 }
 
+type Lister interface {
+	List() map[string]Source
+}
 type Service interface {
 	NewSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(s Source) error
@@ -68,6 +76,8 @@ type service struct {
 
 	mu        sync.Mutex
 	staticIds map[string]Source
+
+	snapshotsProvider staticSourceProvider
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -81,6 +91,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectStore = app.MustComponent[RelationGetter](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
+	s.snapshotsProvider = app.MustComponent[staticSourceProvider](a)
 	return
 }
 
@@ -145,6 +156,8 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 				CreatorId: addr.AnytypeProfileId,
 			}
 			return s.NewStaticSource(params), nil
+		case smartblock.SmartBlockTypeSnapshot:
+			return NewSnapshotSource(ctx, id, space.Id(), s.snapshotsProvider, s), nil
 		}
 	}
 
@@ -211,4 +224,8 @@ func (s *service) RegisterStaticSource(src Source) error {
 	}
 	s.sbtProvider.RegisterStaticType(src.Id(), src.Type())
 	return nil
+}
+
+func (s *service) List() map[string]Source {
+	return s.staticIds
 }

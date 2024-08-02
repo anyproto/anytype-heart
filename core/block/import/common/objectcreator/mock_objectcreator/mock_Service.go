@@ -3,8 +3,9 @@
 package mock_objectcreator
 
 import (
-	common "github.com/anyproto/anytype-heart/core/block/import/common"
 	mock "github.com/stretchr/testify/mock"
+
+	types2 "github.com/anyproto/anytype-heart/core/block/import/common/types"
 
 	objectcreator "github.com/anyproto/anytype-heart/core/block/import/common/objectcreator"
 
@@ -25,7 +26,7 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 }
 
 // Create provides a mock function with given fields: dataObject, sn
-func (_m *MockService) Create(dataObject *objectcreator.DataObject, sn *common.Snapshot) (*types.Struct, string, error) {
+func (_m *MockService) Create(dataObject *objectcreator.DataObject, sn *types2.Snapshot) (*types.Struct, string, error) {
 	ret := _m.Called(dataObject, sn)
 
 	if len(ret) == 0 {
@@ -35,10 +36,10 @@ func (_m *MockService) Create(dataObject *objectcreator.DataObject, sn *common.S
 	var r0 *types.Struct
 	var r1 string
 	var r2 error
-	if rf, ok := ret.Get(0).(func(*objectcreator.DataObject, *common.Snapshot) (*types.Struct, string, error)); ok {
+	if rf, ok := ret.Get(0).(func(*objectcreator.DataObject, *types2.Snapshot) (*types.Struct, string, error)); ok {
 		return rf(dataObject, sn)
 	}
-	if rf, ok := ret.Get(0).(func(*objectcreator.DataObject, *common.Snapshot) *types.Struct); ok {
+	if rf, ok := ret.Get(0).(func(*objectcreator.DataObject, *types2.Snapshot) *types.Struct); ok {
 		r0 = rf(dataObject, sn)
 	} else {
 		if ret.Get(0) != nil {
@@ -46,13 +47,13 @@ func (_m *MockService) Create(dataObject *objectcreator.DataObject, sn *common.S
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*objectcreator.DataObject, *common.Snapshot) string); ok {
+	if rf, ok := ret.Get(1).(func(*objectcreator.DataObject, *types2.Snapshot) string); ok {
 		r1 = rf(dataObject, sn)
 	} else {
 		r1 = ret.Get(1).(string)
 	}
 
-	if rf, ok := ret.Get(2).(func(*objectcreator.DataObject, *common.Snapshot) error); ok {
+	if rf, ok := ret.Get(2).(func(*objectcreator.DataObject, *types2.Snapshot) error); ok {
 		r2 = rf(dataObject, sn)
 	} else {
 		r2 = ret.Error(2)
@@ -73,9 +74,9 @@ func (_e *MockService_Expecter) Create(dataObject interface{}, sn interface{}) *
 	return &MockService_Create_Call{Call: _e.mock.On("Create", dataObject, sn)}
 }
 
-func (_c *MockService_Create_Call) Run(run func(dataObject *objectcreator.DataObject, sn *common.Snapshot)) *MockService_Create_Call {
+func (_c *MockService_Create_Call) Run(run func(dataObject *objectcreator.DataObject, sn *types2.Snapshot)) *MockService_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*objectcreator.DataObject), args[1].(*common.Snapshot))
+		run(args[0].(*objectcreator.DataObject), args[1].(*types2.Snapshot))
 	})
 	return _c
 }
@@ -85,7 +86,7 @@ func (_c *MockService_Create_Call) Return(_a0 *types.Struct, _a1 string, _a2 err
 	return _c
 }
 
-func (_c *MockService_Create_Call) RunAndReturn(run func(*objectcreator.DataObject, *common.Snapshot) (*types.Struct, string, error)) *MockService_Create_Call {
+func (_c *MockService_Create_Call) RunAndReturn(run func(*objectcreator.DataObject, *types2.Snapshot) (*types.Struct, string, error)) *MockService_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }

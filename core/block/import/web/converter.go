@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
@@ -16,7 +16,7 @@ const Name = "web"
 
 type Converter struct{}
 
-func NewConverter() common.Converter {
+func NewConverter() types.Converter {
 	return &Converter{}
 }
 
@@ -30,8 +30,8 @@ func (*Converter) GetParser(url string) parsers.Parser {
 	return nil
 }
 
-func (c *Converter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
-	we := common.NewError(0)
+func (c *Converter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*types.Response, *types.ConvertError) {
+	we := types.NewError(0)
 	url, err := c.getParams(req.Params)
 	progress.SetTotal(1)
 	if err != nil {
@@ -51,13 +51,13 @@ func (c *Converter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReq
 		return nil, we
 	}
 
-	s := &common.Snapshot{
+	s := &types.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: url,
 		Snapshot: &pb.ChangeSnapshot{Data: snapshots},
 	}
-	res := &common.Response{
-		Snapshots: []*common.Snapshot{s},
+	res := &types.Response{
+		Snapshots: []*types.Snapshot{s},
 	}
 	return res, nil
 }

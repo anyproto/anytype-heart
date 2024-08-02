@@ -14,6 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
+	"github.com/anyproto/anytype-heart/core/block/import/common/types"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -49,7 +50,7 @@ func TestHTML_GetSnapshots(t *testing.T) {
 	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.String())
 
 	assert.NotEmpty(t, err)
-	assert.True(t, errors.Is(err.GetResultError(model.Import_Html), common.ErrNoObjectsToImport))
+	assert.True(t, errors.Is(err.GetResultError(model.Import_Html), types.ErrNoObjectsToImport))
 }
 
 func TestHTML_provideFileName(t *testing.T) {

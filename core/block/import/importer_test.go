@@ -13,11 +13,10 @@ import (
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/anytype-heart/core/block/import/common/objectid/mock_objectid"
-
-	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/mock_common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/objectcreator/mock_objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/import/common/objectid/mock_objectid"
+	types2 "github.com/anyproto/anytype-heart/core/block/import/common/types"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
@@ -34,7 +33,7 @@ func Test_ImportSuccess(t *testing.T) {
 	i := Import{}
 
 	converter := mock_common.NewMockConverter(t)
-	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{Snapshots: []*types2.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks: []*model.Block{&model.Block{
@@ -50,7 +49,7 @@ func Test_ImportSuccess(t *testing.T) {
 			},
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, nil).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
 	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
@@ -82,10 +81,10 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	i := Import{}
 
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewError(0)
+	e := types2.NewError(0)
 	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(nil, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
 	i.oc = creator
@@ -113,7 +112,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	i := Import{}
 
 	converter := mock_common.NewMockConverter(t)
-	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{Snapshots: []*types2.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks: []*model.Block{&model.Block{
@@ -130,7 +129,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 		},
 		SbType: smartblock.SmartBlockTypePage,
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, nil).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
 	//nolint:lll
@@ -162,9 +161,9 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	i := Import{}
 
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewError(0)
+	e := types2.NewError(0)
 	e.Add(fmt.Errorf("converter error"))
-	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{Snapshots: []*types2.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
 			Blocks: []*model.Block{&model.Block{
 				Id: "1",
@@ -180,7 +179,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 		},
 		SbType: smartblock.SmartBlockTypePage,
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
 	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
@@ -211,9 +210,9 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	i := Import{}
 
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewError(0)
+	e := types2.NewError(0)
 	e.Add(fmt.Errorf("converter error"))
-	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{Snapshots: []*types2.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks: []*model.Block{&model.Block{
@@ -230,7 +229,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 		},
 		SbType: smartblock.SmartBlockTypePage,
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
 	//nolint:lll
@@ -260,7 +259,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 func Test_ImportExternalPlugin(t *testing.T) {
 	i := Import{}
 
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 
 	creator := mock_objectcreator.NewMockService(t)
 	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
@@ -311,7 +310,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 func Test_ImportExternalPluginError(t *testing.T) {
 	i := Import{}
 
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 
 	creator := mock_objectcreator.NewMockService(t)
 	i.oc = creator
@@ -331,13 +330,13 @@ func Test_ImportExternalPluginError(t *testing.T) {
 		SpaceId:               "space1",
 	}, objectorigin.Import(model.Import_Notion), nil)
 	assert.NotNil(t, res.Err)
-	assert.Contains(t, res.Err.Error(), common.ErrNoObjectsToImport.Error())
+	assert.Contains(t, res.Err.Error(), types2.ErrNoObjectsToImport.Error())
 	assert.Equal(t, int64(0), res.ObjectsCount)
 }
 
 func Test_ListImports(t *testing.T) {
 	i := Import{}
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters["Notion"] = pbc.New(nil, nil, nil)
 	creator := mock_objectcreator.NewMockService(t)
 	i.oc = creator
@@ -353,7 +352,7 @@ func Test_ListImports(t *testing.T) {
 
 func Test_ImportWebNoParser(t *testing.T) {
 	i := Import{}
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters[web.Name] = web.NewConverter()
 
 	creator := mock_objectcreator.NewMockService(t)
@@ -373,7 +372,7 @@ func Test_ImportWebFailedToParse(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters[web.Name] = web.NewConverter()
 	creator := mock_objectcreator.NewMockService(t)
 	i.oc = creator
@@ -401,7 +400,7 @@ func Test_ImportWebSuccess(t *testing.T) {
 	parsers.Parsers = []parsers.RegisterParser{}
 	ctrl := gomock.NewController(t)
 
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 
 	i.converters[web.Name] = web.NewConverter()
 
@@ -443,7 +442,7 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters[web.Name] = web.NewConverter()
 
 	creator := mock_objectcreator.NewMockService(t)
@@ -483,9 +482,9 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 func Test_ImportCancelError(t *testing.T) {
 	i := Import{}
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewCancelError(fmt.Errorf("converter error"))
-	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: nil}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
+	e := types2.NewCancelError(fmt.Errorf("converter error"))
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{Snapshots: nil}, e).Times(1)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters["Notion"] = converter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
@@ -501,15 +500,15 @@ func Test_ImportCancelError(t *testing.T) {
 	}, objectorigin.Import(model.Import_Notion), nil)
 
 	assert.NotNil(t, res.Err)
-	assert.True(t, errors.Is(res.Err, common.ErrCancel))
+	assert.True(t, errors.Is(res.Err, types2.ErrCancel))
 }
 
 func Test_ImportNoObjectToImportError(t *testing.T) {
 	i := Import{}
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_IGNORE_ERRORS)
-	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: nil}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
+	e := types2.NewFromError(types2.ErrNoObjectsToImport, pb.RpcObjectImportRequest_IGNORE_ERRORS)
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{Snapshots: nil}, e).Times(1)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters["Notion"] = converter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
@@ -525,14 +524,14 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 	}, objectorigin.Import(model.Import_Notion), nil)
 
 	assert.NotNil(t, res.Err)
-	assert.True(t, errors.Is(res.Err, common.ErrNoObjectsToImport))
+	assert.True(t, errors.Is(res.Err, types2.ErrNoObjectsToImport))
 }
 
 func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 	i := Import{}
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
-	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
+	e := types2.NewFromError(types2.ErrNoObjectsToImport, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{Snapshots: []*types2.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks: []*model.Block{&model.Block{
@@ -548,7 +547,7 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 			},
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters["Notion"] = converter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
@@ -564,14 +563,14 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 	}, objectorigin.Import(model.Import_Notion), nil)
 
 	assert.NotNil(t, res.Err)
-	assert.True(t, errors.Is(res.Err, common.ErrNoObjectsToImport))
+	assert.True(t, errors.Is(res.Err, types2.ErrNoObjectsToImport))
 }
 
 func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	i := Import{}
-	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_IGNORE_ERRORS)
+	e := types2.NewFromError(types2.ErrNoObjectsToImport, pb.RpcObjectImportRequest_IGNORE_ERRORS)
 	converter := mock_common.NewMockConverter(t)
-	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{Snapshots: []*types2.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks: []*model.Block{&model.Block{
@@ -588,7 +587,7 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 		},
 		SbType: smartblock.SmartBlockTypePage,
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
 	//nolint:lll
@@ -612,14 +611,14 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	}, objectorigin.Import(model.Import_Notion), nil)
 
 	assert.NotNil(t, res.Err)
-	assert.True(t, errors.Is(res.Err, common.ErrNoObjectsToImport))
+	assert.True(t, errors.Is(res.Err, types2.ErrNoObjectsToImport))
 }
 
 func Test_ImportErrLimitExceeded(t *testing.T) {
 	i := Import{}
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewFromError(common.ErrLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
-	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
+	e := types2.NewFromError(types2.ErrLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{Snapshots: []*types2.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks: []*model.Block{&model.Block{
@@ -636,7 +635,7 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 		},
 		SbType: smartblock.SmartBlockTypePage,
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters["Notion"] = converter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
@@ -652,14 +651,14 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 	}, objectorigin.Import(model.Import_Notion), nil)
 
 	assert.NotNil(t, res.Err)
-	assert.True(t, errors.Is(res.Err, common.ErrLimitExceeded))
+	assert.True(t, errors.Is(res.Err, types2.ErrLimitExceeded))
 }
 
 func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 	i := Import{}
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewFromError(common.ErrLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
-	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
+	e := types2.NewFromError(types2.ErrLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{Snapshots: []*types2.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks: []*model.Block{&model.Block{
@@ -676,7 +675,7 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 		},
 		SbType: smartblock.SmartBlockTypePage,
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
+	i.converters = make(map[string]types2.Converter, 0)
 	i.converters["Notion"] = converter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
@@ -692,14 +691,14 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 	}, objectorigin.Import(model.Import_Notion), nil)
 
 	assert.NotNil(t, res.Err)
-	assert.True(t, errors.Is(res.Err, common.ErrLimitExceeded))
+	assert.True(t, errors.Is(res.Err, types2.ErrLimitExceeded))
 }
 
 func TestImport_replaceRelationKeyWithNew(t *testing.T) {
 	t.Run("no matching relation id in oldIDToNew map", func(t *testing.T) {
 		// given
 		i := Import{}
-		option := &common.Snapshot{
+		option := &types2.Snapshot{
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{
 					Details: &types.Struct{
@@ -722,7 +721,7 @@ func TestImport_replaceRelationKeyWithNew(t *testing.T) {
 	t.Run("oldIDToNew map have relation id", func(t *testing.T) {
 		// given
 		i := Import{}
-		option := &common.Snapshot{
+		option := &types2.Snapshot{
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{
 					Details: &types.Struct{
@@ -746,7 +745,7 @@ func TestImport_replaceRelationKeyWithNew(t *testing.T) {
 	t.Run("no details", func(t *testing.T) {
 		// given
 		i := Import{}
-		option := &common.Snapshot{
+		option := &types2.Snapshot{
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{
 					Details: nil,
@@ -772,8 +771,8 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		originalRootCollectionID := "rootCollectionId"
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
-			Snapshots: []*common.Snapshot{
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{RootCollectionID: originalRootCollectionID,
+			Snapshots: []*types2.Snapshot{
 				{
 					Snapshot: &pb.ChangeSnapshot{},
 					Id:       originalRootCollectionID,
@@ -781,7 +780,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				},
 			},
 		}, nil).Times(1)
-		i.converters = make(map[string]common.Converter, 0)
+		i.converters = make(map[string]types2.Converter, 0)
 		i.converters["Notion"] = converter
 		creator := mock_objectcreator.NewMockService(t)
 		creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
@@ -820,8 +819,8 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		creatorError := errors.New("creator error")
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
-			Snapshots: []*common.Snapshot{
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{RootCollectionID: originalRootCollectionId,
+			Snapshots: []*types2.Snapshot{
 				{
 					Snapshot: &pb.ChangeSnapshot{},
 					Id:       originalRootCollectionId,
@@ -829,7 +828,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				},
 			},
 		}, nil).Times(1)
-		i.converters = make(map[string]common.Converter, 0)
+		i.converters = make(map[string]types2.Converter, 0)
 		i.converters["Notion"] = converter
 
 		creator := mock_objectcreator.NewMockService(t)
@@ -864,11 +863,11 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i := Import{}
 		expectedRootCollectionId := ""
 		originalRootCollectionId := "rootCollectionId"
-		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+		converterError := types2.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
-			Snapshots: []*common.Snapshot{
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{RootCollectionID: originalRootCollectionId,
+			Snapshots: []*types2.Snapshot{
 				{
 					Snapshot: &pb.ChangeSnapshot{},
 					Id:       originalRootCollectionId,
@@ -876,7 +875,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				},
 			},
 		}, converterError).Times(1)
-		i.converters = make(map[string]common.Converter, 0)
+		i.converters = make(map[string]types2.Converter, 0)
 		i.converters["Notion"] = converter
 
 		fileSync := mock_filesync.NewMockFileSync(t)
@@ -902,11 +901,11 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i := Import{}
 		expectedRootCollectionId := ""
 		originalRootCollectionId := "rootCollectionId"
-		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+		converterError := types2.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
-			Snapshots: []*common.Snapshot{
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&types2.Response{RootCollectionID: originalRootCollectionId,
+			Snapshots: []*types2.Snapshot{
 				{
 					Snapshot: &pb.ChangeSnapshot{},
 					Id:       originalRootCollectionId,
@@ -914,7 +913,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				},
 			},
 		}, converterError).Times(1)
-		i.converters = make(map[string]common.Converter, 0)
+		i.converters = make(map[string]types2.Converter, 0)
 		i.converters["Notion"] = converter
 
 		creator := mock_objectcreator.NewMockService(t)
@@ -951,7 +950,7 @@ func Test_getObjectId(t *testing.T) {
 		i := Import{}
 		oldIDToNew := make(map[string]string, 0)
 		createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, 0)
-		sn := &common.Snapshot{
+		sn := &types2.Snapshot{
 			Id: "oldId",
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{},
@@ -974,7 +973,7 @@ func Test_getObjectId(t *testing.T) {
 		i := Import{}
 		oldIDToNew := make(map[string]string, 0)
 		createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, 0)
-		sn := &common.Snapshot{
+		sn := &types2.Snapshot{
 			Id: "oldId",
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{
@@ -1000,7 +999,7 @@ func Test_getObjectId(t *testing.T) {
 		i := Import{}
 		oldIDToNew := make(map[string]string, 0)
 		createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, 0)
-		sn := &common.Snapshot{
+		sn := &types2.Snapshot{
 			Id: "oldId",
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{
@@ -1028,7 +1027,7 @@ func Test_getObjectId(t *testing.T) {
 		i := Import{}
 		oldIDToNew := make(map[string]string, 0)
 		createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, 0)
-		sn := &common.Snapshot{
+		sn := &types2.Snapshot{
 			Id: "oldId",
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{
