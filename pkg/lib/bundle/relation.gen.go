@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "e7b7dc1196702d61efece57fd1db120838fb3d3f40ca3ca5670092f609d56538"
+const RelationChecksum = "85e04a36ba5bab4d27a8dd74bfb1e074e8be9466cbd08f7e3102c88816719242"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -20,132 +20,92 @@ const (
 	RelationKeyRelationKey               domain.RelationKey = "relationKey"
 	RelationKeyRelationOptionColor       domain.RelationKey = "relationOptionColor"
 	RelationKeyLatestAclHeadId           domain.RelationKey = "latestAclHeadId"
-	RelationKeyInstructions              domain.RelationKey = "instructions"
 	RelationKeyDone                      domain.RelationKey = "done"
 	RelationKeyMediaArtistURL            domain.RelationKey = "mediaArtistURL"
 	RelationKeyTemplateIsBundled         domain.RelationKey = "templateIsBundled"
-	RelationKeyDateOfBirth               domain.RelationKey = "dateOfBirth"
 	RelationKeyRestrictions              domain.RelationKey = "restrictions"
 	RelationKeyReadersLimit              domain.RelationKey = "readersLimit"
 	RelationKeyWritersLimit              domain.RelationKey = "writersLimit"
 	RelationKeySharedSpacesLimit         domain.RelationKey = "sharedSpacesLimit"
 	RelationKeyIsHighlighted             domain.RelationKey = "isHighlighted"
-	RelationKeyThumbnailImage            domain.RelationKey = "thumbnailImage"
-	RelationKeyAttachments               domain.RelationKey = "attachments"
 	RelationKeyAudioArtist               domain.RelationKey = "audioArtist"
 	RelationKeyTasks                     domain.RelationKey = "tasks"
 	RelationKeySnippet                   domain.RelationKey = "snippet"
-	RelationKeyHypothesisAssumptions     domain.RelationKey = "hypothesisAssumptions"
 	RelationKeyRelationFormat            domain.RelationKey = "relationFormat"
 	RelationKeyRelationReadonlyValue     domain.RelationKey = "relationReadonlyValue"
 	RelationKeyIconImage                 domain.RelationKey = "iconImage"
 	RelationKeyIngredients               domain.RelationKey = "ingredients"
 	RelationKeyGenre                     domain.RelationKey = "genre"
-	RelationKeySolution                  domain.RelationKey = "solution"
 	RelationKeyReleasedYear              domain.RelationKey = "releasedYear"
 	RelationKeyCoverScale                domain.RelationKey = "coverScale"
-	RelationKeyTwitter                   domain.RelationKey = "twitter"
-	RelationKeyUserStories               domain.RelationKey = "userStories"
 	RelationKeyRelationDefaultValue      domain.RelationKey = "relationDefaultValue"
 	RelationKeyLinkedProjects            domain.RelationKey = "linkedProjects"
 	RelationKeyAudioAlbum                domain.RelationKey = "audioAlbum"
-	RelationKeyProblem                   domain.RelationKey = "problem"
 	RelationKeyLayoutAlign               domain.RelationKey = "layoutAlign"
-	RelationKeyClass                     domain.RelationKey = "class"
-	RelationKeyDifficulty                domain.RelationKey = "difficulty"
 	RelationKeyDirector                  domain.RelationKey = "director"
 	RelationKeyStatus                    domain.RelationKey = "status"
-	RelationKeyLogic                     domain.RelationKey = "logic"
-	RelationKeyAlternative               domain.RelationKey = "alternative"
-	RelationKeyLinkedContacts            domain.RelationKey = "linkedContacts"
-	RelationKeyRottenTomatoesRating      domain.RelationKey = "rottenTomatoesRating"
 	RelationKeyIsHidden                  domain.RelationKey = "isHidden"
 	RelationKeyIsHiddenDiscovery         domain.RelationKey = "isHiddenDiscovery"
-	RelationKeyAdditional                domain.RelationKey = "additional"
-	RelationKeyBudget                    domain.RelationKey = "budget"
 	RelationKeyMediaArtistName           domain.RelationKey = "mediaArtistName"
-	RelationKeyRating                    domain.RelationKey = "rating"
 	RelationKeyEmail                     domain.RelationKey = "email"
 	RelationKeyCompany                   domain.RelationKey = "company"
 	RelationKeyAperture                  domain.RelationKey = "aperture"
 	RelationKeyLastModifiedDate          domain.RelationKey = "lastModifiedDate"
 	RelationKeyStakeholders              domain.RelationKey = "stakeholders"
-	RelationKeyMeasureOfSuccess          domain.RelationKey = "measureOfSuccess"
 	RelationKeyRecommendedRelations      domain.RelationKey = "recommendedRelations"
 	RelationKeyCreator                   domain.RelationKey = "creator"
 	RelationKeyRecommendedLayout         domain.RelationKey = "recommendedLayout"
-	RelationKeyResult                    domain.RelationKey = "result"
-	RelationKeyReflection                domain.RelationKey = "reflection"
 	RelationKeyLastOpenedDate            domain.RelationKey = "lastOpenedDate"
 	RelationKeyAuthor                    domain.RelationKey = "author"
 	RelationKeyArtist                    domain.RelationKey = "artist"
 	RelationKeyDueDate                   domain.RelationKey = "dueDate"
-	RelationKeyRecords                   domain.RelationKey = "records"
 	RelationKeyIconEmoji                 domain.RelationKey = "iconEmoji"
 	RelationKeyCoverType                 domain.RelationKey = "coverType"
 	RelationKeyCoverY                    domain.RelationKey = "coverY"
 	RelationKeyTime                      domain.RelationKey = "time"
 	RelationKeySizeInBytes               domain.RelationKey = "sizeInBytes"
 	RelationKeyCollectionOf              domain.RelationKey = "collectionOf"
-	RelationKeyEvents                    domain.RelationKey = "events"
-	RelationKeyTimeframe                 domain.RelationKey = "timeframe"
 	RelationKeyIsReadonly                domain.RelationKey = "isReadonly"
 	RelationKeyAddedDate                 domain.RelationKey = "addedDate"
 	RelationKeyAssignee                  domain.RelationKey = "assignee"
 	RelationKeyExposure                  domain.RelationKey = "exposure"
 	RelationKeyTargetObjectType          domain.RelationKey = "targetObjectType"
-	RelationKeyMaterials                 domain.RelationKey = "materials"
 	RelationKeyIsFavorite                domain.RelationKey = "isFavorite"
-	RelationKeyStars                     domain.RelationKey = "stars"
 	RelationKeyWorkspaceId               domain.RelationKey = "workspaceId"
 	RelationKeySpaceId                   domain.RelationKey = "spaceId"
 	RelationKeyAudioGenre                domain.RelationKey = "audioGenre"
 	RelationKeyTelegram                  domain.RelationKey = "telegram"
-	RelationKeyTrailer                   domain.RelationKey = "trailer"
 	RelationKeyName                      domain.RelationKey = "name"
 	RelationKeyMood                      domain.RelationKey = "mood"
 	RelationKeyAudioLyrics               domain.RelationKey = "audioLyrics"
-	RelationKeyInstagram                 domain.RelationKey = "instagram"
-	RelationKeyClassType                 domain.RelationKey = "classType"
-	RelationKeyHowToReproduce            domain.RelationKey = "howToReproduce"
 	RelationKeyFocalRatio                domain.RelationKey = "focalRatio"
 	RelationKeyPriority                  domain.RelationKey = "priority"
 	RelationKeyFileMimeType              domain.RelationKey = "fileMimeType"
 	RelationKeyType                      domain.RelationKey = "type"
 	RelationKeyLayout                    domain.RelationKey = "layout"
 	RelationKeyAudioAlbumTrackNumber     domain.RelationKey = "audioAlbumTrackNumber"
-	RelationKeyPlaceOfBirth              domain.RelationKey = "placeOfBirth"
-	RelationKeyComposer                  domain.RelationKey = "composer"
 	RelationKeyInternalFlags             domain.RelationKey = "internalFlags"
 	RelationKeySocialProfile             domain.RelationKey = "socialProfile"
 	RelationKeyOccupation                domain.RelationKey = "occupation"
 	RelationKeyCoverX                    domain.RelationKey = "coverX"
 	RelationKeyDescription               domain.RelationKey = "description"
-	RelationKeyFacebook                  domain.RelationKey = "facebook"
 	RelationKeyPicture                   domain.RelationKey = "picture"
 	RelationKeyId                        domain.RelationKey = "id"
 	RelationKeyUrl                       domain.RelationKey = "url"
-	RelationKeyObjectives                domain.RelationKey = "objectives"
 	RelationKeyCameraIso                 domain.RelationKey = "cameraIso"
 	RelationKeyIsDeleted                 domain.RelationKey = "isDeleted"
 	RelationKeyLinks                     domain.RelationKey = "links"
-	RelationKeyServings                  domain.RelationKey = "servings"
-	RelationKeyCategory                  domain.RelationKey = "category"
 	RelationKeyCoverId                   domain.RelationKey = "coverId"
 	RelationKeyLastModifiedBy            domain.RelationKey = "lastModifiedBy"
 	RelationKeyRelationMaxCount          domain.RelationKey = "relationMaxCount"
-	RelationKeyQuestions                 domain.RelationKey = "questions"
 	RelationKeyWidthInPixels             domain.RelationKey = "widthInPixels"
 	RelationKeyProgress                  domain.RelationKey = "progress"
 	RelationKeySetOf                     domain.RelationKey = "setOf"
-	RelationKeyGender                    domain.RelationKey = "gender"
 	RelationKeyIsArchived                domain.RelationKey = "isArchived"
 	RelationKeyFileExt                   domain.RelationKey = "fileExt"
 	RelationKeyScope                     domain.RelationKey = "scope"
-	RelationKeyJob                       domain.RelationKey = "job"
 	RelationKeyFeaturedRelations         domain.RelationKey = "featuredRelations"
 	RelationKeyPhone                     domain.RelationKey = "phone"
-	RelationKeyImdbRating                domain.RelationKey = "imdbRating"
 	RelationKeySmartblockTypes           domain.RelationKey = "smartblockTypes"
 	RelationKeySource                    domain.RelationKey = "source"
 	RelationKeySourceObject              domain.RelationKey = "sourceObject"
@@ -204,32 +164,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyAdditional: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_bradditional",
-			Key:              "additional",
-			MaxCount:         1,
-			Name:             "Additional",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyAlternative: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_bralternative",
-			Key:              "alternative",
-			MaxCount:         1,
-			Name:             "Alternative",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyAperture: {
 
 			DataSource:       model.Relation_details,
@@ -268,19 +202,6 @@ var (
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Revision:         1,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyAttachments: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_file,
-			Id:               "_brattachments",
-			Key:              "attachments",
-			Name:             "Attachments",
-			ObjectTypes:      []string{TypePrefix + "file", TypePrefix + "image", TypePrefix + "video", TypePrefix + "audio"},
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyAudioAlbum: {
@@ -375,19 +296,6 @@ var (
 			Revision:         3,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyBudget: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_number,
-			Id:               "_brbudget",
-			Key:              "budget",
-			MaxCount:         1,
-			Name:             "Budget",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyCamera: {
 
 			DataSource:       model.Relation_details,
@@ -414,42 +322,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyCategory: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_tag,
-			Id:               "_brcategory",
-			Key:              "category",
-			Name:             "Category",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyClass: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_object,
-			Id:               "_brclass",
-			Key:              "class",
-			Name:             "Class",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyClassType: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_tag,
-			Id:               "_brclassType",
-			Key:              "classType",
-			Name:             "Class type",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyCollectionOf: {
 
 			DataSource:       model.Relation_details,
@@ -472,19 +344,6 @@ var (
 			Key:              "company",
 			MaxCount:         1,
 			Name:             "Company",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyComposer: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brcomposer",
-			Key:              "composer",
-			MaxCount:         1,
-			Name:             "Composer",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -586,19 +445,6 @@ var (
 			Revision:         1,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyDateOfBirth: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_date,
-			Id:               "_brdateOfBirth",
-			Key:              "dateOfBirth",
-			MaxCount:         1,
-			Name:             "Birthday",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyDefaultTemplateId: {
 
 			DataSource:       model.Relation_details,
@@ -622,19 +468,6 @@ var (
 			Key:              "description",
 			MaxCount:         1,
 			Name:             "Description",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyDifficulty: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_number,
-			Id:               "_brdifficulty",
-			Key:              "difficulty",
-			MaxCount:         1,
-			Name:             "Difficulty",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -691,18 +524,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyEvents: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_object,
-			Id:               "_brevents",
-			Key:              "events",
-			Name:             "Events",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyExposure: {
 
 			DataSource:       model.Relation_details,
@@ -712,19 +533,6 @@ var (
 			Key:              "exposure",
 			MaxCount:         1,
 			Name:             "Camera exposure",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyFacebook: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_url,
-			Id:               "_brfacebook",
-			Key:              "facebook",
-			MaxCount:         1,
-			Name:             "Facebook",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -838,19 +646,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyGender: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_status,
-			Id:               "_brgender",
-			Key:              "gender",
-			MaxCount:         1,
-			Name:             "Gender",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyGenre: {
 
 			DataSource:       model.Relation_details,
@@ -885,32 +680,6 @@ var (
 			Key:              "heightInPixels",
 			MaxCount:         1,
 			Name:             "Height",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyHowToReproduce: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brhowToReproduce",
-			Key:              "howToReproduce",
-			MaxCount:         1,
-			Name:             "How-to reproduce",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyHypothesisAssumptions: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brhypothesisAssumptions",
-			Key:              "hypothesisAssumptions",
-			MaxCount:         1,
-			Name:             "Hypothesis & assumptions",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1014,19 +783,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyImdbRating: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_number,
-			Id:               "_brimdbRating",
-			Key:              "imdbRating",
-			MaxCount:         1,
-			Name:             "IMDb rating",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyImportType: {
 
 			DataSource:       model.Relation_details,
@@ -1049,32 +805,6 @@ var (
 			Key:              "ingredients",
 			MaxCount:         1,
 			Name:             "Ingredients",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyInstagram: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_url,
-			Id:               "_brinstagram",
-			Key:              "instagram",
-			MaxCount:         1,
-			Name:             "Instagram",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyInstructions: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brinstructions",
-			Key:              "instructions",
-			MaxCount:         1,
-			Name:             "Instructions",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1218,19 +948,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyJob: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brjob",
-			Key:              "job",
-			MaxCount:         1,
-			Name:             "Job",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyLastChangeId: {
 
 			DataSource:       model.Relation_derived,
@@ -1342,18 +1059,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyLinkedContacts: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_object,
-			Id:               "_brlinkedContacts",
-			Key:              "linkedContacts",
-			Name:             "Linked Contacts",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyLinkedProjects: {
 
 			DataSource:       model.Relation_details,
@@ -1378,45 +1083,6 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Revision:         3,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyLogic: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brlogic",
-			Key:              "logic",
-			MaxCount:         1,
-			Name:             "Logic",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyMaterials: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brmaterials",
-			Key:              "materials",
-			MaxCount:         1,
-			Name:             "Materials",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyMeasureOfSuccess: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brmeasureOfSuccess",
-			Key:              "measureOfSuccess",
-			MaxCount:         1,
-			Name:             "Measure of success",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyMediaArtistName: {
@@ -1469,19 +1135,6 @@ var (
 			Key:              "name",
 			MaxCount:         1,
 			Name:             "Name",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyObjectives: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brobjectives",
-			Key:              "objectives",
-			MaxCount:         1,
-			Name:             "Objectives",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1582,19 +1235,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyPlaceOfBirth: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brplaceOfBirth",
-			Key:              "placeOfBirth",
-			MaxCount:         1,
-			Name:             "Place of birth",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyPriority: {
 
 			DataSource:       model.Relation_details,
@@ -1604,19 +1244,6 @@ var (
 			Key:              "priority",
 			MaxCount:         1,
 			Name:             "Priority",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyProblem: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brproblem",
-			Key:              "problem",
-			MaxCount:         1,
-			Name:             "Problem",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1643,32 +1270,6 @@ var (
 			Key:              "progress",
 			MaxCount:         1,
 			Name:             "Progress",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyQuestions: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brquestions",
-			Key:              "questions",
-			MaxCount:         1,
-			Name:             "Questions",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyRating: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brrating",
-			Key:              "rating",
-			MaxCount:         1,
-			Name:             "Rating",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1711,32 +1312,6 @@ var (
 			Key:              "recommendedRelations",
 			Name:             "Recommended relations",
 			ObjectTypes:      []string{TypePrefix + "relation"},
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyRecords: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brrecords",
-			Key:              "records",
-			MaxCount:         1,
-			Name:             "Records",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyReflection: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_checkbox,
-			Id:               "_brreflection",
-			Key:              "reflection",
-			MaxCount:         1,
-			Name:             "Reflection",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1862,19 +1437,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyResult: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brresult",
-			Key:              "result",
-			MaxCount:         1,
-			Name:             "Result",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyRevision: {
 
 			DataSource:       model.Relation_details,
@@ -1889,19 +1451,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyRottenTomatoesRating: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_number,
-			Id:               "_brrottenTomatoesRating",
-			Key:              "rottenTomatoesRating",
-			MaxCount:         1,
-			Name:             "Rotten Tomatoes rating",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyScope: {
 
 			DataSource:       model.Relation_details,
@@ -1911,19 +1460,6 @@ var (
 			Key:              "scope",
 			MaxCount:         1,
 			Name:             "Scope",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyServings: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_number,
-			Id:               "_brservings",
-			Key:              "servings",
-			MaxCount:         1,
-			Name:             "Servings",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2004,19 +1540,6 @@ var (
 			Key:              "socialProfile",
 			MaxCount:         1,
 			Name:             "Profile in social media",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeySolution: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brsolution",
-			Key:              "solution",
-			MaxCount:         1,
-			Name:             "Solution",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2227,18 +1750,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyStars: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_object,
-			Id:               "_brstars",
-			Key:              "stars",
-			Name:             "Stars",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyStatus: {
 
 			DataSource:       model.Relation_details,
@@ -2375,19 +1886,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyThumbnailImage: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_file,
-			Id:               "_brthumbnailImage",
-			Key:              "thumbnailImage",
-			Name:             "Thumbnail image",
-			ObjectTypes:      []string{TypePrefix + "image"},
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyTime: {
 
 			DataSource:       model.Relation_details,
@@ -2397,19 +1895,6 @@ var (
 			Key:              "time",
 			MaxCount:         1,
 			Name:             "Time",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyTimeframe: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brtimeframe",
-			Key:              "timeframe",
-			MaxCount:         1,
-			Name:             "Timeframe",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2425,32 +1910,6 @@ var (
 			MaxCount:         1,
 			Name:             "Date to delete",
 			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyTrailer: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_file,
-			Id:               "_brtrailer",
-			Key:              "trailer",
-			Name:             "Trailer",
-			ObjectTypes:      []string{TypePrefix + "file", TypePrefix + "image", TypePrefix + "video", TypePrefix + "audio"},
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyTwitter: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_url,
-			Id:               "_brtwitter",
-			Key:              "twitter",
-			MaxCount:         1,
-			Name:             "Twitter",
-			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -2491,19 +1950,6 @@ var (
 			Key:              "url",
 			MaxCount:         1,
 			Name:             "URL",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyUserStories: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_bruserStories",
-			Key:              "userStories",
-			MaxCount:         1,
-			Name:             "User stories",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
