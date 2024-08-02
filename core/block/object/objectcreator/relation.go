@@ -32,7 +32,7 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 		return "", nil, fmt.Errorf("missing relation name")
 	}
 
-	object = details.ShallowCopy()
+	object = details.Copy()
 	key := domain.RelationKey(details.GetString(bundle.RelationKeyRelationKey))
 	if key == "" {
 		key = domain.RelationKey(bson.NewObjectId().Hex())

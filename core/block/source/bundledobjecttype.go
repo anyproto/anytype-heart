@@ -77,7 +77,7 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver
 		s.AddRelationLinks(&model.RelationLink{Format: r.Format, Key: r.Key})
 	}
 	s.SetDetails(d)
-	s.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, int64(model.ObjectOrigin_builtin))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, domain.Int64(model.ObjectOrigin_builtin))
 	s.SetObjectTypeKey(bundle.TypeKeyObjectType)
 	return s, nil
 }

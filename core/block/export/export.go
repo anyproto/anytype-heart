@@ -435,7 +435,7 @@ func (e *export) writeMultiDoc(ctx context.Context,
 					if err != nil {
 						return fmt.Errorf("save file: %w", err)
 					}
-					st.SetDetailAndBundledRelation(bundle.RelationKeySource, fileName)
+					st.SetDetailAndBundledRelation(bundle.RelationKeySource, domain.String(fileName))
 				}
 				if err = mw.Add(b.Space(), st); err != nil {
 					return err
@@ -472,7 +472,7 @@ func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportReques
 			if err != nil {
 				return fmt.Errorf("save file: %w", err)
 			}
-			st.SetDetailAndBundledRelation(bundle.RelationKeySource, fileName)
+			st.SetDetailAndBundledRelation(bundle.RelationKeySource, domain.String(fileName))
 			// Don't save file objects in markdown
 			if req.Format == model.Export_Markdown {
 				return nil

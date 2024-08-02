@@ -9,10 +9,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-type Tombstone struct{}
-
 type GenericMap[K ~string] struct {
-	data map[K]any
+	data map[K]Value
 }
 
 type Details = GenericMap[RelationKey]
@@ -20,19 +18,20 @@ type Details = GenericMap[RelationKey]
 // TODO Helpers for frequent fields like id, spaceId, etc?
 
 func NewDetails() *Details {
-	return &GenericMap[RelationKey]{data: make(map[RelationKey]any, 20)}
+	return &GenericMap[RelationKey]{data: make(map[RelationKey]Value, 20)}
 }
 
 func NewDetailsFromProto(st *types.Struct) *Details {
-	data := make(map[RelationKey]any, len(st.GetFields()))
+	data := make(map[RelationKey]Value, len(st.GetFields()))
+	d := &GenericMap[RelationKey]{data: data}
 	for k, v := range st.GetFields() {
-		data[RelationKey(k)] = pbtypes.ProtoToAny(v)
+		d.SetProtoValue(RelationKey(k), v)
 	}
-	return &GenericMap[RelationKey]{data: data}
+	return d
 }
 
 func NewDetailsWithSize(size int) *Details {
-	return &GenericMap[RelationKey]{data: make(map[RelationKey]any, size)}
+	return &GenericMap[RelationKey]{data: make(map[RelationKey]Value, size)}
 }
 
 func (d *GenericMap[K]) ToProto() *types.Struct {
@@ -129,15 +128,13 @@ func jsonValueToAny(d *Details, key RelationKey, val *fastjson.Value) error {
 			return fmt.Errorf("unsupported array type %s", firstVal.Type())
 		}
 	}
-	// TODO Fix nulls
-	d.SetUnsafe(key, nil)
+	d.Set(key, Null())
 	return nil
-	// return fmt.Errorf("unsupported type %s", val.Type())
 }
 
 func ProtoToJson(arena *fastjson.Arena, details *Details) *fastjson.Value {
 	obj := arena.NewObject()
-	details.Iterate(func(k RelationKey, v any) bool {
+	details.Iterate(func(k RelationKey, v Value) bool {
 		obj.Set(string(k), ProtoValueToJson(arena, v))
 		return true
 	})
@@ -192,30 +189,31 @@ func StructDiff(st1, st2 *Details) *Details {
 	}
 	if st2 == nil {
 		diff = NewDetails()
-		st1.Iterate(func(k RelationKey, v any) bool {
-			diff.SetUnsafe(k, Tombstone{})
+		st1.Iterate(func(k RelationKey, v Value) bool {
+			// TODO This is not correct, Null value could be a valid value. Just rewrite this diff and generate events logic
+			diff.Set(k, Null())
 			return true
 		})
 		return diff
 	}
 
-	st2.Iterate(func(k2 RelationKey, v2 any) bool {
+	st2.Iterate(func(k2 RelationKey, v2 Value) bool {
 		v1 := st1.Get(k2)
 		if !v1.Ok() || !v1.EqualAny(v2) {
 			if diff == nil {
 				diff = NewDetails()
 			}
-			diff.SetUnsafe(k2, v2)
+			diff.Set(k2, v2)
 		}
 		return true
 	})
 
-	st1.Iterate(func(k RelationKey, _ any) bool {
+	st1.Iterate(func(k RelationKey, _ Value) bool {
 		if !st2.Has(k) {
 			if diff == nil {
 				diff = NewDetails()
 			}
-			diff.SetUnsafe(k, Tombstone{})
+			diff.Set(k, Null())
 		}
 		return true
 	})

@@ -330,6 +330,6 @@ func (s *ownProfileSubscription) getDetails(ctx context.Context) (identity strin
 	s.detailsLock.Lock()
 	defer s.detailsLock.Unlock()
 
-	detailsCopy := s.details.ShallowCopy()
+	detailsCopy := s.details.Copy()
 	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), detailsCopy
 }

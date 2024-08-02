@@ -31,7 +31,7 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
 
-	object = details.ShallowCopy()
+	object = details.Copy()
 	object.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
 

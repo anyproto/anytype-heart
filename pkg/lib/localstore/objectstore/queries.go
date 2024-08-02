@@ -88,7 +88,7 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 			RelationDetails: relDetails,
 		}
 
-		detailsCopy := rec.Details.ShallowCopy()
+		detailsCopy := rec.Details.Copy()
 		// set the same score as original object
 		detailsCopy.SetFloat(database.RecordScoreField, score)
 		injectedResults = append(injectedResults, database.Record{

@@ -864,7 +864,7 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.ModifyDetails(req.ContextId, func(current *domain.Details) (*domain.Details, error) {
-			d := current.ShallowCopy()
+			d := current.Copy()
 			return internalflag.PutToDetails(d, req.InternalFlags), nil
 		})
 	})

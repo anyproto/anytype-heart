@@ -213,7 +213,7 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	prevDetails := st.CombinedDetails()
 
 	keys := make([]domain.RelationKey, 0, details.Len())
-	details.Iterate(func(k domain.RelationKey, _ any) bool {
+	details.Iterate(func(k domain.RelationKey, _ domain.Value) bool {
 		keys = append(keys, k)
 		return true
 	})
@@ -289,7 +289,7 @@ func (ind *indexer) addBlocks(st *state.State, details *domain.Details, objectId
 
 	switch fileType {
 	case model.BlockContentFile_Image:
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, objectId)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(objectId))
 
 		if details.GetInt64(bundle.RelationKeyWidthInPixels) != 0 {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyWidthInPixels))

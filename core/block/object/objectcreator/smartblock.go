@@ -73,7 +73,7 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	}
 	sbType := objectTypeKeysToSmartBlockType(objectTypeKeys)
 
-	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, spc.Id())
+	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(spc.Id()))
 
 	ev := &metrics.CreateObjectEvent{
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
@@ -181,11 +181,11 @@ func generateRelationKeysFromState(st *state.State) (relationKeys []domain.Relat
 	details := st.Details()
 	localDetails := st.LocalDetails()
 	relationKeys = make([]domain.RelationKey, 0, details.Len()+localDetails.Len())
-	details.Iterate(func(k domain.RelationKey, _ any) bool {
+	details.Iterate(func(k domain.RelationKey, _ domain.Value) bool {
 		relationKeys = append(relationKeys, k)
 		return true
 	})
-	localDetails.Iterate(func(k domain.RelationKey, _ any) bool {
+	localDetails.Iterate(func(k domain.RelationKey, _ domain.Value) bool {
 		relationKeys = append(relationKeys, k)
 		return true
 	})

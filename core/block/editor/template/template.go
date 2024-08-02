@@ -98,20 +98,20 @@ var WithObjectTypesAndLayout = func(otypes []domain.TypeKey, layout model.Object
 		}
 
 		if !s.Details().Has(bundle.RelationKeyLayout) {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, float64(layout))
+			s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(layout))
 		}
 	}
 }
 
 var WithLayout = func(layout model.ObjectTypeLayout) StateTransformer {
-	return WithDetail(bundle.RelationKeyLayout, float64(layout))
+	return WithDetail(bundle.RelationKeyLayout, domain.Int64(layout))
 }
 
 var WithDetailName = func(name string) StateTransformer {
-	return WithDetail(bundle.RelationKeyName, name)
+	return WithDetail(bundle.RelationKeyName, domain.String(name))
 }
 
-var WithDetail = func(key domain.RelationKey, value any) StateTransformer {
+var WithDetail = func(key domain.RelationKey, value domain.Value) StateTransformer {
 	return func(s *state.State) {
 		if s.Details() == nil || !s.Details().Has(key) {
 			s.SetDetailAndBundledRelation(key, value)
@@ -119,7 +119,7 @@ var WithDetail = func(key domain.RelationKey, value any) StateTransformer {
 	}
 }
 
-var WithForcedDetail = func(key domain.RelationKey, value any) StateTransformer {
+var WithForcedDetail = func(key domain.RelationKey, value domain.Value) StateTransformer {
 	return func(s *state.State) {
 		if s.Details() == nil || !s.Details().Has(key) || !s.Details().Get(key).EqualAny(value) {
 			s.SetDetailAndBundledRelation(key, value)
@@ -128,7 +128,7 @@ var WithForcedDetail = func(key domain.RelationKey, value any) StateTransformer 
 }
 
 var WithDetailIconEmoji = func(iconEmoji string) StateTransformer {
-	return WithDetail(bundle.RelationKeyIconEmoji, iconEmoji)
+	return WithDetail(bundle.RelationKeyIconEmoji, domain.String(iconEmoji))
 }
 
 var RequireHeader = StateTransformer(func(s *state.State) {
@@ -232,17 +232,17 @@ var WithDefaultFeaturedRelations = func(s *state.State) {
 		case model.ObjectType_collection:
 			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyBacklinks.String()}
 		}
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, fr)
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(fr))
 	}
 }
 
 var WithAddedFeaturedRelation = func(key domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
-		var featRels = s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
+		featRels := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 		if slice.FindPos(featRels, key.String()) > -1 {
 			return
 		} else {
-			s.SetDetail(bundle.RelationKeyFeaturedRelations, append(featRels, key.String()))
+			s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(append(featRels, key.String())))
 		}
 	}
 }
@@ -251,7 +251,7 @@ var WithRemovedFeaturedRelation = func(key domain.RelationKey) StateTransformer 
 	return func(s *state.State) {
 		var featRels = s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 		if slice.FindPos(featRels, key.String()) > -1 {
-			s.SetDetail(bundle.RelationKeyFeaturedRelations, slice.RemoveMut(featRels, key.String()))
+			s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(slice.RemoveMut(featRels, key.String())))
 			return
 		}
 	}
@@ -265,7 +265,7 @@ var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.Sta
 		copy(frc, fr)
 
 		frc = slice.RemoveMut(frc, bundle.RelationKeyCreator.String())
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, frc)
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(frc))
 	}
 })
 
@@ -556,7 +556,7 @@ func makeRelationBlock(k string) *model.Block {
 var WithBookmarkBlocks = func(s *state.State) {
 	if !s.HasRelation(bundle.RelationKeySource.String()) && s.HasRelation(bundle.RelationKeyUrl.String()) {
 		url := s.Details().GetString(bundle.RelationKeyUrl)
-		s.SetDetailAndBundledRelation(bundle.RelationKeySource, url)
+		s.SetDetailAndBundledRelation(bundle.RelationKeySource, domain.String(url))
 	}
 
 	for _, oldRel := range oldBookmarkRelationBlocks {
@@ -571,7 +571,7 @@ var WithBookmarkBlocks = func(s *state.State) {
 
 	if slice.FindPos(fr, bundle.RelationKeyCreatedDate.String()) == -1 {
 		fr = append(fr, bundle.RelationKeyCreatedDate.String())
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, fr)
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(fr))
 	}
 
 	for _, k := range bookmarkRelationKeys {

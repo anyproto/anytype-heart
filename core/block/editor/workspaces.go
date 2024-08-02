@@ -78,10 +78,10 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,
-		template.WithDetail(bundle.RelationKeyIsHidden, true),
-		template.WithForcedDetail(bundle.RelationKeyLayout, float64(model.ObjectType_space)),
+		template.WithDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
+		template.WithForcedDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_space)),
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
-		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, []string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}),
+		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 	)
 }
 
@@ -97,8 +97,8 @@ func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migrati
 
 func (w *Workspaces) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
 	st := w.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, fileCid)
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, fileKey)
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, domain.String(fileCid))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, domain.String(fileKey))
 	return w.Apply(st)
 }
 
@@ -127,6 +127,6 @@ func (w *Workspaces) onApply(info smartblock.ApplyInfo) error {
 }
 
 func (w *Workspaces) onWorkspaceChanged(state *state.State) {
-	details := state.CombinedDetails().ShallowCopy()
+	details := state.CombinedDetails().Copy()
 	w.spaceService.OnWorkspaceChanged(w.SpaceID(), details)
 }

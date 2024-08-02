@@ -29,7 +29,7 @@ func (s *service) createSet(ctx context.Context, space clientspace.Space, req cr
 
 	newState := state.NewDoc("", nil).NewState()
 	if len(req.Source) > 0 {
-		newState.SetDetailAndBundledRelation(bundle.RelationKeySetOf, req.Source)
+		newState.SetDetailAndBundledRelation(bundle.RelationKeySetOf, domain.StringList(req.Source))
 	}
 	newState.AddDetails(req.Details)
 	newState.BlocksInit(newState)

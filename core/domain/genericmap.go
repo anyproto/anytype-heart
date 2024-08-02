@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -18,44 +19,35 @@ func (d *GenericMap[K]) Len() int {
 	return len(d.data)
 }
 
-func (d *GenericMap[K]) SetUnsafe(key K, value any) {
+func (d *GenericMap[K]) Set(key K, value Value) {
 	// TODO Convert number value to float, convert number list value to floats
-
-	// TODO TEMP panic
-	v := SomeValue(value)
-	if err := v.Validate(); err != nil {
-		panic(err)
-	}
-	if v, ok := value.(int64); ok {
-		value = float64(v)
-	}
 	d.data[key] = value
 }
 
 // TODO Return itself in case someone want to use chaining
 func (d *GenericMap[K]) SetBool(key K, value bool) {
-	d.data[key] = value
+	d.data[key] = Bool(value)
 }
 
 func (d *GenericMap[K]) SetString(key K, value string) *GenericMap[K] {
-	d.data[key] = value
+	d.data[key] = String(value)
 	return d
 }
 
 func (d *GenericMap[K]) SetInt64(key K, value int64) {
-	d.data[key] = float64(value)
+	d.data[key] = Int64(value)
 }
 
 func (d *GenericMap[K]) SetFloat(key K, value float64) {
-	d.data[key] = value
+	d.data[key] = Float(value)
 }
 
 func (d *GenericMap[K]) SetStringList(key K, value []string) {
-	d.data[key] = value
+	d.data[key] = StringList(value)
 }
 
 func (d *GenericMap[K]) SetFloatList(key K, value []float64) {
-	d.data[key] = value
+	d.data[key] = FloatList(value)
 }
 
 func (d *GenericMap[K]) SetProtoValue(key K, value *types.Value) {
@@ -97,7 +89,7 @@ func (d *GenericMap[K]) Keys() []K {
 	return keys
 }
 
-func (d *GenericMap[K]) Iterate(proc func(key K, value any) bool) {
+func (d *GenericMap[K]) Iterate(proc func(key K, value Value) bool) {
 	if d == nil {
 		return
 	}
@@ -117,8 +109,8 @@ func (d *GenericMap[K]) Get(key K) Value {
 	if d == nil {
 		return Value{}
 	}
-	v, ok := d.data[key]
-	return Value{ok, v}
+	// Empty Value is ok to use
+	return d.data[key]
 }
 
 func (d *GenericMap[K]) Has(key K) bool {
@@ -178,11 +170,11 @@ func (d *GenericMap[K]) GetFloatList(key K) []float64 {
 	return d.Get(key).FloatListOrDefault(nil)
 }
 
-func (d *GenericMap[K]) ShallowCopy() *GenericMap[K] {
+func (d *GenericMap[K]) Copy() *GenericMap[K] {
 	if d == nil {
 		return nil
 	}
-	newData := make(map[K]any, len(d.data))
+	newData := make(map[K]Value, len(d.data))
 	for k, v := range d.data {
 		newData[k] = v
 	}
@@ -193,7 +185,7 @@ func (d *GenericMap[K]) CopyWithoutKeys(keys ...K) *GenericMap[K] {
 	if d == nil {
 		return nil
 	}
-	newData := make(map[K]any, len(d.data))
+	newData := make(map[K]Value, len(d.data))
 	for k, v := range d.data {
 		if !slices.Contains(keys, k) {
 			newData[k] = v
@@ -206,7 +198,7 @@ func (d *GenericMap[K]) CopyOnlyKeys(keys ...K) *GenericMap[K] {
 	if d == nil {
 		return nil
 	}
-	newData := make(map[K]any, len(d.data))
+	newData := make(map[K]Value, len(d.data))
 	for k, v := range d.data {
 		if slices.Contains(keys, k) {
 			newData[k] = v
@@ -241,13 +233,15 @@ func (d *GenericMap[K]) Merge(other *GenericMap[K]) *GenericMap[K] {
 	if d == nil {
 		return nil
 	}
-	res := d.ShallowCopy()
-	other.Iterate(func(k K, v any) bool {
-		res.SetUnsafe(k, v)
+	res := d.Copy()
+	other.Iterate(func(k K, v Value) bool {
+		res.Set(k, v)
 		return true
 	})
 	return res
 }
+
+type nullValue struct{}
 
 type Value struct {
 	ok    bool
@@ -258,6 +252,7 @@ type ValueType int
 
 const (
 	ValueTypeNone ValueType = iota
+	ValueTypeNull
 	ValueTypeBool
 	ValueTypeString
 	ValueTypeFloat
@@ -265,17 +260,45 @@ const (
 	ValueTypeFloatList
 )
 
-func Int64(v int64) Value {
+func Null() Value {
+	return Value{ok: true, value: nullValue{}}
+}
+
+func Int64[T constraints.Integer](v T) Value {
 	return Value{ok: true, value: float64(v)}
 }
 
+func Float(v float64) Value {
+	return Value{ok: true, value: v}
+}
+
+func Bool(v bool) Value {
+	return Value{ok: true, value: v}
+}
+
+func String(v string) Value {
+	return Value{ok: true, value: v}
+}
+
+func StringList(v []string) Value {
+	return Value{ok: true, value: v}
+}
+
+func FloatList(v []float64) Value {
+	return Value{ok: true, value: v}
+}
+
+// TODO Remove!
 func SomeValue(value any) Value {
 	return Value{ok: true, value: value}
 }
 
 var ErrInvalidValue = fmt.Errorf("invalid value")
 
+// TODO Remove, value should be always valid
 func (v Value) Validate() error {
+	return nil
+
 	if !v.ok {
 		return errors.Join(ErrInvalidValue, fmt.Errorf("value is none"))
 	}
@@ -312,6 +335,14 @@ func (v Value) IsFloatList() bool {
 		return false
 	}
 	_, ok := v.value.([]float64)
+	return ok
+}
+
+func (v Value) Null() bool {
+	if !v.ok {
+		return false
+	}
+	_, ok := v.value.(nullValue)
 	return ok
 }
 
@@ -451,6 +482,8 @@ func (v Value) Type() ValueType {
 		return ValueTypeNone
 	}
 	switch v.value.(type) {
+	case nullValue:
+		return ValueTypeNull
 	case bool:
 		return ValueTypeBool
 	case string:
@@ -482,6 +515,14 @@ func (v Value) Compare(other Value) int {
 	}
 	if v.Type() > other.Type() {
 		return 1
+	}
+
+	{
+		// Two null values are always equal
+		ok := v.Null()
+		if ok {
+			return 0
+		}
 	}
 
 	{

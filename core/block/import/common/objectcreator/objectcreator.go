@@ -96,7 +96,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 
 	oc.injectImportDetails(sn, origin)
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot.ToProto(), state.WithUniqueKeyMigration(sn.Snapshot.SbType)).(*state.State)
-	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, snapshot.Details.GetInt64(bundle.RelationKeyLastModifiedDate))
+	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, snapshot.Details.Get(bundle.RelationKeyLastModifiedDate))
 
 	var filesToDelete []string
 	defer func() {
@@ -539,7 +539,7 @@ func (oc *ObjectCreator) getExistingWidgetsTargetIDs(oldState *state.State) (map
 }
 
 func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]string) {
-	st.Details().Iterate(func(key domain.RelationKey, value any) bool {
+	st.Details().Iterate(func(key domain.RelationKey, value domain.Value) bool {
 		if newKey, ok := oldIDtoNew[string(key)]; ok {
 			st.SetDetail(domain.RelationKey(newKey), value)
 			st.RemoveRelation(key)

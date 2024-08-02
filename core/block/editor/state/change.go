@@ -125,9 +125,9 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 
 func (s *State) SetLastModified(ts int64, identityLink string) {
 	if ts > 0 {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedDate, ts)
+		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedDate, domain.Int64(ts))
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, identityLink)
+	s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, domain.String(identityLink))
 }
 
 func (s *State) SetChangeId(id string) {
@@ -268,7 +268,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// set.Value = shortenValueToLimit(s.rootId, set.Key, set.Value)
 	if s.details == nil {
-		s.details = det.ShallowCopy()
+		s.details = det.Copy()
 	}
 	if set.Value != nil {
 		s.details.SetProtoValue(domain.RelationKey(set.Key), set.Value)
@@ -284,7 +284,7 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 		det = domain.NewDetails()
 	}
 	if s.details == nil {
-		s.details = det.ShallowCopy()
+		s.details = det.Copy()
 	}
 	s.details.Delete(domain.RelationKey(unset.Key))
 	return nil
@@ -732,7 +732,7 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	}
 	curDetails := s.Details()
 
-	curDetails.Iterate(func(k domain.RelationKey, v any) bool {
+	curDetails.Iterate(func(k domain.RelationKey, v domain.Value) bool {
 		prevValue := prev.Get(k)
 		if !prevValue.Ok() || !prevValue.EqualAny(v) {
 			ch = append(ch, &pb.ChangeContent{
@@ -744,7 +744,7 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 		return true
 	})
 
-	prev.Iterate(func(k domain.RelationKey, v any) bool {
+	prev.Iterate(func(k domain.RelationKey, v domain.Value) bool {
 		if !curDetails.Has(k) {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsUnset{

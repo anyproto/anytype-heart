@@ -77,7 +77,7 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 	if err != nil {
 		return nil, err
 	}
-	d.Iterate(func(k domain.RelationKey, v any) bool {
+	d.Iterate(func(k domain.RelationKey, v domain.Value) bool {
 		s.SetDetailAndBundledRelation(k, v)
 		return true
 	})

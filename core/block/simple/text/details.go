@@ -67,13 +67,13 @@ func (td *textDetails) ApplyToDetails(prevBlock simple.Block, s simple.DetailsSe
 
 	if td.keys.Text != "" {
 		if prev == nil && !s.Details().Has(td.keys.Text) || prev != nil && prev.GetText() != td.GetText() {
-			s.SetDetail(td.keys.Text, td.GetText())
+			s.SetDetail(td.keys.Text, domain.String(td.GetText()))
 			ok = true
 		}
 	}
 	if td.keys.Checked != "" {
 		if prev == nil && !s.Details().Has(td.keys.Text) || prev != nil && prev.GetChecked() != td.GetChecked() {
-			s.SetDetail(td.keys.Checked, td.GetChecked())
+			s.SetDetail(td.keys.Checked, domain.Bool(td.GetChecked()))
 			ok = true
 		}
 	}

@@ -274,7 +274,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	}
 
 	if req.AdditionalDetails != nil {
-		req.AdditionalDetails.Iterate(func(k domain.RelationKey, v any) bool {
+		req.AdditionalDetails.Iterate(func(k domain.RelationKey, v domain.Value) bool {
 			createState.SetDetailAndBundledRelation(k, v)
 			return true
 		})

@@ -134,7 +134,7 @@ func (gr *Builder) appendRelations(
 	sourceId string,
 	outgoingRelationLink map[string]struct{},
 ) []*pb.RpcObjectGraphEdge {
-	rec.Iterate(func(relKey domain.RelationKey, relValue any) bool {
+	rec.Iterate(func(relKey domain.RelationKey, relValue domain.Value) bool {
 		rel := relations.GetByKey(string(relKey))
 		if !isRelationShouldBeIncludedAsEdge(rel) {
 			return true

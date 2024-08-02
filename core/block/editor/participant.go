@@ -43,11 +43,11 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, true)
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, false)
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, false)
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayout, int64(model.ObjectType_participant))
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayoutAlign, int64(model.Block_AlignCenter))
+	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
+	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, domain.Bool(false))
+	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(false))
+	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_participant))
+	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter))
 
 	template.InitTemplate(ctx.State,
 		template.WithEmpty,

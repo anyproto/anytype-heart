@@ -76,13 +76,13 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	if err != nil {
 		return
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyId, id.ObjectID)
-	s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, id.SpaceID)
+	s.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String(id.ObjectID))
+	s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(id.SpaceID))
 	typeId, err := space.GetTypeIdByKey(context.Background(), s.ObjectTypeKey())
 	if err != nil {
 		return nil, nil, fmt.Errorf("get type id by key: %w", err)
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyType, typeId)
+	s.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(typeId))
 
 	dependentObjectIDs := objectlink.DependentObjectIDs(s, space, false, true, false)
 	// nolint:errcheck

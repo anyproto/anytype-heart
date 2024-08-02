@@ -106,12 +106,12 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 
 	st := state.NewDocFromSnapshot(id, snapshot).(*state.State)
 	st.SetRootId(id)
-	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled, true)
+	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled, domain.Bool(true))
 	st.RemoveDetail(bundle.RelationKeyCreator, bundle.RelationKeyLastModifiedBy)
-	st.SetLocalDetail(bundle.RelationKeyCreator, addr.AnytypeProfileId)
-	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy, addr.AnytypeProfileId)
-	st.SetLocalDetail(bundle.RelationKeySpaceId, addr.AnytypeMarketplaceWorkspace)
-	st.SetDetail(bundle.RelationKeyOrigin, int64(model.ObjectOrigin_builtin))
+	st.SetLocalDetail(bundle.RelationKeyCreator, domain.String(addr.AnytypeProfileId))
+	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy, domain.String(addr.AnytypeProfileId))
+	st.SetLocalDetail(bundle.RelationKeySpaceId, domain.String(addr.AnytypeMarketplaceWorkspace))
+	st.SetDetail(bundle.RelationKeyOrigin, domain.Int64(model.ObjectOrigin_builtin))
 
 	err = b.setObjectTypes(st)
 	if err != nil {

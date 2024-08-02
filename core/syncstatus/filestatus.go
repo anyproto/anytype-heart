@@ -31,7 +31,7 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 			return nil
 		}
 		st := sb.NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, newStatus)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(newStatus))
 		return sb.Apply(st)
 	})
 	if err != nil {

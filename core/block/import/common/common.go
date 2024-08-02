@@ -229,7 +229,7 @@ func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 
 func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, filesIDs []string) {
 	rels := st.GetRelationLinks()
-	st.Details().Iterate(func(k domain.RelationKey, v any) bool {
+	st.Details().Iterate(func(k domain.RelationKey, v domain.Value) bool {
 		relLink := rels.Get(string(k))
 		if relLink == nil {
 			return true
@@ -260,13 +260,13 @@ func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v domai
 	if objectId, ok := v.String(); ok {
 		newObjectIDs := getNewObjectsIDForRelation([]string{objectId}, oldIDtoNew, filesIDs)
 		if len(newObjectIDs) != 0 {
-			st.SetDetail(k, newObjectIDs[0])
+			st.SetDetail(k, domain.String(newObjectIDs[0]))
 		}
 		return
 	}
 	objectsIDs := v.StringListOrDefault(nil)
 	objectsIDs = getNewObjectsIDForRelation(objectsIDs, oldIDtoNew, filesIDs)
-	st.SetDetail(k, objectsIDs)
+	st.SetDetail(k, domain.StringList(objectsIDs))
 }
 
 func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]string, filesIDs []string) []string {

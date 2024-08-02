@@ -32,7 +32,7 @@ func (s *Service) ObjectTypeRelationAdd(ctx context.Context, objectTypeId string
 				list = append(list, relId)
 			}
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, list)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
 		return b.Apply(st)
 	})
 }
@@ -51,7 +51,7 @@ func (s *Service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 			}
 			list = slice.RemoveMut(list, relId)
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, list)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
 		return b.Apply(st)
 	})
 }

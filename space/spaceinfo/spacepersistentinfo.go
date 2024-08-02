@@ -2,6 +2,7 @@ package spaceinfo
 
 import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
@@ -25,12 +26,12 @@ func NewSpacePersistentInfoFromState(st state.Doc) SpacePersistentInfo {
 }
 
 func (s *SpacePersistentInfo) UpdateDetails(st *state.State) *SpacePersistentInfo {
-	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, s.SpaceID)
+	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, domain.String(s.SpaceID))
 	if s.AccountStatus != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccountStatus, int64(*s.AccountStatus))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccountStatus, domain.Int64(*s.AccountStatus))
 	}
 	if s.AclHeadId != "" {
-		st.SetDetailAndBundledRelation(bundle.RelationKeyLatestAclHeadId, s.AclHeadId)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLatestAclHeadId, domain.String(s.AclHeadId))
 	}
 	return s
 }

@@ -449,7 +449,7 @@ func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (
 		}
 	}
 	if len(frc) != len(fr) {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, frc)
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(frc))
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
@@ -470,7 +470,7 @@ func (bs *basic) FeaturedRelationRemove(ctx session.Context, relations ...string
 		}
 	}
 	if len(frc) != len(fr) {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, frc)
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(frc))
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
@@ -500,7 +500,7 @@ func (bs *basic) ReplaceLink(oldId, newId string) error {
 		if rel.Format == model.RelationFormat_object {
 			key := domain.RelationKey(rel.Key)
 			if details.GetString(key) == oldId {
-				s.SetDetail(key, newId)
+				s.SetDetail(key, domain.String(newId))
 			}
 		}
 	}

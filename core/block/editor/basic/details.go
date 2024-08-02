@@ -86,7 +86,7 @@ func (bs *basic) collectDetailUpdates(details []*model.Detail, s *state.State) [
 }
 
 func applyDetailUpdates(oldDetails *domain.Details, updates []*detailUpdate) *domain.Details {
-	newDetails := oldDetails.ShallowCopy()
+	newDetails := oldDetails.Copy()
 	if newDetails == nil {
 		newDetails = domain.NewDetails()
 	}
@@ -371,7 +371,7 @@ func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayou
 	}
 
 	fromLayout, _ := s.Layout()
-	s.SetDetail(bundle.RelationKeyLayout, int64(toLayout))
+	s.SetDetail(bundle.RelationKeyLayout, domain.Int64(toLayout))
 	if err = bs.layoutConverter.Convert(bs.Space(), s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}

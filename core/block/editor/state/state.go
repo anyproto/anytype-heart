@@ -536,7 +536,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 
 		// apply snippet
 		if s.Snippet() != s.parent.Snippet() {
-			s.SetLocalDetail(bundle.RelationKeySnippet, s.Snippet())
+			s.SetLocalDetail(bundle.RelationKeySnippet, domain.String(s.Snippet()))
 		}
 	}
 
@@ -706,7 +706,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
 		if diff := domain.StructDiff(prev, s.details); diff != nil {
-			action.Details = &undo.Details{Before: prev.ShallowCopy(), After: s.details.ShallowCopy()}
+			action.Details = &undo.Details{Before: prev.Copy(), After: s.details.Copy()}
 			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.RootId(), diff))...)
 			s.parent.details = s.details
 		} else if !s.details.Equal(s.parent.details) {
@@ -898,7 +898,7 @@ func (s *State) SetDetails(d *domain.Details) *State {
 
 	local := d.CopyOnlyKeys(bundle.LocalAndDerivedRelationKeys...)
 	if local != nil && local.Len() > 0 {
-		local.Iterate(func(k domain.RelationKey, v any) bool {
+		local.Iterate(func(k domain.RelationKey, v domain.Value) bool {
 			s.SetLocalDetail(k, v)
 			return true
 		})
@@ -910,13 +910,13 @@ func (s *State) SetDetails(d *domain.Details) *State {
 }
 
 // SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
-func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value any) {
+func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value domain.Value) {
 	s.AddBundledRelationLinks(key)
 	s.SetDetail(key, value)
 	return
 }
 
-func (s *State) SetLocalDetail(key domain.RelationKey, value any) {
+func (s *State) SetLocalDetail(key domain.RelationKey, value domain.Value) {
 	if s.localDetails == nil && s.parent != nil {
 		d := s.parent.Details()
 		if d != nil {
@@ -925,44 +925,27 @@ func (s *State) SetLocalDetail(key domain.RelationKey, value any) {
 				return
 			}
 		}
-		s.localDetails = s.parent.LocalDetails().ShallowCopy()
+		s.localDetails = s.parent.LocalDetails().Copy()
 	}
 	if s.localDetails == nil {
 		s.localDetails = domain.NewDetails()
 	}
-
-	if value == nil {
-		s.localDetails.Delete(key)
-		return
-	}
-
-	if err := domain.SomeValue(value).Validate(); err != nil {
-		log.Errorf("invalid value for pb %s: %v", key, err)
-	}
-
-	s.localDetails.SetUnsafe(key, value)
+	s.localDetails.Set(key, value)
 	return
 }
 
 func (s *State) SetLocalDetails(d *domain.Details) {
-	d.Iterate(func(k domain.RelationKey, v any) bool {
-		// TODO Is it possible and why if it is?
-		if v == nil {
-			d.Delete(k)
-		}
-		return true
-	})
 	s.localDetails = d
 }
 
 func (s *State) AddDetails(details *domain.Details) {
-	details.Iterate(func(k domain.RelationKey, v any) bool {
+	details.Iterate(func(k domain.RelationKey, v domain.Value) bool {
 		s.SetDetail(k, v)
 		return true
 	})
 }
 
-func (s *State) SetDetail(key domain.RelationKey, value any) {
+func (s *State) SetDetail(key domain.RelationKey, value domain.Value) {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// value = shortenValueToLimit(s.rootId, key, value)
 
@@ -978,29 +961,19 @@ func (s *State) SetDetail(key domain.RelationKey, value any) {
 			if prev := d.Get(key); prev.Ok() && prev.EqualAny(value) {
 				return
 			}
-			s.details = d.ShallowCopy()
+			s.details = d.Copy()
 		}
 	}
 	if s.details == nil {
 		s.details = domain.NewDetails()
 	}
-
-	if value == nil {
-		s.details.Delete(key)
-		return
-	}
-
-	if err := domain.SomeValue(value).Validate(); err != nil {
-		log.Errorf("invalid value for pb %s: %v", key, err)
-	}
-
-	s.details.SetUnsafe(key, value)
+	s.details.Set(key, value)
 	return
 }
 
 func (s *State) SetAlign(align model.BlockAlign, ids ...string) (err error) {
 	if len(ids) == 0 {
-		s.SetDetail(bundle.RelationKeyLayoutAlign, int64(align))
+		s.SetDetail(bundle.RelationKeyLayoutAlign, domain.Int64(align))
 		ids = []string{TitleBlockID, DescriptionBlockID, FeaturedRelationsID}
 	}
 	for _, id := range ids {
@@ -1055,10 +1028,7 @@ func (s *State) SetObjectTypeKeys(objectTypeKeys []domain.TypeKey) *State {
 }
 
 func (s *State) InjectLocalDetails(localDetails *domain.Details) {
-	localDetails.Iterate(func(k domain.RelationKey, v any) bool {
-		if v == nil {
-			return true
-		}
+	localDetails.Iterate(func(k domain.RelationKey, v domain.Value) bool {
 		s.SetDetailAndBundledRelation(k, v)
 		return true
 	})
@@ -1220,9 +1190,9 @@ func (s *State) modifyIdsInDetail(details *domain.Details, key domain.RelationKe
 		if anyChanges {
 			v := details.Get(key)
 			if _, ok := v.String(); ok {
-				s.SetDetail(key, ids[0])
+				s.SetDetail(key, domain.String(ids[0]))
 			} else if _, ok := v.StringList(); ok {
-				s.SetDetail(key, ids)
+				s.SetDetail(key, domain.StringList(ids))
 			}
 		}
 	}
@@ -1360,8 +1330,8 @@ func (s *State) Copy() *State {
 		ctx:                      s.ctx,
 		blocks:                   blocks,
 		rootId:                   s.rootId,
-		details:                  s.Details().ShallowCopy(),
-		localDetails:             s.LocalDetails().ShallowCopy(),
+		details:                  s.Details().Copy(),
+		localDetails:             s.LocalDetails().Copy(),
 		relationLinks:            s.GetRelationLinks(), // Get methods copy inside
 		objectTypeKeys:           objTypes,
 		noObjectType:             s.noObjectType,
@@ -1425,7 +1395,7 @@ func (s *State) IsTheHeaderChange() bool {
 
 func (s *State) RemoveDetail(keys ...domain.RelationKey) (ok bool) {
 	// TODO It could be lazily copied only if actual deletion is happened
-	det := s.Details().ShallowCopy()
+	det := s.Details().Copy()
 	if det != nil {
 		for _, key := range keys {
 			if det.Has(key) {
@@ -1442,7 +1412,7 @@ func (s *State) RemoveDetail(keys ...domain.RelationKey) (ok bool) {
 
 func (s *State) RemoveLocalDetail(keys ...domain.RelationKey) (ok bool) {
 	// TODO It could be lazily copied only if actual deletion is happened
-	det := s.LocalDetails().ShallowCopy()
+	det := s.LocalDetails().Copy()
 	if det != nil {
 		for _, key := range keys {
 			if det.Has(key) {
@@ -1827,7 +1797,7 @@ func (s *State) RemoveRelation(keys ...domain.RelationKey) {
 		return false
 	})
 	if foundInFeatured {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, featuredList)
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(featuredList))
 	}
 	s.relationLinks = relLinksFiltered
 	return

@@ -56,7 +56,7 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 	}
 	newState := state.NewDocWithUniqueKey(st.RootId(), blocksMap, uk).(*state.State)
 	newState.AddRelationLinks(st.GetRelationLinks()...)
-	newStateDetails := st.Details().ShallowCopy()
+	newStateDetails := st.Details().Copy()
 	newName := newStateDetails.GetString(bundle.RelationKeyName) + " [migrated]"
 	newStateDetails.SetString(bundle.RelationKeyName, newName)
 	newStateDetails.SetBool(bundle.RelationKeyIsHidden, false)
@@ -83,7 +83,7 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 		"iconOption",
 	}
 	var keysToRemove []domain.RelationKey
-	st.Details().Iterate(func(key domain.RelationKey, a any) bool {
+	st.Details().Iterate(func(key domain.RelationKey, a domain.Value) bool {
 		if !slices.Contains(whitelistDetailKeys, key) {
 			keysToRemove = append(keysToRemove, key)
 		}

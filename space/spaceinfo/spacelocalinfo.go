@@ -2,6 +2,7 @@ package spaceinfo
 
 import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
@@ -91,21 +92,21 @@ func (s *SpaceLocalInfo) SetReadLimit(limit uint32) *SpaceLocalInfo {
 }
 
 func (s *SpaceLocalInfo) UpdateDetails(st *state.State) *SpaceLocalInfo {
-	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, s.SpaceId)
+	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, domain.String(s.SpaceId))
 	if s.localStatus != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceLocalStatus, int64(*s.localStatus))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceLocalStatus, domain.Int64(*s.localStatus))
 	}
 	if s.remoteStatus != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceRemoteStatus, int64(*s.remoteStatus))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceRemoteStatus, domain.Int64(*s.remoteStatus))
 	}
 	if s.shareableStatus != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceShareableStatus, int64(*s.shareableStatus))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceShareableStatus, domain.Int64(*s.shareableStatus))
 	}
 	if s.writeLimit != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeyWritersLimit, int64(*s.writeLimit))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyWritersLimit, domain.Int64(*s.writeLimit))
 	}
 	if s.readLimit != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeyReadersLimit, int64(*s.readLimit))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyReadersLimit, domain.Int64(*s.readLimit))
 	}
 	return s
 }

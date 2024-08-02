@@ -52,7 +52,7 @@ func (s *Set) AddToState(st *state.State) {
 		st.RemoveDetail(relationKey)
 		return
 	}
-	st.SetDetailAndBundledRelation(relationKey, s.flags)
+	st.SetDetailAndBundledRelation(relationKey, domain.FloatList(s.flags))
 }
 
 func (s *Set) IsEmpty() bool {

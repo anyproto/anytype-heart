@@ -140,7 +140,7 @@ func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 
 func (s *SpaceView) SetAclIsEmpty(isEmpty bool) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, !isEmpty)
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, domain.Bool(!isEmpty))
 	s.updateAccessType(st)
 	return s.Apply(st)
 }
@@ -165,7 +165,7 @@ func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
 	if prev == spaceinfo.AccessTypePersonal {
 		return nil
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, int64(acc))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, domain.Int64(acc))
 	return s.Apply(st)
 }
 
@@ -177,7 +177,7 @@ func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (
 
 func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, int64(limit))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
 	return s.Apply(st)
 }
 
@@ -187,8 +187,8 @@ func (s *SpaceView) GetSharedSpacesLimit() (limit int) {
 
 func (s *SpaceView) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, fileCid)
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, fileKey)
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, domain.String(fileCid))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, domain.String(fileKey))
 	return s.Apply(st)
 }
 
@@ -254,7 +254,7 @@ func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
 func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 	st := s.NewState()
 	var changed bool
-	details.Iterate(func(k domain.RelationKey, v any) bool {
+	details.Iterate(func(k domain.RelationKey, v domain.Value) bool {
 		if slices.Contains(workspaceKeysToCopy, k) {
 			// Special case for migration to Files as Objects to handle following situation:
 			// - We have an icon in Workspace that was created in pre-Files as Objects version
@@ -264,7 +264,7 @@ func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 			if k == bundle.RelationKeyIconImage {
 				fileId, err := s.fileObjectService.GetFileIdFromObject(domain.SomeValue(v).StringOrDefault(""))
 				if err == nil {
-					v = fileId.FileId.String()
+					v = domain.String(fileId.FileId.String())
 				}
 			}
 			changed = true
@@ -290,10 +290,10 @@ func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 
 func (s *SpaceView) UpdateLastOpenedDate() error {
 	st := s.NewState()
-	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, time.Now().Unix())
+	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, domain.Int64(time.Now().Unix()))
 	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
 }
 
 func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, int64(accessType))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, domain.Int64(accessType))
 }

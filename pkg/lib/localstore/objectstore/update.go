@@ -206,7 +206,7 @@ func (s *dsObjectStore) updateObjectLinks(ctx context.Context, id string, links 
 }
 
 func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.Details) {
-	detCopy := details.ShallowCopy()
+	detCopy := details.Copy()
 	detCopy.SetString(bundle.RelationKeyId, id)
 	s.RLock()
 	defer s.RUnlock()

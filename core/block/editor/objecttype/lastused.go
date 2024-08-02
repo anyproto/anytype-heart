@@ -34,7 +34,7 @@ func UpdateLastUsedDate(spc smartblock.Space, store objectstore.ObjectStore, key
 	}
 	if err = spc.Do(id, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
-		st.SetLocalDetail(bundle.RelationKeyLastUsedDate, time.Now().Unix())
+		st.SetLocalDetail(bundle.RelationKeyLastUsedDate, domain.Int64(time.Now().Unix()))
 		return sb.Apply(st)
 	}); err != nil {
 		log.Errorf("failed to set lastUsedDate to type object '%s': %w", key.String(), err)

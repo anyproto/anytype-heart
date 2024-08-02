@@ -25,7 +25,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	if err != nil {
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
-	object := details.ShallowCopy()
+	object := details.Copy()
 
 	if !object.Has(bundle.RelationKeyRecommendedLayout) {
 		object.SetInt64(bundle.RelationKeyRecommendedLayout, int64(model.ObjectType_basic))

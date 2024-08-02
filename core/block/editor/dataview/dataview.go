@@ -86,7 +86,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 
 	if len(source) == 0 {
 		s.Unlink(blockId)
-		s.SetLocalDetail(bundle.RelationKeySetOf, source)
+		s.SetLocalDetail(bundle.RelationKeySetOf, domain.StringList(source))
 		return d.Apply(s, smartblock.NoRestrictions)
 	}
 
@@ -104,7 +104,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		s.InsertTo("", 0, blockId)
 	}
 
-	s.SetLocalDetail(bundle.RelationKeySetOf, source)
+	s.SetLocalDetail(bundle.RelationKeySetOf, domain.StringList(source))
 	return d.Apply(s, smartblock.NoRestrictions)
 }
 
