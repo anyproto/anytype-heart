@@ -86,7 +86,7 @@ func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, sto
 		return FilterEq{
 			Key:   rawFilter.RelationKey,
 			Cond:  rawFilter.Condition,
-			Value: pbtypes.ProtoToAny(rawFilter.Value),
+			Value: domain.ValueFromProto(rawFilter.Value),
 		}, nil
 	case model.BlockContentDataviewFilter_Like:
 		return FilterLike{
@@ -310,7 +310,7 @@ func negateFilter(filter query.Filter) query.Filter {
 type FilterEq struct {
 	Key   string
 	Cond  model.BlockContentDataviewFilterCondition
-	Value any
+	Value domain.Value
 }
 
 func (e FilterEq) AnystoreFilter() query.Filter {
@@ -331,7 +331,7 @@ func (e FilterEq) AnystoreFilter() query.Filter {
 		return query.Or{
 			query.Key{
 				Path:   path,
-				Filter: query.NewComp(query.CompOpNe, e.Value),
+				Filter: query.NewComp(query.CompOpNe, e.Value.Raw()),
 			},
 			query.Key{
 				Path:   path,
@@ -341,7 +341,7 @@ func (e FilterEq) AnystoreFilter() query.Filter {
 	}
 	return query.Key{
 		Path:   path,
-		Filter: query.NewComp(op, e.Value),
+		Filter: query.NewComp(op, e.Value.Raw()),
 	}
 }
 
@@ -398,7 +398,7 @@ type FilterIn struct {
 func (i FilterIn) FilterObject(g *domain.Details) bool {
 	val := g.Get(domain.RelationKey(i.Key))
 	for _, v := range i.Value.Values {
-		eq := FilterEq{Value: v, Cond: model.BlockContentDataviewFilter_Equal}
+		eq := FilterEq{Value: domain.ValueFromProto(v), Cond: model.BlockContentDataviewFilter_Equal}
 		if eq.filterObject(val) {
 			return true
 		}
@@ -669,7 +669,7 @@ func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFil
 func (i *FilterNestedIn) FilterObject(g *domain.Details) bool {
 	val := g.Get(i.Key)
 	for _, id := range i.IDs {
-		eq := FilterEq{Value: pbtypes.String(id), Cond: model.BlockContentDataviewFilter_Equal}
+		eq := FilterEq{Value: domain.String(id), Cond: model.BlockContentDataviewFilter_Equal}
 		if eq.filterObject(val) {
 			return true
 		}

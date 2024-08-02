@@ -51,34 +51,7 @@ func (d *GenericMap[K]) SetFloatList(key K, value []float64) {
 }
 
 func (d *GenericMap[K]) SetProtoValue(key K, value *types.Value) {
-	if value == nil {
-		d.Set(key, Null())
-		return
-	}
-	switch value.Kind.(type) {
-	case *types.Value_NullValue:
-		if key == "relationDefaultValue" {
-
-			d.Set(key, Null())
-		} else {
-
-			d.Set(key, Null())
-		}
-	case *types.Value_BoolValue:
-		d.SetBool(key, value.GetBoolValue())
-	case *types.Value_StringValue:
-		d.SetString(key, value.GetStringValue())
-	case *types.Value_NumberValue:
-		d.SetFloat(key, value.GetNumberValue())
-	case *types.Value_StructValue:
-		// TODO Not implemented
-	case *types.Value_ListValue:
-		if list := pbtypes.ListValueToFloats(value.GetListValue()); len(list) > 0 {
-			d.SetFloatList(key, list)
-		} else {
-			d.SetStringList(key, pbtypes.ListValueToStrings(value.GetListValue()))
-		}
-	}
+	d.Set(key, ValueFromProto(value))
 }
 
 func (d *GenericMap[K]) Delete(key K) {
@@ -301,6 +274,34 @@ func SomeValue(value any) Value {
 }
 
 var ErrInvalidValue = fmt.Errorf("invalid value")
+
+func (v Value) Raw() any {
+	return v.value
+}
+
+func ValueFromProto(value *types.Value) Value {
+	if value == nil {
+		return Null()
+	}
+	switch value.Kind.(type) {
+	case *types.Value_NullValue:
+		return Null()
+	case *types.Value_BoolValue:
+		return Bool(value.GetBoolValue())
+	case *types.Value_StringValue:
+		return String(value.GetStringValue())
+	case *types.Value_NumberValue:
+		return Float(value.GetNumberValue())
+	case *types.Value_StructValue:
+		// TODO Not implemented
+	case *types.Value_ListValue:
+		if list := pbtypes.ListValueToFloats(value.GetListValue()); len(list) > 0 {
+			return FloatList(list)
+		}
+		return StringList(pbtypes.ListValueToStrings(value.GetListValue()))
+	}
+	return Null()
+}
 
 // TODO Remove, value should be always valid
 func (v Value) Validate() error {

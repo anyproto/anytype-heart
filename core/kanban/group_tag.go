@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -24,7 +23,7 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 	spaceFilter := database.FilterEq{
 		Key:   bundle.RelationKeySpaceId.String(),
 		Cond:  model.BlockContentDataviewFilter_Equal,
-		Value: pbtypes.String(spaceID),
+		Value: domain.String(spaceID),
 	}
 
 	filterTag := database.FiltersAnd{
@@ -41,12 +40,12 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 		database.FilterEq{
 			Key:   bundle.RelationKeyRelationKey.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.String(string(t.Key)),
+			Value: domain.String(string(t.Key)),
 		},
 		database.FilterEq{
 			Key:   bundle.RelationKeyLayout.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			Value: domain.Int64(model.ObjectType_relationOption),
 		},
 	}
 	if spaceID != "" {
