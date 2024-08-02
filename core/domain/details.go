@@ -129,8 +129,10 @@ func jsonValueToAny(d *Details, key RelationKey, val *fastjson.Value) error {
 			return fmt.Errorf("unsupported array type %s", firstVal.Type())
 		}
 	}
-	// TODO What is the matter with nil value?
-	return fmt.Errorf("unsupported type %s", val.Type())
+	// TODO Fix nulls
+	d.SetUnsafe(key, nil)
+	return nil
+	// return fmt.Errorf("unsupported type %s", val.Type())
 }
 
 func ProtoToJson(arena *fastjson.Arena, details *Details) *fastjson.Value {
