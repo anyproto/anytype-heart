@@ -3,7 +3,7 @@ package ftsearch
 import (
 	"fmt"
 
-	"github.com/anyproto/tantivy-go/go/tantivy"
+	tantivy "github.com/anyproto/tantivy-go"
 	"github.com/blevesearch/bleve/v2/search"
 )
 
