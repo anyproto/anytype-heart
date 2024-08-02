@@ -51,10 +51,12 @@ func Test_docsForExport(t *testing.T) {
 		storeFixture := objectstore.NewStoreFixture(t)
 		storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId: pbtypes.String("id"),
+				bundle.RelationKeyId:   pbtypes.String("id"),
+				bundle.RelationKeyName: pbtypes.String("name1"),
 			},
 			{
-				bundle.RelationKeyId: pbtypes.String("id1"),
+				bundle.RelationKeyId:   pbtypes.String("id1"),
+				bundle.RelationKeyName: pbtypes.String("name2"),
 			},
 		})
 		err := storeFixture.UpdateObjectLinks("id", []string{"id1"})
@@ -83,7 +85,8 @@ func Test_docsForExport(t *testing.T) {
 		storeFixture := objectstore.NewStoreFixture(t)
 		storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId: pbtypes.String("id"),
+				bundle.RelationKeyId:   pbtypes.String("id"),
+				bundle.RelationKeyName: pbtypes.String("name"),
 			},
 			{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
