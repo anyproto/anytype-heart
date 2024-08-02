@@ -2,7 +2,6 @@ package basic
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
@@ -119,29 +118,42 @@ func insertBlocksToState(
 }
 
 func (bs *basic) changeToBlockWithLink(newState *state.State, blockToReplace simple.Block, objectID string, linkBlock *model.Block) (string, error) {
-	if linkBlock == nil {
-		linkBlock = &model.Block{
-			Content: &model.BlockContentOfLink{
-				Link: &model.BlockContentLink{
-					TargetBlockId: objectID,
-					Style:         model.BlockContentLink_Page,
-				},
-			},
-		}
-	} else {
-		link := linkBlock.GetLink()
-		if link == nil {
-			return "", errors.New("linkBlock content is not a link")
-		} else {
-			link.TargetBlockId = objectID
-		}
-	}
-	linkBlockCopy := pbtypes.CopyBlock(linkBlock)
 	return bs.CreateBlock(newState, pb.RpcBlockCreateRequest{
 		TargetId: blockToReplace.Model().Id,
-		Block:    linkBlockCopy,
+		Block:    buildBlock(linkBlock, objectID),
 		Position: model.Block_Replace,
 	})
+}
+
+func buildBlock(b *model.Block, targetID string) (result *model.Block) {
+	fallback := &model.Block{
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: targetID,
+				Style:         model.BlockContentLink_Page,
+			},
+		},
+	}
+
+	if b == nil {
+		return fallback
+	}
+	result = pbtypes.CopyBlock(b)
+
+	switch v := result.Content.(type) {
+	case *model.BlockContentOfLink:
+		v.Link.TargetBlockId = targetID
+	case *model.BlockContentOfBookmark:
+		v.Bookmark.TargetObjectId = targetID
+	case *model.BlockContentOfFile:
+		v.File.TargetObjectId = targetID
+	case *model.BlockContentOfDataview:
+		v.Dataview.TargetObjectId = targetID
+	default:
+		result = fallback
+	}
+
+	return
 }
 
 func removeBlocks(state *state.State, descendants []simple.Block) {

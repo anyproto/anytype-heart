@@ -2,6 +2,7 @@ CUSTOM_NETWORK_FILE ?= ./core/anytype/config/nodes/custom.yml
 CLIENT_DESKTOP_PATH ?= ../anytype-ts
 CLIENT_ANDROID_PATH ?= ../anytype-kotlin
 CLIENT_IOS_PATH ?= ../anytype-swift
+TANTIVY_GO_PATH ?= ../tantivy-go
 BUILD_FLAGS ?=
 
 export GOLANGCI_LINT_VERSION=1.58.1
@@ -66,13 +67,17 @@ test:
 	@echo 'Running tests...'
 	@ANYTYPE_LOG_NOGELF=1 go test -cover github.com/anyproto/anytype-heart/...
 
+test-no-cache:
+	@echo 'Running tests...'
+	@ANYTYPE_LOG_NOGELF=1 go test -count=1 github.com/anyproto/anytype-heart/...
+
 test-integration:
 	@echo 'Running integration tests...'
 	@go test -run=TestBasic -tags=integration -v -count 1 ./tests
 
 test-race:
 	@echo 'Running tests with race-detector...'
-	@ANYTYPE_LOG_NOGELF=1 go test -race github.com/anyproto/anytype-heart/...
+	@ANYTYPE_LOG_NOGELF=1 go test -count=1 -race github.com/anyproto/anytype-heart/...
 
 test-deps:
 	@echo 'Generating test mocks...'
@@ -328,3 +333,53 @@ ifdef GOLANGCI_LINT_BRANCH
 else 
 	@golangci-lint run -v ./... --new-from-rev=origin/main --timeout 15m --fix
 endif
+
+### Tantivy Section
+
+REPO := anyproto/tantivy-go
+VERSION := go/v0.0.5
+OUTPUT_DIR := deps/libs
+SHA_FILE = tantivity_sha256.txt
+
+TANTIVY_LIBS := android-386.tar.gz \
+         android-amd64.tar.gz \
+         android-arm.tar.gz \
+         android-arm64.tar.gz \
+         darwin-amd64.tar.gz \
+         darwin-arm64.tar.gz \
+         ios-amd64.tar.gz \
+         ios-arm64.tar.gz \
+         linux-amd64-musl.tar.gz \
+         windows-amd64.tar.gz
+
+define download_tantivy_lib
+	curl -L -o $(OUTPUT_DIR)/$(1) https://github.com/$(REPO)/releases/download/$(VERSION)/$(1)
+endef
+
+define remove_arch
+	rm -f $(OUTPUT_DIR)/$(1)
+endef
+
+download-tantivy: $(TANTIVY_LIBS)
+
+$(TANTIVY_LIBS):
+	@mkdir -p $(OUTPUT_DIR)/$(shell echo $@ | cut -d'.' -f1)
+	$(call download_tantivy_lib,$@)
+	@tar -C $(OUTPUT_DIR)/$(shell echo $@ | cut -d'.' -f1) -xvzf $(OUTPUT_DIR)/$@
+
+download-tantivy-all-force: download-tantivy
+	@rm -f $(SHA_FILE)
+	@for file in $(TANTIVY_LIBS); do \
+		echo "SHA256 $(OUTPUT_DIR)/$$file" ; \
+		shasum -a 256 $(OUTPUT_DIR)/$$file | awk '{print $$1 "  " "'$(OUTPUT_DIR)/$$file'" }' >> $(SHA_FILE); \
+	done
+	@echo "SHA256 checksums generated."
+
+download-tantivy-all: download-tantivy
+	@echo "Validating SHA256 checksums..."
+	@shasum -a 256 -c $(SHA_FILE) --status || { echo "Hash mismatch detected."; exit 1; }
+	@echo "All files are valid."
+
+download-tantivy-local:
+	@mkdir -p $(OUTPUT_DIR)
+	@cp -r $(TANTIVY_GO_PATH)/go/libs/ $(OUTPUT_DIR)

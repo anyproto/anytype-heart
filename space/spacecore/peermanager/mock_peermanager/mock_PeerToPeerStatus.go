@@ -17,38 +17,6 @@ func (_m *MockPeerToPeerStatus) EXPECT() *MockPeerToPeerStatus_Expecter {
 	return &MockPeerToPeerStatus_Expecter{mock: &_m.Mock}
 }
 
-// CheckPeerStatus provides a mock function with given fields:
-func (_m *MockPeerToPeerStatus) CheckPeerStatus() {
-	_m.Called()
-}
-
-// MockPeerToPeerStatus_CheckPeerStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CheckPeerStatus'
-type MockPeerToPeerStatus_CheckPeerStatus_Call struct {
-	*mock.Call
-}
-
-// CheckPeerStatus is a helper method to define mock.On call
-func (_e *MockPeerToPeerStatus_Expecter) CheckPeerStatus() *MockPeerToPeerStatus_CheckPeerStatus_Call {
-	return &MockPeerToPeerStatus_CheckPeerStatus_Call{Call: _e.mock.On("CheckPeerStatus")}
-}
-
-func (_c *MockPeerToPeerStatus_CheckPeerStatus_Call) Run(run func()) *MockPeerToPeerStatus_CheckPeerStatus_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockPeerToPeerStatus_CheckPeerStatus_Call) Return() *MockPeerToPeerStatus_CheckPeerStatus_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MockPeerToPeerStatus_CheckPeerStatus_Call) RunAndReturn(run func()) *MockPeerToPeerStatus_CheckPeerStatus_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // RegisterSpace provides a mock function with given fields: spaceId
 func (_m *MockPeerToPeerStatus) RegisterSpace(spaceId string) {
 	_m.Called(spaceId)

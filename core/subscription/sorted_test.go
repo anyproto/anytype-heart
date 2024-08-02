@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -34,7 +35,7 @@ func TestSubscription_Add(t *testing.T) {
 
 		assert.Len(t, sub.cache.entries, 9)
 
-		ctx := &opCtx{c: sub.cache, entries: newEntries}
+		ctx := &opCtx{c: sub.cache, entries: newEntries, outputs: map[string][]*pb.EventMessage{}}
 		sub.onChange(ctx)
 		assertCtxAdd(t, ctx, "newActiveId1", "")
 		assertCtxAdd(t, ctx, "newActiveId2", "newActiveId1")

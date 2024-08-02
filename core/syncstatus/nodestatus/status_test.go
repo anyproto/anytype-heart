@@ -3,79 +3,13 @@ package nodestatus
 import (
 	"testing"
 
-	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
-	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
+	"github.com/stretchr/testify/require"
 )
 
-type fixture struct {
-	*nodeStatus
-	nodeConf *mock_nodeconf.MockService
-}
-
-func TestNodeStatus_SetNodesStatus(t *testing.T) {
-	t.Run("peer is responsible", func(t *testing.T) {
-		// given
-		f := newFixture(t)
-		f.nodeConf.EXPECT().NodeIds("spaceId").Return([]string{"peerId"})
-
-		// when
-		f.SetNodesStatus("spaceId", "peerId", Online)
-
-		// then
-		assert.Equal(t, Online, f.nodeStatus.nodeStatus["spaceId"])
-	})
-	t.Run("peer is not responsible", func(t *testing.T) {
-		// given
-		f := newFixture(t)
-		f.nodeConf.EXPECT().NodeIds("spaceId").Return([]string{"peerId2"})
-
-		// when
-		f.SetNodesStatus("spaceId", "peerId", ConnectionError)
-
-		// then
-		assert.NotEqual(t, ConnectionError, f.nodeStatus.nodeStatus["spaceId"])
-	})
-}
-
-func TestNodeStatus_GetNodeStatus(t *testing.T) {
-	t.Run("get default status", func(t *testing.T) {
-		// given
-		f := newFixture(t)
-
-		// when
-		status := f.GetNodeStatus("")
-
-		// then
-		assert.Equal(t, Online, status)
-	})
-	t.Run("get updated status", func(t *testing.T) {
-		// given
-		f := newFixture(t)
-		f.nodeConf.EXPECT().NodeIds("spaceId").Return([]string{"peerId"})
-
-		// when
-		f.SetNodesStatus("spaceId", "peerId", ConnectionError)
-		status := f.GetNodeStatus("spaceId")
-
-		// then
-		assert.Equal(t, ConnectionError, status)
-	})
-}
-
-func newFixture(t *testing.T) *fixture {
-	ctrl := gomock.NewController(t)
-	nodeConf := mock_nodeconf.NewMockService(ctrl)
-	nodeStatus := &nodeStatus{
-		nodeStatus: map[string]ConnectionStatus{},
-	}
-	a := &app.App{}
-	a.Register(nodeConf)
-	err := nodeStatus.Init(a)
-	assert.Nil(t, err)
-	return &fixture{
-		nodeStatus: nodeStatus,
-		nodeConf:   nodeConf,
-	}
+func TestNodeStatus(t *testing.T) {
+	st := NewNodeStatus()
+	st.SetNodesStatus("spaceId", Online)
+	require.Equal(t, Online, st.GetNodeStatus("spaceId"))
+	st.SetNodesStatus("spaceId", ConnectionError)
+	require.Equal(t, ConnectionError, st.GetNodeStatus("spaceId"))
 }
