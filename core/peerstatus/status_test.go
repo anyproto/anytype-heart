@@ -223,6 +223,9 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 		err := f.pool.AddPeer(context.Background(), peer)
 		assert.Nil(t, err)
 
+		err = f.refreshSpaces([]string{"spaceId"})
+		assert.Nil(t, err)
+
 		checkStatus(t, "spaceId", f.p2pStatus, Connected)
 		// then
 		f.Close(nil)
@@ -254,6 +257,10 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				},
 			},
 		})
+
+		err = f.refreshSpaces([]string{"spaceId"})
+		assert.Nil(t, err)
+
 		checkStatus(t, "spaceId", f.p2pStatus, Connected)
 
 		// then
@@ -482,7 +489,7 @@ func waitForStatus(spaceId string, statusSender *p2pStatus, expectedStatus Statu
 }
 
 func checkStatus(t *testing.T, spaceId string, statusSender *p2pStatus, expectedStatus Status) {
-	time.Sleep(time.Millisecond * 300)
+	time.Sleep(time.Millisecond * 30)
 	statusSender.Lock()
 	defer statusSender.Unlock()
 	if status, ok := statusSender.spaceIds[spaceId]; !ok {
