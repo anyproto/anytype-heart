@@ -2,557 +2,493 @@ package spacesyncstatus
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/cheggaaa/mb/v3"
-	"github.com/stretchr/testify/assert"
+	"github.com/anyproto/any-sync/nodeconf"
+	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus/mock_nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus/mock_spacesyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func TestSpaceSyncStatus_Init(t *testing.T) {
-	t.Run("init", func(t *testing.T) {
-		// given
-		status := NewSpaceSyncStatus()
-		ctx := context.Background()
+var ctx = context.Background()
 
-		a := new(app.App)
-		eventSender := mock_event.NewMockSender(t)
-		space := mock_spacesyncstatus.NewMockSpaceIdGetter(t)
+type mockSessionContext struct {
+	id string
+}
 
-		a.Register(testutil.PrepareMock(ctx, a, eventSender)).
-			Register(objectstore.NewStoreFixture(t)).
-			Register(&config.Config{NetworkMode: pb.RpcAccount_DefaultConfig}).
-			Register(testutil.PrepareMock(ctx, a, space)).
-			Register(session.NewHookRunner())
+func (m mockSessionContext) ID() string {
+	return m.id
+}
 
-		// when
-		err := status.Init(a)
+func (m mockSessionContext) ObjectID() string {
+	panic("implement me")
+}
 
-		// then
-		assert.Nil(t, err)
+func (m mockSessionContext) TraceID() string {
+	panic("implement me")
+}
 
-		space.EXPECT().AllSpaceIds().Return([]string{"personalId"})
-		eventSender.EXPECT().Broadcast(&pb.Event{
+func (m mockSessionContext) SetMessages(smartBlockId string, msgs []*pb.EventMessage) {
+	panic("implement me")
+}
+
+func (m mockSessionContext) GetMessages() []*pb.EventMessage {
+	return nil
+}
+
+func (m mockSessionContext) GetResponseEvent() *pb.ResponseEvent {
+	panic("implement me")
+}
+
+type fixture struct {
+	*spaceSyncStatus
+	a                   *app.App
+	nodeConf            *mock_nodeconf.MockService
+	nodeUsage           *mock_spacesyncstatus.MockNodeUsage
+	nodeStatus          *mock_nodestatus.MockNodeStatus
+	subscriptionService subscription.Service
+	syncSubs            syncsubscriptions.SyncSubscriptions
+	objectStore         *objectstore.StoreFixture
+	spaceIdGetter       *mock_spacesyncstatus.MockSpaceIdGetter
+	eventSender         *mock_event.MockSender
+	session             session.HookRunner
+	networkConfig       *mock_spacesyncstatus.MockNetworkConfig
+	ctrl                *gomock.Controller
+}
+
+func mapFileStatus(status filesyncstatus.Status) domain.ObjectSyncStatus {
+	switch status {
+	case filesyncstatus.Syncing:
+		return domain.ObjectSyncStatusSyncing
+	case filesyncstatus.Queued:
+		return domain.ObjectSyncStatusSyncing
+	case filesyncstatus.Limited:
+		return domain.ObjectSyncStatusError
+	default:
+		return domain.ObjectSyncStatusSynced
+	}
+}
+
+func genFileObject(fileStatus filesyncstatus.Status, spaceId string) objectstore.TestObject {
+	id := fmt.Sprintf("%d", rand.Int())
+	return objectstore.TestObject{
+		bundle.RelationKeyId:               pbtypes.String(id),
+		bundle.RelationKeySyncStatus:       pbtypes.Int64(int64(mapFileStatus(fileStatus))),
+		bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(fileStatus)),
+		bundle.RelationKeyLayout:           pbtypes.Int64(int64(model.ObjectType_file)),
+		bundle.RelationKeyName:             pbtypes.String("name" + id),
+		bundle.RelationKeySpaceId:          pbtypes.String(spaceId),
+	}
+}
+
+func genObject(syncStatus domain.ObjectSyncStatus, spaceId string) objectstore.TestObject {
+	id := fmt.Sprintf("%d", rand.Int())
+	return objectstore.TestObject{
+		bundle.RelationKeyId:         pbtypes.String(id),
+		bundle.RelationKeySyncStatus: pbtypes.Int64(int64(syncStatus)),
+		bundle.RelationKeyLayout:     pbtypes.Int64(int64(model.ObjectType_basic)),
+		bundle.RelationKeyName:       pbtypes.String("name" + id),
+		bundle.RelationKeySpaceId:    pbtypes.String(spaceId),
+	}
+}
+
+func genSyncingObjects(fileObjects, objects int, spaceId string) []objectstore.TestObject {
+	var res []objectstore.TestObject
+	for i := 0; i < fileObjects; i++ {
+		res = append(res, genFileObject(filesyncstatus.Syncing, spaceId))
+	}
+	for i := 0; i < objects; i++ {
+		res = append(res, genObject(domain.ObjectSyncStatusSyncing, spaceId))
+	}
+	return res
+}
+
+func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
+	a := new(app.App)
+	ctrl := gomock.NewController(t)
+	internalSubs := subscription.RegisterSubscriptionService(t, a)
+	networkConfig := mock_spacesyncstatus.NewMockNetworkConfig(t)
+	sess := session.NewHookRunner()
+	fx := &fixture{
+		a:                   a,
+		ctrl:                ctrl,
+		spaceSyncStatus:     NewSpaceSyncStatus().(*spaceSyncStatus),
+		nodeUsage:           mock_spacesyncstatus.NewMockNodeUsage(t),
+		nodeStatus:          mock_nodestatus.NewMockNodeStatus(t),
+		nodeConf:            mock_nodeconf.NewMockService(ctrl),
+		spaceIdGetter:       mock_spacesyncstatus.NewMockSpaceIdGetter(t),
+		objectStore:         internalSubs.StoreFixture,
+		eventSender:         app.MustComponent[event.Sender](a).(*mock_event.MockSender),
+		subscriptionService: internalSubs,
+		session:             sess,
+		syncSubs:            syncsubscriptions.New(),
+		networkConfig:       networkConfig,
+	}
+	fx.spaceIdGetter.EXPECT().TechSpaceId().Return("techSpaceId").Maybe()
+
+	a.Register(fx.syncSubs).
+		Register(testutil.PrepareMock(ctx, a, networkConfig)).
+		Register(testutil.PrepareMock(ctx, a, fx.nodeStatus)).
+		Register(testutil.PrepareMock(ctx, a, fx.spaceIdGetter)).
+		Register(testutil.PrepareMock(ctx, a, fx.nodeConf)).
+		Register(testutil.PrepareMock(ctx, a, fx.nodeUsage)).
+		Register(sess).
+		Register(fx.spaceSyncStatus)
+	beforeStart(fx)
+	err := a.Start(ctx)
+	require.NoError(t, err)
+	return fx
+}
+
+func Test(t *testing.T) {
+	t.Run("empty space synced", func(t *testing.T) {
+		fx := newFixture(t, func(fx *fixture) {
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+				Usage: filesync.NodeUsage{
+					BytesLeft:         1000,
+					AccountBytesLimit: 1000,
+				},
+				LocalUsageBytes: 0,
+			}, nil)
+			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
+			fx.eventSender.EXPECT().Broadcast(&pb.Event{
+				Messages: []*pb.EventMessage{{
+					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+							Id:      "spaceId",
+							Status:  pb.EventSpace_Synced,
+							Network: pb.EventSpace_Anytype,
+						},
+					},
+				}},
+			})
+		})
+		defer fx.ctrl.Finish()
+	})
+	t.Run("objects syncing", func(t *testing.T) {
+		fx := newFixture(t, func(fx *fixture) {
+			objs := genSyncingObjects(10, 100, "spaceId")
+			fx.objectStore.AddObjects(t, objs)
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+				Usage: filesync.NodeUsage{
+					BytesLeft:         1000,
+					AccountBytesLimit: 1000,
+				},
+				LocalUsageBytes: 0,
+			}, nil)
+			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
+			fx.eventSender.EXPECT().Broadcast(&pb.Event{
+				Messages: []*pb.EventMessage{{
+					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+							Id:                    "spaceId",
+							SyncingObjectsCounter: 110,
+							Status:                pb.EventSpace_Syncing,
+							Network:               pb.EventSpace_Anytype,
+						},
+					},
+				}},
+			})
+		})
+		defer fx.ctrl.Finish()
+	})
+	t.Run("objects syncing, not sending same event", func(t *testing.T) {
+		fx := newFixture(t, func(fx *fixture) {
+			fx.spaceSyncStatus.loopInterval = 10 * time.Millisecond
+			objs := genSyncingObjects(10, 100, "spaceId")
+			fx.objectStore.AddObjects(t, objs)
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+				Usage: filesync.NodeUsage{
+					BytesLeft:         1000,
+					AccountBytesLimit: 1000,
+				},
+				LocalUsageBytes: 0,
+			}, nil)
+			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().AnyTimes().Return(nodeconf.NetworkCompatibilityStatusOk)
+			fx.eventSender.EXPECT().Broadcast(&pb.Event{
+				Messages: []*pb.EventMessage{{
+					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+							Id:                    "spaceId",
+							SyncingObjectsCounter: 110,
+							Status:                pb.EventSpace_Syncing,
+							Network:               pb.EventSpace_Anytype,
+						},
+					},
+				}},
+			}).Times(1)
+		})
+		fx.Refresh("spaceId")
+		time.Sleep(100 * time.Millisecond)
+		defer fx.ctrl.Finish()
+	})
+	t.Run("local only", func(t *testing.T) {
+		fx := newFixture(t, func(fx *fixture) {
+			objs := genSyncingObjects(10, 100, "spaceId")
+			fx.objectStore.AddObjects(t, objs)
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_LocalOnly)
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.eventSender.EXPECT().Broadcast(&pb.Event{
+				Messages: []*pb.EventMessage{{
+					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+							Id:      "spaceId",
+							Status:  pb.EventSpace_Offline,
+							Network: pb.EventSpace_LocalOnly,
+						},
+					},
+				}},
+			})
+		})
+		defer fx.ctrl.Finish()
+	})
+	t.Run("size exceeded", func(t *testing.T) {
+		fx := newFixture(t, func(fx *fixture) {
+			objs := genSyncingObjects(10, 100, "spaceId")
+			fx.objectStore.AddObjects(t, objs)
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+				Usage: filesync.NodeUsage{
+					BytesLeft:         1,
+					AccountBytesLimit: 1000,
+				},
+				LocalUsageBytes: 0,
+			}, nil)
+			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
+			fx.eventSender.EXPECT().Broadcast(&pb.Event{
+				Messages: []*pb.EventMessage{{
+					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+							Id:                    "spaceId",
+							SyncingObjectsCounter: 110,
+							Status:                pb.EventSpace_Error,
+							Network:               pb.EventSpace_Anytype,
+							Error:                 pb.EventSpace_StorageLimitExceed,
+						},
+					},
+				}},
+			})
+		})
+		defer fx.ctrl.Finish()
+	})
+	t.Run("connection error", func(t *testing.T) {
+		fx := newFixture(t, func(fx *fixture) {
+			objs := genSyncingObjects(10, 100, "spaceId")
+			fx.objectStore.AddObjects(t, objs)
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.ConnectionError)
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+				Usage: filesync.NodeUsage{
+					BytesLeft:         1000,
+					AccountBytesLimit: 1000,
+				},
+				LocalUsageBytes: 0,
+			}, nil)
+			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
+			fx.eventSender.EXPECT().Broadcast(&pb.Event{
+				Messages: []*pb.EventMessage{{
+					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+							Id:                    "spaceId",
+							SyncingObjectsCounter: 110,
+							Status:                pb.EventSpace_Offline,
+							Network:               pb.EventSpace_Anytype,
+							Error:                 pb.EventSpace_NetworkError,
+						},
+					},
+				}},
+			})
+		})
+		defer fx.ctrl.Finish()
+	})
+	t.Run("network incompatible", func(t *testing.T) {
+		fx := newFixture(t, func(fx *fixture) {
+			objs := genSyncingObjects(10, 100, "spaceId")
+			fx.objectStore.AddObjects(t, objs)
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.ConnectionError)
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+				Usage: filesync.NodeUsage{
+					BytesLeft:         1000,
+					AccountBytesLimit: 1000,
+				},
+				LocalUsageBytes: 0,
+			}, nil)
+			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusIncompatible)
+			fx.eventSender.EXPECT().Broadcast(&pb.Event{
+				Messages: []*pb.EventMessage{{
+					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+							Id:                    "spaceId",
+							SyncingObjectsCounter: 110,
+							Status:                pb.EventSpace_Error,
+							Network:               pb.EventSpace_Anytype,
+							Error:                 pb.EventSpace_IncompatibleVersion,
+						},
+					},
+				}},
+			})
+		})
+		defer fx.ctrl.Finish()
+	})
+	t.Run("objects syncing, refresh with missing objects", func(t *testing.T) {
+		fx := newFixture(t, func(fx *fixture) {
+			fx.spaceSyncStatus.loopInterval = 10 * time.Millisecond
+			objs := genSyncingObjects(10, 100, "spaceId")
+			fx.objectStore.AddObjects(t, objs)
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+				Usage: filesync.NodeUsage{
+					BytesLeft:         1000,
+					AccountBytesLimit: 1000,
+				},
+				LocalUsageBytes: 0,
+			}, nil)
+			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().AnyTimes().Return(nodeconf.NetworkCompatibilityStatusOk)
+			fx.eventSender.EXPECT().Broadcast(&pb.Event{
+				Messages: []*pb.EventMessage{{
+					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+							Id:                    "spaceId",
+							SyncingObjectsCounter: 110,
+							Status:                pb.EventSpace_Syncing,
+							Network:               pb.EventSpace_Anytype,
+						},
+					},
+				}},
+			})
+		})
+		fx.UpdateMissingIds("spaceId", []string{"missingId"})
+		fx.Refresh("spaceId")
+		fx.eventSender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{{
 				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:      "personalId",
-						Status:  pb.EventSpace_Synced,
-						Network: pb.EventSpace_Anytype,
+						Id:                    "spaceId",
+						SyncingObjectsCounter: 111,
+						Status:                pb.EventSpace_Syncing,
+						Network:               pb.EventSpace_Anytype,
+					},
+				},
+			}},
+		}).Times(1)
+		time.Sleep(100 * time.Millisecond)
+		defer fx.ctrl.Finish()
+	})
+	t.Run("hook new session", func(t *testing.T) {
+		fx := newFixture(t, func(fx *fixture) {
+			objs := genSyncingObjects(10, 100, "spaceId")
+			fx.objectStore.AddObjects(t, objs)
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.ConnectionError)
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+				Usage: filesync.NodeUsage{
+					BytesLeft:         1000,
+					AccountBytesLimit: 1000,
+				},
+				LocalUsageBytes: 0,
+			}, nil)
+			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().AnyTimes().Return(nodeconf.NetworkCompatibilityStatusIncompatible)
+			fx.eventSender.EXPECT().Broadcast(&pb.Event{
+				Messages: []*pb.EventMessage{{
+					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+							Id:                    "spaceId",
+							SyncingObjectsCounter: 110,
+							Status:                pb.EventSpace_Error,
+							Network:               pb.EventSpace_Anytype,
+							Error:                 pb.EventSpace_IncompatibleVersion,
+						},
+					},
+				}},
+			})
+		})
+		fx.eventSender.EXPECT().SendToSession("sessionId", &pb.Event{
+			Messages: []*pb.EventMessage{{
+				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Id:                    "spaceId",
+						SyncingObjectsCounter: 110,
+						Status:                pb.EventSpace_Error,
+						Network:               pb.EventSpace_Anytype,
+						Error:                 pb.EventSpace_IncompatibleVersion,
 					},
 				},
 			}},
 		})
-		err = status.Run(ctx)
-		assert.Nil(t, err)
-		err = status.Close(ctx)
-		assert.Nil(t, err)
+		fx.session.RunHooks(mockSessionContext{"sessionId"})
+		defer fx.ctrl.Finish()
 	})
-	t.Run("local only mode", func(t *testing.T) {
-		// given
-		status := NewSpaceSyncStatus()
-		ctx := context.Background()
-
-		a := new(app.App)
-		eventSender := mock_event.NewMockSender(t)
-		eventSender.EXPECT().Broadcast(&pb.Event{
+	t.Run("hook new session local only", func(t *testing.T) {
+		fx := newFixture(t, func(fx *fixture) {
+			objs := genSyncingObjects(10, 100, "spaceId")
+			fx.objectStore.AddObjects(t, objs)
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_LocalOnly)
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.eventSender.EXPECT().Broadcast(&pb.Event{
+				Messages: []*pb.EventMessage{{
+					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+							Id:      "spaceId",
+							Status:  pb.EventSpace_Offline,
+							Network: pb.EventSpace_LocalOnly,
+						},
+					},
+				}},
+			})
+		})
+		fx.eventSender.EXPECT().SendToSession("sessionId", &pb.Event{
 			Messages: []*pb.EventMessage{{
 				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Id:      "spaceId",
 						Status:  pb.EventSpace_Offline,
 						Network: pb.EventSpace_LocalOnly,
 					},
 				},
 			}},
 		})
-		space := mock_spacesyncstatus.NewMockSpaceIdGetter(t)
-
-		a.Register(testutil.PrepareMock(ctx, a, eventSender)).
-			Register(objectstore.NewStoreFixture(t)).
-			Register(&config.Config{NetworkMode: pb.RpcAccount_LocalOnly}).
-			Register(testutil.PrepareMock(ctx, a, space)).
-			Register(session.NewHookRunner())
-
-		// when
-		err := status.Init(a)
-
-		// then
-		assert.Nil(t, err)
-		err = status.Run(ctx)
-		assert.Nil(t, err)
-		err = status.Close(ctx)
-		assert.Nil(t, err)
-	})
-}
-
-func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
-	t.Run("syncing event for objects", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		eventSender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:                    "spaceId",
-						Status:                pb.EventSpace_Syncing,
-						Network:               pb.EventSpace_Anytype,
-						Error:                 pb.EventSpace_Null,
-						SyncingObjectsCounter: 2,
-					},
-				},
-			}},
-		})
-		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:         pbtypes.String("id1"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
-				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
-			},
-			{
-				bundle.RelationKeyId:         pbtypes.String("id2"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
-				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
-			},
-		})
-		status := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(storeFixture),
-			objectsState:  NewObjectState(storeFixture),
-		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
-
-		// then
-		status.updateSpaceSyncStatus(syncStatus)
-
-		// when
-		assert.Equal(t, domain.Syncing, status.objectsState.GetSyncStatus("spaceId"))
-		assert.Equal(t, 2, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Syncing, status.getSpaceSyncStatus(syncStatus.SpaceId))
-	})
-	t.Run("syncing event for files", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		eventSender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:                    "spaceId",
-						Status:                pb.EventSpace_Syncing,
-						Network:               pb.EventSpace_Anytype,
-						Error:                 pb.EventSpace_Null,
-						SyncingObjectsCounter: 2,
-					},
-				},
-			}},
-		})
-		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:               pbtypes.String("id1"),
-				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Syncing)),
-				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
-			},
-			{
-				bundle.RelationKeyId:               pbtypes.String("id2"),
-				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
-				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
-			},
-			{
-				bundle.RelationKeyId:               pbtypes.String("id3"),
-				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Syncing)),
-				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
-			},
-		})
-
-		status := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(storeFixture),
-			objectsState:  NewObjectState(storeFixture),
-		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Files)
-
-		// then
-		status.updateSpaceSyncStatus(syncStatus)
-
-		// when
-		assert.Equal(t, domain.Syncing, status.filesState.GetSyncStatus("spaceId"))
-		assert.Equal(t, 2, status.filesState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Syncing, status.getSpaceSyncStatus(syncStatus.SpaceId))
-	})
-	t.Run("don't send not needed synced event if files or objects are still syncing", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		status := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
-		}
-		objectsSyncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
-		status.objectsState.SetSyncStatusAndErr(objectsSyncStatus.Status, domain.Null, objectsSyncStatus.SpaceId)
-
-		// then
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
-		status.updateSpaceSyncStatus(syncStatus)
-
-		// when
-		eventSender.AssertNotCalled(t, "Broadcast")
-	})
-	t.Run("send error event", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		eventSender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:                    "spaceId",
-						Status:                pb.EventSpace_Error,
-						Network:               pb.EventSpace_Anytype,
-						Error:                 pb.EventSpace_NetworkError,
-						SyncingObjectsCounter: 0,
-					},
-				},
-			}},
-		})
-		status := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
-		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.NetworkError, domain.Objects)
-
-		// then
-		status.updateSpaceSyncStatus(syncStatus)
-
-		// when
-		assert.Equal(t, domain.Error, status.objectsState.GetSyncStatus("spaceId"))
-		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Error, status.getSpaceSyncStatus(syncStatus.SpaceId))
-	})
-	t.Run("send storage error event and then reset it", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		eventSender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:                    "spaceId",
-						Status:                pb.EventSpace_Error,
-						Network:               pb.EventSpace_Anytype,
-						Error:                 pb.EventSpace_StorageLimitExceed,
-						SyncingObjectsCounter: 0,
-					},
-				},
-			}},
-		})
-		status := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
-		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.StorageLimitExceed, domain.Files)
-
-		// then
-		status.updateSpaceSyncStatus(syncStatus)
-
-		// when
-		assert.Equal(t, domain.Synced, status.filesState.GetSyncStatus("spaceId"))
-		assert.Equal(t, 0, status.filesState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Synced, status.getSpaceSyncStatus(syncStatus.SpaceId))
-	})
-	t.Run("send incompatible error event", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		eventSender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:                    "spaceId",
-						Status:                pb.EventSpace_Error,
-						Network:               pb.EventSpace_Anytype,
-						Error:                 pb.EventSpace_IncompatibleVersion,
-						SyncingObjectsCounter: 0,
-					},
-				},
-			}},
-		})
-		status := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
-		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.IncompatibleVersion, domain.Objects)
-
-		// then
-		status.updateSpaceSyncStatus(syncStatus)
-
-		// when
-		assert.Equal(t, domain.Error, status.objectsState.GetSyncStatus("spaceId"))
-		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Error, status.getSpaceSyncStatus(syncStatus.SpaceId))
-	})
-	t.Run("send offline event", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		eventSender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:                    "spaceId",
-						Status:                pb.EventSpace_Offline,
-						Network:               pb.EventSpace_SelfHost,
-						Error:                 pb.EventSpace_Null,
-						SyncingObjectsCounter: 0,
-					},
-				},
-			}},
-		})
-		status := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
-		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, domain.Null, domain.Objects)
-
-		// then
-		status.updateSpaceSyncStatus(syncStatus)
-
-		// when
-		assert.Equal(t, domain.Offline, status.objectsState.GetSyncStatus("spaceId"))
-		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Offline, status.getSpaceSyncStatus(syncStatus.SpaceId))
-	})
-	t.Run("send synced event", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		eventSender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:                    "spaceId",
-						Status:                pb.EventSpace_Synced,
-						Network:               pb.EventSpace_SelfHost,
-						Error:                 pb.EventSpace_Null,
-						SyncingObjectsCounter: 0,
-					},
-				},
-			}},
-		})
-		status := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
-		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
-		status.objectsState.SetObjectsNumber(syncStatus)
-		status.objectsState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
-
-		// then
-		syncStatus = domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
-		status.updateSpaceSyncStatus(syncStatus)
-
-		// when
-		assert.Equal(t, domain.Synced, status.objectsState.GetSyncStatus("spaceId"))
-		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Unknown, status.filesState.GetSyncStatus("spaceId"))
-		assert.Equal(t, 0, status.filesState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Synced, status.getSpaceSyncStatus(syncStatus.SpaceId))
-	})
-	t.Run("send initial synced event", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		status := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
-		}
-		eventSender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:                    "spaceId",
-						Status:                pb.EventSpace_Synced,
-						Network:               pb.EventSpace_SelfHost,
-						Error:                 pb.EventSpace_Null,
-						SyncingObjectsCounter: 0,
-					},
-				},
-			}},
-		})
-		// then
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
-		status.updateSpaceSyncStatus(syncStatus)
-	})
-
-	t.Run("not send not needed synced event", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		status := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
-		}
-		status.objectsState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
-		status.filesState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
-
-		// then
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
-		status.updateSpaceSyncStatus(syncStatus)
-
-		// when
-		eventSender.AssertNotCalled(t, "Broadcast", &pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:                    "spaceId",
-						Status:                pb.EventSpace_Synced,
-						Network:               pb.EventSpace_SelfHost,
-						Error:                 pb.EventSpace_Null,
-						SyncingObjectsCounter: 0,
-					},
-				},
-			}},
-		})
-	})
-	t.Run("not send syncing event if object number not changed", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		eventSender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:                    "spaceId",
-						Status:                pb.EventSpace_Syncing,
-						Network:               pb.EventSpace_SelfHost,
-						Error:                 pb.EventSpace_Null,
-						SyncingObjectsCounter: 2,
-					},
-				},
-			}},
-		}).Return().Times(1)
-
-		storeFixture := objectstore.NewStoreFixture(t)
-		status := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(storeFixture),
-			objectsState:  NewObjectState(storeFixture),
-		}
-		storeFixture.AddObjects(t, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:         pbtypes.String("id1"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
-				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
-			},
-			{
-				bundle.RelationKeyId:         pbtypes.String("id2"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Synced)),
-				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
-			},
-			{
-				bundle.RelationKeyId:         pbtypes.String("id3"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
-				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
-			},
-		})
-
-		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
-		status.updateSpaceSyncStatus(syncStatus)
-		status.updateSpaceSyncStatus(syncStatus)
-	})
-}
-
-func TestSpaceSyncStatus_SendUpdate(t *testing.T) {
-	t.Run("SendUpdate success", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		spaceStatus := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
-		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
-
-		// then
-		spaceStatus.SendUpdate(syncStatus)
-
-		// when
-		status, err := spaceStatus.batcher.WaitOne(context.Background())
-		assert.Nil(t, err)
-		assert.Equal(t, status, syncStatus)
-	})
-}
-
-func TestSpaceSyncStatus_Notify(t *testing.T) {
-	t.Run("Notify success", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		spaceIdGetter := mock_spacesyncstatus.NewMockSpaceIdGetter(t)
-		spaceStatus := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
-			spaceIdGetter: spaceIdGetter,
-		}
-		// then
-		spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"id1", "id2"})
-		eventSender.EXPECT().SendToSession(mock.Anything, &pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id: "id1",
-					},
-				},
-			}},
-		})
-		eventSender.EXPECT().SendToSession(mock.Anything, &pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id: "id2",
-					},
-				},
-			}},
-		})
-		spaceStatus.sendSyncEventForNewSession(session.NewContext())
+		fx.session.RunHooks(mockSessionContext{"sessionId"})
+		defer fx.ctrl.Finish()
 	})
 }

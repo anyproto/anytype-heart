@@ -175,10 +175,6 @@ func (st *SmartTest) Tree() objecttree.ObjectTree {
 	return st.objectTree
 }
 
-func (st *SmartTest) SetRestrictions(r restriction.Restrictions) {
-	st.TestRestrictions = r
-}
-
 func (st *SmartTest) Restrictions() restriction.Restrictions {
 	return st.TestRestrictions
 }

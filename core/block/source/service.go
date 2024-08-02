@@ -45,6 +45,7 @@ type accountService interface {
 
 type Space interface {
 	Id() string
+	IsPersonal() bool
 	TreeBuilder() objecttreebuilder.TreeBuilder
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)

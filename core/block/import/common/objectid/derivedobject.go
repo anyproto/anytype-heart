@@ -50,7 +50,7 @@ func (d *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn 
 	}
 
 	var key string
-	if d.isDeletedObject(uniqueKey.Marshal()) {
+	if d.isDeletedObject(spaceID, uniqueKey.Marshal()) {
 		key = bson.NewObjectId().Hex()
 		uniqueKey, err = domain.NewUniqueKey(sn.SbType, key)
 		if err != nil {
@@ -74,9 +74,14 @@ func (d *derivedObject) GetInternalKey(sbType sb.SmartBlockType) string {
 	return d.internalKey
 }
 
-func (d *derivedObject) isDeletedObject(uniqueKey string) bool {
+func (d *derivedObject) isDeletedObject(spaceId string, uniqueKey string) bool {
 	ids, _, err := d.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceId),
+			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),

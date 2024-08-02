@@ -349,12 +349,30 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 
 	subService := mw.applicationService.GetApp().MustComponent(subscription.CName).(subscription.Service)
 
-	resp, err := subService.Search(*req)
+	resp, err := subService.Search(subscription.SubscribeRequest{
+		SubId:             req.SubId,
+		Filters:           req.Filters,
+		Sorts:             req.Sorts,
+		Limit:             req.Limit,
+		Offset:            req.Offset,
+		Keys:              req.Keys,
+		AfterId:           req.AfterId,
+		BeforeId:          req.BeforeId,
+		Source:            req.Source,
+		IgnoreWorkspace:   req.IgnoreWorkspace,
+		NoDepSubscription: req.NoDepSubscription,
+		CollectionId:      req.CollectionId,
+	})
 	if err != nil {
 		return errResponse(err)
 	}
 
-	return resp
+	return &pb.RpcObjectSearchSubscribeResponse{
+		SubId:        resp.SubId,
+		Records:      resp.Records,
+		Dependencies: resp.Dependencies,
+		Counters:     resp.Counters,
+	}
 }
 
 func (mw *Middleware) ObjectGroupsSubscribe(cctx context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {

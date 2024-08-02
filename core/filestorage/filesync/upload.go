@@ -97,6 +97,9 @@ func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
 	err := s.uploadFile(ctx, spaceId, fileId, it.ObjectId)
+	if errors.Is(err, context.Canceled) {
+		return persistentqueue.ActionRetry, nil
+	}
 	if isObjectDeletedError(err) {
 		return persistentqueue.ActionDone, s.DeleteFile(it.ObjectId, it.FullFileId())
 	}
@@ -143,6 +146,9 @@ func (s *fileSync) addToRetryUploadingQueue(it *QueueItem) persistentqueue.Actio
 func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
 	err := s.uploadFile(ctx, spaceId, fileId, it.ObjectId)
+	if errors.Is(err, context.Canceled) {
+		return persistentqueue.ActionRetry, nil
+	}
 	if isObjectDeletedError(err) {
 		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
 	}

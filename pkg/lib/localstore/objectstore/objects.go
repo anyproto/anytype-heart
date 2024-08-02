@@ -31,6 +31,7 @@ import (
 
 var log = logging.Logger("anytype-localstore")
 var ErrDetailsNotChanged = errors.New("details not changed")
+var ErrStoreIsClosing = errors.New("store is closing")
 
 const CName = "objectstore"
 
@@ -60,7 +61,7 @@ var (
 )
 
 func New() ObjectStore {
-	return &dsObjectStore{}
+	return &dsObjectStore{isClosingCh: make(chan struct{})}
 }
 
 type SourceDetailsFromID interface {
@@ -153,7 +154,8 @@ type ObjectStore interface {
 	FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
 	ListAllRelations(spaceId string) (relations relationutils.Relations, err error)
 	GetRelationByID(id string) (relation *model.Relation, err error)
-	GetRelationByKey(key string) (*model.Relation, error)
+	GetRelationByKey(spaceId string, key string) (*model.Relation, error)
+	GetRelationFormatByKey(key string) (model.RelationFormat, error)
 
 	GetObjectType(url string) (*model.ObjectType, error)
 	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
@@ -191,8 +193,10 @@ var ErrNotAnObject = fmt.Errorf("not an object")
 type dsObjectStore struct {
 	sourceService SourceDetailsFromID
 
-	cache *lru.Cache[string, *model.ObjectDetails]
-	db    *badger.DB
+	runningQueriesWG sync.WaitGroup
+	isClosingCh      chan struct{}
+	cache            *lru.Cache[string, *model.ObjectDetails]
+	db               *badger.DB
 
 	fts ftsearch.FTSearch
 
@@ -207,6 +211,10 @@ func (s *dsObjectStore) Run(context.Context) (err error) {
 }
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {
+	close(s.isClosingCh)
+	// wait long queries with iterator to gracefully finish,
+	// otherwise, closing the db may cause panics in iterators in badger
+	s.runningQueriesWG.Wait()
 	return nil
 }
 
@@ -344,6 +352,8 @@ func (s *dsObjectStore) ListIdsBySpace(spaceId string) ([]string, error) {
 func (s *dsObjectStore) ListIds() ([]string, error) {
 	var ids []string
 	err := s.db.View(func(txn *badger.Txn) error {
+		s.runningQueriesWG.Add(1)
+		defer s.runningQueriesWG.Done()
 		var err error
 		ids, err = listIDsByPrefix(txn, pagesDetailsBase.Bytes())
 		return err

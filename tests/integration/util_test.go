@@ -115,7 +115,7 @@ func newTestSubscription(t *testing.T, app *testApplication, keys []domain.Relat
 	}
 	subscriptionId := bson.NewObjectId().Hex()
 	subscriptionService := getService[subscription.Service](app)
-	_, err := subscriptionService.Search(pb.RpcObjectSearchSubscribeRequest{
+	_, err := subscriptionService.Search(subscription.SubscribeRequest{
 		SubId:   subscriptionId,
 		Keys:    keysConverted,
 		Filters: filters,

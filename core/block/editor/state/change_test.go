@@ -943,3 +943,54 @@ func TestRootDeviceChanges(t *testing.T) {
 		assert.Equal(t, device, s.GetChanges()[0].GetDeviceAdd().GetDevice())
 	})
 }
+
+func TestTableChanges(t *testing.T) {
+	t.Run("change row header", func(t *testing.T) {
+		contRow := &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Row,
+			},
+		}
+		contColumn := &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Column,
+			},
+		}
+
+		r := NewDoc("root", nil).(*State)
+		s := r.NewState()
+		s.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"r1", "t1"}}))
+		s.Add(simple.New(&model.Block{Id: "r1", ChildrenIds: []string{"c1", "c2"}, Content: contRow}))
+		s.Add(simple.New(&model.Block{Id: "c1", Content: contColumn}))
+		s.Add(simple.New(&model.Block{Id: "c2", Content: contColumn}))
+
+		s.Add(simple.New(&model.Block{Id: "t1", ChildrenIds: []string{"tableRows", "tableColumns"}, Content: &model.BlockContentOfTable{
+			Table: &model.BlockContentTable{},
+		}}))
+		s.Add(simple.New(&model.Block{Id: "tableRows", ChildrenIds: []string{"tableRow1"}, Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_TableRows,
+			},
+		}}))
+		s.Add(simple.New(&model.Block{Id: "tableRow1", Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: false}}}))
+
+		s.Add(simple.New(&model.Block{Id: "tableColumns", Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_TableColumns,
+			},
+		}}))
+
+		msgs, _, err := ApplyState(s, true)
+		require.NoError(t, err)
+		assert.Len(t, msgs, 1)
+
+		s = s.NewState()
+		rows := s.Get("tableRow1")
+		require.NotNil(t, rows)
+		rows.Model().GetTableRow().IsHeader = true
+		msgs, _, err = ApplyState(s, true)
+		require.NoError(t, err)
+		assert.Len(t, msgs, 1)
+
+	})
+}

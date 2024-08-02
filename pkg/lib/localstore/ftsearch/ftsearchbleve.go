@@ -32,9 +32,14 @@ const (
 
 	fieldTitle        = "Title"
 	fieldText         = "Text"
+	fieldSpace        = "SpaceID"
 	fieldTitleNoTerms = "TitleNoTerms"
 	fieldTextNoTerms  = "TextNoTerms"
 	fieldId           = "Id"
+	fieldIdRaw        = "IdRaw"
+	score             = "score"
+	highlights        = "highlights"
+	tokenizerId       = "SimpleIdTokenizer"
 )
 
 var log = logging.Logger("ftsearch")
@@ -50,7 +55,7 @@ type SearchDoc struct {
 }
 
 func New() FTSearch {
-	return &ftSearch{}
+	return new(ftSearch)
 }
 
 type FTSearch interface {
@@ -59,11 +64,8 @@ type FTSearch interface {
 	NewAutoBatcher(maxDocs int, maxDocsSize uint64) AutoBatcher
 	BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error)
 	BatchDeleteObjects(ids []string) (err error)
-	BatchDeleteDocs(docIds []string) (err error)
-	Search(spaceID string, highlightFormatter HighlightFormatter, query string) (results search.DocumentMatchCollection, err error)
+	Search(spaceIds []string, highlightFormatter HighlightFormatter, query string) (results search.DocumentMatchCollection, err error)
 	Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error)
-	ListIndexedIds(objectId string) (ids []string, err error)
-	Has(id string) (exists bool, err error)
 	DeleteObject(id string) error
 	DocCount() (uint64, error)
 }
@@ -96,6 +98,7 @@ func (f *ftSearch) Run(context.Context) (err error) {
 		return
 	}
 	f.index = index
+	f.cleanTantivy()
 	return nil
 }
 
@@ -111,6 +114,10 @@ func (f *ftSearch) cleanUpOldIndexes() {
 			}
 		}
 	}
+}
+
+func (f *ftSearch) cleanTantivy() {
+	_ = os.RemoveAll(filepath.Join(f.rootPath, ftsDir2))
 }
 
 func (f *ftSearch) Index(doc SearchDoc) (err error) {
@@ -167,7 +174,7 @@ func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs
 	return f.index.Batch(batch)
 }
 
-func (f *ftSearch) BatchDeleteDocs(docIds []string) (err error) {
+func (f *ftSearch) batchDeleteDocs(docIds []string) (err error) {
 	if len(docIds) == 0 {
 		return nil
 	}
@@ -196,14 +203,14 @@ func (f *ftSearch) BatchDeleteObjects(objectIds []string) (err error) {
 
 	var docIds []string
 	for _, id := range objectIds {
-		ids, err := f.ListIndexedIds(id)
+		ids, err := f.listIndexedIds(id)
 		if err != nil {
 			log.With("id", id).Errorf("failed to get doc ids for object id: %s", err)
 		}
 		docIds = append(docIds, ids...)
 
 	}
-	return f.BatchDeleteDocs(docIds)
+	return f.batchDeleteDocs(docIds)
 }
 
 type HighlightFormatter string
@@ -261,7 +268,7 @@ func (f *ftSearch) Iterate(objectId string, fields []string, shouldContinue func
 	return nil
 }
 
-func (f *ftSearch) ListIndexedIds(objectId string) (ids []string, err error) {
+func (f *ftSearch) listIndexedIds(objectId string) (ids []string, err error) {
 	prefixQuery := bleve.NewPrefixQuery(objectId + "/")
 	prefixQuery.SetField("_id")
 
@@ -281,7 +288,7 @@ func (f *ftSearch) ListIndexedIds(objectId string) (ids []string, err error) {
 	return ids, nil
 }
 
-func (f *ftSearch) Search(spaceID string, highlightFormatter HighlightFormatter, qry string) (results search.DocumentMatchCollection, err error) {
+func (f *ftSearch) Search(spaceIds []string, highlightFormatter HighlightFormatter, qry string) (results search.DocumentMatchCollection, err error) {
 	qry = strings.ToLower(qry)
 	qry = strings.TrimSpace(qry)
 	terms := f.getTerms(qry)
@@ -299,7 +306,7 @@ func (f *ftSearch) Search(spaceID string, highlightFormatter HighlightFormatter,
 		)
 	}
 
-	return f.doSearch(spaceID, highlightFormatter, queries)
+	return f.doSearch(spaceIds, highlightFormatter, queries)
 }
 
 func (f *ftSearch) getTerms(qry string) []string {
@@ -316,12 +323,20 @@ func (f *ftSearch) getTerms(qry string) []string {
 	return terms
 }
 
-func (f *ftSearch) doSearch(spaceID string, highlightFormatter HighlightFormatter, queries []query.Query) (results search.DocumentMatchCollection, err error) {
+func (f *ftSearch) doSearch(spaceIds []string, highlightFormatter HighlightFormatter, queries []query.Query) (results search.DocumentMatchCollection, err error) {
 	var rootQuery query.Query = bleve.NewDisjunctionQuery(queries...)
-	if spaceID != "" {
-		spaceQuery := bleve.NewMatchQuery(spaceID)
-		spaceQuery.SetField("SpaceID")
-		rootQuery = bleve.NewConjunctionQuery(rootQuery, spaceQuery)
+	if len(spaceIds) != 0 {
+		var spaceQueries []query.Query
+		for _, spaceId := range spaceIds {
+			if spaceId == "" {
+				continue
+			}
+			spaceQuery := bleve.NewMatchQuery(spaceId)
+			spaceQuery.SetField(fieldSpace)
+			spaceQueries = append(spaceQueries, spaceQuery)
+		}
+		spaceIdsQuery := bleve.NewDisjunctionQuery(spaceQueries...)
+		rootQuery = bleve.NewConjunctionQuery(rootQuery, spaceIdsQuery)
 	}
 
 	searchRequest := bleve.NewSearchRequest(rootQuery)

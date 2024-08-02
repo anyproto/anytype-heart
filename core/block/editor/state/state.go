@@ -265,6 +265,7 @@ func (s *State) CleanupBlock(id string) bool {
 	)
 	for t != nil {
 		if _, ok = t.blocks[id]; ok {
+			s.removeFromCache(id)
 			delete(t.blocks, id)
 			return true
 		}
@@ -939,7 +940,7 @@ func (s *State) SetDetails(d *types.Struct) *State {
 
 // SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
 func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value *types.Value) {
-	s.AddBundledRelations(key)
+	s.AddBundledRelationLinks(key)
 	s.SetDetail(key.String(), value)
 	return
 }
@@ -1933,13 +1934,19 @@ func (s *State) SelectRoots(ids []string) []string {
 	return res
 }
 
-func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
-	links := make([]*model.RelationLink, 0, len(keys))
+func (s *State) AddBundledRelationLinks(keys ...domain.RelationKey) {
+	existingLinks := s.PickRelationLinks()
+
+	var links []*model.RelationLink
 	for _, key := range keys {
-		rel := bundle.MustGetRelation(key)
-		links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
+		if !existingLinks.Has(key.String()) {
+			rel := bundle.MustGetRelation(key)
+			links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
+		}
 	}
-	s.AddRelationLinks(links...)
+	if len(links) > 0 {
+		s.AddRelationLinks(links...)
+	}
 }
 
 func (s *State) GetNotificationById(id string) *model.Notification {

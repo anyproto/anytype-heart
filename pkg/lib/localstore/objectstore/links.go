@@ -17,6 +17,9 @@ type LinksUpdateInfo struct {
 func (s *dsObjectStore) GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error) {
 	var res *model.ObjectInfoWithLinks
 	err := s.db.View(func(txn *badger.Txn) error {
+		s.runningQueriesWG.Add(1)
+		defer s.runningQueriesWG.Done()
+
 		pages, err := s.getObjectsInfo(txn, spaceID, []string{id})
 		if err != nil {
 			return err
@@ -62,6 +65,8 @@ func (s *dsObjectStore) GetWithLinksInfoByID(spaceID string, id string) (*model.
 func (s *dsObjectStore) GetOutboundLinksByID(id string) ([]string, error) {
 	var links []string
 	err := s.db.View(func(txn *badger.Txn) error {
+		s.runningQueriesWG.Add(1)
+		defer s.runningQueriesWG.Done()
 		var err error
 		links, err = findOutboundLinks(txn, id)
 		return err
@@ -72,6 +77,8 @@ func (s *dsObjectStore) GetOutboundLinksByID(id string) ([]string, error) {
 func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
 	var links []string
 	err := s.db.View(func(txn *badger.Txn) error {
+		s.runningQueriesWG.Add(1)
+		defer s.runningQueriesWG.Done()
 		var err error
 		links, err = findInboundLinks(txn, id)
 		return err
