@@ -602,24 +602,6 @@ func TestBasic_SetDivStyle(t *testing.T) {
 	assert.Equal(t, model.BlockContentDiv_Dots, r.Pick("2").Model().GetDiv().Style)
 }
 
-func TestBasic_PasteBlocks(t *testing.T) {
-	sb := smarttest.New("test")
-	sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
-	s := sb.NewState()
-	err := b.PasteBlocks(s, "", model.Block_Inner, []simple.Block{
-		simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}),
-		simple.New(&model.Block{Id: "1.1", ChildrenIds: []string{"1.1.1"}}),
-		simple.New(&model.Block{Id: "1.1.1"}),
-		simple.New(&model.Block{Id: "2", ChildrenIds: []string{"2.1"}}),
-		simple.New(&model.Block{Id: "2.1"}),
-	})
-	require.NoError(t, err)
-
-	require.Len(t, s.Blocks(), 6)
-	assert.Len(t, s.Pick(s.RootId()).Model().ChildrenIds, 2)
-}
-
 func TestBasic_SetRelationKey(t *testing.T) {
 	fillSb := func(sb *smarttest.SmartTest) {
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).

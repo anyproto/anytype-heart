@@ -326,7 +326,6 @@ var WithDescription = func(s *state.State) {
 }
 
 var WithNoTitle = StateTransformer(func(s *state.State) {
-	WithFirstTextBlock(s)
 	s.Unlink(TitleBlockId)
 })
 

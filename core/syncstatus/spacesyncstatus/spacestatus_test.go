@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
-	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus/mock_nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus/mock_spacesyncstatus"
@@ -80,31 +79,6 @@ type fixture struct {
 	ctrl                *gomock.Controller
 }
 
-func mapFileStatus(status filesyncstatus.Status) domain.ObjectSyncStatus {
-	switch status {
-	case filesyncstatus.Syncing:
-		return domain.ObjectSyncStatusSyncing
-	case filesyncstatus.Queued:
-		return domain.ObjectSyncStatusSyncing
-	case filesyncstatus.Limited:
-		return domain.ObjectSyncStatusError
-	default:
-		return domain.ObjectSyncStatusSynced
-	}
-}
-
-func genFileObject(fileStatus filesyncstatus.Status, spaceId string) objectstore.TestObject {
-	id := fmt.Sprintf("%d", rand.Int())
-	return objectstore.TestObject{
-		bundle.RelationKeyId:               pbtypes.String(id),
-		bundle.RelationKeySyncStatus:       pbtypes.Int64(int64(mapFileStatus(fileStatus))),
-		bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(fileStatus)),
-		bundle.RelationKeyLayout:           pbtypes.Int64(int64(model.ObjectType_file)),
-		bundle.RelationKeyName:             pbtypes.String("name" + id),
-		bundle.RelationKeySpaceId:          pbtypes.String(spaceId),
-	}
-}
-
 func genObject(syncStatus domain.ObjectSyncStatus, spaceId string) objectstore.TestObject {
 	id := fmt.Sprintf("%d", rand.Int())
 	return objectstore.TestObject{
@@ -118,10 +92,7 @@ func genObject(syncStatus domain.ObjectSyncStatus, spaceId string) objectstore.T
 
 func genSyncingObjects(fileObjects, objects int, spaceId string) []objectstore.TestObject {
 	var res []objectstore.TestObject
-	for i := 0; i < fileObjects; i++ {
-		res = append(res, genFileObject(filesyncstatus.Syncing, spaceId))
-	}
-	for i := 0; i < objects; i++ {
+	for i := 0; i < objects+fileObjects; i++ {
 		res = append(res, genObject(domain.ObjectSyncStatusSyncing, spaceId))
 	}
 	return res

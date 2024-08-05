@@ -35,7 +35,10 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
 	arena := s.arenaPool.Get()
-
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
 	jsonVal := pbtypes.ProtoToJson(arena, details)
 	var isModified bool
 	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
@@ -48,8 +51,7 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 	if isModified {
 		s.sendUpdatesToSubscriptions(id, details)
 	}
-	arena.Reset()
-	s.arenaPool.Put(arena)
+
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
 	}
@@ -160,6 +162,10 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 		return nil
 	}
 	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
 	_, err := s.objects.UpsertId(s.componentCtx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
 		inputDetails, err := pbtypes.JsonToProto(val)
 		if err != nil {
@@ -188,8 +194,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 		s.sendUpdatesToSubscriptions(id, newDetails)
 		return jsonVal, true, nil
 	}))
-	arena.Reset()
-	s.arenaPool.Put(arena)
+
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
 	}
