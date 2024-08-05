@@ -38,9 +38,9 @@ func TestGetLocalDetails(t *testing.T) {
 
 		err := s.SetDetails("id1", &types.Struct{
 			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():             pbtypes.String("id1"),
-				bundle.RelationKeyName.String():           pbtypes.String("name"),
-				bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(now),
+				bundle.RelationKeyId.String():             domain.String("id1"),
+				bundle.RelationKeyName.String():           domain.String("name"),
+				bundle.RelationKeyLastOpenedDate.String(): domain.Int64(now),
 				bundle.RelationKeyIsFavorite.String():     pbtypes.Bool(true),
 			},
 		})
@@ -51,7 +51,7 @@ func TestGetLocalDetails(t *testing.T) {
 
 		want := &types.Struct{
 			Fields: map[string]*types.Value{
-				bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(now),
+				bundle.RelationKeyLastOpenedDate.String(): domain.Int64(now),
 				bundle.RelationKeyIsFavorite.String():     pbtypes.Bool(true),
 			},
 		}

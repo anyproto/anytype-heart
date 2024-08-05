@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/any-store/encoding"
 	"github.com/anyproto/any-store/query"
-	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"github.com/valyala/fastjson"
@@ -24,7 +23,7 @@ var (
 	ErrValueMustBeListSupporting = errors.New("value must be list supporting")
 )
 
-func MakeFiltersAnd(protoFilters []*model.BlockContentDataviewFilter, store ObjectStore) (FiltersAnd, error) {
+func MakeFiltersAnd(protoFilters []FilterRequest, store ObjectStore) (FiltersAnd, error) {
 	if store == nil {
 		return FiltersAnd{}, fmt.Errorf("objectStore dependency is nil")
 	}
@@ -48,7 +47,7 @@ func NestedRelationKey(baseRelationKey domain.RelationKey, nestedRelationKey dom
 	return fmt.Sprintf("%s.%s", baseRelationKey.String(), nestedRelationKey.String())
 }
 
-func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, store ObjectStore) (Filter, error) {
+func MakeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Filter, error) {
 	if store == nil {
 		return nil, fmt.Errorf("objectStore dependency is nil")
 	}
@@ -58,21 +57,28 @@ func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, sto
 	}
 
 	// replaces "value == false" to "value != true" for expected work with checkboxes
-	if rawFilter.Condition == model.BlockContentDataviewFilter_Equal && rawFilter.Value != nil && rawFilter.Value.Equal(pbtypes.Bool(false)) {
-		rawFilter = &model.BlockContentDataviewFilter{
-			RelationKey:      rawFilter.RelationKey,
-			RelationProperty: rawFilter.RelationProperty,
-			Condition:        model.BlockContentDataviewFilter_NotEqual,
-			Value:            pbtypes.Bool(true),
+	if rawFilter.Condition == model.BlockContentDataviewFilter_Equal {
+		v, ok := rawFilter.Value.Bool()
+		if ok && !v {
+			rawFilter = FilterRequest{
+				RelationKey:      rawFilter.RelationKey,
+				RelationProperty: rawFilter.RelationProperty,
+				Condition:        model.BlockContentDataviewFilter_NotEqual,
+				Value:            domain.Bool(true),
+			}
 		}
+
 	}
 	// replaces "value != false" to "value == true" for expected work with checkboxes
-	if rawFilter.Condition == model.BlockContentDataviewFilter_NotEqual && rawFilter.Value != nil && rawFilter.Value.Equal(pbtypes.Bool(false)) {
-		rawFilter = &model.BlockContentDataviewFilter{
-			RelationKey:      rawFilter.RelationKey,
-			RelationProperty: rawFilter.RelationProperty,
-			Condition:        model.BlockContentDataviewFilter_Equal,
-			Value:            pbtypes.Bool(true),
+	if rawFilter.Condition == model.BlockContentDataviewFilter_NotEqual {
+		v, ok := rawFilter.Value.Bool()
+		if ok && !v {
+			rawFilter = FilterRequest{
+				RelationKey:      rawFilter.RelationKey,
+				RelationProperty: rawFilter.RelationProperty,
+				Condition:        model.BlockContentDataviewFilter_Equal,
+				Value:            domain.Bool(true),
+			}
 		}
 	}
 
@@ -86,17 +92,17 @@ func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, sto
 		return FilterEq{
 			Key:   rawFilter.RelationKey,
 			Cond:  rawFilter.Condition,
-			Value: domain.ValueFromProto(rawFilter.Value),
+			Value: rawFilter.Value,
 		}, nil
 	case model.BlockContentDataviewFilter_Like:
 		return FilterLike{
 			Key:   rawFilter.RelationKey,
-			Value: rawFilter.Value.GetStringValue(),
+			Value: rawFilter.Value.StringOrDefault(""),
 		}, nil
 	case model.BlockContentDataviewFilter_NotLike:
 		return FilterNot{FilterLike{
 			Key:   rawFilter.RelationKey,
-			Value: rawFilter.Value.GetStringValue(),
+			Value: rawFilter.Value.StringOrDefault(""),
 		}}, nil
 	case model.BlockContentDataviewFilter_In:
 		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
@@ -642,8 +648,8 @@ type FilterNestedIn struct {
 
 var _ WithNestedFilter = &FilterNestedIn{}
 
-func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFilter, store ObjectStore, relationKey domain.RelationKey, nestedRelationKey domain.RelationKey) (Filter, error) {
-	rawNestedFilter := proto.Clone(rawFilter).(*model.BlockContentDataviewFilter)
+func makeFilterNestedIn(spaceID string, rawFilter FilterRequest, store ObjectStore, relationKey domain.RelationKey, nestedRelationKey domain.RelationKey) (Filter, error) {
+	rawNestedFilter := rawFilter
 	rawNestedFilter.RelationKey = string(nestedRelationKey)
 	nestedFilter, err := MakeFilter(spaceID, rawNestedFilter, store)
 	if err != nil {

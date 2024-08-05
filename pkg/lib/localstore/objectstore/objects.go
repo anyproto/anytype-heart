@@ -390,7 +390,7 @@ func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*database.
 		filters = append(filters, &model.BlockContentDataviewFilter{
 			RelationKey: bundle.RelationKeySpaceId.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceID),
+			Value:       domain.String(spaceID),
 		})
 	}
 	if includeArchived {
@@ -432,7 +432,7 @@ func (s *dsObjectStore) ListIdsBySpace(spaceId string) ([]string, error) {
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 			},
 		},
 	})
@@ -520,12 +520,12 @@ func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey domain.Un
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
-				Value:       pbtypes.String(uniqueKey.Marshal()),
+				Value:       domain.String(uniqueKey.Marshal()),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 			},
 		},
 		Limit: 2,

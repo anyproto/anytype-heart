@@ -4,7 +4,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type SpaceNameGetter interface {
@@ -17,12 +16,12 @@ func (d *dsObjectStore) GetSpaceName(spaceId string) string {
 			{
 				RelationKey: bundle.RelationKeyTargetSpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 			},
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
+				Value:       domain.Int64(int64(model.ObjectType_spaceView)),
 			},
 		},
 	})

@@ -61,16 +61,16 @@ func TestQuery(t *testing.T) {
 	t.Run("no filters", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		obj1 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id1"),
-			bundle.RelationKeyName: pbtypes.String("name1"),
+			bundle.RelationKeyId:   domain.String("id1"),
+			bundle.RelationKeyName: domain.String("name1"),
 		}
 		obj2 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id2"),
-			bundle.RelationKeyName: pbtypes.String("name2"),
+			bundle.RelationKeyId:   domain.String("id2"),
+			bundle.RelationKeyName: domain.String("name2"),
 		}
 		obj3 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id3"),
-			bundle.RelationKeyName: pbtypes.String("name3"),
+			bundle.RelationKeyId:   domain.String("id3"),
+			bundle.RelationKeyName: domain.String("name3"),
 		}
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
@@ -87,16 +87,16 @@ func TestQuery(t *testing.T) {
 	t.Run("with filter", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		obj1 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id1"),
-			bundle.RelationKeyName: pbtypes.String("name1"),
+			bundle.RelationKeyId:   domain.String("id1"),
+			bundle.RelationKeyName: domain.String("name1"),
 		}
 		obj2 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id2"),
-			bundle.RelationKeyName: pbtypes.String("name2"),
+			bundle.RelationKeyId:   domain.String("id2"),
+			bundle.RelationKeyName: domain.String("name2"),
 		}
 		obj3 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id3"),
-			bundle.RelationKeyName: pbtypes.String("name3"),
+			bundle.RelationKeyId:   domain.String("id3"),
+			bundle.RelationKeyName: domain.String("name3"),
 		}
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
@@ -105,7 +105,7 @@ func TestQuery(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyName.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("name2"),
+					Value:       domain.String("name2"),
 				},
 			},
 		})
@@ -119,18 +119,18 @@ func TestQuery(t *testing.T) {
 	t.Run("with multiple filters", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		obj1 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id1"),
-			bundle.RelationKeyName: pbtypes.String("name"),
+			bundle.RelationKeyId:   domain.String("id1"),
+			bundle.RelationKeyName: domain.String("name"),
 		}
 		obj2 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id2"),
-			bundle.RelationKeyName:        pbtypes.String("name"),
-			bundle.RelationKeyDescription: pbtypes.String("description"),
+			bundle.RelationKeyId:          domain.String("id2"),
+			bundle.RelationKeyName:        domain.String("name"),
+			bundle.RelationKeyDescription: domain.String("description"),
 		}
 		obj3 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id3"),
-			bundle.RelationKeyName:        pbtypes.String("name"),
-			bundle.RelationKeyDescription: pbtypes.String("description"),
+			bundle.RelationKeyId:          domain.String("id3"),
+			bundle.RelationKeyName:        domain.String("name"),
+			bundle.RelationKeyDescription: domain.String("description"),
 		}
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
@@ -139,12 +139,12 @@ func TestQuery(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyName.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("name"),
+					Value:       domain.String("name"),
 				},
 				{
 					RelationKey: bundle.RelationKeyDescription.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("description"),
+					Value:       domain.String("description"),
 				},
 			},
 		})
@@ -159,19 +159,19 @@ func TestQuery(t *testing.T) {
 	t.Run("full text search", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		obj1 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id1"),
-			bundle.RelationKeyName:        pbtypes.String("name"),
-			bundle.RelationKeyDescription: pbtypes.String("foo"),
+			bundle.RelationKeyId:          domain.String("id1"),
+			bundle.RelationKeyName:        domain.String("name"),
+			bundle.RelationKeyDescription: domain.String("foo"),
 		}
 		obj2 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id2"),
-			bundle.RelationKeyName:        pbtypes.String("some important note"),
-			bundle.RelationKeyDescription: pbtypes.String("foo"),
+			bundle.RelationKeyId:          domain.String("id2"),
+			bundle.RelationKeyName:        domain.String("some important note"),
+			bundle.RelationKeyDescription: domain.String("foo"),
 		}
 		obj3 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id3"),
-			bundle.RelationKeyName:        pbtypes.String(""),
-			bundle.RelationKeyDescription: pbtypes.String("bar"),
+			bundle.RelationKeyId:          domain.String("id3"),
+			bundle.RelationKeyName:        domain.String(""),
+			bundle.RelationKeyDescription: domain.String("bar"),
 		}
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
@@ -226,7 +226,7 @@ func TestQuery(t *testing.T) {
 					{
 						RelationKey: bundle.RelationKeyDescription.String(),
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String("foo"),
+						Value:       domain.String("foo"),
 					},
 				},
 			})
@@ -242,52 +242,52 @@ func TestQuery(t *testing.T) {
 	t.Run("full text meta", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		obj1 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id1"),
-			domain.RelationKey("bsonid1"): pbtypes.String("relid1"),
-			bundle.RelationKeyDescription: pbtypes.String("this is the first object description"),
+			bundle.RelationKeyId:          domain.String("id1"),
+			domain.RelationKey("bsonid1"): domain.String("relid1"),
+			bundle.RelationKeyDescription: domain.String("this is the first object description"),
 		}
 		obj2 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id2"),
-			bundle.RelationKeyType:        pbtypes.String("typeid1"),
-			bundle.RelationKeyDescription: pbtypes.String("this is the second object description"),
+			bundle.RelationKeyId:          domain.String("id2"),
+			bundle.RelationKeyType:        domain.String("typeid1"),
+			bundle.RelationKeyDescription: domain.String("this is the second object description"),
 		}
 
 		obj3 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id3"),
-			bundle.RelationKeyType: pbtypes.String("typeid1"),
+			bundle.RelationKeyId:   domain.String("id3"),
+			bundle.RelationKeyType: domain.String("typeid1"),
 		}
 
 		relObj := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("relid1"),
-			bundle.RelationKeyRelationKey: pbtypes.String("bsonid1"),
-			bundle.RelationKeyName:        pbtypes.String("relname"),
-			bundle.RelationKeyDescription: pbtypes.String("this is a relation's description"),
-			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyId:          domain.String("relid1"),
+			bundle.RelationKeyRelationKey: domain.String("bsonid1"),
+			bundle.RelationKeyName:        domain.String("relname"),
+			bundle.RelationKeyDescription: domain.String("this is a relation's description"),
+			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
 		}
 
 		relObjDeleted := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("relid2"),
-			bundle.RelationKeyRelationKey: pbtypes.String("bsonid1"),
-			bundle.RelationKeyName:        pbtypes.String("deletedtag"),
+			bundle.RelationKeyId:          domain.String("relid2"),
+			bundle.RelationKeyRelationKey: domain.String("bsonid1"),
+			bundle.RelationKeyName:        domain.String("deletedtag"),
 			bundle.RelationKeyIsDeleted:   pbtypes.Bool(true),
-			bundle.RelationKeyDescription: pbtypes.String("this is a deleted relation's description"),
-			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyDescription: domain.String("this is a deleted relation's description"),
+			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
 		}
 
 		relObjArchived := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("relid3"),
-			bundle.RelationKeyRelationKey: pbtypes.String("bsonid1"),
-			bundle.RelationKeyName:        pbtypes.String("archived"),
+			bundle.RelationKeyId:          domain.String("relid3"),
+			bundle.RelationKeyRelationKey: domain.String("bsonid1"),
+			bundle.RelationKeyName:        domain.String("archived"),
 			bundle.RelationKeyIsDeleted:   pbtypes.Bool(true),
-			bundle.RelationKeyDescription: pbtypes.String("this is a archived relation's description"),
-			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyDescription: domain.String("this is a archived relation's description"),
+			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
 		}
 
 		typeObj := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("typeid1"),
-			bundle.RelationKeyName:        pbtypes.String("typename"),
-			bundle.RelationKeyDescription: pbtypes.String("this is a type's description"),
-			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeyId:          domain.String("typeid1"),
+			bundle.RelationKeyName:        domain.String("typename"),
+			bundle.RelationKeyDescription: domain.String("this is a type's description"),
+			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_objectType)),
 		}
 
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3, relObj, relObjDeleted, relObjArchived, typeObj})
@@ -634,7 +634,7 @@ func TestQuery(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyName.String(),
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
-					Value:       pbtypes.String("ignore"),
+					Value:       domain.String("ignore"),
 				},
 			},
 			Sorts: []*model.BlockContentDataviewSort{
@@ -835,7 +835,7 @@ func TestQuery(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyName.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("this name"),
+					Value:       domain.String("this name"),
 				},
 			},
 			Sorts: []*model.BlockContentDataviewSort{
@@ -884,7 +884,7 @@ func TestQueryObjectIds(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyDescription.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("foo"),
+					Value:       domain.String("foo"),
 				},
 			},
 		})
@@ -941,7 +941,7 @@ func TestQueryRaw(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyDescription.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("foo"),
+					Value:       domain.String("foo"),
 				},
 			},
 		}, s, arena)
@@ -955,13 +955,13 @@ func TestQueryRaw(t *testing.T) {
 	t.Run("with nested filter", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		obj1 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id1"),
-			bundle.RelationKeyType: pbtypes.String("type1"),
+			bundle.RelationKeyId:   domain.String("id1"),
+			bundle.RelationKeyType: domain.String("type1"),
 		}
 		type1 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("type1"),
-			bundle.RelationKeyType:        pbtypes.String("objectType"),
-			domain.RelationKey("typeKey"): pbtypes.String("note"),
+			bundle.RelationKeyId:          domain.String("type1"),
+			bundle.RelationKeyType:        domain.String("objectType"),
+			domain.RelationKey("typeKey"): domain.String("note"),
 		}
 
 		s.AddObjects(t, []TestObject{obj1, type1})
@@ -971,7 +971,7 @@ func TestQueryRaw(t *testing.T) {
 				{
 					RelationKey: "type.typeKey",
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("note"),
+					Value:       domain.String("note"),
 				},
 			},
 		}, s, arena)
@@ -1095,16 +1095,16 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 		f := database.FiltersAnd{
 			database.FilterEq{
 				Key:   bundle.RelationKeyCreator.String(),
-				Value: pbtypes.String("anytype"),
+				Value: domain.String("anytype"),
 			},
 			database.FilterEq{
 				Key:   bundle.RelationKeySpaceId.String(),
-				Value: pbtypes.String(spaceId),
+				Value: domain.String(spaceId),
 			},
 			database.FilterNot{
 				Filter: database.FilterEq{
 					Key:   bundle.RelationKeyName.String(),
-					Value: pbtypes.String("hidden obj"),
+					Value: domain.String("hidden obj"),
 				},
 			},
 		}
@@ -1115,7 +1115,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 		f := database.FiltersAnd{
 			database.FilterEq{
 				Key:   bundle.RelationKeyId.String(),
-				Value: pbtypes.String("some id"),
+				Value: domain.String("some id"),
 			},
 			database.FilterEmpty{
 				Key: bundle.RelationKeyType.String(),
@@ -1128,7 +1128,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 		spaceId := "open space"
 		f := database.FilterEq{
 			Key:   bundle.RelationKeySpaceId.String(),
-			Value: pbtypes.String(spaceId),
+			Value: domain.String(spaceId),
 		}
 		assert.Equal(t, []string{spaceId}, getSpaceIdsFromFilter(f))
 	})
@@ -1136,13 +1136,13 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 	t.Run("filters is filter.FilterEq without spaceID", func(t *testing.T) {
 		f := database.FilterEq{
 			Key:   bundle.RelationKeySetOf.String(),
-			Value: pbtypes.String("ot-note"),
+			Value: domain.String("ot-note"),
 		}
 		assert.Equal(t, 0, len(getSpaceIdsFromFilter(f)))
 	})
 
 	t.Run("filters is filter.FilterIn with spaceId", func(t *testing.T) {
-		list, err := pbtypes.ValueListWrapper(pbtypes.StringList([]string{"space1"}))
+		list, err := pbtypes.ValueListWrapper(domain.StringList([]string{"space1"}))
 		assert.NoError(t, err)
 
 		f := database.FilterIn{
@@ -1153,7 +1153,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 	})
 
 	t.Run("filters is filter.FilterIn with many spaceId", func(t *testing.T) {
-		list, err := pbtypes.ValueListWrapper(pbtypes.StringList([]string{"space1", "space2"}))
+		list, err := pbtypes.ValueListWrapper(domain.StringList([]string{"space1", "space2"}))
 		assert.NoError(t, err)
 
 		f := database.FilterIn{
@@ -1168,13 +1168,13 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 		f := database.FiltersAnd{
 			database.FiltersAnd{
 				database.FilterEmpty{Key: "somekey"},
-				database.FilterEq{Key: "key", Value: pbtypes.String("value")},
+				database.FilterEq{Key: "key", Value: domain.String("value")},
 				database.FiltersAnd{
 					database.FilterEq{Key: "amount", Value: pbtypes.Float64(15)},
-					database.FilterEq{Key: "type", Value: pbtypes.String("ot-note")},
+					database.FilterEq{Key: "type", Value: domain.String("ot-note")},
 					database.FilterEq{
 						Key:   bundle.RelationKeySpaceId.String(),
-						Value: pbtypes.String(spaceId),
+						Value: domain.String(spaceId),
 					},
 				},
 			},

@@ -5,11 +5,11 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *dsObjectStore) SaveVirtualSpace(id string) (err error) {
@@ -50,27 +50,27 @@ func (s *dsObjectStore) DeleteVirtualSpace(spaceID string) error {
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
+				Value:       domain.String(spaceID),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
 				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(addr.BundledRelationURLPrefix),
+				Value:       domain.String(addr.BundledRelationURLPrefix),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
 				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(addr.BundledObjectTypeURLPrefix),
+				Value:       domain.String(addr.BundledObjectTypeURLPrefix),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
 				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(addr.BundledTemplatesURLPrefix),
+				Value:       domain.String(addr.BundledTemplatesURLPrefix),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
 				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(addr.AnytypeProfileId),
+				Value:       domain.String(addr.AnytypeProfileId),
 			},
 		},
 	})

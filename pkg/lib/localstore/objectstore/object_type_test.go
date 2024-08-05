@@ -30,8 +30,8 @@ func TestGetObjectType(t *testing.T) {
 
 		id := "id1"
 		obj := TestObject{
-			bundle.RelationKeyId:   pbtypes.String(id),
-			bundle.RelationKeyType: pbtypes.String(bundle.TypeKeyNote.URL()),
+			bundle.RelationKeyId:   domain.String(id),
+			bundle.RelationKeyType: domain.String(bundle.TypeKeyNote.URL()),
 		}
 		s.AddObjects(t, []TestObject{obj})
 
@@ -48,19 +48,19 @@ func TestGetObjectType(t *testing.T) {
 		uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, "note")
 		require.NoError(t, err)
 		obj := TestObject{
-			bundle.RelationKeyId:                   pbtypes.String(id),
-			bundle.RelationKeyType:                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
-			bundle.RelationKeyName:                 pbtypes.String("my note"),
-			bundle.RelationKeyRecommendedRelations: pbtypes.StringList([]string{relationID}),
-			bundle.RelationKeyRecommendedLayout:    pbtypes.Int64(int64(model.ObjectType_note)),
-			bundle.RelationKeyIconEmoji:            pbtypes.String("📝"),
+			bundle.RelationKeyId:                   domain.String(id),
+			bundle.RelationKeyType:                 domain.String(bundle.TypeKeyObjectType.URL()),
+			bundle.RelationKeyName:                 domain.String("my note"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{relationID}),
+			bundle.RelationKeyRecommendedLayout:    domain.Int64(int64(model.ObjectType_note)),
+			bundle.RelationKeyIconEmoji:            domain.String("📝"),
 			bundle.RelationKeyIsArchived:           pbtypes.Bool(true),
-			bundle.RelationKeyUniqueKey:            pbtypes.String(uniqueKey.Marshal()),
+			bundle.RelationKeyUniqueKey:            domain.String(uniqueKey.Marshal()),
 		}
 		relObj := TestObject{
-			bundle.RelationKeyId:          pbtypes.String(relationID),
-			bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyAssignee.String()),
-			bundle.RelationKeyType:        pbtypes.String(bundle.TypeKeyRelation.URL()),
+			bundle.RelationKeyId:          domain.String(relationID),
+			bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyAssignee.String()),
+			bundle.RelationKeyType:        domain.String(bundle.TypeKeyRelation.URL()),
 		}
 		s.AddObjects(t, []TestObject{obj, relObj})
 

@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type StoreFixture struct {
@@ -96,25 +95,25 @@ type TestObject map[domain.RelationKey]domain.Value
 func generateObjectWithRandomID() TestObject {
 	id := fmt.Sprintf("%d", rand.Int())
 	return TestObject{
-		bundle.RelationKeyId:   pbtypes.String(id),
-		bundle.RelationKeyName: pbtypes.String("name" + id),
+		bundle.RelationKeyId:   domain.String(id),
+		bundle.RelationKeyName: domain.String("name" + id),
 	}
 }
 
 func makeObjectWithName(id string, name string) TestObject {
 	return TestObject{
-		bundle.RelationKeyId:      pbtypes.String(id),
-		bundle.RelationKeyName:    pbtypes.String(name),
-		bundle.RelationKeySpaceId: pbtypes.String(spaceName),
+		bundle.RelationKeyId:      domain.String(id),
+		bundle.RelationKeyName:    domain.String(name),
+		bundle.RelationKeySpaceId: domain.String(spaceName),
 	}
 }
 
 func makeObjectWithNameAndDescription(id string, name string, description string) TestObject {
 	return TestObject{
-		bundle.RelationKeyId:          pbtypes.String(id),
-		bundle.RelationKeyName:        pbtypes.String(name),
-		bundle.RelationKeyDescription: pbtypes.String(description),
-		bundle.RelationKeySpaceId:     pbtypes.String(spaceName),
+		bundle.RelationKeyId:          domain.String(id),
+		bundle.RelationKeyName:        domain.String(name),
+		bundle.RelationKeyDescription: domain.String(description),
+		bundle.RelationKeySpaceId:     domain.String(spaceName),
 	}
 }
 

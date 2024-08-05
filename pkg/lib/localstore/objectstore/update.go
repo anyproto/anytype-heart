@@ -199,7 +199,7 @@ func (s *dsObjectStore) updateObjectLinks(ctx context.Context, id string, links 
 	_, err = s.links.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
 		prev := pbtypes.JsonArrayToStrings(val.GetArray(linkOutboundField))
 		added, removed = slice.DifferenceRemovedAdded(prev, links)
-		val.Set(linkOutboundField, pbtypes.StringsToJsonArray(arena, links))
+		val.Set(linkOutboundField, domain.StringsToJsonArray(arena, links))
 		return val, len(added)+len(removed) > 0, nil
 	}))
 	return

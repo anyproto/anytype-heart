@@ -8,12 +8,12 @@ import (
 	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
-func TransformQuickOption(protoFilters []*model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {
+func TransformQuickOption(protoFilters []FilterRequest, loc *time.Location) []FilterRequest {
 	if protoFilters == nil {
 		return nil
 	}
 
-	filters := make([]*model.BlockContentDataviewFilter, len(protoFilters))
+	filters := make([]FilterRequest, len(protoFilters))
 	for i, f := range protoFilters {
 		filters[i] = pbtypes.CopyFilter(f)
 	}
@@ -26,7 +26,7 @@ func TransformQuickOption(protoFilters []*model.BlockContentDataviewFilter, loc 
 				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
 				f.Value = pbtypes.ToValue(d1)
 
-				filters = append(filters, &model.BlockContentDataviewFilter{
+				filters = append(filters, FilterRequest{
 					RelationKey: f.RelationKey,
 					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 					Value:       pbtypes.ToValue(d2),
@@ -43,7 +43,7 @@ func TransformQuickOption(protoFilters []*model.BlockContentDataviewFilter, loc 
 				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
 				f.Value = pbtypes.ToValue(d1)
 
-				filters = append(filters, &model.BlockContentDataviewFilter{
+				filters = append(filters, FilterRequest{
 					RelationKey: f.RelationKey,
 					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 					Value:       pbtypes.ToValue(d2),
@@ -55,7 +55,7 @@ func TransformQuickOption(protoFilters []*model.BlockContentDataviewFilter, loc 
 	return filters
 }
 
-func getRange(f *model.BlockContentDataviewFilter, loc *time.Location) (int64, int64) {
+func getRange(f FilterRequest, loc *time.Location) (int64, int64) {
 	var d1, d2 time.Time
 	calendar := timeutil.NewCalendar(time.Now(), loc)
 	switch f.QuickOption {

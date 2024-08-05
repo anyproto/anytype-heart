@@ -24,17 +24,17 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	id := bson.NewObjectId()
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
 	err := s.UpdateObjectDetails(context2.Background(), id.String(), &types.Struct{
-		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(4), "type": pbtypes.String("_otp1")},
+		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): domain.Int64(4), "type": domain.String("_otp1")},
 	})
 	require.NoError(t, err)
 
 	recs, err := s.Query(database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
-	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
+	require.Equal(t, domain.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
 
 	err = s.UpdateObjectDetails(context2.Background(), id.String(), &types.Struct{
-		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("_otp1")},
+		Fields: map[string]*types.Value{"k1": domain.String("1"), "k2": domain.String("2"), "type": domain.String("_otp1")},
 	})
 	require.NoError(t, err)
 
@@ -63,8 +63,8 @@ func Test_removeByPrefix(t *testing.T) {
 			links = append(links, fmt.Sprintf("%x", key))
 		}
 		details := makeDetails(TestObject{
-			bundle.RelationKeyId:      pbtypes.String(objId),
-			bundle.RelationKeySpaceId: pbtypes.String(spaceId),
+			bundle.RelationKeyId:      domain.String(objId),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
 		})
 		require.NoError(t, s.UpdateObjectDetails(context2.Background(), objId, details))
 		require.NoError(t, s.UpdateObjectLinks(objId, links))
@@ -89,7 +89,7 @@ func TestList(t *testing.T) {
 	s := NewStoreFixture(t)
 
 	obj1 := makeObjectWithName("id1", "name1")
-	obj1[bundle.RelationKeySnippet] = pbtypes.String("snippet1")
+	obj1[bundle.RelationKeySnippet] = domain.String("snippet1")
 
 	obj2 := makeObjectWithName("id2", "name2")
 
@@ -218,8 +218,8 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, &model.ObjectDetails{
 			Details: makeDetails(TestObject{
-				bundle.RelationKeyId:        pbtypes.String("id1"),
-				bundle.RelationKeySpaceId:   pbtypes.String("space1"),
+				bundle.RelationKeyId:        domain.String("id1"),
+				bundle.RelationKeySpaceId:   domain.String("space1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
 		}, got)
@@ -237,8 +237,8 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, &model.ObjectDetails{
 			Details: makeDetails(TestObject{
-				bundle.RelationKeyId:        pbtypes.String("id1"),
-				bundle.RelationKeySpaceId:   pbtypes.String("space1"),
+				bundle.RelationKeyId:        domain.String("id1"),
+				bundle.RelationKeySpaceId:   domain.String("space1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
 		}, got)
@@ -268,8 +268,8 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, &model.ObjectDetails{
 			Details: makeDetails(TestObject{
-				bundle.RelationKeyId:        pbtypes.String("id1"),
-				bundle.RelationKeySpaceId:   pbtypes.String("space1"),
+				bundle.RelationKeyId:        domain.String("id1"),
+				bundle.RelationKeySpaceId:   domain.String("space1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
 		}, got)
