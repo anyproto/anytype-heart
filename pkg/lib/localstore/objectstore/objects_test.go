@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	context2 "context"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -22,7 +23,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	s := NewStoreFixture(t)
 	id := bson.NewObjectId()
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
-	err := s.UpdateObjectDetails(id.String(), &types.Struct{
+	err := s.UpdateObjectDetails(context2.Background(), id.String(), &types.Struct{
 		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(4), "type": pbtypes.String("_otp1")},
 	})
 	require.NoError(t, err)
@@ -32,7 +33,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	require.Len(t, recs, 1)
 	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
 
-	err = s.UpdateObjectDetails(id.String(), &types.Struct{
+	err = s.UpdateObjectDetails(context2.Background(), id.String(), &types.Struct{
 		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("_otp1")},
 	})
 	require.NoError(t, err)
@@ -65,7 +66,7 @@ func Test_removeByPrefix(t *testing.T) {
 			bundle.RelationKeyId:      pbtypes.String(objId),
 			bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 		})
-		require.NoError(t, s.UpdateObjectDetails(objId, details))
+		require.NoError(t, s.UpdateObjectDetails(context2.Background(), objId, details))
 		require.NoError(t, s.UpdateObjectLinks(objId, links))
 	}
 
@@ -289,7 +290,7 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, hash)
 
-		ids, err := s.ListIDsFromFullTextQueue()
+		ids, err := s.ListIDsFromFullTextQueue(0)
 		require.NoError(t, err)
 		assert.Empty(t, ids)
 	})

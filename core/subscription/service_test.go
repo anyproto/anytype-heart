@@ -890,7 +890,7 @@ func TestService_Search(t *testing.T) {
 		id := "id"
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
-		fx.store.AddObjects(t, []objectstore.TestObject{{bundle.RelationKeyId: pbtypes.String(id)}})
+		fx.store.AddObjects(t, []objectstore.TestObject{{bundle.RelationKeyId: pbtypes.String(id), bundle.RelationKeyName: pbtypes.String("name")}})
 
 		// when
 		sub, err := fx.SubscribeIdsReq(pb.RpcObjectSubscribeIdsRequest{
@@ -962,7 +962,7 @@ func xTestNestedSubscription(t *testing.T) {
 	t.Run("update nested object, so it's not satisfying filter anymore", func(t *testing.T) {
 		fx := testCreateSubscriptionWithNestedFilter(t)
 
-		err := fx.store.UpdateObjectDetails("assignee1", &types.Struct{
+		err := fx.store.UpdateObjectDetails(context.Background(), "assignee1", &types.Struct{
 			Fields: map[string]*types.Value{
 				"id":   pbtypes.String("assignee1"),
 				"name": pbtypes.String("John Doe"),
@@ -1000,7 +1000,7 @@ func xTestNestedSubscription(t *testing.T) {
 	t.Run("update parent object relation so no nested objects satisfy filter anymore", func(t *testing.T) {
 		fx := testCreateSubscriptionWithNestedFilter(t)
 
-		err := fx.store.UpdateObjectDetails("task1", &types.Struct{
+		err := fx.store.UpdateObjectDetails(context.Background(), "task1", &types.Struct{
 			Fields: map[string]*types.Value{
 				"id":       pbtypes.String("task1"),
 				"assignee": pbtypes.String("assignee2"),

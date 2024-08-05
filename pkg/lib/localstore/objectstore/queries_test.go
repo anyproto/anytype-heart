@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	context2 "context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -894,6 +896,8 @@ func TestQueryObjectIds(t *testing.T) {
 }
 
 func TestQueryRaw(t *testing.T) {
+	arena := &fastjson.Arena{}
+
 	t.Run("with nil filter expect error", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
@@ -917,7 +921,7 @@ func TestQueryRaw(t *testing.T) {
 		obj3 := makeObjectWithName("id3", "name3")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-		flt, err := database.NewFilters(database.Query{}, s)
+		flt, err := database.NewFilters(database.Query{}, s, arena)
 		require.NoError(t, err)
 
 		recs, err := s.QueryRaw(flt, 0, 0)
@@ -940,7 +944,7 @@ func TestQueryRaw(t *testing.T) {
 					Value:       pbtypes.String("foo"),
 				},
 			},
-		}, s)
+		}, s, arena)
 		require.NoError(t, err)
 
 		recs, err := s.QueryRaw(flt, 0, 0)
@@ -970,7 +974,7 @@ func TestQueryRaw(t *testing.T) {
 					Value:       pbtypes.String("note"),
 				},
 			},
-		}, s)
+		}, s, arena)
 		require.NoError(t, err)
 
 		recs, err := s.QueryRaw(flt, 0, 0)
@@ -1050,8 +1054,8 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 	assertRecordsEqual(t, []TestObject{obj1, obj3}, recs)
 
 	t.Run("update details called, but there are no changes", func(t *testing.T) {
-		err = s.UpdateObjectDetails("id1", makeDetails(obj1))
-		require.ErrorIs(t, err, ErrDetailsNotChanged)
+		err = s.UpdateObjectDetails(context2.Background(), "id1", makeDetails(obj1))
+		require.NoError(t, err)
 
 		select {
 		case <-recordsCh:
@@ -1062,7 +1066,7 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 
 	t.Run("update details order", func(t *testing.T) {
 		for i := 1; i <= 1000; i++ {
-			err = s.UpdateObjectDetails("id1", makeDetails(makeObjectWithName("id1", fmt.Sprintf("%d", i))))
+			err = s.UpdateObjectDetails(context2.Background(), "id1", makeDetails(makeObjectWithName("id1", fmt.Sprintf("%d", i))))
 			require.NoError(t, err)
 		}
 

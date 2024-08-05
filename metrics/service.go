@@ -54,6 +54,7 @@ type MetricsService interface {
 }
 
 type service struct {
+	startOnce      *sync.Once
 	lock           sync.RWMutex
 	appVersion     string
 	startVersion   string
@@ -76,6 +77,7 @@ func NewService() MetricsService {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	return &service{
+		startOnce: &sync.Once{},
 		clients: [1]*client{
 			inhouse: {
 				aggregatableMap:  make(map[string]SamplableEvent),
@@ -100,9 +102,11 @@ func (s *service) getWorkingDir() string {
 }
 
 func (s *service) InitWithKeys(inHouseKey string) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	s.clients[inhouse].telemetry = anymetry.New(inHouseEndpoint, inHouseKey, true)
+	s.startOnce.Do(func() {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+		s.clients[inhouse].telemetry = anymetry.New(inHouseEndpoint, inHouseKey, true)
+	})
 }
 
 func (s *service) SetDeviceId(t string) {

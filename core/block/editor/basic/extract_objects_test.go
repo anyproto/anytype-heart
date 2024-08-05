@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -53,18 +54,18 @@ func (tts testTemplateService) AddTemplate(id string, st *state.State) {
 	tts.templates[id] = st
 }
 
-func (tts testTemplateService) CreateTemplateStateWithDetails(id string, details *types.Struct) (*state.State, error) {
+func (tts testTemplateService) CreateTemplateStateWithDetails(id string, details *types.Struct) (st *state.State, err error) {
 	if id == "" {
-		st := state.NewDoc("", nil).NewState()
+		st = state.NewDoc("", nil).NewState()
 		template.InitTemplate(st, template.WithEmpty,
 			template.WithDefaultFeaturedRelations,
 			template.WithFeaturedRelations,
 			template.WithRequiredRelations,
 			template.WithTitle,
 		)
-		return st, nil
+	} else {
+		st = tts.templates[id]
 	}
-	st := tts.templates[id]
 	templateDetails := st.Details()
 	newDetails := pbtypes.StructMerge(templateDetails, details, false)
 	st.SetDetails(newDetails)
@@ -149,6 +150,7 @@ func TestExtractObjects(t *testing.T) {
 	for _, tc := range []struct {
 		name                 string
 		blockIds             []string
+		typeKey              string
 		templateId           string
 		wantObjectsWithTexts [][]string
 		wantDetails          *types.Struct
@@ -270,6 +272,15 @@ func TestExtractObjects(t *testing.T) {
 				bundle.RelationKeyCoverId.String():           pbtypes.String("poster with Van Damme"),
 			}},
 		},
+		{
+			name:                 "if target layout includes title, root is not added",
+			blockIds:             []string{"1.1"},
+			typeKey:              bundle.TypeKeyTask.String(),
+			wantObjectsWithTexts: [][]string{{"text 1.1.1"}},
+			wantDetails: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String(): pbtypes.String("1.1"),
+			}},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fixture := newFixture(t)
@@ -283,11 +294,15 @@ func TestExtractObjects(t *testing.T) {
 			tmpl := makeTemplateState()
 			ts.AddTemplate("template", tmpl)
 
+			if tc.typeKey == "" {
+				tc.typeKey = bundle.TypeKeyNote.String()
+			}
+
 			req := pb.RpcBlockListConvertToObjectsRequest{
 				ContextId:           "test",
 				BlockIds:            tc.blockIds,
 				TemplateId:          tc.templateId,
-				ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyNote.String()).Marshal(),
+				ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, tc.typeKey).Marshal(),
 			}
 			ctx := session.NewContext()
 			linkIds, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, ts, req)
@@ -472,6 +487,114 @@ func TestBuildBlock(t *testing.T) {
 	}
 }
 
+func TestReassignSubtreeIds(t *testing.T) {
+	t.Run("plain blocks receive new ids", func(t *testing.T) {
+		// given
+		blocks := []simple.Block{
+			simple.New(&model.Block{Id: "text", ChildrenIds: []string{"1", "2"}}),
+			simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}),
+			simple.New(&model.Block{Id: "2"}),
+			simple.New(&model.Block{Id: "1.1"}),
+		}
+		s := generateState("text", blocks)
+
+		// when
+		newRoot, newBlocks := copySubtreeOfBlocks(s, "text", blocks)
+
+		// then
+		assert.Len(t, newBlocks, len(blocks))
+		assert.NotEqual(t, "text", newRoot)
+		for i := 0; i < len(blocks); i++ {
+			assert.NotEqual(t, blocks[i].Model().Id, newBlocks[i].Model().Id)
+			assert.True(t, bson.IsObjectIdHex(newBlocks[i].Model().Id))
+		}
+	})
+
+	t.Run("table blocks receive new ids", func(t *testing.T) {
+		// given
+		blocks := []simple.Block{
+			simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"table"}}),
+			simple.New(&model.Block{Id: "table", ChildrenIds: []string{"cols", "rows"}, Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}}),
+			simple.New(&model.Block{Id: "cols", ChildrenIds: []string{"col1", "col2"}, Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}}}),
+			simple.New(&model.Block{Id: "col1", Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}}),
+			simple.New(&model.Block{Id: "col2", Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}}),
+			simple.New(&model.Block{Id: "rows", ChildrenIds: []string{"row1", "row2"}, Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}}),
+			simple.New(&model.Block{Id: "row1", ChildrenIds: []string{"row1-col1", "row1-col2"}, Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}}}),
+			simple.New(&model.Block{Id: "row2", ChildrenIds: []string{"row2-col1", "row2-col2"}, Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}}}),
+			simple.New(&model.Block{Id: "row1-col1"}),
+			simple.New(&model.Block{Id: "row1-col2"}),
+			simple.New(&model.Block{Id: "row2-col1"}),
+			simple.New(&model.Block{Id: "row2-col2"}),
+		}
+		s := generateState("parent", blocks)
+
+		// when
+		root, newBlocks := copySubtreeOfBlocks(s, "parent", blocks)
+
+		// then
+		assert.Len(t, newBlocks, len(blocks))
+		assert.NotEqual(t, "text", root)
+
+		blocksMap := make(map[string]simple.Block, len(newBlocks))
+		tableId := ""
+		for i := 0; i < len(blocks); i++ {
+			nb := newBlocks[i]
+			assert.NotEqual(t, blocks[i].Model().Id, nb.Model().Id)
+			blocksMap[nb.Model().Id] = nb
+			if tb := nb.Model().GetTable(); tb != nil {
+				tableId = nb.Model().Id
+			}
+		}
+		require.NotEmpty(t, tableId)
+
+		newState := state.NewDoc("new", blocksMap).NewState()
+		tbl, err := table.NewTable(newState, tableId)
+
+		assert.NoError(t, err)
+
+		rows := tbl.RowIDs()
+		cols := tbl.ColumnIDs()
+		require.NoError(t, tbl.Iterate(func(b simple.Block, pos table.CellPosition) bool {
+			assert.Equal(t, pos.RowID, rows[pos.RowNumber])
+			assert.Equal(t, pos.ColID, cols[pos.ColNumber])
+			return true
+		}))
+	})
+
+	t.Run("table blocks receive plain ids in case of error on dup", func(t *testing.T) {
+		// given
+		blocks := []simple.Block{
+			simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"table"}}),
+			simple.New(&model.Block{Id: "table", ChildrenIds: []string{"cols", "rows"}, Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}}),
+			simple.New(&model.Block{Id: "rows", ChildrenIds: []string{}, Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}}),
+		}
+		s := generateState("parent", blocks)
+
+		// when
+		root, newBlocks := copySubtreeOfBlocks(s, "parent", blocks)
+
+		// then
+		assert.Len(t, newBlocks, len(blocks))
+		assert.NotEqual(t, "text", root)
+		for i := 0; i < len(blocks); i++ {
+			assert.NotEqual(t, blocks[i].Model().Id, newBlocks[i].Model().Id)
+			assert.True(t, bson.IsObjectIdHex(newBlocks[i].Model().Id))
+		}
+	})
+}
+
+func generateState(root string, blocks []simple.Block) *state.State {
+	mapping := make(map[string]simple.Block, len(blocks))
+
+	for _, b := range blocks {
+		mapping[b.Model().Id] = b
+	}
+
+	s := state.NewDoc(root, mapping).NewState()
+	s.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{root}}))
+	return s
+}
+
 type fixture struct {
 	t     *testing.T
 	ctrl  *gomock.Controller
@@ -482,14 +605,23 @@ func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	objectStore := testMock.NewMockObjectStore(ctrl)
 
-	objectTypeDetails := &model.ObjectDetails{
-		Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyLayout.String(): pbtypes.String(model.ObjectType_basic.String()),
-			},
-		},
-	}
-	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), gomock.Any()).Return(objectTypeDetails, nil).AnyTimes()
+	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ string, uk domain.UniqueKey) (*model.ObjectDetails, error) {
+			layout := pbtypes.Int64(int64(model.ObjectType_basic))
+			switch uk.InternalKey() {
+			case "note":
+				layout = pbtypes.Int64(int64(model.ObjectType_note))
+			case "task":
+				layout = pbtypes.Int64(int64(model.ObjectType_todo))
+			}
+			return &model.ObjectDetails{
+				Details: &types.Struct{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyRecommendedLayout.String(): layout,
+					},
+				},
+			}, nil
+		}).AnyTimes()
 
 	return &fixture{
 		t:     t,
