@@ -18,3 +18,4 @@ tests/.cache/
 staging.yml
 build
 /core/anytype/config/nodes/custom.yml
+*.proto.bundle
