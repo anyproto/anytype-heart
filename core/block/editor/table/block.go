@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func init() {
@@ -212,7 +211,7 @@ func normalizeRow(tb *Table, colIdx map[string]int, row simple.Block) {
 	sort.Sort(rs)
 
 	if rs.touched {
-		moveBlocksUnderTheTable(tb, toRemove...)
+		tb.MoveBlocksUnderTheTable(toRemove...)
 		tb.s.SetChildrenIds(row.Model(), rs.cells)
 	}
 }
@@ -240,7 +239,7 @@ func normalizeColumns(tb *Table) {
 				colIds = append(colIds, colId)
 			case errors.Is(err, errNotAColumn):
 				log.Warnf("normalize columns '%s': block '%s' is not a column: move it under the table", tb.Columns().Id, colId)
-				moveBlocksUnderTheTable(tb, colId)
+				tb.MoveBlocksUnderTheTable(colId)
 			default:
 				log.Errorf("pick column %s: %v", colId, err)
 				toRemove = append(toRemove, colId)
@@ -281,7 +280,7 @@ func normalizeRows(tb *Table) {
 				rowIds = append(rowIds, rowId)
 			case errors.Is(err, errNotARow):
 				log.Warnf("normalize rows '%s': block '%s' is not a row: move it under the table", tb.Rows().Id, rowId)
-				moveBlocksUnderTheTable(tb, rowId)
+				tb.MoveBlocksUnderTheTable(rowId)
 			default:
 				log.Errorf("get row %s: %v", rowId, err)
 				toRemove = append(toRemove, rowId)
@@ -296,20 +295,4 @@ func normalizeRows(tb *Table) {
 		tb.s.RemoveFromCache(toRemove)
 		tb.s.SetChildrenIds(tb.Rows(), rowIds)
 	}
-}
-
-func moveBlocksUnderTheTable(t *Table, ids ...string) {
-	parent := t.s.PickParentOf(t.block.Model().Id)
-	if parent == nil {
-		log.Errorf("failed to get parent of table block '%s'", t.block.Model().Id)
-		return
-	}
-	children := parent.Model().ChildrenIds
-	pos := slice.FindPos(children, t.block.Model().Id)
-	if pos == -1 {
-		log.Errorf("failed to find table block '%s' among children of block '%s'", t.block.Model().Id, parent.Model().Id)
-		return
-	}
-	t.s.RemoveFromCache(ids)
-	t.s.SetChildrenIds(parent.Model(), slice.Insert(children, pos+1, ids...))
 }

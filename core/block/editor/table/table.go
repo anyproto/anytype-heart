@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/table"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.Logger("anytype-simple-tables")
@@ -275,6 +276,22 @@ func (tb Table) Iterate(f func(b simple.Block, pos CellPosition) bool) error {
 		}
 	}
 	return nil
+}
+
+func (tb Table) MoveBlocksUnderTheTable(ids ...string) {
+	parent := tb.s.PickParentOf(tb.block.Model().Id)
+	if parent == nil {
+		log.Errorf("failed to get parent of table block '%s'", tb.block.Model().Id)
+		return
+	}
+	children := parent.Model().ChildrenIds
+	pos := slice.FindPos(children, tb.block.Model().Id)
+	if pos == -1 {
+		log.Errorf("failed to find table block '%s' among children of block '%s'", tb.block.Model().Id, parent.Model().Id)
+		return
+	}
+	tb.s.RemoveFromCache(ids)
+	tb.s.SetChildrenIds(parent.Model(), slice.Insert(children, pos+1, ids...))
 }
 
 // CheckTableBlocksMove checks if Insert operation is allowed in case table blocks are affected
