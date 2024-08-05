@@ -8,50 +8,43 @@ import (
 	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
-func TransformQuickOption(protoFilters []*model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {
-	if protoFilters == nil {
+func transformQuickOption(protoFilter *model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {
+	if protoFilter == nil {
 		return nil
 	}
+	var filters []*model.BlockContentDataviewFilter
+	filters = append(filters, protoFilter)
+	if protoFilter.QuickOption > model.BlockContentDataviewFilter_ExactDate || protoFilter.Format == model.RelationFormat_date {
+		d1, d2 := getRange(protoFilter, loc)
+		switch protoFilter.Condition {
+		case model.BlockContentDataviewFilter_Equal:
+			protoFilter.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
+			protoFilter.Value = pbtypes.ToValue(d1)
 
-	filters := make([]*model.BlockContentDataviewFilter, len(protoFilters))
-	for i, f := range protoFilters {
-		filters[i] = pbtypes.CopyFilter(f)
-	}
+			filters = append(filters, &model.BlockContentDataviewFilter{
+				RelationKey: protoFilter.RelationKey,
+				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+				Value:       pbtypes.ToValue(d2),
+			})
+		case model.BlockContentDataviewFilter_Less:
+			protoFilter.Value = pbtypes.ToValue(d1)
+		case model.BlockContentDataviewFilter_Greater:
+			protoFilter.Value = pbtypes.ToValue(d2)
+		case model.BlockContentDataviewFilter_LessOrEqual:
+			protoFilter.Value = pbtypes.ToValue(d2)
+		case model.BlockContentDataviewFilter_GreaterOrEqual:
+			protoFilter.Value = pbtypes.ToValue(d1)
+		case model.BlockContentDataviewFilter_In:
+			protoFilter.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
+			protoFilter.Value = pbtypes.ToValue(d1)
 
-	for _, f := range filters {
-		if f.QuickOption > model.BlockContentDataviewFilter_ExactDate || f.Format == model.RelationFormat_date {
-			d1, d2 := getRange(f, loc)
-			switch f.Condition {
-			case model.BlockContentDataviewFilter_Equal:
-				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
-				f.Value = pbtypes.ToValue(d1)
-
-				filters = append(filters, &model.BlockContentDataviewFilter{
-					RelationKey: f.RelationKey,
-					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
-					Value:       pbtypes.ToValue(d2),
-				})
-			case model.BlockContentDataviewFilter_Less:
-				f.Value = pbtypes.ToValue(d1)
-			case model.BlockContentDataviewFilter_Greater:
-				f.Value = pbtypes.ToValue(d2)
-			case model.BlockContentDataviewFilter_LessOrEqual:
-				f.Value = pbtypes.ToValue(d2)
-			case model.BlockContentDataviewFilter_GreaterOrEqual:
-				f.Value = pbtypes.ToValue(d1)
-			case model.BlockContentDataviewFilter_In:
-				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
-				f.Value = pbtypes.ToValue(d1)
-
-				filters = append(filters, &model.BlockContentDataviewFilter{
-					RelationKey: f.RelationKey,
-					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
-					Value:       pbtypes.ToValue(d2),
-				})
-			}
+			filters = append(filters, &model.BlockContentDataviewFilter{
+				RelationKey: protoFilter.RelationKey,
+				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+				Value:       pbtypes.ToValue(d2),
+			})
 		}
 	}
-
 	return filters
 }
 
