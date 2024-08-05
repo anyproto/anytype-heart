@@ -7,13 +7,11 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -25,15 +23,27 @@ type StoreFixture struct {
 	*dsObjectStore
 }
 
-// nolint: unused
 const spaceName = "space1"
+
+type walletStub struct {
+	wallet.Wallet
+	tempDir string
+}
+
+func newWalletStub(t testing.TB) wallet.Wallet {
+	return &walletStub{
+		tempDir: t.TempDir(),
+	}
+}
+
+func (w *walletStub) RepoPath() string {
+	return w.tempDir
+}
 
 func NewStoreFixture(t testing.TB) *StoreFixture {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	walletService := mock_wallet.NewMockWallet(t)
-	walletService.EXPECT().Name().Return(wallet.CName).Maybe()
-	walletService.EXPECT().RepoPath().Return(t.TempDir())
+	walletService := newWalletStub(t)
 
 	fullText := ftsearch.TantivyNew()
 	testApp := &app.App{}
@@ -81,7 +91,7 @@ func (fx *StoreFixture) Init(a *app.App) (err error) {
 	return nil
 }
 
-type TestObject map[domain.RelationKey]*types.Value
+type TestObject map[domain.RelationKey]domain.Value
 
 func generateObjectWithRandomID() TestObject {
 	id := fmt.Sprintf("%d", rand.Int())
@@ -109,18 +119,16 @@ func makeObjectWithNameAndDescription(id string, name string, description string
 }
 
 func makeDetails(fields TestObject) *domain.Details {
-	f := map[string]*types.Value{}
+	d := domain.NewDetails()
 	for k, v := range fields {
-		f[string(k)] = v
+		d.Set(k, v)
 	}
-	// TODO TEMP
-	return nil
-	// return &types.Struct{Fields: f}
+	return d
 }
 
 func (fx *StoreFixture) AddObjects(t testing.TB, objects []TestObject) {
 	for _, obj := range objects {
-		id := obj[bundle.RelationKeyId].GetStringValue()
+		id := obj[bundle.RelationKeyId].StringOrDefault("")
 		require.NotEmpty(t, id)
 		err := fx.UpdateObjectDetails(context.Background(), id, makeDetails(obj))
 		require.NoError(t, err)
