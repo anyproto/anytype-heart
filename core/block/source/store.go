@@ -3,6 +3,7 @@ package source
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"slices"
 	"time"
 
@@ -22,7 +23,7 @@ var _ updatelistener.UpdateListener = (*store)(nil)
 type Store interface {
 	GetStore() *storestate.StoreState
 	ReadStoreDoc(ctx context.Context) (err error)
-	PushStoreChange(params PushStoreChangeParams) (id string, err error)
+	PushStoreChange(params PushStoreChangeParams) (changeId string, err error)
 }
 
 type PushStoreChangeParams struct {
@@ -74,15 +75,15 @@ func (s *store) ReadStoreDoc(ctx context.Context) (err error) {
 	return tx.Commit()
 }
 
-func (s *store) PushStoreChange(params PushStoreChangeParams) (id string, err error) {
+func (s *store) PushStoreChange(params PushStoreChangeParams) (changeId string, err error) {
 	change := &pb.StoreChange{
 		ChangeSet: params.Changes,
 	}
 	data, dataType, err := MarshalStoreChange(change)
 	if err != nil {
-		return
+		return "", fmt.Errorf("marshal change: %w", err)
 	}
-	_, err = s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
+	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:        data,
 		Key:         s.accountKeysService.Account().SignKey,
 		IsSnapshot:  params.DoSnapshot,
@@ -91,9 +92,13 @@ func (s *store) PushStoreChange(params PushStoreChangeParams) (id string, err er
 		Timestamp:   params.Time.Unix(),
 	})
 	if err != nil {
-		return
+		return "", fmt.Errorf("add content: %w", err)
 	}
-	return "", nil
+
+	if len(addResult.Added) == 0 {
+		return "", fmt.Errorf("add changes list is empty")
+	}
+	return addResult.Added[0].Id, nil
 }
 
 func (s *store) Update(tree objecttree.ObjectTree) {

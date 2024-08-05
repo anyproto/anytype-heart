@@ -91,18 +91,21 @@ func (s *storeObject) AddMessage(ctx context.Context, text string) error {
 		return fmt.Errorf("create chat: %w", err)
 	}
 
-	err = tx.ApplyChangeSet(storestate.ChangeSet{
-		Changes: builder.ChangeSet,
-	})
-	if err != nil {
-		return fmt.Errorf("apply change set: %w", err)
-	}
-
-	_, err = s.storeSource.PushStoreChange(source.PushStoreChangeParams{
+	changeId, err := s.storeSource.PushStoreChange(source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
 	})
 	if err != nil {
 		return fmt.Errorf("push store change: %w", err)
+	}
+
+	maxOrder := tx.GetMaxOrder()
+	err = tx.ApplyChangeSet(storestate.ChangeSet{
+		Id:      changeId,
+		Order:   tx.NextOrder(maxOrder),
+		Changes: builder.ChangeSet,
+	})
+	if err != nil {
+		return fmt.Errorf("apply change set: %w", err)
 	}
 
 	err = tx.Commit()

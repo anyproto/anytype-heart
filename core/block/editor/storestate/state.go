@@ -9,6 +9,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/lexid"
 	"github.com/valyala/fastjson"
 	"go.uber.org/zap"
 
@@ -19,6 +20,8 @@ import (
 var (
 	log = logger.NewNamed("storeState")
 )
+
+var lexId = lexid.Must(lexid.CharsAllNoEscape, 4, 100)
 
 const (
 	collChangeOrders = "_change_orders"

@@ -43,6 +43,14 @@ func (stx *StoreStateTx) GetMaxOrder() string {
 	return stx.maxOrder
 }
 
+func (stx *StoreStateTx) NextOrder(prev string) string {
+	return lexId.Next(prev)
+}
+
+func (stx *StoreStateTx) NextBeforeOrder(prev string, before string) (string, error) {
+	return lexId.NextBefore(prev, before)
+}
+
 func (stx *StoreStateTx) setOrder(changeId, order string) (err error) {
 	stx.arena.Reset()
 	obj := stx.arena.NewObject()

@@ -5,13 +5,10 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anyproto/lexid"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
 )
-
-var lexId = lexid.Must(lexid.CharsAllNoEscape, 4, 100)
 
 type storeApply struct {
 	tx *storestate.StoreStateTx
@@ -66,7 +63,7 @@ func (a *storeApply) Apply() (err error) {
 
 		if prevOrder == a.tx.GetMaxOrder() {
 			// insert on top - just create next id
-			currOrder = lexId.Next(prevOrder)
+			currOrder = a.tx.NextOrder(prevOrder)
 		} else {
 			// insert in the middle - find next order and create id between
 			nextOrder, nextOrdErr := a.findNextOrder(change.Id)
@@ -75,7 +72,7 @@ func (a *storeApply) Apply() (err error) {
 				err = errors.Join(nextOrdErr, fmt.Errorf("unable to find next order"))
 				return false
 			}
-			if currOrder, err = lexId.NextBefore(prevOrder, nextOrder); err != nil {
+			if currOrder, err = a.tx.NextBeforeOrder(prevOrder, nextOrder); err != nil {
 				return false
 			}
 		}
