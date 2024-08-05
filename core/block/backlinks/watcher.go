@@ -137,8 +137,8 @@ func (uw *UpdateWatcher) backlinksUpdateHandler() {
 			select {
 			case <-closedCh:
 				l.Lock()
-				defer l.Unlock()
 				process()
+				l.Unlock()
 				return
 			case <-time.After(aggregationInterval):
 				l.Lock()
@@ -185,9 +185,9 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 		return
 	}
 
-	updateBacklinks := func(current *types.Struct, backlinksChange *backLinksUpdate) (*types.Struct, error) {
+	updateBacklinks := func(current *types.Struct, backlinksChange *backLinksUpdate) (*types.Struct, bool, error) {
 		if current == nil || current.Fields == nil {
-			return nil, objectstore.ErrDetailsNotChanged
+			return nil, false, nil
 		}
 		backlinks := pbtypes.GetStringList(current, bundle.RelationKeyBacklinks.String())
 
@@ -202,11 +202,11 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 		}
 
 		current.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(backlinks)
-		return current, nil
+		return current, true, nil
 	}
 
 	err = spc.DoLockedIfNotExists(id, func() error {
-		return uw.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, error) {
+		return uw.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
 			return updateBacklinks(details, backlinksUpdate)
 		})
 	})

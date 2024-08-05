@@ -1892,9 +1892,9 @@ func (_c *MockObjectStore_ListAllRelations_Call) RunAndReturn(run func(string) (
 	return _c
 }
 
-// ListIDsFromFullTextQueue provides a mock function with given fields:
-func (_m *MockObjectStore) ListIDsFromFullTextQueue() ([]string, error) {
-	ret := _m.Called()
+// ListIDsFromFullTextQueue provides a mock function with given fields: limit
+func (_m *MockObjectStore) ListIDsFromFullTextQueue(limit int) ([]string, error) {
+	ret := _m.Called(limit)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListIDsFromFullTextQueue")
@@ -1902,19 +1902,19 @@ func (_m *MockObjectStore) ListIDsFromFullTextQueue() ([]string, error) {
 
 	var r0 []string
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]string, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(int) ([]string, error)); ok {
+		return rf(limit)
 	}
-	if rf, ok := ret.Get(0).(func() []string); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(int) []string); ok {
+		r0 = rf(limit)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(int) error); ok {
+		r1 = rf(limit)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1928,13 +1928,14 @@ type MockObjectStore_ListIDsFromFullTextQueue_Call struct {
 }
 
 // ListIDsFromFullTextQueue is a helper method to define mock.On call
-func (_e *MockObjectStore_Expecter) ListIDsFromFullTextQueue() *MockObjectStore_ListIDsFromFullTextQueue_Call {
-	return &MockObjectStore_ListIDsFromFullTextQueue_Call{Call: _e.mock.On("ListIDsFromFullTextQueue")}
+//   - limit int
+func (_e *MockObjectStore_Expecter) ListIDsFromFullTextQueue(limit interface{}) *MockObjectStore_ListIDsFromFullTextQueue_Call {
+	return &MockObjectStore_ListIDsFromFullTextQueue_Call{Call: _e.mock.On("ListIDsFromFullTextQueue", limit)}
 }
 
-func (_c *MockObjectStore_ListIDsFromFullTextQueue_Call) Run(run func()) *MockObjectStore_ListIDsFromFullTextQueue_Call {
+func (_c *MockObjectStore_ListIDsFromFullTextQueue_Call) Run(run func(limit int)) *MockObjectStore_ListIDsFromFullTextQueue_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(int))
 	})
 	return _c
 }
@@ -1944,7 +1945,7 @@ func (_c *MockObjectStore_ListIDsFromFullTextQueue_Call) Return(_a0 []string, _a
 	return _c
 }
 
-func (_c *MockObjectStore_ListIDsFromFullTextQueue_Call) RunAndReturn(run func() ([]string, error)) *MockObjectStore_ListIDsFromFullTextQueue_Call {
+func (_c *MockObjectStore_ListIDsFromFullTextQueue_Call) RunAndReturn(run func(int) ([]string, error)) *MockObjectStore_ListIDsFromFullTextQueue_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2122,7 +2123,7 @@ func (_c *MockObjectStore_ListVirtualSpaces_Call) RunAndReturn(run func() ([]str
 }
 
 // ModifyObjectDetails provides a mock function with given fields: id, proc
-func (_m *MockObjectStore) ModifyObjectDetails(id string, proc func(*types.Struct) (*types.Struct, error)) error {
+func (_m *MockObjectStore) ModifyObjectDetails(id string, proc func(*types.Struct) (*types.Struct, bool, error)) error {
 	ret := _m.Called(id, proc)
 
 	if len(ret) == 0 {
@@ -2130,7 +2131,7 @@ func (_m *MockObjectStore) ModifyObjectDetails(id string, proc func(*types.Struc
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, func(*types.Struct) (*types.Struct, error)) error); ok {
+	if rf, ok := ret.Get(0).(func(string, func(*types.Struct) (*types.Struct, bool, error)) error); ok {
 		r0 = rf(id, proc)
 	} else {
 		r0 = ret.Error(0)
@@ -2146,14 +2147,14 @@ type MockObjectStore_ModifyObjectDetails_Call struct {
 
 // ModifyObjectDetails is a helper method to define mock.On call
 //   - id string
-//   - proc func(*types.Struct)(*types.Struct , error)
+//   - proc func(*types.Struct)(*types.Struct , bool , error)
 func (_e *MockObjectStore_Expecter) ModifyObjectDetails(id interface{}, proc interface{}) *MockObjectStore_ModifyObjectDetails_Call {
 	return &MockObjectStore_ModifyObjectDetails_Call{Call: _e.mock.On("ModifyObjectDetails", id, proc)}
 }
 
-func (_c *MockObjectStore_ModifyObjectDetails_Call) Run(run func(id string, proc func(*types.Struct) (*types.Struct, error))) *MockObjectStore_ModifyObjectDetails_Call {
+func (_c *MockObjectStore_ModifyObjectDetails_Call) Run(run func(id string, proc func(*types.Struct) (*types.Struct, bool, error))) *MockObjectStore_ModifyObjectDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(func(*types.Struct) (*types.Struct, error)))
+		run(args[0].(string), args[1].(func(*types.Struct) (*types.Struct, bool, error)))
 	})
 	return _c
 }
@@ -2163,7 +2164,7 @@ func (_c *MockObjectStore_ModifyObjectDetails_Call) Return(_a0 error) *MockObjec
 	return _c
 }
 
-func (_c *MockObjectStore_ModifyObjectDetails_Call) RunAndReturn(run func(string, func(*types.Struct) (*types.Struct, error)) error) *MockObjectStore_ModifyObjectDetails_Call {
+func (_c *MockObjectStore_ModifyObjectDetails_Call) RunAndReturn(run func(string, func(*types.Struct) (*types.Struct, bool, error)) error) *MockObjectStore_ModifyObjectDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2523,8 +2524,21 @@ func (_c *MockObjectStore_QueryRaw_Call) RunAndReturn(run func(*database.Filters
 }
 
 // RemoveIDsFromFullTextQueue provides a mock function with given fields: ids
-func (_m *MockObjectStore) RemoveIDsFromFullTextQueue(ids []string) {
-	_m.Called(ids)
+func (_m *MockObjectStore) RemoveIDsFromFullTextQueue(ids []string) error {
+	ret := _m.Called(ids)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveIDsFromFullTextQueue")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(ids)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // MockObjectStore_RemoveIDsFromFullTextQueue_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveIDsFromFullTextQueue'
@@ -2545,12 +2559,12 @@ func (_c *MockObjectStore_RemoveIDsFromFullTextQueue_Call) Run(run func(ids []st
 	return _c
 }
 
-func (_c *MockObjectStore_RemoveIDsFromFullTextQueue_Call) Return() *MockObjectStore_RemoveIDsFromFullTextQueue_Call {
-	_c.Call.Return()
+func (_c *MockObjectStore_RemoveIDsFromFullTextQueue_Call) Return(_a0 error) *MockObjectStore_RemoveIDsFromFullTextQueue_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockObjectStore_RemoveIDsFromFullTextQueue_Call) RunAndReturn(run func([]string)) *MockObjectStore_RemoveIDsFromFullTextQueue_Call {
+func (_c *MockObjectStore_RemoveIDsFromFullTextQueue_Call) RunAndReturn(run func([]string) error) *MockObjectStore_RemoveIDsFromFullTextQueue_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2915,17 +2929,17 @@ func (_c *MockObjectStore_SubscribeForAll_Call) RunAndReturn(run func(func(datab
 	return _c
 }
 
-// UpdateObjectDetails provides a mock function with given fields: id, details
-func (_m *MockObjectStore) UpdateObjectDetails(id string, details *types.Struct) error {
-	ret := _m.Called(id, details)
+// UpdateObjectDetails provides a mock function with given fields: ctx, id, details
+func (_m *MockObjectStore) UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error {
+	ret := _m.Called(ctx, id, details)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateObjectDetails")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, *types.Struct) error); ok {
-		r0 = rf(id, details)
+	if rf, ok := ret.Get(0).(func(context.Context, string, *types.Struct) error); ok {
+		r0 = rf(ctx, id, details)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -2939,15 +2953,16 @@ type MockObjectStore_UpdateObjectDetails_Call struct {
 }
 
 // UpdateObjectDetails is a helper method to define mock.On call
+//   - ctx context.Context
 //   - id string
 //   - details *types.Struct
-func (_e *MockObjectStore_Expecter) UpdateObjectDetails(id interface{}, details interface{}) *MockObjectStore_UpdateObjectDetails_Call {
-	return &MockObjectStore_UpdateObjectDetails_Call{Call: _e.mock.On("UpdateObjectDetails", id, details)}
+func (_e *MockObjectStore_Expecter) UpdateObjectDetails(ctx interface{}, id interface{}, details interface{}) *MockObjectStore_UpdateObjectDetails_Call {
+	return &MockObjectStore_UpdateObjectDetails_Call{Call: _e.mock.On("UpdateObjectDetails", ctx, id, details)}
 }
 
-func (_c *MockObjectStore_UpdateObjectDetails_Call) Run(run func(id string, details *types.Struct)) *MockObjectStore_UpdateObjectDetails_Call {
+func (_c *MockObjectStore_UpdateObjectDetails_Call) Run(run func(ctx context.Context, id string, details *types.Struct)) *MockObjectStore_UpdateObjectDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(*types.Struct))
+		run(args[0].(context.Context), args[1].(string), args[2].(*types.Struct))
 	})
 	return _c
 }
@@ -2957,7 +2972,7 @@ func (_c *MockObjectStore_UpdateObjectDetails_Call) Return(_a0 error) *MockObjec
 	return _c
 }
 
-func (_c *MockObjectStore_UpdateObjectDetails_Call) RunAndReturn(run func(string, *types.Struct) error) *MockObjectStore_UpdateObjectDetails_Call {
+func (_c *MockObjectStore_UpdateObjectDetails_Call) RunAndReturn(run func(context.Context, string, *types.Struct) error) *MockObjectStore_UpdateObjectDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3005,53 +3020,6 @@ func (_c *MockObjectStore_UpdateObjectLinks_Call) Return(_a0 error) *MockObjectS
 }
 
 func (_c *MockObjectStore_UpdateObjectLinks_Call) RunAndReturn(run func(string, []string) error) *MockObjectStore_UpdateObjectLinks_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpdateObjectSnippet provides a mock function with given fields: id, snippet
-func (_m *MockObjectStore) UpdateObjectSnippet(id string, snippet string) error {
-	ret := _m.Called(id, snippet)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpdateObjectSnippet")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string) error); ok {
-		r0 = rf(id, snippet)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockObjectStore_UpdateObjectSnippet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateObjectSnippet'
-type MockObjectStore_UpdateObjectSnippet_Call struct {
-	*mock.Call
-}
-
-// UpdateObjectSnippet is a helper method to define mock.On call
-//   - id string
-//   - snippet string
-func (_e *MockObjectStore_Expecter) UpdateObjectSnippet(id interface{}, snippet interface{}) *MockObjectStore_UpdateObjectSnippet_Call {
-	return &MockObjectStore_UpdateObjectSnippet_Call{Call: _e.mock.On("UpdateObjectSnippet", id, snippet)}
-}
-
-func (_c *MockObjectStore_UpdateObjectSnippet_Call) Run(run func(id string, snippet string)) *MockObjectStore_UpdateObjectSnippet_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockObjectStore_UpdateObjectSnippet_Call) Return(_a0 error) *MockObjectStore_UpdateObjectSnippet_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockObjectStore_UpdateObjectSnippet_Call) RunAndReturn(run func(string, string) error) *MockObjectStore_UpdateObjectSnippet_Call {
 	_c.Call.Return(run)
 	return _c
 }
