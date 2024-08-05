@@ -11,6 +11,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
@@ -72,6 +73,10 @@ func (tts testTemplateService) CreateTemplateStateWithDetails(id string, details
 	return st, nil
 }
 
+func (tts testTemplateService) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *types.Struct) *state.State {
+	return tts.templates[sb.Id()]
+}
+
 func assertNoCommonElements(t *testing.T, a, b []string) {
 	got := slice.Difference(a, b)
 
@@ -114,9 +119,10 @@ func assertDetails(t *testing.T, id string, ts testCreator, details *types.Struc
 }
 
 func TestExtractObjects(t *testing.T) {
+	objectId := "test"
 	makeTestObject := func() *smarttest.SmartTest {
-		sb := smarttest.New("test")
-		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2", "3"}}))
+		sb := smarttest.New(objectId)
+		sb.AddBlock(simple.New(&model.Block{Id: objectId, ChildrenIds: []string{"1", "2", "3"}}))
 		sb.AddBlock(newTextBlock("1", "text 1", []string{"1.1", "1.2"}))
 		sb.AddBlock(newTextBlock("1.1", "text 1.1", []string{"1.1.1"}))
 		sb.AddBlock(newTextBlock("1.1.1", "text 1.1.1", nil))
@@ -136,9 +142,9 @@ func TestExtractObjects(t *testing.T) {
 		{Key: bundle.RelationKeyCoverId.String(), Value: pbtypes.String("poster with Van Damme")},
 	}
 
-	makeTemplateState := func() *state.State {
-		sb := smarttest.New("template")
-		sb.AddBlock(simple.New(&model.Block{Id: "template", ChildrenIds: []string{"A", "B"}}))
+	makeTemplateState := func(id string) *state.State {
+		sb := smarttest.New(id)
+		sb.AddBlock(simple.New(&model.Block{Id: id, ChildrenIds: []string{"A", "B"}}))
 		sb.AddBlock(newTextBlock("A", "text A", nil))
 		sb.AddBlock(newTextBlock("B", "text B", []string{"B.1"}))
 		sb.AddBlock(newTextBlock("B.1", "text B.1", nil))
@@ -281,6 +287,13 @@ func TestExtractObjects(t *testing.T) {
 				bundle.RelationKeyName.String(): pbtypes.String("1.1"),
 			}},
 		},
+		{
+			name:                 "template and source are the same objects",
+			blockIds:             []string{"1.1"},
+			typeKey:              bundle.TypeKeyTask.String(),
+			templateId:           objectId,
+			wantObjectsWithTexts: [][]string{{"text 1.1.1", "text 2.1", "text 3.1"}},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fixture := newFixture(t)
@@ -291,8 +304,13 @@ func TestExtractObjects(t *testing.T) {
 			creator.Add(sb)
 
 			ts := testTemplateService{templates: map[string]*state.State{}}
-			tmpl := makeTemplateState()
-			ts.AddTemplate("template", tmpl)
+			var tmpl *state.State
+			if tc.templateId == objectId {
+				tmpl = sb.NewState()
+			} else {
+				tmpl = makeTemplateState(tc.templateId)
+			}
+			ts.AddTemplate(tc.templateId, tmpl)
 
 			if tc.typeKey == "" {
 				tc.typeKey = bundle.TypeKeyNote.String()
@@ -308,7 +326,7 @@ func TestExtractObjects(t *testing.T) {
 			linkIds, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, ts, req)
 			assert.NoError(t, err)
 
-			var gotBlockIds []string
+			gotBlockIds := []string{}
 			for _, b := range sb.Blocks() {
 				gotBlockIds = append(gotBlockIds, b.Id)
 			}
@@ -346,7 +364,7 @@ func TestExtractObjects(t *testing.T) {
 		creator.Add(sb)
 
 		ts := testTemplateService{templates: map[string]*state.State{}}
-		tmpl := makeTemplateState()
+		tmpl := makeTemplateState("template")
 		ts.AddTemplate("template", tmpl)
 
 		req := pb.RpcBlockListConvertToObjectsRequest{
@@ -379,7 +397,7 @@ func TestExtractObjects(t *testing.T) {
 		creator.Add(sb)
 
 		ts := testTemplateService{templates: map[string]*state.State{}}
-		tmpl := makeTemplateState()
+		tmpl := makeTemplateState("template")
 		ts.AddTemplate("template", tmpl)
 
 		req := pb.RpcBlockListConvertToObjectsRequest{
