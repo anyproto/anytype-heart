@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -126,7 +127,7 @@ func Test_NewFilters(t *testing.T) {
 		mockStore := NewMockObjectStore(t)
 
 		// when
-		filters, err := NewFilters(Query{}, mockStore)
+		filters, err := NewFilters(Query{}, mockStore, &fastjson.Arena{})
 
 		// then
 		assert.Nil(t, err)
@@ -158,7 +159,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// when
-		filters, err := NewFilters(Query{Filters: filter}, mockStore)
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
 
 		// when
 		assert.Nil(t, err)
@@ -198,7 +199,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// then
-		filters, err := NewFilters(Query{Filters: filter}, mockStore)
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
 
 		// when
 		assert.Nil(t, err)
@@ -238,7 +239,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// then
-		filters, err := NewFilters(Query{Filters: filter}, mockStore)
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
 
 		// when
 		assert.Nil(t, err)
@@ -278,13 +279,13 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// then
-		filters, err := NewFilters(Query{Filters: filter}, mockStore)
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
 
 		// when
 		assert.Nil(t, err)
 		assert.NotNil(t, filters.FilterObj)
 		assert.NotNil(t, filters.FilterObj.(FiltersAnd))
-		assert.Len(t, filters.FilterObj.(FiltersAnd), 5)
+		assert.Len(t, filters.FilterObj.(FiltersAnd), 6)
 	})
 	t.Run("or filter with 3 default", func(t *testing.T) {
 		// given
@@ -312,7 +313,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// then
-		filters, err := NewFilters(Query{Filters: filter}, mockStore)
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
 
 		// when
 		assert.Nil(t, err)
