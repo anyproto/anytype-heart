@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/pool/mock_pool"
+	"github.com/anyproto/any-sync/net/secureservice"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -176,6 +177,22 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 	})
 }
 
+func Test_filterPeers(t *testing.T) {
+	t.Run("no peers", func(t *testing.T) {
+		peers := filterOldPeers([]peer.Peer{})
+		assert.Len(t, peers, 0)
+	})
+	t.Run("peers with different versions", func(t *testing.T) {
+		newPeer := newTestPeer("newPeer")
+		oldPeer := newTestPeer("oldPeer")
+		oldPeer.ctx = peer.CtxWithProtoVersion(context.Background(), secureservice.ProtoVersion)
+		newPeer.ctx = peer.CtxWithProtoVersion(context.Background(), secureservice.NewSyncProtoVersion)
+		peers := filterOldPeers([]peer.Peer{newPeer, oldPeer})
+		assert.Len(t, peers, 1)
+		assert.Equal(t, peers[0].Id(), oldPeer.Id())
+	})
+}
+
 func newTestPeer(id string) *testPeer {
 	return &testPeer{
 		id:     id,
@@ -186,6 +203,7 @@ func newTestPeer(id string) *testPeer {
 type testPeer struct {
 	id     string
 	closed chan struct{}
+	ctx    context.Context
 }
 
 func (t *testPeer) SetTTL(ttl time.Duration) {
@@ -203,8 +221,7 @@ func (t *testPeer) AcquireDrpcConn(ctx context.Context) (drpc.Conn, error) {
 func (t *testPeer) ReleaseDrpcConn(conn drpc.Conn) {}
 
 func (t *testPeer) Context() context.Context {
-	// TODO implement me
-	panic("implement me")
+	return t.ctx
 }
 
 func (t *testPeer) Accept() (conn net.Conn, err error) {

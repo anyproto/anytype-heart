@@ -108,7 +108,7 @@ func (n *clientPeerManager) SendPeer(ctx context.Context, peerId string, msg *sp
 		if err != nil {
 			return nil, err
 		}
-		peers = filterPeers(peers)
+		peers = filterOldPeers(peers)
 		return
 	})
 }
@@ -122,7 +122,7 @@ func (n *clientPeerManager) Broadcast(ctx context.Context, msg *spacesyncproto.O
 		if err != nil {
 			return nil, err
 		}
-		peers = filterPeers(peers)
+		peers = filterOldPeers(peers)
 		return
 	})
 }
@@ -275,7 +275,7 @@ func (n *clientPeerManager) Close(ctx context.Context) (err error) {
 	return
 }
 
-func filterPeers(peers []peer.Peer) (filteredPeers []peer.Peer) {
+func filterOldPeers(peers []peer.Peer) (filteredPeers []peer.Peer) {
 	return lo.Filter(peers, func(p peer.Peer, idx int) bool {
 		protoVer, err := peer.CtxProtoVersion(p.Context())
 		if err != nil {
