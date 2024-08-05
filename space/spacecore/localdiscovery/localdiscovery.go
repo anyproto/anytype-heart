@@ -201,9 +201,9 @@ func (l *localDiscovery) startServer() (err error) {
 		l.ipv4, // do not include ipv6 addresses, because they are disabled
 		nil,
 		l.interfacesAddrs.Interfaces,
-		zeroconf.TTL(60),
+		zeroconf.TTL(3600),
 		zeroconf.ServerSelectIPTraffic(zeroconf.IPv4), // disable ipv6 for now
-		zeroconf.WriteTimeout(time.Second*1),
+		zeroconf.WriteTimeout(time.Second*10),
 	)
 	return
 }
