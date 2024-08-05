@@ -3,6 +3,7 @@ package fileobject
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -85,6 +86,8 @@ type service struct {
 
 	resolverRetryStartDelay time.Duration
 	resolverRetryMaxDelay   time.Duration
+
+	closeWg *sync.WaitGroup
 }
 
 func New(
@@ -94,6 +97,7 @@ func New(
 	return &service{
 		resolverRetryStartDelay: resolverRetryStartDelay,
 		resolverRetryMaxDelay:   resolverRetryMaxDelay,
+		closeWg:                 &sync.WaitGroup{},
 	}
 }
 
@@ -140,7 +144,10 @@ func (s *service) Init(a *app.App) error {
 }
 
 func (s *service) Run(_ context.Context) error {
+	s.closeWg.Add(1)
 	go func() {
+		defer s.closeWg.Done()
+
 		err := s.ensureNotSyncedFilesAddedToQueue()
 		if err != nil {
 			log.Errorf("ensure not synced files added to queue: %v", err)
@@ -204,6 +211,7 @@ func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *types.St
 }
 
 func (s *service) Close(ctx context.Context) error {
+	s.closeWg.Wait()
 	return s.indexer.close()
 }
 
