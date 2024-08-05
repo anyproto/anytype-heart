@@ -47,6 +47,8 @@ func NewStoreFixture(t *testing.T) *StoreFixture {
 	t.Cleanup(func() {
 		err = db.Close()
 		require.NoError(t, err)
+		err = fullText.Close(context.Background())
+		require.NoError(t, err)
 	})
 
 	ds := &dsObjectStore{
