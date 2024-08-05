@@ -224,12 +224,6 @@ func (t *treeSyncer) updateTree(p peer.Peer, id string) {
 	peerId := p.Id()
 	log := log.With(zap.String("treeId", id), zap.String("spaceId", t.spaceId))
 	ctx := peer.CtxWithPeerId(t.mainCtx, peerId)
-	ver, err := peer.CtxProtoVersion(p.Context())
-	if err != nil {
-		log.Warn("can't get proto version", zap.Error(err))
-		return
-	}
-	ctx = peer.CtxWithProtoVersion(ctx, ver)
 	tr, err := t.treeManager.GetTree(ctx, t.spaceId, id)
 	if err != nil {
 		log.Warn("can't load existing tree", zap.Error(err))
