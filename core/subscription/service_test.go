@@ -110,7 +110,7 @@ func TestService_Search(t *testing.T) {
 		err := addTestObjects(t, source, relationKey, option1, option2, spaceID, fx)
 		require.NoError(t, err)
 
-		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(SubscribeRequest{
 			Keys: []string{bundle.RelationKeyId.String()},
 			Filters: []*model.BlockContentDataviewFilter{
 				{
@@ -141,7 +141,7 @@ func TestService_Search(t *testing.T) {
 		err := addTestObjects(t, source, relationKey, option1, option2, spaceID, fx)
 		require.NoError(t, err)
 
-		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(SubscribeRequest{
 			Keys: []string{bundle.RelationKeyId.String()},
 			Filters: []*model.BlockContentDataviewFilter{
 				{
@@ -177,7 +177,7 @@ func TestService_Search(t *testing.T) {
 		err := addTestObjects(t, source, relationKey, option1, option2, spaceID, fx)
 		require.NoError(t, err)
 
-		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(SubscribeRequest{
 			Keys: []string{bundle.RelationKeyId.String()},
 			Filters: []*model.BlockContentDataviewFilter{
 				{
@@ -218,7 +218,7 @@ func TestService_Search(t *testing.T) {
 		err := addTestObjects(t, source, relationKey, option1, option2, spaceID, fx)
 		require.NoError(t, err)
 
-		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(SubscribeRequest{
 			Keys: []string{bundle.RelationKeyId.String()},
 			Filters: []*model.BlockContentDataviewFilter{
 				{
@@ -264,7 +264,7 @@ func TestService_Search(t *testing.T) {
 
 		addTestObjectsForNestedFilters(t, fx, spaceID, option1, option2, option3, tag1, tag2)
 
-		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(SubscribeRequest{
 			Keys:              []string{bundle.RelationKeyId.String()},
 			Filters:           prepareNestedFiltersWithOperator(model.BlockContentDataviewFilter_And, option1, option2, tag1),
 			NoDepSubscription: true,
@@ -289,7 +289,7 @@ func TestService_Search(t *testing.T) {
 
 		addTestObjectsForNestedFilters(t, fx, spaceID, option1, option2, option3, tag1, tag2)
 
-		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(SubscribeRequest{
 			Keys:              []string{bundle.RelationKeyId.String()},
 			Filters:           prepareNestedFiltersWithOperator(model.BlockContentDataviewFilter_Or, option1, option2, tag1),
 			NoDepSubscription: true,
