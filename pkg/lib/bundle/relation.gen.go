@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "85e04a36ba5bab4d27a8dd74bfb1e074e8be9466cbd08f7e3102c88816719242"
+const RelationChecksum = "5538228e6db0690f137ede0ee8bfd18421f3d27efa5fb991d7b71a4642720971"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -28,7 +28,6 @@ const (
 	RelationKeyWritersLimit              domain.RelationKey = "writersLimit"
 	RelationKeySharedSpacesLimit         domain.RelationKey = "sharedSpacesLimit"
 	RelationKeyIsHighlighted             domain.RelationKey = "isHighlighted"
-	RelationKeyAudioArtist               domain.RelationKey = "audioArtist"
 	RelationKeyTasks                     domain.RelationKey = "tasks"
 	RelationKeySnippet                   domain.RelationKey = "snippet"
 	RelationKeyRelationFormat            domain.RelationKey = "relationFormat"
@@ -226,19 +225,6 @@ var (
 			Key:              "audioAlbumTrackNumber",
 			MaxCount:         1,
 			Name:             "Track #",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyAudioArtist: {
-
-			DataSource:       model.Relation_details,
-			Description:      "The artist that performed this album or recording",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_braudioArtist",
-			Key:              "audioArtist",
-			MaxCount:         1,
-			Name:             "Recording Artist",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

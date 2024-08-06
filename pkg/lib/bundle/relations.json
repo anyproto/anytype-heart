@@ -169,16 +169,6 @@
     "source": "account"
   },
   {
-    "description": "The artist that performed this album or recording",
-    "format": "longtext",
-    "hidden": false,
-    "key": "audioArtist",
-    "maxCount": 1,
-    "name": "Recording Artist",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "List of related tasks\n",
     "format": "object",
     "hidden": false,
