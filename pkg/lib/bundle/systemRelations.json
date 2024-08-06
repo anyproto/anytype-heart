@@ -86,5 +86,6 @@
   "syncDate",
   "syncStatus",
   "syncError",
-  "scope"
+  "scope",
+  "lastUsedDate"
 ]

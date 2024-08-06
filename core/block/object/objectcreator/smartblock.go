@@ -130,8 +130,9 @@ func (s *service) checkBundledRelations(space clientspace.Space, details *types.
 		bundleRelIds = append(bundleRelIds, addr.BundledRelationURLPrefix+key)
 	}
 
-	// TODO: remove logging!!!
-	log.Errorf("need to check non-system relations existence for '%s': %v", pbtypes.GetString(details, bundle.RelationKeyName.String()), bundleRelIds)
+	if len(bundleRelIds) == 0 {
+		return
+	}
 
 	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
