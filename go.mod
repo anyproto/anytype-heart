@@ -7,7 +7,8 @@ require (
 	github.com/PuerkitoBio/goquery v1.9.2
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-sync v0.5.0-alpha.4.0.20240731185155-dd8c552785eb
+	github.com/anyproto/any-store v0.0.1
+	github.com/anyproto/any-sync v0.5.0-alpha.7.0.20240802091412-012a7ee5f061
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/tantivy-go/go v0.0.5
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
@@ -42,7 +43,6 @@ require (
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hbagdi/go-unsplash v0.0.0-20230414214043-474fc02c9119
 	github.com/huandu/skiplist v1.2.0
 	github.com/improbable-eng/grpc-web v0.15.0
@@ -91,7 +91,7 @@ require (
 	go.uber.org/mock v0.4.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842
+	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/image v0.18.0
 	golang.org/x/mobile v0.0.0-20240520174638-fa72addaaa1b
 	golang.org/x/net v0.27.0
@@ -117,6 +117,7 @@ require (
 	github.com/anyproto/go-chash v0.1.0 // indirect
 	github.com/anyproto/go-slip10 v1.0.0 // indirect
 	github.com/anyproto/go-slip21 v1.0.0 // indirect
+	github.com/anyproto/protobuf v1.3.3-0.20240801222536-5596d71a739e // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
@@ -176,6 +177,7 @@ require (
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/holiman/uint256 v1.2.4 // indirect
@@ -255,12 +257,12 @@ require (
 	go.opentelemetry.io/otel v1.14.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect
 	golang.org/x/crypto v0.25.0 // indirect
-	golang.org/x/mod v0.17.0 // indirect
+	golang.org/x/mod v0.19.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/term v0.22.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
+	golang.org/x/tools v0.23.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
@@ -286,4 +288,4 @@ replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-202
 
 replace github.com/multiformats/go-multiaddr => github.com/anyproto/go-multiaddr v0.8.1-0.20221213144344-0b6b93adaec4
 
-replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.20240715205950-2af411f17dfa
+replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38

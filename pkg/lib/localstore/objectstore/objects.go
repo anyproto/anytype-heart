@@ -4,102 +4,40 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
-	"unsafe"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	lru "github.com/hashicorp/golang-lru/v2"
-	ds "github.com/ipfs/go-datastore"
+	"github.com/valyala/fastjson"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("anytype-localstore")
-var ErrDetailsNotChanged = errors.New("details not changed")
-var ErrStoreIsClosing = errors.New("store is closing")
 
 const CName = "objectstore"
 
 var (
-	// ObjectInfo is stored in db key pattern:
-	pagesPrefix         = "pages"
-	pagesDetailsBase    = ds.NewKey("/" + pagesPrefix + "/details")
-	pendingDetailsBase  = ds.NewKey("/" + pagesPrefix + "/pending")
-	pagesActiveViewBase = ds.NewKey("/" + pagesPrefix + "/activeView")
-
-	pagesSnippetBase       = ds.NewKey("/" + pagesPrefix + "/snippet")
-	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
-	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
-	indexQueueBase         = ds.NewKey("/" + pagesPrefix + "/index")
-	bundledChecksums       = ds.NewKey("/" + pagesPrefix + "/checksum")
-	indexedHeadsState      = ds.NewKey("/" + pagesPrefix + "/headsstate")
-
-	accountPrefix = "account"
-	accountStatus = ds.NewKey("/" + accountPrefix + "/status")
-
-	spacePrefix   = "space"
-	virtualSpaces = ds.NewKey("/" + spacePrefix + "/virtual")
-
 	ErrObjectNotFound = errors.New("object not found")
+	ErrNotAnObject    = fmt.Errorf("not an object")
 
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
-
-func New() ObjectStore {
-	return &dsObjectStore{isClosingCh: make(chan struct{})}
-}
-
-type SourceDetailsFromID interface {
-	DetailsFromIdBasedSource(id string) (*types.Struct, error)
-}
-
-func (s *dsObjectStore) Init(a *app.App) (err error) {
-	src := a.Component("source")
-	if src != nil {
-		s.sourceService = a.MustComponent("source").(SourceDetailsFromID)
-	}
-	fts := a.Component(ftsearch.CName)
-	if fts == nil {
-		log.Warnf("init objectstore without fulltext")
-	} else {
-		s.fts = fts.(ftsearch.FTSearch)
-	}
-	datastoreService := a.MustComponent(datastore.CName).(datastore.Datastore)
-	s.db, err = datastoreService.LocalStorage()
-	if err != nil {
-		return fmt.Errorf("get badger: %w", err)
-	}
-
-	return s.initCache()
-}
-
-func (s *dsObjectStore) initCache() error {
-	cache, err := lru.New[string, *model.ObjectDetails](50000)
-	if err != nil {
-		return fmt.Errorf("init cache: %w", err)
-	}
-	s.cache = cache
-	return nil
-}
-
-func (s *dsObjectStore) Name() (name string) {
-	return CName
-}
 
 // nolint: interfacebloat
 type ObjectStore interface {
@@ -126,11 +64,10 @@ type ObjectStore interface {
 
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
-	UpdateObjectDetails(id string, details *types.Struct) error
+	UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error
 	UpdateObjectLinks(id string, links []string) error
-	UpdateObjectSnippet(id string, snippet string) error
 	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
-	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
+	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error
 
 	DeleteObject(id domain.FullID) error
 	DeleteDetails(id ...string) error
@@ -163,8 +100,8 @@ type ObjectStore interface {
 
 type IndexerStore interface {
 	AddToIndexQueue(id string) error
-	ListIDsFromFullTextQueue() ([]string, error)
-	RemoveIDsFromFullTextQueue(ids []string)
+	ListIDsFromFullTextQueue(limit int) ([]string, error)
+	RemoveIDsFromFullTextQueue(ids []string) error
 	FTSearch() ftsearch.FTSearch
 	GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error)
 
@@ -188,15 +125,23 @@ type VirtualSpacesStore interface {
 	DeleteVirtualSpace(spaceID string) error
 }
 
-var ErrNotAnObject = fmt.Errorf("not an object")
-
 type dsObjectStore struct {
-	sourceService SourceDetailsFromID
+	oldStore oldstore.Service
 
-	runningQueriesWG sync.WaitGroup
-	isClosingCh      chan struct{}
-	cache            *lru.Cache[string, *model.ObjectDetails]
-	db               *badger.DB
+	repoPath         string
+	sourceService    SourceDetailsFromID
+	anyStore         anystore.DB
+	objects          anystore.Collection
+	fulltextQueue    anystore.Collection
+	links            anystore.Collection
+	headsState       anystore.Collection
+	system           anystore.Collection
+	activeViews      anystore.Collection
+	indexerChecksums anystore.Collection
+	virtualSpaces    anystore.Collection
+	pendingDetails   anystore.Collection
+
+	arenaPool *fastjson.ArenaPool
 
 	fts ftsearch.FTSearch
 
@@ -204,18 +149,181 @@ type dsObjectStore struct {
 	onChangeCallback      func(record database.Record)
 	subscriptions         []database.Subscription
 	onLinksUpdateCallback func(info LinksUpdateInfo)
+
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
 }
 
-func (s *dsObjectStore) Run(context.Context) (err error) {
+func New() ObjectStore {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &dsObjectStore{
+		componentCtx:       ctx,
+		componentCtxCancel: cancel,
+	}
+}
+
+type SourceDetailsFromID interface {
+	DetailsFromIdBasedSource(id string) (*types.Struct, error)
+}
+
+func (s *dsObjectStore) Init(a *app.App) (err error) {
+	src := a.Component("source")
+	if src != nil {
+		s.sourceService = a.MustComponent("source").(SourceDetailsFromID)
+	}
+	fts := a.Component(ftsearch.CName)
+	if fts == nil {
+		log.Warnf("init objectstore without fulltext")
+	} else {
+		s.fts = fts.(ftsearch.FTSearch)
+	}
+	s.arenaPool = &fastjson.ArenaPool{}
+	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
+	s.oldStore = app.MustComponent[oldstore.Service](a)
+
 	return nil
+}
+
+func (s *dsObjectStore) Name() (name string) {
+	return CName
+}
+
+func (s *dsObjectStore) Run(ctx context.Context) error {
+	dbDir := filepath.Join(s.repoPath, "objectstore")
+	_, err := os.Stat(dbDir)
+	if errors.Is(err, os.ErrNotExist) {
+		err = os.MkdirAll(dbDir, 0700)
+		if err != nil {
+			return fmt.Errorf("create db dir: %w", err)
+		}
+	}
+	return s.runDatabase(ctx, filepath.Join(dbDir, "objects.db"))
+}
+
+func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
+	store, err := anystore.Open(ctx, path, nil)
+	if err != nil {
+		return fmt.Errorf("open database: %w", err)
+	}
+	objects, err := store.Collection(ctx, "objects")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open objects collection: %w", err))
+	}
+	fulltextQueue, err := store.Collection(ctx, "fulltext_queue")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open fulltextQueue collection: %w", err))
+	}
+	links, err := store.Collection(ctx, "links")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open links collection: %w", err))
+	}
+	headsState, err := store.Collection(ctx, "headsState")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open headsState collection: %w", err))
+	}
+	system, err := store.Collection(ctx, "system")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open system collection: %w", err))
+	}
+	activeViews, err := store.Collection(ctx, "activeViews")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open activeViews collection: %w", err))
+	}
+	indexerChecksums, err := store.Collection(ctx, "indexerChecksums")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open indexerChecksums collection: %w", err))
+	}
+	virtualSpaces, err := store.Collection(ctx, "virtualSpaces")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open virtualSpaces collection: %w", err))
+	}
+	pendingDetails, err := store.Collection(ctx, "pendingDetails")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open pendingDetails collection: %w", err))
+	}
+	s.anyStore = store
+
+	objectIndexes := []anystore.IndexInfo{
+		{
+			Name:   "layout",
+			Fields: []string{bundle.RelationKeyLayout.String()},
+		},
+		{
+			Name:   "type",
+			Fields: []string{bundle.RelationKeyType.String()},
+		},
+		{
+			Name:   "spaceId",
+			Fields: []string{bundle.RelationKeySpaceId.String()},
+		},
+		{
+			Name:   "relationKey",
+			Fields: []string{bundle.RelationKeyRelationKey.String()},
+		},
+		{
+			Name:   "uniqueKey",
+			Fields: []string{bundle.RelationKeyUniqueKey.String()},
+		},
+		{
+			Name:   "lastModifiedDate",
+			Fields: []string{bundle.RelationKeyLastModifiedDate.String()},
+		},
+		{
+			Name:   "syncStatus",
+			Fields: []string{bundle.RelationKeySyncStatus.String()},
+		},
+	}
+	err = s.addIndexes(ctx, objects, objectIndexes)
+	if err != nil {
+		log.Errorf("ensure object indexes: %s", err)
+	}
+
+	linksIndexes := []anystore.IndexInfo{
+		{
+			Name:   linkOutboundField,
+			Fields: []string{linkOutboundField},
+		},
+	}
+	err = s.addIndexes(ctx, links, linksIndexes)
+	if err != nil {
+		log.Errorf("ensure links indexes: %s", err)
+	}
+
+	s.objects = objects
+	s.fulltextQueue = fulltextQueue
+	s.links = links
+	s.headsState = headsState
+	s.system = system
+	s.activeViews = activeViews
+	s.indexerChecksums = indexerChecksums
+	s.virtualSpaces = virtualSpaces
+	s.pendingDetails = pendingDetails
+
+	return nil
+}
+
+func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection, indexes []anystore.IndexInfo) error {
+	gotIndexes := coll.GetIndexes()
+	toCreate := indexes[:0]
+	for _, idx := range indexes {
+		if !slices.ContainsFunc(gotIndexes, func(i anystore.Index) bool {
+			return i.Info().Name == idx.Name
+		}) {
+			toCreate = append(toCreate, idx)
+		}
+	}
+	return coll.EnsureIndex(ctx, toCreate...)
 }
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {
-	close(s.isClosingCh)
-	// wait long queries with iterator to gracefully finish,
-	// otherwise, closing the db may cause panics in iterators in badger
-	s.runningQueriesWG.Wait()
-	return nil
+	s.componentCtxCancel()
+	if s.objects != nil {
+		err = errors.Join(err, s.objects.Close())
+	}
+	if s.anyStore != nil {
+		err = errors.Join(err, s.anyStore.Close())
+	}
+	return err
 }
 
 // unsafe, use under mutex
@@ -252,25 +360,22 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 // GetDetails returns empty struct without errors in case details are not found
 // todo: get rid of this or change the name method!
 func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
-	var details *model.ObjectDetails
-	err := s.db.View(func(txn *badger.Txn) error {
-		it, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
-		if err != nil {
-			return fmt.Errorf("get details: %w", err)
-		}
-		details, err = s.extractDetailsFromItem(it)
-		return err
-	})
-	if badgerhelper.IsNotFound(err) {
+	doc, err := s.objects.FindId(s.componentCtx, id)
+	if errors.Is(err, anystore.ErrDocNotFound) {
 		return &model.ObjectDetails{
 			Details: &types.Struct{Fields: map[string]*types.Value{}},
 		}, nil
 	}
-
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("find by id: %w", err)
 	}
-	return details, nil
+	details, err := pbtypes.JsonToProto(doc.Value())
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal details: %w", err)
+	}
+	return &model.ObjectDetails{
+		Details: details,
+	}, nil
 }
 
 func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
@@ -311,29 +416,20 @@ func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*model.Obj
 }
 
 func (s *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
-	err = s.db.View(func(txn *badger.Txn) error {
-		for _, id := range ids {
-			_, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
-			if err != nil && err != badger.ErrKeyNotFound {
-				return fmt.Errorf("get %s: %w", id, err)
-			}
-			if err == nil {
-				exists = append(exists, id)
-			}
+	for _, id := range ids {
+		_, err := s.objects.FindId(s.componentCtx, id)
+		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+			return nil, fmt.Errorf("get %s: %w", id, err)
 		}
-		return nil
-	})
+		if err == nil {
+			exists = append(exists, id)
+		}
+	}
 	return exists, err
 }
 
 func (s *dsObjectStore) GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error) {
-	var infos []*model.ObjectInfo
-	err := s.db.View(func(txn *badger.Txn) error {
-		var err error
-		infos, err = s.getObjectsInfo(txn, spaceID, ids)
-		return err
-	})
-	return infos, err
+	return s.getObjectsInfo(s.componentCtx, spaceID, ids)
 }
 
 func (s *dsObjectStore) ListIdsBySpace(spaceId string) ([]string, error) {
@@ -351,18 +447,23 @@ func (s *dsObjectStore) ListIdsBySpace(spaceId string) ([]string, error) {
 
 func (s *dsObjectStore) ListIds() ([]string, error) {
 	var ids []string
-	err := s.db.View(func(txn *badger.Txn) error {
-		s.runningQueriesWG.Add(1)
-		defer s.runningQueriesWG.Done()
-		var err error
-		ids, err = listIDsByPrefix(txn, pagesDetailsBase.Bytes())
-		return err
-	})
-	return ids, err
-}
-
-func (s *dsObjectStore) Prefix() string {
-	return pagesPrefix
+	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
+	if err != nil {
+		return nil, fmt.Errorf("find all: %w", err)
+	}
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, errors.Join(fmt.Errorf("get doc: %w", err), iter.Close())
+		}
+		id := doc.Value().GetStringBytes("id")
+		ids = append(ids, string(id))
+	}
+	err = iter.Err()
+	if err != nil {
+		return nil, errors.Join(fmt.Errorf("iterate: %w", err), iter.Close())
+	}
+	return ids, iter.Close()
 }
 
 // TODO objstore: Just use dependency injection
@@ -370,54 +471,7 @@ func (s *dsObjectStore) FTSearch() ftsearch.FTSearch {
 	return s.fts
 }
 
-func (s *dsObjectStore) extractDetailsFromItem(it *badger.Item) (*model.ObjectDetails, error) {
-	key := it.Key()
-	sKey := unsafe.String(unsafe.SliceData(key), len(key))
-	if v, ok := s.cache.Get(sKey); ok {
-		return v, nil
-	}
-	return s.unmarshalDetailsFromItem(it)
-}
-
-func (s *dsObjectStore) unmarshalDetailsFromItem(it *badger.Item) (*model.ObjectDetails, error) {
-	var details *model.ObjectDetails
-	err := it.Value(func(val []byte) error {
-		var err error
-		details, err = unmarshalDetails(detailsKeyToID(it.Key()), val)
-		if err != nil {
-			return fmt.Errorf("unmarshal details: %w", err)
-		}
-		s.cache.Add(string(it.Key()), details)
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("get item value: %w", err)
-	}
-	return details, nil
-}
-
-func unmarshalDetails(id string, rawValue []byte) (*model.ObjectDetails, error) {
-	result := &model.ObjectDetails{}
-	if err := proto.Unmarshal(rawValue, result); err != nil {
-		return nil, err
-	}
-	if result.Details == nil {
-		result.Details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	if result.Details.Fields == nil {
-		result.Details.Fields = map[string]*types.Value{}
-	} else {
-		pbtypes.StructDeleteEmptyFields(result.Details)
-	}
-	result.Details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
-	return result, nil
-}
-
-func detailsKeyToID(key []byte) string {
-	return path.Base(string(key))
-}
-
-func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, spaceID string, id string) (*model.ObjectInfo, error) {
+func (s *dsObjectStore) getObjectInfo(ctx context.Context, spaceID string, id string) (*model.ObjectInfo, error) {
 	details, err := s.sourceService.DetailsFromIdBasedSource(id)
 	if err == nil {
 		details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
@@ -427,15 +481,14 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, spaceID string, id string
 		}, nil
 	}
 
-	it, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
+	doc, err := s.objects.FindId(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("get details: %w", err)
+		return nil, fmt.Errorf("find by id: %w", err)
 	}
-	detailsModel, err := s.extractDetailsFromItem(it)
+	details, err = pbtypes.JsonToProto(doc.Value())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal details: %w", err)
 	}
-	details = detailsModel.Details
 	snippet := pbtypes.GetString(details, bundle.RelationKeySnippet.String())
 
 	return &model.ObjectInfo{
@@ -445,12 +498,12 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, spaceID string, id string
 	}, nil
 }
 
-func (s *dsObjectStore) getObjectsInfo(txn *badger.Txn, spaceID string, ids []string) ([]*model.ObjectInfo, error) {
+func (s *dsObjectStore) getObjectsInfo(ctx context.Context, spaceID string, ids []string) ([]*model.ObjectInfo, error) {
 	objects := make([]*model.ObjectInfo, 0, len(ids))
 	for _, id := range ids {
-		info, err := s.getObjectInfo(txn, spaceID, id)
+		info, err := s.getObjectInfo(ctx, spaceID, id)
 		if err != nil {
-			if badgerhelper.IsNotFound(err) || errors.Is(err, ErrObjectNotFound) || errors.Is(err, ErrNotAnObject) {
+			if errors.Is(err, anystore.ErrDocNotFound) || errors.Is(err, ErrObjectNotFound) || errors.Is(err, ErrNotAnObject) {
 				continue
 			}
 			return nil, err
@@ -497,14 +550,6 @@ func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey domain.Un
 	}
 
 	return &model.ObjectDetails{Details: records[0].Details}, nil
-}
-
-func listIDsByPrefix(txn *badger.Txn, prefix []byte) ([]string, error) {
-	var ids []string
-	err := iterateKeysByPrefixTx(txn, prefix, func(key []byte) {
-		ids = append(ids, path.Base(string(key)))
-	})
-	return ids, err
 }
 
 func extractIdFromKey(key string) (id string) {

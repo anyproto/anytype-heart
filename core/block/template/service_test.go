@@ -232,7 +232,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		tmpl.Doc.(*state.State).SetOriginalCreatedTimestamp(sometime)
 		err := tmpl.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyAddedDate.String(), Value: pbtypes.Int64(sometime)}}, false)
 		require.NoError(t, err)
-		
+
 		s := service{picker: &testPicker{tmpl}}
 
 		// when
@@ -243,6 +243,36 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		assert.Zero(t, st.OriginalCreatedTimestamp())
 		assert.Zero(t, pbtypes.GetInt64(st.Details(), bundle.RelationKeyAddedDate.String()))
 		assert.Zero(t, pbtypes.GetInt64(st.Details(), bundle.RelationKeyCreatedDate.String()))
+	})
+}
+
+func TestCreateTemplateStateFromSmartBlock(t *testing.T) {
+	t.Run("if failed to build state -> return blank template", func(t *testing.T) {
+		// given
+		s := service{converter: converter.NewLayoutConverter()}
+
+		// when
+		st := s.CreateTemplateStateFromSmartBlock(nil, &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyLayout.String(): pbtypes.Int64(int64(model.ObjectType_todo)),
+		}})
+
+		// then
+		assert.Equal(t, BlankTemplateId, st.RootId())
+		assert.Contains(t, pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String()), bundle.RelationKeyTag.String())
+		assert.True(t, pbtypes.Exists(st.Details(), bundle.RelationKeyTag.String()))
+	})
+
+	t.Run("create state from template smartblock", func(t *testing.T) {
+		// given
+		tmpl := NewTemplateTest("template", bundle.TypeKeyProject.String())
+		s := service{}
+
+		// when
+		st := s.CreateTemplateStateFromSmartBlock(tmpl, nil)
+
+		// then
+		assert.Equal(t, "template", pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
+		assert.Equal(t, "template", pbtypes.GetString(st.Details(), bundle.RelationKeyDescription.String()))
 	})
 }
 

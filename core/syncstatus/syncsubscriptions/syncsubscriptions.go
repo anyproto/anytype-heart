@@ -15,10 +15,8 @@ const CName = "client.syncstatus.syncsubscriptions"
 type SyncSubscription interface {
 	Run() error
 	Close()
-	GetFileSubscription() *ObjectSubscription[struct{}]
 	GetObjectSubscription() *ObjectSubscription[struct{}]
 	SyncingObjectsCount(missing []string) int
-	FileSyncingObjectsCount() int
 }
 
 type SyncSubscriptions interface {

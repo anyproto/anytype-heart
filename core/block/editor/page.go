@@ -183,8 +183,8 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			case model.ObjectType_note:
 				templates = append(templates,
 					template.WithNameToFirstBlock,
+					template.WithFirstTextBlock,
 					template.WithNoTitle,
-					template.WithNoDescription,
 				)
 			case model.ObjectType_todo:
 				templates = append(templates,
