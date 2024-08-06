@@ -69,8 +69,8 @@ func (i *indexer) ftLoopRoutine() {
 }
 
 func (i *indexer) runFullTextIndexer(ctx context.Context) {
+	batcher := i.ftsearch.NewAutoBatcher(ftsearch.AutoBatcherRecommendedMaxDocs, ftsearch.AutoBatcherRecommendedMaxSize)
 	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(objectIds []string) error {
-		batcher := i.ftsearch.NewAutoBatcher(ftsearch.AutoBatcherRecommendedMaxDocs, ftsearch.AutoBatcherRecommendedMaxSize)
 		for _, objectId := range objectIds {
 			objDocs, err := i.prepareSearchDocument(ctx, objectId)
 			if err != nil {

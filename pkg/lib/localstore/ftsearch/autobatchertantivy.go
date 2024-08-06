@@ -115,6 +115,10 @@ func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
 	}
 
 	f.updateDocs = append(f.updateDocs, doc)
+
+	if len(f.updateDocs) >= docLimit {
+		return f.Finish()
+	}
 	return nil
 }
 
@@ -124,7 +128,13 @@ func (f *ftIndexBatcherTantivy) Finish() error {
 	if err != nil {
 		return err
 	}
-	return f.index.AddAndConsumeDocuments(f.updateDocs...)
+	err = f.index.AddAndConsumeDocuments(f.updateDocs...)
+	if err != nil {
+		return err
+	}
+	f.deleteIds = f.deleteIds[:0]
+	f.updateDocs = f.updateDocs[:0]
+	return nil
 }
 
 // Delete adds a delete operation to the batcher
