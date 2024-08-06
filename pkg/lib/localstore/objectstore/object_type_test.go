@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestGetObjectType(t *testing.T) {
@@ -54,7 +53,7 @@ func TestGetObjectType(t *testing.T) {
 			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{relationID}),
 			bundle.RelationKeyRecommendedLayout:    domain.Int64(int64(model.ObjectType_note)),
 			bundle.RelationKeyIconEmoji:            domain.String("📝"),
-			bundle.RelationKeyIsArchived:           pbtypes.Bool(true),
+			bundle.RelationKeyIsArchived:           domain.Bool(true),
 			bundle.RelationKeyUniqueKey:            domain.String(uniqueKey.Marshal()),
 		}
 		relObj := TestObject{
