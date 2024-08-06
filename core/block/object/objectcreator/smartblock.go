@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -111,11 +112,56 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 		objecttype.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys[0])
 	}
 
+	go s.checkBundledRelations(spc, newDetails)
+
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
 	ev.ObjectId = id
 	metrics.Service.Send(ev)
 	return id, newDetails, nil
+}
+
+func (s *service) checkBundledRelations(space clientspace.Space, details *types.Struct) {
+	var bundleRelIds []string
+	for key := range details.Fields {
+		if !bundle.HasRelation(key) || bundle.IsSystemRelation(domain.RelationKey(key)) {
+			continue
+		}
+		bundleRelIds = append(bundleRelIds, addr.BundledRelationURLPrefix+key)
+	}
+
+	// TODO: remove logging!!!
+	log.Errorf("need to check non-system relations existence for '%s': %v", pbtypes.GetString(details, bundle.RelationKeyName.String()), bundleRelIds)
+
+	records, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(space.Id()),
+			},
+			{
+				RelationKey: bundle.RelationKeySourceObject.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(bundleRelIds),
+			},
+		},
+	})
+
+	if err != nil {
+		log.Errorf("failed to query relations: '%v'", err)
+		return
+	}
+
+	if len(records) == len(bundleRelIds) {
+		return
+	}
+
+	ctx := context.Background()
+	_, _, err = s.InstallBundledObjects(ctx, space, bundleRelIds, false)
+	if err != nil {
+		log.Errorf("failed to install missed bundled relations to space: %v", err)
+	}
 }
 
 func objectTypeKeysToSmartBlockType(typeKeys []domain.TypeKey) coresb.SmartBlockType {
