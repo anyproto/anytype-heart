@@ -3,7 +3,6 @@ package basic
 import (
 	"fmt"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -53,7 +52,6 @@ type CommonOperations interface {
 	FeaturedRelationAdd(ctx session.Context, relations ...string) error
 	FeaturedRelationRemove(ctx session.Context, relations ...string) error
 
-	PasteBlocks(s *state.State, targetBlockId string, position model.BlockPosition, blocks []simple.Block) (err error)
 	ReplaceLink(oldId, newId string) error
 	ExtractBlocksToObjects(ctx session.Context, oc ObjectCreator, tsc TemplateStateCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
@@ -505,32 +503,4 @@ func (bs *basic) ReplaceLink(oldId, newId string) error {
 		}
 	}
 	return bs.Apply(s)
-}
-
-func (bs *basic) PasteBlocks(s *state.State, targetBlockID string, position model.BlockPosition, blocks []simple.Block) (err error) {
-	childIdsRewrite := make(map[string]string)
-	for _, b := range blocks {
-		for i, cID := range b.Model().ChildrenIds {
-			newID := bson.NewObjectId().Hex()
-			childIdsRewrite[cID] = newID
-			b.Model().ChildrenIds[i] = newID
-		}
-	}
-	for _, b := range blocks {
-		var child bool
-		if newID, ok := childIdsRewrite[b.Model().Id]; ok {
-			b.Model().Id = newID
-			child = true
-		} else {
-			b.Model().Id = bson.NewObjectId().Hex()
-		}
-		s.Add(b)
-		if !child {
-			err := s.InsertTo(targetBlockID, position, b.Model().Id)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }

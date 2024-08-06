@@ -61,6 +61,11 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	err = oldStore.Init(testApp)
 	require.NoError(t, err)
 
+	t.Cleanup(func() {
+		err = fullText.Close(context.Background())
+		require.NoError(t, err)
+	})
+
 	ds := &dsObjectStore{
 		componentCtx:       ctx,
 		componentCtxCancel: cancel,

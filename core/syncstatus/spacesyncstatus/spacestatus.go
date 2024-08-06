@@ -146,7 +146,6 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 		bytesLeftPercentage: s.getBytesLeftPercentage(spaceId),
 		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
 		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
-		filesSyncingCount:   s.getFileSyncingObjectsCount(spaceId),
 		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, s.getMissingIds(spaceId)),
 	}
 	s.eventSender.SendToSession(token, &pb.Event{
@@ -227,15 +226,6 @@ func (s *spaceSyncStatus) getObjectSyncingObjectsCount(spaceId string, missingOb
 	return curSub.SyncingObjectsCount(missingObjects)
 }
 
-func (s *spaceSyncStatus) getFileSyncingObjectsCount(spaceId string) int {
-	curSub, err := s.subs.GetSubscription(spaceId)
-	if err != nil {
-		log.Errorf("failed to get subscription: %s", err)
-		return 0
-	}
-	return curSub.FileSyncingObjectsCount()
-}
-
 func (s *spaceSyncStatus) getBytesLeftPercentage(spaceId string) float64 {
 	nodeUsage, err := s.nodeUsage.GetNodeUsage(context.Background())
 	if err != nil {
@@ -255,7 +245,6 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 		bytesLeftPercentage: s.getBytesLeftPercentage(spaceId),
 		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
 		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
-		filesSyncingCount:   s.getFileSyncingObjectsCount(spaceId),
 		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, missingObjects),
 	}
 	s.broadcast(&pb.Event{
@@ -276,14 +265,13 @@ type syncParams struct {
 	bytesLeftPercentage float64
 	connectionStatus    nodestatus.ConnectionStatus
 	compatibility       nodeconf.NetworkCompatibilityStatus
-	filesSyncingCount   int
 	objectsSyncingCount int
 }
 
 func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.EventSpaceSyncStatusUpdate {
 	status := pb.EventSpace_Synced
 	err := pb.EventSpace_Null
-	syncingObjectsCount := int64(params.objectsSyncingCount + params.filesSyncingCount)
+	syncingObjectsCount := int64(params.objectsSyncingCount)
 	if syncingObjectsCount > 0 {
 		status = pb.EventSpace_Syncing
 	}

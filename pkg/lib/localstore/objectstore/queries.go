@@ -267,6 +267,7 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
+	q.FullText = strings.TrimSpace(q.FullText)
 	filters, err := database.NewFilters(q, s, arena)
 	if err != nil {
 		return nil, fmt.Errorf("new filters: %w", err)

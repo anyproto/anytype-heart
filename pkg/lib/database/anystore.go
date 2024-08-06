@@ -186,6 +186,10 @@ func (s tagStatusSort) Fields() []query.SortField {
 }
 
 func (s tagStatusSort) AppendKey(k []byte, v *fastjson.Value) []byte {
+	defer func() {
+		s.arena.Reset()
+	}()
+
 	val := v.Get(s.relationKey)
 	var sortKey string
 	if val != nil && val.Type() == fastjson.TypeString {

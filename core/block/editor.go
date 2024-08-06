@@ -126,18 +126,6 @@ func (s *Service) TurnInto(
 	})
 }
 
-func (s *Service) SimplePaste(contextId string, anySlot []*model.Block) (err error) {
-	var blocks []simple.Block
-
-	for _, b := range anySlot {
-		blocks = append(blocks, simple.New(b))
-	}
-
-	return cache.DoState(s, contextId, func(s *state.State, b basic.CommonOperations) error {
-		return b.PasteBlocks(s, "", model.Block_Inner, blocks)
-	})
-}
-
 func (s *Service) ReplaceBlock(ctx session.Context, req pb.RpcBlockReplaceRequest) (newId string, err error) {
 	err = cache.Do(s, req.ContextId, func(b basic.Replaceable) error {
 		newId, err = b.Replace(ctx, req.BlockId, req.Block)
