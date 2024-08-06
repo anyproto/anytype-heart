@@ -122,7 +122,7 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 }
 
 func (s *service) checkBundledRelations(space clientspace.Space, details *types.Struct) {
-	var bundleRelIds []string
+	bundleRelIds := []string{}
 	for key := range details.Fields {
 		if !bundle.HasRelation(key) || bundle.IsSystemRelation(domain.RelationKey(key)) {
 			continue

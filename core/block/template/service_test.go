@@ -188,7 +188,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 	t.Run("template typeKey is removed", func(t *testing.T) {
 		// given
-		tmpl := NewTemplateTest(templateName, bundle.TypeKeyWeeklyPlan.String())
+		tmpl := NewTemplateTest(templateName, bundle.TypeKeyGoal.String())
 		s := service{picker: &testPicker{sb: tmpl}}
 
 		// when
@@ -196,7 +196,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, bundle.TypeKeyWeeklyPlan, st.ObjectTypeKey())
+		assert.Equal(t, bundle.TypeKeyGoal, st.ObjectTypeKey())
 	})
 
 	for _, layout := range []model.ObjectTypeLayout{
@@ -232,7 +232,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		tmpl.Doc.(*state.State).SetOriginalCreatedTimestamp(sometime)
 		err := tmpl.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyAddedDate.String(), Value: pbtypes.Int64(sometime)}}, false)
 		require.NoError(t, err)
-		
+
 		s := service{picker: &testPicker{tmpl}}
 
 		// when
