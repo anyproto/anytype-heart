@@ -42,13 +42,11 @@ func TestIndexerBatch(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue("three"))
 
 		var batches [][]string
-		for i := 0; i < 3; i++ {
-			err := s.BatchProcessFullTextQueue(context.Background(), 2, func(ids []string) error {
-				batches = append(batches, ids)
-				return nil
-			})
-			require.NoError(t, err)
-		}
+		err := s.BatchProcessFullTextQueue(context.Background(), 2, func(ids []string) error {
+			batches = append(batches, ids)
+			return nil
+		})
+		require.NoError(t, err)
 		require.Len(t, batches, 2)
 
 		assert.ElementsMatch(t, []string{"one", "two"}, batches[0])

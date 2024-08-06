@@ -27,18 +27,23 @@ func (s *dsObjectStore) AddToIndexQueue(id string) error {
 }
 
 func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(ids []string) error) error {
-	ids, err := s.ListIDsFromFullTextQueue(limit)
-	if err != nil {
-		return fmt.Errorf("list ids from fulltext queue: %w", err)
+	for {
+		ids, err := s.ListIDsFromFullTextQueue(limit)
+		if err != nil {
+			return fmt.Errorf("list ids from fulltext queue: %w", err)
+		}
+		if len(ids) == 0 {
+			return nil
+		}
+		err = processIds(ids)
+		if err != nil {
+			return fmt.Errorf("process ids: %w", err)
+		}
+		err = s.RemoveIDsFromFullTextQueue(ids)
+		if err != nil {
+			return fmt.Errorf("remove ids from fulltext queue: %w", err)
+		}
 	}
-	if len(ids) == 0 {
-		return nil
-	}
-	err = processIds(ids)
-	if err != nil {
-		return fmt.Errorf("process ids: %w", err)
-	}
-	return s.RemoveIDsFromFullTextQueue(ids)
 }
 
 func (s *dsObjectStore) ListIDsFromFullTextQueue(limit int) ([]string, error) {
