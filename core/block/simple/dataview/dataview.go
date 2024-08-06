@@ -86,6 +86,8 @@ type Block interface {
 	RemoveViewRelations(viewID string, relationKeys []string) error
 	ReplaceViewRelation(viewID string, relationKey string, relation *model.BlockContentDataviewRelation) error
 	ReorderViewRelations(viewID string, relationKeys []string) error
+
+	HasEmptyContent() bool
 }
 
 type Dataview struct {
@@ -519,4 +521,30 @@ func (s *Dataview) UpdateRelationOld(relationKey string, rel model.Relation) err
 
 func (d *Dataview) IsEmpty() bool {
 	return d.content.TargetObjectId == "" && len(d.content.Views) == 0
+}
+
+func (d *Dataview) HasEmptyContent() bool {
+	if d.content == nil {
+		return true
+	}
+
+	var view *model.BlockContentDataviewView
+	switch len(d.content.Views) {
+	case 0:
+		return true
+	case 1:
+		view = d.content.Views[0]
+	default:
+		return false
+	}
+
+	if view.DefaultObjectTypeId != "" ||
+		view.DefaultTemplateId != "" ||
+		len(view.Filters) != 0 ||
+		len(view.Sorts) > 1 ||
+		view.Type != model.BlockContentDataviewView_Table {
+		return false
+	}
+	
+	return true
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -1341,6 +1342,12 @@ func (s *State) IsEmpty(checkTitle bool) bool {
 	if checkTitle && pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()) != "" {
 		return false
 	}
+
+	layout := pbtypes.GetInt64(s.Details(), bundle.RelationKeyLayout.String())
+	if layout == int64(model.ObjectType_collection) || layout == int64(model.ObjectType_set) {
+		return s.isEmptyDataview()
+	}
+
 	var emptyTextFound bool
 
 	if title := s.Pick(TitleBlockID); title != nil {
@@ -1376,6 +1383,35 @@ func (s *State) IsEmpty(checkTitle bool) bool {
 	}
 
 	return true
+}
+
+// isEmptyDataview is a separate emptiness check for sets and collections, as
+func (s *State) isEmptyDataview() bool {
+	details := s.Details()
+
+	for _, key := range []domain.RelationKey{
+		bundle.RelationKeySetOf,
+		bundle.RelationKeyIconEmoji,
+		bundle.RelationKeyIconImage,
+		bundle.RelationKeyCoverId,
+		bundle.RelationKeyTag,
+	} {
+		if !pbtypes.IsEmptyValueOrAbsent(details, key.String()) {
+			return false
+		}
+	}
+
+	dvBlock := s.Pick(DataviewBlockID)
+	if dvBlock == nil {
+		return true
+	}
+
+	dv, ok := dvBlock.(dataview.Block)
+	if !ok {
+		return true
+	}
+
+	return dv.HasEmptyContent()
 }
 
 func (s *State) Copy() *State {
