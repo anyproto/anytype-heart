@@ -55,8 +55,14 @@ import (
 const CName = "export"
 
 const (
-	tempFileName   = "temp_anytype_backup"
-	spaceDirectory = "spaces"
+	tempFileName              = "temp_anytype_backup"
+	spaceDirectory            = "spaces"
+	typesDirectory            = "types"
+	objectsDirectory          = "objects"
+	relationsDirectory        = "relations"
+	relationsOptionsDirectory = "relationsOptions"
+	templatesDirectory        = "templates"
+	filesObjects              = "filesObjects"
 )
 
 var log = logging.Logger("anytype-mw-export")
@@ -491,7 +497,7 @@ func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportReques
 		}
 		conv.SetKnownDocs(docInfo)
 		result := conv.Convert(b.Type().ToProto())
-		filename := e.provideFileName(docID, req.SpaceId, conv, st)
+		filename := e.provideFileName(docID, req.SpaceId, conv, st, b.Type())
 		if req.Format == model.Export_Markdown {
 			filename = e.provideMarkdownName(st, wr, docID, conv, req.SpaceId)
 		}
@@ -519,13 +525,31 @@ func (e *export) provideMarkdownName(s *state.State, wr writer, docID string, co
 	return wr.Namer().Get(path, docID, name, conv.Ext())
 }
 
-func (e *export) provideFileName(docID, spaceId string, conv converter.Converter, st *state.State) string {
-	filename := docID + conv.Ext()
+func (e *export) provideFileName(docID, spaceId string, conv converter.Converter, st *state.State, blockType smartblock.SmartBlockType) string {
+	dir := e.provideFileDirectory(blockType)
+	filename := filepath.Join(dir, docID+conv.Ext())
 	if spaceId == "" {
 		spaceId := pbtypes.GetString(st.LocalDetails(), bundle.RelationKeySpaceId.String())
 		filename = filepath.Join(spaceDirectory, spaceId, filename)
 	}
 	return filename
+}
+
+func (e *export) provideFileDirectory(blockType smartblock.SmartBlockType) string {
+	switch blockType {
+	case smartblock.SmartBlockTypeRelation:
+		return relationsDirectory
+	case smartblock.SmartBlockTypeRelationOption:
+		return relationsOptionsDirectory
+	case smartblock.SmartBlockTypeObjectType:
+		return typesDirectory
+	case smartblock.SmartBlockTypeTemplate:
+		return templatesDirectory
+	case smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeFileObject:
+		return filesObjects
+	default:
+		return objectsDirectory
+	}
 }
 
 func (e *export) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlock, exportAllSpaces bool) (fileName string, err error) {

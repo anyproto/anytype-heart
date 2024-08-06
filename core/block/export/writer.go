@@ -58,6 +58,13 @@ func (d *dirWriter) Path() string {
 }
 
 func (d *dirWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int64) (err error) {
+	dir := filepath.Dir(filename)
+	if dir != "" {
+		err = os.MkdirAll(filepath.Join(d.path, dir), 0700)
+		if err != nil {
+			return err
+		}
+	}
 	filename = path.Join(d.path, filename)
 	f, err := os.Create(filename)
 	if err != nil {
