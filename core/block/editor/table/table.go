@@ -279,7 +279,7 @@ func (tb Table) Iterate(f func(b simple.Block, pos CellPosition) bool) error {
 }
 
 func (tb Table) MoveBlocksUnderTheTable(ids ...string) {
-	parent := tb.s.PickParentOf(tb.block.Model().Id)
+	parent := tb.s.GetParentOf(tb.block.Model().Id)
 	if parent == nil {
 		log.Errorf("failed to get parent of table block '%s'", tb.block.Model().Id)
 		return
