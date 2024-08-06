@@ -3,6 +3,7 @@ package source
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -69,8 +70,7 @@ func (s *store) ReadStoreDoc(ctx context.Context) (err error) {
 		ot: s.ObjectTree,
 	}
 	if err = applier.Apply(); err != nil {
-		_ = tx.Rollback()
-		return
+		return errors.Join(tx.Rollback(), err)
 	}
 	return tx.Commit()
 }
@@ -101,12 +101,33 @@ func (s *store) PushStoreChange(params PushStoreChangeParams) (changeId string, 
 	return addResult.Added[0].Id, nil
 }
 
+func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
+	tx, err := s.store.NewTx(ctx)
+	if err != nil {
+		return err
+	}
+	applier := &storeApply{
+		tx: tx,
+		ot: tree,
+	}
+	if err = applier.Apply(); err != nil {
+		return errors.Join(tx.Rollback(), err)
+	}
+	return tx.Commit()
+}
+
 func (s *store) Update(tree objecttree.ObjectTree) {
-	// TODO !!!
+	err := s.update(context.Background(), tree)
+	if err != nil {
+		log.With("objectId", s.id).Errorf("update: failed to read store doc: %v", err)
+	}
 }
 
 func (s *store) Rebuild(tree objecttree.ObjectTree) {
-	// TODO !!!
+	err := s.update(context.Background(), tree)
+	if err != nil {
+		log.With("objectId", s.id).Errorf("rebuild: failed to read store doc: %v", err)
+	}
 }
 
 func MarshalStoreChange(change *pb.StoreChange) (result []byte, dataType string, err error) {
