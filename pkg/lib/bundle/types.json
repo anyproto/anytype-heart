@@ -605,5 +605,20 @@
       "tasks"
     ],
     "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim"
+  },
+  {
+    "id": "chat",
+    "name": "Discussion",
+    "types": [
+      "ChatObject"
+    ],
+    "emoji": "",
+    "hidden": false,
+    "layout": "chat",
+    "relations": [
+        "tag",
+        "description"
+    ],
+    "description": "A chat"
   }
 ]

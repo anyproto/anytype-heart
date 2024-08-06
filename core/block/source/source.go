@@ -146,7 +146,7 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		return nil, err
 	}
 
-	return &source{
+	src := &source{
 		ObjectTree:         ot,
 		id:                 id,
 		space:              space,
@@ -158,7 +158,12 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		fileService:        s.fileService,
 		objectStore:        s.objectStore,
 		fileObjectMigrator: s.fileObjectMigrator,
-	}, nil
+	}
+	if sbt == smartblock.SmartBlockTypeStore {
+		return &store{source: src}, nil
+	}
+
+	return src, nil
 }
 
 type ObjectTreeProvider interface {

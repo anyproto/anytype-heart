@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/storeobject"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -36,6 +37,7 @@ type ObjectDeleter interface {
 }
 
 type accountService interface {
+	AccountID() string
 	PersonalSpaceID() string
 	MyParticipantId(spaceId string) string
 }
@@ -66,6 +68,7 @@ type ObjectFactory struct {
 	fileReconciler      reconciler.Reconciler
 	objectDeleter       ObjectDeleter
 	deviceService       deviceService
+	storeDbProvider     storeobject.StoreDbProvider
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -73,27 +76,28 @@ func NewObjectFactory() *ObjectFactory {
 }
 
 func (f *ObjectFactory) Init(a *app.App) (err error) {
-	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
-	f.fileBlockService = app.MustComponent[file.BlockService](a)
-	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	f.restrictionService = app.MustComponent[restriction.Service](a)
-	f.sourceService = app.MustComponent[source.Service](a)
-	f.fileService = app.MustComponent[files.Service](a)
-	f.fileStore = app.MustComponent[filestore.FileStore](a)
 	f.config = app.MustComponent[*config.Config](a)
-	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
-	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
 	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
+	f.fileStore = app.MustComponent[filestore.FileStore](a)
+	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	f.fileService = app.MustComponent[files.Service](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.spaceService = app.MustComponent[spaceService](a)
-	f.accountService = app.MustComponent[accountService](a)
-	f.fileObjectService = app.MustComponent[fileobject.Service](a)
-	f.processService = app.MustComponent[process.Service](a)
-	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
+	f.sourceService = app.MustComponent[source.Service](a)
 	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
-	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
 	f.deviceService = app.MustComponent[deviceService](a)
+	f.accountService = app.MustComponent[accountService](a)
+	f.processService = app.MustComponent[process.Service](a)
+	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
+	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
+	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
+	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
+	f.storeDbProvider = app.MustComponent[storeobject.StoreDbProvider](a)
+	f.fileBlockService = app.MustComponent[file.BlockService](a)
+	f.fileObjectService = app.MustComponent[fileobject.Service](a)
+	f.restrictionService = app.MustComponent[restriction.Service](a)
+	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	return nil
 }
 
@@ -193,6 +197,8 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		return f.newParticipant(sb), nil
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
+	case coresb.SmartBlockTypeStore:
+		return storeobject.New(sb, f.accountService, f.storeDbProvider), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}
