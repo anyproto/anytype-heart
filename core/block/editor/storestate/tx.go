@@ -51,7 +51,7 @@ func (stx *StoreStateTx) NextBeforeOrder(prev string, before string) (string, er
 	return lexId.NextBefore(prev, before)
 }
 
-func (stx *StoreStateTx) setOrder(changeId, order string) (err error) {
+func (stx *StoreStateTx) SetOrder(changeId, order string) (err error) {
 	stx.arena.Reset()
 	obj := stx.arena.NewObject()
 	obj.Set("id", stx.arena.NewString(changeId))
@@ -71,16 +71,20 @@ func (stx *StoreStateTx) checkMaxOrder(order string) {
 	}
 }
 
-func (stx *StoreStateTx) ApplyChangeSet(ch ChangeSet) (err error) {
-	if err = stx.setOrder(ch.Id, ch.Order); err != nil && !errors.Is(err, anystore.ErrDocExists) {
+func (stx *StoreStateTx) ApplyChangeSetAndStoreOrder(ch ChangeSet) (err error) {
+	if err = stx.SetOrder(ch.Id, ch.Order); err != nil && !errors.Is(err, anystore.ErrDocExists) {
 		return
 	}
 	return stx.state.applyChangeSet(stx.ctx, ch)
 }
 
+func (stx *StoreStateTx) ApplyChangeSet(ch ChangeSet) (err error) {
+	return stx.state.applyChangeSet(stx.ctx, ch)
+}
+
 func (stx *StoreStateTx) Commit() (err error) {
 	if stx.maxOrderChanged {
-		if err = stx.setOrder(maxOrderId, stx.maxOrder); err != nil {
+		if err = stx.SetOrder(maxOrderId, stx.maxOrder); err != nil {
 			return
 		}
 	}

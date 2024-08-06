@@ -161,10 +161,9 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		fileObjectMigrator: s.fileObjectMigrator,
 	}
 	if sbt == smartblock.SmartBlockTypeStore {
-		stateStore, err := storestate.New(ctx, id, s.dbProvider.GetStoreDb(), storestate.DefaultHandler{
+		stateStore, err := storestate.New(ctx, id, s.dbProvider.GetStoreDb(), storestate.ChatHandler{
 			Name:       "chats",
-			DeleteMode: storestate.DeleteModeDelete,
-			ModifyMode: storestate.ModifyModeUpsert,
+			MyIdentity: s.accountService.AccountID(),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("create state store: %w", err)

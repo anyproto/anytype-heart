@@ -37,6 +37,7 @@ type ObjectDeleter interface {
 }
 
 type accountService interface {
+	AccountID() string
 	PersonalSpaceID() string
 	MyParticipantId(spaceId string) string
 }
@@ -195,7 +196,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeStore:
-		return storeobject.New(sb), nil
+		return storeobject.New(sb, f.accountService), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

@@ -33,7 +33,7 @@ func TestStoreStateTx_GetOrder(t *testing.T) {
 		fx := newFixture(t, "test", DefaultHandler{Name: "tcoll"})
 		tx, err := fx.NewTx(ctx)
 		require.NoError(t, err)
-		require.NoError(t, tx.setOrder("changeId", "1"))
+		require.NoError(t, tx.SetOrder("changeId", "1"))
 		order, err := tx.GetOrder("changeId")
 		require.NoError(t, err)
 		assert.Equal(t, "1", order)
@@ -43,7 +43,7 @@ func TestStoreStateTx_GetOrder(t *testing.T) {
 		tx, err = fx.NewTx(ctx)
 		require.NoError(t, err)
 		assert.Equal(t, "1", tx.GetMaxOrder())
-		require.NoError(t, tx.setOrder("changeId2", "2"))
+		require.NoError(t, tx.SetOrder("changeId2", "2"))
 		assert.Equal(t, "2", tx.GetMaxOrder())
 		require.NoError(t, tx.Commit())
 	})
@@ -56,7 +56,7 @@ func TestStoreStateTx_ApplyChangeSet(t *testing.T) {
 		require.NoError(t, err)
 		build := &Builder{}
 		assert.NoError(t, build.Create("testColl", "1", `{"key":"value"}`))
-		require.NoError(t, tx.ApplyChangeSet(ChangeSet{
+		require.NoError(t, tx.ApplyChangeSetAndStoreOrder(ChangeSet{
 			Id:      "1",
 			Order:   "1",
 			Changes: build.ChangeSet,
@@ -79,7 +79,7 @@ func TestStoreStateTx_ApplyChangeSet(t *testing.T) {
 		assert.NoError(t, build.Modify("testColl", "1", []string{"key"}, pb.ModifyOp_Set, `"valueChanged"`))
 		assert.NoError(t, build.Modify("testColl", "1", []string{"num"}, pb.ModifyOp_Inc, `2`))
 
-		require.NoError(t, tx.ApplyChangeSet(ChangeSet{
+		require.NoError(t, tx.ApplyChangeSetAndStoreOrder(ChangeSet{
 			Id:      "1",
 			Order:   "1",
 			Changes: build.ChangeSet,
@@ -102,7 +102,7 @@ func TestStoreStateTx_ApplyChangeSet(t *testing.T) {
 		require.NoError(t, err)
 		build := &Builder{}
 		assert.NoError(t, build.Create("testColl", "1", `{"key":"value"}`))
-		require.NoError(t, tx.ApplyChangeSet(ChangeSet{
+		require.NoError(t, tx.ApplyChangeSetAndStoreOrder(ChangeSet{
 			Id:      "1",
 			Order:   "1",
 			Changes: build.ChangeSet,
@@ -113,7 +113,7 @@ func TestStoreStateTx_ApplyChangeSet(t *testing.T) {
 		require.NoError(t, err)
 		build = &Builder{}
 		build.Delete("testColl", "1")
-		require.NoError(t, tx.ApplyChangeSet(ChangeSet{
+		require.NoError(t, tx.ApplyChangeSetAndStoreOrder(ChangeSet{
 			Id:      "1",
 			Order:   "1",
 			Changes: build.ChangeSet,
@@ -148,7 +148,7 @@ func TestBenchCreate(t *testing.T) {
 	tx, err := fx.NewTx(ctx)
 	require.NoError(t, err)
 	for _, ch := range changes {
-		assert.NoError(t, tx.ApplyChangeSet(ch))
+		assert.NoError(t, tx.ApplyChangeSetAndStoreOrder(ch))
 	}
 	t.Logf("applied for a %v", time.Since(st))
 	st = time.Now()

@@ -10,10 +10,24 @@ import (
 func (mw *Middleware) ChatAddMessage(cctx context.Context, req *pb.RpcChatAddMessageRequest) *pb.RpcChatAddMessageResponse {
 	chatService := getService[chats.Service](mw)
 
-	err := chatService.AddMessage(req.ChatObjectId, req.Message)
+	messageId, err := chatService.AddMessage(req.ChatObjectId, req.Message)
 	code := mapErrorCode[pb.RpcChatAddMessageResponseErrorCode](err)
 	return &pb.RpcChatAddMessageResponse{
+		MessageId: messageId,
 		Error: &pb.RpcChatAddMessageResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) ChatEditMessage(cctx context.Context, req *pb.RpcChatEditMessageRequest) *pb.RpcChatEditMessageResponse {
+	chatService := getService[chats.Service](mw)
+
+	err := chatService.EditMessage(req.ChatObjectId, req.MessageId, req.NewText)
+	code := mapErrorCode[pb.RpcChatEditMessageResponseErrorCode](err)
+	return &pb.RpcChatEditMessageResponse{
+		Error: &pb.RpcChatEditMessageResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},

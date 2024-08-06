@@ -100,8 +100,9 @@ func (a *storeApply) applyChange(change *objecttree.Change, order string) (err e
 		Id:      change.Id,
 		Order:   order,
 		Changes: storeChange.ChangeSet,
+		Creator: change.Identity.Account(),
 	}
-	return a.tx.ApplyChangeSet(set)
+	return a.tx.ApplyChangeSetAndStoreOrder(set)
 }
 
 func (a *storeApply) getPrevOrder() (order string, err error) {

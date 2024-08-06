@@ -73,13 +73,15 @@ func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (s
 type ChangeSet struct {
 	Id      string
 	Order   string
+	Creator string
 	Changes []*pb.StoreChangeContent
 }
 
 type Change struct {
-	Id     string
-	Order  string
-	Change *pb.StoreChangeContent
+	Id      string
+	Order   string
+	Creator string
+	Change  *pb.StoreChangeContent
 }
 
 type StoreState struct {

@@ -18,7 +18,8 @@ import (
 const CName = "core.block.chats"
 
 type Service interface {
-	AddMessage(chatObjectId string, message string) error
+	AddMessage(chatObjectId string, message string) (string, error)
+	EditMessage(chatObjectId string, messageId string, newText string) error
 	GetMessages(chatObjectId string) ([]string, error)
 
 	GetStoreDb() anystore.DB
@@ -43,7 +44,6 @@ func (s *service) Name() string {
 
 func (s *service) Init(a *app.App) error {
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
-
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
 
 	return nil
@@ -83,15 +83,25 @@ func (s *service) GetStoreDb() anystore.DB {
 	return s.db
 }
 
-func (s *service) AddMessage(chatObjectId string, message string) error {
-	return cache.Do[storeobject.StoreObject](s.objectGetter, chatObjectId, func(sb storeobject.StoreObject) error {
-		return sb.AddMessage(context.Background(), message)
+func (s *service) AddMessage(chatObjectId string, message string) (string, error) {
+	var messageId string
+	err := cache.Do(s.objectGetter, chatObjectId, func(sb storeobject.StoreObject) error {
+		var err error
+		messageId, err = sb.AddMessage(context.Background(), message)
+		return err
+	})
+	return messageId, err
+}
+
+func (s *service) EditMessage(chatObjectId string, messageId string, newText string) error {
+	return cache.Do(s.objectGetter, chatObjectId, func(sb storeobject.StoreObject) error {
+		return sb.EditMessage(context.Background(), messageId, newText)
 	})
 }
 
 func (s *service) GetMessages(chatObjectId string) ([]string, error) {
 	var res []string
-	err := cache.Do[storeobject.StoreObject](s.objectGetter, chatObjectId, func(sb storeobject.StoreObject) error {
+	err := cache.Do(s.objectGetter, chatObjectId, func(sb storeobject.StoreObject) error {
 		msgs, err := sb.GetMessages(context.Background())
 		if err != nil {
 			return err

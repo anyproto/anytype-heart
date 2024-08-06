@@ -6,28 +6,36 @@ import (
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 type StoreObject interface {
 	smartblock.SmartBlock
 
-	AddMessage(ctx context.Context, message string) error
+	AddMessage(ctx context.Context, message string) (string, error)
 	GetMessages(ctx context.Context) ([]string, error)
+	EditMessage(ctx context.Context, messageId string, newText string) error
+}
+
+type AccountService interface {
+	AccountID() string
 }
 
 type storeObject struct {
 	smartblock.SmartBlock
 
-	storeSource source.Store
-	store       *storestate.StoreState
+	accountService AccountService
+	storeSource    source.Store
+	store          *storestate.StoreState
 }
 
-func New(sb smartblock.SmartBlock) StoreObject {
-	return &storeObject{SmartBlock: sb}
+func New(sb smartblock.SmartBlock, accountService AccountService) StoreObject {
+	return &storeObject{SmartBlock: sb, accountService: accountService}
 }
 
 func (s *storeObject) Init(ctx *smartblock.InitContext) error {
@@ -76,42 +84,87 @@ func (s *storeObject) GetMessages(ctx context.Context) ([]string, error) {
 	return res, errors.Join(iter.Close(), err)
 }
 
-func (s *storeObject) AddMessage(ctx context.Context, text string) error {
+func (s *storeObject) AddMessage(ctx context.Context, text string) (string, error) {
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
-		return fmt.Errorf("new tx: %w", err)
+		return "", fmt.Errorf("new tx: %w", err)
 	}
+	// TODO Add rollback
 
+	messageId := bson.NewObjectId().Hex()
 	builder := storestate.Builder{}
-	err = builder.Create("chats", bson.NewObjectId().Hex(), map[string]string{
-		"text":      text,
-		"someField": "additional",
+	err = builder.Create("chats", messageId, map[string]string{
+		"text":   text,
+		"author": s.accountService.AccountID(),
 	})
 	if err != nil {
-		return fmt.Errorf("create chat: %w", err)
+		return "", fmt.Errorf("create chat: %w", err)
 	}
 
 	changeId, err := s.storeSource.PushStoreChange(source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
 	})
 	if err != nil {
-		return fmt.Errorf("push store change: %w", err)
+		return "", fmt.Errorf("push store change: %w", err)
 	}
 
 	maxOrder := tx.GetMaxOrder()
-	err = tx.ApplyChangeSet(storestate.ChangeSet{
+	err = tx.ApplyChangeSetAndStoreOrder(storestate.ChangeSet{
 		Id:      changeId,
 		Order:   tx.NextOrder(maxOrder),
 		Changes: builder.ChangeSet,
 	})
 	if err != nil {
-		return fmt.Errorf("apply change set: %w", err)
+		return "", fmt.Errorf("apply change set: %w", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return "", fmt.Errorf("commit tx: %w", err)
+	}
+
+	return messageId, nil
+}
+
+func (s *storeObject) EditMessage(ctx context.Context, messageId string, newText string) error {
+	tx, err := s.store.NewTx(ctx)
+	if err != nil {
+		return fmt.Errorf("new tx: %w", err)
+	}
+	rollback := func(err error) error {
+		return errors.Join(tx.Rollback(), err)
+	}
+
+	arena := &fastjson.Arena{}
+
+	builder := storestate.Builder{}
+	err = builder.Modify("chats", messageId, []string{"text"}, pb.ModifyOp_Set, arena.NewString(newText))
+	if err != nil {
+		return rollback(fmt.Errorf("modify chat: %w", err))
+	}
+
+	order := tx.NextOrder(tx.GetMaxOrder())
+	err = tx.ApplyChangeSet(storestate.ChangeSet{
+		Order:   order,
+		Changes: builder.ChangeSet,
+	})
+	if err != nil {
+		return rollback(fmt.Errorf("apply change set: %w", err))
+	}
+	changeId, err := s.storeSource.PushStoreChange(source.PushStoreChangeParams{
+		Changes: builder.ChangeSet,
+	})
+	if err != nil {
+		return rollback(fmt.Errorf("push store change: %w", err))
+	}
+	err = tx.SetOrder(changeId, order)
+	if err != nil {
+		return rollback(fmt.Errorf("set order: %w", err))
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("commit tx: %w", err)
 	}
-
 	return nil
 }
