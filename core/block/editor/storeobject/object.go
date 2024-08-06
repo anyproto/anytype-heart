@@ -2,6 +2,7 @@ package storeobject
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -78,22 +79,18 @@ func (s *storeObject) GetMessages(ctx context.Context) ([]string, error) {
 		if err != nil {
 			return nil, errors.Join(iter.Close(), err)
 		}
-		res = append(res, v["text"].(string))
+
+		out, _ := json.Marshal(v)
+		res = append(res, string(out))
 		// res = append(res, v["text"])
 	}
 	return res, errors.Join(iter.Close(), err)
 }
 
 func (s *storeObject) AddMessage(ctx context.Context, text string) (string, error) {
-	tx, err := s.store.NewTx(ctx)
-	if err != nil {
-		return "", fmt.Errorf("new tx: %w", err)
-	}
-	// TODO Add rollback
-
 	messageId := bson.NewObjectId().Hex()
 	builder := storestate.Builder{}
-	err = builder.Create("chats", messageId, map[string]string{
+	err := builder.Create("chats", messageId, map[string]string{
 		"text":   text,
 		"author": s.accountService.AccountID(),
 	})
@@ -101,32 +98,30 @@ func (s *storeObject) AddMessage(ctx context.Context, text string) (string, erro
 		return "", fmt.Errorf("create chat: %w", err)
 	}
 
-	changeId, err := s.storeSource.PushStoreChange(source.PushStoreChangeParams{
-		Changes: builder.ChangeSet,
-	})
+	err = s.addChange(ctx, builder.ChangeSet)
 	if err != nil {
-		return "", fmt.Errorf("push store change: %w", err)
-	}
-
-	maxOrder := tx.GetMaxOrder()
-	err = tx.ApplyChangeSetAndStoreOrder(storestate.ChangeSet{
-		Id:      changeId,
-		Order:   tx.NextOrder(maxOrder),
-		Changes: builder.ChangeSet,
-	})
-	if err != nil {
-		return "", fmt.Errorf("apply change set: %w", err)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return "", fmt.Errorf("commit tx: %w", err)
+		return "", fmt.Errorf("add change: %w", err)
 	}
 
 	return messageId, nil
 }
 
 func (s *storeObject) EditMessage(ctx context.Context, messageId string, newText string) error {
+	arena := &fastjson.Arena{}
+
+	builder := storestate.Builder{}
+	err := builder.Modify("chats", messageId, []string{"text"}, pb.ModifyOp_Set, arena.NewString(newText))
+	if err != nil {
+		return fmt.Errorf("modify chat: %w", err)
+	}
+	err = s.addChange(ctx, builder.ChangeSet)
+	if err != nil {
+		return fmt.Errorf("add change: %w", err)
+	}
+	return nil
+}
+
+func (s *storeObject) addChange(ctx context.Context, changeSet []*pb.StoreChangeContent) error {
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
 		return fmt.Errorf("new tx: %w", err)
@@ -134,25 +129,16 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newText
 	rollback := func(err error) error {
 		return errors.Join(tx.Rollback(), err)
 	}
-
-	arena := &fastjson.Arena{}
-
-	builder := storestate.Builder{}
-	err = builder.Modify("chats", messageId, []string{"text"}, pb.ModifyOp_Set, arena.NewString(newText))
-	if err != nil {
-		return rollback(fmt.Errorf("modify chat: %w", err))
-	}
-
 	order := tx.NextOrder(tx.GetMaxOrder())
 	err = tx.ApplyChangeSet(storestate.ChangeSet{
 		Order:   order,
-		Changes: builder.ChangeSet,
+		Changes: changeSet,
 	})
 	if err != nil {
 		return rollback(fmt.Errorf("apply change set: %w", err))
 	}
 	changeId, err := s.storeSource.PushStoreChange(source.PushStoreChangeParams{
-		Changes: builder.ChangeSet,
+		Changes: changeSet,
 	})
 	if err != nil {
 		return rollback(fmt.Errorf("push store change: %w", err))

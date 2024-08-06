@@ -75,7 +75,12 @@ func (stx *StoreStateTx) ApplyChangeSetAndStoreOrder(ch ChangeSet) (err error) {
 	if err = stx.SetOrder(ch.Id, ch.Order); err != nil && !errors.Is(err, anystore.ErrDocExists) {
 		return
 	}
-	return stx.state.applyChangeSet(stx.ctx, ch)
+	err = stx.state.applyChangeSet(stx.ctx, ch)
+	// Skip invalid changes
+	if errors.Is(err, ErrValidation) {
+		return nil
+	}
+	return err
 }
 
 func (stx *StoreStateTx) ApplyChangeSet(ch ChangeSet) (err error) {

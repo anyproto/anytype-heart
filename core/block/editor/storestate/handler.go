@@ -104,7 +104,7 @@ func (d ChatHandler) UpgradeKeyModifier(ch ChangeOp, key *pb.KeyModify, mod quer
 	return query.ModifyFunc(func(a *fastjson.Arena, v *fastjson.Value) (result *fastjson.Value, modified bool, err error) {
 		author := v.GetStringBytes("author")
 		if string(author) != d.MyIdentity {
-			return v, false, errors.Join(ErrIgnore, fmt.Errorf("can't modify not own message"))
+			return v, false, errors.Join(ErrValidation, fmt.Errorf("can't modify not own message"))
 		}
 		return mod.Modify(a, v)
 	})
