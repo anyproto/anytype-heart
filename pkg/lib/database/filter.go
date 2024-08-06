@@ -216,12 +216,14 @@ func wrapValueToList(val domain.Value) ([]domain.Value, error) {
 		for _, s := range v {
 			res = append(res, domain.String(s))
 		}
+		return res, nil
 	}
 	if v, ok := val.FloatList(); ok {
 		res := make([]domain.Value, 0, len(v))
 		for _, f := range v {
 			res = append(res, domain.Float(f))
 		}
+		return res, nil
 	}
 	return nil, fmt.Errorf("unsupported type: %v", val.Type())
 }

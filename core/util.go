@@ -5,8 +5,11 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) getResponseEvent(ctx session.Context) *pb.ResponseEvent {
@@ -45,6 +48,46 @@ func getErrorDescription(err error) string {
 		return ""
 	}
 	return err.Error()
+}
+
+func filtersFromProto(filters []*model.BlockContentDataviewFilter) []database.FilterRequest {
+	var res []database.FilterRequest
+	for _, f := range filters {
+		res = append(res, database.FilterRequest{
+			Id:               f.Id,
+			Operator:         f.Operator,
+			RelationKey:      f.RelationKey,
+			RelationProperty: f.RelationProperty,
+			Condition:        f.Condition,
+			Value:            domain.ValueFromProto(f.Value),
+			QuickOption:      f.QuickOption,
+			Format:           f.Format,
+			IncludeTime:      f.IncludeTime,
+		})
+	}
+	return res
+}
+
+func sortsFromProto(sorts []*model.BlockContentDataviewSort) []database.SortRequest {
+	var res []database.SortRequest
+	for _, s := range sorts {
+		custom := make([]string, 0, len(s.CustomOrder))
+		for _, id := range s.CustomOrder {
+			if v := id.GetStringValue(); v != "" {
+				custom = append(custom, v)
+			}
+		}
+		res = append(res, database.SortRequest{
+			RelationKey:    s.RelationKey,
+			Type:           s.Type,
+			CustomOrder:    custom,
+			Format:         s.Format,
+			IncludeTime:    s.IncludeTime,
+			Id:             s.Id,
+			EmptyPlacement: s.EmptyPlacement,
+		})
+	}
+	return res
 }
 
 func init() {

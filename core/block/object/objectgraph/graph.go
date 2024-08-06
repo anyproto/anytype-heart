@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -63,7 +64,17 @@ func (gr *Builder) Name() (name string) {
 	return CName
 }
 
-func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*domain.Details, []*pb.RpcObjectGraphEdge, error) {
+type ObjectGraphRequest struct {
+	Filters          []database.FilterRequest
+	Limit            int32
+	ObjectTypeFilter []string
+	Keys             []string
+	SpaceId          string
+	CollectionId     string
+	SetSource        []string
+}
+
+func (gr *Builder) ObjectGraph(req ObjectGraphRequest) ([]*domain.Details, []*pb.RpcObjectGraphEdge, error) {
 	relations, err := gr.objectStore.ListAllRelations(req.SpaceId)
 	if err != nil {
 		return nil, nil, err
@@ -109,7 +120,7 @@ func isRelationShouldBeIncludedAsEdge(rel *relationutils.Relation) bool {
 func (gr *Builder) buildGraph(
 	records []*domain.Details,
 	nodes []*domain.Details,
-	req *pb.RpcObjectGraphRequest,
+	req ObjectGraphRequest,
 	relations relationutils.Relations,
 	edges []*pb.RpcObjectGraphEdge,
 ) ([]*domain.Details, []*pb.RpcObjectGraphEdge) {

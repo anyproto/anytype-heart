@@ -118,8 +118,8 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	records, err := ds.Query(database.Query{
-		Filters:  req.Filters,
-		Sorts:    req.Sorts,
+		Filters:  filtersFromProto(req.Filters),
+		Sorts:    sortsFromProto(req.Sorts),
 		Offset:   int(req.Offset),
 		Limit:    int(req.Limit),
 		FullText: req.FullText,
@@ -169,8 +169,8 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 		highlighter = ftsearch.HtmlHighlightFormatter
 	}
 	results, err := ds.Query(database.Query{
-		Filters:     req.Filters,
-		Sorts:       req.Sorts,
+		Filters:     filtersFromProto(req.Filters),
+		Sorts:       sortsFromProto(req.Sorts),
 		Offset:      int(req.Offset),
 		Limit:       int(req.Limit),
 		FullText:    req.FullText,
@@ -241,7 +241,7 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 	if err != nil {
 		return nil, fmt.Errorf("make date record: %w", err)
 	}
-	f, _ := database.MakeFiltersAnd(req.Filters, store) //nolint:errcheck
+	f, _ := database.MakeFiltersAnd(filtersFromProto(req.Filters), store) //nolint:errcheck
 	if f.FilterObject(rec.Details) {
 		return append([]database.Record{rec}, records...), nil
 	}
@@ -350,8 +350,8 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 
 	resp, err := subService.Search(subscription.SubscribeRequest{
 		SubId:             req.SubId,
-		Filters:           req.Filters,
-		Sorts:             req.Sorts,
+		Filters:           filtersFromProto(req.Filters),
+		Sorts:             sortsFromProto(req.Sorts),
 		Limit:             req.Limit,
 		Offset:            req.Offset,
 		Keys:              req.Keys,
@@ -394,7 +394,14 @@ func (mw *Middleware) ObjectGroupsSubscribe(cctx context.Context, req *pb.RpcObj
 
 	subService := mw.applicationService.GetApp().MustComponent(subscription.CName).(subscription.Service)
 
-	resp, err := subService.SubscribeGroups(ctx, *req)
+	resp, err := subService.SubscribeGroups(ctx, subscription.SubscribeGroupsRequest{
+		SpaceId:      req.SpaceId,
+		SubId:        req.SubId,
+		RelationKey:  req.RelationKey,
+		Filters:      filtersFromProto(req.Filters),
+		Source:       req.Source,
+		CollectionId: req.CollectionId,
+	})
 	if err != nil {
 		return errResponse(err)
 	}

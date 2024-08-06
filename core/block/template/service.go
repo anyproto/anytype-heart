@@ -29,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -116,7 +115,7 @@ func (s *service) CreateTemplateStateWithDetails(
 func (s *service) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State {
 	st, err := s.buildState(sb)
 	if err != nil {
-		layout := pbtypes.GetInt64(details, bundle.RelationKeyLayout.String())
+		layout := details.GetInt64(bundle.RelationKeyLayout)
 		st = s.createBlankTemplateState(model.ObjectTypeLayout(layout))
 	}
 	addDetailsToState(st, details)
@@ -167,7 +166,7 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 	}
 	st = sb.NewState().Copy()
 
-	if pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsArchived.String()) {
+	if st.LocalDetails().GetBool(bundle.RelationKeyIsArchived) {
 		return nil, spacestorage.ErrTreeStorageAlreadyDeleted
 	}
 
@@ -383,7 +382,7 @@ func buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error
 	return st, nil
 }
 
-func addDetailsToState(s *state.State, details *types.Struct) {
+func addDetailsToState(s *state.State, details *domain.Details) {
 	targetDetails := extractTargetDetails(details, s.Details())
 	s.AddDetails(targetDetails)
 	s.BlocksInit(s)
