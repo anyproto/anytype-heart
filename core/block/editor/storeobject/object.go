@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/globalsign/mgo/bson"
 	"github.com/valyala/fastjson"
 
@@ -15,12 +16,18 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
+const collectionName = "chats"
+
 type StoreObject interface {
 	smartblock.SmartBlock
 
 	AddMessage(ctx context.Context, message string) (string, error)
 	GetMessages(ctx context.Context) ([]string, error)
 	EditMessage(ctx context.Context, messageId string, newText string) error
+}
+
+type StoreDbProvider interface {
+	GetStoreDb() anystore.DB
 }
 
 type AccountService interface {
@@ -31,12 +38,13 @@ type storeObject struct {
 	smartblock.SmartBlock
 
 	accountService AccountService
+	dbProvider     StoreDbProvider
 	storeSource    source.Store
 	store          *storestate.StoreState
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService) StoreObject {
-	return &storeObject{SmartBlock: sb, accountService: accountService}
+func New(sb smartblock.SmartBlock, accountService AccountService, dbProvider StoreDbProvider) StoreObject {
+	return &storeObject{SmartBlock: sb, accountService: accountService, dbProvider: dbProvider}
 }
 
 func (s *storeObject) Init(ctx *smartblock.InitContext) error {
@@ -45,22 +53,29 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return err
 	}
 
+	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.dbProvider.GetStoreDb(), ChatHandler{
+		MyIdentity: s.accountService.AccountID(),
+	})
+	if err != nil {
+		return fmt.Errorf("create state store: %w", err)
+	}
+	s.store = stateStore
+
 	storeSource, ok := ctx.Source.(source.Store)
 	if !ok {
 		return fmt.Errorf("source is not a store")
 	}
 	s.storeSource = storeSource
-	err = storeSource.ReadStoreDoc(ctx.Ctx)
+	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore)
 	if err != nil {
 		return fmt.Errorf("read store doc: %w", err)
 	}
-	s.store = storeSource.GetStore()
 
 	return nil
 }
 
 func (s *storeObject) GetMessages(ctx context.Context) ([]string, error) {
-	coll, err := s.store.Collection(ctx, "chats")
+	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
@@ -90,7 +105,7 @@ func (s *storeObject) GetMessages(ctx context.Context) ([]string, error) {
 func (s *storeObject) AddMessage(ctx context.Context, text string) (string, error) {
 	messageId := bson.NewObjectId().Hex()
 	builder := storestate.Builder{}
-	err := builder.Create("chats", messageId, map[string]string{
+	err := builder.Create(collectionName, messageId, map[string]string{
 		"text":   text,
 		"author": s.accountService.AccountID(),
 	})

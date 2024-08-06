@@ -21,7 +21,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -161,14 +160,7 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		fileObjectMigrator: s.fileObjectMigrator,
 	}
 	if sbt == smartblock.SmartBlockTypeStore {
-		stateStore, err := storestate.New(ctx, id, s.dbProvider.GetStoreDb(), storestate.ChatHandler{
-			Name:       "chats",
-			MyIdentity: s.accountService.AccountID(),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("create state store: %w", err)
-		}
-		return &store{source: src, store: stateStore}, nil
+		return &store{source: src}, nil
 	}
 
 	return src, nil

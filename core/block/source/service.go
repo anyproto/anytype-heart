@@ -6,7 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -60,10 +59,6 @@ type Service interface {
 	app.Component
 }
 
-type StoreDbProvider interface {
-	GetStoreDb() anystore.DB
-}
-
 type service struct {
 	sbtProvider        typeprovider.SmartBlockTypeProvider
 	accountService     accountService
@@ -72,7 +67,6 @@ type service struct {
 	fileService        files.Service
 	objectStore        RelationGetter
 	fileObjectMigrator fileObjectMigrator
-	dbProvider         StoreDbProvider
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -89,7 +83,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectStore = app.MustComponent[RelationGetter](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
-	s.dbProvider = app.MustComponent[StoreDbProvider](a)
 	return
 }
 

@@ -22,8 +22,7 @@ import (
 var _ updatelistener.UpdateListener = (*store)(nil)
 
 type Store interface {
-	GetStore() *storestate.StoreState
-	ReadStoreDoc(ctx context.Context) (err error)
+	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState) (err error)
 	PushStoreChange(params PushStoreChangeParams) (changeId string, err error)
 }
 
@@ -56,11 +55,9 @@ func (s *store) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
 }
 
-func (s *store) GetStore() *storestate.StoreState {
-	return s.store
-}
+func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreState) (err error) {
+	s.store = storeState
 
-func (s *store) ReadStoreDoc(ctx context.Context) (err error) {
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
 		return
