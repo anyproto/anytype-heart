@@ -1385,7 +1385,8 @@ func (s *State) IsEmpty(checkTitle bool) bool {
 	return true
 }
 
-// isEmptyDataview is a separate emptiness check for sets and collections, as
+// isEmptyDataview is a separate emptiness check for sets and collections,
+// as changes on object are done upon dataview block, not text one
 func (s *State) isEmptyDataview() bool {
 	details := s.Details()
 

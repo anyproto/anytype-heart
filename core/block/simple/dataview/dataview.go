@@ -545,6 +545,6 @@ func (d *Dataview) HasEmptyContent() bool {
 		view.Type != model.BlockContentDataviewView_Table {
 		return false
 	}
-	
+
 	return true
 }
