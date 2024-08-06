@@ -124,9 +124,9 @@ func (b *block) Normalize(s *state.State) error {
 		return nil
 	}
 
-	normalizeColumns(tb)
-	normalizeRows(tb)
-	if err = normalizeHeaderRows(tb); err != nil {
+	tb.normalizeColumns()
+	tb.normalizeRows()
+	if err = tb.normalizeHeaderRows(); err != nil {
 		// actually we cannot get error here, as all rows are checked in normalizeRows
 		log.Errorf("normalize header rows: %v", err)
 	}
@@ -153,7 +153,7 @@ func (r *rowSort) Swap(i, j int) {
 	r.cells[i], r.cells[j] = r.cells[j], r.cells[i]
 }
 
-func normalizeHeaderRows(tb *Table) error {
+func (tb Table) normalizeHeaderRows() error {
 	rows := tb.s.Get(tb.Rows().Id)
 
 	var headers []string
@@ -175,8 +175,8 @@ func normalizeHeaderRows(tb *Table) error {
 	return nil
 }
 
-func normalizeRow(tb *Table, colIdx map[string]int, row simple.Block) {
-	if tb == nil || row == nil || row.Model() == nil {
+func (tb Table) normalizeRow(colIdx map[string]int, row simple.Block) {
+	if row == nil || row.Model() == nil {
 		return
 	}
 
@@ -216,7 +216,7 @@ func normalizeRow(tb *Table, colIdx map[string]int, row simple.Block) {
 	}
 }
 
-func normalizeColumns(tb *Table) {
+func (tb Table) normalizeColumns() {
 	var (
 		invalidFound bool
 		colIds       = make([]string, 0)
@@ -255,7 +255,7 @@ func normalizeColumns(tb *Table) {
 	}
 }
 
-func normalizeRows(tb *Table) {
+func (tb Table) normalizeRows() {
 	var (
 		invalidFound bool
 		rowIds       = make([]string, 0)
@@ -287,7 +287,7 @@ func normalizeRows(tb *Table) {
 			}
 			continue
 		}
-		normalizeRow(tb, colIdx, row)
+		tb.normalizeRow(colIdx, row)
 		rowIds = append(rowIds, rowId)
 	}
 
