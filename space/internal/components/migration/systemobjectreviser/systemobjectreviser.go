@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type detailsSettable interface {
@@ -67,16 +66,16 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 
 func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string) (map[string]*domain.Details, error) {
 	records, err := store.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(int(model.ObjectType_objectType), int(model.ObjectType_relation)),
+				Value:       domain.Int64List(model.ObjectType_objectType, model.ObjectType_relation),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 			},
 		},
 	})

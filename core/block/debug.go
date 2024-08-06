@@ -14,12 +14,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/util/debug"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *Service) DebugRouter(r chi.Router) {
@@ -52,10 +52,10 @@ type debugObject struct {
 func (s *Service) debugListObjectsPerSpace(req *http.Request) ([]debugObject, error) {
 	spaceId := chi.URLParam(req, "spaceId")
 	ids, _, err := s.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
 		},

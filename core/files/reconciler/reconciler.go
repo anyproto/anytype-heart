@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
@@ -178,7 +177,7 @@ func (r *reconciler) markAsReconciled(fileObjectId string, fileId domain.FullFil
 
 func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
 	records, err := r.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
@@ -186,7 +185,7 @@ func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
 			{
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Bool(true),
+				Value:       domain.Bool(true),
 			},
 		},
 	})

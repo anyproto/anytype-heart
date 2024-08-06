@@ -385,19 +385,19 @@ func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
 }
 
 func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*database.ObjectInfo, error) {
-	var filters []*model.BlockContentDataviewFilter
+	var filters []database.FilterRequest
 	if spaceID != "" {
-		filters = append(filters, &model.BlockContentDataviewFilter{
+		filters = append(filters, database.FilterRequest{
 			RelationKey: bundle.RelationKeySpaceId.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.String(spaceID),
 		})
 	}
 	if includeArchived {
-		filters = append(filters, &model.BlockContentDataviewFilter{
+		filters = append(filters, database.FilterRequest{
 			RelationKey: bundle.RelationKeyIsArchived.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.Bool(true),
+			Value:       domain.Bool(true),
 		})
 	}
 	ids, _, err := s.QueryObjectIDs(database.Query{
@@ -428,7 +428,7 @@ func (s *dsObjectStore) GetByIDs(spaceID string, ids []string) ([]*database.Obje
 
 func (s *dsObjectStore) ListIdsBySpace(spaceId string) ([]string, error) {
 	ids, _, err := s.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -516,7 +516,7 @@ func (s *dsObjectStore) getObjectsInfo(ctx context.Context, spaceID string, ids 
 
 func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*domain.Details, error) {
 	records, err := s.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),

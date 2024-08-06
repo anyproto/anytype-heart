@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *service) BundledObjectsIdsToInstall(
@@ -135,16 +134,16 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 
 func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds []string) (map[string]*domain.Details, error) {
 	existingObjects, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(sourceObjectIds),
+				Value:       domain.StringList(sourceObjectIds),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(space.Id()),
+				Value:       domain.String(space.Id()),
 			},
 		},
 	})
@@ -280,21 +279,21 @@ func (s *service) prepareDetailsForInstallingObject(
 
 func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs []string) (deletedObjects []database.Record, err error) {
 	deletedObjects, err = s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(sourceObjectIDs),
+				Value:       domain.StringList(sourceObjectIDs),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(space.Id()),
+				Value:       domain.String(space.Id()),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
+				Value:       domain.Bool(true),
 			},
 		},
 	})
@@ -303,21 +302,21 @@ func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs [
 
 func (s *service) queryArchivedObjects(space clientspace.Space, sourceObjectIDs []string) (archivedObjects []database.Record, err error) {
 	archivedObjects, err = s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(sourceObjectIDs),
+				Value:       domain.StringList(sourceObjectIDs),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(space.Id()),
+				Value:       domain.String(space.Id()),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsArchived.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
+				Value:       domain.Bool(true),
 			},
 		},
 	})

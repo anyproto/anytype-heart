@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type derivedObject struct {
@@ -76,21 +75,21 @@ func (d *derivedObject) GetInternalKey(sbType sb.SmartBlockType) string {
 
 func (d *derivedObject) isDeletedObject(spaceId string, uniqueKey string) bool {
 	ids, _, err := d.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
-				Value:       pbtypes.String(uniqueKey),
+				Value:       domain.String(uniqueKey),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
-				Value:       pbtypes.Bool(true),
+				Value:       domain.Bool(true),
 			},
 		},
 	})

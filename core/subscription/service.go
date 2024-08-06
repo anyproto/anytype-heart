@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -43,8 +42,8 @@ func New() Service {
 
 type SubscribeRequest struct {
 	SubId   string
-	Filters []*model.BlockContentDataviewFilter
-	Sorts   []*model.BlockContentDataviewSort
+	Filters []database.FilterRequest
+	Sorts   []database.SortRequest
 	Limit   int64
 	Offset  int64
 	// (required)  needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent
@@ -77,7 +76,7 @@ type Service interface {
 	Search(req SubscribeRequest) (resp *SubscribeResponse, err error)
 	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
 	SubscribeIds(subId string, ids []string) (records []*domain.Details, err error)
-	SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
+	SubscribeGroups(ctx session.Context, req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
 	UnsubscribeAll() (err error)
 	SubscriptionIDs() []string
@@ -396,7 +395,16 @@ func detailsToProtos(detailsList []*domain.Details) []*types.Struct {
 	return res
 }
 
-func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
+type SubscribeGroupsRequest struct {
+	SpaceId      string
+	SubId        string
+	RelationKey  string
+	Filters      []database.FilterRequest
+	Source       []string
+	CollectionId string
+}
+
+func (s *service) SubscribeGroups(ctx session.Context, req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
 	subId := ""
 
 	s.m.Lock()
@@ -657,10 +665,10 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 
 	if len(typeUniqueKeys) > 0 {
 		nestedFiler, err := database.MakeFilter("",
-			&model.BlockContentDataviewFilter{
+			database.FilterRequest{
 				RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(typeUniqueKeys),
+				Value:       domain.StringList(typeUniqueKeys),
 			},
 			s.objectStore,
 		)
@@ -678,10 +686,10 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 	return relTypeFilter, nil
 }
 
-func (s *service) depIdsFromFilter(filters []*model.BlockContentDataviewFilter) (depIds []string) {
+func (s *service) depIdsFromFilter(filters []database.FilterRequest) (depIds []string) {
 	for _, f := range filters {
 		if s.ds.isRelationObject(domain.RelationKey(f.RelationKey)) {
-			for _, id := range pbtypes.GetStringListValue(f.Value) {
+			for _, id := range f.Value.StringListOrDefault(nil) {
 				if slice.FindPos(depIds, id) == -1 && id != "" {
 					depIds = append(depIds, id)
 				}

@@ -29,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -273,22 +272,22 @@ func (s *service) TemplateClone(spaceId string, id string) (templateId string, e
 
 func (s *service) TemplateExportAll(ctx context.Context, path string) (string, error) {
 	docIds, _, err := s.store.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyIsArchived.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
+				Value:       domain.Bool(false),
 			},
 			{
 				RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(bundle.TypeKeyTemplate.URL()),
+				Value:       domain.String(bundle.TypeKeyTemplate.URL()),
 			},
 			// We don't want templates from marketplace
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String(addr.AnytypeMarketplaceWorkspace),
+				Value:       domain.String(addr.AnytypeMarketplaceWorkspace),
 			},
 		},
 	})

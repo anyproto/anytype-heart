@@ -197,12 +197,28 @@ func (s *dsObjectStore) getPendingLocalDetails(txn *badger.Txn, key []byte) (*mo
 
 func (s *dsObjectStore) updateObjectLinks(ctx context.Context, id string, links []string) (added []string, removed []string, err error) {
 	_, err = s.links.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
-		prev := pbtypes.JsonArrayToStrings(val.GetArray(linkOutboundField))
+		prev := jsonArrayToStrings(val.GetArray(linkOutboundField))
 		added, removed = slice.DifferenceRemovedAdded(prev, links)
-		val.Set(linkOutboundField, domain.StringsToJsonArray(arena, links))
+		val.Set(linkOutboundField, stringsToJsonArray(arena, links))
 		return val, len(added)+len(removed) > 0, nil
 	}))
 	return
+}
+
+func stringsToJsonArray(arena *fastjson.Arena, arr []string) *fastjson.Value {
+	res := arena.NewArray()
+	for i, v := range arr {
+		res.SetArrayItem(i, arena.NewString(v))
+	}
+	return res
+}
+
+func jsonArrayToStrings(arr []*fastjson.Value) []string {
+	res := make([]string, 0, len(arr))
+	for _, v := range arr {
+		res = append(res, string(v.GetStringBytes()))
+	}
+	return res
 }
 
 func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.Details) {

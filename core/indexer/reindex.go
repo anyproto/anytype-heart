@@ -23,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -231,11 +230,11 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
 	recs, err := i.store.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
+				Value:       domain.Bool(true),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
@@ -268,20 +267,20 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 		return nil
 	}
 	ids, _, err := i.store.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 			},
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value: pbtypes.IntList(
-					int(model.ObjectType_file),
-					int(model.ObjectType_image),
-					int(model.ObjectType_video),
-					int(model.ObjectType_audio),
+				Value: domain.Int64List(
+					model.ObjectType_file,
+					model.ObjectType_image,
+					model.ObjectType_video,
+					model.ObjectType_audio,
 				),
 			},
 			{
@@ -334,11 +333,11 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 
 	if flags.bundledTemplates {
 		existing, _, err := i.store.QueryObjectIDs(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					RelationKey: bundle.RelationKeyType.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(bundle.TypeKeyTemplate.BundledURL()),
+					Value:       domain.String(bundle.TypeKeyTemplate.BundledURL()),
 				},
 			},
 		})

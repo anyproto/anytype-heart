@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -12,7 +13,7 @@ type SpaceNameGetter interface {
 
 func (d *dsObjectStore) GetSpaceName(spaceId string) string {
 	records, err := d.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyTargetSpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,

@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "core.files.fileoffloader"
@@ -109,7 +108,7 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 
 	if !includeNotPinned {
 		records, err := s.objectStore.Query(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					RelationKey: bundle.RelationKeyFileId.String(),
 					Condition:   model.BlockContentDataviewFilter_NotEmpty,
@@ -117,7 +116,7 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 				{
 					RelationKey: bundle.RelationKeyFileBackupStatus.String(),
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
-					Value:       pbtypes.Int64(int64(filesyncstatus.Synced)),
+					Value:       domain.Int64(filesyncstatus.Synced),
 				},
 			},
 		})
@@ -144,11 +143,11 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 
 func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
 	records, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 			},
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -185,16 +184,16 @@ func (s *service) offloadFileSafe(ctx context.Context,
 	includeNotPinned bool,
 ) (uint64, error) {
 	existingObjects, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId),
+				Value:       domain.String(fileId),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 			},
 		},
 	})

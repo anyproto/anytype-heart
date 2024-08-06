@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-store/query"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type LinksUpdateInfo struct {
@@ -103,7 +102,7 @@ func (s *dsObjectStore) findOutboundLinks(ctx context.Context, id string) ([]str
 		return nil, err
 	}
 	arr := doc.Value().GetArray(linkOutboundField)
-	return pbtypes.JsonArrayToStrings(arr), nil
+	return jsonArrayToStrings(arr), nil
 }
 
 // Find from which IDs specified one has inbound links.

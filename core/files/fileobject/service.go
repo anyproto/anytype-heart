@@ -35,7 +35,6 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
@@ -153,7 +152,7 @@ func (s *service) Run(_ context.Context) error {
 // After migrating to new sync queue we need to ensure that all not synced files are added to the queue
 func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 	records, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
@@ -161,7 +160,7 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 			{
 				RelationKey: bundle.RelationKeyFileBackupStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Int64(int64(filesyncstatus.Synced)),
+				Value:       domain.Int64(int64(filesyncstatus.Synced)),
 			},
 		},
 	})
@@ -314,16 +313,16 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error) {
 	// Check that fileId is not a file object id
 	recs, _, err := s.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.FileId.String()),
+				Value:       domain.String(fileId.FileId.String()),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.SpaceId),
+				Value:       domain.String(fileId.SpaceId),
 			},
 		},
 	})
@@ -360,16 +359,16 @@ func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uplo
 
 func (s *service) GetObjectIdByFileId(fileId domain.FullFileId) (string, error) {
 	records, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.FileId.String()),
+				Value:       domain.String(fileId.FileId.String()),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.SpaceId),
+				Value:       domain.String(fileId.SpaceId),
 			},
 		},
 	})
@@ -384,16 +383,16 @@ func (s *service) GetObjectIdByFileId(fileId domain.FullFileId) (string, error) 
 
 func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error) {
 	records, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.FileId.String()),
+				Value:       domain.String(fileId.FileId.String()),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.SpaceId),
+				Value:       domain.String(fileId.SpaceId),
 			},
 		},
 	})
@@ -477,16 +476,16 @@ func (s *service) DeleteFileData(objectId string) error {
 		return fmt.Errorf("get file id from object: %w", err)
 	}
 	records, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String(objectId),
+				Value:       domain.String(objectId),
 			},
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fullId.FileId.String()),
+				Value:       domain.String(fullId.FileId.String()),
 			},
 		},
 	})

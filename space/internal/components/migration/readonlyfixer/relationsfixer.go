@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -74,21 +75,21 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 }
 
 func listReadonlyTagAndStatusRelations(store dependencies.QueryableStore, spaceId string) ([]database.Record, error) {
-	return store.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
+	return store.Query(database.Query{Filters: []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyRelationFormat.String(),
 			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       pbtypes.IntList(int(model.RelationFormat_status), int(model.RelationFormat_tag)),
+			Value:       domain.Int64List(model.RelationFormat_status, model.RelationFormat_tag),
 		},
 		{
 			RelationKey: bundle.RelationKeySpaceId.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceId),
+			Value:       domain.String(spaceId),
 		},
 		{
 			RelationKey: bundle.RelationKeyRelationReadonlyValue.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.Bool(true),
+			Value:       domain.Bool(true),
 		},
 	}})
 }

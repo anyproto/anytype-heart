@@ -427,7 +427,11 @@ func getSpaceIdsFromFilter(fltr database.Filter) []string {
 		}
 	case database.FilterIn:
 		if f.Key == bundle.RelationKeySpaceId.String() {
-			return pbtypes.ListValueToStrings(f.Value)
+			spaceIds := make([]string, 0, len(f.Value))
+			for _, v := range f.Value {
+				spaceIds = append(spaceIds, v.StringOrDefault(""))
+			}
+			return spaceIds
 		}
 	case database.FiltersAnd:
 		return iterateOverAndFilters(f)

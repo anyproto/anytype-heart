@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -282,8 +281,8 @@ func getFirstTextBlock(st *state.State) (simple.Block, error) {
 	return res, nil
 }
 
-func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []string) ([]*model.BlockContentDataviewFilter, error) {
-	var filters []*model.BlockContentDataviewFilter
+func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []string) ([]database.FilterRequest, error) {
+	var filters []database.FilterRequest
 	m, err := c.sbtProvider.PartitionIDsByType(spaceId, typesAndRelations)
 	if err != nil {
 		return nil, fmt.Errorf("partition ids by sb type: %w", err)
@@ -296,14 +295,14 @@ func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []st
 	return filters, nil
 }
 
-func (c *layoutConverter) appendRelationFilters(relationIDs []string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, error) {
+func (c *layoutConverter) appendRelationFilters(relationIDs []string, filters []database.FilterRequest) ([]database.FilterRequest, error) {
 	if len(relationIDs) != 0 {
 		for _, relationID := range relationIDs {
 			relation, err := c.objectStore.GetRelationByID(relationID)
 			if err != nil {
 				return nil, fmt.Errorf("get relation by id %s: %w", relationID, err)
 			}
-			filters = append(filters, &model.BlockContentDataviewFilter{
+			filters = append(filters, database.FilterRequest{
 				RelationKey: relation.Key,
 				Condition:   model.BlockContentDataviewFilter_Exists,
 			})
@@ -312,12 +311,12 @@ func (c *layoutConverter) appendRelationFilters(relationIDs []string, filters []
 	return filters, nil
 }
 
-func (c *layoutConverter) appendTypesFilter(types []string, filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
+func (c *layoutConverter) appendTypesFilter(types []string, filters []database.FilterRequest) []database.FilterRequest {
 	if len(types) != 0 {
-		filters = append(filters, &model.BlockContentDataviewFilter{
+		filters = append(filters, database.FilterRequest{
 			RelationKey: bundle.RelationKeyType.String(),
 			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       pbtypes.StringList(types),
+			Value:       domain.StringList(types),
 		})
 	}
 	return filters

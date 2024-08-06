@@ -41,7 +41,7 @@ func (s *dsObjectStore) FetchRelationByKey(spaceID string, key string) (relation
 		return nil, err
 	}
 	q := database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
@@ -49,7 +49,7 @@ func (s *dsObjectStore) FetchRelationByKey(spaceID string, key string) (relation
 			},
 		},
 	}
-	q.Filters = append(q.Filters, &model.BlockContentDataviewFilter{
+	q.Filters = append(q.Filters, database.FilterRequest{
 		Condition:   model.BlockContentDataviewFilter_Equal,
 		RelationKey: bundle.RelationKeySpaceId.String(),
 		Value:       domain.String(spaceID),
@@ -76,7 +76,7 @@ func (s *dsObjectStore) FetchRelationByKeys(spaceId string, keys ...domain.Relat
 		uks = append(uks, uk.Marshal())
 	}
 	records, err := s.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
@@ -122,14 +122,14 @@ func (s *dsObjectStore) GetRelationByID(id string) (*model.Relation, error) {
 }
 
 func (s *dsObjectStore) ListAllRelations(spaceId string) (relations relationutils.Relations, err error) {
-	filters := []*model.BlockContentDataviewFilter{
+	filters := []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyLayout.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.Float64(float64(model.ObjectType_relation)),
+			Value:       domain.Int64(model.ObjectType_relation),
 		},
 	}
-	filters = append(filters, &model.BlockContentDataviewFilter{
+	filters = append(filters, database.FilterRequest{
 		RelationKey: bundle.RelationKeySpaceId.String(),
 		Condition:   model.BlockContentDataviewFilter_Equal,
 		Value:       domain.String(spaceId),
@@ -150,7 +150,7 @@ func (s *dsObjectStore) ListAllRelations(spaceId string) (relations relationutil
 
 func (s *dsObjectStore) GetRelationByKey(spaceId string, key string) (*model.Relation, error) {
 	q := database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyRelationKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -185,7 +185,7 @@ func (s *dsObjectStore) GetRelationByKey(spaceId string, key string) (*model.Rel
 
 func (s *dsObjectStore) GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error) {
 	q := database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyRelationKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,

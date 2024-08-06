@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
@@ -94,16 +93,16 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 
 func (s *Service) deleteRelationOptions(relationKey string) error {
 	relationOptions, _, err := s.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				Value:       domain.Int64(model.ObjectType_relationOption),
 			},
 			{
 				RelationKey: bundle.RelationKeyRelationKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(relationKey),
+				Value:       domain.String(relationKey),
 			},
 		},
 	})

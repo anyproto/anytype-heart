@@ -49,7 +49,6 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/mutex"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 
 	_ "github.com/anyproto/anytype-heart/core/block/editor/table"
@@ -538,7 +537,7 @@ func (s *Service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 		if err = ws.SetDetails(ctx, []*model.Detail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
-				Value: pbtypes.String(id),
+				Value: domain.String(id).ToProto(),
 			},
 		}, false); err != nil {
 			return err
@@ -637,11 +636,11 @@ func (s *Service) RemoveListOption(optionIds []string, checkInObjects bool) erro
 				relKey := st.Details().GetString(bundle.RelationKeyRelationKey)
 
 				records, err := s.objectStore.Query(database.Query{
-					Filters: []*model.BlockContentDataviewFilter{
+					Filters: []database.FilterRequest{
 						{
 							Condition:   model.BlockContentDataviewFilter_Equal,
 							RelationKey: relKey,
-							Value:       pbtypes.String(id),
+							Value:       domain.String(id),
 						},
 					},
 				})

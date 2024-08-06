@@ -3,50 +3,44 @@ package database
 import (
 	"time"
 
+	"golang.org/x/exp/slices"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
-func TransformQuickOption(protoFilters []FilterRequest, loc *time.Location) []FilterRequest {
-	if protoFilters == nil {
-		return nil
-	}
-
-	filters := make([]FilterRequest, len(protoFilters))
-	for i, f := range protoFilters {
-		filters[i] = pbtypes.CopyFilter(f)
-	}
-
+func TransformQuickOption(filters []FilterRequest, loc *time.Location) []FilterRequest {
+	filters = slices.Clone(filters)
 	for _, f := range filters {
 		if f.QuickOption > model.BlockContentDataviewFilter_ExactDate || f.Format == model.RelationFormat_date {
 			d1, d2 := getRange(f, loc)
 			switch f.Condition {
 			case model.BlockContentDataviewFilter_Equal:
 				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
-				f.Value = pbtypes.ToValue(d1)
+				f.Value = domain.Int64(d1)
 
 				filters = append(filters, FilterRequest{
 					RelationKey: f.RelationKey,
 					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
-					Value:       pbtypes.ToValue(d2),
+					Value:       domain.Int64(d2),
 				})
 			case model.BlockContentDataviewFilter_Less:
-				f.Value = pbtypes.ToValue(d1)
+				f.Value = domain.Int64(d1)
 			case model.BlockContentDataviewFilter_Greater:
-				f.Value = pbtypes.ToValue(d2)
+				f.Value = domain.Int64(d2)
 			case model.BlockContentDataviewFilter_LessOrEqual:
-				f.Value = pbtypes.ToValue(d2)
+				f.Value = domain.Int64(d2)
 			case model.BlockContentDataviewFilter_GreaterOrEqual:
-				f.Value = pbtypes.ToValue(d1)
+				f.Value = domain.Int64(d1)
 			case model.BlockContentDataviewFilter_In:
 				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
-				f.Value = pbtypes.ToValue(d1)
+				f.Value = domain.Int64(d1)
 
 				filters = append(filters, FilterRequest{
 					RelationKey: f.RelationKey,
 					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
-					Value:       pbtypes.ToValue(d2),
+					Value:       domain.Int64(d2),
 				})
 			}
 		}
@@ -87,15 +81,15 @@ func getRange(f FilterRequest, loc *time.Location) (int64, int64) {
 		d1 = calendar.MonthNumStart(1)
 		d2 = calendar.MonthNumEnd(1)
 	case model.BlockContentDataviewFilter_NumberOfDaysAgo:
-		daysCnt := f.Value.GetNumberValue()
+		daysCnt := f.Value.Int64OrDefault(0)
 		d1 = calendar.DayNumStart(-int(daysCnt))
 		d2 = calendar.DayNumEnd(-1)
 	case model.BlockContentDataviewFilter_NumberOfDaysNow:
-		daysCnt := f.Value.GetNumberValue()
+		daysCnt := f.Value.Int64OrDefault(0)
 		d1 = calendar.DayNumStart(0)
 		d2 = calendar.DayNumEnd(int(daysCnt))
 	case model.BlockContentDataviewFilter_ExactDate:
-		timestamp := f.GetValue().GetNumberValue()
+		timestamp := f.Value.Int64OrDefault(0)
 		t := time.Unix(int64(timestamp), 0)
 		calendar2 := timeutil.NewCalendar(t, loc)
 		d1 = calendar2.DayNumStart(0)

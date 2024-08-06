@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *service) createObjectType(ctx context.Context, space clientspace.Space, details *domain.Details) (id string, newDetails *domain.Details, err error) {
@@ -101,16 +100,16 @@ func (s *service) prepareRecommendedRelationIds(ctx context.Context, space clien
 
 func (s *service) installTemplatesForObjectType(spc clientspace.Space, typeKey domain.TypeKey) error {
 	bundledTemplates, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(bundle.TypeKeyTemplate.BundledURL()),
+				Value:       domain.String(bundle.TypeKeyTemplate.BundledURL()),
 			},
 			{
 				RelationKey: bundle.RelationKeyTargetObjectType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(typeKey.BundledURL()),
+				Value:       domain.String(typeKey.BundledURL()),
 			},
 		},
 	})
@@ -147,21 +146,21 @@ func (s *service) listInstalledTemplatesForType(spc clientspace.Space, typeKey d
 		return nil, fmt.Errorf("get type id by key: %w", err)
 	}
 	alreadyInstalledTemplates, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(templateTypeID),
+				Value:       domain.String(templateTypeID),
 			},
 			{
 				RelationKey: bundle.RelationKeyTargetObjectType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(targetObjectTypeID),
+				Value:       domain.String(targetObjectTypeID),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spc.Id()),
+				Value:       domain.String(spc.Id()),
 			},
 		},
 	})

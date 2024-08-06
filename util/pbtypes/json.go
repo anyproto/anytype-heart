@@ -179,19 +179,3 @@ func compareValue(a *fastjson.Value, b *fastjson.Value) (bool, error) {
 	}
 	return false, nil
 }
-
-func JsonArrayToStrings(arr []*fastjson.Value) []string {
-	res := make([]string, 0, len(arr))
-	for _, v := range arr {
-		res = append(res, string(v.GetStringBytes()))
-	}
-	return res
-}
-
-func StringsToJsonArray(arena *fastjson.Arena, arr []string) *fastjson.Value {
-	res := arena.NewArray()
-	for i, v := range arr {
-		res.SetArrayItem(i, arena.NewString(v))
-	}
-	return res
-}

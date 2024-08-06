@@ -47,7 +47,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/text"
 )
 
@@ -256,21 +255,21 @@ func (e *export) docsForExport(spaceID string, req pb.RpcObjectListExportRequest
 func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested bool, includeFiles bool, isProtobuf bool) (map[string]*domain.Details, error) {
 	docs := make(map[string]*domain.Details)
 	res, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(reqIds),
+				Value:       domain.StringList(reqIds),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsArchived.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
+				Value:       domain.Bool(false),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
+				Value:       domain.Bool(false),
 			},
 		},
 	})
@@ -847,21 +846,21 @@ func (e *export) getRelation(key string) (*database.Record, error) {
 		return nil, err
 	}
 	relation, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(uniqueKey.Marshal()),
+				Value:       domain.String(uniqueKey.Marshal()),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsArchived.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
+				Value:       domain.Bool(false),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
+				Value:       domain.Bool(false),
 			},
 		},
 	})
@@ -899,26 +898,26 @@ func (e *export) addRelation(relation database.Record, derivedObjects []database
 
 func (e *export) getRelationOptions(relationKey string) ([]database.Record, error) {
 	relationOptionsDetails, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				Value:       domain.Int64(int64(model.ObjectType_relationOption)),
 			},
 			{
 				RelationKey: bundle.RelationKeyRelationKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(relationKey),
+				Value:       domain.String(relationKey),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsArchived.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
+				Value:       domain.Bool(false),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
+				Value:       domain.Bool(false),
 			},
 		},
 	})
@@ -930,21 +929,21 @@ func (e *export) getRelationOptions(relationKey string) ([]database.Record, erro
 
 func (e *export) addTemplates(id string, derivedObjects []database.Record, typesAndTemplates []database.Record) ([]database.Record, []database.Record, error) {
 	templates, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyTargetObjectType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(id),
+				Value:       domain.String(id),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsArchived.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
+				Value:       domain.Bool(false),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
+				Value:       domain.Bool(false),
 			},
 		},
 	})
@@ -960,21 +959,21 @@ func (e *export) handleSetOfRelation(object *domain.Details, derivedObjects []da
 	setOfList := object.GetStringList(bundle.RelationKeySetOf)
 	if len(setOfList) > 0 {
 		types, err := e.objectStore.Query(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					RelationKey: bundle.RelationKeyId.String(),
 					Condition:   model.BlockContentDataviewFilter_In,
-					Value:       pbtypes.StringList(setOfList),
+					Value:       domain.StringList(setOfList),
 				},
 				{
 					RelationKey: bundle.RelationKeyIsArchived.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Bool(false),
+					Value:       domain.Bool(false),
 				},
 				{
 					RelationKey: bundle.RelationKeyIsDeleted.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Bool(false),
+					Value:       domain.Bool(false),
 				},
 			},
 		})
