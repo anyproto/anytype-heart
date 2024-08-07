@@ -467,8 +467,8 @@ func (e *export) writeMultiDoc(ctx context.Context,
 	return
 }
 
-func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportRequest, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string) (err error) {
-	return cache.Do(e.picker, docID, func(b sb.SmartBlock) error {
+func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportRequest, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docId string) (err error) {
+	return cache.Do(e.picker, docId, func(b sb.SmartBlock) error {
 		st := b.NewState()
 		if pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
 			return nil
@@ -497,11 +497,11 @@ func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportReques
 		}
 		conv.SetKnownDocs(docInfo)
 		result := conv.Convert(b.Type().ToProto())
-		filename := e.provideFileName(docID, req.SpaceId, conv, st, b.Type())
+		filename := e.provideFileName(docId, req.SpaceId, conv, st, b.Type())
 		if req.Format == model.Export_Markdown {
-			filename = e.provideMarkdownName(st, wr, docID, conv, req.SpaceId)
+			filename = e.provideMarkdownName(st, wr, docId, conv, req.SpaceId)
 		}
-		if docID == b.Space().DerivedIDs().Home {
+		if docId == b.Space().DerivedIDs().Home {
 			filename = "index" + conv.Ext()
 		}
 		lastModifiedDate := pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
@@ -525,9 +525,9 @@ func (e *export) provideMarkdownName(s *state.State, wr writer, docID string, co
 	return wr.Namer().Get(path, docID, name, conv.Ext())
 }
 
-func (e *export) provideFileName(docID, spaceId string, conv converter.Converter, st *state.State, blockType smartblock.SmartBlockType) string {
+func (e *export) provideFileName(docId, spaceId string, conv converter.Converter, st *state.State, blockType smartblock.SmartBlockType) string {
 	dir := e.provideFileDirectory(blockType)
-	filename := filepath.Join(dir, docID+conv.Ext())
+	filename := filepath.Join(dir, docId+conv.Ext())
 	if spaceId == "" {
 		spaceId := pbtypes.GetString(st.LocalDetails(), bundle.RelationKeySpaceId.String())
 		filename = filepath.Join(spaceDirectory, spaceId, filename)
