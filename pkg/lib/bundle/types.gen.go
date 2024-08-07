@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "854abcf18e6f7b3f0d6fb4560f9f2ed5b9c7c2cc57abe30fb573816c24185d8a"
+const TypeChecksum = "c7680e6442c6676e7db40f5682937af2a829c29754fa5fdd900ff5b45528f2a7"
 const (
 	TypePrefix = "_ot"
 )
@@ -54,7 +54,7 @@ var (
 			Layout:                 model.ObjectType_file,
 			Name:                   "Audio",
 			Readonly:               true,
-			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt)},
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyOrigin)},
 			RestrictObjectCreation: true,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "audio",
@@ -155,7 +155,7 @@ var (
 			Layout:                 model.ObjectType_file,
 			Name:                   "File",
 			Readonly:               true,
-			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt)},
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyOrigin)},
 			RestrictObjectCreation: true,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "file",
@@ -189,7 +189,7 @@ var (
 			Layout:                 model.ObjectType_image,
 			Name:                   "Image",
 			Readonly:               true,
-			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFocalRatio), MustGetRelationLink(RelationKeyFileExt)},
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFocalRatio), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyOrigin)},
 			RestrictObjectCreation: true,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "image",
@@ -373,7 +373,7 @@ var (
 			Layout:                 model.ObjectType_file,
 			Name:                   "Video",
 			Readonly:               true,
-			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt)},
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyOrigin)},
 			RestrictObjectCreation: true,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "video",

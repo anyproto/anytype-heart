@@ -168,7 +168,8 @@
       "aperture",
       "exposure",
       "addedDate",
-      "fileExt"
+      "fileExt",
+      "origin"
     ],
     "description": "The recording of moving visual images",
     "restrictObjectCreation": true
@@ -385,7 +386,8 @@
       "exposure",
       "addedDate",
       "focalRatio",
-      "fileExt"
+      "fileExt",
+      "origin"
     ],
     "description": "A representation of the external form of a person or thing in art",
     "restrictObjectCreation": true
@@ -422,7 +424,8 @@
       "sizeInBytes",
       "fileMimeType",
       "addedDate",
-      "fileExt"
+      "fileExt",
+      "origin"
     ],
     "description": "Sound when recorded, with ability to reproduce",
     "restrictObjectCreation": true
@@ -458,7 +461,8 @@
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
-      "fileExt"
+      "fileExt",
+      "origin"
     ],
     "description": "Computer resource for recording data in a computer storage device",
     "restrictObjectCreation": true
