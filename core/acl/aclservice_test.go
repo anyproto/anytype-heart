@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/cidutil"
 	"github.com/anyproto/any-sync/util/crypto"
@@ -114,6 +115,14 @@ type mockSyncAcl struct {
 	list.AclList
 }
 
+func (m mockSyncAcl) HandleMessage(ctx context.Context, senderId string, protoVersion uint32, message *spacesyncproto.ObjectSyncMessage) (err error) {
+	return
+}
+
+func (m mockSyncAcl) SyncWithPeer(ctx context.Context, p peer.Peer) (err error) {
+	return
+}
+
 func (m mockSyncAcl) Init(a *app.App) (err error) {
 	return nil
 }
@@ -126,19 +135,11 @@ func (m mockSyncAcl) Run(ctx context.Context) (err error) {
 	return nil
 }
 
-func (m mockSyncAcl) HandleMessage(ctx context.Context, senderId string, message *spacesyncproto.ObjectSyncMessage) (err error) {
-	return nil
-}
-
 func (m mockSyncAcl) HandleRequest(ctx context.Context, senderId string, request *spacesyncproto.ObjectSyncMessage) (response *spacesyncproto.ObjectSyncMessage, err error) {
 	return nil, nil
 }
 
 func (m mockSyncAcl) SetHeadUpdater(updater headupdater.HeadUpdater) {
-}
-
-func (m mockSyncAcl) SyncWithPeer(ctx context.Context, peerId string) (err error) {
-	return nil
 }
 
 func (m mockSyncAcl) SetAclUpdater(updater headupdater.AclUpdater) {

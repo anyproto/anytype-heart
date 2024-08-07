@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl/headupdater"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/net/peer"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -204,6 +205,14 @@ type syncAclStub struct {
 	updater headupdater.AclUpdater
 }
 
+func (s *syncAclStub) HandleMessage(ctx context.Context, senderId string, protoVersion uint32, message *spacesyncproto.ObjectSyncMessage) (err error) {
+	return
+}
+
+func (s *syncAclStub) SyncWithPeer(ctx context.Context, p peer.Peer) (err error) {
+	return
+}
+
 func (s *syncAclStub) Init(a *app.App) (err error) {
 	return nil
 }
@@ -216,19 +225,11 @@ func (s *syncAclStub) Run(ctx context.Context) (err error) {
 	return
 }
 
-func (s *syncAclStub) HandleMessage(ctx context.Context, senderId string, message *spacesyncproto.ObjectSyncMessage) (err error) {
-	return
-}
-
 func (s *syncAclStub) HandleRequest(ctx context.Context, senderId string, request *spacesyncproto.ObjectSyncMessage) (response *spacesyncproto.ObjectSyncMessage, err error) {
 	return
 }
 
 func (s *syncAclStub) SetHeadUpdater(updater headupdater.HeadUpdater) {
-	return
-}
-
-func (s *syncAclStub) SyncWithPeer(ctx context.Context, peerId string) (err error) {
 	return
 }
 

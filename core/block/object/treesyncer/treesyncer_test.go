@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/mock_synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager/mock_treemanager"
+	"github.com/anyproto/any-sync/net/rpc/rpctest"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -66,16 +67,17 @@ func TestTreeSyncer(t *testing.T) {
 	peerId := "peerId"
 	existingId := "existing"
 	missingId := "missing"
+	pr := rpctest.MockPeer{}
 
 	t.Run("delayed sync", func(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t, spaceId)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
-		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
-		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})
+		err := fx.SyncAll(context.Background(), pr, []string{existingId}, []string{missingId})
 		require.NoError(t, err)
 		require.NotNil(t, fx.requestPools[peerId])
 		require.NotNil(t, fx.headPools[peerId])
@@ -89,12 +91,12 @@ func TestTreeSyncer(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t, spaceId)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
-		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{peerId})
 		fx.syncDetailsUpdater.EXPECT().UpdateSpaceDetails([]string{existingId}, []string{missingId}, spaceId)
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
-		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})
+		err := fx.SyncAll(context.Background(), pr, []string{existingId}, []string{missingId})
 		require.NoError(t, err)
 		require.NotNil(t, fx.requestPools[peerId])
 		require.NotNil(t, fx.headPools[peerId])
@@ -108,13 +110,13 @@ func TestTreeSyncer(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t, spaceId)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
-		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 
 		fx.StartSync()
-		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})
+		err := fx.SyncAll(context.Background(), pr, []string{existingId}, []string{missingId})
 		require.NoError(t, err)
 		require.NotNil(t, fx.requestPools[peerId])
 		require.NotNil(t, fx.headPools[peerId])
@@ -127,13 +129,13 @@ func TestTreeSyncer(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t, spaceId)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
-		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId, existingId}).Return()
 
 		fx.StartSync()
-		err := fx.SyncAll(context.Background(), peerId, []string{existingId, existingId}, []string{missingId, missingId, missingId})
+		err := fx.SyncAll(context.Background(), pr, []string{existingId, existingId}, []string{missingId, missingId, missingId})
 		require.NoError(t, err)
 		require.NotNil(t, fx.requestPools[peerId])
 		require.NotNil(t, fx.headPools[peerId])
@@ -147,7 +149,7 @@ func TestTreeSyncer(t *testing.T) {
 		ch := make(chan struct{}, 2)
 		fx := newFixture(t, spaceId)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
-		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId+"1").DoAndReturn(func(ctx context.Context, spaceId, treeId string) (objecttree.ObjectTree, error) {
 			<-ch
 			return fx.missingMock, nil
@@ -160,7 +162,7 @@ func TestTreeSyncer(t *testing.T) {
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 
 		fx.StartSync()
-		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId + "1", missingId + "2"})
+		err := fx.SyncAll(context.Background(), pr, []string{existingId}, []string{missingId + "1", missingId + "2"})
 		require.NoError(t, err)
 		require.NotNil(t, fx.requestPools[peerId])
 		require.NotNil(t, fx.headPools[peerId])
@@ -188,7 +190,7 @@ func TestTreeSyncer(t *testing.T) {
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, existing).Return()
 
 		fx.StartSync()
-		err := fx.SyncAll(context.Background(), peerId, existing, []string{missingId})
+		err := fx.SyncAll(context.Background(), pr, existing, []string{missingId})
 		require.NoError(t, err)
 		require.NotNil(t, fx.requestPools[peerId])
 		require.NotNil(t, fx.headPools[peerId])
