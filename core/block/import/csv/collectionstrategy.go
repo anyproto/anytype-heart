@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 
@@ -23,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("import-csv")
@@ -73,14 +71,14 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, par
 	return snapshot.Id, snapshots, nil
 }
 
-func updateDetailsForTransposeCollection(details *types.Struct, transpose bool) {
+func updateDetailsForTransposeCollection(details *domain.Details, transpose bool) {
 	if transpose {
-		source := pbtypes.GetString(details, bundle.RelationKeySourceFilePath.String())
+		source := details.GetString(bundle.RelationKeySourceFilePath)
 		source = source + string(filepath.Separator) + transposeSource
-		details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(source)
-		name := pbtypes.GetString(details, bundle.RelationKeyName.String())
+		details.SetString(bundle.RelationKeySourceFilePath, source)
+		name := details.GetString(bundle.RelationKeyName)
 		name = name + " " + transposeName
-		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
+		details.SetString(bundle.RelationKeyName, name)
 	}
 }
 
@@ -118,13 +116,14 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 			Key:    id,
 		})
 		relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
-			Id:     id,
-			SbType: smartblock.SmartBlockTypeRelation,
-			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
-				Details:     getRelationDetails(relationName, id, float64(model.RelationFormat_longtext)),
-				ObjectTypes: []string{bundle.TypeKeyRelation.String()},
-				Key:         id,
-			}},
+			Id: id,
+			Snapshot: &common.SnapshotModel{
+				SbType: smartblock.SmartBlockTypeRelation,
+				Data: &common.StateSnapshot{
+					Details:     getRelationDetails(relationName, id, float64(model.RelationFormat_longtext)),
+					ObjectTypes: []string{bundle.TypeKeyRelation.String()},
+					Key:         id,
+				}},
 		})
 	}
 	return relations, relationsSnapshots, err
@@ -171,18 +170,18 @@ func getDefaultRelationName(i int) string {
 	return defaultRelationName + " " + strconv.FormatInt(int64(i), 10)
 }
 
-func getRelationDetails(name, key string, format float64) *types.Struct {
-	details := &types.Struct{Fields: map[string]*types.Value{}}
-	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(format)
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
+func getRelationDetails(name, key string, format float64) *domain.Details {
+	details := domain.NewDetails()
+	details.SetFloat(bundle.RelationKeyRelationFormat, format)
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeyRelationKey, key)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, key)
 	if err != nil {
 		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
+	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
 	return details
 }
 
@@ -233,31 +232,31 @@ func buildSourcePath(path string, i int, transpose bool) string {
 		transposePart
 }
 
-func getDetailsForObject(relationsValues []string, relations []*model.Relation, path string, objectOrderIndex int, transpose bool) (*types.Struct, []*model.RelationLink) {
-	details := &types.Struct{Fields: map[string]*types.Value{}}
+func getDetailsForObject(relationsValues []string, relations []*model.Relation, path string, objectOrderIndex int, transpose bool) (*domain.Details, []*model.RelationLink) {
+	details := domain.NewDetails()
 	relationLinks := make([]*model.RelationLink, 0)
 	for j, value := range relationsValues {
 		if len(relations) <= j {
 			break
 		}
 		relation := relations[j]
-		details.Fields[relation.Key] = pbtypes.String(value)
+		details.SetString(domain.RelationKey(relation.Key), value)
 		relationLinks = append(relationLinks, &model.RelationLink{
 			Key:    relation.Key,
 			Format: relation.Format,
 		})
 	}
-	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(buildSourcePath(path, objectOrderIndex, transpose))
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_basic))
+	details.SetString(bundle.RelationKeySourceFilePath, buildSourcePath(path, objectOrderIndex, transpose))
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_basic))
 	return details, relationLinks
 }
 
-func provideObjectSnapshot(st *state.State, details *types.Struct) *common.Snapshot {
+func provideObjectSnapshot(st *state.State, details *domain.Details) *common.Snapshot {
 	snapshot := &common.Snapshot{
-		Id:     uuid.New().String(),
-		SbType: smartblock.SmartBlockTypePage,
-		Snapshot: &pb.ChangeSnapshot{
-			Data: &model.SmartBlockSnapshotBase{
+		Id: uuid.New().String(),
+		Snapshot: &common.SnapshotModel{
+			SbType: smartblock.SmartBlockTypePage,
+			Data: &common.StateSnapshot{
 				Blocks:        st.Blocks(),
 				Details:       details,
 				RelationLinks: st.GetRelationLinks(),
@@ -268,9 +267,9 @@ func provideObjectSnapshot(st *state.State, details *types.Struct) *common.Snaps
 	return snapshot
 }
 
-func (c *CollectionStrategy) getCollectionSnapshot(details *types.Struct, st *state.State, p string, relations []*model.Relation) *common.Snapshot {
-	details = pbtypes.StructMerge(st.CombinedDetails(), details, false)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+func (c *CollectionStrategy) getCollectionSnapshot(details *domain.Details, st *state.State, p string, relations []*model.Relation) *common.Snapshot {
+	details = st.CombinedDetails().Merge(details)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
 
 	for _, relation := range relations {
 		err := common.AddRelationsToDataView(st, &model.RelationLink{
@@ -284,8 +283,8 @@ func (c *CollectionStrategy) getCollectionSnapshot(details *types.Struct, st *st
 	return c.provideCollectionSnapshots(details, st, p)
 }
 
-func (c *CollectionStrategy) provideCollectionSnapshots(details *types.Struct, st *state.State, p string) *common.Snapshot {
-	sn := &model.SmartBlockSnapshotBase{
+func (c *CollectionStrategy) provideCollectionSnapshots(details *domain.Details, st *state.State, p string) *common.Snapshot {
+	sn := &common.StateSnapshot{
 		Blocks:        st.Blocks(),
 		Details:       details,
 		ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
@@ -296,8 +295,10 @@ func (c *CollectionStrategy) provideCollectionSnapshots(details *types.Struct, s
 	snapshot := &common.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: p,
-		Snapshot: &pb.ChangeSnapshot{Data: sn},
-		SbType:   smartblock.SmartBlockTypePage,
+		Snapshot: &common.SnapshotModel{
+			SbType: smartblock.SmartBlockTypePage,
+			Data:   sn,
+		},
 	}
 	return snapshot
 }

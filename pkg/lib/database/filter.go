@@ -8,22 +8,20 @@ import (
 
 	"github.com/anyproto/any-store/encoding"
 	"github.com/anyproto/any-store/query"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 	"github.com/valyala/fastjson"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var (
 	ErrValueMustBeListSupporting = errors.New("value must be list supporting")
 )
 
-func MakeFiltersAnd(protoFilters []*model.BlockContentDataviewFilter, store ObjectStore) (FiltersAnd, error) {
+func MakeFiltersAnd(protoFilters []FilterRequest, store ObjectStore) (FiltersAnd, error) {
 	if store == nil {
 		return FiltersAnd{}, fmt.Errorf("objectStore dependency is nil")
 	}
@@ -47,33 +45,41 @@ func NestedRelationKey(baseRelationKey domain.RelationKey, nestedRelationKey dom
 	return fmt.Sprintf("%s.%s", baseRelationKey.String(), nestedRelationKey.String())
 }
 
-func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, store ObjectStore) (Filter, error) {
+func MakeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Filter, error) {
 	if store == nil {
 		return nil, fmt.Errorf("objectStore dependency is nil")
 	}
 	parts := strings.SplitN(rawFilter.RelationKey, ".", 2)
 	if len(parts) == 2 {
-		return makeFilterNestedIn(spaceID, rawFilter, store, parts[0], parts[1])
+		return makeFilterNestedIn(spaceID, rawFilter, store, domain.RelationKey(parts[0]), domain.RelationKey(parts[1]))
 	}
 
 	// replaces "value == false" to "value != true" for expected work with checkboxes
-	if rawFilter.Condition == model.BlockContentDataviewFilter_Equal && rawFilter.Value != nil && rawFilter.Value.Equal(pbtypes.Bool(false)) {
-		rawFilter = &model.BlockContentDataviewFilter{
-			RelationKey:      rawFilter.RelationKey,
-			RelationProperty: rawFilter.RelationProperty,
-			Condition:        model.BlockContentDataviewFilter_NotEqual,
-			Value:            pbtypes.Bool(true),
+	if rawFilter.Condition == model.BlockContentDataviewFilter_Equal {
+		v, ok := rawFilter.Value.TryBool()
+		if ok && !v {
+			rawFilter = FilterRequest{
+				RelationKey:      rawFilter.RelationKey,
+				RelationProperty: rawFilter.RelationProperty,
+				Condition:        model.BlockContentDataviewFilter_NotEqual,
+				Value:            domain.Bool(true),
+			}
 		}
+
 	}
 	// replaces "value != false" to "value == true" for expected work with checkboxes
-	if rawFilter.Condition == model.BlockContentDataviewFilter_NotEqual && rawFilter.Value != nil && rawFilter.Value.Equal(pbtypes.Bool(false)) {
-		rawFilter = &model.BlockContentDataviewFilter{
-			RelationKey:      rawFilter.RelationKey,
-			RelationProperty: rawFilter.RelationProperty,
-			Condition:        model.BlockContentDataviewFilter_Equal,
-			Value:            pbtypes.Bool(true),
+	if rawFilter.Condition == model.BlockContentDataviewFilter_NotEqual {
+		v, ok := rawFilter.Value.TryBool()
+		if ok && !v {
+			rawFilter = FilterRequest{
+				RelationKey:      rawFilter.RelationKey,
+				RelationProperty: rawFilter.RelationProperty,
+				Condition:        model.BlockContentDataviewFilter_Equal,
+				Value:            domain.Bool(true),
+			}
 		}
 	}
+
 	switch rawFilter.Condition {
 	case model.BlockContentDataviewFilter_Equal,
 		model.BlockContentDataviewFilter_Greater,
@@ -89,26 +95,26 @@ func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, sto
 	case model.BlockContentDataviewFilter_Like:
 		return FilterLike{
 			Key:   rawFilter.RelationKey,
-			Value: rawFilter.Value,
+			Value: rawFilter.Value.String(),
 		}, nil
 	case model.BlockContentDataviewFilter_NotLike:
 		return FilterNot{FilterLike{
 			Key:   rawFilter.RelationKey,
-			Value: rawFilter.Value,
+			Value: rawFilter.Value.String(),
 		}}, nil
 	case model.BlockContentDataviewFilter_In:
-		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
+		list, err := wrapValueToList(rawFilter.Value)
 		if err != nil {
-			return nil, ErrValueMustBeListSupporting
+			return nil, errors.Join(ErrValueMustBeListSupporting, err)
 		}
 		return FilterIn{
 			Key:   rawFilter.RelationKey,
 			Value: list,
 		}, nil
 	case model.BlockContentDataviewFilter_NotIn:
-		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
+		list, err := wrapValueToList(rawFilter.Value)
 		if err != nil {
-			return nil, ErrValueMustBeListSupporting
+			return nil, errors.Join(ErrValueMustBeListSupporting, err)
 		}
 		return FilterNot{FilterIn{
 			Key:   rawFilter.RelationKey,
@@ -116,56 +122,110 @@ func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, sto
 		}}, nil
 	case model.BlockContentDataviewFilter_Empty:
 		return FilterEmpty{
-			Key: rawFilter.RelationKey,
+			Key: domain.RelationKey(rawFilter.RelationKey),
 		}, nil
 	case model.BlockContentDataviewFilter_NotEmpty:
 		return FilterNot{FilterEmpty{
-			Key: rawFilter.RelationKey,
+			Key: domain.RelationKey(rawFilter.RelationKey),
 		}}, nil
 	case model.BlockContentDataviewFilter_AllIn:
-		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
-		if err != nil {
-			return nil, ErrValueMustBeListSupporting
+		if list, err := wrapValueToStringList(rawFilter.Value); err == nil {
+			return FilterAllIn{
+				Key:     domain.RelationKey(rawFilter.RelationKey),
+				Strings: list,
+			}, nil
 		}
-		return FilterAllIn{
-			Key:   rawFilter.RelationKey,
-			Value: list,
-		}, nil
+		if list, err := wrapValueToFloatList(rawFilter.Value); err == nil {
+			return FilterAllIn{
+				Key:    domain.RelationKey(rawFilter.RelationKey),
+				Floats: list,
+			}, nil
+		}
+		return nil, fmt.Errorf("unsupported type: %v", rawFilter.Value.Type())
 	case model.BlockContentDataviewFilter_NotAllIn:
-		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
-		if err != nil {
-			return nil, ErrValueMustBeListSupporting
+		if list, err := wrapValueToStringList(rawFilter.Value); err == nil {
+			return FilterNot{FilterAllIn{
+				Key:     domain.RelationKey(rawFilter.RelationKey),
+				Strings: list,
+			}}, nil
 		}
-		return FilterNot{FilterAllIn{
-			Key:   rawFilter.RelationKey,
-			Value: list,
-		}}, nil
+		if list, err := wrapValueToFloatList(rawFilter.Value); err == nil {
+			return FilterNot{FilterAllIn{
+				Key:    domain.RelationKey(rawFilter.RelationKey),
+				Floats: list,
+			}}, nil
+		}
+		return nil, fmt.Errorf("unsupported type: %v", rawFilter.Value.Type())
 	case model.BlockContentDataviewFilter_ExactIn:
-		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
+		list, err := wrapValueToStringList(rawFilter.Value)
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
 		return FilterOptionsEqual{
-			Key:     rawFilter.RelationKey,
+			Key:     domain.RelationKey(rawFilter.RelationKey),
 			Value:   list,
-			Options: optionsToMap(spaceID, rawFilter.RelationKey, store),
+			Options: optionsToMap(spaceID, domain.RelationKey(rawFilter.RelationKey), store),
 		}, nil
 	case model.BlockContentDataviewFilter_NotExactIn:
-		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
+		list, err := wrapValueToStringList(rawFilter.Value)
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
 		return FilterNot{FilterOptionsEqual{
-			Key:   rawFilter.RelationKey,
+			Key:   domain.RelationKey(rawFilter.RelationKey),
 			Value: list,
 		}}, nil
 	case model.BlockContentDataviewFilter_Exists:
 		return FilterExists{
-			Key: rawFilter.RelationKey,
+			Key: domain.RelationKey(rawFilter.RelationKey),
 		}, nil
 	default:
 		return nil, fmt.Errorf("unexpected filter cond: %v", rawFilter.Condition)
 	}
+}
+
+func wrapValueToStringList(val domain.Value) ([]string, error) {
+	if v, ok := val.TryString(); ok {
+		return []string{v}, nil
+	}
+	if v, ok := val.TryStringList(); ok {
+		return v, nil
+	}
+	return nil, fmt.Errorf("unsupported type: %v", val.Type())
+}
+
+func wrapValueToFloatList(val domain.Value) ([]float64, error) {
+	if v, ok := val.TryFloat64(); ok {
+		return []float64{v}, nil
+	}
+	if v, ok := val.TryFloat64List(); ok {
+		return v, nil
+	}
+	return nil, fmt.Errorf("unsupported type: %v", val.Type())
+}
+
+func wrapValueToList(val domain.Value) ([]domain.Value, error) {
+	if v, ok := val.TryString(); ok {
+		return []domain.Value{domain.String(v)}, nil
+	}
+	if v, ok := val.TryFloat64(); ok {
+		return []domain.Value{domain.Float64(v)}, nil
+	}
+	if v, ok := val.TryStringList(); ok {
+		res := make([]domain.Value, 0, len(v))
+		for _, s := range v {
+			res = append(res, domain.String(s))
+		}
+		return res, nil
+	}
+	if v, ok := val.TryFloat64List(); ok {
+		res := make([]domain.Value, 0, len(v))
+		for _, f := range v {
+			res = append(res, domain.Float64(f))
+		}
+		return res, nil
+	}
+	return nil, fmt.Errorf("unsupported type: %v", val.Type())
 }
 
 type WithNestedFilter interface {
@@ -173,7 +233,7 @@ type WithNestedFilter interface {
 }
 
 type Filter interface {
-	FilterObject(g *types.Struct) bool
+	FilterObject(g *domain.Details) bool
 	AnystoreFilter() query.Filter
 }
 
@@ -181,7 +241,7 @@ type FiltersAnd []Filter
 
 var _ WithNestedFilter = FiltersAnd{}
 
-func (a FiltersAnd) FilterObject(g *types.Struct) bool {
+func (a FiltersAnd) FilterObject(g *domain.Details) bool {
 	for _, f := range a {
 		if !f.FilterObject(g) {
 			return false
@@ -207,7 +267,7 @@ type FiltersOr []Filter
 
 var _ WithNestedFilter = FiltersOr{}
 
-func (fo FiltersOr) FilterObject(g *types.Struct) bool {
+func (fo FiltersOr) FilterObject(g *domain.Details) bool {
 	if len(fo) == 0 {
 		return true
 	}
@@ -248,7 +308,7 @@ type FilterNot struct {
 	Filter Filter
 }
 
-func (n FilterNot) FilterObject(g *types.Struct) bool {
+func (n FilterNot) FilterObject(g *domain.Details) bool {
 	if n.Filter == nil {
 		return false
 	}
@@ -289,7 +349,7 @@ func negateFilter(filter query.Filter) query.Filter {
 type FilterEq struct {
 	Key   string
 	Cond  model.BlockContentDataviewFilterCondition
-	Value *types.Value
+	Value domain.Value
 }
 
 func (e FilterEq) AnystoreFilter() query.Filter {
@@ -310,7 +370,7 @@ func (e FilterEq) AnystoreFilter() query.Filter {
 		return query.Or{
 			query.Key{
 				Path:   path,
-				Filter: query.NewComp(query.CompOpNe, scalarPbValueToAny(e.Value)),
+				Filter: query.NewComp(query.CompOpNe, e.Value.Raw()),
 			},
 			query.Key{
 				Path:   path,
@@ -320,44 +380,34 @@ func (e FilterEq) AnystoreFilter() query.Filter {
 	}
 	return query.Key{
 		Path:   path,
-		Filter: query.NewComp(op, scalarPbValueToAny(e.Value)),
+		Filter: query.NewComp(op, e.Value.Raw()),
 	}
 }
 
-func scalarPbValueToAny(v *types.Value) any {
-	if v == nil || v.Kind == nil {
-		return nil
-	}
-	switch v.Kind.(type) {
-	case *types.Value_NullValue:
-		return nil
-	case *types.Value_StringValue:
-		return v.GetStringValue()
-	case *types.Value_NumberValue:
-		return v.GetNumberValue()
-	case *types.Value_BoolValue:
-		return v.GetBoolValue()
-	case *types.Value_StructValue:
-		return nil
-	case *types.Value_ListValue:
-		return nil
-	}
-	return nil
+func (e FilterEq) FilterObject(g *domain.Details) bool {
+	return e.filterObject(g.Get(domain.RelationKey(e.Key)))
 }
 
-func (e FilterEq) FilterObject(g *types.Struct) bool {
-	val := pbtypes.Get(g, e.Key)
-	return e.filterObject(val)
-}
-
-func (e FilterEq) filterObject(v *types.Value) bool {
-	if list := v.GetListValue(); list != nil && e.Value.GetListValue() == nil {
-		for _, lv := range list.Values {
-			if e.filterObject(lv) {
-				return true
+func (e FilterEq) filterObject(v domain.Value) bool {
+	// if list := v.GetListValue(); list != nil && e.Value.GetListValue() == nil {
+	isFilterValueScalar := !e.Value.IsStringList() && !e.Value.IsFloatList()
+	if isFilterValueScalar {
+		if list, ok := v.TryFloat64List(); ok {
+			for _, lv := range list {
+				if e.filterObject(domain.Float64(lv)) {
+					return true
+				}
 			}
+			return false
 		}
-		return false
+		if list, ok := v.TryStringList(); ok {
+			for _, lv := range list {
+				if e.filterObject(domain.String(lv)) {
+					return true
+				}
+			}
+			return false
+		}
 	}
 	comp := e.Value.Compare(v)
 	switch e.Cond {
@@ -380,12 +430,12 @@ func (e FilterEq) filterObject(v *types.Value) bool {
 // any
 type FilterIn struct {
 	Key   string
-	Value *types.ListValue
+	Value []domain.Value
 }
 
-func (i FilterIn) FilterObject(g *types.Struct) bool {
-	val := pbtypes.Get(g, i.Key)
-	for _, v := range i.Value.Values {
+func (i FilterIn) FilterObject(g *domain.Details) bool {
+	val := g.Get(domain.RelationKey(i.Key))
+	for _, v := range i.Value {
 		eq := FilterEq{Value: v, Cond: model.BlockContentDataviewFilter_Equal}
 		if eq.filterObject(val) {
 			return true
@@ -396,11 +446,11 @@ func (i FilterIn) FilterObject(g *types.Struct) bool {
 
 func (i FilterIn) AnystoreFilter() query.Filter {
 	path := []string{i.Key}
-	conds := make([]query.Filter, 0, len(i.Value.GetValues()))
-	for _, v := range i.Value.GetValues() {
+	conds := make([]query.Filter, 0, len(i.Value))
+	for _, v := range i.Value {
 		conds = append(conds, query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, scalarPbValueToAny(v)),
+			Filter: query.NewComp(query.CompOpEq, v.Raw()),
 		})
 	}
 	return query.Or(conds)
@@ -408,23 +458,19 @@ func (i FilterIn) AnystoreFilter() query.Filter {
 
 type FilterLike struct {
 	Key   string
-	Value *types.Value
+	Value string
 }
 
-func (l FilterLike) FilterObject(g *types.Struct) bool {
-	val := pbtypes.Get(g, l.Key)
-	if val == nil {
+func (l FilterLike) FilterObject(g *domain.Details) bool {
+	val, ok := g.TryString(domain.RelationKey(l.Key))
+	if !ok {
 		return false
 	}
-	valStr := val.GetStringValue()
-	if valStr == "" {
-		return false
-	}
-	return strings.Contains(strings.ToLower(valStr), strings.ToLower(l.Value.GetStringValue()))
+	return strings.Contains(strings.ToLower(val), strings.ToLower(l.Value))
 }
 
 func (l FilterLike) AnystoreFilter() query.Filter {
-	re, err := regexp.Compile("(?i)" + regexp.QuoteMeta(l.Value.GetStringValue()))
+	re, err := regexp.Compile("(?i)" + regexp.QuoteMeta(l.Value))
 	if err != nil {
 		log.Errorf("failed to build anystore LIKE filter: %v", err)
 	}
@@ -437,56 +483,31 @@ func (l FilterLike) AnystoreFilter() query.Filter {
 }
 
 type FilterExists struct {
-	Key string
+	Key domain.RelationKey
 }
 
-func (e FilterExists) FilterObject(g *types.Struct) bool {
-	val := pbtypes.Get(g, e.Key)
-	if val == nil {
-		return false
-	}
-
-	return true
+func (e FilterExists) FilterObject(g *domain.Details) bool {
+	return g.Has(e.Key)
 }
 
 func (e FilterExists) AnystoreFilter() query.Filter {
 	return query.Key{
-		Path:   []string{e.Key},
+		Path:   []string{string(e.Key)},
 		Filter: query.Exists{},
 	}
 }
 
 type FilterEmpty struct {
-	Key string
+	Key domain.RelationKey
 }
 
-func (e FilterEmpty) FilterObject(g *types.Struct) bool {
-	val := pbtypes.Get(g, e.Key)
-	if val == nil {
-		return true
-	}
-	if val.Kind == nil {
-		return true
-	}
-	switch v := val.Kind.(type) {
-	case *types.Value_NullValue:
-		return true
-	case *types.Value_StringValue:
-		return v.StringValue == ""
-	case *types.Value_ListValue:
-		return v.ListValue == nil || len(v.ListValue.Values) == 0
-	case *types.Value_StructValue:
-		return v.StructValue == nil
-	case *types.Value_NumberValue:
-		return v.NumberValue == 0
-	case *types.Value_BoolValue:
-		return !v.BoolValue
-	}
-	return false
+func (e FilterEmpty) FilterObject(g *domain.Details) bool {
+	val := g.Get(e.Key)
+	return val.IsEmpty()
 }
 
 func (e FilterEmpty) AnystoreFilter() query.Filter {
-	path := []string{e.Key}
+	path := []string{string(e.Key)}
 	return query.Or{
 		query.Key{
 			Path:   path,
@@ -520,114 +541,121 @@ func (e FilterEmpty) AnystoreFilter() query.Filter {
 
 // all?
 type FilterAllIn struct {
-	Key   string
-	Value *types.ListValue
+	Key     domain.RelationKey
+	Strings []string
+	Floats  []float64
 }
 
-func (l FilterAllIn) FilterObject(g *types.Struct) bool {
-	val := pbtypes.Get(g, l.Key)
-	if val == nil {
+func (l FilterAllIn) FilterObject(g *domain.Details) bool {
+	val := g.Get(l.Key)
+	if !val.Ok() {
 		return false
 	}
 
-	list, err := pbtypes.ValueListWrapper(val)
-	if err != nil {
-		return false
-	}
-	if list == nil {
-		return false
-	}
-	exist := func(v *types.Value) bool {
-		for _, lv := range list.GetValues() {
-			if v.Equal(lv) {
-				return true
+	if len(l.Strings) > 0 {
+		// Single string
+		{
+			val, ok := g.TryString(l.Key)
+			if ok && len(l.Strings) == 1 {
+				return l.Strings[0] == val
+			}
+		}
+		// TryString list
+		{
+			val, ok := g.TryStringList(l.Key)
+			if ok {
+				return lo.Every(val, l.Strings)
 			}
 		}
 		return false
 	}
-	for _, ev := range l.Value.Values {
-		if !exist(ev) {
-			return false
+	if len(l.Floats) > 0 {
+		// Single float
+		{
+			val, ok := g.TryFloat(l.Key)
+			if ok && len(l.Floats) == 1 {
+				return l.Floats[0] == val
+			}
 		}
+		// Float64 list
+		{
+			val, ok := g.TryFloatList(l.Key)
+			if ok {
+				return lo.Every(val, l.Floats)
+			}
+		}
+		return false
 	}
 	return true
 }
 
 func (l FilterAllIn) AnystoreFilter() query.Filter {
-	path := []string{l.Key}
-	conds := make([]query.Filter, 0, len(l.Value.GetValues()))
-	for _, v := range l.Value.GetValues() {
+	path := []string{string(l.Key)}
+	conds := make([]query.Filter, 0, len(l.Strings)+len(l.Floats))
+	for _, v := range l.Strings {
 		conds = append(conds, query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, scalarPbValueToAny(v)),
+			Filter: query.NewComp(query.CompOpEq, v),
+		})
+	}
+	for _, v := range l.Floats {
+		conds = append(conds, query.Key{
+			Path:   path,
+			Filter: query.NewComp(query.CompOpEq, v),
 		})
 	}
 	return query.And(conds)
 }
 
 type FilterOptionsEqual struct {
-	Key     string
-	Value   *types.ListValue
+	Key     domain.RelationKey
+	Value   []string
 	Options map[string]string
 }
 
-func (exIn FilterOptionsEqual) FilterObject(g *types.Struct) bool {
-	val := pbtypes.Get(g, exIn.Key)
-	if val == nil {
-		return false
-	}
-	list, err := pbtypes.ValueListWrapper(val)
-	if err != nil {
-		return false
-	}
-	if list == nil {
+func (exIn FilterOptionsEqual) FilterObject(g *domain.Details) bool {
+	// If filter is empty, it makes no sense, so to avoid confusion return false
+	if len(exIn.Value) == 0 {
 		return false
 	}
 
-	// TODO It's absolutely not clear why we filter by options CONDITIONALLY, should be filtered always
-	if len(exIn.Options) > 0 {
-		list.Values = slice.Filter(list.GetValues(), func(value *types.Value) bool {
-			_, ok := exIn.Options[value.GetStringValue()]
-			return ok
-		})
-	}
-
-	if len(list.GetValues()) != len(exIn.Value.GetValues()) {
-		return false
-	}
-	exist := func(v *types.Value) bool {
-		for _, lv := range list.Values {
-			if v.Equal(lv) {
-				return true
-			}
-		}
-		return false
-	}
-	for _, ev := range exIn.Value.GetValues() {
-		if !exist(ev) {
+	if val, ok := g.TryString(exIn.Key); ok {
+		_, ok := exIn.Options[val]
+		if !ok {
 			return false
 		}
+		return slices.Contains(exIn.Value, val)
 	}
-	return true
+	if val, ok := g.TryStringList(exIn.Key); ok {
+		onlyOptions := lo.Filter(val, func(v string, _ int) bool {
+			_, ok := exIn.Options[v]
+			return ok
+		})
+		if len(onlyOptions) != len(exIn.Value) {
+			return false
+		}
+		return lo.Every(onlyOptions, exIn.Value)
+	}
+	return false
 }
 
 func (exIn FilterOptionsEqual) AnystoreFilter() query.Filter {
-	path := []string{exIn.Key}
-	conds := make([]query.Filter, 0, len(exIn.Value.GetValues())+1)
+	path := []string{string(exIn.Key)}
+	conds := make([]query.Filter, 0, len(exIn.Value)+1)
 	conds = append(conds, query.Key{
 		Path:   path,
-		Filter: query.Size{Size: int64(len(exIn.Value.GetValues()))},
+		Filter: query.Size{Size: int64(len(exIn.Value))},
 	})
-	for _, v := range exIn.Value.GetValues() {
+	for _, v := range exIn.Value {
 		conds = append(conds, query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, scalarPbValueToAny(v)),
+			Filter: query.NewComp(query.CompOpEq, v),
 		})
 	}
 	return query.And(conds)
 }
 
-func optionsToMap(spaceID string, key string, store ObjectStore) map[string]string {
+func optionsToMap(spaceID string, key domain.RelationKey, store ObjectStore) map[string]string {
 	result := make(map[string]string)
 	options, err := ListRelationOptions(store, spaceID, key)
 	if err != nil {
@@ -645,7 +673,7 @@ func optionsToMap(spaceID string, key string, store ObjectStore) map[string]stri
 // This filter uses special machinery in able to work: it only functions when IDs field is populated by IDs of objects
 // that match FilterForNestedObjects. You can't just use FilterNestedIn without populating IDs field
 type FilterNestedIn struct {
-	Key                    string
+	Key                    domain.RelationKey
 	FilterForNestedObjects Filter
 
 	IDs []string
@@ -653,9 +681,9 @@ type FilterNestedIn struct {
 
 var _ WithNestedFilter = &FilterNestedIn{}
 
-func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFilter, store ObjectStore, relationKey string, nestedRelationKey string) (Filter, error) {
-	rawNestedFilter := proto.Clone(rawFilter).(*model.BlockContentDataviewFilter)
-	rawNestedFilter.RelationKey = nestedRelationKey
+func makeFilterNestedIn(spaceID string, rawFilter FilterRequest, store ObjectStore, relationKey domain.RelationKey, nestedRelationKey domain.RelationKey) (Filter, error) {
+	rawNestedFilter := rawFilter
+	rawNestedFilter.RelationKey = string(nestedRelationKey)
 	nestedFilter, err := MakeFilter(spaceID, rawNestedFilter, store)
 	if err != nil {
 		return nil, fmt.Errorf("make nested filter %s -> %s: %w", relationKey, nestedRelationKey, err)
@@ -667,7 +695,7 @@ func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFil
 
 	ids := make([]string, 0, len(records))
 	for _, rec := range records {
-		ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
+		ids = append(ids, rec.Details.GetString(bundle.RelationKeyId))
 	}
 	return &FilterNestedIn{
 		Key:                    relationKey,
@@ -676,10 +704,10 @@ func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFil
 	}, nil
 }
 
-func (i *FilterNestedIn) FilterObject(g *types.Struct) bool {
-	val := pbtypes.Get(g, i.Key)
+func (i *FilterNestedIn) FilterObject(g *domain.Details) bool {
+	val := g.Get(i.Key)
 	for _, id := range i.IDs {
-		eq := FilterEq{Value: pbtypes.String(id), Cond: model.BlockContentDataviewFilter_Equal}
+		eq := FilterEq{Value: domain.String(id), Cond: model.BlockContentDataviewFilter_Equal}
 		if eq.filterObject(val) {
 			return true
 		}
@@ -688,7 +716,7 @@ func (i *FilterNestedIn) FilterObject(g *types.Struct) bool {
 }
 
 func (i *FilterNestedIn) AnystoreFilter() query.Filter {
-	path := []string{i.Key}
+	path := []string{string(i.Key)}
 	conds := make([]query.Filter, 0, len(i.IDs))
 	for _, id := range i.IDs {
 		conds = append(conds, query.Key{

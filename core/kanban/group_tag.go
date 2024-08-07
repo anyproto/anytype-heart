@@ -5,16 +5,16 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type GroupTag struct {
-	Key     string
+	Key     domain.RelationKey
 	store   objectstore.ObjectStore
 	Records []database.Record
 }
@@ -23,7 +23,7 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 	spaceFilter := database.FilterEq{
 		Key:   bundle.RelationKeySpaceId.String(),
 		Cond:  model.BlockContentDataviewFilter_Equal,
-		Value: pbtypes.String(spaceID),
+		Value: domain.String(spaceID),
 	}
 
 	filterTag := database.FiltersAnd{
@@ -40,12 +40,12 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 		database.FilterEq{
 			Key:   bundle.RelationKeyRelationKey.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.String(t.Key),
+			Value: domain.String(string(t.Key)),
 		},
 		database.FilterEq{
 			Key:   bundle.RelationKeyLayout.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			Value: domain.Int64(model.ObjectType_relationOption),
 		},
 	}
 	if spaceID != "" {
@@ -70,8 +70,8 @@ func (t *GroupTag) MakeGroups() (GroupSlice, error) {
 
 	// single tag groups
 	for _, v := range t.Records {
-		if tagOption := pbtypes.GetString(v.Details, bundle.RelationKeyRelationKey.String()); tagOption == t.Key {
-			optionID := pbtypes.GetString(v.Details, bundle.RelationKeyId.String())
+		if tagOption := v.Details.GetString(bundle.RelationKeyRelationKey); tagOption == string(t.Key) {
+			optionID := v.Details.GetString(bundle.RelationKeyId)
 			if !uniqMap[optionID] {
 				uniqMap[optionID] = true
 				groups = append(groups, Group{
@@ -84,7 +84,7 @@ func (t *GroupTag) MakeGroups() (GroupSlice, error) {
 
 	// multiple tag groups
 	for _, rec := range t.Records {
-		tagIDs := slice.Filter(pbtypes.GetStringList(rec.Details, t.Key), func(tagID string) bool { // filter removed options
+		tagIDs := slice.Filter(rec.Details.GetStringList(t.Key), func(tagID string) bool { // filter removed options
 			return uniqMap[tagID]
 		})
 

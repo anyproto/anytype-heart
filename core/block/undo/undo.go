@@ -3,8 +3,6 @@ package undo
 import (
 	"errors"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -23,7 +21,7 @@ type Change struct {
 }
 
 type Details struct {
-	Before, After *types.Struct
+	Before, After *domain.Details
 }
 
 type RelationLinks struct {

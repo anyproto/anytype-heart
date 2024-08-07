@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/gogo/protobuf/types"
-	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -28,10 +27,11 @@ import (
 var log = logging.Logger("anytype-mw-editor-basic")
 
 type detailUpdate struct {
-	key   string
+	key   domain.RelationKey
 	value *types.Value
 }
 
+// TODO REfactor: use DTO
 func (bs *basic) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
 	s := bs.NewStateCtx(ctx)
 
@@ -53,7 +53,7 @@ func (bs *basic) SetDetails(ctx session.Context, details []*model.Detail, showEv
 	return nil
 }
 
-func (bs *basic) UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+func (bs *basic) UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error) {
 	if update == nil {
 		return fmt.Errorf("update function is nil")
 	}
@@ -65,7 +65,7 @@ func (bs *basic) UpdateDetails(update func(current *types.Struct) (*types.Struct
 	}
 	s.SetDetails(newDetails)
 
-	if err = bs.addRelationLinks(s, maps.Keys(newDetails.Fields)...); err != nil {
+	if err = bs.addRelationLinks(s, newDetails.Keys()...); err != nil {
 		return
 	}
 
@@ -85,18 +85,16 @@ func (bs *basic) collectDetailUpdates(details []*model.Detail, s *state.State) [
 	return updates
 }
 
-func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *types.Struct {
-	newDetails := pbtypes.CopyStruct(oldDetails, false)
-	if newDetails == nil || newDetails.Fields == nil {
-		newDetails = &types.Struct{
-			Fields: make(map[string]*types.Value),
-		}
+func applyDetailUpdates(oldDetails *domain.Details, updates []*detailUpdate) *domain.Details {
+	newDetails := oldDetails.Copy()
+	if newDetails == nil {
+		newDetails = domain.NewDetails()
 	}
 	for _, update := range updates {
 		if update.value == nil {
-			delete(newDetails.Fields, update.key)
+			newDetails.Delete(update.key)
 		} else {
-			newDetails.Fields[update.key] = update.value
+			newDetails.SetProtoValue(update.key, update.value)
 		}
 	}
 	return newDetails
@@ -118,7 +116,7 @@ func (bs *basic) createDetailUpdate(st *state.State, detail *model.Detail) (*det
 		}
 	}
 	return &detailUpdate{
-		key:   detail.Key,
+		key:   domain.RelationKey(detail.Key),
 		value: detail.Value,
 	}, nil
 }
@@ -275,7 +273,7 @@ func (bs *basic) addRelationLink(st *state.State, relationKey string) error {
 	return nil
 }
 
-func (bs *basic) addRelationLinks(st *state.State, relationKeys ...string) error {
+func (bs *basic) addRelationLinks(st *state.State, relationKeys ...domain.RelationKey) error {
 	if len(relationKeys) == 0 {
 		return nil
 	}
@@ -341,7 +339,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 	s.SetObjectTypeKeys(objectTypeKeys)
 	removeInternalFlags(s)
 
-	if pbtypes.GetInt64(bs.CombinedDetails(), bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
+	if bs.CombinedDetails().GetInt64(bundle.RelationKeyOrigin) == int64(model.ObjectOrigin_none) {
 		objecttype.UpdateLastUsedDate(bs.Space(), bs.objectStore, objectTypeKeys[0])
 	}
 
@@ -361,7 +359,7 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 	if err != nil {
 		return 0, fmt.Errorf("get object by unique key: %w", err)
 	}
-	rawLayout := pbtypes.GetInt64(typeDetails.GetDetails(), bundle.RelationKeyRecommendedLayout.String())
+	rawLayout := typeDetails.GetInt64(bundle.RelationKeyRecommendedLayout)
 	return model.ObjectTypeLayout(rawLayout), nil
 }
 
@@ -373,7 +371,7 @@ func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayou
 	}
 
 	fromLayout, _ := s.Layout()
-	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))
+	s.SetDetail(bundle.RelationKeyLayout, domain.Int64(toLayout))
 	if err = bs.layoutConverter.Convert(bs.Space(), s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}

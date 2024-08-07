@@ -2,8 +2,8 @@ package simple
 
 import (
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -45,8 +45,8 @@ type FileMigrator interface {
 }
 
 type DetailsService interface {
-	Details() *types.Struct
-	SetDetail(key string, value *types.Value)
+	Details() *domain.Details
+	SetDetail(key domain.RelationKey, value domain.Value)
 }
 
 type DetailsHandler interface {

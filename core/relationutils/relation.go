@@ -1,37 +1,34 @@
 package relationutils
 
 import (
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func RelationFromStruct(st *types.Struct) *Relation {
-	key := pbtypes.GetString(st, bundle.RelationKeyRelationKey.String())
-	maxCount := int32(pbtypes.GetFloat64(st, bundle.RelationKeyRelationMaxCount.String()))
+func RelationFromDetails(det *domain.Details) *Relation {
+	key := det.GetString(bundle.RelationKeyRelationKey)
+	maxCount := int32(det.GetInt64(bundle.RelationKeyRelationMaxCount))
 	return &Relation{
 		Relation: &model.Relation{
-			Id:               pbtypes.GetString(st, bundle.RelationKeyId.String()),
+			Id:               det.GetString(bundle.RelationKeyId),
 			Key:              key,
-			Format:           model.RelationFormat(pbtypes.GetFloat64(st, bundle.RelationKeyRelationFormat.String())),
-			Name:             pbtypes.GetString(st, bundle.RelationKeyName.String()),
-			DefaultValue:     pbtypes.Get(st, bundle.RelationKeyRelationDefaultValue.String()),
+			Format:           model.RelationFormat(det.GetFloat(bundle.RelationKeyRelationFormat)),
+			Name:             det.GetString(bundle.RelationKeyName),
 			DataSource:       model.Relation_details,
-			Hidden:           pbtypes.GetBool(st, bundle.RelationKeyIsHidden.String()),
-			ReadOnly:         pbtypes.GetBool(st, bundle.RelationKeyRelationReadonlyValue.String()),
+			Hidden:           det.GetBool(bundle.RelationKeyIsHidden),
+			ReadOnly:         det.GetBool(bundle.RelationKeyRelationReadonlyValue),
 			ReadOnlyRelation: false,
 			Multi:            maxCount > 1,
-			ObjectTypes:      pbtypes.GetStringList(st, bundle.RelationKeyRelationFormatObjectTypes.String()),
+			ObjectTypes:      det.GetStringList(bundle.RelationKeyRelationFormatObjectTypes),
 			MaxCount:         maxCount,
-			Description:      pbtypes.GetString(st, bundle.RelationKeyDescription.String()),
-			Scope:            model.RelationScope(pbtypes.GetFloat64(st, bundle.RelationKeyScope.String())),
-			Creator:          pbtypes.GetString(st, bundle.RelationKeyCreator.String()),
-			Revision:         pbtypes.GetInt64(st, bundle.RelationKeyRevision.String()),
+			Description:      det.GetString(bundle.RelationKeyDescription),
+			Scope:            model.RelationScope(det.GetFloat(bundle.RelationKeyScope)),
+			Creator:          det.GetString(bundle.RelationKeyCreator),
+			Revision:         int64(det.GetInt64(bundle.RelationKeyRevision)),
 		},
 	}
+
 }
 
 type Relation struct {
@@ -45,29 +42,26 @@ func (r *Relation) RelationLink() *model.RelationLink {
 	}
 }
 
-func (r *Relation) ToStruct() *types.Struct {
-	return &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyCreator.String():                   pbtypes.String(r.GetCreator()),
-			bundle.RelationKeyDescription.String():               pbtypes.String(r.GetDescription()),
-			bundle.RelationKeyId.String():                        pbtypes.String(r.Id),
-			bundle.RelationKeyIsHidden.String():                  pbtypes.Bool(r.GetHidden()),
-			bundle.RelationKeyIsReadonly.String():                pbtypes.Bool(r.GetReadOnlyRelation()),
-			bundle.RelationKeyLayout.String():                    pbtypes.Int64(int64(model.ObjectType_relation)),
-			bundle.RelationKeyName.String():                      pbtypes.String(r.GetName()),
-			bundle.RelationKeyRelationDefaultValue.String():      pbtypes.NilToNullWrapper(r.GetDefaultValue()),
-			bundle.RelationKeyRelationFormat.String():            pbtypes.Float64(float64(r.GetFormat())),
-			bundle.RelationKeyRelationFormatObjectTypes.String(): pbtypes.StringList(r.GetObjectTypes()),
-			bundle.RelationKeyRelationKey.String():               pbtypes.String(r.GetKey()),
-			bundle.RelationKeyRelationMaxCount.String():          pbtypes.Float64(float64(r.GetMaxCount())),
-			bundle.RelationKeyRelationReadonlyValue.String():     pbtypes.Bool(r.GetReadOnly()),
-			bundle.RelationKeyScope.String():                     pbtypes.Float64(float64(r.GetScope())),
-			bundle.RelationKeyType.String():                      pbtypes.String(bundle.TypeKeyRelation.BundledURL()),
-			// TODO Is it ok?
-			bundle.RelationKeyUniqueKey.String(): pbtypes.String(domain.RelationKey(r.GetKey()).URL()),
-			bundle.RelationKeyRevision.String():  pbtypes.Int64(r.GetRevision()),
-		},
-	}
+func (r *Relation) ToDetails() *domain.Details {
+	det := domain.NewDetails()
+	det.SetString(bundle.RelationKeyCreator, r.GetCreator())
+	det.SetString(bundle.RelationKeyDescription, r.GetDescription())
+	det.SetString(bundle.RelationKeyId, r.Id)
+	det.SetBool(bundle.RelationKeyIsHidden, r.GetHidden())
+	det.SetBool(bundle.RelationKeyIsReadonly, r.GetReadOnlyRelation())
+	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
+	det.SetString(bundle.RelationKeyName, r.GetName())
+	det.SetProtoValue(bundle.RelationKeyRelationDefaultValue, r.GetDefaultValue())
+	det.SetInt64(bundle.RelationKeyRelationFormat, int64(r.GetFormat()))
+	det.SetStringList(bundle.RelationKeyRelationFormatObjectTypes, r.GetObjectTypes())
+	det.SetString(bundle.RelationKeyRelationKey, r.GetKey())
+	det.SetInt64(bundle.RelationKeyRelationMaxCount, int64(r.GetMaxCount()))
+	det.SetBool(bundle.RelationKeyRelationReadonlyValue, r.GetReadOnly())
+	det.SetInt64(bundle.RelationKeyScope, int64(r.GetScope()))
+	det.SetString(bundle.RelationKeyType, bundle.TypeKeyRelation.BundledURL())
+	det.SetString(bundle.RelationKeyUniqueKey, domain.RelationKey(r.GetKey()).URL())
+	det.SetInt64(bundle.RelationKeyRevision, r.GetRevision())
+	return det
 }
 
 type Relations []*Relation

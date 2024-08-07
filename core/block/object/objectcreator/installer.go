@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -20,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *service) BundledObjectsIdsToInstall(
@@ -44,7 +42,7 @@ func (s *service) BundledObjectsIdsToInstall(
 		}
 
 		err = marketplaceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
-			uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeyUniqueKey.String()))
+			uk, err := domain.UnmarshalUniqueKey(b.CombinedDetails().GetString(bundle.RelationKeyUniqueKey))
 			if err != nil {
 				return err
 			}
@@ -67,7 +65,7 @@ func (s *service) InstallBundledObjects(
 	space clientspace.Space,
 	sourceObjectIds []string,
 	isNewSpace bool,
-) (ids []string, objects []*types.Struct, err error) {
+) (ids []string, objects []*domain.Details, err error) {
 	if space.IsReadOnly() {
 		return
 	}
@@ -107,8 +105,8 @@ func (s *service) InstallBundledObjects(
 	return
 }
 
-func (s *service) installObject(ctx context.Context, space clientspace.Space, installingDetails *types.Struct) (id string, newDetails *types.Struct, err error) {
-	uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(installingDetails, bundle.RelationKeyUniqueKey.String()))
+func (s *service) installObject(ctx context.Context, space clientspace.Space, installingDetails *domain.Details) (id string, newDetails *domain.Details, err error) {
+	uk, err := domain.UnmarshalUniqueKey(installingDetails.GetString(bundle.RelationKeyUniqueKey))
 	if err != nil {
 		return "", nil, fmt.Errorf("unmarshal unique key: %w", err)
 	}
@@ -134,32 +132,32 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 	return id, newDetails, nil
 }
 
-func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds []string) (map[string]*types.Struct, error) {
+func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds []string) (map[string]*domain.Details, error) {
 	existingObjects, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(sourceObjectIds),
+				Value:       domain.StringList(sourceObjectIds),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(space.Id()),
+				Value:       domain.String(space.Id()),
 			},
 		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("query existing objects: %w", err)
 	}
-	existingObjectMap := make(map[string]*types.Struct, len(existingObjects))
+	existingObjectMap := make(map[string]*domain.Details, len(existingObjects))
 	for _, existingObject := range existingObjects {
-		existingObjectMap[pbtypes.GetString(existingObject.Details, bundle.RelationKeySourceObject.String())] = existingObject.Details
+		existingObjectMap[existingObject.Details.GetString(bundle.RelationKeySourceObject)] = existingObject.Details
 	}
 	return existingObjectMap, nil
 }
 
-func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clientspace.Space, space clientspace.Space, sourceObjectIDs []string) ([]string, []*types.Struct, error) {
+func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clientspace.Space, space clientspace.Space, sourceObjectIDs []string) ([]string, []*domain.Details, error) {
 	deletedObjects, err := s.queryDeletedObjects(space, sourceObjectIDs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("query deleted objects: %w", err)
@@ -167,20 +165,20 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 
 	archivedObjects, err := s.queryArchivedObjects(space, sourceObjectIDs)
 	if err != nil {
-		log.Errorf("query archived objects: %w", err)
+		log.Errorf("query archived objects: %v", err)
 	}
 
 	deletedObjects = lo.UniqBy(append(deletedObjects, archivedObjects...), func(record database.Record) string {
-		return pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		return record.Details.GetString(bundle.RelationKeyId)
 	})
 
 	var (
 		ids     []string
-		objects []*types.Struct
+		objects []*domain.Details
 	)
 	for _, rec := range deletedObjects {
-		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
-		sourceObjectId := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
+		id := rec.Details.GetString(bundle.RelationKeyId)
+		sourceObjectId := rec.Details.GetString(bundle.RelationKeySourceObject)
 		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, sourceObjectId, space, false)
 		if err != nil {
 			return nil, nil, fmt.Errorf("prepare details for installing object: %w", err)
@@ -190,9 +188,9 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 		err = space.Do(id, func(sb smartblock.SmartBlock) error {
 			st := sb.NewState()
 			st.SetDetails(installingDetails)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(false))
-			st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
-			st.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, pbtypes.Bool(false))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, domain.Bool(false))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, domain.Bool(false))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, domain.Bool(false))
 			typeKey = domain.TypeKey(st.UniqueKeyInternal())
 
 			ids = append(ids, id)
@@ -219,8 +217,8 @@ func (s *service) prepareDetailsForInstallingObject(
 	sourceObjectId string,
 	spc clientspace.Space,
 	isNewSpace bool,
-) (*types.Struct, error) {
-	var details *types.Struct
+) (*domain.Details, error) {
+	var details *domain.Details
 	err := sourceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
 		details = b.CombinedDetails()
 		return nil
@@ -230,16 +228,16 @@ func (s *service) prepareDetailsForInstallingObject(
 	}
 
 	spaceID := spc.Id()
-	sourceId := pbtypes.GetString(details, bundle.RelationKeyId.String())
-	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(spaceID)
-	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
-	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
+	sourceId := details.GetString(bundle.RelationKeyId)
+	details.SetString(bundle.RelationKeySpaceId, spaceID)
+	details.SetString(bundle.RelationKeySourceObject, sourceId)
+	details.SetBool(bundle.RelationKeyIsReadonly, false)
 
 	if isNewSpace {
 		objecttype.SetLastUsedDateForInitialObjectType(sourceId, details)
 	}
 
-	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
+	bundledRelationIds := details.GetStringList(bundle.RelationKeyRecommendedRelations)
 	if len(bundledRelationIds) > 0 {
 		recommendedRelationKeys := make([]string, 0, len(bundledRelationIds))
 		for _, id := range bundledRelationIds {
@@ -253,10 +251,10 @@ func (s *service) prepareDetailsForInstallingObject(
 		if err != nil {
 			return nil, fmt.Errorf("prepare recommended relation ids: %w", err)
 		}
-		details.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
+		details.SetStringList(bundle.RelationKeyRecommendedRelations, recommendedRelationIds)
 	}
 
-	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyRelationFormatObjectTypes.String())
+	objectTypes := details.GetStringList(bundle.RelationKeyRelationFormatObjectTypes)
 
 	if len(objectTypes) > 0 {
 		for i, objectType := range objectTypes {
@@ -273,7 +271,7 @@ func (s *service) prepareDetailsForInstallingObject(
 			}
 			objectTypes[i] = id
 		}
-		details.Fields[bundle.RelationKeyRelationFormatObjectTypes.String()] = pbtypes.StringList(objectTypes)
+		details.SetStringList(bundle.RelationKeyRelationFormatObjectTypes, objectTypes)
 	}
 
 	return details, nil
@@ -281,21 +279,21 @@ func (s *service) prepareDetailsForInstallingObject(
 
 func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs []string) (deletedObjects []database.Record, err error) {
 	deletedObjects, err = s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(sourceObjectIDs),
+				Value:       domain.StringList(sourceObjectIDs),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(space.Id()),
+				Value:       domain.String(space.Id()),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
+				Value:       domain.Bool(true),
 			},
 		},
 	})
@@ -304,21 +302,21 @@ func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs [
 
 func (s *service) queryArchivedObjects(space clientspace.Space, sourceObjectIDs []string) (archivedObjects []database.Record, err error) {
 	archivedObjects, err = s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(sourceObjectIDs),
+				Value:       domain.StringList(sourceObjectIDs),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(space.Id()),
+				Value:       domain.String(space.Id()),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsArchived.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
+				Value:       domain.Bool(true),
 			},
 		},
 	})

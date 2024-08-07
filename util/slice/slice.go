@@ -237,3 +237,31 @@ func FilterCID(cids []string) []string {
 		return err == nil
 	})
 }
+
+func StringsInto[T ~string](from []string) []T {
+	to := make([]T, len(from))
+	for i, v := range from {
+		to[i] = T(v)
+	}
+	return to
+}
+
+func IntoStrings[T ~string](from []T) []string {
+	to := make([]string, len(from))
+	for i, v := range from {
+		to[i] = string(v)
+	}
+	return to
+}
+
+type numeric interface {
+	constraints.Integer | constraints.Float
+}
+
+func FloatsInto[T numeric](from []float64) []T {
+	to := make([]T, len(from))
+	for i, v := range from {
+		to[i] = T(v)
+	}
+	return to
+}

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -19,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var spaceViewLog = logging.Logger("core.block.editor.spaceview")
@@ -43,7 +41,7 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 
 type spaceService interface {
 	OnViewUpdated(info spaceinfo.SpacePersistentInfo)
-	OnWorkspaceChanged(spaceId string, details *types.Struct)
+	OnWorkspaceChanged(spaceId string, details *domain.Details)
 }
 
 // SpaceView is a wrapper around smartblock.SmartBlock that indicates the current space state
@@ -116,16 +114,16 @@ func (s *SpaceView) initTemplate(st *state.State) {
 
 func (s *SpaceView) GetExistingInviteInfo() (fileCid string, fileKey string) {
 	details := s.CombinedDetails()
-	fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
-	fileKey = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileKey.String())
+	fileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
+	fileKey = details.GetString(bundle.RelationKeySpaceInviteFileKey)
 	return
 }
 
 func (s *SpaceView) RemoveExistingInviteInfo() (fileCid string, err error) {
 	details := s.Details()
-	fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
+	fileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
 	newState := s.NewState()
-	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid.String(), bundle.RelationKeySpaceInviteFileKey.String())
+	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid, bundle.RelationKeySpaceInviteFileKey)
 	return fileCid, s.Apply(newState)
 }
 
@@ -142,18 +140,18 @@ func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 
 func (s *SpaceView) SetAclIsEmpty(isEmpty bool) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, pbtypes.Bool(!isEmpty))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, domain.Bool(!isEmpty))
 	s.updateAccessType(st)
 	return s.Apply(st)
 }
 
 func (s *SpaceView) updateAccessType(st *state.State) {
-	accessType := spaceinfo.AccessType(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceAccessType.String()))
+	accessType := spaceinfo.AccessType(st.LocalDetails().GetInt64(bundle.RelationKeySpaceAccessType))
 	if accessType == spaceinfo.AccessTypePersonal {
 		return
 	}
-	isShared := pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsAclShared.String())
-	shareable := spaceinfo.ShareableStatus(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceShareableStatus.String()))
+	isShared := st.LocalDetails().GetBool(bundle.RelationKeyIsAclShared)
+	shareable := spaceinfo.ShareableStatus(st.LocalDetails().GetInt64(bundle.RelationKeySpaceShareableStatus))
 	if isShared || shareable == spaceinfo.ShareableStatusShareable {
 		stateSetAccessType(st, spaceinfo.AccessTypeShared)
 	} else {
@@ -163,11 +161,11 @@ func (s *SpaceView) updateAccessType(st *state.State) {
 
 func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
 	st := s.NewState()
-	prev := spaceinfo.AccessType(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceAccessType.String()))
+	prev := spaceinfo.AccessType(st.LocalDetails().GetInt64(bundle.RelationKeySpaceAccessType))
 	if prev == spaceinfo.AccessTypePersonal {
 		return nil
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, pbtypes.Int64(int64(acc)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, domain.Int64(acc))
 	return s.Apply(st)
 }
 
@@ -179,18 +177,18 @@ func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (
 
 func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, pbtypes.Int64(int64(limit)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
 	return s.Apply(st)
 }
 
 func (s *SpaceView) GetSharedSpacesLimit() (limit int) {
-	return int(pbtypes.GetInt64(s.CombinedDetails(), bundle.RelationKeySharedSpacesLimit.String()))
+	return int(s.CombinedDetails().GetInt64(bundle.RelationKeySharedSpacesLimit))
 }
 
 func (s *SpaceView) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, pbtypes.String(fileCid))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, pbtypes.String(fileKey))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, domain.String(fileCid))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, domain.String(fileKey))
 	return s.Apply(st)
 }
 
@@ -231,58 +229,54 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 
 func (s *SpaceView) getSpacePersistentInfo(st *state.State) (info spaceinfo.SpacePersistentInfo) {
 	details := st.CombinedDetails()
-	spaceInfo := spaceinfo.NewSpacePersistentInfo(pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()))
-	spaceInfo.SetAccountStatus(spaceinfo.AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String()))).
-		SetAclHeadId(pbtypes.GetString(details, bundle.RelationKeyLatestAclHeadId.String()))
+	spaceInfo := spaceinfo.NewSpacePersistentInfo(details.GetString(bundle.RelationKeyTargetSpaceId))
+	spaceInfo.SetAccountStatus(spaceinfo.AccountStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus))).
+		SetAclHeadId(details.GetString(bundle.RelationKeyLatestAclHeadId))
 	return spaceInfo
 }
 
-var workspaceKeysToCopy = []string{
-	bundle.RelationKeyName.String(),
-	bundle.RelationKeyIconImage.String(),
-	bundle.RelationKeyIconOption.String(),
-	bundle.RelationKeySpaceDashboardId.String(),
-	bundle.RelationKeyCreator.String(),
-	bundle.RelationKeyCreatedDate.String(),
+var workspaceKeysToCopy = []domain.RelationKey{
+	bundle.RelationKeyName,
+	bundle.RelationKeyIconImage,
+	bundle.RelationKeyIconOption,
+	bundle.RelationKeySpaceDashboardId,
+	bundle.RelationKeyCreator,
+	bundle.RelationKeyCreatedDate,
 }
 
 func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
 	details := s.CombinedDetails()
-	data.Name = pbtypes.GetString(details, bundle.RelationKeyName.String())
-	data.IconImage = pbtypes.GetString(details, bundle.RelationKeyIconImage.String())
+	data.Name = details.GetString(bundle.RelationKeyName)
+	data.IconImage = details.GetString(bundle.RelationKeyIconImage)
 	return
 }
 
-func (s *SpaceView) SetSpaceData(details *types.Struct) error {
+func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 	st := s.NewState()
 	var changed bool
-	for k, v := range details.Fields {
+	details.Iterate(func(k domain.RelationKey, v domain.Value) bool {
 		if slices.Contains(workspaceKeysToCopy, k) {
 			// Special case for migration to Files as Objects to handle following situation:
 			// - We have an icon in Workspace that was created in pre-Files as Objects version
 			// - We migrate it, change old id to new id
 			// - Now we need to push details to SpaceView. But if we push NEW id, then old clients will not be able to display image
 			// - So we need to push old id
-			if k == bundle.RelationKeyIconImage.String() {
-				fileId, err := s.fileObjectService.GetFileIdFromObject(v.GetStringValue())
+			if k == bundle.RelationKeyIconImage {
+				fileId, err := s.fileObjectService.GetFileIdFromObject(v.String())
 				if err == nil {
-					switch v.Kind.(type) {
-					case *types.Value_StringValue:
-						v = pbtypes.String(fileId.FileId.String())
-					case *types.Value_ListValue:
-						v = pbtypes.StringList([]string{fileId.FileId.String()})
-					}
+					v = domain.String(fileId.FileId.String())
 				}
 			}
 			changed = true
-			st.SetDetailAndBundledRelation(domain.RelationKey(k), v)
+			st.SetDetailAndBundledRelation(k, v)
 		}
-	}
+		return true
+	})
 
 	if changed {
 		if st.ParentState().ParentState() == nil {
 			// in case prev change was the first one
-			createdDate := pbtypes.GetInt64(details, bundle.RelationKeyCreatedDate.String())
+			createdDate := details.GetInt64(bundle.RelationKeyCreatedDate)
 			if createdDate > 0 {
 				// we use this state field to save the original created date, otherwise we use the one from the underlying objectTree
 				st.SetOriginalCreatedTimestamp(createdDate)
@@ -296,10 +290,10 @@ func (s *SpaceView) SetSpaceData(details *types.Struct) error {
 
 func (s *SpaceView) UpdateLastOpenedDate() error {
 	st := s.NewState()
-	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
+	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, domain.Int64(time.Now().Unix()))
 	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
 }
 
 func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, pbtypes.Int64(int64(accessType)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, domain.Int64(accessType))
 }

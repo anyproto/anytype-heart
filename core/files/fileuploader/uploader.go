@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/h2non/filetype"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -95,7 +94,7 @@ type Uploader interface {
 	SetName(name string) Uploader
 	SetType(tp model.BlockContentFileType) Uploader
 	SetStyle(tp model.BlockContentFileStyle) Uploader
-	SetAdditionalDetails(details *types.Struct) Uploader
+	SetAdditionalDetails(details *domain.Details) Uploader
 	SetBytes(b []byte) Uploader
 	SetUrl(url string) Uploader
 	SetFile(path string) Uploader
@@ -113,7 +112,7 @@ type UploadResult struct {
 	Name              string
 	Type              model.BlockContentFileType
 	FileObjectId      string
-	FileObjectDetails *types.Struct
+	FileObjectDetails *domain.Details
 	MIME              string
 	Size              int64
 	Err               error
@@ -159,7 +158,7 @@ type uploader struct {
 	tempDirProvider      core.TempDirProvider
 	fileService          files.Service
 	origin               objectorigin.ObjectOrigin
-	additionalDetails    *types.Struct
+	additionalDetails    *domain.Details
 	customEncryptionKeys map[string]string
 }
 
@@ -223,7 +222,7 @@ func (u *uploader) SetStyle(tp model.BlockContentFileStyle) Uploader {
 	return u
 }
 
-func (u *uploader) SetAdditionalDetails(details *types.Struct) Uploader {
+func (u *uploader) SetAdditionalDetails(details *domain.Details) Uploader {
 	u.additionalDetails = details
 	return u
 }
@@ -483,7 +482,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	return
 }
 
-func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.AddResult) (string, *types.Struct, error) {
+func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.AddResult) (string, *domain.Details, error) {
 	if addResult.IsExisting {
 		id, details, err := u.fileObjectService.GetObjectDetailsByFileId(domain.FullFileId{
 			SpaceId: u.spaceId,

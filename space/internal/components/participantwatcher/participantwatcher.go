@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/any-sync/util/crypto/cryptoproto"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -35,7 +34,7 @@ type ParticipantWatcher interface {
 
 type participant interface {
 	ModifyIdentityDetails(profile *model.IdentityProfile) (err error)
-	ModifyProfileDetails(profileDetails *types.Struct) (err error)
+	ModifyProfileDetails(profileDetails *domain.Details) (err error)
 	ModifyParticipantAclState(accState spaceinfo.ParticipantAclInfo) (err error)
 }
 

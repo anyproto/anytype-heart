@@ -4,10 +4,14 @@ import (
 	"context"
 	"io"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type ObjectTreeCreator interface {
@@ -34,9 +38,78 @@ type IOReader struct {
 // TODO Add spaceID?
 type Snapshot struct {
 	Id       string
-	SbType   coresb.SmartBlockType
 	FileName string
-	Snapshot *pb.ChangeSnapshot
+	Snapshot *SnapshotModel
+}
+
+type SnapshotModel struct {
+	SbType   coresb.SmartBlockType
+	LogHeads map[string]string
+	Data     *StateSnapshot
+	FileKeys []*pb.ChangeFileKeys
+}
+
+func (sn *SnapshotModel) ToProto() *pb.ChangeSnapshot {
+	return &pb.ChangeSnapshot{
+		Data:     sn.Data.ToProto(),
+		LogHeads: sn.LogHeads,
+		FileKeys: sn.FileKeys,
+	}
+}
+
+type StateSnapshot struct {
+	Blocks                   []*model.Block
+	Details                  *domain.Details
+	FileKeys                 *types.Struct
+	ExtraRelations           []*model.Relation
+	ObjectTypes              []string
+	Collections              *types.Struct
+	RemovedCollectionKeys    []string
+	RelationLinks            []*model.RelationLink
+	Key                      string
+	OriginalCreatedTimestamp int64
+	FileInfo                 *model.FileInfo
+}
+
+func (sn *StateSnapshot) ToProto() *model.SmartBlockSnapshotBase {
+	return &model.SmartBlockSnapshotBase{
+		Blocks:                   sn.Blocks,
+		Details:                  sn.Details.ToProto(),
+		FileKeys:                 sn.FileKeys,
+		ExtraRelations:           sn.ExtraRelations,
+		ObjectTypes:              sn.ObjectTypes,
+		Collections:              sn.Collections,
+		RemovedCollectionKeys:    sn.RemovedCollectionKeys,
+		RelationLinks:            sn.RelationLinks,
+		Key:                      sn.Key,
+		OriginalCreatedTimestamp: sn.OriginalCreatedTimestamp,
+		FileInfo:                 sn.FileInfo,
+	}
+}
+
+func NewStateSnapshotFromProto(sn *model.SmartBlockSnapshotBase) *StateSnapshot {
+	return &StateSnapshot{
+		Blocks:                   sn.Blocks,
+		Details:                  domain.NewDetailsFromProto(sn.Details),
+		FileKeys:                 sn.FileKeys,
+		ExtraRelations:           sn.ExtraRelations,
+		ObjectTypes:              sn.ObjectTypes,
+		Collections:              sn.Collections,
+		RemovedCollectionKeys:    sn.RemovedCollectionKeys,
+		RelationLinks:            sn.RelationLinks,
+		Key:                      sn.Key,
+		OriginalCreatedTimestamp: sn.OriginalCreatedTimestamp,
+		FileInfo:                 sn.FileInfo,
+	}
+}
+
+func NewSnapshotModelFromProto(sn *pb.SnapshotWithType) *SnapshotModel {
+	return &SnapshotModel{
+		SbType:   coresb.SmartBlockType(sn.SbType),
+		LogHeads: sn.Snapshot.LogHeads,
+		Data:     NewStateSnapshotFromProto(sn.Snapshot.Data),
+		FileKeys: sn.Snapshot.FileKeys,
+	}
 }
 
 // Response expected response of each converter, incapsulate blocks snapshots and converting errors

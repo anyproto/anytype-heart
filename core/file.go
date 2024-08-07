@@ -7,6 +7,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
@@ -124,7 +125,7 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 	}
 	var (
 		objectId string
-		details  *types.Struct
+		details  *domain.Details
 	)
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		dto := block.FileUploadRequest{RpcFileUploadRequest: *req, ObjectOrigin: objectorigin.ObjectOrigin{Origin: req.Origin}}
@@ -134,7 +135,7 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 	if err != nil {
 		return response("", nil, pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(objectId, details, pb.RpcFileUploadResponseError_NULL, nil)
+	return response(objectId, details.ToProto(), pb.RpcFileUploadResponseError_NULL, nil)
 }
 
 func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceUsageRequest) *pb.RpcFileSpaceUsageResponse {

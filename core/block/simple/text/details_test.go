@@ -142,5 +142,5 @@ func (t *testDetailsService) SetDetail(key string, value *types.Value) {
 			Fields: map[string]*types.Value{},
 		}
 	}
-	t.Struct.Fields[key] = value
+	t.Struct.Set(key, value)
 }

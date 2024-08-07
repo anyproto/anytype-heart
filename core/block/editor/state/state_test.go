@@ -2590,7 +2590,7 @@ func TestState_RootId(t *testing.T) {
 //		detail := pbtypes.StringList([]string{"hello", "world", strings.Repeat("a", detailSizeLimit-9)})
 //
 //		//when
-//		s.SetDetail(bundle.RelationKeyType.String(), pbtypes.CopyVal(detail))
+//		s.SetDetail(bundle.RelationKeyType, pbtypes.CopyVal(detail))
 //
 //		//then
 //		assert.Greater(t, detail.Size(), detailSizeLimit)

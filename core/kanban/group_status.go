@@ -3,13 +3,14 @@ package kanban
 import (
 	"sort"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type GroupStatus struct {
-	key     string
+	key     domain.RelationKey
 	store   objectstore.ObjectStore
 	Options []*model.RelationOption
 }

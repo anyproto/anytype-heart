@@ -2,9 +2,9 @@ package spaceinfo
 
 import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type SpacePersistentInfo struct {
@@ -19,19 +19,19 @@ func NewSpacePersistentInfo(spaceId string) SpacePersistentInfo {
 
 func NewSpacePersistentInfoFromState(st state.Doc) SpacePersistentInfo {
 	details := st.CombinedDetails()
-	spaceInfo := NewSpacePersistentInfo(pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()))
-	spaceInfo.SetAccountStatus(AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String()))).
-		SetAclHeadId(pbtypes.GetString(details, bundle.RelationKeyLatestAclHeadId.String()))
+	spaceInfo := NewSpacePersistentInfo(details.GetString(bundle.RelationKeyTargetSpaceId))
+	spaceInfo.SetAccountStatus(AccountStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus))).
+		SetAclHeadId(details.GetString(bundle.RelationKeyLatestAclHeadId))
 	return spaceInfo
 }
 
 func (s *SpacePersistentInfo) UpdateDetails(st *state.State) *SpacePersistentInfo {
-	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, pbtypes.String(s.SpaceID))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, domain.String(s.SpaceID))
 	if s.AccountStatus != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccountStatus, pbtypes.Int64(int64(*s.AccountStatus)))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccountStatus, domain.Int64(*s.AccountStatus))
 	}
 	if s.AclHeadId != "" {
-		st.SetDetailAndBundledRelation(bundle.RelationKeyLatestAclHeadId, pbtypes.String(s.AclHeadId))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLatestAclHeadId, domain.String(s.AclHeadId))
 	}
 	return s
 }

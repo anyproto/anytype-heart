@@ -78,8 +78,8 @@ func (ds *Service) GetDatabase(_ context.Context,
 	)
 	progress.SetProgressMessage("Start creating pages from notion databases")
 	relations := &property.PropertiesStore{
-		PropertyIdsToSnapshots: make(map[string]*model.SmartBlockSnapshotBase, 0),
-		RelationsIdsToOptions:  make(map[string][]*model.SmartBlockSnapshotBase, 0),
+		PropertyIdsToSnapshots: make(map[string]*common.StateSnapshot, 0),
+		RelationsIdsToOptions:  make(map[string][]*common.StateSnapshot, 0),
 	}
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
@@ -106,14 +106,13 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 	importContext *api.NotionImportContext,
 	relations *property.PropertiesStore) ([]*common.Snapshot, error) {
 	details := ds.getCollectionDetails(d)
-	detailsStruct := &types.Struct{Fields: details}
-	_, _, st, err := ds.collectionService.CreateCollection(detailsStruct, nil)
+	_, _, st, err := ds.collectionService.CreateCollection(details, nil)
 	if err != nil {
 		return nil, err
 	}
-	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
+	details = st.CombinedDetails().Merge(details)
 	snapshots := ds.makeRelationsSnapshots(d, st, relations)
-	id, databaseSnapshot := ds.provideDatabaseSnapshot(d, st, detailsStruct)
+	id, databaseSnapshot := ds.provideDatabaseSnapshot(d, st, details)
 	ds.fillImportContext(d, importContext, id, databaseSnapshot)
 	snapshots = append(snapshots, databaseSnapshot)
 	return snapshots, nil
@@ -121,7 +120,7 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 
 func (ds *Service) fillImportContext(d Database, req *api.NotionImportContext, id string, databaseSnapshot *common.Snapshot) {
 	req.NotionDatabaseIdsToAnytype[d.ID] = id
-	req.DatabaseNameToID[d.ID] = pbtypes.GetString(databaseSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
+	req.DatabaseNameToID[d.ID] = databaseSnapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 	if d.Parent.DatabaseID != "" {
 		req.PageTree.ParentPageToChildIDs[d.Parent.DatabaseID] = append(req.PageTree.ParentPageToChildIDs[d.Parent.DatabaseID], d.ID)
 	}
@@ -172,7 +171,7 @@ func (ds *Service) getNameAndRelationKeyForTagProperty(databaseProperty property
 }
 
 func (ds *Service) handleNameProperty(databaseProperty property.DatabasePropertyHandler, st *state.State) *common.Snapshot {
-	databaseProperty.SetDetail(bundle.RelationKeyName.String(), st.Details().GetFields())
+	databaseProperty.SetDetail(bundle.RelationKeyName.String(), st.Details())
 	relationLinks := &model.RelationLink{
 		Key:    bundle.RelationKeyName.String(),
 		Format: model.RelationFormat_shorttext,
@@ -189,15 +188,15 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 	name, relationKey string,
 	st *state.State) *common.Snapshot {
 	var (
-		rel *model.SmartBlockSnapshotBase
+		rel *common.StateSnapshot
 		sn  *common.Snapshot
 	)
 	if rel = relations.ReadRelationsMap(databaseProperty.GetID()); rel == nil {
 		rel, sn = ds.getRelationSnapshot(relationKey, databaseProperty, name)
 		relations.WriteToRelationsMap(databaseProperty.GetID(), rel)
 	}
-	relKey := pbtypes.GetString(rel.GetDetails(), bundle.RelationKeyRelationKey.String())
-	databaseProperty.SetDetail(relKey, st.Details().GetFields())
+	relKey := rel.Details.GetString(bundle.RelationKeyRelationKey)
+	databaseProperty.SetDetail(relKey, st.Details())
 	relationLinks := &model.RelationLink{
 		Key:    relKey,
 		Format: databaseProperty.GetFormat(),
@@ -217,83 +216,83 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 	return sn
 }
 
-func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty property.DatabasePropertyHandler, name string) (*model.SmartBlockSnapshotBase, *common.Snapshot) {
+func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty property.DatabasePropertyHandler, name string) (*common.StateSnapshot, *common.Snapshot) {
 	relationDetails := ds.getRelationDetails(databaseProperty, name, relationKey)
-	relationSnapshot := &model.SmartBlockSnapshotBase{
+	relationSnapshot := &common.StateSnapshot{
 		Details:     relationDetails,
 		ObjectTypes: []string{bundle.TypeKeyRelation.String()},
 		Key:         relationKey,
 	}
 	snapshot := &common.Snapshot{
-		Id: pbtypes.GetString(relationDetails, bundle.RelationKeyId.String()),
-		Snapshot: &pb.ChangeSnapshot{
-			Data: relationSnapshot,
+		Id: relationDetails.GetString(bundle.RelationKeyId),
+		Snapshot: &common.SnapshotModel{
+			SbType: sb.SmartBlockTypeRelation,
+			Data:   relationSnapshot,
 		},
-		SbType: sb.SmartBlockTypeRelation,
 	}
 	return relationSnapshot, snapshot
 }
 
-func (ds *Service) getRelationDetails(databaseProperty property.DatabasePropertyHandler, name, key string) *types.Struct {
+func (ds *Service) getRelationDetails(databaseProperty property.DatabasePropertyHandler, name, key string) *domain.Details {
 	if name == "" {
 		name = property.UntitledProperty
 	}
-	details := &types.Struct{Fields: map[string]*types.Value{}}
-	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(databaseProperty.GetFormat()))
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
-	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
-	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(databaseProperty.GetID())
+	details := domain.NewDetails()
+	details.SetInt64(bundle.RelationKeyRelationFormat, int64(databaseProperty.GetFormat()))
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeyRelationKey, key)
+	details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
+	details.SetString(bundle.RelationKeySourceFilePath, databaseProperty.GetID())
 	uniqueKey, err := domain.NewUniqueKey(sb.SmartBlockTypeRelation, key)
 	if err != nil {
 		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
+	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
 	return details
 }
 
-func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
-	details := make(map[string]*types.Value, 0)
-	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(d.ID)
+func (ds *Service) getCollectionDetails(d Database) *domain.Details {
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeySourceFilePath, d.ID)
 	if len(d.Title) > 0 {
-		details[bundle.RelationKeyName.String()] = pbtypes.String(d.Title[0].PlainText)
+		details.SetString(bundle.RelationKeyName, d.Title[0].PlainText)
 	}
 	if d.Icon != nil && d.Icon.Emoji != nil {
-		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*d.Icon.Emoji)
+		details.SetString(bundle.RelationKeyIconEmoji, *d.Icon.Emoji)
 	}
 
 	if d.Cover != nil {
 		if d.Cover.Type == api.External {
-			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.External.URL)
-			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
+			details.SetString(bundle.RelationKeyCoverId, d.Cover.External.URL)
+			details.SetInt64(bundle.RelationKeyCoverType, 1)
 		}
 
 		if d.Cover.Type == api.File {
-			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.File.URL)
-			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
+			details.SetString(bundle.RelationKeyCoverId, d.Cover.File.URL)
+			details.SetInt64(bundle.RelationKeyCoverType, 1)
 		}
 	}
 	if d.Icon != nil {
 		api.SetIcon(details, d.Icon)
 	}
-	details[bundle.RelationKeyCreator.String()] = pbtypes.String(d.CreatedBy.Name)
-	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(d.Archived)
-	details[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(d.LastEditedBy.Name)
-	details[bundle.RelationKeyDescription.String()] = pbtypes.String(api.RichTextToDescription(d.Description))
-	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
-	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+	details.SetString(bundle.RelationKeyCreator, d.CreatedBy.Name)
+	details.SetBool(bundle.RelationKeyIsArchived, d.Archived)
+	details.SetString(bundle.RelationKeyLastModifiedBy, d.LastEditedBy.Name)
+	details.SetString(bundle.RelationKeyDescription, api.RichTextToDescription(d.Description))
+	details.SetBool(bundle.RelationKeyIsFavorite, false)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
 
-	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(d.LastEditedTime.Unix()))
-	details[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(d.CreatedTime.Unix()))
+	details.SetInt64(bundle.RelationKeyLastModifiedDate, d.LastEditedTime.Unix())
+	details.SetInt64(bundle.RelationKeyCreatedDate, d.CreatedTime.Unix())
 	return details
 }
 
-func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, detailsStruct *types.Struct) (string, *common.Snapshot) {
-	snapshot := &model.SmartBlockSnapshotBase{
+func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, details *domain.Details) (string, *common.Snapshot) {
+	snapshot := &common.StateSnapshot{
 		Blocks:        st.Blocks(),
-		Details:       detailsStruct,
+		Details:       details,
 		ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
 		Collections:   st.Store(),
 		RelationLinks: st.GetRelationLinks(),
@@ -303,8 +302,10 @@ func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, detailsS
 	databaseSnapshot := &common.Snapshot{
 		Id:       id,
 		FileName: d.URL,
-		Snapshot: &pb.ChangeSnapshot{Data: snapshot},
-		SbType:   sb.SmartBlockTypePage,
+		Snapshot: &common.SnapshotModel{
+			SbType: sb.SmartBlockTypePage,
+			Data:   snapshot,
+		},
 	}
 	return id, databaseSnapshot
 }

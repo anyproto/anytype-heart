@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -23,7 +22,7 @@ func (s *Service) ObjectTypeRelationAdd(ctx context.Context, objectTypeId string
 	}
 	return cache.Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		list := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String())
+		list := st.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
 		for _, relKey := range relationKeys {
 			relId, err := b.Space().GetRelationIdByKey(ctx, relKey)
 			if err != nil {
@@ -33,7 +32,7 @@ func (s *Service) ObjectTypeRelationAdd(ctx context.Context, objectTypeId string
 				list = append(list, relId)
 			}
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(list))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
 		return b.Apply(st)
 	})
 }
@@ -44,7 +43,7 @@ func (s *Service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 	}
 	return cache.Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		list := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String())
+		list := st.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
 		for _, relKey := range relationKeys {
 			relId, err := b.Space().GetRelationIdByKey(ctx, relKey)
 			if err != nil {
@@ -52,7 +51,7 @@ func (s *Service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 			}
 			list = slice.RemoveMut(list, relId)
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(list))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
 		return b.Apply(st)
 	})
 }

@@ -9,19 +9,18 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/cheggaaa/mb"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -185,11 +184,11 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 		return
 	}
 
-	updateBacklinks := func(current *types.Struct, backlinksChange *backLinksUpdate) (*types.Struct, bool, error) {
-		if current == nil || current.Fields == nil {
+	updateBacklinks := func(current *domain.Details, backlinksChange *backLinksUpdate) (*domain.Details, bool, error) {
+		if current == nil {
 			return nil, false, nil
 		}
-		backlinks := pbtypes.GetStringList(current, bundle.RelationKeyBacklinks.String())
+		backlinks := current.GetStringList(bundle.RelationKeyBacklinks)
 
 		for _, removed := range backlinksChange.removed {
 			backlinks = slice.Remove(backlinks, removed)
@@ -201,12 +200,12 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 			}
 		}
 
-		current.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(backlinks)
+		current.SetStringList(bundle.RelationKeyBacklinks, backlinks)
 		return current, true, nil
 	}
 
 	err = spc.DoLockedIfNotExists(id, func() error {
-		return uw.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
+		return uw.store.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
 			return updateBacklinks(details, backlinksUpdate)
 		})
 	})

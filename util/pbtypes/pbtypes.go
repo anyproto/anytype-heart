@@ -65,6 +65,17 @@ func IntList(ints ...int) *types.Value {
 	}
 }
 
+func FloatList(floats []float64) *types.Value {
+	var vals = make([]*types.Value, 0, len(floats))
+	for _, f := range floats {
+		vals = append(vals, Float64(f))
+	}
+
+	return &types.Value{
+		Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+	}
+}
+
 func NilToNullWrapper(v *types.Value) *types.Value {
 	if v == nil || v.Kind == nil {
 		return Null()
@@ -267,6 +278,19 @@ func ListValueToStrings(list *types.ListValue) []string {
 		}
 	}
 	return stringsSlice
+}
+
+func ListValueToFloats(list *types.ListValue) []float64 {
+	if list == nil {
+		return nil
+	}
+	res := make([]float64, 0, len(list.Values))
+	for _, v := range list.Values {
+		if _, ok := v.GetKind().(*types.Value_NumberValue); ok {
+			res = append(res, v.GetNumberValue())
+		}
+	}
+	return res
 }
 
 func HasField(st *types.Struct, key string) bool {
@@ -581,4 +605,34 @@ func RelationIdToKey(id string) (string, error) {
 	}
 
 	return "", fmt.Errorf("incorrect id format")
+}
+
+func ProtoToAny(v *types.Value) any {
+	if v == nil {
+		return nil
+	}
+	switch v.Kind.(type) {
+	case *types.Value_StringValue:
+		return v.GetStringValue()
+	case *types.Value_NumberValue:
+		return v.GetNumberValue()
+	case *types.Value_BoolValue:
+		return v.GetBoolValue()
+	case *types.Value_ListValue:
+		listValue := v.GetListValue()
+		if listValue == nil || len(listValue.Values) == 0 {
+			return []string{}
+		}
+
+		firstValue := listValue.Values[0]
+		if _, ok := firstValue.GetKind().(*types.Value_StringValue); ok {
+			return ListValueToStrings(listValue)
+		}
+		if _, ok := firstValue.GetKind().(*types.Value_NumberValue); ok {
+			return ListValueToFloats(listValue)
+		}
+		return []string{}
+	default:
+		return nil
+	}
 }

@@ -7,11 +7,11 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type existingObject struct {
@@ -41,20 +41,20 @@ func (e *existingObject) GetIDAndPayload(_ context.Context, spaceID string, sn *
 }
 
 func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snapshot) (string, error) {
-	oldAnytypeID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyOldAnytypeID.String())
+	oldAnytypeID := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyOldAnytypeID)
 
 	// Check for imported objects
 	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
-				Value:       pbtypes.String(oldAnytypeID),
+				Value:       domain.String(oldAnytypeID),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
+				Value:       domain.String(spaceID),
 			},
 		},
 	})
@@ -64,16 +64,16 @@ func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snap
 
 	// Check for derived objects
 	ids, _, err = e.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
-				Value:       pbtypes.String(oldAnytypeID), // Old id equals to unique key
+				Value:       domain.String(oldAnytypeID), // Old id equals to unique key
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
+				Value:       domain.String(spaceID),
 			},
 		},
 	})
@@ -85,18 +85,18 @@ func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snap
 }
 
 func (e *existingObject) getExistingObject(spaceID string, sn *common.Snapshot) string {
-	source := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceFilePath.String())
+	source := sn.Snapshot.Data.Details.GetString(bundle.RelationKeySourceFilePath)
 	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeySourceFilePath.String(),
-				Value:       pbtypes.String(source),
+				Value:       domain.String(source),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
+				Value:       domain.String(spaceID),
 			},
 		},
 	})
@@ -107,24 +107,24 @@ func (e *existingObject) getExistingObject(spaceID string, sn *common.Snapshot) 
 }
 
 func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot) string {
-	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
-	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
+	key := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey)
 	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyName.String(),
-				Value:       pbtypes.String(name),
+				Value:       domain.String(name),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyRelationKey.String(),
-				Value:       pbtypes.String(key),
+				Value:       domain.String(key),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+				Value:       domain.String(bundle.TypeKeyRelationOption.URL()),
 			},
 		},
 	})

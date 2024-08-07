@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type detailsSettable interface {
@@ -28,7 +26,7 @@ type detailsSettable interface {
 
 const MName = "SystemObjectReviser"
 
-var revisionKey = bundle.RelationKeyRevision.String()
+const revisionKey = bundle.RelationKeyRevision
 
 // Migration SystemObjectReviser performs revision of all system object types and relations, so after Migration
 // objects installed in space should correspond to bundled objects from library.
@@ -66,18 +64,18 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 	return
 }
 
-func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string) (map[string]*types.Struct, error) {
+func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string) (map[string]*domain.Details, error) {
 	records, err := store.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(int(model.ObjectType_objectType), int(model.ObjectType_relation)),
+				Value:       domain.Int64List(model.ObjectType_objectType, model.ObjectType_relation),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 			},
 		},
 	})
@@ -85,28 +83,30 @@ func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string)
 		return nil, err
 	}
 
-	details := make(map[string]*types.Struct, len(records))
+	details := make(map[string]*domain.Details, len(records))
 	for _, record := range records {
-		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		id := record.Details.GetString(bundle.RelationKeyId)
 		details[id] = record.Details
 	}
 	return details, nil
 }
 
-func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
-	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
+func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *domain.Details, marketObjects map[string]*domain.Details) (toRevise bool, err error) {
+	source := localObject.GetString(bundle.RelationKeySourceObject)
 	marketObject, found := marketObjects[source]
-	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {
+	if !found || !isSystemObject(localObject) || marketObject.GetInt64(revisionKey) <= localObject.GetInt64(revisionKey) {
 		return false, nil
 	}
 	details := buildDiffDetails(marketObject, localObject)
-	if len(details) != 0 {
+	if details.Len() > 0 {
 		log.Debug("updating system object", zap.String("source", source), zap.String("space", space.Id()))
-		if err := space.DoCtx(ctx, pbtypes.GetString(localObject, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
-			if ds, ok := sb.(detailsSettable); ok {
-				return ds.SetDetails(nil, details, false)
-			}
-			return nil
+		if err := space.DoCtx(ctx, localObject.GetString(bundle.RelationKeyId), func(sb smartblock.SmartBlock) error {
+			st := sb.NewState()
+			details.Iterate(func(key domain.RelationKey, value domain.Value) bool {
+				st.SetDetail(key, value)
+				return true
+			})
+			return sb.Apply(st)
 		}); err != nil {
 			return true, fmt.Errorf("failed to update system object %s in space %s: %w", source, space.Id(), err)
 		}
@@ -114,8 +114,8 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 	return true, nil
 }
 
-func isSystemObject(details *types.Struct) bool {
-	rawKey := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
+func isSystemObject(details *domain.Details) bool {
+	rawKey := details.GetString(bundle.RelationKeyUniqueKey)
 	uk, err := domain.UnmarshalUniqueKey(rawKey)
 	if err != nil {
 		return false
@@ -129,24 +129,26 @@ func isSystemObject(details *types.Struct) bool {
 	return false
 }
 
-func buildDiffDetails(origin, current *types.Struct) (details []*model.Detail) {
-	diff := pbtypes.StructDiff(current, origin)
-	diff = pbtypes.StructFilterKeys(diff, []string{
-		bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(),
-		bundle.RelationKeyIsReadonly.String(), bundle.RelationKeyIsHidden.String(),
-		bundle.RelationKeyRevision.String(), bundle.RelationKeyRelationReadonlyValue.String(),
-		bundle.RelationKeyRelationMaxCount.String(), bundle.RelationKeyTargetObjectType.String(),
-	})
+func buildDiffDetails(origin, current *domain.Details) *domain.Details {
+	diff := domain.StructDiff(current, origin)
+	diff = diff.CopyOnlyKeys(
+		bundle.RelationKeyName, bundle.RelationKeyDescription,
+		bundle.RelationKeyIsReadonly, bundle.RelationKeyIsHidden,
+		bundle.RelationKeyRevision, bundle.RelationKeyRelationReadonlyValue,
+		bundle.RelationKeyRelationMaxCount, bundle.RelationKeyTargetObjectType,
+	)
 
-	for key, value := range diff.Fields {
-		if key == bundle.RelationKeyTargetObjectType.String() {
+	details := domain.NewDetails()
+	diff.Iterate(func(key domain.RelationKey, value domain.Value) bool {
+		if key == bundle.RelationKeyTargetObjectType {
 			// special case. We don't want to remove the types that was set by user, so only add ones that we have
-			currentList := pbtypes.GetStringList(current, bundle.RelationKeyTargetObjectType.String())
-			missedInCurrent, _ := lo.Difference(pbtypes.GetStringList(origin, bundle.RelationKeyTargetObjectType.String()), currentList)
+			currentList := current.GetStringList(bundle.RelationKeyTargetObjectType)
+			missedInCurrent, _ := lo.Difference(origin.GetStringList(bundle.RelationKeyTargetObjectType), currentList)
 			currentList = append(currentList, missedInCurrent...)
-			value = pbtypes.StringList(currentList)
+			value = domain.StringList(currentList)
 		}
-		details = append(details, &model.Detail{Key: key, Value: value})
-	}
-	return
+		details.Set(key, value)
+		return true
+	})
+	return details
 }

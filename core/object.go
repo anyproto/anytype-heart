@@ -18,6 +18,7 @@ import (
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/notifications"
@@ -31,7 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
@@ -117,8 +118,8 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	records, err := ds.Query(database.Query{
-		Filters:  req.Filters,
-		Sorts:    req.Sorts,
+		Filters:  filtersFromProto(req.Filters),
+		Sorts:    sortsFromProto(req.Sorts),
 		Offset:   int(req.Offset),
 		Limit:    int(req.Limit),
 		FullText: req.FullText,
@@ -137,7 +138,8 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	var records2 = make([]*types.Struct, 0, len(records))
 	for _, rec := range records {
-		records2 = append(records2, pbtypes.Map(rec.Details, req.Keys...))
+		protoRec := rec.Details.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...)
+		records2 = append(records2, protoRec.ToProto())
 	}
 
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
@@ -167,8 +169,8 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 		highlighter = ftsearch.HtmlHighlightFormatter
 	}
 	results, err := ds.Query(database.Query{
-		Filters:     req.Filters,
-		Sorts:       req.Sorts,
+		Filters:     filtersFromProto(req.Filters),
+		Sorts:       sortsFromProto(req.Sorts),
 		Offset:      int(req.Offset),
 		Limit:       int(req.Limit),
 		FullText:    req.FullText,
@@ -178,12 +180,11 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	var resultsModels = make([]*model.SearchResult, 0, len(results))
 	for i, rec := range results {
 		if len(req.Keys) > 0 {
-			rec.Details = pbtypes.StructFilterKeys(rec.Details, req.Keys)
+			rec.Details = rec.Details.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...)
 		}
 		resultsModels = append(resultsModels, &model.SearchResult{
-
-			ObjectId: pbtypes.GetString(rec.Details, database.RecordIDField),
-			Details:  rec.Details,
+			ObjectId: rec.Details.GetString(bundle.RelationKeyId),
+			Details:  rec.Details.ToProto(),
 			Meta:     []*model.SearchMeta{&(results[i].Meta)},
 		})
 	}
@@ -205,11 +206,11 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 	// Don't duplicate search suggestions
 	var found bool
 	for _, r := range records {
-		if r.Details == nil || r.Details.Fields == nil {
+		if r.Details == nil {
 			continue
 		}
-		if v, ok := r.Details.Fields[bundle.RelationKeyId.String()]; ok {
-			if v.GetStringValue() == id {
+		if v := r.Details.GetString(bundle.RelationKeyId); v != "" {
+			if v == id {
 				found = true
 				break
 			}
@@ -240,7 +241,7 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 	if err != nil {
 		return nil, fmt.Errorf("make date record: %w", err)
 	}
-	f, _ := database.MakeFiltersAnd(req.Filters, store) //nolint:errcheck
+	f, _ := database.MakeFiltersAnd(filtersFromProto(req.Filters), store) //nolint:errcheck
 	if f.FilterObject(rec.Details) {
 		return append([]database.Record{rec}, records...), nil
 	}
@@ -316,17 +317,15 @@ func (mw *Middleware) makeSuggestedDateRecord(ctx context.Context, spaceID strin
 	if err != nil {
 		return database.Record{}, fmt.Errorf("get date type id: %w", err)
 	}
-	d := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyId.String():        pbtypes.String(id),
-		bundle.RelationKeyName.String():      pbtypes.String(t.Format("Mon Jan  2 2006")),
-		bundle.RelationKeyLayout.String():    pbtypes.Int64(int64(model.ObjectType_date)),
-		bundle.RelationKeyType.String():      pbtypes.String(typeId),
-		bundle.RelationKeyIconEmoji.String(): pbtypes.String("📅"),
-		bundle.RelationKeySpaceId.String():   pbtypes.String(spaceID),
-	}}
-
+	det := domain.NewDetails()
+	det.SetString(bundle.RelationKeyId, id)
+	det.SetString(bundle.RelationKeyName, t.Format("Mon Jan  2 2006"))
+	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_date))
+	det.SetString(bundle.RelationKeyType, typeId)
+	det.SetString(bundle.RelationKeyIconEmoji, "📅")
+	det.SetString(bundle.RelationKeySpaceId, spaceID)
 	return database.Record{
-		Details: d,
+		Details: det,
 	}, nil
 }
 
@@ -351,8 +350,8 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 
 	resp, err := subService.Search(subscription.SubscribeRequest{
 		SubId:             req.SubId,
-		Filters:           req.Filters,
-		Sorts:             req.Sorts,
+		Filters:           filtersFromProto(req.Filters),
+		Sorts:             sortsFromProto(req.Sorts),
 		Limit:             req.Limit,
 		Offset:            req.Offset,
 		Keys:              req.Keys,
@@ -369,8 +368,8 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 
 	return &pb.RpcObjectSearchSubscribeResponse{
 		SubId:        resp.SubId,
-		Records:      resp.Records,
-		Dependencies: resp.Dependencies,
+		Records:      domain.DetailsListToProtos(resp.Records),
+		Dependencies: domain.DetailsListToProtos(resp.Dependencies),
 		Counters:     resp.Counters,
 	}
 }
@@ -395,7 +394,14 @@ func (mw *Middleware) ObjectGroupsSubscribe(cctx context.Context, req *pb.RpcObj
 
 	subService := mw.applicationService.GetApp().MustComponent(subscription.CName).(subscription.Service)
 
-	resp, err := subService.SubscribeGroups(ctx, *req)
+	resp, err := subService.SubscribeGroups(ctx, subscription.SubscribeGroupsRequest{
+		SpaceId:      req.SpaceId,
+		SubId:        req.SubId,
+		RelationKey:  req.RelationKey,
+		Filters:      filtersFromProto(req.Filters),
+		Source:       req.Source,
+		CollectionId: req.CollectionId,
+	})
 	if err != nil {
 		return errResponse(err)
 	}
@@ -471,7 +477,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 	if err != nil {
 		return unknownError(err)
 	}
-	return objectResponse(pb.RpcObjectGraphResponseError_NULL, nodes, edges, nil)
+	return objectResponse(pb.RpcObjectGraphResponseError_NULL, domain.DetailsListToProtos(nodes), edges, nil)
 }
 
 func unknownError(err error) *pb.RpcObjectGraphResponse {
@@ -864,8 +870,8 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
-			d := pbtypes.CopyStruct(current, false)
+		return bs.ModifyDetails(req.ContextId, func(current *domain.Details) (*domain.Details, error) {
+			d := current.Copy()
 			return internalflag.PutToDetails(d, req.InternalFlags), nil
 		})
 	})

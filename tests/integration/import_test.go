@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestImportFileFromRelation(t *testing.T) {
@@ -53,11 +52,11 @@ func TestImportFileFromRelation(t *testing.T) {
 
 	var fileObjectId string
 	fileSub.waitOneObjectDetailsSet(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) {
-		fileObjectId = pbtypes.GetString(msg.Details, bundle.RelationKeyId.String())
+		fileObjectId = msg.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 		assertImageAvailableInGateway(t, app, fileObjectId)
 	})
 	objectSub.waitObjectDetailsSetWithPredicate(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) bool {
-		list := pbtypes.GetStringList(msg.Details, bundle.RelationKeyIconImage.String())
+		list := msg.Details.GetStringListOrDefault(bundle.RelationKeyIconImage, nil)
 		if len(list) > 0 {
 			return fileObjectId == list[0]
 		}
@@ -106,7 +105,7 @@ func testImportFileFromMarkdown(t *testing.T, path string) {
 		return false
 	})
 	fileSub.waitOneObjectDetailsSet(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) {
-		fileObjectId := pbtypes.GetString(msg.Details, bundle.RelationKeyId.String())
+		fileObjectId := msg.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 		assertImageAvailableInGateway(t, app, fileObjectId)
 	})
 }
@@ -143,7 +142,7 @@ func testImportObjectWithFileBlock(t *testing.T, path string) {
 		return false
 	})
 	fileSub.waitOneObjectDetailsSet(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) {
-		fileObjectId := pbtypes.GetString(msg.Details, bundle.RelationKeyId.String())
+		fileObjectId := msg.Details.GetStringOrDefault(bundle.RelationKeyId, "")
 		assertImageAvailableInGateway(t, app, fileObjectId)
 	})
 }

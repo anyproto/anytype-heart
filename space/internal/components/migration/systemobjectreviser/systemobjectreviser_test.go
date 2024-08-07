@@ -17,7 +17,7 @@ import (
 func TestReviseSystemObject(t *testing.T) {
 	ctx := context.Background()
 	log := logger.NewNamed("tesr")
-	marketObjects := map[string]*types.Struct{
+	marketObjects := map[string]*domain.Details{
 		"_otnote":        {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(3)}},
 		"_otpage":        {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(2)}},
 		"_otcontact":     {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(1)}},

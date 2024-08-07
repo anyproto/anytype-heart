@@ -7,33 +7,42 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type StoreFixture struct {
 	*dsObjectStore
 }
 
-// nolint: unused
 const spaceName = "space1"
+
+type walletStub struct {
+	wallet.Wallet
+	tempDir string
+}
+
+func newWalletStub(t testing.TB) wallet.Wallet {
+	return &walletStub{
+		tempDir: t.TempDir(),
+	}
+}
+
+func (w *walletStub) RepoPath() string {
+	return w.tempDir
+}
 
 func NewStoreFixture(t testing.TB) *StoreFixture {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	walletService := mock_wallet.NewMockWallet(t)
-	walletService.EXPECT().Name().Return(wallet.CName).Maybe()
-	walletService.EXPECT().RepoPath().Return(t.TempDir())
+	walletService := newWalletStub(t)
 
 	fullText := ftsearch.TantivyNew()
 	testApp := &app.App{}
@@ -78,7 +87,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 type detailsFromId struct {
 }
 
-func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*domain.Details, error) {
 	return nil, fmt.Errorf("not found")
 }
 
@@ -86,44 +95,44 @@ func (fx *StoreFixture) Init(a *app.App) (err error) {
 	return nil
 }
 
-type TestObject map[domain.RelationKey]*types.Value
+type TestObject map[domain.RelationKey]domain.Value
 
 func generateObjectWithRandomID() TestObject {
 	id := fmt.Sprintf("%d", rand.Int())
 	return TestObject{
-		bundle.RelationKeyId:   pbtypes.String(id),
-		bundle.RelationKeyName: pbtypes.String("name" + id),
+		bundle.RelationKeyId:   domain.String(id),
+		bundle.RelationKeyName: domain.String("name" + id),
 	}
 }
 
 func makeObjectWithName(id string, name string) TestObject {
 	return TestObject{
-		bundle.RelationKeyId:      pbtypes.String(id),
-		bundle.RelationKeyName:    pbtypes.String(name),
-		bundle.RelationKeySpaceId: pbtypes.String(spaceName),
+		bundle.RelationKeyId:      domain.String(id),
+		bundle.RelationKeyName:    domain.String(name),
+		bundle.RelationKeySpaceId: domain.String(spaceName),
 	}
 }
 
 func makeObjectWithNameAndDescription(id string, name string, description string) TestObject {
 	return TestObject{
-		bundle.RelationKeyId:          pbtypes.String(id),
-		bundle.RelationKeyName:        pbtypes.String(name),
-		bundle.RelationKeyDescription: pbtypes.String(description),
-		bundle.RelationKeySpaceId:     pbtypes.String(spaceName),
+		bundle.RelationKeyId:          domain.String(id),
+		bundle.RelationKeyName:        domain.String(name),
+		bundle.RelationKeyDescription: domain.String(description),
+		bundle.RelationKeySpaceId:     domain.String(spaceName),
 	}
 }
 
-func makeDetails(fields TestObject) *types.Struct {
-	f := map[string]*types.Value{}
+func makeDetails(fields TestObject) *domain.Details {
+	d := domain.NewDetails()
 	for k, v := range fields {
-		f[string(k)] = v
+		d.Set(k, v)
 	}
-	return &types.Struct{Fields: f}
+	return d
 }
 
 func (fx *StoreFixture) AddObjects(t testing.TB, objects []TestObject) {
 	for _, obj := range objects {
-		id := obj[bundle.RelationKeyId].GetStringValue()
+		id := obj[bundle.RelationKeyId].String()
 		require.NotEmpty(t, id)
 		err := fx.UpdateObjectDetails(context.Background(), id, makeDetails(obj))
 		require.NoError(t, err)

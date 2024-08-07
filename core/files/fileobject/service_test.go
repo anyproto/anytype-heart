@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -138,7 +137,7 @@ func newFixture(t *testing.T) *fixture {
 type objectCreatorStub struct {
 	objectId      string
 	creationState *state.State
-	details       *types.Struct
+	details       *domain.Details
 }
 
 func (c *objectCreatorStub) Init(_ *app.App) error {
@@ -149,7 +148,7 @@ func (c *objectCreatorStub) Name() string {
 	return "objectCreatorStub"
 }
 
-func (c *objectCreatorStub) CreateSmartBlockFromStateInSpaceWithOptions(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...objectcreator.CreateOption) (id string, newDetails *types.Struct, err error) {
+func (c *objectCreatorStub) CreateSmartBlockFromStateInSpaceWithOptions(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...objectcreator.CreateOption) (id string, newDetails *domain.Details, err error) {
 	c.creationState = createState
 	return c.objectId, c.details, nil
 }

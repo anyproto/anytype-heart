@@ -8,12 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestSetLastUsedDateForInitialType(t *testing.T) {
 	isLastUsedDateGreater := func(details1, details2 *types.Struct) bool {
-		return pbtypes.GetInt64(details1, bundle.RelationKeyLastUsedDate.String()) > pbtypes.GetInt64(details2, bundle.RelationKeyLastUsedDate.String())
+		return details1.GetInt64OrDefault(bundle.RelationKeyLastUsedDate, 0) > details2.GetInt64OrDefault(bundle.RelationKeyLastUsedDate, 0)
 	}
 
 	t.Run("object types are sorted by lastUsedDate in correct order", func(t *testing.T) {
@@ -30,7 +29,7 @@ func TestSetLastUsedDateForInitialType(t *testing.T) {
 		rand.Shuffle(len(ots), func(i, j int) {
 			ots[i], ots[j] = ots[j], ots[i]
 		})
-		detailMap := map[string]*types.Struct{}
+		detailMap := map[string]*domain.Details{}
 
 		// when
 		for _, id := range ots {

@@ -208,7 +208,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
 		assert.Equal(t, objectsInCollection[0], "oldObjectInWidget")
-		assert.False(t, pbtypes.GetBool(rootCollectionState.Details(), bundle.RelationKeyIsFavorite.String()))
+		assert.False(t, rootCollectionState.Details().GetBool(bundle.RelationKeyIsFavorite))
 
 		rootCollectionState = state.NewDocFromSnapshot("", collection[1].Snapshot).(*state.State)
 		objectsInCollection = rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
@@ -253,7 +253,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, collection, 1)
-		assert.Empty(t, pbtypes.GetString(collection[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String()))
+		assert.Empty(t, collection[0].Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage))
 	})
 	t.Run("workspace without icon - root collection without icon", func(t *testing.T) {
 		// given
@@ -276,7 +276,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, collection, 1)
-		assert.Empty(t, pbtypes.GetString(collection[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String()))
+		assert.Empty(t, collection[0].Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage))
 	})
 	t.Run("workspace with icon - root collection with icon", func(t *testing.T) {
 		// given
@@ -301,7 +301,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, collection, 1)
-		assert.Equal(t, "icon", pbtypes.GetString(collection[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String()))
+		assert.Equal(t, "icon", collection[0].Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage))
 	})
 	t.Run("if import in new space - not create anything", func(t *testing.T) {
 		// given

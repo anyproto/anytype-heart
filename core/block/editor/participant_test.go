@@ -34,7 +34,7 @@ func TestParticipant_ModifyProfileDetails(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String("profile")
+	details.Set(bundle.RelationKeyIdentityProfileLink, pbtypes.String("profile"))
 	delete(details.Fields, bundle.RelationKeyId.String())
 	fields := details.GetFields()
 	participantFields := fx.CombinedDetails().GetFields()

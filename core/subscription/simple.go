@@ -1,12 +1,10 @@
 package subscription
 
 import (
-	"github.com/gogo/protobuf/types"
-
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-func (s *service) newSimpleSub(id string, keys []string, isDep bool) *simpleSub {
+func (s *service) newSimpleSub(id string, keys []domain.RelationKey, isDep bool) *simpleSub {
 	sub := &simpleSub{
 		id:    id,
 		keys:  keys,
@@ -21,10 +19,10 @@ func (s *service) newSimpleSub(id string, keys []string, isDep bool) *simpleSub 
 type simpleSub struct {
 	id       string
 	set      map[string]struct{}
-	keys     []string
+	keys     []domain.RelationKey
 	forceIds []string
 
-	depKeys          []string
+	depKeys          []domain.RelationKey
 	depSub           *simpleSub
 	activeEntriesBuf []*entry
 
@@ -122,9 +120,9 @@ func (s *simpleSub) getActiveEntries() (res []*entry) {
 	return s.activeEntriesBuf
 }
 
-func (s *simpleSub) getActiveRecords() (res []*types.Struct) {
+func (s *simpleSub) getActiveRecords() (res []*domain.Details) {
 	for id := range s.set {
-		res = append(res, pbtypes.StructFilterKeys(s.cache.Get(id).data, s.keys))
+		res = append(res, s.cache.Get(id).data.CopyOnlyKeys(s.keys...))
 	}
 	return
 }

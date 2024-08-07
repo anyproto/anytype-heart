@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestGetSpaceName(t *testing.T) {
@@ -33,10 +32,10 @@ func TestGetSpaceName(t *testing.T) {
 		s := NewStoreFixture(t)
 
 		err := s.UpdateObjectDetails(context.Background(), spaceViewId, &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():            pbtypes.String(spaceViewId),
-			bundle.RelationKeyLayout.String():        pbtypes.Int64(int64(model.ObjectType_spaceView)),
-			bundle.RelationKeyTargetSpaceId.String(): pbtypes.String(spaceId),
-			bundle.RelationKeyName.String():          pbtypes.String(spaceName),
+			bundle.RelationKeyId.String():            domain.String(spaceViewId),
+			bundle.RelationKeyLayout.String():        domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyTargetSpaceId.String(): domain.String(spaceId),
+			bundle.RelationKeyName.String():          domain.String(spaceName),
 		}})
 		assert.Nil(t, err)
 
@@ -52,9 +51,9 @@ func TestGetSpaceName(t *testing.T) {
 		s := NewStoreFixture(t)
 
 		err := s.UpdateObjectDetails(context.Background(), spaceViewId, &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():            pbtypes.String(spaceViewId),
-			bundle.RelationKeyLayout.String():        pbtypes.Int64(int64(model.ObjectType_spaceView)),
-			bundle.RelationKeyTargetSpaceId.String(): pbtypes.String(spaceId),
+			bundle.RelationKeyId.String():            domain.String(spaceViewId),
+			bundle.RelationKeyLayout.String():        domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyTargetSpaceId.String(): domain.String(spaceId),
 		}})
 		assert.Nil(t, err)
 

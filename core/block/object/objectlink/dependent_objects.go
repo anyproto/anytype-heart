@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("objectlink")
@@ -30,17 +28,16 @@ type linkSource interface {
 	HasSmartIds() bool
 }
 
-func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, details, relations, objTypes, creatorModifierWorkspace bool) (ids []string) {
-	if blocks {
-		err := s.Iterate(func(b simple.Block) (isContinue bool) {
-			if ls, ok := b.(linkSource); ok {
-				ids = ls.FillSmartIds(ids)
-			}
-			return true
-		})
-		if err != nil {
-			log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
+func DependentObjectIDs(s *state.State, converter KeyToIDConverter, relations, objTypes, creatorModifierWorkspace bool) (ids []string) {
+	// Blocks
+	err := s.Iterate(func(b simple.Block) (isContinue bool) {
+		if ls, ok := b.(linkSource); ok {
+			ids = ls.FillSmartIds(ids)
 		}
+		return true
+	})
+	if err != nil {
+		log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
 	}
 
 	if objTypes {
@@ -58,10 +55,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 		}
 	}
 
-	var det *types.Struct
-	if details {
-		det = s.CombinedDetails()
-	}
+	det := s.CombinedDetails()
 
 	for _, rel := range s.GetRelationLinks() {
 		// do not index local dates such as lastOpened/lastModified
@@ -74,14 +68,10 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 			ids = append(ids, id)
 		}
 
-		if !details {
-			continue
-		}
-
 		// handle corner cases first for specific formats
 		if rel.Format == model.RelationFormat_date &&
-			!lo.Contains(bundle.LocalAndDerivedRelationKeys, rel.Key) {
-			relInt := pbtypes.GetInt64(det, rel.Key)
+			!lo.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(rel.Key)) {
+			relInt := det.GetInt64(domain.RelationKey(rel.Key))
 			if relInt > 0 {
 				t := time.Unix(relInt, 0)
 				t = t.In(time.Local)
@@ -93,7 +83,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 		if rel.Key == bundle.RelationKeyCreator.String() ||
 			rel.Key == bundle.RelationKeyLastModifiedBy.String() {
 			if creatorModifierWorkspace {
-				v := pbtypes.GetString(det, rel.Key)
+				v := det.GetString(domain.RelationKey(rel.Key))
 				ids = append(ids, v)
 			}
 			continue
@@ -107,10 +97,10 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 		}
 
 		if rel.Key == bundle.RelationKeyCoverId.String() {
-			v := pbtypes.GetString(det, rel.Key)
+			v := det.GetString(domain.RelationKey(rel.Key))
 			_, err := cid.Decode(v)
 			if err != nil {
-				// this is an exception cause coverId can contains not a file hash but color
+				// this is an exception cause coverId can contain not a file hash but color
 				continue
 			}
 			ids = append(ids, v)
@@ -124,7 +114,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 		}
 
 		// add all object relation values as dependents
-		for _, targetID := range pbtypes.GetStringList(det, rel.Key) {
+		for _, targetID := range det.GetStringList(domain.RelationKey(rel.Key)) {
 			if targetID == "" {
 				continue
 			}

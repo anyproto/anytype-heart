@@ -136,8 +136,8 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 				tmpl := NewTemplateTest(templateName, "")
 				s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
 				details := &types.Struct{Fields: map[string]*types.Value{}}
-				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(addedDetail)
-				details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(addedDetail)
+				details.Set(bundle.RelationKeyName, pbtypes.String(addedDetail))
+				details.Set(bundle.RelationKeyDescription, pbtypes.String(addedDetail))
 
 				// when
 				st, err := s.CreateTemplateStateWithDetails(templateName, details)
@@ -168,7 +168,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 			// then
 			assert.NoError(t, err)
 			assert.Equal(t, BlankTemplateId, st.RootId())
-			assert.Contains(t, pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String()), bundle.RelationKeyTag.String())
+			assert.Contains(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), bundle.RelationKeyTag.String())
 			assert.True(t, pbtypes.Exists(st.Details(), bundle.RelationKeyTag.String()))
 		})
 	}
@@ -211,14 +211,14 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 			// given
 			s := service{converter: converter.NewLayoutConverter()}
 			details := &types.Struct{Fields: map[string]*types.Value{}}
-			details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(layout))
+			details.Set(bundle.RelationKeyLayout, pbtypes.Int64(int64(layout)))
 
 			// when
 			st, err := s.CreateTemplateStateWithDetails(BlankTemplateId, details)
 
 			// then
 			assert.NoError(t, err)
-			assert.Equal(t, layout, model.ObjectTypeLayout(pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())))
+			assert.Equal(t, layout, model.ObjectTypeLayout(st.Details().GetInt64(bundle.RelationKeyLayout)))
 			assertLayoutBlocks(t, st, layout)
 		})
 	}
@@ -241,8 +241,8 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Zero(t, st.OriginalCreatedTimestamp())
-		assert.Zero(t, pbtypes.GetInt64(st.Details(), bundle.RelationKeyAddedDate.String()))
-		assert.Zero(t, pbtypes.GetInt64(st.Details(), bundle.RelationKeyCreatedDate.String()))
+		assert.Zero(t, st.Details().GetInt64(bundle.RelationKeyAddedDate))
+		assert.Zero(t, st.Details().GetInt64(bundle.RelationKeyCreatedDate))
 	})
 }
 
@@ -392,7 +392,7 @@ func TestBuildTemplateStateFromObject(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotContains(t, pbtypes.GetIntList(st.Details(), bundle.RelationKeyInternalFlags.String()), model.InternalFlag_editorDeleteEmpty)
 		assert.Equal(t, []domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyNote}, st.ObjectTypeKeys())
-		assert.Equal(t, bundle.TypeKeyNote.String(), pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
+		assert.Equal(t, bundle.TypeKeyNote.String(), st.Details().GetString(bundle.RelationKeyTargetObjectType))
 		assert.Nil(t, st.LocalDetails())
 	})
 }

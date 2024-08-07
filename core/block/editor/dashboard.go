@@ -1,8 +1,6 @@
 package editor
 
 import (
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -15,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -76,16 +73,16 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 	}
 
 	records, err := p.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyIsFavorite.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
+				Value:       domain.Bool(true),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(p.SpaceID()),
+				Value:       domain.String(p.SpaceID()),
 			},
 		},
 	})
@@ -94,19 +91,17 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 	}
 	var storeFavoritedIds = make([]string, 0, len(records))
 	for _, rec := range records {
-		storeFavoritedIds = append(storeFavoritedIds, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
+		storeFavoritedIds = append(storeFavoritedIds, rec.Details.GetString(bundle.RelationKeyId))
 	}
 
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeFavoritedIds, favoritedIds)
 	for _, removedId := range removedIds {
 		go func(id string) {
-			if err := p.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
-				if current == nil || current.Fields == nil {
-					current = &types.Struct{
-						Fields: map[string]*types.Value{},
-					}
+			if err := p.ModifyLocalDetails(id, func(current *domain.Details) (*domain.Details, error) {
+				if current == nil {
+					current = domain.NewDetails()
 				}
-				current.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
+				current.SetBool(bundle.RelationKeyIsFavorite, false)
 				return current, nil
 			}); err != nil {
 				log.Errorf("favorite: can't set detail to object: %v", err)
@@ -115,13 +110,11 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 	}
 	for _, addedId := range addedIds {
 		go func(id string) {
-			if err := p.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
-				if current == nil || current.Fields == nil {
-					current = &types.Struct{
-						Fields: map[string]*types.Value{},
-					}
+			if err := p.ModifyLocalDetails(id, func(current *domain.Details) (*domain.Details, error) {
+				if current == nil {
+					current = domain.NewDetails()
 				}
-				current.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
+				current.SetBool(bundle.RelationKeyIsFavorite, true)
 				return current, nil
 			}); err != nil {
 				log.Errorf("favorite: can't set detail to object: %v", err)
