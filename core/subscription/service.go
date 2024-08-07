@@ -689,7 +689,7 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 func (s *service) depIdsFromFilter(filters []database.FilterRequest) (depIds []string) {
 	for _, f := range filters {
 		if s.ds.isRelationObject(domain.RelationKey(f.RelationKey)) {
-			for _, id := range f.Value.StringListOrDefault(nil) {
+			for _, id := range f.Value.StringList() {
 				if slice.FindPos(depIds, id) == -1 && id != "" {
 					depIds = append(depIds, id)
 				}

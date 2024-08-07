@@ -1,8 +1,6 @@
 package domain
 
 import (
-	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -39,7 +37,7 @@ func (d *GenericMap[K]) SetInt64(key K, value int64) {
 }
 
 func (d *GenericMap[K]) SetFloat(key K, value float64) {
-	d.data[key] = Float(value)
+	d.data[key] = Float64(value)
 }
 
 func (d *GenericMap[K]) SetStringList(key K, value []string) {
@@ -47,7 +45,7 @@ func (d *GenericMap[K]) SetStringList(key K, value []string) {
 }
 
 func (d *GenericMap[K]) SetFloatList(key K, value []float64) {
-	d.data[key] = FloatList(value)
+	d.data[key] = Float64List(value)
 }
 
 func (d *GenericMap[K]) SetProtoValue(key K, value *types.Value) {
@@ -102,52 +100,52 @@ func (d *GenericMap[K]) Has(key K) bool {
 }
 
 func (d *GenericMap[K]) TryBool(key K) (bool, bool) {
-	return d.Get(key).Bool()
+	return d.Get(key).TryBool()
 }
 
 func (d *GenericMap[K]) GetBool(key K) bool {
-	return d.Get(key).BoolOrDefault(false)
+	return d.Get(key).Bool()
 }
 
 func (d *GenericMap[K]) TryString(key K) (string, bool) {
-	return d.Get(key).String()
+	return d.Get(key).TryString()
 }
 
 func (d *GenericMap[K]) GetString(key K) string {
-	return d.Get(key).StringOrDefault("")
+	return d.Get(key).String()
 }
 
 func (d *GenericMap[K]) TryInt64(key K) (int64, bool) {
-	return d.Get(key).Int64()
+	return d.Get(key).TryInt64()
 }
 
 func (d *GenericMap[K]) GetInt64(key K) int64 {
-	return d.Get(key).Int64OrDefault(0)
+	return d.Get(key).Int64()
 }
 
 func (d *GenericMap[K]) TryFloat(key K) (float64, bool) {
-	return d.Get(key).Float()
+	return d.Get(key).TryFloat64()
 }
 
 func (d *GenericMap[K]) GetFloat(key K) float64 {
-	return d.Get(key).FloatOrDefault(0)
+	return d.Get(key).Float64()
 }
 
 func (d *GenericMap[K]) TryStringList(key K) ([]string, bool) {
-	return d.Get(key).StringList()
+	return d.Get(key).TryStringList()
 }
 
 // TODO StringList in pbtypes return []string{singleValue} for string values
 func (d *GenericMap[K]) GetStringList(key K) []string {
-	return d.Get(key).StringListOrDefault(nil)
+	return d.Get(key).StringList()
 }
 
 func (d *GenericMap[K]) TryFloatList(key K) ([]float64, bool) {
-	return d.Get(key).FloatList()
+	return d.Get(key).TryFloat64List()
 }
 
 func (d *GenericMap[K]) GetFloatList(key K) []float64 {
-	return d.Get(key).FloatListOrDefault(nil)
+	return d.Get(key).Float64List()
 }
 
 func (d *GenericMap[K]) Copy() *GenericMap[K] {
@@ -256,7 +254,7 @@ func Int64List[T constraints.Integer](v ...T) Value {
 	return Value{ok: true, value: conv}
 }
 
-func Float(v float64) Value {
+func Float64(v float64) Value {
 	return Value{ok: true, value: v}
 }
 
@@ -272,11 +270,9 @@ func StringList(v []string) Value {
 	return Value{ok: true, value: v}
 }
 
-func FloatList(v []float64) Value {
+func Float64List(v []float64) Value {
 	return Value{ok: true, value: v}
 }
-
-var ErrInvalidValue = fmt.Errorf("invalid value")
 
 func (v Value) Raw() any {
 	return v.value
@@ -294,39 +290,16 @@ func ValueFromProto(value *types.Value) Value {
 	case *types.Value_StringValue:
 		return String(value.GetStringValue())
 	case *types.Value_NumberValue:
-		return Float(value.GetNumberValue())
+		return Float64(value.GetNumberValue())
 	case *types.Value_StructValue:
 		// TODO Not implemented
 	case *types.Value_ListValue:
 		if list := pbtypes.ListValueToFloats(value.GetListValue()); len(list) > 0 {
-			return FloatList(list)
+			return Float64List(list)
 		}
 		return StringList(pbtypes.ListValueToStrings(value.GetListValue()))
 	}
 	return Null()
-}
-
-// TODO Remove, value should be always valid
-func (v Value) Validate() error {
-	return nil
-
-	if !v.ok {
-		return errors.Join(ErrInvalidValue, fmt.Errorf("value is none"))
-	}
-
-	// TODO USE type Null struct {}
-	if v.value == nil {
-		return nil
-	}
-	switch v.value.(type) {
-	// TODO TEMPORARILY ALLOW HERE
-	case int64:
-		return nil
-	case bool, string, float64, []string, []float64:
-		return nil
-	default:
-		return errors.Join(ErrInvalidValue, fmt.Errorf("value is of invalid type %T", v.value))
-	}
 }
 
 func (v Value) Ok() bool {
@@ -357,7 +330,7 @@ func (v Value) Null() bool {
 	return ok
 }
 
-func (v Value) Bool() (bool, bool) {
+func (v Value) TryBool() (bool, bool) {
 	if !v.ok {
 		return false, false
 	}
@@ -368,15 +341,15 @@ func (v Value) Bool() (bool, bool) {
 	return b, true
 }
 
-func (v Value) BoolOrDefault(def bool) bool {
-	res, ok := v.Bool()
+func (v Value) Bool() bool {
+	res, ok := v.TryBool()
 	if !ok {
-		return def
+		return false
 	}
 	return res
 }
 
-func (v Value) String() (string, bool) {
+func (v Value) TryString() (string, bool) {
 	if !v.ok {
 		return "", false
 	}
@@ -384,16 +357,15 @@ func (v Value) String() (string, bool) {
 	return s, ok
 }
 
-func (v Value) StringOrDefault(def string) string {
-	res, ok := v.String()
+func (v Value) String() string {
+	res, ok := v.TryString()
 	if !ok {
-		return def
+		return ""
 	}
 	return res
 }
 
-// TODO Store only floats?
-func (v Value) Int64() (int64, bool) {
+func (v Value) TryInt64() (int64, bool) {
 	if !v.ok {
 		return 0, false
 	}
@@ -405,21 +377,19 @@ func (v Value) Int64() (int64, bool) {
 	}
 }
 
-func (v Value) Int64OrDefault(def int64) int64 {
-	res, ok := v.Int64()
+func (v Value) Int64() int64 {
+	res, ok := v.TryInt64()
 	if !ok {
-		return def
+		return 0
 	}
 	return res
 }
 
-func (v Value) Float() (float64, bool) {
+func (v Value) TryFloat64() (float64, bool) {
 	if !v.ok {
 		return 0, false
 	}
 	switch v := v.value.(type) {
-	case int:
-		return float64(v), true
 	case float64:
 		return v, true
 	default:
@@ -427,15 +397,15 @@ func (v Value) Float() (float64, bool) {
 	}
 }
 
-func (v Value) FloatOrDefault(def float64) float64 {
-	res, ok := v.Float()
+func (v Value) Float64() float64 {
+	res, ok := v.TryFloat64()
 	if !ok {
-		return def
+		return 0
 	}
 	return res
 }
 
-func (v Value) StringList() ([]string, bool) {
+func (v Value) TryStringList() ([]string, bool) {
 	if !v.ok {
 		return nil, false
 	}
@@ -443,32 +413,38 @@ func (v Value) StringList() ([]string, bool) {
 	return l, ok
 }
 
-func (v Value) StringListOrDefault(def []string) []string {
-	res, ok := v.StringList()
+func (v Value) StringList() []string {
+	res, ok := v.TryStringList()
 	if !ok {
-		return def
+		return nil
 	}
 	return res
 }
 
-// TODO Float list instead and []int only as helper
-func (v Value) IntList() ([]int, bool) {
+func (v Value) TryInt64List() ([]int64, bool) {
 	if !v.ok {
 		return nil, false
 	}
-	l, ok := v.value.([]int)
-	return l, ok
+	l, ok := v.value.([]float64)
+	if !ok {
+		return nil, false
+	}
+	res := make([]int64, len(l))
+	for i, v := range l {
+		res[i] = int64(v)
+	}
+	return res, true
 }
 
-func (v Value) IntListOrDefault(def []int) []int {
-	res, ok := v.IntList()
+func (v Value) Int64List() []int64 {
+	res, ok := v.TryInt64List()
 	if !ok {
-		return def
+		return nil
 	}
 	return res
 }
 
-func (v Value) FloatList() ([]float64, bool) {
+func (v Value) TryFloat64List() ([]float64, bool) {
 	if !v.ok {
 		return nil, false
 	}
@@ -476,10 +452,10 @@ func (v Value) FloatList() ([]float64, bool) {
 	return l, ok
 }
 
-func (v Value) FloatListOrDefault(def []float64) []float64 {
-	res, ok := v.FloatList()
+func (v Value) Float64List() []float64 {
+	res, ok := v.TryFloat64List()
 	if !ok {
-		return def
+		return nil
 	}
 	return res
 }
@@ -555,8 +531,8 @@ func (v Value) Compare(other Value) int {
 	}
 
 	{
-		v1, ok := v.Bool()
-		v2, _ := other.Bool()
+		v1, ok := v.TryBool()
+		v2, _ := other.TryBool()
 		if ok {
 			if !v1 && v2 {
 				return -1
@@ -569,16 +545,16 @@ func (v Value) Compare(other Value) int {
 	}
 
 	{
-		v1, ok := v.String()
-		v2, _ := other.String()
+		v1, ok := v.TryString()
+		v2, _ := other.TryString()
 		if ok {
 			return strings.Compare(v1, v2)
 		}
 	}
 
 	{
-		v1, ok := v.Float()
-		v2, _ := other.Float()
+		v1, ok := v.TryFloat64()
+		v2, _ := other.TryFloat64()
 		if ok {
 			if v1 < v2 {
 				return -1
@@ -591,16 +567,16 @@ func (v Value) Compare(other Value) int {
 	}
 
 	{
-		v1, ok := v.StringList()
-		v2, _ := other.StringList()
+		v1, ok := v.TryStringList()
+		v2, _ := other.TryStringList()
 		if ok {
 			return slices.Compare(v1, v2)
 		}
 	}
 
 	{
-		v1, ok := v.IntList()
-		v2, _ := other.IntList()
+		v1, ok := v.TryFloat64List()
+		v2, _ := other.TryFloat64List()
 		if ok {
 			return slices.Compare(v1, v2)
 		}
@@ -617,9 +593,13 @@ func (v Value) Equal(other Value) bool {
 		return true
 	}
 
+	if v.Null() && other.Null() {
+		return true
+	}
+
 	{
-		v1, ok1 := v.Bool()
-		v2, ok2 := other.Bool()
+		v1, ok1 := v.TryBool()
+		v2, ok2 := other.TryBool()
 		if ok1 != ok2 {
 			return false
 		}
@@ -629,8 +609,8 @@ func (v Value) Equal(other Value) bool {
 	}
 
 	{
-		v1, ok1 := v.String()
-		v2, ok2 := other.String()
+		v1, ok1 := v.TryString()
+		v2, ok2 := other.TryString()
 		if ok1 != ok2 {
 			return false
 		}
@@ -640,8 +620,8 @@ func (v Value) Equal(other Value) bool {
 	}
 
 	{
-		v1, ok1 := v.Float()
-		v2, ok2 := other.Float()
+		v1, ok1 := v.TryFloat64()
+		v2, ok2 := other.TryFloat64()
 		if ok1 != ok2 {
 			return false
 		}
@@ -651,8 +631,8 @@ func (v Value) Equal(other Value) bool {
 	}
 
 	{
-		v1, ok1 := v.StringList()
-		v2, ok2 := other.StringList()
+		v1, ok1 := v.TryStringList()
+		v2, ok2 := other.TryStringList()
 		if ok1 != ok2 {
 			return false
 		}
@@ -665,8 +645,8 @@ func (v Value) Equal(other Value) bool {
 	}
 
 	{
-		v1, ok1 := v.IntList()
-		v2, ok2 := other.IntList()
+		v1, ok1 := v.TryFloat64List()
+		v2, ok2 := other.TryFloat64List()
 		if ok1 != ok2 {
 			return false
 		}

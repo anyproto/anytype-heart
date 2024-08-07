@@ -1310,7 +1310,7 @@ func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
 	for i, r := range sb.Restrictions().Object {
 		rawRestrictions[i] = float64(r)
 	}
-	s.SetLocalDetail(bundle.RelationKeyRestrictions, domain.FloatList(rawRestrictions))
+	s.SetLocalDetail(bundle.RelationKeyRestrictions, domain.Float64List(rawRestrictions))
 
 	// todo: verify this logic with clients
 	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil &&

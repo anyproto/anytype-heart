@@ -424,13 +424,13 @@ func getSpaceIdsFromFilter(fltr database.Filter) []string {
 	switch f := fltr.(type) {
 	case database.FilterEq:
 		if f.Key == bundle.RelationKeySpaceId.String() {
-			return []string{f.Value.StringOrDefault("")}
+			return []string{f.Value.String()}
 		}
 	case database.FilterIn:
 		if f.Key == bundle.RelationKeySpaceId.String() {
 			spaceIds := make([]string, 0, len(f.Value))
 			for _, v := range f.Value {
-				spaceIds = append(spaceIds, v.StringOrDefault(""))
+				spaceIds = append(spaceIds, v.String())
 			}
 			return spaceIds
 		}

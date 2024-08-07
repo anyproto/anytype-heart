@@ -194,8 +194,8 @@ func (ko *KeyOrder) tryAdjustEmptyPositions(av domain.Value, bv domain.Value, co
 
 func (ko *KeyOrder) tryCompareStrings(av domain.Value, bv domain.Value) int {
 	comp := 0
-	aStringVal, aString := av.String()
-	bStringVal, bString := bv.String()
+	aStringVal, aString := av.TryString()
+	bStringVal, bString := bv.TryString()
 	if ko.isSpecialSortOfEmptyValuesNeed(av, bv, aString, bString) {
 		if aStringVal == "" && bStringVal != "" {
 			comp = 1
@@ -236,10 +236,10 @@ func (ko *KeyOrder) tryExtractTag(av domain.Value, bv domain.Value) (domain.Valu
 
 func (ko *KeyOrder) tryExtractDateTime(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
 	if ko.RelationFormat == model.RelationFormat_date && !ko.IncludeTime {
-		if v, ok := av.Float(); ok {
+		if v, ok := av.TryFloat64(); ok {
 			av = domain.Int64(time_util.CutToDay(time.Unix(int64(v), 0)).Unix())
 		}
-		if v, ok := bv.Float(); ok {
+		if v, ok := bv.TryFloat64(); ok {
 			bv = domain.Int64(time_util.CutToDay(time.Unix(int64(v), 0)).Unix())
 		}
 	}
@@ -277,7 +277,7 @@ func (ko *KeyOrder) GetOptionValue(value domain.Value) domain.Value {
 	}
 
 	res := ""
-	for _, optID := range value.StringListOrDefault(nil) {
+	for _, optID := range value.StringList() {
 		res += ko.Options[optID]
 	}
 

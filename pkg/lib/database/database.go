@@ -103,7 +103,7 @@ func injectDefaultFilters(filters []FilterRequest) []FilterRequest {
 	}
 	if !hasTypeFilter {
 		// temporarily exclude Space objects from search if we don't have explicit type filter
-		filters = append(filters, FilterRequest{RelationKey: bundle.RelationKeyLayout.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: domain.Float(float64(model.ObjectType_space))})
+		filters = append(filters, FilterRequest{RelationKey: bundle.RelationKeyLayout.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: domain.Float64(float64(model.ObjectType_space))})
 	}
 	return filters
 }
@@ -162,7 +162,7 @@ type queryBuilder struct {
 func getSpaceIDFromFilters(filters []FilterRequest) string {
 	for _, f := range filters {
 		if f.RelationKey == bundle.RelationKeySpaceId.String() {
-			return f.Value.StringOrDefault("")
+			return f.Value.String()
 		}
 	}
 	return ""

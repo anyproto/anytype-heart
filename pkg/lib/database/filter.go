@@ -56,7 +56,7 @@ func MakeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Fil
 
 	// replaces "value == false" to "value != true" for expected work with checkboxes
 	if rawFilter.Condition == model.BlockContentDataviewFilter_Equal {
-		v, ok := rawFilter.Value.Bool()
+		v, ok := rawFilter.Value.TryBool()
 		if ok && !v {
 			rawFilter = FilterRequest{
 				RelationKey:      rawFilter.RelationKey,
@@ -69,7 +69,7 @@ func MakeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Fil
 	}
 	// replaces "value != false" to "value == true" for expected work with checkboxes
 	if rawFilter.Condition == model.BlockContentDataviewFilter_NotEqual {
-		v, ok := rawFilter.Value.Bool()
+		v, ok := rawFilter.Value.TryBool()
 		if ok && !v {
 			rawFilter = FilterRequest{
 				RelationKey:      rawFilter.RelationKey,
@@ -95,12 +95,12 @@ func MakeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Fil
 	case model.BlockContentDataviewFilter_Like:
 		return FilterLike{
 			Key:   rawFilter.RelationKey,
-			Value: rawFilter.Value.StringOrDefault(""),
+			Value: rawFilter.Value.String(),
 		}, nil
 	case model.BlockContentDataviewFilter_NotLike:
 		return FilterNot{FilterLike{
 			Key:   rawFilter.RelationKey,
-			Value: rawFilter.Value.StringOrDefault(""),
+			Value: rawFilter.Value.String(),
 		}}, nil
 	case model.BlockContentDataviewFilter_In:
 		list, err := wrapValueToList(rawFilter.Value)
@@ -185,43 +185,43 @@ func MakeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Fil
 }
 
 func wrapValueToStringList(val domain.Value) ([]string, error) {
-	if v, ok := val.String(); ok {
+	if v, ok := val.TryString(); ok {
 		return []string{v}, nil
 	}
-	if v, ok := val.StringList(); ok {
+	if v, ok := val.TryStringList(); ok {
 		return v, nil
 	}
 	return nil, fmt.Errorf("unsupported type: %v", val.Type())
 }
 
 func wrapValueToFloatList(val domain.Value) ([]float64, error) {
-	if v, ok := val.Float(); ok {
+	if v, ok := val.TryFloat64(); ok {
 		return []float64{v}, nil
 	}
-	if v, ok := val.FloatList(); ok {
+	if v, ok := val.TryFloat64List(); ok {
 		return v, nil
 	}
 	return nil, fmt.Errorf("unsupported type: %v", val.Type())
 }
 
 func wrapValueToList(val domain.Value) ([]domain.Value, error) {
-	if v, ok := val.String(); ok {
+	if v, ok := val.TryString(); ok {
 		return []domain.Value{domain.String(v)}, nil
 	}
-	if v, ok := val.Float(); ok {
-		return []domain.Value{domain.Float(v)}, nil
+	if v, ok := val.TryFloat64(); ok {
+		return []domain.Value{domain.Float64(v)}, nil
 	}
-	if v, ok := val.StringList(); ok {
+	if v, ok := val.TryStringList(); ok {
 		res := make([]domain.Value, 0, len(v))
 		for _, s := range v {
 			res = append(res, domain.String(s))
 		}
 		return res, nil
 	}
-	if v, ok := val.FloatList(); ok {
+	if v, ok := val.TryFloat64List(); ok {
 		res := make([]domain.Value, 0, len(v))
 		for _, f := range v {
-			res = append(res, domain.Float(f))
+			res = append(res, domain.Float64(f))
 		}
 		return res, nil
 	}
@@ -392,15 +392,15 @@ func (e FilterEq) filterObject(v domain.Value) bool {
 	// if list := v.GetListValue(); list != nil && e.Value.GetListValue() == nil {
 	isFilterValueScalar := !e.Value.IsStringList() && !e.Value.IsFloatList()
 	if isFilterValueScalar {
-		if list, ok := v.FloatList(); ok {
+		if list, ok := v.TryFloat64List(); ok {
 			for _, lv := range list {
-				if e.filterObject(domain.Float(lv)) {
+				if e.filterObject(domain.Float64(lv)) {
 					return true
 				}
 			}
 			return false
 		}
-		if list, ok := v.StringList(); ok {
+		if list, ok := v.TryStringList(); ok {
 			for _, lv := range list {
 				if e.filterObject(domain.String(lv)) {
 					return true
@@ -560,7 +560,7 @@ func (l FilterAllIn) FilterObject(g *domain.Details) bool {
 				return l.Strings[0] == val
 			}
 		}
-		// String list
+		// TryString list
 		{
 			val, ok := g.TryStringList(l.Key)
 			if ok {
@@ -577,7 +577,7 @@ func (l FilterAllIn) FilterObject(g *domain.Details) bool {
 				return l.Floats[0] == val
 			}
 		}
-		// Float list
+		// Float64 list
 		{
 			val, ok := g.TryFloatList(l.Key)
 			if ok {

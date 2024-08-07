@@ -81,15 +81,15 @@ func getRange(f FilterRequest, loc *time.Location) (int64, int64) {
 		d1 = calendar.MonthNumStart(1)
 		d2 = calendar.MonthNumEnd(1)
 	case model.BlockContentDataviewFilter_NumberOfDaysAgo:
-		daysCnt := f.Value.Int64OrDefault(0)
+		daysCnt := f.Value.Int64()
 		d1 = calendar.DayNumStart(-int(daysCnt))
 		d2 = calendar.DayNumEnd(-1)
 	case model.BlockContentDataviewFilter_NumberOfDaysNow:
-		daysCnt := f.Value.Int64OrDefault(0)
+		daysCnt := f.Value.Int64()
 		d1 = calendar.DayNumStart(0)
 		d2 = calendar.DayNumEnd(int(daysCnt))
 	case model.BlockContentDataviewFilter_ExactDate:
-		timestamp := f.Value.Int64OrDefault(0)
+		timestamp := f.Value.Int64()
 		t := time.Unix(int64(timestamp), 0)
 		calendar2 := timeutil.NewCalendar(t, loc)
 		d1 = calendar2.DayNumStart(0)

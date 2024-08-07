@@ -150,7 +150,7 @@ func (gr *Builder) appendRelations(
 		if !isRelationShouldBeIncludedAsEdge(rel) {
 			return true
 		}
-		stringValues := relValue.StringListOrDefault(nil)
+		stringValues := relValue.StringList()
 		if len(stringValues) == 0 || isExcludedRelation(rel) {
 			return true
 		}

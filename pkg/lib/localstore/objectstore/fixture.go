@@ -132,7 +132,7 @@ func makeDetails(fields TestObject) *domain.Details {
 
 func (fx *StoreFixture) AddObjects(t testing.TB, objects []TestObject) {
 	for _, obj := range objects {
-		id := obj[bundle.RelationKeyId].StringOrDefault("")
+		id := obj[bundle.RelationKeyId].String()
 		require.NotEmpty(t, id)
 		err := fx.UpdateObjectDetails(context.Background(), id, makeDetails(obj))
 		require.NoError(t, err)

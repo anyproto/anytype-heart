@@ -1174,7 +1174,7 @@ func (s *State) ModifyLinkedObjectsInDetails(modifier func(id string) string) {
 }
 
 func (s *State) modifyIdsInDetail(details *domain.Details, key domain.RelationKey, modifier func(id string) string) {
-	// TODO StringList in pbtypes return []string{singleValue} for string values
+	// TODO TryStringList in pbtypes return []string{singleValue} for string values
 	if ids := details.GetStringList(key); len(ids) > 0 {
 		var anyChanges bool
 		for i, oldId := range ids {
@@ -1189,9 +1189,9 @@ func (s *State) modifyIdsInDetail(details *domain.Details, key domain.RelationKe
 		}
 		if anyChanges {
 			v := details.Get(key)
-			if _, ok := v.String(); ok {
+			if _, ok := v.TryString(); ok {
 				s.SetDetail(key, domain.String(ids[0]))
-			} else if _, ok := v.StringList(); ok {
+			} else if _, ok := v.TryStringList(); ok {
 				s.SetDetail(key, domain.StringList(ids))
 			}
 		}

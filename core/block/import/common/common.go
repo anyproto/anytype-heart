@@ -257,14 +257,14 @@ func isLinkToObject(relLink *model.RelationLink) bool {
 }
 
 func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v domain.Value, k domain.RelationKey, filesIDs []string) {
-	if objectId, ok := v.String(); ok {
+	if objectId, ok := v.TryString(); ok {
 		newObjectIDs := getNewObjectsIDForRelation([]string{objectId}, oldIDtoNew, filesIDs)
 		if len(newObjectIDs) != 0 {
 			st.SetDetail(k, domain.String(newObjectIDs[0]))
 		}
 		return
 	}
-	objectsIDs := v.StringListOrDefault(nil)
+	objectsIDs := v.StringList()
 	objectsIDs = getNewObjectsIDForRelation(objectsIDs, oldIDtoNew, filesIDs)
 	st.SetDetail(k, domain.StringList(objectsIDs))
 }

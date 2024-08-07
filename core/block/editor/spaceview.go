@@ -262,7 +262,7 @@ func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 			// - Now we need to push details to SpaceView. But if we push NEW id, then old clients will not be able to display image
 			// - So we need to push old id
 			if k == bundle.RelationKeyIconImage {
-				fileId, err := s.fileObjectService.GetFileIdFromObject(v.StringOrDefault(""))
+				fileId, err := s.fileObjectService.GetFileIdFromObject(v.String())
 				if err == nil {
 					v = domain.String(fileId.FileId.String())
 				}

@@ -95,7 +95,7 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 			if needToAddRestrictions {
 				// we can't add restrictions as it can lead to removing this field on the old client
 				// todo: revise this
-				// st.SetInStore(append(path, bundle.RelationKeyRestrictions.String()), pbtypes.IntList(1, 3, 4))
+				// st.SetInStore(append(path, bundle.RelationKeyRestrictions.TryString()), pbtypes.TryInt64List(1, 3, 4))
 			}
 
 			migratedSubObjects++
