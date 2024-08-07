@@ -179,7 +179,7 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 
 func Test_filterPeers(t *testing.T) {
 	t.Run("no peers", func(t *testing.T) {
-		peers := filterOldPeers([]peer.Peer{})
+		peers := selectOldPeers([]peer.Peer{})
 		assert.Len(t, peers, 0)
 	})
 	t.Run("peers with different versions", func(t *testing.T) {
@@ -187,7 +187,7 @@ func Test_filterPeers(t *testing.T) {
 		oldPeer := newTestPeer("oldPeer")
 		oldPeer.ctx = peer.CtxWithProtoVersion(context.Background(), secureservice.ProtoVersion)
 		newPeer.ctx = peer.CtxWithProtoVersion(context.Background(), secureservice.NewSyncProtoVersion)
-		peers := filterOldPeers([]peer.Peer{newPeer, oldPeer})
+		peers := selectOldPeers([]peer.Peer{newPeer, oldPeer})
 		assert.Len(t, peers, 1)
 		assert.Equal(t, peers[0].Id(), oldPeer.Id())
 	})
