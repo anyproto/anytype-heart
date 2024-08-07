@@ -4,7 +4,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/valyala/fastjson"
 
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -27,10 +31,25 @@ func TestDatabase(t *testing.T) {
 	})
 }
 
+func newTestQueryBuilder(t *testing.T) queryBuilder {
+	objectStore := NewMockObjectStore(t)
+	objectStore.EXPECT().GetRelationFormatByKey(mock.Anything).RunAndReturn(func(key string) (model.RelationFormat, error) {
+		rel, err := bundle.GetRelation(domain.RelationKey(key))
+		if err != nil {
+			return 0, nil
+		}
+		return rel.Format, nil
+	}).Maybe()
+	return queryBuilder{
+		objectStore: objectStore,
+		arena:       &fastjson.Arena{},
+	}
+}
+
 func testIncludeTimeWhenSingleDateSort(t *testing.T) {
 	// given
 	sorts := givenSingleDateSort()
-	qb := queryBuilder{}
+	qb := newTestQueryBuilder(t)
 
 	// when
 	order := qb.extractOrder(sorts)
@@ -42,7 +61,7 @@ func testIncludeTimeWhenSingleDateSort(t *testing.T) {
 func testDoNotIncludeTimeWhenNotSingleSort(t *testing.T) {
 	// given
 	sorts := givenNotSingleDateSort()
-	qb := queryBuilder{}
+	qb := newTestQueryBuilder(t)
 
 	// when
 	order := qb.extractOrder(sorts)
@@ -54,7 +73,7 @@ func testDoNotIncludeTimeWhenNotSingleSort(t *testing.T) {
 func testIncludeTimeWhenSortContainsIncludeTime(t *testing.T) {
 	// given
 	sorts := givenSingleIncludeTime()
-	qb := queryBuilder{}
+	qb := newTestQueryBuilder(t)
 
 	// when
 	order := qb.extractOrder(sorts)
@@ -66,7 +85,7 @@ func testIncludeTimeWhenSortContainsIncludeTime(t *testing.T) {
 func testDoNotIncludeTimeWhenSingleNotDateSort(t *testing.T) {
 	// given
 	sorts := givenSingleNotDateSort()
-	qb := queryBuilder{}
+	qb := newTestQueryBuilder(t)
 
 	// when
 	order := qb.extractOrder(sorts)
