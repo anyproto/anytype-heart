@@ -84,8 +84,18 @@ func TestExportFiles(t *testing.T) {
 
 		var foundPbFiles int
 		for _, entry := range entries {
-			if filepath.Ext(entry.Name()) == ".pb" {
-				foundPbFiles++
+			if entry.IsDir() {
+				files, err := os.ReadDir(filepath.Join(exportPath, entry.Name()))
+				require.NoError(t, err)
+				for _, file := range files {
+					if filepath.Ext(file.Name()) == ".pb" {
+						foundPbFiles++
+					}
+				}
+			} else {
+				if filepath.Ext(entry.Name()) == ".pb" {
+					foundPbFiles++
+				}
 			}
 		}
 		// 4 objects total: Page object + Page type + File object
