@@ -19,6 +19,7 @@ import (
 	relationblock "github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/linkresolver"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -188,9 +189,7 @@ func (bs *basic) copyBlocks(srcState, destState *state.State, sourceId string) (
 		return newId, nil
 	}
 
-	m := b.Copy().Model()
-	m.Id = "" // reset id
-	result := simple.New(m)
+	result := copySimpleBlock(b, bs.SpaceID(), destState.SpaceID())
 	destState.Add(result)
 	for i, childrenId := range result.Model().ChildrenIds {
 		if result.Model().ChildrenIds[i], err = bs.copyBlocks(srcState, destState, childrenId); err != nil {
@@ -222,6 +221,32 @@ func (bs *basic) processFileBlock(f *model.BlockContentOfFile, spaceId string) {
 	}
 
 	f.File.TargetObjectId = objectId
+}
+
+func copySimpleBlock(b simple.Block, srcSpaceId, destSpaceId string) simple.Block {
+	isSameSpace := srcSpaceId == destSpaceId
+	blockCopy := b.Copy()
+
+	if replacer, ok := blockCopy.(simple.ObjectLinkReplacer); ok && !isSameSpace {
+		replacer.ReplaceLinkIds(func(oldId string) (newId string) {
+			if oldId == "" {
+				return
+			}
+			id, err := linkresolver.ParseObjectLink(oldId)
+			if err != nil {
+				return linkresolver.GetObjectLink(domain.FullID{SpaceID: srcSpaceId, ObjectID: oldId})
+			}
+			if id.SpaceID == destSpaceId {
+				return id.ObjectID
+			}
+			return oldId
+		})
+	}
+
+	blockModel := blockCopy.Model()
+	blockModel.Id = "" // reset id
+
+	return simple.New(blockModel)
 }
 
 func (bs *basic) Unlink(ctx session.Context, ids ...string) (err error) {
