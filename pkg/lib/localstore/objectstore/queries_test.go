@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/valyala/fastjson"
@@ -20,12 +19,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func removeScoreFromRecords(records []database.Record) []database.Record {
 	for i := range records {
-		delete(records[i].Details.Fields, "_score")
+		records[i].Details.Delete("_score")
 	}
 	return records
 }
@@ -101,7 +99,7 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		recs, err := s.Query(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					RelationKey: bundle.RelationKeyName.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
@@ -135,7 +133,7 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		recs, err := s.Query(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					RelationKey: bundle.RelationKeyName.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
@@ -222,7 +220,7 @@ func TestQuery(t *testing.T) {
 		t.Run("full-text and filter", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				FullText: "important",
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
 						RelationKey: bundle.RelationKeyDescription.String(),
 						Condition:   model.BlockContentDataviewFilter_Equal,
@@ -269,7 +267,7 @@ func TestQuery(t *testing.T) {
 			bundle.RelationKeyId:          domain.String("relid2"),
 			bundle.RelationKeyRelationKey: domain.String("bsonid1"),
 			bundle.RelationKeyName:        domain.String("deletedtag"),
-			bundle.RelationKeyIsDeleted:   pbtypes.Bool(true),
+			bundle.RelationKeyIsDeleted:   domain.Bool(true),
 			bundle.RelationKeyDescription: domain.String("this is a deleted relation's description"),
 			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
 		}
@@ -278,7 +276,7 @@ func TestQuery(t *testing.T) {
 			bundle.RelationKeyId:          domain.String("relid3"),
 			bundle.RelationKeyRelationKey: domain.String("bsonid1"),
 			bundle.RelationKeyName:        domain.String("archived"),
-			bundle.RelationKeyIsDeleted:   pbtypes.Bool(true),
+			bundle.RelationKeyIsDeleted:   domain.Bool(true),
 			bundle.RelationKeyDescription: domain.String("this is a archived relation's description"),
 			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
 		}
@@ -293,52 +291,52 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3, relObj, relObjDeleted, relObjArchived, typeObj})
 		err := s.fts.Index(ftsearch.SearchDoc{
 			Id:   "id1/r/description",
-			Text: obj1[bundle.RelationKeyDescription].GetStringValue(),
+			Text: obj1[bundle.RelationKeyDescription].String(),
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:   "id2/r/description",
-			Text: obj2[bundle.RelationKeyDescription].GetStringValue(),
+			Text: obj2[bundle.RelationKeyDescription].String(),
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:   "relid1/r/description",
-			Text: relObj[bundle.RelationKeyDescription].GetStringValue(),
+			Text: relObj[bundle.RelationKeyDescription].String(),
 		})
 		require.NoError(t, err)
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:    "relid1/r/name",
-			Title: relObj[bundle.RelationKeyName].GetStringValue(),
+			Title: relObj[bundle.RelationKeyName].String(),
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:   "relid2/r/description",
-			Text: relObjDeleted[bundle.RelationKeyDescription].GetStringValue(),
+			Text: relObjDeleted[bundle.RelationKeyDescription].String(),
 		})
 		require.NoError(t, err)
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:    "relid2/r/name",
-			Title: relObjDeleted[bundle.RelationKeyName].GetStringValue(),
+			Title: relObjDeleted[bundle.RelationKeyName].String(),
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:   "relid3/r/description",
-			Text: relObjArchived[bundle.RelationKeyDescription].GetStringValue(),
+			Text: relObjArchived[bundle.RelationKeyDescription].String(),
 		})
 		require.NoError(t, err)
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:    "relid3/r/name",
-			Title: relObjArchived[bundle.RelationKeyName].GetStringValue(),
+			Title: relObjArchived[bundle.RelationKeyName].String(),
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:    "typeid1/r/name",
-			Title: typeObj[bundle.RelationKeyName].GetStringValue(),
+			Title: typeObj[bundle.RelationKeyName].String(),
 		})
 		require.NoError(t, err)
 
@@ -432,7 +430,7 @@ func TestQuery(t *testing.T) {
 		t.Run("full-text block multi match", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				FullText: "block",
-				Sorts: []*model.BlockContentDataviewSort{
+				Sorts: []database.SortRequest{
 					{
 						RelationKey: bundle.RelationKeyId.String(),
 						Type:        model.BlockContentDataviewSort_Asc,
@@ -533,12 +531,12 @@ func TestQuery(t *testing.T) {
 		t.Run("full-text by tag", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				FullText: "relname",
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
 						Operator:    0,
 						RelationKey: "layout",
 						Condition:   model.BlockContentDataviewFilter_NotIn,
-						Value:       pbtypes.IntList(int(model.ObjectType_relationOption)),
+						Value:       domain.Int64List(int(model.ObjectType_relationOption)),
 					},
 				},
 			})
@@ -549,7 +547,7 @@ func TestQuery(t *testing.T) {
 					Details: makeDetails(obj1),
 					Meta: model.SearchMeta{
 						RelationKey:     "bsonid1",
-						RelationDetails: pbtypes.StructFilterKeys(makeDetails(relObj), []string{bundle.RelationKeyLayout.String(), bundle.RelationKeyId.String(), bundle.RelationKeyName.String()}),
+						RelationDetails: makeDetails(relObj).CopyOnlyKeys(bundle.RelationKeyLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
 					},
 				}}, recs)
 		})
@@ -557,12 +555,12 @@ func TestQuery(t *testing.T) {
 		t.Run("full-text by deleted tag", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				FullText: "deleted",
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
 						Operator:    0,
 						RelationKey: "layout",
 						Condition:   model.BlockContentDataviewFilter_NotIn,
-						Value:       pbtypes.IntList(int(model.ObjectType_relationOption)),
+						Value:       domain.Int64List(int(model.ObjectType_relationOption)),
 					},
 				},
 			})
@@ -574,12 +572,12 @@ func TestQuery(t *testing.T) {
 		t.Run("full-text by archived tag", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				FullText: "archived",
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
 						Operator:    0,
 						RelationKey: "layout",
 						Condition:   model.BlockContentDataviewFilter_NotIn,
-						Value:       pbtypes.IntList(int(model.ObjectType_relationOption)),
+						Value:       domain.Int64List(int(model.ObjectType_relationOption)),
 					},
 				},
 			})
@@ -591,12 +589,12 @@ func TestQuery(t *testing.T) {
 		t.Run("full-text by type", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				FullText: "typename",
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
 						Operator:    0,
 						RelationKey: "layout",
 						Condition:   model.BlockContentDataviewFilter_NotIn,
-						Value:       pbtypes.IntList(int(model.ObjectType_objectType)),
+						Value:       domain.Int64List(int(model.ObjectType_objectType)),
 					},
 				},
 			})
@@ -607,14 +605,14 @@ func TestQuery(t *testing.T) {
 					Details: makeDetails(obj2),
 					Meta: model.SearchMeta{
 						RelationKey:     "type",
-						RelationDetails: pbtypes.StructFilterKeys(makeDetails(typeObj), []string{bundle.RelationKeyLayout.String(), bundle.RelationKeyId.String(), bundle.RelationKeyName.String()}),
+						RelationDetails: makeDetails(relObj).CopyOnlyKeys(bundle.RelationKeyLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
 					},
 				},
 				{
 					Details: makeDetails(obj3),
 					Meta: model.SearchMeta{
 						RelationKey:     "type",
-						RelationDetails: pbtypes.StructFilterKeys(makeDetails(typeObj), []string{bundle.RelationKeyLayout.String(), bundle.RelationKeyId.String(), bundle.RelationKeyName.String()}),
+						RelationDetails: makeDetails(relObj).CopyOnlyKeys(bundle.RelationKeyLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
 					},
 				},
 			}, recs)
@@ -630,14 +628,14 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3, obj4})
 
 		recs, err := s.Query(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					RelationKey: bundle.RelationKeyName.String(),
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       domain.String("ignore"),
 				},
 			},
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyName.String(),
 					Type:        model.BlockContentDataviewSort_Asc,
@@ -661,7 +659,7 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		recs, err := s.Query(database.Query{
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyName.String(),
 					Type:        model.BlockContentDataviewSort_Desc,
@@ -686,7 +684,7 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3, obj4})
 
 		recs, err := s.Query(database.Query{
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyDescription.String(),
 					Type:        model.BlockContentDataviewSort_Desc,
@@ -718,7 +716,7 @@ func TestQuery(t *testing.T) {
 
 		// When
 		recs, err := s.Query(database.Query{
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyId.String(),
 					Type:        model.BlockContentDataviewSort_Desc,
@@ -752,7 +750,7 @@ func TestQuery(t *testing.T) {
 
 		// When
 		recs, err := s.Query(database.Query{
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyId.String(),
 					Type:        model.BlockContentDataviewSort_Asc,
@@ -787,7 +785,7 @@ func TestQuery(t *testing.T) {
 		limit := 15
 		offset := 20
 		recs, err := s.Query(database.Query{
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyId.String(),
 					Type:        model.BlockContentDataviewSort_Asc,
@@ -831,14 +829,14 @@ func TestQuery(t *testing.T) {
 		limit := 60
 		offset := 20
 		recs, err := s.Query(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					RelationKey: bundle.RelationKeyName.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       domain.String("this name"),
 				},
 			},
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyId.String(),
 					Type:        model.BlockContentDataviewSort_Asc,
@@ -880,7 +878,7 @@ func TestQueryObjectIds(t *testing.T) {
 
 		// When
 		ids, _, err := s.QueryObjectIDs(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					RelationKey: bundle.RelationKeyDescription.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
@@ -937,7 +935,7 @@ func TestQueryRaw(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		flt, err := database.NewFilters(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					RelationKey: bundle.RelationKeyDescription.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
@@ -967,7 +965,7 @@ func TestQueryRaw(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, type1})
 
 		flt, err := database.NewFilters(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					RelationKey: "type.typeKey",
 					Condition:   model.BlockContentDataviewFilter_Equal,
@@ -987,7 +985,7 @@ type dummySourceService struct {
 	objectToReturn TestObject
 }
 
-func (s dummySourceService) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+func (s dummySourceService) DetailsFromIdBasedSource(id string) (*domain.Details, error) {
 	return makeDetails(s.objectToReturn), nil
 }
 
@@ -1044,7 +1042,7 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 	obj3 := makeObjectWithName("id3", "name3")
 	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-	recordsCh := make(chan *types.Struct)
+	recordsCh := make(chan *domain.Details)
 	sub := database.NewSubscription(nil, recordsCh)
 
 	recs, closeSub, err := s.QueryByIDAndSubscribeForChanges([]string{"id1", "id3"}, sub)
@@ -1074,7 +1072,7 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 		for {
 			select {
 			case rec := <-recordsCh:
-				name := rec.GetStringOrDefault(bundle.RelationKeyName, "")
+				name := rec.GetString(bundle.RelationKeyName)
 				num, err := strconv.Atoi(name)
 				require.NoError(t, err)
 				require.Equal(t, prev+1, num)
@@ -1118,7 +1116,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 				Value: domain.String("some id"),
 			},
 			database.FilterEmpty{
-				Key: bundle.RelationKeyType.String(),
+				Key: bundle.RelationKeyType,
 			},
 		}
 		assert.Equal(t, 0, len(getSpaceIdsFromFilter(f)))
@@ -1142,23 +1140,17 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 	})
 
 	t.Run("filters is filter.FilterIn with spaceId", func(t *testing.T) {
-		list, err := pbtypes.ValueListWrapper(domain.StringList([]string{"space1"}))
-		assert.NoError(t, err)
-
 		f := database.FilterIn{
 			Key:   bundle.RelationKeySpaceId.String(),
-			Value: list,
+			Value: []domain.Value{domain.String("space1")},
 		}
 		assert.Equal(t, []string{"space1"}, getSpaceIdsFromFilter(f))
 	})
 
 	t.Run("filters is filter.FilterIn with many spaceId", func(t *testing.T) {
-		list, err := pbtypes.ValueListWrapper(domain.StringList([]string{"space1", "space2"}))
-		assert.NoError(t, err)
-
 		f := database.FilterIn{
 			Key:   bundle.RelationKeySpaceId.String(),
-			Value: list,
+			Value: []domain.Value{domain.String("space1"), domain.String("space2")},
 		}
 		assert.Equal(t, []string{"space1", "space2"}, getSpaceIdsFromFilter(f))
 	})
@@ -1170,7 +1162,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 				database.FilterEmpty{Key: "somekey"},
 				database.FilterEq{Key: "key", Value: domain.String("value")},
 				database.FiltersAnd{
-					database.FilterEq{Key: "amount", Value: pbtypes.Float64(15)},
+					database.FilterEq{Key: "amount", Value: domain.Float64(15)},
 					database.FilterEq{Key: "type", Value: domain.String("ot-note")},
 					database.FilterEq{
 						Key:   bundle.RelationKeySpaceId.String(),

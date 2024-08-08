@@ -266,13 +266,11 @@ func TestDeleteObject(t *testing.T) {
 		// Assert
 		got, err := s.GetDetails("id1")
 		require.NoError(t, err)
-		assert.Equal(t, &model.ObjectDetails{
-			Details: makeDetails(TestObject{
-				bundle.RelationKeyId:        domain.String("id1"),
-				bundle.RelationKeySpaceId:   domain.String("space1"),
-				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
-			}),
-		}, got)
+		assert.Equal(t, makeDetails(TestObject{
+			bundle.RelationKeyId:        domain.String("id1"),
+			bundle.RelationKeySpaceId:   domain.String("space1"),
+			bundle.RelationKeyIsDeleted: domain.Bool(true),
+		}), got)
 
 		objects, err := s.GetByIDs("space1", []string{"id1"})
 		require.NoError(t, err)

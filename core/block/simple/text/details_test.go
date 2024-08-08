@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -132,7 +133,7 @@ type testDetailsService struct {
 	*types.Struct
 }
 
-func (t *testDetailsService) Details() *types.Struct {
+func (t *testDetailsService) Details() *domain.Details {
 	return t.Struct
 }
 
