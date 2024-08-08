@@ -210,9 +210,9 @@ func TestCheckTableBlocksMove(t *testing.T) {
 }
 
 type testTableOptions struct {
-	blocks map[string]*model.Block
-
+	blocks    map[string]*model.Block
 	rowBlocks map[string]*model.BlockContentTableRow
+	children  map[string][]string
 }
 
 type testTableOption func(o *testTableOptions)
@@ -229,10 +229,23 @@ func withRowBlockContents(blocks map[string]*model.BlockContentTableRow) testTab
 	}
 }
 
+func withChangedChildren(children map[string][]string) testTableOption {
+	return func(o *testTableOptions) {
+		o.children = children
+	}
+}
+
 func mkTestTable(columns []string, rows []string, cells [][]string, opts ...testTableOption) *state.State {
 	blocks := mkTestTableBlocks(columns, rows, cells, opts...)
+	o := testTableOptions{}
+	for _, apply := range opts {
+		apply(&o)
+	}
 	s := state.NewDoc("root", nil).NewState()
 	for _, b := range blocks {
+		if children, found := o.children[b.Id]; found {
+			b.ChildrenIds = children
+		}
 		s.Add(simple.New(b))
 	}
 	return s
@@ -240,8 +253,15 @@ func mkTestTable(columns []string, rows []string, cells [][]string, opts ...test
 
 func mkTestTableSb(columns []string, rows []string, cells [][]string, opts ...testTableOption) *smarttest.SmartTest {
 	blocks := mkTestTableBlocks(columns, rows, cells, opts...)
+	o := testTableOptions{}
+	for _, apply := range opts {
+		apply(&o)
+	}
 	sb := smarttest.New("root")
 	for _, b := range blocks {
+		if children, found := o.children[b.Id]; found {
+			b.ChildrenIds = children
+		}
 		sb.AddBlock(simple.New(b))
 	}
 	return sb
