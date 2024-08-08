@@ -519,6 +519,7 @@ func (e *export) makeMarkdownName(s *state.State, wr writer, docID string, conv 
 		name = s.Snippet()
 	}
 	path := ""
+	// space can be empty in case user want to export all spaces
 	if spaceId == "" {
 		spaceId := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String())
 		path = filepath.Join(spaceDirectory, spaceId)
@@ -529,6 +530,7 @@ func (e *export) makeMarkdownName(s *state.State, wr writer, docID string, conv 
 func (e *export) makeFileName(docId, spaceId string, conv converter.Converter, st *state.State, blockType smartblock.SmartBlockType) string {
 	dir := e.provideFileDirectory(blockType)
 	filename := filepath.Join(dir, docId+conv.Ext())
+	// space can be empty in case user want to export all spaces
 	if spaceId == "" {
 		spaceId := pbtypes.GetString(st.LocalDetails(), bundle.RelationKeySpaceId.String())
 		filename = filepath.Join(spaceDirectory, spaceId, filename)
