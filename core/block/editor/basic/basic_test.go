@@ -197,6 +197,87 @@ func TestBasic_Duplicate(t *testing.T) {
 		})
 	}
 
+	t.Run("copy cross-space links to other space", func(t *testing.T) {
+		// given
+		source := smarttest.New("source").
+			AddBlock(simple.New(&model.Block{Id: "source", ChildrenIds: []string{"1", "l1", "t1"}})).
+			AddBlock(simple.New(&model.Block{Id: "1", ChildrenIds: []string{"l2", "t2"}})).
+			AddBlock(simple.New(&model.Block{Id: "l1", Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{TargetBlockId: "obj11"}}})).
+			AddBlock(simple.New(&model.Block{Id: "t1", Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text: "it is link to object from 3rd space",
+				Marks: &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{{
+					Type:  model.BlockContentTextMark_Link,
+					Param: "object?spaceId=sp3&objectId=obj13",
+				}}}}}})).
+			AddBlock(simple.New(&model.Block{Id: "l2", Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{TargetBlockId: "object?spaceId=sp2&objectId=obj21"}}})).
+			AddBlock(simple.New(&model.Block{Id: "t2", Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text: "it is mention of object from 1st space",
+				Marks: &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{{
+					Type:  model.BlockContentTextMark_Mention,
+					Param: "obj12",
+				}}}}}}))
+		source.SetSpaceId("sp1")
+		ss := source.NewState()
+		ss.SetDetail(bundle.RelationKeySpaceId.String(), pbtypes.String("sp1"))
+
+		target := smarttest.New("target").AddBlock(simple.New(&model.Block{Id: "target"}))
+		ts := target.NewState()
+		ts.SetDetail(bundle.RelationKeySpaceId.String(), pbtypes.String("sp2"))
+
+		// when
+		newIds, err := NewBasic(source, nil, nil, nil).Duplicate(ss, ts, "target", model.Block_Inner, []string{"1", "l1", "t1"})
+		require.NoError(t, err)
+		require.NoError(t, target.Apply(ts))
+
+		// then
+		require.Len(t, newIds, 3)
+
+		ts = target.NewState()
+		root := ts.Pick("target")
+		require.NotNil(t, root)
+		assert.Equal(t, newIds, root.Model().ChildrenIds)
+		block1 := ts.Pick(newIds[0])
+		require.NotNil(t, block1)
+		children := block1.Model().ChildrenIds
+		require.Len(t, children, 2)
+
+		l1 := ts.Pick(newIds[1])
+		t1 := ts.Pick(newIds[2])
+		l2 := ts.Pick(children[0])
+		t2 := ts.Pick(children[1])
+
+		assertLink := func(block simple.Block, link string) {
+			l := block.Model().GetLink()
+			require.NotNil(t, l)
+			assert.Equal(t, link, l.TargetBlockId)
+		}
+
+		linkTypes := []model.BlockContentTextMarkType{model.BlockContentTextMark_Link, model.BlockContentTextMark_Mention}
+		assertText := func(block simple.Block, link string) {
+			txt := block.Model().GetText()
+			require.NotNil(t, txt)
+			require.NotNil(t, txt.Marks)
+			require.NotEmpty(t, txt.Marks.GetMarks())
+			assert.Contains(t, linkTypes, txt.Marks.GetMarks()[0].Type)
+			assert.Equal(t, link, txt.Marks.GetMarks()[0].Param)
+		}
+
+		for _, testBlock := range []struct {
+			block      simple.Block
+			link       string
+			assertFunc func(block simple.Block, link string)
+		}{
+			{l1, "object?spaceId=sp1&objectId=obj11", assertLink},
+			{t1, "object?spaceId=sp3&objectId=obj13", assertText},
+			{l2, "obj21", assertLink},
+			{t2, "object?spaceId=sp1&objectId=obj12", assertText},
+		} {
+			testBlock.assertFunc(testBlock.block, testBlock.link)
+		}
+	})
+
 }
 
 func TestBasic_Unlink(t *testing.T) {
