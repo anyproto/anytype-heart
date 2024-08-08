@@ -72,29 +72,28 @@ func (p *Archive) Relations(_ *state.State) relationutils.Relations {
 	return nil
 }
 
-func (p *Archive) updateObjects(info smartblock.ApplyInfo) (err error) {
+func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 	archivedIds, err := p.GetIds()
 	if err != nil {
 		return
 	}
 
-	records, err := p.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(p.SpaceID()),
-			},
+	records, err := p.objectStore.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyIsArchived.String(),
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: pbtypes.Bool(true),
 		},
-	})
+		database.FilterEq{
+			Key:   bundle.RelationKeySpaceId.String(),
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: pbtypes.String(p.SpaceID()),
+		},
+	}}, 0, 0)
 	if err != nil {
 		return
 	}
+
 	var storeArchivedIds = make([]string, 0, len(records))
 	for _, rec := range records {
 		storeArchivedIds = append(storeArchivedIds, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
