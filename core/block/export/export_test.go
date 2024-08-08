@@ -504,7 +504,7 @@ func Test_provideFileName(t *testing.T) {
 		e := &export{}
 
 		// when
-		fileName := e.provideFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelation)
+		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelation)
 
 		// then
 		assert.Equal(t, relationsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -514,7 +514,7 @@ func Test_provideFileName(t *testing.T) {
 		e := &export{}
 
 		// when
-		fileName := e.provideFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelationOption)
+		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelationOption)
 
 		// then
 		assert.Equal(t, relationsOptionsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -524,7 +524,7 @@ func Test_provideFileName(t *testing.T) {
 		e := &export{}
 
 		// when
-		fileName := e.provideFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeObjectType)
+		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeObjectType)
 
 		// then
 		assert.Equal(t, typesDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -534,7 +534,7 @@ func Test_provideFileName(t *testing.T) {
 		e := &export{}
 
 		// when
-		fileName := e.provideFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypePage)
+		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypePage)
 
 		// then
 		assert.Equal(t, objectsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -544,7 +544,7 @@ func Test_provideFileName(t *testing.T) {
 		e := &export{}
 
 		// when
-		fileName := e.provideFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeFileObject)
+		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeFileObject)
 
 		// then
 		assert.Equal(t, filesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -556,7 +556,7 @@ func Test_provideFileName(t *testing.T) {
 		st.SetDetail(bundle.RelationKeySpaceId.String(), pbtypes.String("spaceId"))
 
 		// when
-		fileName := e.provideFileName("docId", "", pbjson.NewConverter(st), st, smartblock.SmartBlockTypeFileObject)
+		fileName := e.makeFileName("docId", "", pbjson.NewConverter(st), st, smartblock.SmartBlockTypeFileObject)
 
 		// then
 		assert.Equal(t, spaceDirectory+string(filepath.Separator)+"spaceId"+string(filepath.Separator)+filesObjects+string(filepath.Separator)+"docId.pb.json", fileName)

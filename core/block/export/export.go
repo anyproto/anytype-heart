@@ -497,12 +497,13 @@ func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportReques
 		}
 		conv.SetKnownDocs(docInfo)
 		result := conv.Convert(b.Type().ToProto())
-		filename := e.provideFileName(docId, req.SpaceId, conv, st, b.Type())
+		var filename string
 		if req.Format == model.Export_Markdown {
-			filename = e.provideMarkdownName(st, wr, docId, conv, req.SpaceId)
-		}
-		if docId == b.Space().DerivedIDs().Home {
+			filename = e.makeMarkdownName(st, wr, docId, conv, req.SpaceId)
+		} else if docId == b.Space().DerivedIDs().Home {
 			filename = "index" + conv.Ext()
+		} else {
+			filename = e.makeFileName(docId, req.SpaceId, conv, st, b.Type())
 		}
 		lastModifiedDate := pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
@@ -512,7 +513,7 @@ func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportReques
 	})
 }
 
-func (e *export) provideMarkdownName(s *state.State, wr writer, docID string, conv converter.Converter, spaceId string) string {
+func (e *export) makeMarkdownName(s *state.State, wr writer, docID string, conv converter.Converter, spaceId string) string {
 	name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
 	if name == "" {
 		name = s.Snippet()
@@ -525,7 +526,7 @@ func (e *export) provideMarkdownName(s *state.State, wr writer, docID string, co
 	return wr.Namer().Get(path, docID, name, conv.Ext())
 }
 
-func (e *export) provideFileName(docId, spaceId string, conv converter.Converter, st *state.State, blockType smartblock.SmartBlockType) string {
+func (e *export) makeFileName(docId, spaceId string, conv converter.Converter, st *state.State, blockType smartblock.SmartBlockType) string {
 	dir := e.provideFileDirectory(blockType)
 	filename := filepath.Join(dir, docId+conv.Ext())
 	if spaceId == "" {
