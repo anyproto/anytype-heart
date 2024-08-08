@@ -1,12 +1,14 @@
 package objectstore
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/blevesearch/bleve/v2/search"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
@@ -34,14 +36,12 @@ func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
 
 // getObjectsWithObjectInRelation returns objects that have a relation with the given object in the value, while also matching the given filters
 func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey, objectId string, limit int, params database.Filters) ([]database.Record, error) {
-	return s.queryRaw(func(g *types.Struct) bool {
-		listValue := pbtypes.StringList([]string{objectId})
-		optionFilter := database.FilterAllIn{relationKey, listValue.GetListValue()}
-		if !optionFilter.FilterObject(g) {
-			return false
-		}
-		return params.FilterObj.FilterObject(g)
-	}, params.Order, limit, 0)
+	listValue := pbtypes.StringList([]string{objectId})
+	f := database.FiltersAnd{
+		database.FilterAllIn{Key: relationKey, Value: listValue.GetListValue()},
+		params.FilterObj,
+	}
+	return s.queryAnyStore(f, params.Order, uint(limit), 0)
 }
 
 func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64, path domain.ObjectPath, maxLength int, params database.Filters) []database.Record {
@@ -56,11 +56,19 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 		err         error
 	)
 
+	isDeleted := pbtypes.GetBool(details, bundle.RelationKeyIsDeleted.String())
+	isArchived := pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String())
+	if isDeleted || isArchived {
+		return nil
+	}
+
 	switch model.ObjectTypeLayout(pbtypes.GetInt64(details, bundle.RelationKeyLayout.String())) {
 	case model.ObjectType_relationOption:
 		relationKey = pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
 	case model.ObjectType_objectType:
 		relationKey = bundle.RelationKeyType.String()
+	default:
+		return nil
 	}
 	recs, err := s.getObjectsWithObjectInRelation(relationKey, id, maxLength, params)
 	if err != nil {
@@ -90,132 +98,145 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 	return injectedResults
 }
 
-func (s *dsObjectStore) queryRaw(filter func(g *types.Struct) bool, order database.Order, limit int, offset int) ([]database.Record, error) {
-	var (
-		records []database.Record
-	)
-
-	err := s.db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchValues = false
-		opts.Prefix = pagesDetailsBase.Bytes()
-		iterator := txn.NewIterator(opts)
-		defer iterator.Close()
-
-		for iterator.Rewind(); iterator.Valid(); iterator.Next() {
-			it := iterator.Item()
-			details, err := s.extractDetailsFromItem(it)
-			if err != nil {
-				return err
-			}
-			rec := database.Record{Details: details.Details}
-
-			if filter == nil || filter(details.Details) {
-				records = append(records, rec)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if offset >= len(records) {
-		return nil, nil
-	}
+func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Order, limit uint, offset uint) ([]database.Record, error) {
+	anystoreFilter := filter.AnystoreFilter()
+	var sortsArg []any
 	if order != nil {
-		sort.Slice(records, func(i, j int) bool {
-			return order.Compare(records[i].Details, records[j].Details) == -1
-		})
-	}
-	if limit > 0 {
-		upperBound := offset + limit
-		if upperBound > len(records) {
-			upperBound = len(records)
+		sorts := order.AnystoreSort()
+		if sorts != nil {
+			sortsArg = []any{sorts}
 		}
-		return records[offset:upperBound], nil
 	}
-	return records[offset:], nil
+	var records []database.Record
+	query := s.objects.Find(anystoreFilter).Sort(sortsArg...).Offset(offset).Limit(limit)
+	now := time.Now()
+	defer func() {
+		// Debug slow queries
+		if false {
+			dur := time.Since(now)
+			if dur.Milliseconds() > 10 {
+				explain := ""
+				if exp, expErr := query.Explain(s.componentCtx); expErr == nil {
+					for _, idx := range exp.Indexes {
+						if idx.Used {
+							explain += fmt.Sprintf("index: %s %d ", idx.Name, idx.Weight)
+						}
+					}
+				}
+				fmt.Printf(
+					"SLOW QUERY:\t%v\nFilter:\t%s\nNum results:\t%d\nExplain:\t%s\nSorts:\t%#v\n",
+					dur, anystoreFilter, len(records), explain, sortsArg,
+				)
+			}
+		}
+	}()
+	iter, err := s.objects.Find(anystoreFilter.String()).Sort(sortsArg...).Offset(offset).Limit(limit).Iter(s.componentCtx)
+	if err != nil {
+		return nil, fmt.Errorf("find: %w", err)
+	}
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, errors.Join(fmt.Errorf("get doc: %w", err), iter.Close())
+		}
+		details, err := pbtypes.JsonToProto(doc.Value())
+		if err != nil {
+			return nil, errors.Join(fmt.Errorf("json to proto: %w", err), iter.Close())
+		}
+		records = append(records, database.Record{Details: details})
+	}
+	err = iter.Err()
+	if err != nil {
+		return nil, errors.Join(fmt.Errorf("iterate: %w", err), iter.Close())
+	}
+	err = iter.Close()
+	if err != nil {
+		return nil, fmt.Errorf("close iterator: %w", err)
+	}
+	return records, nil
 }
 
 func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
 	if filters == nil || filters.FilterObj == nil {
 		return nil, fmt.Errorf("filter cannot be nil or unitialized")
 	}
-	return s.queryRaw(filters.FilterObj.FilterObject, filters.Order, limit, offset)
+	return s.queryAnyStore(filters.FilterObj, filters.Order, uint(limit), uint(offset))
 }
 
-func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int) ([]database.Record, error) {
+func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
 	records := make([]database.Record, 0, len(results))
 	resultObjectMap := make(map[string]struct{})
 	// we assume that results are already sorted by score DESC.
 	// this mean we use map to ignore duplicates without checking score
-	err := s.db.View(func(txn *badger.Txn) error {
-		for _, res := range results {
-			// Don't use spaceID because expected objects are virtual
-			if sbt, err := typeprovider.SmartblockTypeFromID(res.Path.ObjectId); err == nil {
-				if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
-					details, err := s.sourceService.DetailsFromIdBasedSource(res.Path.ObjectId)
-					if err != nil {
-						log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", res.Path.ObjectId)
-						continue
-					}
-					details.Fields[database.RecordIDField] = pbtypes.ToValue(res.Path.ObjectId)
-					details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
-					rec := database.Record{Details: details}
-					if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
-						resultObjectMap[res.Path.ObjectId] = struct{}{}
-						records = append(records, rec)
-					}
+	for _, res := range results {
+		// Don't use spaceID because expected objects are virtual
+		if sbt, err := typeprovider.SmartblockTypeFromID(res.Path.ObjectId); err == nil {
+			if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
+				details, err := s.sourceService.DetailsFromIdBasedSource(res.Path.ObjectId)
+				if err != nil {
+					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", res.Path.ObjectId)
 					continue
 				}
-			}
-			it, err := txn.Get(pagesDetailsBase.ChildString(res.Path.ObjectId).Bytes())
-			if err != nil {
-				log.Infof("QueryByIds failed to find id: %s", res.Path.ObjectId)
-				continue
-			}
-
-			detailsNoCopy, err := s.extractDetailsFromItem(it)
-			if err != nil {
-				log.Errorf("QueryByIds failed to extract details: %s", res.Path.ObjectId)
-				continue
-			}
-			details := pbtypes.CopyStruct(detailsNoCopy.Details, false)
-			details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
-
-			rec := database.Record{Details: details}
-			if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
-				rec.Meta = res.Model()
-				if _, ok := resultObjectMap[res.Path.ObjectId]; !ok {
-					records = append(records, rec)
+				details.Fields[database.RecordIDField] = pbtypes.ToValue(res.Path.ObjectId)
+				details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
+				rec := database.Record{Details: details}
+				if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 					resultObjectMap[res.Path.ObjectId] = struct{}{}
+					records = append(records, rec)
 				}
-			}
-
-			injectedResults := s.getInjectedResults(details, res.Score, res.Path, 10, params)
-			if len(injectedResults) == 0 {
 				continue
 			}
-			// for now, we only allow one injected result per object
-			// this may happen when we for example have a match in the different tags of the same object,
-			// or we may already have a better match for the same object but in block
-			injectedResults = lo.Filter(injectedResults, func(item database.Record, _ int) bool {
-				id := pbtypes.GetString(item.Details, bundle.RelationKeyId.String())
-				if _, ok := resultObjectMap[id]; !ok {
-					resultObjectMap[id] = struct{}{}
-					return true
-				}
-				return false
-			})
-
-			records = append(records, injectedResults...)
 		}
-		return nil
-	})
+		doc, err := s.objects.FindId(s.componentCtx, res.Path.ObjectId)
+		if err != nil {
+			log.Errorf("QueryByIds failed to find id: %s", res.Path.ObjectId)
+			continue
+		}
+		details, err := pbtypes.JsonToProto(doc.Value())
+		if err != nil {
+			log.Errorf("QueryByIds failed to extract details: %s", res.Path.ObjectId)
+			continue
+		}
+		details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
 
-	if err != nil {
-		return nil, err
+		rec := database.Record{Details: details}
+		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
+			rec.Meta = res.Model()
+			if rec.Meta.Highlight == "" {
+				title := pbtypes.GetString(details, bundle.RelationKeyName.String())
+				index := strings.Index(strings.ToLower(title), strings.ToLower(ftsSearch))
+				titleArr := []byte(title)
+				if index != -1 {
+					from := int32(text2.UTF16RuneCount(titleArr[:index]))
+					rec.Meta.HighlightRanges = []*model.Range{{
+						From: int32(text2.UTF16RuneCount(titleArr[:from])),
+						To:   from + int32(text2.UTF16RuneCount([]byte(ftsSearch)))}}
+					rec.Meta.Highlight = title
+				}
+			}
+			if _, ok := resultObjectMap[res.Path.ObjectId]; !ok {
+				records = append(records, rec)
+				resultObjectMap[res.Path.ObjectId] = struct{}{}
+			}
+		}
+
+		injectedResults := s.getInjectedResults(details, res.Score, res.Path, 10, params)
+		if len(injectedResults) == 0 {
+			continue
+		}
+		// for now, we only allow one injected result per object
+		// this may happen when we for example have a match in the different tags of the same object,
+		// or we may already have a better match for the same object but in block
+		injectedResults = lo.Filter(injectedResults, func(item database.Record, _ int) bool {
+			id := pbtypes.GetString(item.Details, bundle.RelationKeyId.String())
+			if _, ok := resultObjectMap[id]; !ok {
+				resultObjectMap[id] = struct{}{}
+				return true
+			}
+			return false
+		})
+
+		records = append(records, injectedResults...)
 	}
 
 	if offset >= len(records) {
@@ -237,7 +258,11 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 }
 
 func (s *dsObjectStore) performQuery(q database.Query) (records []database.Record, err error) {
-	filters, err := database.NewFilters(q, s)
+	arena := s.arenaPool.Get()
+	defer s.arenaPool.Put(arena)
+
+	q.FullText = strings.TrimSpace(q.FullText)
+	filters, err := database.NewFilters(q, s, arena)
 	if err != nil {
 		return nil, fmt.Errorf("new filters: %w", err)
 	}
@@ -252,7 +277,7 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 			return nil, fmt.Errorf("perform fulltext search: %w", err)
 		}
 
-		return s.QueryFromFulltext(fulltextResults, *filters, q.Limit, q.Offset)
+		return s.QueryFromFulltext(fulltextResults, *filters, q.Limit, q.Offset, q.FullText)
 	}
 	return s.QueryRaw(filters, q.Limit, q.Offset)
 }
@@ -308,8 +333,8 @@ func jsonHighlightToRanges(s string) (text string, ranges []*model.Range) {
 }
 
 func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ftsearch.HighlightFormatter, filters *database.Filters) ([]database.FulltextResult, error) {
-	spaceID := getSpaceIDFromFilter(filters.FilterObj)
-	bleveResults, err := s.fts.Search(spaceID, highlightFormatter, text)
+	spaceIds := getSpaceIdsFromFilter(filters.FilterObj)
+	bleveResults, err := s.fts.Search(spaceIds, highlightFormatter, text)
 	if err != nil {
 		return nil, fmt.Errorf("fullText search: %w", err)
 	}
@@ -376,7 +401,7 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 			Highlight: highlight,
 			Score:     result.Score,
 		}
-		if highlightFormatter == ftsearch.JSONHighlightFormatter {
+		if highlightFormatter == ftsearch.JSONHighlightFormatter && highlight != "" {
 			res.Highlight, res.HighlightRanges = jsonHighlightToRanges(highlight)
 		}
 		if result.Score < minFulltextScore && len(res.HighlightRanges) == 0 {
@@ -389,25 +414,28 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 	return results, nil
 }
 
-func getSpaceIDFromFilter(fltr database.Filter) (spaceID string) {
+func getSpaceIdsFromFilter(fltr database.Filter) []string {
 	switch f := fltr.(type) {
 	case database.FilterEq:
 		if f.Key == bundle.RelationKeySpaceId.String() {
-			return f.Value.GetStringValue()
+			return []string{f.Value.GetStringValue()}
+		}
+	case database.FilterIn:
+		if f.Key == bundle.RelationKeySpaceId.String() {
+			return pbtypes.ListValueToStrings(f.Value)
 		}
 	case database.FiltersAnd:
-		spaceID = iterateOverAndFilters(f)
+		return iterateOverAndFilters(f)
 	}
-	return spaceID
+	return nil
 }
 
-func iterateOverAndFilters(fs []database.Filter) (spaceID string) {
+func iterateOverAndFilters(fs []database.Filter) []string {
+	var spaceIds []string
 	for _, f := range fs {
-		if spaceID = getSpaceIDFromFilter(f); spaceID != "" {
-			return spaceID
-		}
+		spaceIds = append(spaceIds, getSpaceIdsFromFilter(f)...)
 	}
-	return ""
+	return spaceIds
 }
 
 // TODO: objstore: no one uses total
@@ -420,40 +448,36 @@ func (s *dsObjectStore) QueryObjectIDs(q database.Query) (ids []string, total in
 	for _, rec := range recs {
 		ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
 	}
-	return ids, 0, nil
+	return ids, len(recs), nil
 }
 
 func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err error) {
-	err = s.db.View(func(txn *badger.Txn) error {
-		for _, id := range ids {
-			// Don't use spaceID because expected objects are virtual
-			if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
-				if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
-					details, err := s.sourceService.DetailsFromIdBasedSource(id)
-					if err != nil {
-						log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
-						continue
-					}
-					details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
-					records = append(records, database.Record{Details: details})
+	for _, id := range ids {
+		// Don't use spaceID because expected objects are virtual
+		if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
+			if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
+				details, err := s.sourceService.DetailsFromIdBasedSource(id)
+				if err != nil {
+					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
 					continue
 				}
-			}
-			it, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
-			if err != nil {
-				log.Infof("QueryByIds failed to find id: %s", id)
+				details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+				records = append(records, database.Record{Details: details})
 				continue
 			}
-
-			details, err := s.extractDetailsFromItem(it)
-			if err != nil {
-				log.Errorf("QueryByIds failed to extract details: %s", id)
-				continue
-			}
-			records = append(records, database.Record{Details: details.Details})
 		}
-		return nil
-	})
+		doc, err := s.objects.FindId(s.componentCtx, id)
+		if err != nil {
+			log.Infof("QueryByIds failed to find id: %s", id)
+			continue
+		}
+		details, err := pbtypes.JsonToProto(doc.Value())
+		if err != nil {
+			log.Errorf("QueryByIds failed to extract details: %s", id)
+			continue
+		}
+		records = append(records, database.Record{Details: details})
+	}
 	return
 }
 

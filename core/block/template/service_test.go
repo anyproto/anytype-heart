@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -167,6 +169,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, BlankTemplateId, st.RootId())
 			assert.Contains(t, pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String()), bundle.RelationKeyTag.String())
+			assert.True(t, pbtypes.Exists(st.Details(), bundle.RelationKeyTag.String()))
 		})
 	}
 
@@ -219,6 +222,58 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 			assertLayoutBlocks(t, st, layout)
 		})
 	}
+
+	t.Run("do not inherit addedDate and creationDate", func(t *testing.T) {
+		// given
+		sometime := time.Now().Unix()
+
+		tmpl := smarttest.New(templateName)
+		tmpl.Doc.(*state.State).SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyBook})
+		tmpl.Doc.(*state.State).SetOriginalCreatedTimestamp(sometime)
+		err := tmpl.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyAddedDate.String(), Value: pbtypes.Int64(sometime)}}, false)
+		require.NoError(t, err)
+
+		s := service{picker: &testPicker{tmpl}}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateName, nil)
+
+		// then
+		assert.NoError(t, err)
+		assert.Zero(t, st.OriginalCreatedTimestamp())
+		assert.Zero(t, pbtypes.GetInt64(st.Details(), bundle.RelationKeyAddedDate.String()))
+		assert.Zero(t, pbtypes.GetInt64(st.Details(), bundle.RelationKeyCreatedDate.String()))
+	})
+}
+
+func TestCreateTemplateStateFromSmartBlock(t *testing.T) {
+	t.Run("if failed to build state -> return blank template", func(t *testing.T) {
+		// given
+		s := service{converter: converter.NewLayoutConverter()}
+
+		// when
+		st := s.CreateTemplateStateFromSmartBlock(nil, &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyLayout.String(): pbtypes.Int64(int64(model.ObjectType_todo)),
+		}})
+
+		// then
+		assert.Equal(t, BlankTemplateId, st.RootId())
+		assert.Contains(t, pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String()), bundle.RelationKeyTag.String())
+		assert.True(t, pbtypes.Exists(st.Details(), bundle.RelationKeyTag.String()))
+	})
+
+	t.Run("create state from template smartblock", func(t *testing.T) {
+		// given
+		tmpl := NewTemplateTest("template", bundle.TypeKeyProject.String())
+		s := service{}
+
+		// when
+		st := s.CreateTemplateStateFromSmartBlock(tmpl, nil)
+
+		// then
+		assert.Equal(t, "template", pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
+		assert.Equal(t, "template", pbtypes.GetString(st.Details(), bundle.RelationKeyDescription.String()))
+	})
 }
 
 func assertLayoutBlocks(t *testing.T, st *state.State, layout model.ObjectTypeLayout) {

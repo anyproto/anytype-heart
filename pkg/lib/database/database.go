@@ -1,10 +1,8 @@
 package database
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/gogo/protobuf/types"
+	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -25,10 +23,6 @@ const (
 type Record struct {
 	Details *types.Struct
 	Meta    model.SearchMeta
-}
-
-func (r Record) Get(key string) *types.Value {
-	return pbtypes.Get(r.Details, key)
 }
 
 type Query struct {
@@ -53,7 +47,7 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 			hasArchivedFilter = true
 		}
 
-		if filter.RelationKey == bundle.RelationKeyType.String() {
+		if filter.RelationKey == bundle.RelationKeyLayout.String() {
 			hasTypeFilter = true
 		}
 
@@ -70,7 +64,7 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	}
 	if !hasTypeFilter {
 		// temporarily exclude Space objects from search if we don't have explicit type filter
-		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyType.String(), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.Float64(float64(model.ObjectType_space))})
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyLayout.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Float64(float64(model.ObjectType_space))})
 	}
 	return filters
 }
@@ -97,21 +91,33 @@ func injectDefaultOrder(qry Query, sorts []*model.BlockContentDataviewSort) []*m
 	return sorts
 }
 
-func NewFilters(qry Query, store ObjectStore) (filters *Filters, err error) {
+func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena) (filters *Filters, err error) {
 	// spaceID could be empty
 	spaceID := getSpaceIDFromFilters(qry.Filters)
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	qry.Sorts = injectDefaultOrder(qry, qry.Sorts)
 	filters = new(Filters)
 
-	filterObj, err := compose(qry.Filters, store)
+	qb := queryBuilder{
+		spaceId:     spaceID,
+		arena:       arena,
+		objectStore: store,
+	}
+
+	filterObj, err := MakeFiltersAnd(qry.Filters, store)
 	if err != nil {
 		return
 	}
 
 	filters.FilterObj = filterObj
-	filters.Order = extractOrder(spaceID, qry.Sorts, store)
+	filters.Order = qb.extractOrder(qry.Sorts)
 	return
+}
+
+type queryBuilder struct {
+	spaceId     string
+	arena       *fastjson.Arena
+	objectStore ObjectStore
 }
 
 func getSpaceIDFromFilters(filters []*model.BlockContentDataviewFilter) string {
@@ -123,51 +129,52 @@ func getSpaceIDFromFilters(filters []*model.BlockContentDataviewFilter) string {
 	return ""
 }
 
-func compose(
-	filters []*model.BlockContentDataviewFilter,
-	store ObjectStore,
-) (FiltersAnd, error) {
-	var filterObj FiltersAnd
-	qryFilter, err := MakeFiltersAnd(filters, store)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(qryFilter) > 0 {
-		filterObj = append(filterObj, qryFilter)
-	}
-	return filterObj, nil
-}
-
-func extractOrder(spaceID string, sorts []*model.BlockContentDataviewSort, store ObjectStore) SetOrder {
+func (b *queryBuilder) extractOrder(sorts []*model.BlockContentDataviewSort) SetOrder {
 	if len(sorts) > 0 {
 		order := SetOrder{}
 		for _, sort := range sorts {
+			format, err := b.objectStore.GetRelationFormatByKey(sort.RelationKey)
+			if err != nil {
+				format = sort.Format
+			}
 
 			keyOrder := &KeyOrder{
-				SpaceID:        spaceID,
+				SpaceID:        b.spaceId,
 				Key:            sort.RelationKey,
 				Type:           sort.Type,
 				EmptyPlacement: sort.EmptyPlacement,
 				IncludeTime:    isIncludeTime(sorts, sort),
-				RelationFormat: sort.Format,
-				Store:          store,
+				relationFormat: format,
+				Store:          b.objectStore,
+				arena:          b.arena,
 			}
-
-			order = appendCustomOrder(sort, order, keyOrder)
+			order = b.appendCustomOrder(sort, order, keyOrder)
 		}
 		return order
 	}
 	return nil
 }
 
-func appendCustomOrder(sort *model.BlockContentDataviewSort, order SetOrder, keyOrder *KeyOrder) SetOrder {
+func (b *queryBuilder) appendCustomOrder(sort *model.BlockContentDataviewSort, orders SetOrder, order *KeyOrder) SetOrder {
+	defer b.arena.Reset()
+
 	if sort.Type == model.BlockContentDataviewSort_Custom && len(sort.CustomOrder) > 0 {
-		order = append(order, NewCustomOrder(sort.RelationKey, sort.CustomOrder, *keyOrder))
+		idsIndices := make(map[string]int, len(sort.CustomOrder))
+		var idx int
+		for _, it := range sort.CustomOrder {
+			jsonVal := pbtypes.ProtoValueToJson(b.arena, it)
+
+			raw := jsonVal.String()
+			if raw != "" {
+				idsIndices[raw] = idx
+				idx++
+			}
+		}
+		orders = append(orders, newCustomOrder(b.arena, sort.RelationKey, idsIndices, order))
 	} else {
-		order = append(order, keyOrder)
+		orders = append(orders, order)
 	}
-	return order
+	return orders
 }
 
 func isIncludeTime(sorts []*model.BlockContentDataviewSort, s *model.BlockContentDataviewSort) bool {
@@ -202,31 +209,6 @@ func (r FulltextResult) Model() model.SearchMeta {
 type Filters struct {
 	FilterObj Filter
 	Order     Order
-	dateKeys  []string
-}
-
-func (f *Filters) String() string {
-	var filterString string
-	var orderString string
-	var separator string
-	if f.FilterObj != nil {
-		filterString = fmt.Sprintf("WHERE %v", f.FilterObj.String())
-		separator = " "
-	}
-	if f.Order != nil {
-		orderString = fmt.Sprintf("%sORDER BY %v", separator, f.Order.String())
-	}
-	return fmt.Sprintf("%s%s", filterString, orderString)
-}
-
-func dateOnly(v *types.Value) *types.Value {
-	if n, isNumber := v.GetKind().(*types.Value_NumberValue); isNumber {
-		tm := time.Unix(int64(n.NumberValue), 0).In(time.UTC)                 // we have all values stored in UTC, including filters
-		tm = time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, time.UTC) // reset time, preserving UTC tz
-		return pbtypes.Float64(float64(tm.Unix()))
-	}
-	// reset to NULL otherwise
-	return &types.Value{Kind: &types.Value_NullValue{}}
 }
 
 // ListRelationOptions returns options for specific relation

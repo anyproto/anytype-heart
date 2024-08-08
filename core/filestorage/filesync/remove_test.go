@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
@@ -11,11 +12,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore/mock_rpcstore"
+	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -38,6 +44,9 @@ func TestCancelDeletion(t *testing.T) {
 	require.NoError(t, err)
 
 	fileService := fileservice.New()
+	ctrl := gomock.NewController(t)
+	wallet := mock_wallet.NewMockWallet(t)
+	wallet.EXPECT().Name().Return(wallet2.CName)
 
 	a := new(app.App)
 	a.Register(dataStoreProvider)
@@ -46,6 +55,9 @@ func TestCancelDeletion(t *testing.T) {
 	a.Register(fileService)
 	a.Register(testutil.PrepareMock(ctx, a, rpcStoreService))
 	a.Register(testutil.PrepareMock(ctx, a, sender))
+	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
+	a.Register(testutil.PrepareMock(ctx, a, wallet))
+	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
 
 	s := New().(*fileSync)
 	err = s.Init(a)

@@ -62,6 +62,8 @@ func (s FileStat) IsPinned() bool {
 }
 
 func (s *fileSync) runNodeUsageUpdater() {
+	defer s.closeWg.Done()
+
 	s.precacheNodeUsage()
 
 	ticker := time.NewTicker(time.Second * 10)

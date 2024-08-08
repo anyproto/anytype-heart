@@ -62,7 +62,7 @@ packages:
       RpcStore:
   github.com/anyproto/anytype-heart/core/block/import/common/objectid:
     interfaces:
-      IdGetterProvider:
+      IdAndKeyProvider:
   github.com/anyproto/anytype-heart/core/block/import/common/objectcreator:
     interfaces:
       Service:
@@ -175,10 +175,26 @@ packages:
   github.com/anyproto/anytype-heart/util/linkpreview:
     interfaces:
       LinkPreview:
+  github.com/anyproto/anytype-heart/space/spacecore/clientserver:
+    interfaces:
+      ClientServer:
+  github.com/anyproto/anytype-heart/core/peerstatus:
+    interfaces:
+      LocalDiscoveryHook:
+  github.com/anyproto/anytype-heart/space/spacecore/localdiscovery:
+    interfaces:
+      Notifier:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/core/block/object/treesyncer:
     interfaces:
       PeerStatusChecker:
       SyncDetailsUpdater:
+  github.com/anyproto/anytype-heart/core/syncstatus/nodestatus:
+    interfaces:
+      NodeStatus:
   github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus:
     interfaces:
       Updater:
@@ -190,10 +206,13 @@ packages:
   github.com/anyproto/anytype-heart/space/spacecore/peermanager:
     interfaces:
       Updater:
+      PeerToPeerStatus:
   github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater:
     interfaces:
       SpaceStatusUpdater:
   github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus:
     interfaces:
       SpaceIdGetter:
+      NodeUsage:
+      NetworkConfig:
       Updater:

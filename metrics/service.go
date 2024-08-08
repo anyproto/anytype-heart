@@ -3,6 +3,7 @@ package metrics
 
 import (
 	"context"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -37,7 +38,9 @@ type SamplableEvent interface {
 
 type MetricsService interface {
 	InitWithKeys(inHouseKey string)
-	SetAppVersion(v string)
+	SetWorkingDir(workingDir string, accountId string)
+	SetAppVersion(path string)
+	getWorkingDir() string
 	SetStartVersion(v string)
 	SetDeviceId(t string)
 	SetPlatform(p string)
@@ -51,12 +54,14 @@ type MetricsService interface {
 }
 
 type service struct {
+	startOnce      *sync.Once
 	lock           sync.RWMutex
 	appVersion     string
 	startVersion   string
 	userId         string
 	deviceId       string
 	platform       string
+	workingDir     string
 	clients        [1]*client
 	alreadyRunning bool
 }
@@ -72,6 +77,7 @@ func NewService() MetricsService {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	return &service{
+		startOnce: &sync.Once{},
 		clients: [1]*client{
 			inhouse: {
 				aggregatableMap:  make(map[string]SamplableEvent),
@@ -83,10 +89,24 @@ func NewService() MetricsService {
 	}
 }
 
-func (s *service) InitWithKeys(inHouseKey string) {
+func (s *service) SetWorkingDir(workingDir string, accountId string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.clients[inhouse].telemetry = anymetry.New(inHouseEndpoint, inHouseKey, true)
+	s.workingDir = filepath.Join(workingDir, accountId)
+}
+
+func (s *service) getWorkingDir() string {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.workingDir
+}
+
+func (s *service) InitWithKeys(inHouseKey string) {
+	s.startOnce.Do(func() {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+		s.clients[inhouse].telemetry = anymetry.New(inHouseEndpoint, inHouseKey, true)
+	})
 }
 
 func (s *service) SetDeviceId(t string) {

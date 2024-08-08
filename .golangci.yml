@@ -10,9 +10,12 @@ issues:
   exclude-generated: disable
   exclude-dirs:
     - pkg/lib/pb
+    - pb
   exclude-files:
     - '.*_test.go'
+    - 'mock*'
     - 'testMock/*'
+    - 'clientlibrary/service/service.pb.go'
 
 linters-settings:
   unused:

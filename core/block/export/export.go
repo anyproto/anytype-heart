@@ -697,7 +697,7 @@ func (e *export) getRelatedDerivedObjects(objects map[string]*types.Struct) ([]d
 	if len(typesAndTemplates) > 0 {
 		derivedObjectsMap := make(map[string]*types.Struct, 0)
 		for _, object := range typesAndTemplates {
-			id := object.Get(bundle.RelationKeyId.String()).GetStringValue()
+			id := pbtypes.GetString(object.Details, bundle.RelationKeyId.String())
 			derivedObjectsMap[id] = object.Details
 		}
 		iteratedObjects, typesAndTemplates, err := e.iterateObjects(derivedObjectsMap)
@@ -890,8 +890,8 @@ func (e *export) addRelationAndOptions(relation *database.Record, derivedObjects
 }
 
 func (e *export) addRelation(relation database.Record, derivedObjects []database.Record) []database.Record {
-	if relationKey := relation.Get(bundle.RelationKeyRelationKey.String()); relationKey != nil {
-		if !bundle.HasRelation(relationKey.GetStringValue()) {
+	if relationKey := pbtypes.GetString(relation.Details, bundle.RelationKeyRelationKey.String()); relationKey != "" {
+		if !bundle.HasRelation(relationKey) {
 			derivedObjects = append(derivedObjects, relation)
 		}
 	}
