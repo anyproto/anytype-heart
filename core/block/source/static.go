@@ -7,25 +7,31 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 )
 
-func (s *service) NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType {
+type StaticSourceParams struct {
+	Id        domain.FullID
+	SbType    smartblock.SmartBlockType
+	State     *state.State
+	CreatorId string
+}
+
+func (s *service) NewStaticSource(params StaticSourceParams) SourceWithType {
 	return &static{
-		id:         id,
-		sbType:     sbType,
-		doc:        doc,
-		s:          s,
-		pushChange: pushChange,
+		id:        params.Id,
+		sbType:    params.SbType,
+		doc:       params.State,
+		s:         s,
+		creatorId: params.CreatorId,
 	}
 }
 
 type static struct {
-	id         domain.FullID
-	sbType     smartblock.SmartBlockType
-	doc        *state.State
-	pushChange func(p PushChangeParams) (string, error)
-	s          *service
+	id        domain.FullID
+	sbType    smartblock.SmartBlockType
+	doc       *state.State
+	creatorId string
+	s         *service
 }
 
 func (s *static) Id() string {
@@ -41,7 +47,7 @@ func (s *static) Type() smartblock.SmartBlockType {
 }
 
 func (s *static) ReadOnly() bool {
-	return s.pushChange == nil
+	return true
 }
 
 func (s *static) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
@@ -49,9 +55,6 @@ func (s *static) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty boo
 }
 
 func (s *static) PushChange(params PushChangeParams) (id string, err error) {
-	if s.pushChange != nil {
-		return s.pushChange(params)
-	}
 	return
 }
 
@@ -70,7 +73,7 @@ func (s *static) Close() (err error) {
 	return
 }
 
-func (v *static) Heads() []string {
+func (s *static) Heads() []string {
 	return []string{"todo"} // todo hash of the details
 }
 
@@ -79,5 +82,5 @@ func (s *static) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 }
 
 func (s *static) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
-	return addr.AnytypeProfileId, 0, nil
+	return s.creatorId, 0, nil
 }

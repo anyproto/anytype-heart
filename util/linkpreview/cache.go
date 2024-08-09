@@ -32,14 +32,14 @@ func (c *cache) Name() string {
 	return CName
 }
 
-func (c *cache) Fetch(ctx context.Context, url string) (lp model.LinkPreview, err error) {
+func (c *cache) Fetch(ctx context.Context, url string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error) {
 	if res, ok := c.cache.Get(url); ok {
-		return res.(model.LinkPreview), nil
+		return res.(model.LinkPreview), nil, false, nil
 	}
-	lp, err = c.lp.Fetch(ctx, url)
+	linkPreview, responseBody, _, err = c.lp.Fetch(ctx, url)
 	if err != nil {
 		return
 	}
-	c.cache.Add(url, lp)
+	c.cache.Add(url, linkPreview)
 	return
 }

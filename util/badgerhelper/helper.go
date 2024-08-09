@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
 )
@@ -99,7 +100,7 @@ func GetValueTxn[T any](txn *badger.Txn, key []byte, unmarshaler func([]byte) (T
 }
 
 func IsNotFound(err error) bool {
-	return errors.Is(err, badger.ErrKeyNotFound)
+	return errors.Is(err, badger.ErrKeyNotFound) || errors.Is(err, anystore.ErrDocNotFound)
 }
 
 func ViewTxnWithResult[T any](db *badger.DB, f func(txn *badger.Txn) (T, error)) (T, error) {
@@ -114,4 +115,8 @@ func ViewTxnWithResult[T any](db *badger.DB, f func(txn *badger.Txn) (T, error))
 
 func UnmarshalString(b []byte) (string, error) {
 	return string(b), nil
+}
+
+func UnmarshalBytes(b []byte) ([]byte, error) {
+	return b, nil
 }

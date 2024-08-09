@@ -48,34 +48,30 @@ func StructEqualIgnore(det1 *types.Struct, det2 *types.Struct, excludeKeys []str
 
 // StructFilterKeys returns provided keys reusing underlying pb values pointers
 func StructFilterKeys(st *types.Struct, filteredKeys []string) *types.Struct {
+	return StructFilterKeysFunc(st, func(key string, _ *types.Value) bool {
+		return slice.FindPos(filteredKeys, key) > -1
+	})
+}
+
+func StructFilterKeysFunc(st *types.Struct, filter func(key string, val *types.Value) bool) *types.Struct {
 	if st == nil || st.Fields == nil {
 		return st
 	}
 
 	m := make(map[string]*types.Value, len(st.Fields))
 	for k, v := range st.Fields {
-		if slice.FindPos(filteredKeys, k) > -1 {
+		if filter(k, v) {
 			m[k] = v
 		}
 	}
-
 	return &types.Struct{Fields: m}
 }
 
 // StructCutKeys excludes provided keys reusing underlying pb values pointers
 func StructCutKeys(st *types.Struct, excludeKeys []string) *types.Struct {
-	if st == nil || st.Fields == nil {
-		return st
-	}
-
-	m := make(map[string]*types.Value, len(st.Fields))
-	for k, v := range st.Fields {
-		if slice.FindPos(excludeKeys, k) == -1 {
-			m[k] = v
-		}
-	}
-
-	return &types.Struct{Fields: m}
+	return StructFilterKeysFunc(st, func(key string, _ *types.Value) bool {
+		return slice.FindPos(excludeKeys, key) == -1
+	})
 }
 
 // StructDiff returns pb struct which contains:
@@ -122,16 +118,20 @@ func StructDiff(st1, st2 *types.Struct) *types.Struct {
 func StructMerge(st1, st2 *types.Struct, copyVals bool) *types.Struct {
 	var res *types.Struct
 	if st1 == nil || st1.Fields == nil {
-		return CopyStruct(st2)
+		return CopyStruct(st2, copyVals)
 	}
 
 	if st2 == nil || st2.Fields == nil {
-		return CopyStruct(st1)
+		return CopyStruct(st1, copyVals)
 	}
 
-	res = CopyStruct(st1)
+	res = CopyStruct(st1, copyVals)
 	for k, v := range st2.Fields {
-		res.Fields[k] = CopyVal(v)
+		if copyVals {
+			res.Fields[k] = CopyVal(v)
+		} else {
+			res.Fields[k] = v
+		}
 	}
 
 	return res

@@ -12,7 +12,7 @@
   {
     "desc": "links 1",
     "html": "<p>War is a state of organized armed conflict between <a href=\"/wiki/State_(polity)\" title=\"State (polity)\">states</a> or <a href=\"/wiki/Non-state_actors\" class=\"mw-redirect\" title=\"Non-state actors\">non-state actors</a>. War is characterized by the use of lethal violence against others—whether between <a href=\"/wiki/Combatants\" class=\"mw-redirect\" title=\"Combatants\">combatants</a> or upon <a href=\"/wiki/Non-combatants\" class=\"mw-redirect\" title=\"Non-combatants\">non-combatants</a>—to achieve military goals through force. Lesser, often spontaneous conflicts, such as brawls, <a href=\"/wiki/Riots\" class=\"mw-redirect\" title=\"Riots\">riots</a>, <a href=\"/wiki/Revolts\" class=\"mw-redirect\" title=\"Revolts\">revolts</a>, and <a href=\"/wiki/Melees\" class=\"mw-redirect\" title=\"Melees\">melees</a>, are not considered to be warfare. Revolutions can be <a href=\"/wiki/Nonviolent_revolution\" title=\"Nonviolent revolution\">nonviolent</a> or an organized and armed revolution which denotes a state of war. During the 20th century, it is estimated that between 167 and 188 million people died as a result of war.<sup id=\"cite_ref-258\" class=\"reference\"><a href=\"#cite_note-258\">[258]</a></sup> A common definition defines war as a series of <a href=\"/wiki/Military_campaign\" title=\"Military campaign\">military campaigns</a> between at least two opposing sides involving a dispute over <a href=\"/wiki/Sovereignty\" title=\"Sovereignty\">sovereignty</a>, territory, <a href=\"/wiki/Natural_resource\" title=\"Natural resource\">resources</a>, religion, or other issues. A war between internal elements of a state is a <a href=\"/wiki/Civil_war\" title=\"Civil war\">civil war</a>.\n</p>",
-    "blocks": [{"id":"1","Content":{"text":{"text":"War is a state of organized armed conflict between states or non-state actors. War is characterized by the use of lethal violence against others—whether between combatants or upon non-combatants—to achieve military goals through force. Lesser, often spontaneous conflicts, such as brawls, riots, revolts, and melees, are not considered to be warfare. Revolutions can be nonviolent or an organized and armed revolution which denotes a state of war. During the 20th century, it is estimated that between 167 and 188 million people died as a result of war.[258] A common definition defines war as a series of military campaigns between at least two opposing sides involving a dispute over sovereignty, territory, resources, religion, or other issues. A war between internal elements of a state is a civil war.","marks":{"marks":[{"range":{"from":51,"to":57},"type":5,"param":"/wiki/State_(polity)"},{"range":{"from":61,"to":77},"type":5,"param":"/wiki/Non-state_actors"},{"range":{"from":161,"to":171},"type":5,"param":"/wiki/Combatants"},{"range":{"from":180,"to":194},"type":5,"param":"/wiki/Non-combatants"},{"range":{"from":289,"to":294},"type":5,"param":"/wiki/Riots"},{"range":{"from":296,"to":303},"type":5,"param":"/wiki/Revolts"},{"range":{"from":309,"to":315},"type":5,"param":"/wiki/Melees"},{"range":{"from":370,"to":380},"type":5,"param":"/wiki/Nonviolent_revolution"},{"range":{"from":553,"to":558},"type":5,"param":"#cite_note-258"},{"range":{"from":606,"to":624},"type":5,"param":"/wiki/Military_campaign"},{"range":{"from":686,"to":697},"type":5,"param":"/wiki/Sovereignty"},{"range":{"from":710,"to":719},"type":5,"param":"/wiki/Natural_resource"},{"range":{"from":796,"to":805},"type":5,"param":"/wiki/Civil_war"}]}}}}]
+    "blocks": [{"id":"1","Content":{"text":{"text":"War is a state of organized armed conflict between states or non-state actors. War is characterized by the use of lethal violence against others—whether between combatants or upon non-combatants—to achieve military goals through force. Lesser, often spontaneous conflicts, such as brawls, riots, revolts, and melees, are not considered to be warfare. Revolutions can be nonviolent or an organized and armed revolution which denotes a state of war. During the 20th century, it is estimated that between 167 and 188 million people died as a result of war.[258] A common definition defines war as a series of military campaigns between at least two opposing sides involving a dispute over sovereignty, territory, resources, religion, or other issues. A war between internal elements of a state is a civil war.","marks":{"marks":[{"range":{"from":51,"to":57},"type":5,"param":"http://test.com/wiki/State_(polity)"},{"range":{"from":61,"to":77},"type":5,"param":"http://test.com/wiki/Non-state_actors"},{"range":{"from":161,"to":171},"type":5,"param":"http://test.com/wiki/Combatants"},{"range":{"from":180,"to":194},"type":5,"param":"http://test.com/wiki/Non-combatants"},{"range":{"from":289,"to":294},"type":5,"param":"http://test.com/wiki/Riots"},{"range":{"from":296,"to":303},"type":5,"param":"http://test.com/wiki/Revolts"},{"range":{"from":309,"to":315},"type":5,"param":"http://test.com/wiki/Melees"},{"range":{"from":370,"to":380},"type":5,"param":"http://test.com/wiki/Nonviolent_revolution"},{"range":{"from":553,"to":558},"type":5,"param":"http://test.com/test#cite_note-258"},{"range":{"from":606,"to":624},"type":5,"param":"http://test.com/wiki/Military_campaign"},{"range":{"from":686,"to":697},"type":5,"param":"http://test.com/wiki/Sovereignty"},{"range":{"from":710,"to":719},"type":5,"param":"http://test.com/wiki/Natural_resource"},{"range":{"from":796,"to":805},"type":5,"param":"http://test.com/wiki/Civil_war"}]}}}}]
   },
   {
     "desc": "list 1",
@@ -205,5 +205,35 @@
     "desc": "List with spans with new line items",
     "html": "<span>1. One\n</span><span>2. Two</span>",
     "blocks": [{"id":"1","Content":{"text":{"text":"One","style":10,"marks":{}}}},{"id":"2","Content":{"text":{"text":"Two","style":10,"marks":{}}}}]
+  },
+  {
+    "desc": "relative links",
+    "html": "<img class=\"logo-icon\" src=\"/static/image.png\" alt=\"\">",
+    "blocks": [{"id":"1","Content":{"file":{"name":"http://test.com/static/image.png","type":2}}}]
+  },
+  {
+    "desc": "link without scheme",
+    "html": "<img class=\"logo-icon\" src=\"//static.com/image.png\" alt=\"\">",
+    "blocks": [{"id":"1","Content":{"file":{"name":"http://static.com/image.png","type":2}}}]
+  },
+  {
+    "desc": "section link",
+    "html": "<img class=\"logo-icon\" src=\"#description\" alt=\"\">",
+    "blocks": [{"id":"1","Content":{"file":{"name":"http://test.com/test#description","type":2}}}]
+  },
+  {
+    "desc": "image with data-src atr",
+    "html": "<img class=\"logo-icon\" data-src=\"/static/image.png\" alt=\"\">",
+    "blocks": [{"id":"1","Content":{"file":{"name":"http://test.com/static/image.png","type":2}}}]
+  },
+  {
+    "desc": "image without src",
+    "html": "<img class=\"logo-icon\" alt=\"\">",
+    "blocks": null
+  },
+  {
+    "desc": "image with empty src",
+    "html": "<img class=\"logo-icon\" src=\"\" data-src=\"\" alt=\"\">",
+    "blocks": null
   }
 ]

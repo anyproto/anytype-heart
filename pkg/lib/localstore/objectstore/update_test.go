@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -20,28 +21,21 @@ func TestUpdateObjectDetails(t *testing.T) {
 	t.Run("with nil field expect error", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails("id1", &types.Struct{})
+		err := s.UpdateObjectDetails(context.Background(), "id1", &types.Struct{})
 		require.Error(t, err)
 	})
 
-	t.Run("with empty details expect just id detail is written", func(t *testing.T) {
+	t.Run("with empty details expect error", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails("id1", &types.Struct{Fields: map[string]*types.Value{}})
-		require.NoError(t, err)
-
-		want := makeDetails(TestObject{
-			bundle.RelationKeyId: pbtypes.String("id1"),
-		})
-		got, err := s.GetDetails("id1")
-		require.NoError(t, err)
-		assert.Equal(t, want, got.GetDetails())
+		err := s.UpdateObjectDetails(context.Background(), "id1", &types.Struct{Fields: map[string]*types.Value{}})
+		require.Error(t, err)
 	})
 
 	t.Run("with no id in details expect id is added on write", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails("id1", makeDetails(TestObject{
+		err := s.UpdateObjectDetails(context.Background(), "id1", makeDetails(TestObject{
 			bundle.RelationKeyName: pbtypes.String("some name"),
 		}))
 		require.NoError(t, err)
@@ -58,7 +52,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 	t.Run("with no existing details try to write nil details and expect nothing is changed", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails("id1", nil)
+		err := s.UpdateObjectDetails(context.Background(), "id1", nil)
 		require.NoError(t, err)
 
 		det, err := s.GetDetails("id1")
@@ -71,7 +65,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 		obj := makeObjectWithName("id1", "foo")
 		s.AddObjects(t, []TestObject{obj})
 
-		err := s.UpdateObjectDetails("id1", nil)
+		err := s.UpdateObjectDetails(context.Background(), "id1", nil)
 		require.NoError(t, err)
 
 		det, err := s.GetDetails("id1")
@@ -79,13 +73,13 @@ func TestUpdateObjectDetails(t *testing.T) {
 		assert.Equal(t, makeDetails(obj), det.GetDetails())
 	})
 
-	t.Run("with write same details expect error", func(t *testing.T) {
+	t.Run("with write same details expect no error", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		obj := makeObjectWithName("id1", "foo")
 		s.AddObjects(t, []TestObject{obj})
 
-		err := s.UpdateObjectDetails("id1", makeDetails(obj))
-		require.Equal(t, ErrDetailsNotChanged, err)
+		err := s.UpdateObjectDetails(context.Background(), "id1", makeDetails(obj))
+		require.NoError(t, err)
 	})
 
 	t.Run("with updated details just store them", func(t *testing.T) {
@@ -94,7 +88,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj})
 
 		newObj := makeObjectWithNameAndDescription("id1", "foo", "bar")
-		err := s.UpdateObjectDetails("id1", makeDetails(newObj))
+		err := s.UpdateObjectDetails(context.Background(), "id1", makeDetails(newObj))
 		require.NoError(t, err)
 
 		det, err := s.GetDetails("id1")
@@ -112,8 +106,8 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 			require.Fail(t, "unexpected call")
 		})
 
-		err := s.UpdateObjectDetails("id1", makeDetails(makeObjectWithName("id1", "foo")))
-		require.Equal(t, ErrDetailsNotChanged, err)
+		err := s.UpdateObjectDetails(context.Background(), "id1", makeDetails(makeObjectWithName("id1", "foo")))
+		require.NoError(t, err)
 	})
 
 	t.Run("with new details", func(t *testing.T) {
@@ -214,6 +208,46 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 			return details, nil
 		})
 		require.NoError(t, err)
+	})
+
+	t.Run("with local details present in old store, merge only missing keys", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		lastUsed := time.Now().Add(-time.Hour).Unix()
+		lastOpened := time.Now().Unix()
+
+		obj := TestObject{
+			bundle.RelationKeyId:           pbtypes.String("id1"),
+			bundle.RelationKeyName:         pbtypes.String("foo"),
+			bundle.RelationKeyLastUsedDate: pbtypes.Int64(lastUsed),
+		}
+		err := s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
+			return makeDetails(obj), nil
+		})
+
+		oldObject := TestObject{
+			bundle.RelationKeyId:             pbtypes.String("id1"),
+			bundle.RelationKeyName:           pbtypes.String("foo old"),
+			bundle.RelationKeyLastUsedDate:   pbtypes.Int64(lastUsed - 1000),
+			bundle.RelationKeyLastOpenedDate: pbtypes.Int64(lastOpened),
+		}
+		err = s.oldStore.SetDetails("id1", makeDetails(oldObject))
+		require.NoError(t, err)
+
+		err = s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
+			newObj := TestObject{
+				bundle.RelationKeyId:             pbtypes.String("id1"),
+				bundle.RelationKeyName:           pbtypes.String("foo"),
+				bundle.RelationKeyLastUsedDate:   pbtypes.Int64(lastUsed),
+				bundle.RelationKeyLastOpenedDate: pbtypes.Int64(lastOpened),
+			}
+			assert.Equal(t, makeDetails(newObj), details)
+			return details, nil
+		})
+		require.NoError(t, err)
+
+		oldDetails, err := s.oldStore.GetLocalDetails("id1")
+		require.Error(t, err)
+		require.Nil(t, oldDetails)
 	})
 }
 
@@ -326,7 +360,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		// when
 		err := s.ModifyObjectDetails("id", nil)
 
-		//then
+		// then
 		assert.NoError(t, err)
 		got, err := s.GetDetails("id")
 		assert.NoError(t, err)
@@ -339,12 +373,12 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		s.AddObjects(t, []TestObject{makeObjectWithName("id", "foo")})
 
 		// when
-		err := s.ModifyObjectDetails("id", func(details *types.Struct) (*types.Struct, error) {
+		err := s.ModifyObjectDetails("id", func(details *types.Struct) (*types.Struct, bool, error) {
 			details.Fields[bundle.RelationKeyName.String()] = pbtypes.String("bar")
-			return details, nil
+			return details, true, nil
 		})
 
-		//then
+		// then
 		assert.NoError(t, err)
 		want := makeDetails(TestObject{
 			bundle.RelationKeyId:      pbtypes.String("id"),
@@ -362,11 +396,11 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		s.AddObjects(t, []TestObject{makeObjectWithName("id", "foo")})
 
 		// when
-		err := s.ModifyObjectDetails("id", func(_ *types.Struct) (*types.Struct, error) {
-			return nil, nil
+		err := s.ModifyObjectDetails("id", func(_ *types.Struct) (*types.Struct, bool, error) {
+			return nil, true, nil
 		})
 
-		//then
+		// then
 		assert.NoError(t, err)
 		want := makeDetails(TestObject{
 			bundle.RelationKeyId: pbtypes.String("id"),

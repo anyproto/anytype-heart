@@ -2,7 +2,6 @@ package filestorage
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -10,6 +9,8 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 type inMemBlockStore struct {
@@ -17,8 +18,10 @@ type inMemBlockStore struct {
 	mu   sync.Mutex
 }
 
+var _ FileStorage = (*inMemBlockStore)(nil)
+
 // NewInMemory creates new in-memory store for testing purposes
-func NewInMemory() *inMemBlockStore {
+func NewInMemory() FileStorage {
 	return &inMemBlockStore{
 		data: make(map[string]blocks.Block),
 	}
@@ -64,7 +67,6 @@ func (i *inMemBlockStore) Add(ctx context.Context, bs []blocks.Block) error {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	for _, b := range bs {
-		fmt.Println("add", b.Cid().String())
 		i.data[b.Cid().KeyString()] = b
 	}
 	return nil
@@ -103,4 +105,34 @@ func (i *inMemBlockStore) LocalDiskUsage(ctx context.Context) (uint64, error) {
 		size += uint64(len(b.RawData()))
 	}
 	return size, nil
+}
+
+func (i *inMemBlockStore) IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error {
+	return nil
+}
+
+func (i *inMemBlockStore) NewLocalStoreGarbageCollector() LocalStoreGarbageCollector {
+	return &inMemGarbageCollector{store: i, using: map[string]struct{}{}}
+}
+
+type inMemGarbageCollector struct {
+	store *inMemBlockStore
+	using map[string]struct{}
+}
+
+func (i *inMemGarbageCollector) MarkAsUsing(cids []cid.Cid) {
+	for _, c := range cids {
+		i.using[c.KeyString()] = struct{}{}
+	}
+}
+
+func (i *inMemGarbageCollector) CollectGarbage(ctx context.Context) error {
+	i.store.mu.Lock()
+	defer i.store.mu.Unlock()
+	for k := range i.store.data {
+		if _, ok := i.using[k]; !ok {
+			delete(i.store.data, k)
+		}
+	}
+	return nil
 }

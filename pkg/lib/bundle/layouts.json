@@ -15,10 +15,6 @@
     ]
   },
   {
-    "id": "database",
-    "name": "Database"
-  },
-  {
     "id": "note",
     "name": "Note"
   },
@@ -53,6 +49,10 @@
   {
     "id": "spaceView",
     "name": "Space View"
+  },
+  {
+    "id": "participant",
+    "name": "Participant"
   },
   {
     "id": "image",

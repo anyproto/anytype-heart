@@ -59,6 +59,12 @@ message Change {
 
             StoreSliceUpdate storeSliceUpdate = 109;
             OriginalCreatedTimestampSet originalCreatedTimestampSet = 110;
+            SetFileInfo setFileInfo = 111;
+            NotificationCreate notificationCreate = 112;
+            NotificationUpdate notificationUpdate = 113;
+
+            DeviceAdd deviceAdd = 114;
+            DeviceUpdate deviceUpdate = 115;
         }
         reserved 102,103,104; // old unsupported relation changes
     }
@@ -150,5 +156,27 @@ message Change {
 
     message OriginalCreatedTimestampSet {
         int64 ts = 1;
+    }
+
+    message SetFileInfo {
+        model.FileInfo fileInfo = 1;
+    }
+
+    message NotificationCreate {
+        anytype.model.Notification notification = 1;
+    }
+
+    message NotificationUpdate {
+        string id = 1;
+        anytype.model.Notification.Status status = 2;
+    }
+
+    message DeviceAdd {
+        anytype.model.DeviceInfo device = 1;
+    }
+
+    message DeviceUpdate {
+        string id = 1;
+        string name = 2;
     }
 }

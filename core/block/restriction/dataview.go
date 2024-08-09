@@ -1,6 +1,10 @@
 package restriction
 
 import (
+	"github.com/samber/lo"
+
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -99,15 +103,33 @@ func (dr DataviewRestrictions) Equal(dr2 DataviewRestrictions) bool {
 	return true
 }
 
-func (s *service) getDataviewRestrictions(rh RestrictionHolder) DataviewRestrictions {
+func getDataviewRestrictions(rh RestrictionHolder) DataviewRestrictions {
 	if dr, ok := dataviewRestrictionsBySBType[rh.Type()]; ok {
 		return dr
 	}
 
 	uk := rh.UniqueKey()
 	if uk != nil {
-		return GetDataviewRestrictionsForUniqueKey(uk)
+		return getDataviewRestrictionsForUniqueKey(uk)
 	}
 
+	return nil
+}
+
+func getDataviewRestrictionsForUniqueKey(uk domain.UniqueKey) DataviewRestrictions {
+	switch uk.SmartblockType() {
+	case smartblock.SmartBlockTypeObjectType:
+		key := uk.InternalKey()
+		if lo.Contains(bundle.InternalTypes, domain.TypeKey(key)) {
+			return DataviewRestrictions{
+				model.RestrictionsDataviewRestrictions{
+					BlockId:      DataviewBlockId,
+					Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject},
+				},
+			}
+		}
+	case smartblock.SmartBlockTypeRelation:
+		// should we handle this?
+	}
 	return nil
 }

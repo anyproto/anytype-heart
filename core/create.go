@@ -181,3 +181,20 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	return response(id, newDetails, err)
 }
+
+func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjectCreateFromUrlRequest) *pb.RpcObjectCreateFromUrlResponse {
+	response := func(code pb.RpcObjectCreateFromUrlResponseErrorCode, id string, err error, newDetails *types.Struct) *pb.RpcObjectCreateFromUrlResponse {
+		m := &pb.RpcObjectCreateFromUrlResponse{Details: newDetails, Error: &pb.RpcObjectCreateFromUrlResponseError{Code: code}, ObjectId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	bs := getService[*block.Service](mw)
+
+	id, newDetails, err := bs.CreateObjectFromUrl(cctx, req)
+	if err != nil {
+		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", err, nil)
+	}
+	return response(pb.RpcObjectCreateFromUrlResponseError_NULL, id, nil, newDetails)
+}

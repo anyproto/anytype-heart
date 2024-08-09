@@ -2,10 +2,11 @@ package dataview
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -26,10 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-const DefaultDetailsFieldName = "_defaultRecordFields"
-
 var log = logging.Logger("anytype-mw-editor-dataview")
-var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
 
 type Dataview interface {
 	SetSource(ctx session.Context, blockId string, source []string) (err error)
@@ -39,7 +37,7 @@ type Dataview interface {
 	GetDataview(blockID string) (*model.BlockContentDataview, error)
 
 	DeleteView(ctx session.Context, blockId string, viewId string, showEvent bool) error
-	SetActiveView(ctx session.Context, blockId string, activeViewId string, limit int, offset int) error
+	SetActiveView(ctx session.Context, blockId string, activeViewId string) error
 	CreateView(ctx session.Context, blockID string,
 		view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error)
 	SetViewPosition(ctx session.Context, blockId string, viewId string, position uint32) error
@@ -59,6 +57,7 @@ func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) 
 		objectStore: objectStore,
 	}
 	sb.AddHook(dv.checkDVBlocks, smartblock.HookBeforeApply)
+	sb.AddHook(dv.injectActiveViews, smartblock.HookBeforeApply)
 	return dv
 }
 
@@ -205,7 +204,7 @@ func (d *sdataview) UpdateView(ctx session.Context, blockID string, viewID strin
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId string, limit int, offset int) error {
+func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId string) error {
 	s := d.NewStateCtx(ctx)
 
 	dvBlock, err := getDataviewBlock(s, id)
@@ -218,8 +217,12 @@ func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId s
 	}
 	dvBlock.SetActiveView(activeViewId)
 
+	if err = d.objectStore.SetActiveView(d.Id(), id, activeViewId); err != nil {
+		return err
+	}
+
 	d.SmartBlock.CheckSubscriptions()
-	return d.Apply(s)
+	return d.Apply(s, smartblock.NoHooks)
 }
 
 func (d *sdataview) SetViewPosition(ctx session.Context, blockId string, viewId string, position uint32) (err error) {
@@ -423,6 +426,34 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 	return
 }
 
+func (d *sdataview) injectActiveViews(info smartblock.ApplyInfo) (err error) {
+	s := info.State
+	views, err := d.objectStore.GetActiveViews(d.Id())
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil
+	}
+	if err != nil {
+		log.With("objectId", s.RootId()).Warnf("failed to get list of active views from store: %v", err)
+		return
+	}
+
+	for blockId, viewId := range views {
+		b := s.Pick(blockId)
+		if b == nil {
+			log.With("objectId", s.RootId()).Warnf("failed to get block '%s' to inject active view", blockId)
+			continue
+		}
+		dv := b.Model().GetDataview()
+		if dv == nil {
+			log.With("objectId", s.RootId()).Warnf("block '%s' is not dataview, so cannot inject active view", blockId)
+			continue
+		}
+		dv.ActiveView = viewId
+	}
+
+	return nil
+}
+
 func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 	b := s.Get(id)
 	if b == nil {
@@ -432,83 +463,6 @@ func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 		return tb, nil
 	}
 	return nil, fmt.Errorf("not a dataview block")
-}
-
-func getEntryID(entry database.Record) string {
-	if entry.Details == nil {
-		return ""
-	}
-
-	return pbtypes.GetString(entry.Details, bundle.RelationKeyId.String())
-}
-
-type recordInsertedAtPosition struct {
-	position int
-	entry    *types.Struct
-}
-
-type recordsInsertedAtPosition struct {
-	position int
-	entries  []*types.Struct
-}
-
-func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, removed []string, insertedGroupedByPosition []recordsInsertedAtPosition) {
-	var inserted []recordInsertedAtPosition
-
-	var existing = make(map[string]*types.Struct, len(a))
-	for _, record := range a {
-		existing[getEntryID(record)] = record.Details
-	}
-
-	var existingInNew = make(map[string]struct{}, len(b))
-	for i, entry := range b {
-		id := getEntryID(entry)
-		if prev, exists := existing[id]; exists {
-			if len(a) <= i || getEntryID(a[i]) != id {
-				// todo: return as moved?
-				removed = append(removed, id)
-				inserted = append(inserted, recordInsertedAtPosition{i, entry.Details})
-			} else {
-				if !prev.Equal(entry.Details) {
-					updated = append(updated, entry.Details)
-				}
-			}
-		} else {
-			inserted = append(inserted, recordInsertedAtPosition{i, entry.Details})
-		}
-
-		existingInNew[id] = struct{}{}
-	}
-
-	for id := range existing {
-		if _, exists := existingInNew[id]; !exists {
-			removed = append(removed, id)
-		}
-	}
-
-	var insertedToTheLastPosition = recordsInsertedAtPosition{position: -1}
-	var lastPos = -1
-
-	if len(inserted) > 0 {
-		insertedToTheLastPosition.position = inserted[0].position
-		lastPos = inserted[0].position - 1
-	}
-
-	for _, entry := range inserted {
-		if entry.position > lastPos+1 {
-			// split the insert portion
-			insertedGroupedByPosition = append(insertedGroupedByPosition, insertedToTheLastPosition)
-			insertedToTheLastPosition = recordsInsertedAtPosition{position: entry.position}
-		}
-
-		lastPos = entry.position
-		insertedToTheLastPosition.entries = append(insertedToTheLastPosition.entries, entry.entry)
-	}
-	if len(insertedToTheLastPosition.entries) > 0 {
-		insertedGroupedByPosition = append(insertedGroupedByPosition, insertedToTheLastPosition)
-	}
-
-	return
 }
 
 func BlockBySource(objectStore objectstore.ObjectStore, source []string) (*model.BlockContentOfDataview, error) {

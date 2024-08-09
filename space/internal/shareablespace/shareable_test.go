@@ -14,7 +14,86 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/initial"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
+
+func TestSpaceController_InvitingLoading(t *testing.T) {
+	fx := newFixture(t, spaceinfo.AccountStatusJoining)
+	defer fx.stop()
+	err := fx.ctrl.Start(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, mode.ModeJoining, fx.ctrl.Mode())
+	time.Sleep(100 * time.Millisecond)
+	fx.reg.Lock()
+	defer fx.reg.Unlock()
+	require.Equal(t, []mode.Mode{mode.ModeJoining, mode.ModeLoading}, fx.reg.modes)
+}
+
+func TestSpaceController_LoadingDeleting(t *testing.T) {
+	fx := newFixture(t, spaceinfo.AccountStatusUnknown)
+	defer fx.stop()
+	err := fx.ctrl.Start(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, mode.ModeLoading, fx.ctrl.Mode())
+	err = fx.ctrl.SetPersistentInfo(context.Background(), makePersistentInfo("spaceId", spaceinfo.AccountStatusDeleted))
+	err = fx.ctrl.Update()
+	require.NoError(t, err)
+	fx.reg.Lock()
+	defer fx.reg.Unlock()
+	require.Equal(t, []mode.Mode{mode.ModeLoading, mode.ModeOffloading}, fx.reg.modes)
+}
+
+func TestSpaceController_LoadingDeletingMultipleWaiters(t *testing.T) {
+	fx := newFixture(t, spaceinfo.AccountStatusUnknown)
+	defer fx.stop()
+	err := fx.ctrl.Start(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, mode.ModeLoading, fx.ctrl.Mode())
+	wg := sync.WaitGroup{}
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			err := fx.ctrl.SetPersistentInfo(context.Background(), makePersistentInfo("spaceId", spaceinfo.AccountStatusDeleted))
+			require.NoError(t, err)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	fx.reg.Lock()
+	defer fx.reg.Unlock()
+	require.Equal(t, []mode.Mode{mode.ModeLoading, mode.ModeOffloading}, fx.reg.modes)
+}
+
+func TestSpaceController_Deleting(t *testing.T) {
+	fx := newFixture(t, spaceinfo.AccountStatusDeleted)
+	defer fx.stop()
+	err := fx.ctrl.Start(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, mode.ModeOffloading, fx.ctrl.Mode())
+	time.Sleep(100 * time.Millisecond)
+	fx.reg.Lock()
+	defer fx.reg.Unlock()
+	require.Equal(t, []mode.Mode{mode.ModeOffloading}, fx.reg.modes)
+}
+
+func TestSpaceController_DeletingInvalid(t *testing.T) {
+	fx := newFixture(t, spaceinfo.AccountStatusDeleted)
+	defer fx.stop()
+	err := fx.ctrl.Start(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, mode.ModeOffloading, fx.ctrl.Mode())
+	err = fx.ctrl.SetPersistentInfo(context.Background(), makePersistentInfo("spaceId", spaceinfo.AccountStatusActive))
+	require.Error(t, err)
+	fx.reg.Lock()
+	defer fx.reg.Unlock()
+	require.Equal(t, []mode.Mode{mode.ModeOffloading}, fx.reg.modes)
+}
+
+func makePersistentInfo(spaceId string, status spaceinfo.AccountStatus) spaceinfo.SpacePersistentInfo {
+	info := spaceinfo.NewSpacePersistentInfo(spaceId)
+	info.SetAccountStatus(status)
+	return info
+}
 
 type modeRegister struct {
 	modes []mode.Mode
@@ -27,57 +106,56 @@ func (m *modeRegister) register(mode mode.Mode) {
 	m.Unlock()
 }
 
-type spaceStatusMock struct {
-	sync.Mutex
+type spaceStatusStub struct {
 	spaceId           string
 	localStatus       spaceinfo.LocalStatus
 	remoteStatus      spaceinfo.RemoteStatus
 	accountStatus     spaceinfo.AccountStatus
 	persistentUpdater func(status spaceinfo.AccountStatus)
+	sync.Mutex
 }
 
-func (s *spaceStatusMock) Init(a *app.App) (err error) {
+func (s *spaceStatusStub) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (s *spaceStatusMock) Name() (name string) {
+func (s *spaceStatusStub) Name() (name string) {
 	return spacestatus.CName
 }
 
-func (s *spaceStatusMock) Lock() {
-	s.Mutex.Lock()
-}
-
-func (s *spaceStatusMock) Unlock() {
-	s.Mutex.Unlock()
-}
-
-func (s *spaceStatusMock) SpaceId() string {
+func (s *spaceStatusStub) SpaceId() string {
 	return s.spaceId
 }
 
-func (s *spaceStatusMock) GetLocalStatus() spaceinfo.LocalStatus {
+func (s *spaceStatusStub) GetLocalStatus() spaceinfo.LocalStatus {
+	s.Lock()
+	defer s.Unlock()
 	return s.localStatus
 }
 
-func (s *spaceStatusMock) GetRemoteStatus() spaceinfo.RemoteStatus {
+func (s *spaceStatusStub) GetRemoteStatus() spaceinfo.RemoteStatus {
+	s.Lock()
+	defer s.Unlock()
 	return s.remoteStatus
 }
 
-func (s *spaceStatusMock) GetPersistentStatus() spaceinfo.AccountStatus {
+func (s *spaceStatusStub) GetPersistentStatus() spaceinfo.AccountStatus {
+	s.Lock()
+	defer s.Unlock()
 	return s.accountStatus
 }
 
-func (s *spaceStatusMock) UpdatePersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) {
-	s.accountStatus = status
-}
-
-func (s *spaceStatusMock) SetRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
-	s.remoteStatus = status
+func (s *spaceStatusStub) Run(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *spaceStatusMock) SetPersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) (err error) {
+func (s *spaceStatusStub) Close(ctx context.Context) (err error) {
+	return nil
+}
+
+func (s *spaceStatusStub) SetPersistentStatus(status spaceinfo.AccountStatus) (err error) {
+	s.Lock()
+	defer s.Unlock()
 	s.accountStatus = status
 	if s.persistentUpdater != nil {
 		s.persistentUpdater(status)
@@ -85,16 +163,45 @@ func (s *spaceStatusMock) SetPersistentStatus(ctx context.Context, status spacei
 	return nil
 }
 
-func (s *spaceStatusMock) SetLocalStatus(ctx context.Context, status spaceinfo.LocalStatus) error {
+func (s *spaceStatusStub) SetPersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
+	s.Lock()
+	defer s.Unlock()
+	s.accountStatus = info.GetAccountStatus()
+	return
+}
+
+func (s *spaceStatusStub) SetLocalStatus(status spaceinfo.LocalStatus) error {
+	s.Lock()
+	defer s.Unlock()
 	s.localStatus = status
 	return nil
 }
 
-func (s *spaceStatusMock) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error) {
-	s.localStatus = info.LocalStatus
-	s.remoteStatus = info.RemoteStatus
-	return nil
+func (s *spaceStatusStub) SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
+	s.Lock()
+	defer s.Unlock()
+	s.localStatus = info.GetLocalStatus()
+	return
 }
+
+func (s *spaceStatusStub) SetAccessType(status spaceinfo.AccessType) (err error) {
+	return
+}
+
+func (s *spaceStatusStub) SetAclIsEmpty(isEmpty bool) (err error) {
+	return
+}
+
+func (s *spaceStatusStub) GetLatestAclHeadId() string {
+	return ""
+}
+
+func (s *spaceStatusStub) GetSpaceView() techspace.SpaceView {
+	return nil
+
+}
+
+var _ spacestatus.SpaceStatus = (*spaceStatusStub)(nil)
 
 type inviting struct {
 	inviteReceived atomic.Bool
@@ -112,11 +219,9 @@ func newInviting(status spacestatus.SpaceStatus, reg *modeRegister) mode.Process
 func (i *inviting) Start(ctx context.Context) error {
 	go func() {
 		i.inviteReceived.Store(true)
-		i.status.Lock()
-		i.status.SetPersistentStatus(ctx, spaceinfo.AccountStatusLoading)
-		i.status.Unlock()
+		_ = i.status.SetPersistentStatus(spaceinfo.AccountStatusActive)
 	}()
-	i.reg.register(mode.ModeInviting)
+	i.reg.register(mode.ModeJoining)
 	return nil
 }
 
@@ -190,7 +295,7 @@ func (f factory) Process(md mode.Mode) mode.Process {
 	switch md {
 	case mode.ModeInitial:
 		return initial.New()
-	case mode.ModeInviting:
+	case mode.ModeJoining:
 		return newInviting(f.status, f.reg)
 	case mode.ModeLoading:
 		return newLoading(f.status, f.reg)
@@ -203,17 +308,16 @@ func (f factory) Process(md mode.Mode) mode.Process {
 
 type fixture struct {
 	f    factory
-	s    *spaceStatusMock
+	s    *spaceStatusStub
 	ctrl *spaceController
 	reg  *modeRegister
 }
 
 func newFixture(t *testing.T, startStatus spaceinfo.AccountStatus) *fixture {
 	reg := &modeRegister{}
-	s := &spaceStatusMock{
+	s := &spaceStatusStub{
 		spaceId:       "spaceId",
 		accountStatus: startStatus,
-		Mutex:         sync.Mutex{},
 	}
 	f := factory{
 		status: s,
@@ -230,7 +334,7 @@ func newFixture(t *testing.T, startStatus spaceinfo.AccountStatus) *fixture {
 	}
 	s.persistentUpdater = func(status spaceinfo.AccountStatus) {
 		go func() {
-			err := controller.UpdateStatus(context.Background(), status)
+			err := controller.Update()
 			require.NoError(t, err)
 		}()
 	}
@@ -246,75 +350,4 @@ func newFixture(t *testing.T, startStatus spaceinfo.AccountStatus) *fixture {
 
 func (fx *fixture) stop() {
 	fx.ctrl.sm.Close()
-}
-
-func TestSpaceController_InvitingLoading(t *testing.T) {
-	fx := newFixture(t, spaceinfo.AccountStatusInviting)
-	defer fx.stop()
-	err := fx.ctrl.Start(context.Background())
-	require.NoError(t, err)
-	require.Equal(t, mode.ModeInviting, fx.ctrl.Mode())
-	time.Sleep(100 * time.Millisecond)
-	fx.reg.Lock()
-	defer fx.reg.Unlock()
-	require.Equal(t, []mode.Mode{mode.ModeInviting, mode.ModeLoading}, fx.reg.modes)
-}
-
-func TestSpaceController_LoadingDeleting(t *testing.T) {
-	fx := newFixture(t, spaceinfo.AccountStatusUnknown)
-	defer fx.stop()
-	err := fx.ctrl.Start(context.Background())
-	require.NoError(t, err)
-	require.Equal(t, mode.ModeLoading, fx.ctrl.Mode())
-	err = fx.ctrl.UpdateStatus(context.Background(), spaceinfo.AccountStatusDeleted)
-	require.NoError(t, err)
-	fx.reg.Lock()
-	defer fx.reg.Unlock()
-	require.Equal(t, []mode.Mode{mode.ModeLoading, mode.ModeOffloading}, fx.reg.modes)
-}
-
-func TestSpaceController_LoadingDeletingMultipleWaiters(t *testing.T) {
-	fx := newFixture(t, spaceinfo.AccountStatusUnknown)
-	defer fx.stop()
-	err := fx.ctrl.Start(context.Background())
-	require.NoError(t, err)
-	require.Equal(t, mode.ModeLoading, fx.ctrl.Mode())
-	wg := sync.WaitGroup{}
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			err := fx.ctrl.UpdateStatus(context.Background(), spaceinfo.AccountStatusDeleted)
-			require.NoError(t, err)
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-	fx.reg.Lock()
-	defer fx.reg.Unlock()
-	require.Equal(t, []mode.Mode{mode.ModeLoading, mode.ModeOffloading}, fx.reg.modes)
-}
-
-func TestSpaceController_Deleting(t *testing.T) {
-	fx := newFixture(t, spaceinfo.AccountStatusDeleted)
-	defer fx.stop()
-	err := fx.ctrl.Start(context.Background())
-	require.NoError(t, err)
-	require.Equal(t, mode.ModeOffloading, fx.ctrl.Mode())
-	time.Sleep(100 * time.Millisecond)
-	fx.reg.Lock()
-	defer fx.reg.Unlock()
-	require.Equal(t, []mode.Mode{mode.ModeOffloading}, fx.reg.modes)
-}
-
-func TestSpaceController_DeletingInvalid(t *testing.T) {
-	fx := newFixture(t, spaceinfo.AccountStatusDeleted)
-	defer fx.stop()
-	err := fx.ctrl.Start(context.Background())
-	require.NoError(t, err)
-	require.Equal(t, mode.ModeOffloading, fx.ctrl.Mode())
-	err = fx.ctrl.UpdateStatus(context.Background(), spaceinfo.AccountStatusLoading)
-	require.Error(t, err)
-	fx.reg.Lock()
-	defer fx.reg.Unlock()
-	require.Equal(t, []mode.Mode{mode.ModeOffloading}, fx.reg.modes)
 }

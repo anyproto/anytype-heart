@@ -36,18 +36,15 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 			Collections:   st.Store(),
 			RelationLinks: st.PickRelationLinks(),
 			Key:           p.s.UniqueKeyInternal(),
+			FileInfo:      st.GetFileInfo().ToModel(),
 		},
 	}
-	for _, fk := range p.s.GetAndUnsetFileKeys() {
-		snapshot.FileKeys = append(snapshot.FileKeys, &pb.ChangeFileKeys{Hash: fk.Hash, Keys: fk.Keys})
-	}
-
 	mo := &pb.SnapshotWithType{
 		SbType:   sbType,
 		Snapshot: snapshot,
 	}
 	if p.isJSON {
-		m := jsonpb.Marshaler{Indent: " "}
+		m := jsonpb.Marshaler{Indent: " ", EmitDefaults: true}
 		result, err := m.MarshalToString(mo)
 		if err != nil {
 			log.Errorf("failed to convert object to json: %s", err)

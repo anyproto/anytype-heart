@@ -27,20 +27,19 @@ type PeerStore interface {
 func New() PeerStore {
 	return &peerStore{
 		localPeerIdsBySpace:  map[string][]string{},
-		responsibleIds:       map[string][]string{},
 		spacesByLocalPeerIds: map[string][]string{},
 		Mutex:                sync.Mutex{},
 	}
 }
 
-type Observer func(peerId string, spaceIds []string)
+// Observer is a function that will be called when a peer is updated
+type Observer func(peerId string, spaceIdsBefore []string, spaceIdsAfter []string, peerRemoved bool)
 
 type peerStore struct {
 	nodeConf             nodeconf.Service
 	localPeerIds         []string
 	localPeerIdsBySpace  map[string][]string
 	spacesByLocalPeerIds map[string][]string
-	responsibleIds       map[string][]string
 	observers            []Observer
 	sync.Mutex
 }
@@ -63,6 +62,10 @@ func (p *peerStore) AddObserver(observer Observer) {
 func (p *peerStore) UpdateLocalPeer(peerId string, spaceIds []string) {
 	notify := true
 	p.Lock()
+	var (
+		oldIds []string
+		ok     bool
+	)
 	defer func() {
 		observers := p.observers
 		p.Unlock()
@@ -71,10 +74,10 @@ func (p *peerStore) UpdateLocalPeer(peerId string, spaceIds []string) {
 		}
 
 		for _, ob := range observers {
-			ob(peerId, spaceIds)
+			ob(peerId, oldIds, spaceIds, false)
 		}
 	}()
-	if oldIds, ok := p.spacesByLocalPeerIds[peerId]; ok {
+	if oldIds, ok = p.spacesByLocalPeerIds[peerId]; ok {
 		slices.Sort(oldIds)
 		slices.Sort(spaceIds)
 		if slices.Equal(oldIds, spaceIds) {
@@ -115,6 +118,8 @@ func (p *peerStore) updatePeer(peerId string, oldIds, newIds []string) {
 }
 
 func (p *peerStore) AllLocalPeers() []string {
+	p.Lock()
+	defer p.Unlock()
 	return p.localPeerIds
 }
 
@@ -126,11 +131,18 @@ func (p *peerStore) LocalPeerIds(spaceId string) []string {
 
 func (p *peerStore) RemoveLocalPeer(peerId string) {
 	p.Lock()
-	defer p.Unlock()
 	spaceIds, exists := p.spacesByLocalPeerIds[peerId]
 	if !exists {
+		p.Unlock()
 		return
 	}
+	defer func() {
+		observers := p.observers
+		p.Unlock()
+		for _, ob := range observers {
+			ob(peerId, spaceIds, nil, true)
+		}
+	}()
 	// TODO: do we need to notify observer here
 	for _, spaceId := range spaceIds {
 		peerIds := p.localPeerIdsBySpace[spaceId]

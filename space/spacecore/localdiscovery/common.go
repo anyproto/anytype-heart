@@ -1,10 +1,6 @@
 package localdiscovery
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
-
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 )
@@ -36,14 +32,4 @@ type LocalDiscovery interface {
 	SetNotifier(Notifier)
 	Start() error // Start the local discovery. Used when automatic start is disabled.
 	app.ComponentRunnable
-}
-
-func getPort(addrs []string) (port int, err error) {
-	if len(addrs) == 0 {
-		err = fmt.Errorf("addresses are empty")
-		return
-	}
-	split := strings.Split(addrs[0], ":")
-	_, portString := split[0], split[1]
-	return strconv.Atoi(portString)
 }

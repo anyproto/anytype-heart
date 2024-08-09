@@ -3,7 +3,6 @@ package rpcstore
 import (
 	"context"
 	"errors"
-	"sync"
 
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
@@ -11,6 +10,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 var closedBlockChan chan blocks.Block
@@ -26,28 +27,26 @@ type RpcStore interface {
 	fileblockstore.BlockStore
 
 	CheckAvailability(ctx context.Context, spaceID string, cids []cid.Cid) (checkResult []*fileproto.BlockAvailability, err error)
-	BindCids(ctx context.Context, spaceID string, fileID string, cids []cid.Cid) (err error)
+	BindCids(ctx context.Context, spaceID string, fileId domain.FileId, cids []cid.Cid) (err error)
 
-	AddToFile(ctx context.Context, spaceId string, fileId string, bs []blocks.Block) (err error)
-	DeleteFiles(ctx context.Context, spaceId string, fileIds ...string) (err error)
+	AddToFile(ctx context.Context, spaceId string, fileId domain.FileId, bs []blocks.Block) (err error)
+	DeleteFiles(ctx context.Context, spaceId string, fileIds ...domain.FileId) (err error)
 	SpaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error)
-	FilesInfo(ctx context.Context, spaceId string, fileIds ...string) ([]*fileproto.FileInfo, error)
+	FilesInfo(ctx context.Context, spaceId string, fileIds ...domain.FileId) ([]*fileproto.FileInfo, error)
 	AccountInfo(ctx context.Context) (info *fileproto.AccountInfoResponse, err error)
+	IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error
 }
 
 type store struct {
-	s  *service
 	cm *clientManager
-	mu sync.RWMutex
 
 	backgroundCtx    context.Context
 	backgroundCancel context.CancelFunc
 }
 
-func newStore(s *service, cm *clientManager) *store {
+func newStore(cm *clientManager) *store {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &store{
-		s:                s,
 		cm:               cm,
 		backgroundCtx:    ctx,
 		backgroundCancel: cancel,
@@ -70,6 +69,13 @@ func (s *store) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) 
 		return nil, err
 	}
 	return blocks.NewBlockWithCid(data, k)
+}
+
+func (s *store) IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error {
+	_, err := writeOperation(s.backgroundCtx, ctx, s, "iterateFiles", func(c *client) (struct{}, error) {
+		return struct{}{}, c.iterateFiles(ctx, iterFunc)
+	})
+	return err
 }
 
 func (s *store) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
@@ -131,7 +137,7 @@ func (s *store) Add(ctx context.Context, bs []blocks.Block) error {
 	return ErrUnsupported
 }
 
-func (s *store) AddToFile(ctx context.Context, spaceID string, fileID string, bs []blocks.Block) error {
+func (s *store) AddToFile(ctx context.Context, spaceID string, fileId domain.FileId, bs []blocks.Block) error {
 	if len(bs) == 0 {
 		return nil
 	}
@@ -141,7 +147,7 @@ func (s *store) AddToFile(ctx context.Context, spaceID string, fileID string, bs
 	)
 	var newPutFunc = func(b blocks.Block) func(c *client) error {
 		return func(c *client) error {
-			return c.put(ctx, spaceID, fileID, b.Cid(), b.RawData())
+			return c.put(ctx, spaceID, fileId, b.Cid(), b.RawData())
 		}
 	}
 	ctx = context.WithValue(ctx, operationNameKey, "addToFile")
@@ -173,9 +179,9 @@ func (s *store) CheckAvailability(ctx context.Context, spaceID string, cids []ci
 	})
 }
 
-func (s *store) BindCids(ctx context.Context, spaceID string, fileID string, cids []cid.Cid) error {
+func (s *store) BindCids(ctx context.Context, spaceID string, fileId domain.FileId, cids []cid.Cid) error {
 	_, err := writeOperation(s.backgroundCtx, ctx, s, "bindCids", func(c *client) (interface{}, error) {
-		return nil, c.bind(ctx, spaceID, fileID, cids...)
+		return nil, c.bind(ctx, spaceID, fileId, cids...)
 	})
 	return err
 }
@@ -184,7 +190,7 @@ func (s *store) Delete(ctx context.Context, c cid.Cid) error {
 	return ErrUnsupported
 }
 
-func (s *store) DeleteFiles(ctx context.Context, spaceId string, fileIds ...string) error {
+func (s *store) DeleteFiles(ctx context.Context, spaceId string, fileIds ...domain.FileId) error {
 	_, err := writeOperation(s.backgroundCtx, ctx, s, "deleteFiles", func(c *client) (interface{}, error) {
 		return nil, c.delete(ctx, spaceId, fileIds...)
 	})
@@ -203,7 +209,7 @@ func (s *store) SpaceInfo(ctx context.Context, spaceId string) (*fileproto.Space
 	})
 }
 
-func (s *store) FilesInfo(ctx context.Context, spaceId string, fileIds ...string) ([]*fileproto.FileInfo, error) {
+func (s *store) FilesInfo(ctx context.Context, spaceId string, fileIds ...domain.FileId) ([]*fileproto.FileInfo, error) {
 	return writeOperation(s.backgroundCtx, ctx, s, "filesInfo", func(c *client) ([]*fileproto.FileInfo, error) {
 		return c.filesInfo(ctx, spaceId, fileIds)
 	})

@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -16,6 +17,9 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
+
+// required relations for archive beside the bundle.RequiredInternalRelations
+var archiveRequiredRelations = []domain.RelationKey{}
 
 type Archive struct {
 	smartblock.SmartBlock
@@ -35,6 +39,7 @@ func NewArchive(
 }
 
 func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, archiveRequiredRelations...)
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
@@ -67,29 +72,28 @@ func (p *Archive) Relations(_ *state.State) relationutils.Relations {
 	return nil
 }
 
-func (p *Archive) updateObjects(info smartblock.ApplyInfo) (err error) {
+func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 	archivedIds, err := p.GetIds()
 	if err != nil {
 		return
 	}
 
-	records, _, err := p.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(p.SpaceID()),
-			},
+	records, err := p.objectStore.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyIsArchived.String(),
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: pbtypes.Bool(true),
 		},
-	})
+		database.FilterEq{
+			Key:   bundle.RelationKeySpaceId.String(),
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: pbtypes.String(p.SpaceID()),
+		},
+	}}, 0, 0)
 	if err != nil {
 		return
 	}
+
 	var storeArchivedIds = make([]string, 0, len(records))
 	for _, rec := range records {
 		storeArchivedIds = append(storeArchivedIds, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))

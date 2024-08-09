@@ -2,6 +2,7 @@ package treesyncer
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/streampool"
+	"github.com/anyproto/any-sync/nodeconf"
 	"go.uber.org/zap"
 )
 
@@ -53,17 +55,31 @@ func (e *executor) close() {
 	e.pool.Close()
 }
 
+type SyncedTreeRemover interface {
+	app.ComponentRunnable
+	RemoveAllExcept(senderId string, differentRemoteIds []string)
+}
+
+type SyncDetailsUpdater interface {
+	app.Component
+	UpdateSpaceDetails(existing, missing []string, spaceId string)
+}
+
 type treeSyncer struct {
 	sync.Mutex
-	mainCtx      context.Context
-	cancel       context.CancelFunc
-	requests     int
-	spaceId      string
-	timeout      time.Duration
-	requestPools map[string]*executor
-	headPools    map[string]*executor
-	treeManager  treemanager.TreeManager
-	isRunning    bool
+	mainCtx            context.Context
+	cancel             context.CancelFunc
+	requests           int
+	spaceId            string
+	timeout            time.Duration
+	requestPools       map[string]*executor
+	headPools          map[string]*executor
+	treeManager        treemanager.TreeManager
+	isRunning          bool
+	isSyncing          bool
+	nodeConf           nodeconf.NodeConf
+	syncedTreeRemover  SyncedTreeRemover
+	syncDetailsUpdater SyncDetailsUpdater
 }
 
 func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
@@ -80,7 +96,11 @@ func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 }
 
 func (t *treeSyncer) Init(a *app.App) (err error) {
+	t.isSyncing = true
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
+	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
+	t.syncedTreeRemover = app.MustComponent[SyncedTreeRemover](a)
+	t.syncDetailsUpdater = app.MustComponent[SyncDetailsUpdater](a)
 	return nil
 }
 
@@ -119,9 +139,24 @@ func (t *treeSyncer) StartSync() {
 	}
 }
 
-func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missing []string) error {
+func (t *treeSyncer) StopSync() {
 	t.Lock()
 	defer t.Unlock()
+	t.isRunning = false
+	t.isSyncing = false
+}
+
+func (t *treeSyncer) ShouldSync(peerId string) bool {
+	t.Lock()
+	defer t.Unlock()
+	return t.isSyncing
+}
+
+func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missing []string) (err error) {
+	t.Lock()
+	defer t.Unlock()
+	isResponsible := slices.Contains(t.nodeConf.NodeIds(t.spaceId), peerId)
+	t.sendSyncEvents(existing, missing, isResponsible)
 	reqExec, exists := t.requestPools[peerId]
 	if !exists {
 		reqExec = newExecutor(t.requests, 0)
@@ -140,7 +175,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 	}
 	for _, id := range existing {
 		idCopy := id
-		err := headExec.tryAdd(idCopy, func() {
+		err = headExec.tryAdd(idCopy, func() {
 			t.updateTree(peerId, idCopy)
 		})
 		if err != nil {
@@ -149,14 +184,26 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 	}
 	for _, id := range missing {
 		idCopy := id
-		err := reqExec.tryAdd(idCopy, func() {
+		err = reqExec.tryAdd(idCopy, func() {
 			t.requestTree(peerId, idCopy)
 		})
 		if err != nil {
 			log.Error("failed to add to request queue", zap.Error(err))
 		}
 	}
+	t.syncedTreeRemover.RemoveAllExcept(peerId, existing)
 	return nil
+}
+
+func (t *treeSyncer) sendSyncEvents(existing, missing []string, nodePeer bool) {
+	if !nodePeer {
+		return
+	}
+	t.sendDetailsUpdates(existing, missing)
+}
+
+func (t *treeSyncer) sendDetailsUpdates(existing, missing []string) {
+	t.syncDetailsUpdater.UpdateSpaceDetails(existing, missing, t.spaceId)
 }
 
 func (t *treeSyncer) requestTree(peerId, id string) {
@@ -183,6 +230,7 @@ func (t *treeSyncer) updateTree(peerId, id string) {
 	syncTree, ok := tr.(synctree.SyncTree)
 	if !ok {
 		log.Warn("not a sync tree")
+		return
 	}
 	if err = syncTree.SyncWithPeer(ctx, peerId); err != nil {
 		log.Warn("synctree.SyncWithPeer error", zap.Error(err))

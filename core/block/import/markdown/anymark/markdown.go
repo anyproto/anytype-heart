@@ -3,6 +3,7 @@ package anymark
 import (
 	"bytes"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -22,6 +23,7 @@ import (
 var (
 	reEmptyLinkText = regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
 	reWikiCode      = regexp.MustCompile(`<span\s*?>(\s*?)</span>`)
+	reNotionTable   = regexp.MustCompile(`(?s)(<table>.*?</table>)`)
 
 	reWikiWbr = regexp.MustCompile(`<wbr[^>]*>`)
 )
@@ -40,7 +42,7 @@ func convertBlocks(source []byte, r ...renderer.NodeRenderer) error {
 func MarkdownToBlocks(markdownSource []byte,
 	baseFilepath string,
 	allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error) {
-	br := newBlocksRenderer(baseFilepath, allFileShortPaths)
+	br := newBlocksRenderer(baseFilepath, allFileShortPaths, false)
 
 	r := NewRenderer(br)
 
@@ -55,7 +57,7 @@ func MarkdownToBlocks(markdownSource []byte,
 	return r.GetBlocks(), r.GetRootBlockIDs(), nil
 }
 
-func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, err error) {
+func HTMLToBlocks(source []byte, url string) (blocks []*model.Block, rootBlockIDs []string, err error) {
 	preprocessedSource := string(source)
 
 	preprocessedSource = transformCSSUnderscore(preprocessedSource)
@@ -65,11 +67,17 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 
 	// Pattern: <pre> <span>\n console \n</span> <span>\n . \n</span> <span>\n log \n</span>
 	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
+	preprocessedSource = reNotionTable.ReplaceAllStringFunc(preprocessedSource, func(match string) string {
+		return strings.ReplaceAll(match, "\n", "")
+	})
 
 	converter := html2md.NewConverter("", true, &html2md.Options{
 		DisableEscaping:  true,
 		AllowHeaderBreak: true,
 		EmDelimiter:      "*",
+		GetAbsoluteURL: func(selec *goquery.Selection, src string, domain string) string {
+			return getAbsolutePath(url, src)
+		},
 	})
 	converter.Use(plugin.GitHubFlavored())
 	converter.AddRules(getCustomHTMLRules()...)
@@ -82,7 +90,7 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 
 	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
 
-	blRenderer := newBlocksRenderer("", nil)
+	blRenderer := newBlocksRenderer("", nil, false)
 	r := NewRenderer(blRenderer)
 	tr := NewTableRenderer(blRenderer, table.NewEditor(nil))
 	err = convertBlocks([]byte(md), r, tr)
@@ -184,11 +192,8 @@ func getCustomHTMLRules() []html2md.Rule {
 	img := html2md.Rule{
 		Filter: []string{"img"},
 		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
-			var (
-				src, title string
-				ok         bool
-			)
-			if src, ok = selec.Attr("src"); !ok {
+			var src, title string
+			if src = extractImageSource(selec); src == "" {
 				return nil
 			}
 
@@ -196,8 +201,10 @@ func getCustomHTMLRules() []html2md.Rule {
 			if title == "" {
 				title = "image"
 			}
+
+			absolutePath := options.GetAbsoluteURL(selec, src, "")
 			// if we simply return link, BlockPaste command will not recognize it as image
-			return html2md.String(fmt.Sprintf("![%s](%s)", title, src))
+			return html2md.String(fmt.Sprintf("![%s](%s)", title, absolutePath))
 		},
 	}
 
@@ -221,6 +228,19 @@ func getCustomHTMLRules() []html2md.Rule {
 
 	return []html2md.Rule{span, del, underscore, br, anohref,
 		simpleText, blockquote, italic, code, bdo, div, img, table}
+}
+
+func extractImageSource(selec *goquery.Selection) string {
+	var (
+		src string
+		ok  bool
+	)
+	if src, ok = selec.Attr("src"); !ok || src == "" {
+		if src, ok = selec.Attr("data-src"); !ok || src == "" {
+			return ""
+		}
+	}
+	return src
 }
 
 func addHeaderRow(content string, numberOfCells int, numberOfRows int) string {
@@ -297,4 +317,34 @@ func isHeadingRow(s *goquery.Selection) (bool, bool) {
 	}
 
 	return false, isContinue
+}
+
+func getAbsolutePath(rawUrl, relativeSrc string) string {
+	parsedUrl, err := url.Parse(rawUrl)
+	if err != nil {
+		return relativeSrc
+	}
+
+	// cases like //upload.com/picture.png where we should add scheme
+	if strings.HasPrefix(relativeSrc, "//") {
+		if parsedUrl.Scheme == "" {
+			parsedUrl.Scheme = "http"
+		}
+		return strings.Join([]string{parsedUrl.Scheme, relativeSrc}, ":")
+	}
+
+	// cases like /static/example.png where we should add root path
+	if strings.HasPrefix(relativeSrc, "/") {
+		if parsedUrl.Host != "" {
+			parsedUrl.Path = relativeSrc
+			return parsedUrl.String()
+		}
+	}
+
+	// link to section of html page
+	if strings.HasPrefix(relativeSrc, "#") {
+		parsedUrl.Fragment = strings.TrimLeft(relativeSrc, "#")
+		return parsedUrl.String()
+	}
+	return relativeSrc
 }

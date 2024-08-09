@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/space/internal/techspace"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 type TechSpace struct {
@@ -28,8 +28,6 @@ type TechSpaceDeps struct {
 	TechSpace       techspace.TechSpace
 }
 
-// TODO: cover space methods
-
 func NewTechSpace(deps TechSpaceDeps) *TechSpace {
 	sp := &TechSpace{
 		space: &space{
@@ -38,6 +36,7 @@ func NewTechSpace(deps TechSpaceDeps) *TechSpace {
 			common:                 deps.CommonSpace,
 			loadMandatoryObjectsCh: make(chan struct{}),
 			personalSpaceId:        deps.PersonalSpaceId,
+			myIdentity:             deps.AccountService.Account().SignKey.GetPublic(),
 		},
 		TechSpace: deps.TechSpace,
 	}

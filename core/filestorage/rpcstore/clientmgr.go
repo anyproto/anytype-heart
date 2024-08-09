@@ -9,10 +9,13 @@ import (
 
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
+	"github.com/anyproto/any-sync/net/pool"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+
+	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
 const (
@@ -28,7 +31,7 @@ var (
 	clientCreateTimeout = 1 * time.Minute
 )
 
-func newClientManager(s *service, peerUpdateCh chan struct{}) *clientManager {
+func newClientManager(pool pool.Pool, peerStore peerstore.PeerStore, peerUpdateCh chan struct{}) *clientManager {
 	cm := &clientManager{
 		mb: mb.New[*task](maxTasks),
 		ocache: ocache.New(
@@ -40,7 +43,8 @@ func newClientManager(s *service, peerUpdateCh chan struct{}) *clientManager {
 			ocache.WithGCPeriod(0),
 		),
 		checkPeersCh: peerUpdateCh,
-		s:            s,
+		pool:         pool,
+		peerStore:    peerStore,
 	}
 	cm.ctx, cm.ctxCancel = context.WithCancel(context.Background())
 	cm.ctx = context.WithValue(cm.ctx, operationNameKey, "checkPeerLoop")
@@ -56,7 +60,9 @@ type clientManager struct {
 	ocache       ocache.OCache
 	checkPeersCh chan struct{}
 
-	s  *service
+	pool      pool.Pool
+	peerStore peerstore.PeerStore
+
 	mu sync.RWMutex
 }
 
@@ -99,14 +105,14 @@ func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
 		if cl.peerId == c.peerId {
 			return true
 		}
-		if slices.Contains(cl.spaceIds, t.spaceId) {
+		if cl.checkSpaceFilter(t) {
 			taskClientIds = append(taskClientIds, cl.peerId)
 		}
 		return true
 	})
 	if taskErr != nil {
 		for _, peerId := range taskClientIds {
-			log.Debug("retrying task", zap.Error(taskErr), zap.String("cid", t.cid.String()))
+			log.Info("retrying task", zap.Error(taskErr), zap.String("cid", t.cid.String()))
 			if !slices.Contains(t.denyPeerIds, peerId) {
 				t.denyPeerIds = append(t.denyPeerIds, c.peerId)
 				err := m.add(t.ctx, t)
@@ -119,7 +125,7 @@ func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
 		}
 	}
 	log.Debug("finishing task task", zap.String("cid", t.cid.String()))
-	t.ready <- result{cid: t.cid, err: taskErr}
+	t.ready <- result{err: taskErr}
 	t.release()
 }
 
@@ -156,7 +162,7 @@ func (m *clientManager) checkPeers(ctx context.Context, needClient bool) (err er
 		if _, cerr := m.ocache.Pick(ctx, peerId); cerr == ocache.ErrNotExists {
 			var cancel context.CancelFunc
 			ctx, cancel := context.WithTimeout(ctx, clientCreateTimeout)
-			cl, e := newClient(ctx, m.s, peerId, m.mb)
+			cl, e := newClient(ctx, m.pool, peerId, m.mb)
 			if e != nil {
 				opName, _ := ctx.Value(operationNameKey).(string)
 				log.Info("can't create client", zap.String("operation", opName), zap.Error(e))
@@ -172,7 +178,7 @@ func (m *clientManager) checkPeers(ctx context.Context, needClient bool) (err er
 	}
 
 	// try to add new nodePeerIds
-	nodePeerIds := m.s.fileNodePeers()
+	nodePeerIds := m.peerStore.ResponsibleFilePeers()
 	rand.Shuffle(len(nodePeerIds), func(i, j int) {
 		nodePeerIds[i], nodePeerIds[j] = nodePeerIds[j], nodePeerIds[i]
 	})
@@ -181,7 +187,7 @@ func (m *clientManager) checkPeers(ctx context.Context, needClient bool) (err er
 			break
 		}
 	}
-	localPeerIds := m.s.allLocalPeers()
+	localPeerIds := m.peerStore.AllLocalPeers()
 	for _, peerId := range localPeerIds {
 		addPeer(peerId)
 	}

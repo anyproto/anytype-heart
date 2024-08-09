@@ -14,12 +14,11 @@ var (
 	// RFC 3966 tel regex
 	noPrefixTelRegexp      = regexp.MustCompile(`^((?:\+[\d().-]*\d[\d().-]*|[0-9A-F*#().-]*[0-9A-F*#][0-9A-F*#().-]*(?:;[a-z\d-]+(?:=(?:[a-z\d\[\]\/:&+$_!~*'().-]|%[\dA-F]{2})+)?)*;phone-context=(?:\+[\d().-]*\d[\d().-]*|(?:[a-z0-9]\.|[a-z0-9][a-z0-9-]*[a-z0-9]\.)*(?:[a-z]|[a-z][a-z0-9-]*[a-z0-9])))(?:;[a-z\d-]+(?:=(?:[a-z\d\[\]\/:&+$_!~*'().-]|%[\dA-F]{2})+)?)*(?:,(?:\+[\d().-]*\d[\d().-]*|[0-9A-F*#().-]*[0-9A-F*#][0-9A-F*#().-]*(?:;[a-z\d-]+(?:=(?:[a-z\d\[\]\/:&+$_!~*'().-]|%[\dA-F]{2})+)?)*;phone-context=\+[\d().-]*\d[\d().-]*)(?:;[a-z\d-]+(?:=(?:[a-z\d\[\]\/:&+$_!~*'().-]|%[\dA-F]{2})+)?)*)*)$`)
 	noPrefixHttpRegex      = regexp.MustCompile(`^[\pL\d.-]+(?:\.[\pL\\d.-]+)+[\pL\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.\/\d]+$`)
-	haveUriSchemeRegex     = regexp.MustCompile(`^([a-zA-Z][A-Za-z0-9+.-]*):[\S]+`)
 	winFilepathPrefixRegex = regexp.MustCompile(`^[a-zA-Z]:[\\\/]`)
 
 	// errors
 	errURLEmpty             = fmt.Errorf("url is empty")
-	errFilepathNotSupported = fmt.Errorf("filepath not supported")
+	ErrFilepathNotSupported = fmt.Errorf("filepath not supported")
 )
 
 func excludePathAndEmptyURIs(uri string) error {
@@ -27,11 +26,11 @@ func excludePathAndEmptyURIs(uri string) error {
 	case len(uri) == 0:
 		return errURLEmpty
 	case winFilepathPrefixRegex.MatchString(uri):
-		return errFilepathNotSupported
+		return ErrFilepathNotSupported
 	case strings.HasPrefix(uri, string(os.PathSeparator)):
-		return errFilepathNotSupported
+		return ErrFilepathNotSupported
 	case strings.HasPrefix(uri, "."):
-		return errFilepathNotSupported
+		return ErrFilepathNotSupported
 	}
 
 	return nil

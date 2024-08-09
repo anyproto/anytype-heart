@@ -29,8 +29,6 @@ func (sb *smartBlock) updateBackLinks(s *state.State) {
 func (sb *smartBlock) injectLinksDetails(s *state.State) {
 	links := sb.navigationalLinks(s)
 	links = slice.RemoveMut(links, sb.Id())
-
-	// todo: we need to move it to the injectDerivedDetails, but we don't call it now on apply
 	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))
 }
 
@@ -49,8 +47,8 @@ func (sb *smartBlock) navigationalLinks(s *state.State) (ids []string) {
 func collectBlockLinks(s *state.State) (ids []string) {
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
 		if f := b.Model().GetFile(); f != nil {
-			if f.Hash != "" && f.Type != model.BlockContentFile_Image {
-				ids = append(ids, f.Hash)
+			if f.TargetObjectId != "" && f.Type != model.BlockContentFile_Image {
+				ids = append(ids, f.TargetObjectId)
 			}
 			return true
 		}

@@ -5,6 +5,7 @@
 //
 //	mockgen -package filesync -destination filestore_mock.go github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore FileStore
 //
+
 // Package filesync is a generated GoMock package.
 package filesync
 
@@ -13,9 +14,9 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
+	domain "github.com/anyproto/anytype-heart/core/domain"
+	objectorigin "github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	localstore "github.com/anyproto/anytype-heart/pkg/lib/localstore"
-	filestore "github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	storage "github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -43,22 +44,8 @@ func (m *MockFileStore) EXPECT() *MockFileStoreMockRecorder {
 	return m.recorder
 }
 
-// Add mocks base method.
-func (m *MockFileStore) Add(arg0 *storage.FileInfo) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Add", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Add indicates an expected call of Add.
-func (mr *MockFileStoreMockRecorder) Add(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockFileStore)(nil).Add), arg0)
-}
-
 // AddFileKeys mocks base method.
-func (m *MockFileStore) AddFileKeys(arg0 ...filestore.FileKeys) error {
+func (m *MockFileStore) AddFileKeys(arg0 ...domain.FileEncryptionKeys) error {
 	m.ctrl.T.Helper()
 	varargs := []any{}
 	for _, a := range arg0 {
@@ -75,37 +62,37 @@ func (mr *MockFileStoreMockRecorder) AddFileKeys(arg0 ...any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddFileKeys", reflect.TypeOf((*MockFileStore)(nil).AddFileKeys), arg0...)
 }
 
-// AddMulti mocks base method.
-func (m *MockFileStore) AddMulti(arg0 bool, arg1 ...*storage.FileInfo) error {
+// AddFileVariant mocks base method.
+func (m *MockFileStore) AddFileVariant(arg0 *storage.FileInfo) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddFileVariant", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddFileVariant indicates an expected call of AddFileVariant.
+func (mr *MockFileStoreMockRecorder) AddFileVariant(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddFileVariant", reflect.TypeOf((*MockFileStore)(nil).AddFileVariant), arg0)
+}
+
+// AddFileVariants mocks base method.
+func (m *MockFileStore) AddFileVariants(arg0 bool, arg1 ...*storage.FileInfo) error {
 	m.ctrl.T.Helper()
 	varargs := []any{arg0}
 	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "AddMulti", varargs...)
+	ret := m.ctrl.Call(m, "AddFileVariants", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// AddMulti indicates an expected call of AddMulti.
-func (mr *MockFileStoreMockRecorder) AddMulti(arg0 any, arg1 ...any) *gomock.Call {
+// AddFileVariants indicates an expected call of AddFileVariants.
+func (mr *MockFileStoreMockRecorder) AddFileVariants(arg0 any, arg1 ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{arg0}, arg1...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMulti", reflect.TypeOf((*MockFileStore)(nil).AddMulti), varargs...)
-}
-
-// AddTarget mocks base method.
-func (m *MockFileStore) AddTarget(arg0, arg1 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddTarget", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AddTarget indicates an expected call of AddTarget.
-func (mr *MockFileStoreMockRecorder) AddTarget(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTarget", reflect.TypeOf((*MockFileStore)(nil).AddTarget), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddFileVariants", reflect.TypeOf((*MockFileStore)(nil).AddFileVariants), varargs...)
 }
 
 // Close mocks base method.
@@ -123,7 +110,7 @@ func (mr *MockFileStoreMockRecorder) Close(arg0 any) *gomock.Call {
 }
 
 // DeleteFile mocks base method.
-func (m *MockFileStore) DeleteFile(arg0 string) error {
+func (m *MockFileStore) DeleteFile(arg0 domain.FileId) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteFile", arg0)
 	ret0, _ := ret[0].(error)
@@ -136,53 +123,22 @@ func (mr *MockFileStoreMockRecorder) DeleteFile(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteFile", reflect.TypeOf((*MockFileStore)(nil).DeleteFile), arg0)
 }
 
-// GetByChecksum mocks base method.
-func (m *MockFileStore) GetByChecksum(arg0, arg1 string) (*storage.FileInfo, error) {
+// DeleteFileVariants mocks base method.
+func (m *MockFileStore) DeleteFileVariants(arg0 []domain.FileContentId) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetByChecksum", arg0, arg1)
-	ret0, _ := ret[0].(*storage.FileInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "DeleteFileVariants", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
-// GetByChecksum indicates an expected call of GetByChecksum.
-func (mr *MockFileStoreMockRecorder) GetByChecksum(arg0, arg1 any) *gomock.Call {
+// DeleteFileVariants indicates an expected call of DeleteFileVariants.
+func (mr *MockFileStoreMockRecorder) DeleteFileVariants(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByChecksum", reflect.TypeOf((*MockFileStore)(nil).GetByChecksum), arg0, arg1)
-}
-
-// GetByHash mocks base method.
-func (m *MockFileStore) GetByHash(arg0 string) (*storage.FileInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetByHash", arg0)
-	ret0, _ := ret[0].(*storage.FileInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetByHash indicates an expected call of GetByHash.
-func (mr *MockFileStoreMockRecorder) GetByHash(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByHash", reflect.TypeOf((*MockFileStore)(nil).GetByHash), arg0)
-}
-
-// GetBySource mocks base method.
-func (m *MockFileStore) GetBySource(arg0, arg1, arg2 string) (*storage.FileInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBySource", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*storage.FileInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetBySource indicates an expected call of GetBySource.
-func (mr *MockFileStoreMockRecorder) GetBySource(arg0, arg1, arg2 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBySource", reflect.TypeOf((*MockFileStore)(nil).GetBySource), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteFileVariants", reflect.TypeOf((*MockFileStore)(nil).DeleteFileVariants), arg0)
 }
 
 // GetChunksCount mocks base method.
-func (m *MockFileStore) GetChunksCount(arg0 string) (int, error) {
+func (m *MockFileStore) GetChunksCount(arg0 domain.FileId) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetChunksCount", arg0)
 	ret0, _ := ret[0].(int)
@@ -197,7 +153,7 @@ func (mr *MockFileStoreMockRecorder) GetChunksCount(arg0 any) *gomock.Call {
 }
 
 // GetFileKeys mocks base method.
-func (m *MockFileStore) GetFileKeys(arg0 string) (map[string]string, error) {
+func (m *MockFileStore) GetFileKeys(arg0 domain.FileId) (map[string]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetFileKeys", arg0)
 	ret0, _ := ret[0].(map[string]string)
@@ -212,10 +168,10 @@ func (mr *MockFileStoreMockRecorder) GetFileKeys(arg0 any) *gomock.Call {
 }
 
 // GetFileOrigin mocks base method.
-func (m *MockFileStore) GetFileOrigin(arg0 string) (int, error) {
+func (m *MockFileStore) GetFileOrigin(arg0 domain.FileId) (objectorigin.ObjectOrigin, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetFileOrigin", arg0)
-	ret0, _ := ret[0].(int)
+	ret0, _ := ret[0].(objectorigin.ObjectOrigin)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -227,7 +183,7 @@ func (mr *MockFileStoreMockRecorder) GetFileOrigin(arg0 any) *gomock.Call {
 }
 
 // GetFileSize mocks base method.
-func (m *MockFileStore) GetFileSize(arg0 string) (int, error) {
+func (m *MockFileStore) GetFileSize(arg0 domain.FileId) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetFileSize", arg0)
 	ret0, _ := ret[0].(int)
@@ -241,19 +197,49 @@ func (mr *MockFileStoreMockRecorder) GetFileSize(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileSize", reflect.TypeOf((*MockFileStore)(nil).GetFileSize), arg0)
 }
 
-// GetSyncStatus mocks base method.
-func (m *MockFileStore) GetSyncStatus(arg0 string) (int, error) {
+// GetFileVariant mocks base method.
+func (m *MockFileStore) GetFileVariant(arg0 domain.FileContentId) (*storage.FileInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSyncStatus", arg0)
-	ret0, _ := ret[0].(int)
+	ret := m.ctrl.Call(m, "GetFileVariant", arg0)
+	ret0, _ := ret[0].(*storage.FileInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetSyncStatus indicates an expected call of GetSyncStatus.
-func (mr *MockFileStoreMockRecorder) GetSyncStatus(arg0 any) *gomock.Call {
+// GetFileVariant indicates an expected call of GetFileVariant.
+func (mr *MockFileStoreMockRecorder) GetFileVariant(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSyncStatus", reflect.TypeOf((*MockFileStore)(nil).GetSyncStatus), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileVariant", reflect.TypeOf((*MockFileStore)(nil).GetFileVariant), arg0)
+}
+
+// GetFileVariantByChecksum mocks base method.
+func (m *MockFileStore) GetFileVariantByChecksum(arg0, arg1 string) (*storage.FileInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFileVariantByChecksum", arg0, arg1)
+	ret0, _ := ret[0].(*storage.FileInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFileVariantByChecksum indicates an expected call of GetFileVariantByChecksum.
+func (mr *MockFileStoreMockRecorder) GetFileVariantByChecksum(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileVariantByChecksum", reflect.TypeOf((*MockFileStore)(nil).GetFileVariantByChecksum), arg0, arg1)
+}
+
+// GetFileVariantBySource mocks base method.
+func (m *MockFileStore) GetFileVariantBySource(arg0, arg1, arg2 string) (*storage.FileInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFileVariantBySource", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*storage.FileInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFileVariantBySource indicates an expected call of GetFileVariantBySource.
+func (mr *MockFileStoreMockRecorder) GetFileVariantBySource(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileVariantBySource", reflect.TypeOf((*MockFileStore)(nil).GetFileVariantBySource), arg0, arg1, arg2)
 }
 
 // Indexes mocks base method.
@@ -285,7 +271,7 @@ func (mr *MockFileStoreMockRecorder) Init(arg0 any) *gomock.Call {
 }
 
 // IsFileImported mocks base method.
-func (m *MockFileStore) IsFileImported(arg0 string) (bool, error) {
+func (m *MockFileStore) IsFileImported(arg0 domain.FileId) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsFileImported", arg0)
 	ret0, _ := ret[0].(bool)
@@ -299,49 +285,49 @@ func (mr *MockFileStoreMockRecorder) IsFileImported(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsFileImported", reflect.TypeOf((*MockFileStore)(nil).IsFileImported), arg0)
 }
 
-// List mocks base method.
-func (m *MockFileStore) List() ([]*storage.FileInfo, error) {
+// ListAllFileVariants mocks base method.
+func (m *MockFileStore) ListAllFileVariants() ([]*storage.FileInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List")
+	ret := m.ctrl.Call(m, "ListAllFileVariants")
 	ret0, _ := ret[0].([]*storage.FileInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// List indicates an expected call of List.
-func (mr *MockFileStoreMockRecorder) List() *gomock.Call {
+// ListAllFileVariants indicates an expected call of ListAllFileVariants.
+func (mr *MockFileStoreMockRecorder) ListAllFileVariants() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockFileStore)(nil).List))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllFileVariants", reflect.TypeOf((*MockFileStore)(nil).ListAllFileVariants))
 }
 
-// ListByTarget mocks base method.
-func (m *MockFileStore) ListByTarget(arg0 string) ([]*storage.FileInfo, error) {
+// ListFileIds mocks base method.
+func (m *MockFileStore) ListFileIds() ([]domain.FileId, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListByTarget", arg0)
+	ret := m.ctrl.Call(m, "ListFileIds")
+	ret0, _ := ret[0].([]domain.FileId)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListFileIds indicates an expected call of ListFileIds.
+func (mr *MockFileStoreMockRecorder) ListFileIds() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListFileIds", reflect.TypeOf((*MockFileStore)(nil).ListFileIds))
+}
+
+// ListFileVariants mocks base method.
+func (m *MockFileStore) ListFileVariants(arg0 domain.FileId) ([]*storage.FileInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListFileVariants", arg0)
 	ret0, _ := ret[0].([]*storage.FileInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListByTarget indicates an expected call of ListByTarget.
-func (mr *MockFileStoreMockRecorder) ListByTarget(arg0 any) *gomock.Call {
+// ListFileVariants indicates an expected call of ListFileVariants.
+func (mr *MockFileStoreMockRecorder) ListFileVariants(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByTarget", reflect.TypeOf((*MockFileStore)(nil).ListByTarget), arg0)
-}
-
-// ListTargets mocks base method.
-func (m *MockFileStore) ListTargets() ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListTargets")
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListTargets indicates an expected call of ListTargets.
-func (mr *MockFileStoreMockRecorder) ListTargets() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTargets", reflect.TypeOf((*MockFileStore)(nil).ListTargets))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListFileVariants", reflect.TypeOf((*MockFileStore)(nil).ListFileVariants), arg0)
 }
 
 // Name mocks base method.
@@ -387,7 +373,7 @@ func (mr *MockFileStoreMockRecorder) Run(arg0 any) *gomock.Call {
 }
 
 // SetChunksCount mocks base method.
-func (m *MockFileStore) SetChunksCount(arg0 string, arg1 int) error {
+func (m *MockFileStore) SetChunksCount(arg0 domain.FileId, arg1 int) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetChunksCount", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -401,7 +387,7 @@ func (mr *MockFileStoreMockRecorder) SetChunksCount(arg0, arg1 any) *gomock.Call
 }
 
 // SetFileOrigin mocks base method.
-func (m *MockFileStore) SetFileOrigin(arg0 string, arg1 model.ObjectOrigin) error {
+func (m *MockFileStore) SetFileOrigin(arg0 domain.FileId, arg1 objectorigin.ObjectOrigin) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetFileOrigin", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -415,7 +401,7 @@ func (mr *MockFileStoreMockRecorder) SetFileOrigin(arg0, arg1 any) *gomock.Call 
 }
 
 // SetFileSize mocks base method.
-func (m *MockFileStore) SetFileSize(arg0 string, arg1 int) error {
+func (m *MockFileStore) SetFileSize(arg0 domain.FileId, arg1 int) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetFileSize", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -429,7 +415,7 @@ func (mr *MockFileStoreMockRecorder) SetFileSize(arg0, arg1 any) *gomock.Call {
 }
 
 // SetIsFileImported mocks base method.
-func (m *MockFileStore) SetIsFileImported(arg0 string, arg1 bool) error {
+func (m *MockFileStore) SetIsFileImported(arg0 domain.FileId, arg1 bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetIsFileImported", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -440,18 +426,4 @@ func (m *MockFileStore) SetIsFileImported(arg0 string, arg1 bool) error {
 func (mr *MockFileStoreMockRecorder) SetIsFileImported(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetIsFileImported", reflect.TypeOf((*MockFileStore)(nil).SetIsFileImported), arg0, arg1)
-}
-
-// SetSyncStatus mocks base method.
-func (m *MockFileStore) SetSyncStatus(arg0 string, arg1 int) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetSyncStatus", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SetSyncStatus indicates an expected call of SetSyncStatus.
-func (mr *MockFileStoreMockRecorder) SetSyncStatus(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSyncStatus", reflect.TypeOf((*MockFileStore)(nil).SetSyncStatus), arg0, arg1)
 }

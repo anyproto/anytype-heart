@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
@@ -11,6 +12,9 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
+	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 type inMemoryService struct {
@@ -29,29 +33,68 @@ func (s *inMemoryService) Init(_ *app.App) error { return nil }
 func (s *inMemoryService) NewStore() RpcStore    { return s.store }
 
 // NewInMemoryStore creates new in-memory store for testing purposes
-func NewInMemoryStore(limit int) RpcStore {
-	ts := &inMemoryStore{
+func NewInMemoryStore(limit int) *InMemoryStore {
+	ts := &InMemoryStore{
 		store:      make(map[cid.Cid]blocks.Block),
-		files:      make(map[string]map[cid.Cid]struct{}),
-		spaceFiles: map[string]map[string]struct{}{},
+		files:      make(map[domain.FileId]map[cid.Cid]struct{}),
+		spaceFiles: map[string]map[domain.FileId]struct{}{},
 		spaceCids:  map[string]map[cid.Cid]struct{}{},
+		stats:      &InMemoryStoreStats{},
 		limit:      limit,
 	}
 	return ts
 }
 
-type inMemoryStore struct {
+var _ RpcStore = (*InMemoryStore)(nil)
+
+type InMemoryStore struct {
 	store map[cid.Cid]blocks.Block
-	files map[string]map[cid.Cid]struct{}
+	files map[domain.FileId]map[cid.Cid]struct{}
 	limit int
 	// spaceId => fileId
-	spaceFiles map[string]map[string]struct{}
+	spaceFiles map[string]map[domain.FileId]struct{}
 	// spaceId => cid
 	spaceCids map[string]map[cid.Cid]struct{}
 	mu        sync.Mutex
+
+	stats *InMemoryStoreStats
 }
 
-func (t *inMemoryStore) isCidBinded(spaceId string, cid cid.Cid) bool {
+type InMemoryStoreStats struct {
+	cidsBinded   uint64
+	blocksAdded  uint64
+	filesDeleted uint64
+}
+
+func (s *InMemoryStoreStats) CidsBinded() uint64 {
+	return atomic.LoadUint64(&s.cidsBinded)
+}
+
+func (s *InMemoryStoreStats) BlocksAdded() uint64 {
+	return atomic.LoadUint64(&s.blocksAdded)
+}
+
+func (s *InMemoryStoreStats) FilesDeleted() uint64 {
+	return atomic.LoadUint64(&s.filesDeleted)
+}
+
+func (s *InMemoryStoreStats) bindCid() {
+	atomic.AddUint64(&s.cidsBinded, 1)
+}
+
+func (s *InMemoryStoreStats) addBlock() {
+	atomic.AddUint64(&s.blocksAdded, 1)
+}
+
+func (s *InMemoryStoreStats) deleteFile() {
+	atomic.AddUint64(&s.filesDeleted, 1)
+}
+
+func (t *InMemoryStore) Stats() *InMemoryStoreStats {
+	return t.stats
+}
+
+func (t *InMemoryStore) isCidBinded(spaceId string, cid cid.Cid) bool {
 	if _, ok := t.spaceCids[spaceId]; !ok {
 		return false
 	}
@@ -59,7 +102,7 @@ func (t *inMemoryStore) isCidBinded(spaceId string, cid cid.Cid) bool {
 	return ok
 }
 
-func (t *inMemoryStore) CheckAvailability(ctx context.Context, spaceId string, cids []cid.Cid) ([]*fileproto.BlockAvailability, error) {
+func (t *InMemoryStore) CheckAvailability(ctx context.Context, spaceId string, cids []cid.Cid) ([]*fileproto.BlockAvailability, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -81,7 +124,7 @@ func (t *inMemoryStore) CheckAvailability(ctx context.Context, spaceId string, c
 	return checkResult, nil
 }
 
-func (t *inMemoryStore) BindCids(ctx context.Context, spaceId string, fileId string, cids []cid.Cid) (err error) {
+func (t *InMemoryStore) BindCids(ctx context.Context, spaceId string, fileId domain.FileId, cids []cid.Cid) (err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -100,17 +143,18 @@ func (t *inMemoryStore) BindCids(ctx context.Context, spaceId string, fileId str
 		if err != nil {
 			return
 		}
+		t.stats.bindCid()
 	}
 	return nil
 }
 
-func (t *inMemoryStore) bindCid(spaceId string, fileId string, cId cid.Cid) error {
+func (t *InMemoryStore) bindCid(spaceId string, fileId domain.FileId, cId cid.Cid) error {
 	if _, ok := t.store[cId]; !ok {
 		return fmt.Errorf("cid not exists: %s", cId)
 	}
 
 	if _, ok := t.spaceFiles[spaceId]; !ok {
-		t.spaceFiles[spaceId] = make(map[string]struct{})
+		t.spaceFiles[spaceId] = make(map[domain.FileId]struct{})
 	}
 	t.spaceFiles[spaceId][fileId] = struct{}{}
 
@@ -121,7 +165,7 @@ func (t *inMemoryStore) bindCid(spaceId string, fileId string, cId cid.Cid) erro
 	return nil
 }
 
-func (t *inMemoryStore) AddToFile(ctx context.Context, spaceId string, fileId string, bs []blocks.Block) (err error) {
+func (t *InMemoryStore) AddToFile(ctx context.Context, spaceId string, fileId domain.FileId, bs []blocks.Block) (err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -146,19 +190,59 @@ func (t *inMemoryStore) AddToFile(ctx context.Context, spaceId string, fileId st
 		if err != nil {
 			return fmt.Errorf("bind cid: %w", err)
 		}
+		t.stats.addBlock()
 	}
 	return nil
 }
 
-func (t *inMemoryStore) DeleteFiles(ctx context.Context, spaceId string, fileIds ...string) (err error) {
+func (t *InMemoryStore) IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	for spaceId, spaceFiles := range t.spaceFiles {
+		for fileId := range spaceFiles {
+			iterFunc(domain.FullFileId{SpaceId: spaceId, FileId: fileId})
+		}
+	}
+	return nil
+}
+
+func (t *InMemoryStore) DeleteFiles(ctx context.Context, spaceId string, fileIds ...domain.FileId) (err error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if _, ok := t.spaceFiles[spaceId]; !ok {
+		return fmt.Errorf("spaceFiles not found: %s", spaceId)
+	}
+	if _, ok := t.spaceCids[spaceId]; !ok {
+		return fmt.Errorf("spaceCids not found: %s", spaceId)
+	}
+
+	for _, fileId := range fileIds {
+		_, ok := t.spaceFiles[spaceId][fileId]
+		if ok {
+			delete(t.spaceFiles[spaceId], fileId)
+			for cId := range t.files[fileId] {
+				delete(t.spaceCids[spaceId], cId)
+			}
+			delete(t.files, fileId)
+			t.stats.deleteFile()
+		}
+	}
+	return nil
+}
+
+func (t *InMemoryStore) SpaceInfo(ctx context.Context, spaceId string) (*fileproto.SpaceInfoResponse, error) {
 	panic("not implemented")
 }
 
-func (t *inMemoryStore) SpaceInfo(ctx context.Context, spaceId string) (*fileproto.SpaceInfoResponse, error) {
-	panic("not implemented")
+func (t *InMemoryStore) SetLimit(limit int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.limit = limit
 }
 
-func (t *inMemoryStore) AccountInfo(ctx context.Context) (*fileproto.AccountInfoResponse, error) {
+func (t *InMemoryStore) AccountInfo(ctx context.Context) (*fileproto.AccountInfoResponse, error) {
 	var info fileproto.AccountInfoResponse
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -185,7 +269,7 @@ func (t *inMemoryStore) AccountInfo(ctx context.Context) (*fileproto.AccountInfo
 	return &info, nil
 }
 
-func (t *inMemoryStore) getTotalUsage() int {
+func (t *InMemoryStore) getTotalUsage() int {
 	var totalUsage int
 	for _, b := range t.store {
 		totalUsage += len(b.RawData())
@@ -193,15 +277,50 @@ func (t *inMemoryStore) getTotalUsage() int {
 	return totalUsage
 }
 
-func (t *inMemoryStore) isWithinLimits(bytesToUpload int) bool {
+func (t *InMemoryStore) isWithinLimits(bytesToUpload int) bool {
 	return t.getTotalUsage()+bytesToUpload <= t.limit
 }
 
-func (t *inMemoryStore) FilesInfo(ctx context.Context, spaceId string, fileIds ...string) ([]*fileproto.FileInfo, error) {
-	panic("not implemented")
+func (t *InMemoryStore) FilesInfo(ctx context.Context, spaceId string, fileIds ...domain.FileId) ([]*fileproto.FileInfo, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	infos := make([]*fileproto.FileInfo, 0, len(fileIds))
+	for _, fileId := range fileIds {
+		info, err := t.fileInfo(spaceId, fileId)
+		if err != nil {
+			log.Error("file info", zap.String("fileId", fileId.String()), zap.Error(err))
+			continue
+		}
+		infos = append(infos, info)
+	}
+	return infos, nil
 }
 
-func (t *inMemoryStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
+func (t *InMemoryStore) fileInfo(spaceId string, fileId domain.FileId) (*fileproto.FileInfo, error) {
+	fileChunkCids, ok := t.files[fileId]
+	if !ok {
+		return nil, fmt.Errorf("file not found")
+	}
+	if _, ok := t.spaceFiles[spaceId][fileId]; !ok {
+		return nil, fmt.Errorf("file not found in space")
+	}
+
+	info := fileproto.FileInfo{
+		FileId: fileId.String(),
+	}
+	for cId := range fileChunkCids {
+		block, ok := t.store[cId]
+		if !ok {
+			return nil, fmt.Errorf("block not found")
+		}
+		info.CidsCount++
+		info.UsageBytes += uint64(len(block.RawData()))
+	}
+	return &info, nil
+}
+
+func (t *InMemoryStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	notExists = bs[:0]
@@ -213,7 +332,7 @@ func (t *inMemoryStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) 
 	return
 }
 
-func (t *inMemoryStore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
+func (t *InMemoryStore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if b, ok := t.store[k]; ok {
@@ -222,7 +341,7 @@ func (t *inMemoryStore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error
 	return nil, &format.ErrNotFound{Cid: k}
 }
 
-func (t *inMemoryStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
+func (t *InMemoryStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
 	var result = make(chan blocks.Block)
 	go func() {
 		defer close(result)
@@ -240,7 +359,7 @@ func (t *inMemoryStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks
 	return result
 }
 
-func (t *inMemoryStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []cid.Cid, err error) {
+func (t *InMemoryStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []cid.Cid, err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	for _, k := range ks {
@@ -251,7 +370,7 @@ func (t *inMemoryStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []
 	return
 }
 
-func (t *inMemoryStore) Add(ctx context.Context, bs []blocks.Block) error {
+func (t *InMemoryStore) Add(ctx context.Context, bs []blocks.Block) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	for _, b := range bs {
@@ -260,7 +379,7 @@ func (t *inMemoryStore) Add(ctx context.Context, bs []blocks.Block) error {
 	return nil
 }
 
-func (t *inMemoryStore) AddAsync(ctx context.Context, bs []blocks.Block) (successCh chan cid.Cid) {
+func (t *InMemoryStore) AddAsync(ctx context.Context, bs []blocks.Block) (successCh chan cid.Cid) {
 	successCh = make(chan cid.Cid, len(bs))
 	go func() {
 		defer close(successCh)
@@ -273,7 +392,7 @@ func (t *inMemoryStore) AddAsync(ctx context.Context, bs []blocks.Block) (succes
 	return successCh
 }
 
-func (t *inMemoryStore) Delete(ctx context.Context, c cid.Cid) error {
+func (t *InMemoryStore) Delete(ctx context.Context, c cid.Cid) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if _, ok := t.store[c]; ok {
@@ -283,7 +402,7 @@ func (t *inMemoryStore) Delete(ctx context.Context, c cid.Cid) error {
 	return &format.ErrNotFound{Cid: c}
 }
 
-func (t *inMemoryStore) DeleteMany(ctx context.Context, cids ...cid.Cid) error {
+func (t *InMemoryStore) DeleteMany(ctx context.Context, cids ...cid.Cid) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -295,6 +414,6 @@ func (t *inMemoryStore) DeleteMany(ctx context.Context, cids ...cid.Cid) error {
 	return nil
 }
 
-func (t *inMemoryStore) Close() (err error) {
+func (t *InMemoryStore) Close() (err error) {
 	return nil
 }

@@ -30,6 +30,7 @@ func NewFile(m *model.Block) simple.Block {
 type Block interface {
 	simple.Block
 	simple.FileHashes
+	TargetObjectId() string
 	SetHash(hash string) Block
 	SetName(name string) Block
 	SetState(state model.BlockContentFileState) Block
@@ -39,6 +40,7 @@ type Block interface {
 	SetMIME(mime string) Block
 	SetTime(tm time.Time) Block
 	SetModel(m *model.BlockContentFile) Block
+	SetTargetObjectId(value string) Block
 	ApplyEvent(e *pb.EventBlockSetFile) error
 }
 
@@ -51,8 +53,17 @@ type File struct {
 	content *model.BlockContentFile
 }
 
+func (f *File) TargetObjectId() string {
+	return f.content.TargetObjectId
+}
+
 func (f *File) SetHash(hash string) Block {
 	f.content.Hash = hash
+	return f
+}
+
+func (f *File) SetTargetObjectId(value string) Block {
+	f.content.TargetObjectId = value
 	return f
 }
 
@@ -100,6 +111,7 @@ func (f *File) SetModel(m *model.BlockContentFile) Block {
 	f.content.Style = m.Style
 	f.content.Size_ = m.Size_
 	f.content.State = m.State
+	f.content.TargetObjectId = m.TargetObjectId
 	return f
 }
 
@@ -112,9 +124,6 @@ func (f *File) Copy() simple.Block {
 }
 
 func (f *File) Validate() error {
-	if f.content.State == model.BlockContentFile_Done && f.content.Size_ == 0 {
-		return fmt.Errorf("empty file size and content State is Done")
-	}
 	return nil
 }
 
@@ -159,6 +168,10 @@ func (f *File) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 		hasChanges = true
 		changes.Style = &pb.EventBlockSetFileStyle{Value: file.content.Style}
 	}
+	if f.content.TargetObjectId != file.content.TargetObjectId {
+		hasChanges = true
+		changes.TargetObjectId = &pb.EventBlockSetFileTargetObjectId{Value: file.content.TargetObjectId}
+	}
 
 	if hasChanges {
 		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetFile{BlockSetFile: changes}}})
@@ -191,7 +204,16 @@ func (f *File) ApplyEvent(e *pb.EventBlockSetFile) error {
 	if e.Size_ != nil {
 		f.content.Size_ = e.Size_.GetValue()
 	}
+	if e.TargetObjectId != nil {
+		f.content.TargetObjectId = e.TargetObjectId.GetValue()
+	}
 	return nil
+}
+
+func (f *File) IterateLinkedFiles(iter func(id string)) {
+	if f.content.TargetObjectId != "" {
+		iter(f.content.TargetObjectId)
+	}
 }
 
 func (f *File) FillFileHashes(hashes []string) []string {
@@ -199,6 +221,28 @@ func (f *File) FillFileHashes(hashes []string) []string {
 		return append(hashes, f.content.Hash)
 	}
 	return hashes
+}
+
+func (f *File) MigrateFile(migrateFunc func(oldHash string) (newHash string)) {
+	if f.content.TargetObjectId != "" {
+		return
+	}
+	f.content.TargetObjectId = migrateFunc(f.content.Hash)
+}
+
+func (f *File) FillSmartIds(ids []string) []string {
+	if f.content.TargetObjectId != "" {
+		return append(ids, f.content.TargetObjectId)
+	}
+	return ids
+}
+
+func (f *File) HasSmartIds() bool {
+	return f.content.TargetObjectId != ""
+}
+
+func (f *File) IsEmpty() bool {
+	return f.content.TargetObjectId == "" && f.content.Hash == ""
 }
 
 func DetectTypeByMIME(mime string) model.BlockContentFileType {

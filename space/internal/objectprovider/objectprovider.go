@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
-	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -26,6 +25,7 @@ var log = logger.NewNamed("client.spaceobject.objectprovider")
 type ObjectProvider interface {
 	DeriveObjectIDs(ctx context.Context) (objIDs threads.DerivedSmartblockIds, err error)
 	LoadObjects(ctx context.Context, ids []string) (err error)
+	LoadObjectsIgnoreErrs(ctx context.Context, objIDs []string)
 	CreateMandatoryObjects(ctx context.Context, space smartblock.Space) (err error)
 }
 
@@ -108,22 +108,60 @@ func (o *objectProvider) DeriveObjectIDs(ctx context.Context) (objIDs threads.De
 }
 
 func (o *objectProvider) LoadObjects(ctx context.Context, objIDs []string) error {
-	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
-	for _, id := range objIDs {
-		_, err := o.cache.GetObject(ctx, id)
-		if err != nil {
-			// we had a bug that allowed some users to remove their profile
-			// this workaround is to allow these users to load their accounts without errors and export their anytype data
-			if id == o.derivedObjectIds.Profile {
-				if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) || errors.Is(err, treechangeproto.ErrGetTree) {
-					log.Error("load profile error", zap.Error(err), zap.String("objectID", id), zap.String("spaceId", o.spaceId))
-					continue
-				}
-			}
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
+	results := o.loadObjectsAsync(ctx, objIDs)
+	for i := 0; i < len(objIDs); i++ {
+		if err := <-results; err != nil {
+			cancel()
 			return err
 		}
 	}
 	return nil
+}
+
+func (o *objectProvider) LoadObjectsIgnoreErrs(ctx context.Context, objIDs []string) {
+	results := o.loadObjectsAsync(ctx, objIDs)
+	for i := 0; i < len(objIDs); i++ {
+		if err := <-results; err != nil {
+			log.WarnCtx(ctx, "can't load object", zap.Error(err))
+		}
+	}
+}
+
+func (o *objectProvider) loadObjectsAsync(ctx context.Context, objIDs []string) (results chan error) {
+	results = make(chan error, len(objIDs))
+
+	go func() {
+		var limiter = make(chan struct{}, 10)
+		for _, id := range objIDs {
+			select {
+			case <-ctx.Done():
+				results <- ctx.Err()
+				continue
+			case limiter <- struct{}{}:
+			}
+			go func(id string) {
+				defer func() {
+					<-limiter
+				}()
+				_, err := o.cache.GetObject(ctx, id)
+				if err != nil {
+					// we had a bug that allowed some users to remove their profile
+					// this workaround is to allow these users to load their accounts without errors and export their anytype data
+					if id == o.derivedObjectIds.Profile {
+						if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) || errors.Is(err, treechangeproto.ErrGetTree) {
+							log.Error("load profile error", zap.Error(err), zap.String("objectID", id), zap.String("spaceId", o.spaceId))
+							err = nil
+						}
+					}
+				}
+				results <- err
+			}(id)
+		}
+	}()
+	return results
 }
 
 func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, space smartblock.Space) (err error) {

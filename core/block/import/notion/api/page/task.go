@@ -114,7 +114,7 @@ func (pt *Task) provideSnapshot(notionBlocks []*model.Block, details map[string]
 func (pt *Task) prepareDetails() (map[string]*types.Value, []*model.RelationLink) {
 	details := make(map[string]*types.Value, 0)
 	var relationLinks []*model.RelationLink
-	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(pt.p.URL)
+	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(pt.p.ID)
 	if pt.p.Icon != nil {
 		if iconRelationLink := api.SetIcon(details, pt.p.Icon); iconRelationLink != nil {
 			relationLinks = append(relationLinks, iconRelationLink)
@@ -437,7 +437,7 @@ func selectItemOptions(property *property.SelectItem, rel string, relation *prop
 }
 
 func statusItemOptions(property *property.StatusItem, rel string, relation *property.PropertiesStore) *model.SmartBlockSnapshotBase {
-	if property.Status.Name == "" {
+	if property.Status == nil || property.Status.Name == "" {
 		return nil
 	}
 	exist, optionID := isOptionAlreadyExist(property.Status.Name, rel, relation)

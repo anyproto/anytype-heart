@@ -14,23 +14,22 @@ const anytypeMetadataPath = "m/SLIP-0021/anytype/account/metadata"
 
 var deriveMetadata = deriveAccountMetadata
 
-func deriveAccountMetadata(acc crypto.PrivKey) ([]byte, error) {
+func deriveAccountMetadata(acc crypto.PrivKey) (*model.Metadata, crypto.SymKey, error) {
 	symKey, err := deriveAccountEncKey(acc)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	symKeyProto, err := symKey.Marshall()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	metadata := &model.Metadata{
+	return &model.Metadata{
 		Payload: &model.MetadataPayloadOfIdentity{
 			Identity: &model.MetadataPayloadIdentityPayload{
 				ProfileSymKey: symKeyProto,
 			},
 		},
-	}
-	return metadata.Marshal()
+	}, symKey, nil
 }
 
 func deriveAccountEncKey(accKey crypto.PrivKey) (crypto.SymKey, error) {

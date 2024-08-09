@@ -20,6 +20,7 @@ message Event {
             Account.Details accountDetails = 201;
             Account.Config.Update accountConfigUpdate = 202;
             Account.Update accountUpdate = 203;
+            Account.LinkChallenge accountLinkChallenge = 204;
 
             Object.Details.Set objectDetailsSet = 16;
             Object.Details.Amend objectDetailsAmend = 50;
@@ -28,6 +29,7 @@ message Event {
             Object.Relations.Remove objectRelationsRemove = 53;
 
             Object.Remove objectRemove = 54;
+            Object.Close objectClose = 65;
 
             Object.Restrictions.Set objectRestrictionsSet = 55;
 
@@ -94,11 +96,20 @@ message Event {
             File.LimitReached fileLimitReached = 111;
             File.SpaceUsage fileSpaceUsage = 112;
             File.LocalUsage fileLocalUsage = 113;
+            File.LimitUpdated fileLimitUpdated = 118;
 
             Notification.Send notificationSend = 114;
             Notification.Update notificationUpdate = 115;
 
-            Import.Finish importFinish = 116;
+            Payload.Broadcast payloadBroadcast = 116;
+
+            Membership.Update membershipUpdate = 117;
+
+            Space.SyncStatus.Update spaceSyncStatusUpdate = 119;
+
+            P2PStatus.Update p2pStatusUpdate = 120;
+
+            Import.Finish importFinish = 121;
         }
     }
 
@@ -126,6 +137,16 @@ message Event {
         message Update {
             anytype.model.Account.Config config = 1;
             anytype.model.Account.Status status = 2;
+        }
+
+        message LinkChallenge {
+            message ClientInfo {
+                string processName = 1;
+                string processPath = 2;
+                bool signatureVerified = 3;
+            }
+            string challenge = 1;
+            ClientInfo clientInfo = 2;
         }
     }
 
@@ -221,6 +242,10 @@ message Event {
                 string id = 1;
                 anytype.model.Restrictions restrictions = 2;
             }
+        }
+
+        message Close {
+            string id = 1;
         }
     }
     message Block {
@@ -372,6 +397,7 @@ message Event {
                 Name name = 6;
                 Size size = 7;
                 Style style = 8;
+                TargetObjectId targetObjectId = 9;
 
                 message Name {
                     string value = 1;
@@ -405,6 +431,9 @@ message Event {
                     int64 value = 1;
                 }
 
+                message TargetObjectId {
+                    string value = 1;
+                }
             }
 
 
@@ -1017,6 +1046,16 @@ message Event {
         message LocalUsage {
             uint64 localBytesUsage = 1;
         }
+
+        message LimitUpdated {
+            uint64 bytesLimit = 1;
+        }
+    }
+
+    message Membership {
+        message Update {
+            anytype.model.Membership data = 1;
+        }
     }
 
     message Notification {
@@ -1025,6 +1064,54 @@ message Event {
         }
         message Update {
             anytype.model.Notification notification = 1;
+        }
+    }
+
+    message Payload {
+        message Broadcast {
+            string payload = 1;
+        }
+    }
+
+    message Space {
+        message SyncStatus {
+            message Update {
+                string id = 1;
+                Status status = 2;
+                Network network = 3;
+                SyncError error = 4;
+                int64 syncingObjectsCounter = 5;
+            }
+        }
+        enum Status {
+            Synced = 0;
+            Syncing = 1;
+            Error = 2;
+            Offline = 3;
+        }
+        enum Network {
+            Anytype = 0;
+            SelfHost = 1;
+            LocalOnly = 2;
+        }
+        enum SyncError {
+            Null = 0;
+            StorageLimitExceed = 1;
+            IncompatibleVersion = 2;
+            NetworkError = 3;
+        }
+    }
+    message P2PStatus {
+        message Update {
+            string spaceId = 1;
+            Status status = 2;
+            int64 devicesCounter = 3;
+        }
+
+        enum Status {
+            NotConnected = 0;
+            NotPossible = 1;
+            Connected = 2;
         }
     }
 

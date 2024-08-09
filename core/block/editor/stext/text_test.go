@@ -388,16 +388,12 @@ func TestTextImpl_SetText(t *testing.T) {
 			BlockId: "1",
 			Text:    "1",
 		}))
-		tb.(*textImpl).Lock()
-		tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
-		tb.(*textImpl).Unlock()
+		flushLocked(tb)
 		require.NoError(t, setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "2",
 			Text:    "2",
 		}))
-		tb.(*textImpl).Lock()
-		tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
-		tb.(*textImpl).Unlock()
+		flushLocked(tb)
 		assert.Equal(t, "1", sb.NewState().Pick("1").Model().GetText().Text)
 		assert.Equal(t, "2", sb.NewState().Pick("2").Model().GetText().Text)
 		time.Sleep(time.Second)
@@ -442,7 +438,7 @@ func TestTextImpl_SetText(t *testing.T) {
 		}))
 	})
 	// TODO: GO-2062 Need to review tests after text shortening refactor
-	//t.Run("set text greater than limit", func(t *testing.T) {
+	// t.Run("set text greater than limit", func(t *testing.T) {
 	//	//given
 	//	sb := smarttest.New("test")
 	//	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
@@ -458,9 +454,9 @@ func TestTextImpl_SetText(t *testing.T) {
 	//	//then
 	//	assert.NoError(t, err)
 	//	assert.Equal(t, strings.Repeat("a", textSizeLimit), sb.NewState().Pick("1").Model().GetText().Text)
-	//})
+	// })
 	t.Run("carriage state is saved in history", func(t *testing.T) {
-		//given
+		// given
 		ctx := session.NewContext()
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
@@ -468,7 +464,7 @@ func TestTextImpl_SetText(t *testing.T) {
 		tb := NewText(sb, nil, nil)
 		carriageState := undo.CarriageState{BlockID: "1", RangeFrom: 2, RangeTo: 3}
 
-		//when
+		// when
 		err := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId:           carriageState.BlockID,
 			SelectedTextRange: &model.Range{From: carriageState.RangeFrom, To: carriageState.RangeTo},
@@ -476,7 +472,7 @@ func TestTextImpl_SetText(t *testing.T) {
 		tb.(*textImpl).History().Add(undo.Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
 		action, err := tb.(*textImpl).History().Previous()
 
-		//then
+		// then
 		assert.NoError(t, err)
 		assert.Equal(t, carriageState, action.CarriageInfo.Before)
 	})
@@ -580,20 +576,19 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 		sb := smarttest.New(rootID)
 		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{blockID}})).
 			AddBlock(newTextBlock(blockID, text))
-		_ = sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
+		_ = sb.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
 		tb := NewText(sb, nil, nil)
 
 		// when
-		err1 := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
+		err := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
 			ContextId: rootID,
 			BlockId:   blockID,
 			Text:      text,
 		})
-		err2 := tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
+		flushLocked(tb)
 
 		// then
-		assert.NoError(t, err1)
-		assert.NoError(t, err2)
+		assert.NoError(t, err)
 		assert.Len(t, pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String()), 3)
 	})
 
@@ -603,20 +598,19 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 		sb := smarttest.New(rootID)
 		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{blockID}})).
 			AddBlock(newTextBlock(blockID, text))
-		_ = sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
+		_ = sb.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
 		tb := NewText(sb, nil, nil)
 
 		// when
-		err1 := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
+		err := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
 			ContextId: rootID,
 			BlockId:   blockID,
 			Text:      text + " is changed",
 		})
-		err2 := tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
+		flushLocked(tb)
 
 		// then
-		assert.NoError(t, err1)
-		assert.NoError(t, err2)
+		assert.NoError(t, err)
 		assert.Empty(t, pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String()))
 	})
 
@@ -626,21 +620,20 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 		sb := smarttest.New(rootID)
 		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{blockID}})).
 			AddBlock(newTextBlock(blockID, text))
-		_ = sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
+		_ = sb.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
 		tb := NewText(sb, nil, nil)
 
 		// when
-		err1 := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
+		err := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
 			ContextId: rootID,
 			BlockId:   blockID,
 			Text:      text,
 			Marks:     &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{{Type: model.BlockContentTextMark_Bold}}},
 		})
-		err2 := tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
+		flushLocked(tb)
 
 		// then
-		assert.NoError(t, err1)
-		assert.NoError(t, err2)
+		assert.NoError(t, err)
 		assert.Empty(t, pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String()))
 	})
 
@@ -650,22 +643,27 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 		sb := smarttest.New(rootID)
 		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{template.TitleBlockId}})).
 			AddBlock(newTextBlock(template.TitleBlockId, text))
-		_ = sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
+		_ = sb.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
 		tb := NewText(sb, nil, nil)
 
 		// when
-		err1 := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
+		err := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
 			ContextId: rootID,
 			BlockId:   template.TitleBlockId,
 			Text:      text + " is changed",
 		})
-		err2 := tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
+		flushLocked(tb)
 
 		// then
-		assert.NoError(t, err1)
-		assert.NoError(t, err2)
+		assert.NoError(t, err)
 		flags := pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String())
 		assert.Len(t, flags, 2)
 		assert.NotContains(t, flags, model.InternalFlag_editorDeleteEmpty)
 	})
+}
+
+func flushLocked(tb Text) {
+	tb.(*textImpl).Lock()
+	tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
+	tb.(*textImpl).Unlock()
 }
