@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/google/uuid"
 	"github.com/miolini/datacounter"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -213,27 +212,8 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	var (
-		path             string
-		removeFunc       = func() {}
-		sendNotification = func(code model.ImportErrorCode) {
-			spaceName := b.store.GetSpaceName(spaceID)
-			nErr := b.notifications.CreateAndSend(&model.Notification{
-				Id:      uuid.New().String(),
-				Status:  model.Notification_Created,
-				IsLocal: true,
-				Space:   spaceID,
-				Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
-					ProcessId: progress.Id(),
-					ErrorCode: code,
-					SpaceId:   spaceID,
-					Name:      title,
-					SpaceName: spaceName,
-				}},
-			})
-			if nErr != nil {
-				log.Errorf("failed to send notification: %v", nErr)
-			}
-		}
+		path       string
+		removeFunc = func() {}
 	)
 
 	if _, err = os.Stat(url); err == nil {
@@ -243,7 +223,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 			if pErr := progress.Cancel(); pErr != nil {
 				log.Errorf("failed to cancel progress %s: %v", progress.Id(), pErr)
 			}
-			sendNotification(model.Import_INTERNAL_ERROR)
+			progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
 			if errors.Is(err, uri.ErrFilepathNotSupported) {
 				return fmt.Errorf("invalid path to file: '%s'", url)
 			}
@@ -257,7 +237,11 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
-	sendNotification(common.GetImportErrorCode(importErr))
+	progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
+
+	if err != nil {
+		log.Errorf("failed to send notification: %v", err)
+	}
 
 	if isNewSpace {
 		// TODO: GO-2627 Home page handling should be moved to importer
@@ -267,6 +251,22 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	return importErr
+}
+
+func (b *builtinObjects) provideNotification(spaceID string, progress process.Progress, err error, title string) *model.Notification {
+	spaceName := b.store.GetSpaceName(spaceID)
+	return &model.Notification{
+		Status:  model.Notification_Created,
+		IsLocal: true,
+		Space:   spaceID,
+		Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
+			ProcessId: progress.Id(),
+			ErrorCode: common.GetImportErrorCode(err),
+			SpaceId:   spaceID,
+			Name:      title,
+			SpaceName: spaceName,
+		}},
+	}
 }
 
 func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
@@ -303,22 +303,28 @@ func (b *builtinObjects) importArchive(
 	isNewSpace bool,
 ) (err error) {
 	origin := objectorigin.Usecase()
-	res := b.importer.Import(ctx, &pb.RpcObjectImportRequest{
-		SpaceId:               spaceID,
-		UpdateExistingObjects: false,
-		Type:                  model.Import_Pb,
-		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
-		NoProgress:            progress == nil,
-		IsMigration:           false,
-		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
-			PbParams: &pb.RpcObjectImportRequestPbParams{
-				Path:            []string{path},
-				NoCollection:    true,
-				CollectionTitle: title,
-				ImportType:      importType,
-			}},
-		IsNewSpace: isNewSpace,
-	}, origin, progress)
+	importRequest := &importer.ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			SpaceId:               spaceID,
+			UpdateExistingObjects: false,
+			Type:                  model.Import_Pb,
+			Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
+			NoProgress:            progress == nil,
+			IsMigration:           false,
+			Params: &pb.RpcObjectImportRequestParamsOfPbParams{
+				PbParams: &pb.RpcObjectImportRequestPbParams{
+					Path:            []string{path},
+					NoCollection:    true,
+					CollectionTitle: title,
+					ImportType:      importType,
+				}},
+			IsNewSpace: isNewSpace,
+		},
+		Origin:   origin,
+		Progress: progress,
+		IsSync:   true,
+	}
+	res := b.importer.Import(ctx, importRequest)
 
 	return res.Err
 }
@@ -535,8 +541,8 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 	return path, nil
 }
 
-func (b *builtinObjects) setupProgress() (process.Progress, error) {
-	progress := process.NewProgress(pb.ModelProcess_Import)
+func (b *builtinObjects) setupProgress() (process.Notificationable, error) {
+	progress := process.NewNotificationProcess(pb.ModelProcess_Import, b.notifications)
 	if err := b.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)
 	}

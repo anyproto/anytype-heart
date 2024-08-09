@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/conc"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
@@ -33,7 +34,7 @@ func init() {
 	}
 	fmt.Printf("mw lib: %s\n", vcs.GetVCSInfo().Description())
 
-	PanicHandler = mw.OnPanic
+	PanicHandler = conc.OnPanic
 	metrics.Service.InitWithKeys(metrics.DefaultInHouseKey)
 	registerClientCommandsHandler(
 		&ClientCommandsHandlerProxy{

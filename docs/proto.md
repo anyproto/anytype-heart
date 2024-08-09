@@ -1577,6 +1577,8 @@
     - [Event.File.LimitUpdated](#anytype-Event-File-LimitUpdated)
     - [Event.File.LocalUsage](#anytype-Event-File-LocalUsage)
     - [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage)
+    - [Event.Import](#anytype-Event-Import)
+    - [Event.Import.Finish](#anytype-Event-Import-Finish)
     - [Event.Membership](#anytype-Event-Membership)
     - [Event.Membership.Update](#anytype-Event-Membership-Update)
     - [Event.Message](#anytype-Event-Message)
@@ -13952,9 +13954,9 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error) |  |  |
-| collectionId | [string](#string) |  |  |
-| objectsCount | [int64](#int64) |  |  |
+| error | [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error) |  | deprecated |
+| collectionId | [string](#string) |  | deprecated |
+| objectsCount | [int64](#int64) |  | deprecated |
 
 
 
@@ -24885,6 +24887,33 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Import"></a>
+
+### Event.Import
+
+
+
+
+
+
+
+<a name="anytype-Event-Import-Finish"></a>
+
+### Event.Import.Finish
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| rootCollectionID | [string](#string) |  |  |
+| objectsCount | [int64](#int64) |  |  |
+| importType | [model.Import.Type](#anytype-model-Import-Type) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Membership"></a>
 
 ### Event.Membership
@@ -24987,6 +25016,7 @@ Precondition: user A opened a block
 | membershipUpdate | [Event.Membership.Update](#anytype-Event-Membership-Update) |  |  |
 | spaceSyncStatusUpdate | [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update) |  |  |
 | p2pStatusUpdate | [Event.P2PStatus.Update](#anytype-Event-P2PStatus-Update) |  |  |
+| importFinish | [Event.Import.Finish](#anytype-Event-Import-Finish) |  |  |
 
 
 
