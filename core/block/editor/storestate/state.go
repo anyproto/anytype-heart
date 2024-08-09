@@ -21,6 +21,8 @@ var (
 	log = logger.NewNamed("storeState")
 )
 
+const IdFromChange = "$changeId"
+
 var lexId = lexid.Must(lexid.CharsAllNoEscape, 4, 100)
 
 const (
@@ -171,6 +173,9 @@ func (ss *StoreState) applyCreate(ctx context.Context, ch Change) (err error) {
 		return
 	}
 
+	if create.DocumentId == IdFromChange {
+		create.DocumentId = ch.Id
+	}
 	// parse value and force set id
 	value, err := ss.parser.Parse(create.Value)
 	if err != nil {

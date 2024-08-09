@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/globalsign/mgo/bson"
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -103,9 +102,8 @@ func (s *storeObject) GetMessages(ctx context.Context) ([]string, error) {
 }
 
 func (s *storeObject) AddMessage(ctx context.Context, text string) (string, error) {
-	messageId := bson.NewObjectId().Hex()
 	builder := storestate.Builder{}
-	err := builder.Create(collectionName, messageId, map[string]string{
+	err := builder.Create(collectionName, storestate.IdFromChange, map[string]string{
 		"text":   text,
 		"author": s.accountService.AccountID(),
 	})
@@ -113,11 +111,12 @@ func (s *storeObject) AddMessage(ctx context.Context, text string) (string, erro
 		return "", fmt.Errorf("create chat: %w", err)
 	}
 
-	err = s.addChange(ctx, builder.ChangeSet)
+	messageId, err := s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
+		Changes: builder.ChangeSet,
+	})
 	if err != nil {
 		return "", fmt.Errorf("add change: %w", err)
 	}
-
 	return messageId, nil
 }
 
@@ -129,43 +128,11 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newText
 	if err != nil {
 		return fmt.Errorf("modify chat: %w", err)
 	}
-	err = s.addChange(ctx, builder.ChangeSet)
+	_, err = s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
+		Changes: builder.ChangeSet,
+	})
 	if err != nil {
 		return fmt.Errorf("add change: %w", err)
-	}
-	return nil
-}
-
-func (s *storeObject) addChange(ctx context.Context, changeSet []*pb.StoreChangeContent) error {
-	tx, err := s.store.NewTx(ctx)
-	if err != nil {
-		return fmt.Errorf("new tx: %w", err)
-	}
-	rollback := func(err error) error {
-		return errors.Join(tx.Rollback(), err)
-	}
-	order := tx.NextOrder(tx.GetMaxOrder())
-	err = tx.ApplyChangeSet(storestate.ChangeSet{
-		Order:   order,
-		Changes: changeSet,
-	})
-	if err != nil {
-		return rollback(fmt.Errorf("apply change set: %w", err))
-	}
-	changeId, err := s.storeSource.PushStoreChange(source.PushStoreChangeParams{
-		Changes: changeSet,
-	})
-	if err != nil {
-		return rollback(fmt.Errorf("push store change: %w", err))
-	}
-	err = tx.SetOrder(changeId, order)
-	if err != nil {
-		return rollback(fmt.Errorf("set order: %w", err))
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("commit tx: %w", err)
 	}
 	return nil
 }

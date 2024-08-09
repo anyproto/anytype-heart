@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 
@@ -23,7 +24,7 @@ var _ updatelistener.UpdateListener = (*store)(nil)
 
 type Store interface {
 	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState) (err error)
-	PushStoreChange(params PushStoreChangeParams) (changeId string, err error)
+	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
 }
 
 type PushStoreChangeParams struct {
@@ -47,7 +48,7 @@ func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 
 	st := state.NewDoc(s.id, nil).(*state.State)
 	// Set object type here in order to derive value of Type relation in smartblock.Init
-	st.SetObjectTypeKey(bundle.TypeKeyParticipant)
+	st.SetObjectTypeKey(bundle.TypeKeyChat)
 	return st, nil
 }
 
@@ -72,7 +73,15 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	return tx.Commit()
 }
 
-func (s *store) PushStoreChange(params PushStoreChangeParams) (changeId string, err error) {
+func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error) {
+	tx, err := s.store.NewTx(ctx)
+	if err != nil {
+		return "", fmt.Errorf("new tx: %w", err)
+	}
+	rollback := func(err error) error {
+		return errors.Join(tx.Rollback(), err)
+	}
+
 	change := &pb.StoreChange{
 		ChangeSet: params.Changes,
 	}
@@ -80,22 +89,33 @@ func (s *store) PushStoreChange(params PushStoreChangeParams) (changeId string, 
 	if err != nil {
 		return "", fmt.Errorf("marshal change: %w", err)
 	}
-	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
+	addResult, err := s.ObjectTree.AddContentWithValidator(ctx, objecttree.SignableChangeContent{
 		Data:        data,
 		Key:         s.accountKeysService.Account().SignKey,
 		IsSnapshot:  params.DoSnapshot,
 		IsEncrypted: true,
 		DataType:    dataType,
 		Timestamp:   params.Time.Unix(),
+	}, func(change *treechangeproto.RawTreeChangeWithId) error {
+		order := tx.NextOrder(tx.GetMaxOrder())
+		err = tx.ApplyChangeSet(storestate.ChangeSet{
+			Id:      change.Id,
+			Order:   order,
+			Changes: params.Changes,
+		})
+		if err != nil {
+			return fmt.Errorf("apply change set: %w", err)
+		}
+		return nil
 	})
 	if err != nil {
-		return "", fmt.Errorf("add content: %w", err)
+		return "", rollback(fmt.Errorf("add content: %w", err))
 	}
 
 	if len(addResult.Added) == 0 {
-		return "", fmt.Errorf("add changes list is empty")
+		return "", rollback(fmt.Errorf("add changes list is empty"))
 	}
-	return addResult.Added[0].Id, nil
+	return addResult.Added[0].Id, tx.Commit()
 }
 
 func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {

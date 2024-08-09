@@ -102,7 +102,12 @@ func (a *storeApply) applyChange(change *objecttree.Change, order string) (err e
 		Changes: storeChange.ChangeSet,
 		Creator: change.Identity.Account(),
 	}
-	return a.tx.ApplyChangeSetAndStoreOrder(set)
+	err = a.tx.ApplyChangeSet(set)
+	// Skip invalid changes
+	if errors.Is(err, storestate.ErrValidation) {
+		return nil
+	}
+	return err
 }
 
 func (a *storeApply) getPrevOrder() (order string, err error) {

@@ -8,7 +8,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.0.1
-	github.com/anyproto/any-sync v0.4.22-0.20240624100636-cbcc034ad156
+	github.com/anyproto/any-sync v0.4.22-0.20240809111324-5b31ec812a28
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/lexid v0.0.2
 	github.com/anyproto/tantivy-go/go v0.0.5
