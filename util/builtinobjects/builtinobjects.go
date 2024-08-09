@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/google/uuid"
 	"github.com/miolini/datacounter"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -213,8 +212,8 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	var (
-		path             string
-		removeFunc       = func() {}
+		path       string
+		removeFunc = func() {}
 	)
 
 	if _, err = os.Stat(url); err == nil {
@@ -224,7 +223,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 			if pErr := progress.Cancel(); pErr != nil {
 				log.Errorf("failed to cancel progress %s: %v", progress.Id(), pErr)
 			}
-			sendNotification(model.Import_INTERNAL_ERROR)
+			progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
 			if errors.Is(err, uri.ErrFilepathNotSupported) {
 				return fmt.Errorf("invalid path to file: '%s'", url)
 			}
@@ -325,7 +324,7 @@ func (b *builtinObjects) importArchive(
 		Progress: progress,
 		IsSync:   true,
 	}
-	_, err = b.importer.Import(ctx, importRequest)
+	res := b.importer.Import(ctx, importRequest)
 
 	return res.Err
 }

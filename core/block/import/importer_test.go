@@ -73,11 +73,11 @@ func Test_ImportSuccess(t *testing.T) {
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import,
+		}, objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
 		true}
-	_, err := i.Import(context.Background(), importRequest)
+	res := i.Import(context.Background(), importRequest)
 
 	assert.Nil(t, res.Err)
 	assert.Equal(t, int64(1), res.ObjectsCount)
@@ -109,12 +109,12 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 			Mode:                  0,
 			SpaceId:               "space1",
 		},
-		model.ObjectOrigin_import,
+		objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
 		true,
 	}
-	_, err := i.Import(context.Background(), importRequest)
+	res := i.Import(context.Background(), importRequest)
 
 	assert.NotNil(t, res.Err)
 	assert.Contains(t, res.Err.Error(), "converter error")
@@ -164,12 +164,12 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import,
+		}, objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
 		true,
 	}
-	_, res := i.Import(context.Background(), request)
+	res := i.Import(context.Background(), request)
 
 	assert.NotNil(t, res.Err)
 	assert.Equal(t, int64(0), res.ObjectsCount)
@@ -220,12 +220,12 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 			Mode:                  1,
 			SpaceId:               "space1",
 		},
-		model.ObjectOrigin_import,
+		objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
 		true,
 	}
-	_, res := i.Import(context.Background(), importRequest)
+	res := i.Import(context.Background(), importRequest)
 
 	assert.NotNil(t, res.Err)
 	assert.Equal(t, int64(1), res.ObjectsCount)
@@ -277,12 +277,12 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 			Type:                  0,
 			Mode:                  1,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import,
+		}, objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
 		true,
 	}
-	_, res := i.Import(context.Background(), importRequest)
+	res := i.Import(context.Background(), importRequest)
 
 	assert.NotNil(t, res.Err)
 	assert.Contains(t, res.Err.Error(), "converter error")
@@ -335,12 +335,12 @@ func Test_ImportExternalPlugin(t *testing.T) {
 			Type:                  model.Import_External,
 			Mode:                  2,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import,
+		}, objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
 		true,
 	}
-	_, res := i.Import(context.Background(), importRequest)
+	res := i.Import(context.Background(), importRequest)
 	assert.Nil(t, res)
 }
 
@@ -367,14 +367,14 @@ func Test_ImportExternalPluginError(t *testing.T) {
 			Mode:                  2,
 			SpaceId:               "space1",
 		},
-		model.ObjectOrigin_import,
+		objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
 		true,
 	}
-	_, res := i.Import(context.Background(), importRequest)
+	res := i.Import(context.Background(), importRequest)
 	assert.NotNil(t, res)
-	assert.Contains(t, res.Error(), common.ErrNoObjectsToImport.Error())
+	assert.Contains(t, res.Err.Error(), common.ErrNoObjectsToImport.Error())
 }
 
 func Test_ListImports(t *testing.T) {
@@ -534,7 +534,7 @@ func Test_ImportCancelError(t *testing.T) {
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 	i.fileSync = fileSync
 
-	_, res := i.Import(context.Background(), &ImportRequest{
+	res := i.Import(context.Background(), &ImportRequest{
 		&pb.RpcObjectImportRequest{
 			Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 			UpdateExistingObjects: false,
@@ -542,7 +542,7 @@ func Test_ImportCancelError(t *testing.T) {
 			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 			SpaceId:               "space1",
 		},
-		model.ObjectOrigin_import,
+		objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
 		true,
@@ -572,12 +572,12 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 			SpaceId:               "space1",
 		},
-		model.ObjectOrigin_import,
+		objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
 		true,
 	}
-	_, res := i.Import(context.Background(), importRequest)
+	res := i.Import(context.Background(), importRequest)
 
 	assert.NotNil(t, res.Err)
 	assert.True(t, errors.Is(res.Err, common.ErrNoObjectsToImport))
@@ -618,12 +618,12 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 			Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 			SpaceId:               "space1",
 		},
-		model.ObjectOrigin_import,
+		objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
 		true,
 	}
-	_, res := i.Import(context.Background(), importRequest)
+	res := i.Import(context.Background(), importRequest)
 
 	assert.NotNil(t, res.Err)
 	assert.True(t, errors.Is(res.Err, common.ErrNoObjectsToImport))
@@ -673,12 +673,12 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 			SpaceId:               "space1",
 		},
-		model.ObjectOrigin_import,
+		objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
 		true,
 	}
-	_, res := i.Import(context.Background(), importRequest)
+	res := i.Import(context.Background(), importRequest)
 
 	assert.NotNil(t, res.Err)
 	assert.True(t, errors.Is(res.Err, common.ErrNoObjectsToImport))
@@ -720,12 +720,12 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 			Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 			SpaceId:               "space1",
 		},
-		model.ObjectOrigin_import,
+		objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
 		true,
 	}
-	_, res := i.Import(context.Background(), importRequest)
+	res := i.Import(context.Background(), importRequest)
 
 	assert.NotNil(t, res.Err)
 	assert.True(t, errors.Is(res.Err, common.ErrLimitExceeded))
@@ -767,12 +767,12 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 			SpaceId:               "space1",
 		},
-		model.ObjectOrigin_import,
+		objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
 		true,
 	}
-	_, res := i.Import(context.Background(), importRequest)
+	res := i.Import(context.Background(), importRequest)
 
 	assert.NotNil(t, res.Err)
 	assert.True(t, errors.Is(res.Err, common.ErrLimitExceeded))
@@ -889,12 +889,12 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				Mode:                  0,
 				SpaceId:               "space1",
 			},
-			model.ObjectOrigin_import,
+			objectorigin.Import(model.Import_Notion),
 			nil,
 			false,
 			true,
 		}
-		rootCollectionId, err := i.Import(context.Background(), importRequest)
+		res := i.Import(context.Background(), importRequest)
 
 		// then
 		assert.Nil(t, res.Err)
@@ -944,12 +944,12 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				Mode:                  0,
 				SpaceId:               "space1",
 			},
-			model.ObjectOrigin_import,
+			objectorigin.Import(model.Import_Notion),
 			nil,
 			false,
 			true,
 		}
-		rootCollectionId, err := i.Import(context.Background(), importRequest)
+		res := i.Import(context.Background(), importRequest)
 
 		// then
 		assert.NotNil(t, res.Err)
@@ -989,12 +989,12 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				Mode:                  0,
 				SpaceId:               "space1",
 			},
-			model.ObjectOrigin_import,
+			objectorigin.Import(model.Import_Notion),
 			nil,
 			false,
 			true,
 		}
-		rootCollectionId, err := i.Import(context.Background(), importRequest)
+		res := i.Import(context.Background(), importRequest)
 
 		// then
 		assert.NotNil(t, res.Err)
@@ -1042,9 +1042,9 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				Type:                  0,
 				Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 				SpaceId:               "space1",
-			}, model.ObjectOrigin_import, nil, false, true,
+			}, objectorigin.Import(model.Import_Notion), nil, false, true,
 		}
-		rootCollectionId, err := i.Import(context.Background(), importRequest)
+		res := i.Import(context.Background(), importRequest)
 
 		// then
 		assert.NotNil(t, res.Err)

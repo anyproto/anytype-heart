@@ -1118,6 +1118,7 @@ message Event {
     message Import {
         message Finish {
             string rootCollectionID = 1;
+            int64 objectsCount = 2;
         }
     }
 }

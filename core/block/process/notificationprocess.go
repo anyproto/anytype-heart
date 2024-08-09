@@ -42,7 +42,7 @@ func (n *notificationProcess) FinishWithNotification(notification *model.Notific
 
 func (n *notificationProcess) SendNotification() {
 	if n.notification != nil {
-		notificationSendErr := n.notificationService.CreateAndSendLocal(n.notification)
+		notificationSendErr := n.notificationService.CreateAndSend(n.notification)
 		if notificationSendErr != nil {
 			log.Errorf("failed to send notification: %v", notificationSendErr)
 		}

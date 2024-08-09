@@ -2561,7 +2561,7 @@ message Rpc {
             message Response {
                 Error error = 1; // deprecated
                 string collectionId = 2; // deprecated
-                int64 objectsCount = 3;
+                int64 objectsCount = 3; // deprecated
 
                 message Error {
                     Code code = 1;

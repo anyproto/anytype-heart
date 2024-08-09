@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -875,42 +874,41 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 }
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
-	response := func(code pb.RpcObjectImportResponseErrorCode, res *importer.ImportResponse) *pb.RpcObjectImportResponse {
+	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
 		m := &pb.RpcObjectImportResponse{
 			Error: &pb.RpcObjectImportResponseError{
 				Code: code,
 			},
-			ObjectsCount: res.ObjectsCount,
 		}
-		if res.Err != nil {
-			m.Error.Description = res.Err.Error()
+		if err != nil {
+			m.Error.Description = err.Error()
 		}
 		return m
 	}
 
 	importRequest := &importer.ImportRequest{
 		RpcObjectImportRequest: req,
-		Origin:                 model.ObjectOrigin_import,
+		Origin:                 objectorigin.Import(req.Type),
 		Progress:               nil,
 		SendNotification:       true,
 		IsSync:                 false,
 	}
-	rootCollectionId, err := getService[importer.Importer](mw).Import(cctx, importRequest)
+	res := getService[importer.Importer](mw).Import(cctx, importRequest)
 
-	if err == nil {
-		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionId, nil)
+	if res == nil || res.Err == nil {
+		return response(pb.RpcObjectImportResponseError_NULL, nil)
 	}
 	switch {
-	case errors.Is(err, common.ErrNoObjectsToImport):
-		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, "", err)
-	case errors.Is(err, common.ErrCancel):
-		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, "", err)
-	case errors.Is(err, common.ErrLimitExceeded):
-		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, "", err)
-	case errors.Is(err, common.ErrFileLoad):
-		return response(pb.RpcObjectImportResponseError_FILE_LOAD_ERROR, "", err)
+	case errors.Is(res.Err, common.ErrNoObjectsToImport):
+		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, res.Err)
+	case errors.Is(res.Err, common.ErrCancel):
+		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, res.Err)
+	case errors.Is(res.Err, common.ErrLimitExceeded):
+		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, res.Err)
+	case errors.Is(res.Err, common.ErrFileLoad):
+		return response(pb.RpcObjectImportResponseError_FILE_LOAD_ERROR, res.Err)
 	default:
-		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, "", err)
+		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, res.Err)
 	}
 }
 

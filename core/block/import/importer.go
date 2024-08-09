@@ -31,13 +31,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/metrics/anymetry"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -57,21 +58,13 @@ const CName = "importer"
 
 const workerPoolSize = 10
 
-type ImportRequest struct {
-	*pb.RpcObjectImportRequest
-	Origin           model.ObjectOrigin
-	Progress         process.Progress
-	SendNotification bool
-	IsSync           bool
-}
-
 type Import struct {
 	converters          map[string]common.Converter
 	s                   *block.Service
 	oc                  creator.Service
 	idProvider          objectid.IdAndKeyProvider
 	tempDirProvider     core.TempDirProvider
-	fileStore       filestore.FileStore
+	fileStore           filestore.FileStore
 	fileSync            filesync.FileSync
 	notificationService notifications.Notifications
 	eventSender         event.Sender
@@ -116,20 +109,20 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx context.Context, importRequest *ImportRequest) (string, error) {
+func (i *Import) Import(ctx context.Context, importRequest *ImportRequest) *ImportResponse {
 	if importRequest.IsSync {
 		return i.importObjects(ctx, importRequest)
 	}
 	go conc.Go(func() {
-		_, err := i.importObjects(context.Background(), importRequest)
-		if err != nil {
-			log.Errorf("import from %s failed with error: %s", importRequest.Type.String(), err)
+		res := i.importObjects(context.Background(), importRequest)
+		if res.Err != nil {
+			log.Errorf("import from %s failed with error: %s", importRequest.Type.String(), res.Err)
 		}
 	})
-	return "", nil
+	return nil
 }
 
-func (i *Import) importObjects(ctx context.Context, importRequest *ImportRequest) (string, error) {
+func (i *Import) importObjects(ctx context.Context, importRequest *ImportRequest) *ImportResponse {
 	if importRequest.SpaceId == "" {
 		return &ImportResponse{
 			RootCollectionId: "",
@@ -139,44 +132,37 @@ func (i *Import) importObjects(ctx context.Context, importRequest *ImportRequest
 		}
 	}
 	var (
-		returnedErr      error
-		importId         = uuid.New().String()
-		rootCollectionId string
-		isNewProgress    = false
-		progress         process.Progress
-		objectsCount int64
+		res           = &ImportResponse{}
+		importId      = uuid.New().String()
+		isNewProgress = false
 	)
 	if importRequest.Progress == nil {
-		progress = i.setupProgressBar(importRequest)
+		i.setupProgressBar(importRequest)
 		isNewProgress = true
 	}
 	defer func() {
-		i.onImportFinish(returnedErr, progress, importRequest, importId, rootCollectionId)
+		i.onImportFinish(res, importRequest, importId)
 	}()
 	if i.s != nil && !importRequest.GetNoProgress() && isNewProgress {
-		i.s.ProcessAdd(progress)
+		i.s.ProcessAdd(importRequest.Progress)
 	}
 	i.recordEvent(&metrics.ImportStartedEvent{ID: importId, ImportType: importRequest.Type.String()})
-	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
+	res.Err = fmt.Errorf("unknown import type %s", importRequest.Type)
 	if c, ok := i.converters[importRequest.Type.String()]; ok {
-		rootCollectionId, objectsCount, returnedErr = i.importFromBuiltinConverter(ctx, importRequest, c, progress)
+		res.RootCollectionId, res.ObjectsCount, res.Err = i.importFromBuiltinConverter(ctx, importRequest, c)
 	}
 	if importRequest.Type == model.Import_External {
-		objectsCount, returnedErr = i.importFromExternalSource(ctx, importRequest, progress)
+		res.ObjectsCount, res.Err = i.importFromExternalSource(ctx, importRequest)
 	}
-	return &ImportResponse{
-		RootCollectionId: rootCollectionId,
-		ProcessId:        progress.Id(),
-		ObjectsCount:     objectsCount,
-		Err:              returnedErr,
-	}
+	res.ProcessId = importRequest.Progress.Id()
+	return res
 }
 
-func (i *Import) onImportFinish(returnedErr error, progress process.Progress, req *ImportRequest, importId, rootCollectionId string) {
-	i.finishImportProcess(returnedErr, progress, req)
-	i.sendFileEvents(returnedErr)
+func (i *Import) onImportFinish(res *ImportResponse, req *ImportRequest, importId string) {
+	i.finishImportProcess(res.Err, req)
+	i.sendFileEvents(res.Err)
 	i.recordEvent(&metrics.ImportFinishedEvent{ID: importId, ImportType: req.Type.String()})
-	i.sendImportFinishEventToClient(rootCollectionId, req.IsSync)
+	i.sendImportFinishEventToClient(res.RootCollectionId, req.IsSync, res.ObjectsCount)
 }
 
 func (i *Import) sendFileEvents(returnedErr error) {
@@ -186,14 +172,9 @@ func (i *Import) sendFileEvents(returnedErr error) {
 	i.fileSync.ClearImportEvents()
 }
 
-func (i *Import) importFromBuiltinConverter(ctx context.Context,
-	req *ImportRequest,
-	c common.Converter,
-	progress process.Progress,
-	origin objectorigin.ObjectOrigin,
-) (string, int64, error) {
+func (i *Import) importFromBuiltinConverter(ctx context.Context, req *ImportRequest, c common.Converter) (string, int64, error) {
 	allErrors := common.NewError(req.Mode)
-	res, err := c.GetSnapshots(ctx, req.RpcObjectImportRequest, progress)
+	res, err := c.GetSnapshots(ctx, req.RpcObjectImportRequest, req.Progress)
 	if !err.IsEmpty() {
 		resultErr := err.GetResultError(req.Type)
 		if shouldReturnError(resultErr, res, req.RpcObjectImportRequest) {
@@ -209,7 +190,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 		return "", 0, fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
-	details, rootCollectionID := i.createObjects(ctx, res, progress, req.RpcObjectImportRequest, allErrors, req.Origin)
+	details, rootCollectionID := i.createObjects(ctx, res, req.Progress, req.RpcObjectImportRequest, allErrors, req.Origin)
 	resultErr := allErrors.GetResultError(req.Type)
 	if resultErr != nil {
 		rootCollectionID = ""
@@ -225,10 +206,7 @@ func (i *Import) getObjectCount(details map[string]*types.Struct, rootCollection
 	return objectsCount
 }
 
-func (i *Import) importFromExternalSource(ctx context.Context,
-	req *pb.RpcObjectImportRequest,
-	progress process.Progress,
-) (int64, error) {
+func (i *Import) importFromExternalSource(ctx context.Context, req *ImportRequest) (int64, error) {
 	allErrors := common.NewError(req.Mode)
 	if req.Snapshots != nil {
 		sn := make([]*common.Snapshot, len(req.Snapshots))
@@ -243,7 +221,7 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 		}
 
 		originImport := objectorigin.Import(model.Import_External)
-		details, _ := i.createObjects(ctx, res, progress, req, allErrors, originImport)
+		details, _ := i.createObjects(ctx, res, req.Progress, req.RpcObjectImportRequest, allErrors, originImport)
 		if !allErrors.IsEmpty() {
 			return 0, allErrors.GetResultError(req.Type)
 		}
@@ -252,11 +230,11 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 	return 0, common.ErrNoObjectsToImport
 }
 
-func (i *Import) finishImportProcess(returnedErr error, progress process.Progress, req *ImportRequest) {
-	if notificationProgress, ok := progress.(process.Notificationable); ok {
-		notificationProgress.FinishWithNotification(i.provideNotification(returnedErr, progress, req), returnedErr)
+func (i *Import) finishImportProcess(returnedErr error, req *ImportRequest) {
+	if notificationProgress, ok := req.Progress.(process.Notificationable); ok {
+		notificationProgress.FinishWithNotification(i.provideNotification(returnedErr, req.Progress, req), returnedErr)
 	} else {
-		progress.Finish(returnedErr)
+		req.Progress.Finish(returnedErr)
 	}
 }
 
@@ -281,7 +259,7 @@ func shouldReturnError(e error, res *common.Response, req *pb.RpcObjectImportReq
 		errors.Is(e, common.ErrCancel)
 }
 
-func (i *Import) setupProgressBar(req *ImportRequest) process.Progress {
+func (i *Import) setupProgressBar(req *ImportRequest) {
 	progressBarType := pb.ModelProcess_Import
 	if req.IsMigration {
 		progressBarType = pb.ModelProcess_Migration
@@ -295,7 +273,7 @@ func (i *Import) setupProgressBar(req *ImportRequest) process.Progress {
 			progress = process.NewNotificationProcess(progressBarType, i.notificationService)
 		}
 	}
-	return progress
+	req.Progress = progress
 }
 
 func (i *Import) Name() string {
@@ -532,7 +510,7 @@ func (i *Import) recordEvent(event anymetry.Event) {
 	metrics.Service.Send(event)
 }
 
-func (i *Import) sendImportFinishEventToClient(rootCollectionID string, isSync bool) {
+func (i *Import) sendImportFinishEventToClient(rootCollectionID string, isSync bool, objectsCount int64) {
 	if isSync {
 		return
 	}
@@ -540,7 +518,7 @@ func (i *Import) sendImportFinishEventToClient(rootCollectionID string, isSync b
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfImportFinish{
-					ImportFinish: &pb.EventImportFinish{RootCollectionID: rootCollectionID},
+					ImportFinish: &pb.EventImportFinish{RootCollectionID: rootCollectionID, ObjectsCount: objectsCount},
 				},
 			},
 		},

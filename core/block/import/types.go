@@ -9,7 +9,18 @@ import (
 	_ "github.com/anyproto/anytype-heart/core/block/import/markdown"
 	_ "github.com/anyproto/anytype-heart/core/block/import/pb"
 	_ "github.com/anyproto/anytype-heart/core/block/import/web"
+	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/pb"
 )
+
+type ImportRequest struct {
+	*pb.RpcObjectImportRequest
+	Origin           objectorigin.ObjectOrigin
+	Progress         process.Progress
+	SendNotification bool
+	IsSync           bool
+}
 
 type ImportResponse struct {
 	RootCollectionId string
