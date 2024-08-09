@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/mock_spacestorage"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -15,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -29,7 +31,7 @@ import (
 )
 
 func TestReindexMarketplaceSpace(t *testing.T) {
-	spaceId := "market"
+	spaceId := addr.AnytypeMarketplaceWorkspace
 	getMockSpace := func(fx *IndexerFixture) *clientspace.VirtualSpace {
 		virtualSpace := clientspace.NewVirtualSpace(spaceId, clientspace.VirtualSpaceDeps{
 			Indexer: fx,
@@ -50,7 +52,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 	t.Run("reindex missing object", func(t *testing.T) {
 		// given
 		indexerFx := NewIndexerFixture(t)
-		checksums := indexerFx.getLatestChecksums()
+		checksums := indexerFx.getLatestChecksums(true)
 		err := indexerFx.store.SaveChecksums(spaceId, &checksums)
 		assert.Nil(t, err)
 
@@ -86,7 +88,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		archiveLinks, err := fx.store.GetOutboundLinksByID("bin")
 		require.Equal(t, trash, archiveLinks)
 
-		checksums := fx.getLatestChecksums()
+		checksums := fx.getLatestChecksums(true)
 		checksums.LinksErase = checksums.LinksErase - 1
 
 		err = fx.objectStore.SaveChecksums(spaceId, &checksums)
@@ -111,6 +113,37 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 
 		storeChecksums, err := fx.store.GetChecksums(spaceId)
 		assert.Equal(t, ForceLinksReindexCounter, storeChecksums.LinksErase)
+	})
+
+	t.Run("full marketplace reindex on force flag update", func(t *testing.T) {
+		// given
+		fx := NewIndexerFixture(t)
+		fx.objectStore.AddObjects(t, []objectstore.TestObject{map[domain.RelationKey]*types.Value{
+			bundle.RelationKeyId:      pbtypes.String("relationThatWillBeDeleted"),
+			bundle.RelationKeyName:    pbtypes.String("Relation-That-Will-Be-Deleted"),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceId),
+		}})
+
+		checksums := fx.getLatestChecksums(true)
+		checksums.MarketplaceForceReindexCounter = checksums.MarketplaceForceReindexCounter - 1
+
+		err := fx.objectStore.SaveChecksums(spaceId, &checksums)
+		require.NoError(t, err)
+
+		storage := mock_storage.NewMockClientStorage(t)
+		storage.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
+		fx.storageService = storage
+
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
+
+		// when
+		err = fx.ReindexMarketplaceSpace(getMockSpace(fx))
+		assert.NoError(t, err)
+
+		// then
+		det, err := fx.store.GetDetails("relationThatWillBeDeleted")
+		assert.NoError(t, err)
+		assert.Empty(t, det.Details.Fields)
 	})
 }
 
@@ -141,7 +174,7 @@ func TestReindexDeletedObjects(t *testing.T) {
 		},
 	})
 
-	checksums := fx.getLatestChecksums()
+	checksums := fx.getLatestChecksums(false)
 	checksums.AreDeletedObjectsReindexed = false
 
 	err := fx.objectStore.SaveChecksums(spaceId1, &checksums)
@@ -248,7 +281,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		},
 	})
 
-	checksums := fx.getLatestChecksums()
+	checksums := fx.getLatestChecksums(false)
 	checksums.LinksErase = checksums.LinksErase - 1
 
 	err := fx.objectStore.SaveChecksums(spaceId1, &checksums)
