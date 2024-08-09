@@ -12,7 +12,6 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -279,7 +278,7 @@ func (p *Pb) makeSnapshot(name, profileID, path string,
 	if err != nil {
 		return nil, fmt.Errorf("normalize snapshot: %w", err)
 	}
-	p.injectImportDetails(name, path, snapshot)
+	p.injectImportDetails(snapshot)
 	return &common.Snapshot{
 		Id:       id,
 		SbType:   smartblock.SmartBlockType(snapshot.SbType),
@@ -434,20 +433,25 @@ func (p *Pb) cleanupEmptyBlock(snapshot *pb.SnapshotWithType) {
 	}
 }
 
-func (p *Pb) injectImportDetails(name string, path string, mo *pb.SnapshotWithType) {
-	if mo.Snapshot.Data.Details == nil || mo.Snapshot.Data.Details.Fields == nil {
-		mo.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
+func (p *Pb) injectImportDetails(sn *pb.SnapshotWithType) {
+	if sn.Snapshot.Data.Details == nil || sn.Snapshot.Data.Details.Fields == nil {
+		sn.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	if id := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String()); id != "" {
-		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
+	if id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String()); id != "" {
+		sn.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
 	}
-	sourceDetail := common.GetSourceDetail(name, path)
-	mo.Snapshot.Data.Details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(sourceDetail)
-
-	createdDate := pbtypes.GetInt64(mo.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
+	p.setSourceFilePath(sn)
+	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
 	if createdDate == 0 {
-		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
+		sn.Snapshot.Data.Details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
 	}
+}
+
+func (p *Pb) setSourceFilePath(sn *pb.SnapshotWithType) {
+	spaceId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySpaceId.String())
+	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	sourceFilePath := filepath.Join(spaceId, id)
+	sn.Snapshot.Data.Details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(sourceFilePath)
 }
 
 func (p *Pb) shouldImportSnapshot(snapshot *common.Snapshot, needToImportWidgets bool, importType pb.RpcObjectImportRequestPbParamsType) bool {
@@ -458,17 +462,13 @@ func (p *Pb) shouldImportSnapshot(snapshot *common.Snapshot, needToImportWidgets
 
 func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot, allErrors *common.ConvertError, pathCount int) map[string]string {
 	oldToNewID := make(map[string]string, len(snapshots))
-	fileIDs := make([]string, 0)
 	for _, snapshot := range snapshots {
 		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 		oldToNewID[id] = snapshot.Id
-		fileIDs = append(fileIDs, lo.Map(snapshot.Snapshot.GetFileKeys(), func(item *pb.ChangeFileKeys, index int) string {
-			return item.Hash
-		})...)
 	}
 	for _, snapshot := range snapshots {
 		st := state.NewDocFromSnapshot("", snapshot.Snapshot, state.WithUniqueKeyMigration(snapshot.SbType))
-		err := common.UpdateLinksToObjects(st.(*state.State), oldToNewID, fileIDs)
+		err := common.UpdateLinksToObjects(st.(*state.State), oldToNewID)
 		if err != nil {
 			allErrors.Add(err)
 			if allErrors.ShouldAbortImport(pathCount, model.Import_Pb) {
@@ -476,7 +476,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot, allErrors *commo
 			}
 			continue
 		}
-		common.UpdateObjectIDsInRelations(st.(*state.State), oldToNewID, fileIDs)
+		common.UpdateObjectIDsInRelations(st.(*state.State), oldToNewID)
 		// TODO Fix
 		// converter.UpdateObjectType(oldToNewID, st.(*state.State))
 		p.updateObjectsIDsInCollection(st.(*state.State), oldToNewID)

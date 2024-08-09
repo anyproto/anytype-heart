@@ -4,17 +4,18 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"sync"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/nodeconf"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -42,6 +43,7 @@ type Service interface {
 	// ProfileObjectId returns id of Profile object stored in personal space
 	ProfileObjectId() (string, error)
 	ProfileInfo() (Profile, error)
+	Keys() *accountdata.AccountKeys
 }
 
 type service struct {
@@ -51,12 +53,11 @@ type service struct {
 	gateway      gateway.Gateway
 	config       *config.Config
 	objectStore  objectstore.ObjectStore
+	keyProvider  accountservice.Service
+	nodeConf     nodeconf.Service
+	coordClient  coordinatorclient.CoordinatorClient
 
-	nodeConf    nodeconf.Service
-	coordClient coordinatorclient.CoordinatorClient
-
-	picker          getblock.ObjectGetter
-	once            sync.Once
+	picker          cache.ObjectGetter
 	personalSpaceId string
 }
 
@@ -71,11 +72,16 @@ func (s *service) Init(a *app.App) (err error) {
 	s.gateway = app.MustComponent[gateway.Gateway](a)
 	s.nodeConf = app.MustComponent[nodeconf.Service](a)
 	s.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](a)
+	s.keyProvider = app.MustComponent[accountservice.Service](a)
 	s.config = app.MustComponent[*config.Config](a)
-	s.picker = app.MustComponent[getblock.ObjectGetter](a)
+	s.picker = app.MustComponent[cache.ObjectGetter](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
 	return
+}
+
+func (s *service) Keys() *accountdata.AccountKeys {
+	return s.keyProvider.Account()
 }
 
 func (s *service) Delete(ctx context.Context) (toBeDeleted int64, err error) {
@@ -170,7 +176,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 }
 
 func (s *service) getDerivedIds(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
-	spc, err := s.spaceService.Get(ctx, spaceID)
+	spc, err := s.spaceService.Wait(ctx, spaceID)
 	if err != nil {
 		return ids, fmt.Errorf("failed to get space: %w", err)
 	}
@@ -186,7 +192,7 @@ func (s *service) getAnalyticsID(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("failed to get derived ids: %w", err)
 	}
 	var analyticsID string
-	err = getblock.Do(s.picker, ids.Workspace, func(sb smartblock.SmartBlock) error {
+	err = cache.Do(s.picker, ids.Workspace, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState().GetSetting(state.SettingsAnalyticsId)
 		if st == nil {
 			log.Errorf("analytics id not found")

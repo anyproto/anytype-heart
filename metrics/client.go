@@ -8,7 +8,7 @@ import (
 
 	"github.com/cheggaaa/mb/v3"
 
-	"github.com/anyproto/anytype-heart/metrics/amplitude"
+	"github.com/anyproto/anytype-heart/metrics/anymetry"
 )
 
 var (
@@ -20,12 +20,12 @@ var (
 type client struct {
 	lock             sync.RWMutex
 	batcherLock      sync.RWMutex
-	telemetry        amplitude.Service
+	telemetry        anymetry.Service
 	aggregatableMap  map[string]SamplableEvent
 	aggregatableChan chan SamplableEvent
 	ctx              context.Context
 	cancel           context.CancelFunc
-	batcher          *mb.MB[amplitude.Event]
+	batcher          *mb.MB[anymetry.Event]
 }
 
 func (c *client) startAggregating() {
@@ -65,7 +65,7 @@ func (c *client) startAggregating() {
 	}()
 }
 
-func (c *client) startSendingBatchMessages(info amplitude.AppInfoProvider) {
+func (c *client) startSendingBatchMessages(info anymetry.AppInfoProvider) {
 	ctx := c.ctx
 	attempt := 0
 	for {
@@ -112,19 +112,19 @@ func (c *client) Close() {
 	c.setBatcher(nil)
 }
 
-func (c *client) getBatcher() *mb.MB[amplitude.Event] {
+func (c *client) getBatcher() *mb.MB[anymetry.Event] {
 	defer c.batcherLock.RUnlock()
 	c.batcherLock.RLock()
 	return c.batcher
 }
 
-func (c *client) setBatcher(batcher *mb.MB[amplitude.Event]) {
+func (c *client) setBatcher(batcher *mb.MB[anymetry.Event]) {
 	defer c.batcherLock.Unlock()
 	c.batcherLock.Lock()
 	c.batcher = batcher
 }
 
-func (c *client) sendNextBatch(info amplitude.AppInfoProvider, batcher *mb.MB[amplitude.Event], msgs []amplitude.Event) (err error) {
+func (c *client) sendNextBatch(info anymetry.AppInfoProvider, batcher *mb.MB[anymetry.Event], msgs []anymetry.Event) (err error) {
 	clientBatcher := c.getBatcher()
 	if clientBatcher == nil || len(msgs) == 0 {
 		return nil
@@ -148,10 +148,10 @@ func (c *client) sendNextBatch(info amplitude.AppInfoProvider, batcher *mb.MB[am
 }
 
 func (c *client) recordAggregatedData() {
-	c.lock.RLock()
+	c.lock.Lock()
 	toSend := c.aggregatableMap
 	c.aggregatableMap = make(map[string]SamplableEvent)
-	c.lock.RUnlock()
+	c.lock.Unlock()
 	// итерейтим сразу старую мапу и скармливаем ГЦ
 	for _, ev := range toSend {
 		c.send(ev)
@@ -165,7 +165,7 @@ func (c *client) sendSampled(ev SamplableEvent) {
 	}
 }
 
-func (c *client) send(e amplitude.Event) {
+func (c *client) send(e anymetry.Event) {
 	if e == nil {
 		return
 	}

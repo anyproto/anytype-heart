@@ -920,6 +920,54 @@ func (_c *MockSpace_Do_Call) RunAndReturn(run func(string, func(smartblock.Smart
 	return _c
 }
 
+// DoCtx provides a mock function with given fields: ctx, objectId, apply
+func (_m *MockSpace) DoCtx(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) error {
+	ret := _m.Called(ctx, objectId, apply)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DoCtx")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, func(smartblock.SmartBlock) error) error); ok {
+		r0 = rf(ctx, objectId, apply)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpace_DoCtx_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DoCtx'
+type MockSpace_DoCtx_Call struct {
+	*mock.Call
+}
+
+// DoCtx is a helper method to define mock.On call
+//   - ctx context.Context
+//   - objectId string
+//   - apply func(smartblock.SmartBlock) error
+func (_e *MockSpace_Expecter) DoCtx(ctx interface{}, objectId interface{}, apply interface{}) *MockSpace_DoCtx_Call {
+	return &MockSpace_DoCtx_Call{Call: _e.mock.On("DoCtx", ctx, objectId, apply)}
+}
+
+func (_c *MockSpace_DoCtx_Call) Run(run func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error)) *MockSpace_DoCtx_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(func(smartblock.SmartBlock) error))
+	})
+	return _c
+}
+
+func (_c *MockSpace_DoCtx_Call) Return(_a0 error) *MockSpace_DoCtx_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_DoCtx_Call) RunAndReturn(run func(context.Context, string, func(smartblock.SmartBlock) error) error) *MockSpace_DoCtx_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DoLockedIfNotExists provides a mock function with given fields: objectID, proc
 func (_m *MockSpace) DoLockedIfNotExists(objectID string, proc func() error) error {
 	ret := _m.Called(objectID, proc)
@@ -1377,6 +1425,40 @@ func (_c *MockSpace_LoadObjects_Call) Return(err error) *MockSpace_LoadObjects_C
 }
 
 func (_c *MockSpace_LoadObjects_Call) RunAndReturn(run func(context.Context, []string) error) *MockSpace_LoadObjects_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// LoadObjectsIgnoreErrs provides a mock function with given fields: ctx, objIDs
+func (_m *MockSpace) LoadObjectsIgnoreErrs(ctx context.Context, objIDs []string) {
+	_m.Called(ctx, objIDs)
+}
+
+// MockSpace_LoadObjectsIgnoreErrs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadObjectsIgnoreErrs'
+type MockSpace_LoadObjectsIgnoreErrs_Call struct {
+	*mock.Call
+}
+
+// LoadObjectsIgnoreErrs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - objIDs []string
+func (_e *MockSpace_Expecter) LoadObjectsIgnoreErrs(ctx interface{}, objIDs interface{}) *MockSpace_LoadObjectsIgnoreErrs_Call {
+	return &MockSpace_LoadObjectsIgnoreErrs_Call{Call: _e.mock.On("LoadObjectsIgnoreErrs", ctx, objIDs)}
+}
+
+func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) Run(run func(ctx context.Context, objIDs []string)) *MockSpace_LoadObjectsIgnoreErrs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) Return() *MockSpace_LoadObjectsIgnoreErrs_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) RunAndReturn(run func(context.Context, []string)) *MockSpace_LoadObjectsIgnoreErrs_Call {
 	_c.Call.Return(run)
 	return _c
 }

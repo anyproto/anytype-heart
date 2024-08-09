@@ -6,10 +6,10 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
 	"github.com/anyproto/anytype-heart/space/internal/components/builder"
+	"github.com/anyproto/anytype-heart/space/internal/components/migration"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
-	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/components/aclindexcleaner"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 )
@@ -25,17 +25,16 @@ type Remover interface {
 
 type Params struct {
 	SpaceId             string
-	Status              spacestatus.SpaceStatus
 	StopIfMandatoryFail bool
 	OwnerMetadata       []byte
 }
 
 func New(app *app.App, params Params) Remover {
 	child := app.ChildApp()
-	child.Register(params.Status).
+	child.Register(aclindexcleaner.New()).
 		Register(builder.New()).
 		Register(spaceloader.New(params.StopIfMandatoryFail, true)).
-		Register(aclobjectmanager.New(params.OwnerMetadata))
+		Register(migration.New())
 	return &remover{
 		app: child,
 	}

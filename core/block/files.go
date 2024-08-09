@@ -89,7 +89,7 @@ func (s *Service) getFileOrLargestImage(ctx context.Context, objectId string) (f
 		return s.fileService.FileByHash(ctx, id)
 	}
 
-	f, err := image.GetOriginalFile(ctx)
+	f, err := image.GetOriginalFile()
 	if err != nil {
 		return s.fileService.FileByHash(ctx, id)
 	}

@@ -50,7 +50,7 @@ func (h *history) Undo(ctx session.Context) (info HistoryInfo, err error) {
 	}
 
 	if action.Details != nil {
-		s.SetDetails(pbtypes.CopyStruct(action.Details.Before))
+		s.SetDetails(pbtypes.CopyStruct(action.Details.Before, false))
 	}
 	if err = h.Apply(s, smartblock.NoHistory, smartblock.NoRestrictions); err != nil {
 		return
@@ -82,7 +82,7 @@ func (h *history) Redo(ctx session.Context) (info HistoryInfo, err error) {
 		s.SetObjectTypeKeys(ot)
 	}
 	if action.Details != nil {
-		s.SetDetails(pbtypes.CopyStruct(action.Details.After))
+		s.SetDetails(pbtypes.CopyStruct(action.Details.After, true))
 	}
 	if err = h.Apply(s, smartblock.NoHistory, smartblock.NoRestrictions); err != nil {
 		return

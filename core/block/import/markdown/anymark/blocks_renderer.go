@@ -10,7 +10,6 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/text"
@@ -42,14 +41,12 @@ type blocksRenderer struct {
 	inTable       bool
 	listParentID  string
 	listNestIsNum []bool
-	listNestLevel uint
 }
 
 func newBlocksRenderer(baseFilepath string, allFileShortPaths []string, inTable bool) *blocksRenderer {
 	return &blocksRenderer{
 		baseFilepath:      baseFilepath,
 		allFileShortPaths: allFileShortPaths,
-		listNestLevel:     0,
 		inTable:           inTable,
 	}
 }
@@ -125,7 +122,7 @@ func (r *blocksRenderer) OpenNewTextBlock(style model.BlockContentTextStyle, fie
 		r.curStyledBlock = style
 	}
 
-	id := uuid.New().String()
+	id := bson.NewObjectId().Hex()
 
 	newBlock := model.Block{
 		Id:     id,
@@ -160,10 +157,8 @@ func (r *blocksRenderer) addChildID(cID string) {
 func (r *blocksRenderer) SetListState(entering bool, isNumbered bool) {
 	if entering {
 		r.listNestIsNum = append(r.listNestIsNum, isNumbered)
-		r.listNestLevel++
 	} else if len(r.listNestIsNum) > 0 {
 		r.listNestIsNum = r.listNestIsNum[:len(r.listNestIsNum)-1]
-		r.listNestLevel--
 	}
 
 	if len(r.listNestIsNum) > 1 {
@@ -197,6 +192,15 @@ func (r *blocksRenderer) AddTextToBuffer(text string) {
 	}
 
 	r.textBuffer += text
+}
+
+func (r *blocksRenderer) TextBufferLen() int {
+	if len(r.openedTextBlocks) > 0 {
+		return len(r.openedTextBlocks[len(r.openedTextBlocks)-1].textBuffer)
+
+	}
+
+	return len(r.textBuffer)
 }
 
 func (r *blocksRenderer) AddImageBlock(source string) {
@@ -268,7 +272,7 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 	var closingBlock *textBlock
 	var parentBlock *textBlock
 
-	id := uuid.New().String()
+	id := bson.NewObjectId().Hex()
 
 	if len(r.openedTextBlocks) > 0 {
 		closingBlock = r.openedTextBlocks[len(r.openedTextBlocks)-1]

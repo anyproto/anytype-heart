@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -12,29 +11,27 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 )
 
 type FileRelationSyncer struct {
-	service           *block.Service
-	objectStore       objectstore.ObjectStore
-	fileStore         filestore.FileStore
+	service           BlockService
 	fileObjectService fileobject.Service
 }
 
-func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore, fileObjectService fileobject.Service, objectStore objectstore.ObjectStore) *FileRelationSyncer {
+func NewFileRelationSyncer(service BlockService, fileObjectService fileobject.Service) *FileRelationSyncer {
 	return &FileRelationSyncer{
 		service:           service,
-		fileStore:         fileStore,
 		fileObjectService: fileObjectService,
-		objectStore:       objectStore,
 	}
 }
 
-func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, origin objectorigin.ObjectOrigin) string {
+func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, newIdsSet map[string]struct{}, origin objectorigin.ObjectOrigin) string {
 	// If file is created during import, do nothing
-	if _, ok := snapshotPayloads[fileId]; ok {
+	if _, ok := newIdsSet[fileId]; ok {
+		return fileId
+	}
+	if fileId == addr.MissingObject {
 		return fileId
 	}
 

@@ -14,8 +14,8 @@ import (
 
 var (
 	maxChildrenThreshold = 40
-	blockSizeLimit       = 1 * 1024 * 1024
-	detailSizeLimit      = 65 * 1024
+
+	detailSizeLimit = 65 * 1024
 )
 
 func (s *State) Normalize(withLayouts bool) (err error) {
@@ -89,35 +89,38 @@ func (s *State) normalizeLayout() {
 }
 
 func (s *State) removeEmptyLayoutBlocks(blocks map[string]simple.Block) {
+	// TODO: rewrite to use DFS routine: If layout block has no children, remove it, then check its parent
 	for _, b := range blocks {
 		if layout := b.Model().GetLayout(); layout != nil {
-			if len(b.Model().ChildrenIds) == 0 {
-				s.Unlink(b.Model().Id)
+			if layout.Style == model.BlockContentLayout_Row || layout.Style == model.BlockContentLayout_Column || layout.Style == model.BlockContentLayout_Div {
+				if len(b.Model().ChildrenIds) == 0 {
+					s.Unlink(b.Model().Id)
+				}
+				// load parent for checking
+				s.GetParentOf(b.Model().Id)
 			}
-			// load parent for checking
-			s.GetParentOf(b.Model().Id)
 		}
 	}
 }
 
-func (s *State) normalizeChildren(b simple.Block) {
-	m := b.Model()
-	for _, cid := range m.ChildrenIds {
-		if !s.Exists(cid) {
-			s.setChildrenIds(m, slice.RemoveMut(m.ChildrenIds, cid))
-			s.normalizeChildren(b)
+func (s *State) normalizeChildren(block simple.Block) {
+	model := block.Model()
+	for _, childrenId := range model.ChildrenIds {
+		if !s.Exists(childrenId) {
+			s.removeChildren(model, childrenId)
+			s.normalizeChildren(block)
 			return
 		}
 	}
 }
 
 func (s *State) normalizeLayoutRow(b simple.Block) {
+	if b.Model().GetLayout().Style != model.BlockContentLayout_Row {
+		return
+	}
 	// remove empty layout
 	if len(b.Model().ChildrenIds) == 0 {
 		s.Unlink(b.Model().Id)
-		return
-	}
-	if b.Model().GetLayout().Style != model.BlockContentLayout_Row {
 		return
 	}
 	// one column - remove row

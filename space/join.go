@@ -7,7 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
-func (s *service) Join(ctx context.Context, id string) error {
+func (s *service) Join(ctx context.Context, id, aclHeadId string) error {
 	s.mu.Lock()
 	waiter, exists := s.waiting[id]
 	if exists {
@@ -20,7 +20,9 @@ func (s *service) Join(ctx context.Context, id string) error {
 		ctrl := s.spaceControllers[id]
 		s.mu.Unlock()
 		if ctrl.Mode() != mode.ModeJoining {
-			return ctrl.SetStatus(ctx, spaceinfo.AccountStatusJoining)
+			info := spaceinfo.NewSpacePersistentInfo(id)
+			info.SetAclHeadId(aclHeadId).SetAccountStatus(spaceinfo.AccountStatusJoining)
+			return ctrl.SetPersistentInfo(ctx, info)
 		}
 		return nil
 	}
@@ -29,7 +31,7 @@ func (s *service) Join(ctx context.Context, id string) error {
 		wait: wait,
 	}
 	s.mu.Unlock()
-	ctrl, err := s.factory.CreateInvitingSpace(ctx, id)
+	ctrl, err := s.factory.CreateInvitingSpace(ctx, id, aclHeadId)
 	if err != nil {
 		s.mu.Lock()
 		close(wait)
@@ -45,4 +47,10 @@ func (s *service) Join(ctx context.Context, id string) error {
 	s.spaceControllers[ctrl.SpaceId()] = ctrl
 	s.mu.Unlock()
 	return nil
+}
+
+func (s *service) CancelLeave(ctx context.Context, id string) error {
+	info := spaceinfo.NewSpacePersistentInfo(id)
+	info.SetAccountStatus(spaceinfo.AccountStatusActive)
+	return s.techSpace.SetPersistentInfo(ctx, info)
 }

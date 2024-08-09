@@ -9,9 +9,6 @@ import (
 )
 
 func (s *Service) AccountRecover() error {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
 	if s.mnemonic == "" {
 		return ErrNoMnemonicProvided
 	}
@@ -27,8 +24,7 @@ func (s *Service) AccountRecover() error {
 				Value: &pb.EventMessageValueOfAccountShow{
 					AccountShow: &pb.EventAccountShow{
 						Account: &model.Account{
-							Id:   res.Identity.GetPublic().Account(),
-							Name: "",
+							Id: res.Identity.GetPublic().Account(),
 						},
 					},
 				},

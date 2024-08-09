@@ -3,6 +3,7 @@ package state
 import (
 	"errors"
 	"math/rand"
+	"strings"
 	"testing"
 
 	"github.com/globalsign/mgo/bson"
@@ -15,9 +16,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	text2 "github.com/anyproto/anytype-heart/util/text"
 )
 
 func TestState_Add(t *testing.T) {
@@ -30,6 +33,71 @@ func TestState_Add(t *testing.T) {
 	assert.False(t, s.Add(base.NewBase(&model.Block{
 		Id: "1",
 	})))
+}
+
+func TestState_Snippet(t *testing.T) {
+	t.Run("snippet cut - when the content is too long", func(t *testing.T) {
+		givenState := buildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					strings.Repeat("a", 301),
+					blockbuilder.ID("1"),
+				),
+			)))
+
+		// when
+		snippet := givenState.NewState().Snippet()
+
+		// then
+
+		assert.Equal(t, 300, text2.UTF16RuneCountString(snippet))
+		assert.Equal(t, 300, len(strings.Repeat("a", 300)))
+	})
+
+	t.Run("snippet empty - when the style is title or description", func(t *testing.T) {
+		givenState := buildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					"some text 1",
+					blockbuilder.ID("1"),
+					blockbuilder.TextStyle(model.BlockContentText_Title),
+				),
+				blockbuilder.Text(
+					"some text 2",
+					blockbuilder.ID("2"),
+					blockbuilder.TextStyle(model.BlockContentText_Description),
+				),
+			)))
+
+		// when
+		snippet := givenState.NewState().Snippet()
+
+		// then
+		assert.Equal(t, "", snippet)
+	})
+
+	t.Run("snippet empty - when the style is title or description", func(t *testing.T) {
+		givenState := buildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					" text 1 ",
+					blockbuilder.ID("1"),
+				),
+				blockbuilder.Text(
+					" text 2 ",
+					blockbuilder.ID("2"),
+				),
+			)))
+
+		// when
+		snippet := givenState.NewState().Snippet()
+
+		// then
+		assert.Equal(t, "text 1\ntext 2", snippet)
+	})
 }
 
 func TestState_AddRemoveAdd(t *testing.T) {
@@ -2500,7 +2568,7 @@ func TestState_RootId(t *testing.T) {
 }
 
 // TODO: GO-2062 Need to review tests after details shortening refactor
-//func Test_ShortenDetailsToLimit(t *testing.T) {
+// func Test_ShortenDetailsToLimit(t *testing.T) {
 //	t.Run("SetDetails", func(t *testing.T) {
 //		//given
 //		s := &State{rootId: "first"}
@@ -2528,13 +2596,227 @@ func TestState_RootId(t *testing.T) {
 //		assert.Greater(t, detail.Size(), detailSizeLimit)
 //		assert.True(t, assertAllDetailsLessThenLimit(s.CombinedDetails()))
 //	})
-//}
+// }
 
-func assertAllDetailsLessThenLimit(details *types.Struct) bool {
-	for _, v := range details.Fields {
-		if v.Size() > detailSizeLimit {
-			return false
+func TestState_AddDevice(t *testing.T) {
+	t.Run("add device", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+
+		// when
+		st.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		})
+
+		// then
+		assert.NotNil(t, st.deviceStore["id"])
+	})
+	t.Run("add device - device exist", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+		st.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		})
+		newState := st.NewState()
+
+		// when
+		newState.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test1",
+		})
+
+		// then
+		assert.NotNil(t, st.deviceStore["id"])
+		assert.Equal(t, "test", st.deviceStore["id"].Name)
+	})
+}
+
+func TestState_GetDevice(t *testing.T) {
+	t.Run("get device, device not exist", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+
+		// when
+		device := st.GetDevice("id")
+
+		// then
+		assert.Nil(t, device)
+	})
+	t.Run("add device - device exist", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+		st.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		})
+
+		// when
+		device := st.GetDevice("id")
+
+		// then
+		assert.NotNil(t, device)
+	})
+	t.Run("add device - device with given id not exist", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+		st.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		})
+
+		// when
+		device := st.GetDevice("id1")
+
+		// then
+		assert.Nil(t, device)
+	})
+}
+
+func TestState_ListDevices(t *testing.T) {
+	t.Run("list devices, no devices", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+
+		// when
+		devices := st.ListDevices()
+
+		// then
+		assert.Empty(t, devices)
+	})
+	t.Run("list devices", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+		st.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		})
+
+		// when
+		devices := st.ListDevices()
+
+		// then
+		assert.Len(t, devices, 1)
+	})
+}
+
+func TestState_SetDeviceName(t *testing.T) {
+	t.Run("set device name, device not exist", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+
+		// when
+		st.SetDeviceName("id", "test")
+
+		// then
+		assert.NotNil(t, st.deviceStore["id"])
+		assert.Equal(t, st.deviceStore["id"].Name, "test")
+	})
+
+	t.Run("set device name, device exists", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+		st.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		})
+
+		newState := st.NewState()
+		// when
+		newState.SetDeviceName("id", "test1")
+
+		// then
+		assert.NotNil(t, newState.deviceStore["id"])
+		assert.Equal(t, newState.deviceStore["id"].Name, "test1")
+	})
+}
+
+func TestAddBundledRealtionLinks(t *testing.T) {
+	t.Run("with relationLinks in state", func(t *testing.T) {
+		t.Run("empty", func(t *testing.T) {
+			st := &State{
+				relationLinks: []*model.RelationLink{},
+			}
+			st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyPriority)
+
+			want := &State{
+				relationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyName.String(),
+						Format: model.RelationFormat_shorttext,
+					},
+					{
+						Key:    bundle.RelationKeyPriority.String(),
+						Format: model.RelationFormat_number,
+					},
+				},
+			}
+
+			assert.Equal(t, want, st)
+		})
+		t.Run("one already exists, one not", func(t *testing.T) {
+			st := &State{
+				relationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyName.String(),
+						Format: model.RelationFormat_shorttext,
+					},
+				},
+			}
+			st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyPriority)
+
+			want := &State{
+				relationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyName.String(),
+						Format: model.RelationFormat_shorttext,
+					},
+					{
+						Key:    bundle.RelationKeyPriority.String(),
+						Format: model.RelationFormat_number,
+					},
+				},
+			}
+
+			assert.Equal(t, want, st)
+		})
+	})
+	t.Run("with relationLinks only in parent state", func(t *testing.T) {
+		st := &State{
+			relationLinks: nil,
+			parent: &State{
+				relationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyName.String(),
+						Format: model.RelationFormat_shorttext,
+					},
+				},
+			},
 		}
-	}
-	return true
+		st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyPriority)
+
+		want := &State{
+			relationLinks: []*model.RelationLink{
+				{
+					Key:    bundle.RelationKeyName.String(),
+					Format: model.RelationFormat_shorttext,
+				},
+				{
+					Key:    bundle.RelationKeyPriority.String(),
+					Format: model.RelationFormat_number,
+				},
+			},
+			parent: &State{
+				relationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyName.String(),
+						Format: model.RelationFormat_shorttext,
+					},
+				},
+			},
+		}
+
+		assert.Equal(t, want, st)
+	})
 }

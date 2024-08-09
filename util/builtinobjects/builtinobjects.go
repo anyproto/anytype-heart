@@ -15,9 +15,11 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/google/uuid"
 	"github.com/miolini/datacounter"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -101,8 +103,9 @@ var (
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
-			{model.BlockContentWidget_Link, "bafyreiembqdejpkqhupwhukcyqtsjhi43bnqkbp6zfszu26r4c5o6zkeyu", "", true},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
+			{model.BlockContentWidget_Tree, "bafyreib54qrvlara5ickx4sk7mtdmeuwnyrmsdwrrrmvw7rhluwd3mwkg4", "", true},
+			{model.BlockContentWidget_List, "bafyreifvmvqmlmrzzdd4db5gau4fcdhxbii4pkanjdvcjbofmmywhg3zni", "f984ddde-eb13-497e-809a-2b9a96fd3503", true},
+			{model.BlockContentWidget_List, widget.DefaultWidgetFavorite, "", false},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},
@@ -213,7 +216,9 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		path             string
 		removeFunc       = func() {}
 		sendNotification = func(code model.ImportErrorCode) {
-			nErr := b.notifications.CreateAndSendLocal(&model.Notification{
+			spaceName := b.store.GetSpaceName(spaceID)
+			nErr := b.notifications.CreateAndSend(&model.Notification{
+				Id:      uuid.New().String(),
 				Status:  model.Notification_Created,
 				IsLocal: true,
 				Space:   spaceID,
@@ -222,6 +227,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 					ErrorCode: code,
 					SpaceId:   spaceID,
 					Name:      title,
+					SpaceName: spaceName,
 				}},
 			})
 			if nErr != nil {
@@ -297,7 +303,7 @@ func (b *builtinObjects) importArchive(
 	isNewSpace bool,
 ) (err error) {
 	origin := objectorigin.Usecase()
-	_, _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+	res := b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
 		Type:                  model.Import_Pb,
@@ -314,7 +320,7 @@ func (b *builtinObjects) importArchive(
 		IsNewSpace: isNewSpace,
 	}, origin, progress)
 
-	return err
+	return res.Err
 }
 
 func (b *builtinObjects) handleHomePage(path, spaceId string, removeFunc func(), isMigration bool) {
@@ -380,15 +386,15 @@ func (b *builtinObjects) getOldHomePageId(zipReader *zip.Reader) (id string, err
 }
 
 func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id string) {
-	if err := b.blockService.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: spc.DerivedIDs().Workspace,
-		Details: []*pb.RpcObjectSetDetailsDetail{
+	if err := b.blockService.SetDetails(nil,
+		spc.DerivedIDs().Workspace,
+		[]*model.Detail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
 				Value: pbtypes.String(id),
 			},
 		},
-	}); err != nil {
+	); err != nil {
 		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err)
 	}
 }
@@ -402,7 +408,7 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 
 	widgetObjectID := spc.DerivedIDs().Widgets
 
-	if err = block.DoStateCtx(b.blockService, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
+	if err = cache.DoStateCtx(b.blockService, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
 		for _, param := range widgetParams[useCase] {
 			objectID := param.objectID
 			if param.isObjectIDChanged {

@@ -1,6 +1,8 @@
 package dependencies
 
 import (
+	"context"
+
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 
@@ -8,7 +10,7 @@ import (
 )
 
 type IdentityService interface {
-	GetMyProfileDetails() (identity string, metadataKey crypto.SymKey, details *types.Struct)
+	GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *types.Struct)
 
 	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
 
@@ -16,4 +18,6 @@ type IdentityService interface {
 	UnregisterIdentity(spaceId string, identity string)
 	// UnregisterIdentitiesInSpace removes all identity observers in the space
 	UnregisterIdentitiesInSpace(spaceId string)
+
+	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
 }

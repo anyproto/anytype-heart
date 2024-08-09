@@ -65,7 +65,17 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 
 	newAcc := &model.Account{Id: accountID}
 
+	// in case accountCreate got canceled by other request we loose nothing
+	s.appAccountStartInProcessCancelMutex.Lock()
+	ctx, s.appAccountStartInProcessCancel = context.WithCancel(ctx)
+	s.appAccountStartInProcessCancelMutex.Unlock()
 	s.app, err = anytype.StartNewApp(ctx, s.clientWithVersion, comps...)
+	s.appAccountStartInProcessCancelMutex.Lock()
+	s.appAccountStartInProcessCancel = nil
+	s.appAccountStartInProcessCancelMutex.Unlock()
+	if errors.Is(ctx.Err(), context.Canceled) {
+		// todo: remove local data in case of account create cancelation
+	}
 	if err != nil {
 		return newAcc, errors.Join(ErrFailedToStartApplication, err)
 	}
@@ -94,8 +104,6 @@ func (s *Service) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, a
 }
 
 func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAccountCreateRequest, newAcc *model.Account) error {
-	newAcc.Name = req.Name
-
 	personalSpaceId := app.MustComponent[account.Service](s.app).PersonalSpaceID()
 	var err error
 	newAcc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, personalSpaceId)
@@ -104,7 +112,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	}
 
 	bs := s.app.MustComponent(block.CName).(*block.Service)
-	commonDetails := []*pb.RpcObjectSetDetailsDetail{
+	commonDetails := []*model.Detail{
 		{
 			Key:   bundle.RelationKeyName.String(),
 			Value: pbtypes.String(req.Name),
@@ -114,7 +122,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 			Value: pbtypes.Int64(req.Icon),
 		},
 	}
-	profileDetails := make([]*pb.RpcObjectSetDetailsDetail, 0)
+	profileDetails := make([]*model.Detail, 0)
 	profileDetails = append(profileDetails, commonDetails...)
 
 	if req.GetAvatarLocalPath() != "" {
@@ -128,8 +136,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 		if err != nil {
 			log.Warnf("can't add avatar: %v", err)
 		} else {
-			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
-			profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
+			profileDetails = append(profileDetails, &model.Detail{
 				Key:   bundle.RelationKeyIconImage.String(),
 				Value: pbtypes.String(hash),
 			})
@@ -143,17 +150,17 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	}
 	accountObjects := spc.DerivedIDs()
 
-	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: accountObjects.Profile,
-		Details:   profileDetails,
-	}); err != nil {
+	if err := bs.SetDetails(nil,
+		accountObjects.Profile,
+		profileDetails,
+	); err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}
 
-	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: accountObjects.Workspace,
-		Details:   commonDetails,
-	}); err != nil {
+	if err := bs.SetDetails(nil,
+		accountObjects.Workspace,
+		commonDetails,
+	); err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}
 	return nil

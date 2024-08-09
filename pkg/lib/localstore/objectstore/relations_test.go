@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	context2 "context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -49,17 +49,6 @@ import (
 // 	})
 // }
 
-func makeRelationOptionObject(id, name, color, relationKey string) TestObject {
-	return TestObject{
-		bundle.RelationKeyId:                  pbtypes.String(id),
-		bundle.RelationKeyType:                pbtypes.String(bundle.TypeKeyRelationOption.URL()),
-		bundle.RelationKeyName:                pbtypes.String(name),
-		bundle.RelationKeyRelationOptionColor: pbtypes.String(color),
-		bundle.RelationKeyRelationKey:         pbtypes.String(relationKey),
-		bundle.RelationKeyLayout:              pbtypes.Int64(int64(model.ObjectType_relationOption)),
-	}
-}
-
 func TestGetRelationById(t *testing.T) {
 	t.Run("relation is not found", func(t *testing.T) {
 		s := NewStoreFixture(t)
@@ -89,7 +78,7 @@ func TestGetRelationById(t *testing.T) {
 		relationID := "derivedFrom(name)"
 		relation.Id = relationID
 		relObject := relation.ToStruct()
-		err := s.UpdateObjectDetails(relation.Id, relObject)
+		err := s.UpdateObjectDetails(context2.Background(), relation.Id, relObject)
 		require.NoError(t, err)
 
 		got, err := s.GetRelationByID(relationID)

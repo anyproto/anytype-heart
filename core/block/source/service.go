@@ -23,9 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
@@ -43,10 +40,12 @@ type accountService interface {
 
 type Space interface {
 	Id() string
+	IsPersonal() bool
 	TreeBuilder() objecttreebuilder.TreeBuilder
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
+	StoredIds() []string
 }
 
 type Service interface {
@@ -55,7 +54,7 @@ type Service interface {
 	NewStaticSource(params StaticSourceParams) SourceWithType
 
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
-	IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error)
+	IDsListerBySmartblockType(space Space, blockType smartblock.SmartBlockType) (IDsLister, error)
 	app.Component
 }
 
@@ -63,11 +62,9 @@ type service struct {
 	sbtProvider        typeprovider.SmartBlockTypeProvider
 	accountService     accountService
 	accountKeysService accountservice.Service
-	fileStore          filestore.FileStore
-	spaceCoreService   spacecore.SpaceCoreService
 	storageService     storage.ClientStorage
 	fileService        files.Service
-	objectStore        objectstore.ObjectStore
+	objectStore        RelationGetter
 	fileObjectMigrator fileObjectMigrator
 
 	mu        sync.Mutex
@@ -80,12 +77,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.accountService = app.MustComponent[accountService](a)
 	s.accountKeysService = a.MustComponent(accountservice.CName).(accountservice.Service)
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
-	s.spaceCoreService = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 
 	s.fileService = app.MustComponent[files.Service](a)
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.objectStore = app.MustComponent[RelationGetter](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
 	return
 }
@@ -164,7 +159,7 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	return s.newTreeSource(ctx, space, id, buildOptions.BuildTreeOpts())
 }
 
-func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error) {
+func (s *service) IDsListerBySmartblockType(space Space, blockType smartblock.SmartBlockType) (IDsLister, error) {
 	switch blockType {
 	case smartblock.SmartBlockTypeAnytypeProfile:
 		return &anytypeProfile{}, nil
@@ -185,9 +180,9 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 			return nil, err
 		}
 		return &source{
-			spaceID:        spaceID,
+			space:          space,
+			spaceID:        space.Id(),
 			smartblockType: blockType,
-			spaceService:   s.spaceCoreService,
 			sbtProvider:    s.sbtProvider,
 		}, nil
 	}

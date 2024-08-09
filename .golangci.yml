@@ -4,11 +4,22 @@ run:
   # didn't run linter on tests
   tests: false
   # don't check generated protobuf files
-  skip-dirs:
+  go: '1.22'
+
+issues:
+  exclude-generated: disable
+  exclude-dirs:
     - pkg/lib/pb
-  go: '1.20'
+    - pb
+  exclude-files:
+    - '.*_test.go'
+    - 'mock*'
+    - 'testMock/*'
+    - 'clientlibrary/service/service.pb.go'
 
 linters-settings:
+  unused:
+    field-writes-are-uses: false
   errcheck:
     check-blank: true
   errchkjson:

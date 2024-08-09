@@ -3,6 +3,7 @@ package spaceloader
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app/logger"
@@ -34,16 +35,21 @@ type loadingSpace struct {
 	// results
 	stopIfMandatoryFail bool
 	disableRemoteLoad   bool
+	latestAclHeadId     string
 	space               clientspace.Space
-	loadErr             error
-	loadCh              chan struct{}
+
+	loadCh chan struct{}
+
+	lock    sync.Mutex
+	loadErr error
 }
 
-func (s *spaceLoader) newLoadingSpace(ctx context.Context, stopIfMandatoryFail, disableRemoteLoad bool) *loadingSpace {
+func (s *spaceLoader) newLoadingSpace(ctx context.Context, stopIfMandatoryFail, disableRemoteLoad bool, aclHeadId string) *loadingSpace {
 	ls := &loadingSpace{
 		stopIfMandatoryFail:  stopIfMandatoryFail,
 		disableRemoteLoad:    disableRemoteLoad,
 		retryTimeout:         loadingRetryTimeout,
+		latestAclHeadId:      aclHeadId,
 		spaceServiceProvider: s,
 		loadCh:               make(chan struct{}),
 	}
@@ -51,9 +57,21 @@ func (s *spaceLoader) newLoadingSpace(ctx context.Context, stopIfMandatoryFail, 
 	return ls
 }
 
+func (ls *loadingSpace) getLoadErr() error {
+	ls.lock.Lock()
+	defer ls.lock.Unlock()
+	return ls.loadErr
+}
+
+func (ls *loadingSpace) setLoadErr(err error) {
+	ls.lock.Lock()
+	defer ls.lock.Unlock()
+	ls.loadErr = err
+}
+
 func (ls *loadingSpace) loadRetry(ctx context.Context) {
 	defer func() {
-		if err := ls.spaceServiceProvider.onLoad(ls.space, ls.loadErr); err != nil {
+		if err := ls.spaceServiceProvider.onLoad(ls.space, ls.getLoadErr()); err != nil {
 			log.WarnCtx(ctx, "space onLoad error", zap.Error(err))
 		}
 		close(ls.loadCh)
@@ -65,7 +83,7 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			ls.loadErr = ctx.Err()
+			ls.setLoadErr(ctx.Err())
 			return
 		case <-time.After(timeout):
 			if ls.load(ctx) {
@@ -88,7 +106,7 @@ func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 		err = sp.WaitMandatoryObjects(ctx)
 		if errors.Is(err, treechangeproto.ErrGetTree) || errors.Is(err, objecttree.ErrHasInvalidChanges) || errors.Is(err, list.ErrNoReadKey) {
 			if ls.stopIfMandatoryFail {
-				ls.loadErr = err
+				ls.setLoadErr(err)
 				return true
 			}
 			return ls.disableRemoteLoad
@@ -101,8 +119,17 @@ func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 				log.WarnCtx(ctx, "space close error", zap.Error(closeErr))
 			}
 		}
-		ls.loadErr = err
+		ls.setLoadErr(err)
 	} else {
+		if ls.latestAclHeadId != "" && !ls.disableRemoteLoad {
+			acl := sp.CommonSpace().Acl()
+			acl.RLock()
+			defer acl.RUnlock()
+			_, err := acl.Get(ls.latestAclHeadId)
+			if err != nil {
+				return false
+			}
+		}
 		ls.space = sp
 	}
 	return true

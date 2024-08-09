@@ -3,7 +3,6 @@
 package mill
 
 import (
-	"bytes"
 	"fmt"
 	"image"
 	"io"
@@ -34,7 +33,7 @@ func (m *ImageResize) resizeWEBP(imgConfig *image.Config, r io.ReadSeeker) (*Res
 		// here is an optimization
 		// lets return the original picture in case it has not been resized or normalized
 		return &Result{
-			File: r,
+			File: noopCloser(r),
 			Meta: map[string]interface{}{
 				"width":  imgConfig.Width,
 				"height": imgConfig.Height,
@@ -50,13 +49,21 @@ func (m *ImageResize) resizeWEBP(imgConfig *image.Config, r io.ReadSeeker) (*Res
 	resized := imaging.Resize(img, width, 0, imaging.Lanczos)
 	width, height = resized.Rect.Max.X, resized.Rect.Max.Y
 
-	buff := &bytes.Buffer{}
-	if webp.Encode(buff, resized, &webp.Options{Quality: float32(quality)}) != nil {
+	buf := pool.Get()
+	defer func() {
+		_ = buf.Close()
+	}()
+	if webp.Encode(buf, resized, &webp.Options{Quality: float32(quality)}) != nil {
+		return nil, err
+	}
+
+	readSeekCloser, err := buf.GetReadSeekCloser()
+	if err != nil {
 		return nil, err
 	}
 
 	return &Result{
-		File: buff,
+		File: readSeekCloser,
 		Meta: map[string]interface{}{
 			"width":  width,
 			"height": height,

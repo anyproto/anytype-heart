@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/workerpool"
@@ -28,7 +28,6 @@ const (
 
 type Service struct {
 	blockService    *block.Service
-	client          *client.Client
 	propertyService *property.Service
 }
 
@@ -36,7 +35,6 @@ type Service struct {
 func New(client *client.Client) *Service {
 	return &Service{
 		blockService:    block.New(client),
-		client:          client,
 		propertyService: property.New(client),
 	}
 }
@@ -152,7 +150,7 @@ func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progre
 		if err := progress.TryStep(1); err != nil {
 			return common.NewCancelError(err)
 		}
-		importContext.NotionPageIdsToAnytype[p.ID] = uuid.New().String()
+		importContext.NotionPageIdsToAnytype[p.ID] = bson.NewObjectId().Hex()
 		if p.Parent.PageID != "" {
 			importContext.PageTree.ParentPageToChildIDs[p.Parent.PageID] = append(importContext.PageTree.ParentPageToChildIDs[p.Parent.PageID], p.ID)
 		}

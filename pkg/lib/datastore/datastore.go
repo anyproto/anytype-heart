@@ -11,7 +11,7 @@ const CName = "datastore"
 
 type Datastore interface {
 	app.ComponentRunnable
-	SpaceStorage() (*badger.DB, error)
+	SpaceStorage() (*badger.DB, error) // deprecated, should be moved to either LocalStorage or sqlite db
 	LocalStorage() (*badger.DB, error)
 }
 
@@ -20,8 +20,14 @@ type inMemoryDatastore struct {
 }
 
 // NewInMemory creates new in-memory store for testing purposes
-func NewInMemory() Datastore {
-	return &inMemoryDatastore{}
+func NewInMemory() (Datastore, error) {
+	inm := &inMemoryDatastore{}
+	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+	if err != nil {
+		return nil, err
+	}
+	inm.db = db
+	return inm, nil
 }
 
 func (i *inMemoryDatastore) Init(_ *app.App) error { return nil }
@@ -29,11 +35,6 @@ func (i *inMemoryDatastore) Init(_ *app.App) error { return nil }
 func (i *inMemoryDatastore) Name() string { return CName }
 
 func (i *inMemoryDatastore) Run(ctx context.Context) error {
-	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
-	if err != nil {
-		return err
-	}
-	i.db = db
 	return nil
 }
 

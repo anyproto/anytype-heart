@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -39,6 +40,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/util/anonymize"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -49,7 +51,6 @@ type ApplyFlag int
 var (
 	ErrSimpleBlockNotFound                         = errors.New("simple block not found")
 	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
-	ErrIsDeleted                                   = errors.New("smartblock is deleted")
 )
 
 const (
@@ -79,6 +80,7 @@ const (
 	HookAfterApply       // runs after changes applied from the user or externally via changeListener
 	HookOnClose
 	HookOnBlockClose
+	HookOnStateRebuild
 )
 
 type key int
@@ -126,6 +128,8 @@ type Space interface {
 
 	Do(objectId string, apply func(sb SmartBlock) error) error
 	DoLockedIfNotExists(objectID string, proc func() error) error // TODO Temporarily before rewriting favorites/archive mechanism
+
+	StoredIds() []string
 }
 
 type SmartBlock interface {
@@ -158,7 +162,6 @@ type SmartBlock interface {
 	CheckSubscriptions() (changed bool)
 	GetDocInfo() DocInfo
 	Restrictions() restriction.Restrictions
-	SetRestrictions(r restriction.Restrictions)
 	ObjectClose(ctx session.Context)
 	ObjectCloseAllSessions()
 
@@ -184,17 +187,18 @@ type DocInfo struct {
 
 // TODO Maybe create constructor? Don't want to forget required fields
 type InitContext struct {
-	IsNewObject    bool
-	Source         source.Source
-	ObjectTypeKeys []domain.TypeKey
-	RelationKeys   []string
-	State          *state.State
-	Relations      []*model.Relation
-	Restriction    restriction.Service
-	ObjectStore    objectstore.ObjectStore
-	SpaceID        string
-	BuildOpts      source.BuildOptions
-	Ctx            context.Context
+	IsNewObject                  bool
+	Source                       source.Source
+	ObjectTypeKeys               []domain.TypeKey
+	RelationKeys                 []string
+	RequiredInternalRelationKeys []domain.RelationKey // bundled relations that MUST be present in the state
+	State                        *state.State
+	Relations                    []*model.Relation
+	Restriction                  restriction.Service
+	ObjectStore                  objectstore.ObjectStore
+	SpaceID                      string
+	BuildOpts                    source.BuildOptions
+	Ctx                          context.Context
 }
 
 type linkSource interface {
@@ -306,6 +310,7 @@ func (sb *smartBlock) ObjectTypeID() string {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, bundle.RequiredInternalRelations...)
 	if sb.Doc, err = ctx.Source.ReadDoc(ctx.Ctx, sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
@@ -333,36 +338,54 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		ctx.State.SetParent(sb.Doc.(*state.State))
 	}
 
+	injectRequiredRelationLinks := func(s *state.State) {
+		s.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
+		s.AddBundledRelationLinks(ctx.RequiredInternalRelationKeys...)
+	}
+	injectRequiredRelationLinks(ctx.State)
+	injectRequiredRelationLinks(ctx.State.ParentState())
+
 	if err = sb.AddRelationLinksToState(ctx.State, ctx.RelationKeys...); err != nil {
 		return
 	}
-
 	// Add bundled relations
 	var relKeys []domain.RelationKey
 	for k := range ctx.State.Details().GetFields() {
-		if _, err := bundle.GetRelation(domain.RelationKey(k)); err == nil {
+		if bundle.HasRelation(k) {
 			relKeys = append(relKeys, domain.RelationKey(k))
 		}
 	}
-	ctx.State.AddBundledRelations(relKeys...)
+	ctx.State.AddBundledRelationLinks(relKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
-		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, "", sb.objectStore).Migrate(ctx.State)
+		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.objectStore).Migrate(ctx.State)
 	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
+
+	sb.AddHook(sb.sendObjectCloseEvent, HookOnClose, HookOnBlockClose)
 	return
+}
+
+func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {
+	sb.sendEvent(&pb.Event{
+		ContextId: sb.Id(),
+		Messages: []*pb.EventMessage{{
+			Value: &pb.EventMessageValueOfObjectClose{
+				ObjectClose: &pb.EventObjectClose{
+					Id: sb.Id(),
+				},
+			},
+		}},
+	})
+	return nil
 }
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
 func (sb *smartBlock) updateRestrictions() {
-	restrictions := sb.restrictionService.GetRestrictions(sb)
-	sb.SetRestrictions(restrictions)
-}
-
-func (sb *smartBlock) SetRestrictions(r restriction.Restrictions) {
+	r := sb.restrictionService.GetRestrictions(sb)
 	if sb.restrictions.Equal(r) {
 		return
 	}
@@ -429,7 +452,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	recordsCh := make(chan *types.Struct, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
 
-	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
+	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true)
 	sb.setDependentIDs(depIDs)
 
 	var records []database.Record
@@ -519,7 +542,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 }
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
-func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, _ bool) (ids []string) {
+func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier bool) (ids []string) {
 	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.Space(), true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
@@ -548,7 +571,7 @@ func (sb *smartBlock) EnabledRelationAsDependentObjects() {
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	startTime := time.Now()
 	if sb.IsDeleted() {
-		return ErrIsDeleted
+		return domain.ErrObjectIsDeleted
 	}
 	var (
 		sendEvent           = true
@@ -610,8 +633,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			s.SetLocalDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(lastModified.Unix()))
 		}
 	}
-
-	sb.beforeStateApply(s)
 
 	if !keepInternalFlags {
 		removeInternalFlags(s)
@@ -687,7 +708,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	if !act.IsEmpty() {
 		if len(changes) == 0 && !doSnapshot {
-			log.Errorf("apply 0 changes %s: %v", st.RootId(), msgs)
+			log.Errorf("apply 0 changes %s: %v", st.RootId(), anonymize.Events(msgsToEvents(msgs)))
 		}
 		err = pushChange()
 		if err != nil {
@@ -699,7 +720,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 				sb.undo.Add(act)
 			}
 		}
-	} else if hasStoreChanges(changes) || migrationVersionUpdated { // TODO: change to len(changes) > 0
+	} else if hasChangesToPush(changes) || migrationVersionUpdated { // TODO: change to len(changes) > 0
 		// log.Errorf("sb apply %s: store changes %s", sb.Id(), pbtypes.Sprint(&pb.Change{Content: changes}))
 		err = pushChange()
 		if err != nil {
@@ -752,11 +773,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
-	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, "", sb.objectStore).Migrate(s)
+	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.objectStore).Migrate(s)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
-	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
 	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
@@ -767,7 +787,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 }
 
 func (sb *smartBlock) CheckSubscriptions() (changed bool) {
-	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
+	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true)
 	changed = sb.setDependentIDs(depIDs)
 
 	if sb.recordsSub == nil {
@@ -826,6 +846,8 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	if len(relationKeys) == 0 {
 		return
 	}
+	// todo: filter-out existing relation links?
+	// in the most cases it should save as an objectstore query
 	relations, err := sb.objectStore.FetchRelationByKeys(sb.SpaceID(), relationKeys...)
 	if err != nil {
 		return
@@ -851,10 +873,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	keys := bundle.LocalAndDerivedRelationKeys
 
 	localDetailsFromStore := pbtypes.StructFilterKeys(details, keys)
-	localDetailsFromState := pbtypes.StructFilterKeys(s.LocalDetails(), keys)
-	if pbtypes.StructEqualIgnore(localDetailsFromState, localDetailsFromStore, nil) {
-		return nil
-	}
 
 	s.InjectLocalDetails(localDetailsFromStore)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
@@ -874,7 +892,7 @@ func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
 	if err != nil || storedDetails == nil {
 		return nil, err
 	}
-	return pbtypes.CopyStruct(storedDetails.GetDetails()), nil
+	return pbtypes.CopyStruct(storedDetails.GetDetails(), true), nil
 }
 
 func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails *types.Struct, hasPendingLocalDetails bool) {
@@ -970,7 +988,7 @@ func (sb *smartBlock) RemoveExtraRelations(ctx session.Context, relationIds []st
 
 func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error {
 	if sb.IsDeleted() {
-		return ErrIsDeleted
+		return domain.ErrObjectIsDeleted
 	}
 	s, changes, err := f(sb.Doc)
 	if err != nil {
@@ -1003,7 +1021,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 // TODO: need to test StateRebuild
 func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if sb.IsDeleted() {
-		return ErrIsDeleted
+		return domain.ErrObjectIsDeleted
 	}
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(d.(*state.State), sb.SpaceID(), sb.Type())
@@ -1030,7 +1048,12 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
 	sb.runIndexer(sb.Doc.(*state.State))
-	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()})
+	applyInfo := ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()}
+	sb.execHooks(HookAfterApply, applyInfo)
+	err = sb.execHooks(HookOnStateRebuild, applyInfo)
+	if err != nil {
+		log.With("objectId", sb.Id(), "error", err).Error("executing hook on state rebuild")
+	}
 	return nil
 }
 
@@ -1193,14 +1216,6 @@ func (sb *smartBlock) AddHookOnce(id string, f HookCallback, events ...Hook) {
 	}
 }
 
-func (sb *smartBlock) baseRelations() []*model.Relation {
-	rels := []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyId), bundle.MustGetRelation(bundle.RelationKeyLayout), bundle.MustGetRelation(bundle.RelationKeyIconEmoji), bundle.MustGetRelation(bundle.RelationKeyName)}
-	for _, rel := range rels {
-		rel.Scope = model.Relation_object
-	}
-	return rels
-}
-
 // deprecated, use RelationLinks instead
 func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	var links []*model.RelationLink
@@ -1272,11 +1287,6 @@ func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	}
 }
 
-func (sb *smartBlock) beforeStateApply(s *state.State) {
-	sb.setRestrictionsDetail(s)
-	sb.injectLinksDetails(s)
-}
-
 func removeInternalFlags(s *state.State) {
 	flags := internalflag.NewFromState(s)
 
@@ -1323,15 +1333,23 @@ func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.St
 	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
 }
 
-func hasStoreChanges(changes []*pb.ChangeContent) bool {
+func hasChangesToPush(changes []*pb.ChangeContent) bool {
 	for _, ch := range changes {
-		if ch.GetStoreKeySet() != nil ||
-			ch.GetStoreKeyUnset() != nil ||
-			ch.GetStoreSliceUpdate() != nil {
+		if isSuitableChanges(ch) {
 			return true
 		}
 	}
 	return false
+}
+
+func isSuitableChanges(ch *pb.ChangeContent) bool {
+	return ch.GetStoreKeySet() != nil ||
+		ch.GetStoreKeyUnset() != nil ||
+		ch.GetStoreSliceUpdate() != nil ||
+		ch.GetNotificationCreate() != nil ||
+		ch.GetNotificationUpdate() != nil ||
+		ch.GetDeviceUpdate() != nil ||
+		ch.GetDeviceAdd() != nil
 }
 
 func hasDetailsMsgs(msgs []simple.EventMessage) bool {
@@ -1368,7 +1386,9 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	if v, ok := s.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, v)
+		status := filesyncstatus.Status(v.GetNumberValue())
+		// Clients expect syncstatus constants in this relation
+		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, pbtypes.Int64(int64(status.ToSyncStatus())))
 	}
 
 	if info := s.GetFileInfo(); info.FileId != "" {
@@ -1427,6 +1447,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(isDeleted))
 	}
 
+	sb.injectLinksDetails(s)
 	sb.updateBackLinks(s)
 }
 

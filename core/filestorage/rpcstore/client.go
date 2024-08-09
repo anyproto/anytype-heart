@@ -2,10 +2,14 @@ package rpcstore
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
+	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/rpc/rpcerr"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
@@ -16,13 +20,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-func newClient(ctx context.Context, s *service, peerId string, tq *mb.MB[*task]) (*client, error) {
+func newClient(ctx context.Context, pool pool.Pool, peerId string, tq *mb.MB[*task]) (*client, error) {
 	c := &client{
 		peerId:     peerId,
 		taskQueue:  tq,
 		opLoopDone: make(chan struct{}),
 		stat:       newStat(),
-		s:          s,
+		pool:       pool,
 	}
 	if err := c.checkConnectivity(ctx); err != nil {
 		return nil, err
@@ -44,15 +48,22 @@ type client struct {
 	opLoopDone      chan struct{}
 	opLoopCtxCancel context.CancelFunc
 	stat            *stat
-	s               *service
+	pool            pool.Pool
 	mu              sync.Mutex
+}
+
+func (c *client) checkSpaceFilter(t *task) bool {
+	// Only if we have a filter for spaceId
+	if len(c.spaceIds) > 0 && !slices.Contains(c.spaceIds, t.spaceId) {
+		return false
+	}
+	return true
 }
 
 // opLoop gets tasks from taskQueue
 func (c *client) opLoop(ctx context.Context) {
 	defer close(c.opLoopDone)
 	c.mu.Lock()
-	spaceIds := c.spaceIds
 	allowWrite := c.allowWrite
 	c.mu.Unlock()
 	cond := c.taskQueue.NewCond().WithFilter(func(t *task) bool {
@@ -62,10 +73,7 @@ func (c *client) opLoop(ctx context.Context) {
 		if slices.Index(t.denyPeerIds, c.peerId) != -1 {
 			return false
 		}
-		if len(spaceIds) > 0 && slices.Index(spaceIds, t.spaceId) == -1 {
-			return false
-		}
-		return true
+		return c.checkSpaceFilter(t)
 	})
 	for {
 		t, err := cond.WithPriority(c.stat.Score()).WaitOne(ctx)
@@ -77,7 +85,7 @@ func (c *client) opLoop(ctx context.Context) {
 }
 
 func (c *client) delete(ctx context.Context, spaceID string, fileIds ...domain.FileId) (err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
@@ -97,8 +105,51 @@ func (c *client) delete(ctx context.Context, spaceID string, fileIds ...domain.F
 	})
 }
 
+func (c *client) iterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error {
+	p, err := c.pool.Get(ctx, c.peerId)
+	if err != nil {
+		return err
+	}
+	return p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		cl := fileproto.NewDRPCFileClient(conn)
+
+		resp, err := cl.AccountInfo(ctx, &fileproto.AccountInfoRequest{})
+		if err != nil {
+			return rpcerr.Unwrap(err)
+		}
+		for _, space := range resp.Spaces {
+			err := iterateSpaceFiles(ctx, cl, space.SpaceId, iterFunc)
+			if err != nil {
+				return fmt.Errorf("iterate space files: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
+func iterateSpaceFiles(ctx context.Context, client fileproto.DRPCFileClient, spaceId string, iterFunc func(fileId domain.FullFileId)) error {
+	filesStream, err := client.FilesGet(ctx, &fileproto.FilesGetRequest{SpaceId: spaceId})
+	if err != nil {
+		return rpcerr.Unwrap(err)
+	}
+	defer filesStream.Close()
+	for {
+		resp, err := filesStream.Recv()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			return rpcerr.Unwrap(err)
+		}
+		iterFunc(domain.FullFileId{
+			SpaceId: spaceId,
+			FileId:  domain.FileId(resp.FileId),
+		})
+	}
+}
+
 func (c *client) put(ctx context.Context, spaceID string, fileId domain.FileId, cd cid.Cid, data []byte) (err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
@@ -120,7 +171,7 @@ func (c *client) put(ctx context.Context, spaceID string, fileId domain.FileId, 
 
 // get sends the get request to the stream and adds task to waiting list
 func (c *client) get(ctx context.Context, spaceID string, cd cid.Cid) (data []byte, err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
@@ -145,7 +196,7 @@ func (c *client) get(ctx context.Context, spaceID string, cd cid.Cid) (data []by
 }
 
 func (c *client) checkBlocksAvailability(ctx context.Context, spaceID string, cids ...cid.Cid) ([]*fileproto.BlockAvailability, error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +219,7 @@ func (c *client) checkBlocksAvailability(ctx context.Context, spaceID string, ci
 }
 
 func (c *client) bind(ctx context.Context, spaceID string, fileId domain.FileId, cids ...cid.Cid) error {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return err
 	}
@@ -187,7 +238,7 @@ func (c *client) bind(ctx context.Context, spaceID string, fileId domain.FileId,
 }
 
 func (c *client) accountInfo(ctx context.Context) (info *fileproto.AccountInfoResponse, err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
@@ -199,7 +250,7 @@ func (c *client) accountInfo(ctx context.Context) (info *fileproto.AccountInfoRe
 }
 
 func (c *client) spaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
@@ -213,7 +264,7 @@ func (c *client) spaceInfo(ctx context.Context, spaceId string) (info *fileproto
 }
 
 func (c *client) filesInfo(ctx context.Context, spaceId string, fileIds []domain.FileId) (info []*fileproto.FileInfo, err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
@@ -236,7 +287,7 @@ func (c *client) filesInfo(ctx context.Context, spaceId string, fileIds []domain
 }
 
 func (c *client) checkConnectivity(ctx context.Context) (err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}

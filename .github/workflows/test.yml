@@ -1,5 +1,14 @@
-on: [ pull_request ]
-name: Test
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -12,18 +21,17 @@ jobs:
       GOPRIVATE: github.com/anyproto
     steps:
       - name: Install Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v5
         with:
-          go-version: "~1.20.8"
-
+          go-version: 1.22
+          cache: false
       - name: git config
         run: git config --global url.https://${{ secrets.ANYTYPE_PAT }}@github.com/.insteadOf https://github.com/
-
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Setup GO
+      - name: Setup GO env
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
@@ -44,8 +52,9 @@ jobs:
           license_finder --enabled-package-managers gomodules
       - name: Generate mocks
         run: |
+          make download-tantivy-all
           go install go.uber.org/mock/mockgen@v0.3.0
-          CGO_ENABLED=0 CGO_CFLAGS="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" go generate ./...
+          CGO_ENABLED=1 CGO_CFLAGS="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" go generate ./...
       - name: Go test
         env:
           prometheus_username: ${{ secrets.PROMETHEUS_USERNAME }}
@@ -57,7 +66,12 @@ jobs:
           PACKAGE_NAMES=$(go list -tags nogrpcserver ./... | grep -v "github.com/anyproto/anytype-heart/cmd/grpserver" | grep -v "github.com/anyproto/anytype-heart/clientlibrary/clib")
           rm -rf ~/gotestsum-report
           mkdir ~/gotestsum-report
-          CGO_CFLAGS="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml --  -tags "nogrpcserver nographviz" -p 1 $(echo $PACKAGE_NAMES) -race -coverprofile=coverage.out -covermode=atomic ./...
+          if [[ "$GITHUB_REF" == "refs/heads/main" && "$GITHUB_EVENT_NAME" == "push" ]]; then
+            export RACE=-race
+          else
+            echo "run without race detector"
+          fi
+          CGO_CFLAGS="-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion" gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml --  -tags "nogrpcserver nographviz" -ldflags="-extldflags=-Wl,-ld_classic" -p 1 $(echo $PACKAGE_NAMES) $(echo $RACE) -coverprofile=coverage.out -covermode=atomic ./...
           
           generated_pattern='^\/\/ Code generated .* DO NOT EDIT\.$'
           files_list=$(grep -rl "$generated_pattern" . | grep '\.go$' | sed 's/^\.\///')

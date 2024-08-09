@@ -117,6 +117,8 @@ type State struct {
 	details           *types.Struct
 	localDetails      *types.Struct
 	relationLinks     pbtypes.RelationLinks
+	notifications     map[string]*model.Notification
+	deviceStore       map[string]*model.DeviceInfo
 
 	migrationVersion uint32
 
@@ -263,6 +265,7 @@ func (s *State) CleanupBlock(id string) bool {
 	)
 	for t != nil {
 		if _, ok = t.blocks[id]; ok {
+			s.removeFromCache(id)
 			delete(t.blocks, id)
 			return true
 		}
@@ -278,11 +281,9 @@ func (s *State) PickOrigin(id string) (b simple.Block) {
 	return
 }
 
-func (s *State) Unlink(id string) (ok bool) {
-	if parent := s.GetParentOf(id); parent != nil {
-		parentM := parent.Model()
-		parentM.ChildrenIds = slice.RemoveMut(parentM.ChildrenIds, id)
-		s.removeFromCache(id)
+func (s *State) Unlink(blockId string) (ok bool) {
+	if parent := s.GetParentOf(blockId); parent != nil {
+		s.removeChildren(parent.Model(), blockId)
 		return true
 	}
 	return
@@ -322,11 +323,26 @@ func (s *State) HasParent(id, parentId string) bool {
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {
+	var cacheFound simple.Block
 	if s.isParentIdsCacheEnabled {
-		if parentId, ok := s.getParentIdsCache()[id]; ok {
-			return s.Pick(parentId)
+		cache := s.getParentIdsCache()
+		if parentId, ok := cache[id]; ok {
+			cacheFound = s.Pick(parentId)
 		}
-		return
+		if cacheFound != nil {
+			rootId := s.RootId()
+			topParentId := cacheFound.Model().Id
+			for topParentId != rootId {
+				if nextId, ok := cache[topParentId]; ok {
+					topParentId = nextId
+				} else {
+					cacheFound = nil
+					break
+				}
+			}
+		}
+		// restore this code after checking if cache is working correctly
+		// return
 	}
 
 	s.Iterate(func(b simple.Block) bool {
@@ -336,12 +352,37 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 		}
 		return true
 	})
+
+	// remove this code after checking if cache is working correctly
+	if s.isParentIdsCacheEnabled && res != cacheFound {
+		var cacheFoundId, resFoundId string
+		if cacheFound != nil {
+			cacheFoundId = cacheFound.Model().Id
+		}
+		if res != nil {
+			resFoundId = res.Model().Id
+		}
+		log.With("id", id).
+			With("cacheFoundId", cacheFoundId).
+			With("resFoundId", resFoundId).
+			With("objId", s.RootId()).
+			Warn("discrepancy in state parent search")
+	}
+
 	return
 }
 
-func (s *State) resetParentIdsCache() {
+func (s *State) ResetParentIdsCache() {
 	s.parentIdsCache = nil
 	s.isParentIdsCacheEnabled = false
+}
+
+func (s *State) EnableParentIdsCache() bool {
+	if s.isParentIdsCacheEnabled {
+		return true
+	}
+	s.isParentIdsCacheEnabled = true
+	return false
 }
 
 func (s *State) getParentIdsCache() map[string]string {
@@ -461,7 +502,12 @@ func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action undo.Action
 }
 
 func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
-	defer s.resetParentIdsCache()
+	alreadyEnabled := s.EnableParentIdsCache()
+	defer func() {
+		if !alreadyEnabled {
+			s.ResetParentIdsCache()
+		}
+	}()
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
@@ -660,7 +706,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
 		if diff := pbtypes.StructDiff(prev, s.details); diff != nil {
-			action.Details = &undo.Details{Before: pbtypes.CopyStruct(prev), After: pbtypes.CopyStruct(s.details)}
+			action.Details = &undo.Details{Before: pbtypes.CopyStruct(prev, false), After: pbtypes.CopyStruct(s.details, false)}
 			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.RootId(), diff))...)
 			s.parent.details = s.details
 		} else if !s.details.Equal(s.parent.details) {
@@ -714,6 +760,14 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.originalCreatedTimestamp = s.originalCreatedTimestamp
 	}
 
+	if s.parent != nil && s.notifications != nil {
+		s.parent.notifications = s.notifications
+	}
+
+	if s.parent != nil && s.deviceStore != nil {
+		s.parent.deviceStore = s.deviceStore
+	}
+
 	msgs = s.processTrailingDuplicatedEvents(msgs)
 	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
@@ -749,6 +803,9 @@ func (s *State) intermediateApply() {
 	}
 	if len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
+	}
+	if s.notifications != nil {
+		s.parent.notifications = s.notifications
 	}
 	s.parent.changes = append(s.parent.changes, s.changes...)
 	s.parent.fileInfo = s.fileInfo
@@ -883,7 +940,7 @@ func (s *State) SetDetails(d *types.Struct) *State {
 
 // SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
 func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value *types.Value) {
-	s.AddBundledRelations(key)
+	s.AddBundledRelationLinks(key)
 	s.SetDetail(key.String(), value)
 	return
 }
@@ -897,7 +954,7 @@ func (s *State) SetLocalDetail(key string, value *types.Value) {
 				return
 			}
 		}
-		s.localDetails = pbtypes.CopyStruct(s.parent.LocalDetails())
+		s.localDetails = pbtypes.CopyStruct(s.parent.LocalDetails(), false)
 	}
 	if s.localDetails == nil || s.localDetails.Fields == nil {
 		s.localDetails = &types.Struct{Fields: map[string]*types.Value{}}
@@ -948,7 +1005,7 @@ func (s *State) SetDetail(key string, value *types.Value) {
 				return
 			}
 		}
-		s.details = pbtypes.CopyStruct(d)
+		s.details = pbtypes.CopyStruct(d, false)
 	}
 	if s.details == nil || s.details.Fields == nil {
 		s.details = &types.Struct{Fields: map[string]*types.Value{}}
@@ -1092,21 +1149,28 @@ func (s *State) ObjectTypeKey() domain.TypeKey {
 	return ""
 }
 
-func (s *State) Snippet() (snippet string) {
+func (s *State) Snippet() string {
+	var builder strings.Builder
+	var snippetSize int
 	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if text := b.Model().GetText(); text != nil && text.Style != model.BlockContentText_Title && text.Style != model.BlockContentText_Description {
+		if text := b.Model().GetText(); text != nil &&
+			text.Style != model.BlockContentText_Title &&
+			text.Style != model.BlockContentText_Description {
 			nextText := strings.TrimSpace(text.Text)
-			if snippet != "" && nextText != "" {
-				snippet += "\n"
-			}
-			snippet += nextText
-			if textutil.UTF16RuneCountString(snippet) >= snippetMinSize {
-				return false
+			if nextText != "" {
+				if snippetSize > 0 {
+					builder.WriteString("\n")
+				}
+				builder.WriteString(nextText)
+				snippetSize += textutil.UTF16RuneCountString(nextText)
+				if snippetSize >= snippetMaxSize {
+					return false
+				}
 			}
 		}
 		return true
 	})
-	return textutil.Truncate(snippet, snippetMaxSize)
+	return textutil.Truncate(builder.String(), snippetMaxSize)
 }
 
 func (s *State) FileRelationKeys() []string {
@@ -1332,18 +1396,20 @@ func (s *State) Copy() *State {
 		ctx:                      s.ctx,
 		blocks:                   blocks,
 		rootId:                   s.rootId,
-		details:                  pbtypes.CopyStruct(s.Details()),
-		localDetails:             pbtypes.CopyStruct(s.LocalDetails()),
+		details:                  pbtypes.CopyStruct(s.Details(), false),
+		localDetails:             pbtypes.CopyStruct(s.LocalDetails(), false),
 		relationLinks:            s.GetRelationLinks(), // Get methods copy inside
 		objectTypeKeys:           objTypes,
 		noObjectType:             s.noObjectType,
 		migrationVersion:         s.migrationVersion,
-		store:                    pbtypes.CopyStruct(s.Store()),
+		store:                    pbtypes.CopyStruct(s.Store(), false),
 		storeLastChangeIdByPath:  s.StoreLastChangeIdByPath(), // todo: do we need to copy it?
 		storeKeyRemoved:          storeKeyRemovedCopy,
 		uniqueKeyInternal:        s.uniqueKeyInternal,
 		originalCreatedTimestamp: s.originalCreatedTimestamp,
 		fileInfo:                 s.fileInfo,
+		notifications:            s.notifications,
+		deviceStore:              s.deviceStore,
 	}
 	return copy
 }
@@ -1394,7 +1460,7 @@ func (s *State) IsTheHeaderChange() bool {
 }
 
 func (s *State) RemoveDetail(keys ...string) (ok bool) {
-	det := pbtypes.CopyStruct(s.Details())
+	det := pbtypes.CopyStruct(s.Details(), false)
 	if det != nil && det.Fields != nil {
 		for _, key := range keys {
 			if _, ex := det.Fields[key]; ex {
@@ -1410,7 +1476,7 @@ func (s *State) RemoveDetail(keys ...string) (ok bool) {
 }
 
 func (s *State) RemoveLocalDetail(keys ...string) (ok bool) {
-	det := pbtypes.CopyStruct(s.LocalDetails())
+	det := pbtypes.CopyStruct(s.LocalDetails(), false)
 	if det != nil && det.Fields != nil {
 		for _, key := range keys {
 			if _, ex := det.Fields[key]; ex {
@@ -1432,7 +1498,7 @@ func (s *State) createOrCopyStoreFromParent() {
 	if s.store != nil {
 		return
 	}
-	s.store = pbtypes.CopyStruct(s.Store())
+	s.store = pbtypes.CopyStruct(s.Store(), true)
 	// copy map[string]struct{} to map[string]struct{}
 	m := s.StoreKeysRemoved()
 	s.storeKeyRemoved = make(map[string]struct{}, len(m))
@@ -1868,13 +1934,127 @@ func (s *State) SelectRoots(ids []string) []string {
 	return res
 }
 
-func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
-	links := make([]*model.RelationLink, 0, len(keys))
+func (s *State) AddBundledRelationLinks(keys ...domain.RelationKey) {
+	existingLinks := s.PickRelationLinks()
+
+	var links []*model.RelationLink
 	for _, key := range keys {
-		rel := bundle.MustGetRelation(key)
-		links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
+		if !existingLinks.Has(key.String()) {
+			rel := bundle.MustGetRelation(key)
+			links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
+		}
 	}
-	s.AddRelationLinks(links...)
+	if len(links) > 0 {
+		s.AddRelationLinks(links...)
+	}
+}
+
+func (s *State) GetNotificationById(id string) *model.Notification {
+	iterState := s.findStateWithNonEmptyNotifications()
+	if iterState == nil {
+		return nil
+	}
+	if notification, ok := iterState.notifications[id]; ok {
+		return notification
+	}
+	return nil
+}
+
+func (s *State) AddNotification(notification *model.Notification) {
+	if s.notifications == nil {
+		s.notifications = make(map[string]*model.Notification)
+	}
+	if s.parent != nil {
+		for _, n := range s.parent.ListNotifications() {
+			if _, ok := s.notifications[n.Id]; !ok {
+				s.notifications[n.Id] = pbtypes.CopyNotification(n)
+			}
+		}
+	}
+	s.notifications[notification.Id] = notification
+}
+
+func (s *State) ListNotifications() map[string]*model.Notification {
+	iterState := s.findStateWithNonEmptyNotifications()
+	if iterState == nil {
+		return nil
+	}
+	return iterState.notifications
+}
+
+func (s *State) findStateWithNonEmptyNotifications() *State {
+	iterState := s
+	for iterState != nil && iterState.notifications == nil {
+		iterState = iterState.parent
+	}
+	return iterState
+}
+
+func (s *State) ListDevices() map[string]*model.DeviceInfo {
+	iterState := s.findStateWithDeviceInfo()
+	if iterState == nil {
+		return nil
+	}
+	return iterState.deviceStore
+}
+
+func (s *State) findStateWithDeviceInfo() *State {
+	iterState := s
+	for iterState != nil && iterState.deviceStore == nil {
+		iterState = iterState.parent
+	}
+	return iterState
+}
+
+func (s *State) AddDevice(device *model.DeviceInfo) {
+	if s.deviceStore == nil {
+		s.deviceStore = map[string]*model.DeviceInfo{}
+	}
+	if s.parent != nil {
+		for _, d := range s.parent.ListDevices() {
+			if _, ok := s.deviceStore[d.Id]; !ok {
+				s.deviceStore[d.Id] = pbtypes.CopyDevice(d)
+			}
+		}
+	}
+	if _, ok := s.deviceStore[device.Id]; ok {
+		return
+	}
+	s.deviceStore[device.Id] = device
+}
+
+func (s *State) SetDeviceName(id, name string) {
+	if s.deviceStore == nil {
+		s.deviceStore = map[string]*model.DeviceInfo{}
+	}
+	if s.parent != nil {
+		for _, d := range s.parent.ListDevices() {
+			if _, ok := s.deviceStore[d.Id]; !ok {
+				s.deviceStore[d.Id] = pbtypes.CopyDevice(d)
+			}
+		}
+	}
+	if _, ok := s.deviceStore[id]; !ok {
+		device := &model.DeviceInfo{
+			Id:      id,
+			Name:    name,
+			AddDate: time.Now().Unix(),
+		}
+		s.deviceStore[id] = device
+		return
+	}
+	s.deviceStore[id].Name = name
+}
+
+func (s *State) GetDevice(id string) *model.DeviceInfo {
+	iterState := s.findStateWithDeviceInfo()
+	if iterState == nil {
+		return nil
+	}
+	if device, ok := iterState.deviceStore[id]; ok {
+		return device
+	}
+	return nil
 }
 
 // UniqueKeyInternal is the second part of uniquekey.UniqueKey. It used together with smartblock type for the ID derivation

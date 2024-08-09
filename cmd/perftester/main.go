@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -118,9 +120,17 @@ func makeIteration() error {
 	}
 
 	for _, cmd := range grpcurlCommands {
+		start := time.Now().UnixMilli()
 		err := executeCommand(cmd)
 		if err != nil {
 			return err
+		}
+		if strings.Contains(cmd, "anytype.ClientCommands.AccountSelect") {
+			err = os.WriteFile("root/ACCOUNT_SELECT_TIME", []byte(strconv.FormatInt(int64(math.Abs(float64(time.Now().UnixMilli()-start))), 10)), 0644)
+			if err != nil {
+				fmt.Println("ACCOUNT_SELECT_TIME err:", err)
+				return err
+			}
 		}
 	}
 

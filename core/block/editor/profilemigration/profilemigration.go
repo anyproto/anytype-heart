@@ -57,7 +57,7 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 	}
 	newState := state.NewDocWithUniqueKey(st.RootId(), blocksMap, uk).(*state.State)
 	newState.AddRelationLinks(st.GetRelationLinks()...)
-	newStateDetails := pbtypes.CopyStruct(st.Details())
+	newStateDetails := pbtypes.CopyStruct(st.Details(), true)
 	newName := pbtypes.GetString(newStateDetails, bundle.RelationKeyName.String()) + " [migrated]"
 	newStateDetails.Fields[bundle.RelationKeyName.String()] = pbtypes.String(newName)
 	newStateDetails.Fields[bundle.RelationKeyIsHidden.String()] = pbtypes.Bool(false)
@@ -65,7 +65,9 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 	// remove the identity block
 	newState.Unlink(identityBlockId)
 	newState.CleanupBlock(identityBlockId)
-	
+	newState.SetObjectTypeKey(bundle.TypeKeyPage)
+
+	// now cleanup the original state
 	rootBlock := st.Get(st.RootId())
 	rootBlock.Model().ChildrenIds = slices.DeleteFunc(rootBlock.Model().ChildrenIds, func(s string) bool {
 		return !slices.Contains(whitelistBlocks, s)

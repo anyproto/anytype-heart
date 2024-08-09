@@ -83,6 +83,15 @@ func StringListValue(list []string) []string {
 	return anonymizeList
 }
 
+func Events(e []*pb.EventMessage) (res []*pb.EventMessage) {
+	res = make([]*pb.EventMessage, len(e))
+	for i, v := range e {
+		res[i] = Event(v)
+
+	}
+	return
+}
+
 func Event(e *pb.EventMessage) (res *pb.EventMessage) {
 	res = &pb.EventMessage{}
 	resB, _ := e.Marshal()
@@ -103,6 +112,11 @@ func Event(e *pb.EventMessage) (res *pb.EventMessage) {
 	case *pb.EventMessageValueOfBlockSetText:
 		if v.BlockSetText.Text != nil {
 			v.BlockSetText.Text.Value = Text(v.BlockSetText.Text.Value)
+			if v.BlockSetText.Marks != nil && v.BlockSetText.Marks.Value != nil {
+				for i, mark := range v.BlockSetText.Marks.Value.Marks {
+					v.BlockSetText.Marks.Value.Marks[i].Param = Text(mark.Param)
+				}
+			}
 		}
 	case *pb.EventMessageValueOfBlockSetFile:
 		if v.BlockSetFile.Name != nil {
@@ -150,7 +164,7 @@ func Block(b *model.Block) (res *model.Block) {
 }
 
 func Struct(in *types.Struct) (res *types.Struct) {
-	res = pbtypes.CopyStruct(in)
+	res = pbtypes.CopyStruct(in, false)
 	if res != nil && res.Fields != nil {
 		for k, v := range res.Fields {
 			if k != "featuredRelations" {
