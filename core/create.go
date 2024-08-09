@@ -8,8 +8,10 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -38,6 +40,60 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
 	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails, nil)
+}
+
+func (mw *Middleware) addChat(cctx context.Context, objectId, objId string) (string, error) {
+	var spaceId string
+	err := mw.doBlockService(func(bs *block.Service) error {
+		sb, err := bs.GetObject(cctx, objectId)
+		if err != nil {
+			return err
+		}
+		spaceId = sb.SpaceID()
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	chatDetails := &types.Struct{Fields: map[string]*types.Value{}}
+	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatObject, objId)
+	chatDetails.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(chatUniqueKey.Marshal())
+
+	chatReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeyChat,
+		Details:       chatDetails,
+	}
+
+	chatId, _, err := getService[objectcreator.Service](mw).CreateObject(cctx, spaceId, chatReq)
+
+	err = mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.ModifyDetails(objId, func(current *types.Struct) (*types.Struct, error) {
+			if current == nil {
+				return nil, errors.New("object not found")
+			}
+			current.Fields[bundle.RelationKeyChatId.String()] = pbtypes.String(chatId)
+			current.Fields[bundle.RelationKeyHasChat.String()] = pbtypes.Bool(true)
+			return current, nil
+		})
+	})
+	return chatId, err
+}
+
+func (mw *Middleware) ObjectChatAdd(cctx context.Context, req *pb.RpcObjectChatAddRequest) *pb.RpcObjectChatAddResponse {
+	chatId, err := mw.addChat(cctx, req.ObjectId, req.ObjectId)
+
+	code := mapErrorCode(err,
+		errToCode(err, pb.RpcObjectChatAddResponseError_UNKNOWN_ERROR),
+	)
+
+	return &pb.RpcObjectChatAddResponse{
+		Error: &pb.RpcObjectChatAddResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+		ChatId: chatId,
+	}
 }
 
 func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {

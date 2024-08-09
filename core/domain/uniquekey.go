@@ -24,6 +24,7 @@ var smartBlockTypeToKey = map[smartblock.SmartBlockType]string{
 	smartblock.SmartBlockTypePage:               "page", // For migration purposes only, used for old profile data migration
 	smartblock.SmartBlockTypeNotificationObject: "notification",
 	smartblock.SmartBlockTypeDevicesObject:      "devices",
+	smartblock.SmartBlockTypeChatObject:         "chat",
 }
 
 // UniqueKey is unique key composed of two parts: smartblock type and internal key.
