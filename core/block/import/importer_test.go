@@ -341,7 +341,8 @@ func Test_ImportExternalPlugin(t *testing.T) {
 		true,
 	}
 	res := i.Import(context.Background(), importRequest)
-	assert.Nil(t, res)
+	assert.NotNil(t, res)
+	assert.Nil(t, res.Err)
 }
 
 func Test_ImportExternalPluginError(t *testing.T) {

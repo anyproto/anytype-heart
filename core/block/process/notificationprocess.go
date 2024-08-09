@@ -3,13 +3,16 @@ package process
 import (
 	"github.com/globalsign/mgo/bson"
 
-	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var log = logging.Logger("notification-process")
+
+type NotificationService interface {
+	CreateAndSend(notification *model.Notification) error
+}
 
 type NotificationSender interface {
 	SendNotification()
@@ -23,10 +26,10 @@ type Notificationable interface {
 type notificationProcess struct {
 	*progress
 	notification        *model.Notification
-	notificationService notifications.Notifications
+	notificationService NotificationService
 }
 
-func NewNotificationProcess(pbType pb.ModelProcessType, notificationService notifications.Notifications) Notificationable {
+func NewNotificationProcess(pbType pb.ModelProcessType, notificationService NotificationService) Notificationable {
 	return &notificationProcess{progress: &progress{
 		id:     bson.NewObjectId().Hex(),
 		done:   make(chan struct{}),
