@@ -435,6 +435,52 @@ func TestState_IsEmpty(t *testing.T) {
 		assert.False(t, s.IsEmpty(true))
 		assert.False(t, s.IsEmpty(false))
 	})
+
+	t.Run("with empty title block and filled child block", func(t *testing.T) {
+		s := NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Id:          "root",
+				ChildrenIds: []string{"header", "text"},
+			}),
+			"header": simple.New(&model.Block{Id: "header", ChildrenIds: []string{"title"}}),
+			"title": simple.New(&model.Block{Id: "title",
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
+				}}),
+			"text": simple.New(&model.Block{Id: "text",
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}, Text: "1"},
+				}}),
+		}).(*State)
+
+		assert.False(t, s.IsEmpty(true))
+		assert.False(t, s.IsEmpty(false))
+	})
+
+	t.Run("with empty name and not empty dataview", func(t *testing.T) {
+		s := NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Id:          "root",
+				ChildrenIds: []string{"header", "dataview"},
+			}),
+			"header": simple.New(&model.Block{Id: "header", ChildrenIds: []string{"title"}}),
+			"title": simple.New(&model.Block{Id: "title",
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
+				}}),
+			"dataview": simple.New(&model.Block{Id: "text",
+				Content: &model.BlockContentOfDataview{
+					Dataview: &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{{
+						Id:                "All",
+						DefaultTemplateId: "templateId",
+					}}},
+				}}),
+		}).(*State)
+		s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(model.ObjectType_set)))
+
+		assert.False(t, s.IsEmpty(true))
+		assert.False(t, s.IsEmpty(false))
+	})
 }
 
 func TestState_Descendants(t *testing.T) {

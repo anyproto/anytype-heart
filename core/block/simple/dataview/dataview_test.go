@@ -3,9 +3,11 @@ package dataview
 import (
 	"testing"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -129,4 +131,83 @@ func TestDataview_MigrateFile(t *testing.T) {
 	}}
 
 	assert.Equal(t, want, dv)
+}
+
+func TestDataview_HasEmptyContent(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		dv     Dataview
+		assert func(t assert.TestingT, value bool, msgAndArgs ...interface{}) bool
+	}{
+		{
+			name: "new dataview block is empty",
+			dv: Dataview{content: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id:   bson.NewObjectId().Hex(),
+						Type: model.BlockContentDataviewView_Table,
+						Name: "All",
+						Sorts: []*model.BlockContentDataviewSort{{
+							Id:          bson.NewObjectId().Hex(),
+							RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+							Type:        model.BlockContentDataviewSort_Desc,
+						}},
+					},
+				}}},
+			assert: assert.True,
+		},
+		{
+			name:   "nil dataview block is empty",
+			dv:     Dataview{},
+			assert: assert.True,
+		},
+		{
+			name: "dataview block with multiple views is not empty",
+			dv: Dataview{content: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id:   bson.NewObjectId().Hex(),
+						Type: model.BlockContentDataviewView_Table,
+						Name: "All",
+						Sorts: []*model.BlockContentDataviewSort{{
+							Id:          bson.NewObjectId().Hex(),
+							RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+							Type:        model.BlockContentDataviewSort_Desc,
+						}},
+					},
+					{
+						Id:   bson.NewObjectId().Hex(),
+						Type: model.BlockContentDataviewView_Kanban,
+						Name: "Kanban",
+					},
+				}}},
+			assert: assert.False,
+		},
+		{
+			name: "dataview block with filters is not empty",
+			dv: Dataview{content: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id:   bson.NewObjectId().Hex(),
+						Type: model.BlockContentDataviewView_Table,
+						Name: "All",
+						Sorts: []*model.BlockContentDataviewSort{{
+							Id:          bson.NewObjectId().Hex(),
+							RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+							Type:        model.BlockContentDataviewSort_Desc,
+						}},
+						Filters: []*model.BlockContentDataviewFilter{{
+							RelationKey: bundle.RelationKeyName.String(),
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.String("Maria Antonietta"),
+						}},
+					},
+				}}},
+			assert: assert.False,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.assert(t, tc.dv.HasEmptyContent())
+		})
+	}
 }
