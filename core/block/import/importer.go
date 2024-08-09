@@ -162,7 +162,7 @@ func (i *Import) onImportFinish(res *ImportResponse, req *ImportRequest, importI
 	i.finishImportProcess(res.Err, req)
 	i.sendFileEvents(res.Err)
 	i.recordEvent(&metrics.ImportFinishedEvent{ID: importId, ImportType: req.Type.String()})
-	i.sendImportFinishEventToClient(res.RootCollectionId, req.IsSync, res.ObjectsCount)
+	i.sendImportFinishEventToClient(res.RootCollectionId, req.IsSync, res.ObjectsCount, req.Type)
 }
 
 func (i *Import) sendFileEvents(returnedErr error) {
@@ -510,7 +510,7 @@ func (i *Import) recordEvent(event anymetry.Event) {
 	metrics.Service.Send(event)
 }
 
-func (i *Import) sendImportFinishEventToClient(rootCollectionID string, isSync bool, objectsCount int64) {
+func (i *Import) sendImportFinishEventToClient(rootCollectionID string, isSync bool, objectsCount int64, importType model.ImportType) {
 	if isSync {
 		return
 	}
@@ -518,7 +518,11 @@ func (i *Import) sendImportFinishEventToClient(rootCollectionID string, isSync b
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfImportFinish{
-					ImportFinish: &pb.EventImportFinish{RootCollectionID: rootCollectionID, ObjectsCount: objectsCount},
+					ImportFinish: &pb.EventImportFinish{
+						RootCollectionID: rootCollectionID,
+						ObjectsCount:     objectsCount,
+						ImportType:       importType,
+					},
 				},
 			},
 		},

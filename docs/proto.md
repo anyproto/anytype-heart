@@ -24907,6 +24907,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | rootCollectionID | [string](#string) |  |  |
 | objectsCount | [int64](#int64) |  |  |
+| importType | [model.Import.Type](#anytype-model-Import-Type) |  |  |
 
 
 
