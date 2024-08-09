@@ -324,3 +324,46 @@ func (s *service) queryArchivedObjects(space clientspace.Space, sourceObjectIDs 
 	})
 	return
 }
+
+func (s *service) checkBundledRelations(space clientspace.Space, details *types.Struct) {
+	bundleRelIds := []string{}
+	for key := range details.Fields {
+		if !bundle.HasRelation(key) || bundle.IsSystemRelation(domain.RelationKey(key)) {
+			continue
+		}
+		bundleRelIds = append(bundleRelIds, addr.BundledRelationURLPrefix+key)
+	}
+
+	if len(bundleRelIds) == 0 {
+		return
+	}
+
+	records, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(space.Id()),
+			},
+			{
+				RelationKey: bundle.RelationKeySourceObject.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(bundleRelIds),
+			},
+		},
+	})
+
+	if err != nil {
+		log.Errorf("failed to query relations: '%v'", err)
+		return
+	}
+
+	if len(records) == len(bundleRelIds) {
+		return
+	}
+
+	_, _, err = s.InstallBundledObjects(context.Background(), space, bundleRelIds, false)
+	if err != nil {
+		log.Errorf("failed to install missed bundled relations to space: %v", err)
+	}
+}

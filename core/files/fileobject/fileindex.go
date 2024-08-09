@@ -9,6 +9,7 @@ import (
 
 	"github.com/cheggaaa/mb/v3"
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -23,7 +24,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type indexer struct {
@@ -37,6 +40,13 @@ type indexer struct {
 	indexQueue   *mb.MB[indexRequest]
 	isQueuedLock sync.RWMutex
 	isQueued     map[domain.FullID]struct{}
+}
+
+var recommendedRelationsByType = map[domain.TypeKey][]domain.RelationKey{
+	bundle.TypeKeyAudio: {
+		bundle.RelationKeyAudioAlbum, bundle.RelationKeyArtist, bundle.RelationKeyAudioGenre,
+		bundle.RelationKeyAudioLyrics, bundle.RelationKeyAudioAlbumTrackNumber, bundle.RelationKeyReleasedYear,
+	},
 }
 
 func (s *service) newIndexer() *indexer {
@@ -192,7 +202,7 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 	}
 	err = space.Do(id.ObjectID, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
-		err := ind.injectMetadataToState(ctx, st, fileId, id)
+		err := ind.injectMetadataToState(ctx, space, st, fileId, id)
 		if err != nil {
 			return fmt.Errorf("inject metadata to state: %w", err)
 		}
@@ -204,7 +214,7 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 	return nil
 }
 
-func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
+func (ind *indexer) injectMetadataToState(ctx context.Context, space clientspace.Space, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
 	details, typeKey, err := ind.buildDetails(ctx, fileId)
 	if err != nil {
 		return fmt.Errorf("build details: %w", err)
@@ -226,6 +236,9 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	if err != nil {
 		return fmt.Errorf("add blocks: %w", err)
 	}
+
+	go ind.checkTypeRecommendedRelations(space, typeKey, keys)
+
 	return nil
 }
 
@@ -329,6 +342,72 @@ func (ind *indexer) addBlocks(st *state.State, details *types.Struct, objectId s
 	}
 	template.WithAllBlocksEditsRestricted(st)
 	return nil
+}
+
+func (ind *indexer) checkTypeRecommendedRelations(space clientspace.Space, typeKey domain.TypeKey, relKeys []domain.RelationKey) {
+	relsToCheck, found := recommendedRelationsByType[typeKey]
+
+	if !found {
+		return
+	}
+
+	relsToAdd := lo.Intersect(relKeys, relsToCheck)
+	if len(relsToAdd) == 0 {
+		return
+	}
+
+	records, err := ind.objectStore.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeySpaceId.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(space.Id()),
+		},
+		{
+			RelationKey: bundle.RelationKeyUniqueKey.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(typeKey.URL()),
+		},
+	}})
+
+	if err != nil || len(records) == 0 {
+		log.Errorf("failed to get %s type from store to check its recommendedRelations: %v", typeKey.String(), err)
+		return
+	}
+
+	savedRecRelIds := pbtypes.GetStringList(records[0].Details, bundle.RelationKeyRecommendedRelations.String())
+	relIdsToAdd := []string{}
+	ctx := context.Background()
+	for _, key := range relsToAdd {
+		relId, err := space.GetRelationIdByKey(ctx, key)
+		if err != nil {
+			log.Errorf("failed to derive id of relation '%s' from space '%s': %v", key.String(), space.Id(), err)
+			return
+		}
+		relIdsToAdd = append(relIdsToAdd, relId)
+	}
+
+	notSavedRelIds := slice.Difference(relIdsToAdd, savedRecRelIds)
+	if len(notSavedRelIds) == 0 {
+		return
+	}
+
+	relIdsToSave := append(savedRecRelIds, notSavedRelIds...)
+
+	typeId, err := space.GetTypeIdByKey(ctx, typeKey)
+	if err != nil {
+		log.Errorf("failed to derive id of type '%s' from space '%s': %v", typeKey.String(), space.Id(), err)
+		return
+	}
+
+	err = space.Do(typeId, func(sb smartblock.SmartBlock) error {
+		s := sb.NewState()
+		s.SetDetail(bundle.RelationKeyRecommendedRelations.String(), pbtypes.StringList(relIdsToSave))
+		return sb.Apply(s)
+	})
+
+	if err != nil {
+		log.Errorf("failed to update recommended relations of type '%s' in space '%s': %v", typeKey.String(), space.Id(), err)
+	}
 }
 
 func makeRelationBlock(relationKey domain.RelationKey) *model.Block {
