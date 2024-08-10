@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
+	"github.com/anyproto/any-sync/commonspace/globalsync"
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
 	"github.com/anyproto/any-sync/metric"
 	"github.com/anyproto/any-sync/net/peerservice"
@@ -215,6 +216,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
+		Register(globalsync.New()).
 		Register(peerstore.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
