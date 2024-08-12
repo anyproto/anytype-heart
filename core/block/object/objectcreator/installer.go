@@ -328,7 +328,7 @@ func (s *service) queryArchivedObjects(space clientspace.Space, sourceObjectIDs 
 func (s *service) checkBundledRelations(space clientspace.Space, details *types.Struct) {
 	bundleRelIds := []string{}
 	for key := range details.Fields {
-		if !bundle.HasRelation(key) || bundle.IsSystemRelation(domain.RelationKey(key)) {
+		if !bundle.HasRelation(key) || isSystemRelation(domain.RelationKey(key)) {
 			continue
 		}
 		bundleRelIds = append(bundleRelIds, addr.BundledRelationURLPrefix+key)
@@ -366,4 +366,9 @@ func (s *service) checkBundledRelations(space clientspace.Space, details *types.
 	if err != nil {
 		log.Errorf("failed to install missed bundled relations to space: %v", err)
 	}
+}
+
+func isSystemRelation(key domain.RelationKey) bool {
+	// relation Tag is added to every pre-installed type
+	return bundle.IsSystemRelation(key) || key == bundle.RelationKeyTag
 }
