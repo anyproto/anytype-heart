@@ -87,6 +87,9 @@ github.com/anyproto/any-store v0.0.1 h1:RiZi3cHVSpIebcNeHYOUaDShH7E9Ahto33zdnqCa
 github.com/anyproto/any-store v0.0.1/go.mod h1:JV7dJ8+xF1VaCQgFQsD8SZSNlxxTGFbDiF8llkB2ILc=
 github.com/anyproto/any-sync v0.5.0-alpha.8 h1:Q5fmX5u1LfIuIHL/RN53xtU2Kqx1Kxumqzy+KTH5zMo=
 github.com/anyproto/any-sync v0.5.0-alpha.8/go.mod h1:QphqVzP1KkTbKA2JEGVMmxHuYwVmUetvpS+qKBh5BiQ=
+github.com/anyproto/any-sync v0.5.0-alpha.9.0.20240809091353-eed5019bff71/go.mod h1:QphqVzP1KkTbKA2JEGVMmxHuYwVmUetvpS+qKBh5BiQ=
+github.com/anyproto/any-sync v0.5.0-alpha.10.0.20240811153424-17af238f0359 h1:azDTabPjwruTYfbg7BCtyZsW7q5mMka/xYkpRDZt2ag=
+github.com/anyproto/any-sync v0.5.0-alpha.10.0.20240811153424-17af238f0359/go.mod h1:QphqVzP1KkTbKA2JEGVMmxHuYwVmUetvpS+qKBh5BiQ=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580/go.mod h1:T/uWAYxrXdaXw64ihI++9RMbKTCpKd/yE9+saARew7k=
 github.com/anyproto/go-chash v0.1.0 h1:I9meTPjXFRfXZHRJzjOHC/XF7Q5vzysKkiT/grsogXY=

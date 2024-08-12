@@ -7,7 +7,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
-	"github.com/anyproto/any-sync/net/streampool"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
@@ -115,17 +114,5 @@ func (r *rpcHandler) HeadSync(ctx context.Context, req *spacesyncproto.HeadSyncR
 }
 
 func (r *rpcHandler) ObjectSyncStream(stream spacesyncproto.DRPCSpaceSync_ObjectSyncStreamStream) error {
-	defer func() {
-		log.DebugCtx(stream.Context(), "incoming stream error")
-	}()
-	log.DebugCtx(stream.Context(), "open incoming stream")
-	msg := &spacesyncproto.ObjectSyncMessage{}
-	if err := stream.MsgRecv(msg, streampool.EncodingProto); err != nil {
-		return err
-	}
-	sp, err := r.s.Get(stream.Context(), msg.SpaceId)
-	if err != nil {
-		return err
-	}
-	return sp.HandleStream(stream)
+	return r.s.streamPool.ReadStream(stream)
 }

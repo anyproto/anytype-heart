@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/commonspace/sync/objectsync/objectmessages"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/net/peer"
 	"storj.io/drpc"
@@ -66,6 +67,10 @@ func newVirtualCommonSpace(spaceId string) commonspace.Space {
 
 type virtualCommonSpace struct {
 	spaceId string
+}
+
+func (c *virtualCommonSpace) HandleMessage(ctx context.Context, msg *objectmessages.HeadUpdate) (err error) {
+	return nil
 }
 
 func (c *virtualCommonSpace) HandleStreamSyncRequest(ctx context.Context, req *spacesyncproto.ObjectSyncMessage, stream drpc.Stream) (err error) {

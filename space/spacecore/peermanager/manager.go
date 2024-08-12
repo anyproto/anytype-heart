@@ -56,6 +56,7 @@ type clientPeerManager struct {
 	availableResponsiblePeers chan struct{}
 	nodeStatus                NodeStatus
 	spaceSyncService          Updater
+	streamPool                streampool.StreamPool
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -71,6 +72,7 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.watchingPeers = make(map[string]struct{})
 	n.availableResponsiblePeers = make(chan struct{})
 	n.nodeStatus = app.MustComponent[NodeStatus](a)
+	n.streamPool = app.MustComponent[streampool.StreamPool](a)
 	n.spaceSyncService = app.MustComponent[Updater](a)
 	n.peerToPeerStatus = app.MustComponent[PeerToPeerStatus](a)
 	return
@@ -94,12 +96,21 @@ func (n *clientPeerManager) GetNodePeers(ctx context.Context) (peers []peer.Peer
 	return
 }
 
-func (n *clientPeerManager) BroadcastMessage(ctx context.Context, msg drpc.Message, streamPool streampool.StreamPool) (err error) {
+func (n *clientPeerManager) BroadcastMessage(ctx context.Context, msg drpc.Message) (err error) {
 	// the context which comes here should not be used. It can be cancelled and thus kill the stream,
 	// because the stream can be opened with this context
 	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
-	return streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
+	return n.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
 		return n.getStreamResponsiblePeers(ctx)
+	})
+}
+
+func (n *clientPeerManager) SendMessage(ctx context.Context, peerId string, msg drpc.Message) (err error) {
+	// the context which comes here should not be used. It can be cancelled and thus kill the stream,
+	// because the stream can be opened with this context
+	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
+	return n.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
+		return n.getExactPeer(ctx, peerId)
 	})
 }
 

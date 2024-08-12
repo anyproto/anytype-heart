@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/any-sync/net/rpc/debugserver"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/secureservice"
+	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/net/transport/quic"
 	"github.com/anyproto/any-sync/net/transport/yamux"
 	"github.com/anyproto/any-sync/node/nodeclient"
@@ -231,6 +232,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(coordinatorclient.New()).
 		Register(nodeclient.New()).
 		Register(credentialprovider.New()).
+		Register(spacecore.NewStreamOpener()).
+		Register(streampool.New()).
 		Register(commonspace.New()).
 		Register(aclclient.NewAclJoiningClient()).
 		Register(virtualspaceservice.New()).

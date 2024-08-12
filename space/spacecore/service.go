@@ -217,9 +217,8 @@ func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
 	statusService := objectsyncstatus.NewSyncStatusService()
 	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{
-		TreeSyncer:   treesyncer.NewTreeSyncer(id),
-		SyncStatus:   statusService,
-		StreamOpener: &streamOpener{spaceId: id},
+		TreeSyncer: treesyncer.NewTreeSyncer(id),
+		SyncStatus: statusService,
 	})
 	if err != nil {
 		return
