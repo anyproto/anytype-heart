@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -84,10 +85,15 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return
 	}
 
+	flags := internalflag.NewFromState(s.ParentState())
+	// set with source is no longer empty
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(s)
+
 	if len(source) == 0 {
 		s.Unlink(blockId)
 		s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-		return d.Apply(s, smartblock.NoRestrictions)
+		return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	}
 
 	dvContent, err := BlockBySource(d.objectStore, source)
@@ -105,7 +111,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 	}
 
 	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-	return d.Apply(s, smartblock.NoRestrictions)
+	return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
 
 func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKeys []string, showEvent bool) error {
