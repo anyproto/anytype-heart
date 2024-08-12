@@ -40,10 +40,17 @@ type storeObject struct {
 	dbProvider     StoreDbProvider
 	storeSource    source.Store
 	store          *storestate.StoreState
+
+	arenaPool *fastjson.ArenaPool
 }
 
 func New(sb smartblock.SmartBlock, accountService AccountService, dbProvider StoreDbProvider) StoreObject {
-	return &storeObject{SmartBlock: sb, accountService: accountService, dbProvider: dbProvider}
+	return &storeObject{
+		SmartBlock:     sb,
+		accountService: accountService,
+		dbProvider:     dbProvider,
+		arenaPool:      &fastjson.ArenaPool{},
+	}
 }
 
 func (s *storeObject) Init(ctx *smartblock.InitContext) error {
@@ -74,6 +81,12 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 }
 
 func (s *storeObject) GetMessages(ctx context.Context) ([]string, error) {
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
@@ -94,9 +107,12 @@ func (s *storeObject) GetMessages(ctx context.Context) ([]string, error) {
 			return nil, errors.Join(iter.Close(), err)
 		}
 
-		out, _ := json.Marshal(v)
+		filtered := map[string]any{}
+		filtered["id"] = v["id"]
+		filtered["author"] = v["author"]
+		filtered["text"] = v["text"]
+		out, _ := json.Marshal(filtered)
 		res = append(res, string(out))
-		// res = append(res, v["text"])
 	}
 	return res, errors.Join(iter.Close(), err)
 }
