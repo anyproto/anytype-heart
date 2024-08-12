@@ -1,7 +1,9 @@
 package history
 
 import (
+	"bytes"
 	"context"
+	"crypto/md5"
 	"fmt"
 	"slices"
 	"time"
@@ -54,6 +56,7 @@ type history struct {
 	picker       cache.ObjectGetter
 	objectStore  objectstore.ObjectStore
 	spaceService space.Service
+	heads        map[string]string
 }
 
 func (h *history) Init(a *app.App) (err error) {
@@ -128,6 +131,7 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		return vers
 	}
 
+	curHeads := make(map[string]struct{})
 	for len(resp) < limit {
 		tree, _, e := h.treeWithId(id, lastVersionId, includeLastId)
 		if e != nil {
@@ -137,12 +141,34 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 
 		e = tree.IterateFrom(tree.Root().Id, source.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
 			participantId := domain.NewParticipantId(id.SpaceID, c.Identity.Account())
-			data = append(data, &pb.RpcHistoryVersion{
+			curHeads[c.Id] = struct{}{}
+			for _, previousId := range c.PreviousIds {
+				delete(curHeads, previousId)
+			}
+			version := &pb.RpcHistoryVersion{
 				Id:          c.Id,
 				PreviousIds: c.PreviousIds,
 				AuthorId:    participantId,
 				Time:        c.Timestamp,
-			})
+			}
+			if len(curHeads) > 1 {
+				var (
+					resultHead bytes.Buffer
+					count      int
+				)
+				for head := range curHeads {
+					resultHead.WriteString(head)
+					count++
+					if count != len(curHeads)-1 {
+						resultHead.WriteString(" ")
+					}
+				}
+				hash := md5.New()
+				hashSum := string(hash.Sum(resultHead.Bytes()))
+				h.heads[hashSum] = resultHead.String()
+				version.Id = hashSum
+			}
+			data = append(data, version)
 			return true
 		})
 		if e != nil {
