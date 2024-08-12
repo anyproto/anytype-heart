@@ -544,7 +544,16 @@ func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]strin
 	for key, value := range st.Details().GetFields() {
 		if newKey, ok := oldIDtoNew[key]; ok {
 			st.SetDetail(newKey, value)
+			relationLinks := st.GetRelationLinks()
+			var link *model.RelationLink
+			for _, link = range relationLinks {
+				if link.Key == key {
+					break
+				}
+			}
 			st.RemoveRelation(key)
+			link.Key = newKey
+			st.AddRelationLinks(link)
 		}
 	}
 
