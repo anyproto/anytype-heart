@@ -200,7 +200,7 @@ func (l *localDiscovery) startServer() (err error) {
 		l.peerId,
 		l.ipv4, // do not include ipv6 addresses, because they are disabled
 		nil,
-		l.interfacesAddrs.Interfaces,
+		l.interfacesAddrs.NetInterfaces(),
 		zeroconf.TTL(60),
 		zeroconf.ServerSelectIPTraffic(zeroconf.IPv4), // disable ipv6 for now
 		zeroconf.WriteTimeout(time.Second*1),
@@ -223,6 +223,7 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 			continue
 		}
 		var portAddrs []string
+		l.interfacesAddrs.SortIPsLikeInterfaces(entry.AddrIPv4)
 		for _, a := range entry.AddrIPv4 {
 			portAddrs = append(portAddrs, fmt.Sprintf("%s:%d", a.String(), entry.Port))
 		}
@@ -251,7 +252,7 @@ func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEn
 	newAddrs.SortWithPriority(interfacesSortPriority)
 	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch,
 		zeroconf.ClientWriteTimeout(time.Second*1),
-		zeroconf.SelectIfaces(newAddrs.Interfaces),
+		zeroconf.SelectIfaces(newAddrs.NetInterfaces()),
 		zeroconf.SelectIPTraffic(zeroconf.IPv4)); err != nil {
 		log.Error("browsing failed", zap.Error(err))
 	}
@@ -266,7 +267,7 @@ func (l *localDiscovery) notifyPeerToPeerStatus(newAddrs addrs.InterfacesAddrs) 
 }
 
 func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
-	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces)
+	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.NetInterfaces())
 }
 
 func (l *localDiscovery) executeHook(hook Hook) {

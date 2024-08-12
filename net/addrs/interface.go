@@ -32,9 +32,9 @@ func GetInterfacesAddrs() (iAddrs InterfacesAddrs, err error) {
 	if err != nil {
 		return
 	}
-	iAddrs.Interfaces = ifaces
+	iAddrs.Interfaces = WrapInterfaces(ifaces)
 
-	iAddrs.Interfaces = slice.Filter(iAddrs.Interfaces, func(iface net.Interface) bool {
+	iAddrs.Interfaces = slice.Filter(iAddrs.Interfaces, func(iface InterfaceWithAddr) bool {
 		return iface.Flags&net.FlagUp != 0 && iface.Flags&net.FlagMulticast != 0
 	})
 	return

@@ -20,9 +20,45 @@ type InterfaceAddr struct {
 	Prefix int
 }
 
+type InterfaceWithAddr struct {
+	net.Interface
+	cachedAddrs []net.Addr // ipv4 addresses
+	cachedErr   error
+}
 type InterfacesAddrs struct {
-	Interfaces []net.Interface
-	Addrs      []net.Addr
+	Interfaces []InterfaceWithAddr
+	Addrs      []net.Addr // addrs without attachment to specific interface. Used as a fallback mechanism
+}
+
+func WrapInterfaces(ifaces []net.Interface) []InterfaceWithAddr {
+	var m = make([]InterfaceWithAddr, 0, len(ifaces))
+	for i := range ifaces {
+		m = append(m, InterfaceWithAddr{
+			Interface: ifaces[i],
+		})
+	}
+	return m
+}
+
+// GetAddr returns ipv4 only addresses for interface or cached one if set
+func (i InterfaceWithAddr) GetAddr() []net.Addr {
+	if i.cachedAddrs != nil {
+		return i.cachedAddrs
+	}
+	if i.cachedErr != nil {
+		return nil
+	}
+	i.cachedAddrs, i.cachedErr = i.Addrs()
+	// filter-out ipv6
+	i.cachedAddrs = slice.Filter(i.cachedAddrs, func(addr net.Addr) bool {
+		if ip, ok := addr.(*net.IPNet); ok {
+			if ip.IP.To4() == nil {
+				return false
+			}
+		}
+		return true
+	})
+	return i.cachedAddrs
 }
 
 func (i InterfacesAddrs) Equal(other InterfacesAddrs) bool {
@@ -71,7 +107,7 @@ func parseInterfaceName(name string) (prefix string, bus int, num int64) {
 }
 
 func (i InterfacesAddrs) SortWithPriority(priority []string) {
-	less := func(a, b net.Interface) bool {
+	less := func(a, b InterfaceWithAddr) bool {
 		aPrefix, aBus, aNum := parseInterfaceName(a.Name)
 		bPrefix, bBus, bNum := parseInterfaceName(b.Name)
 
@@ -100,12 +136,20 @@ func (i InterfacesAddrs) SortWithPriority(priority []string) {
 			return false
 		}
 	}
-	slices.SortFunc(i.Interfaces, func(a, b net.Interface) int {
+	slices.SortFunc(i.Interfaces, func(a, b InterfaceWithAddr) int {
 		if less(a, b) {
 			return -1
 		}
 		return 1
 	})
+}
+
+func (i InterfacesAddrs) NetInterfaces() []net.Interface {
+	var s = make([]net.Interface, 0, len(i.Interfaces))
+	for _, iface := range i.Interfaces {
+		s = append(s, iface.Interface)
+	}
+	return s
 }
 
 func getStrings(i InterfacesAddrs) (allStrings []string) {
@@ -117,4 +161,48 @@ func getStrings(i InterfacesAddrs) (allStrings []string) {
 	}
 	slices.Sort(allStrings)
 	return
+}
+
+func (i InterfacesAddrs) GetInterfaceByAddr(addr net.Addr) (net.Interface, bool) {
+	for _, iface := range i.Interfaces {
+		for _, addrInIface := range iface.GetAddr() {
+			if addr.String() == addrInIface.String() {
+				return iface.Interface, true
+			}
+		}
+	}
+	return net.Interface{}, false
+}
+
+func (i InterfacesAddrs) SortIPsLikeInterfaces(ips []net.IP) {
+	slices.SortFunc(ips, func(a, b net.IP) int {
+		pa, _ := i.findInterfacePosByIP(a)
+		pb, _ := i.findInterfacePosByIP(b)
+
+		if pa == -1 && pb != -1 {
+			return 1
+		}
+		if pa != -1 && pb == -1 {
+			return -1
+		}
+		if pa < pb {
+			return -1
+		} else if pa > pb {
+			return 1
+		}
+		return 0
+	})
+}
+
+func (i InterfacesAddrs) findInterfacePosByIP(ip net.IP) (pos int, equal bool) {
+	for position, iface := range i.Interfaces {
+		for _, addr := range iface.GetAddr() {
+			if ni, ok := addr.(*net.IPNet); ok {
+				if ni.Contains(ip) {
+					return position, ni.IP.Equal(ip)
+				}
+			}
+		}
+	}
+	return -1, false
 }
