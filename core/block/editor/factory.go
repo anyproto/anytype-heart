@@ -197,7 +197,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		return f.newParticipant(sb), nil
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
-	case coresb.SmartBlockTypeStore:
+	case coresb.SmartBlockTypeChatObject, coresb.SmartBlockTypeChatDerivedObject:
 		return storeobject.New(sb, f.accountService, f.storeDbProvider), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)

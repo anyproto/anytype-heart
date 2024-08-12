@@ -13496,6 +13496,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | templateId | [string](#string) |  |  |
 | spaceId | [string](#string) |  |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
+| withChat | [bool](#bool) |  |  |
 
 
 
@@ -13556,6 +13557,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | spaceId | [string](#string) |  |  |
+| withChat | [bool](#bool) |  |  |
 
 
 
@@ -13618,6 +13620,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | url | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | addPageContent | [bool](#bool) |  |  |
+| withChat | [bool](#bool) |  |  |
 
 
 
@@ -13860,6 +13863,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | templateId | [string](#string) |  | optional template id for creating from template |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 | spaceId | [string](#string) |  |  |
+| withChat | [bool](#bool) |  |  |
 
 
 
@@ -29017,6 +29021,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | participant | 19 |  |
 | pdf | 20 |  |
 | chat | 21 |  |
+| chatDerived | 22 |  |
 
 
 
@@ -29150,7 +29155,6 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Home | 32 |  |
 | Archive | 48 |  |
 | Widget | 112 |  |
-| Store | 128 |  |
 | File | 256 |  |
 | Template | 288 |  |
 | BundledTemplate | 289 |  |
@@ -29171,6 +29175,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | NotificationObject | 535 |  |
 | DevicesObject | 536 |  |
 | ChatObject | 537 |  |
+| ChatDerivedObject | 544 |  |
 
 
 

@@ -19,5 +19,6 @@
   "set",
   "profile",
   "bookmark",
-  "chat"
+  "chat",
+  "chatDerived"
 ]

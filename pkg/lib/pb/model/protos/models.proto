@@ -26,7 +26,6 @@ enum SmartBlockType {
     Home = 0x20;
     Archive = 0x30;
     Widget = 0x70;
-    Store = 0x80;
 
     File = 0x100;
 
@@ -53,6 +52,7 @@ enum SmartBlockType {
     NotificationObject = 0x217;
     DevicesObject = 0x218;
     ChatObject = 0x219;
+    ChatDerivedObject = 0x220;
 }
 
 message Search {
@@ -826,6 +826,7 @@ message ObjectType {
 
         pdf = 20;
         chat = 21;
+        chatDerived = 22;
     }
 }
 

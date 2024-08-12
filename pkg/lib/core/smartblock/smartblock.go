@@ -14,7 +14,6 @@ const (
 
 	SmartBlockTypePage              = SmartBlockType(model.SmartBlockType_Page)
 	SmartBlockTypeProfilePage       = SmartBlockType(model.SmartBlockType_ProfilePage)
-	SmartBlockTypeStore             = SmartBlockType(model.SmartBlockType_Store)
 	SmartBlockTypeHome              = SmartBlockType(model.SmartBlockType_Home)
 	SmartBlockTypeArchive           = SmartBlockType(model.SmartBlockType_Archive)
 	SmartBlockTypeFile              = SmartBlockType(model.SmartBlockType_File) // Deprecated
@@ -29,6 +28,7 @@ const (
 	SmartBlockTypeDate              = SmartBlockType(model.SmartBlockType_Date)
 	SmartBlockTypeIdentity          = SmartBlockType(model.SmartBlockType_Identity)
 	SmartBlockTypeChatObject        = SmartBlockType(model.SmartBlockType_ChatObject)
+	SmartBlockTypeChatDerivedObject = SmartBlockType(model.SmartBlockType_ChatDerivedObject)
 
 	SmartBlockTypeWorkspace      = SmartBlockType(model.SmartBlockType_Workspace)
 	SmartBlockTypeWidget         = SmartBlockType(model.SmartBlockType_Widget)
