@@ -90,6 +90,8 @@ github.com/anyproto/any-sync v0.5.0-alpha.8/go.mod h1:QphqVzP1KkTbKA2JEGVMmxHuYw
 github.com/anyproto/any-sync v0.5.0-alpha.9.0.20240809091353-eed5019bff71/go.mod h1:QphqVzP1KkTbKA2JEGVMmxHuYwVmUetvpS+qKBh5BiQ=
 github.com/anyproto/any-sync v0.5.0-alpha.10.0.20240811153424-17af238f0359 h1:azDTabPjwruTYfbg7BCtyZsW7q5mMka/xYkpRDZt2ag=
 github.com/anyproto/any-sync v0.5.0-alpha.10.0.20240811153424-17af238f0359/go.mod h1:QphqVzP1KkTbKA2JEGVMmxHuYwVmUetvpS+qKBh5BiQ=
+github.com/anyproto/any-sync v0.5.0-alpha.10.0.20240812152539-6dae56177506 h1:vmUokK6agb1dBwIEv+ZgZGdj9ntj1s/tKbMdtJzSVkU=
+github.com/anyproto/any-sync v0.5.0-alpha.10.0.20240812152539-6dae56177506/go.mod h1:/fhbuTuV2gZI31fb9H+ziKoeuwzMA6HSnTbaHH6pP8c=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580/go.mod h1:T/uWAYxrXdaXw64ihI++9RMbKTCpKd/yE9+saARew7k=
 github.com/anyproto/go-chash v0.1.0 h1:I9meTPjXFRfXZHRJzjOHC/XF7Q5vzysKkiT/grsogXY=
@@ -116,6 +118,7 @@ github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c h1:GicoaTUyB2
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
 github.com/anyproto/tantivy-go v0.0.7 h1:sw8wuXJKZYmoULTmoqJdhsK4PYBCdTkAdSD7F89aQiI=
 github.com/anyproto/tantivy-go v0.0.7/go.mod h1:Pl0zaeEX7dkVDTDKROzlLlGCVjbZHjyPrZloFuVEASc=
+github.com/anyproto/tantivy-go/go v0.0.5/go.mod h1:E2kRVa0DJmZSeA+VV0U8eDgpPZQ+4vHuDPn9U1cVJhU=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d h1:5bj7nX/AS8sxGpTIrapE7PC4oPlhkHMwMqXlJbUHBlg=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d/go.mod h1:fuJqLnUwZTshS3U/bMRJ3+ow/v9oid1n0DmyYyNO1Xs=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
