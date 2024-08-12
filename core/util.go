@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	errUtils "github.com/anyproto/anytype-heart/util/error"
 )
 
 func (mw *Middleware) getResponseEvent(ctx session.Context) *pb.ResponseEvent {
@@ -44,7 +45,7 @@ func getErrorDescription(err error) string {
 	if err == nil {
 		return ""
 	}
-	return err.Error()
+	return errUtils.TransformError(err).Error()
 }
 
 func init() {

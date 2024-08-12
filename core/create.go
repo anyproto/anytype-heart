@@ -18,7 +18,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	response := func(code pb.RpcObjectCreateResponseErrorCode, id string, newDetails *types.Struct, err error) *pb.RpcObjectCreateResponse {
 		m := &pb.RpcObjectCreateResponse{Error: &pb.RpcObjectCreateResponseError{Code: code}, Details: newDetails, ObjectId: id}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 			m.Details = newDetails
@@ -45,7 +45,7 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 	response := func(code pb.RpcObjectCreateSetResponseErrorCode, id string, newDetails *types.Struct, err error) *pb.RpcObjectCreateSetResponse {
 		m := &pb.RpcObjectCreateSetResponse{Error: &pb.RpcObjectCreateSetResponseError{Code: code}, ObjectId: id}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 			m.Details = newDetails
@@ -82,7 +82,7 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, details *types.Struct, err error) *pb.RpcObjectCreateBookmarkResponse {
 		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, ObjectId: id, Details: details}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -103,7 +103,7 @@ func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcOb
 	response := func(code pb.RpcObjectCreateObjectTypeResponseErrorCode, id string, details *types.Struct, err error) *pb.RpcObjectCreateObjectTypeResponse {
 		m := &pb.RpcObjectCreateObjectTypeResponse{ObjectId: id, Details: details, Error: &pb.RpcObjectCreateObjectTypeResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -128,7 +128,7 @@ func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObje
 			return &pb.RpcObjectCreateRelationResponse{
 				Error: &pb.RpcObjectCreateRelationResponseError{
 					Code:        pb.RpcObjectCreateRelationResponseError_UNKNOWN_ERROR,
-					Description: err.Error(),
+					Description: getErrorDescription(err),
 				},
 			}
 		}
@@ -160,7 +160,7 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 			return &pb.RpcObjectCreateRelationOptionResponse{
 				Error: &pb.RpcObjectCreateRelationOptionResponseError{
 					Code:        pb.RpcObjectCreateRelationOptionResponseError_UNKNOWN_ERROR,
-					Description: err.Error(),
+					Description: getErrorDescription(err),
 				},
 			}
 		}
@@ -186,7 +186,7 @@ func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjec
 	response := func(code pb.RpcObjectCreateFromUrlResponseErrorCode, id string, err error, newDetails *types.Struct) *pb.RpcObjectCreateFromUrlResponse {
 		m := &pb.RpcObjectCreateFromUrlResponse{Details: newDetails, Error: &pb.RpcObjectCreateFromUrlResponseError{Code: code}, ObjectId: id}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}

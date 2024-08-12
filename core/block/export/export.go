@@ -47,7 +47,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/constant"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	errUtils "github.com/anyproto/anytype-heart/util/error"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/text"
 )
@@ -121,12 +121,12 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	var wr writer
 	if req.Zip {
 		if wr, err = newZipWriter(req.Path, tempFileName); err != nil {
-			err = oserror.TransformError(err)
+			err = errUtils.TransformError(err)
 			return
 		}
 	} else {
 		if wr, err = newDirWriter(req.Path, req.IncludeFiles); err != nil {
-			err = oserror.TransformError(err)
+			err = errUtils.TransformError(err)
 			return
 		}
 	}
