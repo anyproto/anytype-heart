@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/pool/mock_pool"
-	"github.com/anyproto/any-sync/net/secureservice"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -174,22 +173,6 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, peers, 1)
-	})
-}
-
-func Test_filterPeers(t *testing.T) {
-	t.Run("no peers", func(t *testing.T) {
-		peers := selectOldPeers([]peer.Peer{})
-		assert.Len(t, peers, 0)
-	})
-	t.Run("peers with different versions", func(t *testing.T) {
-		newPeer := newTestPeer("newPeer")
-		oldPeer := newTestPeer("oldPeer")
-		oldPeer.ctx = peer.CtxWithProtoVersion(context.Background(), secureservice.ProtoVersion)
-		newPeer.ctx = peer.CtxWithProtoVersion(context.Background(), secureservice.NewSyncProtoVersion)
-		peers := selectOldPeers([]peer.Peer{newPeer, oldPeer})
-		assert.Len(t, peers, 1)
-		assert.Equal(t, peers[0].Id(), oldPeer.Id())
 	})
 }
 
