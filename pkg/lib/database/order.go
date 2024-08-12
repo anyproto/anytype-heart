@@ -23,6 +23,7 @@ type Order interface {
 type ObjectStore interface {
 	Query(q Query) (records []Record, err error)
 	QueryRaw(filters *Filters, limit int, offset int) ([]Record, error)
+	GetRelationFormatByKey(key string) (model.RelationFormat, error)
 }
 
 type SetOrder []Order
@@ -52,7 +53,7 @@ type KeyOrder struct {
 	Key            string
 	Type           model.BlockContentDataviewSortType
 	EmptyPlacement model.BlockContentDataviewSortEmptyType
-	RelationFormat model.RelationFormat
+	relationFormat model.RelationFormat
 	IncludeTime    bool
 	Store          ObjectStore
 	Options        map[string]string
@@ -88,7 +89,7 @@ func (ko *KeyOrder) Compare(a, b *types.Struct) int {
 }
 
 func (ko *KeyOrder) AnystoreSort() query.Sort {
-	switch ko.RelationFormat {
+	switch ko.relationFormat {
 	case model.RelationFormat_shorttext, model.RelationFormat_longtext:
 		return ko.textSort()
 	case model.RelationFormat_number:
@@ -232,7 +233,7 @@ func (ko *KeyOrder) isSpecialSortOfEmptyValuesNeed(av *types.Value, bv *types.Va
 }
 
 func (ko *KeyOrder) tryExtractTag(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
-	if ko.RelationFormat == model.RelationFormat_tag || ko.RelationFormat == model.RelationFormat_status {
+	if ko.relationFormat == model.RelationFormat_tag || ko.relationFormat == model.RelationFormat_status {
 		av = ko.GetOptionValue(av)
 		bv = ko.GetOptionValue(bv)
 	}
@@ -240,7 +241,7 @@ func (ko *KeyOrder) tryExtractTag(av *types.Value, bv *types.Value) (*types.Valu
 }
 
 func (ko *KeyOrder) tryExtractDateTime(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
-	if ko.RelationFormat == model.RelationFormat_date && !ko.IncludeTime {
+	if ko.relationFormat == model.RelationFormat_date && !ko.IncludeTime {
 		av = time_util.CutValueToDay(av)
 		bv = time_util.CutValueToDay(bv)
 	}
@@ -299,14 +300,21 @@ type customOrder struct {
 	Key          string
 	NeedOrderMap map[string]int
 	KeyOrd       *KeyOrder
+
+	buf []byte
 }
 
 func (co customOrder) AppendKey(k []byte, v *fastjson.Value) []byte {
 	defer func() {
 		co.arena.Reset()
+		co.buf = co.buf[:0]
 	}()
-	val := v.GetStringBytes(co.Key)
-	idx, ok := co.NeedOrderMap[string(val)]
+
+	var rawValue string
+	if val := v.Get(co.Key); val != nil {
+		rawValue = string(val.MarshalTo(co.buf))
+	}
+	idx, ok := co.NeedOrderMap[rawValue]
 	if !ok {
 		anystoreSort := co.KeyOrd.AnystoreSort()
 		// Push to the end
@@ -330,9 +338,23 @@ func (co customOrder) AnystoreSort() query.Sort {
 	return co
 }
 
+func (co customOrder) getStringVal(val *types.Value) string {
+	defer func() {
+		co.arena.Reset()
+		co.buf = co.buf[:0]
+	}()
+
+	jsonVal := pbtypes.ProtoValueToJson(co.arena, val)
+	if jsonVal == nil {
+		return ""
+	}
+	return string(jsonVal.MarshalTo(co.buf))
+}
+
 func (co customOrder) Compare(a, b *types.Struct) int {
-	aID, okA := co.NeedOrderMap[pbtypes.Get(a, co.Key).GetStringValue()]
-	bID, okB := co.NeedOrderMap[pbtypes.Get(b, co.Key).GetStringValue()]
+
+	aID, okA := co.NeedOrderMap[co.getStringVal(pbtypes.Get(a, co.Key))]
+	bID, okB := co.NeedOrderMap[co.getStringVal(pbtypes.Get(b, co.Key))]
 
 	if okA && okB {
 		if aID == bID {

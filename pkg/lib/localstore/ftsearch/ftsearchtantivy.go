@@ -22,8 +22,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/tantivy-go/go/tantivy"
-	_ "github.com/anyproto/tantivy-go/go/tantivy"
+	tantivy "github.com/anyproto/tantivy-go"
 	"github.com/blevesearch/bleve/v2/search"
 	"github.com/samber/lo"
 	"github.com/valyala/fastjson"
