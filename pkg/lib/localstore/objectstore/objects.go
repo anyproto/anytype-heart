@@ -273,6 +273,14 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 			Name:   "syncStatus",
 			Fields: []string{bundle.RelationKeySyncStatus.String()},
 		},
+		{
+			Name:   "isDeleted",
+			Fields: []string{bundle.RelationKeyIsDeleted.String()},
+		},
+		{
+			Name:   "isArchived",
+			Fields: []string{bundle.RelationKeyIsArchived.String()},
+		},
 	}
 	err = s.addIndexes(ctx, objects, objectIndexes)
 	if err != nil {

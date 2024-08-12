@@ -124,6 +124,23 @@ func TestEq_FilterObject(t *testing.T) {
 		obj = &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Float64(2)}}
 		assertFilter(t, eq, obj, false)
 	})
+
+	t.Run("not equal true: no key", func(t *testing.T) {
+		eq := FilterEq{Key: "k", Value: pbtypes.Bool(true), Cond: model.BlockContentDataviewFilter_NotEqual}
+		obj := &types.Struct{Fields: map[string]*types.Value{}}
+		assertFilter(t, eq, obj, true)
+
+		obj = &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Bool(true)}}
+		assertFilter(t, eq, obj, false)
+	})
+	t.Run("not equal false: no key", func(t *testing.T) {
+		eq := FilterEq{Key: "k", Value: pbtypes.Bool(false), Cond: model.BlockContentDataviewFilter_NotEqual}
+		obj := &types.Struct{Fields: map[string]*types.Value{}}
+		assertFilter(t, eq, obj, true)
+
+		obj = &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Bool(false)}}
+		assertFilter(t, eq, obj, false)
+	})
 }
 
 func TestNot_FilterObject(t *testing.T) {

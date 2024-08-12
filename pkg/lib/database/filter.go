@@ -275,6 +275,12 @@ func negateFilter(filter query.Filter) query.Filter {
 		}
 		return negated
 	case query.Key:
+		if nested, ok := v.Filter.(query.Not); ok {
+			return query.Key{
+				Path:   v.Path,
+				Filter: nested.Filter,
+			}
+		}
 		return query.Key{
 			Path: v.Path,
 			Filter: query.Not{

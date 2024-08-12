@@ -87,6 +87,8 @@ github.com/anyproto/any-store v0.0.0-20240719163025-8a3657f8e01c h1:rRlF97BLA+4/
 github.com/anyproto/any-store v0.0.0-20240719163025-8a3657f8e01c/go.mod h1:JV7dJ8+xF1VaCQgFQsD8SZSNlxxTGFbDiF8llkB2ILc=
 github.com/anyproto/any-store v0.0.1 h1:RiZi3cHVSpIebcNeHYOUaDShH7E9Ahto33zdnqCaUHM=
 github.com/anyproto/any-store v0.0.1/go.mod h1:JV7dJ8+xF1VaCQgFQsD8SZSNlxxTGFbDiF8llkB2ILc=
+github.com/anyproto/any-store v0.0.2-0.20240812125400-7f6f6d062ebf h1:9VTQc/011fVyucu9bICmjF6+y/T9QdZv6MN7X4gM4S0=
+github.com/anyproto/any-store v0.0.2-0.20240812125400-7f6f6d062ebf/go.mod h1:JV7dJ8+xF1VaCQgFQsD8SZSNlxxTGFbDiF8llkB2ILc=
 github.com/anyproto/any-sync v0.4.22 h1:f9iAbCv/clTzYtzOzkX1IOXahVM/Art1WkUtIgnwl8U=
 github.com/anyproto/any-sync v0.4.22/go.mod h1:qHIG2zMvGIthEb2FmcjQN5YZZwV8kPHv7/T0ib7YSDg=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
