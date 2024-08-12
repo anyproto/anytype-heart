@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	errUtils "github.com/anyproto/anytype-heart/util/error"
 )
 
 const numberOfStages = 2 // 1 cycle to get snapshots and 1 cycle to create objects
@@ -166,7 +166,7 @@ func (h *HTML) getBlocksForSnapshot(rc io.ReadCloser, filesSource source.Source,
 			if newFileName, _, err := common.ProvideFileName(block.GetFile().GetName(), filesSource, path, h.tempDirProvider); err == nil {
 				block.GetFile().Name = newFileName
 			} else {
-				log.Errorf("failed to update file block with new file name: %v", oserror.TransformError(err))
+				log.Errorf("failed to update file block with new file name: %v", errUtils.TransformError(err))
 			}
 		}
 		if block.GetText() != nil && block.GetText().Marks != nil && len(block.GetText().Marks.Marks) > 0 {
@@ -193,7 +193,7 @@ func (h *HTML) updateFilesInLinks(block *model.Block, filesSource source.Source,
 				}
 				continue
 			}
-			log.Errorf("failed to update link block with new file name: %v", oserror.TransformError(err))
+			log.Errorf("failed to update link block with new file name: %v", errUtils.TransformError(err))
 		}
 	}
 }

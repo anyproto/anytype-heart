@@ -20,7 +20,7 @@ func (mw *Middleware) DebugPing(cctx context.Context, req *pb.RpcDebugPingReques
 	response := func(index int32, code pb.RpcDebugPingResponseErrorCode, err error) *pb.RpcDebugPingResponse {
 		m := &pb.RpcDebugPingResponse{Index: index, Error: &pb.RpcDebugPingResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 
 		n = time.Now()

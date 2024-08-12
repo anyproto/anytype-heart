@@ -25,7 +25,7 @@ func (mw *Middleware) UnsplashSearch(cctx context.Context, req *pb.RpcUnsplashSe
 			if strings.Contains(err.Error(), "Rate limit exhausted") {
 				m.Error.Code = pb.RpcUnsplashSearchResponseError_RATE_LIMIT_EXCEEDED
 			}
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -58,7 +58,7 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 			if strings.Contains(err.Error(), "Rate limit exhausted") {
 				m.Error.Code = pb.RpcUnsplashDownloadResponseError_RATE_LIMIT_EXCEEDED
 			}
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -100,7 +100,7 @@ func (mw *Middleware) GalleryDownloadManifest(_ context.Context, req *pb.RpcGall
 		}
 		if err != nil {
 			m.Error.Code = pb.RpcGalleryDownloadManifestResponseError_UNKNOWN_ERROR
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}

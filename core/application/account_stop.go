@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	errUtils "github.com/anyproto/anytype-heart/util/error"
 )
 
 var (
@@ -42,7 +42,7 @@ func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
 	if req.RemoveData {
 		err := s.accountRemoveLocalData()
 		if err != nil {
-			return errors.Join(ErrFailedToRemoveAccountData, oserror.TransformError(err))
+			return errors.Join(ErrFailedToRemoveAccountData, errUtils.TransformError(err))
 		}
 	} else {
 		err := s.stop()

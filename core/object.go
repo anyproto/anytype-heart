@@ -39,7 +39,7 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 	response := func(code pb.RpcObjectSetDetailsResponseErrorCode, err error) *pb.RpcObjectSetDetailsResponse {
 		m := &pb.RpcObjectSetDetailsResponse{Error: &pb.RpcObjectSetDetailsResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -62,7 +62,7 @@ func (mw *Middleware) ObjectDuplicate(cctx context.Context, req *pb.RpcObjectDup
 		}
 		if err != nil {
 			m.Error.Code = pb.RpcObjectDuplicateResponseError_UNKNOWN_ERROR
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -85,7 +85,7 @@ func (mw *Middleware) ObjectListDuplicate(cctx context.Context, req *pb.RpcObjec
 		}
 		if err != nil {
 			m.Error.Code = pb.RpcObjectListDuplicateResponseError_UNKNOWN_ERROR
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -101,7 +101,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	response := func(code pb.RpcObjectSearchResponseErrorCode, records []*types.Struct, err error) *pb.RpcObjectSearchResponse {
 		m := &pb.RpcObjectSearchResponse{Error: &pb.RpcObjectSearchResponseError{Code: code}, Records: records}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 
 		return m
@@ -147,7 +147,7 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	response := func(code pb.RpcObjectSearchWithMetaResponseErrorCode, results []*model.SearchResult, err error) *pb.RpcObjectSearchWithMetaResponse {
 		m := &pb.RpcObjectSearchWithMetaResponse{Error: &pb.RpcObjectSearchWithMetaResponseError{Code: code}, Results: results}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 
 		return m
@@ -338,7 +338,7 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 			},
 		}
 		if err != nil {
-			r.Error.Description = err.Error()
+			r.Error.Description = getErrorDescription(err)
 		}
 		return r
 	}
@@ -384,7 +384,7 @@ func (mw *Middleware) ObjectGroupsSubscribe(cctx context.Context, req *pb.RpcObj
 			},
 		}
 		if err != nil {
-			r.Error.Description = err.Error()
+			r.Error.Description = getErrorDescription(err)
 		}
 		return r
 	}
@@ -411,7 +411,7 @@ func (mw *Middleware) ObjectSubscribeIds(_ context.Context, req *pb.RpcObjectSub
 			},
 		}
 		if err != nil {
-			r.Error.Description = err.Error()
+			r.Error.Description = getErrorDescription(err)
 		}
 		return r
 	}
@@ -439,7 +439,7 @@ func (mw *Middleware) ObjectSearchUnsubscribe(cctx context.Context, req *pb.RpcO
 		}
 		if err != nil {
 			r.Error.Code = pb.RpcObjectSearchUnsubscribeResponseError_UNKNOWN_ERROR
-			r.Error.Description = err.Error()
+			r.Error.Description = getErrorDescription(err)
 		}
 		return r
 	}
@@ -504,7 +504,7 @@ func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectR
 	response := func(code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
 		m := &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -529,7 +529,7 @@ func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObje
 	response := func(code pb.RpcObjectRelationDeleteResponseErrorCode, err error) *pb.RpcObjectRelationDeleteResponse {
 		m := &pb.RpcObjectRelationDeleteResponse{Error: &pb.RpcObjectRelationDeleteResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -549,7 +549,7 @@ func (mw *Middleware) ObjectRelationListAvailable(cctx context.Context, req *pb.
 	response := func(code pb.RpcObjectRelationListAvailableResponseErrorCode, relations []*model.Relation, err error) *pb.RpcObjectRelationListAvailableResponse {
 		m := &pb.RpcObjectRelationListAvailableResponse{Relations: relations, Error: &pb.RpcObjectRelationListAvailableResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -571,7 +571,7 @@ func (mw *Middleware) ObjectSetObjectType(cctx context.Context, req *pb.RpcObjec
 	response := func(code pb.RpcObjectSetObjectTypeResponseErrorCode, err error) *pb.RpcObjectSetObjectTypeResponse {
 		m := &pb.RpcObjectSetObjectTypeResponse{Error: &pb.RpcObjectSetObjectTypeResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -592,7 +592,7 @@ func (mw *Middleware) ObjectListSetObjectType(cctx context.Context, req *pb.RpcO
 	response := func(code pb.RpcObjectListSetObjectTypeResponseErrorCode, err error) *pb.RpcObjectListSetObjectTypeResponse {
 		m := &pb.RpcObjectListSetObjectTypeResponse{Error: &pb.RpcObjectListSetObjectTypeResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -628,7 +628,7 @@ func (mw *Middleware) ObjectListSetDetails(cctx context.Context, req *pb.RpcObje
 	response := func(code pb.RpcObjectListSetDetailsResponseErrorCode, err error) *pb.RpcObjectListSetDetailsResponse {
 		m := &pb.RpcObjectListSetDetailsResponse{Error: &pb.RpcObjectListSetDetailsResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -649,7 +649,7 @@ func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSet
 	response := func(code pb.RpcObjectSetLayoutResponseErrorCode, err error) *pb.RpcObjectSetLayoutResponse {
 		m := &pb.RpcObjectSetLayoutResponse{Error: &pb.RpcObjectSetLayoutResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -668,7 +668,7 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 	response := func(code pb.RpcObjectSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectSetIsArchivedResponse {
 		m := &pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -687,7 +687,7 @@ func (mw *Middleware) ObjectSetSource(cctx context.Context,
 	response := func(code pb.RpcObjectSetSourceResponseErrorCode, err error) *pb.RpcObjectSetSourceResponse {
 		m := &pb.RpcObjectSetSourceResponse{Error: &pb.RpcObjectSetSourceResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -713,7 +713,7 @@ func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.
 		}
 		if err != nil {
 			resp.Error.Code = pb.RpcObjectWorkspaceSetDashboardResponseError_UNKNOWN_ERROR
-			resp.Error.Description = err.Error()
+			resp.Error.Description = getErrorDescription(err)
 		} else {
 			resp.Event = mw.getResponseEvent(ctx)
 		}
@@ -737,7 +737,7 @@ func (mw *Middleware) ObjectSetIsFavorite(cctx context.Context, req *pb.RpcObjec
 	response := func(code pb.RpcObjectSetIsFavoriteResponseErrorCode, err error) *pb.RpcObjectSetIsFavoriteResponse {
 		m := &pb.RpcObjectSetIsFavoriteResponse{Error: &pb.RpcObjectSetIsFavoriteResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -757,7 +757,7 @@ func (mw *Middleware) ObjectRelationAddFeatured(cctx context.Context, req *pb.Rp
 	response := func(code pb.RpcObjectRelationAddFeaturedResponseErrorCode, err error) *pb.RpcObjectRelationAddFeaturedResponse {
 		m := &pb.RpcObjectRelationAddFeaturedResponse{Error: &pb.RpcObjectRelationAddFeaturedResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -777,7 +777,7 @@ func (mw *Middleware) ObjectRelationRemoveFeatured(cctx context.Context, req *pb
 	response := func(code pb.RpcObjectRelationRemoveFeaturedResponseErrorCode, err error) *pb.RpcObjectRelationRemoveFeaturedResponse {
 		m := &pb.RpcObjectRelationRemoveFeaturedResponse{Error: &pb.RpcObjectRelationRemoveFeaturedResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -801,7 +801,7 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 		}
 		if err != nil {
 			resp.Error.Code = pb.RpcObjectToSetResponseError_UNKNOWN_ERROR
-			resp.Error.Description = err.Error()
+			resp.Error.Description = getErrorDescription(err)
 		}
 		return resp
 	}
@@ -815,7 +815,7 @@ func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjec
 	response := func(code pb.RpcObjectBookmarkFetchResponseErrorCode, err error) *pb.RpcObjectBookmarkFetchResponse {
 		m := &pb.RpcObjectBookmarkFetchResponse{Error: &pb.RpcObjectBookmarkFetchResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -834,7 +834,7 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 	response := func(code pb.RpcObjectToBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectToBookmarkResponse {
 		m := &pb.RpcObjectToBookmarkResponse{Error: &pb.RpcObjectToBookmarkResponseError{Code: code}, ObjectId: id}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -857,7 +857,7 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 	response := func(code pb.RpcObjectSetInternalFlagsResponseErrorCode, err error) *pb.RpcObjectSetInternalFlagsResponse {
 		m := &pb.RpcObjectSetInternalFlagsResponse{Error: &pb.RpcObjectSetInternalFlagsResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -885,7 +885,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 			ObjectsCount: res.ObjectsCount,
 		}
 		if res.Err != nil {
-			m.Error.Description = res.Err.Error()
+			m.Error.Description = getErrorDescription(res.Err)
 		}
 		return m
 	}
@@ -917,7 +917,7 @@ func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectIm
 	response := func(res []*pb.RpcObjectImportListImportResponse, code pb.RpcObjectImportListResponseErrorCode, err error) *pb.RpcObjectImportListResponse {
 		m := &pb.RpcObjectImportListResponse{Response: res, Error: &pb.RpcObjectImportListResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -974,7 +974,7 @@ func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjec
 			},
 		}
 		if err != nil {
-			resp.Error.Description = err.Error()
+			resp.Error.Description = getErrorDescription(err)
 		} else {
 			resp.Event = ctx.GetResponseEvent()
 		}
@@ -993,7 +993,7 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 			},
 		}
 		if err != nil {
-			resp.Error.Description = err.Error()
+			resp.Error.Description = getErrorDescription(err)
 		}
 		return resp
 	}

@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	errUtils "github.com/anyproto/anytype-heart/util/error"
 )
 
 const (
@@ -168,7 +168,7 @@ func (r *clientds) Init(a *app.App) (err error) {
 	opts.ValueDir = opts.Dir
 
 	r.localstoreDS, err = openBadgerWithRecover(opts)
-	err = oserror.TransformError(err)
+	err = errUtils.TransformError(err)
 	if err != nil && isBadgerCorrupted(err) {
 		// because localstore contains mostly recoverable info (with th only exception of objects' lastOpenedDate)
 		// we can just remove and recreate it
@@ -176,7 +176,7 @@ func (r *clientds) Init(a *app.App) (err error) {
 		log.Errorf("failed to rename corrupted localstore: %s", err2)
 		var errAfterRemove error
 		r.localstoreDS, errAfterRemove = openBadgerWithRecover(opts)
-		errAfterRemove = oserror.TransformError(errAfterRemove)
+		errAfterRemove = errUtils.TransformError(errAfterRemove)
 		log.With("db", "localstore").With("reset", true).With("err_remove", errAfterRemove).With("err", err.Error()).Errorf("failed to open db")
 		if errAfterRemove != nil {
 			// should not happen, but just in case
@@ -193,7 +193,7 @@ func (r *clientds) Init(a *app.App) (err error) {
 		opts.ValueDir = opts.Dir
 		r.spaceDS, err = openBadgerWithRecover(opts)
 		if err != nil {
-			err = oserror.TransformError(err)
+			err = errUtils.TransformError(err)
 			log.With("db", "spacestore").With("reset", false).With("err", err.Error()).Errorf("failed to open db")
 			return err
 		}

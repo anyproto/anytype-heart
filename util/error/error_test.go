@@ -1,4 +1,4 @@
-package os
+package error
 
 import (
 	"errors"
@@ -22,7 +22,7 @@ func TestTransformError(t *testing.T) {
 			Err:  fmt.Errorf("test"),
 		}
 
-		resultErrorMessage := "read /***/***/***/: test"
+		resultErrorMessage := "read <masked file path>: test"
 		assert.NotNil(t, TransformError(pathError))
 		assert.Equal(t, resultErrorMessage, TransformError(pathError).Error())
 	})
@@ -34,7 +34,7 @@ func TestTransformError(t *testing.T) {
 			Err:  fmt.Errorf("test"),
 		}
 
-		resultErrorMessage := "read ***/***: test"
+		resultErrorMessage := "read <masked file path>: test"
 		assert.NotNil(t, TransformError(pathError))
 		assert.Equal(t, resultErrorMessage, TransformError(pathError).Error())
 	})
@@ -65,13 +65,6 @@ func Test_transformBadgerError(t *testing.T) {
 		wantErr       error
 	}{
 		{
-			name: "nil error",
-			args: args{
-				err: nil,
-			},
-			wantErr: nil,
-		},
-		{
 			name:          "badger error win",
 			pathseparator: "\\",
 			args: args{
@@ -93,14 +86,15 @@ func Test_transformBadgerError(t *testing.T) {
 			if tt.pathseparator != "" && tt.pathseparator != string(os.PathSeparator) {
 				t.Skipf("Test is not applicable for the current platform")
 			}
-			resultErr := anonymizeBadgerError(tt.args.err)
+			resultErr, _ := anonymizeBadgerError(tt.args.err.Error(), false)
 
 			if tt.wantErr == nil {
-				require.Nil(t, resultErr)
+				require.Empty(t, resultErr)
 				return
 			}
 
-			require.EqualError(t, anonymizeBadgerError(tt.args.err), tt.wantErr.Error())
+			badgerError, _ := anonymizeBadgerError(tt.args.err.Error(), false)
+			require.Equal(t, badgerError, tt.wantErr.Error())
 		})
 	}
 }
