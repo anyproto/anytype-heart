@@ -69,7 +69,7 @@ func (mw *Middleware) addChat(cctx context.Context, objectId string) (string, er
 	chatDetails.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(chatUniqueKey.Marshal())
 
 	chatReq := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeyChat,
+		ObjectTypeKey: bundle.TypeKeyChatDerived,
 		Details:       chatDetails,
 	}
 
