@@ -95,12 +95,16 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		doc.SetDetails(&types.Struct{Fields: map[string]*types.Value{
 			"oldKey": pbtypes.String("test"),
 		}})
+		doc.AddRelationLinks(&model.RelationLink{
+			Key: "oldKey",
+		})
 		// when
 		oc.updateKeys(doc, oldToNew)
 
 		// then
 		assert.Nil(t, doc.Details().GetFields()["oldKey"])
 		assert.Equal(t, pbtypes.String("test"), doc.Details().GetFields()["newKey"])
+		assert.True(t, doc.HasRelation("newKey"))
 	})
 	t.Run("updateKeys - update object type key", func(t *testing.T) {
 		// given
