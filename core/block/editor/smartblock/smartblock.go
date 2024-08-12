@@ -1431,6 +1431,11 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		}
 	}
 
+	err := sb.deriveChatId(s)
+	if err != nil {
+		log.With("objectId", sb.Id()).Errorf("can't derive chat id: %v", err)
+	}
+
 	sb.setRestrictionsDetail(s)
 
 	snippet := s.Snippet()
@@ -1449,6 +1454,23 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 
 	sb.injectLinksDetails(s)
 	sb.updateBackLinks(s)
+}
+
+func (sb *smartBlock) deriveChatId(s *state.State) error {
+	hasChat := pbtypes.GetBool(s.Details(), bundle.RelationKeyHasChat.String())
+	if hasChat {
+		chatUk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatDerivedObject, sb.Id())
+		if err != nil {
+			return err
+		}
+
+		chatId, err := sb.space.DeriveObjectID(context.Background(), chatUk)
+		if err != nil {
+			return err
+		}
+		s.SetDetailAndBundledRelation(bundle.RelationKeyChatId, pbtypes.String(chatId))
+	}
+	return nil
 }
 
 type InitFunc = func(id string) *InitContext
