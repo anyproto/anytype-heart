@@ -645,6 +645,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
 	}
 
+	oldLinks := pbtypes.GetStringList(s.ParentState().LocalDetails(), bundle.RelationKeyLinks.String())
+
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
@@ -734,6 +736,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.runIndexer(st, SkipIfHeadsNotChanged)
 	} else {
 		sb.runIndexer(st)
+	}
+
+	orphans := objectlink.CalculateOrphans(sb.objectStore, oldLinks, pbtypes.GetStringList(s.LocalDetails(), bundle.RelationKeyLinks.String()))
+	if len(orphans) != 0 {
+		msgs = append(msgs, wrapOrphanedEvent(orphans))
 	}
 
 	afterPushChangeTime := time.Now()

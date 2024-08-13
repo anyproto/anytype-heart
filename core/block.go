@@ -399,7 +399,7 @@ func (mw *Middleware) BlockListSetFields(cctx context.Context, req *pb.RpcBlockL
 	return response(pb.RpcBlockListSetFieldsResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectListDelete(cctx context.Context, req *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse {
+func (mw *Middleware) ObjectListDelete(_ context.Context, req *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse {
 	response := func(code pb.RpcObjectListDeleteResponseErrorCode, err error) *pb.RpcObjectListDeleteResponse {
 		m := &pb.RpcObjectListDeleteResponse{Error: &pb.RpcObjectListDeleteResponseError{Code: code}}
 		if err != nil {

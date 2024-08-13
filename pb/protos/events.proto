@@ -39,6 +39,8 @@ message Event {
             Object.Subscription.Counters subscriptionCounters = 63;
             Object.Subscription.Groups subscriptionGroups = 64;
 
+            Object.ListBecameOrphaned objectListBecameOrphaned = 66;
+
             Block.Add blockAdd = 2;
             Block.Delete blockDelete = 3;
             Block.FilesUpload filesUpload = 4;
@@ -244,6 +246,10 @@ message Event {
 
         message Close {
             string id = 1;
+        }
+
+        message ListBecameOrphaned {
+            repeated string ids = 1;
         }
     }
     message Block {
