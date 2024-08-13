@@ -38,6 +38,9 @@ func makeMigrationItem() *migrationItem {
 }
 
 func (s *service) MigrateFileIdsInBlocks(st *state.State, spc source.Space) {
+	if !spc.IsPersonal() {
+		return
+	}
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if migrator, ok := b.(simple.FileMigrator); ok {
 			migrator.MigrateFile(func(oldId string) (newId string) {
@@ -49,6 +52,9 @@ func (s *service) MigrateFileIdsInBlocks(st *state.State, spc source.Space) {
 }
 
 func (s *service) MigrateFileIdsInDetails(st *state.State, spc source.Space) {
+	if !spc.IsPersonal() {
+		return
+	}
 	st.ModifyLinkedFilesInDetails(func(id string) string {
 		return s.migrateFileId(spc.(clientspace.Space), st.RootId(), id)
 	})
@@ -84,6 +90,9 @@ func (s *service) migrateFileId(space clientspace.Space, objectId string, fileId
 // from blocks or details will be changed to file object ids. And in case of any migration error
 // these files could be stuck un-migrated
 func (s *service) MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys) {
+	if !spc.IsPersonal() {
+		return
+	}
 	origin := objectorigin.FromDetails(st.Details())
 	for _, keys := range keysChanges {
 		err := s.migrateFile(spc.(clientspace.Space), origin, keys)
@@ -133,6 +142,9 @@ func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) 
 	space, err := s.spaceService.Get(ctx, it.SpaceId)
 	if err != nil {
 		return persistentqueue.ActionDone, fmt.Errorf("get space: %w", err)
+	}
+	if !space.IsPersonal() {
+		return persistentqueue.ActionDone, nil
 	}
 
 	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)

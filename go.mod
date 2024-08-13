@@ -11,7 +11,7 @@ require (
 	github.com/anyproto/any-sync v0.4.22-0.20240809111324-5b31ec812a28
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/lexid v0.0.2
-	github.com/anyproto/tantivy-go/go v0.0.5
+	github.com/anyproto/tantivy-go v0.0.7
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/blevesearch/bleve/v2 v2.3.10

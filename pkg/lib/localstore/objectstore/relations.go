@@ -184,6 +184,11 @@ func (s *dsObjectStore) GetRelationByKey(spaceId string, key string) (*model.Rel
 }
 
 func (s *dsObjectStore) GetRelationFormatByKey(key string) (model.RelationFormat, error) {
+	rel, err := bundle.GetRelation(domain.RelationKey(key))
+	if err == nil {
+		return rel.Format, nil
+	}
+
 	q := database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -208,7 +213,6 @@ func (s *dsObjectStore) GetRelationFormatByKey(key string) (model.RelationFormat
 		return 0, ds.ErrNotFound
 	}
 
-	rel := relationutils.RelationFromStruct(records[0].Details)
-
-	return rel.Format, nil
+	details := records[0].Details
+	return model.RelationFormat(pbtypes.GetInt64(details, bundle.RelationKeyRelationFormat.String())), nil
 }
