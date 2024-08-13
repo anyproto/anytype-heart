@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -19,7 +20,10 @@ import (
 )
 
 func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
-	var sbType coresb.SmartBlockType
+	var (
+		sbType coresb.SmartBlockType
+		links  []string
+	)
 	spc, err := s.spaceService.Get(context.Background(), id.SpaceID)
 	if err != nil {
 		return err
@@ -29,6 +33,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 			return err
 		}
 		sbType = b.Type()
+		links = pbtypes.GetStringList(b.LocalDetails(), bundle.RelationKeyLinks.String())
 		return nil
 	})
 	if err != nil {
@@ -54,7 +59,8 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 	if err != nil {
 		return err
 	}
-	sendOnRemoveEvent(s.eventSender, id.ObjectID)
+	orphans := objectlink.CalculateOrphans(s.objectStore, links, nil)
+	sendOnRemoveEvent(s.eventSender, id.ObjectID, orphans)
 	// Remove from cache
 	err = spc.Remove(context.Background(), id.ObjectID)
 	if err != nil {
@@ -155,16 +161,26 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 	return nil
 }
 
-func sendOnRemoveEvent(eventSender event.Sender, ids ...string) {
-	eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfObjectRemove{
-					ObjectRemove: &pb.EventObjectRemove{
-						Ids: ids,
-					},
-				},
+func sendOnRemoveEvent(eventSender event.Sender, removedObjectId string, orphans []string) {
+	messages := []*pb.EventMessage{{
+		Value: &pb.EventMessageValueOfObjectRemove{
+			ObjectRemove: &pb.EventObjectRemove{
+				Ids: []string{removedObjectId},
 			},
 		},
+	}}
+
+	if len(orphans) != 0 {
+		messages = append(messages, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectListBecameOrphaned{
+				ObjectListBecameOrphaned: &pb.EventObjectListBecameOrphaned{
+					Ids: orphans,
+				},
+			},
+		})
+	}
+
+	eventSender.Broadcast(&pb.Event{
+		Messages: messages,
 	})
 }

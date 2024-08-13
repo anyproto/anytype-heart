@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -265,12 +266,18 @@ func (s *Service) ShowBlock(id domain.FullID, includeRelationsAsDependentObjects
 }
 
 func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
+	var (
+		isDraft bool
+		links   []string
+	)
 	id = s.resolveFullId(id)
-	var isDraft bool
 	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose(ctx)
-		s := b.NewState()
-		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
+		st := b.NewState()
+		isDraft = internalflag.NewFromState(st).Has(model.InternalFlag_editorDeleteEmpty)
+		if isDraft {
+			links = pbtypes.GetStringList(st.LocalDetails(), bundle.RelationKeyLinks.String())
+		}
 		return nil
 	})
 	if err != nil {
@@ -281,7 +288,8 @@ func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
 		if err = s.DeleteObjectByFullID(id); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
-			sendOnRemoveEvent(s.eventSender, id.ObjectID)
+			orphans := objectlink.CalculateOrphans(s.objectStore, links, nil)
+			sendOnRemoveEvent(s.eventSender, id.ObjectID, orphans)
 		}
 	}
 	mutex.WithLock(s.openedObjs.lock, func() any { delete(s.openedObjs.objects, id.ObjectID); return nil })

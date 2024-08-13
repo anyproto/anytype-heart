@@ -1590,6 +1590,7 @@
     - [Event.Object.Details.Amend.KeyValue](#anytype-Event-Object-Details-Amend-KeyValue)
     - [Event.Object.Details.Set](#anytype-Event-Object-Details-Set)
     - [Event.Object.Details.Unset](#anytype-Event-Object-Details-Unset)
+    - [Event.Object.ListBecameOrphaned](#anytype-Event-Object-ListBecameOrphaned)
     - [Event.Object.Relations](#anytype-Event-Object-Relations)
     - [Event.Object.Relations.Amend](#anytype-Event-Object-Relations-Amend)
     - [Event.Object.Relations.Remove](#anytype-Event-Object-Relations-Remove)
@@ -24936,6 +24937,7 @@ Precondition: user A opened a block
 | subscriptionPosition | [Event.Object.Subscription.Position](#anytype-Event-Object-Subscription-Position) |  |  |
 | subscriptionCounters | [Event.Object.Subscription.Counters](#anytype-Event-Object-Subscription-Counters) |  |  |
 | subscriptionGroups | [Event.Object.Subscription.Groups](#anytype-Event-Object-Subscription-Groups) |  |  |
+| objectListBecameOrphaned | [Event.Object.ListBecameOrphaned](#anytype-Event-Object-ListBecameOrphaned) |  |  |
 | blockAdd | [Event.Block.Add](#anytype-Event-Block-Add) |  |  |
 | blockDelete | [Event.Block.Delete](#anytype-Event-Block-Delete) |  |  |
 | filesUpload | [Event.Block.FilesUpload](#anytype-Event-Block-FilesUpload) |  |  |
@@ -25129,6 +25131,21 @@ Unset existing detail keys
 | id | [string](#string) |  | context objectId |
 | keys | [string](#string) | repeated |  |
 | subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Object-ListBecameOrphaned"></a>
+
+### Event.Object.ListBecameOrphaned
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
 
 
 

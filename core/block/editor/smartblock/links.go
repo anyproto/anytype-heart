@@ -119,3 +119,16 @@ func isBacklinksChanged(msgs []simple.EventMessage) bool {
 	}
 	return false
 }
+
+func wrapOrphanedEvent(orphans []string) simple.EventMessage {
+	return simple.EventMessage{
+		Virtual: false,
+		Msg: &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectListBecameOrphaned{
+				ObjectListBecameOrphaned: &pb.EventObjectListBecameOrphaned{
+					Ids: orphans,
+				},
+			},
+		},
+	}
+}
