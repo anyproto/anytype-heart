@@ -166,6 +166,10 @@ func (b *queryBuilder) extractOrder(sorts []*model.BlockContentDataviewSort) Set
 	if len(sorts) > 0 {
 		order := SetOrder{}
 		for _, sort := range sorts {
+			format, err := b.objectStore.GetRelationFormatByKey(sort.RelationKey)
+			if err != nil {
+				format = sort.Format
+			}
 
 			keyOrder := &KeyOrder{
 				SpaceID:        b.spaceId,
@@ -173,7 +177,7 @@ func (b *queryBuilder) extractOrder(sorts []*model.BlockContentDataviewSort) Set
 				Type:           sort.Type,
 				EmptyPlacement: sort.EmptyPlacement,
 				IncludeTime:    isIncludeTime(sorts, sort),
-				RelationFormat: sort.Format,
+				relationFormat: format,
 				Store:          b.objectStore,
 				arena:          b.arena,
 			}
@@ -185,12 +189,17 @@ func (b *queryBuilder) extractOrder(sorts []*model.BlockContentDataviewSort) Set
 }
 
 func (b *queryBuilder) appendCustomOrder(sort *model.BlockContentDataviewSort, orders SetOrder, order *KeyOrder) SetOrder {
+	defer b.arena.Reset()
+
 	if sort.Type == model.BlockContentDataviewSort_Custom && len(sort.CustomOrder) > 0 {
 		idsIndices := make(map[string]int, len(sort.CustomOrder))
 		var idx int
 		for _, it := range sort.CustomOrder {
-			if id := it.GetStringValue(); id != "" {
-				idsIndices[id] = idx
+			jsonVal := pbtypes.ProtoValueToJson(b.arena, it)
+
+			raw := jsonVal.String()
+			if raw != "" {
+				idsIndices[raw] = idx
 				idx++
 			}
 		}
