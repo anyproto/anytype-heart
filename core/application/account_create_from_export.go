@@ -23,9 +23,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/constant"
-	errUtils "github.com/anyproto/anytype-heart/util/error"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -70,7 +70,7 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 
 	profile, err := getUserProfile(req)
 	if err != nil {
-		return RecoverFromLegacyResponse{}, errUtils.TransformError(err)
+		return RecoverFromLegacyResponse{}, anyerror.CleanupError(err)
 	}
 
 	err = s.stop()
@@ -89,7 +89,7 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 	s.rootPath = req.RootPath
 	err = os.MkdirAll(s.rootPath, 0700)
 	if err != nil {
-		return RecoverFromLegacyResponse{}, errUtils.TransformError(err)
+		return RecoverFromLegacyResponse{}, anyerror.CleanupError(err)
 	}
 	if _, statErr := os.Stat(filepath.Join(s.rootPath, address)); os.IsNotExist(statErr) {
 		if walletErr := core.WalletInitRepo(s.rootPath, res.Identity); walletErr != nil {

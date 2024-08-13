@@ -26,7 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	errUtils "github.com/anyproto/anytype-heart/util/error"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -396,7 +396,7 @@ func (dp *dropFilesProcess) Init(paths []string) (err error) {
 		entry := &dropFileEntry{path: path, name: filepath.Base(path)}
 		ok, e := dp.readdir(entry, true)
 		if e != nil {
-			return errUtils.TransformError(err)
+			return anyerror.CleanupError(err)
 		}
 		if ok {
 			dp.root.child = append(dp.root.child, entry)
