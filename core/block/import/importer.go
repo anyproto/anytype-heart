@@ -68,6 +68,9 @@ type Import struct {
 	fileSync            filesync.FileSync
 	notificationService notifications.Notifications
 	eventSender         event.Sender
+
+	importCtx       context.Context
+	importCtxCancel context.CancelFunc
 }
 
 func New() Importer {
@@ -105,7 +108,20 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	i.notificationService = app.MustComponent[notifications.Notifications](a)
 	i.eventSender = app.MustComponent[event.Sender](a)
+
+	i.importCtx, i.importCtxCancel = context.WithCancel(context.Background())
 	return nil
+}
+
+func (i *Import) Run(ctx context.Context) (err error) {
+	return
+}
+
+func (i *Import) Close(ctx context.Context) (err error) {
+	if i.importCtxCancel != nil {
+		i.importCtxCancel()
+	}
+	return
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
@@ -113,8 +129,8 @@ func (i *Import) Import(ctx context.Context, importRequest *ImportRequest) *Impo
 	if importRequest.IsSync {
 		return i.importObjects(ctx, importRequest)
 	}
-	go conc.Go(func() {
-		res := i.importObjects(context.Background(), importRequest)
+	conc.Go(func() {
+		res := i.importObjects(i.importCtx, importRequest)
 		if res.Err != nil {
 			log.Errorf("import from %s failed with error: %s", importRequest.Type.String(), res.Err)
 		}
@@ -144,7 +160,10 @@ func (i *Import) importObjects(ctx context.Context, importRequest *ImportRequest
 		i.onImportFinish(res, importRequest, importId)
 	}()
 	if i.s != nil && !importRequest.GetNoProgress() && isNewProgress {
-		i.s.ProcessAdd(importRequest.Progress)
+		err := i.s.ProcessAdd(importRequest.Progress)
+		if err != nil {
+			return &ImportResponse{Err: fmt.Errorf("failed to add process")}
+		}
 	}
 	i.recordEvent(&metrics.ImportStartedEvent{ID: importId, ImportType: importRequest.Type.String()})
 	res.Err = fmt.Errorf("unknown import type %s", importRequest.Type)

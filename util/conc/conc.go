@@ -37,14 +37,16 @@ func MapErr[T, R any](input []T, f func(T) (R, error)) ([]R, error) {
 }
 
 func Go(fn func()) {
-	defer func() {
-		if r := recover(); r != nil {
-			if rerr, ok := r.(error); ok {
-				OnPanic(rerr)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if rerr, ok := r.(error); ok {
+					OnPanic(rerr)
+				}
 			}
-		}
+		}()
+		fn()
 	}()
-	fn()
 }
 
 func OnPanic(v any) {
