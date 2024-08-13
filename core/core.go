@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"runtime/debug"
 
 	"github.com/anyproto/any-sync/app"
 
@@ -92,12 +90,6 @@ func requireApp(a *app.App) {
 
 func (mw *Middleware) GetApp() *app.App {
 	return mw.applicationService.GetApp()
-}
-
-func (mw *Middleware) OnPanic(v interface{}) {
-	stack := debug.Stack()
-	os.Stderr.Write(stack)
-	log.With("stack", stack).Errorf("panic recovered: %v", v)
 }
 
 func (mw *Middleware) SetEventSender(sender event.Sender) {
