@@ -355,18 +355,18 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 
 	// remove this code after checking if cache is working correctly
 	if s.isParentIdsCacheEnabled && res != cacheFound {
-		var cacheFoundId, resFoundId string
-		if cacheFound != nil {
-			cacheFoundId = cacheFound.Model().Id
-		}
-		if res != nil {
-			resFoundId = res.Model().Id
-		}
-		log.With("id", id).
-			With("cacheFoundId", cacheFoundId).
-			With("resFoundId", resFoundId).
-			With("objId", s.RootId()).
-			Warn("discrepancy in state parent search")
+		// var cacheFoundId, resFoundId string
+		// if cacheFound != nil {
+		// 	cacheFoundId = cacheFound.Model().Id
+		// }
+		// if res != nil {
+		// 	resFoundId = res.Model().Id
+		// }
+		// log.With("id", id).
+		// 	With("cacheFoundId", cacheFoundId).
+		// 	With("resFoundId", resFoundId).
+		// 	With("objId", s.RootId()).
+		// 	Warn("discrepancy in state parent search")
 	}
 
 	return
