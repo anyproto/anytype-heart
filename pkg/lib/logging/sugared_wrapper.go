@@ -3,7 +3,7 @@ package logging
 import (
 	"go.uber.org/zap"
 
-	errCleanup "github.com/anyproto/anytype-heart/util/anyerror"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 type Sugared struct {
@@ -63,7 +63,7 @@ func (s *Sugared) Infow(msg string, keysAndValues ...interface{}) {
 func cleanupArgs(args []interface{}) {
 	for i, arg := range args {
 		if err, ok := arg.(error); ok {
-			err = errCleanup.CleanupError(err)
+			err = anyerror.CleanupError(err)
 			args[i] = err
 		}
 	}
