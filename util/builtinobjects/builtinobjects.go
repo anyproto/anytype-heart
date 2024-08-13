@@ -37,8 +37,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/constant"
-	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
@@ -231,7 +231,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		}
 		removeFunc = func() {
 			if rmErr := os.Remove(path); rmErr != nil {
-				log.Errorf("failed to remove temporary file: %v", oserror.TransformError(rmErr))
+				log.Errorf("failed to remove temporary file: %v", anyerror.CleanupError(rmErr))
 			}
 		}
 	}
@@ -286,7 +286,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	// TODO: GO-2627 Home page handling should be moved to importer
 	b.handleHomePage(path, spaceID, func() {
 		if rmErr := os.Remove(path); rmErr != nil {
-			log.Errorf("failed to remove temporary file: %v", oserror.TransformError(rmErr))
+			log.Errorf("failed to remove temporary file: %v", anyerror.CleanupError(rmErr))
 		}
 	}, useCase == migrationUseCase)
 
@@ -529,7 +529,7 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 	var out *os.File
 	out, err = os.Create(path)
 	if err != nil {
-		return "", oserror.TransformError(err)
+		return "", anyerror.CleanupError(err)
 	}
 	defer out.Close()
 

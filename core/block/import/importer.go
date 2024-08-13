@@ -334,28 +334,17 @@ func (i *Import) createObjects(ctx context.Context,
 	if err != nil {
 		return nil, ""
 	}
-	filesIDs := i.getFilesIDs(res)
 	numWorkers := workerPoolSize
 	if len(res.Snapshots) < workerPoolSize {
 		numWorkers = 1
 	}
-	do := creator.NewDataObject(ctx, oldIDToNew, createPayloads, filesIDs, origin, req.SpaceId)
+	do := creator.NewDataObject(ctx, oldIDToNew, createPayloads, origin, req.SpaceId)
 	pool := workerpool.NewPool(numWorkers)
 	progress.SetProgressMessage("Create objects")
 	go i.addWork(res, pool)
 	go pool.Start(do)
 	details := i.readResultFromPool(pool, req.Mode, allErrors, progress)
 	return details, oldIDToNew[res.RootCollectionID]
-}
-
-func (i *Import) getFilesIDs(res *common.Response) []string {
-	fileIDs := make([]string, 0)
-	for _, snapshot := range res.Snapshots {
-		fileIDs = append(fileIDs, lo.Map(snapshot.Snapshot.GetFileKeys(), func(item *pb.ChangeFileKeys, index int) string {
-			return item.Hash
-		})...)
-	}
-	return fileIDs
 }
 
 func (i *Import) getIDForAllObjects(ctx context.Context,
