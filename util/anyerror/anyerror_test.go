@@ -1,4 +1,4 @@
-package error
+package anyerror
 
 import (
 	"errors"
@@ -23,8 +23,8 @@ func TestTransformError(t *testing.T) {
 		}
 
 		resultErrorMessage := "read <masked file path>: test"
-		assert.NotNil(t, TransformError(pathError))
-		assert.Equal(t, resultErrorMessage, TransformError(pathError).Error())
+		assert.NotNil(t, CleanupError(pathError))
+		assert.Equal(t, resultErrorMessage, CleanupError(pathError).Error())
 	})
 
 	t.Run("relative path", func(t *testing.T) {
@@ -35,22 +35,22 @@ func TestTransformError(t *testing.T) {
 		}
 
 		resultErrorMessage := "read <masked file path>: test"
-		assert.NotNil(t, TransformError(pathError))
-		assert.Equal(t, resultErrorMessage, TransformError(pathError).Error())
+		assert.NotNil(t, CleanupError(pathError))
+		assert.Equal(t, resultErrorMessage, CleanupError(pathError).Error())
 	})
 
 	t.Run("not os path error", func(t *testing.T) {
 		err := fmt.Errorf("test")
 		resultErrorMessage := "test"
-		assert.NotNil(t, TransformError(err))
-		assert.Equal(t, resultErrorMessage, TransformError(err).Error())
+		assert.NotNil(t, CleanupError(err))
+		assert.Equal(t, resultErrorMessage, CleanupError(err).Error())
 	})
 
 	t.Run("url error", func(t *testing.T) {
 		err := &url.Error{URL: "http://test.test", Op: "Test", Err: fmt.Errorf("test")}
 		resultErrorMessage := "Test \"<masked url>\": test"
-		assert.NotNil(t, TransformError(err))
-		assert.Equal(t, resultErrorMessage, TransformError(err).Error())
+		assert.NotNil(t, CleanupError(err))
+		assert.Equal(t, resultErrorMessage, CleanupError(err).Error())
 	})
 }
 

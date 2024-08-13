@@ -1,4 +1,4 @@
-package error
+package anyerror
 
 import (
 	"errors"
@@ -26,7 +26,7 @@ func anonymizeBadgerError(err string, changed bool) (string, bool) {
 	return err, changed
 }
 
-func TransformError(err error) error {
+func CleanupError(err error) error {
 	if err == nil {
 		return nil
 	}

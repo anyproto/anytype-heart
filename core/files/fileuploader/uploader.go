@@ -30,7 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	errUtils "github.com/anyproto/anytype-heart/util/error"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -327,7 +327,7 @@ func (u *uploader) SetFile(path string) Uploader {
 	u.getReader = func(ctx context.Context) (*fileReader, error) {
 		f, err := os.Open(path)
 		if err != nil {
-			return nil, errUtils.TransformError(err)
+			return nil, anyerror.CleanupError(err)
 		}
 
 		buf := bufio.NewReaderSize(f, bufSize)

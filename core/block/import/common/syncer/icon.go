@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	errUtils "github.com/anyproto/anytype-heart/util/error"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 var log = logging.Logger("import")
@@ -98,7 +98,7 @@ func (s *IconSyncer) handleIconImage(spaceId string, newIdsSet map[string]struct
 	}
 	fileObjectId, _, err := s.service.UploadFile(context.Background(), spaceId, dto)
 	if err != nil {
-		return "", errUtils.TransformError(err)
+		return "", anyerror.CleanupError(err)
 	}
 	return fileObjectId, nil
 }

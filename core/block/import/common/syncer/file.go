@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	errUtils "github.com/anyproto/anytype-heart/util/error"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 type FileSyncer struct {
@@ -72,10 +72,10 @@ func (s *FileSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b sim
 	}
 	_, err := s.service.UploadFileBlock(id.ObjectID, dto)
 	if os.IsNotExist(err) {
-		return errUtils.TransformError(err)
+		return anyerror.CleanupError(err)
 	}
 	if err != nil {
-		return fmt.Errorf("%w: %s", common.ErrFileLoad, errUtils.TransformError(err).Error())
+		return fmt.Errorf("%w: %s", common.ErrFileLoad, anyerror.CleanupError(err).Error())
 	}
 	return nil
 }
