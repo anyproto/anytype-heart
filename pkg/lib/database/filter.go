@@ -27,21 +27,21 @@ func MakeFilters(protoFilters []*model.BlockContentDataviewFilter, store ObjectS
 	spaceId := getSpaceIDFromFilters(protoFilters)
 	// to avoid unnecessary nested filter
 	if len(protoFilters) == 1 && len(protoFilters[0].NestedFilters) > 0 && protoFilters[0].Operator != model.BlockContentDataviewFilter_No {
-		return MakeFilter(protoFilters[0], store, spaceId)
+		return MakeFilter(spaceId, protoFilters[0], store)
 	}
-	return MakeFilter(&model.BlockContentDataviewFilter{
+	return MakeFilter(spaceId, &model.BlockContentDataviewFilter{
 		Operator:      model.BlockContentDataviewFilter_And,
 		NestedFilters: protoFilters,
-	}, store, spaceId)
+	}, store)
 }
 
-func MakeFilter(protoFilter *model.BlockContentDataviewFilter, store ObjectStore, spaceId string) (Filter, error) {
+func MakeFilter(spaceId string, protoFilter *model.BlockContentDataviewFilter, store ObjectStore) (Filter, error) {
 	if protoFilter.Operator == model.BlockContentDataviewFilter_No {
 		return makeFilter(spaceId, protoFilter, store)
 	}
 	filters := make([]Filter, 0, len(protoFilter.NestedFilters))
 	for _, nestedFilter := range protoFilter.NestedFilters {
-		filter, err := MakeFilter(nestedFilter, store, spaceId)
+		filter, err := MakeFilter(spaceId, nestedFilter, store)
 		if err != nil {
 			return nil, err
 		}
@@ -691,7 +691,7 @@ var _ WithNestedFilter = &FilterNestedIn{}
 func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFilter, store ObjectStore, relationKey string, nestedRelationKey string) (Filter, error) {
 	rawNestedFilter := proto.Clone(rawFilter).(*model.BlockContentDataviewFilter)
 	rawNestedFilter.RelationKey = nestedRelationKey
-	nestedFilter, err := MakeFilter(rawNestedFilter, store, spaceID)
+	nestedFilter, err := MakeFilter(spaceID, rawNestedFilter, store)
 	if err != nil {
 		return nil, fmt.Errorf("make nested filter %s -> %s: %w", relationKey, nestedRelationKey, err)
 	}

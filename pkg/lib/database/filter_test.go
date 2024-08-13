@@ -454,11 +454,11 @@ func TestNestedFilters(t *testing.T) {
 			},
 		}, nil)
 
-		f, err := MakeFilter(&model.BlockContentDataviewFilter{
+		f, err := MakeFilter("spaceId", &model.BlockContentDataviewFilter{
 			RelationKey: "type.typeKey",
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.String("note"),
-		}, store, "spaceId")
+		}, store)
 		require.NoError(t, err)
 
 		obj1 := &types.Struct{Fields: map[string]*types.Value{"type": pbtypes.String("id1")}}
