@@ -12,7 +12,7 @@ func (mw *Middleware) DeviceSetName(cctx context.Context, req *pb.RpcDeviceSetNa
 	response := func(code pb.RpcDeviceSetNameResponseErrorCode, err error) *pb.RpcDeviceSetNameResponse {
 		m := &pb.RpcDeviceSetNameResponse{Error: &pb.RpcDeviceSetNameResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -27,7 +27,7 @@ func (mw *Middleware) DeviceList(cctx context.Context, _ *pb.RpcDeviceListReques
 	response := func(code pb.RpcDeviceListResponseErrorCode, devices []*model.DeviceInfo, err error) *pb.RpcDeviceListResponse {
 		m := &pb.RpcDeviceListResponse{Error: &pb.RpcDeviceListResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		m.Devices = devices
 		return m

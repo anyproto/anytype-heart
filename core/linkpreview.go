@@ -20,7 +20,7 @@ func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRe
 		return &pb.RpcLinkPreviewResponse{
 			Error: &pb.RpcLinkPreviewResponseError{
 				Code:        pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
-				Description: fmt.Sprintf("failed to parse url: %v", err),
+				Description: fmt.Sprintf("failed to parse url: %v", getErrorDescription(err)),
 			},
 		}
 	}
