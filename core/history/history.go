@@ -174,6 +174,9 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		if e != nil {
 			return nil, e
 		}
+		if len(data) == 0 {
+			break
+		}
 		if len(data[0].PreviousIds) == 0 {
 			if data[0].Id == tree.Id() {
 				data = data[1:]
@@ -184,10 +187,6 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 			resp = append(data, resp...)
 			lastVersionId = tree.Root().Id
 			includeLastId = false
-		}
-
-		if len(data) == 0 {
-			break
 		}
 	}
 
@@ -204,6 +203,9 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		resp[i].GroupId = groupId
 	}
 
+	if len(resp) > limit {
+		resp = resp[:limit]
+	}
 	return
 }
 
