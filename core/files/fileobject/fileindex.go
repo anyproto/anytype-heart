@@ -351,7 +351,7 @@ func (ind *indexer) unhideRecommendedRelations(space clientspace.Space, typeKey 
 		return
 	}
 
-	var uks []string
+	uks := []string{}
 	for _, rel := range relsToUnhide {
 		uks = append(uks, rel.URL())
 	}
@@ -374,7 +374,7 @@ func (ind *indexer) unhideRecommendedRelations(space clientspace.Space, typeKey 
 		for _, rec := range records {
 			uk := pbtypes.GetString(rec.Details, bundle.RelationKeyUniqueKey.String())
 			if slices.Contains(uks, uk) {
-				stored = append(stored)
+				stored = append(stored, uk)
 			}
 		}
 		missed, _ := slice.DifferenceRemovedAdded(uks, stored)
