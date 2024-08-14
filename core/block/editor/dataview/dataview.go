@@ -85,7 +85,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return
 	}
 
-	flags := internalflag.NewFromState(s.ParentState())
+	flags := internalflag.NewFromState(s)
 	// set with source is no longer empty
 	flags.Remove(model.InternalFlag_editorDeleteEmpty)
 	flags.AddToState(s)
