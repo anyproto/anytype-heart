@@ -29,11 +29,6 @@ const (
 
 var log = logger.NewNamed(syncstatus.CName)
 
-type UpdateReceiver interface {
-	UpdateTree(ctx context.Context, treeId string, status SyncStatus) (err error)
-	UpdateNodeStatus()
-}
-
 type SyncStatus int
 
 const (
@@ -58,7 +53,6 @@ type StatusUpdater interface {
 type StatusWatcher interface {
 	Watch(treeId string) (err error)
 	Unwatch(treeId string)
-	SetUpdateReceiver(updater UpdateReceiver)
 }
 
 type StatusService interface {
@@ -79,9 +73,8 @@ type Updater interface {
 
 type syncStatusService struct {
 	sync.Mutex
-	periodicSync   periodicsync.PeriodicSync
-	updateReceiver UpdateReceiver
-	storage        spacestorage.SpaceStorage
+	periodicSync periodicsync.PeriodicSync
+	storage      spacestorage.SpaceStorage
 
 	spaceId    string
 	synced     []string
@@ -126,13 +119,6 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 
 func (s *syncStatusService) Name() (name string) {
 	return syncstatus.CName
-}
-
-func (s *syncStatusService) SetUpdateReceiver(updater UpdateReceiver) {
-	s.Lock()
-	defer s.Unlock()
-
-	s.updateReceiver = updater
 }
 
 func (s *syncStatusService) Run(ctx context.Context) error {
@@ -186,35 +172,14 @@ func (s *syncStatusService) HeadsApply(senderId, treeId string, heads []string, 
 
 func (s *syncStatusService) update(ctx context.Context) (err error) {
 	s.Lock()
-	var (
-		updateDetailsStatuses = make([]treeStatus, 0, len(s.synced))
-		updateThreadStatuses  = make([]treeStatus, 0, len(s.watchers))
-	)
-	if s.updateReceiver == nil {
-		s.Unlock()
-		return
-	}
+	var updateDetailsStatuses = make([]treeStatus, 0, len(s.synced))
 	for _, treeId := range s.synced {
 		updateDetailsStatuses = append(updateDetailsStatuses, treeStatus{treeId, StatusSynced})
 	}
-	for treeId := range s.watchers {
-		treeHeads, exists := s.treeHeads[treeId]
-		if !exists {
-			continue
-		}
-		updateThreadStatuses = append(updateThreadStatuses, treeStatus{treeId, treeHeads.syncStatus})
-	}
 	s.synced = s.synced[:0]
 	s.Unlock()
-	s.updateReceiver.UpdateNodeStatus()
 	for _, entry := range updateDetailsStatuses {
 		s.updateDetails(entry.treeId, mapStatus(entry.status))
-	}
-	for _, entry := range updateThreadStatuses {
-		err = s.updateReceiver.UpdateTree(ctx, entry.treeId, entry.status)
-		if err != nil {
-			return
-		}
 	}
 	return
 }

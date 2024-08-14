@@ -113,27 +113,6 @@ func TestSyncStatusService_Watch_Unwatch(t *testing.T) {
 	})
 }
 
-func TestSyncStatusService_update(t *testing.T) {
-	t.Run("update: got updates on objects", func(t *testing.T) {
-		s := newFixture(t, "spaceId")
-		updateReceiver := NewMockUpdateReceiver(t)
-		updateReceiver.EXPECT().UpdateNodeStatus().Return()
-		updateReceiver.EXPECT().UpdateTree(context.Background(), "id", StatusSynced).Return(nil)
-		updateReceiver.EXPECT().UpdateTree(context.Background(), "id2", StatusNotSynced).Return(nil)
-		s.SetUpdateReceiver(updateReceiver)
-
-		s.syncDetailsUpdater.EXPECT().UpdateDetails("id3", domain.ObjectSyncStatusSynced, "spaceId")
-		s.synced = []string{"id3"}
-		s.tempSynced["id4"] = struct{}{}
-		s.treeHeads["id"] = treeHeadsEntry{syncStatus: StatusSynced, heads: []string{"headId"}}
-		s.treeHeads["id2"] = treeHeadsEntry{syncStatus: StatusNotSynced, heads: []string{"headId"}}
-		s.watchers["id"] = struct{}{}
-		s.watchers["id2"] = struct{}{}
-		err := s.update(context.Background())
-		require.NoError(t, err)
-	})
-}
-
 func TestSyncStatusService_Run(t *testing.T) {
 	t.Run("successful run", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
