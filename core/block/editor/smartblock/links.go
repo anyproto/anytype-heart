@@ -31,6 +31,7 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 		DataviewBlockOnlyTarget:  true,
 		NoSystemRelations:        true,
 		NoHiddenBundledRelations: true,
+		NoImages:                 true,
 	})
 	links = slice.RemoveMut(links, sb.Id())
 	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))

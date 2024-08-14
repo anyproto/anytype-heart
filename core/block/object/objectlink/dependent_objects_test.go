@@ -92,7 +92,7 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 	stateWithLinks := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Id:          "root",
-			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3", "dataview", "image"},
+			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3", "dataview", "image", "song"},
 		}),
 		"childBlock": simple.New(&model.Block{Id: "childBlock",
 			Content: &model.BlockContentOfText{
@@ -144,6 +144,14 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 			Content: &model.BlockContentOfFile{
 				File: &model.BlockContentFile{
 					TargetObjectId: "image with cute kitten",
+					Type:           model.BlockContentFile_Image,
+				},
+			}}),
+		"song": simple.New(&model.Block{Id: "song",
+			Content: &model.BlockContentOfFile{
+				File: &model.BlockContentFile{
+					TargetObjectId: "Let it be",
+					Type:           model.BlockContentFile_Audio,
 				},
 			}}),
 	}).(*state.State)
@@ -171,17 +179,22 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true})
-		assert.Len(t, objectIDs, 8)
+		assert.Len(t, objectIDs, 9)
 	})
 
 	t.Run("dataview only target option is turned on: get only target from blocks", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, DataviewBlockOnlyTarget: true})
-		assert.Len(t, objectIDs, 6)
+		assert.Len(t, objectIDs, 7)
+	})
+
+	t.Run("no images option is turned on: get ids from blocks except images", func(t *testing.T) {
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, NoImages: true})
+		assert.Len(t, objectIDs, 8)
 	})
 
 	t.Run("blocks option and relations options are turned on: get ids from blocks and relations", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, Relations: true})
-		assert.Len(t, objectIDs, 12) // 8 links + 4 relations
+		assert.Len(t, objectIDs, 13) // 9 links + 4 relations
 	})
 }
 

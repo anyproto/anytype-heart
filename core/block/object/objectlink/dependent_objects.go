@@ -40,7 +40,8 @@ type Flags struct {
 	CreatorModifierWorkspace,
 	DataviewBlockOnlyTarget,
 	NoSystemRelations,
-	NoHiddenBundledRelations bool
+	NoHiddenBundledRelations,
+	NoImages bool
 }
 
 func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags) (ids []string) {
@@ -85,10 +86,18 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags)
 func collectIdsFromBlocks(s *state.State, flags Flags) (ids []string) {
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
 		if flags.DataviewBlockOnlyTarget {
-			dv := b.Model().GetDataview()
-			if dv != nil {
+			if dv := b.Model().GetDataview(); dv != nil {
 				if dv.TargetObjectId != "" {
 					ids = append(ids, dv.TargetObjectId)
+				}
+				return true
+			}
+		}
+
+		if flags.NoImages {
+			if f := b.Model().GetFile(); f != nil {
+				if f.TargetObjectId != "" && f.Type != model.BlockContentFile_Image {
+					ids = append(ids, f.TargetObjectId)
 				}
 				return true
 			}
