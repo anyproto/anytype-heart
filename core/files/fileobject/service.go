@@ -185,6 +185,9 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 			},
 		},
 	})
+	if err != nil {
+		return err
+	}
 	if len(objectIds) > 0 {
 		err = s.objectArchiver.SetPagesIsArchived(nil, pb.RpcObjectListSetIsArchivedRequest{
 			ObjectIds:  objectIds,
