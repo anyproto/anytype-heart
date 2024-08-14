@@ -45,6 +45,7 @@ type Space interface {
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
 	StoredIds() []string
+	IsPersonal() bool
 }
 
 type Service interface {
