@@ -54,6 +54,16 @@ var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]domain.TypeKe
 	coresb.SmartBlockTypeSpaceView:   TypeKeySpace,
 }
 
+var RecommendedHiddenRelationsByType = map[domain.TypeKey][]domain.RelationKey{
+	TypeKeyAudio: {
+		RelationKeyAudioAlbum,
+		RelationKeyAudioGenre,
+		RelationKeyAudioLyrics,
+		RelationKeyAudioAlbumTrackNumber,
+		RelationKeyReleasedYear,
+	},
+}
+
 // filled in init
 var LocalRelationsKeys []string   // stored only in localstore
 var DerivedRelationsKeys []string // derived

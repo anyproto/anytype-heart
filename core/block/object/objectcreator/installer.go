@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -237,6 +238,7 @@ func (s *service) prepareDetailsForInstallingObject(
 
 	if isNewSpace {
 		objecttype.SetLastUsedDateForInitialObjectType(sourceId, details)
+		hideFileSystemRelation(domain.RelationKey(strings.TrimPrefix(sourceId, addr.BundledRelationURLPrefix)), details)
 	}
 
 	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
@@ -249,7 +251,7 @@ func (s *service) prepareDetailsForInstallingObject(
 			}
 			recommendedRelationKeys = append(recommendedRelationKeys, key.String())
 		}
-		recommendedRelationIds, err := s.prepareRecommendedRelationIds(ctx, spc, recommendedRelationKeys)
+		recommendedRelationIds, err := s.prepareRecommendedRelationIds(ctx, spc, recommendedRelationKeys, isNewSpace)
 		if err != nil {
 			return nil, fmt.Errorf("prepare recommended relation ids: %w", err)
 		}
@@ -325,50 +327,9 @@ func (s *service) queryArchivedObjects(space clientspace.Space, sourceObjectIDs 
 	return
 }
 
-func (s *service) checkBundledRelations(space clientspace.Space, details *types.Struct) {
-	bundleRelIds := []string{}
-	for key := range details.Fields {
-		if !bundle.HasRelation(key) || isSystemRelation(domain.RelationKey(key)) {
-			continue
-		}
-		bundleRelIds = append(bundleRelIds, addr.BundledRelationURLPrefix+key)
+// hideFileSystemRelation sets isHidden=true to relations recommended for File types that should be shown on demand
+func hideFileSystemRelation(key domain.RelationKey, details *types.Struct) {
+	if slices.Contains(bundle.RecommendedHiddenRelationsByType[bundle.TypeKeyAudio], key) {
+		details.Fields[bundle.RelationKeyIsHidden.String()] = pbtypes.Bool(true)
 	}
-
-	if len(bundleRelIds) == 0 {
-		return
-	}
-
-	records, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(space.Id()),
-			},
-			{
-				RelationKey: bundle.RelationKeySourceObject.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(bundleRelIds),
-			},
-		},
-	})
-
-	if err != nil {
-		log.Errorf("failed to query relations: '%v'", err)
-		return
-	}
-
-	if len(records) == len(bundleRelIds) {
-		return
-	}
-
-	_, _, err = s.InstallBundledObjects(context.Background(), space, bundleRelIds, false)
-	if err != nil {
-		log.Errorf("failed to install missed bundled relations to space: %v", err)
-	}
-}
-
-func isSystemRelation(key domain.RelationKey) bool {
-	// relation Tag is added to every pre-installed type
-	return bundle.IsSystemRelation(key) || key == bundle.RelationKeyTag
 }

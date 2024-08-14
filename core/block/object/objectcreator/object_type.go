@@ -66,7 +66,7 @@ func (s *service) fillRecommendedRelationsFromLayout(ctx context.Context, space 
 	for _, rel := range recommendedLayout.RequiredRelations {
 		recommendedRelationKeys = append(recommendedRelationKeys, rel.Key)
 	}
-	recommendedRelationIds, err := s.prepareRecommendedRelationIds(ctx, space, recommendedRelationKeys)
+	recommendedRelationIds, err := s.prepareRecommendedRelationIds(ctx, space, recommendedRelationKeys, false)
 	if err != nil {
 		return fmt.Errorf("prepare recommended relation ids: %w", err)
 	}
@@ -74,7 +74,7 @@ func (s *service) fillRecommendedRelationsFromLayout(ctx context.Context, space 
 	return nil
 }
 
-func (s *service) prepareRecommendedRelationIds(ctx context.Context, space clientspace.Space, recommendedRelationKeys []string) ([]string, error) {
+func (s *service) prepareRecommendedRelationIds(ctx context.Context, space clientspace.Space, recommendedRelationKeys []string, isNewSpace bool) ([]string, error) {
 	descriptionRelationKey := bundle.RelationKeyDescription.String()
 	if !slices.Contains(recommendedRelationKeys, descriptionRelationKey) {
 		recommendedRelationKeys = append(recommendedRelationKeys, descriptionRelationKey)
@@ -93,7 +93,7 @@ func (s *service) prepareRecommendedRelationIds(ctx context.Context, space clien
 		}
 		recommendedRelationIDs = append(recommendedRelationIDs, id)
 	}
-	_, _, err := s.InstallBundledObjects(ctx, space, relationsToInstall, false)
+	_, _, err := s.InstallBundledObjects(ctx, space, relationsToInstall, isNewSpace)
 	if err != nil {
 		return nil, fmt.Errorf("install recommended relations: %w", err)
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "c7680e6442c6676e7db40f5682937af2a829c29754fa5fdd900ff5b45528f2a7"
+const TypeChecksum = "51add03f7462d515d6b4e653e8201433f76bf2d4c29b30b3529b1dd366355327"
 const (
 	TypePrefix = "_ot"
 )
@@ -54,7 +54,7 @@ var (
 			Layout:                 model.ObjectType_file,
 			Name:                   "Audio",
 			Readonly:               true,
-			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyOrigin)},
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioAlbumTrackNumber), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyAudioLyrics), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyOrigin)},
 			RestrictObjectCreation: true,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "audio",

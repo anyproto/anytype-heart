@@ -3,6 +3,7 @@ package fileobject
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -40,13 +41,6 @@ type indexer struct {
 	indexQueue   *mb.MB[indexRequest]
 	isQueuedLock sync.RWMutex
 	isQueued     map[domain.FullID]struct{}
-}
-
-var recommendedRelationsByType = map[domain.TypeKey][]domain.RelationKey{
-	bundle.TypeKeyAudio: {
-		bundle.RelationKeyAudioAlbum, bundle.RelationKeyArtist, bundle.RelationKeyAudioGenre,
-		bundle.RelationKeyAudioLyrics, bundle.RelationKeyAudioAlbumTrackNumber, bundle.RelationKeyReleasedYear,
-	},
 }
 
 func (s *service) newIndexer() *indexer {
@@ -237,7 +231,7 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, space clientspace
 		return fmt.Errorf("add blocks: %w", err)
 	}
 
-	go ind.checkTypeRecommendedRelations(space, typeKey, keys)
+	go ind.unhideRecommendedRelations(space, typeKey, keys)
 
 	return nil
 }
@@ -344,16 +338,22 @@ func (ind *indexer) addBlocks(st *state.State, details *types.Struct, objectId s
 	return nil
 }
 
-func (ind *indexer) checkTypeRecommendedRelations(space clientspace.Space, typeKey domain.TypeKey, relKeys []domain.RelationKey) {
-	relsToCheck, found := recommendedRelationsByType[typeKey]
+// unhideRecommendedRelations sets isHidden=false to recommended relations of Type that could be hidden
+func (ind *indexer) unhideRecommendedRelations(space clientspace.Space, typeKey domain.TypeKey, relKeys []domain.RelationKey) {
+	recommendedRelations, found := bundle.RecommendedHiddenRelationsByType[typeKey]
 
 	if !found {
 		return
 	}
 
-	relsToAdd := lo.Intersect(relKeys, relsToCheck)
-	if len(relsToAdd) == 0 {
+	relsToUnhide := lo.Intersect(relKeys, recommendedRelations)
+	if len(relsToUnhide) == 0 {
 		return
+	}
+
+	var uks []string
+	for _, rel := range relsToUnhide {
+		uks = append(uks, rel.URL())
 	}
 
 	records, err := ind.objectStore.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
@@ -364,49 +364,37 @@ func (ind *indexer) checkTypeRecommendedRelations(space clientspace.Space, typeK
 		},
 		{
 			RelationKey: bundle.RelationKeyUniqueKey.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(typeKey.URL()),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.StringList(uks),
 		},
 	}})
 
-	if err != nil || len(records) == 0 {
-		log.Errorf("failed to get %s type from store to check its recommendedRelations: %v", typeKey.String(), err)
-		return
-	}
-
-	savedRecRelIds := pbtypes.GetStringList(records[0].Details, bundle.RelationKeyRecommendedRelations.String())
-	relIdsToAdd := []string{}
-	ctx := context.Background()
-	for _, key := range relsToAdd {
-		relId, err := space.GetRelationIdByKey(ctx, key)
-		if err != nil {
-			log.Errorf("failed to derive id of relation '%s' from space '%s': %v", key.String(), space.Id(), err)
-			return
+	if err != nil || len(records) != len(uks) {
+		var stored []string
+		for _, rec := range records {
+			uk := pbtypes.GetString(rec.Details, bundle.RelationKeyUniqueKey.String())
+			if slices.Contains(uks, uk) {
+				stored = append(stored)
+			}
 		}
-		relIdsToAdd = append(relIdsToAdd, relId)
+		missed, _ := slice.DifferenceRemovedAdded(uks, stored)
+		log.Errorf("failed to get relations '%v' from store to check if they are not hidden: %v", missed, err)
 	}
 
-	notSavedRelIds := slice.Difference(relIdsToAdd, savedRecRelIds)
-	if len(notSavedRelIds) == 0 {
-		return
-	}
+	for _, rec := range records {
+		if !pbtypes.GetBool(rec.Details, bundle.RelationKeyIsHidden.String()) {
+			continue
+		}
 
-	relIdsToSave := append(savedRecRelIds, notSavedRelIds...)
-
-	typeId, err := space.GetTypeIdByKey(ctx, typeKey)
-	if err != nil {
-		log.Errorf("failed to derive id of type '%s' from space '%s': %v", typeKey.String(), space.Id(), err)
-		return
-	}
-
-	err = space.Do(typeId, func(sb smartblock.SmartBlock) error {
-		s := sb.NewState()
-		s.SetDetail(bundle.RelationKeyRecommendedRelations.String(), pbtypes.StringList(relIdsToSave))
-		return sb.Apply(s)
-	})
-
-	if err != nil {
-		log.Errorf("failed to update recommended relations of type '%s' in space '%s': %v", typeKey.String(), space.Id(), err)
+		err = space.Do(pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
+			s := sb.NewState()
+			s.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(false))
+			return sb.Apply(s)
+		})
+		if err != nil {
+			uk := pbtypes.GetString(rec.Details, bundle.RelationKeyUniqueKey.String())
+			log.Errorf("failed to set isHidden to false for relation '%s' in space '%s': %v", uk, space.Id(), err)
+		}
 	}
 }
 

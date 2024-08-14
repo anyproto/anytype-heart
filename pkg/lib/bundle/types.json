@@ -419,7 +419,9 @@
     "relations": [
       "artist",
       "audioAlbum",
+      "audioAlbumTrackNumber",
       "audioGenre",
+      "audioLyrics",
       "releasedYear",
       "sizeInBytes",
       "fileMimeType",

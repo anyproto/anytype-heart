@@ -111,8 +111,6 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 		objecttype.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys[0])
 	}
 
-	go s.checkBundledRelations(spc, newDetails)
-
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
 	ev.ObjectId = id
