@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/util/slice"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -50,12 +50,12 @@ const (
 
 func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	checksums, err := i.store.GetChecksums(spaceID)
-	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 		return reindexFlags{}, err
 	}
 	if checksums == nil {
 		checksums, err = i.store.GetGlobalChecksums()
-		if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 			return reindexFlags{}, err
 		}
 
@@ -219,8 +219,9 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 	}
 	for _, id := range ids {
 		err := space.DoLockedIfNotExists(id, func() error {
-			return i.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, error) {
-				return helper.InjectsSyncDetails(details, syncStatus, syncError), nil
+			return i.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
+				details = helper.InjectsSyncDetails(details, syncStatus, syncError)
+				return details, true, nil
 			})
 		})
 		if err != nil {
@@ -562,10 +563,14 @@ func (i *indexer) getIdsForTypes(space smartblock.Space, sbt ...coresb.SmartBloc
 }
 
 func (i *indexer) GetLogFields() []zap.Field {
+	i.lock.Lock()
+	defer i.lock.Unlock()
 	return i.reindexLogFields
 }
 
 func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalIds, succeedIds int, spent time.Duration) {
+	i.lock.Lock()
+	defer i.lock.Unlock()
 	i.reindexLogFields = append(i.reindexLogFields, zap.Int("r_"+reindexType.String(), totalIds))
 	if succeedIds < totalIds {
 		i.reindexLogFields = append(i.reindexLogFields, zap.Int("r_"+reindexType.String()+"_failed", totalIds-succeedIds))

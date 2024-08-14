@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -20,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/indexer"
-	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -240,7 +238,7 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 	if err != nil {
 		return nil, fmt.Errorf("make date record: %w", err)
 	}
-	f, _ := database.MakeFiltersAnd(req.Filters, store) //nolint:errcheck
+	f, _ := database.MakeFilters(req.Filters, store) //nolint:errcheck
 	if f.FilterObject(rec.Details) {
 		return append([]database.Record{rec}, records...), nil
 	}
@@ -876,41 +874,42 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 }
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
-	response := func(code pb.RpcObjectImportResponseErrorCode, res *importer.ImportResponse) *pb.RpcObjectImportResponse {
+	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
 		m := &pb.RpcObjectImportResponse{
 			Error: &pb.RpcObjectImportResponseError{
 				Code: code,
 			},
-			CollectionId: res.RootCollectionId,
-			ObjectsCount: res.ObjectsCount,
 		}
-		if res.Err != nil {
-			m.Error.Description = getErrorDescription(res.Err)
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
 
-	originImport := objectorigin.Import(req.Type)
-	res := getService[importer.Importer](mw).Import(cctx, req, originImport, nil)
-	spaceName := getService[objectstore.SpaceNameGetter](mw).GetSpaceName(req.SpaceId)
-	code := common.GetImportErrorCode(res.Err)
-	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSend(&model.Notification{
-		Id:      uuid.New().String(),
-		Status:  model.Notification_Created,
-		IsLocal: true,
-		Space:   req.SpaceId,
-		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
-			ProcessId:  res.ProcessId,
-			ErrorCode:  code,
-			ImportType: req.Type,
-			SpaceId:    req.SpaceId,
-			SpaceName:  spaceName,
-		}},
-	})
-	if notificationSendErr != nil {
-		log.Errorf("failed to send notification: %v", notificationSendErr)
+	importRequest := &importer.ImportRequest{
+		RpcObjectImportRequest: req,
+		Origin:                 objectorigin.Import(req.Type),
+		Progress:               nil,
+		SendNotification:       true,
+		IsSync:                 false,
 	}
-	return response(pb.RpcObjectImportResponseErrorCode(code), res)
+	res := getService[importer.Importer](mw).Import(cctx, importRequest)
+
+	if res == nil || res.Err == nil {
+		return response(pb.RpcObjectImportResponseError_NULL, nil)
+	}
+	switch {
+	case errors.Is(res.Err, common.ErrNoObjectsToImport):
+		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, res.Err)
+	case errors.Is(res.Err, common.ErrCancel):
+		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, res.Err)
+	case errors.Is(res.Err, common.ErrLimitExceeded):
+		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, res.Err)
+	case errors.Is(res.Err, common.ErrFileLoad):
+		return response(pb.RpcObjectImportResponseError_FILE_LOAD_ERROR, res.Err)
+	default:
+		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, res.Err)
+	}
 }
 
 func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {

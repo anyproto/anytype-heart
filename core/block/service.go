@@ -124,6 +124,7 @@ type builtinObjects interface {
 
 type templateService interface {
 	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (*state.State, error)
+	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *types.Struct) *state.State
 }
 
 type openedObjects struct {

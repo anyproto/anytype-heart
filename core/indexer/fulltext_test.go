@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -53,7 +54,11 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 
 	fileStore := filestore.New()
 
+	ds, err := datastore.NewInMemory()
+	require.NoError(t, err)
+
 	testApp := &app.App{}
+	testApp.Register(ds)
 	testApp.Register(walletService)
 
 	testApp.Register(objectStore.FTSearch())

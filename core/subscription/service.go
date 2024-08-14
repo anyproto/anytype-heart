@@ -12,6 +12,7 @@ import (
 	mb2 "github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -118,6 +119,7 @@ type service struct {
 	ctxBuf *opCtx
 
 	subDebugger *subDebugger
+	arenaPool   *fastjson.ArenaPool
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -132,6 +134,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.ctxBuf = &opCtx{c: s.cache}
 	s.initDebugger()
+	s.arenaPool = &fastjson.ArenaPool{}
 	return
 }
 
@@ -184,7 +187,10 @@ func (s *service) Search(req SubscribeRequest) (*SubscribeResponse, error) {
 		Limit:   int(req.Limit),
 	}
 
-	f, err := database.NewFilters(q, s.objectStore)
+	arena := s.arenaPool.Get()
+	defer s.arenaPool.Put(arena)
+
+	f, err := database.NewFilters(q, s.objectStore, arena)
 	if err != nil {
 		return nil, fmt.Errorf("new database filters: %w", err)
 	}
@@ -392,7 +398,10 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 		Filters: req.Filters,
 	}
 
-	flt, err := database.NewFilters(q, s.objectStore)
+	arena := s.arenaPool.Get()
+	defer s.arenaPool.Put(arena)
+
+	flt, err := database.NewFilters(q, s.objectStore, arena)
 	if err != nil {
 		return nil, err
 	}
@@ -639,14 +648,11 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 	}
 
 	if len(typeUniqueKeys) > 0 {
-		nestedFiler, err := database.MakeFilter("",
-			&model.BlockContentDataviewFilter{
-				RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(typeUniqueKeys),
-			},
-			s.objectStore,
-		)
+		nestedFiler, err := database.MakeFilter("", &model.BlockContentDataviewFilter{
+			RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.StringList(typeUniqueKeys),
+		}, s.objectStore)
 		if err != nil {
 			return nil, fmt.Errorf("make nested filter: %w", err)
 		}
