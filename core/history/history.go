@@ -189,16 +189,16 @@ func (h *history) retrieveHeads(versionId string) []string {
 	return []string{versionId}
 }
 
-func (h *history) fillVersionData(c *objecttree.Change, curHeads map[string]struct{}, participantId string, data []*pb.RpcHistoryVersion) []*pb.RpcHistoryVersion {
-	curHeads[c.Id] = struct{}{}
-	for _, previousId := range c.PreviousIds {
+func (h *history) fillVersionData(change *objecttree.Change, curHeads map[string]struct{}, participantId string, data []*pb.RpcHistoryVersion) []*pb.RpcHistoryVersion {
+	curHeads[change.Id] = struct{}{}
+	for _, previousId := range change.PreviousIds {
 		delete(curHeads, previousId)
 	}
 	version := &pb.RpcHistoryVersion{
-		Id:          c.Id,
-		PreviousIds: c.PreviousIds,
+		Id:          change.Id,
+		PreviousIds: change.PreviousIds,
 		AuthorId:    participantId,
-		Time:        c.Timestamp,
+		Time:        change.Timestamp,
 	}
 	if len(curHeads) > 1 {
 		var combinedHeads string
