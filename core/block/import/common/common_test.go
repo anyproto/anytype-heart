@@ -87,7 +87,7 @@ func TestUpdateLinksToObjects(t *testing.T) {
 		oldToNew := map[string]string{rawCid: "newFileObjectId"}
 
 		// when
-		err = UpdateLinksToObjects(st, oldToNew, nil)
+		err = UpdateLinksToObjects(st, oldToNew)
 
 		// then
 		assert.Nil(t, err)
@@ -109,7 +109,7 @@ func TestUpdateLinksToObjects(t *testing.T) {
 		st := state.NewDoc("root", map[string]simple.Block{"test": simpleBlock, "root": rootSimpleBlock}).(*state.State)
 
 		// when
-		err := UpdateLinksToObjects(st, map[string]string{}, nil)
+		err := UpdateLinksToObjects(st, map[string]string{})
 
 		// then
 		assert.Nil(t, err)
@@ -135,7 +135,7 @@ func TestUpdateLinksToObjects(t *testing.T) {
 		st := state.NewDoc("root", map[string]simple.Block{"test": simpleBlock, "root": rootSimpleBlock}).(*state.State)
 
 		// when
-		err = UpdateLinksToObjects(st, map[string]string{}, nil)
+		err = UpdateLinksToObjects(st, map[string]string{})
 
 		// then
 		assert.Nil(t, err)
@@ -159,7 +159,7 @@ func TestUpdateLinksToObjects(t *testing.T) {
 		st := state.NewDoc("root", map[string]simple.Block{"test": simpleBlock, "root": rootSimpleBlock}).(*state.State)
 
 		// when
-		err := UpdateLinksToObjects(st, map[string]string{}, nil)
+		err := UpdateLinksToObjects(st, map[string]string{})
 
 		// then
 		assert.Nil(t, err)
