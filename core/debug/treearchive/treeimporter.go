@@ -44,7 +44,7 @@ func (m MarshalledJsonChange) MarshalJSON() ([]byte, error) {
 type TreeImporter interface {
 	ObjectTree() objecttree.ReadableObjectTree
 	State() (*state.State, error) // set fullStateChain to true to get full state chain, otherwise only the last state will be returned
-	Import(fromRoot bool, beforeId string) error
+	Import(beforeId string) error
 	Json() (TreeJson, error)
 	ChangeAt(idx int) (IdChange, error)
 }
@@ -83,7 +83,7 @@ func (t *treeImporter) State() (*state.State, error) {
 	return st, nil
 }
 
-func (t *treeImporter) Import(fullTree bool, beforeId string) (err error) {
+func (t *treeImporter) Import(beforeId string) (err error) {
 	aclList, err := list.BuildAclList(t.listStorage, list.NoOpAcceptorVerifier{})
 	if err != nil {
 		return
@@ -91,9 +91,8 @@ func (t *treeImporter) Import(fullTree bool, beforeId string) (err error) {
 	t.objectTree, err = objecttree.BuildNonVerifiableHistoryTree(objecttree.HistoryTreeParams{
 		TreeStorage:     t.treeStorage,
 		AclList:         aclList,
-		BeforeId:        beforeId,
+		Heads:           []string{beforeId},
 		IncludeBeforeId: true,
-		BuildFullTree:   fullTree,
 	})
 
 	return

@@ -1010,6 +1010,7 @@ func newFixture(t *testing.T, expectedChanges []*objecttree.Change, objectId, sp
 	history := &history{
 		objectStore:  objectstore.NewStoreFixture(t),
 		spaceService: spaceService,
+		heads:        map[string]string{},
 	}
 	return &historyFixture{
 		history:     history,
@@ -1035,6 +1036,7 @@ func newFixtureDiffVersions(t *testing.T,
 	history := &history{
 		objectStore:  objectstore.NewStoreFixture(t),
 		spaceService: spaceService,
+		heads:        map[string]string{},
 	}
 	return &historyFixture{
 		history:     history,
@@ -1050,8 +1052,8 @@ func configureTreeBuilder(treeBuilder *mock_objecttreebuilder.MockTreeBuilder,
 	spaceService *mock_space.MockService,
 ) {
 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-		BeforeId: currVersionId,
-		Include:  true,
+		Heads:   []string{currVersionId},
+		Include: true,
 	}).Return(&historyStub{
 		objectId: objectId,
 		changes:  expectedChanges,

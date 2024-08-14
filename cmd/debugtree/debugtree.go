@@ -51,7 +51,7 @@ func main() {
 
 	importer := treearchive.NewTreeImporter(archive.ListStorage(), archive.TreeStorage())
 	st = time.Now()
-	err = importer.Import(*fromRoot, "")
+	err = importer.Import("")
 	if err != nil {
 		log.Fatal("can't import the tree", err)
 	}
@@ -82,7 +82,7 @@ func main() {
 		}
 		fmt.Println("Change:")
 		fmt.Println(pbtypes.Sprint(ch.Model))
-		err = importer.Import(*fromRoot, ch.Id)
+		err = importer.Import(ch.Id)
 		if err != nil {
 			log.Fatal("can't import the tree before", ch.Id, err)
 		}

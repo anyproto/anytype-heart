@@ -1,11 +1,11 @@
 package history
 
 import (
-	"bytes"
 	"context"
 	"crypto/md5"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -40,7 +40,7 @@ const versionGroupInterval = time.Minute * 5
 var log = logging.Logger("anytype-mw-history")
 
 func New() History {
-	return new(history)
+	return &history{heads: make(map[string]string, 0)}
 }
 
 type History interface {
@@ -131,8 +131,8 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		return vers
 	}
 
-	curHeads := make(map[string]struct{})
 	for len(resp) < limit {
+		curHeads := make(map[string]struct{})
 		tree, _, e := h.treeWithId(id, lastVersionId, includeLastId)
 		if e != nil {
 			return nil, e
@@ -141,34 +141,7 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 
 		e = tree.IterateFrom(tree.Root().Id, source.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
 			participantId := domain.NewParticipantId(id.SpaceID, c.Identity.Account())
-			curHeads[c.Id] = struct{}{}
-			for _, previousId := range c.PreviousIds {
-				delete(curHeads, previousId)
-			}
-			version := &pb.RpcHistoryVersion{
-				Id:          c.Id,
-				PreviousIds: c.PreviousIds,
-				AuthorId:    participantId,
-				Time:        c.Timestamp,
-			}
-			if len(curHeads) > 1 {
-				var (
-					resultHead bytes.Buffer
-					count      int
-				)
-				for head := range curHeads {
-					resultHead.WriteString(head)
-					count++
-					if count != len(curHeads)-1 {
-						resultHead.WriteString(" ")
-					}
-				}
-				hash := md5.New()
-				hashSum := string(hash.Sum(resultHead.Bytes()))
-				h.heads[hashSum] = resultHead.String()
-				version.Id = hashSum
-			}
-			data = append(data, version)
+			data = h.fillVersionData(c, curHeads, participantId, data)
 			return true
 		})
 		if e != nil {
@@ -207,6 +180,37 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		resp = resp[:limit]
 	}
 	return
+}
+
+func (h *history) retrieveHeads(versionId string) []string {
+	if heads, ok := h.heads[versionId]; ok {
+		return strings.Split(heads, " ")
+	}
+	return []string{versionId}
+}
+
+func (h *history) fillVersionData(c *objecttree.Change, curHeads map[string]struct{}, participantId string, data []*pb.RpcHistoryVersion) []*pb.RpcHistoryVersion {
+	curHeads[c.Id] = struct{}{}
+	for _, previousId := range c.PreviousIds {
+		delete(curHeads, previousId)
+	}
+	version := &pb.RpcHistoryVersion{
+		Id:          c.Id,
+		PreviousIds: c.PreviousIds,
+		AuthorId:    participantId,
+		Time:        c.Timestamp,
+	}
+	if len(curHeads) > 1 {
+		var combinedHeads string
+		for head := range curHeads {
+			combinedHeads += head + " "
+		}
+		combinedHeads = strings.TrimSpace(combinedHeads)
+		hashSum := fmt.Sprintf("%x", md5.Sum([]byte(combinedHeads)))
+		h.heads[hashSum] = combinedHeads
+		version.Id = hashSum
+	}
+	return append(data, version)
 }
 
 func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.EventMessage, *model.ObjectView, error) {
@@ -484,14 +488,15 @@ func (h *history) SetVersion(id domain.FullID, versionId string) (err error) {
 	})
 }
 
-func (h *history) treeWithId(id domain.FullID, beforeId string, includeBeforeId bool) (ht objecttree.HistoryTree, sbt smartblock.SmartBlockType, err error) {
+func (h *history) treeWithId(id domain.FullID, versionId string, includeBeforeId bool) (ht objecttree.HistoryTree, sbt smartblock.SmartBlockType, err error) {
+	heads := h.retrieveHeads(versionId)
 	spc, err := h.spaceService.Get(context.Background(), id.SpaceID)
 	if err != nil {
 		return
 	}
 	ht, err = spc.TreeBuilder().BuildHistoryTree(context.Background(), id.ObjectID, objecttreebuilder.HistoryTreeOpts{
-		BeforeId: beforeId,
-		Include:  includeBeforeId,
+		Heads:   heads,
+		Include: includeBeforeId,
 	})
 	if err != nil {
 		return

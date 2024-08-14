@@ -187,7 +187,7 @@ func (d *debug) DumpTree(ctx context.Context, objectID string, path string, anon
 	if err != nil {
 		return
 	}
-	tree, err := spc.TreeBuilder().BuildHistoryTree(ctx, objectID, objecttreebuilder.HistoryTreeOpts{BuildFullTree: true})
+	tree, err := spc.TreeBuilder().BuildHistoryTree(ctx, objectID, objecttreebuilder.HistoryTreeOpts{})
 	if err != nil {
 		return
 	}
