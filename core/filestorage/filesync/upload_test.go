@@ -272,6 +272,7 @@ func TestUpload(t *testing.T) {
 func TestBlocksAvailabilityResponseMarshalUnmarshal(t *testing.T) {
 	resp := &blocksAvailabilityResponse{
 		bytesToUpload: 123,
+		bytesToBind:   234,
 		cidsToUpload: map[cid.Cid]struct{}{
 			cid.MustParse("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"): {},
 		},
