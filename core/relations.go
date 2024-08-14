@@ -53,7 +53,7 @@ func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb
 			return &pb.RpcRelationListRemoveOptionResponse{
 				Error: &pb.RpcRelationListRemoveOptionResponseError{
 					Code:        code,
-					Description: err.Error(),
+					Description: getErrorDescription(err),
 				},
 			}
 		}

@@ -21,7 +21,7 @@ func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistor
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcHistoryShowVersionResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 			return
 		} else {
 			res.ObjectView = obj
@@ -64,7 +64,7 @@ func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistor
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcHistoryGetVersionsResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 			return
 		} else {
 			res.Versions = vers
@@ -102,7 +102,7 @@ func (mw *Middleware) HistorySetVersion(cctx context.Context, req *pb.RpcHistory
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcHistorySetVersionResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 			return
 		}
 		return
@@ -132,7 +132,7 @@ func (mw *Middleware) HistoryDiffVersions(cctx context.Context, req *pb.RpcHisto
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcHistoryDiffVersionsResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 			return
 		}
 		return

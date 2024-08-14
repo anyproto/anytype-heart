@@ -10,7 +10,7 @@ func (mw *Middleware) LogSend(cctx context.Context, req *pb.RpcLogSendRequest) *
 	response := func(code pb.RpcLogSendResponseErrorCode, err error) *pb.RpcLogSendResponse {
 		m := &pb.RpcLogSendResponse{Error: &pb.RpcLogSendResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 
 		return m

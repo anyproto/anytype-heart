@@ -7,6 +7,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -23,6 +24,7 @@ type ObjectCreator interface {
 
 type TemplateStateCreator interface {
 	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (*state.State, error)
+	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *types.Struct) *state.State
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
@@ -80,6 +82,11 @@ func (bs *basic) prepareObjectState(
 	if err != nil {
 		return nil, fmt.Errorf("prepare target details: %w", err)
 	}
+
+	if req.ContextId == req.TemplateId {
+		return creator.CreateTemplateStateFromSmartBlock(bs, details), nil
+	}
+
 	return creator.CreateTemplateStateWithDetails(req.TemplateId, details)
 }
 
