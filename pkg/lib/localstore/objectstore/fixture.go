@@ -61,11 +61,6 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	err = oldStore.Init(testApp)
 	require.NoError(t, err)
 
-	t.Cleanup(func() {
-		err = fullText.Close(context.Background())
-		require.NoError(t, err)
-	})
-
 	ds := &dsObjectStore{
 		componentCtx:       ctx,
 		componentCtxCancel: cancel,
@@ -75,6 +70,11 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		repoPath:           walletService.RepoPath(),
 		oldStore:           oldStore,
 	}
+
+	t.Cleanup(func() {
+		_ = fullText.Close(context.Background())
+		_ = ds.Close(context.Background())
+	})
 
 	err = ds.Run(ctx)
 	require.NoError(t, err)

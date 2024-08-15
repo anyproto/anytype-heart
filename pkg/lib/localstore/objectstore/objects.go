@@ -47,6 +47,7 @@ type ObjectStore interface {
 
 	SubscribeForAll(callback func(rec database.Record))
 
+	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(q database.Query) (records []database.Record, err error)
 
 	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)

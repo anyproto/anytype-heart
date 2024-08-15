@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pb"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 var (
@@ -49,13 +49,13 @@ func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) error {
 
 	if _, err := os.Stat(destination); !os.IsNotExist(err) { // if already exist (in case of the previous fail moving)
 		if err := removeDirsRelativeToPath(destination, dirs); err != nil {
-			return errors.Join(ErrFailedToRemoveAccountData, oserror.TransformError(err))
+			return errors.Join(ErrFailedToRemoveAccountData, anyerror.CleanupError(err))
 		}
 	}
 
 	err := os.MkdirAll(destination, 0700)
 	if err != nil {
-		return errors.Join(ErrFailedToCreateLocalRepo, oserror.TransformError(err))
+		return errors.Join(ErrFailedToCreateLocalRepo, anyerror.CleanupError(err))
 	}
 
 	err = s.stop()
@@ -77,12 +77,12 @@ func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) error {
 	}
 
 	if err := removeDirsRelativeToPath(srcPath, dirs); err != nil {
-		return errors.Join(ErrFailedToRemoveAccountData, oserror.TransformError(err))
+		return errors.Join(ErrFailedToRemoveAccountData, anyerror.CleanupError(err))
 	}
 
 	if srcPath != conf.RepoPath { // remove root account dir, if move not from anytype source dir
 		if err := os.RemoveAll(srcPath); err != nil {
-			return errors.Join(ErrFailedToRemoveAccountData, oserror.TransformError(err))
+			return errors.Join(ErrFailedToRemoveAccountData, anyerror.CleanupError(err))
 		}
 	}
 	return nil

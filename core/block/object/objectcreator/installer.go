@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/samber/lo"
+	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
@@ -163,15 +164,6 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 		return nil, nil, fmt.Errorf("query deleted objects: %w", err)
 	}
 
-	archivedObjects, err := s.queryArchivedObjects(space, sourceObjectIDs)
-	if err != nil {
-		log.Errorf("query archived objects: %v", err)
-	}
-
-	deletedObjects = lo.UniqBy(append(deletedObjects, archivedObjects...), func(record database.Record) string {
-		return record.Details.GetString(bundle.RelationKeyId)
-	})
-
 	var (
 		ids     []string
 		objects []*domain.Details
@@ -277,48 +269,32 @@ func (s *service) prepareDetailsForInstallingObject(
 	return details, nil
 }
 
-func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs []string) (deletedObjects []database.Record, err error) {
-	deletedObjects, err = s.objectStore.Query(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeySourceObject.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.StringList(sourceObjectIDs),
+func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs []string) ([]database.Record, error) {
+	sourceList, err := pbtypes.ValueListWrapper(pbtypes.StringList(sourceObjectIDs))
+	if err != nil {
+		return nil, err
+	}
+	return s.objectStore.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterIn{
+			Key:   bundle.RelationKeySourceObject.String(),
+			Value: sourceList,
+		},
+		database.FilterEq{
+			Key:   bundle.RelationKeySpaceId.String(),
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: pbtypes.String(space.Id()),
+		},
+		database.FiltersOr{
+			database.FilterEq{
+				Key:   bundle.RelationKeyIsDeleted.String(),
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: pbtypes.Bool(true),
 			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(space.Id()),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Bool(true),
+			database.FilterEq{
+				Key:   bundle.RelationKeyIsArchived.String(),
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: pbtypes.Bool(true),
 			},
 		},
-	})
-	return
-}
-
-func (s *service) queryArchivedObjects(space clientspace.Space, sourceObjectIDs []string) (archivedObjects []database.Record, err error) {
-	archivedObjects, err = s.objectStore.Query(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeySourceObject.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.StringList(sourceObjectIDs),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(space.Id()),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Bool(true),
-			},
-		},
-	})
-	return
+	}}, 0, 0)
 }

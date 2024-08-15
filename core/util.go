@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 func (mw *Middleware) getResponseEvent(ctx session.Context) *pb.ResponseEvent {
@@ -47,7 +48,7 @@ func getErrorDescription(err error) string {
 	if err == nil {
 		return ""
 	}
-	return err.Error()
+	return anyerror.CleanupError(err).Error()
 }
 
 func filtersFromProto(filters []*model.BlockContentDataviewFilter) []database.FilterRequest {

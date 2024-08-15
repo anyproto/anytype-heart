@@ -17,7 +17,7 @@ func (mw *Middleware) ObjectListExport(cctx context.Context, req *pb.RpcObjectLi
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcObjectListExportResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 			return
 		} else {
 			res.Path = path

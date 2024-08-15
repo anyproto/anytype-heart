@@ -664,14 +664,11 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 	}
 
 	if len(typeUniqueKeys) > 0 {
-		nestedFiler, err := database.MakeFilter("",
-			database.FilterRequest{
-				RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.StringList(typeUniqueKeys),
-			},
-			s.objectStore,
-		)
+		nestedFiler, err := database.MakeFilter("", database.FilterRequest{
+			RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.StringList(typeUniqueKeys),
+		}, s.objectStore)
 		if err != nil {
 			return nil, fmt.Errorf("make nested filter: %w", err)
 		}

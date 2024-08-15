@@ -11,7 +11,6 @@ import (
 
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/google/uuid"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -461,17 +460,13 @@ func (p *Pb) shouldImportSnapshot(snapshot *common.Snapshot, needToImportWidgets
 
 func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot, allErrors *common.ConvertError, pathCount int) map[string]string {
 	oldToNewID := make(map[string]string, len(snapshots))
-	fileIDs := make([]string, 0)
 	for _, snapshot := range snapshots {
 		id := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyId)
 		oldToNewID[id] = snapshot.Id
-		fileIDs = append(fileIDs, lo.Map(snapshot.Snapshot.FileKeys, func(item *pb.ChangeFileKeys, index int) string {
-			return item.Hash
-		})...)
 	}
 	for _, snapshot := range snapshots {
 		st := state.NewDocFromSnapshot("", snapshot.Snapshot.ToProto(), state.WithUniqueKeyMigration(snapshot.Snapshot.SbType))
-		err := common.UpdateLinksToObjects(st.(*state.State), oldToNewID, fileIDs)
+		err := common.UpdateLinksToObjects(st.(*state.State), oldToNewID)
 		if err != nil {
 			allErrors.Add(err)
 			if allErrors.ShouldAbortImport(pathCount, model.Import_Pb) {
@@ -479,7 +474,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot, allErrors *commo
 			}
 			continue
 		}
-		common.UpdateObjectIDsInRelations(st.(*state.State), oldToNewID, fileIDs)
+		common.UpdateObjectIDsInRelations(st.(*state.State), oldToNewID)
 		// TODO Fix
 		// converter.UpdateObjectType(oldToNewID, st.(*state.State))
 		p.updateObjectsIDsInCollection(st.(*state.State), oldToNewID)

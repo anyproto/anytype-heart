@@ -80,7 +80,6 @@ func New(service BlockService,
 func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*domain.Details, string, error) {
 	snapshot := sn.Snapshot.Data
 	oldIDtoNew := dataObject.oldIDtoNew
-	fileIDs := dataObject.fileIDs
 	ctx := dataObject.ctx
 	origin := dataObject.origin
 	spaceID := dataObject.spaceID
@@ -104,9 +103,9 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 		oc.onFinish(err, st, filesToDelete)
 	}()
 
-	common.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
+	common.UpdateObjectIDsInRelations(st, oldIDtoNew)
 
-	if err = common.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
+	if err = common.UpdateLinksToObjects(st, oldIDtoNew); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
 	}
 

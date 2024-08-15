@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
@@ -53,16 +52,16 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 	return details
 }
 
-func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesIDs []string) error {
+func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string) error {
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		// TODO I think we should use some kind of iterator by object ids
 		switch block := bl.(type) {
 		case link.Block:
-			handleLinkBlock(oldIDtoNew, block, st, filesIDs)
+			handleLinkBlock(oldIDtoNew, block, st)
 		case bookmark.Block:
 			handleBookmarkBlock(oldIDtoNew, block, st)
 		case text.Block:
-			handleTextBlock(oldIDtoNew, block, st, filesIDs)
+			handleTextBlock(oldIDtoNew, block, st)
 		case dataview.Block:
 			handleDataviewBlock(block, oldIDtoNew, st)
 		case file.Block:
@@ -140,11 +139,9 @@ func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *s
 	st.Set(simple.New(block.Model()))
 }
 
-func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
+func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
 	targetBlockID := block.Model().GetLink().TargetBlockId
-	if lo.Contains(filesIDs, targetBlockID) {
-		return
-	}
+
 	newTarget := oldIDtoNew[targetBlockID]
 	if newTarget == "" {
 		if widget.IsPredefinedWidgetTargetId(targetBlockID) {
@@ -194,7 +191,7 @@ func isBundledObjects(targetObjectID string) bool {
 	return false
 }
 
-func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
+func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
 	if iconImage := block.Model().GetText().GetIconImage(); iconImage != "" {
 		newTarget := oldIDtoNew[iconImage]
 		if newTarget == "" {
@@ -211,9 +208,6 @@ func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 		if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
 			continue
 		}
-		if lo.Contains(filesIDs, mark.Param) {
-			return
-		}
 		if isBundledObjects(mark.Param) {
 			return
 		}
@@ -227,7 +221,7 @@ func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 	st.Set(simple.New(block.Model()))
 }
 
-func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, filesIDs []string) {
+func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string) {
 	rels := st.GetRelationLinks()
 	st.Details().Iterate(func(k domain.RelationKey, v domain.Value) bool {
 		relLink := rels.Get(string(k))
@@ -243,7 +237,7 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, f
 			return true
 		}
 		// For example, RelationKeySetOf is handled here
-		handleObjectRelation(st, oldIDtoNew, v, k, filesIDs)
+		handleObjectRelation(st, oldIDtoNew, v, k)
 		return true
 	})
 }
@@ -265,16 +259,13 @@ func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v domai
 		return
 	}
 	objectsIDs := v.StringList()
-	objectsIDs = getNewObjectsIDForRelation(objectsIDs, oldIDtoNew, filesIDs)
+	objectsIDs = getNewObjectsIDForRelation(objectsIDs, oldIDtoNew)
 	st.SetDetail(k, domain.StringList(objectsIDs))
 }
 
-func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]string, filesIDs []string) []string {
+func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]string) []string {
 	for i, val := range objectsIDs {
 		if val == "" {
-			continue
-		}
-		if lo.Contains(filesIDs, val) {
 			continue
 		}
 		newTarget := oldIDtoNew[val]

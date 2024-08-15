@@ -45,6 +45,7 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/text"
@@ -53,8 +54,14 @@ import (
 const CName = "export"
 
 const (
-	tempFileName   = "temp_anytype_backup"
-	spaceDirectory = "spaces"
+	tempFileName              = "temp_anytype_backup"
+	spaceDirectory            = "spaces"
+	typesDirectory            = "types"
+	objectsDirectory          = "objects"
+	relationsDirectory        = "relations"
+	relationsOptionsDirectory = "relationsOptions"
+	templatesDirectory        = "templates"
+	filesObjects              = "filesObjects"
 )
 
 var log = logging.Logger("anytype-mw-export")
@@ -119,12 +126,12 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	var wr writer
 	if req.Zip {
 		if wr, err = newZipWriter(req.Path, tempFileName); err != nil {
-			err = oserror.TransformError(err)
+			err = anyerror.CleanupError(err)
 			return
 		}
 	} else {
 		if wr, err = newDirWriter(req.Path, req.IncludeFiles); err != nil {
-			err = oserror.TransformError(err)
+			err = anyerror.CleanupError(err)
 			return
 		}
 	}
@@ -459,8 +466,8 @@ func (e *export) writeMultiDoc(ctx context.Context,
 	return
 }
 
-func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportRequest, wr writer, docInfo map[string]*domain.Details, queue process.Queue, docID string) (err error) {
-	return cache.Do(e.picker, docID, func(b sb.SmartBlock) error {
+func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportRequest, wr writer, docInfo map[string]*domain.Details, queue process.Queue, docId string) (err error) {
+	return cache.Do(e.picker, docId, func(b sb.SmartBlock) error {
 		st := b.NewState()
 		if st.CombinedDetails().GetBool(bundle.RelationKeyIsDeleted) {
 			return nil
@@ -489,12 +496,13 @@ func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportReques
 		}
 		conv.SetKnownDocs(docInfo)
 		result := conv.Convert(b.Type().ToProto())
-		filename := e.provideFileName(docID, req.SpaceId, conv, st)
+		var filename string
 		if req.Format == model.Export_Markdown {
-			filename = e.provideMarkdownName(st, wr, docID, conv, req.SpaceId)
-		}
-		if docID == b.Space().DerivedIDs().Home {
+			filename = e.makeMarkdownName(st, wr, docId, conv, req.SpaceId)
+		} else if docId == b.Space().DerivedIDs().Home {
 			filename = "index" + conv.Ext()
+		} else {
+			filename = e.makeFileName(docId, req.SpaceId, conv, st, b.Type())
 		}
 		lastModifiedDate := st.LocalDetails().GetInt64(bundle.RelationKeyLastModifiedDate)
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
@@ -504,12 +512,13 @@ func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportReques
 	})
 }
 
-func (e *export) provideMarkdownName(s *state.State, wr writer, docID string, conv converter.Converter, spaceId string) string {
+func (e *export) makeMarkdownName(s *state.State, wr writer, docID string, conv converter.Converter, spaceId string) string {
 	name := s.Details().GetString(bundle.RelationKeyName)
 	if name == "" {
 		name = s.Snippet()
 	}
 	path := ""
+	// space can be empty in case user want to export all spaces
 	if spaceId == "" {
 		spaceId := s.LocalDetails().GetString(bundle.RelationKeySpaceId)
 		path = filepath.Join(spaceDirectory, spaceId)
@@ -517,13 +526,32 @@ func (e *export) provideMarkdownName(s *state.State, wr writer, docID string, co
 	return wr.Namer().Get(path, docID, name, conv.Ext())
 }
 
-func (e *export) provideFileName(docID, spaceId string, conv converter.Converter, st *state.State) string {
-	filename := docID + conv.Ext()
+func (e *export) makeFileName(docId, spaceId string, conv converter.Converter, st *state.State, blockType smartblock.SmartBlockType) string {
+	dir := e.provideFileDirectory(blockType)
+	filename := filepath.Join(dir, docId+conv.Ext())
+	// space can be empty in case user want to export all spaces
 	if spaceId == "" {
 		spaceId := st.LocalDetails().GetString(bundle.RelationKeySpaceId)
 		filename = filepath.Join(spaceDirectory, spaceId, filename)
 	}
 	return filename
+}
+
+func (e *export) provideFileDirectory(blockType smartblock.SmartBlockType) string {
+	switch blockType {
+	case smartblock.SmartBlockTypeRelation:
+		return relationsDirectory
+	case smartblock.SmartBlockTypeRelationOption:
+		return relationsOptionsDirectory
+	case smartblock.SmartBlockTypeObjectType:
+		return typesDirectory
+	case smartblock.SmartBlockTypeTemplate:
+		return templatesDirectory
+	case smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeFileObject:
+		return filesObjects
+	default:
+		return objectsDirectory
+	}
 }
 
 func (e *export) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlock, exportAllSpaces bool) (fileName string, err error) {

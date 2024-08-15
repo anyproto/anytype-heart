@@ -31,16 +31,20 @@ func TestImportFileFromRelation(t *testing.T) {
 	})
 
 	importerService := getService[importer.Importer](app)
-	res := importerService.Import(ctx, &pb.RpcObjectImportRequest{
-		SpaceId: app.personalSpaceId(),
-		Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
-		Type:    model.Import_Pb,
-		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
-			PbParams: &pb.RpcObjectImportRequestPbParams{
-				Path: []string{"./testdata/import/object with file relation/"},
+	res := importerService.Import(ctx, &importer.ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			SpaceId: app.personalSpaceId(),
+			Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
+			Type:    model.Import_Pb,
+			Params: &pb.RpcObjectImportRequestParamsOfPbParams{
+				PbParams: &pb.RpcObjectImportRequestPbParams{
+					Path: []string{"./testdata/import/object with file relation/"},
+				},
 			},
 		},
-	}, objectorigin.Import(model.Import_Pb), nil)
+		Origin: objectorigin.Import(model.Import_Pb),
+		IsSync: true,
+	})
 	require.NoError(t, res.Err)
 
 	app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
@@ -86,16 +90,20 @@ func testImportFileFromMarkdown(t *testing.T, path string) {
 	})
 
 	importerService := getService[importer.Importer](app)
-	res := importerService.Import(ctx, &pb.RpcObjectImportRequest{
-		SpaceId: app.personalSpaceId(),
-		Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
-		Type:    model.Import_Markdown,
-		Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
-			MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{
-				Path: []string{path},
+	res := importerService.Import(ctx, &importer.ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			SpaceId: app.personalSpaceId(),
+			Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
+			Type:    model.Import_Markdown,
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{
+					Path: []string{path},
+				},
 			},
 		},
-	}, objectorigin.Import(model.Import_Markdown), nil)
+		Origin: objectorigin.Import(model.Import_Markdown),
+		IsSync: true,
+	})
 	require.NoError(t, res.Err)
 
 	app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
@@ -123,16 +131,20 @@ func testImportObjectWithFileBlock(t *testing.T, path string) {
 	})
 
 	importerService := getService[importer.Importer](app)
-	res := importerService.Import(ctx, &pb.RpcObjectImportRequest{
-		SpaceId: app.personalSpaceId(),
-		Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
-		Type:    model.Import_Pb,
-		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
-			PbParams: &pb.RpcObjectImportRequestPbParams{
-				Path: []string{path},
+	res := importerService.Import(ctx, &importer.ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			SpaceId: app.personalSpaceId(),
+			Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
+			Type:    model.Import_Pb,
+			Params: &pb.RpcObjectImportRequestParamsOfPbParams{
+				PbParams: &pb.RpcObjectImportRequestPbParams{
+					Path: []string{path},
+				},
 			},
 		},
-	}, objectorigin.Import(model.Import_Pb), nil)
+		Origin: objectorigin.Import(model.Import_Pb),
+		IsSync: true,
+	})
 	require.NoError(t, res.Err)
 
 	app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
