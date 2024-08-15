@@ -114,5 +114,5 @@ func (r *rpcHandler) HeadSync(ctx context.Context, req *spacesyncproto.HeadSyncR
 }
 
 func (r *rpcHandler) ObjectSyncStream(stream spacesyncproto.DRPCSpaceSync_ObjectSyncStreamStream) error {
-	return r.s.streamPool.ReadStream(stream)
+	return r.s.streamPool.ReadStream(stream, 300)
 }

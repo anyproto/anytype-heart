@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
-	"github.com/anyproto/any-sync/commonspace/globalsync"
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
 	"github.com/anyproto/any-sync/metric"
 	"github.com/anyproto/any-sync/net/peerservice"
@@ -26,6 +25,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/any-sync/util/syncqueues"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
@@ -217,7 +217,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
-		Register(globalsync.New()).
+		Register(syncqueues.New()).
 		Register(peerstore.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).

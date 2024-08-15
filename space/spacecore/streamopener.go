@@ -40,7 +40,7 @@ func (s *streamOpener) Name() (name string) {
 	return streamhandler.CName
 }
 
-func (s *streamOpener) OpenStream(ctx context.Context, p peer.Peer) (stream drpc.Stream, tags []string, err error) {
+func (s *streamOpener) OpenStream(ctx context.Context, p peer.Peer) (stream drpc.Stream, tags []string, queueSize int, err error) {
 	spaceIds := s.spaceCore.getOpenedSpaceIds()
 	conn, err := p.AcquireDrpcConn(ctx)
 	if err != nil {
@@ -66,7 +66,7 @@ func (s *streamOpener) OpenStream(ctx context.Context, p peer.Peer) (stream drpc
 			return
 		}
 	}
-	return objectStream, nil, nil
+	return objectStream, nil, 300, nil
 }
 
 func (s *streamOpener) HandleMessage(peerCtx context.Context, peerId string, msg drpc.Message) (err error) {
