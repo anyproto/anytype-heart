@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 var log = logging.Logger("import")
@@ -16,7 +16,7 @@ var log = logging.Logger("import")
 func ExtractFileTimes(fileName string) (int64, int64) {
 	fileInfo, err := os.Stat(fileName)
 	if err != nil {
-		log.Warnf("failed to get file info from path: %s", oserror.TransformError(err))
+		log.Warnf("failed to get file info from path: %s", anyerror.CleanupError(err))
 		return 0, 0
 	}
 

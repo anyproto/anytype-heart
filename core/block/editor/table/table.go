@@ -11,11 +11,19 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/table"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.Logger("anytype-simple-tables")
 
 var ErrCannotMoveTableBlocks = fmt.Errorf("can not move table blocks")
+
+var (
+	errNotARow        = fmt.Errorf("block is not a row")
+	errNotAColumn     = fmt.Errorf("block is not a column")
+	errRowNotFound    = fmt.Errorf("row is not found")
+	errColumnNotFound = fmt.Errorf("column is not found")
+)
 
 type tableSorter struct {
 	rowIDs []string
@@ -47,11 +55,11 @@ func makeRow(id string) simple.Block {
 func getRow(s *state.State, id string) (simple.Block, error) {
 	b := s.Get(id)
 	if b == nil {
-		return nil, fmt.Errorf("row is not found")
+		return nil, errRowNotFound
 	}
 	_, ok := b.(table.RowBlock)
 	if !ok {
-		return nil, fmt.Errorf("block is not a row")
+		return nil, errNotARow
 	}
 	return b, nil
 }
@@ -59,21 +67,30 @@ func getRow(s *state.State, id string) (simple.Block, error) {
 func pickRow(s *state.State, id string) (simple.Block, error) {
 	b := s.Pick(id)
 	if b == nil {
-		return nil, fmt.Errorf("row is not found")
+		return nil, errRowNotFound
 	}
 	if b.Model().GetTableRow() == nil {
-		return nil, fmt.Errorf("block is not a row")
+		return nil, errNotARow
 	}
 	return b, nil
+}
+
+func makeColumn(id string) simple.Block {
+	return simple.New(&model.Block{
+		Id: id,
+		Content: &model.BlockContentOfTableColumn{
+			TableColumn: &model.BlockContentTableColumn{},
+		},
+	})
 }
 
 func pickColumn(s *state.State, id string) (simple.Block, error) {
 	b := s.Pick(id)
 	if b == nil {
-		return nil, fmt.Errorf("block is not found")
+		return nil, errColumnNotFound
 	}
 	if b.Model().GetTableColumn() == nil {
-		return nil, fmt.Errorf("block is not a column")
+		return nil, errNotAColumn
 	}
 	return b, nil
 }
@@ -259,6 +276,22 @@ func (tb Table) Iterate(f func(b simple.Block, pos CellPosition) bool) error {
 		}
 	}
 	return nil
+}
+
+func (tb Table) MoveBlocksUnderTheTable(ids ...string) {
+	parent := tb.s.GetParentOf(tb.block.Model().Id)
+	if parent == nil {
+		log.Errorf("failed to get parent of table block '%s'", tb.block.Model().Id)
+		return
+	}
+	children := parent.Model().ChildrenIds
+	pos := slice.FindPos(children, tb.block.Model().Id)
+	if pos == -1 {
+		log.Errorf("failed to find table block '%s' among children of block '%s'", tb.block.Model().Id, parent.Model().Id)
+		return
+	}
+	tb.s.RemoveFromCache(ids)
+	tb.s.SetChildrenIds(parent.Model(), slice.Insert(children, pos+1, ids...))
 }
 
 // CheckTableBlocksMove checks if Insert operation is allowed in case table blocks are affected

@@ -337,7 +337,7 @@ endif
 ### Tantivy Section
 
 REPO := anyproto/tantivy-go
-VERSION := go/v0.0.5
+VERSION := v0.0.7
 OUTPUT_DIR := deps/libs
 SHA_FILE = tantivity_sha256.txt
 
@@ -382,4 +382,4 @@ download-tantivy-all: download-tantivy
 
 download-tantivy-local:
 	@mkdir -p $(OUTPUT_DIR)
-	@cp -r $(TANTIVY_GO_PATH)/go/libs/ $(OUTPUT_DIR)
+	@cp -r $(TANTIVY_GO_PATH)/libs/ $(OUTPUT_DIR)

@@ -202,12 +202,12 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 	}
 	defer u.spaceSyncStatus.Refresh(syncStatusDetails.spaceId)
 	err = spc.DoLockedIfNotExists(objectId, func() error {
-		return u.objectStore.ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, error) {
+		return u.objectStore.ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, bool, error) {
 			if details == nil || details.Fields == nil {
 				details = &types.Struct{Fields: map[string]*types.Value{}}
 			}
 			if !u.isLayoutSuitableForSyncRelations(details) {
-				return details, nil
+				return details, false, nil
 			}
 			if fileStatus, ok := details.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
 				status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus.GetNumberValue())))
@@ -215,7 +215,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			details.Fields[bundle.RelationKeySyncStatus.String()] = pbtypes.Int64(int64(status))
 			details.Fields[bundle.RelationKeySyncError.String()] = pbtypes.Int64(int64(syncError))
 			details.Fields[bundle.RelationKeySyncDate.String()] = pbtypes.Int64(time.Now().Unix())
-			return details, nil
+			return details, true, nil
 		})
 	})
 	if err == nil {

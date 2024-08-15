@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/dgraph-io/badger/v4"
+	anystore "github.com/anyproto/any-store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -128,7 +128,7 @@ func TestInjectActiveView(t *testing.T) {
 		fx := newFixture(t)
 		fx.store.EXPECT().GetActiveViews(mock.Anything).RunAndReturn(func(id string) (map[string]string, error) {
 			assert.Equal(t, objId, id)
-			return nil, badger.ErrKeyNotFound
+			return nil, anystore.ErrDocNotFound
 		})
 		info := getInfo()
 
