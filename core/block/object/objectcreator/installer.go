@@ -135,12 +135,12 @@ func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds 
 	existingObjects, err := s.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeySourceObject.String(),
+				RelationKey: bundle.RelationKeySourceObject,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       domain.StringList(sourceObjectIds),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(space.Id()),
 			},
@@ -275,22 +275,22 @@ func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs [
 
 	return s.objectStore.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
 		database.FilterIn{
-			Key:   bundle.RelationKeySourceObject.String(),
+			Key:   bundle.RelationKeySourceObject,
 			Value: sourceList,
 		},
 		database.FilterEq{
-			Key:   bundle.RelationKeySpaceId.String(),
+			Key:   bundle.RelationKeySpaceId,
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: domain.String(space.Id()),
 		},
 		database.FiltersOr{
 			database.FilterEq{
-				Key:   bundle.RelationKeyIsDeleted.String(),
+				Key:   bundle.RelationKeyIsDeleted,
 				Cond:  model.BlockContentDataviewFilter_Equal,
 				Value: domain.Bool(true),
 			},
 			database.FilterEq{
-				Key:   bundle.RelationKeyIsArchived.String(),
+				Key:   bundle.RelationKeyIsArchived,
 				Cond:  model.BlockContentDataviewFilter_Equal,
 				Value: domain.Bool(true),
 			},

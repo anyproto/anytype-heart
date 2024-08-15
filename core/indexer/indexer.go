@@ -115,12 +115,12 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	ids, _, err := i.store.QueryObjectIDs(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(spaceId),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(model.ObjectType_participant),
 			},

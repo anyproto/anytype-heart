@@ -110,11 +110,11 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 		records, err := s.objectStore.Query(database.Query{
 			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyFileId.String(),
+					RelationKey: bundle.RelationKeyFileId,
 					Condition:   model.BlockContentDataviewFilter_NotEmpty,
 				},
 				{
-					RelationKey: bundle.RelationKeyFileBackupStatus.String(),
+					RelationKey: bundle.RelationKeyFileBackupStatus,
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       domain.Int64(filesyncstatus.Synced),
 				},
@@ -145,12 +145,12 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 	records, err := s.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(spaceId),
 			},
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 		},
@@ -186,12 +186,12 @@ func (s *service) offloadFileSafe(ctx context.Context,
 	existingObjects, err := s.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(fileId),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.String(spaceId),
 			},

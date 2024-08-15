@@ -97,7 +97,7 @@ func (ind *indexer) initQuery() {
 	ind.query = database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: domain.Int64List(
 					model.ObjectType_file,
@@ -107,11 +107,11 @@ func (ind *indexer) initQuery() {
 				),
 			},
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 			{
-				RelationKey: bundle.RelationKeyFileIndexingStatus.String(),
+				RelationKey: bundle.RelationKeyFileIndexingStatus,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.Int64(int64(model.FileIndexingStatus_Indexed)),
 			},

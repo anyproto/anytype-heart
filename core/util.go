@@ -57,7 +57,7 @@ func filtersFromProto(filters []*model.BlockContentDataviewFilter) []database.Fi
 		res = append(res, database.FilterRequest{
 			Id:               f.Id,
 			Operator:         f.Operator,
-			RelationKey:      f.RelationKey,
+			RelationKey:      domain.RelationKey(f.RelationKey),
 			RelationProperty: f.RelationProperty,
 			Condition:        f.Condition,
 			Value:            domain.ValueFromProto(f.Value),
@@ -77,7 +77,7 @@ func sortsFromProto(sorts []*model.BlockContentDataviewSort) []database.SortRequ
 			custom = append(custom, domain.ValueFromProto(item))
 		}
 		res = append(res, database.SortRequest{
-			RelationKey:    s.RelationKey,
+			RelationKey:    domain.RelationKey(s.RelationKey),
 			Type:           s.Type,
 			CustomOrder:    custom,
 			Format:         s.Format,

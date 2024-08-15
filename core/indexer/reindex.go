@@ -232,12 +232,12 @@ func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
 	recs, err := i.store.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				RelationKey: bundle.RelationKeyIsDeleted,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Bool(true),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Empty,
 			},
 		},
@@ -269,12 +269,12 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 	ids, _, err := i.store.QueryObjectIDs(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(spaceId),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: domain.Int64List(
 					model.ObjectType_file,
@@ -284,7 +284,7 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 				),
 			},
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_Empty,
 			},
 		},
@@ -335,7 +335,7 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 		existing, _, err := i.store.QueryObjectIDs(database.Query{
 			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyType.String(),
+					RelationKey: bundle.RelationKeyType,
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       domain.String(bundle.TypeKeyTemplate.BundledURL()),
 				},

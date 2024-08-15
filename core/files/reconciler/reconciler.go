@@ -179,11 +179,11 @@ func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
 	records, err := r.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				RelationKey: bundle.RelationKeyIsDeleted,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.Bool(true),
 			},

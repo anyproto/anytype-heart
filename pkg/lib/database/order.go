@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	time_util "github.com/anyproto/anytype-heart/util/time"
+	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
 type Order interface {
@@ -51,7 +51,7 @@ func (so SetOrder) AnystoreSort() query.Sort {
 
 type KeyOrder struct {
 	SpaceID        string
-	Key            string
+	Key            domain.RelationKey
 	Type           model.BlockContentDataviewSortType
 	EmptyPlacement model.BlockContentDataviewSortEmptyType
 	relationFormat model.RelationFormat
@@ -71,8 +71,8 @@ func (ko *KeyOrder) ensureCollator() {
 }
 
 func (ko *KeyOrder) Compare(a, b *domain.Details) int {
-	av := a.Get(domain.RelationKey(ko.Key))
-	bv := b.Get(domain.RelationKey(ko.Key))
+	av := a.Get(ko.Key)
+	bv := b.Get(ko.Key)
 
 	av, bv = ko.tryExtractSnippet(a, b, av, bv)
 	av, bv = ko.tryExtractDateTime(av, bv)
@@ -131,11 +131,11 @@ func (ko *KeyOrder) tagStatusSort() query.Sort {
 		ko.Options = make(map[string]string)
 	}
 	if len(ko.Options) == 0 && ko.Store != nil {
-		ko.Options = optionsToMap(ko.SpaceID, domain.RelationKey(ko.Key), ko.Store)
+		ko.Options = optionsToMap(ko.SpaceID, ko.Key, ko.Store)
 	}
 	return tagStatusSort{
 		arena:       ko.arena,
-		relationKey: ko.Key,
+		relationKey: string(ko.Key),
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
 		idToName:    ko.Options,
@@ -145,7 +145,7 @@ func (ko *KeyOrder) tagStatusSort() query.Sort {
 func (ko *KeyOrder) emptyPlacementSort(valType fastjson.Type) query.Sort {
 	return emptyPlacementSort{
 		arena:       ko.arena,
-		relationKey: ko.Key,
+		relationKey: string(ko.Key),
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
 		valType:     valType,
@@ -155,7 +155,7 @@ func (ko *KeyOrder) emptyPlacementSort(valType fastjson.Type) query.Sort {
 func (ko *KeyOrder) dateOnlySort() query.Sort {
 	return dateOnlySort{
 		arena:       ko.arena,
-		relationKey: ko.Key,
+		relationKey: string(ko.Key),
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
 	}
@@ -167,7 +167,7 @@ func (ko *KeyOrder) textSort() query.Sort {
 		arena:          ko.arena,
 		collator:       ko.collator,
 		collatorBuffer: ko.collatorBuffer,
-		relationKey:    ko.Key,
+		relationKey:    string(ko.Key),
 		reverse:        ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:          ko.EmptyPlacement,
 	}
@@ -238,10 +238,10 @@ func (ko *KeyOrder) tryExtractTag(av domain.Value, bv domain.Value) (domain.Valu
 func (ko *KeyOrder) tryExtractDateTime(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
 	if ko.relationFormat == model.RelationFormat_date && !ko.IncludeTime {
 		if v, ok := av.TryFloat64(); ok {
-			av = domain.Int64(time_util.CutToDay(time.Unix(int64(v), 0)).Unix())
+			av = domain.Int64(timeutil.CutToDay(time.Unix(int64(v), 0)).Unix())
 		}
 		if v, ok := bv.TryFloat64(); ok {
-			bv = domain.Int64(time_util.CutToDay(time.Unix(int64(v), 0)).Unix())
+			bv = domain.Int64(timeutil.CutToDay(time.Unix(int64(v), 0)).Unix())
 		}
 	}
 	return av, bv
@@ -254,7 +254,7 @@ func (ko *KeyOrder) tryExtractSnippet(a *domain.Details, b *domain.Details, av d
 }
 
 func (ko *KeyOrder) trySubstituteSnippet(getter *domain.Details, value domain.Value) domain.Value {
-	if ko.Key == bundle.RelationKeyName.String() && getLayout(getter) == model.ObjectType_note {
+	if ko.Key == bundle.RelationKeyName && getLayout(getter) == model.ObjectType_note {
 		_, ok := getter.TryString(bundle.RelationKeyName)
 		if !ok {
 			return getter.Get(bundle.RelationKeySnippet)
@@ -274,7 +274,7 @@ func (ko *KeyOrder) GetOptionValue(value domain.Value) domain.Value {
 	}
 
 	if len(ko.Options) == 0 && ko.Store != nil {
-		ko.Options = optionsToMap(ko.SpaceID, domain.RelationKey(ko.Key), ko.Store)
+		ko.Options = optionsToMap(ko.SpaceID, ko.Key, ko.Store)
 	}
 
 	res := ""

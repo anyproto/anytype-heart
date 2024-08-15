@@ -640,7 +640,7 @@ func (s *Service) RemoveListOption(optionIds []string, checkInObjects bool) erro
 					Filters: []database.FilterRequest{
 						{
 							Condition:   model.BlockContentDataviewFilter_Equal,
-							RelationKey: relKey,
+							RelationKey: domain.RelationKey(relKey),
 							Value:       domain.String(id),
 						},
 					},

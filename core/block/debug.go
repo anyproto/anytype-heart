@@ -54,7 +54,7 @@ func (s *Service) debugListObjectsPerSpace(req *http.Request) ([]debugObject, er
 	ids, _, err := s.objectStore.QueryObjectIDs(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Value:       domain.String(spaceId),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},

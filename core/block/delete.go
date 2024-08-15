@@ -95,12 +95,12 @@ func (s *Service) deleteRelationOptions(relationKey string) error {
 	relationOptions, _, err := s.objectStore.QueryObjectIDs(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(model.ObjectType_relationOption),
 			},
 			{
-				RelationKey: bundle.RelationKeyRelationKey.String(),
+				RelationKey: bundle.RelationKeyRelationKey,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(relationKey),
 			},

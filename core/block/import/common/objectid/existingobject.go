@@ -48,12 +48,12 @@ func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snap
 		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
+				RelationKey: bundle.RelationKeyOldAnytypeID,
 				Value:       domain.String(oldAnytypeID),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Value:       domain.String(spaceID),
 			},
 		},
@@ -67,12 +67,12 @@ func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snap
 		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				RelationKey: bundle.RelationKeyUniqueKey,
 				Value:       domain.String(oldAnytypeID), // Old id equals to unique key
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Value:       domain.String(spaceID),
 			},
 		},
@@ -90,12 +90,12 @@ func (e *existingObject) getExistingObject(spaceID string, sn *common.Snapshot) 
 		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySourceFilePath.String(),
+				RelationKey: bundle.RelationKeySourceFilePath,
 				Value:       domain.String(source),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Value:       domain.String(spaceID),
 			},
 		},
@@ -113,17 +113,17 @@ func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot) st
 		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyName.String(),
+				RelationKey: bundle.RelationKeyName,
 				Value:       domain.String(name),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyRelationKey.String(),
+				RelationKey: bundle.RelationKeyRelationKey,
 				Value:       domain.String(key),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyType.String(),
+				RelationKey: bundle.RelationKeyType,
 				Value:       domain.String(bundle.TypeKeyRelationOption.URL()),
 			},
 		},

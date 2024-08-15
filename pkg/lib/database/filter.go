@@ -56,8 +56,8 @@ func MakeFilter(spaceId string, protoFilter FilterRequest, store ObjectStore) (F
 	return nil, fmt.Errorf("unsupported filter operator %v", protoFilter.Operator)
 }
 
-func NestedRelationKey(baseRelationKey domain.RelationKey, nestedRelationKey domain.RelationKey) string {
-	return fmt.Sprintf("%s.%s", baseRelationKey.String(), nestedRelationKey.String())
+func NestedRelationKey(baseRelationKey domain.RelationKey, nestedRelationKey domain.RelationKey) domain.RelationKey {
+	return baseRelationKey + "." + nestedRelationKey
 }
 
 func makeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Filter, error) {
@@ -84,7 +84,7 @@ func makeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Fil
 }
 
 func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store ObjectStore) (Filter, error) {
-	parts := strings.SplitN(rawFilter.RelationKey, ".", 2)
+	parts := strings.SplitN(string(rawFilter.RelationKey), ".", 2)
 	if len(parts) == 2 {
 		return makeFilterNestedIn(spaceID, rawFilter, store, domain.RelationKey(parts[0]), domain.RelationKey(parts[1]))
 	}
@@ -382,13 +382,13 @@ func negateFilter(filter query.Filter) query.Filter {
 }
 
 type FilterEq struct {
-	Key   string
+	Key   domain.RelationKey
 	Cond  model.BlockContentDataviewFilterCondition
 	Value domain.Value
 }
 
 func (e FilterEq) AnystoreFilter() query.Filter {
-	path := []string{e.Key}
+	path := []string{string(e.Key)}
 	var op query.CompOp
 	switch e.Cond {
 	case model.BlockContentDataviewFilter_Equal:
@@ -464,12 +464,12 @@ func (e FilterEq) filterObject(v domain.Value) bool {
 
 // any
 type FilterIn struct {
-	Key   string
+	Key   domain.RelationKey
 	Value []domain.Value
 }
 
 func (i FilterIn) FilterObject(g *domain.Details) bool {
-	val := g.Get(domain.RelationKey(i.Key))
+	val := g.Get(i.Key)
 	for _, v := range i.Value {
 		eq := FilterEq{Value: v, Cond: model.BlockContentDataviewFilter_Equal}
 		if eq.filterObject(val) {
@@ -480,7 +480,7 @@ func (i FilterIn) FilterObject(g *domain.Details) bool {
 }
 
 func (i FilterIn) AnystoreFilter() query.Filter {
-	path := []string{i.Key}
+	path := []string{string(i.Key)}
 	conds := make([]query.Filter, 0, len(i.Value))
 	for _, v := range i.Value {
 		conds = append(conds, query.Key{
@@ -492,12 +492,12 @@ func (i FilterIn) AnystoreFilter() query.Filter {
 }
 
 type FilterLike struct {
-	Key   string
+	Key   domain.RelationKey
 	Value string
 }
 
 func (l FilterLike) FilterObject(g *domain.Details) bool {
-	val, ok := g.TryString(domain.RelationKey(l.Key))
+	val, ok := g.TryString(l.Key)
 	if !ok {
 		return false
 	}
@@ -510,7 +510,7 @@ func (l FilterLike) AnystoreFilter() query.Filter {
 		log.Errorf("failed to build anystore LIKE filter: %v", err)
 	}
 	return query.Key{
-		Path: []string{l.Key},
+		Path: []string{string(l.Key)},
 		Filter: query.Regexp{
 			Regexp: re,
 		},
@@ -718,7 +718,7 @@ var _ WithNestedFilter = &FilterNestedIn{}
 
 func makeFilterNestedIn(spaceID string, rawFilter FilterRequest, store ObjectStore, relationKey domain.RelationKey, nestedRelationKey domain.RelationKey) (Filter, error) {
 	rawNestedFilter := rawFilter
-	rawNestedFilter.RelationKey = string(nestedRelationKey)
+	rawNestedFilter.RelationKey = nestedRelationKey
 	nestedFilter, err := MakeFilter(spaceID, rawNestedFilter, store)
 	if err != nil {
 		return nil, fmt.Errorf("make nested filter %s -> %s: %w", relationKey, nestedRelationKey, err)

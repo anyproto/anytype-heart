@@ -263,17 +263,17 @@ func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested 
 	res, err := e.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyId.String(),
+				RelationKey: bundle.RelationKeyId,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       domain.StringList(reqIds),
 			},
 			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
+				RelationKey: bundle.RelationKeyIsArchived,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Bool(false),
 			},
 			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				RelationKey: bundle.RelationKeyIsDeleted,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Bool(false),
 			},
@@ -875,17 +875,17 @@ func (e *export) getRelation(key string) (*database.Record, error) {
 	relation, err := e.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				RelationKey: bundle.RelationKeyUniqueKey,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(uniqueKey.Marshal()),
 			},
 			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
+				RelationKey: bundle.RelationKeyIsArchived,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Bool(false),
 			},
 			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				RelationKey: bundle.RelationKeyIsDeleted,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Bool(false),
 			},
@@ -927,22 +927,22 @@ func (e *export) getRelationOptions(relationKey string) ([]database.Record, erro
 	relationOptionsDetails, err := e.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(model.ObjectType_relationOption)),
 			},
 			{
-				RelationKey: bundle.RelationKeyRelationKey.String(),
+				RelationKey: bundle.RelationKeyRelationKey,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(relationKey),
 			},
 			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
+				RelationKey: bundle.RelationKeyIsArchived,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Bool(false),
 			},
 			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				RelationKey: bundle.RelationKeyIsDeleted,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Bool(false),
 			},
@@ -958,17 +958,17 @@ func (e *export) addTemplates(id string, derivedObjects []database.Record, types
 	templates, err := e.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				RelationKey: bundle.RelationKeyTargetObjectType,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(id),
 			},
 			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
+				RelationKey: bundle.RelationKeyIsArchived,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Bool(false),
 			},
 			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				RelationKey: bundle.RelationKeyIsDeleted,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Bool(false),
 			},
@@ -988,17 +988,17 @@ func (e *export) handleSetOfRelation(object *domain.Details, derivedObjects []da
 		types, err := e.objectStore.Query(database.Query{
 			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyId.String(),
+					RelationKey: bundle.RelationKeyId,
 					Condition:   model.BlockContentDataviewFilter_In,
 					Value:       domain.StringList(setOfList),
 				},
 				{
-					RelationKey: bundle.RelationKeyIsArchived.String(),
+					RelationKey: bundle.RelationKeyIsArchived,
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       domain.Bool(false),
 				},
 				{
-					RelationKey: bundle.RelationKeyIsDeleted.String(),
+					RelationKey: bundle.RelationKeyIsDeleted,
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       domain.Bool(false),
 				},

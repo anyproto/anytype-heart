@@ -78,17 +78,17 @@ func (d *derivedObject) isDeletedObject(spaceId string, uniqueKey string) bool {
 		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Value:       domain.String(spaceId),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				RelationKey: bundle.RelationKeyUniqueKey,
 				Value:       domain.String(uniqueKey),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				RelationKey: bundle.RelationKeyIsDeleted,
 				Value:       domain.Bool(true),
 			},
 		},

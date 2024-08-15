@@ -49,27 +49,27 @@ func (s *dsObjectStore) DeleteVirtualSpace(spaceID string) error {
 		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Value:       domain.String(spaceID),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
-				RelationKey: bundle.RelationKeyId.String(),
+				RelationKey: bundle.RelationKeyId,
 				Value:       domain.String(addr.BundledRelationURLPrefix),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
-				RelationKey: bundle.RelationKeyId.String(),
+				RelationKey: bundle.RelationKeyId,
 				Value:       domain.String(addr.BundledObjectTypeURLPrefix),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
-				RelationKey: bundle.RelationKeyId.String(),
+				RelationKey: bundle.RelationKeyId,
 				Value:       domain.String(addr.BundledTemplatesURLPrefix),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
-				RelationKey: bundle.RelationKeyId.String(),
+				RelationKey: bundle.RelationKeyId,
 				Value:       domain.String(addr.AnytypeProfileId),
 			},
 		},

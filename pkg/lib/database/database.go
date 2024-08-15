@@ -45,7 +45,7 @@ func (info *ObjectInfo) ToProto() *model.ObjectInfo {
 type FilterRequest struct {
 	Id               string
 	Operator         model.BlockContentDataviewFilterOperator
-	RelationKey      string
+	RelationKey      domain.RelationKey
 	RelationProperty string
 	Condition        model.BlockContentDataviewFilterCondition
 	Value            domain.Value
@@ -56,7 +56,7 @@ type FilterRequest struct {
 }
 
 type SortRequest struct {
-	RelationKey    string
+	RelationKey    domain.RelationKey
 	Type           model.BlockContentDataviewSortType
 	CustomOrder    []domain.Value
 	Format         model.RelationFormat
@@ -102,14 +102,14 @@ func addDefaultFiltersToNested(filters []FilterRequest, hasArchivedFilter, hasDe
 func addDefaultFilters(filters []FilterRequest, hasArchivedFilter, hasDeletedFilter, hasTypeFilter bool) []FilterRequest {
 	if !hasArchivedFilter {
 		filters = append(filters, FilterRequest{
-			RelationKey: bundle.RelationKeyIsArchived.String(),
+			RelationKey: bundle.RelationKeyIsArchived,
 			Condition:   model.BlockContentDataviewFilter_NotEqual,
 			Value:       domain.Bool(true),
 		})
 	}
 	if !hasDeletedFilter {
 		filters = append(filters, FilterRequest{
-			RelationKey: bundle.RelationKeyIsDeleted.String(),
+			RelationKey: bundle.RelationKeyIsDeleted,
 			Condition:   model.BlockContentDataviewFilter_NotEqual,
 			Value:       domain.Bool(true),
 		})
@@ -117,7 +117,7 @@ func addDefaultFilters(filters []FilterRequest, hasArchivedFilter, hasDeletedFil
 	if !hasTypeFilter {
 		// temporarily exclude Space objects from search if we don't have explicit type filter
 		filters = append(filters, FilterRequest{
-			RelationKey: bundle.RelationKeyType.String(),
+			RelationKey: bundle.RelationKeyType,
 			Condition:   model.BlockContentDataviewFilter_NotIn,
 			Value:       domain.Int64(model.ObjectType_space),
 		})
@@ -139,15 +139,15 @@ func hasDefaultFilters(filters []FilterRequest) (bool, bool, bool) {
 			return hasDefaultFilters(filters[0].NestedFilters)
 		}
 		// include archived objects if we have explicit filter about it
-		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
+		if filter.RelationKey == bundle.RelationKeyIsArchived {
 			hasArchivedFilter = true
 		}
 
-		if filter.RelationKey == bundle.RelationKeyLayout.String() {
+		if filter.RelationKey == bundle.RelationKeyLayout {
 			hasTypeFilter = true
 		}
 
-		if filter.RelationKey == bundle.RelationKeyIsDeleted.String() {
+		if filter.RelationKey == bundle.RelationKeyIsDeleted {
 			hasDeletedFilter = true
 		}
 	}
@@ -207,7 +207,7 @@ type queryBuilder struct {
 
 func getSpaceIDFromFilters(filters []FilterRequest) string {
 	for _, f := range filters {
-		if f.RelationKey == bundle.RelationKeySpaceId.String() {
+		if f.RelationKey == bundle.RelationKeySpaceId {
 			return f.Value.String()
 		}
 	}
@@ -218,7 +218,7 @@ func (b *queryBuilder) extractOrder(sorts []SortRequest) SetOrder {
 	if len(sorts) > 0 {
 		order := SetOrder{}
 		for _, sort := range sorts {
-			format, err := b.objectStore.GetRelationFormatByKey(domain.RelationKey(sort.RelationKey))
+			format, err := b.objectStore.GetRelationFormatByKey(sort.RelationKey)
 			if err != nil {
 				format = sort.Format
 			}
@@ -254,7 +254,7 @@ func (b *queryBuilder) appendCustomOrder(sort SortRequest, orders SetOrder, orde
 				idx++
 			}
 		}
-		orders = append(orders, newCustomOrder(b.arena, domain.RelationKey(sort.RelationKey), idsIndices, order))
+		orders = append(orders, newCustomOrder(b.arena, sort.RelationKey, idsIndices, order))
 	} else {
 		orders = append(orders, order)
 	}
@@ -300,19 +300,19 @@ func ListRelationOptions(store ObjectStore, spaceID string, relationKey domain.R
 	filters := []FilterRequest{
 		{
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeyRelationKey.String(),
+			RelationKey: bundle.RelationKeyRelationKey,
 			Value:       domain.String(string(relationKey)),
 		},
 		{
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeyLayout.String(),
+			RelationKey: bundle.RelationKeyLayout,
 			Value:       domain.Int64(model.ObjectType_relationOption),
 		},
 	}
 	if spaceID != "" {
 		filters = append(filters, FilterRequest{
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeySpaceId.String(),
+			RelationKey: bundle.RelationKeySpaceId,
 			Value:       domain.String(spaceID),
 		})
 	}

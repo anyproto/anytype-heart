@@ -102,12 +102,12 @@ func (s *service) installTemplatesForObjectType(spc clientspace.Space, typeKey d
 	bundledTemplates, err := s.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyType.String(),
+				RelationKey: bundle.RelationKeyType,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(bundle.TypeKeyTemplate.BundledURL()),
 			},
 			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				RelationKey: bundle.RelationKeyTargetObjectType,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(typeKey.BundledURL()),
 			},
@@ -148,17 +148,17 @@ func (s *service) listInstalledTemplatesForType(spc clientspace.Space, typeKey d
 	alreadyInstalledTemplates, err := s.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyType.String(),
+				RelationKey: bundle.RelationKeyType,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(templateTypeID),
 			},
 			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				RelationKey: bundle.RelationKeyTargetObjectType,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(targetObjectTypeID),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(spc.Id()),
 			},

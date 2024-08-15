@@ -68,12 +68,12 @@ func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string)
 	records, err := store.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       domain.Int64List(model.ObjectType_objectType, model.ObjectType_relation),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(spaceId),
 			},

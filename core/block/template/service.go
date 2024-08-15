@@ -293,7 +293,7 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 	docIds, _, err := s.store.QueryObjectIDs(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
+				RelationKey: bundle.RelationKeyIsArchived,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Bool(false),
 			},
@@ -304,7 +304,7 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 			},
 			// We don't want templates from marketplace
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.String(addr.AnytypeMarketplaceWorkspace),
 			},

@@ -161,11 +161,11 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 	records, err := s.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 			{
-				RelationKey: bundle.RelationKeyFileBackupStatus.String(),
+				RelationKey: bundle.RelationKeyFileBackupStatus,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.Int64(int64(filesyncstatus.Synced)),
 			},
@@ -323,12 +323,12 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 	recs, _, err := s.objectStore.QueryObjectIDs(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyId.String(),
+				RelationKey: bundle.RelationKeyId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(fileId.FileId.String()),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(fileId.SpaceId),
 			},
@@ -369,12 +369,12 @@ func (s *service) GetObjectIdByFileId(fileId domain.FullFileId) (string, error) 
 	records, err := s.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(fileId.FileId.String()),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(fileId.SpaceId),
 			},
@@ -393,12 +393,12 @@ func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *d
 	records, err := s.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(fileId.FileId.String()),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(fileId.SpaceId),
 			},
@@ -486,12 +486,12 @@ func (s *service) DeleteFileData(objectId string) error {
 	records, err := s.objectStore.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyId.String(),
+				RelationKey: bundle.RelationKeyId,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.String(objectId),
 			},
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(fullId.FileId.String()),
 			},

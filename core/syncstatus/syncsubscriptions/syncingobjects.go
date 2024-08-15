@@ -32,7 +32,7 @@ func (s *syncingObjects) Run() error {
 		Keys:              []string{bundle.RelationKeyId.String()},
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeySyncStatus.String(),
+				RelationKey: bundle.RelationKeySyncStatus,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: domain.Int64List(
 					int64(domain.SpaceSyncStatusSyncing),
@@ -41,7 +41,7 @@ func (s *syncingObjects) Run() error {
 				),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(s.spaceId),
 			},

@@ -77,17 +77,17 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 func listReadonlyTagAndStatusRelations(store dependencies.QueryableStore, spaceId string) ([]database.Record, error) {
 	return store.Query(database.Query{Filters: []database.FilterRequest{
 		{
-			RelationKey: bundle.RelationKeyRelationFormat.String(),
+			RelationKey: bundle.RelationKeyRelationFormat,
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value:       domain.Int64List(model.RelationFormat_status, model.RelationFormat_tag),
 		},
 		{
-			RelationKey: bundle.RelationKeySpaceId.String(),
+			RelationKey: bundle.RelationKeySpaceId,
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.String(spaceId),
 		},
 		{
-			RelationKey: bundle.RelationKeyRelationReadonlyValue.String(),
+			RelationKey: bundle.RelationKeyRelationReadonlyValue,
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.Bool(true),
 		},

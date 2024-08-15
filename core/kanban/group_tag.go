@@ -21,7 +21,7 @@ type GroupTag struct {
 
 func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 	spaceFilter := database.FilterEq{
-		Key:   bundle.RelationKeySpaceId.String(),
+		Key:   bundle.RelationKeySpaceId,
 		Cond:  model.BlockContentDataviewFilter_Equal,
 		Value: domain.String(spaceID),
 	}
@@ -38,12 +38,12 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 
 	relationOptionFilter := database.FiltersAnd{
 		database.FilterEq{
-			Key:   bundle.RelationKeyRelationKey.String(),
+			Key:   bundle.RelationKeyRelationKey,
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: domain.String(string(t.Key)),
 		},
 		database.FilterEq{
-			Key:   bundle.RelationKeyLayout.String(),
+			Key:   bundle.RelationKeyLayout,
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: domain.Int64(model.ObjectType_relationOption),
 		},

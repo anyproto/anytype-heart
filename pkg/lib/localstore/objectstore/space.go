@@ -15,12 +15,12 @@ func (d *dsObjectStore) GetSpaceName(spaceId string) string {
 	records, err := d.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyTargetSpaceId.String(),
+				RelationKey: bundle.RelationKeyTargetSpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(spaceId),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(model.ObjectType_spaceView)),
 			},

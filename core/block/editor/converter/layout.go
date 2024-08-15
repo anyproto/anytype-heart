@@ -303,7 +303,7 @@ func (c *layoutConverter) appendRelationFilters(relationIDs []string, filters []
 				return nil, fmt.Errorf("get relation by id %s: %w", relationID, err)
 			}
 			filters = append(filters, database.FilterRequest{
-				RelationKey: relation.Key,
+				RelationKey: domain.RelationKey(relation.Key),
 				Condition:   model.BlockContentDataviewFilter_Exists,
 			})
 		}
@@ -314,7 +314,7 @@ func (c *layoutConverter) appendRelationFilters(relationIDs []string, filters []
 func (c *layoutConverter) appendTypesFilter(types []string, filters []database.FilterRequest) []database.FilterRequest {
 	if len(types) != 0 {
 		filters = append(filters, database.FilterRequest{
-			RelationKey: bundle.RelationKeyType.String(),
+			RelationKey: bundle.RelationKeyType,
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value:       domain.StringList(types),
 		})

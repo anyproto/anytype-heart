@@ -423,11 +423,11 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 func getSpaceIdsFromFilter(fltr database.Filter) []string {
 	switch f := fltr.(type) {
 	case database.FilterEq:
-		if f.Key == bundle.RelationKeySpaceId.String() {
+		if f.Key == bundle.RelationKeySpaceId {
 			return []string{f.Value.String()}
 		}
 	case database.FilterIn:
-		if f.Key == bundle.RelationKeySpaceId.String() {
+		if f.Key == bundle.RelationKeySpaceId {
 			spaceIds := make([]string, 0, len(f.Value))
 			for _, v := range f.Value {
 				spaceIds = append(spaceIds, v.String())

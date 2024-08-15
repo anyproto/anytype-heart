@@ -460,12 +460,12 @@ func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string
 		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
+				RelationKey: bundle.RelationKeyOldAnytypeID,
 				Value:       domain.String(oldID),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Value:       domain.String(spaceID),
 			},
 		},

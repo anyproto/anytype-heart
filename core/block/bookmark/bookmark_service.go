@@ -128,18 +128,18 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 	records, err := s.store.Query(database.Query{
 		Sorts: []database.SortRequest{
 			{
-				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+				RelationKey: bundle.RelationKeyLastModifiedDate,
 				Type:        model.BlockContentDataviewSort_Desc,
 			},
 		},
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeySource.String(),
+				RelationKey: bundle.RelationKeySource,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(url),
 			},
 			{
-				RelationKey: bundle.RelationKeyType.String(),
+				RelationKey: bundle.RelationKeyType,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(typeId),
 			},
