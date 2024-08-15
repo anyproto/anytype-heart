@@ -14386,7 +14386,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
+| relationKey | [string](#string) |  |  |
 | add | [google.protobuf.Value](#google-protobuf-Value) |  |  |
 | set | [google.protobuf.Value](#google-protobuf-Value) |  |  |
 | remove | [google.protobuf.Value](#google-protobuf-Value) |  |  |

@@ -2423,7 +2423,7 @@ message Rpc {
                 repeated Operation operations = 2;
 
                 message Operation {
-                    string key = 1;
+                    string relationKey = 1;
                     google.protobuf.Value add = 2;
                     google.protobuf.Value set = 3;
                     google.protobuf.Value remove = 4;

@@ -646,11 +646,11 @@ func (s *Service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesReque
 			for _, op := range req.Operations {
 				if op.Set != nil {
 					// Set operation has higher priority than Add and Remove, because it modifies full value
-					current.Fields[op.Key] = op.Set
+					current.Fields[op.RelationKey] = op.Set
 					continue
 				}
-				pbtypes.AddValue(current, op.Key, op.Add)
-				pbtypes.RemoveValue(current, op.Key, op.Remove)
+				pbtypes.AddValue(current, op.RelationKey, op.Add)
+				pbtypes.RemoveValue(current, op.RelationKey, op.Remove)
 			}
 			return current, nil
 		})
