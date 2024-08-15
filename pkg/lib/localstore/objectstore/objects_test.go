@@ -16,33 +16,37 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	s := NewStoreFixture(t)
 	id := bson.NewObjectId()
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
-	err := s.UpdateObjectDetails(context2.Background(), id.String(), &types.Struct{
-		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): domain.Int64(4), "type": domain.String("_otp1")},
-	})
+	err := s.UpdateObjectDetails(context2.Background(), id.String(),
+		domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyLastOpenedDate: domain.Int64(4),
+			bundle.RelationKeyType:           domain.String("_otp1"),
+		}))
 	require.NoError(t, err)
 
 	recs, err := s.Query(database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
-	require.Equal(t, domain.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
+	require.Equal(t, domain.Int64(4), recs[0].Details.Get(bundle.RelationKeyLastOpenedDate))
 
-	err = s.UpdateObjectDetails(context2.Background(), id.String(), &types.Struct{
-		Fields: map[string]*types.Value{"k1": domain.String("1"), "k2": domain.String("2"), "type": domain.String("_otp1")},
-	})
+	err = s.UpdateObjectDetails(context2.Background(), id.String(),
+		domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"k1":   domain.String("1"),
+			"k2":   domain.String("2"),
+			"type": domain.String("_otp1"),
+		}))
 	require.NoError(t, err)
 
 	recs, err = s.Query(database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
-	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
-	require.Equal(t, "2", pbtypes.GetString(recs[0].Details, "k2"))
+	require.False(t, recs[0].Details.Get(bundle.RelationKeyLastOpenedDate).Ok())
+	require.Equal(t, "2", recs[0].Details.GetString("k2"))
 }
 
 func Test_removeByPrefix(t *testing.T) {
@@ -94,7 +98,7 @@ func TestList(t *testing.T) {
 	obj2 := makeObjectWithName("id2", "name2")
 
 	obj3 := makeObjectWithName("id3", "date")
-	obj3[bundle.RelationKeyIsDeleted] = pbtypes.Bool(true)
+	obj3[bundle.RelationKeyIsDeleted] = domain.Bool(true)
 
 	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
@@ -104,12 +108,12 @@ func TestList(t *testing.T) {
 	want := []*model.ObjectInfo{
 		{
 			Id:      "id1",
-			Details: makeDetails(obj1),
+			Details: makeDetails(obj1).ToProto(),
 			Snippet: "snippet1",
 		},
 		{
 			Id:      "id2",
-			Details: makeDetails(obj2),
+			Details: makeDetails(obj2).ToProto(),
 		},
 		// Skip deleted id3
 	}
@@ -216,13 +220,11 @@ func TestDeleteObject(t *testing.T) {
 
 		got, err := s.GetDetails("id1")
 		require.NoError(t, err)
-		assert.Equal(t, &model.ObjectDetails{
-			Details: makeDetails(TestObject{
-				bundle.RelationKeyId:        domain.String("id1"),
-				bundle.RelationKeySpaceId:   domain.String("space1"),
-				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
-			}),
-		}, got)
+		assert.Equal(t, makeDetails(TestObject{
+			bundle.RelationKeyId:        domain.String("id1"),
+			bundle.RelationKeySpaceId:   domain.String("space1"),
+			bundle.RelationKeyIsDeleted: domain.Bool(true),
+		}), got)
 	})
 
 	t.Run("object is already deleted", func(t *testing.T) {
@@ -235,13 +237,11 @@ func TestDeleteObject(t *testing.T) {
 
 		got, err := s.GetDetails("id1")
 		require.NoError(t, err)
-		assert.Equal(t, &model.ObjectDetails{
-			Details: makeDetails(TestObject{
-				bundle.RelationKeyId:        domain.String("id1"),
-				bundle.RelationKeySpaceId:   domain.String("space1"),
-				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
-			}),
-		}, got)
+		assert.Equal(t, makeDetails(TestObject{
+			bundle.RelationKeyId:        domain.String("id1"),
+			bundle.RelationKeySpaceId:   domain.String("space1"),
+			bundle.RelationKeyIsDeleted: domain.Bool(true),
+		}), got)
 	})
 
 	t.Run("delete object", func(t *testing.T) {

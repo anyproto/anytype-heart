@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -21,14 +22,14 @@ func TestUpdateObjectDetails(t *testing.T) {
 	t.Run("with nil field expect error", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails(context.Background(), "id1", &types.Struct{})
+		err := s.UpdateObjectDetails(context.Background(), "id1", nil)
 		require.Error(t, err)
 	})
 
 	t.Run("with empty details expect error", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails(context.Background(), "id1", &types.Struct{Fields: map[string]*types.Value{}})
+		err := s.UpdateObjectDetails(context.Background(), "id1", domain.NewDetails())
 		require.Error(t, err)
 	})
 
@@ -46,7 +47,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 		})
 		got, err := s.GetDetails("id1")
 		require.NoError(t, err)
-		assert.Equal(t, want, got.GetDetails())
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("with no existing details try to write nil details and expect nothing is changed", func(t *testing.T) {
@@ -57,7 +58,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 
 		det, err := s.GetDetails("id1")
 		assert.NoError(t, err)
-		assert.Equal(t, &types.Struct{Fields: map[string]*types.Value{}}, det.GetDetails())
+		assert.Equal(t, &types.Struct{Fields: map[string]*types.Value{}}, det)
 	})
 
 	t.Run("with existing details write nil details and expect nothing is changed", func(t *testing.T) {
@@ -70,7 +71,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 
 		det, err := s.GetDetails("id1")
 		assert.NoError(t, err)
-		assert.Equal(t, makeDetails(obj), det.GetDetails())
+		assert.Equal(t, makeDetails(obj), det)
 	})
 
 	t.Run("with write same details expect no error", func(t *testing.T) {
@@ -93,7 +94,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 
 		det, err := s.GetDetails("id1")
 		assert.NoError(t, err)
-		assert.Equal(t, makeDetails(newObj), det.GetDetails())
+		assert.Equal(t, makeDetails(newObj), det)
 	})
 }
 

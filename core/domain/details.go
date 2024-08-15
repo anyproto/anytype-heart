@@ -28,6 +28,12 @@ func NewDetailsFromProto(st *types.Struct) *Details {
 	return d
 }
 
+func NewDetailsFromMap(details map[RelationKey]Value) *Details {
+	return &GenericMap[RelationKey]{
+		data: details,
+	}
+}
+
 func NewDetailsWithSize(size int) *Details {
 	return &GenericMap[RelationKey]{data: make(map[RelationKey]Value, size)}
 }

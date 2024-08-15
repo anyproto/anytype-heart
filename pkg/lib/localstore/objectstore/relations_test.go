@@ -83,6 +83,6 @@ func TestGetRelationById(t *testing.T) {
 
 		got, err := s.GetRelationByID(relationID)
 		require.NoError(t, err)
-		assert.Equal(t, relationutils.RelationFromStruct(relObject).Relation, got)
+		assert.Equal(t, relationutils.RelationFromDetails(relObject).Relation, got)
 	})
 }

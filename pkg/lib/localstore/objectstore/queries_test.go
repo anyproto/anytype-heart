@@ -101,7 +101,7 @@ func TestQuery(t *testing.T) {
 		recs, err := s.Query(database.Query{
 			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       domain.String("name2"),
 				},
@@ -135,12 +135,12 @@ func TestQuery(t *testing.T) {
 		recs, err := s.Query(database.Query{
 			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       domain.String("name"),
 				},
 				{
-					RelationKey: bundle.RelationKeyDescription.String(),
+					RelationKey: bundle.RelationKeyDescription,
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       domain.String("description"),
 				},
@@ -222,7 +222,7 @@ func TestQuery(t *testing.T) {
 				FullText: "important",
 				Filters: []database.FilterRequest{
 					{
-						RelationKey: bundle.RelationKeyDescription.String(),
+						RelationKey: bundle.RelationKeyDescription,
 						Condition:   model.BlockContentDataviewFilter_Equal,
 						Value:       domain.String("foo"),
 					},
@@ -432,7 +432,7 @@ func TestQuery(t *testing.T) {
 				FullText: "block",
 				Sorts: []database.SortRequest{
 					{
-						RelationKey: bundle.RelationKeyId.String(),
+						RelationKey: bundle.RelationKeyId,
 						Type:        model.BlockContentDataviewSort_Asc,
 					},
 				},
@@ -630,14 +630,14 @@ func TestQuery(t *testing.T) {
 		recs, err := s.Query(database.Query{
 			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       domain.String("ignore"),
 				},
 			},
 			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Type:        model.BlockContentDataviewSort_Asc,
 				},
 			},
@@ -661,7 +661,7 @@ func TestQuery(t *testing.T) {
 		recs, err := s.Query(database.Query{
 			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Type:        model.BlockContentDataviewSort_Desc,
 				},
 			},
@@ -686,11 +686,11 @@ func TestQuery(t *testing.T) {
 		recs, err := s.Query(database.Query{
 			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyDescription.String(),
+					RelationKey: bundle.RelationKeyDescription,
 					Type:        model.BlockContentDataviewSort_Desc,
 				},
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Type:        model.BlockContentDataviewSort_Asc,
 				},
 			},
@@ -718,7 +718,7 @@ func TestQuery(t *testing.T) {
 		recs, err := s.Query(database.Query{
 			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyId.String(),
+					RelationKey: bundle.RelationKeyId,
 					Type:        model.BlockContentDataviewSort_Desc,
 				},
 			},
@@ -752,7 +752,7 @@ func TestQuery(t *testing.T) {
 		recs, err := s.Query(database.Query{
 			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyId.String(),
+					RelationKey: bundle.RelationKeyId,
 					Type:        model.BlockContentDataviewSort_Asc,
 				},
 			},
@@ -787,7 +787,7 @@ func TestQuery(t *testing.T) {
 		recs, err := s.Query(database.Query{
 			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyId.String(),
+					RelationKey: bundle.RelationKeyId,
 					Type:        model.BlockContentDataviewSort_Asc,
 				},
 			},
@@ -831,14 +831,14 @@ func TestQuery(t *testing.T) {
 		recs, err := s.Query(database.Query{
 			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       domain.String("this name"),
 				},
 			},
 			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyId.String(),
+					RelationKey: bundle.RelationKeyId,
 					Type:        model.BlockContentDataviewSort_Asc,
 				},
 			},
@@ -880,7 +880,7 @@ func TestQueryObjectIds(t *testing.T) {
 		ids, _, err := s.QueryObjectIDs(database.Query{
 			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyDescription.String(),
+					RelationKey: bundle.RelationKeyDescription,
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       domain.String("foo"),
 				},
@@ -937,7 +937,7 @@ func TestQueryRaw(t *testing.T) {
 		flt, err := database.NewFilters(database.Query{
 			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyDescription.String(),
+					RelationKey: bundle.RelationKeyDescription,
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       domain.String("foo"),
 				},
@@ -1092,16 +1092,16 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 		spaceId := "myspace"
 		f := database.FiltersAnd{
 			database.FilterEq{
-				Key:   bundle.RelationKeyCreator.String(),
+				Key:   bundle.RelationKeyCreator,
 				Value: domain.String("anytype"),
 			},
 			database.FilterEq{
-				Key:   bundle.RelationKeySpaceId.String(),
+				Key:   bundle.RelationKeySpaceId,
 				Value: domain.String(spaceId),
 			},
 			database.FilterNot{
 				Filter: database.FilterEq{
-					Key:   bundle.RelationKeyName.String(),
+					Key:   bundle.RelationKeyName,
 					Value: domain.String("hidden obj"),
 				},
 			},
@@ -1112,7 +1112,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 	t.Run("no spaceID provided", func(t *testing.T) {
 		f := database.FiltersAnd{
 			database.FilterEq{
-				Key:   bundle.RelationKeyId.String(),
+				Key:   bundle.RelationKeyId,
 				Value: domain.String("some id"),
 			},
 			database.FilterEmpty{
@@ -1125,7 +1125,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 	t.Run("filters is filter.FilterEq with spaceID", func(t *testing.T) {
 		spaceId := "open space"
 		f := database.FilterEq{
-			Key:   bundle.RelationKeySpaceId.String(),
+			Key:   bundle.RelationKeySpaceId,
 			Value: domain.String(spaceId),
 		}
 		assert.Equal(t, []string{spaceId}, getSpaceIdsFromFilter(f))
@@ -1133,7 +1133,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 
 	t.Run("filters is filter.FilterEq without spaceID", func(t *testing.T) {
 		f := database.FilterEq{
-			Key:   bundle.RelationKeySetOf.String(),
+			Key:   bundle.RelationKeySetOf,
 			Value: domain.String("ot-note"),
 		}
 		assert.Equal(t, 0, len(getSpaceIdsFromFilter(f)))
@@ -1141,7 +1141,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 
 	t.Run("filters is filter.FilterIn with spaceId", func(t *testing.T) {
 		f := database.FilterIn{
-			Key:   bundle.RelationKeySpaceId.String(),
+			Key:   bundle.RelationKeySpaceId,
 			Value: []domain.Value{domain.String("space1")},
 		}
 		assert.Equal(t, []string{"space1"}, getSpaceIdsFromFilter(f))
@@ -1149,7 +1149,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 
 	t.Run("filters is filter.FilterIn with many spaceId", func(t *testing.T) {
 		f := database.FilterIn{
-			Key:   bundle.RelationKeySpaceId.String(),
+			Key:   bundle.RelationKeySpaceId,
 			Value: []domain.Value{domain.String("space1"), domain.String("space2")},
 		}
 		assert.Equal(t, []string{"space1", "space2"}, getSpaceIdsFromFilter(f))
@@ -1165,7 +1165,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 					database.FilterEq{Key: "amount", Value: domain.Float64(15)},
 					database.FilterEq{Key: "type", Value: domain.String("ot-note")},
 					database.FilterEq{
-						Key:   bundle.RelationKeySpaceId.String(),
+						Key:   bundle.RelationKeySpaceId,
 						Value: domain.String(spaceId),
 					},
 				},
