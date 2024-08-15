@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/ethereum/go-ethereum/log"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -20,20 +21,26 @@ type InterfaceAddr struct {
 	Prefix int
 }
 
-type InterfaceWithAddr struct {
+type NetInterfaceWithAddrCache struct {
 	net.Interface
 	cachedAddrs []net.Addr // ipv4 addresses
 	cachedErr   error
 }
 type InterfacesAddrs struct {
-	Interfaces []InterfaceWithAddr
+	Interfaces []NetInterfaceWithAddrCache
 	Addrs      []net.Addr // addrs without attachment to specific interface. Used as a fallback mechanism
 }
 
-func WrapInterfaces(ifaces []net.Interface) []InterfaceWithAddr {
-	var m = make([]InterfaceWithAddr, 0, len(ifaces))
+func WrapInterface(iface net.Interface) NetInterfaceWithAddrCache {
+	return NetInterfaceWithAddrCache{
+		Interface: iface,
+	}
+}
+
+func WrapInterfaces(ifaces []net.Interface) []NetInterfaceWithAddrCache {
+	var m = make([]NetInterfaceWithAddrCache, 0, len(ifaces))
 	for i := range ifaces {
-		m = append(m, InterfaceWithAddr{
+		m = append(m, NetInterfaceWithAddrCache{
 			Interface: ifaces[i],
 		})
 	}
@@ -41,7 +48,7 @@ func WrapInterfaces(ifaces []net.Interface) []InterfaceWithAddr {
 }
 
 // GetAddr returns ipv4 only addresses for interface or cached one if set
-func (i InterfaceWithAddr) GetAddr() []net.Addr {
+func (i NetInterfaceWithAddrCache) GetAddr() []net.Addr {
 	if i.cachedAddrs != nil {
 		return i.cachedAddrs
 	}
@@ -49,6 +56,9 @@ func (i InterfaceWithAddr) GetAddr() []net.Addr {
 		return nil
 	}
 	i.cachedAddrs, i.cachedErr = i.Addrs()
+	if i.cachedErr != nil {
+		log.Warn("interface GetAddr error: %v", i.cachedErr)
+	}
 	// filter-out ipv6
 	i.cachedAddrs = slice.Filter(i.cachedAddrs, func(addr net.Addr) bool {
 		if ip, ok := addr.(*net.IPNet); ok {
@@ -107,7 +117,7 @@ func parseInterfaceName(name string) (prefix string, bus int, num int64) {
 }
 
 func (i InterfacesAddrs) SortWithPriority(priority []string) {
-	less := func(a, b InterfaceWithAddr) bool {
+	less := func(a, b NetInterfaceWithAddrCache) bool {
 		aPrefix, aBus, aNum := parseInterfaceName(a.Name)
 		bPrefix, bBus, bNum := parseInterfaceName(b.Name)
 
@@ -136,7 +146,7 @@ func (i InterfacesAddrs) SortWithPriority(priority []string) {
 			return false
 		}
 	}
-	slices.SortFunc(i.Interfaces, func(a, b InterfaceWithAddr) int {
+	slices.SortFunc(i.Interfaces, func(a, b NetInterfaceWithAddrCache) int {
 		if less(a, b) {
 			return -1
 		}
@@ -174,20 +184,27 @@ func (i InterfacesAddrs) GetInterfaceByAddr(addr net.Addr) (net.Interface, bool)
 	return net.Interface{}, false
 }
 
+// SortIPsLikeInterfaces sort IPs in a way they match sorted interface addresses(via mask matching)
+// e.g. we have interfaces
+// - en0: 192.168.1.10/24
+// - lo0: 127.0.0.1/8
+// we pass IPs: 10.124.22.1, 127.0.0.1, 192.168.1.25
+// we will get: 192.168.1.25, 127.0.0.1, 10.124.22.1
+// 10.124.22.1 does not match any interface, so it will be at the end
 func (i InterfacesAddrs) SortIPsLikeInterfaces(ips []net.IP) {
 	slices.SortFunc(ips, func(a, b net.IP) int {
-		pa, _ := i.findInterfacePosByIP(a)
-		pb, _ := i.findInterfacePosByIP(b)
+		posA, _ := i.findInterfacePosByIP(a)
+		posB, _ := i.findInterfacePosByIP(b)
 
-		if pa == -1 && pb != -1 {
+		if posA == -1 && posB != -1 {
 			return 1
 		}
-		if pa != -1 && pb == -1 {
+		if posA != -1 && posB == -1 {
 			return -1
 		}
-		if pa < pb {
+		if posA < posB {
 			return -1
-		} else if pa > pb {
+		} else if posA > posB {
 			return 1
 		}
 		return 0

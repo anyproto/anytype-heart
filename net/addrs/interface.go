@@ -34,7 +34,7 @@ func GetInterfacesAddrs() (iAddrs InterfacesAddrs, err error) {
 	}
 	iAddrs.Interfaces = WrapInterfaces(ifaces)
 
-	iAddrs.Interfaces = slice.Filter(iAddrs.Interfaces, func(iface InterfaceWithAddr) bool {
+	iAddrs.Interfaces = slice.Filter(iAddrs.Interfaces, func(iface NetInterfaceWithAddrCache) bool {
 		return iface.Flags&net.FlagUp != 0 && iface.Flags&net.FlagMulticast != 0
 	})
 	return
