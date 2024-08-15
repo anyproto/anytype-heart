@@ -99,6 +99,7 @@ service ClientCommands {
     rpc ObjectListSetIsFavorite (anytype.Rpc.Object.ListSetIsFavorite.Request) returns (anytype.Rpc.Object.ListSetIsFavorite.Response);
     rpc ObjectListSetObjectType (anytype.Rpc.Object.ListSetObjectType.Request) returns (anytype.Rpc.Object.ListSetObjectType.Response);
     rpc ObjectListSetDetails (anytype.Rpc.Object.ListSetDetails.Request) returns (anytype.Rpc.Object.ListSetDetails.Response);
+    rpc ObjectListModifyDetailValues (anytype.Rpc.Object.ListModifyDetailValues.Request) returns (anytype.Rpc.Object.ListModifyDetailValues.Response);
     rpc ObjectApplyTemplate (anytype.Rpc.Object.ApplyTemplate.Request) returns (anytype.Rpc.Object.ApplyTemplate.Response);
     // ObjectToSet creates new set from given object and removes object
     rpc ObjectToSet (anytype.Rpc.Object.ToSet.Request) returns (anytype.Rpc.Object.ToSet.Response);

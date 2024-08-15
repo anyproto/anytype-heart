@@ -639,6 +639,37 @@ func (s *Service) ModifyDetails(objectId string, modifier func(current *types.St
 	})
 }
 
+func (s *Service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesRequest) (resultError error) {
+	var anySucceed bool
+	for _, objectId := range req.ObjectIds {
+		err := s.ModifyDetails(objectId, func(current *types.Struct) (*types.Struct, error) {
+			for _, op := range req.Operations {
+				switch v := op.OperationType.(type) {
+				case *pb.RpcObjectListModifyDetailValuesRequestOperationOperationTypeOfSet:
+					current.Fields[op.Key] = v.Set
+				case *pb.RpcObjectListModifyDetailValuesRequestOperationOperationTypeOfAdd:
+					pbtypes.AddValue(current, op.Key, v.Add)
+				case *pb.RpcObjectListModifyDetailValuesRequestOperationOperationTypeOfRemove:
+					pbtypes.RemoveValue(current, op.Key, v.Remove)
+				}
+			}
+			return current, nil
+		})
+		if err != nil {
+			resultError = errors.Join(resultError, err)
+		} else {
+			anySucceed = true
+		}
+	}
+	if resultError != nil {
+		log.Warnf("ModifyDetailsList: %v", resultError)
+	}
+	if anySucceed {
+		return nil
+	}
+	return resultError
+}
+
 func (s *Service) AddExtraRelations(ctx session.Context, objectId string, relationIds []string) (err error) {
 	if len(relationIds) == 0 {
 		return nil

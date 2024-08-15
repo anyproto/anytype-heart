@@ -2,11 +2,13 @@ package pbtypes
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -187,12 +189,24 @@ func GetStringList(s *types.Struct, name string) []string {
 		return nil
 	}
 
-	if v, ok := s.Fields[name]; !ok {
-		return nil
-	} else {
+	if v, ok := s.Fields[name]; ok {
 		return GetStringListValue(v)
-
 	}
+	return nil
+}
+
+func GetValueList(s *types.Struct, name string) []*types.Value {
+	if s == nil || s.Fields == nil {
+		return nil
+	}
+
+	if v, ok := s.Fields[name]; ok {
+		if list, ok := v.Kind.(*types.Value_ListValue); ok {
+			return list.ListValue.Values
+		}
+		return []*types.Value{v}
+	}
+	return nil
 }
 
 // UpdateStringList updates a string list field using modifier function and returns updated value
@@ -254,6 +268,16 @@ func GetStringListValue(v *types.Value) []string {
 		return []string{val.StringValue}
 	}
 	return nil
+}
+
+func GetList(v *types.Value) []*types.Value {
+	if v == nil {
+		return nil
+	}
+	if list, ok := v.Kind.(*types.Value_ListValue); ok {
+		return list.ListValue.Values
+	}
+	return []*types.Value{v}
 }
 
 func ListValueToStrings(list *types.ListValue) []string {
@@ -581,4 +605,55 @@ func RelationIdToKey(id string) (string, error) {
 	}
 
 	return "", fmt.Errorf("incorrect id format")
+}
+
+// AddValue adds values to int lists and string lists
+func AddValue(s *types.Struct, key string, v *types.Value) {
+	if IsStructEmpty(s) {
+		return
+	}
+	toAdd := GetList(v)
+	oldValues := GetValueList(s, key)
+	newValues := lo.UniqBy(append(oldValues, toAdd...), func(item *types.Value) string {
+		return getUniqueId(item)
+	})
+	s.Fields[key] = &types.Value{
+		Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: newValues}},
+	}
+}
+
+// RemoveValue removes values from int lists and string lists
+func RemoveValue(s *types.Struct, key string, v *types.Value) {
+	if IsStructEmpty(s) {
+		return
+	}
+	value := Get(s, key)
+	if value == nil {
+		return
+	}
+	if value.Equal(v) {
+		delete(s.Fields, key)
+		return
+	}
+	values := GetList(value)
+	if len(values) == 0 {
+		return
+	}
+	toDelete := GetList(v)
+	uniqueIdsToDelete := []string{}
+	for _, valueToDelete := range toDelete {
+		uniqueIdsToDelete = append(uniqueIdsToDelete, getUniqueId(valueToDelete))
+	}
+	newValues := lo.Filter(values, func(item *types.Value, _ int) bool {
+		return !lo.Contains(uniqueIdsToDelete, getUniqueId(item))
+	})
+	s.Fields[key] = &types.Value{
+		Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: newValues}},
+	}
+}
+
+func getUniqueId(v *types.Value) string {
+	str := v.GetStringValue()
+	str = str + strconv.FormatFloat(v.GetNumberValue(), 'f', -1, 64)
+	return str
 }
