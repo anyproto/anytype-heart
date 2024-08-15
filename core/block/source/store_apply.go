@@ -30,11 +30,11 @@ func (a *storeApply) Apply() (err error) {
 			return true
 		}
 		// not a new change - remember and continue
-		if !change.IsNew && !isEmpty {
-			a.prevChange = change
-			a.prevOrder = ""
-			return true
-		}
+		// if !change.IsNew && !isEmpty {
+		// 	a.prevChange = change
+		// 	a.prevOrder = ""
+		// 	return true
+		// }
 		currOrder, curOrdErr := a.tx.GetOrder(change.Id)
 		if curOrdErr != nil {
 			if !errors.Is(curOrdErr, storestate.ErrOrderNotFound) {
@@ -95,7 +95,6 @@ func (a *storeApply) applyChange(change *objecttree.Change, order string) (err e
 	if !ok {
 		return fmt.Errorf("unexpected change content type: %T", change.Model)
 	}
-	// TODO: include author and other necessary data
 	set := storestate.ChangeSet{
 		Id:      change.Id,
 		Order:   order,

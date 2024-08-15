@@ -12,6 +12,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -185,17 +186,23 @@ func newStoreFx(t testing.TB) *storeFx {
 	state, err := storestate.New(ctx, "source_test", db, storestate.DefaultHandler{Name: "default"})
 	require.NoError(t, err)
 
+	tree := mock_objecttree.NewMockObjectTree(ctrl)
+	tree.EXPECT().Id().Return("root").AnyTimes()
+
 	return &storeFx{
 		state: state,
-		tree:  mock_objecttree.NewMockObjectTree(ctrl),
+		tree:  tree,
 		db:    db,
 	}
 }
 
 func testChange(id string, isNew bool) *objecttree.Change {
+	_, pub, _ := crypto.GenerateRandomEd25519KeyPair()
+
 	return &objecttree.Change{
-		Id:    id,
-		IsNew: isNew,
-		Model: &pb.StoreChange{},
+		Id:       id,
+		IsNew:    isNew,
+		Model:    &pb.StoreChange{},
+		Identity: pub,
 	}
 }

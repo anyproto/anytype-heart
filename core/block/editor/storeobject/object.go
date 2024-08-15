@@ -91,7 +91,7 @@ func (s *storeObject) GetMessages(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
-	iter, err := coll.Find(nil).Iter(ctx)
+	iter, err := coll.Find(nil).Sort("_o.id").Iter(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("find iter: %w", err)
 	}
@@ -111,6 +111,7 @@ func (s *storeObject) GetMessages(ctx context.Context) ([]string, error) {
 		filtered["id"] = v["id"]
 		filtered["author"] = v["author"]
 		filtered["text"] = v["text"]
+
 		out, _ := json.Marshal(filtered)
 		res = append(res, string(out))
 	}

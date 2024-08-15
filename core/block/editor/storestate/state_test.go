@@ -56,7 +56,7 @@ func TestStoreStateTx_ApplyChangeSet(t *testing.T) {
 		require.NoError(t, err)
 		build := &Builder{}
 		assert.NoError(t, build.Create("testColl", "1", `{"key":"value"}`))
-		require.NoError(t, tx.ApplyChangeSetAndStoreOrder(ChangeSet{
+		require.NoError(t, tx.ApplyChangeSet(ChangeSet{
 			Id:      "1",
 			Order:   "1",
 			Changes: build.ChangeSet,
@@ -79,7 +79,7 @@ func TestStoreStateTx_ApplyChangeSet(t *testing.T) {
 		assert.NoError(t, build.Modify("testColl", "1", []string{"key"}, pb.ModifyOp_Set, `"valueChanged"`))
 		assert.NoError(t, build.Modify("testColl", "1", []string{"num"}, pb.ModifyOp_Inc, `2`))
 
-		require.NoError(t, tx.ApplyChangeSetAndStoreOrder(ChangeSet{
+		require.NoError(t, tx.ApplyChangeSet(ChangeSet{
 			Id:      "1",
 			Order:   "1",
 			Changes: build.ChangeSet,
@@ -102,7 +102,7 @@ func TestStoreStateTx_ApplyChangeSet(t *testing.T) {
 		require.NoError(t, err)
 		build := &Builder{}
 		assert.NoError(t, build.Create("testColl", "1", `{"key":"value"}`))
-		require.NoError(t, tx.ApplyChangeSetAndStoreOrder(ChangeSet{
+		require.NoError(t, tx.ApplyChangeSet(ChangeSet{
 			Id:      "1",
 			Order:   "1",
 			Changes: build.ChangeSet,
@@ -113,7 +113,7 @@ func TestStoreStateTx_ApplyChangeSet(t *testing.T) {
 		require.NoError(t, err)
 		build = &Builder{}
 		build.Delete("testColl", "1")
-		require.NoError(t, tx.ApplyChangeSetAndStoreOrder(ChangeSet{
+		require.NoError(t, tx.ApplyChangeSet(ChangeSet{
 			Id:      "1",
 			Order:   "1",
 			Changes: build.ChangeSet,
@@ -148,7 +148,7 @@ func TestBenchCreate(t *testing.T) {
 	tx, err := fx.NewTx(ctx)
 	require.NoError(t, err)
 	for _, ch := range changes {
-		assert.NoError(t, tx.ApplyChangeSetAndStoreOrder(ch))
+		assert.NoError(t, tx.ApplyChangeSet(ch))
 	}
 	t.Logf("applied for a %v", time.Since(st))
 	st = time.Now()

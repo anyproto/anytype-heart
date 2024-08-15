@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/gogo/protobuf/proto"
@@ -37,6 +38,8 @@ type PushStoreChangeParams struct {
 	DoSnapshot bool
 }
 
+var _ updatelistener.UpdateListener = (*store)(nil)
+
 type store struct {
 	*source
 	store *storestate.StoreState
@@ -47,6 +50,14 @@ func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 }
 
 func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+	s.receiver = receiver
+	setter, ok := s.ObjectTree.(synctree.ListenerSetter)
+	if !ok {
+		err = fmt.Errorf("should be able to set listner inside object tree")
+		return
+	}
+	setter.SetListener(s)
+
 	// Fake state, this kind of objects not support state operations
 
 	st := state.NewDoc(s.id, nil).(*state.State)
