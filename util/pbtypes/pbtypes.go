@@ -609,7 +609,7 @@ func RelationIdToKey(id string) (string, error) {
 
 // AddValue adds values to int lists and string lists
 func AddValue(s *types.Struct, key string, v *types.Value) {
-	if IsStructEmpty(s) {
+	if IsStructEmpty(s) || v == nil {
 		return
 	}
 	toAdd := GetList(v)
@@ -624,7 +624,7 @@ func AddValue(s *types.Struct, key string, v *types.Value) {
 
 // RemoveValue removes values from int lists and string lists
 func RemoveValue(s *types.Struct, key string, v *types.Value) {
-	if IsStructEmpty(s) {
+	if IsStructEmpty(s) || v == nil {
 		return
 	}
 	value := Get(s, key)

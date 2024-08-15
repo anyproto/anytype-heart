@@ -644,14 +644,13 @@ func (s *Service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesReque
 	for _, objectId := range req.ObjectIds {
 		err := s.ModifyDetails(objectId, func(current *types.Struct) (*types.Struct, error) {
 			for _, op := range req.Operations {
-				switch v := op.OperationType.(type) {
-				case *pb.RpcObjectListModifyDetailValuesRequestOperationOperationTypeOfSet:
-					current.Fields[op.Key] = v.Set
-				case *pb.RpcObjectListModifyDetailValuesRequestOperationOperationTypeOfAdd:
-					pbtypes.AddValue(current, op.Key, v.Add)
-				case *pb.RpcObjectListModifyDetailValuesRequestOperationOperationTypeOfRemove:
-					pbtypes.RemoveValue(current, op.Key, v.Remove)
+				if op.Set != nil {
+					// Set operation has higher priority than Add and Remove, because it modifies full value
+					current.Fields[op.Key] = op.Set
+					continue
 				}
+				pbtypes.AddValue(current, op.Key, op.Add)
+				pbtypes.RemoveValue(current, op.Key, op.Remove)
 			}
 			return current, nil
 		})

@@ -2424,11 +2424,9 @@ message Rpc {
 
                 message Operation {
                     string key = 1;
-                    oneof operationType {
-                        google.protobuf.Value add = 2;
-                        google.protobuf.Value set = 3;
-                        google.protobuf.Value remove = 4;
-                    }
+                    google.protobuf.Value add = 2;
+                    google.protobuf.Value set = 3;
+                    google.protobuf.Value remove = 4;
                 }
             }
 
