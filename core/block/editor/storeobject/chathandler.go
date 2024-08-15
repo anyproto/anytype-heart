@@ -39,9 +39,14 @@ func (d ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (
 
 func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModify, mod query.Modifier) query.Modifier {
 	return query.ModifyFunc(func(a *fastjson.Arena, v *fastjson.Value) (result *fastjson.Value, modified bool, err error) {
-		author := v.GetStringBytes("author")
-		if string(author) != d.MyIdentity {
-			return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify not own message"))
+		if len(key.KeyPath) == 0 {
+			return nil, false, fmt.Errorf("no key path")
+		}
+		if key.KeyPath[0] == "message" {
+			author := v.GetStringBytes("author")
+			if string(author) != ch.Change.Creator {
+				return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify not own message"))
+			}
 		}
 		return mod.Modify(a, v)
 	})
