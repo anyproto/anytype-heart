@@ -122,6 +122,7 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 			Id:      change.Id,
 			Order:   order,
 			Changes: params.Changes,
+			Creator: s.accountService.AccountID(),
 		})
 		if err != nil {
 			return fmt.Errorf("apply change set: %w", err)

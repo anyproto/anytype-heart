@@ -129,9 +129,10 @@ func (ss *StoreState) Collection(ctx context.Context, name string) (anystore.Col
 func (ss *StoreState) applyChangeSet(ctx context.Context, set ChangeSet) (err error) {
 	for _, ch := range set.Changes {
 		applyErr := ss.applyChange(ctx, Change{
-			Id:     set.Id,
-			Order:  set.Order,
-			Change: ch,
+			Id:      set.Id,
+			Order:   set.Order,
+			Change:  ch,
+			Creator: set.Creator,
 		})
 		if applyErr == nil || errors.Is(applyErr, ErrIgnore) {
 			continue

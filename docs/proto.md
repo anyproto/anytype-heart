@@ -1601,6 +1601,9 @@
     - [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout)
     - [Event.Block.Set.Widget.Limit](#anytype-Event-Block-Set-Widget-Limit)
     - [Event.Block.Set.Widget.ViewId](#anytype-Event-Block-Set-Widget-ViewId)
+    - [Event.Chat](#anytype-Event-Chat)
+    - [Event.Chat.Add](#anytype-Event-Chat-Add)
+    - [Event.Chat.Update](#anytype-Event-Chat-Update)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LimitUpdated](#anytype-Event-File-LimitUpdated)
@@ -25268,6 +25271,50 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Chat"></a>
+
+### Event.Chat
+
+
+
+
+
+
+
+<a name="anytype-Event-Chat-Add"></a>
+
+### Event.Chat.Add
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| author | [string](#string) |  |  |
+| text | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Chat-Update"></a>
+
+### Event.Chat.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| author | [string](#string) |  |  |
+| text | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-File"></a>
 
 ### Event.File
@@ -25470,6 +25517,8 @@ Precondition: user A opened a block
 | spaceSyncStatusUpdate | [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update) |  |  |
 | p2pStatusUpdate | [Event.P2PStatus.Update](#anytype-Event-P2PStatus-Update) |  |  |
 | importFinish | [Event.Import.Finish](#anytype-Event-Import-Finish) |  |  |
+| chatAdd | [Event.Chat.Add](#anytype-Event-Chat-Add) |  |  |
+| chatUpdate | [Event.Chat.Update](#anytype-Event-Chat-Update) |  |  |
 
 
 

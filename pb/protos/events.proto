@@ -110,6 +110,22 @@ message Event {
             P2PStatus.Update p2pStatusUpdate = 120;
 
             Import.Finish importFinish = 121;
+
+            Chat.Add chatAdd = 128;
+            Chat.Update chatUpdate = 129;
+        }
+    }
+
+    message Chat {
+        message Add {
+            string id = 1;
+            string author = 2;
+            string text = 3;
+        }
+        message Update {
+            string id = 1;
+            string author = 2;
+            string text = 3;
         }
     }
 

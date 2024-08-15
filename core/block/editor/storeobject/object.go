@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -40,16 +41,18 @@ type storeObject struct {
 	dbProvider     StoreDbProvider
 	storeSource    source.Store
 	store          *storestate.StoreState
+	eventSender    event.Sender
 
 	arenaPool *fastjson.ArenaPool
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService, dbProvider StoreDbProvider) StoreObject {
+func New(sb smartblock.SmartBlock, accountService AccountService, dbProvider StoreDbProvider, eventSender event.Sender) StoreObject {
 	return &storeObject{
 		SmartBlock:     sb,
 		accountService: accountService,
 		dbProvider:     dbProvider,
 		arenaPool:      &fastjson.ArenaPool{},
+		eventSender:    eventSender,
 	}
 }
 
@@ -60,7 +63,9 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.dbProvider.GetStoreDb(), ChatHandler{
-		MyIdentity: s.accountService.AccountID(),
+		chatId:      s.Id(),
+		MyIdentity:  s.accountService.AccountID(),
+		eventSender: s.eventSender,
 	})
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)

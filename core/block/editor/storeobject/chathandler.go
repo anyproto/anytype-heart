@@ -9,11 +9,14 @@ import (
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 type ChatHandler struct {
-	MyIdentity string
+	MyIdentity  string
+	eventSender event.Sender
+	chatId      string
 }
 
 func (d ChatHandler) CollectionName() string {
@@ -26,6 +29,21 @@ func (d ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err er
 }
 
 func (d ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) (err error) {
+	ev := &pb.EventChatAdd{
+		Id:     string(ch.Value.GetStringBytes("id")),
+		Author: string(ch.Value.GetStringBytes("author")),
+		Text:   string(ch.Value.GetStringBytes("text")),
+	}
+	d.eventSender.Broadcast(&pb.Event{
+		ContextId: d.chatId,
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfChatAdd{
+					ChatAdd: ev,
+				},
+			},
+		},
+	})
 	return
 }
 
@@ -48,6 +66,26 @@ func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModif
 				return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify not own message"))
 			}
 		}
-		return mod.Modify(a, v)
+		result, modified, err = mod.Modify(a, v)
+		if err != nil {
+			return nil, false, err
+		}
+		ev := &pb.EventChatUpdate{
+			Id:     string(result.GetStringBytes("id")),
+			Author: string(result.GetStringBytes("author")),
+			Text:   string(result.GetStringBytes("text")),
+		}
+		d.eventSender.Broadcast(&pb.Event{
+			ContextId: d.chatId,
+			Messages: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfChatUpdate{
+						ChatUpdate: ev,
+					},
+				},
+			},
+		})
+
+		return result, modified, nil
 	})
 }
