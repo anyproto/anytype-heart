@@ -7,8 +7,6 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/samber/lo"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
@@ -270,10 +268,11 @@ func (s *service) prepareDetailsForInstallingObject(
 }
 
 func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs []string) ([]database.Record, error) {
-	sourceList, err := pbtypes.ValueListWrapper(pbtypes.StringList(sourceObjectIDs))
-	if err != nil {
-		return nil, err
+	sourceList := make([]domain.Value, 0, len(sourceObjectIDs))
+	for _, id := range sourceObjectIDs {
+		sourceList = append(sourceList, domain.String(id))
 	}
+
 	return s.objectStore.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
 		database.FilterIn{
 			Key:   bundle.RelationKeySourceObject.String(),
@@ -282,18 +281,18 @@ func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs [
 		database.FilterEq{
 			Key:   bundle.RelationKeySpaceId.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.String(space.Id()),
+			Value: domain.String(space.Id()),
 		},
 		database.FiltersOr{
 			database.FilterEq{
 				Key:   bundle.RelationKeyIsDeleted.String(),
 				Cond:  model.BlockContentDataviewFilter_Equal,
-				Value: pbtypes.Bool(true),
+				Value: domain.Bool(true),
 			},
 			database.FilterEq{
 				Key:   bundle.RelationKeyIsArchived.String(),
 				Cond:  model.BlockContentDataviewFilter_Equal,
-				Value: pbtypes.Bool(true),
+				Value: domain.Bool(true),
 			},
 		},
 	}}, 0, 0)

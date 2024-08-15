@@ -250,9 +250,9 @@ func isLinkToObject(relLink *model.RelationLink) bool {
 		relLink.Format == model.RelationFormat_file
 }
 
-func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v domain.Value, k domain.RelationKey, filesIDs []string) {
+func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v domain.Value, k domain.RelationKey) {
 	if objectId, ok := v.TryString(); ok {
-		newObjectIDs := getNewObjectsIDForRelation([]string{objectId}, oldIDtoNew, filesIDs)
+		newObjectIDs := getNewObjectsIDForRelation([]string{objectId}, oldIDtoNew)
 		if len(newObjectIDs) != 0 {
 			st.SetDetail(k, domain.String(newObjectIDs[0]))
 		}

@@ -3,25 +3,21 @@ package database
 import (
 	"time"
 
-	"golang.org/x/exp/slices"
-
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
-func transformQuickOption(protoFilter *model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {
-	if protoFilter == nil {
-		return nil
+func transformQuickOption(protoFilter FilterRequest, loc *time.Location) []FilterRequest {
+	filters := []FilterRequest{
+		protoFilter,
 	}
-	var filters []*model.BlockContentDataviewFilter
-	filters = append(filters, protoFilter)
 	if protoFilter.QuickOption > model.BlockContentDataviewFilter_ExactDate || protoFilter.Format == model.RelationFormat_date {
 		d1, d2 := getRange(protoFilter, loc)
 		switch protoFilter.Condition {
 		case model.BlockContentDataviewFilter_Equal:
 			protoFilter.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
-			protoFilter.Value = pbtypes.ToValue(d1)
+			protoFilter.Value = domain.Int64(d1)
 
 			filters = append(filters, FilterRequest{
 				RelationKey: protoFilter.RelationKey,

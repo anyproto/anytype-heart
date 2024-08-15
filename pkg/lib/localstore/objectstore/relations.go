@@ -213,7 +213,5 @@ func (s *dsObjectStore) GetRelationFormatByKey(key domain.RelationKey) (model.Re
 	}
 
 	details := records[0].Details
-	return model.RelationFormat(pbtypes.GetInt64(details, bundle.RelationKeyRelationFormat.String())), nil
+	return model.RelationFormat(details.GetInt64(bundle.RelationKeyRelationFormat)), nil
 }
-
-

@@ -27,13 +27,13 @@ func MakeFilters(protoFilters []FilterRequest, store ObjectStore) (Filter, error
 	if len(protoFilters) == 1 && len(protoFilters[0].NestedFilters) > 0 && protoFilters[0].Operator != model.BlockContentDataviewFilter_No {
 		return MakeFilter(spaceId, protoFilters[0], store)
 	}
-	return MakeFilter(spaceId, &model.BlockContentDataviewFilter{
+	return MakeFilter(spaceId, FilterRequest{
 		Operator:      model.BlockContentDataviewFilter_And,
 		NestedFilters: protoFilters,
 	}, store)
 }
 
-func MakeFilter(spaceId string, protoFilter *model.BlockContentDataviewFilter, store ObjectStore) (Filter, error) {
+func MakeFilter(spaceId string, protoFilter FilterRequest, store ObjectStore) (Filter, error) {
 	if protoFilter.Operator == model.BlockContentDataviewFilter_No {
 		return makeFilter(spaceId, protoFilter, store)
 	}
@@ -83,7 +83,7 @@ func makeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Fil
 	return resultFilters, nil
 }
 
-func makeFilterByCondition(spaceID string, rawFilter *model.BlockContentDataviewFilter, store ObjectStore) (Filter, error) {
+func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store ObjectStore) (Filter, error) {
 	parts := strings.SplitN(rawFilter.RelationKey, ".", 2)
 	if len(parts) == 2 {
 		return makeFilterNestedIn(spaceID, rawFilter, store, domain.RelationKey(parts[0]), domain.RelationKey(parts[1]))

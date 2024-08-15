@@ -52,12 +52,13 @@ type FilterRequest struct {
 	QuickOption      model.BlockContentDataviewFilterQuickOption
 	Format           model.RelationFormat
 	IncludeTime      bool
+	NestedFilters    []FilterRequest
 }
 
 type SortRequest struct {
 	RelationKey    string
 	Type           model.BlockContentDataviewSortType
-	CustomOrder    []string
+	CustomOrder    []domain.Value
 	Format         model.RelationFormat
 	IncludeTime    bool
 	Id             string
@@ -81,14 +82,14 @@ func injectDefaultFilters(filters []FilterRequest) []FilterRequest {
 	return addDefaultFilters(filters, hasArchivedFilter, hasDeletedFilter, hasTypeFilter)
 }
 
-func addDefaultFiltersToNested(filters []*model.BlockContentDataviewFilter, hasArchivedFilter, hasDeletedFilter, hasTypeFilter bool) []*model.BlockContentDataviewFilter {
+func addDefaultFiltersToNested(filters []FilterRequest, hasArchivedFilter, hasDeletedFilter, hasTypeFilter bool) []FilterRequest {
 	if filters[0].Operator == model.BlockContentDataviewFilter_And {
 		filters[0].NestedFilters = addDefaultFilters(filters[0].NestedFilters, hasArchivedFilter, hasDeletedFilter, hasTypeFilter)
 	}
 	// build And filter based on original Or filter and default filters
 	if filters[0].Operator != model.BlockContentDataviewFilter_And {
 		filters = addDefaultFilters(filters, hasArchivedFilter, hasDeletedFilter, hasTypeFilter)
-		return []*model.BlockContentDataviewFilter{
+		return []FilterRequest{
 			{
 				Operator:      model.BlockContentDataviewFilter_And,
 				NestedFilters: filters,
@@ -98,21 +99,33 @@ func addDefaultFiltersToNested(filters []*model.BlockContentDataviewFilter, hasA
 	return filters
 }
 
-func addDefaultFilters(filters []*model.BlockContentDataviewFilter, hasArchivedFilter, hasDeletedFilter, hasTypeFilter bool) []*model.BlockContentDataviewFilter {
+func addDefaultFilters(filters []FilterRequest, hasArchivedFilter, hasDeletedFilter, hasTypeFilter bool) []FilterRequest {
 	if !hasArchivedFilter {
-		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsArchived.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
+		filters = append(filters, FilterRequest{
+			RelationKey: bundle.RelationKeyIsArchived.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
+		})
 	}
 	if !hasDeletedFilter {
-		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsDeleted.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
+		filters = append(filters, FilterRequest{
+			RelationKey: bundle.RelationKeyIsDeleted.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
+		})
 	}
 	if !hasTypeFilter {
 		// temporarily exclude Space objects from search if we don't have explicit type filter
-		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyType.String(), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.Float64(float64(model.ObjectType_space))})
+		filters = append(filters, FilterRequest{
+			RelationKey: bundle.RelationKeyType.String(),
+			Condition:   model.BlockContentDataviewFilter_NotIn,
+			Value:       domain.Int64(model.ObjectType_space),
+		})
 	}
 	return filters
 }
 
-func hasDefaultFilters(filters []*model.BlockContentDataviewFilter) (bool, bool, bool) {
+func hasDefaultFilters(filters []FilterRequest) (bool, bool, bool) {
 	var (
 		hasArchivedFilter bool
 		hasDeletedFilter  bool
@@ -205,7 +218,7 @@ func (b *queryBuilder) extractOrder(sorts []SortRequest) SetOrder {
 	if len(sorts) > 0 {
 		order := SetOrder{}
 		for _, sort := range sorts {
-			format, err := b.objectStore.GetRelationFormatByKey(sort.RelationKey)
+			format, err := b.objectStore.GetRelationFormatByKey(domain.RelationKey(sort.RelationKey))
 			if err != nil {
 				format = sort.Format
 			}
@@ -233,7 +246,7 @@ func (b *queryBuilder) appendCustomOrder(sort SortRequest, orders SetOrder, orde
 		idsIndices := make(map[string]int, len(sort.CustomOrder))
 		var idx int
 		for _, it := range sort.CustomOrder {
-			jsonVal := pbtypes.ProtoValueToJson(b.arena, it)
+			jsonVal := it.ToJson(b.arena)
 
 			raw := jsonVal.String()
 			if raw != "" {
@@ -241,7 +254,7 @@ func (b *queryBuilder) appendCustomOrder(sort SortRequest, orders SetOrder, orde
 				idx++
 			}
 		}
-		orders = append(orders, newCustomOrder(b.arena, sort.RelationKey, idsIndices, order))
+		orders = append(orders, newCustomOrder(b.arena, domain.RelationKey(sort.RelationKey), idsIndices, order))
 	} else {
 		orders = append(orders, order)
 	}

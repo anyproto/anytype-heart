@@ -24,7 +24,7 @@ type Order interface {
 type ObjectStore interface {
 	Query(q Query) (records []Record, err error)
 	QueryRaw(filters *Filters, limit int, offset int) ([]Record, error)
-	GetRelationFormatByKey(key string) (model.RelationFormat, error)
+	GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error)
 }
 
 type SetOrder []Order
@@ -285,7 +285,7 @@ func (ko *KeyOrder) GetOptionValue(value domain.Value) domain.Value {
 	return domain.String(res)
 }
 
-func newCustomOrder(arena *fastjson.Arena, key string, idsIndices map[string]int, keyOrd *KeyOrder) customOrder {
+func newCustomOrder(arena *fastjson.Arena, key domain.RelationKey, idsIndices map[string]int, keyOrd *KeyOrder) customOrder {
 	return customOrder{
 		arena:        arena,
 		Key:          key,
@@ -296,7 +296,7 @@ func newCustomOrder(arena *fastjson.Arena, key string, idsIndices map[string]int
 
 type customOrder struct {
 	arena        *fastjson.Arena
-	Key          string
+	Key          domain.RelationKey
 	NeedOrderMap map[string]int
 	KeyOrd       *KeyOrder
 
@@ -310,7 +310,7 @@ func (co customOrder) AppendKey(k []byte, v *fastjson.Value) []byte {
 	}()
 
 	var rawValue string
-	if val := v.Get(co.Key); val != nil {
+	if val := v.Get(string(co.Key)); val != nil {
 		rawValue = string(val.MarshalTo(co.buf))
 	}
 	idx, ok := co.NeedOrderMap[rawValue]
@@ -328,7 +328,7 @@ func (co customOrder) Fields() []query.SortField {
 	return []query.SortField{
 		{
 			Field: "",
-			Path:  []string{co.Key},
+			Path:  []string{string(co.Key)},
 		},
 	}
 }
@@ -337,23 +337,23 @@ func (co customOrder) AnystoreSort() query.Sort {
 	return co
 }
 
-func (co customOrder) getStringVal(val *types.Value) string {
+func (co customOrder) getStringVal(val domain.Value) string {
 	defer func() {
 		co.arena.Reset()
 		co.buf = co.buf[:0]
 	}()
 
-	jsonVal := pbtypes.ProtoValueToJson(co.arena, val)
+	jsonVal := val.ToJson(co.arena)
 	if jsonVal == nil {
 		return ""
 	}
 	return string(jsonVal.MarshalTo(co.buf))
 }
 
-func (co customOrder) Compare(a, b *types.Struct) int {
+func (co customOrder) Compare(a, b *domain.Details) int {
 
-	aID, okA := co.NeedOrderMap[co.getStringVal(pbtypes.Get(a, co.Key))]
-	bID, okB := co.NeedOrderMap[co.getStringVal(pbtypes.Get(b, co.Key))]
+	aID, okA := co.NeedOrderMap[co.getStringVal(a.Get(co.Key))]
+	bID, okB := co.NeedOrderMap[co.getStringVal(b.Get(co.Key))]
 
 	if okA && okB {
 		if aID == bID {
