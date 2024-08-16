@@ -600,19 +600,19 @@ func TestQuery(t *testing.T) {
 			})
 			require.NoError(t, err)
 			removeScoreFromRecords(recs)
-			assert.ElementsMatch(t, []database.Record{
+			assert.Equal(t, []database.Record{
 				{
 					Details: makeDetails(obj2),
 					Meta: model.SearchMeta{
 						RelationKey:     "type",
-						RelationDetails: makeDetails(relObj).CopyOnlyKeys(bundle.RelationKeyLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
+						RelationDetails: makeDetails(typeObj).CopyOnlyKeys(bundle.RelationKeyLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
 					},
 				},
 				{
 					Details: makeDetails(obj3),
 					Meta: model.SearchMeta{
 						RelationKey:     "type",
-						RelationDetails: makeDetails(relObj).CopyOnlyKeys(bundle.RelationKeyLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
+						RelationDetails: makeDetails(typeObj).CopyOnlyKeys(bundle.RelationKeyLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
 					},
 				},
 			}, recs)

@@ -22,7 +22,7 @@ import (
 )
 
 func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error {
-	if details.Len() == 0 {
+	if details == nil || details.Len() == 0 {
 		return fmt.Errorf("empty details")
 	}
 	// Ensure ID is set
@@ -170,6 +170,9 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 		}
 		if !modified {
 			return nil, false, nil
+		}
+		if newDetails == nil {
+			newDetails = domain.NewDetails()
 		}
 		// Ensure ID is set
 		newDetails.SetString(bundle.RelationKeyId, id)

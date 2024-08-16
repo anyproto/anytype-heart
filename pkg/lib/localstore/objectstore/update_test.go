@@ -8,14 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestUpdateObjectDetails(t *testing.T) {
@@ -54,11 +52,11 @@ func TestUpdateObjectDetails(t *testing.T) {
 		s := NewStoreFixture(t)
 
 		err := s.UpdateObjectDetails(context.Background(), "id1", nil)
-		require.NoError(t, err)
+		require.Error(t, err)
 
 		det, err := s.GetDetails("id1")
 		assert.NoError(t, err)
-		assert.Equal(t, &types.Struct{Fields: map[string]*types.Value{}}, det)
+		assert.Equal(t, domain.NewDetails(), det)
 	})
 
 	t.Run("with existing details write nil details and expect nothing is changed", func(t *testing.T) {
@@ -67,7 +65,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj})
 
 		err := s.UpdateObjectDetails(context.Background(), "id1", nil)
-		require.NoError(t, err)
+		require.Error(t, err)
 
 		det, err := s.GetDetails("id1")
 		assert.NoError(t, err)
@@ -146,7 +144,7 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 		s := NewStoreFixture(t)
 		s.givenPendingLocalDetails(t)
 
-		err := s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
+		err := s.UpdatePendingLocalDetails("id1", func(details *domain.Details) (*domain.Details, error) {
 			return nil, fmt.Errorf("serious error")
 		})
 		require.Error(t, err)
@@ -166,13 +164,13 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 		s := NewStoreFixture(t)
 		s.givenPendingLocalDetails(t)
 
-		err := s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
+		err := s.UpdatePendingLocalDetails("id1", func(details *domain.Details) (*domain.Details, error) {
 			return nil, nil
 		})
 		require.NoError(t, err)
 
-		err = s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
-			assert.Equal(t, &types.Struct{Fields: map[string]*types.Value{}}, details)
+		err = s.UpdatePendingLocalDetails("id1", func(details *domain.Details) (*domain.Details, error) {
+			assert.Equal(t, domain.NewDetails(), details)
 			return nil, nil
 		})
 		require.NoError(t, err)
@@ -186,7 +184,7 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 		for i := 0; i < 100; i++ {
 			wg.Add(1)
 			go func() {
-				err := s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
+				err := s.UpdatePendingLocalDetails("id1", func(details *domain.Details) (*domain.Details, error) {
 					now := time.Now().UnixNano()
 					atomic.StoreInt64(&lastOpenedDate, now)
 					details.Set(bundle.RelationKeyLastOpenedDate, domain.Int64(now))
@@ -198,14 +196,12 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 		}
 		wg.Wait()
 
-		err := s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
-			assert.Equal(t, &types.Struct{
-				Fields: map[string]*types.Value{
-					// ID is added automatically
-					bundle.RelationKeyId.String():             domain.String("id1"),
-					bundle.RelationKeyLastOpenedDate.String(): domain.Int64(atomic.LoadInt64(&lastOpenedDate)),
-				},
-			}, details)
+		err := s.UpdatePendingLocalDetails("id1", func(details *domain.Details) (*domain.Details, error) {
+			assert.Equal(t, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				// ID is added automatically
+				bundle.RelationKeyId:             domain.String("id1"),
+				bundle.RelationKeyLastOpenedDate: domain.Int64(atomic.LoadInt64(&lastOpenedDate)),
+			}), details)
 			return details, nil
 		})
 		require.NoError(t, err)
@@ -221,7 +217,7 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 			bundle.RelationKeyName:         domain.String("foo"),
 			bundle.RelationKeyLastUsedDate: domain.Int64(lastUsed),
 		}
-		err := s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
+		err := s.UpdatePendingLocalDetails("id1", func(details *domain.Details) (*domain.Details, error) {
 			return makeDetails(obj), nil
 		})
 
@@ -231,10 +227,10 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 			bundle.RelationKeyLastUsedDate:   domain.Int64(lastUsed - 1000),
 			bundle.RelationKeyLastOpenedDate: domain.Int64(lastOpened),
 		}
-		err = s.oldStore.SetDetails("id1", makeDetails(oldObject))
+		err = s.oldStore.SetDetails("id1", makeDetails(oldObject).ToProto())
 		require.NoError(t, err)
 
-		err = s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
+		err = s.UpdatePendingLocalDetails("id1", func(details *domain.Details) (*domain.Details, error) {
 			newObj := TestObject{
 				bundle.RelationKeyId:             domain.String("id1"),
 				bundle.RelationKeyName:           domain.String("foo"),
@@ -253,22 +249,20 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 }
 
 func (fx *StoreFixture) givenPendingLocalDetails(t *testing.T) {
-	err := fx.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
-		details.Set(bundle.RelationKeyIsFavorite, pbtypes.Bool(true))
+	err := fx.UpdatePendingLocalDetails("id1", func(details *domain.Details) (*domain.Details, error) {
+		details.Set(bundle.RelationKeyIsFavorite, domain.Bool(true))
 		return details, nil
 	})
 	require.NoError(t, err)
 }
 
 func (fx *StoreFixture) assertPendingLocalDetails(t *testing.T) {
-	err := fx.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
-		assert.Equal(t, &types.Struct{
-			Fields: map[string]*types.Value{
-				// ID is added automatically
-				bundle.RelationKeyId.String():         domain.String("id1"),
-				bundle.RelationKeyIsFavorite.String(): pbtypes.Bool(true),
-			},
-		}, details)
+	err := fx.UpdatePendingLocalDetails("id1", func(details *domain.Details) (*domain.Details, error) {
+		assert.Equal(t, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			// ID is added automatically
+			bundle.RelationKeyId:         domain.String("id1"),
+			bundle.RelationKeyIsFavorite: domain.Bool(true),
+		}), details)
 		return details, nil
 	})
 	require.NoError(t, err)
@@ -365,7 +359,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		assert.NoError(t, err)
 		got, err := s.GetDetails("id")
 		assert.NoError(t, err)
-		assert.Empty(t, got.Details.Fields)
+		assert.Equal(t, 0, got.Len())
 	})
 
 	t.Run("modifier modifies details", func(t *testing.T) {
@@ -374,7 +368,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		s.AddObjects(t, []TestObject{makeObjectWithName("id", "foo")})
 
 		// when
-		err := s.ModifyObjectDetails("id", func(details *types.Struct) (*types.Struct, bool, error) {
+		err := s.ModifyObjectDetails("id", func(details *domain.Details) (*domain.Details, bool, error) {
 			details.Set(bundle.RelationKeyName, domain.String("bar"))
 			return details, true, nil
 		})
@@ -388,7 +382,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		})
 		got, err := s.GetDetails("id")
 		assert.NoError(t, err)
-		assert.Equal(t, want, got.Details)
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("if modifier wipes details - id remains", func(t *testing.T) {
@@ -397,7 +391,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		s.AddObjects(t, []TestObject{makeObjectWithName("id", "foo")})
 
 		// when
-		err := s.ModifyObjectDetails("id", func(_ *types.Struct) (*types.Struct, bool, error) {
+		err := s.ModifyObjectDetails("id", func(_ *domain.Details) (*domain.Details, bool, error) {
 			return nil, true, nil
 		})
 
@@ -408,6 +402,6 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		})
 		got, err := s.GetDetails("id")
 		assert.NoError(t, err)
-		assert.Equal(t, want, got.Details)
+		assert.Equal(t, want, got)
 	})
 }

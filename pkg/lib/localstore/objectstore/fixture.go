@@ -39,6 +39,8 @@ func (w *walletStub) RepoPath() string {
 	return w.tempDir
 }
 
+func (w *walletStub) Name() string { return wallet.CName }
+
 func NewStoreFixture(t testing.TB) *StoreFixture {
 	ctx, cancel := context.WithCancel(context.Background())
 

@@ -8,14 +8,12 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
@@ -105,15 +103,15 @@ func TestList(t *testing.T) {
 	got, err := s.List("space1", false)
 	require.NoError(t, err)
 
-	want := []*model.ObjectInfo{
+	want := []*database.ObjectInfo{
 		{
 			Id:      "id1",
-			Details: makeDetails(obj1).ToProto(),
+			Details: makeDetails(obj1),
 			Snippet: "snippet1",
 		},
 		{
 			Id:      "id2",
-			Details: makeDetails(obj2).ToProto(),
+			Details: makeDetails(obj2),
 		},
 		// Skip deleted id3
 	}
@@ -186,28 +184,28 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 		got, err := s.GetWithLinksInfoByID("space1", "id1")
 		require.NoError(t, err)
 
-		assert.Equal(t, makeDetails(obj1), got.Info.Details)
+		assert.Equal(t, makeDetails(obj1).ToProto(), got.Info.Details)
 		require.Len(t, got.Links.Outbound, 2)
-		assert.Equal(t, makeDetails(obj2), got.Links.Outbound[0].Details)
-		assert.Equal(t, makeDetails(obj3), got.Links.Outbound[1].Details)
+		assert.Equal(t, makeDetails(obj2).ToProto(), got.Links.Outbound[0].Details)
+		assert.Equal(t, makeDetails(obj3).ToProto(), got.Links.Outbound[1].Details)
 	})
 
 	t.Run("links of second object", func(t *testing.T) {
 		got, err := s.GetWithLinksInfoByID("space1", "id2")
 		require.NoError(t, err)
 
-		assert.Equal(t, makeDetails(obj2), got.Info.Details)
+		assert.Equal(t, makeDetails(obj2).ToProto(), got.Info.Details)
 		require.Len(t, got.Links.Inbound, 1)
-		assert.Equal(t, makeDetails(obj1), got.Links.Inbound[0].Details)
+		assert.Equal(t, makeDetails(obj1).ToProto(), got.Links.Inbound[0].Details)
 	})
 
 	t.Run("links of third object", func(t *testing.T) {
 		got, err := s.GetWithLinksInfoByID("space1", "id3")
 		require.NoError(t, err)
 
-		assert.Equal(t, makeDetails(obj3), got.Info.Details)
+		assert.Equal(t, makeDetails(obj3).ToProto(), got.Info.Details)
 		require.Len(t, got.Links.Inbound, 1)
-		assert.Equal(t, makeDetails(obj1), got.Links.Inbound[0].Details)
+		assert.Equal(t, makeDetails(obj1).ToProto(), got.Links.Inbound[0].Details)
 	})
 }
 
@@ -303,7 +301,5 @@ func TestDeleteDetails(t *testing.T) {
 
 	got, err := s.GetDetails("id1")
 	require.NoError(t, err)
-	assert.Equal(t, &model.ObjectDetails{Details: &types.Struct{
-		Fields: map[string]*types.Value{},
-	}}, got)
+	assert.Equal(t, domain.NewDetails(), got)
 }
