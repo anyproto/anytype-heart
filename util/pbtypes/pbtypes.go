@@ -2,7 +2,7 @@ package pbtypes
 
 import (
 	"fmt"
-	"strconv"
+	"slices"
 	"strings"
 
 	"github.com/gogo/protobuf/jsonpb"
@@ -614,8 +614,8 @@ func AddValue(s *types.Struct, key string, v *types.Value) {
 	}
 	toAdd := GetList(v)
 	oldValues := GetValueList(s, key)
-	newValues := lo.UniqBy(append(oldValues, toAdd...), func(item *types.Value) string {
-		return getUniqueId(item)
+	newValues := slice.MergeUniqBy(oldValues, toAdd, func(this *types.Value, that *types.Value) bool {
+		return this.Equal(that)
 	})
 	s.Fields[key] = &types.Value{
 		Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: newValues}},
@@ -635,25 +635,17 @@ func RemoveValue(s *types.Struct, key string, v *types.Value) {
 		delete(s.Fields, key)
 		return
 	}
-	values := GetList(value)
-	if len(values) == 0 {
+	oldValues := GetList(value)
+	if len(oldValues) == 0 {
 		return
 	}
 	toDelete := GetList(v)
-	uniqueIdsToDelete := []string{}
-	for _, valueToDelete := range toDelete {
-		uniqueIdsToDelete = append(uniqueIdsToDelete, getUniqueId(valueToDelete))
-	}
-	newValues := lo.Filter(values, func(item *types.Value, _ int) bool {
-		return !lo.Contains(uniqueIdsToDelete, getUniqueId(item))
+	newValues := lo.Filter(oldValues, func(oldValue *types.Value, _ int) bool {
+		return !slices.ContainsFunc(toDelete, func(valueToDelete *types.Value) bool {
+			return oldValue.Equal(valueToDelete)
+		})
 	})
 	s.Fields[key] = &types.Value{
 		Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: newValues}},
 	}
-}
-
-func getUniqueId(v *types.Value) string {
-	str := v.GetStringValue()
-	str = str + strconv.FormatFloat(v.GetNumberValue(), 'f', -1, 64)
-	return str
 }

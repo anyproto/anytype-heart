@@ -237,3 +237,24 @@ func FilterCID(cids []string) []string {
 		return err == nil
 	})
 }
+
+// MergeUniqBy merges two slices with comparator. Resulting slice saves values' order and uniqueness
+// Input slices MUST contain only unique values
+func MergeUniqBy[T comparable](s1, s2 []T, equal func(v1, v2 T) bool) (result []T) {
+	result = make([]T, len(s1))
+	copy(result, s1)
+	for _, v2 := range s2 {
+		isUnique := true
+		for _, v1 := range s1 {
+			if equal(v1, v2) {
+				isUnique = false
+				break
+			}
+		}
+		if isUnique {
+			result = append(result, v2)
+		}
+	}
+
+	return result
+}

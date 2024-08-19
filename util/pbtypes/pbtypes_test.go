@@ -236,3 +236,9 @@ func TestAddRemoveValue(t *testing.T) {
 		})
 	}
 }
+
+func TestEqual(t *testing.T) {
+	v1 := String("red")
+	v2 := String("red")
+	assert.True(t, v1.Equal(v2))
+}
