@@ -239,7 +239,6 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	if err != nil {
 		return fmt.Errorf("add blocks: %w", err)
 	}
-
 	return nil
 }
 
