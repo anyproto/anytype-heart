@@ -50,7 +50,7 @@ func testBuildFast(b *testing.T, filepath string) {
 
 	importer := treearchive.NewTreeImporter(archive.ListStorage(), archive.TreeStorage())
 
-	err = importer.Import("")
+	err = importer.Import(false, "")
 	if err != nil {
 		log.Fatal("can't import the tree", err)
 	}
@@ -64,7 +64,7 @@ func testBuildFast(b *testing.T, filepath string) {
 
 	importer2 := treearchive.NewTreeImporter(archive.ListStorage(), archive.TreeStorage())
 
-	err = importer2.Import("")
+	err = importer2.Import(false, "")
 	if err != nil {
 		log.Fatal("can't import the tree", err)
 	}

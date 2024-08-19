@@ -165,7 +165,7 @@ func (d *debug) TreeHeads(ctx context.Context, id string) (info TreeInfo, err er
 	if err != nil {
 		return
 	}
-	tree, err := spc.TreeBuilder().BuildHistoryTree(ctx, id, objecttreebuilder.HistoryTreeOpts{})
+	tree, err := spc.TreeBuilder().BuildHistoryTree(ctx, id, objecttreebuilder.HistoryTreeOpts{Heads: []string{""}})
 	if err != nil {
 		return
 	}
