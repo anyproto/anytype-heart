@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "5538228e6db0690f137ede0ee8bfd18421f3d27efa5fb991d7b71a4642720971"
+const RelationChecksum = "055949632ab8dc9117ec70c3ec24f1b0f17406318be7f079b5ad883a3d3bee0b"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -50,7 +50,6 @@ const (
 	RelationKeyCompany                   domain.RelationKey = "company"
 	RelationKeyAperture                  domain.RelationKey = "aperture"
 	RelationKeyLastModifiedDate          domain.RelationKey = "lastModifiedDate"
-	RelationKeyStakeholders              domain.RelationKey = "stakeholders"
 	RelationKeyRecommendedRelations      domain.RelationKey = "recommendedRelations"
 	RelationKeyCreator                   domain.RelationKey = "creator"
 	RelationKeyRecommendedLayout         domain.RelationKey = "recommendedLayout"
@@ -1708,18 +1707,6 @@ var (
 			MaxCount:         1,
 			Name:             "Space shareable status",
 			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyStakeholders: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_object,
-			Id:               "_brstakeholders",
-			Key:              "stakeholders",
-			Name:             "Stakeholders",
-			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

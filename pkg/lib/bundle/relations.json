@@ -390,15 +390,6 @@
     "source": "derived"
   },
   {
-    "format": "object",
-    "hidden": false,
-    "key": "stakeholders",
-    "maxCount": 0,
-    "name": "Stakeholders",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "List of recommended relations",
     "format": "object",
     "hidden": true,

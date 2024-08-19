@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -228,7 +227,6 @@ func (s *service) prepareDetailsForInstallingObject(
 
 	if isNewSpace {
 		objecttype.SetLastUsedDateForInitialObjectType(sourceId, details)
-		hideFileSystemRelation(domain.RelationKey(strings.TrimPrefix(sourceId, addr.BundledRelationURLPrefix)), details)
 	}
 
 	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
@@ -241,7 +239,7 @@ func (s *service) prepareDetailsForInstallingObject(
 			}
 			recommendedRelationKeys = append(recommendedRelationKeys, key.String())
 		}
-		recommendedRelationIds, err := s.prepareRecommendedRelationIds(ctx, spc, recommendedRelationKeys, isNewSpace)
+		recommendedRelationIds, err := s.prepareRecommendedRelationIds(ctx, spc, recommendedRelationKeys)
 		if err != nil {
 			return nil, fmt.Errorf("prepare recommended relation ids: %w", err)
 		}
@@ -299,11 +297,4 @@ func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs [
 			},
 		},
 	}}, 0, 0)
-}
-
-// hideFileSystemRelation sets isHidden=true to relations recommended for File types that should be shown on demand
-func hideFileSystemRelation(key domain.RelationKey, details *types.Struct) {
-	if slices.Contains(bundle.RecommendedHiddenRelationsByType[bundle.TypeKeyAudio], key) {
-		details.Fields[bundle.RelationKeyIsHidden.String()] = pbtypes.Bool(true)
-	}
 }

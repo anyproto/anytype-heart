@@ -3,14 +3,12 @@ package fileobject
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/cheggaaa/mb/v3"
 	"github.com/gogo/protobuf/types"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -27,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type indexer struct {
@@ -244,8 +241,6 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, space clientspace
 		return fmt.Errorf("add blocks: %w", err)
 	}
 
-	go ind.unhideRecommendedRelations(space, typeKey, keys)
-
 	return nil
 }
 
@@ -349,66 +344,6 @@ func (ind *indexer) addBlocks(st *state.State, details *types.Struct, objectId s
 	}
 	template.WithAllBlocksEditsRestricted(st)
 	return nil
-}
-
-// unhideRecommendedRelations sets isHidden=false to recommended relations of Type that could be hidden
-func (ind *indexer) unhideRecommendedRelations(space clientspace.Space, typeKey domain.TypeKey, relKeys []domain.RelationKey) {
-	recommendedRelations, found := bundle.RecommendedHiddenRelationsByType[typeKey]
-
-	if !found {
-		return
-	}
-
-	relsToUnhide := lo.Intersect(relKeys, recommendedRelations)
-	if len(relsToUnhide) == 0 {
-		return
-	}
-
-	uks := []string{}
-	for _, rel := range relsToUnhide {
-		uks = append(uks, rel.URL())
-	}
-
-	records, err := ind.objectStore.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
-		{
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(space.Id()),
-		},
-		{
-			RelationKey: bundle.RelationKeyUniqueKey.String(),
-			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       pbtypes.StringList(uks),
-		},
-	}})
-
-	if err != nil || len(records) != len(uks) {
-		var stored []string
-		for _, rec := range records {
-			uk := pbtypes.GetString(rec.Details, bundle.RelationKeyUniqueKey.String())
-			if slices.Contains(uks, uk) {
-				stored = append(stored, uk)
-			}
-		}
-		missed, _ := slice.DifferenceRemovedAdded(uks, stored)
-		log.Errorf("failed to get relations '%v' from store to check if they are not hidden: %v", missed, err)
-	}
-
-	for _, rec := range records {
-		if !pbtypes.GetBool(rec.Details, bundle.RelationKeyIsHidden.String()) {
-			continue
-		}
-
-		err = space.Do(pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
-			s := sb.NewState()
-			s.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(false))
-			return sb.Apply(s)
-		})
-		if err != nil {
-			uk := pbtypes.GetString(rec.Details, bundle.RelationKeyUniqueKey.String())
-			log.Errorf("failed to set isHidden to false for relation '%s' in space '%s': %v", uk, space.Id(), err)
-		}
-	}
 }
 
 func makeRelationBlock(relationKey domain.RelationKey) *model.Block {

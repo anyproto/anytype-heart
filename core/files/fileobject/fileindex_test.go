@@ -7,11 +7,8 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -19,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -239,94 +235,5 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 		}
 
 		assert.ElementsMatch(t, want, got)
-	})
-}
-
-func TestIndexer_unhideRecommendedRelations(t *testing.T) {
-	const spaceId = "spaceId"
-	t.Run("no recommended relations that could be hidden - no panic", func(t *testing.T) {
-		// given
-		i := indexer{}
-
-		// when
-		i.unhideRecommendedRelations(nil, bundle.TypeKeyVideo, []domain.RelationKey{bundle.RelationKeyArtist, bundle.RelationKeyFileMimeType})
-
-		// then
-		// test is successful. If method call does not panic, then no Store or Space call was initiated
-	})
-
-	t.Run("all recommended relations are not hidden - no space call", func(t *testing.T) {
-		// given
-		store := objectstore.NewStoreFixture(t)
-		store.AddObjects(t, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:        pbtypes.String(bundle.RelationKeyAudioLyrics.URL()),
-				bundle.RelationKeyUniqueKey: pbtypes.String(bundle.RelationKeyAudioLyrics.URL()),
-				bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
-				bundle.RelationKeyIsHidden:  pbtypes.Bool(false),
-			},
-			{
-				bundle.RelationKeyId:        pbtypes.String(bundle.RelationKeyAudioAlbumTrackNumber.URL()),
-				bundle.RelationKeyUniqueKey: pbtypes.String(bundle.RelationKeyAudioAlbumTrackNumber.URL()),
-				bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
-				bundle.RelationKeyIsHidden:  pbtypes.Bool(false),
-			},
-		})
-		i := indexer{objectStore: store}
-
-		space := mock_space.NewMockSpace(t)
-		space.EXPECT().Id().Return(spaceId).Maybe()
-		// space.EXPECT().Do(mock.Anything, mock.Anything)
-
-		// when
-		i.unhideRecommendedRelations(space, bundle.TypeKeyAudio, []domain.RelationKey{bundle.RelationKeyAudioAlbumTrackNumber, bundle.RelationKeyAudioLyrics})
-
-		// then
-		// no space.Do call as expected
-	})
-
-	t.Run("all recommended relations are hidden - space call for each", func(t *testing.T) {
-		// given
-		store := objectstore.NewStoreFixture(t)
-		store.AddObjects(t, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:        pbtypes.String(bundle.RelationKeyAudioGenre.URL()),
-				bundle.RelationKeyUniqueKey: pbtypes.String(bundle.RelationKeyAudioGenre.URL()),
-				bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
-				bundle.RelationKeyIsHidden:  pbtypes.Bool(true),
-			},
-			{
-				bundle.RelationKeyId:        pbtypes.String(bundle.RelationKeyAudioAlbum.URL()),
-				bundle.RelationKeyUniqueKey: pbtypes.String(bundle.RelationKeyAudioAlbum.URL()),
-				bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
-				bundle.RelationKeyIsHidden:  pbtypes.Bool(true),
-			},
-		})
-		i := indexer{objectStore: store}
-		ids := []string{bundle.RelationKeyAudioGenre.URL(), bundle.RelationKeyAudioAlbum.URL()}
-
-		space := mock_space.NewMockSpace(t)
-		space.EXPECT().Id().Return(spaceId).Maybe()
-		space.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, apply func(smartblock.SmartBlock) error) error {
-			assert.Contains(t, ids, id)
-
-			sb := smarttest.New(id)
-			s := sb.NewState()
-			s.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(true))
-			err := sb.Apply(s)
-			require.NoError(t, err)
-
-			err = apply(sb)
-			assert.NoError(t, err)
-
-			assert.False(t, pbtypes.GetBool(sb.CombinedDetails(), bundle.RelationKeyIsHidden.String()))
-			return nil
-		}).Times(2)
-
-		// when
-		i.unhideRecommendedRelations(space, bundle.TypeKeyAudio, []domain.RelationKey{bundle.RelationKeyAudioGenre, bundle.RelationKeyAudioAlbum})
-
-		// then
-		// 2 space calls are expected
 	})
 }
