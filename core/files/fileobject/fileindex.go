@@ -23,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -206,7 +205,7 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 	}
 	err = space.Do(id.ObjectID, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
-		err := ind.injectMetadataToState(ctx, space, st, fileId, id)
+		err := ind.injectMetadataToState(ctx, st, fileId, id)
 		if err != nil {
 			return fmt.Errorf("inject metadata to state: %w", err)
 		}
@@ -218,7 +217,7 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 	return nil
 }
 
-func (ind *indexer) injectMetadataToState(ctx context.Context, space clientspace.Space, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
+func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
 	details, typeKey, err := ind.buildDetails(ctx, fileId)
 	if err != nil {
 		return fmt.Errorf("build details: %w", err)
