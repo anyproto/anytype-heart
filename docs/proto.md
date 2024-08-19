@@ -26340,6 +26340,7 @@ Bookmark is to keep a web-link and to preview a content.
 | quickOption | [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption) |  |  |
 | format | [RelationFormat](#anytype-model-RelationFormat) |  |  |
 | includeTime | [bool](#bool) |  |  |
+| nestedFilters | [Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 
 
 
@@ -27816,8 +27817,9 @@ stored |
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| And | 0 |  |
+| No | 0 |  |
 | Or | 1 |  |
+| And | 2 |  |
 
 
 
