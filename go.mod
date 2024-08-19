@@ -92,7 +92,7 @@ require (
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
-	golang.org/x/image v0.18.0
+	golang.org/x/image v0.19.0
 	golang.org/x/mobile v0.0.0-20240520174638-fa72addaaa1b
 	golang.org/x/net v0.27.0
 	golang.org/x/oauth2 v0.21.0
