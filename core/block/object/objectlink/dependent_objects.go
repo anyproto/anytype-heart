@@ -94,6 +94,7 @@ func collectIdsFromBlocks(s *state.State, flags Flags) (ids []string) {
 			}
 		}
 
+		// if NoImages == false, then file block will be processed with FillSmartIds
 		if flags.NoImages {
 			if f := b.Model().GetFile(); f != nil {
 				if f.TargetObjectId != "" && f.Type != model.BlockContentFile_Image {
