@@ -2,13 +2,11 @@ package pbtypes
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -605,47 +603,4 @@ func RelationIdToKey(id string) (string, error) {
 	}
 
 	return "", fmt.Errorf("incorrect id format")
-}
-
-// AddValue adds values to int lists and string lists
-func AddValue(s *types.Struct, key string, v *types.Value) {
-	if IsStructEmpty(s) || v == nil {
-		return
-	}
-	toAdd := GetList(v)
-	oldValues := GetValueList(s, key)
-	newValues := slice.MergeUniqBy(oldValues, toAdd, func(this *types.Value, that *types.Value) bool {
-		return this.Equal(that)
-	})
-	s.Fields[key] = &types.Value{
-		Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: newValues}},
-	}
-}
-
-// RemoveValue removes values from int lists and string lists
-func RemoveValue(s *types.Struct, key string, v *types.Value) {
-	if IsStructEmpty(s) || v == nil {
-		return
-	}
-	value := Get(s, key)
-	if value == nil {
-		return
-	}
-	if value.Equal(v) {
-		delete(s.Fields, key)
-		return
-	}
-	oldValues := GetList(value)
-	if len(oldValues) == 0 {
-		return
-	}
-	toDelete := GetList(v)
-	newValues := lo.Filter(oldValues, func(oldValue *types.Value, _ int) bool {
-		return !slices.ContainsFunc(toDelete, func(valueToDelete *types.Value) bool {
-			return oldValue.Equal(valueToDelete)
-		})
-	})
-	s.Fields[key] = &types.Value{
-		Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: newValues}},
-	}
 }
