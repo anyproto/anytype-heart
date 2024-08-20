@@ -1,14 +1,117 @@
 package bookmark
 
 import (
+	"context"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator/mock_objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
+	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/util/linkpreview/mock_linkpreview"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+const (
+	spaceId    = "space1"
+	bookmarkId = "ot-bookmark"
+)
+
+type detailsSetter struct{}
+
+func (ds *detailsSetter) SetDetails(session.Context, string, []*model.Detail) error {
+	return nil
+}
+
+type fixture struct {
+	s *service
+
+	creator      *mock_objectcreator.MockService
+	space        *mock_clientspace.MockSpace
+	spaceService *mock_space.MockService
+	store        *objectstore.StoreFixture
+}
+
+func newFixture(t *testing.T) *fixture {
+	spc := mock_clientspace.NewMockSpace(t)
+	spc.EXPECT().GetTypeIdByKey(mock.Anything, bundle.TypeKeyBookmark).Return(bookmarkId, nil).Once()
+	spaceSvc := mock_space.NewMockService(t)
+	spaceSvc.EXPECT().Get(mock.Anything, spaceId).Return(spc, nil).Once()
+
+	store := objectstore.NewStoreFixture(t)
+	creator := mock_objectcreator.NewMockService(t)
+
+	s := &service{
+		detailsSetter: &detailsSetter{},
+		creator:       creator,
+		store:         store,
+		spaceService:  spaceSvc,
+	}
+
+	return &fixture{
+		s:            s,
+		creator:      creator,
+		space:        spc,
+		spaceService: spaceSvc,
+		store:        store,
+	}
+}
+
+func TestService_CreateBookmarkObject(t *testing.T) {
+	t.Run("new bookmark object creation", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		details := &types.Struct{Fields: map[string]*types.Value{}}
+		fx.creator.EXPECT().CreateSmartBlockFromState(mock.Anything, mock.Anything, mock.Anything, mock.Anything).RunAndReturn(
+			func(_ context.Context, spcId string, keys []domain.TypeKey, state *state.State) (string, *types.Struct, error) {
+				assert.Equal(t, spaceId, spcId)
+				assert.Equal(t, []domain.TypeKey{bundle.TypeKeyBookmark}, keys)
+				assert.Equal(t, details, state.Details())
+
+				return "some_id", nil, nil
+			},
+		).Once()
+
+		// when
+		_, _, err := fx.s.CreateBookmarkObject(nil, spaceId, details, func() *bookmark.ObjectContent { return nil })
+
+		// then
+		assert.NoError(t, err)
+	})
+
+	t.Run("bookmark with existing url is created", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		url := "https://url.com"
+		details := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeySource.String(): pbtypes.String(url),
+		}}
+		fx.store.AddObjects(t, []objectstore.TestObject{{
+			bundle.RelationKeyId:     pbtypes.String("bk"),
+			bundle.RelationKeySource: pbtypes.String(url),
+			bundle.RelationKeyType:   pbtypes.String(bookmarkId),
+		}})
+
+		// when
+		id, _, err := fx.s.CreateBookmarkObject(nil, spaceId, details, func() *bookmark.ObjectContent {
+			return &bookmark.ObjectContent{BookmarkContent: &model.BlockContentBookmark{}}
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, "bk", id)
+	})
+}
 
 func TestService_FetchBookmarkContent(t *testing.T) {
 	t.Run("link to html page - create blocks", func(t *testing.T) {
