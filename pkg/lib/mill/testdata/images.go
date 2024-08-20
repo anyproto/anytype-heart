@@ -10,6 +10,13 @@ type TestImage struct {
 
 var Images = []TestImage{
 	{
+		Path:    "testdata/text.psd",
+		Format:  "psd",
+		HasExif: true,
+		Width:   800,
+		Height:  600,
+	},
+	{
 		Path:    "testdata/Landscape_8.jpg",
 		Format:  "jpeg",
 		HasExif: true,
