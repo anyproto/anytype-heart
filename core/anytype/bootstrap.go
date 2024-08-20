@@ -82,6 +82,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
+	"github.com/anyproto/anytype-heart/core/tokengate"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -301,7 +302,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
 		Register(paymentscache.New()).
-		Register(peerstatus.New())
+		Register(peerstatus.New()).
+		Register(tokengate.New())
 }
 
 func MiddlewareVersion() string {

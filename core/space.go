@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
+	"github.com/anyproto/anytype-heart/core/tokengate"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -161,6 +162,27 @@ func viewInvite(ctx context.Context, aclService acl.AclService, req *pb.RpcSpace
 }
 
 func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinRequest) *pb.RpcSpaceJoinResponse {
+	tokengatingService := mw.applicationService.GetApp().MustComponent(tokengate.CName).(tokengate.TokenGatingService)
+
+	// 1 - do an NFT check if needed
+	if req.NftTokenAddress != "" {
+		err := tokengatingService.CheckNftOwnership(cctx, req.NftTokenAddress)
+
+		code := mapErrorCode(err,
+			errToCode(tokengate.ErrNotAnNftOwner, pb.RpcSpaceJoinResponseError_NOT_AN_NFT_OWNER),
+			errToCode(tokengate.ErrBadNftTokenAddr, pb.RpcSpaceJoinResponseError_BAD_NFT_TOKEN_ADDR),
+		)
+		if err != nil {
+			return &pb.RpcSpaceJoinResponse{
+				Error: &pb.RpcSpaceJoinResponseError{
+					Code:        code,
+					Description: getErrorDescription(err),
+				},
+			}
+		}
+	}
+
+	// 2 - join the space
 	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
 	err := join(cctx, aclService, req)
 	code := mapErrorCode(err,
@@ -174,6 +196,7 @@ func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinReques
 		errToCode(acl.ErrNotShareable, pb.RpcSpaceJoinResponseError_NOT_SHAREABLE),
 		errToCode(acl.ErrDifferentNetwork, pb.RpcSpaceJoinResponseError_DIFFERENT_NETWORK),
 	)
+
 	return &pb.RpcSpaceJoinResponse{
 		Error: &pb.RpcSpaceJoinResponseError{
 			Code:        code,

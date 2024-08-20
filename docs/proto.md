@@ -17097,6 +17097,7 @@ Available undo/redo operations
 | spaceId | [string](#string) |  |  |
 | inviteCid | [string](#string) |  |  |
 | inviteFileKey | [string](#string) |  |  |
+| nftTokenAddress | [string](#string) |  | not-empty if invite is token-gated |
 
 
 
@@ -22202,6 +22203,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | LIMIT_REACHED | 106 |  |
 | NOT_SHAREABLE | 107 |  |
 | DIFFERENT_NETWORK | 108 |  |
+| BAD_NFT_TOKEN_ADDR | 109 |  |
+| NOT_AN_NFT_OWNER | 110 | if token-gating fails |
 
 
 

@@ -291,6 +291,7 @@ message Rpc {
                 string spaceId = 2;
                 string inviteCid = 3;
                 string inviteFileKey = 4;
+                string nftTokenAddress = 5; // not-empty if invite is token-gated
             }
 
             message Response {
@@ -313,6 +314,8 @@ message Rpc {
                         LIMIT_REACHED = 106;
                         NOT_SHAREABLE = 107;
                         DIFFERENT_NETWORK = 108;
+                        BAD_NFT_TOKEN_ADDR = 109;
+                        NOT_AN_NFT_OWNER = 110; // if token-gating fails
                     }
                 }
             }
