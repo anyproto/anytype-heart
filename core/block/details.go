@@ -61,8 +61,8 @@ func (s *Service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesReque
 					current.Fields[op.RelationKey] = op.Set
 					continue
 				}
-				AddValue(current, op.RelationKey, op.Add)
-				RemoveValue(current, op.RelationKey, op.Remove)
+				addValueToListDetail(current, op.RelationKey, op.Add)
+				removeValueFromListDetail(current, op.RelationKey, op.Remove)
 			}
 			return current, nil
 		})
@@ -81,8 +81,8 @@ func (s *Service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesReque
 	return resultError
 }
 
-// AddValue adds values to int lists and string lists
-func AddValue(s *types.Struct, key string, v *types.Value) {
+// addValueToListDetail adds values to int lists and string lists
+func addValueToListDetail(s *types.Struct, key string, v *types.Value) {
 	if pbtypes.IsStructEmpty(s) || v == nil {
 		return
 	}
@@ -96,8 +96,8 @@ func AddValue(s *types.Struct, key string, v *types.Value) {
 	}
 }
 
-// RemoveValue removes values from int lists and string lists
-func RemoveValue(s *types.Struct, key string, v *types.Value) {
+// removeValueFromListDetail removes values from int lists and string lists
+func removeValueFromListDetail(s *types.Struct, key string, v *types.Value) {
 	if pbtypes.IsStructEmpty(s) || v == nil {
 		return
 	}

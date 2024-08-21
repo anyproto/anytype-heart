@@ -19,7 +19,7 @@ func newStruct() *types.Struct {
 	}}
 }
 
-func TestAddValue(t *testing.T) {
+func TestAddValueToListDetail(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		key      string
@@ -39,13 +39,13 @@ func TestAddValue(t *testing.T) {
 		{"string list + no such key", "plays", newStruct(), pbtypes.StringList([]string{"Falstaff", "Romeo and Juliet", "Macbeth"}), pbtypes.StringList([]string{"Falstaff", "Romeo and Juliet", "Macbeth"})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			AddValue(tc.s, tc.key, tc.toAdd)
+			addValueToListDetail(tc.s, tc.key, tc.toAdd)
 			assert.True(t, pbtypes.Get(tc.s, tc.key).Equal(tc.expected))
 		})
 	}
 }
 
-func TestRemoveValue(t *testing.T) {
+func TestRemoveValueFromListDetail(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		key      string
@@ -64,7 +64,7 @@ func TestRemoveValue(t *testing.T) {
 		{"empty - string list", "haters", newStruct(), pbtypes.StringList([]string{"Tomas River", "Leo Tolstoy"}), pbtypes.StringList([]string{})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			RemoveValue(tc.s, tc.key, tc.toRemove)
+			removeValueFromListDetail(tc.s, tc.key, tc.toRemove)
 			assert.True(t, pbtypes.Get(tc.s, tc.key).Equal(tc.expected))
 		})
 	}
