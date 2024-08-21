@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type objKey interface {
@@ -43,11 +43,11 @@ func TestInstaller_queryDeletedObjects(t *testing.T) {
 		{true, false, "otherSpaceId", bundle.RelationKeyComposer},
 	} {
 		store.AddObjects(t, []objectstore.TestObject{{
-			bundle.RelationKeyId:           pbtypes.String(obj.key.URL()),
-			bundle.RelationKeySpaceId:      pbtypes.String(obj.spaceId),
-			bundle.RelationKeySourceObject: pbtypes.String(obj.key.BundledURL()),
-			bundle.RelationKeyIsDeleted:    pbtypes.Bool(obj.isDeleted),
-			bundle.RelationKeyIsArchived:   pbtypes.Bool(obj.isArchived),
+			bundle.RelationKeyId:           domain.String(obj.key.URL()),
+			bundle.RelationKeySpaceId:      domain.String(obj.spaceId),
+			bundle.RelationKeySourceObject: domain.String(obj.key.BundledURL()),
+			bundle.RelationKeyIsDeleted:    domain.Bool(obj.isDeleted),
+			bundle.RelationKeyIsArchived:   domain.Bool(obj.isArchived),
 		}})
 		sourceObjectIds = append(sourceObjectIds, obj.key.BundledURL())
 		if obj.spaceId == spaceId && (obj.isDeleted || obj.isArchived) {
@@ -67,6 +67,6 @@ func TestInstaller_queryDeletedObjects(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, records, 6)
 	for _, det := range records {
-		assert.Contains(t, validObjectIds, pbtypes.GetString(det.Details, bundle.RelationKeyId.String()))
+		assert.Contains(t, validObjectIds, det.Details.GetString(bundle.RelationKeyId))
 	}
 }

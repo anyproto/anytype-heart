@@ -72,7 +72,7 @@ func TestBase_Diff(t *testing.T) {
 	t.Run("fields", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
-		b2.Fields.Set("diff", &types.Value{)
+		b2.Fields.Fields["diff"] = &types.Value{
 			Kind: &types.Value_StringValue{StringValue: "value"},
 		}
 		diff, err := b1.Diff(b2)

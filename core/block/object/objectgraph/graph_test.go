@@ -3,20 +3,18 @@ package objectgraph
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fixture struct {
@@ -53,15 +51,13 @@ func Test(t *testing.T) {
 			{Relation: bundle.MustGetRelation(bundle.RelationKeyAttachments)},
 		}, nil)
 		fixture.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
-			Records: []*types.Struct{},
+			Records: []*domain.Details{},
 		}, nil)
 		fixture.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
 
-		req := &pb.RpcObjectGraphRequest{}
+		req := ObjectGraphRequest{}
 		graph, edges, err := fixture.ObjectGraph(req)
 		assert.NoError(t, err)
-		assert.Equal(t, req.Keys[0], "links")
-		assert.Equal(t, len(req.Keys), 4)
 		assert.True(t, len(graph) == 0)
 		assert.True(t, len(edges) == 0)
 	})
@@ -75,24 +71,24 @@ func Test(t *testing.T) {
 			{Relation: bundle.MustGetRelation(bundle.RelationKeyAttachments)},
 		}, nil)
 		fixture.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
-			Records: []*types.Struct{
-				{Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String():       pbtypes.String("id1"),
-					bundle.RelationKeyAssignee.String(): pbtypes.String("id2"),
-					bundle.RelationKeyLinks.String():    pbtypes.StringList([]string{"id2", "id3"}),
-				}},
-				{Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String(): pbtypes.String("id2"),
-				}},
-				{Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String(): pbtypes.String("id3"),
-				}},
+			Records: []*domain.Details{
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId:       domain.String("id1"),
+					bundle.RelationKeyAssignee: domain.String("id2"),
+					bundle.RelationKeyLinks:    domain.StringList([]string{"id2", "id3"}),
+				}),
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId: domain.String("id2"),
+				}),
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId: domain.String("id3"),
+				}),
 			},
 		}, nil)
 		fixture.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
 		fixture.sbtProviderMock.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil)
 
-		req := &pb.RpcObjectGraphRequest{}
+		req := ObjectGraphRequest{}
 		graph, edges, err := fixture.ObjectGraph(req)
 		assert.NoError(t, err)
 		assert.True(t, len(graph) == 3)

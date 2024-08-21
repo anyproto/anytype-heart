@@ -21,9 +21,9 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func newTextBlock(id, contentText string, childrenIds ...string) simple.Block {
@@ -534,7 +534,7 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		defer ctrl.Finish()
 
 		sb := smarttest.New("test")
-		os := testMock.NewMockObjectStore(ctrl)
+		os := mock_objectstore.NewMockObjectStore(t)
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(link.NewLink(&model.Block{
