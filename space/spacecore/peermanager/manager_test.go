@@ -137,8 +137,10 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 		f := newFixtureManager(t, spaceId)
 
 		// when
-		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
-		f.pool.EXPECT().Get(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		peer := newTestPeer("id")
+		peer.ctx = context.Background()
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(peer, nil)
+		f.pool.EXPECT().Get(gomock.Any(), gomock.Any()).Return(peer, nil)
 		peers, err := f.cm.getStreamResponsiblePeers(context.Background())
 
 		// then
@@ -151,9 +153,13 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 		f.store.UpdateLocalPeer("peerId", []string{spaceId})
 
 		// when
-		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
-		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(newTestPeer("id1"), nil)
-		f.pool.EXPECT().Get(f.cm.ctx, "id").Return(newTestPeer("id"), nil)
+		peer := newTestPeer("id")
+		peer.ctx = context.Background()
+		peer1 := newTestPeer("id1")
+		peer1.ctx = context.Background()
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(peer, nil)
+		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(peer1, nil)
+		f.pool.EXPECT().Get(f.cm.ctx, "id").Return(peer, nil)
 		peers, err := f.cm.getStreamResponsiblePeers(context.Background())
 
 		// then
@@ -166,9 +172,11 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 		f.store.UpdateLocalPeer("peerId", []string{spaceId})
 
 		// when
-		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		peer := newTestPeer("id")
+		peer.ctx = context.Background()
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(peer, nil)
 		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(nil, fmt.Errorf("error"))
-		f.pool.EXPECT().Get(f.cm.ctx, "id").Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Get(f.cm.ctx, "id").Return(peer, nil)
 		peers, err := f.cm.getStreamResponsiblePeers(context.Background())
 
 		// then
