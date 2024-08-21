@@ -164,12 +164,12 @@ func TestBasic_Duplicate(t *testing.T) {
 				AddBlock(simple.New(&model.Block{Id: "f1", Content: &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: "file1_space1"}}})).
 				AddBlock(simple.New(&model.Block{Id: "f2", Content: &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: "file2_space1"}}}))
 			ss := source.NewState()
-			ss.SetDetail(bundle.RelationKeySpaceId, pbtypes.String(tc.spaceIds[0]))
+			ss.SetDetail(bundle.RelationKeySpaceId, domain.String(tc.spaceIds[0]))
 
 			target := smarttest.New("target").
 				AddBlock(simple.New(&model.Block{Id: "target"}))
 			ts := target.NewState()
-			ts.SetDetail(bundle.RelationKeySpaceId, pbtypes.String(tc.spaceIds[1]))
+			ts.SetDetail(bundle.RelationKeySpaceId, domain.String(tc.spaceIds[1]))
 
 			// when
 			newIds, err := NewBasic(source, nil, nil, tc.fos()).Duplicate(ss, ts, "target", model.Block_Inner, []string{"1", "f1"})
@@ -565,7 +565,7 @@ func TestBasic_SetFields(t *testing.T) {
 
 	fields := &types.Struct{
 		Fields: map[string]*types.Value{
-			"x": pbtypes.String("x"),
+			"x": domain.String("x"),
 		},
 	}
 	err := b.SetFields(nil, &pb.RpcBlockListSetFieldsRequestBlockField{
@@ -690,7 +690,7 @@ func TestBasic_ReplaceLink(t *testing.T) {
 
 	sb := smarttest.New("test")
 	s := sb.NewState()
-	s.SetDetail("link", pbtypes.String(oldId))
+	s.SetDetail("link", domain.String(oldId))
 	s.AddRelationLinks(&model.RelationLink{Key: "link", Format: model.RelationFormat_object})
 	template.WithDescription(s)
 	newBlocks := []simple.Block{

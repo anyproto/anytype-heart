@@ -86,7 +86,7 @@ func (s *spaceViewStub) GetExistingInviteInfo() (fileCid string, fileKey string)
 	return
 }
 
-func (s *spaceViewStub) SetSpaceData(details *types.Struct) error {
+func (s *spaceViewStub) SetSpaceData(details *domain.Details) error {
 	s.data = details
 	return nil
 }

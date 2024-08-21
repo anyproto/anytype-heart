@@ -71,9 +71,9 @@ func TestRelations_New_Account(t *testing.T) {
 	respRelationCreate := mw.ObjectCreateRelation(context.Background(), &pb.RpcObjectCreateRelationRequest{
 		Details: &types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyRelationFormat.String(): pbtypes.Float64(float64(relFormat)),
-			bundle.RelationKeyName.String():           pbtypes.String(relName),
-			bundle.RelationKeyDescription.String():    pbtypes.String(relDesc),
-			bundle.RelationKeyType.String():           pbtypes.String(bundle.TypeKeyRelation.URL()),
+			bundle.RelationKeyName.String():           domain.String(relName),
+			bundle.RelationKeyDescription.String():    domain.String(relDesc),
+			bundle.RelationKeyType.String():           domain.String(bundle.TypeKeyRelation.URL()),
 		}},
 	})
 	require.Equal(t, 0, int(respRelationCreate.Error.Code), respRelationCreate.Error.Description)
@@ -117,7 +117,7 @@ func TestRelations_New_Account(t *testing.T) {
 	}
 	require.True(t, found)
 
-	var details *types.Struct
+	var details *domain.Details
 	for _, detEvent := range respObjectShow.ObjectView.Details {
 		if detEvent.Id == respRelationCreate.ObjectId {
 			details = detEvent.Details
@@ -148,9 +148,9 @@ func TestRelations_New_Account(t *testing.T) {
 
 	respRelationCreateOption := mw.ObjectCreateRelationOption(context.Background(), &pb.RpcObjectCreateRelationOptionRequest{
 		Details: &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRelationKey.String():         pbtypes.String(respRelationCreate.Key),
-			bundle.RelationKeyName.String():                pbtypes.String("test_option_text"),
-			bundle.RelationKeyRelationOptionColor.String(): pbtypes.String("red"),
+			bundle.RelationKeyRelationKey.String():         domain.String(respRelationCreate.Key),
+			bundle.RelationKeyName.String():                domain.String("test_option_text"),
+			bundle.RelationKeyRelationOptionColor.String(): domain.String("red"),
 		},
 		}})
 
@@ -167,7 +167,7 @@ func TestRelations_New_Account(t *testing.T) {
 				RelationKey:      bundle.RelationKeyType.String(),
 				RelationProperty: "",
 				Condition:        model.BlockContentDataviewFilter_Equal,
-				Value:            pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+				Value:            domain.String(bundle.TypeKeyRelationOption.URL()),
 				QuickOption:      0,
 			},
 			{
@@ -175,7 +175,7 @@ func TestRelations_New_Account(t *testing.T) {
 				RelationKey:      bundle.RelationKeyRelationKey.String(),
 				RelationProperty: "",
 				Condition:        model.BlockContentDataviewFilter_Equal,
-				Value:            pbtypes.String(respRelationCreate.Key),
+				Value:            domain.String(respRelationCreate.Key),
 				QuickOption:      0,
 			},
 		},
@@ -208,7 +208,7 @@ func TestRelations_New_Account(t *testing.T) {
 				RelationKey:      bundle.RelationKeyType.String(),
 				RelationProperty: "",
 				Condition:        model.BlockContentDataviewFilter_Equal,
-				Value:            pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+				Value:            domain.String(bundle.TypeKeyRelationOption.URL()),
 				QuickOption:      0,
 			},
 			{
@@ -216,7 +216,7 @@ func TestRelations_New_Account(t *testing.T) {
 				RelationKey:      bundle.RelationKeyRelationKey.String(),
 				RelationProperty: "",
 				Condition:        model.BlockContentDataviewFilter_Equal,
-				Value:            pbtypes.String(respRelationCreate.Key),
+				Value:            domain.String(respRelationCreate.Key),
 				QuickOption:      0,
 			},
 		},

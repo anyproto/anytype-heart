@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -246,6 +247,10 @@ const (
 	ValueTypeFloatList
 )
 
+func Invalid() Value {
+	return Value{ok: false}
+}
+
 func Null() Value {
 	return Value{ok: true, value: nullValue{}}
 }
@@ -476,6 +481,38 @@ func (v Value) Float64List() []float64 {
 	return res
 }
 
+func (v Value) WrapToList() []Value {
+	list, err := v.TryWrapToList()
+	if err != nil {
+		return nil
+	}
+	return list
+}
+
+func (v Value) TryWrapToList() ([]Value, error) {
+	if v, ok := v.TryString(); ok {
+		return []Value{String(v)}, nil
+	}
+	if v, ok := v.TryFloat64(); ok {
+		return []Value{Float64(v)}, nil
+	}
+	if v, ok := v.TryStringList(); ok {
+		res := make([]Value, 0, len(v))
+		for _, s := range v {
+			res = append(res, String(s))
+		}
+		return res, nil
+	}
+	if v, ok := v.TryFloat64List(); ok {
+		res := make([]Value, 0, len(v))
+		for _, f := range v {
+			res = append(res, Float64(f))
+		}
+		return res, nil
+	}
+	return nil, fmt.Errorf("unsupported type: %v", v.Type())
+}
+
 func (v Value) Type() ValueType {
 	if !v.ok {
 		return ValueTypeNone
@@ -677,11 +714,13 @@ func (v Value) Equal(other Value) bool {
 	return false
 }
 
-func (v Value) Match(boolCase func(v bool), floatCase func(v float64), stringCase func(v string), stringListCase func(v []string), floatListCase func(v []float64)) {
+func (v Value) Match(nullCase func(), boolCase func(v bool), floatCase func(v float64), stringCase func(v string), stringListCase func(v []string), floatListCase func(v []float64)) {
 	if !v.ok {
 		return
 	}
 	switch v := v.value.(type) {
+	case nullValue:
+		nullCase()
 	case bool:
 		boolCase(v)
 	case float64:
@@ -695,21 +734,26 @@ func (v Value) Match(boolCase func(v bool), floatCase func(v float64), stringCas
 	}
 }
 
+// TODO Refactor, maybe remove Match function
 func (v Value) IsEmpty() bool {
 	if !v.ok {
 		return true
 	}
 	var ok bool
-	v.Match(func(v bool) {
-		ok = !v
-	}, func(v float64) {
-		ok = v == 0
-	}, func(v string) {
-		ok = v == ""
-	}, func(v []string) {
-		ok = len(v) == 0
-	}, func(v []float64) {
-		ok = len(v) == 0
-	})
+	v.Match(
+		func() {
+			ok = true
+		},
+		func(v bool) {
+			ok = !v
+		}, func(v float64) {
+			ok = v == 0
+		}, func(v string) {
+			ok = v == ""
+		}, func(v []string) {
+			ok = len(v) == 0
+		}, func(v []float64) {
+			ok = len(v) == 0
+		})
 	return ok
 }

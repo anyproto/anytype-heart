@@ -138,7 +138,7 @@ func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store Object
 			Value: rawFilter.Value.String(),
 		}}, nil
 	case model.BlockContentDataviewFilter_In:
-		list, err := wrapValueToList(rawFilter.Value)
+		list, err := rawFilter.Value.TryWrapToList()
 		if err != nil {
 			return nil, errors.Join(ErrValueMustBeListSupporting, err)
 		}
@@ -147,7 +147,7 @@ func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store Object
 			Value: list,
 		}, nil
 	case model.BlockContentDataviewFilter_NotIn:
-		list, err := wrapValueToList(rawFilter.Value)
+		list, err := rawFilter.Value.TryWrapToList()
 		if err != nil {
 			return nil, errors.Join(ErrValueMustBeListSupporting, err)
 		}
@@ -157,22 +157,22 @@ func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store Object
 		}}, nil
 	case model.BlockContentDataviewFilter_Empty:
 		return FilterEmpty{
-			Key: domain.RelationKey(rawFilter.RelationKey),
+			Key: rawFilter.RelationKey,
 		}, nil
 	case model.BlockContentDataviewFilter_NotEmpty:
 		return FilterNot{FilterEmpty{
-			Key: domain.RelationKey(rawFilter.RelationKey),
+			Key: rawFilter.RelationKey,
 		}}, nil
 	case model.BlockContentDataviewFilter_AllIn:
 		if list, err := wrapValueToStringList(rawFilter.Value); err == nil {
 			return FilterAllIn{
-				Key:     domain.RelationKey(rawFilter.RelationKey),
+				Key:     rawFilter.RelationKey,
 				Strings: list,
 			}, nil
 		}
 		if list, err := wrapValueToFloatList(rawFilter.Value); err == nil {
 			return FilterAllIn{
-				Key:    domain.RelationKey(rawFilter.RelationKey),
+				Key:    rawFilter.RelationKey,
 				Floats: list,
 			}, nil
 		}
@@ -180,13 +180,13 @@ func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store Object
 	case model.BlockContentDataviewFilter_NotAllIn:
 		if list, err := wrapValueToStringList(rawFilter.Value); err == nil {
 			return FilterNot{FilterAllIn{
-				Key:     domain.RelationKey(rawFilter.RelationKey),
+				Key:     rawFilter.RelationKey,
 				Strings: list,
 			}}, nil
 		}
 		if list, err := wrapValueToFloatList(rawFilter.Value); err == nil {
 			return FilterNot{FilterAllIn{
-				Key:    domain.RelationKey(rawFilter.RelationKey),
+				Key:    rawFilter.RelationKey,
 				Floats: list,
 			}}, nil
 		}
@@ -197,9 +197,9 @@ func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store Object
 			return nil, ErrValueMustBeListSupporting
 		}
 		return FilterOptionsEqual{
-			Key:     domain.RelationKey(rawFilter.RelationKey),
+			Key:     rawFilter.RelationKey,
 			Value:   list,
-			Options: optionsToMap(spaceID, domain.RelationKey(rawFilter.RelationKey), store),
+			Options: optionsToMap(spaceID, rawFilter.RelationKey, store),
 		}, nil
 	case model.BlockContentDataviewFilter_NotExactIn:
 		list, err := wrapValueToStringList(rawFilter.Value)
@@ -207,12 +207,12 @@ func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store Object
 			return nil, ErrValueMustBeListSupporting
 		}
 		return FilterNot{FilterOptionsEqual{
-			Key:   domain.RelationKey(rawFilter.RelationKey),
+			Key:   rawFilter.RelationKey,
 			Value: list,
 		}}, nil
 	case model.BlockContentDataviewFilter_Exists:
 		return FilterExists{
-			Key: domain.RelationKey(rawFilter.RelationKey),
+			Key: rawFilter.RelationKey,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unexpected filter cond: %v", rawFilter.Condition)
@@ -235,30 +235,6 @@ func wrapValueToFloatList(val domain.Value) ([]float64, error) {
 	}
 	if v, ok := val.TryFloat64List(); ok {
 		return v, nil
-	}
-	return nil, fmt.Errorf("unsupported type: %v", val.Type())
-}
-
-func wrapValueToList(val domain.Value) ([]domain.Value, error) {
-	if v, ok := val.TryString(); ok {
-		return []domain.Value{domain.String(v)}, nil
-	}
-	if v, ok := val.TryFloat64(); ok {
-		return []domain.Value{domain.Float64(v)}, nil
-	}
-	if v, ok := val.TryStringList(); ok {
-		res := make([]domain.Value, 0, len(v))
-		for _, s := range v {
-			res = append(res, domain.String(s))
-		}
-		return res, nil
-	}
-	if v, ok := val.TryFloat64List(); ok {
-		res := make([]domain.Value, 0, len(v))
-		for _, f := range v {
-			res = append(res, domain.Float64(f))
-		}
-		return res, nil
 	}
 	return nil, fmt.Errorf("unsupported type: %v", val.Type())
 }

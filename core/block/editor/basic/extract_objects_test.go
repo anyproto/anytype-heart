@@ -22,10 +22,10 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 type testCreator struct {
@@ -36,7 +36,7 @@ func (tc testCreator) Add(object *smarttest.SmartTest) {
 	tc.objects[object.Id()] = object
 }
 
-func (tc testCreator) CreateSmartBlockFromState(_ context.Context, _ string, _ []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (tc testCreator) CreateSmartBlockFromState(_ context.Context, _ string, _ []domain.TypeKey, createState *state.State) (id string, newdetails *domain.Details, err error) {
 	id = bson.NewObjectId().Hex()
 	object := smarttest.New(id)
 	tc.objects[id] = object
@@ -55,7 +55,7 @@ func (tts testTemplateService) AddTemplate(id string, st *state.State) {
 	tts.templates[id] = st
 }
 
-func (tts testTemplateService) CreateTemplateStateWithDetails(id string, details *types.Struct) (st *state.State, err error) {
+func (tts testTemplateService) CreateTemplateStateWithDetails(id string, details *domain.Details) (st *state.State, err error) {
 	if id == "" {
 		st = state.NewDoc("", nil).NewState()
 		template.InitTemplate(st, template.WithEmpty,
@@ -68,12 +68,12 @@ func (tts testTemplateService) CreateTemplateStateWithDetails(id string, details
 		st = tts.templates[id]
 	}
 	templateDetails := st.Details()
-	newDetails := pbtypes.StructMerge(templateDetails, details, false)
+	newDetails := templateDetails.Merge(details)
 	st.SetDetails(newDetails)
 	return st, nil
 }
 
-func (tts testTemplateService) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *types.Struct) *state.State {
+func (tts testTemplateService) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State {
 	return tts.templates[sb.Id()]
 }
 
@@ -107,15 +107,16 @@ func assertLinkedObjectHasTextBlocks(t *testing.T, ts testCreator, sourceObject 
 	assertHasTextBlocks(t, object, texts)
 }
 
-func assertDetails(t *testing.T, id string, ts testCreator, details *types.Struct) {
+func assertDetails(t *testing.T, id string, ts testCreator, details *domain.Details) {
 	object, ok := ts.objects[id]
 	if !ok {
 		return
 	}
 	objDetails := object.Details()
-	for key, value := range details.Fields {
-		assert.Equal(t, value, objDetails.Fields[key])
-	}
+	details.Iterate(func(key domain.RelationKey, value domain.Value) bool {
+		assert.Equal(t, value, objDetails.Get(key))
+		return true
+	})
 }
 
 func TestExtractObjects(t *testing.T) {
@@ -136,10 +137,10 @@ func TestExtractObjects(t *testing.T) {
 	}
 
 	templateDetails := []*model.Detail{
-		{Key: bundle.RelationKeyName.String(), Value: pbtypes.String("template")},
-		{Key: bundle.RelationKeyIconImage.String(), Value: pbtypes.String("very funny img")},
-		{Key: bundle.RelationKeyFeaturedRelations.String(), Value: pbtypes.StringList([]string{"tag", "type", "status"})},
-		{Key: bundle.RelationKeyCoverId.String(), Value: pbtypes.String("poster with Van Damme")},
+		{Key: bundle.RelationKeyName, Value: domain.String("template")},
+		{Key: bundle.RelationKeyIconImage, Value: domain.String("very funny img")},
+		{Key: bundle.RelationKeyFeaturedRelations, Value: pbtypes.StringList([]string{"tag", "type", "status"})},
+		{Key: bundle.RelationKeyCoverId, Value: domain.String("poster with Van Damme")},
 	}
 
 	makeTemplateState := func(id string) *state.State {
@@ -159,7 +160,7 @@ func TestExtractObjects(t *testing.T) {
 		typeKey              string
 		templateId           string
 		wantObjectsWithTexts [][]string
-		wantDetails          *types.Struct
+		wantDetails          *domain.Details
 	}{
 		{
 			name:                 "undefined block",
@@ -217,7 +218,7 @@ func TestExtractObjects(t *testing.T) {
 					"text 2.1",
 				},
 			},
-			wantDetails: &types.Struct{},
+			wantDetails: domain.NewDetails(),
 		},
 		{
 			name: "two blocks, not all descendants present in requests",
@@ -249,12 +250,12 @@ func TestExtractObjects(t *testing.T) {
 					"text 3", "text 3.1", "text 3.1.1",
 				},
 			},
-			wantDetails: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String():              pbtypes.String("text 3"),
-				bundle.RelationKeyIconImage.String():         pbtypes.String("very funny img"),
-				bundle.RelationKeyFeaturedRelations.String(): pbtypes.StringList([]string{"tag", "type", "status"}),
-				bundle.RelationKeyCoverId.String():           pbtypes.String("poster with Van Damme"),
-			}},
+			wantDetails: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName:              domain.String("text 3"),
+				bundle.RelationKeyIconImage:         domain.String("very funny img"),
+				bundle.RelationKeyFeaturedRelations: pbtypes.StringList([]string{"tag", "type", "status"}),
+				bundle.RelationKeyCoverId:           domain.String("poster with Van Damme"),
+			}),
 		},
 		{
 			name:       "two blocks with children, from template",
@@ -272,20 +273,20 @@ func TestExtractObjects(t *testing.T) {
 					"text 3", "text 3.1", "text 3.1.1",
 				},
 			},
-			wantDetails: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyIconImage.String():         pbtypes.String("very funny img"),
-				bundle.RelationKeyFeaturedRelations.String(): pbtypes.StringList([]string{"tag", "type", "status"}),
-				bundle.RelationKeyCoverId.String():           pbtypes.String("poster with Van Damme"),
-			}},
+			wantDetails: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyIconImage:         domain.String("very funny img"),
+				bundle.RelationKeyFeaturedRelations: pbtypes.StringList([]string{"tag", "type", "status"}),
+				bundle.RelationKeyCoverId:           domain.String("poster with Van Damme"),
+			}),
 		},
 		{
 			name:                 "if target layout includes title, root is not added",
 			blockIds:             []string{"1.1"},
 			typeKey:              bundle.TypeKeyTask.String(),
 			wantObjectsWithTexts: [][]string{{"text 1.1.1"}},
-			wantDetails: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String(): pbtypes.String("1.1"),
-			}},
+			wantDetails: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("1.1"),
+			}),
 		},
 		{
 			name:                 "template and source are the same objects",
@@ -348,13 +349,13 @@ func TestExtractObjects(t *testing.T) {
 	t.Run("do not add relation name - when creating note", func(t *testing.T) {
 		fields := createTargetObjectDetails("whatever name", model.ObjectType_note).Fields
 
-		assert.NotContains(t, fields, bundle.RelationKeyName.String())
+		assert.NotContains(t, fields, bundle.RelationKeyName)
 	})
 
 	t.Run("add relation name - when creating not note", func(t *testing.T) {
 		fields := createTargetObjectDetails("whatever name", model.ObjectType_basic).Fields
 
-		assert.Contains(t, fields, bundle.RelationKeyName.String())
+		assert.Contains(t, fields, bundle.RelationKeyName)
 	})
 	t.Run("add custom link block", func(t *testing.T) {
 		fixture := newFixture(t)
@@ -616,14 +617,13 @@ func generateState(root string, blocks []simple.Block) *state.State {
 type fixture struct {
 	t     *testing.T
 	ctrl  *gomock.Controller
-	store *testMock.MockObjectStore
+	store *mock_objectstore.MockObjectStore
 }
 
 func newFixture(t *testing.T) *fixture {
-	ctrl := gomock.NewController(t)
-	objectStore := testMock.NewMockObjectStore(ctrl)
+	objectStore := mock_objectstore.NewMockObjectStore(t)
 
-	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), gomock.Any()).DoAndReturn(
+	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), gomock.Any()).RunAndReturn(
 		func(_ string, uk domain.UniqueKey) (*model.ObjectDetails, error) {
 			layout := pbtypes.Int64(int64(model.ObjectType_basic))
 			switch uk.InternalKey() {
@@ -635,15 +635,14 @@ func newFixture(t *testing.T) *fixture {
 			return &model.ObjectDetails{
 				Details: &types.Struct{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyRecommendedLayout.String(): layout,
+						bundle.RelationKeyRecommendedLayout: layout,
 					},
 				},
 			}, nil
-		}).AnyTimes()
+		}).Maybe()
 
 	return &fixture{
 		t:     t,
-		ctrl:  ctrl,
 		store: objectStore,
 	}
 }

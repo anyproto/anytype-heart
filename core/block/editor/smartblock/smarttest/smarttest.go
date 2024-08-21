@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -23,9 +22,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func New(id string) *SmartTest {
@@ -61,7 +60,7 @@ type SmartTest struct {
 	App              *app.App
 	objectTree       objecttree.ObjectTree
 	isDeleted        bool
-	os               *testMock.MockObjectStore
+	os               *mock_objectstore.MockObjectStore
 	space            smartblock.Space
 
 	// Rudimentary hooks
@@ -221,17 +220,17 @@ func (st *SmartTest) TemplateCreateFromObjectState() (*state.State, error) {
 	return st.Doc.NewState().Copy(), nil
 }
 
-func (st *SmartTest) AddRelationLinks(ctx session.Context, relationKeys ...string) (err error) {
+func (st *SmartTest) AddRelationLinks(ctx session.Context, relationKeys ...domain.RelationKey) (err error) {
 	for _, key := range relationKeys {
 		st.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-			Key:    key,
+			Key:    key.String(),
 			Format: 0, // todo
 		})
 	}
 	return nil
 }
 
-func (st *SmartTest) AddRelationLinksToState(s *state.State, relationKeys ...string) (err error) {
+func (st *SmartTest) AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error) {
 	return st.AddRelationLinks(nil, relationKeys...)
 }
 
@@ -243,7 +242,7 @@ func (st *SmartTest) RefreshLocalDetails(ctx session.Context) error {
 	return nil
 }
 
-func (st *SmartTest) RemoveExtraRelations(ctx session.Context, relationKeys []string) (err error) {
+func (st *SmartTest) RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error) {
 	return nil
 }
 
@@ -260,9 +259,9 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 }
 
 func (st *SmartTest) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
-	dets := &types.Struct{Fields: map[string]*types.Value{}}
+	dets := domain.NewDetails()
 	for _, d := range details {
-		dets.Set(d.Key, d.Value)
+		dets.Set(domain.RelationKey(d.Key), domain.ValueFromProto(d.Value))
 	}
 	st.Doc.(*state.State).SetDetails(dets)
 	return
@@ -319,7 +318,7 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 	}
 
 	if !keepInternalFlags {
-		s.RemoveDetail(bundle.RelationKeyInternalFlags.String())
+		s.RemoveDetail(bundle.RelationKeyInternalFlags)
 	}
 
 	msgs, act, err := state.ApplyState(s, true)
@@ -372,10 +371,6 @@ func (st *SmartTest) Close() (err error) {
 
 func (st *SmartTest) TryClose(objectTTL time.Duration) (res bool, err error) {
 	return
-}
-
-func (st *SmartTest) SetObjectStore(os *testMock.MockObjectStore) {
-	st.os = os
 }
 
 func (st *SmartTest) Inner() smartblock.SmartBlock {
