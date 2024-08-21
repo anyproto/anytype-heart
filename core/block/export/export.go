@@ -299,7 +299,18 @@ func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested 
 	}
 
 	if isProtobuf {
-		err = e.getRelatedDerivedObjects(spaceId, docs)
+		existed := make(map[string]struct{}, 0)
+		allRelations, allTypes, err := e.getRelatedDerivedObjects(spaceId, docs, existed)
+		if err != nil {
+			return nil, err
+		}
+		templateRelations, templateTypes, err := e.processTemplates(spaceId, docs, allTypes, existed)
+		if err != nil {
+			return nil, err
+		}
+		allRelations = lo.Union(allRelations, templateRelations)
+		allTypes = lo.Union(allTypes, templateTypes)
+		err = e.addObjectMetaData(spaceId, docs, allTypes, allRelations)
 		if err != nil {
 			return nil, err
 		}
@@ -695,37 +706,42 @@ func (e *export) cleanupFile(wr writer) {
 	os.Remove(wr.Path())
 }
 
-func (e *export) getRelatedDerivedObjects(spaceId string, objects map[string]*types.Struct) error {
-	derivedObjects, typesAndTemplates, err := e.iterateObjects(spaceId, objects)
+func (e *export) getRelatedDerivedObjects(spaceId string, objects map[string]*types.Struct, existed map[string]struct{}) ([]string, []string, error) {
+	allRelations, allTypes, err := e.collectDerivedObjects(objects)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	// get derived objects only from types and templates,
 	// because relations currently have only system relations and object type
-	if len(typesAndTemplates) > 0 {
-		for _, object := range typesAndTemplates {
-			objects[object] = nil
+	if len(allTypes) > 0 {
+		typesMap := make(map[string]*types.Struct, 0)
+		for _, object := range allTypes {
+			if _, ok := existed[object]; ok {
+				continue
+			}
+			existed[object] = struct{}{}
+			typesMap[object] = nil
 		}
-		iteratedObjects, objectsToExport, err := e.iterateObjects(spaceId, objects)
+		if len(typesMap) == 0 {
+			return allRelations, allTypes, nil
+		}
+		relations, objectTypes, err := e.getRelatedDerivedObjects(spaceId, typesMap, existed)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
-		derivedObjects = append(derivedObjects, iteratedObjects...)
-		typesAndTemplates = append(derivedObjects, objectsToExport...)
+		allRelations = lo.Union(allRelations, relations)
+		allTypes = lo.Union(allTypes, objectTypes)
 	}
-
-	return e.processObject(spaceId, objects, typesAndTemplates, derivedObjects)
+	return allRelations, allTypes, nil
 }
 
-func (e *export) iterateObjects(spaceId string, objects map[string]*types.Struct) ([]string, []string, error) {
-	var (
-		relations, objectsToExport []string
-	)
+func (e *export) collectDerivedObjects(objects map[string]*types.Struct) ([]string, []string, error) {
+	var relations, objectsToExport []string
 	for id := range objects {
 		err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
 			state := b.NewState()
-			relations = e.getObjectRelations(state, relations)
-			details := state.Details()
+			relations = lo.Union(relations, e.getObjectRelations(state))
+			details := state.CombinedDetails()
 			if e.isObjectWithDataview(details) {
 				dataviewRelations, err := e.getDataviewRelations(state)
 				if err != nil {
@@ -735,8 +751,8 @@ func (e *export) iterateObjects(spaceId string, objects map[string]*types.Struct
 			}
 			objectTypeId := pbtypes.GetString(details, bundle.RelationKeyType.String())
 			setOfList := pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
-			objectsToExport = append(objectsToExport, setOfList...)
-			objectsToExport = append(objectsToExport, objectTypeId)
+			objectsToExport = lo.Union(objectsToExport, setOfList)
+			objectsToExport = lo.Union(objectsToExport, []string{objectTypeId})
 			return nil
 		})
 		if err != nil {
@@ -761,8 +777,9 @@ func (e *export) getDataviewRelations(state *state.State) ([]string, error) {
 	return relations, err
 }
 
-func (e *export) getObjectRelations(state *state.State, relations []string) []string {
+func (e *export) getObjectRelations(state *state.State) []string {
 	relationLinks := state.GetRelationLinks()
+	relations := make([]string, 0, len(relationLinks))
 	for _, link := range relationLinks {
 		relations = append(relations, link.Key)
 	}
@@ -774,37 +791,41 @@ func (e *export) isObjectWithDataview(details *types.Struct) bool {
 		pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) == float64(model.ObjectType_set)
 }
 
-func (e *export) processObject(spaceId string, object map[string]*types.Struct, typesAndTemplates []string, relations []string) error {
+func (e *export) addObjectMetaData(spaceId string, object map[string]*types.Struct, typesAndTemplates []string, relations []string) error {
+	err := e.addRelations(spaceId, object, relations)
+	if err != nil {
+		return err
+	}
+
+	err = e.addObjectType(spaceId, typesAndTemplates, object)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *export) addRelations(spaceId string, objects map[string]*types.Struct, relations []string) error {
 	storeRelations, err := e.getRelationFromStore(spaceId, relations)
 	if err != nil {
 		return nil
 	}
 	for _, storeRelation := range storeRelations {
-		err := e.addRelationAndOptions(spaceId, storeRelation, object)
+		e.addRelation(storeRelation, objects)
+		err := e.addOptionIfTag(spaceId, storeRelation, objects)
 		if err != nil {
-			return nil
+			return err
 		}
 	}
-
-	err = e.addObjectType(spaceId, typesAndTemplates, object)
-	if err != nil {
-		return nil
-	}
-
-	err = e.addTemplates(spaceId, typesAndTemplates, object)
-	if err != nil {
-		return nil
-	}
-	return nil
+	return err
 }
 
-func (e *export) addObjectType(spaceId string, typesAndTemplates []string, object map[string]*types.Struct) error {
-	res, err := e.objectStore.Query(database.Query{
+func (e *export) addObjectType(spaceId string, objectTypes []string, object map[string]*types.Struct) error {
+	objectTypesDetails, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(typesAndTemplates),
+				Value:       pbtypes.StringList(objectTypes),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
@@ -816,48 +837,28 @@ func (e *export) addObjectType(spaceId string, typesAndTemplates []string, objec
 	if err != nil {
 		return err
 	}
-	if len(res) == 0 {
+	if len(objectTypesDetails) == 0 {
 		return nil
 	}
-	var recommendedRelations []string
-	for i := 0; i < len(res); i++ {
-		id := pbtypes.GetString(res[i].Details, bundle.RelationKeyId.String())
-		object[id] = res[i].Details
-		uniqueKey := pbtypes.GetString(res[i].Details, bundle.RelationKeyUniqueKey.String())
-		key, err := domain.GetTypeKeyFromRawUniqueKey(uniqueKey)
-		if err != nil {
-			return err
-		}
-		if bundle.IsInternalType(key) {
-			return nil
-		}
-		recommendedRelations = append(recommendedRelations, pbtypes.GetStringList(res[i].Details, bundle.RelationKeyRecommendedRelations.String())...)
+	recommendedRelations, err := e.getRecommendedRelations(spaceId, objectTypesDetails, object)
+	if err != nil {
+		return err
 	}
+	err = e.addRecommendedRelations(recommendedRelations, object)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *export) addRecommendedRelations(recommendedRelations []database.Record, object map[string]*types.Struct) error {
 	for _, relation := range recommendedRelations {
-		if relation == addr.MissingObject {
+		id := pbtypes.GetString(relation.Details, bundle.RelationKeyId.String())
+		if id == addr.MissingObject {
 			continue
 		}
-		rel, err := e.objectStore.Query(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(relation),
-				},
-				{
-					RelationKey: bundle.RelationKeySpaceId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(spaceId),
-				},
-			},
-		})
-		if err != nil {
-			return err
-		}
-		if len(rel) == 0 {
-			continue
-		}
-		relationKey := pbtypes.GetString(rel[0].Details, bundle.RelationKeyUniqueKey.String())
+
+		relationKey := pbtypes.GetString(relation.Details, bundle.RelationKeyUniqueKey.String())
 		uniqueKey, err := domain.UnmarshalUniqueKey(relationKey)
 		if err != nil {
 			return err
@@ -865,9 +866,44 @@ func (e *export) addObjectType(spaceId string, typesAndTemplates []string, objec
 		if bundle.IsSystemRelation(domain.RelationKey(uniqueKey.InternalKey())) {
 			continue
 		}
-		object[relation] = rel[0].Details
+		object[id] = relation.Details
 	}
 	return nil
+}
+
+func (e *export) getRecommendedRelations(spaceId string, res []database.Record, object map[string]*types.Struct) ([]database.Record, error) {
+	recommendedRelations := make([]string, 0, len(res))
+	for i := 0; i < len(res); i++ {
+		id := pbtypes.GetString(res[i].Details, bundle.RelationKeyId.String())
+		object[id] = res[i].Details
+		uniqueKey := pbtypes.GetString(res[i].Details, bundle.RelationKeyUniqueKey.String())
+		key, err := domain.GetTypeKeyFromRawUniqueKey(uniqueKey)
+		if err != nil {
+			return nil, err
+		}
+		if bundle.IsInternalType(key) {
+			return nil, nil
+		}
+		recommendedRelations = append(recommendedRelations, pbtypes.GetStringList(res[i].Details, bundle.RelationKeyRecommendedRelations.String())...)
+	}
+	rel, err := e.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(recommendedRelations),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rel, nil
 }
 
 func (e *export) getRelationFromStore(spaceId string, relations []string) ([]database.Record, error) {
@@ -899,19 +935,26 @@ func (e *export) getRelationFromStore(spaceId string, relations []string) ([]dat
 	return storeRelations, nil
 }
 
-func (e *export) addRelationAndOptions(spaceId string, relation database.Record, derivedObjects map[string]*types.Struct) error {
-	e.addRelation(relation, derivedObjects)
+func (e *export) addOptionIfTag(spaceId string, relation database.Record, derivedObjects map[string]*types.Struct) error {
 	format := pbtypes.GetInt64(relation.Details, bundle.RelationKeyRelationFormat.String())
 	relationKey := pbtypes.GetString(relation.Details, bundle.RelationKeyRelationKey.String())
 	if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
-		relationOptions, err := e.getRelationOptions(spaceId, relationKey)
+		err := e.addRelationOptions(spaceId, relationKey, derivedObjects)
 		if err != nil {
-			return nil
+			return err
 		}
-		for _, option := range relationOptions {
-			id := pbtypes.GetString(option.Details, bundle.RelationKeyId.String())
-			derivedObjects[id] = option.Details
-		}
+	}
+	return nil
+}
+
+func (e *export) addRelationOptions(spaceId string, relationKey string, derivedObjects map[string]*types.Struct) error {
+	relationOptions, err := e.getRelationOptions(spaceId, relationKey)
+	if err != nil {
+		return err
+	}
+	for _, option := range relationOptions {
+		id := pbtypes.GetString(option.Details, bundle.RelationKeyId.String())
+		derivedObjects[id] = option.Details
 	}
 	return nil
 }
@@ -951,54 +994,41 @@ func (e *export) getRelationOptions(spaceId, relationKey string) ([]database.Rec
 	return relationOptionsDetails, nil
 }
 
-func (e *export) addTemplates(spaceId string, typesAndTemplates []string, object map[string]*types.Struct) error {
+func (e *export) processTemplates(spaceId string, objects map[string]*types.Struct, allTypes []string, existed map[string]struct{}) ([]string, []string, error) {
 	templates, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyTargetObjectType.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(typesAndTemplates),
+				Value:       pbtypes.StringList(allTypes),
 			},
 			{
-				RelationKey: bundle.RelationKeyTargetSpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(spaceId),
 			},
 		},
 	})
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
+	if len(templates) == 0 {
+		return nil, nil, nil
+	}
+	templatesMap := make(map[string]*types.Struct, len(objects))
 	for _, template := range templates {
 		id := pbtypes.GetString(template.Details, bundle.RelationKeyId.String())
-		object[id] = template.Details
+		objects[id] = template.Details
+		templatesMap[id] = template.Details
 	}
-	return nil
-}
-
-func (e *export) handleSetOfRelation(spaceId string, object *types.Struct, derivedObjects []database.Record) ([]database.Record, error) {
-	setOfList := pbtypes.GetStringList(object, bundle.RelationKeySetOf.String())
-	if len(setOfList) > 0 {
-		types, err := e.objectStore.Query(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_In,
-					Value:       pbtypes.StringList(setOfList),
-				},
-				{
-					RelationKey: bundle.RelationKeyTargetSpaceId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(spaceId),
-				},
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-		derivedObjects = append(derivedObjects, types...)
+	allRelations, types, err := e.getRelatedDerivedObjects(spaceId, templatesMap, existed)
+	if err != nil {
+		return nil, nil, err
 	}
-	return derivedObjects, nil
+	for id, object := range templatesMap {
+		objects[id] = object
+	}
+	return allRelations, types, nil
 }
 
 func isLinkedObjectExist(rec []database.Record) bool {
