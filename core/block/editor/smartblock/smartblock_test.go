@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -28,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestSmartBlock_Init(t *testing.T) {
@@ -36,9 +34,7 @@ func TestSmartBlock_Init(t *testing.T) {
 	id := "one"
 	fx := newFixture(id, t)
 
-	fx.store.EXPECT().GetDetails(mock.Anything).Return(&model.ObjectDetails{
-		Details: &types.Struct{Fields: map[string]*types.Value{}},
-	}, nil).Maybe()
+	fx.store.EXPECT().GetDetails(mock.Anything).Return(domain.NewDetails(), nil).Maybe()
 	fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
 	fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
 
@@ -60,9 +56,7 @@ func TestSmartBlock_Apply(t *testing.T) {
 		// given
 		fx := newFixture("", t)
 
-		fx.store.EXPECT().GetDetails(mock.Anything).Maybe().Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, nil)
+		fx.store.EXPECT().GetDetails(mock.Anything).Maybe().Return(domain.NewDetails(), nil)
 		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
 		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
@@ -95,9 +89,7 @@ func TestBasic_SetAlign(t *testing.T) {
 		// given
 		fx := newFixture("", t)
 
-		fx.store.EXPECT().GetDetails(mock.Anything).Maybe().Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, nil)
+		fx.store.EXPECT().GetDetails(mock.Anything).Maybe().Return(domain.NewDetails(), nil)
 		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
 		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
@@ -120,9 +112,7 @@ func TestBasic_SetAlign(t *testing.T) {
 		// given
 		fx := newFixture("", t)
 
-		fx.store.EXPECT().GetDetails(mock.Anything).Maybe().Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, nil)
+		fx.store.EXPECT().GetDetails(mock.Anything).Maybe().Return(domain.NewDetails(), nil)
 		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
 		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
@@ -150,14 +140,12 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		details := &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":     pbtypes.String("1"),
-				"number": pbtypes.Float64(2.18281828459045),
-				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
-			},
-		}
-		fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{Details: details}, nil)
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"id":     domain.String("1"),
+			"number": domain.Float64(2.18281828459045),
+			"🔥":      domain.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
+		})
+		fx.store.EXPECT().GetDetails(id).Return(details, nil)
 
 		// when
 		detailsFromStore, err := fx.getDetailsFromStore()
@@ -185,11 +173,9 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		details := &model.ObjectDetails{Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				"someKey": pbtypes.String("someValue"),
-			},
-		}}
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"someKey": domain.String("someValue"),
+		})
 		someErr := errors.New("some error")
 		fx.store.EXPECT().GetDetails(id).Return(details, someErr)
 
@@ -213,7 +199,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 
 		fx.store.EXPECT().GetInboundLinksByID(id).Return(newBackLinks, nil)
 		st := state.NewDoc("", nil).NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, pbtypes.StringList(backLinks))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, domain.StringList(backLinks))
 
 		// when
 		fx.updateBackLinks(st)
@@ -275,9 +261,9 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		fx := newFixture(id, t)
 
 		var hasPendingDetails bool
-		details := &types.Struct{Fields: map[string]*types.Value{}}
+		details := domain.NewDetails()
 		fx.store.EXPECT().UpdatePendingLocalDetails(id, mock.Anything).
-			Run(func(id string, f func(*types.Struct) (*types.Struct, error)) { hasPendingDetails = false }).
+			Run(func(id string, f func(*domain.Details) (*domain.Details, error)) { hasPendingDetails = false }).
 			Return(nil)
 
 		// when
@@ -285,17 +271,17 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 
 		// then
 		assert.Equal(t, hasPendingDetails, result)
-		assert.Zero(t, len(details.Fields))
+		assert.Zero(t, details.Len())
 	})
 
 	t.Run("found pending details", func(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		details := &types.Struct{Fields: map[string]*types.Value{}}
+		details := domain.NewDetails()
 		fx.store.EXPECT().UpdatePendingLocalDetails(id, mock.Anything).
-			Run(func(id string, f func(details *types.Struct) (*types.Struct, error)) {
-				details.Set(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
+			Run(func(id string, f func(details *domain.Details) (*domain.Details, error)) {
+				details.Set(bundle.RelationKeyIsDeleted, domain.Bool(false))
 			}).
 			Return(nil)
 
@@ -303,7 +289,7 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		got, _ := fx.appendPendingDetails(details)
 
 		// then
-		assert.Len(t, got.Fields, 1)
+		assert.Equal(t, 1, got.Len())
 	})
 
 	t.Run("failure on retrieving pending details from the store", func(t *testing.T) {
@@ -311,7 +297,7 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		fx := newFixture(id, t)
 
 		fx.store.EXPECT().UpdatePendingLocalDetails(id, mock.Anything).Return(errors.New("some error from store"))
-		details := &types.Struct{}
+		details := domain.NewDetails()
 
 		// when
 		_, hasPendingDetails := fx.appendPendingDetails(details)
@@ -334,10 +320,10 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 		}
 		sb := &smartBlock{source: src}
 		s := &state.State{}
-		s.SetLocalDetails(&types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyCreator.String():     pbtypes.String(creator),
-			bundle.RelationKeyCreatedDate.String(): pbtypes.Int64(creationDate),
-		}})
+		s.SetLocalDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyCreator:     domain.String(creator),
+			bundle.RelationKeyCreatedDate: domain.Int64(creationDate),
+		}))
 
 		// when
 		err := sb.injectCreationInfo(s)
@@ -389,13 +375,13 @@ func Test_removeInternalFlags(t *testing.T) {
 	t.Run("no flags - no changes", func(t *testing.T) {
 		// given
 		st := state.NewDoc("test", nil).(*state.State)
-		st.SetDetail(bundle.RelationKeyInternalFlags, pbtypes.IntList())
+		st.SetDetail(bundle.RelationKeyInternalFlags, domain.Int64List[int64]())
 
 		// when
 		removeInternalFlags(st)
 
 		// then
-		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+		assert.Empty(t, st.CombinedDetails().GetInt64List(bundle.RelationKeyInternalFlags))
 	})
 	t.Run("EmptyDelete flag is not removed when state is empty", func(t *testing.T) {
 		// given
@@ -407,14 +393,14 @@ func Test_removeInternalFlags(t *testing.T) {
 		removeInternalFlags(st)
 
 		// then
-		assert.Len(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()), 1)
+		assert.Len(t, st.CombinedDetails().GetInt64List(bundle.RelationKeyInternalFlags), 1)
 	})
 	t.Run("all flags are removed when title is not empty", func(t *testing.T) {
 		// given
 		st := state.NewDoc("test", map[string]simple.Block{
 			"title": simple.New(&model.Block{Id: "title"}),
 		}).(*state.State)
-		st.SetDetail(bundle.RelationKeyName, pbtypes.String("some name"))
+		st.SetDetail(bundle.RelationKeyName, domain.String("some name"))
 		flags := defaultInternalFlags()
 		flags.AddToState(st)
 
@@ -422,7 +408,7 @@ func Test_removeInternalFlags(t *testing.T) {
 		removeInternalFlags(st)
 
 		// then
-		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+		assert.Empty(t, st.CombinedDetails().GetInt64List(bundle.RelationKeyInternalFlags))
 	})
 	t.Run("all flags are removed when state has non-empty text blocks", func(t *testing.T) {
 		// given
@@ -439,7 +425,7 @@ func Test_removeInternalFlags(t *testing.T) {
 		removeInternalFlags(st)
 
 		// then
-		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+		assert.Empty(t, st.CombinedDetails().GetInt64List(bundle.RelationKeyInternalFlags))
 	})
 }
 
@@ -451,9 +437,9 @@ func TestInjectLocalDetails(t *testing.T) {
 		fx.source.creator = domain.NewParticipantId("testSpace", "testIdentity")
 		fx.source.createdDate = time.Now().Unix()
 
-		fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{Details: &types.Struct{Fields: map[string]*types.Value{}}}, nil)
-		fx.store.EXPECT().UpdatePendingLocalDetails(id, mock.Anything).Run(func(id string, f func(details *types.Struct) (*types.Struct, error)) {
-			_, err := f(&types.Struct{Fields: map[string]*types.Value{}})
+		fx.store.EXPECT().GetDetails(id).Return(domain.NewDetails(), nil)
+		fx.store.EXPECT().UpdatePendingLocalDetails(id, mock.Anything).Run(func(id string, f func(details *domain.Details) (*domain.Details, error)) {
+			_, err := f(domain.NewDetails())
 			require.NoError(t, err)
 		}).Return(nil)
 
@@ -486,7 +472,7 @@ func TestInjectDerivedDetails(t *testing.T) {
 			"link":     simple.New(&model.Block{Id: "link", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "some_obj"}}}),
 		}).NewState()
 		st.AddRelationLinks(&model.RelationLink{Key: bundle.RelationKeyAssignee.String(), Format: model.RelationFormat_object})
-		st.SetDetail(bundle.RelationKeyAssignee, pbtypes.String("Kirill"))
+		st.SetDetail(bundle.RelationKeyAssignee, domain.StringList([]string{"Kirill"}))
 
 		// when
 		fx.injectDerivedDetails(st, spaceId, smartblock.SmartBlockTypePage)

@@ -148,6 +148,14 @@ func (d *GenericMap[K]) GetFloatList(key K) []float64 {
 	return d.Get(key).Float64List()
 }
 
+func (d *GenericMap[K]) TryInt64List(key K) ([]int64, bool) {
+	return d.Get(key).TryInt64List()
+}
+
+func (d *GenericMap[K]) GetInt64List(key K) []int64 {
+	return d.Get(key).Int64List()
+}
+
 func (d *GenericMap[K]) Copy() *GenericMap[K] {
 	if d == nil {
 		return nil
@@ -209,7 +217,7 @@ func (d *GenericMap[K]) Equal(other *GenericMap[K]) bool {
 
 func (d *GenericMap[K]) Merge(other *GenericMap[K]) *GenericMap[K] {
 	if d == nil {
-		return nil
+		return other.Copy()
 	}
 	res := d.Copy()
 	other.Iterate(func(k K, v Value) bool {
