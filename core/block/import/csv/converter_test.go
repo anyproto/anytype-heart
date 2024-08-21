@@ -189,7 +189,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 
 	for _, snapshot := range sn.Snapshots {
 		if snapshot.SbType == sb.SmartBlockTypeRelation {
-			name := snapshot.Snapshot.GetData().GetDetails().GetStringOrDefault(bundle.RelationKeyName, "")
+			name := snapshot.Snapshot.GetData().GetDetails().GetString(bundle.RelationKeyName, "")
 			assert.True(t, name == "name" || name == "price")
 		}
 	}
@@ -229,7 +229,7 @@ func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
 
 	for _, snapshot := range sn.Snapshots {
 		if snapshot.SbType == sb.SmartBlockTypeRelation {
-			name := snapshot.Snapshot.GetData().GetDetails().GetStringOrDefault(bundle.RelationKeyName, "")
+			name := snapshot.Snapshot.GetData().GetDetails().GetString(bundle.RelationKeyName, "")
 			assert.True(t, name == "Field 1" || name == "Field 2")
 		}
 	}

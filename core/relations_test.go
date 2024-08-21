@@ -125,7 +125,7 @@ func TestRelations_New_Account(t *testing.T) {
 		}
 	}
 	require.NotNil(t, details, "we should receive details for the relation object")
-	require.Equal(t, relName, details.GetStringOrDefault(bundle.RelationKeyName, ""), "we should receive the correct name for the relation object")
+	require.Equal(t, relName, details.GetString(bundle.RelationKeyName, ""), "we should receive the correct name for the relation object")
 
 	var dataviewBlock *model.Block
 	for _, block := range respObjectShow.ObjectView.Blocks {

@@ -856,7 +856,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 		// then
 		assert.Len(t, snapshots, 2) // 1 relation + 1 option
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
 	})
 
 	t.Run("Page has Select property with Tags name", func(t *testing.T) {
@@ -895,7 +895,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 		// then
 		assert.Len(t, snapshots, 2) // 1 relation + 1 option
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
 	})
 
 	t.Run("Page has MultiSelect property with Tags name", func(t *testing.T) {
@@ -935,7 +935,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 		// then
 		assert.Len(t, snapshots, 2) // 1 relation + 1 option
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
 	})
 
 	t.Run("Page has MultiSelect property with Tag name", func(t *testing.T) {
@@ -975,7 +975,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 		// then
 		assert.Len(t, snapshots, 2) // 1 relation + 1 option
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
 	})
 
 	t.Run("Page has MultiSelect property with Tag name and Select property with Tags name - MultiSelect is mapped to Tag relation", func(t *testing.T) {
@@ -1025,8 +1025,8 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 		// then
 		assert.Len(t, snapshots, 4) // 2 relation + 2 option
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
-		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
-		assert.NotEqual(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
+		assert.NotEqual(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
 	})
 
 	t.Run("Page has MultiSelect property with tags name and Select property with Tag name - Tag property is mapped to Tag relation, tags is a new relation", func(t *testing.T) {
@@ -1076,8 +1076,8 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 		// then
 		assert.Len(t, snapshots, 4) // 2 relation + 2 option
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
-		assert.NotEqual(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
-		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyRelationKey, ""))
+		assert.NotEqual(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
 	})
 
 	t.Run("Page has property with empty name - return relation with name Untitled", func(t *testing.T) {
@@ -1112,7 +1112,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 		// then
 		assert.Len(t, snapshots, 1) // 1 relation
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, property.UntitledProperty, req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetStringOrDefault(bundle.RelationKeyName, ""))
+		assert.Equal(t, property.UntitledProperty, req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetString(bundle.RelationKeyName, ""))
 	})
 }
 

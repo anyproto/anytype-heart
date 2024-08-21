@@ -41,7 +41,7 @@ var validators = []validator{
 }
 
 func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := s.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+	id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
 	linksToDelete := make([]keyWithIndex, 0)
 	for i, rel := range s.Snapshot.Data.RelationLinks {
 		if bundle.HasRelation(rel.Key) {
@@ -61,7 +61,7 @@ func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error
 }
 
 func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := s.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+	id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
 	var relKeys []string
 	for _, b := range s.Snapshot.Data.Blocks {
 		if rel := simple.New(b).Model().GetRelation(); rel != nil {
@@ -92,7 +92,7 @@ func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) (err erro
 }
 
 func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := s.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+	id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
 
 	for k, v := range s.Snapshot.Data.Details.Fields {
 		if isLinkRelation(k) {
@@ -153,7 +153,7 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 }
 
 func validateObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := s.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+	id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
 	for _, ot := range s.Snapshot.Data.ObjectTypes {
 		typeId := strings.TrimPrefix(ot, addr.ObjectTypeKeyToIdPrefix)
 		if !bundle.HasObjectTypeByKey(domain.TypeKey(typeId)) {
@@ -166,7 +166,7 @@ func validateObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) (err error) 
 }
 
 func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := s.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+	id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
 	for _, b := range s.Snapshot.Data.Blocks {
 		switch a := simple.New(b).(type) {
 		case link.Block:
@@ -214,7 +214,7 @@ func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 }
 
 func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo) error {
-	id := s.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+	id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
 
 	if s.Snapshot.Data.Details.GetBoolOrDefault(bundle.RelationKeyIsArchived, false) {
 		fmt.Println("WARNING: object", id, " is archived, so it will be skipped")
@@ -239,13 +239,13 @@ func validateRelationOption(s *pb.SnapshotWithType, info *useCaseInfo) error {
 		return nil
 	}
 
-	key := s.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyRelationKey, "")
+	key := s.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey, "")
 	if bundle.HasRelation(key) {
 		return nil
 	}
 
 	if _, found := info.customTypesAndRelations[key]; !found {
-		id := s.Snapshot.Data.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
 		return fmt.Errorf("failed to find relation key %s of relation option %s", key, id)
 	}
 	return nil

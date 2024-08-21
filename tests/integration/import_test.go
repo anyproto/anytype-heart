@@ -56,7 +56,7 @@ func TestImportFileFromRelation(t *testing.T) {
 
 	var fileObjectId string
 	fileSub.waitOneObjectDetailsSet(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) {
-		fileObjectId = msg.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		fileObjectId = msg.Details.GetString(bundle.RelationKeyId, "")
 		assertImageAvailableInGateway(t, app, fileObjectId)
 	})
 	objectSub.waitObjectDetailsSetWithPredicate(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) bool {
@@ -113,7 +113,7 @@ func testImportFileFromMarkdown(t *testing.T, path string) {
 		return false
 	})
 	fileSub.waitOneObjectDetailsSet(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) {
-		fileObjectId := msg.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		fileObjectId := msg.Details.GetString(bundle.RelationKeyId, "")
 		assertImageAvailableInGateway(t, app, fileObjectId)
 	})
 }
@@ -154,7 +154,7 @@ func testImportObjectWithFileBlock(t *testing.T, path string) {
 		return false
 	})
 	fileSub.waitOneObjectDetailsSet(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) {
-		fileObjectId := msg.Details.GetStringOrDefault(bundle.RelationKeyId, "")
+		fileObjectId := msg.Details.GetString(bundle.RelationKeyId, "")
 		assertImageAvailableInGateway(t, app, fileObjectId)
 	})
 }
