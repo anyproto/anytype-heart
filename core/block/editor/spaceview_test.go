@@ -5,15 +5,16 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-
-	"github.com/anyproto/anytype-heart/util/testMock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
@@ -128,11 +129,11 @@ func (s *spaceServiceStub) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
 func (s *spaceServiceStub) OnWorkspaceChanged(spaceId string, details *domain.Details) {
 }
 
-func NewSpaceViewTest(t *testing.T, ctrl *gomock.Controller, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
+func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
 	sb := smarttest.NewWithTree("root", tree)
-	objectStore := testMock.NewMockObjectStore(ctrl)
-	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
-	objectStore.EXPECT().Query(gomock.Any()).AnyTimes()
+	objectStore := mock_objectstore.NewMockObjectStore(t)
+	objectStore.EXPECT().GetDetails(mock.Anything).Maybe()
+	objectStore.EXPECT().Query(mock.Anything).Maybe()
 	a := &SpaceView{
 		SmartBlock:   sb,
 		spaceService: &spaceServiceStub{},
@@ -170,7 +171,7 @@ type spaceViewFixture struct {
 func newSpaceViewFixture(t *testing.T) *spaceViewFixture {
 	ctrl := gomock.NewController(t)
 	objectTree := mock_objecttree.NewMockObjectTree(ctrl)
-	a, err := NewSpaceViewTest(t, ctrl, "spaceId", objectTree)
+	a, err := NewSpaceViewTest(t, "spaceId", objectTree)
 	require.NoError(t, err)
 	return &spaceViewFixture{
 		SpaceView:  a,
