@@ -16,33 +16,39 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/kanban"
+	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
-	"github.com/anyproto/anytype-heart/util/testMock"
-	"github.com/anyproto/anytype-heart/util/testMock/mockKanban"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 type fixture struct {
 	Service
 	a                 *app.App
 	ctrl              *gomock.Controller
-	store             *testMock.MockObjectStore
+	store             *mock_objectstore.MockObjectStore
 	sender            *mock_event.MockSender
 	events            []*pb.Event
 	collectionService *collectionServiceMock
-	kanban            *mockKanban.MockService
+	kanban            *mock_kanban.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	a := new(app.App)
-	testMock.RegisterMockObjectStore(ctrl, a)
-	kanban := testMock.RegisterMockKanban(ctrl, a)
+
+	ctx := context.Background()
+	objectStore := mock_objectstore.NewMockObjectStore(t)
+	kanbanService := mock_kanban.NewMockService(t)
+
 	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	sbtProvider.EXPECT().Name().Return("smartBlockTypeProvider")
 	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
+	a.Register(testutil.PrepareMock(ctx, a, objectStore))
 	a.Register(sbtProvider)
+	a.Register(testutil.PrepareMock(ctx, a, kanbanService))
 
 	collectionService := &collectionServiceMock{MockCollectionService: NewMockCollectionService(t)}
 	a.Register(collectionService)
@@ -51,9 +57,9 @@ func newFixture(t *testing.T) *fixture {
 		Service:           New(),
 		a:                 a,
 		ctrl:              ctrl,
-		store:             a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
+		store:             objectStore,
 		collectionService: collectionService,
-		kanban:            kanban,
+		kanban:            kanbanService,
 	}
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Init(mock.Anything).Return(nil)
@@ -65,8 +71,8 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(fx.Service)
 	a.Register(fx.sender)
 
-	fx.store.EXPECT().SubscribeForAll(gomock.Any())
-	require.NoError(t, a.Start(context.Background()))
+	fx.store.EXPECT().SubscribeForAll(mock.Anything)
+	require.NoError(t, a.Start(ctx))
 	return fx
 }
 

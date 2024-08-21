@@ -262,8 +262,8 @@ func Bool(v bool) Value {
 	return Value{ok: true, value: v}
 }
 
-func String(v string) Value {
-	return Value{ok: true, value: v}
+func String[T ~string](v T) Value {
+	return Value{ok: true, value: string(v)}
 }
 
 func StringList(v []string) Value {
@@ -347,6 +347,14 @@ func (v Value) Bool() bool {
 		return false
 	}
 	return res
+}
+
+func (v Value) IsString() bool {
+	if !v.ok {
+		return false
+	}
+	_, ok := v.value.(string)
+	return ok
 }
 
 func (v Value) TryString() (string, bool) {

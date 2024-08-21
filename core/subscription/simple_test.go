@@ -4,12 +4,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 func TestSimpleSub_Changes(t *testing.T) {
 	t.Run("add to set", func(t *testing.T) {
 		sub := &simpleSub{
-			keys:  []string{"id", "order"},
+			keys:  []domain.RelationKey{"id", "order"},
 			cache: newCache(),
 		}
 		require.NoError(t, sub.init(genEntries(10, false)))
@@ -20,7 +22,7 @@ func TestSimpleSub_Changes(t *testing.T) {
 	})
 	t.Run("miss set", func(t *testing.T) {
 		sub := &simpleSub{
-			keys:  []string{"id", "order"},
+			keys:  []domain.RelationKey{"id", "order"},
 			cache: newCache(),
 		}
 		require.NoError(t, sub.init(genEntries(10, false)))
@@ -33,7 +35,7 @@ func TestSimpleSub_Changes(t *testing.T) {
 
 func TestSimpleSub_Refill(t *testing.T) {
 	sub := &simpleSub{
-		keys:  []string{"id", "order"},
+		keys:  []domain.RelationKey{"id", "order"},
 		cache: newCache(),
 	}
 	require.NoError(t, sub.init(genEntries(3, false)))
