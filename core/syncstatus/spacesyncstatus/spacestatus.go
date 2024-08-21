@@ -294,7 +294,7 @@ func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.E
 		err = pb.EventSpace_IncompatibleVersion
 	}
 	if !params.syncProtocolCompatible {
-		status = pb.EventSpace_SyncProtocolInCompatibleMode
+		status = pb.EventSpace_SyncProtocolUpdate
 	}
 	return &pb.EventSpaceSyncStatusUpdate{
 		Id:                    spaceId,

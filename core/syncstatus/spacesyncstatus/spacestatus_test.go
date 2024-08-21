@@ -415,7 +415,7 @@ func Test(t *testing.T) {
 					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
 							Id:      "spaceId",
-							Status:  pb.EventSpace_SyncProtocolInCompatibleMode,
+							Status:  pb.EventSpace_SyncProtocolUpdate,
 							Network: pb.EventSpace_Anytype,
 						},
 					},
