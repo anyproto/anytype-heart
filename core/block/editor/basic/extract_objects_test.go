@@ -5,10 +5,9 @@ import (
 	"testing"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -24,7 +23,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -136,10 +134,10 @@ func TestExtractObjects(t *testing.T) {
 		return sb
 	}
 
-	templateDetails := []*model.Detail{
+	templateDetails := []domain.Detail{
 		{Key: bundle.RelationKeyName, Value: domain.String("template")},
 		{Key: bundle.RelationKeyIconImage, Value: domain.String("very funny img")},
-		{Key: bundle.RelationKeyFeaturedRelations, Value: pbtypes.StringList([]string{"tag", "type", "status"})},
+		{Key: bundle.RelationKeyFeaturedRelations, Value: domain.StringList([]string{"tag", "type", "status"})},
 		{Key: bundle.RelationKeyCoverId, Value: domain.String("poster with Van Damme")},
 	}
 
@@ -253,7 +251,7 @@ func TestExtractObjects(t *testing.T) {
 			wantDetails: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				bundle.RelationKeyName:              domain.String("text 3"),
 				bundle.RelationKeyIconImage:         domain.String("very funny img"),
-				bundle.RelationKeyFeaturedRelations: pbtypes.StringList([]string{"tag", "type", "status"}),
+				bundle.RelationKeyFeaturedRelations: domain.StringList([]string{"tag", "type", "status"}),
 				bundle.RelationKeyCoverId:           domain.String("poster with Van Damme"),
 			}),
 		},
@@ -275,7 +273,7 @@ func TestExtractObjects(t *testing.T) {
 			},
 			wantDetails: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				bundle.RelationKeyIconImage:         domain.String("very funny img"),
-				bundle.RelationKeyFeaturedRelations: pbtypes.StringList([]string{"tag", "type", "status"}),
+				bundle.RelationKeyFeaturedRelations: domain.StringList([]string{"tag", "type", "status"}),
 				bundle.RelationKeyCoverId:           domain.String("poster with Van Damme"),
 			}),
 		},
@@ -339,7 +337,7 @@ func TestExtractObjects(t *testing.T) {
 			require.Len(t, linkIds, len(tc.wantObjectsWithTexts))
 			for i, wantTexts := range tc.wantObjectsWithTexts {
 				assertLinkedObjectHasTextBlocks(t, creator, sb, linkIds[i], wantTexts)
-				if tc.wantDetails != nil && tc.wantDetails.Fields != nil {
+				if tc.wantDetails != nil {
 					assertDetails(t, linkIds[i], creator, tc.wantDetails)
 				}
 			}
@@ -347,15 +345,15 @@ func TestExtractObjects(t *testing.T) {
 	}
 
 	t.Run("do not add relation name - when creating note", func(t *testing.T) {
-		fields := createTargetObjectDetails("whatever name", model.ObjectType_note).Fields
+		details := createTargetObjectDetails("whatever name", model.ObjectType_note)
 
-		assert.NotContains(t, fields, bundle.RelationKeyName)
+		assert.False(t, details.Has(bundle.RelationKeyName))
 	})
 
 	t.Run("add relation name - when creating not note", func(t *testing.T) {
-		fields := createTargetObjectDetails("whatever name", model.ObjectType_basic).Fields
+		details := createTargetObjectDetails("whatever name", model.ObjectType_basic)
 
-		assert.Contains(t, fields, bundle.RelationKeyName)
+		assert.True(t, details.Has(bundle.RelationKeyName))
 	})
 	t.Run("add custom link block", func(t *testing.T) {
 		fixture := newFixture(t)
@@ -616,29 +614,24 @@ func generateState(root string, blocks []simple.Block) *state.State {
 
 type fixture struct {
 	t     *testing.T
-	ctrl  *gomock.Controller
 	store *mock_objectstore.MockObjectStore
 }
 
 func newFixture(t *testing.T) *fixture {
 	objectStore := mock_objectstore.NewMockObjectStore(t)
 
-	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), gomock.Any()).RunAndReturn(
-		func(_ string, uk domain.UniqueKey) (*model.ObjectDetails, error) {
-			layout := pbtypes.Int64(int64(model.ObjectType_basic))
+	objectStore.EXPECT().GetObjectByUniqueKey(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ string, uk domain.UniqueKey) (*domain.Details, error) {
+			layout := domain.Int64(int64(model.ObjectType_basic))
 			switch uk.InternalKey() {
 			case "note":
-				layout = pbtypes.Int64(int64(model.ObjectType_note))
+				layout = domain.Int64(int64(model.ObjectType_note))
 			case "task":
-				layout = pbtypes.Int64(int64(model.ObjectType_todo))
+				layout = domain.Int64(int64(model.ObjectType_todo))
 			}
-			return &model.ObjectDetails{
-				Details: &types.Struct{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyRecommendedLayout: layout,
-					},
-				},
-			}, nil
+			return domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyRecommendedLayout: layout,
+			}), nil
 		}).Maybe()
 
 	return &fixture{
@@ -648,5 +641,4 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func (fx *fixture) cleanUp() {
-	fx.ctrl.Finish()
 }

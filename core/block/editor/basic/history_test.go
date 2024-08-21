@@ -4,28 +4,25 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestHistory_Undo(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
-		bDetails := &types.Struct{
-			Fields: map[string]*types.Value{
-				"beforeK": domain.String("beforeV"),
-			},
-		}
-		aDetails := &types.Struct{
-			Fields: map[string]*types.Value{
-				"afterK": domain.String("afterV"),
-			},
-		}
+		bDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"beforeK": domain.String("beforeV"),
+		})
+
+		aDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"afterK": domain.String("afterV"),
+		})
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
 			AddBlock(simple.New(&model.Block{Id: "2"}))

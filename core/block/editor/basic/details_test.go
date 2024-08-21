@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type duFixture struct {
@@ -71,21 +70,23 @@ func TestBasic_UpdateDetails(t *testing.T) {
 
 		value, found := f.sb.Details().TryString(bundle.RelationKeyAperture)
 		assert.True(t, found)
-		assert.Equal(t, domain.String("aperture"), value)
+		assert.Equal(t, "aperture", value)
 		assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyAperture.String()))
 
-		value, found = f.sb.Details().TryString(bundle.RelationKeyRelationMaxCount)
-		assert.True(t, found)
-		assert.Equal(t, domain.Int64(5), value)
-		assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyRelationMaxCount.String()))
+		{
+			value, found := f.sb.Details().TryInt64(bundle.RelationKeyRelationMaxCount)
+			assert.True(t, found)
+			assert.Equal(t, int64(5), value)
+			assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyRelationMaxCount.String()))
+		}
 	})
 
 	t.Run("modify details", func(t *testing.T) {
 		// given
 		f := newDUFixture(t)
-		err := f.sb.SetDetails(nil, []*model.Detail{{
-			Key:   bundle.RelationKeySpaceDashboardId.String(),
-			Value: pbtypes.String("123"),
+		err := f.sb.SetDetails(nil, []domain.Detail{{
+			Key:   bundle.RelationKeySpaceDashboardId,
+			Value: domain.String("123"),
 		}}, false)
 		assert.NoError(t, err)
 		f.store.AddObjects(t, []objectstore.TestObject{{
@@ -107,16 +108,16 @@ func TestBasic_UpdateDetails(t *testing.T) {
 
 		value, found := f.sb.Details().TryString(bundle.RelationKeySpaceDashboardId)
 		assert.True(t, found)
-		assert.Equal(t, domain.String("new123"), value)
+		assert.Equal(t, "new123", value)
 		assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeySpaceDashboardId.String()))
 	})
 
 	t.Run("delete details", func(t *testing.T) {
 		// given
 		f := newDUFixture(t)
-		err := f.sb.SetDetails(nil, []*model.Detail{{
-			Key:   bundle.RelationKeyTargetObjectType.String(),
-			Value: pbtypes.String("ot-note"),
+		err := f.sb.SetDetails(nil, []domain.Detail{{
+			Key:   bundle.RelationKeyTargetObjectType,
+			Value: domain.String("ot-note"),
 		}}, false)
 		assert.NoError(t, err)
 
@@ -131,7 +132,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 
 		value, found := f.sb.Details().TryString(bundle.RelationKeyTargetObjectType)
 		assert.False(t, found)
-		assert.Nil(t, value)
+		assert.Empty(t, value)
 		assert.False(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyTargetObjectType.String()))
 	})
 }

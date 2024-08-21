@@ -258,10 +258,10 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 	return
 }
 
-func (st *SmartTest) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (st *SmartTest) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	dets := domain.NewDetails()
 	for _, d := range details {
-		dets.Set(domain.RelationKey(d.Key), domain.ValueFromProto(d.Value))
+		dets.Set(d.Key, d.Value)
 	}
 	st.Doc.(*state.State).SetDetails(dets)
 	return
