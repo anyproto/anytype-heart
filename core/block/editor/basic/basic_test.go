@@ -565,7 +565,7 @@ func TestBasic_SetFields(t *testing.T) {
 
 	fields := &types.Struct{
 		Fields: map[string]*types.Value{
-			"x": domain.String("x"),
+			"x": pbtypes.String("x"),
 		},
 	}
 	err := b.SetFields(nil, &pb.RpcBlockListSetFieldsRequestBlockField{
@@ -673,7 +673,7 @@ func TestBasic_FeaturedRelationAdd(t *testing.T) {
 func TestBasic_FeaturedRelationRemove(t *testing.T) {
 	sb := smarttest.New("test")
 	s := sb.NewState()
-	s.SetDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyName.String()}))
+	s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyName.String()}))
 	template.WithDescription(s)
 	require.NoError(t, sb.Apply(s))
 
@@ -718,7 +718,7 @@ func TestBasic_ReplaceLink(t *testing.T) {
 	require.NoError(t, b.ReplaceLink(oldId, newId))
 
 	res := sb.NewState()
-	assert.Equal(t, newId, pbtypes.GetString(res.Details(), "link"))
+	assert.Equal(t, newId, res.Details().GetString("link"))
 	assert.Equal(t, newId, res.Pick(newBlocks[0].Model().Id).Model().GetLink().TargetBlockId)
 	assert.Equal(t, newId, res.Pick(newBlocks[1].Model().Id).Model().GetText().GetMarks().Marks[0].Param)
 }

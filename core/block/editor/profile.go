@@ -129,7 +129,7 @@ func (p *Profile) StateMigrations() migration.Migrations {
 	})
 }
 
-func (p *Profile) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (p *Profile) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	if err = p.AllOperations.SetDetails(ctx, details, showEvent); err != nil {
 		return
 	}

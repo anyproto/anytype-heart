@@ -3,11 +3,11 @@ package basic
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -46,37 +46,37 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		// given
 		f := newDUFixture(t)
 		f.store.AddObjects(t, []objectstore.TestObject{{
-			bundle.RelationKeyId:             pbtypes.String("rel-aperture"),
-			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
-			bundle.RelationKeyRelationKey:    pbtypes.String("aperture"),
-			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-aperture"),
-			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_longtext)),
+			bundle.RelationKeyId:             domain.String("rel-aperture"),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyRelationKey:    domain.String("aperture"),
+			bundle.RelationKeyUniqueKey:      domain.String("rel-aperture"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_longtext)),
 		}, {
-			bundle.RelationKeyId:             pbtypes.String("rel-maxCount"),
-			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
-			bundle.RelationKeyRelationKey:    pbtypes.String("relationMaxCount"),
-			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-relationMaxCount"),
-			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_number)),
+			bundle.RelationKeyId:             domain.String("rel-maxCount"),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyRelationKey:    domain.String("relationMaxCount"),
+			bundle.RelationKeyUniqueKey:      domain.String("rel-relationMaxCount"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
 		}})
 
 		// when
-		err := f.basic.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
-			current.Set(bundle.RelationKeyAperture, pbtypes.String("aperture"))
-			current.Set(bundle.RelationKeyRelationMaxCount, pbtypes.Int64(5))
+		err := f.basic.UpdateDetails(func(current *domain.Details) (*domain.Details, error) {
+			current.Set(bundle.RelationKeyAperture, domain.String("aperture"))
+			current.Set(bundle.RelationKeyRelationMaxCount, domain.Int64(5))
 			return current, nil
 		})
 
 		// then
 		assert.NoError(t, err)
 
-		value, found := f.sb.Details().Fields[bundle.RelationKeyAperture.String()]
+		value, found := f.sb.Details().TryString(bundle.RelationKeyAperture)
 		assert.True(t, found)
-		assert.Equal(t, pbtypes.String("aperture"), value)
+		assert.Equal(t, domain.String("aperture"), value)
 		assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyAperture.String()))
 
-		value, found = f.sb.Details().Fields[bundle.RelationKeyRelationMaxCount.String()]
+		value, found = f.sb.Details().TryString(bundle.RelationKeyRelationMaxCount)
 		assert.True(t, found)
-		assert.Equal(t, pbtypes.Int64(5), value)
+		assert.Equal(t, domain.Int64(5), value)
 		assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyRelationMaxCount.String()))
 	})
 
@@ -89,25 +89,25 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		}}, false)
 		assert.NoError(t, err)
 		f.store.AddObjects(t, []objectstore.TestObject{{
-			bundle.RelationKeyId:             pbtypes.String("rel-spaceDashboardId"),
-			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
-			bundle.RelationKeyRelationKey:    pbtypes.String("spaceDashboardId"),
-			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-spaceDashboardId"),
-			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+			bundle.RelationKeyId:             domain.String("rel-spaceDashboardId"),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyRelationKey:    domain.String("spaceDashboardId"),
+			bundle.RelationKeyUniqueKey:      domain.String("rel-spaceDashboardId"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 		}})
 
 		// when
-		err = f.basic.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
-			current.Set(bundle.RelationKeySpaceDashboardId, pbtypes.String("new123"))
+		err = f.basic.UpdateDetails(func(current *domain.Details) (*domain.Details, error) {
+			current.Set(bundle.RelationKeySpaceDashboardId, domain.String("new123"))
 			return current, nil
 		})
 
 		// then
 		assert.NoError(t, err)
 
-		value, found := f.sb.Details().Fields[bundle.RelationKeySpaceDashboardId.String()]
+		value, found := f.sb.Details().TryString(bundle.RelationKeySpaceDashboardId)
 		assert.True(t, found)
-		assert.Equal(t, pbtypes.String("new123"), value)
+		assert.Equal(t, domain.String("new123"), value)
 		assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeySpaceDashboardId.String()))
 	})
 
@@ -121,15 +121,15 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		assert.NoError(t, err)
 
 		// when
-		err = f.basic.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
-			delete(current.Fields, bundle.RelationKeyTargetObjectType.String())
+		err = f.basic.UpdateDetails(func(current *domain.Details) (*domain.Details, error) {
+			current.Delete(bundle.RelationKeyTargetObjectType)
 			return current, nil
 		})
 
 		// then
 		assert.NoError(t, err)
 
-		value, found := f.sb.Details().Fields[bundle.RelationKeyTargetObjectType.String()]
+		value, found := f.sb.Details().TryString(bundle.RelationKeyTargetObjectType)
 		assert.False(t, found)
 		assert.Nil(t, value)
 		assert.False(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyTargetObjectType.String()))

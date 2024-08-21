@@ -394,10 +394,10 @@ func (b *builtinObjects) getOldHomePageId(zipReader *zip.Reader) (id string, err
 func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id string) {
 	if err := b.blockService.SetDetails(nil,
 		spc.DerivedIDs().Workspace,
-		[]*model.Detail{
+		[]domain.Detail{
 			{
-				Key:   bundle.RelationKeySpaceDashboardId.String(),
-				Value: domain.String(id).ToProto(),
+				Key:   bundle.RelationKeySpaceDashboardId,
+				Value: domain.String(id),
 			},
 		},
 	); err != nil {

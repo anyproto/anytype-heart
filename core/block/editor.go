@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -47,17 +46,6 @@ type UploadRequest struct {
 type BookmarkFetchRequest struct {
 	pb.RpcBlockBookmarkFetchRequest
 	ObjectOrigin objectorigin.ObjectOrigin
-}
-
-func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (err error) {
-	return cache.Do(s, id, func(b basic.CommonOperations) error {
-		return b.SetDetails(nil, []*model.Detail{
-			{
-				Key:   "isArchived",
-				Value: pbtypes.Bool(archived),
-			},
-		}, true)
-	})
 }
 
 func (s *Service) CreateBlock(ctx session.Context, req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -143,13 +131,13 @@ func (s *Service) SetFields(ctx session.Context, req pb.RpcBlockSetFieldsRequest
 	})
 }
 
-func (s *Service) SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error) {
+func (s *Service) SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error) {
 	return cache.Do(s, objectId, func(b basic.DetailsSettable) error {
 		return b.SetDetails(ctx, details, true)
 	})
 }
 
-func (s *Service) SetDetailsList(ctx session.Context, objectIds []string, details []*model.Detail) (err error) {
+func (s *Service) SetDetailsList(ctx session.Context, objectIds []string, details []domain.Detail) (err error) {
 	var (
 		resultError error
 		anySucceed  bool

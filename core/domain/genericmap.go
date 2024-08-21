@@ -343,6 +343,14 @@ func (v Value) Null() bool {
 	return ok
 }
 
+func (v Value) IsBool() bool {
+	if !v.ok {
+		return false
+	}
+	_, ok := v.value.(bool)
+	return ok
+}
+
 func (v Value) TryBool() (bool, bool) {
 	if !v.ok {
 		return false, false
@@ -404,6 +412,14 @@ func (v Value) Int64() int64 {
 		return 0
 	}
 	return res
+}
+
+func (v Value) IsFloat64() bool {
+	if !v.ok {
+		return false
+	}
+	_, ok := v.value.(float64)
+	return ok
 }
 
 func (v Value) TryFloat64() (float64, bool) {

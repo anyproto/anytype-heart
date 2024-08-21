@@ -62,7 +62,7 @@ type CommonOperations interface {
 }
 
 type DetailsSettable interface {
-	SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
+	SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error)
 }
 
 type DetailsUpdatable interface {
@@ -439,7 +439,7 @@ func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (
 			}
 			frc = append(frc, r)
 			if !bs.HasRelation(s, r) {
-				err = bs.addRelationLink(s, r)
+				err = bs.addRelationLink(s, domain.RelationKey(r))
 				if err != nil {
 					return fmt.Errorf("failed to add relation link on adding featured relation '%s': %w", r, err)
 				}

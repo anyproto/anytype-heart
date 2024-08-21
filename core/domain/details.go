@@ -11,6 +11,12 @@ type GenericMap[K ~string] struct {
 	data map[K]Value
 }
 
+// Detail is Key-Value pair
+type Detail struct {
+	Key   RelationKey
+	Value Value
+}
+
 type Details = GenericMap[RelationKey]
 
 // TODO Helpers for frequent fields like id, spaceId, etc?

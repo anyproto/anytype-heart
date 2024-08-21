@@ -342,11 +342,11 @@ func (s *Service) SetSpaceInfo(req *pb.RpcWorkspaceSetInfoRequest) error {
 	}
 	workspaceId := spc.DerivedIDs().Workspace
 
-	setDetails := make([]*model.Detail, 0, len(req.Details.GetFields()))
+	setDetails := make([]domain.Detail, 0, len(req.Details.GetFields()))
 	for k, v := range req.Details.GetFields() {
-		setDetails = append(setDetails, &model.Detail{
-			Key:   k,
-			Value: v,
+		setDetails = append(setDetails, domain.Detail{
+			Key:   domain.RelationKey(k),
+			Value: domain.ValueFromProto(v),
 		})
 	}
 	return s.SetDetails(nil, workspaceId, setDetails)
@@ -535,10 +535,10 @@ func (s *Service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 		if ws.Type() != coresb.SmartBlockTypeWorkspace {
 			return ErrUnexpectedBlockType
 		}
-		if err = ws.SetDetails(ctx, []*model.Detail{
+		if err = ws.SetDetails(ctx, []domain.Detail{
 			{
-				Key:   bundle.RelationKeySpaceDashboardId.String(),
-				Value: domain.String(id).ToProto(),
+				Key:   bundle.RelationKeySpaceDashboardId,
+				Value: domain.String(id),
 			},
 		}, false); err != nil {
 			return err

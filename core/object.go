@@ -45,7 +45,14 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetDetails(ctx, req.ContextId, req.GetDetails())
+		details := make([]domain.Detail, 0, len(req.GetDetails()))
+		for _, det := range req.GetDetails() {
+			details = append(details, domain.Detail{
+				Key:   domain.RelationKey(det.Key),
+				Value: domain.ValueFromProto(det.Value),
+			})
+		}
+		return bs.SetDetails(ctx, req.ContextId, details)
 	})
 	if err != nil {
 		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)
@@ -640,7 +647,14 @@ func (mw *Middleware) ObjectListSetDetails(cctx context.Context, req *pb.RpcObje
 	}
 
 	if err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetDetailsList(ctx, req.ObjectIds, req.Details)
+		details := make([]domain.Detail, 0, len(req.GetDetails()))
+		for _, det := range req.GetDetails() {
+			details = append(details, domain.Detail{
+				Key:   domain.RelationKey(det.Key),
+				Value: domain.ValueFromProto(det.Value),
+			})
+		}
+		return bs.SetDetailsList(ctx, req.ObjectIds, details)
 	}); err != nil {
 		return response(pb.RpcObjectListSetDetailsResponseError_UNKNOWN_ERROR, err)
 	}
