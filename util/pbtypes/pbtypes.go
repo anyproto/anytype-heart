@@ -117,16 +117,24 @@ func IsEmptyValueOrAbsent(s *types.Struct, name string) bool {
 	if !exists {
 		return true
 	}
-	if _, ok := value.Kind.(*types.Value_StringValue); ok {
-		return len(GetString(s, name)) == 0
+	return IsEmptyValue(value)
+}
+
+func IsEmptyValue(value *types.Value) bool {
+	if value == nil {
+		return true
 	}
 
-	if _, ok := value.Kind.(*types.Value_NumberValue); ok {
-		return GetFloat64(s, name) == 0
+	if v, ok := value.Kind.(*types.Value_StringValue); ok {
+		return len(v.StringValue) == 0
 	}
 
-	if _, ok := value.Kind.(*types.Value_BoolValue); ok {
-		return !GetBool(s, name)
+	if v, ok := value.Kind.(*types.Value_NumberValue); ok {
+		return v.NumberValue == 0
+	}
+
+	if v, ok := value.Kind.(*types.Value_BoolValue); ok {
+		return !v.BoolValue
 	}
 
 	if _, ok := value.Kind.(*types.Value_ListValue); ok {

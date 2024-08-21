@@ -56,7 +56,7 @@ func (s *Service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesReque
 	for _, objectId := range req.ObjectIds {
 		err := s.ModifyDetails(objectId, func(current *types.Struct) (*types.Struct, error) {
 			for _, op := range req.Operations {
-				if op.Set != nil && pbtypes.ValueToInterface(op.Set) != nil {
+				if !pbtypes.IsEmptyValue(op.Set) {
 					// Set operation has higher priority than Add and Remove, because it modifies full value
 					current.Fields[op.RelationKey] = op.Set
 					continue
