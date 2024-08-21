@@ -50,6 +50,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	templateservice "github.com/anyproto/anytype-heart/core/block/template"
+	"github.com/anyproto/anytype-heart/core/compatibility"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
@@ -301,7 +302,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
 		Register(paymentscache.New()).
-		Register(peerstatus.New())
+		Register(peerstatus.New()).
+		Register(compatibility.New())
 }
 
 func MiddlewareVersion() string {

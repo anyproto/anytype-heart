@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/compatibility"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
@@ -57,6 +58,7 @@ type clientPeerManager struct {
 	availableResponsiblePeers chan struct{}
 	nodeStatus                NodeStatus
 	spaceSyncService          Updater
+	compatibilityChecker      compatibility.Checker
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -74,6 +76,7 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.nodeStatus = app.MustComponent[NodeStatus](a)
 	n.spaceSyncService = app.MustComponent[Updater](a)
 	n.peerToPeerStatus = app.MustComponent[PeerToPeerStatus](a)
+	n.compatibilityChecker = app.MustComponent[compatibility.Checker](a)
 	return
 }
 
@@ -179,6 +182,7 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 		log.Warn("failed to get responsible peer from common pool", zap.Error(nodeErr))
 	} else {
 		peerIds = []string{p.Id()}
+		n.addPeerVersion(p)
 	}
 	peerIds = append(peerIds, n.peerStore.LocalPeerIds(n.spaceId)...)
 	for _, peerId := range peerIds {
@@ -188,6 +192,7 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 			log.Warn("failed to get peer from stream pool", zap.String("peerId", peerId), zap.Error(err))
 			continue
 		}
+		n.addPeerVersion(p)
 		peers = append(peers, p)
 	}
 
@@ -196,6 +201,15 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 		err = fmt.Errorf("failed to get peers for stream")
 	}
 	return
+}
+
+func (n *clientPeerManager) addPeerVersion(p peer.Peer) {
+	protoVersion, err := peer.CtxProtoVersion(p.Context())
+	if err != nil {
+		log.Warn("failed to get responsible peer proto version", zap.Error(err))
+	} else {
+		n.compatibilityChecker.AddPeerVersion(p.Id(), protoVersion)
+	}
 }
 
 func (n *clientPeerManager) manageResponsiblePeers() {
