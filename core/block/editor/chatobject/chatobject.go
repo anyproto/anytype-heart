@@ -264,29 +264,34 @@ func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 		Marks: marks,
 	}
 
+	var attachments []*model.ChatMessageAttachment
 	inAttachments := root.GetObject("content", "attachments")
-	attachments := make([]*model.ChatMessageAttachment, 0, inAttachments.Len())
-	inAttachments.Visit(func(targetObjectId []byte, inAttachment *fastjson.Value) {
-		attachments = append(attachments, &model.ChatMessageAttachment{
-			Target: string(targetObjectId),
-			Type:   model.ChatMessageAttachmentAttachmentType(inAttachment.GetInt("type")),
+	if inAttachments != nil {
+		attachments = make([]*model.ChatMessageAttachment, 0, inAttachments.Len())
+		inAttachments.Visit(func(targetObjectId []byte, inAttachment *fastjson.Value) {
+			attachments = append(attachments, &model.ChatMessageAttachment{
+				Target: string(targetObjectId),
+				Type:   model.ChatMessageAttachmentAttachmentType(inAttachment.GetInt("type")),
+			})
 		})
-	})
-
-	inReactions := root.GetObject("reactions")
-	reactions := &model.ChatMessageReactions{
-		Reactions: make(map[string]*model.ChatMessageReactionsIdentityList, inReactions.Len()),
 	}
-	inReactions.Visit(func(emoji []byte, inReaction *fastjson.Value) {
-		inReactionArr := inReaction.GetArray()
-		identities := make([]string, 0, len(inReactionArr))
-		for _, identity := range inReactionArr {
-			identities = append(identities, string(identity.GetStringBytes()))
-		}
-		reactions.Reactions[string(emoji)] = &model.ChatMessageReactionsIdentityList{
-			Ids: identities,
-		}
-	})
+
+	reactions := &model.ChatMessageReactions{
+		Reactions: map[string]*model.ChatMessageReactionsIdentityList{},
+	}
+	inReactions := root.GetObject("reactions")
+	if inReactions != nil {
+		inReactions.Visit(func(emoji []byte, inReaction *fastjson.Value) {
+			inReactionArr := inReaction.GetArray()
+			identities := make([]string, 0, len(inReactionArr))
+			for _, identity := range inReactionArr {
+				identities = append(identities, string(identity.GetStringBytes()))
+			}
+			reactions.Reactions[string(emoji)] = &model.ChatMessageReactionsIdentityList{
+				Ids: identities,
+			}
+		})
+	}
 
 	return &model.ChatMessage{
 		Id:               string(root.GetStringBytes("id")),
