@@ -99,6 +99,9 @@ func TestAddMessage(t *testing.T) {
 	// Cleanup order id
 	assert.NotEmpty(t, got.OrderId)
 	got.OrderId = ""
+	// Cleanup timestamp
+	assert.NotZero(t, got.CreatedAt)
+	got.CreatedAt = 0
 	assert.Equal(t, want, got)
 }
 
@@ -118,6 +121,8 @@ func TestEditMessage(t *testing.T) {
 	// Edit
 	editedMessage := givenMessage()
 	editedMessage.Message.Text = "edited text!"
+	editedMessage.Reactions.Reactions["🥰"].Ids = []string{"identity1"}
+
 	changeId = "messageId2"
 	fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(applyToStore(changeId))
 	err = fx.EditMessage(ctx, messageId, editedMessage)
@@ -136,6 +141,9 @@ func TestEditMessage(t *testing.T) {
 	// Cleanup order id
 	assert.NotEmpty(t, got.OrderId)
 	got.OrderId = ""
+	// Cleanup timestamp
+	assert.NotZero(t, got.CreatedAt)
+	got.CreatedAt = 0
 	assert.Equal(t, want, got)
 }
 
@@ -147,10 +155,11 @@ func applyToStore(changeId string) func(ctx context.Context, params source.PushS
 		}
 		order := tx.NextOrder(tx.GetMaxOrder())
 		err = tx.ApplyChangeSet(storestate.ChangeSet{
-			Id:      changeId,
-			Order:   order,
-			Changes: params.Changes,
-			Creator: testCreator,
+			Id:        changeId,
+			Order:     order,
+			Changes:   params.Changes,
+			Creator:   testCreator,
+			Timestamp: params.Time.Unix(),
 		})
 		if err != nil {
 			return "", fmt.Errorf("apply change set: %w", err)

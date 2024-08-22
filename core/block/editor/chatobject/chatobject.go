@@ -4,10 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -133,6 +132,7 @@ func (s *storeObject) AddMessage(ctx context.Context, message *model.ChatMessage
 	messageId, err := s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
 		State:   s.store,
+		Time:    time.Now(),
 	})
 	if err != nil {
 		return "", fmt.Errorf("add change: %w", err)
@@ -140,26 +140,24 @@ func (s *storeObject) AddMessage(ctx context.Context, message *model.ChatMessage
 	return messageId, nil
 }
 
+// TODO Temp non-atomic method
 func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error {
-	newMessage = proto.Clone(newMessage).(*model.ChatMessage)
-	newMessage.Id = ""
-	newMessage.OrderId = ""
-	newMessage.Creator = ""
-
-	marshaler := &jsonpb.Marshaler{}
-	raw, err := marshaler.MarshalToString(newMessage)
-	if err != nil {
-		return fmt.Errorf("marshal message: %w", err)
-	}
+	arena := &fastjson.Arena{}
+	obj := marshalMessageTo(arena, newMessage)
 
 	builder := storestate.Builder{}
-	err = builder.Modify(collectionName, messageId, []string{dataKey}, pb.ModifyOp_Set, raw)
+	err := builder.Modify(collectionName, messageId, []string{"content"}, pb.ModifyOp_Set, obj.Get("content"))
 	if err != nil {
-		return fmt.Errorf("modify chat: %w", err)
+		return fmt.Errorf("modify content: %w", err)
+	}
+	err = builder.Modify(collectionName, messageId, []string{"reactions"}, pb.ModifyOp_Set, obj.Get("reactions"))
+	if err != nil {
+		return fmt.Errorf("modify reactions: %w", err)
 	}
 	_, err = s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
 		State:   s.store,
+		Time:    time.Now(),
 	})
 	if err != nil {
 		return fmt.Errorf("add change: %w", err)
