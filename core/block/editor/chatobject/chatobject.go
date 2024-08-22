@@ -8,6 +8,7 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/huandu/skiplist"
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -331,10 +332,13 @@ func (s *storeObject) SubscribeLastMessages(limit int) ([]*model.ChatMessage, in
 
 	s.subscription.init(messages)
 
-	return nil, 0, nil
+	return messages, 0, nil
 }
 
 func (s *storeObject) Unsubscribe() error {
+	s.subscription.enabled = false
+	s.subscription.firstOrderId = ""
+	s.subscription.orderToId = skiplist.New(skiplist.String)
 	return nil
 }
 
