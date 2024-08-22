@@ -188,7 +188,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 	assert.Len(t, sn.Snapshots, 4) // 2 object + root collection + transpose collection + 1 relations
 
 	for _, snapshot := range sn.Snapshots {
-		if snapshot.SbType == sb.SmartBlockTypeRelation {
+		if snapshot.Snapshot.SbType == sb.SmartBlockTypeRelation {
 			name := snapshot.Snapshot.GetData().GetDetails().GetString(bundle.RelationKeyName, "")
 			assert.True(t, name == "name" || name == "price")
 		}
@@ -197,7 +197,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 	var collection *common.Snapshot
 	for _, snapshot := range sn.Snapshots {
 		// only objects created from rows
-		if snapshot.SbType != sb.SmartBlockTypeRelation &&
+		if snapshot.Snapshot.SbType != sb.SmartBlockTypeRelation &&
 			lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) &&
 			snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName) == "transpose Transpose" {
 			collection = snapshot
@@ -228,7 +228,7 @@ func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
 	assert.Len(t, sn.Snapshots, 5) // 2 object + root collection + transpose collection + 1 relations
 
 	for _, snapshot := range sn.Snapshots {
-		if snapshot.SbType == sb.SmartBlockTypeRelation {
+		if snapshot.Snapshot.SbType == sb.SmartBlockTypeRelation {
 			name := snapshot.Snapshot.GetData().GetDetails().GetString(bundle.RelationKeyName, "")
 			assert.True(t, name == "Field 1" || name == "Field 2")
 		}
@@ -257,7 +257,7 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOn(t *testing.T) {
 	var rowsObjects []*common.Snapshot
 	for _, snapshot := range sn.Snapshots {
 		// only objects created from rows
-		if snapshot.SbType != sb.SmartBlockTypeRelation &&
+		if snapshot.Snapshot.SbType != sb.SmartBlockTypeRelation &&
 			!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) {
 			rowsObjects = append(rowsObjects, snapshot)
 		}
@@ -303,7 +303,7 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {
 	var objects []*common.Snapshot
 	for _, snapshot := range sn.Snapshots {
 		// only objects created from rows
-		if snapshot.SbType != sb.SmartBlockTypeRelation &&
+		if snapshot.Snapshot.SbType != sb.SmartBlockTypeRelation &&
 			!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) {
 			objects = append(objects, snapshot)
 		}
@@ -323,7 +323,7 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {
 	var subObjects []*common.Snapshot
 	for _, snapshot := range sn.Snapshots {
 		// only objects created from rows
-		if snapshot.SbType == sb.SmartBlockTypeRelation {
+		if snapshot.Snapshot.SbType == sb.SmartBlockTypeRelation {
 			subObjects = append(subObjects, snapshot)
 		}
 	}
@@ -399,7 +399,7 @@ func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOn(t *testing.T
 
 	var subObjects []*common.Snapshot
 	for _, snapshot := range sn.Snapshots {
-		if snapshot.SbType == sb.SmartBlockTypeRelation {
+		if snapshot.Snapshot.SbType == sb.SmartBlockTypeRelation {
 			subObjects = append(subObjects, snapshot)
 		}
 	}
@@ -427,7 +427,7 @@ func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOff(t *testing.
 
 	var subObjects []*common.Snapshot
 	for _, snapshot := range sn.Snapshots {
-		if snapshot.SbType == sb.SmartBlockTypeRelation {
+		if snapshot.Snapshot.SbType == sb.SmartBlockTypeRelation {
 			subObjects = append(subObjects, snapshot)
 		}
 	}
@@ -474,7 +474,7 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 	var objects []*common.Snapshot
 	for _, snapshot := range sn.Snapshots {
 		// only objects created from rows
-		if snapshot.SbType != sb.SmartBlockTypeRelation &&
+		if snapshot.Snapshot.SbType != sb.SmartBlockTypeRelation &&
 			!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) {
 			objects = append(objects, snapshot)
 		}
@@ -500,7 +500,7 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 	objects = []*common.Snapshot{}
 	for _, snapshot := range sn.Snapshots {
 		// only objects created from rows
-		if snapshot.SbType != sb.SmartBlockTypeRelation &&
+		if snapshot.Snapshot.SbType != sb.SmartBlockTypeRelation &&
 			!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) {
 			objects = append(objects, snapshot)
 		}
@@ -579,7 +579,7 @@ func Test_findUniqueRelationWithSpaces(t *testing.T) {
 
 	var subObjects []*common.Snapshot
 	for _, snapshot := range sn.Snapshots {
-		if snapshot.SbType == sb.SmartBlockTypeRelation {
+		if snapshot.Snapshot.SbType == sb.SmartBlockTypeRelation {
 			subObjects = append(subObjects, snapshot)
 		}
 	}
@@ -623,7 +623,7 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 	var objects []*common.Snapshot
 	for _, snapshot := range sn.Snapshots {
 		// only objects created from rows
-		if snapshot.SbType != sb.SmartBlockTypeRelation &&
+		if snapshot.Snapshot.SbType != sb.SmartBlockTypeRelation &&
 			!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) {
 			objects = append(objects, snapshot)
 		}
@@ -654,7 +654,7 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 	objects = []*common.Snapshot{}
 	for _, snapshot := range sn.Snapshots {
 		// only objects created from rows
-		if snapshot.SbType != sb.SmartBlockTypeRelation &&
+		if snapshot.Snapshot.SbType != sb.SmartBlockTypeRelation &&
 			!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) {
 			objects = append(objects, snapshot)
 		}
@@ -694,7 +694,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 		var objects []*common.Snapshot
 		for _, snapshot := range sn.Snapshots {
 			// only objects created from rows
-			if snapshot.SbType != sb.SmartBlockTypeRelation &&
+			if snapshot.Snapshot.SbType != sb.SmartBlockTypeRelation &&
 				!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) {
 				objects = append(objects, snapshot)
 			}
@@ -732,7 +732,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 		var objects []*common.Snapshot
 		for _, snapshot := range sn.Snapshots {
 			// only objects created from rows
-			if snapshot.SbType != sb.SmartBlockTypeRelation &&
+			if snapshot.Snapshot.SbType != sb.SmartBlockTypeRelation &&
 				!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) {
 				objects = append(objects, snapshot)
 			}
