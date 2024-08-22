@@ -229,7 +229,7 @@ func marshalMessageTo(arena *fastjson.Arena, msg *model.ChatMessage) *fastjson.V
 	content.Set("attachments", attachments)
 
 	reactions := arena.NewObject()
-	for emoji, inReaction := range msg.Reactions.Reactions {
+	for emoji, inReaction := range msg.GetReactions().GetReactions() {
 		identities := arena.NewArray()
 		for j, identity := range inReaction.Ids {
 			identities.SetArrayItem(j, arena.NewString(identity))
