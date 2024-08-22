@@ -216,6 +216,3 @@ packages:
       NodeUsage:
       NetworkConfig:
       Updater:
-  github.com/anyproto/anytype-heart/core/compatibility:
-    interfaces:
-      Checker:
