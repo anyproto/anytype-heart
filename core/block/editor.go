@@ -2,7 +2,6 @@ package block
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
@@ -142,34 +141,6 @@ func (s *Service) SetFields(ctx session.Context, req pb.RpcBlockSetFieldsRequest
 			Fields:  req.Fields,
 		})
 	})
-}
-
-func (s *Service) SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error) {
-	return cache.Do(s, objectId, func(b basic.DetailsSettable) error {
-		return b.SetDetails(ctx, details, true)
-	})
-}
-
-func (s *Service) SetDetailsList(ctx session.Context, objectIds []string, details []*model.Detail) (err error) {
-	var (
-		resultError error
-		anySucceed  bool
-	)
-	for _, objectId := range objectIds {
-		err := s.SetDetails(ctx, objectId, details)
-		if err != nil {
-			resultError = errors.Join(resultError, err)
-		} else {
-			anySucceed = true
-		}
-	}
-	if resultError != nil {
-		log.Warnf("SetDetailsList: %v", resultError)
-	}
-	if anySucceed {
-		return nil
-	}
-	return resultError
 }
 
 func (s *Service) SetFieldsList(ctx session.Context, req pb.RpcBlockListSetFieldsRequest) (err error) {
@@ -630,13 +601,6 @@ func (s *Service) GetRelations(ctx session.Context, objectId string) (relations 
 		return nil
 	})
 	return
-}
-
-// ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
-func (s *Service) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
-	return cache.Do(s, objectId, func(du basic.DetailsUpdatable) error {
-		return du.UpdateDetails(modifier)
-	})
 }
 
 func (s *Service) AddExtraRelations(ctx session.Context, objectId string, relationIds []string) (err error) {
