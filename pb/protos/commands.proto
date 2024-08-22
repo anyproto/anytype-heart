@@ -2445,6 +2445,35 @@ message Rpc {
             }
         }
 
+        message ListModifyDetailValues {
+            message Request {
+                repeated string objectIds = 1;
+                repeated Operation operations = 2;
+
+                message Operation {
+                    string relationKey = 1;
+                    google.protobuf.Value add = 2;
+                    google.protobuf.Value set = 3;
+                    google.protobuf.Value remove = 4;
+                }
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
         message ApplyTemplate {
             message Request {
                 string contextId = 1;
@@ -7236,8 +7265,7 @@ message Rpc {
         message AddMessage {
             message Request {
                 string chatObjectId = 1;
-                // TODO Use full model
-                string message = 2;
+                model.ChatMessage message = 2;
             }
 
             message Response {
@@ -7261,7 +7289,7 @@ message Rpc {
             message Request {
                 string chatObjectId = 1;
                 string messageId = 2;
-                string newText = 3;
+                model.ChatMessage editedMessage = 3;
             }
 
             message Response {
@@ -7288,7 +7316,53 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                repeated string messages = 2;
+                repeated model.ChatMessage messages = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message SubscribeLastMessages {
+            message Request {
+                string chatObjectId = 1;  // Identifier for the chat
+                int32 limit = 2;  // Number of max last messages to return and subscribe
+            }
+
+            message Response {
+                Error error = 1;
+                repeated model.ChatMessage messages = 2;  // List of messages
+                int32 numMessagesBefore = 3;  // Number of messages before the returned messages
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message Unsubscribe {
+            message Request {
+                string chatObjectId = 1;  // Identifier for the chat
+            }
+            message Response {
+                Error error = 1;
 
                 message Error {
                     Code code = 1;

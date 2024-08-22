@@ -24,7 +24,7 @@ func (mw *Middleware) ChatAddMessage(cctx context.Context, req *pb.RpcChatAddMes
 func (mw *Middleware) ChatEditMessage(cctx context.Context, req *pb.RpcChatEditMessageRequest) *pb.RpcChatEditMessageResponse {
 	chatService := getService[chats.Service](mw)
 
-	err := chatService.EditMessage(req.ChatObjectId, req.MessageId, req.NewText)
+	err := chatService.EditMessage(req.ChatObjectId, req.MessageId, req.EditedMessage)
 	code := mapErrorCode[pb.RpcChatEditMessageResponseErrorCode](err)
 	return &pb.RpcChatEditMessageResponse{
 		Error: &pb.RpcChatEditMessageResponseError{
@@ -42,6 +42,34 @@ func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMe
 	return &pb.RpcChatGetMessagesResponse{
 		Messages: messages,
 		Error: &pb.RpcChatGetMessagesResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) ChatSubscribeLastMessages(cctx context.Context, req *pb.RpcChatSubscribeLastMessagesRequest) *pb.RpcChatSubscribeLastMessagesResponse {
+	chatService := getService[chats.Service](mw)
+
+	messages, numBefore, err := chatService.SubscribeLastMessages(req.ChatObjectId, int(req.Limit))
+	code := mapErrorCode[pb.RpcChatSubscribeLastMessagesResponseErrorCode](err)
+	return &pb.RpcChatSubscribeLastMessagesResponse{
+		Messages:          messages,
+		NumMessagesBefore: int32(numBefore),
+		Error: &pb.RpcChatSubscribeLastMessagesResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) ChatUnsubscribe(cctx context.Context, req *pb.RpcChatUnsubscribeRequest) *pb.RpcChatUnsubscribeResponse {
+	chatService := getService[chats.Service](mw)
+
+	err := chatService.Unsubscribe(req.ChatObjectId)
+	code := mapErrorCode[pb.RpcChatUnsubscribeResponseErrorCode](err)
+	return &pb.RpcChatUnsubscribeResponse{
+		Error: &pb.RpcChatUnsubscribeResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},

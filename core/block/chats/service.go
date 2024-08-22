@@ -11,16 +11,19 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/editor/storeobject"
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const CName = "core.block.chats"
 
 type Service interface {
-	AddMessage(chatObjectId string, message string) (string, error)
-	EditMessage(chatObjectId string, messageId string, newText string) error
-	GetMessages(chatObjectId string) ([]string, error)
+	AddMessage(chatObjectId string, message *model.ChatMessage) (string, error)
+	EditMessage(chatObjectId string, messageId string, newMessage *model.ChatMessage) error
+	GetMessages(chatObjectId string) ([]*model.ChatMessage, error)
+	SubscribeLastMessages(chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
+	Unsubscribe(chatObjectId string) error
 
 	GetStoreDb() anystore.DB
 
@@ -83,9 +86,9 @@ func (s *service) GetStoreDb() anystore.DB {
 	return s.db
 }
 
-func (s *service) AddMessage(chatObjectId string, message string) (string, error) {
+func (s *service) AddMessage(chatObjectId string, message *model.ChatMessage) (string, error) {
 	var messageId string
-	err := cache.Do(s.objectGetter, chatObjectId, func(sb storeobject.StoreObject) error {
+	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
 		messageId, err = sb.AddMessage(context.Background(), message)
 		return err
@@ -93,15 +96,15 @@ func (s *service) AddMessage(chatObjectId string, message string) (string, error
 	return messageId, err
 }
 
-func (s *service) EditMessage(chatObjectId string, messageId string, newText string) error {
-	return cache.Do(s.objectGetter, chatObjectId, func(sb storeobject.StoreObject) error {
-		return sb.EditMessage(context.Background(), messageId, newText)
+func (s *service) EditMessage(chatObjectId string, messageId string, newMessage *model.ChatMessage) error {
+	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+		return sb.EditMessage(context.Background(), messageId, newMessage)
 	})
 }
 
-func (s *service) GetMessages(chatObjectId string) ([]string, error) {
-	var res []string
-	err := cache.Do(s.objectGetter, chatObjectId, func(sb storeobject.StoreObject) error {
+func (s *service) GetMessages(chatObjectId string) ([]*model.ChatMessage, error) {
+	var res []*model.ChatMessage
+	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		msgs, err := sb.GetMessages(context.Background())
 		if err != nil {
 			return err
@@ -110,4 +113,26 @@ func (s *service) GetMessages(chatObjectId string) ([]string, error) {
 		return nil
 	})
 	return res, err
+}
+
+func (s *service) SubscribeLastMessages(chatObjectId string, limit int) ([]*model.ChatMessage, int, error) {
+	var (
+		msgs      []*model.ChatMessage
+		numBefore int
+	)
+	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+		var err error
+		msgs, numBefore, err = sb.SubscribeLastMessages(limit)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return msgs, numBefore, err
+}
+
+func (s *service) Unsubscribe(chatObjectId string) error {
+	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+		return sb.Unsubscribe()
+	})
 }

@@ -9,10 +9,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/storeobject"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -68,7 +68,7 @@ type ObjectFactory struct {
 	fileReconciler      reconciler.Reconciler
 	objectDeleter       ObjectDeleter
 	deviceService       deviceService
-	storeDbProvider     storeobject.StoreDbProvider
+	storeDbProvider     chatobject.StoreDbProvider
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -93,7 +93,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
-	f.storeDbProvider = app.MustComponent[storeobject.StoreDbProvider](a)
+	f.storeDbProvider = app.MustComponent[chatobject.StoreDbProvider](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.fileObjectService = app.MustComponent[fileobject.Service](a)
 	f.restrictionService = app.MustComponent[restriction.Service](a)
@@ -198,7 +198,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeChatObject, coresb.SmartBlockTypeChatDerivedObject:
-		return storeobject.New(sb, f.accountService, f.storeDbProvider, f.eventSender), nil
+		return chatobject.New(sb, f.accountService, f.storeDbProvider, f.eventSender), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

@@ -27,15 +27,15 @@ import (
 var _ updatelistener.UpdateListener = (*store)(nil)
 
 type Store interface {
+	Source
 	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState) (err error)
 	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
 }
 
 type PushStoreChangeParams struct {
-	State      *storestate.StoreState
-	Changes    []*pb.StoreChangeContent
-	Time       time.Time // used to derive the lastModifiedDate; Default is time.Now()
-	DoSnapshot bool
+	State   *storestate.StoreState
+	Changes []*pb.StoreChangeContent
+	Time    time.Time // used to derive the lastModifiedDate; Default is time.Now()
 }
 
 var _ updatelistener.UpdateListener = (*store)(nil)
@@ -112,17 +112,17 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	addResult, err := s.ObjectTree.AddContentWithValidator(ctx, objecttree.SignableChangeContent{
 		Data:        data,
 		Key:         s.accountKeysService.Account().SignKey,
-		IsSnapshot:  params.DoSnapshot,
 		IsEncrypted: true,
 		DataType:    dataType,
 		Timestamp:   params.Time.Unix(),
 	}, func(change *treechangeproto.RawTreeChangeWithId) error {
 		order := tx.NextOrder(tx.GetMaxOrder())
 		err = tx.ApplyChangeSet(storestate.ChangeSet{
-			Id:      change.Id,
-			Order:   order,
-			Changes: params.Changes,
-			Creator: s.accountService.AccountID(),
+			Id:        change.Id,
+			Order:     order,
+			Changes:   params.Changes,
+			Creator:   s.accountService.AccountID(),
+			Timestamp: params.Time.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("apply change set: %w", err)
