@@ -1742,10 +1742,10 @@
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
     - [ChatMessage](#anytype-model-ChatMessage)
     - [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment)
-    - [ChatMessage.IdentityList](#anytype-model-ChatMessage-IdentityList)
     - [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent)
     - [ChatMessage.MessageContent.Mark](#anytype-model-ChatMessage-MessageContent-Mark)
     - [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions)
+    - [ChatMessage.Reactions.IdentityList](#anytype-model-ChatMessage-Reactions-IdentityList)
     - [ChatMessage.Reactions.ReactionsEntry](#anytype-model-ChatMessage-Reactions-ReactionsEntry)
     - [Detail](#anytype-model-Detail)
     - [DeviceInfo](#anytype-model-DeviceInfo)
@@ -27500,7 +27500,7 @@ Used to decode block meta only, without the content itself
 <a name="anytype-model-ChatMessage-Attachment"></a>
 
 ### ChatMessage.Attachment
-Nested Attachment message to represent attachments
+
 
 
 | Field | Type | Label | Description |
@@ -27513,25 +27513,10 @@ Nested Attachment message to represent attachments
 
 
 
-<a name="anytype-model-ChatMessage-IdentityList"></a>
-
-### ChatMessage.IdentityList
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| ids | [string](#string) | repeated | List of user IDs |
-
-
-
-
-
-
 <a name="anytype-model-ChatMessage-MessageContent"></a>
 
 ### ChatMessage.MessageContent
-Nested MessageContent message to represent the &#34;message&#34; object
+
 
 
 | Field | Type | Label | Description |
@@ -27548,7 +27533,7 @@ Nested MessageContent message to represent the &#34;message&#34; object
 <a name="anytype-model-ChatMessage-MessageContent-Mark"></a>
 
 ### ChatMessage.MessageContent.Mark
-Nested Mark message to represent the &#34;marks&#34; array
+
 
 
 | Field | Type | Label | Description |
@@ -27565,12 +27550,27 @@ Nested Mark message to represent the &#34;marks&#34; array
 <a name="anytype-model-ChatMessage-Reactions"></a>
 
 ### ChatMessage.Reactions
-Nested Reactions message to represent reactions
+
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | reactions | [ChatMessage.Reactions.ReactionsEntry](#anytype-model-ChatMessage-Reactions-ReactionsEntry) | repeated | Map of emoji to list of user IDs |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-Reactions-IdentityList"></a>
+
+### ChatMessage.Reactions.IdentityList
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated | List of user IDs |
 
 
 
@@ -27586,7 +27586,7 @@ Nested Reactions message to represent reactions
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
-| value | [ChatMessage.IdentityList](#anytype-model-ChatMessage-IdentityList) |  |  |
+| value | [ChatMessage.Reactions.IdentityList](#anytype-model-ChatMessage-Reactions-IdentityList) |  |  |
 
 
 
@@ -28972,7 +28972,7 @@ stored |
 <a name="anytype-model-ChatMessage-MessageContent-MessageStyle"></a>
 
 ### ChatMessage.MessageContent.MessageStyle
-Enum for message styles
+
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |

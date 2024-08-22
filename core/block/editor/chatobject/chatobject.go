@@ -269,7 +269,7 @@ func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 
 	inReactions := root.GetObject("reactions")
 	reactions := &model.ChatMessageReactions{
-		Reactions: make(map[string]*model.ChatMessageIdentityList, inReactions.Len()),
+		Reactions: make(map[string]*model.ChatMessageReactionsIdentityList, inReactions.Len()),
 	}
 	inReactions.Visit(func(emoji []byte, inReaction *fastjson.Value) {
 		inReactionArr := inReaction.GetArray()
@@ -277,7 +277,7 @@ func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 		for _, identity := range inReactionArr {
 			identities = append(identities, string(identity.GetStringBytes()))
 		}
-		reactions.Reactions[string(emoji)] = &model.ChatMessageIdentityList{
+		reactions.Reactions[string(emoji)] = &model.ChatMessageReactionsIdentityList{
 			Ids: identities,
 		}
 	})

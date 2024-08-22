@@ -1326,12 +1326,11 @@ message ChatMessage {
     int64 createdAt = 4;
     string replyToMessageId = 5;   // Identifier for the message being replied to
 
-    // Nested MessageContent message to represent the "message" object
+    MessageContent message = 6;  // Message content
     message MessageContent {
         string text = 1;      // The text content of the message part
         MessageStyle style = 2;    // The style/type of the message part
 
-        // Nested Mark message to represent the "marks" array
         message Mark {
             int32 from = 1;     // Starting position of the mark in the text
             int32 to = 2;       // Ending position of the mark in the text
@@ -1340,7 +1339,6 @@ message ChatMessage {
 
         repeated Mark marks = 3; // List of marks applied to the text
 
-        // Enum for message styles
         enum MessageStyle {
             PARAGRAPH = 0;   // Standard text paragraph
             QUOTE = 5;       // Quoted text
@@ -1351,9 +1349,7 @@ message ChatMessage {
         }
     }
 
-    MessageContent message = 6;  // Message content
-
-    // Nested Attachment message to represent attachments
+    repeated Attachment attachments = 7;  // Attachments slice
     message Attachment {
         string target = 1;       // Identifier for the attachment object
         AttachmentType type = 2; // Type of attachment
@@ -1365,16 +1361,12 @@ message ChatMessage {
         }
     }
 
-    repeated Attachment attachments = 7;  // Attachments slice
-
-    message IdentityList {
-        repeated string ids = 1; // List of user IDs
-    }
-
-    // Nested Reactions message to represent reactions
+    Reactions reactions = 8;  // Reactions to the message
     message Reactions {
         map<string, IdentityList> reactions = 1; // Map of emoji to list of user IDs
-    }
-    Reactions reactions = 8;  // Reactions to the message
 
+        message IdentityList {
+            repeated string ids = 1; // List of user IDs
+        }
+    }
 }
