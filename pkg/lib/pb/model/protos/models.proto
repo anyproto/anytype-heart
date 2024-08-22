@@ -100,8 +100,6 @@ message Block {
         Content.TableRow tableRow = 28;
         Content.Widget widget = 29;
         Content.Chat chat = 30;
-        Content.ChatMessage chatMessage = 31;
-
     }
 
     message Restrictions {
@@ -583,73 +581,6 @@ message Block {
         message Chat {
 
         }
-
-        // text stored per part
-        // single mark covers only one part
-        // client doesn't need to calculate ranges for parts. For example just convert some html blocks(quote, ul, etc) to Part
-        // in case mark covers multiple parts, client put it them separately
-        message ChatMessage {
-            string creator = 1;
-            int64 createdDate = 2;
-
-            Parts parts = 3;
-
-            message Attachment {
-                string id = 1;
-                oneof content {
-                    Block.Content.Text text = 14;
-                    Block.Content.File file = 15;
-                    Block.Content.Bookmark bookmark = 18;
-                    Block.Content.Link link = 20;
-                    Block.Content.Latex latex = 24;
-                }
-            }
-            repeated Attachment attachments = 4;
-
-            message Parts {
-                repeated Part parts = 1;
-            }
-
-            message Part {
-                string text = 1;
-                PartStyle style = 2;
-                Marks marks = 3; // list of marks to apply to the text
-            }
-
-            message Marks {
-                repeated Mark marks = 1;
-            }
-            message Mark {
-                Range range = 1; // range of symbols to apply this mark. From(symbol) To(symbol)
-                Type type = 2;
-                string param = 3; // link, color, etc
-
-                enum Type {
-                    Strikethrough = 0;
-                    Keyboard = 1;
-                    Italic = 2;
-                    Bold = 3;
-                    Underscored = 4;
-                    Link = 5;
-                    TextColor = 6;
-                    BackgroundColor = 7;
-                    Mention = 8;
-                    Emoji = 9;
-                    Object = 10;
-                }
-            }
-
-            enum PartStyle {
-                Paragraph = 0;
-                Quote = 5;
-                Code = 6;
-                Marked = 9;
-                Numbered = 10;
-                Callout = 13;
-            }
-
-        }
-
     }
 }
 
@@ -1386,4 +1317,77 @@ message DeviceInfo {
     int64 addDate = 3;
     bool archived = 4;
     bool isConnected = 5;
+}
+
+message ChatMessage {
+    string id = 1;        // Unique message identifier
+    string orderId = 2;   // Used for subscriptions
+    string creator = 3;       // Identifier for the message creator
+    string replyToMessageId = 4;   // Identifier for the message being replied to
+
+    // Nested MessageContent message to represent the "message" object
+    message MessageContent {
+        string text = 1;      // The text content of the message part
+        MessageStyle style = 2;    // The style/type of the message part
+
+        // Nested Mark message to represent the "marks" array
+        message Mark {
+            int32 from = 1;     // Starting position of the mark in the text
+            int32 to = 2;       // Ending position of the mark in the text
+            MarkType type = 3;  // Type of the mark
+
+            enum MarkType {
+                STRIKETHROUGH = 0;  // Strikethrough text
+                KEYBOARD = 1;       // Keyboard input style
+                ITALIC = 2;         // Italic text
+                BOLD = 3;           // Bold text
+                UNDERSCORED = 4;    // Underscored text
+                LINK = 5;           // Hyperlink
+                TEXT_COLOR = 6;     // Text color
+                BACKGROUND_COLOR = 7; // Background color
+                MENTION = 8;        // Mention user
+                EMOJI = 9;          // Emoji
+                OBJECT = 10;         // Embedded object
+            }
+        }
+
+        repeated Mark marks = 3; // List of marks applied to the text
+
+        // Enum for message styles
+        enum MessageStyle {
+            PARAGRAPH = 0;   // Standard text paragraph
+            QUOTE = 5;       // Quoted text
+            CODE = 6;        // Code block
+            MARKED = 9;      // Marked text
+            NUMBERED = 10;   // Numbered list
+            CALLOUT = 13;    // Callout box
+        }
+    }
+
+    MessageContent message = 5;  // Message content
+
+    // Nested Attachment message to represent attachments
+    message Attachment {
+        string target = 1;       // Identifier for the attachment object
+        AttachmentType type = 2; // Type of attachment
+
+        enum AttachmentType {
+            FILE = 0;   // File attachment
+            IMAGE = 1;  // Image attachment
+            LINK = 2;   // Link attachment
+        }
+    }
+
+    repeated Attachment attachments = 6;  // Attachments slice
+
+    message IdentityList {
+        repeated string ids = 1; // List of user IDs
+    }
+
+    // Nested Reactions message to represent reactions
+    message Reactions {
+        map<string, IdentityList> reactions = 1; // Map of emoji to list of user IDs
+    }
+
+    Reactions reactions = 7;  // Reactions to the message
 }

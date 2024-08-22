@@ -21,7 +21,9 @@ var (
 	log = logger.NewNamed("storeState")
 )
 
-const IdFromChange = "$changeId"
+const (
+	IdFromChange = "$changeId"
+)
 
 var lexId = lexid.Must(lexid.CharsAllNoEscape, 4, 100)
 

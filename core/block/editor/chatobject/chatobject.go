@@ -1,0 +1,171 @@
+package chatobject
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+
+	anystore "github.com/anyproto/any-store"
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
+	"github.com/valyala/fastjson"
+
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+const collectionName = "chats"
+
+type StoreObject interface {
+	smartblock.SmartBlock
+
+	AddMessage(ctx context.Context, message *model.ChatMessage) (string, error)
+	GetMessages(ctx context.Context) ([]*model.ChatMessage, error)
+	EditMessage(ctx context.Context, messageId string, newText string) error
+}
+
+type StoreDbProvider interface {
+	GetStoreDb() anystore.DB
+}
+
+type AccountService interface {
+	AccountID() string
+}
+
+type storeObject struct {
+	smartblock.SmartBlock
+
+	accountService AccountService
+	dbProvider     StoreDbProvider
+	storeSource    source.Store
+	store          *storestate.StoreState
+	eventSender    event.Sender
+
+	arenaPool *fastjson.ArenaPool
+}
+
+func New(sb smartblock.SmartBlock, accountService AccountService, dbProvider StoreDbProvider, eventSender event.Sender) StoreObject {
+	return &storeObject{
+		SmartBlock:     sb,
+		accountService: accountService,
+		dbProvider:     dbProvider,
+		arenaPool:      &fastjson.ArenaPool{},
+		eventSender:    eventSender,
+	}
+}
+
+func (s *storeObject) Init(ctx *smartblock.InitContext) error {
+	err := s.SmartBlock.Init(ctx)
+	if err != nil {
+		return err
+	}
+
+	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.dbProvider.GetStoreDb(), ChatHandler{
+		chatId:      s.Id(),
+		MyIdentity:  s.accountService.AccountID(),
+		eventSender: s.eventSender,
+	})
+	if err != nil {
+		return fmt.Errorf("create state store: %w", err)
+	}
+	s.store = stateStore
+
+	storeSource, ok := ctx.Source.(source.Store)
+	if !ok {
+		return fmt.Errorf("source is not a store")
+	}
+	s.storeSource = storeSource
+	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore)
+	if err != nil {
+		return fmt.Errorf("read store doc: %w", err)
+	}
+
+	return nil
+}
+
+func (s *storeObject) GetMessages(ctx context.Context) ([]*model.ChatMessage, error) {
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	coll, err := s.store.Collection(ctx, collectionName)
+	if err != nil {
+		return nil, fmt.Errorf("get collection: %w", err)
+	}
+	iter, err := coll.Find(nil).Sort("_o.id").Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("find iter: %w", err)
+	}
+	var res []*model.ChatMessage
+	unmarshaler := &jsonpb.Unmarshaler{
+		AllowUnknownFields: true,
+	}
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, errors.Join(iter.Close(), err)
+		}
+
+		// TODO Reuse buffer
+		raw := doc.Value().MarshalTo(nil)
+
+		var message model.ChatMessage
+		err = unmarshaler.Unmarshal(bytes.NewReader(raw), &message)
+		if err != nil {
+			return nil, errors.Join(iter.Close(), fmt.Errorf("unmarshal message: %w", err))
+		}
+		res = append(res, &message)
+	}
+	return res, errors.Join(iter.Close(), err)
+}
+
+func (s *storeObject) AddMessage(ctx context.Context, message *model.ChatMessage) (string, error) {
+	message = proto.Clone(message).(*model.ChatMessage)
+	message.Creator = s.accountService.AccountID()
+
+	marshaler := &jsonpb.Marshaler{}
+	raw, err := marshaler.MarshalToString(message)
+	if err != nil {
+		return "", fmt.Errorf("marshal message: %w", err)
+	}
+
+	builder := storestate.Builder{}
+	err = builder.Create(collectionName, storestate.IdFromChange, raw)
+	if err != nil {
+		return "", fmt.Errorf("create chat: %w", err)
+	}
+
+	messageId, err := s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
+		Changes: builder.ChangeSet,
+		State:   s.store,
+	})
+	if err != nil {
+		return "", fmt.Errorf("add change: %w", err)
+	}
+	return messageId, nil
+}
+
+func (s *storeObject) EditMessage(ctx context.Context, messageId string, newText string) error {
+	arena := &fastjson.Arena{}
+
+	builder := storestate.Builder{}
+	err := builder.Modify("chats", messageId, []string{"text"}, pb.ModifyOp_Set, arena.NewString(newText))
+	if err != nil {
+		return fmt.Errorf("modify chat: %w", err)
+	}
+	_, err = s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
+		Changes: builder.ChangeSet,
+		State:   s.store,
+	})
+	if err != nil {
+		return fmt.Errorf("add change: %w", err)
+	}
+	return nil
+}

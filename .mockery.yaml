@@ -166,6 +166,7 @@ packages:
   github.com/anyproto/anytype-heart/core/block/source:
     interfaces:
       Service:
+      Store:
   github.com/anyproto/anytype-heart/core/block/object/idresolver:
     interfaces:
       Resolver:
