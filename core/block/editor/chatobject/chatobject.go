@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
@@ -47,6 +48,7 @@ type storeObject struct {
 	storeSource    source.Store
 	store          *storestate.StoreState
 	eventSender    event.Sender
+	subscription   *subscription
 
 	arenaPool *fastjson.ArenaPool
 }
@@ -66,11 +68,11 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return err
 	}
+	s.subscription = newSubscription(s.Id(), s.eventSender)
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.dbProvider.GetStoreDb(), ChatHandler{
-		chatId:      s.Id(),
-		MyIdentity:  s.accountService.AccountID(),
-		eventSender: s.eventSender,
+		chatId:       s.Id(),
+		subscription: s.subscription,
 	})
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
@@ -91,17 +93,22 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 }
 
 func (s *storeObject) GetMessages(ctx context.Context) ([]*model.ChatMessage, error) {
+	coll, err := s.store.Collection(ctx, collectionName)
+	if err != nil {
+		return nil, fmt.Errorf("get collection: %w", err)
+	}
+	query := coll.Find(nil).Sort("_o.id")
+	return s.queryMessages(ctx, query)
+}
+
+func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) ([]*model.ChatMessage, error) {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
 
-	coll, err := s.store.Collection(ctx, collectionName)
-	if err != nil {
-		return nil, fmt.Errorf("get collection: %w", err)
-	}
-	iter, err := coll.Find(nil).Sort("_o.id").Iter(ctx)
+	iter, err := query.Iter(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("find iter: %w", err)
 	}
@@ -306,6 +313,24 @@ func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 }
 
 func (s *storeObject) SubscribeLastMessages(limit int) ([]*model.ChatMessage, int, error) {
+	// TODO pass ctx
+	ctx := context.Background()
+	coll, err := s.store.Collection(ctx, collectionName)
+	if err != nil {
+		return nil, 0, fmt.Errorf("get collection: %w", err)
+	}
+	query := coll.Find(nil).Sort("-_o.id").Limit(uint(limit))
+	messages, err := s.queryMessages(ctx, query)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query messages: %w", err)
+	}
+	// reverse
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].OrderId > messages[j].OrderId
+	})
+
+	s.subscription.init(messages)
+
 	return nil, 0, nil
 }
 

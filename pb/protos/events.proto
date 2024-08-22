@@ -119,13 +119,12 @@ message Event {
     message Chat {
         message Add {
             string id = 1;
-            string author = 2;
-            string text = 3;
+            string afterId = 2;
+            model.ChatMessage message = 3;
         }
         message Update {
             string id = 1;
-            string author = 2;
-            string text = 3;
+            model.ChatMessage message = 2;
         }
     }
 

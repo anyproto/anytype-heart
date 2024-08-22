@@ -9,14 +9,12 @@ import (
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 type ChatHandler struct {
-	MyIdentity  string
-	eventSender event.Sender
-	chatId      string
+	chatId       string
+	subscription *subscription
 }
 
 func (d ChatHandler) CollectionName() string {
@@ -31,6 +29,10 @@ func (d ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err er
 func (d ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) (err error) {
 	ch.Value.Set("createdAt", ch.Arena.NewNumberInt(int(ch.Change.Timestamp)))
 	ch.Value.Set("creator", ch.Arena.NewString(ch.Change.Creator))
+
+	message := unmarshalMessage(ch.Value)
+	message.OrderId = ch.Change.Order
+	d.subscription.add(message)
 
 	return
 }
@@ -58,21 +60,9 @@ func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModif
 		if err != nil {
 			return nil, false, err
 		}
-		ev := &pb.EventChatUpdate{
-			Id:     string(result.GetStringBytes("id")),
-			Author: string(result.GetStringBytes("author")),
-			Text:   string(result.GetStringBytes("text")),
-		}
-		d.eventSender.Broadcast(&pb.Event{
-			ContextId: d.chatId,
-			Messages: []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfChatUpdate{
-						ChatUpdate: ev,
-					},
-				},
-			},
-		})
+
+		message := unmarshalMessage(result)
+		d.subscription.update(message)
 
 		return result, modified, nil
 	})

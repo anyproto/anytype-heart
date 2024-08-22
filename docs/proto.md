@@ -25537,8 +25537,8 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| author | [string](#string) |  |  |
-| text | [string](#string) |  |  |
+| afterId | [string](#string) |  |  |
+| message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
 
 
 
@@ -25554,8 +25554,7 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| author | [string](#string) |  |  |
-| text | [string](#string) |  |  |
+| message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
 
 
 
