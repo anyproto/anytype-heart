@@ -642,6 +642,23 @@ func (mw *Middleware) ObjectListSetDetails(cctx context.Context, req *pb.RpcObje
 	return response(pb.RpcObjectListSetDetailsResponseError_NULL, nil)
 }
 
+func (mw *Middleware) ObjectListModifyDetailValues(_ context.Context, req *pb.RpcObjectListModifyDetailValuesRequest) *pb.RpcObjectListModifyDetailValuesResponse {
+	response := func(code pb.RpcObjectListModifyDetailValuesResponseErrorCode, err error) *pb.RpcObjectListModifyDetailValuesResponse {
+		m := &pb.RpcObjectListModifyDetailValuesResponse{Error: &pb.RpcObjectListModifyDetailValuesResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.ModifyDetailsList(req)
+	})
+	if err != nil {
+		return response(pb.RpcObjectListModifyDetailValuesResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectListModifyDetailValuesResponseError_NULL, nil)
+}
+
 func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetLayoutResponseErrorCode, err error) *pb.RpcObjectSetLayoutResponse {

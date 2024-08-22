@@ -880,6 +880,11 @@
     - [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request)
     - [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response)
     - [Rpc.Object.ListExport.Response.Error](#anytype-Rpc-Object-ListExport-Response-Error)
+    - [Rpc.Object.ListModifyDetailValues](#anytype-Rpc-Object-ListModifyDetailValues)
+    - [Rpc.Object.ListModifyDetailValues.Request](#anytype-Rpc-Object-ListModifyDetailValues-Request)
+    - [Rpc.Object.ListModifyDetailValues.Request.Operation](#anytype-Rpc-Object-ListModifyDetailValues-Request-Operation)
+    - [Rpc.Object.ListModifyDetailValues.Response](#anytype-Rpc-Object-ListModifyDetailValues-Response)
+    - [Rpc.Object.ListModifyDetailValues.Response.Error](#anytype-Rpc-Object-ListModifyDetailValues-Response-Error)
     - [Rpc.Object.ListSetDetails](#anytype-Rpc-Object-ListSetDetails)
     - [Rpc.Object.ListSetDetails.Request](#anytype-Rpc-Object-ListSetDetails-Request)
     - [Rpc.Object.ListSetDetails.Response](#anytype-Rpc-Object-ListSetDetails-Response)
@@ -1396,6 +1401,7 @@
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype-Rpc-Object-ListDelete-Response-Error-Code)
     - [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype-Rpc-Object-ListDuplicate-Response-Error-Code)
     - [Rpc.Object.ListExport.Response.Error.Code](#anytype-Rpc-Object-ListExport-Response-Error-Code)
+    - [Rpc.Object.ListModifyDetailValues.Response.Error.Code](#anytype-Rpc-Object-ListModifyDetailValues-Response-Error-Code)
     - [Rpc.Object.ListSetDetails.Response.Error.Code](#anytype-Rpc-Object-ListSetDetails-Response-Error-Code)
     - [Rpc.Object.ListSetIsArchived.Response.Error.Code](#anytype-Rpc-Object-ListSetIsArchived-Response-Error-Code)
     - [Rpc.Object.ListSetIsFavorite.Response.Error.Code](#anytype-Rpc-Object-ListSetIsFavorite-Response-Error-Code)
@@ -1958,6 +1964,7 @@
 | ObjectListSetIsFavorite | [Rpc.Object.ListSetIsFavorite.Request](#anytype-Rpc-Object-ListSetIsFavorite-Request) | [Rpc.Object.ListSetIsFavorite.Response](#anytype-Rpc-Object-ListSetIsFavorite-Response) |  |
 | ObjectListSetObjectType | [Rpc.Object.ListSetObjectType.Request](#anytype-Rpc-Object-ListSetObjectType-Request) | [Rpc.Object.ListSetObjectType.Response](#anytype-Rpc-Object-ListSetObjectType-Response) |  |
 | ObjectListSetDetails | [Rpc.Object.ListSetDetails.Request](#anytype-Rpc-Object-ListSetDetails-Request) | [Rpc.Object.ListSetDetails.Response](#anytype-Rpc-Object-ListSetDetails-Response) |  |
+| ObjectListModifyDetailValues | [Rpc.Object.ListModifyDetailValues.Request](#anytype-Rpc-Object-ListModifyDetailValues-Request) | [Rpc.Object.ListModifyDetailValues.Response](#anytype-Rpc-Object-ListModifyDetailValues-Response) |  |
 | ObjectApplyTemplate | [Rpc.Object.ApplyTemplate.Request](#anytype-Rpc-Object-ApplyTemplate-Request) | [Rpc.Object.ApplyTemplate.Response](#anytype-Rpc-Object-ApplyTemplate-Response) |  |
 | ObjectToSet | [Rpc.Object.ToSet.Request](#anytype-Rpc-Object-ToSet-Request) | [Rpc.Object.ToSet.Response](#anytype-Rpc-Object-ToSet-Response) | ObjectToSet creates new set from given object and removes object |
 | ObjectToCollection | [Rpc.Object.ToCollection.Request](#anytype-Rpc-Object-ToCollection-Request) | [Rpc.Object.ToCollection.Response](#anytype-Rpc-Object-ToCollection-Response) |  |
@@ -14877,6 +14884,81 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 
 
+<a name="anytype-Rpc-Object-ListModifyDetailValues"></a>
+
+### Rpc.Object.ListModifyDetailValues
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ListModifyDetailValues-Request"></a>
+
+### Rpc.Object.ListModifyDetailValues.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated |  |
+| operations | [Rpc.Object.ListModifyDetailValues.Request.Operation](#anytype-Rpc-Object-ListModifyDetailValues-Request-Operation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ListModifyDetailValues-Request-Operation"></a>
+
+### Rpc.Object.ListModifyDetailValues.Request.Operation
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| add | [google.protobuf.Value](#google-protobuf-Value) |  |  |
+| set | [google.protobuf.Value](#google-protobuf-Value) |  |  |
+| remove | [google.protobuf.Value](#google-protobuf-Value) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ListModifyDetailValues-Response"></a>
+
+### Rpc.Object.ListModifyDetailValues.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ListModifyDetailValues.Response.Error](#anytype-Rpc-Object-ListModifyDetailValues-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ListModifyDetailValues-Response-Error"></a>
+
+### Rpc.Object.ListModifyDetailValues.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ListModifyDetailValues.Response.Error.Code](#anytype-Rpc-Object-ListModifyDetailValues-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-ListSetDetails"></a>
 
 ### Rpc.Object.ListSetDetails
@@ -22176,6 +22258,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-ListModifyDetailValues-Response-Error-Code"></a>
+
+### Rpc.Object.ListModifyDetailValues.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 

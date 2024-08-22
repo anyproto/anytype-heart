@@ -76,13 +76,13 @@ func TestState_DepSmartIdsLinks(t *testing.T) {
 	}).(*state.State)
 	converter := &fakeConverter{}
 
-	t.Run("all options are turned off", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, true, false, false, false, false)
+	t.Run("block option is turned on: get ids from blocks", func(t *testing.T) {
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true})
 		assert.Len(t, objectIDs, 4)
 	})
 
-	t.Run("block option is turned on: get ids from blocks", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, false, false, false, false, false)
+	t.Run("all options are turned off", func(t *testing.T) {
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{})
 		assert.Len(t, objectIDs, 0)
 	})
 }
@@ -92,7 +92,7 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 	stateWithLinks := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Id:          "root",
-			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3"},
+			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3", "dataview", "image", "song"},
 		}),
 		"childBlock": simple.New(&model.Block{Id: "childBlock",
 			Content: &model.BlockContentOfText{
@@ -129,6 +129,31 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 					TargetBlockId: "objectID4",
 				},
 			}}),
+		"dataview": simple.New(&model.Block{Id: "dataview",
+			Content: &model.BlockContentOfDataview{
+				Dataview: &model.BlockContentDataview{
+					Views: []*model.BlockContentDataviewView{{
+						Id:                  "Today's tasks",
+						DefaultObjectTypeId: "task",
+						DefaultTemplateId:   "Task with a picture",
+					}},
+					TargetObjectId: "taskTracker",
+				},
+			}}),
+		"image": simple.New(&model.Block{Id: "image",
+			Content: &model.BlockContentOfFile{
+				File: &model.BlockContentFile{
+					TargetObjectId: "image with cute kitten",
+					Type:           model.BlockContentFile_Image,
+				},
+			}}),
+		"song": simple.New(&model.Block{Id: "song",
+			Content: &model.BlockContentOfFile{
+				File: &model.BlockContentFile{
+					TargetObjectId: "Let it be",
+					Type:           model.BlockContentFile_Audio,
+				},
+			}}),
 	}).(*state.State)
 	converter := &fakeConverter{}
 
@@ -153,13 +178,23 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 	stateWithLinks.AddRelationLinks(relations...)
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, true, false, false, false, false)
-		assert.Len(t, objectIDs, 4)
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true})
+		assert.Len(t, objectIDs, 9)
+	})
+
+	t.Run("dataview only target option is turned on: get only target from blocks", func(t *testing.T) {
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, DataviewBlockOnlyTarget: true})
+		assert.Len(t, objectIDs, 7)
+	})
+
+	t.Run("no images option is turned on: get ids from blocks except images", func(t *testing.T) {
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, NoImages: true})
+		assert.Len(t, objectIDs, 8)
 	})
 
 	t.Run("blocks option and relations options are turned on: get ids from blocks and relations", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, true, false, true, false, false)
-		assert.Len(t, objectIDs, 8) // 4 links + 4 relations
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, Relations: true})
+		assert.Len(t, objectIDs, 13) // 9 links + 4 relations
 	})
 }
 
@@ -238,15 +273,15 @@ func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 	stateWithLinks.SetDetail("relation5", pbtypes.Int64(time.Now().Unix()))
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, true, false, false, false, false)
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true})
 		assert.Len(t, objectIDs, 4) // links
 	})
 	t.Run("blocks option and relations option are turned on: get ids from blocks and relations", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, true, false, true, false, false)
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, Relations: true})
 		assert.Len(t, objectIDs, 9) // 4 links + 5 relations
 	})
 	t.Run("blocks, relations and details option are turned on: get ids from blocks, relations and details", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, true, true, true, false, false)
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, Relations: true, Details: true})
 		assert.Len(t, objectIDs, 14) // 4 links + 5 relations + 3 options + 1 fileID + 1 date
 	})
 }
@@ -280,12 +315,12 @@ func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
 	converter := &fakeConverter{}
 
 	t.Run("details option is turned on: get ids only from details", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, false, true, false, false, true)
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Details: true, CreatorModifierWorkspace: true})
 		assert.Len(t, objectIDs, 3) // creator + lastModifiedBy + 1 date
 	})
 
 	t.Run("details and relations options are turned on: get ids from details and relations", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, false, true, true, false, true)
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Details: true, Relations: true, CreatorModifierWorkspace: true})
 		assert.Len(t, objectIDs, 7) // 4 relations + creator + lastModifiedBy + 1 date
 	})
 }
@@ -297,11 +332,11 @@ func TestState_DepSmartIdsObjectTypes(t *testing.T) {
 	converter := &fakeConverter{}
 
 	t.Run("all options are turned off", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, false, false, false, false, false)
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{})
 		assert.Len(t, objectIDs, 0)
 	})
 	t.Run("objTypes option is turned on, get only object types id", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, false, false, false, true, false)
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Types: true})
 		assert.Equal(t, []string{
 			fakeDerivedID(bundle.TypeKeyPage.String()),
 		}, objectIDs)
