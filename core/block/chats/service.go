@@ -22,6 +22,8 @@ type Service interface {
 	AddMessage(chatObjectId string, message *model.ChatMessage) (string, error)
 	EditMessage(chatObjectId string, messageId string, newMessage *model.ChatMessage) error
 	GetMessages(chatObjectId string) ([]*model.ChatMessage, error)
+	SubscribeLastMessages(chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
+	Unsubscribe(chatObjectId string) error
 
 	GetStoreDb() anystore.DB
 
@@ -111,4 +113,26 @@ func (s *service) GetMessages(chatObjectId string) ([]*model.ChatMessage, error)
 		return nil
 	})
 	return res, err
+}
+
+func (s *service) SubscribeLastMessages(chatObjectId string, limit int) ([]*model.ChatMessage, int, error) {
+	var (
+		msgs      []*model.ChatMessage
+		numBefore int
+	)
+	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+		var err error
+		msgs, numBefore, err = sb.SubscribeLastMessages(limit)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return msgs, numBefore, err
+}
+
+func (s *service) Unsubscribe(chatObjectId string) error {
+	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+		return sb.Unsubscribe()
+	})
 }

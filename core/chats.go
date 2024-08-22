@@ -47,3 +47,31 @@ func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMe
 		},
 	}
 }
+
+func (mw *Middleware) ChatSubscribeLastMessages(cctx context.Context, req *pb.RpcChatSubscribeLastMessagesRequest) *pb.RpcChatSubscribeLastMessagesResponse {
+	chatService := getService[chats.Service](mw)
+
+	messages, numBefore, err := chatService.SubscribeLastMessages(req.ChatObjectId, int(req.Limit))
+	code := mapErrorCode[pb.RpcChatSubscribeLastMessagesResponseErrorCode](err)
+	return &pb.RpcChatSubscribeLastMessagesResponse{
+		Messages:          messages,
+		NumMessagesBefore: int32(numBefore),
+		Error: &pb.RpcChatSubscribeLastMessagesResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) ChatUnsubscribe(cctx context.Context, req *pb.RpcChatUnsubscribeRequest) *pb.RpcChatUnsubscribeResponse {
+	chatService := getService[chats.Service](mw)
+
+	err := chatService.Unsubscribe(req.ChatObjectId)
+	code := mapErrorCode[pb.RpcChatUnsubscribeResponseErrorCode](err)
+	return &pb.RpcChatUnsubscribeResponse{
+		Error: &pb.RpcChatUnsubscribeResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}

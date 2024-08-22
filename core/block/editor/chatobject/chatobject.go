@@ -29,6 +29,8 @@ type StoreObject interface {
 	AddMessage(ctx context.Context, message *model.ChatMessage) (string, error)
 	GetMessages(ctx context.Context) ([]*model.ChatMessage, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
+	SubscribeLastMessages(limit int) ([]*model.ChatMessage, int, error)
+	Unsubscribe() error
 }
 
 type StoreDbProvider interface {
@@ -195,4 +197,17 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 		return fmt.Errorf("add change: %w", err)
 	}
 	return nil
+}
+
+func (s *storeObject) SubscribeLastMessages(limit int) ([]*model.ChatMessage, int, error) {
+	return nil, 0, nil
+}
+
+func (s *storeObject) Unsubscribe() error {
+	return nil
+}
+
+func (s *storeObject) Close() error {
+	// TODO unsubscribe
+	return s.SmartBlock.Close()
 }
