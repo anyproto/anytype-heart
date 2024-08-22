@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/compatibility"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -56,15 +55,14 @@ type spaceSyncStatus struct {
 	nodeUsage     NodeUsage
 	subs          syncsubscriptions.SyncSubscriptions
 
-	spaceIdGetter      SpaceIdGetter
-	curStatuses        map[string]struct{}
-	missingIds         map[string][]string
-	lastSentEvents     map[string]pb.EventSpaceSyncStatusUpdate
-	mx                 sync.Mutex
-	periodicCall       periodicsync.PeriodicSync
-	loopInterval       time.Duration
-	isLocal            bool
-	compatibilityCheck compatibility.Checker
+	spaceIdGetter  SpaceIdGetter
+	curStatuses    map[string]struct{}
+	missingIds     map[string][]string
+	lastSentEvents map[string]pb.EventSpaceSyncStatusUpdate
+	mx             sync.Mutex
+	periodicCall   periodicsync.PeriodicSync
+	loopInterval   time.Duration
+	isLocal        bool
 }
 
 func NewSpaceSyncStatus() Updater {
@@ -88,7 +86,6 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	sessionHookRunner := app.MustComponent[session.HookRunner](a)
 	sessionHookRunner.RegisterHook(s.sendSyncEventForNewSession)
 	s.periodicCall = periodicsync.NewPeriodicSyncDuration(s.loopInterval, time.Second*5, s.update, logger.CtxLogger{Logger: log.Desugar()})
-	s.compatibilityCheck = app.MustComponent[compatibility.Checker](a)
 	return
 }
 
@@ -146,11 +143,10 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 		return
 	}
 	params := syncParams{
-		bytesLeftPercentage:    s.getBytesLeftPercentage(spaceId),
-		connectionStatus:       s.nodeStatus.GetNodeStatus(spaceId),
-		compatibility:          s.nodeConf.NetworkCompatibilityStatus(),
-		objectsSyncingCount:    s.getObjectSyncingObjectsCount(spaceId, s.getMissingIds(spaceId)),
-		syncProtocolCompatible: s.compatibilityCheck.IsVersionCompatibleWithPeers(),
+		bytesLeftPercentage: s.getBytesLeftPercentage(spaceId),
+		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
+		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
+		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, s.getMissingIds(spaceId)),
 	}
 	s.eventSender.SendToSession(token, &pb.Event{
 		Messages: []*pb.EventMessage{{
@@ -246,11 +242,10 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 	}
 	missingObjects := s.getMissingIds(spaceId)
 	params := syncParams{
-		bytesLeftPercentage:    s.getBytesLeftPercentage(spaceId),
-		connectionStatus:       s.nodeStatus.GetNodeStatus(spaceId),
-		compatibility:          s.nodeConf.NetworkCompatibilityStatus(),
-		objectsSyncingCount:    s.getObjectSyncingObjectsCount(spaceId, missingObjects),
-		syncProtocolCompatible: s.compatibilityCheck.IsVersionCompatibleWithPeers(),
+		bytesLeftPercentage: s.getBytesLeftPercentage(spaceId),
+		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
+		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
+		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, missingObjects),
 	}
 	s.broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
@@ -267,11 +262,10 @@ func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 }
 
 type syncParams struct {
-	bytesLeftPercentage    float64
-	connectionStatus       nodestatus.ConnectionStatus
-	compatibility          nodeconf.NetworkCompatibilityStatus
-	objectsSyncingCount    int
-	syncProtocolCompatible bool
+	bytesLeftPercentage float64
+	connectionStatus    nodestatus.ConnectionStatus
+	compatibility       nodeconf.NetworkCompatibilityStatus
+	objectsSyncingCount int
 }
 
 func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.EventSpaceSyncStatusUpdate {
@@ -293,7 +287,7 @@ func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.E
 		status = pb.EventSpace_Error
 		err = pb.EventSpace_IncompatibleVersion
 	}
-	if !params.syncProtocolCompatible {
+	if params.compatibility == nodeconf.NetworkCompatibilityStatusIncompatible {
 		status = pb.EventSpace_SyncProtocolUpdate
 	}
 	return &pb.EventSpaceSyncStatusUpdate{
