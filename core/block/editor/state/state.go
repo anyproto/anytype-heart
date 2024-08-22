@@ -329,18 +329,18 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 		if parentId, ok := cache[id]; ok {
 			cacheFound = s.Pick(parentId)
 		}
-		if cacheFound != nil {
-			rootId := s.RootId()
-			topParentId := cacheFound.Model().Id
-			for topParentId != rootId {
-				if nextId, ok := cache[topParentId]; ok {
-					topParentId = nextId
-				} else {
-					cacheFound = nil
-					break
-				}
-			}
-		}
+		// if cacheFound != nil {
+		// 	rootId := s.RootId()
+		// 	topParentId := cacheFound.Model().Id
+		// 	for topParentId != rootId {
+		// 		if nextId, ok := cache[topParentId]; ok {
+		// 			topParentId = nextId
+		// 		} else {
+		// 			cacheFound = nil
+		// 			break
+		// 		}
+		// 	}
+		// }
 		// restore this code after checking if cache is working correctly
 		// return
 	}
@@ -355,18 +355,18 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 
 	// remove this code after checking if cache is working correctly
 	if s.isParentIdsCacheEnabled && res != cacheFound {
-		var cacheFoundId, resFoundId string
-		if cacheFound != nil {
-			cacheFoundId = cacheFound.Model().Id
-		}
-		if res != nil {
-			resFoundId = res.Model().Id
-		}
-		log.With("id", id).
-			With("cacheFoundId", cacheFoundId).
-			With("resFoundId", resFoundId).
-			With("objId", s.RootId()).
-			Warn("discrepancy in state parent search")
+		// var cacheFoundId, resFoundId string
+		// if cacheFound != nil {
+		// 	cacheFoundId = cacheFound.Model().Id
+		// }
+		// if res != nil {
+		// 	resFoundId = res.Model().Id
+		// }
+		// log.With("id", id).
+		// 	With("cacheFoundId", cacheFoundId).
+		// 	With("resFoundId", resFoundId).
+		// 	With("objId", s.RootId()).
+		// 	Warn("discrepancy in state parent search")
 	}
 
 	return

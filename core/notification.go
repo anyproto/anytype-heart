@@ -14,7 +14,7 @@ func (mw *Middleware) NotificationList(cctx context.Context, req *pb.RpcNotifica
 	response := func(code pb.RpcNotificationListResponseErrorCode, notificationsList []*model.Notification, err error) *pb.RpcNotificationListResponse {
 		m := &pb.RpcNotificationListResponse{Error: &pb.RpcNotificationListResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Notifications = notificationsList
 		}
@@ -32,7 +32,7 @@ func (mw *Middleware) NotificationReply(cctx context.Context, req *pb.RpcNotific
 	response := func(code pb.RpcNotificationReplyResponseErrorCode, err error) *pb.RpcNotificationReplyResponse {
 		m := &pb.RpcNotificationReplyResponse{Error: &pb.RpcNotificationReplyResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -48,7 +48,7 @@ func (mw *Middleware) NotificationTest(cctx context.Context, req *pb.RpcNotifica
 	response := func(code pb.RpcNotificationTestResponseErrorCode, err error) *pb.RpcNotificationTestResponse {
 		m := &pb.RpcNotificationTestResponse{Error: &pb.RpcNotificationTestResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}

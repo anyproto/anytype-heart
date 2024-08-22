@@ -16,7 +16,7 @@ func (mw *Middleware) DebugTree(cctx context.Context, req *pb.RpcDebugTreeReques
 		}
 		if err != nil {
 			rpcErr.Code = pb.RpcDebugTreeResponseError_UNKNOWN_ERROR
-			rpcErr.Description = err.Error()
+			rpcErr.Description = getErrorDescription(err)
 		}
 		return &pb.RpcDebugTreeResponse{
 			Error:    rpcErr,
@@ -41,7 +41,7 @@ func (mw *Middleware) DebugTreeHeads(cctx context.Context, req *pb.RpcDebugTreeH
 		}
 		if err != nil {
 			rpcErr.Code = pb.RpcDebugTreeHeadsResponseError_UNKNOWN_ERROR
-			rpcErr.Description = err.Error()
+			rpcErr.Description = getErrorDescription(err)
 		}
 		return &pb.RpcDebugTreeHeadsResponse{
 			Error:   rpcErr,
@@ -73,7 +73,7 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 		}
 		if err != nil {
 			rpcErr.Code = pb.RpcDebugSpaceSummaryResponseError_UNKNOWN_ERROR
-			rpcErr.Description = err.Error()
+			rpcErr.Description = getErrorDescription(err)
 		}
 		infos := make([]*pb.RpcDebugTreeInfo, 0, len(spaceSummary.TreeInfos))
 		for _, i := range spaceSummary.TreeInfos {
@@ -125,7 +125,7 @@ func (mw *Middleware) DebugStackGoroutines(_ context.Context, req *pb.RpcDebugSt
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcDebugStackGoroutinesResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 		}
 		return res
 	}
@@ -143,7 +143,7 @@ func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDeb
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcDebugExportLocalstoreResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 			return
 		} else {
 			res.Path = path
@@ -171,7 +171,7 @@ func (mw *Middleware) DebugSubscriptions(_ context.Context, _ *pb.RpcDebugSubscr
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcDebugSubscriptionsResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 			return
 		}
 		res.Subscriptions = subscriptions
@@ -194,7 +194,7 @@ func (mw *Middleware) DebugOpenedObjects(_ context.Context, _ *pb.RpcDebugOpened
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcDebugOpenedObjectsResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 			return
 		}
 		res.ObjectIDs = objectIDs

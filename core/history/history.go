@@ -84,7 +84,12 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeId))
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(s, space, true, true, false, true, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(s, space, objectlink.Flags{
+		Blocks:    true,
+		Details:   true,
+		Relations: false,
+		Types:     true,
+	})
 	// nolint:errcheck
 	meta, _ := h.objectStore.QueryByID(dependentObjectIDs)
 
@@ -148,6 +153,9 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		if e != nil {
 			return nil, e
 		}
+		if len(data) == 0 {
+			break
+		}
 		if len(data[0].PreviousIds) == 0 {
 			if data[0].Id == tree.Id() {
 				data = data[1:]
@@ -158,10 +166,6 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 			resp = append(data, resp...)
 			lastVersionId = tree.Root().Id
 			includeLastId = false
-		}
-
-		if len(data) == 0 {
-			break
 		}
 	}
 
@@ -178,6 +182,9 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		resp[i].GroupId = groupId
 	}
 
+	if len(resp) > limit {
+		resp = resp[:limit]
+	}
 	return
 }
 
@@ -207,7 +214,12 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	if err != nil {
 		return nil, nil, fmt.Errorf("get space: %w", err)
 	}
-	dependentObjectIDs := objectlink.DependentObjectIDs(currState, spc, true, true, false, true, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(currState, spc, objectlink.Flags{
+		Blocks:    true,
+		Details:   true,
+		Relations: false,
+		Types:     true,
+	})
 	meta, err := h.objectStore.QueryByID(dependentObjectIDs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get dependencies: %w", err)

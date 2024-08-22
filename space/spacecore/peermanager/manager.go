@@ -9,9 +9,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/net/secureservice"
-	"github.com/samber/lo"
-
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
@@ -104,12 +101,7 @@ func (n *clientPeerManager) SendPeer(ctx context.Context, peerId string, msg *sp
 	// because the stream will be opened with this context
 	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
 	return n.p.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
-		peers, err = n.getExactPeer(ctx, peerId)
-		if err != nil {
-			return nil, err
-		}
-		peers = selectOldPeers(peers)
-		return
+		return n.getExactPeer(ctx, peerId)
 	})
 }
 
@@ -118,12 +110,7 @@ func (n *clientPeerManager) Broadcast(ctx context.Context, msg *spacesyncproto.O
 	// because the stream can be opened with this context
 	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
 	return n.p.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
-		peers, err = n.getStreamResponsiblePeers(ctx)
-		if err != nil {
-			return nil, err
-		}
-		peers = selectOldPeers(peers)
-		return
+		return n.getStreamResponsiblePeers(ctx)
 	})
 }
 
@@ -273,18 +260,4 @@ func (n *clientPeerManager) Close(ctx context.Context) (err error) {
 	n.ctxCancel()
 	n.peerToPeerStatus.UnregisterSpace(n.spaceId)
 	return
-}
-
-func selectOldPeers(peers []peer.Peer) (filteredPeers []peer.Peer) {
-	return lo.Filter(peers, func(p peer.Peer, idx int) bool {
-		protoVer, err := peer.CtxProtoVersion(p.Context())
-		if err != nil {
-			log.Warn("failed to get proto version", zap.Error(err))
-			return false
-		}
-		if protoVer > secureservice.ProtoVersion {
-			return false
-		}
-		return true
-	})
 }
