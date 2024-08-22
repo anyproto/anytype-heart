@@ -118,10 +118,11 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	}, func(change *treechangeproto.RawTreeChangeWithId) error {
 		order := tx.NextOrder(tx.GetMaxOrder())
 		err = tx.ApplyChangeSet(storestate.ChangeSet{
-			Id:      change.Id,
-			Order:   order,
-			Changes: params.Changes,
-			Creator: s.accountService.AccountID(),
+			Id:        change.Id,
+			Order:     order,
+			Changes:   params.Changes,
+			Creator:   s.accountService.AccountID(),
+			Timestamp: params.Time.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("apply change set: %w", err)

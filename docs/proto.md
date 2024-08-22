@@ -1828,7 +1828,6 @@
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [ChatMessage.Attachment.AttachmentType](#anytype-model-ChatMessage-Attachment-AttachmentType)
-    - [ChatMessage.MessageContent.Mark.MarkType](#anytype-model-ChatMessage-MessageContent-Mark-MarkType)
     - [ChatMessage.MessageContent.MessageStyle](#anytype-model-ChatMessage-MessageContent-MessageStyle)
     - [DeviceNetworkType](#anytype-model-DeviceNetworkType)
     - [Export.Format](#anytype-model-Export-Format)
@@ -27487,6 +27486,7 @@ Used to decode block meta only, without the content itself
 | id | [string](#string) |  | Unique message identifier |
 | orderId | [string](#string) |  | Used for subscriptions |
 | creator | [string](#string) |  | Identifier for the message creator |
+| createdAt | [int64](#int64) |  |  |
 | replyToMessageId | [string](#string) |  | Identifier for the message being replied to |
 | message | [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent) |  | Message content |
 | attachments | [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment) | repeated | Attachments slice |
@@ -27555,7 +27555,7 @@ Nested Mark message to represent the &#34;marks&#34; array
 | ----- | ---- | ----- | ----------- |
 | from | [int32](#int32) |  | Starting position of the mark in the text |
 | to | [int32](#int32) |  | Ending position of the mark in the text |
-| type | [ChatMessage.MessageContent.Mark.MarkType](#anytype-model-ChatMessage-MessageContent-Mark-MarkType) |  | Type of the mark |
+| type | [Block.Content.Text.Mark.Type](#anytype-model-Block-Content-Text-Mark-Type) |  | Type of the mark |
 
 
 
@@ -28966,27 +28966,6 @@ stored |
 | FILE | 0 | File attachment |
 | IMAGE | 1 | Image attachment |
 | LINK | 2 | Link attachment |
-
-
-
-<a name="anytype-model-ChatMessage-MessageContent-Mark-MarkType"></a>
-
-### ChatMessage.MessageContent.Mark.MarkType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| STRIKETHROUGH | 0 | Strikethrough text |
-| KEYBOARD | 1 | Keyboard input style |
-| ITALIC | 2 | Italic text |
-| BOLD | 3 | Bold text |
-| UNDERSCORED | 4 | Underscored text |
-| LINK | 5 | Hyperlink |
-| TEXT_COLOR | 6 | Text color |
-| BACKGROUND_COLOR | 7 | Background color |
-| MENTION | 8 | Mention user |
-| EMOJI | 9 | Emoji |
-| OBJECT | 10 | Embedded object |
 
 
 

@@ -172,12 +172,12 @@ func givenMessage() *model.ChatMessage {
 				{
 					From: 0,
 					To:   1,
-					Type: model.ChatMessageMessageContentMark_BOLD,
+					Type: model.BlockContentTextMark_Bold,
 				},
 				{
 					From: 2,
 					To:   3,
-					Type: model.ChatMessageMessageContentMark_ITALIC,
+					Type: model.BlockContentTextMark_Italic,
 				},
 			},
 		},

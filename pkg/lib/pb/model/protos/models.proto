@@ -1323,7 +1323,8 @@ message ChatMessage {
     string id = 1;        // Unique message identifier
     string orderId = 2;   // Used for subscriptions
     string creator = 3;       // Identifier for the message creator
-    string replyToMessageId = 4;   // Identifier for the message being replied to
+    int64 createdAt = 4;
+    string replyToMessageId = 5;   // Identifier for the message being replied to
 
     // Nested MessageContent message to represent the "message" object
     message MessageContent {
@@ -1334,21 +1335,7 @@ message ChatMessage {
         message Mark {
             int32 from = 1;     // Starting position of the mark in the text
             int32 to = 2;       // Ending position of the mark in the text
-            MarkType type = 3;  // Type of the mark
-
-            enum MarkType {
-                STRIKETHROUGH = 0;  // Strikethrough text
-                KEYBOARD = 1;       // Keyboard input style
-                ITALIC = 2;         // Italic text
-                BOLD = 3;           // Bold text
-                UNDERSCORED = 4;    // Underscored text
-                LINK = 5;           // Hyperlink
-                TEXT_COLOR = 6;     // Text color
-                BACKGROUND_COLOR = 7; // Background color
-                MENTION = 8;        // Mention user
-                EMOJI = 9;          // Emoji
-                OBJECT = 10;         // Embedded object
-            }
+            Block.Content.Text.Mark.Type type = 3;  // Type of the mark
         }
 
         repeated Mark marks = 3; // List of marks applied to the text
@@ -1364,7 +1351,7 @@ message ChatMessage {
         }
     }
 
-    MessageContent message = 5;  // Message content
+    MessageContent message = 6;  // Message content
 
     // Nested Attachment message to represent attachments
     message Attachment {
@@ -1378,7 +1365,7 @@ message ChatMessage {
         }
     }
 
-    repeated Attachment attachments = 6;  // Attachments slice
+    repeated Attachment attachments = 7;  // Attachments slice
 
     message IdentityList {
         repeated string ids = 1; // List of user IDs
@@ -1388,6 +1375,6 @@ message ChatMessage {
     message Reactions {
         map<string, IdentityList> reactions = 1; // Map of emoji to list of user IDs
     }
+    Reactions reactions = 8;  // Reactions to the message
 
-    Reactions reactions = 7;  // Reactions to the message
 }

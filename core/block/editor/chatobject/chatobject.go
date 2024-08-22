@@ -1,7 +1,6 @@
 package chatobject
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -108,56 +107,25 @@ func (s *storeObject) GetMessages(ctx context.Context) ([]*model.ChatMessage, er
 		return nil, fmt.Errorf("find iter: %w", err)
 	}
 	var res []*model.ChatMessage
-	unmarshaler := &jsonpb.Unmarshaler{
-		AllowUnknownFields: true,
-	}
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
 			return nil, errors.Join(iter.Close(), err)
 		}
 
-		// TODO Reuse buffer
-		raw := doc.Value().Get(dataKey).MarshalTo(nil)
-
-		var message model.ChatMessage
-		err = unmarshaler.Unmarshal(bytes.NewReader(raw), &message)
-		if err != nil {
-			return nil, errors.Join(iter.Close(), fmt.Errorf("unmarshal message: %w", err))
-		}
-		message.Id = string(doc.Value().GetStringBytes("id"))
-		message.OrderId = string(doc.Value().GetStringBytes("_o", "id"))
-		message.Creator = string(doc.Value().GetStringBytes(creatorKey))
-		res = append(res, &message)
+		message := unmarshalMessage(doc.Value())
+		res = append(res, message)
 	}
 	return res, errors.Join(iter.Close(), err)
 }
 
 func (s *storeObject) AddMessage(ctx context.Context, message *model.ChatMessage) (string, error) {
-	message = proto.Clone(message).(*model.ChatMessage)
-	message.Id = ""
-	message.OrderId = ""
-	message.Creator = ""
-
-	marshaler := &jsonpb.Marshaler{}
-	raw, err := marshaler.MarshalToString(message)
-	if err != nil {
-		return "", fmt.Errorf("marshal message: %w", err)
-	}
-
-	parser := &fastjson.Parser{}
-	jsonMessage, err := parser.Parse(raw)
-	if err != nil {
-		return "", fmt.Errorf("parse message: %w", err)
-	}
-
+	// TODO Use one arena for whole object
 	arena := &fastjson.Arena{}
-	obj := arena.NewObject()
-	obj.Set(dataKey, jsonMessage)
-	obj.Set(creatorKey, arena.NewString(s.accountService.AccountID()))
+	obj := marshalMessageTo(arena, message)
 
 	builder := storestate.Builder{}
-	err = builder.Create(collectionName, storestate.IdFromChange, obj)
+	err := builder.Create(collectionName, storestate.IdFromChange, obj)
 	if err != nil {
 		return "", fmt.Errorf("create chat: %w", err)
 	}
@@ -197,6 +165,135 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 		return fmt.Errorf("add change: %w", err)
 	}
 	return nil
+}
+
+/*
+{
+  "id": "<changeCid>", // Unique message identifier
+  "creator": "<authorId>",   // Identifier for the message author
+  "replyToMessageId": "<messageId>",
+  "dateCreated": "<ts>",  // Date and time the message was created
+  "dateEdited": "<ts>",  // Date and time the message was last updated; >> for beta
+  "wasEdited": false,       // Flag indicating if the message was edited; Sets automatically when content was changed; >> for beta
+  "content": { // everything inside can be only edited by the creator
+    "message": { // [set]; set all fields at once
+      "text": "message text", // The text content of the message part
+      "kind": "<partStyle>", // The style/type of the message part (e.g., Paragraph, Quote, Code)
+      "marks": [
+        {
+          "from": 0, // Starting position of the mark in the text
+          "to": 100, // Ending position of the mark in the text
+          "type": "<markType>" // Type of the mark (e.g., Bold, Italic, Link)
+        }
+      ]
+    },
+    "attachments": { // [set], [unset];
+      "<attachmentId>": { // use object_id as attachment_id in the first iteration
+        "target": "<objectId1>",  // Identifier for the attachment object. todo: we have target in the key, should we remove it from here?
+        "type": "<attachmentType>" // Type of attachment (e.g., file, image, link)
+      }
+  },
+  "reactions": { // [addToSet], [pull] to specify the emoji
+    "<emoji1>": ["<user_id_1>", "<user_id_2>"], // Users who reacted with this emoji
+    "<emoji2>": ["<user_id_3>"] // Users who reacted with this emoji
+  }
+}
+
+*/
+
+func marshalMessageTo(arena *fastjson.Arena, msg *model.ChatMessage) *fastjson.Value {
+	message := arena.NewObject()
+	message.Set("text", arena.NewString(msg.Message.Text))
+	message.Set("style", arena.NewNumberInt(int(msg.Message.Style)))
+	marks := arena.NewArray()
+	for i, inMark := range msg.Message.Marks {
+		mark := arena.NewObject()
+		mark.Set("from", arena.NewNumberInt(int(inMark.From)))
+		mark.Set("to", arena.NewNumberInt(int(inMark.To)))
+		mark.Set("type", arena.NewNumberInt(int(inMark.Type)))
+		marks.SetArrayItem(i, mark)
+	}
+	message.Set("marks", marks)
+
+	attachments := arena.NewObject()
+	for i, inAttachment := range msg.Attachments {
+		attachment := arena.NewObject()
+		attachment.Set("type", arena.NewNumberInt(int(inAttachment.Type)))
+		attachments.Set(inAttachment.Target, attachment)
+		attachments.SetArrayItem(i, attachment)
+	}
+
+	content := arena.NewObject()
+	content.Set("message", message)
+	content.Set("attachments", attachments)
+
+	reactions := arena.NewObject()
+	for emoji, inReaction := range msg.Reactions.Reactions {
+		identities := arena.NewArray()
+		for j, identity := range inReaction.Ids {
+			identities.SetArrayItem(j, arena.NewString(identity))
+		}
+		reactions.Set(emoji, identities)
+	}
+
+	root := arena.NewObject()
+	root.Set("replyToMessageId", arena.NewString(msg.ReplyToMessageId))
+	root.Set("content", content)
+	root.Set("reactions", reactions)
+	return root
+}
+
+func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
+	inMarks := root.GetArray("content", "message", "marks")
+	marks := make([]*model.ChatMessageMessageContentMark, 0, len(inMarks))
+	for _, inMark := range inMarks {
+		mark := &model.ChatMessageMessageContentMark{
+			From: int32(inMark.GetInt("from")),
+			To:   int32(inMark.GetInt("to")),
+			Type: model.BlockContentTextMarkType(inMark.GetInt("type")),
+		}
+		marks = append(marks, mark)
+	}
+	content := &model.ChatMessageMessageContent{
+		Text:  string(root.GetStringBytes("content", "message", "text")),
+		Style: model.ChatMessageMessageContentMessageStyle(root.GetInt("content", "message", "style")),
+		Marks: marks,
+	}
+
+	inAttachments := root.GetObject("content", "attachments")
+	attachments := make([]*model.ChatMessageAttachment, 0, inAttachments.Len())
+	inAttachments.Visit(func(targetObjectId []byte, inAttachment *fastjson.Value) {
+		attachments = append(attachments, &model.ChatMessageAttachment{
+			Target: string(targetObjectId),
+			Type:   model.ChatMessageAttachmentAttachmentType(inAttachment.GetInt("type")),
+		})
+	})
+
+	inReactions := root.GetObject("reactions")
+	reactions := &model.ChatMessageReactions{
+		Reactions: make(map[string]*model.ChatMessageIdentityList, inReactions.Len()),
+	}
+	inReactions.Visit(func(emoji []byte, inReaction *fastjson.Value) {
+		inReactionArr := inReaction.GetArray()
+		identities := make([]string, 0, len(inReactionArr))
+		for _, identity := range inReactionArr {
+			identities = append(identities, string(identity.GetStringBytes()))
+		}
+		reactions.Reactions[string(emoji)] = &model.ChatMessageIdentityList{
+			Ids: identities,
+		}
+	})
+
+	return &model.ChatMessage{
+		Id:               string(root.GetStringBytes("id")),
+		Creator:          string(root.GetStringBytes("creator")),
+		CreatedAt:        root.GetInt64("createdAt"),
+		OrderId:          string(root.GetStringBytes("_o", "id")),
+		ReplyToMessageId: string(root.GetStringBytes("replyToMessageId")),
+		Message:          content,
+		Attachments:      attachments,
+		Reactions:        reactions,
+	}
 }
 
 func (s *storeObject) SubscribeLastMessages(limit int) ([]*model.ChatMessage, int, error) {

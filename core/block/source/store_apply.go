@@ -96,10 +96,11 @@ func (a *storeApply) applyChange(change *objecttree.Change, order string) (err e
 		return fmt.Errorf("unexpected change content type: %T", change.Model)
 	}
 	set := storestate.ChangeSet{
-		Id:      change.Id,
-		Order:   order,
-		Changes: storeChange.ChangeSet,
-		Creator: change.Identity.Account(),
+		Id:        change.Id,
+		Order:     order,
+		Changes:   storeChange.ChangeSet,
+		Creator:   change.Identity.Account(),
+		Timestamp: change.Timestamp,
 	}
 	err = a.tx.ApplyChangeSet(set)
 	// Skip invalid changes
