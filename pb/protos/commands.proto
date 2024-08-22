@@ -7260,7 +7260,7 @@ message Rpc {
             message Request {
                 string chatObjectId = 1;
                 string messageId = 2;
-                string newText = 3;
+                model.ChatMessage editedMessage = 3;
             }
 
             message Response {

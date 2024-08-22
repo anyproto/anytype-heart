@@ -20,13 +20,15 @@ import (
 )
 
 const collectionName = "chats"
+const dataKey = "data"
+const creatorKey = "creator"
 
 type StoreObject interface {
 	smartblock.SmartBlock
 
 	AddMessage(ctx context.Context, message *model.ChatMessage) (string, error)
 	GetMessages(ctx context.Context) ([]*model.ChatMessage, error)
-	EditMessage(ctx context.Context, messageId string, newText string) error
+	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 }
 
 type StoreDbProvider interface {
@@ -114,13 +116,16 @@ func (s *storeObject) GetMessages(ctx context.Context) ([]*model.ChatMessage, er
 		}
 
 		// TODO Reuse buffer
-		raw := doc.Value().MarshalTo(nil)
+		raw := doc.Value().Get(dataKey).MarshalTo(nil)
 
 		var message model.ChatMessage
 		err = unmarshaler.Unmarshal(bytes.NewReader(raw), &message)
 		if err != nil {
 			return nil, errors.Join(iter.Close(), fmt.Errorf("unmarshal message: %w", err))
 		}
+		message.Id = string(doc.Value().GetStringBytes("id"))
+		message.OrderId = string(doc.Value().GetStringBytes("_o", "id"))
+		message.Creator = string(doc.Value().GetStringBytes(creatorKey))
 		res = append(res, &message)
 	}
 	return res, errors.Join(iter.Close(), err)
@@ -128,7 +133,9 @@ func (s *storeObject) GetMessages(ctx context.Context) ([]*model.ChatMessage, er
 
 func (s *storeObject) AddMessage(ctx context.Context, message *model.ChatMessage) (string, error) {
 	message = proto.Clone(message).(*model.ChatMessage)
-	message.Creator = s.accountService.AccountID()
+	message.Id = ""
+	message.OrderId = ""
+	message.Creator = ""
 
 	marshaler := &jsonpb.Marshaler{}
 	raw, err := marshaler.MarshalToString(message)
@@ -136,8 +143,19 @@ func (s *storeObject) AddMessage(ctx context.Context, message *model.ChatMessage
 		return "", fmt.Errorf("marshal message: %w", err)
 	}
 
+	parser := &fastjson.Parser{}
+	jsonMessage, err := parser.Parse(raw)
+	if err != nil {
+		return "", fmt.Errorf("parse message: %w", err)
+	}
+
+	arena := &fastjson.Arena{}
+	obj := arena.NewObject()
+	obj.Set(dataKey, jsonMessage)
+	obj.Set(creatorKey, arena.NewString(s.accountService.AccountID()))
+
 	builder := storestate.Builder{}
-	err = builder.Create(collectionName, storestate.IdFromChange, raw)
+	err = builder.Create(collectionName, storestate.IdFromChange, obj)
 	if err != nil {
 		return "", fmt.Errorf("create chat: %w", err)
 	}
@@ -152,11 +170,20 @@ func (s *storeObject) AddMessage(ctx context.Context, message *model.ChatMessage
 	return messageId, nil
 }
 
-func (s *storeObject) EditMessage(ctx context.Context, messageId string, newText string) error {
-	arena := &fastjson.Arena{}
+func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error {
+	newMessage = proto.Clone(newMessage).(*model.ChatMessage)
+	newMessage.Id = ""
+	newMessage.OrderId = ""
+	newMessage.Creator = ""
+
+	marshaler := &jsonpb.Marshaler{}
+	raw, err := marshaler.MarshalToString(newMessage)
+	if err != nil {
+		return fmt.Errorf("marshal message: %w", err)
+	}
 
 	builder := storestate.Builder{}
-	err := builder.Modify("chats", messageId, []string{"text"}, pb.ModifyOp_Set, arena.NewString(newText))
+	err = builder.Modify(collectionName, messageId, []string{dataKey}, pb.ModifyOp_Set, raw)
 	if err != nil {
 		return fmt.Errorf("modify chat: %w", err)
 	}

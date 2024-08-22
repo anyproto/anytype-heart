@@ -29,6 +29,7 @@ func (d ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err er
 }
 
 func (d ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) (err error) {
+	// TODO Validate that creator from change equals to creator from message!
 	ev := &pb.EventChatAdd{
 		Id:     string(ch.Value.GetStringBytes("id")),
 		Author: string(ch.Value.GetStringBytes("author")),

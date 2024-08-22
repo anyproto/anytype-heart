@@ -37,7 +37,7 @@ func (a *accountServiceStub) AccountID() string {
 }
 
 type fixture struct {
-	StoreObject
+	*storeObject
 	source *mock_source.MockStore
 }
 
@@ -68,16 +68,79 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 
 	return &fixture{
-		StoreObject: object,
+		storeObject: object.(*storeObject),
 		source:      source,
 	}
 }
+
+// TODO Test ChatHandler: validate in BeforeCreate that creator from change equals to creator from message
 
 func TestAddMessage(t *testing.T) {
 	ctx := context.Background()
 	fx := newFixture(t)
 	changeId := "messageId1"
-	fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, params source.PushStoreChangeParams) (string, error) {
+	fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(applyToStore(changeId))
+
+	inputMessage := givenMessage()
+	messageId, err := fx.AddMessage(ctx, inputMessage)
+	require.NoError(t, err)
+	assert.Equal(t, changeId, messageId)
+
+	messages, err := fx.GetMessages(ctx)
+	require.NoError(t, err)
+
+	require.Len(t, messages, 1)
+
+	want := givenMessage()
+	want.Id = messageId
+	want.Creator = testCreator
+
+	got := messages[0]
+	// Cleanup order id
+	assert.NotEmpty(t, got.OrderId)
+	got.OrderId = ""
+	assert.Equal(t, want, got)
+}
+
+func TestEditMessage(t *testing.T) {
+	// TODO Test attempt to edit other's message
+
+	ctx := context.Background()
+	fx := newFixture(t)
+
+	// Add
+	inputMessage := givenMessage()
+	changeId := "messageId1"
+	fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(applyToStore(changeId))
+	messageId, err := fx.AddMessage(ctx, inputMessage)
+	require.NoError(t, err)
+
+	// Edit
+	editedMessage := givenMessage()
+	editedMessage.Message.Text = "edited text!"
+	changeId = "messageId2"
+	fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(applyToStore(changeId))
+	err = fx.EditMessage(ctx, messageId, editedMessage)
+	require.NoError(t, err)
+
+	messages, err := fx.GetMessages(ctx)
+	require.NoError(t, err)
+
+	require.Len(t, messages, 1)
+
+	want := editedMessage
+	want.Id = messageId
+	want.Creator = testCreator
+
+	got := messages[0]
+	// Cleanup order id
+	assert.NotEmpty(t, got.OrderId)
+	got.OrderId = ""
+	assert.Equal(t, want, got)
+}
+
+func applyToStore(changeId string) func(ctx context.Context, params source.PushStoreChangeParams) (string, error) {
+	return func(ctx context.Context, params source.PushStoreChangeParams) (string, error) {
 		tx, err := params.State.NewTx(ctx)
 		if err != nil {
 			return "", fmt.Errorf("new tx: %w", err)
@@ -93,23 +156,7 @@ func TestAddMessage(t *testing.T) {
 			return "", fmt.Errorf("apply change set: %w", err)
 		}
 		return changeId, tx.Commit()
-	})
-
-	inputMessage := givenMessage()
-	messageId, err := fx.AddMessage(ctx, inputMessage)
-	require.NoError(t, err)
-
-	_ = messageId
-
-	messages, err := fx.GetMessages(ctx)
-	require.NoError(t, err)
-
-	require.Len(t, messages, 1)
-
-	want := givenMessage()
-	want.Id = changeId
-	want.Creator = testCreator
-	assert.Equal(t, want, messages[0])
+	}
 }
 
 func givenMessage() *model.ChatMessage {

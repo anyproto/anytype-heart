@@ -20,7 +20,7 @@ const CName = "core.block.chats"
 
 type Service interface {
 	AddMessage(chatObjectId string, message *model.ChatMessage) (string, error)
-	EditMessage(chatObjectId string, messageId string, newText string) error
+	EditMessage(chatObjectId string, messageId string, newMessage *model.ChatMessage) error
 	GetMessages(chatObjectId string) ([]*model.ChatMessage, error)
 
 	GetStoreDb() anystore.DB
@@ -94,9 +94,9 @@ func (s *service) AddMessage(chatObjectId string, message *model.ChatMessage) (s
 	return messageId, err
 }
 
-func (s *service) EditMessage(chatObjectId string, messageId string, newText string) error {
+func (s *service) EditMessage(chatObjectId string, messageId string, newMessage *model.ChatMessage) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.EditMessage(context.Background(), messageId, newText)
+		return sb.EditMessage(context.Background(), messageId, newMessage)
 	})
 }
 

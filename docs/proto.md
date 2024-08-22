@@ -9957,7 +9957,7 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | chatObjectId | [string](#string) |  |  |
 | messageId | [string](#string) |  |  |
-| newText | [string](#string) |  |  |
+| editedMessage | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
 
 
 
