@@ -287,8 +287,8 @@ func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.E
 		status = pb.EventSpace_Error
 		err = pb.EventSpace_IncompatibleVersion
 	}
-	if params.compatibility == nodeconf.NetworkCompatibilityStatusIncompatible {
-		status = pb.EventSpace_SyncProtocolUpdate
+	if params.compatibility == nodeconf.NetworkCompatibilityStatusNeedsUpdate {
+		status = pb.EventSpace_NetworkNeedsUpdate
 	}
 	return &pb.EventSpaceSyncStatusUpdate{
 		Id:                    spaceId,

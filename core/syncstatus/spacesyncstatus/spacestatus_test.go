@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/anytype-heart/core/compatibility/mock_compatibility"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
@@ -66,19 +65,18 @@ func (m mockSessionContext) GetResponseEvent() *pb.ResponseEvent {
 
 type fixture struct {
 	*spaceSyncStatus
-	a                    *app.App
-	nodeConf             *mock_nodeconf.MockService
-	nodeUsage            *mock_spacesyncstatus.MockNodeUsage
-	nodeStatus           *mock_nodestatus.MockNodeStatus
-	subscriptionService  subscription.Service
-	syncSubs             syncsubscriptions.SyncSubscriptions
-	objectStore          *objectstore.StoreFixture
-	spaceIdGetter        *mock_spacesyncstatus.MockSpaceIdGetter
-	eventSender          *mock_event.MockSender
-	session              session.HookRunner
-	networkConfig        *mock_spacesyncstatus.MockNetworkConfig
-	ctrl                 *gomock.Controller
-	compatibilityChecker *mock_compatibility.MockChecker
+	a                   *app.App
+	nodeConf            *mock_nodeconf.MockService
+	nodeUsage           *mock_spacesyncstatus.MockNodeUsage
+	nodeStatus          *mock_nodestatus.MockNodeStatus
+	subscriptionService subscription.Service
+	syncSubs            syncsubscriptions.SyncSubscriptions
+	objectStore         *objectstore.StoreFixture
+	spaceIdGetter       *mock_spacesyncstatus.MockSpaceIdGetter
+	eventSender         *mock_event.MockSender
+	session             session.HookRunner
+	networkConfig       *mock_spacesyncstatus.MockNetworkConfig
+	ctrl                *gomock.Controller
 }
 
 func genObject(syncStatus domain.ObjectSyncStatus, spaceId string) objectstore.TestObject {
@@ -107,20 +105,19 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 	networkConfig := mock_spacesyncstatus.NewMockNetworkConfig(t)
 	sess := session.NewHookRunner()
 	fx := &fixture{
-		a:                    a,
-		ctrl:                 ctrl,
-		spaceSyncStatus:      NewSpaceSyncStatus().(*spaceSyncStatus),
-		nodeUsage:            mock_spacesyncstatus.NewMockNodeUsage(t),
-		nodeStatus:           mock_nodestatus.NewMockNodeStatus(t),
-		nodeConf:             mock_nodeconf.NewMockService(ctrl),
-		spaceIdGetter:        mock_spacesyncstatus.NewMockSpaceIdGetter(t),
-		objectStore:          internalSubs.StoreFixture,
-		eventSender:          app.MustComponent[event.Sender](a).(*mock_event.MockSender),
-		subscriptionService:  internalSubs,
-		session:              sess,
-		syncSubs:             syncsubscriptions.New(),
-		networkConfig:        networkConfig,
-		compatibilityChecker: mock_compatibility.NewMockChecker(t),
+		a:                   a,
+		ctrl:                ctrl,
+		spaceSyncStatus:     NewSpaceSyncStatus().(*spaceSyncStatus),
+		nodeUsage:           mock_spacesyncstatus.NewMockNodeUsage(t),
+		nodeStatus:          mock_nodestatus.NewMockNodeStatus(t),
+		nodeConf:            mock_nodeconf.NewMockService(ctrl),
+		spaceIdGetter:       mock_spacesyncstatus.NewMockSpaceIdGetter(t),
+		objectStore:         internalSubs.StoreFixture,
+		eventSender:         app.MustComponent[event.Sender](a).(*mock_event.MockSender),
+		subscriptionService: internalSubs,
+		session:             sess,
+		syncSubs:            syncsubscriptions.New(),
+		networkConfig:       networkConfig,
 	}
 	fx.spaceIdGetter.EXPECT().TechSpaceId().Return("techSpaceId").Maybe()
 
@@ -130,7 +127,6 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 		Register(testutil.PrepareMock(ctx, a, fx.spaceIdGetter)).
 		Register(testutil.PrepareMock(ctx, a, fx.nodeConf)).
 		Register(testutil.PrepareMock(ctx, a, fx.nodeUsage)).
-		Register(testutil.PrepareMock(ctx, a, fx.compatibilityChecker)).
 		Register(sess).
 		Register(fx.spaceSyncStatus)
 	beforeStart(fx)
@@ -153,7 +149,6 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-			fx.compatibilityChecker.EXPECT().IsVersionCompatibleWithPeers().Return(true)
 			fx.eventSender.EXPECT().Broadcast(&pb.Event{
 				Messages: []*pb.EventMessage{{
 					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
@@ -183,7 +178,6 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-			fx.compatibilityChecker.EXPECT().IsVersionCompatibleWithPeers().Return(true)
 			fx.eventSender.EXPECT().Broadcast(&pb.Event{
 				Messages: []*pb.EventMessage{{
 					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
@@ -215,7 +209,6 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().AnyTimes().Return(nodeconf.NetworkCompatibilityStatusOk)
-			fx.compatibilityChecker.EXPECT().IsVersionCompatibleWithPeers().Return(true)
 			fx.eventSender.EXPECT().Broadcast(&pb.Event{
 				Messages: []*pb.EventMessage{{
 					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
@@ -268,7 +261,6 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-			fx.compatibilityChecker.EXPECT().IsVersionCompatibleWithPeers().Return(true)
 			fx.eventSender.EXPECT().Broadcast(&pb.Event{
 				Messages: []*pb.EventMessage{{
 					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
@@ -300,7 +292,6 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-			fx.compatibilityChecker.EXPECT().IsVersionCompatibleWithPeers().Return(true)
 			fx.eventSender.EXPECT().Broadcast(&pb.Event{
 				Messages: []*pb.EventMessage{{
 					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
@@ -332,7 +323,6 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusIncompatible)
-			fx.compatibilityChecker.EXPECT().IsVersionCompatibleWithPeers().Return(true)
 			fx.eventSender.EXPECT().Broadcast(&pb.Event{
 				Messages: []*pb.EventMessage{{
 					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
@@ -365,7 +355,6 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().AnyTimes().Return(nodeconf.NetworkCompatibilityStatusOk)
-			fx.compatibilityChecker.EXPECT().IsVersionCompatibleWithPeers().Return(true)
 			fx.eventSender.EXPECT().Broadcast(&pb.Event{
 				Messages: []*pb.EventMessage{{
 					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
@@ -408,14 +397,13 @@ func Test(t *testing.T) {
 				},
 				LocalUsageBytes: 0,
 			}, nil)
-			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-			fx.compatibilityChecker.EXPECT().IsVersionCompatibleWithPeers().Return(false)
+			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusNeedsUpdate)
 			fx.eventSender.EXPECT().Broadcast(&pb.Event{
 				Messages: []*pb.EventMessage{{
 					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
 							Id:      "spaceId",
-							Status:  pb.EventSpace_SyncProtocolUpdate,
+							Status:  pb.EventSpace_NetworkNeedsUpdate,
 							Network: pb.EventSpace_Anytype,
 						},
 					},
@@ -439,7 +427,6 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().AnyTimes().Return(nodeconf.NetworkCompatibilityStatusIncompatible)
-			fx.compatibilityChecker.EXPECT().IsVersionCompatibleWithPeers().Return(true)
 			fx.eventSender.EXPECT().Broadcast(&pb.Event{
 				Messages: []*pb.EventMessage{{
 					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
