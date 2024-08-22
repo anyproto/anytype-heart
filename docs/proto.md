@@ -1749,7 +1749,6 @@
     - [ChatMessage](#anytype-model-ChatMessage)
     - [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment)
     - [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent)
-    - [ChatMessage.MessageContent.Mark](#anytype-model-ChatMessage-MessageContent-Mark)
     - [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions)
     - [ChatMessage.Reactions.IdentityList](#anytype-model-ChatMessage-Reactions-IdentityList)
     - [ChatMessage.Reactions.ReactionsEntry](#anytype-model-ChatMessage-Reactions-ReactionsEntry)
@@ -1834,7 +1833,6 @@
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [ChatMessage.Attachment.AttachmentType](#anytype-model-ChatMessage-Attachment-AttachmentType)
-    - [ChatMessage.MessageContent.MessageStyle](#anytype-model-ChatMessage-MessageContent-MessageStyle)
     - [DeviceNetworkType](#anytype-model-DeviceNetworkType)
     - [Export.Format](#anytype-model-Export-Format)
     - [FileIndexingStatus](#anytype-model-FileIndexingStatus)
@@ -27617,25 +27615,8 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | text | [string](#string) |  | The text content of the message part |
-| style | [ChatMessage.MessageContent.MessageStyle](#anytype-model-ChatMessage-MessageContent-MessageStyle) |  | The style/type of the message part |
-| marks | [ChatMessage.MessageContent.Mark](#anytype-model-ChatMessage-MessageContent-Mark) | repeated | List of marks applied to the text |
-
-
-
-
-
-
-<a name="anytype-model-ChatMessage-MessageContent-Mark"></a>
-
-### ChatMessage.MessageContent.Mark
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| from | [int32](#int32) |  | Starting position of the mark in the text |
-| to | [int32](#int32) |  | Ending position of the mark in the text |
-| type | [Block.Content.Text.Mark.Type](#anytype-model-Block-Content-Text-Mark-Type) |  | Type of the mark |
+| style | [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style) |  | The style/type of the message part |
+| marks | [Block.Content.Text.Mark](#anytype-model-Block-Content-Text-Mark) | repeated | List of marks applied to the text |
 
 
 
@@ -29061,22 +29042,6 @@ stored |
 | FILE | 0 | File attachment |
 | IMAGE | 1 | Image attachment |
 | LINK | 2 | Link attachment |
-
-
-
-<a name="anytype-model-ChatMessage-MessageContent-MessageStyle"></a>
-
-### ChatMessage.MessageContent.MessageStyle
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| PARAGRAPH | 0 | Standard text paragraph |
-| QUOTE | 5 | Quoted text |
-| CODE | 6 | Code block |
-| MARKED | 9 | Marked text |
-| NUMBERED | 10 | Numbered list |
-| CALLOUT | 13 | Callout box |
 
 
 

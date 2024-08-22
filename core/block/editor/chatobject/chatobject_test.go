@@ -176,16 +176,21 @@ func givenMessage() *model.ChatMessage {
 		ReplyToMessageId: "replyToMessageId1",
 		Message: &model.ChatMessageMessageContent{
 			Text:  "text!",
-			Style: model.ChatMessageMessageContent_QUOTE,
-			Marks: []*model.ChatMessageMessageContentMark{
+			Style: model.BlockContentText_Quote,
+			Marks: []*model.BlockContentTextMark{
 				{
-					From: 0,
-					To:   1,
-					Type: model.BlockContentTextMark_Bold,
+					Range: &model.Range{
+						From: 0,
+						To:   1,
+					},
+					Type:  model.BlockContentTextMark_Link,
+					Param: "https://example.com",
 				},
 				{
-					From: 2,
-					To:   3,
+					Range: &model.Range{
+						From: 2,
+						To:   3,
+					},
 					Type: model.BlockContentTextMark_Italic,
 				},
 			},
@@ -201,7 +206,7 @@ func givenMessage() *model.ChatMessage {
 			},
 		},
 		Reactions: &model.ChatMessageReactions{
-			Reactions: map[string]*model.ChatMessageIdentityList{
+			Reactions: map[string]*model.ChatMessageReactionsIdentityList{
 				"🥰": {
 					Ids: []string{"identity1", "identity2"},
 				},

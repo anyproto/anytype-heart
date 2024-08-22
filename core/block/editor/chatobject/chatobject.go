@@ -206,9 +206,12 @@ func marshalMessageTo(arena *fastjson.Arena, msg *model.ChatMessage) *fastjson.V
 	marks := arena.NewArray()
 	for i, inMark := range msg.Message.Marks {
 		mark := arena.NewObject()
-		mark.Set("from", arena.NewNumberInt(int(inMark.From)))
-		mark.Set("to", arena.NewNumberInt(int(inMark.To)))
+		mark.Set("from", arena.NewNumberInt(int(inMark.Range.From)))
+		mark.Set("to", arena.NewNumberInt(int(inMark.Range.To)))
 		mark.Set("type", arena.NewNumberInt(int(inMark.Type)))
+		if inMark.Param != "" {
+			mark.Set("param", arena.NewString(inMark.Param))
+		}
 		marks.SetArrayItem(i, mark)
 	}
 	message.Set("marks", marks)
@@ -243,18 +246,21 @@ func marshalMessageTo(arena *fastjson.Arena, msg *model.ChatMessage) *fastjson.V
 
 func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 	inMarks := root.GetArray("content", "message", "marks")
-	marks := make([]*model.ChatMessageMessageContentMark, 0, len(inMarks))
+	marks := make([]*model.BlockContentTextMark, 0, len(inMarks))
 	for _, inMark := range inMarks {
-		mark := &model.ChatMessageMessageContentMark{
-			From: int32(inMark.GetInt("from")),
-			To:   int32(inMark.GetInt("to")),
-			Type: model.BlockContentTextMarkType(inMark.GetInt("type")),
+		mark := &model.BlockContentTextMark{
+			Range: &model.Range{
+				From: int32(inMark.GetInt("from")),
+				To:   int32(inMark.GetInt("to")),
+			},
+			Type:  model.BlockContentTextMarkType(inMark.GetInt("type")),
+			Param: string(inMark.GetStringBytes("param")),
 		}
 		marks = append(marks, mark)
 	}
 	content := &model.ChatMessageMessageContent{
 		Text:  string(root.GetStringBytes("content", "message", "text")),
-		Style: model.ChatMessageMessageContentMessageStyle(root.GetInt("content", "message", "style")),
+		Style: model.BlockContentTextStyle(root.GetInt("content", "message", "style")),
 		Marks: marks,
 	}
 
