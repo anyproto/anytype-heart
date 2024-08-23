@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestDatabase(t *testing.T) {
@@ -135,4 +136,208 @@ func givenSingleIncludeTime() []*model.BlockContentDataviewSort {
 		IncludeTime: true,
 	}
 	return sorts
+}
+
+func Test_NewFilters(t *testing.T) {
+	t.Run("only default filters", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+
+		// when
+		filters, err := NewFilters(Query{}, mockStore, &fastjson.Arena{})
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, filters.FilterObj, 3)
+	})
+	t.Run("and filter with 3 default", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+		filter := []*model.BlockContentDataviewFilter{
+			{
+				Operator: model.BlockContentDataviewFilter_And,
+				NestedFilters: []*model.BlockContentDataviewFilter{
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: "relationKey",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("option2"),
+						Format:      model.RelationFormat_status,
+					},
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: bundle.RelationKeyName.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("Object 1"),
+						Format:      model.RelationFormat_shorttext,
+					},
+				},
+			},
+		}
+
+		// when
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
+
+		// when
+		assert.Nil(t, err)
+		assert.NotNil(t, filters.FilterObj)
+		assert.NotNil(t, filters.FilterObj.(FiltersAnd))
+		assert.Len(t, filters.FilterObj.(FiltersAnd), 5)
+	})
+	t.Run("deleted filter", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+		filter := []*model.BlockContentDataviewFilter{
+			{
+				Operator: model.BlockContentDataviewFilter_And,
+				NestedFilters: []*model.BlockContentDataviewFilter{
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: "relationKey",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("option2"),
+						Format:      model.RelationFormat_status,
+					},
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: bundle.RelationKeyName.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("Object 1"),
+						Format:      model.RelationFormat_shorttext,
+					},
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: bundle.RelationKeyIsDeleted.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Bool(true),
+					},
+				},
+			},
+		}
+
+		// then
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
+
+		// when
+		assert.Nil(t, err)
+		assert.NotNil(t, filters.FilterObj)
+		assert.NotNil(t, filters.FilterObj.(FiltersAnd))
+		assert.Len(t, filters.FilterObj.(FiltersAnd), 5)
+	})
+	t.Run("archived filter", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+		filter := []*model.BlockContentDataviewFilter{
+			{
+				Operator: model.BlockContentDataviewFilter_And,
+				NestedFilters: []*model.BlockContentDataviewFilter{
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: "relationKey",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("option2"),
+						Format:      model.RelationFormat_status,
+					},
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: bundle.RelationKeyName.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("Object 1"),
+						Format:      model.RelationFormat_shorttext,
+					},
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: bundle.RelationKeyIsArchived.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Bool(true),
+					},
+				},
+			},
+		}
+
+		// then
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
+
+		// when
+		assert.Nil(t, err)
+		assert.NotNil(t, filters.FilterObj)
+		assert.NotNil(t, filters.FilterObj.(FiltersAnd))
+		assert.Len(t, filters.FilterObj.(FiltersAnd), 5)
+	})
+	t.Run("type filter", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+		filter := []*model.BlockContentDataviewFilter{
+			{
+				Operator: model.BlockContentDataviewFilter_And,
+				NestedFilters: []*model.BlockContentDataviewFilter{
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: "relationKey",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("option2"),
+						Format:      model.RelationFormat_status,
+					},
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: bundle.RelationKeyName.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("Object 1"),
+						Format:      model.RelationFormat_shorttext,
+					},
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: bundle.RelationKeyType.String(),
+						Condition:   model.BlockContentDataviewFilter_In,
+						Value:       pbtypes.Float64(float64(model.ObjectType_space)),
+					},
+				},
+			},
+		}
+
+		// then
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
+
+		// when
+		assert.Nil(t, err)
+		assert.NotNil(t, filters.FilterObj)
+		assert.NotNil(t, filters.FilterObj.(FiltersAnd))
+		assert.Len(t, filters.FilterObj.(FiltersAnd), 6)
+	})
+	t.Run("or filter with 3 default", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+		filter := []*model.BlockContentDataviewFilter{
+			{
+				Operator: model.BlockContentDataviewFilter_Or,
+				NestedFilters: []*model.BlockContentDataviewFilter{
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: "relationKey",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("option2"),
+						Format:      model.RelationFormat_status,
+					},
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: bundle.RelationKeyName.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("Object 1"),
+						Format:      model.RelationFormat_shorttext,
+					},
+				},
+			},
+		}
+
+		// then
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
+
+		// when
+		assert.Nil(t, err)
+		assert.NotNil(t, filters.FilterObj)
+		assert.NotNil(t, filters.FilterObj.(FiltersAnd))
+		assert.Len(t, filters.FilterObj.(FiltersAnd), 4)
+		assert.NotNil(t, filters.FilterObj.(FiltersAnd)[0].(FiltersOr))
+		assert.Len(t, filters.FilterObj.(FiltersAnd)[0].(FiltersOr), 2)
+	})
 }
