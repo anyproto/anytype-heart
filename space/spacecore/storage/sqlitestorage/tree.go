@@ -98,6 +98,10 @@ func (t *treeStorage) Heads() ([]string, error) {
 	return t.heads, nil
 }
 
+func (t *treeStorage) GetAllChangeIds() (chs []string, err error) {
+	return nil, fmt.Errorf("get all change ids should not be called")
+}
+
 func (t *treeStorage) SetHeads(heads []string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()

@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
@@ -40,6 +41,10 @@ func NewZipTreeWriteStorage(root *treechangeproto.RawTreeChangeWithId, zw *zip.W
 
 func (z *zipTreeWriteStorage) Id() string {
 	return z.id
+}
+
+func (t *zipTreeWriteStorage) GetAllChangeIds() (chs []string, err error) {
+	return nil, fmt.Errorf("get all change ids should not be called")
 }
 
 func (z *zipTreeWriteStorage) Root() (*treechangeproto.RawTreeChangeWithId, error) {

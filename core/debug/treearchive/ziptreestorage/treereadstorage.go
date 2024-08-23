@@ -50,6 +50,10 @@ func NewZipTreeReadStorage(id string, zr *zip.ReadCloser) (st treestorage.TreeSt
 	return
 }
 
+func (t *zipTreeReadStorage) GetAllChangeIds() (chs []string, err error) {
+	return nil, fmt.Errorf("get all change ids should not be called")
+}
+
 func (z *zipTreeReadStorage) Id() string {
 	return z.id
 }

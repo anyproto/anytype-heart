@@ -2,6 +2,7 @@ package badgerstorage
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -104,6 +105,10 @@ func (t *treeStorage) Heads() (heads []string, err error) {
 	}
 	heads = treestorage.ParseHeads(headsBytes)
 	return
+}
+
+func (t *treeStorage) GetAllChangeIds() (chs []string, err error) {
+	return nil, fmt.Errorf("get all change ids should not be called")
 }
 
 func (t *treeStorage) SetHeads(heads []string) (err error) {
