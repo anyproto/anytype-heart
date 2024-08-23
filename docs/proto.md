@@ -1620,6 +1620,7 @@
     - [Event.Chat](#anytype-Event-Chat)
     - [Event.Chat.Add](#anytype-Event-Chat-Add)
     - [Event.Chat.Update](#anytype-Event-Chat-Update)
+    - [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LimitUpdated](#anytype-Event-File-LimitUpdated)
@@ -25561,6 +25562,22 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Chat-UpdateReactions"></a>
+
+### Event.Chat.UpdateReactions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| reactions | [model.ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-File"></a>
 
 ### Event.File
@@ -25765,6 +25782,7 @@ Precondition: user A opened a block
 | importFinish | [Event.Import.Finish](#anytype-Event-Import-Finish) |  |  |
 | chatAdd | [Event.Chat.Add](#anytype-Event-Chat-Add) |  |  |
 | chatUpdate | [Event.Chat.Update](#anytype-Event-Chat-Update) |  |  |
+| chatUpdateReactions | [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions) |  |  |
 
 
 

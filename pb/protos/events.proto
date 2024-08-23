@@ -113,6 +113,7 @@ message Event {
 
             Chat.Add chatAdd = 128;
             Chat.Update chatUpdate = 129;
+            Chat.UpdateReactions chatUpdateReactions = 130;
         }
     }
 
@@ -125,6 +126,10 @@ message Event {
         message Update {
             string id = 1;
             model.ChatMessage message = 2;
+        }
+        message UpdateReactions {
+            string id = 1;
+            model.ChatMessage.Reactions reactions = 2;
         }
     }
 

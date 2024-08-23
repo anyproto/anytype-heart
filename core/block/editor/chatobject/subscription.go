@@ -60,10 +60,7 @@ func (s *subscription) flush() {
 }
 
 func (s *subscription) add(message *model.ChatMessage) {
-	if !s.enabled {
-		return
-	}
-	if message.OrderId < s.firstOrderId {
+	if !s.canSend(message) {
 		return
 	}
 
@@ -86,11 +83,8 @@ func (s *subscription) add(message *model.ChatMessage) {
 	})
 }
 
-func (s *subscription) update(message *model.ChatMessage) {
-	if !s.enabled {
-		return
-	}
-	if s.firstOrderId > message.OrderId {
+func (s *subscription) updateFull(message *model.ChatMessage) {
+	if !s.canSend(message) {
 		return
 	}
 	ev := &pb.EventChatUpdate{
@@ -102,4 +96,29 @@ func (s *subscription) update(message *model.ChatMessage) {
 			ChatUpdate: ev,
 		},
 	})
+}
+
+func (s *subscription) updateReactions(message *model.ChatMessage) {
+	if !s.canSend(message) {
+		return
+	}
+	ev := &pb.EventChatUpdateReactions{
+		Id:        message.Id,
+		Reactions: message.Reactions,
+	}
+	s.eventsBuffer = append(s.eventsBuffer, &pb.EventMessage{
+		Value: &pb.EventMessageValueOfChatUpdateReactions{
+			ChatUpdateReactions: ev,
+		},
+	})
+}
+
+func (s *subscription) canSend(message *model.ChatMessage) bool {
+	if !s.enabled {
+		return false
+	}
+	if s.firstOrderId > message.OrderId {
+		return false
+	}
+	return true
 }

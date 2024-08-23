@@ -56,6 +56,7 @@ func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModif
 				return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify not own message"))
 			}
 		}
+
 		result, modified, err = mod.Modify(a, v)
 		if err != nil {
 			return nil, false, err
@@ -63,7 +64,11 @@ func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModif
 
 		if modified {
 			message := unmarshalMessage(result)
-			d.subscription.update(message)
+			if key.KeyPath[0] == "reactions" {
+				d.subscription.updateReactions(message)
+			} else {
+				d.subscription.updateFull(message)
+			}
 		}
 
 		return result, modified, nil
