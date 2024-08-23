@@ -1,12 +1,15 @@
 [
   {
-    "format": "tag",
+    "format": "object",
     "hidden": false,
     "key": "tag",
     "maxCount": 0,
     "name": "Tag",
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "objectTypes": [
+      "tag"
+    ]
   },
   {
     "description": "Camera used to capture image or video",
@@ -71,7 +74,7 @@
   {
     "description": "Relation option color",
     "format": "longtext",
-    "hidden": true,
+    "hidden": false,
     "key": "relationOptionColor",
     "maxCount": 1,
     "name": "Relation option color",

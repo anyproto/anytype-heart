@@ -90,5 +90,13 @@
     "requiredRelations": [
       "name"
     ]
+  },
+  {
+    "id": "tag",
+    "name": "Tag",
+    "requiredRelations": [
+      "name",
+      "relationOptionColor"
+    ]
   }
 ]

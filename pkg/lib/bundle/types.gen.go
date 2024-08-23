@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "454947fa54a58e1b9c6540df4260b9e9c6732f3a416bc9262b2fcf2e73f67c1e"
+const TypeChecksum = "83faaecaaa3847a5c4a21f12c01509c85511d43cce6efa605e1a46effb1fcd93"
 const (
 	TypePrefix = "_ot"
 )
@@ -396,12 +396,14 @@ var (
 		},
 		TypeKeyTag: {
 
-			Description: "Tag description",
-			Layout:      model.ObjectType_tag,
-			Name:        "Tag",
-			Readonly:    true,
-			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:         TypePrefix + "tag",
+			Description:   "",
+			IconEmoji:     "🏷 ",
+			Layout:        model.ObjectType_tag,
+			Name:          "Tag",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRelationOptionColor)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:           TypePrefix + "tag",
 		},
 		TypeKeyTask: {
 

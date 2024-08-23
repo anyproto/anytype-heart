@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "e7b7dc1196702d61efece57fd1db120838fb3d3f40ca3ca5670092f609d56538"
+const RelationChecksum = "dca045020136f8d978975cdfb97b76073065f9a4e5d4a9ceb9052cabd751a19c"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -1813,7 +1813,6 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Relation option color",
 			Format:           model.RelationFormat_longtext,
-			Hidden:           true,
 			Id:               "_brrelationOptionColor",
 			Key:              "relationOptionColor",
 			MaxCount:         1,
@@ -2298,10 +2297,11 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_tag,
+			Format:           model.RelationFormat_object,
 			Id:               "_brtag",
 			Key:              "tag",
 			Name:             "Tag",
+			ObjectTypes:      []string{TypePrefix + "tag"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

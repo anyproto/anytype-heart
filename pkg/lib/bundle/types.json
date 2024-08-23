@@ -609,13 +609,14 @@
   {
     "id": "tag",
     "name": "Tag",
+    "emoji": "🏷 ",
     "types": [
       "Page"
     ],
-    "emoji": "",
     "hidden": false,
     "layout": "tag",
-    "relations": [],
-    "description": "Tag description"
+    "relations": [
+      "relationOptionColor"
+    ]
   }
 ]
