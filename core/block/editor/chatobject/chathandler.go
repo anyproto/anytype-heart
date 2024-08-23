@@ -61,8 +61,10 @@ func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModif
 			return nil, false, err
 		}
 
-		message := unmarshalMessage(result)
-		d.subscription.update(message)
+		if modified {
+			message := unmarshalMessage(result)
+			d.subscription.update(message)
+		}
 
 		return result, modified, nil
 	})

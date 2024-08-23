@@ -19,10 +19,10 @@ import (
 const CName = "core.block.chats"
 
 type Service interface {
-	AddMessage(chatObjectId string, message *model.ChatMessage) (string, error)
-	EditMessage(chatObjectId string, messageId string, newMessage *model.ChatMessage) error
-	GetMessages(chatObjectId string) ([]*model.ChatMessage, error)
-	SubscribeLastMessages(chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
+	AddMessage(ctx context.Context, chatObjectId string, message *model.ChatMessage) (string, error)
+	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error
+	GetMessages(ctx context.Context, chatObjectId string) ([]*model.ChatMessage, error)
+	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe(chatObjectId string) error
 
 	GetStoreDb() anystore.DB
@@ -86,26 +86,26 @@ func (s *service) GetStoreDb() anystore.DB {
 	return s.db
 }
 
-func (s *service) AddMessage(chatObjectId string, message *model.ChatMessage) (string, error) {
+func (s *service) AddMessage(ctx context.Context, chatObjectId string, message *model.ChatMessage) (string, error) {
 	var messageId string
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
-		messageId, err = sb.AddMessage(context.Background(), message)
+		messageId, err = sb.AddMessage(ctx, message)
 		return err
 	})
 	return messageId, err
 }
 
-func (s *service) EditMessage(chatObjectId string, messageId string, newMessage *model.ChatMessage) error {
+func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.EditMessage(context.Background(), messageId, newMessage)
+		return sb.EditMessage(ctx, messageId, newMessage)
 	})
 }
 
-func (s *service) GetMessages(chatObjectId string) ([]*model.ChatMessage, error) {
+func (s *service) GetMessages(ctx context.Context, chatObjectId string) ([]*model.ChatMessage, error) {
 	var res []*model.ChatMessage
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		msgs, err := sb.GetMessages(context.Background())
+		msgs, err := sb.GetMessages(ctx)
 		if err != nil {
 			return err
 		}
@@ -115,14 +115,14 @@ func (s *service) GetMessages(chatObjectId string) ([]*model.ChatMessage, error)
 	return res, err
 }
 
-func (s *service) SubscribeLastMessages(chatObjectId string, limit int) ([]*model.ChatMessage, int, error) {
+func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error) {
 	var (
 		msgs      []*model.ChatMessage
 		numBefore int
 	)
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
-		msgs, numBefore, err = sb.SubscribeLastMessages(limit)
+		msgs, numBefore, err = sb.SubscribeLastMessages(ctx, limit)
 		if err != nil {
 			return err
 		}

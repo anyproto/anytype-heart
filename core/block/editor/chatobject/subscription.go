@@ -14,6 +14,8 @@ type subscription struct {
 
 	orderToId *skiplist.SkipList
 
+	eventsBuffer []*pb.EventMessage
+
 	firstOrderId string
 	enabled      bool
 }
@@ -28,6 +30,8 @@ func newSubscription(chatId string, eventSender event.Sender) *subscription {
 }
 
 func (s *subscription) init(messages []*model.ChatMessage) {
+	s.firstOrderId = ""
+	s.orderToId = skiplist.New(skiplist.String)
 	for _, message := range messages {
 		s.orderToId.Set(message.OrderId, message.Id)
 		if s.firstOrderId == "" || s.firstOrderId > message.OrderId {
@@ -35,6 +39,18 @@ func (s *subscription) init(messages []*model.ChatMessage) {
 		}
 	}
 	s.enabled = true
+}
+
+func (s *subscription) close() {
+	s.enabled = false
+}
+
+func (s *subscription) flush() {
+	s.eventSender.Broadcast(&pb.Event{
+		ContextId: s.chatId,
+		Messages:  s.eventsBuffer,
+	})
+	s.eventsBuffer = nil
 }
 
 func (s *subscription) add(message *model.ChatMessage) {
@@ -57,14 +73,9 @@ func (s *subscription) add(message *model.ChatMessage) {
 		Message: message,
 		AfterId: afterId,
 	}
-	s.eventSender.Broadcast(&pb.Event{
-		ContextId: s.chatId,
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfChatAdd{
-					ChatAdd: ev,
-				},
-			},
+	s.eventsBuffer = append(s.eventsBuffer, &pb.EventMessage{
+		Value: &pb.EventMessageValueOfChatAdd{
+			ChatAdd: ev,
 		},
 	})
 }
@@ -73,18 +84,16 @@ func (s *subscription) update(message *model.ChatMessage) {
 	if !s.enabled {
 		return
 	}
+	if s.firstOrderId > message.OrderId {
+		return
+	}
 	ev := &pb.EventChatUpdate{
 		Id:      message.Id,
 		Message: message,
 	}
-	s.eventSender.Broadcast(&pb.Event{
-		ContextId: s.chatId,
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfChatUpdate{
-					ChatUpdate: ev,
-				},
-			},
+	s.eventsBuffer = append(s.eventsBuffer, &pb.EventMessage{
+		Value: &pb.EventMessageValueOfChatUpdate{
+			ChatUpdate: ev,
 		},
 	})
 }

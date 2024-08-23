@@ -8,7 +8,6 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/huandu/skiplist"
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -29,7 +28,7 @@ type StoreObject interface {
 	AddMessage(ctx context.Context, message *model.ChatMessage) (string, error)
 	GetMessages(ctx context.Context) ([]*model.ChatMessage, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
-	SubscribeLastMessages(limit int) ([]*model.ChatMessage, int, error)
+	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe() error
 }
 
@@ -313,9 +312,7 @@ func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 	}
 }
 
-func (s *storeObject) SubscribeLastMessages(limit int) ([]*model.ChatMessage, int, error) {
-	// TODO pass ctx
-	ctx := context.Background()
+func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, 0, fmt.Errorf("get collection: %w", err)
@@ -336,13 +333,11 @@ func (s *storeObject) SubscribeLastMessages(limit int) ([]*model.ChatMessage, in
 }
 
 func (s *storeObject) Unsubscribe() error {
-	s.subscription.enabled = false
-	s.subscription.firstOrderId = ""
-	s.subscription.orderToId = skiplist.New(skiplist.String)
+	s.subscription.close()
 	return nil
 }
 
 func (s *storeObject) Close() error {
-	// TODO unsubscribe
+	s.subscription.close()
 	return s.SmartBlock.Close()
 }
