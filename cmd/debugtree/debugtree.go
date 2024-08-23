@@ -82,7 +82,7 @@ func main() {
 		}
 		fmt.Println("Change:")
 		fmt.Println(pbtypes.Sprint(ch.Model))
-		err = importer.Import(false, ch.Id)
+		err = importer.Import(*fromRoot, ch.Id)
 		if err != nil {
 			log.Fatal("can't import the tree before", ch.Id, err)
 		}
