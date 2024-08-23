@@ -28,7 +28,7 @@ var _ updatelistener.UpdateListener = (*store)(nil)
 
 type Store interface {
 	Source
-	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState) (err error)
+	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func()) (err error)
 	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
 }
 
@@ -38,11 +38,15 @@ type PushStoreChangeParams struct {
 	Time    time.Time // used to derive the lastModifiedDate; Default is time.Now()
 }
 
-var _ updatelistener.UpdateListener = (*store)(nil)
+var (
+	_ updatelistener.UpdateListener = (*store)(nil)
+	_ Store                         = (*store)(nil)
+)
 
 type store struct {
 	*source
-	store *storestate.StoreState
+	store        *storestate.StoreState
+	onUpdateHook func()
 }
 
 func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
@@ -76,7 +80,8 @@ func (s *store) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
 }
 
-func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreState) (err error) {
+func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreState, onUpdateHook func()) (err error) {
+	s.onUpdateHook = onUpdateHook
 	s.store = storeState
 
 	tx, err := s.store.NewTx(ctx)
@@ -136,7 +141,12 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	if len(addResult.Added) == 0 {
 		return "", rollback(fmt.Errorf("add changes list is empty"))
 	}
-	return addResult.Added[0].Id, tx.Commit()
+	changeId = addResult.Added[0].Id
+	err = tx.Commit()
+	if err == nil {
+		s.onUpdateHook()
+	}
+	return changeId, err
 }
 
 func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
@@ -151,7 +161,11 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 	if err = applier.Apply(); err != nil {
 		return errors.Join(tx.Rollback(), err)
 	}
-	return tx.Commit()
+	err = tx.Commit()
+	if err == nil {
+		s.onUpdateHook()
+	}
+	return err
 }
 
 func (s *store) Update(tree objecttree.ObjectTree) {

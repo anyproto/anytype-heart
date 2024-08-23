@@ -46,6 +46,12 @@ func (s *subscription) close() {
 }
 
 func (s *subscription) flush() {
+	if !s.enabled {
+		return
+	}
+	if len(s.eventsBuffer) == 0 {
+		return
+	}
 	s.eventSender.Broadcast(&pb.Event{
 		ContextId: s.chatId,
 		Messages:  s.eventsBuffer,

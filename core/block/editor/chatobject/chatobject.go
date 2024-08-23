@@ -84,12 +84,16 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("source is not a store")
 	}
 	s.storeSource = storeSource
-	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore)
+	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore, s.onUpdate)
 	if err != nil {
 		return fmt.Errorf("read store doc: %w", err)
 	}
 
 	return nil
+}
+
+func (s *storeObject) onUpdate() {
+	s.subscription.flush()
 }
 
 func (s *storeObject) GetMessages(ctx context.Context) ([]*model.ChatMessage, error) {
@@ -324,7 +328,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*
 	}
 	// reverse
 	sort.Slice(messages, func(i, j int) bool {
-		return messages[i].OrderId > messages[j].OrderId
+		return messages[i].OrderId < messages[j].OrderId
 	})
 
 	s.subscription.init(messages)
