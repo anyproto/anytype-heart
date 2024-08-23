@@ -751,6 +751,7 @@ message ObjectType {
         participant = 19;
 
         pdf = 20;
+        tag = 21;
     }
 }
 

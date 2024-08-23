@@ -605,5 +605,17 @@
       "tasks"
     ],
     "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim"
+  },
+  {
+    "id": "tag",
+    "name": "Tag",
+    "types": [
+      "Page"
+    ],
+    "emoji": "",
+    "hidden": false,
+    "layout": "tag",
+    "relations": [],
+    "description": "Tag description"
   }
 ]
