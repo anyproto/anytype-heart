@@ -8,7 +8,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.0.1
-	github.com/anyproto/any-sync v0.4.24-alpha.1
+	github.com/anyproto/any-sync v0.4.27
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/tantivy-go v0.0.7
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
@@ -228,7 +228,7 @@ require (
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/pseudomuto/protokit v0.2.1 // indirect
-	github.com/quic-go/quic-go v0.44.0 // indirect
+	github.com/quic-go/quic-go v0.46.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
