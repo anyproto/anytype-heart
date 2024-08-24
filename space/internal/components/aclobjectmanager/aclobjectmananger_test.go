@@ -11,10 +11,14 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl/headupdater"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/commonspace/sync/syncdeps"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/net/peer"
+	anyproto "github.com/anyproto/protobuf/proto"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
@@ -205,8 +209,24 @@ type syncAclStub struct {
 	updater headupdater.AclUpdater
 }
 
-func (s *syncAclStub) HandleMessage(ctx context.Context, senderId string, protoVersion uint32, message *spacesyncproto.ObjectSyncMessage) (err error) {
-	return
+func (s *syncAclStub) HandleStreamRequest(ctx context.Context, rq syncdeps.Request, updater syncdeps.QueueSizeUpdater, send func(resp anyproto.Message) error) (syncdeps.Request, error) {
+	return nil, nil
+}
+
+func (s *syncAclStub) HandleHeadUpdate(ctx context.Context, statusUpdater syncstatus.StatusUpdater, headUpdate drpc.Message) (syncdeps.Request, error) {
+	return nil, nil
+}
+
+func (s *syncAclStub) HandleDeprecatedRequest(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
+	return nil, nil
+}
+
+func (s *syncAclStub) HandleResponse(ctx context.Context, peerId, objectId string, resp syncdeps.Response) error {
+	return nil
+}
+
+func (s *syncAclStub) ResponseCollector() syncdeps.ResponseCollector {
+	return nil
 }
 
 func (s *syncAclStub) SyncWithPeer(ctx context.Context, p peer.Peer) (err error) {
