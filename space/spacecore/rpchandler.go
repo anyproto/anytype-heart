@@ -27,7 +27,11 @@ func (r *rpcHandler) AclGetRecords(ctx context.Context, request *spacesyncproto.
 }
 
 func (r *rpcHandler) ObjectSync(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
-	return nil, fmt.Errorf("nt implemented")
+	sp, err := r.s.Get(ctx, req.SpaceId)
+	if err != nil {
+		return
+	}
+	return sp.HandleDeprecatedObjectSyncRequest(ctx, req)
 }
 
 func (r *rpcHandler) ObjectSyncRequestStream(req *spacesyncproto.ObjectSyncMessage, stream spacesyncproto.DRPCSpaceSync_ObjectSyncRequestStreamStream) (err error) {
