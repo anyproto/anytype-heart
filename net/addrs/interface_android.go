@@ -58,7 +58,6 @@ func GetInterfacesAddrs() (addrs InterfacesAddrs, err error) {
 	lock.Unlock()
 	for _, iface := range interfaceGetter.Interfaces() {
 		ifaceWrapped := WrapInterface(iface.Interface)
-		addrs.Interfaces = append(addrs.Interfaces, WrapInterface(iface.Interface))
 		unmaskedAddrs := iface.Addrs
 		ifaceAddrs := make([]net.Addr, 0, len(unmaskedAddrs))
 		for _, addr := range unmaskedAddrs {
@@ -76,6 +75,9 @@ func GetInterfacesAddrs() (addrs InterfacesAddrs, err error) {
 		// inject cached addresses, because we can't get them from net.Interface's Addrs() on android
 		ifaceWrapped.cachedAddrs = ifaceAddrs
 		addrs.Addrs = append(addrs.Addrs, ifaceAddrs...)
+		addrs.Interfaces = append(addrs.Interfaces, ifaceWrapped)
 	}
+
+	addrs.Interfaces = filterInterfaces(addrs.Interfaces)
 	return
 }
