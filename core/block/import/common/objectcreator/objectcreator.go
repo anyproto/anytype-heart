@@ -542,7 +542,7 @@ func (oc *ObjectCreator) getExistingWidgetsTargetIDs(oldState *state.State) (map
 
 func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]string) {
 	for key, value := range st.Details().GetFields() {
-		if newKey, ok := oldIDtoNew[key]; ok {
+		if newKey, ok := oldIDtoNew[key]; ok && newKey != key {
 			oc.updateDetails(st, newKey, value, key)
 		}
 	}

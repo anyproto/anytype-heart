@@ -129,8 +129,8 @@ func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot, sp
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
