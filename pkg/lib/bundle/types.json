@@ -608,7 +608,7 @@
   },
   {
     "id": "chat",
-    "name": "Discussion",
+    "name": "Chat",
     "types": [
       "ChatObject"
     ],
@@ -628,7 +628,7 @@
       "ChatDerivedObject"
     ],
     "emoji": "",
-    "hidden": false,
+    "hidden": true,
     "layout": "chatDerived",
     "relations": [
       "tag",

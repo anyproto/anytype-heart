@@ -167,7 +167,8 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeBundledObjectType,
 		coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
-		coresb.SmartBlockTypeRelationOption:
+		coresb.SmartBlockTypeRelationOption,
+		coresb.SmartBlockTypeChatObject:
 		return f.newPage(sb), nil
 	case coresb.SmartBlockTypeArchive:
 		return NewArchive(sb, f.objectStore), nil
@@ -197,7 +198,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		return f.newParticipant(sb), nil
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
-	case coresb.SmartBlockTypeChatObject, coresb.SmartBlockTypeChatDerivedObject:
+	case coresb.SmartBlockTypeChatDerivedObject:
 		return chatobject.New(sb, f.accountService, f.storeDbProvider, f.eventSender), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)

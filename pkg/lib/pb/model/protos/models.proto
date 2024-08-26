@@ -51,8 +51,8 @@ enum SmartBlockType {
 
     NotificationObject = 0x217;
     DevicesObject = 0x218;
-    ChatObject = 0x219;
-    ChatDerivedObject = 0x220;
+    ChatObject = 0x219; // Container for any-store based chats
+    ChatDerivedObject = 0x220; // Any-store based object for chat
 }
 
 message Search {
