@@ -25538,7 +25538,7 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| afterId | [string](#string) |  |  |
+| orderId | [string](#string) |  |  |
 | message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
 
 

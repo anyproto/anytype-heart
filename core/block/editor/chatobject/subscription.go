@@ -1,8 +1,6 @@
 package chatobject
 
 import (
-	"github.com/huandu/skiplist"
-
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -11,8 +9,6 @@ import (
 type subscription struct {
 	chatId      string
 	eventSender event.Sender
-
-	orderToId *skiplist.SkipList
 
 	eventsBuffer []*pb.EventMessage
 
@@ -24,20 +20,11 @@ func newSubscription(chatId string, eventSender event.Sender) *subscription {
 	return &subscription{
 		chatId:      chatId,
 		eventSender: eventSender,
-
-		orderToId: skiplist.New(skiplist.String),
 	}
 }
 
-func (s *subscription) init(messages []*model.ChatMessage) {
-	s.firstOrderId = ""
-	s.orderToId = skiplist.New(skiplist.String)
-	for _, message := range messages {
-		s.orderToId.Set(message.OrderId, message.Id)
-		if s.firstOrderId == "" || s.firstOrderId > message.OrderId {
-			s.firstOrderId = message.OrderId
-		}
-	}
+func (s *subscription) subscribe(firstOrderId string) {
+	s.firstOrderId = firstOrderId
 	s.enabled = true
 }
 
@@ -63,18 +50,10 @@ func (s *subscription) add(message *model.ChatMessage) {
 	if !s.canSend(message) {
 		return
 	}
-
-	elem := s.orderToId.Set(message.OrderId, message.Id)
-	prev := elem.Prev()
-	var afterId string
-	if prev != nil {
-		afterId = prev.Value.(string)
-	}
-
 	ev := &pb.EventChatAdd{
 		Id:      message.Id,
 		Message: message,
-		AfterId: afterId,
+		OrderId: message.OrderId,
 	}
 	s.eventsBuffer = append(s.eventsBuffer, &pb.EventMessage{
 		Value: &pb.EventMessageValueOfChatAdd{

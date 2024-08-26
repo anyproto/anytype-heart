@@ -120,7 +120,7 @@ message Event {
     message Chat {
         message Add {
             string id = 1;
-            string afterId = 2;
+            string orderId = 2;
             model.ChatMessage message = 3;
         }
         message Update {
