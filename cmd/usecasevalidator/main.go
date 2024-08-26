@@ -436,6 +436,9 @@ func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 }
 
 func insertAnalyticsData(s *pb.ChangeSnapshot, info *useCaseInfo) {
+	if s == nil || s.Data == nil || len(s.Data.Blocks) == 0 {
+		return
+	}
 	root := s.Data.Blocks[0]
 	id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
 	f := root.GetFields().GetFields()
