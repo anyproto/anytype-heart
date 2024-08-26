@@ -29,13 +29,17 @@ func (r *rpcHandler) AclGetRecords(ctx context.Context, request *spacesyncproto.
 func (r *rpcHandler) ObjectSync(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
 	sp, err := r.s.Get(ctx, req.SpaceId)
 	if err != nil {
-		if err != spacesyncproto.ErrSpaceMissing {
-			err = spacesyncproto.ErrUnexpected
-		}
 		return
 	}
-	resp, err = sp.HandleSyncRequest(ctx, req)
-	return
+	return sp.HandleDeprecatedObjectSyncRequest(ctx, req)
+}
+
+func (r *rpcHandler) ObjectSyncRequestStream(req *spacesyncproto.ObjectSyncMessage, stream spacesyncproto.DRPCSpaceSync_ObjectSyncRequestStreamStream) (err error) {
+	sp, err := r.s.Get(stream.Context(), req.SpaceId)
+	if err != nil {
+		return err
+	}
+	return sp.HandleStreamSyncRequest(stream.Context(), req, stream)
 }
 
 func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceproto.SpaceExchangeRequest) (resp *clientspaceproto.SpaceExchangeResponse, err error) {
@@ -114,5 +118,5 @@ func (r *rpcHandler) HeadSync(ctx context.Context, req *spacesyncproto.HeadSyncR
 }
 
 func (r *rpcHandler) ObjectSyncStream(stream spacesyncproto.DRPCSpaceSync_ObjectSyncStreamStream) error {
-	return r.s.streamPool.ReadStream(stream)
+	return r.s.streamPool.ReadStream(stream, 300)
 }

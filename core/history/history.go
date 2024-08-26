@@ -2,8 +2,11 @@ package history
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"slices"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -11,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 	"github.com/samber/lo"
+	"github.com/zeebo/blake3"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -37,8 +41,14 @@ const versionGroupInterval = time.Minute * 5
 
 var log = logging.Logger("anytype-mw-history")
 
+var hashersPool = &sync.Pool{
+	New: func() any {
+		return blake3.New()
+	},
+}
+
 func New() History {
-	return new(history)
+	return &history{heads: make(map[string]string, 0)}
 }
 
 type History interface {
@@ -54,6 +64,7 @@ type history struct {
 	picker       cache.ObjectGetter
 	objectStore  objectstore.ObjectStore
 	spaceService space.Service
+	heads        map[string]string
 }
 
 func (h *history) Init(a *app.App) (err error) {
@@ -121,6 +132,8 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 }
 
 func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error) {
+	hasher := hashersPool.Get().(*blake3.Hasher)
+	defer hashersPool.Put(hasher)
 	if limit <= 0 {
 		limit = 100
 	}
@@ -134,6 +147,7 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 	}
 
 	for len(resp) < limit {
+		curHeads := make(map[string]struct{})
 		tree, _, e := h.treeWithId(id, lastVersionId, includeLastId)
 		if e != nil {
 			return nil, e
@@ -142,12 +156,7 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 
 		e = tree.IterateFrom(tree.Root().Id, source.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
 			participantId := domain.NewParticipantId(id.SpaceID, c.Identity.Account())
-			data = append(data, &pb.RpcHistoryVersion{
-				Id:          c.Id,
-				PreviousIds: c.PreviousIds,
-				AuthorId:    participantId,
-				Time:        c.Timestamp,
-			})
+			data = h.fillVersionData(c, curHeads, participantId, data, hasher)
 			return true
 		})
 		if e != nil {
@@ -186,6 +195,40 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		resp = resp[:limit]
 	}
 	return
+}
+
+func (h *history) retrieveHeads(versionId string) []string {
+	if heads, ok := h.heads[versionId]; ok {
+		return strings.Split(heads, " ")
+	}
+	return []string{versionId}
+}
+
+func (h *history) fillVersionData(change *objecttree.Change, curHeads map[string]struct{}, participantId string, data []*pb.RpcHistoryVersion, hasher *blake3.Hasher) []*pb.RpcHistoryVersion {
+	curHeads[change.Id] = struct{}{}
+	for _, previousId := range change.PreviousIds {
+		delete(curHeads, previousId)
+	}
+	version := &pb.RpcHistoryVersion{
+		Id:          change.Id,
+		PreviousIds: change.PreviousIds,
+		AuthorId:    participantId,
+		Time:        change.Timestamp,
+	}
+	if len(curHeads) > 1 {
+		var combinedHeads string
+		for head := range curHeads {
+			combinedHeads += head + " "
+		}
+		combinedHeads = strings.TrimSpace(combinedHeads)
+		hasher.Reset()
+		// nolint: errcheck
+		hasher.Write([]byte(combinedHeads)) // it never returns an error
+		hashSum := hex.EncodeToString(hasher.Sum(nil))
+		h.heads[hashSum] = combinedHeads
+		version.Id = hashSum
+	}
+	return append(data, version)
 }
 
 func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.EventMessage, *model.ObjectView, error) {
@@ -468,14 +511,15 @@ func (h *history) SetVersion(id domain.FullID, versionId string) (err error) {
 	})
 }
 
-func (h *history) treeWithId(id domain.FullID, beforeId string, includeBeforeId bool) (ht objecttree.HistoryTree, sbt smartblock.SmartBlockType, err error) {
+func (h *history) treeWithId(id domain.FullID, versionId string, includeBeforeId bool) (ht objecttree.HistoryTree, sbt smartblock.SmartBlockType, err error) {
+	heads := h.retrieveHeads(versionId)
 	spc, err := h.spaceService.Get(context.Background(), id.SpaceID)
 	if err != nil {
 		return
 	}
 	ht, err = spc.TreeBuilder().BuildHistoryTree(context.Background(), id.ObjectID, objecttreebuilder.HistoryTreeOpts{
-		BeforeId: beforeId,
-		Include:  includeBeforeId,
+		Heads:   heads,
+		Include: includeBeforeId,
 	})
 	if err != nil {
 		return
