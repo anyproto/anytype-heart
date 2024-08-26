@@ -37,7 +37,7 @@ import (
 
 var log = logging.Logger("import")
 
-// Service incapsulate logic with creation of given smartblocks
+// Service encapsulate logic with creation of given smartblocks
 type Service interface {
 	//nolint:lll
 	Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error)
@@ -540,8 +540,8 @@ func (oc *ObjectCreator) getExistingWidgetsTargetIDs(oldState *state.State) (map
 
 func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]string) {
 	for key, value := range st.Details().GetFields() {
-		if newKey, ok := oldIDtoNew[key]; ok {
-			oc.updateDetails(st, newKey, value, key
+		if newKey, ok := oldIDtoNew[key]; ok && newKey != key {
+			oc.updateDetails(st, newKey, value, key)
 		}
 	}
 
