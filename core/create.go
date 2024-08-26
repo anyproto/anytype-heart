@@ -47,6 +47,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails, nil)
 }
 
+// TODO Should be in object creator service
 func (mw *Middleware) addChat(cctx context.Context, objectId string) (string, error) {
 	var spaceId string
 	err := mw.doBlockService(func(bs *block.Service) error {
