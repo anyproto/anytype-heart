@@ -10031,6 +10031,8 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | chatObjectId | [string](#string) |  |  |
+| beforeOrderId | [string](#string) |  | OrderId of the message before which to get messages |
+| limit | [int32](#int32) |  |  |
 
 
 
@@ -29491,8 +29493,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | FileObject | 533 |  |
 | NotificationObject | 535 |  |
 | DevicesObject | 536 |  |
-| ChatObject | 537 |  |
-| ChatDerivedObject | 544 |  |
+| ChatObject | 537 | Container for any-store based chats |
+| ChatDerivedObject | 544 | Any-store based object for chat |
 
 
 

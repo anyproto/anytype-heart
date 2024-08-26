@@ -7312,6 +7312,8 @@ message Rpc {
         message GetMessages {
             message Request {
                 string chatObjectId = 1;
+                string beforeOrderId = 2; // OrderId of the message before which to get messages
+                int32 limit = 3;
             }
 
             message Response {
