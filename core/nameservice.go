@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/net"
+
 	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -19,7 +20,7 @@ func (mw *Middleware) NameServiceResolveName(ctx context.Context, req *pb.RpcNam
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
-		errStr := err.Error()
+		errStr := getErrorDescription(err)
 		if code == pb.RpcNameServiceResolveNameResponseError_CAN_NOT_CONNECT {
 			errStr = "please connect to the internet"
 		}
@@ -46,7 +47,7 @@ func (mw *Middleware) NameServiceResolveAnyId(ctx context.Context, req *pb.RpcNa
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
-		errStr := err.Error()
+		errStr := getErrorDescription(err)
 		if code == pb.RpcNameServiceResolveAnyIdResponseError_CAN_NOT_CONNECT {
 			errStr = "please connect to the internet"
 		}
@@ -82,7 +83,7 @@ func (mw *Middleware) NameServiceUserAccountGet(ctx context.Context, req *pb.Rpc
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
-		errStr := err.Error()
+		errStr := getErrorDescription(err)
 		if code == pb.RpcNameServiceUserAccountGetResponseError_CAN_NOT_CONNECT {
 			errStr = "please connect to the internet"
 		}

@@ -13,7 +13,7 @@ func (mw *Middleware) DeviceNetworkStateSet(cctx context.Context, req *pb.RpcDev
 	response := func(code pb.RpcDeviceNetworkStateSetResponseErrorCode, err error) *pb.RpcDeviceNetworkStateSetResponse {
 		m := &pb.RpcDeviceNetworkStateSetResponse{Error: &pb.RpcDeviceNetworkStateSetResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
