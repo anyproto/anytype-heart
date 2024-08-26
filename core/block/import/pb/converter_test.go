@@ -13,11 +13,18 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func Test_GetSnapshotsSuccess(t *testing.T) {
@@ -185,6 +192,73 @@ func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
 
 	assert.Equal(t, res.Snapshots[0].FileName, "bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb")
 	assert.Contains(t, res.Snapshots[1].FileName, rootCollectionName)
+}
+
+func Test_normalizeSnapshot(t *testing.T) {
+	t.Run("normalize relation option", func(t *testing.T) {
+		// given
+		p := &Pb{}
+
+		key := bson.NewObjectId().Hex()
+		uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, key)
+		assert.NoError(t, err)
+
+		snapshot := &pb.SnapshotWithType{
+			SbType: model.SmartBlockType_STRelationOption,
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Details: &types.Struct{Fields: map[string]*types.Value{
+						bundle.RelationKeyUniqueKey.String():   pbtypes.String(uniqueKey.Marshal()),
+						bundle.RelationKeyRelationKey.String(): pbtypes.String(bundle.RelationKeyTag.String()),
+					}},
+					ObjectTypes: []string{bundle.TypeKeyRelationOption.URL()},
+					Key:         "key",
+				},
+			},
+		}
+		// when
+		_, err = p.normalizeSnapshot(snapshot, uuid.New().String(), "", "path", false, nil)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, model.SmartBlockType_Page, snapshot.SbType)
+		assert.Empty(t, snapshot.Snapshot.Data.Details.Fields[bundle.RelationKeyUniqueKey.String()])
+		assert.Empty(t, snapshot.Snapshot.Data.Details.Fields[bundle.RelationKeyRelationKey.String()])
+		assert.Equal(t, []string{bundle.TypeKeyTag.URL()}, snapshot.Snapshot.Data.ObjectTypes)
+		assert.Empty(t, snapshot.Snapshot.Data.Key)
+	})
+	t.Run("normalize relation option, but it's not tag relation option", func(t *testing.T) {
+		// given
+		p := &Pb{}
+
+		key := bson.NewObjectId().Hex()
+		uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, key)
+		assert.NoError(t, err)
+
+		snapshot := &pb.SnapshotWithType{
+			SbType: model.SmartBlockType_STRelationOption,
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Details: &types.Struct{Fields: map[string]*types.Value{
+						bundle.RelationKeyUniqueKey.String():   pbtypes.String(uniqueKey.Marshal()),
+						bundle.RelationKeyRelationKey.String(): pbtypes.String("test"),
+					}},
+					ObjectTypes: []string{bundle.TypeKeyRelationOption.URL()},
+					Key:         "key",
+				},
+			},
+		}
+		// when
+		_, err = p.normalizeSnapshot(snapshot, uuid.New().String(), "", "path", false, nil)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, model.SmartBlockType_STRelationOption, snapshot.SbType)
+		assert.Equal(t, pbtypes.String(uniqueKey.Marshal()), snapshot.Snapshot.Data.Details.Fields[bundle.RelationKeyUniqueKey.String()])
+		assert.Equal(t, pbtypes.String("test"), snapshot.Snapshot.Data.Details.Fields[bundle.RelationKeyRelationKey.String()])
+		assert.Equal(t, []string{bundle.TypeKeyRelationOption.URL()}, snapshot.Snapshot.Data.ObjectTypes)
+		assert.Equal(t, "key", snapshot.Snapshot.Data.Key)
+	})
 }
 
 func newZipWriter(path string) (*zipWriter, error) {

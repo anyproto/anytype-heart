@@ -214,9 +214,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				templates = append(templates,
 					template.WithTitle,
 					template.WithNoDescription,
-					template.WithRemovedFeaturedRelation(bundle.RelationKeyTag),
-					template.WithRemovedRelation(bundle.RelationKeyTag),
-					template.WithRemovedRelation(bundle.RelationKeyDescription))
+					template.WithRelations([]domain.RelationKey{bundle.RelationKeyRelationOptionColor}))
 			default:
 				templates = append(templates,
 					template.WithTitle,

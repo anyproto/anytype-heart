@@ -341,9 +341,12 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
 
 func (p *Pb) normalizeRelationOption(snapshot *pb.SnapshotWithType) {
 	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
-	if key == bundle.RelationKeyTag.String() {
-		snapshot.SbType = model.SmartBlockType_Page
+	if key != bundle.RelationKeyTag.String() {
+		return
 	}
+	snapshot.SbType = model.SmartBlockType_Page
+	snapshot.Snapshot.Data.Key = ""
+	snapshot.Snapshot.Data.ObjectTypes = []string{bundle.TypeKeyTag.URL()}
 	if snapshot.Snapshot.Data.Details == nil || snapshot.Snapshot.Data.Details.Fields == nil {
 		snapshot.Snapshot.Data.Details.Fields = map[string]*types.Value{}
 	}

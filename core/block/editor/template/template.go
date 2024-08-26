@@ -257,12 +257,6 @@ var WithRemovedFeaturedRelation = func(key domain.RelationKey) StateTransformer 
 	}
 }
 
-var WithRemovedRelation = func(key domain.RelationKey) StateTransformer {
-	return func(s *state.State) {
-		s.RemoveRelation(key.String())
-	}
-}
-
 var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.State) {
 	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
 

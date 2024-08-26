@@ -74,7 +74,7 @@
   {
     "description": "Relation option color",
     "format": "longtext",
-    "hidden": false,
+    "hidden": true,
     "key": "relationOptionColor",
     "maxCount": 1,
     "name": "Relation option color",
