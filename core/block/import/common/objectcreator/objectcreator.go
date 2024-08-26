@@ -541,12 +541,32 @@ func (oc *ObjectCreator) getExistingWidgetsTargetIDs(oldState *state.State) (map
 func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]string) {
 	for key, value := range st.Details().GetFields() {
 		if newKey, ok := oldIDtoNew[key]; ok {
-			st.SetDetail(newKey, value)
-			st.RemoveRelation(key)
+			oc.updateDetails(st, newKey, value, key
 		}
 	}
 
 	if newKey, ok := oldIDtoNew[st.ObjectTypeKey().String()]; ok {
 		st.SetObjectTypeKey(domain.TypeKey(newKey))
 	}
+}
+
+func (oc *ObjectCreator) updateDetails(st *state.State, newKey string, value *types.Value, key string) {
+	st.SetDetail(newKey, value)
+	link := oc.findRelationLinkByKey(st, key)
+	if link != nil {
+		link.Key = newKey
+		st.AddRelationLinks(link)
+	}
+	st.RemoveRelation(key)
+}
+
+func (oc *ObjectCreator) findRelationLinkByKey(st *state.State, key string) *model.RelationLink {
+	relationLinks := st.GetRelationLinks()
+	var link *model.RelationLink
+	for _, link = range relationLinks {
+		if link.Key == key {
+			break
+		}
+	}
+	return link
 }
