@@ -26598,6 +26598,7 @@ Precondition: user A and user B opened the same block
 | Syncing | 1 |  |
 | Error | 2 |  |
 | Offline | 3 |  |
+| NetworkNeedsUpdate | 4 |  |
 
 
 
