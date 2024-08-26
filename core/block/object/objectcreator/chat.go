@@ -16,7 +16,7 @@ import (
 
 func (s *service) createChat(ctx context.Context, space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
 	createState := state.NewDoc("", nil).(*state.State)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.String(model.ObjectType_chat.String())
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_chat))
 	createState.SetDetails(details)
 
 	id, newDetails, err := s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyChat}, createState)
@@ -35,7 +35,7 @@ func (s *service) createChatDerived(ctx context.Context, space clientspace.Space
 	}
 
 	createState := state.NewDocWithUniqueKey("", nil, key).(*state.State)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.String(model.ObjectType_chatDerived.String())
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_chatDerived))
 	createState.SetDetails(details)
 
 	id, newDetails, err := s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyChatDerived}, createState)

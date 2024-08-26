@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -38,7 +39,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	if err != nil {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
-	if req.WithChat {
+	if req.WithChat || model.ObjectTypeLayout(pbtypes.GetInt64(newDetails, bundle.RelationKeyLayout.String())) == model.ObjectType_chat {
 		_, err = mw.addChat(cctx, id)
 		if err != nil {
 			return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
