@@ -316,14 +316,7 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
 	isMigration bool,
 	pbFiles source.Source) (string, error) {
 	if snapshot.SbType == model.SmartBlockType_STRelationOption {
-		key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
-		if key == bundle.RelationKeyTag.String() {
-			snapshot.SbType = model.SmartBlockType_Page
-		}
-		if snapshot.Snapshot.Data.Details == nil || snapshot.Snapshot.Data.Details.Fields == nil {
-			snapshot.Snapshot.Data.Details.Fields = map[string]*types.Value{}
-		}
-		snapshot.Snapshot.Data.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_tag))
+		p.normalizeRelationOption(snapshot)
 	}
 	if _, ok := model.SmartBlockType_name[int32(snapshot.SbType)]; !ok {
 		p.normalizeNormalizeOldType(snapshot)
@@ -344,6 +337,19 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
 		}
 	}
 	return id, nil
+}
+
+func (p *Pb) normalizeRelationOption(snapshot *pb.SnapshotWithType) {
+	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	if key == bundle.RelationKeyTag.String() {
+		snapshot.SbType = model.SmartBlockType_Page
+	}
+	if snapshot.Snapshot.Data.Details == nil || snapshot.Snapshot.Data.Details.Fields == nil {
+		snapshot.Snapshot.Data.Details.Fields = map[string]*types.Value{}
+	}
+	snapshot.Snapshot.Data.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_tag))
+	delete(snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyRelationKey.String())
+	delete(snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyUniqueKey.String())
 }
 
 func (p *Pb) normalizeProfile(snapshot *pb.SnapshotWithType, id string, profileID string, isMigration bool) (string, error) {
