@@ -103,7 +103,7 @@ func (s *storeObject) GetMessages(ctx context.Context, beforeOrderId string, lim
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
 	if beforeOrderId != "" {
-		qry := coll.Find(query.NewComp(query.CompOpLt, beforeOrderId)).Sort("-_o.id").Limit(uint(limit))
+		qry := coll.Find(query.Key{Path: []string{"_o", "id"}, Filter: query.NewComp(query.CompOpLt, beforeOrderId)}).Sort("-_o.id").Limit(uint(limit))
 		msgs, err := s.queryMessages(ctx, qry)
 		if err != nil {
 			return nil, fmt.Errorf("query messages: %w", err)
