@@ -21,7 +21,7 @@ const CName = "core.block.chats"
 type Service interface {
 	AddMessage(ctx context.Context, chatObjectId string, message *model.ChatMessage) (string, error)
 	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error
-	GetMessages(ctx context.Context, chatObjectId string) ([]*model.ChatMessage, error)
+	GetMessages(ctx context.Context, chatObjectId string, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe(chatObjectId string) error
 
@@ -102,10 +102,10 @@ func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageI
 	})
 }
 
-func (s *service) GetMessages(ctx context.Context, chatObjectId string) ([]*model.ChatMessage, error) {
+func (s *service) GetMessages(ctx context.Context, chatObjectId string, beforeOrderId string, limit int) ([]*model.ChatMessage, error) {
 	var res []*model.ChatMessage
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		msgs, err := sb.GetMessages(ctx)
+		msgs, err := sb.GetMessages(ctx, beforeOrderId, limit)
 		if err != nil {
 			return err
 		}

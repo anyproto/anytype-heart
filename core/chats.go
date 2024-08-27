@@ -37,7 +37,7 @@ func (mw *Middleware) ChatEditMessage(cctx context.Context, req *pb.RpcChatEditM
 func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse {
 	chatService := getService[chats.Service](mw)
 
-	messages, err := chatService.GetMessages(cctx, req.ChatObjectId)
+	messages, err := chatService.GetMessages(cctx, req.ChatObjectId, req.BeforeOrderId, int(req.Limit))
 	code := mapErrorCode[pb.RpcChatGetMessagesResponseErrorCode](err)
 	return &pb.RpcChatGetMessagesResponse{
 		Messages: messages,

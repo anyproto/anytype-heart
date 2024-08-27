@@ -8,6 +8,7 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/query"
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -26,7 +27,7 @@ type StoreObject interface {
 	smartblock.SmartBlock
 
 	AddMessage(ctx context.Context, message *model.ChatMessage) (string, error)
-	GetMessages(ctx context.Context) ([]*model.ChatMessage, error)
+	GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe() error
@@ -96,13 +97,25 @@ func (s *storeObject) onUpdate() {
 	s.subscription.flush()
 }
 
-func (s *storeObject) GetMessages(ctx context.Context) ([]*model.ChatMessage, error) {
+func (s *storeObject) GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
-	query := coll.Find(nil).Sort("_o.id")
-	return s.queryMessages(ctx, query)
+	if beforeOrderId != "" {
+		qry := coll.Find(query.NewComp(query.CompOpLt, beforeOrderId)).Sort("-_o.id").Limit(uint(limit))
+		msgs, err := s.queryMessages(ctx, qry)
+		if err != nil {
+			return nil, fmt.Errorf("query messages: %w", err)
+		}
+		sort.Slice(msgs, func(i, j int) bool {
+			return msgs[i].OrderId < msgs[j].OrderId
+		})
+		return msgs, nil
+	} else {
+		qry := coll.Find(nil).Sort("_o.id").Limit(uint(limit))
+		return s.queryMessages(ctx, qry)
+	}
 }
 
 func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) ([]*model.ChatMessage, error) {
