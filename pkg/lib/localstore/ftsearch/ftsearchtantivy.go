@@ -356,5 +356,6 @@ func escapeQuery(query string) string {
 		escapedQuery.WriteRune(char)
 	}
 
-	return escapedQuery.String()
+	resultQuery := escapedQuery.String()
+	return "(\"" + resultQuery + "\" OR " + resultQuery + ")"
 }
