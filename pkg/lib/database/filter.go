@@ -310,6 +310,12 @@ func negateFilter(filter query.Filter) query.Filter {
 		}
 		return negated
 	case query.Key:
+		if nested, ok := v.Filter.(query.Not); ok {
+			return query.Key{
+				Path:   v.Path,
+				Filter: nested.Filter,
+			}
+		}
 		return query.Key{
 			Path: v.Path,
 			Filter: query.Not{
@@ -342,16 +348,7 @@ func (e FilterEq) AnystoreFilter() query.Filter {
 	case model.BlockContentDataviewFilter_LessOrEqual:
 		op = query.CompOpLte
 	case model.BlockContentDataviewFilter_NotEqual:
-		return query.Or{
-			query.Key{
-				Path:   path,
-				Filter: query.NewComp(query.CompOpNe, scalarPbValueToAny(e.Value)),
-			},
-			query.Key{
-				Path:   path,
-				Filter: query.Not{Filter: query.Exists{}},
-			},
-		}
+		op = query.CompOpNe
 	}
 	return query.Key{
 		Path:   path,
