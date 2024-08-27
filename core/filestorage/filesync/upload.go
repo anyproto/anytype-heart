@@ -276,7 +276,7 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 	log.Debug("uploading file", zap.String("fileId", fileId.String()))
 
 	blocksAvailability, err := s.blocksAvailabilityCache.Get(fileId.String())
-	if err != nil {
+	if err != nil || blocksAvailability.totalBytesToUpload() == 0 {
 		// Ignore error from cache and calculate blocks availability
 		blocksAvailability, err = s.checkBlocksAvailability(ctx, spaceID, fileId)
 		if err != nil {
@@ -294,14 +294,14 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 	}
 
 	bytesLeft := stat.AccountBytesLimit - stat.TotalBytesUsage
-	if blocksAvailability.bytesToUpload > bytesLeft {
+	if blocksAvailability.totalBytesToUpload() > bytesLeft {
 		// Unbind file just in case
 		err := s.rpcStore.DeleteFiles(ctx, spaceID, fileId)
 		if err != nil {
 			log.Error("calculate limits: unbind off-limit file", zap.String("fileId", fileId.String()), zap.Error(err))
 		}
 		return &errLimitReached{
-			fileSize:        blocksAvailability.bytesToUpload,
+			fileSize:        blocksAvailability.totalBytesToUpload(),
 			accountLimit:    stat.AccountBytesLimit,
 			totalBytesUsage: stat.TotalBytesUsage,
 		}
@@ -329,7 +329,7 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 				log.Error("upload: unbind off-limit file", zap.String("fileId", fileId.String()), zap.Error(err))
 			}
 			return &errLimitReached{
-				fileSize:        blocksAvailability.bytesToUpload,
+				fileSize:        blocksAvailability.totalBytesToUpload(),
 				accountLimit:    stat.AccountBytesLimit,
 				totalBytesUsage: stat.TotalBytesUsage,
 			}
@@ -382,11 +382,17 @@ func (s *fileSync) addImportEvent(spaceID string) {
 
 type blocksAvailabilityResponse struct {
 	bytesToUpload int
+	bytesToBind   int
 	cidsToUpload  map[cid.Cid]struct{}
+}
+
+func (r *blocksAvailabilityResponse) totalBytesToUpload() int {
+	return r.bytesToUpload + r.bytesToBind
 }
 
 type blocksAvailabilityResponseJson struct {
 	BytesToUpload int
+	BytesToBind   int
 	CidsToUpload  []string
 }
 
@@ -395,6 +401,7 @@ var _ json.Marshaler = &blocksAvailabilityResponse{}
 func (r *blocksAvailabilityResponse) MarshalJSON() ([]byte, error) {
 	wrapper := blocksAvailabilityResponseJson{
 		BytesToUpload: r.bytesToUpload,
+		BytesToBind:   r.bytesToBind,
 	}
 	for c := range r.cidsToUpload {
 		wrapper.CidsToUpload = append(wrapper.CidsToUpload, c.String())
@@ -409,6 +416,7 @@ func (r *blocksAvailabilityResponse) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	r.bytesToUpload = wrapper.BytesToUpload
+	r.bytesToBind = wrapper.BytesToBind
 	r.cidsToUpload = map[cid.Cid]struct{}{}
 	for _, rawCid := range wrapper.CidsToUpload {
 		cid, err := cid.Parse(rawCid)
@@ -438,15 +446,30 @@ func (s *fileSync) checkBlocksAvailability(ctx context.Context, spaceId string, 
 				return fmt.Errorf("cast cid: %w", err)
 			}
 
-			if availability.Status == fileproto.AvailabilityStatus_NotExists {
+			getBlock := func() (blocks.Block, error) {
 				b, ok := lo.Find(fileBlocks, func(b blocks.Block) bool {
 					return b.Cid() == blockCid
 				})
 				if !ok {
-					return fmt.Errorf("block %s not found", blockCid)
+					return nil, fmt.Errorf("block %s not found", blockCid)
+				}
+				return b, nil
+			}
+
+			if availability.Status == fileproto.AvailabilityStatus_NotExists {
+				b, err := getBlock()
+				if err != nil {
+					return err
 				}
 				response.bytesToUpload += len(b.RawData())
 				response.cidsToUpload[blockCid] = struct{}{}
+			} else if availability.Status == fileproto.AvailabilityStatus_Exists {
+				// Block exists in node, but not in user's space
+				b, err := getBlock()
+				if err != nil {
+					return err
+				}
+				response.bytesToBind += len(b.RawData())
 			}
 		}
 		return nil

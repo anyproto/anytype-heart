@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 type writer interface {
@@ -73,7 +73,7 @@ func (d *dirWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int
 	lastModifiedDateUnix := time.Unix(lastModifiedDate, 0)
 	err = os.Chtimes(filename, time.Now(), lastModifiedDateUnix)
 	if err != nil {
-		return fmt.Errorf("failed to set date modified of export file: %w", oserror.TransformError(err))
+		return fmt.Errorf("failed to set date modified of export file: %w", anyerror.CleanupError(err))
 	}
 	return
 }
