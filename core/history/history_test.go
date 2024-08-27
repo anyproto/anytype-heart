@@ -27,8 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-// todo: reimplement
-
 type historyStub struct {
 	changes  []*objecttree.Change
 	objectId string
@@ -804,6 +802,301 @@ func TestHistory_DiffVersions(t *testing.T) {
 	})
 }
 
+func TestHistory_Versions(t *testing.T) {
+	t.Run("limit 0 - 100 changes", func(t *testing.T) {
+		// given
+		objectId := "objectId"
+		spaceID := "spaceID"
+		versionId := "versionId"
+
+		accountKeys, _ := accountdata.NewRandom()
+		account := accountKeys.SignKey.GetPublic()
+
+		blDataviewId := "blDataviewId"
+		relationKey := "key"
+
+		viewId := "viewId"
+		viewName := "view"
+
+		viewId1 := "viewId1"
+		view1Name := "view1"
+
+		viewId2 := "viewId2"
+		view2Name := "view2"
+
+		blDataview := provideDataviewBlock(viewId1, view1Name, relationKey, blDataviewId)
+
+		blSmartBlock := &model.Block{Id: objectId, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}
+
+		currChange := []*objecttree.Change{
+			// create block changes
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideBlockCreateChange(blDataview, account),
+
+			// dataview  changes
+			provideBlockDataviewViewSetChange(blDataviewId, viewId1, view1Name, relationKey, account),
+			provideBlockDataviewViewSetChange(blDataviewId, viewId2, view2Name, relationKey, account),
+			provideBlockDataviewSourceSetChange(blDataviewId, account),
+			provideBlockDataviewRelationSetChange(blDataviewId, account),
+			provideBlockDataviewViewSetChange(blDataviewId, viewId, viewName, relationKey, account),
+			provideBlockDataviewViewOrderChange(blDataviewId, viewId, viewId1, account),
+			provideBlockDataviewViewDeleteChange(blDataviewId, viewId2, account),
+			provideBlockDataviewRelationDeleteChange(blDataviewId, relationKey, account),
+			provideBlockDataviewObjectOrderChange(blDataviewId, viewId, account),
+			provideBlockDataviewGroupOrderChange(blDataviewId, viewId, account),
+			provideBlockDataviewViewUpdateChange(blDataviewId, viewId, account),
+			provideBlockDataviewTargetObjectChange(blDataviewId, account),
+		}
+
+		history := newFixture(t, currChange, objectId, spaceID, versionId)
+
+		// when
+		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 0)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, resp, 14)
+	})
+	t.Run("limit 10 - 10 changes", func(t *testing.T) {
+		// given
+		objectId := "objectId"
+		spaceID := "spaceID"
+		versionId := "versionId"
+
+		accountKeys, _ := accountdata.NewRandom()
+		account := accountKeys.SignKey.GetPublic()
+
+		blDataviewId := "blDataviewId"
+		relationKey := "key"
+
+		viewId := "viewId"
+		viewName := "view"
+
+		viewId1 := "viewId1"
+		view1Name := "view1"
+
+		viewId2 := "viewId2"
+		view2Name := "view2"
+
+		blDataview := provideDataviewBlock(viewId1, view1Name, relationKey, blDataviewId)
+
+		blSmartBlock := &model.Block{Id: objectId, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}
+
+		currChange := []*objecttree.Change{
+			// create block changes
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideBlockCreateChange(blDataview, account),
+
+			// dataview  changes
+			provideBlockDataviewViewSetChange(blDataviewId, viewId1, view1Name, relationKey, account),
+			provideBlockDataviewViewSetChange(blDataviewId, viewId2, view2Name, relationKey, account),
+			provideBlockDataviewSourceSetChange(blDataviewId, account),
+			provideBlockDataviewRelationSetChange(blDataviewId, account),
+			provideBlockDataviewViewSetChange(blDataviewId, viewId, viewName, relationKey, account),
+			provideBlockDataviewViewOrderChange(blDataviewId, viewId, viewId1, account),
+			provideBlockDataviewViewDeleteChange(blDataviewId, viewId2, account),
+			provideBlockDataviewRelationDeleteChange(blDataviewId, relationKey, account),
+			provideBlockDataviewObjectOrderChange(blDataviewId, viewId, account),
+			provideBlockDataviewGroupOrderChange(blDataviewId, viewId, account),
+			provideBlockDataviewViewUpdateChange(blDataviewId, viewId, account),
+			provideBlockDataviewTargetObjectChange(blDataviewId, account),
+		}
+
+		history := newFixture(t, currChange, objectId, spaceID, versionId)
+
+		// when
+		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 10)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, resp, 10)
+	})
+	t.Run("number of changes equals limit", func(t *testing.T) {
+		// given
+		objectId := "objectId"
+		spaceID := "spaceID"
+		versionId := "versionId"
+
+		accountKeys, _ := accountdata.NewRandom()
+		account := accountKeys.SignKey.GetPublic()
+
+		blDataviewId := "blDataviewId"
+		relationKey := "key"
+
+		viewId := "viewId"
+		viewName := "view"
+
+		viewId1 := "viewId1"
+		view1Name := "view1"
+
+		viewId2 := "viewId2"
+		view2Name := "view2"
+
+		blDataview := provideDataviewBlock(viewId1, view1Name, relationKey, blDataviewId)
+
+		blSmartBlock := &model.Block{Id: objectId, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}
+
+		currChange := []*objecttree.Change{
+			// create block changes
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideBlockCreateChange(blDataview, account),
+
+			// dataview  changes
+			provideBlockDataviewViewSetChange(blDataviewId, viewId1, view1Name, relationKey, account),
+			provideBlockDataviewViewSetChange(blDataviewId, viewId2, view2Name, relationKey, account),
+			provideBlockDataviewSourceSetChange(blDataviewId, account),
+			provideBlockDataviewRelationSetChange(blDataviewId, account),
+			provideBlockDataviewViewSetChange(blDataviewId, viewId, viewName, relationKey, account),
+			provideBlockDataviewViewOrderChange(blDataviewId, viewId, viewId1, account),
+			provideBlockDataviewViewDeleteChange(blDataviewId, viewId2, account),
+			provideBlockDataviewRelationDeleteChange(blDataviewId, relationKey, account),
+		}
+
+		history := newFixture(t, currChange, objectId, spaceID, versionId)
+
+		// when
+		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 10)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, resp, 10)
+	})
+	t.Run("no changes", func(t *testing.T) {
+		// given
+		objectId := "objectId"
+		spaceID := "spaceID"
+		versionId := "versionId"
+
+		var currChange []*objecttree.Change
+
+		history := newFixture(t, currChange, objectId, spaceID, versionId)
+
+		ctrl := gomock.NewController(t)
+		spaceService := mock_space.NewMockService(t)
+		space := mock_clientspace.NewMockSpace(t)
+		treeBuilder := mock_objecttreebuilder.NewMockTreeBuilder(ctrl)
+		configureTreeBuilder(treeBuilder, objectId, versionId, spaceID, currChange, space, spaceService)
+		history.treeBuilder = treeBuilder
+		history.space = space
+		history.spaceService = spaceService
+
+		// when
+		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 10)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, resp, 0)
+	})
+	t.Run("changes from parallel editing", func(t *testing.T) {
+		// given
+		objectId := "objectId"
+		spaceID := "spaceID"
+		versionId := "versionId"
+
+		accountKeys, _ := accountdata.NewRandom()
+		account := accountKeys.SignKey.GetPublic()
+
+		ch := &objecttree.Change{
+			Id:          "id",
+			PreviousIds: []string{"id2"},
+			Identity:    account,
+			Model: &pb.Change{
+				Content: []*pb.ChangeContent{
+					{
+						Value: &pb.ChangeContentValueOfBlockUpdate{
+							BlockUpdate: &pb.ChangeBlockUpdate{
+								Events: []*pb.EventMessage{
+									{
+										Value: &pb.EventMessageValueOfBlockSetText{
+											BlockSetText: &pb.EventBlockSetText{
+												Id: "blockId",
+												Text: &pb.EventBlockSetTextText{
+													Value: "new text",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		ch1 := &objecttree.Change{
+			Identity:    account,
+			Id:          "id1",
+			PreviousIds: []string{"id2"},
+			Model: &pb.Change{
+				Content: []*pb.ChangeContent{
+					{
+						Value: &pb.ChangeContentValueOfBlockUpdate{
+							BlockUpdate: &pb.ChangeBlockUpdate{
+								Events: []*pb.EventMessage{
+									{
+										Value: &pb.EventMessageValueOfBlockSetText{
+											BlockSetText: &pb.EventBlockSetText{
+												Id: "blockId",
+												Text: &pb.EventBlockSetTextText{
+													Value: "some text",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		ch2 := &objecttree.Change{
+			Id:       "id2",
+			Identity: account,
+			Model: &pb.Change{
+				Content: []*pb.ChangeContent{
+					{
+						Value: &pb.ChangeContentValueOfBlockUpdate{
+							BlockUpdate: &pb.ChangeBlockUpdate{
+								Events: []*pb.EventMessage{
+									{
+										Value: &pb.EventMessageValueOfBlockSetText{
+											BlockSetText: &pb.EventBlockSetText{
+												Id: "blockId",
+												Text: &pb.EventBlockSetTextText{
+													Value: "new text some text",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		currChange := []*objecttree.Change{
+			ch2, ch, ch1,
+		}
+
+		history := newFixture(t, currChange, objectId, spaceID, versionId)
+
+		// when
+		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 10)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, resp, 3)
+	})
+}
+
 type historyFixture struct {
 	*history
 	space       *mock_clientspace.MockSpace
@@ -822,6 +1115,7 @@ func newFixture(t *testing.T, expectedChanges []*objecttree.Change, objectId, sp
 	history := &history{
 		objectStore:  objectstore.NewStoreFixture(t),
 		spaceService: spaceService,
+		heads:        map[string]string{},
 	}
 	return &historyFixture{
 		history:     history,
@@ -847,6 +1141,7 @@ func newFixtureDiffVersions(t *testing.T,
 	history := &history{
 		objectStore:  objectstore.NewStoreFixture(t),
 		spaceService: spaceService,
+		heads:        map[string]string{},
 	}
 	return &historyFixture{
 		history:     history,
@@ -862,8 +1157,8 @@ func configureTreeBuilder(treeBuilder *mock_objecttreebuilder.MockTreeBuilder,
 	spaceService *mock_space.MockService,
 ) {
 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-		BeforeId: currVersionId,
-		Include:  true,
+		Heads:   []string{currVersionId},
+		Include: true,
 	}).Return(&historyStub{
 		objectId: objectId,
 		changes:  expectedChanges,

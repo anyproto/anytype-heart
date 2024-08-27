@@ -101,7 +101,7 @@ func (s *Service) updateCollection(ctx session.Context, contextID string, modifi
 		s.UpdateStoreSlice(template.CollectionStoreKey, lst)
 		internalflag.Set{}.AddToState(s)
 		return nil
-	})
+	}, smartblock.KeepInternalFlags)
 }
 
 func (s *Service) collectionAddHookOnce(sb smartblock.SmartBlock) {

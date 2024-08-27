@@ -21,6 +21,35 @@ var (
 	addressPattern   = regexp.MustCompile(`\+?0x[0-9a-z]*`)
 )
 
+func InlineCallStack() string {
+	// Allocate space for the call stack
+	var pcs [32]uintptr
+
+	// Skip 3 frames: runtime.Callers, printStack, and the function calling printStack
+	n := runtime.Callers(2, pcs[:])
+
+	// Get the stack frames
+	frames := runtime.CallersFrames(pcs[:n])
+
+	var sep string
+	buf := &strings.Builder{}
+	// Iterate through the frames and print them
+	for {
+		frame, more := frames.Next()
+		buf.WriteString(sep)
+		sep = " -> "
+		buf.WriteString(frame.Function)
+		buf.WriteString(" ")
+		buf.WriteString(frame.File)
+		buf.WriteString(":")
+		buf.WriteString(fmt.Sprintf("%d", frame.Line))
+		if !more {
+			break
+		}
+	}
+	return buf.String()
+}
+
 func ParseGoroutinesDump(trace string, pattern string) string {
 	var sb strings.Builder
 
