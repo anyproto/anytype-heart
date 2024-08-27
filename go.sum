@@ -83,8 +83,6 @@ github.com/andybalholm/cascadia v1.2.0/go.mod h1:YCyR8vOZT9aZ1CHEd8ap0gMVm2aFgxB
 github.com/andybalholm/cascadia v1.3.1/go.mod h1:R4bJ1UQfqADjvDa4P6HZHLh/3OxWWEqc0Sk8XGwHqvA=
 github.com/andybalholm/cascadia v1.3.2 h1:3Xi6Dw5lHF15JtdcmAHD3i1+T8plmv7BQ/nsViSLyss=
 github.com/andybalholm/cascadia v1.3.2/go.mod h1:7gtRlve5FxPPgIgX36uWBX58OdBsSS6lUvCFb+h7KvU=
-github.com/anyproto/any-store v0.0.1 h1:RiZi3cHVSpIebcNeHYOUaDShH7E9Ahto33zdnqCaUHM=
-github.com/anyproto/any-store v0.0.1/go.mod h1:JV7dJ8+xF1VaCQgFQsD8SZSNlxxTGFbDiF8llkB2ILc=
 github.com/anyproto/any-store v0.0.2-0.20240812125400-7f6f6d062ebf h1:9VTQc/011fVyucu9bICmjF6+y/T9QdZv6MN7X4gM4S0=
 github.com/anyproto/any-store v0.0.2-0.20240812125400-7f6f6d062ebf/go.mod h1:JV7dJ8+xF1VaCQgFQsD8SZSNlxxTGFbDiF8llkB2ILc=
 github.com/anyproto/any-sync v0.4.30 h1:2nnoVQF9WiBIw8pzwuOubwqf7a+xvZPDkXHmykTPi0k=
@@ -111,8 +109,8 @@ github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38 h1:80jke82/c+b
 github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c h1:GicoaTUyB2mtCIl3YMrO0OzysqRT5GA4vuvDsqEkhSM=
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
-github.com/anyproto/tantivy-go v0.0.8 h1:jigYko7cZBFBg2Z65PdEBsGwRB961uYqZP6SVozskPc=
-github.com/anyproto/tantivy-go v0.0.8/go.mod h1:Pl0zaeEX7dkVDTDKROzlLlGCVjbZHjyPrZloFuVEASc=
+github.com/anyproto/tantivy-go v0.0.9 h1:lbRBH5Nzs1nlSWKBlC9UuyOEqhM/KEs8P02Cvt58WP8=
+github.com/anyproto/tantivy-go v0.0.9/go.mod h1:Pl0zaeEX7dkVDTDKROzlLlGCVjbZHjyPrZloFuVEASc=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d h1:5bj7nX/AS8sxGpTIrapE7PC4oPlhkHMwMqXlJbUHBlg=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d/go.mod h1:fuJqLnUwZTshS3U/bMRJ3+ow/v9oid1n0DmyYyNO1Xs=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
