@@ -42,6 +42,7 @@ func (d ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (
 }
 
 func (d ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (mode storestate.DeleteMode, err error) {
+	d.subscription.delete(ch.Change.Change.GetDelete().GetDocumentId())
 	return storestate.DeleteModeDelete, nil
 }
 

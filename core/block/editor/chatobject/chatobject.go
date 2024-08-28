@@ -29,6 +29,7 @@ type StoreObject interface {
 	AddMessage(ctx context.Context, message *model.ChatMessage) (string, error)
 	GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
+	DeleteMessage(ctx context.Context, messageId string) error
 	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe() error
 }
@@ -43,6 +44,7 @@ type AccountService interface {
 
 type storeObject struct {
 	smartblock.SmartBlock
+	locker smartblock.Locker
 
 	accountService AccountService
 	dbProvider     StoreDbProvider
@@ -57,6 +59,7 @@ type storeObject struct {
 func New(sb smartblock.SmartBlock, accountService AccountService, dbProvider StoreDbProvider, eventSender event.Sender) StoreObject {
 	return &storeObject{
 		SmartBlock:     sb,
+		locker:         sb.(smartblock.Locker),
 		accountService: accountService,
 		dbProvider:     dbProvider,
 		arenaPool:      &fastjson.ArenaPool{},
@@ -69,6 +72,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("INITCHAT", s.Id())
 	s.subscription = newSubscription(s.Id(), s.eventSender)
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.dbProvider.GetStoreDb(), ChatHandler{
@@ -159,9 +163,23 @@ func (s *storeObject) AddMessage(ctx context.Context, message *model.ChatMessage
 		Time:    time.Now(),
 	})
 	if err != nil {
-		return "", fmt.Errorf("add change: %w", err)
+		return "", fmt.Errorf("push change: %w", err)
 	}
 	return messageId, nil
+}
+
+func (s *storeObject) DeleteMessage(ctx context.Context, messageId string) error {
+	builder := storestate.Builder{}
+	builder.Delete(collectionName, messageId)
+	_, err := s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
+		Changes: builder.ChangeSet,
+		State:   s.store,
+		Time:    time.Now(),
+	})
+	if err != nil {
+		return fmt.Errorf("push change: %w", err)
+	}
+	return nil
 }
 
 // TODO Temp non-atomic method
@@ -184,7 +202,7 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 		Time:    time.Now(),
 	})
 	if err != nil {
-		return fmt.Errorf("add change: %w", err)
+		return fmt.Errorf("push change: %w", err)
 	}
 	return nil
 }
@@ -330,6 +348,7 @@ func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 }
 
 func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error) {
+	fmt.Println("SUBSCRIBELAST", s.Id())
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, 0, fmt.Errorf("get collection: %w", err)
@@ -358,7 +377,19 @@ func (s *storeObject) Unsubscribe() error {
 	return nil
 }
 
+func (s *storeObject) TryClose(objectTTL time.Duration) (res bool, err error) {
+	if !s.locker.TryLock() {
+		return false, nil
+	}
+	isActive := s.subscription.enabled
+	s.Unlock()
+
+	if isActive {
+		return false, nil
+	}
+	return s.SmartBlock.TryClose(objectTTL)
+}
+
 func (s *storeObject) Close() error {
-	s.subscription.close()
 	return s.SmartBlock.Close()
 }

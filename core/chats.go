@@ -34,6 +34,19 @@ func (mw *Middleware) ChatEditMessage(cctx context.Context, req *pb.RpcChatEditM
 	}
 }
 
+func (mw *Middleware) ChatDeleteMessage(cctx context.Context, req *pb.RpcChatDeleteMessageRequest) *pb.RpcChatDeleteMessageResponse {
+	chatService := getService[chats.Service](mw)
+
+	err := chatService.DeleteMessage(cctx, req.ChatObjectId, req.MessageId)
+	code := mapErrorCode[pb.RpcChatDeleteMessageResponseErrorCode](err)
+	return &pb.RpcChatDeleteMessageResponse{
+		Error: &pb.RpcChatDeleteMessageResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse {
 	chatService := getService[chats.Service](mw)
 

@@ -62,6 +62,17 @@ func (s *subscription) add(message *model.ChatMessage) {
 	})
 }
 
+func (s *subscription) delete(messageId string) {
+	ev := &pb.EventChatDelete{
+		Id: messageId,
+	}
+	s.eventsBuffer = append(s.eventsBuffer, &pb.EventMessage{
+		Value: &pb.EventMessageValueOfChatDelete{
+			ChatDelete: ev,
+		},
+	})
+}
+
 func (s *subscription) updateFull(message *model.ChatMessage) {
 	if !s.canSend(message) {
 		return

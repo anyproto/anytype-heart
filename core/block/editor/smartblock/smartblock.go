@@ -486,6 +486,10 @@ func (sb *smartBlock) Lock() {
 	sb.Locker.Lock()
 }
 
+func (sb *smartBlock) TryLock() bool {
+	return sb.Locker.TryLock()
+}
+
 func (sb *smartBlock) Unlock() {
 	sb.Locker.Unlock()
 }
