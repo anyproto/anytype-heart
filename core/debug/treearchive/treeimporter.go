@@ -88,12 +88,15 @@ func (t *treeImporter) Import(fullTree bool, beforeId string) (err error) {
 	if err != nil {
 		return
 	}
+	var heads []string
+	if !fullTree {
+		heads = []string{beforeId}
+	}
 	t.objectTree, err = objecttree.BuildNonVerifiableHistoryTree(objecttree.HistoryTreeParams{
 		TreeStorage:     t.treeStorage,
 		AclList:         aclList,
-		BeforeId:        beforeId,
+		Heads:           heads,
 		IncludeBeforeId: true,
-		BuildFullTree:   fullTree,
 	})
 
 	return
