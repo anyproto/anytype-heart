@@ -290,7 +290,6 @@ func (tb Table) MoveBlocksUnderTheTable(ids ...string) {
 		log.Errorf("failed to find table block '%s' among children of block '%s'", tb.block.Model().Id, parent.Model().Id)
 		return
 	}
-	tb.s.RemoveFromCache(ids)
 	tb.s.SetChildrenIds(parent.Model(), slice.Insert(children, pos+1, ids...))
 }
 
