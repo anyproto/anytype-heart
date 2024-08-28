@@ -170,18 +170,13 @@ func (r *traceRecorder) stop() {
 	if r.recorder != nil {
 		r.lastRecordedBuf = bytes.NewBuffer(nil)
 		// Store trace in memory as zip archive to reduce memory usage
-		start := time.Now()
 		err := r.saveTraceToZipArchive(r.lastRecordedBuf)
-		buffSize := r.lastRecordedBuf.Len()
 		if err != nil {
 			log.With("error", err).Error("save trace to zip archive")
 		}
 		err = r.recorder.Stop()
 		if err != nil {
 			log.With("error", err).Error("stop trace recorder")
-		}
-		if time.Since(start) > time.Millisecond*10 {
-			log.With("total", time.Since(start).Milliseconds()).With("size", buffSize).Warn("trace zipping took too long")
 		}
 		r.recorder = nil
 	}
