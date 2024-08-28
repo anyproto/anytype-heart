@@ -42,6 +42,7 @@ func (d ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (
 }
 
 func (d ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (mode storestate.DeleteMode, err error) {
+	// TODO Validation
 	d.subscription.delete(ch.Change.Change.GetDelete().GetDocumentId())
 	return storestate.DeleteModeDelete, nil
 }
@@ -51,11 +52,19 @@ func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModif
 		if len(key.KeyPath) == 0 {
 			return nil, false, fmt.Errorf("no key path")
 		}
-		if key.KeyPath[0] == "message" {
-			author := v.GetStringBytes("author")
-			if string(author) != ch.Change.Creator {
+
+		path := key.KeyPath[0]
+
+		switch path {
+		case "reactions":
+			// TODO Count validation
+		case "content":
+			creator := string(v.GetStringBytes("creator"))
+			if creator != ch.Change.Creator {
 				return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify not own message"))
 			}
+		default:
+			return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)
 		}
 
 		result, modified, err = mod.Modify(a, v)
@@ -65,7 +74,7 @@ func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModif
 
 		if modified {
 			message := unmarshalMessage(result)
-			if key.KeyPath[0] == "reactions" {
+			if path == "reactions" {
 				d.subscription.updateReactions(message)
 			} else {
 				d.subscription.updateFull(message)

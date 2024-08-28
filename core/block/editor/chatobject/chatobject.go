@@ -72,7 +72,6 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("INITCHAT", s.Id())
 	s.subscription = newSubscription(s.Id(), s.eventSender)
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.dbProvider.GetStoreDb(), ChatHandler{
@@ -348,7 +347,6 @@ func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 }
 
 func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error) {
-	fmt.Println("SUBSCRIBELAST", s.Id())
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, 0, fmt.Errorf("get collection: %w", err)
