@@ -953,33 +953,83 @@ func TestQueryRaw(t *testing.T) {
 	})
 
 	t.Run("with nested filter", func(t *testing.T) {
-		s := NewStoreFixture(t)
-		obj1 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id1"),
-			bundle.RelationKeyType: pbtypes.String("type1"),
-		}
-		type1 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("type1"),
-			bundle.RelationKeyType:        pbtypes.String("objectType"),
-			domain.RelationKey("typeKey"): pbtypes.String("note"),
-		}
+		t.Run("equal", func(t *testing.T) {
+			s := NewStoreFixture(t)
+			obj1 := TestObject{
+				bundle.RelationKeyId:   pbtypes.String("id1"),
+				bundle.RelationKeyType: pbtypes.String("type1"),
+			}
+			type1 := TestObject{
+				bundle.RelationKeyId:        pbtypes.String("type1"),
+				bundle.RelationKeyType:      pbtypes.String("objectType"),
+				bundle.RelationKeyUniqueKey: pbtypes.String("ot-note"),
+			}
 
-		s.AddObjects(t, []TestObject{obj1, type1})
+			s.AddObjects(t, []TestObject{obj1, type1})
 
-		flt, err := database.NewFilters(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: "type.typeKey",
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("note"),
+			flt, err := database.NewFilters(database.Query{
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: "type.uniqueKey",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("ot-note"),
+					},
 				},
-			},
-		}, s, arena)
-		require.NoError(t, err)
+			}, s, arena)
+			require.NoError(t, err)
 
-		recs, err := s.QueryRaw(flt, 0, 0)
-		require.NoError(t, err)
-		assertRecordsEqual(t, []TestObject{obj1}, recs)
+			recs, err := s.QueryRaw(flt, 0, 0)
+			require.NoError(t, err)
+			assertRecordsEqual(t, []TestObject{obj1}, recs)
+		})
+		t.Run("not equal", func(t *testing.T) {
+			s := NewStoreFixture(t)
+			obj1 := TestObject{
+				bundle.RelationKeyId:     pbtypes.String("id1"),
+				bundle.RelationKeyType:   pbtypes.String("type1"),
+				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_basic)),
+			}
+			obj2 := TestObject{
+				bundle.RelationKeyId:     pbtypes.String("id2"),
+				bundle.RelationKeyType:   pbtypes.String("type2"),
+				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_basic)),
+			}
+			type1 := TestObject{
+				bundle.RelationKeyId:        pbtypes.String("type1"),
+				bundle.RelationKeyType:      pbtypes.String("objectType"),
+				bundle.RelationKeyUniqueKey: pbtypes.String("ot-template"),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+			}
+			type2 := TestObject{
+				bundle.RelationKeyId:        pbtypes.String("type2"),
+				bundle.RelationKeyType:      pbtypes.String("objectType"),
+				bundle.RelationKeyUniqueKey: pbtypes.String("ot-page"),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+			}
+
+			s.AddObjects(t, []TestObject{obj1, obj2, type1, type2})
+
+			flt, err := database.NewFilters(database.Query{
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: "type.uniqueKey",
+						Condition:   model.BlockContentDataviewFilter_NotEqual,
+						Value:       pbtypes.String("ot-template"),
+					},
+					{
+						RelationKey: bundle.RelationKeyLayout.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Int64(int64(model.ObjectType_basic)),
+					},
+				},
+			}, s, arena)
+			require.NoError(t, err)
+
+			recs, err := s.QueryRaw(flt, 0, 0)
+			require.NoError(t, err)
+			assertRecordsEqual(t, []TestObject{obj2}, recs)
+		})
+
 	})
 }
 
@@ -1181,4 +1231,37 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 		}
 		assert.Equal(t, []string{spaceId}, getSpaceIdsFromFilter(f))
 	})
+}
+
+func TestIndex(t *testing.T) {
+	s := NewStoreFixture(t)
+	obj1 := TestObject{
+		bundle.RelationKeyId:        pbtypes.String("id1"),
+		bundle.RelationKeyName:      pbtypes.String("name1"),
+		bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+	}
+	obj2 := TestObject{
+		bundle.RelationKeyId:   pbtypes.String("id2"),
+		bundle.RelationKeyName: pbtypes.String("name2"),
+	}
+	obj3 := TestObject{
+		bundle.RelationKeyId:   pbtypes.String("id3"),
+		bundle.RelationKeyName: pbtypes.String("name3"),
+	}
+	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
+
+	recs, err := s.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.Bool(true),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	assertRecordsEqual(t, []TestObject{
+		obj2, obj3,
+	}, recs)
 }
