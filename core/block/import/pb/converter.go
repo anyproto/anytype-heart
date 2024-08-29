@@ -62,7 +62,7 @@ func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, p
 		return nil, common.NewFromError(fmt.Errorf("wrong parameters"), req.Mode)
 	}
 	allErrors := common.NewError(req.Mode)
-	allSnapshots, widgetSnapshot, workspaceSnapshot := p.getSnapshots(progress, params, req.IsMigration, allErrors)
+	allSnapshots, widgetSnapshot, workspaceSnapshot := p.getSnapshots(progress, params, req.IsMigration, req.IsNewSpace, allErrors)
 	oldToNewID := p.updateLinksToObjects(allSnapshots, allErrors, len(params.GetPath()))
 	p.updateDetails(allSnapshots)
 	if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {
@@ -102,7 +102,7 @@ func (p *Pb) getParams(params pb.IsRpcObjectImportRequestParams) (*pb.RpcObjectI
 func (p *Pb) getSnapshots(
 	progress process.Progress,
 	params *pb.RpcObjectImportRequestPbParams,
-	isMigration bool,
+	isMigration, isNewSpace bool,
 	allErrors *common.ConvertError,
 ) (
 	allSnapshots []*common.Snapshot,
@@ -114,7 +114,7 @@ func (p *Pb) getSnapshots(
 			allErrors.Add(common.ErrCancel)
 			return nil, nil, nil
 		}
-		snapshots, widget, workspace := p.handleImportPath(len(path), path, allErrors, isMigration, params.GetImportType())
+		snapshots, widget, workspace := p.handleImportPath(len(path), path, allErrors, isMigration, isNewSpace, params.GetImportType())
 		if allErrors.ShouldAbortImport(len(params.GetPath()), model.Import_Pb) {
 			return nil, nil, nil
 		}
@@ -129,7 +129,7 @@ func (p *Pb) handleImportPath(
 	pathCount int,
 	path string,
 	allErrors *common.ConvertError,
-	isMigration bool,
+	isMigration, isNewSpace bool,
 	importType pb.RpcObjectImportRequestPbParamsType,
 ) ([]*common.Snapshot, *common.Snapshot, *common.Snapshot) {
 	importSource := source.GetSource(path)
@@ -163,7 +163,7 @@ func (p *Pb) handleImportPath(
 		needToImportWidgets = p.needToImportWidgets(profile.Address, pr.AccountId)
 		profileID = profile.ProfileId
 	}
-	return p.getSnapshotsFromProvidedFiles(pathCount, importSource, allErrors, path, profileID, needToImportWidgets, isMigration, importType)
+	return p.getSnapshotsFromProvidedFiles(pathCount, importSource, allErrors, path, profileID, needToImportWidgets, isMigration, isNewSpace, importType)
 }
 
 func (p *Pb) extractFiles(importPath string, importSource source.Source) error {
@@ -217,7 +217,7 @@ func (p *Pb) getSnapshotsFromProvidedFiles(
 	pbFiles source.Source,
 	allErrors *common.ConvertError,
 	path, profileID string,
-	needToImportWidgets, isMigration bool,
+	needToImportWidgets, isMigration, isNewSpace bool,
 	importType pb.RpcObjectImportRequestPbParamsType,
 ) (
 	allSnapshots []*common.Snapshot,
@@ -237,7 +237,7 @@ func (p *Pb) getSnapshotsFromProvidedFiles(
 			}
 		}
 		if snapshot != nil {
-			if p.shouldImportSnapshot(snapshot, needToImportWidgets, importType) {
+			if p.shouldImportSnapshot(snapshot, needToImportWidgets, isNewSpace, importType) {
 				allSnapshots = append(allSnapshots, snapshot)
 			}
 			if snapshot.SbType == smartblock.SmartBlockTypeWidget {
@@ -454,8 +454,8 @@ func (p *Pb) setSourceFilePath(sn *pb.SnapshotWithType) {
 	sn.Snapshot.Data.Details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(sourceFilePath)
 }
 
-func (p *Pb) shouldImportSnapshot(snapshot *common.Snapshot, needToImportWidgets bool, importType pb.RpcObjectImportRequestPbParamsType) bool {
-	return (snapshot.SbType == smartblock.SmartBlockTypeWorkspace && importType == pb.RpcObjectImportRequestPbParams_SPACE) ||
+func (p *Pb) shouldImportSnapshot(snapshot *common.Snapshot, needToImportWidgets, isNewSpace bool, importType pb.RpcObjectImportRequestPbParamsType) bool {
+	return (snapshot.SbType == smartblock.SmartBlockTypeWorkspace && isNewSpace) ||
 		(snapshot.SbType != smartblock.SmartBlockTypeWidget && snapshot.SbType != smartblock.SmartBlockTypeWorkspace) ||
 		(snapshot.SbType == smartblock.SmartBlockTypeWidget && (needToImportWidgets || importType == pb.RpcObjectImportRequestPbParams_EXPERIENCE)) // we import widget in case of experience import
 }

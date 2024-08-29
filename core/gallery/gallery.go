@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	timeout = time.Second * 30
+	defaultTimeout = time.Second * 30
 
 	indexURI = "https://tools.gallery.any.coop/app-index.json"
 )
@@ -52,7 +52,7 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 	if checkWhitelist && !IsInWhitelist(url) {
 		return nil, fmt.Errorf("URL '%s' is not in whitelist", url)
 	}
-	raw, err := getRawJson(url)
+	raw, err := getRawJson(url, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -82,8 +82,9 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 	return info, nil
 }
 
-func DownloadGalleryIndex() (*pb.RpcGalleryDownloadIndexResponse, error) {
-	raw, err := getRawJson(indexURI)
+// DownloadGalleryIndex accepts timeoutInSeconds that is timeout to wait for HTTP response
+func DownloadGalleryIndex(timeoutInSeconds int) (*pb.RpcGalleryDownloadIndexResponse, error) {
+	raw, err := getRawJson(indexURI, timeoutInSeconds)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDownloadIndex, err)
 	}
@@ -113,7 +114,11 @@ func IsInWhitelist(url string) bool {
 	return false
 }
 
-func getRawJson(url string) ([]byte, error) {
+func getRawJson(url string, timeoutInSeconds int) ([]byte, error) {
+	timeout := defaultTimeout
+	if timeoutInSeconds != 0 {
+		timeout = time.Duration(timeoutInSeconds) * time.Second
+	}
 	client := http.Client{Timeout: timeout}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {

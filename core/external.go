@@ -109,7 +109,7 @@ func (mw *Middleware) GalleryDownloadManifest(_ context.Context, req *pb.RpcGall
 }
 
 func (mw *Middleware) GalleryDownloadIndex(_ context.Context, _ *pb.RpcGalleryDownloadIndexRequest) *pb.RpcGalleryDownloadIndexResponse {
-	response, err := gallery.DownloadGalleryIndex()
+	response, err := gallery.DownloadGalleryIndex(0)
 	if response == nil {
 		response = &pb.RpcGalleryDownloadIndexResponse{}
 	}

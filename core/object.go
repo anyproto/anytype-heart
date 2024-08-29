@@ -980,9 +980,7 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 	return response(errCode, err)
 }
 
-func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
-	ctx := mw.newContext(cctx)
-
+func (mw *Middleware) ObjectImportUseCase(ctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
 	response := func(code pb.RpcObjectImportUseCaseResponseErrorCode, err error) *pb.RpcObjectImportUseCaseResponse {
 		resp := &pb.RpcObjectImportUseCaseResponse{
 			Error: &pb.RpcObjectImportUseCaseResponseError{
@@ -991,14 +989,12 @@ func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjec
 		}
 		if err != nil {
 			resp.Error.Description = getErrorDescription(err)
-		} else {
-			resp.Event = ctx.GetResponseEvent()
 		}
 		return resp
 	}
 
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
-	return response(objCreator.CreateObjectsForUseCase(ctx, req.SpaceId, req.UseCase))
+	return response(objCreator.CreateObjectsForUseCase(ctx, req.SpaceId, req.CachePath, req.UseCase))
 }
 
 func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObjectImportExperienceRequest) *pb.RpcObjectImportExperienceResponse {
@@ -1015,6 +1011,6 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 	}
 
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
-	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace)
+	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.CachePath, req.IsNewSpace)
 	return response(common.GetGalleryResponseCode(err), err)
 }
