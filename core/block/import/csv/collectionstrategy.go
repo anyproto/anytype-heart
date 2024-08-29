@@ -109,20 +109,22 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 		if !useFirstRowForRelations {
 			relationName = getDefaultRelationName(i)
 		}
-		id := bson.NewObjectId().Hex()
+		key := bson.NewObjectId().Hex()
 		relations = append(relations, &model.Relation{
 			Format: model.RelationFormat_longtext,
 			Name:   relationName,
-			Key:    id,
+			Key:    key,
 		})
+		details := getRelationDetails(relationName, key, float64(model.RelationFormat_longtext))
+		id := pbtypes.GetString(details, bundle.RelationKeyId.String())
 		relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
 			Id: id,
 			Snapshot: &common.SnapshotModel{
 				SbType: smartblock.SmartBlockTypeRelation,
 				Data: &common.StateSnapshot{
-					Details:     getRelationDetails(relationName, id, float64(model.RelationFormat_longtext)),
+					Details:     details,
 					ObjectTypes: []string{bundle.TypeKeyRelation.String()},
-					Key:         id,
+					Key:         key,
 				}},
 		})
 	}
@@ -176,7 +178,7 @@ func getRelationDetails(name, key string, format float64) *domain.Details {
 	details.SetString(bundle.RelationKeyName, name)
 	details.SetString(bundle.RelationKeyRelationKey, key)
 	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, key)
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
 		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details

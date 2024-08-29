@@ -1,8 +1,8 @@
 package ftsearch
 
 /*
-#cgo windows,amd64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/windows-amd64 -ltantivy_go -lm -pthread -lws2_32 -lbcrypt -lwsock32 -lntdll -luserenv -lsynchronization
-#cgo darwin,amd64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/darwin-amd64 -ltantivy_go -lm -pthread -framework CoreFoundation -framework Security -ldl
+#cgo windows,amd64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/windows-amd64 -ltantivy_go -lm -pthread -lws2_32 -lbcrypt -lntdll -luserenv
+#cgo darwin,amd64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/darwin-amd64 -ltantivy_go -lm -pthread -ldl
 #cgo darwin,arm64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/darwin-arm64 -ltantivy_go -lm -pthread -ldl
 #cgo ios,arm64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/ios-arm64 -ltantivy_go -lm -pthread -ldl
 #cgo ios,amd64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/ios-amd64 -ltantivy_go -lm -pthread -ldl
@@ -36,8 +36,9 @@ func TantivyNew() FTSearch {
 }
 
 var specialChars = map[rune]struct{}{
-	'+': {}, '-': {}, '&': {}, '|': {}, '!': {}, '(': {}, ')': {}, '{': {}, '}': {},
-	'[': {}, ']': {}, '^': {}, '"': {}, '~': {}, '*': {}, '?': {}, ':': {},
+	'+': {}, '^': {}, '`': {}, ':': {}, '{': {},
+	'}': {}, '"': {}, '[': {}, ']': {}, '(': {},
+	')': {}, '~': {}, '!': {}, '\\': {}, '*': {},
 }
 
 type ftSearchTantivy struct {
@@ -350,10 +351,11 @@ func escapeQuery(query string) string {
 
 	for _, char := range query {
 		if _, found := specialChars[char]; found {
-			escapedQuery.WriteRune('\\')
+			escapedQuery.WriteRune(' ')
 		}
 		escapedQuery.WriteRune(char)
 	}
 
-	return escapedQuery.String()
+	resultQuery := escapedQuery.String()
+	return "(\"" + resultQuery + "\" OR " + resultQuery + ")"
 }

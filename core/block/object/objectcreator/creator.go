@@ -22,13 +22,17 @@ import (
 )
 
 type (
-	CollectionService interface {
+	collectionService interface {
 		CreateCollection(details *domain.Details, flags []*model.InternalFlag) (coresb.SmartBlockType, *domain.Details, *state.State, error)
 	}
 
-	TemplateService interface {
+	templateService interface {
 		CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error)
 		TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
+	}
+
+	bookmarkService interface {
+		CreateObjectAndFetch(ctx context.Context, spaceId string, details *domain.Details) (objectID string, newDetails *domain.Details, err error)
 	}
 )
 
@@ -47,16 +51,13 @@ type Service interface {
 	app.Component
 }
 
-type bookmarkService interface {
-	CreateObjectAndFetch(ctx context.Context, spaceId string, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *domain.Details, err error)
-}
 
 type service struct {
 	objectStore       objectstore.ObjectStore
-	collectionService CollectionService
+	collectionService collectionService
 	bookmarkService   bookmarkService
 	spaceService      space.Service
-	templateService   TemplateService
+	templateService   templateService
 }
 
 func NewCreator() Service {
@@ -66,9 +67,9 @@ func NewCreator() Service {
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.bookmarkService = app.MustComponent[bookmarkService](a)
-	s.collectionService = app.MustComponent[CollectionService](a)
+	s.collectionService = app.MustComponent[collectionService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.templateService = app.MustComponent[TemplateService](a)
+	s.templateService = app.MustComponent[templateService](a)
 	return nil
 }
 
@@ -122,9 +123,7 @@ func (s *service) createObjectInSpace(
 	}
 	switch req.ObjectTypeKey {
 	case bundle.TypeKeyBookmark:
-		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), &pb.RpcObjectCreateBookmarkRequest{
-			Details: details.ToProto(),
-		})
+		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), details)
 	case bundle.TypeKeySet:
 		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_set))
 		return s.createSet(ctx, space, createSetRequest{

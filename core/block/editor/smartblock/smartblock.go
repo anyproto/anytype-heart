@@ -540,7 +540,13 @@ func (sb *smartBlock) onMetaChange(details *domain.Details) {
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
 func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier bool) (ids []string) {
-	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.Space(), includeRelations, includeObjTypes, includeCreatorModifier)
+	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.Space(), objectlink.Flags{
+		Blocks:                   true,
+		Details:                  true,
+		Relations:                includeRelations,
+		Types:                    includeObjTypes,
+		CreatorModifierWorkspace: includeCreatorModifier,
+	})
 }
 
 func (sb *smartBlock) RegisterSession(ctx session.Context) {

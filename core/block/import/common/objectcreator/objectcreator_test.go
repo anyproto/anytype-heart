@@ -91,12 +91,16 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		doc.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			"oldKey": domain.String("test"),
 		}))
+		doc.AddRelationLinks(&model.RelationLink{
+			Key: "oldKey",
+		})
 		// when
 		oc.updateKeys(doc, oldToNew)
 
 		// then
 		assert.False(t, doc.Details().Has("oldKey"))
 		assert.Equal(t, domain.String("test"), doc.Details().Get("newKey"))
+		assert.True(t, doc.HasRelation("newKey"))
 	})
 	t.Run("updateKeys - update object type key", func(t *testing.T) {
 		// given
@@ -123,5 +127,23 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		// then
 		assert.False(t, doc.Details().Has("newKey"))
 		assert.Equal(t, domain.TypeKey(""), doc.ObjectTypeKey())
+	})
+	t.Run("keys are the same", func(t *testing.T) {
+		// given
+		oc := ObjectCreator{}
+		oldToNew := map[string]string{"oldId": "newId", "key": "key"}
+		doc := state.NewDoc("oldId", nil).(*state.State)
+		doc.SetDetails(&types.Struct{Fields: map[string]*types.Value{
+			"key": pbtypes.String("test"),
+		}})
+		doc.AddRelationLinks(&model.RelationLink{
+			Key: "key",
+		})
+		// when
+		oc.updateKeys(doc, oldToNew)
+
+		// then
+		assert.Equal(t, pbtypes.String("test"), doc.Details().GetFields()["key"])
+		assert.True(t, doc.HasRelation("key"))
 	})
 }

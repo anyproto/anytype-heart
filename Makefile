@@ -135,6 +135,8 @@ endif
 	@cp pkg/lib/bundle/relations.json dist/ios/json/
 	@cp pkg/lib/bundle/internal*.json dist/ios/json/
 	@go mod tidy
+	@echo 'Repacking iOS framework...'
+	@go run cmd/iosrepack/main.go
 
 install-dev-ios: setup-go build-ios protos-swift
 	@echo 'Installing iOS framework locally at $(CLIENT_IOS_PATH)...'
@@ -337,7 +339,7 @@ endif
 ### Tantivy Section
 
 REPO := anyproto/tantivy-go
-VERSION := v0.0.7
+VERSION := v0.0.9
 OUTPUT_DIR := deps/libs
 SHA_FILE = tantivity_sha256.txt
 
@@ -349,6 +351,7 @@ TANTIVY_LIBS := android-386.tar.gz \
          darwin-arm64.tar.gz \
          ios-amd64.tar.gz \
          ios-arm64.tar.gz \
+         ios-arm64-sim.tar.gz \
          linux-amd64-musl.tar.gz \
          windows-amd64.tar.gz
 
@@ -376,10 +379,12 @@ download-tantivy-all-force: download-tantivy
 	@echo "SHA256 checksums generated."
 
 download-tantivy-all: download-tantivy
+	@rm -rf /deps/libs/*
 	@echo "Validating SHA256 checksums..."
 	@shasum -a 256 -c $(SHA_FILE) --status || { echo "Hash mismatch detected."; exit 1; }
 	@echo "All files are valid."
 
 download-tantivy-local:
+	@rm -rf /deps/libs/*
 	@mkdir -p $(OUTPUT_DIR)
 	@cp -r $(TANTIVY_GO_PATH)/libs/ $(OUTPUT_DIR)

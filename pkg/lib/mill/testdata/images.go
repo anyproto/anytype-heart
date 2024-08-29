@@ -65,4 +65,18 @@ var Images = []TestImage{
 		Width:   102,
 		Height:  79,
 	},
+	{
+		Path:    "testdata/text.psd",
+		Format:  "psd",
+		HasExif: true,
+		Width:   800,
+		Height:  600,
+	},
+	{
+		Path:    "testdata/image.tif",
+		Format:  "tiff",
+		HasExif: true,
+		Width:   1728,
+		Height:  2376,
+	},
 }

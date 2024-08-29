@@ -265,3 +265,19 @@ func FloatsInto[T numeric](from []float64) []T {
 	}
 	return to
 }
+
+// MergeUniqBy merges two slices with comparator. Resulting slice saves values' order and uniqueness.
+// Input slices MUST contain only unique values
+func MergeUniqBy[T comparable](s1, s2 []T, equal func(v1, v2 T) bool) (result []T) {
+	result = make([]T, len(s1))
+	copy(result, s1)
+	for _, v2 := range s2 {
+		if !slices.ContainsFunc(s1, func(v1 T) bool {
+			return equal(v1, v2)
+		}) {
+			result = append(result, v2)
+		}
+	}
+
+	return result
+}

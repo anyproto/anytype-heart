@@ -124,6 +124,23 @@ func TestEq_FilterObject(t *testing.T) {
 		obj = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(2)})
 		assertFilter(t, eq, obj, false)
 	})
+
+	t.Run("not equal true: no key", func(t *testing.T) {
+		eq := FilterEq{Key: "k", Value: pbtypes.Bool(true), Cond: model.BlockContentDataviewFilter_NotEqual}
+		obj := &types.Struct{Fields: map[string]*types.Value{}}
+		assertFilter(t, eq, obj, true)
+
+		obj = &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Bool(true)}}
+		assertFilter(t, eq, obj, false)
+	})
+	t.Run("not equal false: no key", func(t *testing.T) {
+		eq := FilterEq{Key: "k", Value: pbtypes.Bool(false), Cond: model.BlockContentDataviewFilter_NotEqual}
+		obj := &types.Struct{Fields: map[string]*types.Value{}}
+		assertFilter(t, eq, obj, true)
+
+		obj = &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Bool(false)}}
+		assertFilter(t, eq, obj, false)
+	})
 }
 
 func TestNot_FilterObject(t *testing.T) {
@@ -428,7 +445,7 @@ func TestMakeAndFilter(t *testing.T) {
 }
 
 func TestNestedFilters(t *testing.T) {
-	t.Run("simple", func(t *testing.T) {
+	t.Run("equal", func(t *testing.T) {
 		store := NewMockObjectStore(t)
 		// Query will occur while nested filter resolving
 		store.EXPECT().QueryRaw(mock.Anything, 0, 0).Return([]Record{
@@ -459,6 +476,44 @@ func TestNestedFilters(t *testing.T) {
 		assertFilter(t, f, obj2, true)
 	})
 
+	t.Run("not equal", func(t *testing.T) {
+		store := NewMockObjectStore(t)
+		// Query will occur while nested filter resolving
+		store.EXPECT().QueryRaw(mock.Anything, 0, 0).Return([]Record{
+			{
+				Details: &types.Struct{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():        pbtypes.String("id1"),
+						bundle.RelationKeyUniqueKey.String(): pbtypes.String("ot-note"),
+					},
+				},
+			},
+			{
+				Details: &types.Struct{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():        pbtypes.String("id2"),
+						bundle.RelationKeyUniqueKey.String(): pbtypes.String("ot-note"),
+					},
+				},
+			},
+		}, nil)
+
+		f, err := MakeFilter("spaceId", &model.BlockContentDataviewFilter{
+			RelationKey: "type.uniqueKey",
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.String("ot-note"),
+		}, store)
+		require.NoError(t, err)
+
+		obj1 := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyType.String(): pbtypes.StringList([]string{"id1"})}}
+		obj2 := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyType.String(): pbtypes.StringList([]string{"id2", "id1"})}}
+		obj3 := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyType.String(): pbtypes.StringList([]string{"id3"})}}
+		obj4 := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyType.String(): pbtypes.StringList([]string{"id4", "id5"})}}
+		assertFilter(t, f, obj1, false)
+		assertFilter(t, f, obj2, false)
+		assertFilter(t, f, obj3, true)
+		assertFilter(t, f, obj4, true)
+	})
 }
 
 func TestFilterExists(t *testing.T) {
