@@ -59,7 +59,7 @@ func newFixture(t *testing.T) *fixture {
 	object := New(sb, accountService, dbProvider, eventSender)
 
 	source := mock_source.NewMockStore(t)
-	source.EXPECT().ReadStoreDoc(ctx, mock.Anything).Return(nil)
+	source.EXPECT().ReadStoreDoc(ctx, mock.Anything, mock.Anything).Return(nil)
 
 	err = object.Init(&smartblock.InitContext{
 		Ctx:    ctx,
@@ -86,7 +86,7 @@ func TestAddMessage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, changeId, messageId)
 
-	messages, err := fx.GetMessages(ctx)
+	messages, err := fx.GetMessages(ctx, "", 0)
 	require.NoError(t, err)
 
 	require.Len(t, messages, 1)
@@ -128,7 +128,7 @@ func TestEditMessage(t *testing.T) {
 	err = fx.EditMessage(ctx, messageId, editedMessage)
 	require.NoError(t, err)
 
-	messages, err := fx.GetMessages(ctx)
+	messages, err := fx.GetMessages(ctx, "", 0)
 	require.NoError(t, err)
 
 	require.Len(t, messages, 1)

@@ -6,16 +6,24 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-type message struct {
+const (
+	creatorKey   = "creator"
+	createdAtKey = "createdAt"
+	reactionsKey = "reactions"
+	contentKey   = "content"
+	orderKey     = "_o"
+)
+
+type messageModel struct {
 	val *fastjson.Value
 }
 
-func newMessage(val *fastjson.Value) *message {
-	return &message{val: val}
+func newMessage(val *fastjson.Value) *messageModel {
+	return &messageModel{val: val}
 }
 
-func (m *message) getCreator() string {
-	return string(m.val.GetStringBytes("creator"))
+func (m *messageModel) getCreator() string {
+	return string(m.val.GetStringBytes(creatorKey))
 }
 
 /*
@@ -92,13 +100,13 @@ func marshalMessageTo(arena *fastjson.Arena, msg *model.ChatMessage) *fastjson.V
 
 	root := arena.NewObject()
 	root.Set("replyToMessageId", arena.NewString(msg.ReplyToMessageId))
-	root.Set("content", content)
-	root.Set("reactions", reactions)
+	root.Set(contentKey, content)
+	root.Set(reactionsKey, reactions)
 	return root
 }
 
 func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
-	inMarks := root.GetArray("content", "message", "marks")
+	inMarks := root.GetArray(contentKey, "message", "marks")
 	marks := make([]*model.BlockContentTextMark, 0, len(inMarks))
 	for _, inMark := range inMarks {
 		mark := &model.BlockContentTextMark{
@@ -112,13 +120,13 @@ func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 		marks = append(marks, mark)
 	}
 	content := &model.ChatMessageMessageContent{
-		Text:  string(root.GetStringBytes("content", "message", "text")),
+		Text:  string(root.GetStringBytes(contentKey, "message", "text")),
 		Style: model.BlockContentTextStyle(root.GetInt("content", "message", "style")),
 		Marks: marks,
 	}
 
 	var attachments []*model.ChatMessageAttachment
-	inAttachments := root.GetObject("content", "attachments")
+	inAttachments := root.GetObject(contentKey, "attachments")
 	if inAttachments != nil {
 		attachments = make([]*model.ChatMessageAttachment, 0, inAttachments.Len())
 		inAttachments.Visit(func(targetObjectId []byte, inAttachment *fastjson.Value) {
@@ -132,7 +140,7 @@ func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 	reactions := &model.ChatMessageReactions{
 		Reactions: map[string]*model.ChatMessageReactionsIdentityList{},
 	}
-	inReactions := root.GetObject("reactions")
+	inReactions := root.GetObject(reactionsKey)
 	if inReactions != nil {
 		inReactions.Visit(func(emoji []byte, inReaction *fastjson.Value) {
 			inReactionArr := inReaction.GetArray()
@@ -148,8 +156,8 @@ func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 
 	return &model.ChatMessage{
 		Id:               string(root.GetStringBytes("id")),
-		Creator:          string(root.GetStringBytes("creator")),
-		CreatedAt:        root.GetInt64("createdAt"),
+		Creator:          string(root.GetStringBytes(creatorKey)),
+		CreatedAt:        root.GetInt64(createdAtKey),
 		OrderId:          string(root.GetStringBytes("_o", "id")),
 		ReplyToMessageId: string(root.GetStringBytes("replyToMessageId")),
 		Message:          content,

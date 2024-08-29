@@ -27,8 +27,8 @@ func (d ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err er
 }
 
 func (d ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) (err error) {
-	ch.Value.Set("createdAt", ch.Arena.NewNumberInt(int(ch.Change.Timestamp)))
-	ch.Value.Set("creator", ch.Arena.NewString(ch.Change.Creator))
+	ch.Value.Set(createdAtKey, ch.Arena.NewNumberInt(int(ch.Change.Timestamp)))
+	ch.Value.Set(creatorKey, ch.Arena.NewString(ch.Change.Creator))
 
 	message := unmarshalMessage(ch.Value)
 	message.OrderId = ch.Change.Order
@@ -54,8 +54,8 @@ func (d ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (
 		return storestate.DeleteModeDelete, fmt.Errorf("get message: %w", err)
 	}
 
-	creator := string(doc.Value().GetStringBytes("creator"))
-	if creator != ch.Change.Creator {
+	message := newMessage(doc.Value())
+	if message.getCreator() != ch.Change.Creator {
 		return storestate.DeleteModeDelete, errors.New("can't delete not own message")
 	}
 
@@ -77,23 +77,20 @@ func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModif
 		}
 
 		if modified {
+			message := unmarshalMessage(result)
+
 			switch path {
-			case "reactions":
+			case reactionsKey:
 				// TODO Count validation
-			case "content":
-				creator := string(v.GetStringBytes("creator"))
+				d.subscription.updateReactions(message)
+			case contentKey:
+				creator := message.Creator
 				if creator != ch.Change.Creator {
 					return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify not own message"))
 				}
+				d.subscription.updateFull(message)
 			default:
 				return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)
-			}
-
-			message := unmarshalMessage(result)
-			if path == "reactions" {
-				d.subscription.updateReactions(message)
-			} else {
-				d.subscription.updateFull(message)
 			}
 		}
 

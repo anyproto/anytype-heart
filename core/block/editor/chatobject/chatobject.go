@@ -19,9 +19,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const collectionName = "chats"
-const dataKey = "data"
-const creatorKey = "creator"
+const (
+	collectionName = "chats"
+	descOrder      = "-_o.id"
+)
 
 type StoreObject interface {
 	smartblock.SmartBlock
@@ -106,7 +107,7 @@ func (s *storeObject) GetMessages(ctx context.Context, beforeOrderId string, lim
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
 	if beforeOrderId != "" {
-		qry := coll.Find(query.Key{Path: []string{"_o", "id"}, Filter: query.NewComp(query.CompOpLt, beforeOrderId)}).Sort("-_o.id").Limit(uint(limit))
+		qry := coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, beforeOrderId)}).Sort(descOrder).Limit(uint(limit))
 		msgs, err := s.queryMessages(ctx, qry)
 		if err != nil {
 			return nil, fmt.Errorf("query messages: %w", err)
@@ -116,7 +117,7 @@ func (s *storeObject) GetMessages(ctx context.Context, beforeOrderId string, lim
 		})
 		return msgs, nil
 	} else {
-		qry := coll.Find(nil).Sort("_o.id").Limit(uint(limit))
+		qry := coll.Find(nil).Sort(descOrder).Limit(uint(limit))
 		return s.queryMessages(ctx, qry)
 	}
 }
@@ -187,11 +188,11 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 	obj := marshalMessageTo(arena, newMessage)
 
 	builder := storestate.Builder{}
-	err := builder.Modify(collectionName, messageId, []string{"content"}, pb.ModifyOp_Set, obj.Get("content"))
+	err := builder.Modify(collectionName, messageId, []string{contentKey}, pb.ModifyOp_Set, obj.Get(contentKey))
 	if err != nil {
 		return fmt.Errorf("modify content: %w", err)
 	}
-	err = builder.Modify(collectionName, messageId, []string{"reactions"}, pb.ModifyOp_Set, obj.Get("reactions"))
+	err = builder.Modify(collectionName, messageId, []string{reactionsKey}, pb.ModifyOp_Set, obj.Get(reactionsKey))
 	if err != nil {
 		return fmt.Errorf("modify reactions: %w", err)
 	}
@@ -211,7 +212,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*
 	if err != nil {
 		return nil, 0, fmt.Errorf("get collection: %w", err)
 	}
-	query := coll.Find(nil).Sort("-_o.id").Limit(uint(limit))
+	query := coll.Find(nil).Sort(descOrder).Limit(uint(limit))
 	messages, err := s.queryMessages(ctx, query)
 	if err != nil {
 		return nil, 0, fmt.Errorf("query messages: %w", err)
