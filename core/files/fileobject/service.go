@@ -174,19 +174,19 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 	}
 
 	objectIds, _, err := s.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 			{
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				RelationKey: bundle.RelationKeyUniqueKey,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String(personalSpace.Id()),
+				Value:       domain.String(personalSpace.Id()),
 			},
 		},
 	})

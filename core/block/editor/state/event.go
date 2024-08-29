@@ -332,7 +332,7 @@ func StructDiffIntoEventsWithSubIds(contextId string, diff *domain.Details, keys
 			return true
 		}
 		// TODO This is not correct! Rewrite this code to use separate diff structures
-		if v.Null() {
+		if v.IsNull() {
 			removed = append(removed, key)
 			return true
 		}

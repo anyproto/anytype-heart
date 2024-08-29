@@ -318,6 +318,28 @@ func Float64List(v []float64) Value {
 	return Value{ok: true, value: v}
 }
 
+func ValueList(vs []Value) Value {
+	// Prefer string list
+	if len(vs) == 0 {
+		return StringList(nil)
+	}
+	if vs[0].IsString() {
+		strs := make([]string, 0, len(vs))
+		for _, v := range vs {
+			strs = append(strs, v.String())
+		}
+		return StringList(strs)
+	}
+	if vs[0].IsFloat64() {
+		floats := make([]float64, 0, len(vs))
+		for _, v := range vs {
+			floats = append(floats, v.Float64())
+		}
+		return Float64List(floats)
+	}
+	return StringList(nil)
+}
+
 func (v Value) Raw() any {
 	return v.value
 }
@@ -366,7 +388,7 @@ func (v Value) IsFloatList() bool {
 	return ok
 }
 
-func (v Value) Null() bool {
+func (v Value) IsNull() bool {
 	if !v.ok {
 		return false
 	}
@@ -624,7 +646,7 @@ func (v Value) Compare(other Value) int {
 
 	{
 		// Two null values are always equal
-		ok := v.Null()
+		ok := v.IsNull()
 		if ok {
 			return 0
 		}
@@ -693,7 +715,7 @@ func (v Value) Equal(other Value) bool {
 		return true
 	}
 
-	if v.Null() && other.Null() {
+	if v.IsNull() && other.IsNull() {
 		return true
 	}
 

@@ -684,8 +684,8 @@ func optionsToMap(spaceID string, key domain.RelationKey, store ObjectStore) map
 	return result
 }
 
-func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFilter, store ObjectStore, relationKey string, nestedRelationKey string) (Filter, error) {
-	rawNestedFilter := proto.Clone(rawFilter).(*model.BlockContentDataviewFilter)
+func makeFilterNestedIn(spaceID string, rawFilter FilterRequest, store ObjectStore, relationKey domain.RelationKey, nestedRelationKey domain.RelationKey) (Filter, error) {
+	rawNestedFilter := rawFilter
 	rawNestedFilter.RelationKey = nestedRelationKey
 	nestedFilter, err := MakeFilter(spaceID, rawNestedFilter, store)
 	if err != nil {
@@ -711,7 +711,7 @@ func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFil
 // This filter uses special machinery in able to work: it only functions when IDs field is populated by IDs of objects
 // that match FilterForNestedObjects. You can't just use FilterNestedIn without populating IDs field
 type FilterNestedIn struct {
-	Key                    string
+	Key                    domain.RelationKey
 	FilterForNestedObjects Filter
 
 	IDs []string
@@ -748,17 +748,17 @@ func (i *FilterNestedIn) IterateNestedFilters(fn func(nestedFilter Filter) error
 
 // See FilterNestedIn for details
 type FilterNestedNotIn struct {
-	Key                    string
+	Key                    domain.RelationKey
 	FilterForNestedObjects Filter
 
 	IDs []string
 }
 
-func makeFilterNestedNotIn(spaceID string, rawFilter *model.BlockContentDataviewFilter, store ObjectStore, relationKey string, nestedRelationKey string) (Filter, error) {
-	rawNestedFilter := proto.Clone(rawFilter).(*model.BlockContentDataviewFilter)
+func makeFilterNestedNotIn(spaceID string, rawFilter FilterRequest, store ObjectStore, relationKey domain.RelationKey, nestedRelationKey domain.RelationKey) (Filter, error) {
+	rawNestedFilter := rawFilter
 	rawNestedFilter.RelationKey = nestedRelationKey
 
-	subQueryRawFilter := proto.Clone(rawFilter).(*model.BlockContentDataviewFilter)
+	subQueryRawFilter := rawFilter
 	subQueryRawFilter.RelationKey = nestedRelationKey
 	subQueryRawFilter.Condition = model.BlockContentDataviewFilter_Equal
 
@@ -773,7 +773,7 @@ func makeFilterNestedNotIn(spaceID string, rawFilter *model.BlockContentDataview
 
 	ids := make([]string, 0, len(records))
 	for _, rec := range records {
-		ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
+		ids = append(ids, rec.Details.GetString(bundle.RelationKeyId))
 	}
 	nestedFilter, err := MakeFilter(spaceID, rawNestedFilter, store)
 	if err != nil {
@@ -789,7 +789,7 @@ func makeFilterNestedNotIn(spaceID string, rawFilter *model.BlockContentDataview
 func (i *FilterNestedNotIn) FilterObject(g *domain.Details) bool {
 	val := g.Get(i.Key)
 	for _, id := range i.IDs {
-		eq := FilterEq{Value: pbtypes.String(id), Cond: model.BlockContentDataviewFilter_Equal}
+		eq := FilterEq{Value: domain.String(id), Cond: model.BlockContentDataviewFilter_Equal}
 		if eq.filterObject(val) {
 			return false
 		}
@@ -798,7 +798,7 @@ func (i *FilterNestedNotIn) FilterObject(g *domain.Details) bool {
 }
 
 func (i *FilterNestedNotIn) AnystoreFilter() query.Filter {
-	path := []string{i.Key}
+	path := []string{i.Key.String()}
 	conds := make([]query.Filter, 0, len(i.IDs))
 	for _, id := range i.IDs {
 		conds = append(conds, query.Key{

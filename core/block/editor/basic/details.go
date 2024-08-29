@@ -82,7 +82,7 @@ func applyDetailUpdates(oldDetails *domain.Details, updates []domain.Detail) *do
 		newDetails = domain.NewDetails()
 	}
 	for _, update := range updates {
-		if update.Value.Null() {
+		if update.Value.IsNull() {
 			newDetails.Delete(update.Key)
 		} else {
 			newDetails.Set(update.Key, update.Value)
@@ -118,7 +118,7 @@ func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v 
 	if err != nil {
 		return err
 	}
-	if v.Null() {
+	if v.IsNull() {
 		// allow null value for any field
 		return nil
 	}
