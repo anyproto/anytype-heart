@@ -11,12 +11,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fileFixture struct {
@@ -76,9 +76,9 @@ func TestFile(t *testing.T) {
 			// given
 			fx := newFixture(t)
 			fileSb := smarttest.New("root")
-			fileSb.SetDetails(nil, []*model.Detail{{
-				Key:   bundle.RelationKeyLayout.String(),
-				Value: pbtypes.Int64(int64(testCase.typeLayout)),
+			fileSb.SetDetails(nil, []domain.Detail{{
+				Key:   bundle.RelationKeyLayout,
+				Value: domain.Int64(int64(testCase.typeLayout)),
 			}}, false)
 
 			fx.pickerFx.EXPECT().GetObject(mock.Anything, "testObjId").Return(fileSb, nil)

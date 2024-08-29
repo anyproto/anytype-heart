@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -25,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/mock_storage"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestReindexMarketplaceSpace(t *testing.T) {
@@ -124,20 +124,20 @@ func TestReindexDeletedObjects(t *testing.T) {
 
 	fx.objectStore.AddObjects(t, []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:        pbtypes.String("1"),
-			bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+			bundle.RelationKeyId:        domain.String("1"),
+			bundle.RelationKeyIsDeleted: domain.Bool(true),
 		},
 		{
-			bundle.RelationKeyId:        pbtypes.String("2"),
-			bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+			bundle.RelationKeyId:        domain.String("2"),
+			bundle.RelationKeyIsDeleted: domain.Bool(true),
 		},
 		{
-			bundle.RelationKeyId:        pbtypes.String("3"),
-			bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
-			bundle.RelationKeySpaceId:   pbtypes.String(spaceId3),
+			bundle.RelationKeyId:        domain.String("3"),
+			bundle.RelationKeyIsDeleted: domain.Bool(true),
+			bundle.RelationKeySpaceId:   domain.String(spaceId3),
 		},
 		{
-			bundle.RelationKeyId: pbtypes.String("4"),
+			bundle.RelationKeyId: domain.String("4"),
 		},
 	})
 
@@ -219,32 +219,32 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 
 	fx.objectStore.AddObjects(t, []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:      pbtypes.String("fav1"),
-			bundle.RelationKeySpaceId: pbtypes.String(spaceId1),
+			bundle.RelationKeyId:      domain.String("fav1"),
+			bundle.RelationKeySpaceId: domain.String(spaceId1),
 		},
 		{
-			bundle.RelationKeyId:      pbtypes.String("fav2"),
-			bundle.RelationKeySpaceId: pbtypes.String(spaceId1),
+			bundle.RelationKeyId:      domain.String("fav2"),
+			bundle.RelationKeySpaceId: domain.String(spaceId1),
 		},
 		{
-			bundle.RelationKeyId:      pbtypes.String("trash1"),
-			bundle.RelationKeySpaceId: pbtypes.String(spaceId1),
+			bundle.RelationKeyId:      domain.String("trash1"),
+			bundle.RelationKeySpaceId: domain.String(spaceId1),
 		},
 		{
-			bundle.RelationKeyId:      pbtypes.String("trash2"),
-			bundle.RelationKeySpaceId: pbtypes.String(spaceId1),
+			bundle.RelationKeyId:      domain.String("trash2"),
+			bundle.RelationKeySpaceId: domain.String(spaceId1),
 		},
 		{
-			bundle.RelationKeyId:      pbtypes.String("obj1"),
-			bundle.RelationKeySpaceId: pbtypes.String(spaceId2),
+			bundle.RelationKeyId:      domain.String("obj1"),
+			bundle.RelationKeySpaceId: domain.String(spaceId2),
 		},
 		{
-			bundle.RelationKeyId:      pbtypes.String("obj2"),
-			bundle.RelationKeySpaceId: pbtypes.String(spaceId2),
+			bundle.RelationKeyId:      domain.String("obj2"),
+			bundle.RelationKeySpaceId: domain.String(spaceId2),
 		},
 		{
-			bundle.RelationKeyId:      pbtypes.String("obj3"),
-			bundle.RelationKeySpaceId: pbtypes.String(spaceId2),
+			bundle.RelationKeyId:      domain.String("obj3"),
+			bundle.RelationKeySpaceId: domain.String(spaceId2),
 		},
 	})
 
@@ -338,16 +338,16 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 
 func (fx *IndexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
 	ids, _, err := fx.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 			},
 			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				RelationKey: bundle.RelationKeyIsDeleted,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
+				Value:       domain.Bool(true),
 			},
 		},
 	})
@@ -363,12 +363,12 @@ func TestReindex_addSyncRelations(t *testing.T) {
 
 		fx.objectStore.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:        pbtypes.String("1"),
-				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+				bundle.RelationKeyId:        domain.String("1"),
+				bundle.RelationKeyIsDeleted: domain.Bool(true),
 			},
 			{
-				bundle.RelationKeyId:        pbtypes.String("2"),
-				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+				bundle.RelationKeyId:        domain.String("2"),
+				bundle.RelationKeyIsDeleted: domain.Bool(true),
 			},
 		})
 
@@ -401,12 +401,12 @@ func TestReindex_addSyncRelations(t *testing.T) {
 
 		fx.objectStore.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:        pbtypes.String("1"),
-				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+				bundle.RelationKeyId:        domain.String("1"),
+				bundle.RelationKeyIsDeleted: domain.Bool(true),
 			},
 			{
-				bundle.RelationKeyId:        pbtypes.String("2"),
-				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+				bundle.RelationKeyId:        domain.String("2"),
+				bundle.RelationKeyIsDeleted: domain.Bool(true),
 			},
 		})
 

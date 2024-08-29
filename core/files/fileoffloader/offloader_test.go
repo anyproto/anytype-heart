@@ -11,13 +11,13 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fixture struct {
@@ -67,14 +67,14 @@ func TestOffloadAllFiles(t *testing.T) {
 
 	fx.objectStore.AddObjects(t, []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:               pbtypes.String("fileObjectId1"),
-			bundle.RelationKeyFileId:           pbtypes.String(fileNode1.Cid().String()),
-			bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
+			bundle.RelationKeyId:               domain.String("fileObjectId1"),
+			bundle.RelationKeyFileId:           domain.String(fileNode1.Cid().String()),
+			bundle.RelationKeyFileBackupStatus: domain.Int64(int64(filesyncstatus.Synced)),
 		},
 		{
-			bundle.RelationKeyId:               pbtypes.String("fileObjectId2"),
-			bundle.RelationKeyFileId:           pbtypes.String(fileNode2.Cid().String()),
-			bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Limited)),
+			bundle.RelationKeyId:               domain.String("fileObjectId2"),
+			bundle.RelationKeyFileId:           domain.String(fileNode2.Cid().String()),
+			bundle.RelationKeyFileBackupStatus: domain.Int64(int64(filesyncstatus.Limited)),
 		},
 	})
 

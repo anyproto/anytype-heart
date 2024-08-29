@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -93,23 +92,23 @@ func TestImageDetails(t *testing.T) {
 
 	for _, testCase := range []struct {
 		key   domain.RelationKey
-		value *types.Value
+		value domain.Value
 	}{
-		{key: bundle.RelationKeyWidthInPixels, value: pbtypes.Int64(100)},
-		{key: bundle.RelationKeyHeightInPixels, value: pbtypes.Int64(68)},
-		{key: bundle.RelationKeyIsHidden, value: nil},
-		{key: bundle.RelationKeyName, value: pbtypes.String("myFile")},
-		{key: bundle.RelationKeyFileExt, value: pbtypes.String("jpg")},
-		{key: bundle.RelationKeyFileMimeType, value: pbtypes.String("image/jpeg")},
-		{key: bundle.RelationKeySizeInBytes, value: pbtypes.Int64(5480)},
-		{key: bundle.RelationKeyCreatedDate, value: pbtypes.Int64(createdDate.Unix())},
-		{key: bundle.RelationKeyCamera, value: pbtypes.String("Canon EOS 40D")},
-		{key: bundle.RelationKeyExposure, value: pbtypes.String("1/160")},
-		{key: bundle.RelationKeyFocalRatio, value: pbtypes.Float64(7.1)},
-		{key: bundle.RelationKeyCameraIso, value: pbtypes.Float64(100)},
+		{key: bundle.RelationKeyWidthInPixels, value: domain.Int64(100)},
+		{key: bundle.RelationKeyHeightInPixels, value: domain.Int64(68)},
+		{key: bundle.RelationKeyIsHidden, value: domain.Invalid()},
+		{key: bundle.RelationKeyName, value: domain.String("myFile")},
+		{key: bundle.RelationKeyFileExt, value: domain.String("jpg")},
+		{key: bundle.RelationKeyFileMimeType, value: domain.String("image/jpeg")},
+		{key: bundle.RelationKeySizeInBytes, value: domain.Int64(5480)},
+		{key: bundle.RelationKeyCreatedDate, value: domain.Int64(createdDate.Unix())},
+		{key: bundle.RelationKeyCamera, value: domain.String("Canon EOS 40D")},
+		{key: bundle.RelationKeyExposure, value: domain.String("1/160")},
+		{key: bundle.RelationKeyFocalRatio, value: domain.Float64(7.1)},
+		{key: bundle.RelationKeyCameraIso, value: domain.Float64(100)},
 	} {
 		t.Run(testCase.key.String(), func(t *testing.T) {
-			assert.Equal(t, testCase.value, details.Fields[testCase.key.String()])
+			assert.Equal(t, testCase.value, details.Get(testCase.key))
 		})
 	}
 }
@@ -165,62 +164,48 @@ func TestSelectAndSortResizeVariants(t *testing.T) {
 		got := selectAndSortResizeVariants([]*storage.FileInfo{
 			{
 				Mill: mill.ImageResizeId,
-				Meta: &types.Struct{
-					Fields: map[string]*types.Value{
-						"width": pbtypes.Int64(200),
-					},
-				},
+				Meta: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					"width": domain.Int64(200),
+				}).ToProto(),
 			},
 			{
 				Mill: mill.ImageResizeId,
-				Meta: &types.Struct{
-					Fields: map[string]*types.Value{
-						"width": pbtypes.Int64(100),
-					},
-				},
+				Meta: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					"width": domain.Int64(100),
+				}).ToProto(),
 			},
 			{
 				Mill: mill.ImageExifId,
-				Meta: &types.Struct{
-					Fields: map[string]*types.Value{
-						"width": pbtypes.Int64(300),
-					},
-				},
+				Meta: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					"width": domain.Int64(300),
+				}).ToProto(),
 			},
 			{
 				Mill: mill.ImageResizeId,
-				Meta: &types.Struct{
-					Fields: map[string]*types.Value{
-						"width": pbtypes.Int64(300),
-					},
-				},
+				Meta: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					"width": domain.Int64(300),
+				}).ToProto(),
 			},
 		})
 
 		want := []*storage.FileInfo{
 			{
 				Mill: mill.ImageResizeId,
-				Meta: &types.Struct{
-					Fields: map[string]*types.Value{
-						"width": pbtypes.Int64(100),
-					},
-				},
+				Meta: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					"width": domain.Int64(100),
+				}).ToProto(),
 			},
 			{
 				Mill: mill.ImageResizeId,
-				Meta: &types.Struct{
-					Fields: map[string]*types.Value{
-						"width": pbtypes.Int64(200),
-					},
-				},
+				Meta: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					"width": domain.Int64(200),
+				}).ToProto(),
 			},
 			{
 				Mill: mill.ImageResizeId,
-				Meta: &types.Struct{
-					Fields: map[string]*types.Value{
-						"width": pbtypes.Int64(300),
-					},
-				},
+				Meta: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					"width": domain.Int64(300),
+				}).ToProto(),
 			},
 		}
 

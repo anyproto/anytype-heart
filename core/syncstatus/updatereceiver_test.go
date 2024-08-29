@@ -9,6 +9,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
@@ -16,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestUpdateReceiver_UpdateTree(t *testing.T) {
@@ -82,8 +82,8 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 
 		receiver.store.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:               pbtypes.String("id"),
-				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Limited)),
+				bundle.RelationKeyId:               domain.String("id"),
+				bundle.RelationKeyFileBackupStatus: domain.Int64(int64(filesyncstatus.Limited)),
 			},
 		})
 
@@ -177,8 +177,8 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 
 		receiver.store.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:               pbtypes.String("id"),
-				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
+				bundle.RelationKeyId:               domain.String("id"),
+				bundle.RelationKeyFileBackupStatus: domain.Int64(int64(filesyncstatus.Synced)),
 			},
 		})
 
@@ -206,8 +206,8 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 
 		receiver.store.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:               pbtypes.String("id"),
-				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Syncing)),
+				bundle.RelationKeyId:               domain.String("id"),
+				bundle.RelationKeyFileBackupStatus: domain.Int64(int64(filesyncstatus.Syncing)),
 			},
 		})
 

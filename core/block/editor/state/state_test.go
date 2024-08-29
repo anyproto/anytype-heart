@@ -206,11 +206,9 @@ func TestApplyState(t *testing.T) {
 			})
 			d.BlocksInit(d.(simple.DetailsService))
 			s := d.NewState()
-			s.SetDetails(&types.Struct{
-				Fields: map[string]*types.Value{
-					"name": pbtypes.String("new name"),
-				},
-			})
+			s.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"name": domain.String("new name"),
+			}))
 			s.Add(text.NewDetails(&model.Block{
 				Id: "title",
 				Content: &model.BlockContentOfText{
@@ -248,11 +246,9 @@ func TestApplyState(t *testing.T) {
 			})
 			d.BlocksInit(d.(simple.DetailsService))
 			s := d.NewState()
-			s.SetDetails(&types.Struct{
-				Fields: map[string]*types.Value{
-					"name": pbtypes.String("new name"),
-				},
-			})
+			s.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"name": domain.String("new name"),
+			}))
 			msgs, _, err := ApplyState(s, true)
 			require.NoError(t, err)
 			assert.Len(t, msgs, 2)
@@ -274,14 +270,12 @@ func TestApplyState(t *testing.T) {
 					Checked: "done",
 				}),
 			})
-			d.(*State).SetDetail("done", pbtypes.Bool(true))
+			d.(*State).SetDetail("done", domain.Bool(true))
 			d.BlocksInit(d.(simple.DetailsService))
 			s := d.NewState()
-			s.SetDetails(&types.Struct{
-				Fields: map[string]*types.Value{
-					"done": pbtypes.Bool(false),
-				},
-			})
+			s.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"done": domain.Bool(false),
+			}))
 			msgs, _, err := ApplyState(s, true)
 			require.NoError(t, err)
 			assert.Len(t, msgs, 2)
@@ -303,7 +297,7 @@ func TestApplyState(t *testing.T) {
 					Checked: "done",
 				}),
 			})
-			d.(*State).SetDetail("done", pbtypes.Bool(true))
+			d.(*State).SetDetail("done", domain.Bool(true))
 			d.BlocksInit(d.(simple.DetailsService))
 			s := d.NewState()
 			s.Get("2").(text.Block).SetChecked(false)
@@ -2101,7 +2095,7 @@ func TestState_ApplyChangeIgnoreErrDetailsSet(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Equal(t, "changed value", st.Details().GetFields()["relationKey"].GetStringValue())
+		assert.Equal(t, "changed value", st.Details().GetString("relationKey"))
 	})
 
 	t.Run("apply DetailsSet change: update existing relation", func(t *testing.T) {
@@ -2117,7 +2111,7 @@ func TestState_ApplyChangeIgnoreErrDetailsSet(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Equal(t, "value", st.Details().GetFields()["relationKey"].GetStringValue())
+		assert.Equal(t, "value", st.Details().GetString("relationKey"))
 	})
 
 	t.Run("apply DetailsSet change: set relation value to nil", func(t *testing.T) {
@@ -2133,7 +2127,7 @@ func TestState_ApplyChangeIgnoreErrDetailsSet(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Nil(t, st.Details().GetFields()["relationKey"])
+		assert.False(t, st.Details().Has("relationKey"))
 	})
 }
 
@@ -2156,12 +2150,12 @@ func TestState_ApplyChangeIgnoreErrDetailsUnset(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Nil(t, st.Details().GetFields()["relationKey"])
+		assert.False(t, st.Details().Has("relationKey"))
 	})
 
 	t.Run("apply DetailsUnset change: remove existing relation", func(t *testing.T) {
 		// given
-		st.SetDetail("relationKey", pbtypes.String("value"))
+		st.SetDetail("relationKey", domain.String("value"))
 		change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfDetailsUnset{
 			DetailsUnset: &pb.ChangeDetailsUnset{
 				Key: "relationKey",
@@ -2172,7 +2166,7 @@ func TestState_ApplyChangeIgnoreErrDetailsUnset(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// when
-		assert.Nil(t, st.Details().GetFields()["relationKey"])
+		assert.False(t, st.Details().Has("relationKey"))
 	})
 }
 

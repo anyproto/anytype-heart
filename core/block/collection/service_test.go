@@ -19,7 +19,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type testPicker struct {
@@ -137,7 +136,7 @@ func TestSetObjectTypeToViews(t *testing.T) {
 					Views: []*model.BlockContentDataviewView{{Id: viewID1}, {Id: viewID2}},
 				}},
 			}))
-			parent.SetDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{setOf}))
+			parent.SetDetail(bundle.RelationKeySetOf, domain.StringList([]string{setOf}))
 			return parent.NewState()
 		}
 

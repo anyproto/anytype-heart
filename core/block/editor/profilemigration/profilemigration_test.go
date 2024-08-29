@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -889,21 +889,23 @@ func TestProfileMigrationExtractCustomState(t *testing.T) {
 		"iconImage",
 		"iconOption",
 	}
-	for k, v := range originalStateCopy.Details().GetFields() {
-		if k == bundle.RelationKeyName.String() {
+	originalStateCopy.Details().Iterate(func(k domain.RelationKey, v domain.Value) bool {
+		if k == bundle.RelationKeyName {
 			// should has suffix in the name
-			v = pbtypes.String(v.GetStringValue() + " [migrated]")
+			v = domain.String(v.String() + " [migrated]")
 		}
-		if k == bundle.RelationKeyIsHidden.String() {
+		if k == bundle.RelationKeyIsHidden {
 			// extracted state should not be hidden
-			v = pbtypes.Bool(false)
+			v = domain.Bool(false)
 		}
-		require.Truef(t, v.Equal(extractedState.Details().Fields[k]), "detail %s should be equal to original state", k)
-	}
+		require.Truef(t, v.Equal(extractedState.Details().Get(k)), "detail %s should be equal to original state", k)
+		return true
+	})
 
-	for k, _ := range originalState.Details().GetFields() {
+	originalState.Details().Iterate(func(k domain.RelationKey, v domain.Value) bool {
 		require.Contains(t, whitelistedDetailKeys, k, "old state should not contain %s", k)
-	}
+		return true
+	})
 	require.Equal(t, bundle.TypeKeyPage, extractedState.ObjectTypeKey())
 
 	_, err = ExtractCustomState(originalState.NewState())

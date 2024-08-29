@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -16,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	domain "github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/mock_detailsupdater"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
@@ -28,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type updateTester struct {
@@ -99,14 +97,14 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
 			sb := smarttest.New(objectId)
 			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_basic)))
 			err := apply(sb)
 			require.NoError(t, err)
 
 			det := sb.Doc.LocalDetails()
-			assert.Contains(t, det.GetFields(), bundle.RelationKeySyncStatus.String())
-			assert.Contains(t, det.GetFields(), bundle.RelationKeySyncDate.String())
-			assert.Contains(t, det.GetFields(), bundle.RelationKeySyncError.String())
+			assert.True(t, det.Has(bundle.RelationKeySyncStatus))
+			assert.True(t, det.Has(bundle.RelationKeySyncDate))
+			assert.True(t, det.Has(bundle.RelationKeySyncError))
 
 			fx.spaceStatusUpdater.EXPECT().Refresh("space1")
 
@@ -127,9 +125,9 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 
 		fx.subscriptionService.StoreFixture.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String("id1"),
-				bundle.RelationKeySpaceId: pbtypes.String("space1"),
-				bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyId:      domain.String("id1"),
+				bundle.RelationKeySpaceId: domain.String("space1"),
+				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_basic)),
 			},
 		})
 
@@ -142,9 +140,9 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			details, err := fx.objectStore.GetDetails(objectId)
 			require.NoError(t, err)
 
-			assert.True(t, details.Details.GetInt64OrDefault(bundle.RelationKeySyncStatus, 0) == int64(domain.ObjectSyncStatusError))
-			assert.True(t, details.Details.GetInt64OrDefault(bundle.RelationKeySyncError, 0) == int64(domain.SyncErrorNull))
-			assert.Contains(t, details.Details.GetFields(), bundle.RelationKeySyncDate.String())
+			assert.True(t, details.GetInt64(bundle.RelationKeySyncStatus) == int64(domain.ObjectSyncStatusError))
+			assert.True(t, details.GetInt64(bundle.RelationKeySyncError) == int64(domain.SyncErrorNull))
+			assert.True(t, details.Has(bundle.RelationKeySyncDate))
 			updTester.done()
 		}).Return(nil).Times(0)
 
@@ -166,15 +164,15 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
 				sb := smarttest.New(objectId)
 				st := sb.Doc.(*state.State)
-				st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_file)))
-				st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, pbtypes.Int64(int64(filesyncstatus.Limited)))
+				st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_file)))
+				st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Limited)))
 				err := apply(sb)
 				require.NoError(t, err)
 
 				det := sb.Doc.LocalDetails()
 				assert.True(t, det.GetInt64(bundle.RelationKeySyncStatus) == int64(domain.ObjectSyncStatusError))
 				assert.True(t, det.GetInt64(bundle.RelationKeySyncError) == int64(domain.SyncErrorOversized))
-				assert.Contains(t, det.GetFields(), bundle.RelationKeySyncDate.String())
+				assert.True(t, det.Has(bundle.RelationKeySyncDate))
 
 				fx.spaceStatusUpdater.EXPECT().Refresh("space1")
 
@@ -195,15 +193,15 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
 				sb := smarttest.New(objectId)
 				st := sb.Doc.(*state.State)
-				st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_file)))
-				st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, pbtypes.Int64(int64(filesyncstatus.Synced)))
+				st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_file)))
+				st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
 				err := apply(sb)
 				require.NoError(t, err)
 
 				det := sb.Doc.LocalDetails()
 				assert.True(t, det.GetInt64(bundle.RelationKeySyncStatus) == int64(domain.ObjectSyncStatusSyncing))
-				assert.Contains(t, det.GetFields(), bundle.RelationKeySyncError.String())
-				assert.Contains(t, det.GetFields(), bundle.RelationKeySyncDate.String())
+				assert.True(t, det.Has(bundle.RelationKeySyncError))
+				assert.True(t, det.Has(bundle.RelationKeySyncDate))
 
 				fx.spaceStatusUpdater.EXPECT().Refresh("space1")
 
@@ -225,16 +223,16 @@ func TestSyncStatusUpdater_UpdateSpaceDetails(t *testing.T) {
 
 	fx.subscriptionService.StoreFixture.AddObjects(t, []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:         pbtypes.String("id1"),
-			bundle.RelationKeySpaceId:    pbtypes.String("space1"),
-			bundle.RelationKeyLayout:     pbtypes.Int64(int64(model.ObjectType_basic)),
-			bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.ObjectSyncStatusSyncing)),
+			bundle.RelationKeyId:         domain.String("id1"),
+			bundle.RelationKeySpaceId:    domain.String("space1"),
+			bundle.RelationKeyLayout:     domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeySyncStatus: domain.Int64(int64(domain.ObjectSyncStatusSyncing)),
 		},
 		{
-			bundle.RelationKeyId:         pbtypes.String("id4"),
-			bundle.RelationKeySpaceId:    pbtypes.String("space1"),
-			bundle.RelationKeyLayout:     pbtypes.Int64(int64(model.ObjectType_basic)),
-			bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.ObjectSyncStatusSyncing)),
+			bundle.RelationKeyId:         domain.String("id4"),
+			bundle.RelationKeySpaceId:    domain.String("space1"),
+			bundle.RelationKeyLayout:     domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeySyncStatus: domain.Int64(int64(domain.ObjectSyncStatusSyncing)),
 		},
 	})
 
@@ -246,14 +244,14 @@ func TestSyncStatusUpdater_UpdateSpaceDetails(t *testing.T) {
 		space.EXPECT().DoCtx(mock.Anything, objectId, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
 			sb := smarttest.New(objectId)
 			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_basic)))
 			err := apply(sb)
 			require.NoError(t, err)
 
 			det := sb.Doc.LocalDetails()
 			assert.True(t, det.GetInt64(bundle.RelationKeySyncStatus) == int64(status))
-			assert.Contains(t, det.GetFields(), bundle.RelationKeySyncDate.String())
-			assert.Contains(t, det.GetFields(), bundle.RelationKeySyncError.String())
+			assert.True(t, det.Has(bundle.RelationKeySyncDate))
+			assert.True(t, det.Has(bundle.RelationKeySyncError))
 
 			fx.spaceStatusUpdater.EXPECT().Refresh("space1")
 
@@ -285,11 +283,11 @@ func TestSyncStatusUpdater_setSyncDetails(t *testing.T) {
 		assert.Nil(t, err)
 
 		// then
-		details := sb.NewState().CombinedDetails().GetFields()
+		details := sb.NewState().CombinedDetails()
 		assert.NotNil(t, details)
-		assert.Equal(t, pbtypes.Int64(int64(domain.SpaceSyncStatusError)), details[bundle.RelationKeySyncStatus.String()])
-		assert.Equal(t, pbtypes.Int64(int64(domain.SyncErrorNetworkError)), details[bundle.RelationKeySyncError.String()])
-		assert.NotNil(t, details[bundle.RelationKeySyncDate.String()])
+		assert.Equal(t, domain.Int64(int64(domain.SpaceSyncStatusError)), details.Get(bundle.RelationKeySyncStatus))
+		assert.Equal(t, domain.Int64(int64(domain.SyncErrorNetworkError)), details.Get(bundle.RelationKeySyncError))
+		assert.True(t, details.Has(bundle.RelationKeySyncDate))
 	})
 	t.Run("not set smartblock details, because it doesn't implement interface DetailsSettable", func(t *testing.T) {
 		// given
@@ -323,9 +321,9 @@ func TestSyncStatusUpdater_isLayoutSuitableForSyncRelations(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		details := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(model.ObjectType_participant)),
-		}}
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyLayout: domain.Float64(float64(model.ObjectType_participant)),
+		})
 		isSuitable := fx.isLayoutSuitableForSyncRelations(details)
 
 		// then
@@ -337,9 +335,9 @@ func TestSyncStatusUpdater_isLayoutSuitableForSyncRelations(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		details := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(model.ObjectType_basic)),
-		}}
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyLayout: domain.Float64(float64(model.ObjectType_basic)),
+		})
 		isSuitable := fx.isLayoutSuitableForSyncRelations(details)
 
 		// then

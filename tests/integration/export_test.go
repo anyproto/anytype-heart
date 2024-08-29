@@ -6,17 +6,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func createPageWithFileBlock(t *testing.T, app *testApplication, filePath string) string {
@@ -25,11 +24,9 @@ func createPageWithFileBlock(t *testing.T, app *testApplication, filePath string
 
 	id, _, err := objectCreator.CreateObject(ctx, app.personalSpaceId(), objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyPage,
-		Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String(): pbtypes.String("Page with file block"),
-			},
-		},
+		Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String("Page with file block"),
+		}),
 	})
 	require.NoError(t, err)
 

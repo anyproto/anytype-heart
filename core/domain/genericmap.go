@@ -92,6 +92,15 @@ func (d *GenericMap[K]) Get(key K) Value {
 	return d.data[key]
 }
 
+func (d *GenericMap[K]) TryGet(key K) (Value, bool) {
+	if d == nil {
+		return Value{}, false
+	}
+	// Empty Value is ok to use
+	v, ok := d.data[key]
+	return v, ok
+}
+
 func (d *GenericMap[K]) Has(key K) bool {
 	if d == nil {
 		return false

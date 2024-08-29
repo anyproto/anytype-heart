@@ -11,14 +11,16 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestImportFileFromRelation(t *testing.T) {
 	ctx := context.Background()
 	app := createAccountAndStartApp(t, pb.RpcObjectImportUseCaseRequest_NONE)
 
-	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []*model.BlockContentDataviewFilter{
+	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []database.FilterRequest{
 		filterEqualsToInteger(bundle.RelationKeyFileIndexingStatus, model.FileIndexingStatus_Indexed),
 		filterEqualsToInteger(bundle.RelationKeyLayout, model.ObjectType_image),
 		filterEqualsToString(bundle.RelationKeyName, "Saturn"),
@@ -26,7 +28,7 @@ func TestImportFileFromRelation(t *testing.T) {
 		filterNotEmpty(bundle.RelationKeyFileId),
 	})
 
-	objectSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId, bundle.RelationKeyIconImage}, []*model.BlockContentDataviewFilter{
+	objectSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId, bundle.RelationKeyIconImage}, []database.FilterRequest{
 		filterNotEmpty(bundle.RelationKeyIconImage),
 	})
 
@@ -56,11 +58,11 @@ func TestImportFileFromRelation(t *testing.T) {
 
 	var fileObjectId string
 	fileSub.waitOneObjectDetailsSet(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) {
-		fileObjectId = msg.Details.GetString(bundle.RelationKeyId, "")
+		fileObjectId = pbtypes.GetString(msg.Details, bundle.RelationKeyId.String())
 		assertImageAvailableInGateway(t, app, fileObjectId)
 	})
 	objectSub.waitObjectDetailsSetWithPredicate(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) bool {
-		list := msg.Details.GetStringListOrDefault(bundle.RelationKeyIconImage, nil)
+		list := pbtypes.GetStringList(msg.Details, bundle.RelationKeyIconImage.String())
 		if len(list) > 0 {
 			return fileObjectId == list[0]
 		}
@@ -81,7 +83,7 @@ func testImportFileFromMarkdown(t *testing.T, path string) {
 	ctx := context.Background()
 	app := createAccountAndStartApp(t, pb.RpcObjectImportUseCaseRequest_NONE)
 
-	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []*model.BlockContentDataviewFilter{
+	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []database.FilterRequest{
 		filterEqualsToInteger(bundle.RelationKeyFileIndexingStatus, model.FileIndexingStatus_Indexed),
 		filterEqualsToInteger(bundle.RelationKeyLayout, model.ObjectType_image),
 		filterEqualsToString(bundle.RelationKeyName, "saturn"), // Name comes from file's name
@@ -113,7 +115,7 @@ func testImportFileFromMarkdown(t *testing.T, path string) {
 		return false
 	})
 	fileSub.waitOneObjectDetailsSet(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) {
-		fileObjectId := msg.Details.GetString(bundle.RelationKeyId, "")
+		fileObjectId := pbtypes.GetString(msg.Details, bundle.RelationKeyId.String())
 		assertImageAvailableInGateway(t, app, fileObjectId)
 	})
 }
@@ -122,7 +124,7 @@ func testImportObjectWithFileBlock(t *testing.T, path string) {
 	ctx := context.Background()
 	app := createAccountAndStartApp(t, pb.RpcObjectImportUseCaseRequest_NONE)
 
-	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []*model.BlockContentDataviewFilter{
+	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []database.FilterRequest{
 		filterEqualsToInteger(bundle.RelationKeyFileIndexingStatus, model.FileIndexingStatus_Indexed),
 		filterEqualsToInteger(bundle.RelationKeyLayout, model.ObjectType_image),
 		filterEqualsToString(bundle.RelationKeyName, "test_image"),
@@ -154,7 +156,7 @@ func testImportObjectWithFileBlock(t *testing.T, path string) {
 		return false
 	})
 	fileSub.waitOneObjectDetailsSet(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) {
-		fileObjectId := msg.Details.GetString(bundle.RelationKeyId, "")
+		fileObjectId := pbtypes.GetString(msg.Details, bundle.RelationKeyId.String())
 		assertImageAvailableInGateway(t, app, fileObjectId)
 	})
 }

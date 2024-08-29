@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fakeConverter struct {
@@ -231,11 +230,11 @@ func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 		},
 	}
 	stateWithLinks.AddRelationLinks(relations...)
-	stateWithLinks.SetDetail("relation1", pbtypes.String("file"))
-	stateWithLinks.SetDetail("relation2", pbtypes.String("option1"))
-	stateWithLinks.SetDetail("relation3", pbtypes.String("option2"))
-	stateWithLinks.SetDetail("relation4", pbtypes.String("option3"))
-	stateWithLinks.SetDetail("relation5", pbtypes.Int64(time.Now().Unix()))
+	stateWithLinks.SetDetail("relation1", domain.String("file"))
+	stateWithLinks.SetDetail("relation2", domain.String("option1"))
+	stateWithLinks.SetDetail("relation3", domain.String("option2"))
+	stateWithLinks.SetDetail("relation4", domain.String("option3"))
+	stateWithLinks.SetDetail("relation5", domain.Int64(time.Now().Unix()))
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, false, false, false)
@@ -273,10 +272,10 @@ func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
 		},
 	}
 	stateWithLinks.AddRelationLinks(relations...)
-	stateWithLinks.SetDetail("relation1", pbtypes.Int64(time.Now().Unix()))
-	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
-	stateWithLinks.SetDetail(bundle.RelationKeyCreator, pbtypes.String("creator"))
-	stateWithLinks.SetDetail(bundle.RelationKeyLastModifiedBy, pbtypes.String("lastModifiedBy"))
+	stateWithLinks.SetDetail("relation1", domain.Int64(time.Now().Unix()))
+	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate, domain.Int64(time.Now().Unix()))
+	stateWithLinks.SetDetail(bundle.RelationKeyCreator, domain.String("creator"))
+	stateWithLinks.SetDetail(bundle.RelationKeyLastModifiedBy, domain.String("lastModifiedBy"))
 	converter := &fakeConverter{}
 
 	t.Run("details option is turned on: get ids only from details", func(t *testing.T) {

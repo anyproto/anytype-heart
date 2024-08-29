@@ -40,7 +40,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/mutex"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fixture struct {
@@ -221,7 +220,7 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 			sb := smarttest.New(testFileObjectId)
 
 			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, pbtypes.String(testFileId.String()))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
 
 			return apply(sb)
 		})
@@ -248,7 +247,7 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 			sb := smarttest.New(testFileObjectId)
 
 			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, pbtypes.String(""))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(""))
 
 			return apply(sb)
 		})
