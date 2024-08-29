@@ -155,11 +155,11 @@ func (d *GenericMap[K]) GetInt64(key K) int64 {
 	return d.Get(key).Int64()
 }
 
-func (d *GenericMap[K]) TryFloat(key K) (float64, bool) {
+func (d *GenericMap[K]) TryFloat64(key K) (float64, bool) {
 	return d.Get(key).TryFloat64()
 }
 
-func (d *GenericMap[K]) GetFloat(key K) float64 {
+func (d *GenericMap[K]) GetFloat64(key K) float64 {
 	return d.Get(key).Float64()
 }
 
@@ -172,11 +172,11 @@ func (d *GenericMap[K]) GetStringList(key K) []string {
 	return d.Get(key).StringList()
 }
 
-func (d *GenericMap[K]) TryFloatList(key K) ([]float64, bool) {
+func (d *GenericMap[K]) TryFloat64List(key K) ([]float64, bool) {
 	return d.Get(key).TryFloat64List()
 }
 
-func (d *GenericMap[K]) GetFloatList(key K) []float64 {
+func (d *GenericMap[K]) GetFloat64List(key K) []float64 {
 	return d.Get(key).Float64List()
 }
 
@@ -478,7 +478,7 @@ func (v Value) TryStringList() ([]string, bool) {
 		return nil, false
 	}
 	l, ok := v.value.([]string)
-	return l, ok
+	return slices.Clone(l), ok
 }
 
 func (v Value) StringList() []string {
@@ -517,7 +517,7 @@ func (v Value) TryFloat64List() ([]float64, bool) {
 		return nil, false
 	}
 	l, ok := v.value.([]float64)
-	return l, ok
+	return slices.Clone(l), ok
 }
 
 func (v Value) Float64List() []float64 {

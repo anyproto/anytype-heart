@@ -703,8 +703,8 @@ func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 }
 
 func validLayoutForNonProtobuf(details *domain.Details) bool {
-	return details.GetFloat(bundle.RelationKeyLayout) != float64(model.ObjectType_collection) &&
-		details.GetFloat(bundle.RelationKeyLayout) != float64(model.ObjectType_set)
+	return details.GetFloat64(bundle.RelationKeyLayout) != float64(model.ObjectType_collection) &&
+		details.GetFloat64(bundle.RelationKeyLayout) != float64(model.ObjectType_set)
 }
 
 func (e *export) cleanupFile(wr writer) {
@@ -787,8 +787,8 @@ func (e *export) getObjectRelations(state *state.State, relations []string) []st
 }
 
 func (e *export) isObjectWithDataview(details *domain.Details) bool {
-	return details.GetFloat(bundle.RelationKeyLayout) == float64(model.ObjectType_collection) ||
-		details.GetFloat(bundle.RelationKeyLayout) == float64(model.ObjectType_set)
+	return details.GetFloat64(bundle.RelationKeyLayout) == float64(model.ObjectType_collection) ||
+		details.GetFloat64(bundle.RelationKeyLayout) == float64(model.ObjectType_set)
 }
 
 func (e *export) processObject(object *domain.Details,

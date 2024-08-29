@@ -720,7 +720,7 @@ func Test_handleRollupProperties(t *testing.T) {
 	assert.Len(t, store.PropertyIdsToSnapshots, 3)
 	assert.NotEmpty(t, store.PropertyIdsToSnapshots["id1"])
 	key := store.PropertyIdsToSnapshots["id1"].Details.GetString(bundle.RelationKeyRelationKey)
-	assert.Equal(t, details.GetFloat(domain.RelationKey(key)), float64(2))
+	assert.Equal(t, details.GetFloat64(domain.RelationKey(key)), float64(2))
 
 	assert.NotEmpty(t, store.PropertyIdsToSnapshots["id2"])
 	key = store.PropertyIdsToSnapshots["id2"].Details.GetString(bundle.RelationKeyRelationKey)

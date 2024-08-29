@@ -583,14 +583,14 @@ func (l FilterAllIn) FilterObject(g *domain.Details) bool {
 	if len(l.Floats) > 0 {
 		// Single float
 		{
-			val, ok := g.TryFloat(l.Key)
+			val, ok := g.TryFloat64(l.Key)
 			if ok && len(l.Floats) == 1 {
 				return l.Floats[0] == val
 			}
 		}
 		// Float64 list
 		{
-			val, ok := g.TryFloatList(l.Key)
+			val, ok := g.TryFloat64List(l.Key)
 			if ok {
 				return lo.Every(val, l.Floats)
 			}

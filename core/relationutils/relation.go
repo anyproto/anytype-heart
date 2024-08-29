@@ -13,7 +13,7 @@ func RelationFromDetails(det *domain.Details) *Relation {
 		Relation: &model.Relation{
 			Id:               det.GetString(bundle.RelationKeyId),
 			Key:              key,
-			Format:           model.RelationFormat(det.GetFloat(bundle.RelationKeyRelationFormat)),
+			Format:           model.RelationFormat(det.GetFloat64(bundle.RelationKeyRelationFormat)),
 			Name:             det.GetString(bundle.RelationKeyName),
 			DataSource:       model.Relation_details,
 			Hidden:           det.GetBool(bundle.RelationKeyIsHidden),
@@ -23,7 +23,7 @@ func RelationFromDetails(det *domain.Details) *Relation {
 			ObjectTypes:      det.GetStringList(bundle.RelationKeyRelationFormatObjectTypes),
 			MaxCount:         maxCount,
 			Description:      det.GetString(bundle.RelationKeyDescription),
-			Scope:            model.RelationScope(det.GetFloat(bundle.RelationKeyScope)),
+			Scope:            model.RelationScope(det.GetFloat64(bundle.RelationKeyScope)),
 			Creator:          det.GetString(bundle.RelationKeyCreator),
 			Revision:         int64(det.GetInt64(bundle.RelationKeyRevision)),
 		},

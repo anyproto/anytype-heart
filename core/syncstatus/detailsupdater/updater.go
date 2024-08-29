@@ -207,7 +207,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			if !u.isLayoutSuitableForSyncRelations(details) {
 				return details, false, nil
 			}
-			if fileStatus, ok := details.TryFloat(bundle.RelationKeyFileBackupStatus); ok {
+			if fileStatus, ok := details.TryFloat64(bundle.RelationKeyFileBackupStatus); ok {
 				status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
 			}
 			details.SetInt64(bundle.RelationKeySyncStatus, int64(status))
@@ -235,7 +235,7 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 		return nil
 	}
 	st := sb.NewState()
-	if fileStatus, ok := st.Details().TryFloat(bundle.RelationKeyFileBackupStatus); ok {
+	if fileStatus, ok := st.Details().TryFloat64(bundle.RelationKeyFileBackupStatus); ok {
 		status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
 	}
 	st.SetDetailAndBundledRelation(bundle.RelationKeySyncStatus, domain.Int64(status))

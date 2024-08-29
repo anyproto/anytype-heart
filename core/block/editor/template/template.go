@@ -274,7 +274,7 @@ var WithForcedDescription = func(s *state.State) {
 
 	var align model.BlockAlign
 	if s.Details().Has(bundle.RelationKeyLayoutAlign) {
-		alignN := int(s.Details().GetFloat(bundle.RelationKeyLayoutAlign))
+		alignN := int(s.Details().GetFloat64(bundle.RelationKeyLayoutAlign))
 		if alignN >= 0 && alignN <= 2 {
 			align = model.BlockAlign(alignN)
 		}
@@ -384,7 +384,7 @@ var WithFeaturedRelations = StateTransformer(func(s *state.State) {
 
 	var align model.BlockAlign
 	if s.Details().Has(bundle.RelationKeyLayoutAlign) {
-		alignN := int(s.Details().GetFloat(bundle.RelationKeyLayoutAlign))
+		alignN := int(s.Details().GetFloat64(bundle.RelationKeyLayoutAlign))
 		if alignN >= 0 && alignN <= 2 {
 			align = model.BlockAlign(alignN)
 		}
