@@ -97,7 +97,6 @@ func (pt *Task) provideDetails(object *DataObject) (map[string]*types.Value, []*
 	details, relationLinks := pt.prepareDetails()
 	relationsSnapshots, notionRelationLinks := pt.handlePageProperties(object, details)
 	relationLinks = append(relationLinks, notionRelationLinks...)
-	addCoverDetail(pt.p, details)
 	return details, relationsSnapshots, relationLinks
 }
 
@@ -120,6 +119,14 @@ func (pt *Task) prepareDetails() (map[string]*types.Value, []*model.RelationLink
 			relationLinks = append(relationLinks, iconRelationLink)
 		}
 	}
+	if pt.p.Cover != nil {
+		api.SetCover(details, pt.p.Cover)
+		relationLinks = append(relationLinks, &model.RelationLink{
+			Key:    bundle.RelationKeyCoverId.String(),
+			Format: model.RelationFormat_file,
+		})
+	}
+
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(pt.p.Archived)
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
 	createdTime := common.ConvertStringToTime(pt.p.CreatedTime)
@@ -328,20 +335,6 @@ func handleRelationItem(properties []interface{}, pr *property.RelationItem) {
 		relationItems = append(relationItems, o.(*property.Relation))
 	}
 	pr.Relation = relationItems
-}
-
-func addCoverDetail(p Page, details map[string]*types.Value) {
-	if p.Cover != nil {
-		if p.Cover.Type == api.External {
-			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(p.Cover.External.URL)
-			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
-		}
-
-		if p.Cover.Type == api.File {
-			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(p.Cover.File.URL)
-			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
-		}
-	}
 }
 
 func isPropertyPaginated(pr property.Object) bool {

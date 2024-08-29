@@ -620,4 +620,37 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
 		assert.Equal(t, property.UntitledProperty, pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyName.String()))
 	})
+	t.Run("Database has cover file icon - details have relations coverId and coverType", func(t *testing.T) {
+		dbService := New(nil)
+		db := Database{Cover: &api.FileObject{
+			Type: api.File,
+			File: api.FileProperty{
+				URL: "url",
+			},
+		}}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		cover := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyCoverId.String())
+		coverType := pbtypes.GetInt64(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyCoverType.String())
+		assert.Equal(t, "url", cover)
+		assert.Equal(t, int64(1), coverType)
+	})
+	t.Run("Database doesn't have cover - details don't have neither coverType nor coverId", func(t *testing.T) {
+		dbService := New(nil)
+		db := Database{}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		cover := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyCoverId.String())
+		assert.Equal(t, "", cover)
+	})
 }

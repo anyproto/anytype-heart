@@ -1200,4 +1200,47 @@ func TestTask_provideDetails(t *testing.T) {
 		assert.NotContains(t, details, bundle.RelationKeyIconImage.String())
 		assert.NotContains(t, details, bundle.RelationKeyIconEmoji.String())
 	})
+	t.Run("Page has cover - details have relation coverId and coverType", func(t *testing.T) {
+		c := client.NewClient()
+		page := Page{
+			Cover: &api.FileObject{
+				Name: "file",
+				Type: api.File,
+				File: api.FileProperty{
+					URL: "file",
+				},
+			},
+		}
+		pageTask := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      page,
+		}
+
+		// when
+		details, _ := pageTask.prepareDetails()
+
+		// then
+		assert.Contains(t, details, bundle.RelationKeyCoverType.String())
+		assert.Contains(t, details, bundle.RelationKeyCoverId.String())
+		assert.Equal(t, "file", details[bundle.RelationKeyCoverId.String()].GetStringValue())
+	})
+	t.Run("Page doesn't have cover - details doesn't have relations coverId and coverType", func(t *testing.T) {
+		c := client.NewClient()
+		page := Page{}
+		pageTask := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      page,
+		}
+
+		// when
+		details, _ := pageTask.prepareDetails()
+
+		// then
+		assert.Empty(t, details[bundle.RelationKeyCoverType.String()])
+		assert.Empty(t, details[bundle.RelationKeyCoverId.String()])
+	})
 }

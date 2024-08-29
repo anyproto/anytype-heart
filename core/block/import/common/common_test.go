@@ -355,3 +355,39 @@ func TestUpdateLinksToObjects(t *testing.T) {
 		assert.Equal(t, "key1", st.Get("test").Model().GetDataview().GetViews()[0].GetSorts()[1].RelationKey)
 	})
 }
+func TestUpdateObjectIDsInRelations(t *testing.T) {
+	t.Run("update file relation, object is missed", func(t *testing.T) {
+		// given
+		rawCid, err := cidutil.NewCidFromBytes([]byte("test"))
+		assert.Nil(t, err)
+		st := state.NewDoc("root", map[string]simple.Block{}).(*state.State)
+		st.SetDetail("test", pbtypes.String(rawCid))
+		st.AddRelationLinks(&model.RelationLink{
+			Key:    "test",
+			Format: model.RelationFormat_file,
+		})
+		oldToNew := map[string]string{}
+
+		// when
+		UpdateObjectIDsInRelations(st, oldToNew)
+
+		// then
+		assert.Equal(t, addr.MissingObject, pbtypes.GetString(st.Details(), "test"))
+	})
+	t.Run("update file relation, file contains url", func(t *testing.T) {
+		// given
+		st := state.NewDoc("root", map[string]simple.Block{}).(*state.State)
+		st.SetDetail("test", pbtypes.String("test"))
+		st.AddRelationLinks(&model.RelationLink{
+			Key:    "test",
+			Format: model.RelationFormat_file,
+		})
+		oldToNew := map[string]string{}
+
+		// when
+		UpdateObjectIDsInRelations(st, oldToNew)
+
+		// then
+		assert.Equal(t, "test", pbtypes.GetString(st.Details(), "test"))
+	})
+}

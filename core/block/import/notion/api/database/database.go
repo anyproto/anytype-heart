@@ -8,6 +8,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -105,7 +106,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 func (ds *Service) makeDatabaseSnapshot(d Database,
 	importContext *api.NotionImportContext,
 	relations *property.PropertiesStore) ([]*common.Snapshot, error) {
-	details := ds.getCollectionDetails(d)
+	details, relationLinks := ds.getCollectionDetails(d)
 	detailsStruct := &types.Struct{Fields: details}
 	_, _, st, err := ds.collectionService.CreateCollection(detailsStruct, nil)
 	if err != nil {
@@ -113,7 +114,7 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 	}
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	snapshots := ds.makeRelationsSnapshots(d, st, relations)
-	id, databaseSnapshot := ds.provideDatabaseSnapshot(d, st, detailsStruct)
+	id, databaseSnapshot := ds.provideDatabaseSnapshot(d, st, detailsStruct, relationLinks)
 	ds.fillImportContext(d, importContext, id, databaseSnapshot)
 	snapshots = append(snapshots, databaseSnapshot)
 	return snapshots, nil
@@ -254,7 +255,7 @@ func (ds *Service) getRelationDetails(databaseProperty property.DatabaseProperty
 	return details
 }
 
-func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
+func (ds *Service) getCollectionDetails(d Database) (map[string]*types.Value, []*model.RelationLink) {
 	details := make(map[string]*types.Value, 0)
 	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(d.ID)
 	if len(d.Title) > 0 {
@@ -264,19 +265,19 @@ func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
 		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*d.Icon.Emoji)
 	}
 
+	var relationLinks []*model.RelationLink
 	if d.Cover != nil {
-		if d.Cover.Type == api.External {
-			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.External.URL)
-			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
-		}
-
-		if d.Cover.Type == api.File {
-			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.File.URL)
-			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
-		}
+		api.SetCover(details, d.Cover)
+		relationLinks = append(relationLinks, &model.RelationLink{
+			Key:    bundle.RelationKeyCoverId.String(),
+			Format: model.RelationFormat_file,
+		})
 	}
 	if d.Icon != nil {
-		api.SetIcon(details, d.Icon)
+		relationLink := api.SetIcon(details, d.Icon)
+		if relationLink != nil {
+			relationLinks = append(relationLinks, relationLink)
+		}
 	}
 	details[bundle.RelationKeyCreator.String()] = pbtypes.String(d.CreatedBy.Name)
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(d.Archived)
@@ -287,16 +288,16 @@ func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
 
 	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(d.LastEditedTime.Unix()))
 	details[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(d.CreatedTime.Unix()))
-	return details
+	return details, relationLinks
 }
 
-func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, detailsStruct *types.Struct) (string, *common.Snapshot) {
+func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, detailsStruct *types.Struct, links []*model.RelationLink) (string, *common.Snapshot) {
 	snapshot := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       detailsStruct,
 		ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
 		Collections:   st.Store(),
-		RelationLinks: st.GetRelationLinks(),
+		RelationLinks: lo.Union(st.GetRelationLinks(), links),
 	}
 
 	id := uuid.New().String()
