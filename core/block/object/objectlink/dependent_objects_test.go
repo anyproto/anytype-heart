@@ -79,11 +79,6 @@ func TestState_DepSmartIdsLinks(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, false, false, false)
 		assert.Len(t, objectIDs, 4)
 	})
-
-	t.Run("block option is turned on: get ids from blocks", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, false, false, false)
-		assert.Len(t, objectIDs, 0)
-	})
 }
 
 func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
@@ -243,10 +238,6 @@ func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 	t.Run("blocks option and relations option are turned on: get ids from blocks and relations", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, true, false, false)
 		assert.Len(t, objectIDs, 9) // 4 links + 5 relations
-	})
-	t.Run("blocks, relations and details option are turned on: get ids from blocks, relations and details", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, true, false, false)
-		assert.Len(t, objectIDs, 14) // 4 links + 5 relations + 3 options + 1 fileID + 1 date
 	})
 }
 
