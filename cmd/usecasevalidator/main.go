@@ -221,26 +221,26 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			return nil, fmt.Errorf("failed to extract snapshot from file %s: %w", f.Name, err)
 		}
 
-		id := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
-		name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName, "")
+		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
+		name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
 
 		info.objects[id] = objectInfo{
-			Type:   snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyType, ""),
+			Type:   pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyType.String()),
 			Name:   name,
 			SbType: smartblock.SmartBlockType(snapshot.SbType),
 		}
 
 		switch snapshot.SbType {
 		case model.SmartBlockType_STRelation:
-			uk := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyUniqueKey, "")
+			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
 			key := strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)
 			info.relations[id] = domain.RelationKey(key)
-			format := snapshot.Snapshot.Data.Details.GetInt64OrDefault(bundle.RelationKeyRelationFormat, 0)
-			if !bundle.HasRelation(key) {
+			format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
+			if !bundle.HasRelation(domain.RelationKey(key)) {
 				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
 			}
 		case model.SmartBlockType_STType:
-			uk := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyUniqueKey, "")
+			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
 			key := strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)
 			info.types[id] = domain.TypeKey(key)
 			if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
@@ -256,15 +256,15 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			} else if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
 				key := strings.TrimPrefix(id, addr.RelationKeyToIdPrefix)
 				info.relations[id] = domain.RelationKey(key)
-				format := snapshot.Snapshot.Data.Details.GetInt64OrDefault(bundle.RelationKeyRelationFormat, 0)
-				if !bundle.HasRelation(key) {
+				format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
+				if !bundle.HasRelation(domain.RelationKey(key)) {
 					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
 				}
 			}
 		case model.SmartBlockType_Template:
-			info.templates[id] = snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyTargetObjectType, "")
+			info.templates[id] = pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyTargetObjectType.String())
 		case model.SmartBlockType_STRelationOption:
-			info.options[id] = domain.RelationKey(snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey, ""))
+			info.options[id] = domain.RelationKey(pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
 		case model.SmartBlockType_FileObject:
 			info.files = append(info.files, id)
 		}
@@ -418,7 +418,7 @@ func extractSnapshotAndType(data []byte, name string) (s *pb.SnapshotWithType, i
 
 func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	isValid := true
-	id := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
+	id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	for _, v := range validators {
 		if e := v(snapshot, info); e != nil {
 			if errors.Is(e, errSkipObject) {
@@ -430,14 +430,14 @@ func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	}
 	if !isValid {
 		return fmt.Errorf("object '%s' (name: '%s') is invalid: %w",
-			id[len(id)-4:], snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName, ""), err)
+			id[len(id)-4:], pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String()), err)
 	}
 	return nil
 }
 
 func insertAnalyticsData(s *pb.ChangeSnapshot, info *useCaseInfo) {
 	root := s.Data.Blocks[0]
-	id := s.Data.Details.GetString(bundle.RelationKeyId, "")
+	id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
 	f := root.GetFields().GetFields()
 
 	if f == nil {
@@ -469,8 +469,8 @@ func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
 }
 
 func insertCreatorInfo(s *pb.ChangeSnapshot) {
-	s.Data.Details.Set(bundle.RelationKeyCreator, pbtypes.String(addr.AnytypeProfileId))
-	s.Data.Details.Set(bundle.RelationKeyLastModifiedBy, pbtypes.String(addr.AnytypeProfileId))
+	s.Data.Details.Fields[bundle.RelationKeyCreator.String()] = pbtypes.String(addr.AnytypeProfileId)
+	s.Data.Details.Fields[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(addr.AnytypeProfileId)
 }
 
 func processProfile(data []byte, info *useCaseInfo, spaceDashboardId string) ([]byte, error) {

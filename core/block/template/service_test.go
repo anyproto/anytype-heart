@@ -167,7 +167,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 			// then
 			assert.NoError(t, err)
 			assert.Equal(t, BlankTemplateId, st.RootId())
-			assert.Contains(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), bundle.RelationKeyTag)
+			assert.Contains(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), bundle.RelationKeyTag.String())
 			assert.True(t, st.Details().Has(bundle.RelationKeyTag))
 		})
 	}
@@ -257,7 +257,7 @@ func TestCreateTemplateStateFromSmartBlock(t *testing.T) {
 
 		// then
 		assert.Equal(t, BlankTemplateId, st.RootId())
-		assert.Contains(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), bundle.RelationKeyTag)
+		assert.Contains(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), bundle.RelationKeyTag.String())
 		assert.True(t, st.Details().Has(bundle.RelationKeyTag))
 	})
 

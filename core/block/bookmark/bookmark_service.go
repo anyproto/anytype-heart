@@ -14,7 +14,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
@@ -32,7 +31,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -58,7 +56,7 @@ type ObjectCreator interface {
 }
 
 type DetailsSetter interface {
-	SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error)
+	SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error)
 }
 
 type service struct {
@@ -181,25 +179,13 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 	return objectId, objectDetails, nil
 }
 
-func detailsFromContent(content *bookmark.ObjectContent) map[string]*types.Value {
-	return map[string]*types.Value{
-		bundle.RelationKeyName.String():        pbtypes.String(content.BookmarkContent.Title),
-		bundle.RelationKeyDescription.String(): pbtypes.String(content.BookmarkContent.Description),
-		bundle.RelationKeySource.String():      pbtypes.String(content.BookmarkContent.Url),
-		bundle.RelationKeyPicture.String():     pbtypes.String(content.BookmarkContent.ImageHash),
-		bundle.RelationKeyIconImage.String():   pbtypes.String(content.BookmarkContent.FaviconHash),
-	}
-}
-
-func (s *service) UpdateObject(objectId string, getContent *bookmark.ObjectContent) error {
-	detailsMap := detailsFromContent(getContent)
-
-	details := make([]*model.Detail, 0, len(detailsMap))
-	for k, v := range detailsMap {
-		details = append(details, &model.Detail{
-			Key:   k,
-			Value: v,
-		})
+func (s *service) UpdateObject(objectId string, content *bookmark.ObjectContent) error {
+	details := []domain.Detail{
+		{Key: bundle.RelationKeyName, Value: domain.String(content.BookmarkContent.Title)},
+		{Key: bundle.RelationKeyDescription, Value: domain.String(content.BookmarkContent.Description)},
+		{Key: bundle.RelationKeySource, Value: domain.String(content.BookmarkContent.Url)},
+		{Key: bundle.RelationKeyPicture, Value: domain.String(content.BookmarkContent.ImageHash)},
+		{Key: bundle.RelationKeyIconImage, Value: domain.String(content.BookmarkContent.FaviconHash)},
 	}
 
 	return s.detailsSetter.SetDetails(nil, objectId, details)

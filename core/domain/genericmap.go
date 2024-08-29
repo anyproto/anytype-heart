@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -73,6 +74,27 @@ func (d *GenericMap[K]) Iterate(proc func(key K, value Value) bool) {
 		return
 	}
 	for k, v := range d.data {
+		if !proc(k, v) {
+			return
+		}
+	}
+}
+
+func (d *GenericMap[K]) IterateSorted(proc func(key K, value Value) bool) {
+	if d == nil {
+		return
+	}
+
+	keys := make([]K, 0, len(d.data))
+	for k := range d.data {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+
+	for _, k := range keys {
+		v := d.data[k]
 		if !proc(k, v) {
 			return
 		}

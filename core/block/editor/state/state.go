@@ -9,6 +9,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
+	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
@@ -888,6 +889,42 @@ func (s *State) writeString(buf *bytes.Buffer, l int, id string) {
 			s.writeString(buf, l+1, cid)
 		}
 	}
+}
+
+func (s *State) StringDebug() string {
+	buf := bytes.NewBuffer(nil)
+	fmt.Fprintf(buf, "RootId: %s\n", s.RootId())
+	fmt.Fprintf(buf, "ObjectTypeKeys: %v\n", s.ObjectTypeKeys())
+	fmt.Fprintf(buf, "Relations:\n")
+	for _, rel := range s.relationLinks {
+		fmt.Fprintf(buf, "\t%v\n", rel)
+	}
+
+	fmt.Fprintf(buf, "\nDetails:\n")
+	arena := &fastjson.Arena{}
+	s.Details().IterateSorted(func(k domain.RelationKey, v domain.Value) bool {
+		raw := string(v.ToJson(arena).MarshalTo(nil))
+		fmt.Fprintf(buf, "\t%s:\t%v\n", k, raw)
+		return true
+	})
+	fmt.Fprintf(buf, "\nLocal details:\n")
+	s.LocalDetails().IterateSorted(func(k domain.RelationKey, v domain.Value) bool {
+		raw := string(v.ToJson(arena).MarshalTo(nil))
+		fmt.Fprintf(buf, "\t%s:\t%v\n", k, raw)
+		return true
+	})
+	fmt.Fprintf(buf, "\nBlocks:\n")
+	s.writeString(buf, 0, s.RootId())
+	fmt.Fprintf(buf, "\nCollection:\n")
+	pbtypes.SortedRange(s.Store(), func(k string, v *types.Value) {
+		fmt.Fprintf(buf, "\t%s\n", k)
+		if st := v.GetStructValue(); st != nil {
+			pbtypes.SortedRange(st, func(k string, v *types.Value) {
+				fmt.Fprintf(buf, "\t\t%s:\t%v\n", k, pbtypes.Sprint(v))
+			})
+		}
+	})
+	return buf.String()
 }
 
 func (s *State) SetDetails(d *domain.Details) *State {

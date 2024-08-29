@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
@@ -41,10 +42,10 @@ var validators = []validator{
 }
 
 func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
+	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	linksToDelete := make([]keyWithIndex, 0)
 	for i, rel := range s.Snapshot.Data.RelationLinks {
-		if bundle.HasRelation(rel.Key) {
+		if bundle.HasRelation(domain.RelationKey(rel.Key)) {
 			continue
 		}
 		if _, found := info.customTypesAndRelations[rel.Key]; found {
@@ -61,7 +62,7 @@ func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error
 }
 
 func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
+	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	var relKeys []string
 	for _, b := range s.Snapshot.Data.Blocks {
 		if rel := simple.New(b).Model().GetRelation(); rel != nil {
@@ -92,7 +93,7 @@ func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) (err erro
 }
 
 func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
+	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 
 	for k, v := range s.Snapshot.Data.Details.Fields {
 		if isLinkRelation(k) {
@@ -123,7 +124,7 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 
 		values := pbtypes.GetStringListValue(v)
 		for _, val := range values {
-			if bundle.HasRelation(strings.TrimPrefix(val, addr.RelationKeyToIdPrefix)) ||
+			if bundle.HasRelation(domain.RelationKey(strings.TrimPrefix(val, addr.RelationKeyToIdPrefix))) ||
 				bundle.HasObjectTypeByKey(domain.TypeKey(strings.TrimPrefix(val, addr.ObjectTypeKeyToIdPrefix))) || val == addr.AnytypeProfileId {
 				continue
 			}
@@ -153,7 +154,7 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 }
 
 func validateObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
+	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	for _, ot := range s.Snapshot.Data.ObjectTypes {
 		typeId := strings.TrimPrefix(ot, addr.ObjectTypeKeyToIdPrefix)
 		if !bundle.HasObjectTypeByKey(domain.TypeKey(typeId)) {
@@ -166,7 +167,7 @@ func validateObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) (err error) 
 }
 
 func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
+	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	for _, b := range s.Snapshot.Data.Blocks {
 		switch a := simple.New(b).(type) {
 		case link.Block:
@@ -213,20 +214,53 @@ func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	return err
 }
 
-func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo) error {
-	id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
+func validateFileKeys(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) {
+	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	for _, r := range s.Snapshot.Data.RelationLinks {
+		if r.Format == model.RelationFormat_file || r.Key == bundle.RelationKeyCoverId.String() {
+			for _, hash := range pbtypes.GetStringList(s.Snapshot.GetData().GetDetails(), r.Key) {
+				if r.Format != model.RelationFormat_file {
+					_, err := cid.Parse(hash)
+					if err != nil {
+						continue
+					}
+				}
+				if !snapshotHasKeyForHash(s, hash) {
+					err = multierror.Append(err, fmt.Errorf("object '%s' has file detail '%s' has hash '%s' which keys are not in the snapshot", id, r.Key, hash))
+				}
+			}
+		}
+	}
+	for _, b := range s.Snapshot.Data.Blocks {
+		if v, ok := simple.New(b).(simple.FileHashes); ok {
+			hashes := v.FillFileHashes([]string{})
+			if len(hashes) == 0 {
+				continue
+			}
+			for _, hash := range hashes {
+				if !snapshotHasKeyForHash(s, hash) {
+					err = multierror.Append(err, fmt.Errorf("file block '%s' of object '%s' has hash '%s' which keys are not in the snapshot", b.Id, id, hash))
+				}
+			}
+		}
+	}
+	return err
+}
 
-	if s.Snapshot.Data.Details.GetBoolOrDefault(bundle.RelationKeyIsArchived, false) {
+func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo) error {
+	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
+
+	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsArchived.String()) {
 		fmt.Println("WARNING: object", id, " is archived, so it will be skipped")
 		return errSkipObject
 	}
 
-	if s.Snapshot.Data.Details.GetBoolOrDefault(bundle.RelationKeyIsDeleted, false) {
+	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsDeleted.String()) {
 		fmt.Println("WARNING: object", id, " is deleted, so it will be skipped")
 		return errSkipObject
 	}
 
-	if s.Snapshot.Data.Details.GetBoolOrDefault(bundle.RelationKeyIsUninstalled, false) {
+	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsUninstalled.String()) {
 		fmt.Println("WARNING: object", id, " is uninstalled, so it will be skipped")
 		return errSkipObject
 	}
@@ -239,13 +273,13 @@ func validateRelationOption(s *pb.SnapshotWithType, info *useCaseInfo) error {
 		return nil
 	}
 
-	key := s.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey, "")
-	if bundle.HasRelation(key) {
+	key := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	if bundle.HasRelation(domain.RelationKey(key)) {
 		return nil
 	}
 
 	if _, found := info.customTypesAndRelations[key]; !found {
-		id := s.Snapshot.Data.Details.GetString(bundle.RelationKeyId, "")
+		id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 		return fmt.Errorf("failed to find relation key %s of relation option %s", key, id)
 	}
 	return nil
@@ -258,6 +292,15 @@ func getRelationLinkByKey(links []*model.RelationLink, key string) *model.Relati
 		}
 	}
 	return nil
+}
+
+func snapshotHasKeyForHash(s *pb.SnapshotWithType, hash string) bool {
+	for _, k := range s.Snapshot.FileKeys {
+		if k.Hash == hash && len(k.Keys) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func isLinkRelation(k string) bool {

@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -70,7 +71,7 @@ func readRules(fileName string) error {
 }
 
 func processRules(s *pb.ChangeSnapshot) {
-	id := s.Data.Details.GetString(bundle.RelationKeyId, "")
+	id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
 
 	for i, r := range rules {
 		if r.ObjectID != id && r.ObjectID != "" {
@@ -124,7 +125,7 @@ func doDetailRule(s *pb.ChangeSnapshot, r rule) {
 	case remove:
 		delete(s.Data.Details.Fields, r.DetailKey)
 	case change, add:
-		s.Data.Details.Set(r.DetailKey, r.DetailValue)
+		s.Data.Details.Fields[r.DetailKey] = r.DetailValue
 	default:
 		fmt.Printf(errInvalidAction, r.Action)
 	}
@@ -163,7 +164,7 @@ func doDataViewTargetRule(s *pb.ChangeSnapshot, r rule) {
 	}
 	if !ok {
 		fmt.Println("Failed to process rule as block" + r.BlockID + "of object" +
-			s.Data.Details.GetString(bundle.RelationKeyId, "") + "is not dataview block")
+			pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String()) + "is not dataview block")
 		return
 	}
 	switch r.Action {
@@ -192,7 +193,7 @@ func doLinkTargetRule(s *pb.ChangeSnapshot, r rule) {
 	}
 	if !ok {
 		fmt.Println("Failed to process rule as block" + r.BlockID + "of object" +
-			s.Data.Details.GetString(bundle.RelationKeyId, "") + "is not link block")
+			pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String()) + "is not link block")
 		return
 	}
 	switch r.Action {

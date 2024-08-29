@@ -903,7 +903,7 @@ func TestProfileMigrationExtractCustomState(t *testing.T) {
 	})
 
 	originalState.Details().Iterate(func(k domain.RelationKey, v domain.Value) bool {
-		require.Contains(t, whitelistedDetailKeys, k, "old state should not contain %s", k)
+		require.Contains(t, whitelistedDetailKeys, k.String(), "old state should not contain %s", k)
 		return true
 	})
 	require.Equal(t, bundle.TypeKeyPage, extractedState.ObjectTypeKey())
