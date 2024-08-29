@@ -42,8 +42,24 @@ func (d ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (
 }
 
 func (d ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (mode storestate.DeleteMode, err error) {
-	// TODO Validation
-	d.subscription.delete(ch.Change.Change.GetDelete().GetDocumentId())
+	coll, err := ch.State.Collection(ctx, collectionName)
+	if err != nil {
+		return storestate.DeleteModeDelete, fmt.Errorf("get collection: %w", err)
+	}
+
+	messageId := ch.Change.Change.GetDelete().GetDocumentId()
+
+	doc, err := coll.FindId(ctx, messageId)
+	if err != nil {
+		return storestate.DeleteModeDelete, fmt.Errorf("get message: %w", err)
+	}
+
+	creator := string(doc.Value().GetStringBytes("creator"))
+	if creator != ch.Change.Creator {
+		return storestate.DeleteModeDelete, errors.New("can't delete not own message")
+	}
+
+	d.subscription.delete(messageId)
 	return storestate.DeleteModeDelete, nil
 }
 
@@ -55,24 +71,24 @@ func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModif
 
 		path := key.KeyPath[0]
 
-		switch path {
-		case "reactions":
-			// TODO Count validation
-		case "content":
-			creator := string(v.GetStringBytes("creator"))
-			if creator != ch.Change.Creator {
-				return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify not own message"))
-			}
-		default:
-			return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)
-		}
-
 		result, modified, err = mod.Modify(a, v)
 		if err != nil {
 			return nil, false, err
 		}
 
 		if modified {
+			switch path {
+			case "reactions":
+				// TODO Count validation
+			case "content":
+				creator := string(v.GetStringBytes("creator"))
+				if creator != ch.Change.Creator {
+					return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify not own message"))
+				}
+			default:
+				return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)
+			}
+
 			message := unmarshalMessage(result)
 			if path == "reactions" {
 				d.subscription.updateReactions(message)
