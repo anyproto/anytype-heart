@@ -140,7 +140,7 @@ func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) (
 			return nil, errors.Join(iter.Close(), err)
 		}
 
-		message := unmarshalMessage(doc.Value())
+		message := newMessageWrapper(arena, doc.Value()).toModel()
 		res = append(res, message)
 	}
 	return res, errors.Join(iter.Close(), err)
@@ -149,7 +149,7 @@ func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) (
 func (s *storeObject) AddMessage(ctx context.Context, message *model.ChatMessage) (string, error) {
 	// TODO Use one arena for whole object
 	arena := &fastjson.Arena{}
-	obj := marshalMessageTo(arena, message)
+	obj := marshalModel(arena, message)
 
 	builder := storestate.Builder{}
 	err := builder.Create(collectionName, storestate.IdFromChange, obj)
@@ -185,7 +185,7 @@ func (s *storeObject) DeleteMessage(ctx context.Context, messageId string) error
 // TODO Temp non-atomic method
 func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error {
 	arena := &fastjson.Arena{}
-	obj := marshalMessageTo(arena, newMessage)
+	obj := marshalModel(arena, newMessage)
 
 	builder := storestate.Builder{}
 	err := builder.Modify(collectionName, messageId, []string{contentKey}, pb.ModifyOp_Set, obj.Get(contentKey))

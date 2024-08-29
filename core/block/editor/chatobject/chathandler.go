@@ -27,12 +27,13 @@ func (d ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err er
 }
 
 func (d ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) (err error) {
-	ch.Value.Set(createdAtKey, ch.Arena.NewNumberInt(int(ch.Change.Timestamp)))
-	ch.Value.Set(creatorKey, ch.Arena.NewString(ch.Change.Creator))
+	msg := newMessageWrapper(ch.Arena, ch.Value)
+	msg.setCreatedAt(ch.Change.Timestamp)
+	msg.setCreator(ch.Change.Creator)
 
-	message := unmarshalMessage(ch.Value)
-	message.OrderId = ch.Change.Order
-	d.subscription.add(message)
+	model := msg.toModel()
+	model.OrderId = ch.Change.Order
+	d.subscription.add(model)
 
 	return
 }
@@ -54,7 +55,7 @@ func (d ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (
 		return storestate.DeleteModeDelete, fmt.Errorf("get message: %w", err)
 	}
 
-	message := newMessage(doc.Value())
+	message := newMessageWrapper(ch.Arena, doc.Value())
 	if message.getCreator() != ch.Change.Creator {
 		return storestate.DeleteModeDelete, errors.New("can't delete not own message")
 	}
@@ -77,18 +78,19 @@ func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModif
 		}
 
 		if modified {
-			message := unmarshalMessage(result)
+			msg := newMessageWrapper(a, result)
+			model := msg.toModel()
 
 			switch path {
 			case reactionsKey:
 				// TODO Count validation
-				d.subscription.updateReactions(message)
+				d.subscription.updateReactions(model)
 			case contentKey:
-				creator := message.Creator
+				creator := model.Creator
 				if creator != ch.Change.Creator {
 					return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify not own message"))
 				}
-				d.subscription.updateFull(message)
+				d.subscription.updateFull(model)
 			default:
 				return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)
 			}

@@ -14,16 +14,25 @@ const (
 	orderKey     = "_o"
 )
 
-type messageModel struct {
-	val *fastjson.Value
+type messageWrapper struct {
+	val   *fastjson.Value
+	arena *fastjson.Arena
 }
 
-func newMessage(val *fastjson.Value) *messageModel {
-	return &messageModel{val: val}
+func newMessageWrapper(arena *fastjson.Arena, val *fastjson.Value) *messageWrapper {
+	return &messageWrapper{arena: arena, val: val}
 }
 
-func (m *messageModel) getCreator() string {
+func (m *messageWrapper) getCreator() string {
 	return string(m.val.GetStringBytes(creatorKey))
+}
+
+func (m *messageWrapper) setCreator(v string) {
+	m.val.Set(creatorKey, m.arena.NewString(v))
+}
+
+func (m *messageWrapper) setCreatedAt(v int64) {
+	m.val.Set(createdAtKey, m.arena.NewNumberInt(int(v)))
 }
 
 /*
@@ -60,7 +69,7 @@ func (m *messageModel) getCreator() string {
 
 */
 
-func marshalMessageTo(arena *fastjson.Arena, msg *model.ChatMessage) *fastjson.Value {
+func marshalModel(arena *fastjson.Arena, msg *model.ChatMessage) *fastjson.Value {
 	message := arena.NewObject()
 	message.Set("text", arena.NewString(msg.Message.Text))
 	message.Set("style", arena.NewNumberInt(int(msg.Message.Style)))
@@ -105,8 +114,21 @@ func marshalMessageTo(arena *fastjson.Arena, msg *model.ChatMessage) *fastjson.V
 	return root
 }
 
-func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
-	inMarks := root.GetArray(contentKey, "message", "marks")
+func (m *messageWrapper) toModel() *model.ChatMessage {
+	return &model.ChatMessage{
+		Id:               string(m.val.GetStringBytes("id")),
+		Creator:          string(m.val.GetStringBytes(creatorKey)),
+		CreatedAt:        m.val.GetInt64(createdAtKey),
+		OrderId:          string(m.val.GetStringBytes("_o", "id")),
+		ReplyToMessageId: string(m.val.GetStringBytes("replyToMessageId")),
+		Message:          m.contentToModel(),
+		Attachments:      m.attachmentsToModel(),
+		Reactions:        m.reactionsToModel(),
+	}
+}
+
+func (m *messageWrapper) contentToModel() *model.ChatMessageMessageContent {
+	inMarks := m.val.GetArray(contentKey, "message", "marks")
 	marks := make([]*model.BlockContentTextMark, 0, len(inMarks))
 	for _, inMark := range inMarks {
 		mark := &model.BlockContentTextMark{
@@ -119,14 +141,16 @@ func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 		}
 		marks = append(marks, mark)
 	}
-	content := &model.ChatMessageMessageContent{
-		Text:  string(root.GetStringBytes(contentKey, "message", "text")),
-		Style: model.BlockContentTextStyle(root.GetInt("content", "message", "style")),
+	return &model.ChatMessageMessageContent{
+		Text:  string(m.val.GetStringBytes(contentKey, "message", "text")),
+		Style: model.BlockContentTextStyle(m.val.GetInt("content", "message", "style")),
 		Marks: marks,
 	}
+}
 
+func (m *messageWrapper) attachmentsToModel() []*model.ChatMessageAttachment {
+	inAttachments := m.val.GetObject(contentKey, "attachments")
 	var attachments []*model.ChatMessageAttachment
-	inAttachments := root.GetObject(contentKey, "attachments")
 	if inAttachments != nil {
 		attachments = make([]*model.ChatMessageAttachment, 0, inAttachments.Len())
 		inAttachments.Visit(func(targetObjectId []byte, inAttachment *fastjson.Value) {
@@ -136,11 +160,14 @@ func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 			})
 		})
 	}
+	return attachments
+}
 
+func (m *messageWrapper) reactionsToModel() *model.ChatMessageReactions {
+	inReactions := m.val.GetObject(reactionsKey)
 	reactions := &model.ChatMessageReactions{
 		Reactions: map[string]*model.ChatMessageReactionsIdentityList{},
 	}
-	inReactions := root.GetObject(reactionsKey)
 	if inReactions != nil {
 		inReactions.Visit(func(emoji []byte, inReaction *fastjson.Value) {
 			inReactionArr := inReaction.GetArray()
@@ -153,15 +180,5 @@ func unmarshalMessage(root *fastjson.Value) *model.ChatMessage {
 			}
 		})
 	}
-
-	return &model.ChatMessage{
-		Id:               string(root.GetStringBytes("id")),
-		Creator:          string(root.GetStringBytes(creatorKey)),
-		CreatedAt:        root.GetInt64(createdAtKey),
-		OrderId:          string(root.GetStringBytes("_o", "id")),
-		ReplyToMessageId: string(root.GetStringBytes("replyToMessageId")),
-		Message:          content,
-		Attachments:      attachments,
-		Reactions:        reactions,
-	}
+	return reactions
 }
