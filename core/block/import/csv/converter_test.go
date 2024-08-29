@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -189,7 +189,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 
 	for _, snapshot := range sn.Snapshots {
 		if snapshot.Snapshot.SbType == sb.SmartBlockTypeRelation {
-			name := snapshot.Snapshot.GetData().GetDetails().GetString(bundle.RelationKeyName, "")
+			name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 			assert.True(t, name == "name" || name == "price")
 		}
 	}
@@ -229,7 +229,7 @@ func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
 
 	for _, snapshot := range sn.Snapshots {
 		if snapshot.Snapshot.SbType == sb.SmartBlockTypeRelation {
-			name := snapshot.Snapshot.GetData().GetDetails().GetString(bundle.RelationKeyName, "")
+			name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 			assert.True(t, name == "Field 1" || name == "Field 2")
 		}
 	}
@@ -274,12 +274,13 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOn(t *testing.T) {
 }
 
 func assertSnapshotsHaveDetails(t *testing.T, want []string, objects *common.Snapshot) {
-	for key, value := range objects.Snapshot.Data.Details.Fields {
-		if key == bundle.RelationKeySourceFilePath.String() || key == bundle.RelationKeyLayout.String() {
-			continue
+	objects.Snapshot.Data.Details.Iterate(func(key domain.RelationKey, value domain.Value) bool {
+		if key == bundle.RelationKeySourceFilePath || key == bundle.RelationKeyLayout {
+			return true
 		}
-		assert.Contains(t, want, value.GetStringValue())
-	}
+		assert.Contains(t, want, value.String())
+		return true
+	})
 }
 
 func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {
@@ -630,7 +631,7 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 	}
 
 	for _, object := range objects {
-		keys := lo.MapToSlice(object.Snapshot.Data.Details.Fields, func(key string, value *types.Value) string { return key })
+		keys := object.Snapshot.Data.Details.Keys()
 		numberOfCSVRelations := getRelationsNumber(keys)
 		assert.Equal(t, numberOfCSVRelations, limitForColumns)
 	}
@@ -661,8 +662,7 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 	}
 
 	for _, object := range objects {
-		keys := lo.MapToSlice(object.Snapshot.Data.Details.Fields, func(key string, value *types.Value) string { return key })
-		numberOfCSVRelations := getRelationsNumber(keys)
+		numberOfCSVRelations := getRelationsNumber(object.Snapshot.Data.Details.Keys())
 		assert.Equal(t, numberOfCSVRelations, limitForColumns)
 	}
 }
@@ -740,15 +740,14 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 
 		assert.Len(t, objects, 2)
 		for _, object := range objects {
-			keys := lo.MapToSlice(object.Snapshot.Data.Details.Fields, func(key string, value *types.Value) string { return key })
-			numberOfCSVRelations := getRelationsNumber(keys)
+			numberOfCSVRelations := getRelationsNumber(object.Snapshot.Data.Details.Keys())
 			assert.Equal(t, numberOfCSVRelations, 3)
 		}
 	})
 }
 
-func getRelationsNumber(keys []string) int {
-	return lo.CountBy(keys, func(item string) bool {
-		return item != bundle.RelationKeySourceFilePath.String() && item != bundle.RelationKeyLayout.String()
+func getRelationsNumber(keys []domain.RelationKey) int {
+	return lo.CountBy(keys, func(item domain.RelationKey) bool {
+		return item != bundle.RelationKeySourceFilePath && item != bundle.RelationKeyLayout
 	})
 }

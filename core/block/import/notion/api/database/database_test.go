@@ -5,11 +5,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -390,8 +390,8 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		pr := property.DatabaseProperties{"Tag": &p}
 		dbService := New(nil)
 		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+			PropertyIdsToSnapshots: map[string]*common.StateSnapshot{},
+			RelationsIdsToOptions:  map[string][]*common.StateSnapshot{},
 		}
 		db := Database{Properties: pr}
 
@@ -400,7 +400,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[p.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[p.ID].Details.GetString(bundle.RelationKeyRelationKey))
 	})
 
 	t.Run("Database has Select property with Tags name", func(t *testing.T) {
@@ -414,8 +414,8 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		properties := property.DatabaseProperties{"Tags": &selectProperty}
 		dbService := New(nil)
 		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+			PropertyIdsToSnapshots: map[string]*common.StateSnapshot{},
+			RelationsIdsToOptions:  map[string][]*common.StateSnapshot{},
 		}
 		db := Database{Properties: properties}
 
@@ -424,7 +424,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].Details.GetString(bundle.RelationKeyRelationKey))
 	})
 
 	t.Run("Page has MultiSelect property with Tags name", func(t *testing.T) {
@@ -437,8 +437,8 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		selectProperty := property.DatabaseProperties{"Tags": &multiSelectProperty}
 		dbService := New(nil)
 		properties := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+			PropertyIdsToSnapshots: map[string]*common.StateSnapshot{},
+			RelationsIdsToOptions:  map[string][]*common.StateSnapshot{},
 		}
 		db := Database{Properties: selectProperty}
 
@@ -447,7 +447,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, properties.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, bundle.RelationKeyTag.String(), properties.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
+		assert.Equal(t, bundle.RelationKeyTag.String(), properties.PropertyIdsToSnapshots[multiSelectProperty.ID].Details.GetString(bundle.RelationKeyRelationKey))
 	})
 
 	t.Run("Page has MultiSelect property with Tag name", func(t *testing.T) {
@@ -460,8 +460,8 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		selectProperty := property.DatabaseProperties{"Tag": &multiSelectProperty}
 		dbService := New(nil)
 		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+			PropertyIdsToSnapshots: map[string]*common.StateSnapshot{},
+			RelationsIdsToOptions:  map[string][]*common.StateSnapshot{},
 		}
 		db := Database{Properties: selectProperty}
 
@@ -470,7 +470,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].Details.GetString(bundle.RelationKeyRelationKey))
 	})
 
 	t.Run("Page has MultiSelect property with Tag name and Select property with Tags name - MultiSelect is mapped to Tag relation", func(t *testing.T) {
@@ -489,8 +489,8 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		properties := property.DatabaseProperties{"Tag": &multiSelectProperty, "Tags": &selectProperty}
 		dbService := New(nil)
 		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+			PropertyIdsToSnapshots: map[string]*common.StateSnapshot{},
+			RelationsIdsToOptions:  map[string][]*common.StateSnapshot{},
 		}
 		db := Database{Properties: properties}
 
@@ -499,8 +499,8 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
-		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
-		assert.NotEqual(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].Details.GetString(bundle.RelationKeyRelationKey))
+		assert.NotEqual(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].Details.GetString(bundle.RelationKeyRelationKey))
 	})
 
 	t.Run("Page has MultiSelect property with Tag name and Select property with tags name - MultiSelect is mapped to Tag relation", func(t *testing.T) {
@@ -519,8 +519,8 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		properties := property.DatabaseProperties{"Tag": &multiSelectProperty, "tags": &selectProperty}
 		dbService := New(nil)
 		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+			PropertyIdsToSnapshots: map[string]*common.StateSnapshot{},
+			RelationsIdsToOptions:  map[string][]*common.StateSnapshot{},
 		}
 		db := Database{Properties: properties}
 
@@ -529,8 +529,8 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
-		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
-		assert.NotEqual(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetString(bundle.RelationKeyRelationKey, ""))
+		assert.Equal(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[multiSelectProperty.ID].Details.GetString(bundle.RelationKeyRelationKey))
+		assert.NotEqual(t, bundle.RelationKeyTag.String(), req.PropertyIdsToSnapshots[selectProperty.ID].Details.GetString(bundle.RelationKeyRelationKey))
 	})
 
 	t.Run("Database has icon emoji - details have relation iconEmoji", func(t *testing.T) {
@@ -608,8 +608,8 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		properties := property.DatabaseProperties{"": &selectProperty}
 		dbService := New(nil)
 		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+			PropertyIdsToSnapshots: map[string]*common.StateSnapshot{},
+			RelationsIdsToOptions:  map[string][]*common.StateSnapshot{},
 		}
 		db := Database{Properties: properties}
 
@@ -618,6 +618,6 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
-		assert.Equal(t, property.UntitledProperty, req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails().GetString(bundle.RelationKeyName, ""))
+		assert.Equal(t, property.UntitledProperty, req.PropertyIdsToSnapshots[selectProperty.ID].Details.GetString(bundle.RelationKeyName))
 	})
 }
