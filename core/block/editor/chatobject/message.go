@@ -175,8 +175,10 @@ func (m *messageWrapper) reactionsToModel() *model.ChatMessageReactions {
 			for _, identity := range inReactionArr {
 				identities = append(identities, string(identity.GetStringBytes()))
 			}
-			reactions.Reactions[string(emoji)] = &model.ChatMessageReactionsIdentityList{
-				Ids: identities,
+			if len(identities) > 0 {
+				reactions.Reactions[string(emoji)] = &model.ChatMessageReactionsIdentityList{
+					Ids: identities,
+				}
 			}
 		})
 	}
