@@ -23,9 +23,9 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 )
 
-var interfacesSortPriority = []string{"en", "wlan", "wl", "eth", "lo"}
-
 type Hook int
+
+var interfacesSortPriority = []string{"wlan", "wl", "en", "eth", "tun", "tap", "utun", "lo"}
 
 const (
 	PeerToPeerImpossible Hook = 0
@@ -70,7 +70,7 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.manualStart = a.MustComponent(config.CName).(*config.Config).DontStartLocalNetworkSyncAutomatically
 	l.nodeConf = a.MustComponent(config.CName).(*config.Config).GetNodeConf()
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
-	l.periodicCheck = periodicsync.NewPeriodicSync(10, 0, l.checkAddrs, log)
+	l.periodicCheck = periodicsync.NewPeriodicSync(5, 0, l.checkAddrs, log)
 	l.drpcServer = app.MustComponent[clientserver.ClientServer](a)
 	return
 }
@@ -158,10 +158,11 @@ func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
 	newAddrs, err := addrs.GetInterfacesAddrs()
 	l.notifyPeerToPeerStatus(newAddrs)
 	if err != nil {
-		return
+		return fmt.Errorf("getting iface addresses: %w", err)
 	}
 
-	newAddrs.SortWithPriority(interfacesSortPriority)
+	newAddrs.SortInterfacesWithPriority(interfacesSortPriority)
+
 	if newAddrs.Equal(l.interfacesAddrs) && l.server != nil {
 		return
 	}
@@ -174,22 +175,45 @@ func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
 	}
 	l.ctx, l.cancel = context.WithCancel(ctx)
 	if err = l.startServer(); err != nil {
-		return
+		return fmt.Errorf("starting mdns server: %w", err)
 	}
 	l.startQuerying(l.ctx)
 	return
 }
 
+func (l *localDiscovery) getAddresses() (ipv4, ipv6 []gonet.IP) {
+	for _, iface := range l.interfacesAddrs.Interfaces {
+		for _, addr := range iface.GetAddr() {
+			ip := addr.(*gonet.IPNet).IP
+			if ip.To4() != nil {
+				ipv4 = append(ipv4, ip)
+			} else {
+				ipv6 = append(ipv6, ip)
+			}
+		}
+	}
+
+	if len(ipv4) == 0 {
+		// fallback in case we have no ipv4 addresses from interfaces
+		for _, addr := range l.interfacesAddrs.Addrs {
+			ip := strings.Split(addr.String(), "/")[0]
+			ipVal := gonet.ParseIP(ip)
+			if ipVal.To4() != nil {
+				ipv4 = append(ipv4, ipVal)
+			} else {
+				ipv6 = append(ipv6, ipVal)
+			}
+		}
+		l.interfacesAddrs.SortIPsLikeInterfaces(ipv4)
+	}
+	return
+}
+
 func (l *localDiscovery) startServer() (err error) {
 	l.ipv4 = l.ipv4[:0]
-	l.ipv6 = l.ipv6[:0]
-	for _, addr := range l.interfacesAddrs.Addrs {
-		ip := strings.Split(addr.String(), "/")[0]
-		if gonet.ParseIP(ip).To4() != nil {
-			l.ipv4 = append(l.ipv4, ip)
-		} else {
-			l.ipv6 = append(l.ipv6, ip)
-		}
+	ipv4, _ := l.getAddresses() // ignore ipv6 for now
+	for _, ip := range ipv4 {
+		l.ipv4 = append(l.ipv4, ip.String())
 	}
 	log.Debug("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId))
 	l.server, err = zeroconf.RegisterProxy(
@@ -200,7 +224,7 @@ func (l *localDiscovery) startServer() (err error) {
 		l.peerId,
 		l.ipv4, // do not include ipv6 addresses, because they are disabled
 		nil,
-		l.interfacesAddrs.Interfaces,
+		l.interfacesAddrs.NetInterfaces(),
 		zeroconf.TTL(60),
 		zeroconf.ServerSelectIPTraffic(zeroconf.IPv4), // disable ipv6 for now
 		zeroconf.WriteTimeout(time.Second*1),
@@ -223,6 +247,7 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 			continue
 		}
 		var portAddrs []string
+		l.interfacesAddrs.SortIPsLikeInterfaces(entry.AddrIPv4)
 		for _, a := range entry.AddrIPv4 {
 			portAddrs = append(portAddrs, fmt.Sprintf("%s:%d", a.String(), entry.Port))
 		}
@@ -248,10 +273,10 @@ func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEn
 	if err != nil {
 		return
 	}
-	newAddrs.SortWithPriority(interfacesSortPriority)
+	newAddrs.SortInterfacesWithPriority(interfacesSortPriority)
 	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch,
 		zeroconf.ClientWriteTimeout(time.Second*1),
-		zeroconf.SelectIfaces(newAddrs.Interfaces),
+		zeroconf.SelectIfaces(newAddrs.NetInterfaces()),
 		zeroconf.SelectIPTraffic(zeroconf.IPv4)); err != nil {
 		log.Error("browsing failed", zap.Error(err))
 	}
@@ -266,7 +291,7 @@ func (l *localDiscovery) notifyPeerToPeerStatus(newAddrs addrs.InterfacesAddrs) 
 }
 
 func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
-	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces)
+	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.NetInterfaces())
 }
 
 func (l *localDiscovery) executeHook(hook Hook) {

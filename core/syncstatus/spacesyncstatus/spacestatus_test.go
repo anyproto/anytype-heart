@@ -385,6 +385,33 @@ func Test(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 		defer fx.ctrl.Finish()
 	})
+	t.Run("sync protocol compatibility", func(t *testing.T) {
+		fx := newFixture(t, func(fx *fixture) {
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+				Usage: filesync.NodeUsage{
+					BytesLeft:         1000,
+					AccountBytesLimit: 1000,
+				},
+				LocalUsageBytes: 0,
+			}, nil)
+			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusNeedsUpdate)
+			fx.eventSender.EXPECT().Broadcast(&pb.Event{
+				Messages: []*pb.EventMessage{{
+					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+							Id:      "spaceId",
+							Status:  pb.EventSpace_NetworkNeedsUpdate,
+							Network: pb.EventSpace_Anytype,
+						},
+					},
+				}},
+			})
+		})
+		defer fx.ctrl.Finish()
+	})
 	t.Run("hook new session", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			objs := genSyncingObjects(10, 100, "spaceId")
