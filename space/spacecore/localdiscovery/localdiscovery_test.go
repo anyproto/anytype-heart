@@ -98,16 +98,16 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 
 		// when
 		ld := f.LocalDiscovery.(*localDiscovery)
-		var hookCalled atomic.Bool
-		ld.RegisterResetNotPossible(func() {
-			hookCalled.Store(true)
+		var hookCalled atomic.Int64
+		ld.RegisterDiscoveryPossibilityHook(func(state DiscoveryPossibility) {
+			hookCalled.Store(int64(state))
 		})
 		ld.port = 6789
 		err := ld.checkAddrs(context.Background())
 
 		// then
 		assert.Nil(t, err)
-		assert.True(t, hookCalled.Load())
+		assert.True(t, hookCalled.Load() == int64(DiscoveryPossible))
 	})
 }
 
