@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/files"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -68,11 +69,14 @@ func (p *Database) GetObjectType() string {
 }
 
 // GetDatabase makes snapshots from notion Database objects
-func (ds *Service) GetDatabase(_ context.Context,
+func (ds *Service) GetDatabase(
+	_ context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	databases []Database,
 	progress process.Progress,
-	req *api.NotionImportContext) (*common.Response, *property.PropertiesStore, *common.ConvertError) {
+	req *api.NotionImportContext,
+	fileDownloader *files.FileDownloader,
+) (*common.Response, *property.PropertiesStore, *common.ConvertError) {
 	var (
 		allSnapshots = make([]*common.Snapshot, 0)
 		convertError = common.NewError(mode)
@@ -84,7 +88,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 			convertError.Add(common.ErrCancel)
 			return nil, nil, convertError
 		}
-		snapshot, err := ds.makeDatabaseSnapshot(d, req, relations)
+		snapshot, err := ds.makeDatabaseSnapshot(d, req, relations, fileDownloader)
 		if err != nil {
 			convertError.Add(err)
 			if convertError.ShouldAbortImport(0, model.Import_Notion) {
@@ -100,15 +104,19 @@ func (ds *Service) GetDatabase(_ context.Context,
 	return &common.Response{Snapshots: allSnapshots}, relations, convertError
 }
 
-func (ds *Service) makeDatabaseSnapshot(d Database,
+func (ds *Service) makeDatabaseSnapshot(
+	d Database,
 	importContext *api.NotionImportContext,
-	relations *property.PropertiesStore) ([]*common.Snapshot, error) {
+	relations *property.PropertiesStore,
+	fileDownloader *files.FileDownloader,
+) ([]*common.Snapshot, error) {
 	details, relationLinks := ds.getCollectionDetails(d)
 	detailsStruct := &types.Struct{Fields: details}
 	_, _, st, err := ds.collectionService.CreateCollection(detailsStruct, nil)
 	if err != nil {
 		return nil, err
 	}
+	api.UploadFileRelationLocally(fileDownloader, details, relationLinks)
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	snapshots := ds.makeRelationsSnapshots(d, st, relations)
 	id, databaseSnapshot := ds.provideDatabaseSnapshot(d, st, detailsStruct, relationLinks)
@@ -268,10 +276,6 @@ func (ds *Service) getCollectionDetails(d Database) (map[string]*types.Value, []
 	if len(d.Title) > 0 {
 		details[bundle.RelationKeyName.String()] = pbtypes.String(d.Title[0].PlainText)
 	}
-	if d.Icon != nil && d.Icon.Emoji != nil {
-		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*d.Icon.Emoji)
-	}
-
 	var relationLinks []*model.RelationLink
 	if d.Cover != nil {
 		api.SetCover(details, d.Cover)

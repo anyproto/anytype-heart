@@ -8,6 +8,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -355,4 +356,17 @@ func RichTextToDescription(rt []*RichText) string {
 		}
 	}
 	return richText.String()
+}
+
+func UploadFileRelationLocally(fileDownloader *files.FileDownloader, details map[string]*types.Value, relationLinks []*model.RelationLink) {
+	for _, relationLink := range relationLinks {
+		if relationLink.Format == model.RelationFormat_file {
+			fileUrl := details[relationLink.Key].GetStringValue()
+			if fileUrl != "" {
+				fileDownloader.AddToQueue(fileUrl)
+				localPath := fileDownloader.WaitForLocalPath(fileUrl)
+				details[relationLink.Key] = pbtypes.String(localPath)
+			}
+		}
+	}
 }

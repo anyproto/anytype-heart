@@ -17,32 +17,31 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 )
 
-const workersNumber = 4
+const workersNumber = 5
 
-type fileDownloader struct {
+type FileDownloader struct {
 	pool            *workerpool.WorkerPool
 	tempDirProvider core.TempDirProvider
 
-	fileToHash map[string]string
+	urlToLocalPath map[string]string
+	urlsInProgress map[string]struct{}
 	sync.Mutex
 }
 
-func newFileDownloader(tempDirProvider core.TempDirProvider) *fileDownloader {
-	return &fileDownloader{
+func NewFileDownloader(tempDirProvider core.TempDirProvider) *FileDownloader {
+	return &FileDownloader{
 		pool:            workerpool.NewPool(workersNumber),
 		tempDirProvider: tempDirProvider,
-		fileToHash:      make(map[string]string, 0),
+		urlToLocalPath:  make(map[string]string, 0),
+		urlsInProgress:  make(map[string]struct{}, 0),
 	}
 }
 
-func (d *fileDownloader) Init(ctx context.Context, token string) error {
+func (d *FileDownloader) Init(ctx context.Context, token string) error {
 	tokenHash := string(md5.New().Sum([]byte(token)))
 	dirPath := filepath.Join(d.tempDirProvider.TempDir(), tokenHash)
 	err := os.MkdirAll(dirPath, 0700)
-	if err != nil {
-		if os.IsExist(err) {
-			return nil
-		}
+	if err != nil && !os.IsExist(err) {
 		return err
 	}
 	d.pool.Start(&DataObject{
@@ -52,16 +51,42 @@ func (d *fileDownloader) Init(ctx context.Context, token string) error {
 	return nil
 }
 
-func (d *fileDownloader) AddToQueue(url string) {
+func (d *FileDownloader) AddToQueue(url string) {
+	d.Lock()
+	defer d.Unlock()
+	if _, ok := d.urlToLocalPath[url]; ok {
+		return
+	}
+	if _, ok := d.urlsInProgress[url]; ok {
+		return
+	}
+	d.urlsInProgress[url] = struct{}{}
 	d.pool.AddWork(NewFile(url))
 }
 
-func (d *fileDownloader) ReadResult(url string) {
+func (d *FileDownloader) MapUrlToLocalPath() {
 	for result := range d.pool.Results() {
-		res := result.(*Result)
-		if res != nil {
+		downloadResult := result.(*DownloadResult)
+		if downloadResult != nil && downloadResult.Err == nil {
 			d.Lock()
-			d.fileToHash[res.Url] = res.FilePath
+			d.urlToLocalPath[downloadResult.Url] = downloadResult.FilePath
+			delete(d.urlsInProgress, downloadResult.Url)
+			d.Unlock()
+		}
+	}
+}
+
+func (d *FileDownloader) WaitForLocalPath(url string) string {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			d.Lock()
+			if localPath, ok := d.urlToLocalPath[url]; ok {
+				d.Unlock()
+				return localPath
+			}
 			d.Unlock()
 		}
 	}
@@ -72,7 +97,7 @@ type DataObject struct {
 	ctx     context.Context
 }
 
-type Result struct {
+type DownloadResult struct {
 	FilePath string
 	Url      string
 	Err      error
@@ -95,10 +120,7 @@ func (f *File) Execute(data interface{}) interface{} {
 	fullPath := filepath.Join(do.dirPath, fileName)
 	tmpFile, err := os.Create(fullPath)
 	if err != nil {
-		if os.IsExist(err) {
-			return &Result{FilePath: fullPath, Url: f.url}
-		}
-		return &Result{Err: err}
+		return &DownloadResult{Err: err}
 	}
 	defer func() {
 		if err != nil {
@@ -111,16 +133,16 @@ func (f *File) Execute(data interface{}) interface{} {
 
 	req, err := http.NewRequestWithContext(do.ctx, http.MethodGet, f.url, nil)
 	if err != nil {
-		return &Result{Err: fmt.Errorf("failed to make request with context: %w", err)}
+		return &DownloadResult{Err: fmt.Errorf("failed to make request with context: %w", err)}
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return &Result{Err: fmt.Errorf("failed to make http request: %w", err)}
+		return &DownloadResult{Err: fmt.Errorf("failed to make http request: %w", err)}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return &Result{Err: fmt.Errorf("bad status code: %d", resp.StatusCode)}
+		return &DownloadResult{Err: fmt.Errorf("bad status code: %d", resp.StatusCode)}
 	}
 	counter := datacounter.NewReaderCounter(resp.Body)
 	progressCh := make(chan struct{}, 1)
@@ -144,13 +166,12 @@ func (f *File) Execute(data interface{}) interface{} {
 
 	_, err = io.Copy(tmpFile, counter)
 	if err != nil {
-		return &Result{Err: fmt.Errorf("failed to download file: %w", err)}
+		return &DownloadResult{Err: fmt.Errorf("failed to download file: %w", err)}
 	}
-
 	select {
 	case <-progressCh:
-		return &Result{Err: fmt.Errorf("failed to download file, no progress")}
+		return &DownloadResult{Err: fmt.Errorf("failed to download file, no progress")}
 	default:
-		return &Result{FilePath: fullPath, Url: f.url}
+		return &DownloadResult{FilePath: fullPath, Url: f.url}
 	}
 }

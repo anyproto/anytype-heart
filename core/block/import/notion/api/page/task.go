@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/files"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -46,6 +47,7 @@ type Task struct {
 	propertyService        *property.Service
 	blockService           *block.Service
 	p                      Page
+	fileDownloader         *files.FileDownloader
 }
 
 func (pt *Task) ID() string {
@@ -89,14 +91,26 @@ func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *common.Conv
 		}
 	}
 	resp := pt.blockService.MapNotionBlocksToAnytype(object.request, notionBlocks, pt.p.ID)
+	pt.uploadFileBlockLocally(resp.Blocks)
 	snapshot := pt.provideSnapshot(resp.Blocks, details, relationLinks)
 	return snapshot, subObjectsSnapshots
+}
+
+func (pt *Task) uploadFileBlockLocally(blocks []*model.Block) {
+	for _, block := range blocks {
+		if block.GetFile() != nil && block.GetFile().GetName() != "" {
+			pt.fileDownloader.AddToQueue(block.GetFile().GetName())
+			localPath := pt.fileDownloader.WaitForLocalPath(block.GetFile().GetName())
+			block.GetFile().Name = localPath
+		}
+	}
 }
 
 func (pt *Task) provideDetails(object *DataObject) (map[string]*types.Value, []*model.SmartBlockSnapshotBase, []*model.RelationLink) {
 	details, relationLinks := pt.prepareDetails()
 	relationsSnapshots, notionRelationLinks := pt.handlePageProperties(object, details)
 	relationLinks = append(relationLinks, notionRelationLinks...)
+	api.UploadFileRelationLocally(pt.fileDownloader, details, relationLinks)
 	return details, relationsSnapshots, relationLinks
 }
 

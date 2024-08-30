@@ -417,7 +417,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: pr}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, nil)
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
@@ -438,7 +438,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, nil)
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
@@ -458,7 +458,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: selectProperty}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), properties)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), properties, nil)
 
 		// then
 		assert.Len(t, properties.PropertyIdsToSnapshots, 1)
@@ -478,7 +478,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: selectProperty}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, nil)
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
@@ -504,7 +504,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, nil)
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
@@ -531,7 +531,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, nil)
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
@@ -547,7 +547,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, nil)
 
 		// then
 		assert.Nil(t, err)
@@ -565,7 +565,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, nil)
 
 		// then
 		assert.Nil(t, err)
@@ -583,7 +583,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, nil)
 
 		// then
 		assert.Nil(t, err)
@@ -596,7 +596,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, nil)
 
 		// then
 		assert.Nil(t, err)
@@ -617,7 +617,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, nil)
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)

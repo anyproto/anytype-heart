@@ -11,11 +11,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/database"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/files"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/search"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 )
 
 const (
@@ -27,17 +29,19 @@ const (
 )
 
 type Notion struct {
-	search    *search.Service
-	dbService *database.Service
-	pgService *page.Service
+	search          *search.Service
+	dbService       *database.Service
+	pgService       *page.Service
+	tempDirProvider core.TempDirProvider
 }
 
-func New(c *collection.Service) common.Converter {
+func New(c *collection.Service, tempDirProvider core.TempDirProvider) common.Converter {
 	cl := client.NewClient()
 	return &Notion{
-		search:    search.New(cl),
-		dbService: database.New(c),
-		pgService: page.New(cl),
+		search:          search.New(cl),
+		dbService:       database.New(c),
+		pgService:       page.New(cl),
+		tempDirProvider: tempDirProvider,
 	}
 }
 
@@ -78,8 +82,14 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 		return nil, common.NewFromError(common.ErrNoObjectsToImport, req.Mode)
 	}
 
+	fileDownloader := files.NewFileDownloader(n.tempDirProvider)
+	err = fileDownloader.Init(ctx, apiKey)
+	if err != nil {
+		return nil, common.NewFromError(err, req.Mode)
+	}
+	go fileDownloader.MapUrlToLocalPath()
 	notionImportContext := api.NewNotionImportContext()
-	dbSnapshots, relations, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
+	dbSnapshots, relations, dbErr := n.dbService.GetDatabase(ctx, req.Mode, db, progress, notionImportContext, fileDownloader)
 	if dbErr != nil {
 		log.With("error", dbErr).Warnf("import from notion db failed")
 		ce.Merge(dbErr)
@@ -88,7 +98,7 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 		return nil, ce
 	}
 
-	pgSnapshots, pgErr := n.pgService.GetPages(ctx, apiKey, req.Mode, pages, notionImportContext, relations, progress)
+	pgSnapshots, pgErr := n.pgService.GetPages(ctx, apiKey, req.Mode, pages, notionImportContext, relations, progress, fileDownloader)
 	if pgErr != nil {
 		log.With("error", pgErr).Warnf("import from notion pages failed")
 		ce.Merge(pgErr)
