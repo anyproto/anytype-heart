@@ -615,12 +615,12 @@ func (l FilterAllIn) AnystoreFilter() query.Filter {
 	return query.And(conds)
 }
 
-func newFilterOptionsEqual(arena *fastjson.Arena, key domain.RelationKey, value []string, Options map[string]string) *FilterOptionsEqual {
+func newFilterOptionsEqual(arena *fastjson.Arena, key domain.RelationKey, value []string, options map[string]string) *FilterOptionsEqual {
 	f := &FilterOptionsEqual{
 		arena:   arena,
 		Key:     key,
 		Value:   value,
-		Options: Options,
+		Options: options,
 	}
 	f.compileValueFilter()
 	return f

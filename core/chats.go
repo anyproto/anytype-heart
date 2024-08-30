@@ -21,13 +21,26 @@ func (mw *Middleware) ChatAddMessage(cctx context.Context, req *pb.RpcChatAddMes
 	}
 }
 
-func (mw *Middleware) ChatEditMessage(cctx context.Context, req *pb.RpcChatEditMessageRequest) *pb.RpcChatEditMessageResponse {
+func (mw *Middleware) ChatEditMessageContent(cctx context.Context, req *pb.RpcChatEditMessageContentRequest) *pb.RpcChatEditMessageContentResponse {
 	chatService := getService[chats.Service](mw)
 
 	err := chatService.EditMessage(cctx, req.ChatObjectId, req.MessageId, req.EditedMessage)
-	code := mapErrorCode[pb.RpcChatEditMessageResponseErrorCode](err)
-	return &pb.RpcChatEditMessageResponse{
-		Error: &pb.RpcChatEditMessageResponseError{
+	code := mapErrorCode[pb.RpcChatEditMessageContentResponseErrorCode](err)
+	return &pb.RpcChatEditMessageContentResponse{
+		Error: &pb.RpcChatEditMessageContentResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) ChatToggleMessageReaction(cctx context.Context, req *pb.RpcChatToggleMessageReactionRequest) *pb.RpcChatToggleMessageReactionResponse {
+	chatService := getService[chats.Service](mw)
+
+	err := chatService.ToggleMessageReaction(cctx, req.ChatObjectId, req.MessageId, req.Emoji)
+	code := mapErrorCode[pb.RpcChatToggleMessageReactionResponseErrorCode](err)
+	return &pb.RpcChatToggleMessageReactionResponse{
+		Error: &pb.RpcChatToggleMessageReactionResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},

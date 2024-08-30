@@ -10,6 +10,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/query"
 	"github.com/valyala/fastjson"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
@@ -30,6 +31,7 @@ type StoreObject interface {
 	AddMessage(ctx context.Context, message *model.ChatMessage) (string, error)
 	GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
+	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
 	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe() error
@@ -182,7 +184,6 @@ func (s *storeObject) DeleteMessage(ctx context.Context, messageId string) error
 	return nil
 }
 
-// TODO Temp non-atomic method
 func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error {
 	arena := &fastjson.Arena{}
 	obj := marshalModel(arena, newMessage)
@@ -191,10 +192,6 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 	err := builder.Modify(collectionName, messageId, []string{contentKey}, pb.ModifyOp_Set, obj.Get(contentKey))
 	if err != nil {
 		return fmt.Errorf("modify content: %w", err)
-	}
-	err = builder.Modify(collectionName, messageId, []string{reactionsKey}, pb.ModifyOp_Set, obj.Get(reactionsKey))
-	if err != nil {
-		return fmt.Errorf("modify reactions: %w", err)
 	}
 	_, err = s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
@@ -205,6 +202,60 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 		return fmt.Errorf("push change: %w", err)
 	}
 	return nil
+}
+
+func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error {
+	arena := &fastjson.Arena{}
+
+	hasReaction, err := s.hasMyReaction(ctx, arena, messageId, emoji)
+	if err != nil {
+		return fmt.Errorf("check reaction: %w", err)
+	}
+
+	builder := storestate.Builder{}
+
+	if hasReaction {
+		err = builder.Modify(collectionName, messageId, []string{reactionsKey, emoji}, pb.ModifyOp_Pull, arena.NewString(s.accountService.AccountID()))
+		if err != nil {
+			return fmt.Errorf("modify content: %w", err)
+		}
+	} else {
+		err = builder.Modify(collectionName, messageId, []string{reactionsKey, emoji}, pb.ModifyOp_AddToSet, arena.NewString(s.accountService.AccountID()))
+		if err != nil {
+			return fmt.Errorf("modify content: %w", err)
+		}
+	}
+
+	_, err = s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
+		Changes: builder.ChangeSet,
+		State:   s.store,
+		Time:    time.Now(),
+	})
+	if err != nil {
+		return fmt.Errorf("push change: %w", err)
+	}
+	return nil
+}
+
+func (s *storeObject) hasMyReaction(ctx context.Context, arena *fastjson.Arena, messageId string, emoji string) (bool, error) {
+	coll, err := s.store.Collection(ctx, collectionName)
+	if err != nil {
+		return false, fmt.Errorf("get collection: %w", err)
+	}
+	doc, err := coll.FindId(ctx, messageId)
+	if err != nil {
+		return false, fmt.Errorf("find message: %w", err)
+	}
+
+	myIdentity := s.accountService.AccountID()
+	msg := newMessageWrapper(arena, doc.Value())
+	reactions := msg.reactionsToModel()
+	if v, ok := reactions.GetReactions()[emoji]; ok {
+		if slices.Contains(v.GetIds(), myIdentity) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error) {

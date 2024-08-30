@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/anyproto/any-store/query"
 	"github.com/valyala/fastjson"
@@ -83,12 +84,18 @@ func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModif
 
 			switch path {
 			case reactionsKey:
+				// Do not parse json, just trim "
+				identity := strings.Trim(key.ModifyValue, `"`)
+				if identity != ch.Change.Creator {
+					return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't toggle someone else's reactions"))
+				}
 				// TODO Count validation
+
 				d.subscription.updateReactions(model)
 			case contentKey:
 				creator := model.Creator
 				if creator != ch.Change.Creator {
-					return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify not own message"))
+					return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify someone else's message"))
 				}
 				d.subscription.updateFull(model)
 			default:
