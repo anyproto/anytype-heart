@@ -116,5 +116,16 @@ func removeValueFromListDetail(s *domain.Details, key domain.RelationKey, v doma
 			return oldValue.Equal(valueToDelete)
 		})
 	})
-	s.Set(key, domain.ValueList(newValues))
+
+	if len(newValues) == 0 {
+		if value.IsStringList() {
+			s.Set(key, domain.StringList(nil))
+		} else {
+			s.Set(key, domain.Float64List(nil))
+		}
+	} else {
+		s.Set(key, domain.ValueList(newValues))
+
+	}
+
 }

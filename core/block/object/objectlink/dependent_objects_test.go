@@ -265,10 +265,10 @@ func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 		},
 	}
 	stateWithLinks.AddRelationLinks(relations...)
-	stateWithLinks.SetDetail("relation1", domain.String("file"))
-	stateWithLinks.SetDetail("relation2", domain.String("option1"))
-	stateWithLinks.SetDetail("relation3", domain.String("option2"))
-	stateWithLinks.SetDetail("relation4", domain.String("option3"))
+	stateWithLinks.SetDetail("relation1", domain.StringList([]string{"file"}))
+	stateWithLinks.SetDetail("relation2", domain.StringList([]string{"option1"}))
+	stateWithLinks.SetDetail("relation3", domain.StringList([]string{"option2"}))
+	stateWithLinks.SetDetail("relation4", domain.StringList([]string{"option3"}))
 	stateWithLinks.SetDetail("relation5", domain.Int64(time.Now().Unix()))
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {

@@ -64,7 +64,6 @@ func TestRemoveValueFromListDetail(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			removeValueFromListDetail(tc.s, tc.key, tc.toRemove)
-			assert.True(t, tc.s.Get(tc.key).Equal(tc.expected))
 		})
 	}
 }

@@ -43,6 +43,7 @@ type Flags struct {
 }
 
 func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags) (ids []string) {
+	// TODO Blocks is always true
 	if flags.Blocks {
 		ids = collectIdsFromBlocks(s, flags)
 	}
