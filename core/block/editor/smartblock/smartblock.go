@@ -1472,7 +1472,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 }
 
 func (sb *smartBlock) deriveChatId(s *state.State) error {
-	hasChat := pbtypes.GetBool(s.Details(), bundle.RelationKeyHasChat.String())
+	hasChat := s.Details().GetBool(bundle.RelationKeyHasChat)
 	if hasChat {
 		chatUk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatDerivedObject, sb.Id())
 		if err != nil {
@@ -1483,7 +1483,7 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 		if err != nil {
 			return err
 		}
-		s.SetDetailAndBundledRelation(bundle.RelationKeyChatId, pbtypes.String(chatId))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyChatId, domain.String(chatId))
 	}
 	return nil
 }

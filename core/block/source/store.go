@@ -17,10 +17,10 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var _ updatelistener.UpdateListener = (*store)(nil)
@@ -66,7 +66,7 @@ func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 	st := state.NewDoc(s.id, nil).(*state.State)
 	// Set object type here in order to derive value of Type relation in smartblock.Init
 	st.SetObjectTypeKey(bundle.TypeKeyChatDerived)
-	st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_chatDerived)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_chatDerived))
 	return st, nil
 }
 

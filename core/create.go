@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
@@ -39,7 +38,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	if err != nil {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
-	if req.WithChat || model.ObjectTypeLayout(pbtypes.GetInt64(newDetails, bundle.RelationKeyLayout.String())) == model.ObjectType_chat {
+	if req.WithChat || model.ObjectTypeLayout(newDetails.GetInt64(bundle.RelationKeyLayout)) == model.ObjectType_chat {
 		_, err = mw.addChat(cctx, id)
 		if err != nil {
 			return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
@@ -63,12 +62,12 @@ func (mw *Middleware) addChat(cctx context.Context, objectId string) (string, er
 		return "", err
 	}
 
-	chatDetails := &types.Struct{Fields: map[string]*types.Value{}}
+	chatDetails := domain.NewDetails()
 	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatDerivedObject, objectId)
 	if err != nil {
 		return "", err
 	}
-	chatDetails.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(chatUniqueKey.Marshal())
+	chatDetails.Set(bundle.RelationKeyUniqueKey, domain.String(chatUniqueKey.Marshal()))
 
 	chatReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyChatDerived,
@@ -81,12 +80,12 @@ func (mw *Middleware) addChat(cctx context.Context, objectId string) (string, er
 	}
 
 	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ModifyDetails(objectId, func(current *types.Struct) (*types.Struct, error) {
+		return bs.ModifyDetails(objectId, func(current *domain.Details) (*domain.Details, error) {
 			if current == nil {
 				return nil, errors.New("object not found")
 			}
-			current.Fields[bundle.RelationKeyChatId.String()] = pbtypes.String(chatId)
-			current.Fields[bundle.RelationKeyHasChat.String()] = pbtypes.Bool(true)
+			current.Set(bundle.RelationKeyChatId, domain.String(chatId))
+			current.Set(bundle.RelationKeyHasChat, domain.Bool(true))
 			return current, nil
 		})
 	})
@@ -174,7 +173,7 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 	if req.WithChat {
 		_, err = mw.addChat(cctx, id)
 		if err != nil {
-			return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
+			return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", nil, err)
 		}
 	}
 	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, newDetails.ToProto(), nil)
