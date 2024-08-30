@@ -174,18 +174,7 @@ func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 	hasTag, tagExist bool) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
 	pt.relationCreateMutex.Lock()
 	defer pt.relationCreateMutex.Unlock()
-	var (
-		snapshot            *model.SmartBlockSnapshotBase
-		key                 string
-		subObjectsSnapshots []*model.SmartBlockSnapshotBase
-	)
-	if snapshot = relation.ReadRelationsMap(propObject.GetID()); snapshot == nil {
-		snapshot, key = pt.getRelationSnapshot(name, propObject, hasTag, tagExist)
-		if snapshot != nil {
-			relation.WriteToRelationsMap(propObject.GetID(), snapshot)
-			subObjectsSnapshots = append(subObjectsSnapshots, snapshot)
-		}
-	}
+	snapshot, key, subObjectsSnapshots := pt.provideRelationSnapshot(relation, propObject, name, hasTag, tagExist)
 	if key == "" {
 		key = pbtypes.GetString(snapshot.GetDetails(), bundle.RelationKeyRelationKey.String())
 	}
@@ -200,7 +189,31 @@ func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 	return subObjectsSnapshots, relationLink, nil
 }
 
-func (pt *Task) getRelationSnapshot(name string, propObject property.Object, hasTag bool, tagExist bool) (*model.SmartBlockSnapshotBase, string) {
+func (pt *Task) provideRelationSnapshot(
+	relation *property.PropertiesStore,
+	propObject property.Object,
+	name string,
+	hasTag, tagExist bool,
+) (*model.SmartBlockSnapshotBase, string, []*model.SmartBlockSnapshotBase) {
+	var (
+		key                 string
+		subObjectsSnapshots []*model.SmartBlockSnapshotBase
+	)
+	snapshot := relation.GetSnapshotByNameAndFormat(name, int64(propObject.GetFormat()))
+	if snapshot == nil {
+		if snapshot = relation.ReadRelationsMap(propObject.GetID()); snapshot == nil {
+			snapshot, key = pt.getRelationSnapshot(name, propObject, hasTag, tagExist)
+			if snapshot != nil {
+				relation.WriteToRelationsMap(propObject.GetID(), snapshot)
+				relation.AddSnapshotByNameAndFormat(name, int64(propObject.GetFormat()), snapshot)
+				subObjectsSnapshots = append(subObjectsSnapshots, snapshot)
+			}
+		}
+	}
+	return snapshot, key, subObjectsSnapshots
+}
+
+func (pt *Task) getRelationSnapshot(name string, propObject property.Object, hasTag, tagExist bool) (*model.SmartBlockSnapshotBase, string) {
 	key := bson.NewObjectId().Hex()
 	if propObject.GetPropertyType() == property.PropertyConfigTypeTitle {
 		return nil, bundle.RelationKeyName.String()

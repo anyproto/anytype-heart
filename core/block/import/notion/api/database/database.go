@@ -78,10 +78,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 		convertError = common.NewError(mode)
 	)
 	progress.SetProgressMessage("Start creating pages from notion databases")
-	relations := &property.PropertiesStore{
-		PropertyIdsToSnapshots: make(map[string]*model.SmartBlockSnapshotBase, 0),
-		RelationsIdsToOptions:  make(map[string][]*model.SmartBlockSnapshotBase, 0),
-	}
+	relations := property.NewPropertiesStore()
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
 			convertError.Add(common.ErrCancel)
@@ -189,14 +186,7 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 	databaseProperty property.DatabasePropertyHandler,
 	name, relationKey string,
 	st *state.State) *common.Snapshot {
-	var (
-		rel *model.SmartBlockSnapshotBase
-		sn  *common.Snapshot
-	)
-	if rel = relations.ReadRelationsMap(databaseProperty.GetID()); rel == nil {
-		rel, sn = ds.getRelationSnapshot(relationKey, databaseProperty, name)
-		relations.WriteToRelationsMap(databaseProperty.GetID(), rel)
-	}
+	rel, sn := ds.provideRelationSnapshot(relations, databaseProperty, name, relationKey)
 	relKey := pbtypes.GetString(rel.GetDetails(), bundle.RelationKeyRelationKey.String())
 	databaseProperty.SetDetail(relKey, st.Details().GetFields())
 	relationLinks := &model.RelationLink{
@@ -216,6 +206,23 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 		log.Errorf("failed to add relation to notion database, %s", err)
 	}
 	return sn
+}
+
+func (ds *Service) provideRelationSnapshot(
+	relations *property.PropertiesStore,
+	databaseProperty property.DatabasePropertyHandler,
+	name, relationKey string,
+) (*model.SmartBlockSnapshotBase, *common.Snapshot) {
+	var sn *common.Snapshot
+	rel := relations.GetSnapshotByNameAndFormat(name, int64(databaseProperty.GetFormat()))
+	if rel == nil {
+		if rel = relations.ReadRelationsMap(databaseProperty.GetID()); rel == nil {
+			rel, sn = ds.getRelationSnapshot(relationKey, databaseProperty, name)
+			relations.WriteToRelationsMap(databaseProperty.GetID(), rel)
+			relations.AddSnapshotByNameAndFormat(name, int64(databaseProperty.GetFormat()), rel)
+		}
+	}
+	return rel, sn
 }
 
 func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty property.DatabasePropertyHandler, name string) (*model.SmartBlockSnapshotBase, *common.Snapshot) {
