@@ -19,8 +19,6 @@ type Detail struct {
 
 type Details = GenericMap[RelationKey]
 
-// TODO Helpers for frequent fields like id, spaceId, etc?
-
 func NewDetails() *Details {
 	return &GenericMap[RelationKey]{data: make(map[RelationKey]Value, 20)}
 }

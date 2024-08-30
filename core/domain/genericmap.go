@@ -341,6 +341,10 @@ func ValueList(vs []Value) Value {
 }
 
 func (v Value) Raw() any {
+	_, ok := v.value.(nullValue)
+	if ok {
+		return nil
+	}
 	return v.value
 }
 
