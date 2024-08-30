@@ -36,8 +36,9 @@ func TantivyNew() FTSearch {
 }
 
 var specialChars = map[rune]struct{}{
-	'+': {}, '-': {}, '&': {}, '|': {}, '!': {}, '(': {}, ')': {}, '{': {}, '}': {},
-	'[': {}, ']': {}, '^': {}, '"': {}, '~': {}, '*': {}, '?': {}, ':': {},
+	'+': {}, '^': {}, '`': {}, ':': {}, '{': {},
+	'}': {}, '"': {}, '[': {}, ']': {}, '(': {},
+	')': {}, '~': {}, '!': {}, '\\': {}, '*': {},
 }
 
 type ftSearchTantivy struct {
@@ -350,10 +351,11 @@ func escapeQuery(query string) string {
 
 	for _, char := range query {
 		if _, found := specialChars[char]; found {
-			escapedQuery.WriteRune('\\')
+			escapedQuery.WriteRune(' ')
 		}
 		escapedQuery.WriteRune(char)
 	}
 
-	return escapedQuery.String()
+	resultQuery := escapedQuery.String()
+	return "(\"" + resultQuery + "\" OR " + resultQuery + ")"
 }
