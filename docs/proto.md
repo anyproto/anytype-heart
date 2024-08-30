@@ -25838,6 +25838,7 @@ Precondition: user A and user B opened the same block
 | Synced | 3 |  |
 | Failed | 4 |  |
 | IncompatibleVersion | 5 |  |
+| NetworkNeedsUpdate | 6 |  |
 
 
 
