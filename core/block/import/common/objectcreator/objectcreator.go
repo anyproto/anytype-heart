@@ -553,16 +553,6 @@ func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]strin
 	}
 }
 
-func (oc *ObjectCreator) updateDetails(st *state.State, newKey string, value *types.Value, key string) {
-	st.SetDetail(newKey, value)
-	link := oc.findRelationLinkByKey(st, key)
-	if link != nil {
-		link.Key = newKey
-		st.AddRelationLinks(link)
-	}
-	st.RemoveRelation(key)
-}
-
 func (oc *ObjectCreator) findRelationLinkByKey(st *state.State, key string) *model.RelationLink {
 	relationLinks := st.GetRelationLinks()
 	var link *model.RelationLink

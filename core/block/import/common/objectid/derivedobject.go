@@ -102,21 +102,21 @@ func (d *derivedObject) isDeletedObject(spaceId string, uniqueKey string) bool {
 
 func (d *derivedObject) getInternalKey(spaceID, objectId string) (string, error) {
 	ids, err := d.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(objectId),
+				RelationKey: bundle.RelationKeyId,
+				Value:       domain.String(objectId),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
+				RelationKey: bundle.RelationKeySpaceId,
+				Value:       domain.String(spaceID),
 			},
 		},
 	})
 	if err == nil && len(ids) > 0 {
-		uniqueKey := pbtypes.GetString(ids[0].Details, bundle.RelationKeyUniqueKey.String())
+		uniqueKey := ids[0].Details.GetString(bundle.RelationKeyUniqueKey)
 		key, err := domain.UnmarshalUniqueKey(uniqueKey)
 		if err != nil {
 			return "", nil

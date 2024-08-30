@@ -116,7 +116,7 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 			Key:    key,
 		})
 		details := getRelationDetails(relationName, key, float64(model.RelationFormat_longtext))
-		id := pbtypes.GetString(details, bundle.RelationKeyId.String())
+		id := details.GetString(bundle.RelationKeyId)
 		relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
 			Id: id,
 			Snapshot: &common.SnapshotModel{
