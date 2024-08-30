@@ -79,10 +79,6 @@ func init() {
 	}
 }
 
-type SmartblockOpener interface {
-	Open(id string) (sb smartblock.SmartBlock, err error)
-}
-
 func New() *Service {
 	s := &Service{
 		openedObjs: &openedObjects{

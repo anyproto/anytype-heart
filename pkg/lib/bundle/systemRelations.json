@@ -85,5 +85,8 @@
   "globalName",
   "syncDate",
   "syncStatus",
-  "syncError"
+  "syncError",
+  "globalName",
+  "chatId",
+  "hasChat"
 ]

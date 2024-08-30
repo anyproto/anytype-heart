@@ -11,6 +11,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
@@ -33,11 +36,77 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		TemplateId:    req.TemplateId,
 	}
 	id, newDetails, err := creator.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req.ObjectTypeUniqueKey, createReq)
-
 	if err != nil {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
+	if req.WithChat || model.ObjectTypeLayout(pbtypes.GetInt64(newDetails, bundle.RelationKeyLayout.String())) == model.ObjectType_chat {
+		_, err = mw.addChat(cctx, id)
+		if err != nil {
+			return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
+		}
+	}
 	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails.ToProto(), nil)
+}
+
+// TODO Should be in object creator service
+func (mw *Middleware) addChat(cctx context.Context, objectId string) (string, error) {
+	var spaceId string
+	err := mw.doBlockService(func(bs *block.Service) error {
+		sb, err := bs.GetObject(cctx, objectId)
+		if err != nil {
+			return err
+		}
+		spaceId = sb.SpaceID()
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	chatDetails := &types.Struct{Fields: map[string]*types.Value{}}
+	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatDerivedObject, objectId)
+	if err != nil {
+		return "", err
+	}
+	chatDetails.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(chatUniqueKey.Marshal())
+
+	chatReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeyChatDerived,
+		Details:       chatDetails,
+	}
+
+	chatId, _, err := getService[objectcreator.Service](mw).CreateObject(cctx, spaceId, chatReq)
+	if err != nil {
+		return "", err
+	}
+
+	err = mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.ModifyDetails(objectId, func(current *types.Struct) (*types.Struct, error) {
+			if current == nil {
+				return nil, errors.New("object not found")
+			}
+			current.Fields[bundle.RelationKeyChatId.String()] = pbtypes.String(chatId)
+			current.Fields[bundle.RelationKeyHasChat.String()] = pbtypes.Bool(true)
+			return current, nil
+		})
+	})
+	return chatId, err
+}
+
+func (mw *Middleware) ObjectChatAdd(cctx context.Context, req *pb.RpcObjectChatAddRequest) *pb.RpcObjectChatAddResponse {
+	chatId, err := mw.addChat(cctx, req.ObjectId)
+
+	code := mapErrorCode(err,
+		errToCode(err, pb.RpcObjectChatAddResponseError_UNKNOWN_ERROR),
+	)
+
+	return &pb.RpcObjectChatAddResponse{
+		Error: &pb.RpcObjectChatAddResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+		ChatId: chatId,
+	}
 }
 
 func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
@@ -75,7 +144,12 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 		}
 		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
-
+	if req.WithChat {
+		_, err = mw.addChat(cctx, id)
+		if err != nil {
+			return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
+		}
+	}
 	return response(pb.RpcObjectCreateSetResponseError_NULL, id, newDetails.ToProto(), nil)
 }
 
@@ -96,6 +170,12 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	if err != nil {
 		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", nil, err)
+	}
+	if req.WithChat {
+		_, err = mw.addChat(cctx, id)
+		if err != nil {
+			return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
+		}
 	}
 	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, newDetails.ToProto(), nil)
 }
@@ -196,6 +276,12 @@ func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjec
 	id, newDetails, err := bs.CreateObjectFromUrl(cctx, req)
 	if err != nil {
 		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", err, nil)
+	}
+	if req.WithChat {
+		_, err = mw.addChat(cctx, id)
+		if err != nil {
+			return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", err, nil)
+		}
 	}
 	return response(pb.RpcObjectCreateFromUrlResponseError_NULL, id, nil, newDetails.ToProto())
 }

@@ -136,6 +136,8 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 			}
 		}
 	}()
+	// TODO Some problem with parsing anystoreFilter.String()
+	// TODO It's because of empty And/Or filter
 	iter, err := query.Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("find: %w", err)

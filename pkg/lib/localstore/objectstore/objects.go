@@ -327,6 +327,7 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	if s.objects != nil {
 		err = errors.Join(err, s.objects.Close())
 	}
+	// TODO Close collections
 	if s.anyStore != nil {
 		err = errors.Join(err, s.anyStore.Close())
 	}
