@@ -72,8 +72,12 @@ func (r *updateReceiver) getObjectSyncStatus(objectId string, status objectsyncs
 		}
 	}
 
-	if r.nodeConfService.NetworkCompatibilityStatus() == nodeconf.NetworkCompatibilityStatusIncompatible {
+	compatibilityStatus := r.nodeConfService.NetworkCompatibilityStatus()
+	if compatibilityStatus == nodeconf.NetworkCompatibilityStatusIncompatible {
 		return pb.EventStatusThread_IncompatibleVersion
+	}
+	if compatibilityStatus == nodeconf.NetworkCompatibilityStatusNeedsUpdate {
+		return pb.EventStatusThread_NetworkNeedsUpdate
 	}
 
 	if !r.isNodeConnected() {

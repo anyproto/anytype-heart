@@ -64,6 +64,28 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 	})
+	t.Run("network needs update", func(t *testing.T) {
+		// given
+		receiver := newFixture(t)
+		receiver.nodeConnected = true
+		receiver.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusNeedsUpdate)
+		receiver.sender.EXPECT().Broadcast(&pb.Event{
+			Messages: []*pb.EventMessage{{Value: &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
+				Summary: &pb.EventStatusThreadSummary{Status: pb.EventStatusThread_NetworkNeedsUpdate},
+				Cafe: &pb.EventStatusThreadCafe{
+					Status: pb.EventStatusThread_NetworkNeedsUpdate,
+					Files:  &pb.EventStatusThreadCafePinStatus{},
+				},
+			}}}},
+			ContextId: "id",
+		}).Return()
+
+		// when
+		err := receiver.UpdateTree(nil, "id", objectsyncstatus.StatusNotSynced)
+
+		// then
+		assert.Nil(t, err)
+	})
 	t.Run("file storage limited", func(t *testing.T) {
 		// given
 		receiver := newFixture(t)
