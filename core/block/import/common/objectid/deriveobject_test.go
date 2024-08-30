@@ -70,27 +70,27 @@ func TestDerivedObject_GetIDAndPayload(t *testing.T) {
 		deriveObject := newDerivedObject(newExistingObject(sf), service, sf)
 		sn := &common.Snapshot{
 			Id: "oldId",
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
-					Details: &types.Struct{Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String():           pbtypes.String("name"),
-						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_number)),
-					}},
+			Snapshot: &common.SnapshotModel{
+				Data: &common.StateSnapshot{
+					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+						bundle.RelationKeyName:           domain.String("name"),
+						bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
+					}),
 				},
+				SbType: coresb.SmartBlockTypeRelation,
 			},
-			SbType: coresb.SmartBlockTypeRelation,
 		}
 
 		uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, "oldKey")
 		assert.Nil(t, err)
 		sf.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyUniqueKey:      pbtypes.String(uniqueKey.Marshal()),
-				bundle.RelationKeyId:             pbtypes.String("oldId"),
-				bundle.RelationKeyName:           pbtypes.String("name"),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_number)),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:        pbtypes.String("spaceId"),
+				bundle.RelationKeyUniqueKey:      domain.String(uniqueKey.Marshal()),
+				bundle.RelationKeyId:             domain.String("oldId"),
+				bundle.RelationKeyName:           domain.String("name"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeySpaceId:        domain.String("spaceId"),
 			},
 		})
 

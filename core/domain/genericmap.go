@@ -659,7 +659,7 @@ func (v Value) Compare(other Value) int {
 			if !v1 && v2 {
 				return -1
 			}
-			if v1 && v2 {
+			if v1 == v2 {
 				return 0
 			}
 			return 1

@@ -126,19 +126,19 @@ func TestEq_FilterObject(t *testing.T) {
 	})
 
 	t.Run("not equal true: no key", func(t *testing.T) {
-		eq := FilterEq{Key: "k", Value: pbtypes.Bool(true), Cond: model.BlockContentDataviewFilter_NotEqual}
-		obj := &types.Struct{Fields: map[string]*types.Value{}}
+		eq := FilterEq{Key: "k", Value: domain.Bool(true), Cond: model.BlockContentDataviewFilter_NotEqual}
+		obj := domain.NewDetails()
 		assertFilter(t, eq, obj, true)
 
-		obj = &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Bool(true)}}
+		obj = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Bool(true)})
 		assertFilter(t, eq, obj, false)
 	})
 	t.Run("not equal false: no key", func(t *testing.T) {
-		eq := FilterEq{Key: "k", Value: pbtypes.Bool(false), Cond: model.BlockContentDataviewFilter_NotEqual}
-		obj := &types.Struct{Fields: map[string]*types.Value{}}
+		eq := FilterEq{Key: "k", Value: domain.Bool(false), Cond: model.BlockContentDataviewFilter_NotEqual}
+		obj := domain.NewDetails()
 		assertFilter(t, eq, obj, true)
 
-		obj = &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Bool(false)}}
+		obj = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Bool(false)})
 		assertFilter(t, eq, obj, false)
 	})
 }
@@ -481,34 +481,30 @@ func TestNestedFilters(t *testing.T) {
 		// Query will occur while nested filter resolving
 		store.EXPECT().QueryRaw(mock.Anything, 0, 0).Return([]Record{
 			{
-				Details: &types.Struct{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():        pbtypes.String("id1"),
-						bundle.RelationKeyUniqueKey.String(): pbtypes.String("ot-note"),
-					},
-				},
+				Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId:        domain.String("id1"),
+					bundle.RelationKeyUniqueKey: domain.String("ot-note"),
+				}),
 			},
 			{
-				Details: &types.Struct{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():        pbtypes.String("id2"),
-						bundle.RelationKeyUniqueKey.String(): pbtypes.String("ot-note"),
-					},
-				},
+				Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId:        domain.String("id2"),
+					bundle.RelationKeyUniqueKey: domain.String("ot-note"),
+				}),
 			},
 		}, nil)
 
-		f, err := MakeFilter("spaceId", &model.BlockContentDataviewFilter{
+		f, err := MakeFilter("spaceId", FilterRequest{
 			RelationKey: "type.uniqueKey",
 			Condition:   model.BlockContentDataviewFilter_NotEqual,
-			Value:       pbtypes.String("ot-note"),
+			Value:       domain.String("ot-note"),
 		}, store)
 		require.NoError(t, err)
 
-		obj1 := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyType.String(): pbtypes.StringList([]string{"id1"})}}
-		obj2 := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyType.String(): pbtypes.StringList([]string{"id2", "id1"})}}
-		obj3 := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyType.String(): pbtypes.StringList([]string{"id3"})}}
-		obj4 := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyType.String(): pbtypes.StringList([]string{"id4", "id5"})}}
+		obj1 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyType: domain.StringList([]string{"id1"})})
+		obj2 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyType: domain.StringList([]string{"id2", "id1"})})
+		obj3 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyType: domain.StringList([]string{"id3"})})
+		obj4 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyType: domain.StringList([]string{"id4", "id5"})})
 		assertFilter(t, f, obj1, false)
 		assertFilter(t, f, obj2, false)
 		assertFilter(t, f, obj3, true)

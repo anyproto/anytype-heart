@@ -983,41 +983,41 @@ func TestQueryRaw(t *testing.T) {
 		t.Run("not equal", func(t *testing.T) {
 			s := NewStoreFixture(t)
 			obj1 := TestObject{
-				bundle.RelationKeyId:     pbtypes.String("id1"),
-				bundle.RelationKeyType:   pbtypes.String("type1"),
-				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyId:     domain.String("id1"),
+				bundle.RelationKeyType:   domain.String("type1"),
+				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_basic)),
 			}
 			obj2 := TestObject{
-				bundle.RelationKeyId:     pbtypes.String("id2"),
-				bundle.RelationKeyType:   pbtypes.String("type2"),
-				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyId:     domain.String("id2"),
+				bundle.RelationKeyType:   domain.String("type2"),
+				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_basic)),
 			}
 			type1 := TestObject{
-				bundle.RelationKeyId:        pbtypes.String("type1"),
-				bundle.RelationKeyType:      pbtypes.String("objectType"),
-				bundle.RelationKeyUniqueKey: pbtypes.String("ot-template"),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyId:        domain.String("type1"),
+				bundle.RelationKeyType:      domain.String("objectType"),
+				bundle.RelationKeyUniqueKey: domain.String("ot-template"),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
 			}
 			type2 := TestObject{
-				bundle.RelationKeyId:        pbtypes.String("type2"),
-				bundle.RelationKeyType:      pbtypes.String("objectType"),
-				bundle.RelationKeyUniqueKey: pbtypes.String("ot-page"),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyId:        domain.String("type2"),
+				bundle.RelationKeyType:      domain.String("objectType"),
+				bundle.RelationKeyUniqueKey: domain.String("ot-page"),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
 			}
 
 			s.AddObjects(t, []TestObject{obj1, obj2, type1, type2})
 
 			flt, err := database.NewFilters(database.Query{
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
 						RelationKey: "type.uniqueKey",
 						Condition:   model.BlockContentDataviewFilter_NotEqual,
-						Value:       pbtypes.String("ot-template"),
+						Value:       domain.String("ot-template"),
 					},
 					{
-						RelationKey: bundle.RelationKeyLayout.String(),
+						RelationKey: bundle.RelationKeyLayout,
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.Int64(int64(model.ObjectType_basic)),
+						Value:       domain.Int64(int64(model.ObjectType_basic)),
 					},
 				},
 			}, s, arena)
@@ -1228,26 +1228,26 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 func TestIndex(t *testing.T) {
 	s := NewStoreFixture(t)
 	obj1 := TestObject{
-		bundle.RelationKeyId:        pbtypes.String("id1"),
-		bundle.RelationKeyName:      pbtypes.String("name1"),
-		bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+		bundle.RelationKeyId:        domain.String("id1"),
+		bundle.RelationKeyName:      domain.String("name1"),
+		bundle.RelationKeyIsDeleted: domain.Bool(true),
 	}
 	obj2 := TestObject{
-		bundle.RelationKeyId:   pbtypes.String("id2"),
-		bundle.RelationKeyName: pbtypes.String("name2"),
+		bundle.RelationKeyId:   domain.String("id2"),
+		bundle.RelationKeyName: domain.String("name2"),
 	}
 	obj3 := TestObject{
-		bundle.RelationKeyId:   pbtypes.String("id3"),
-		bundle.RelationKeyName: pbtypes.String("name3"),
+		bundle.RelationKeyId:   domain.String("id3"),
+		bundle.RelationKeyName: domain.String("name3"),
 	}
 	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 	recs, err := s.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				RelationKey: bundle.RelationKeyIsDeleted,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Bool(true),
+				Value:       domain.Bool(true),
 			},
 		},
 	})
