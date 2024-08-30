@@ -21,6 +21,7 @@ const CName = "core.block.chats"
 type Service interface {
 	AddMessage(ctx context.Context, chatObjectId string, message *model.ChatMessage) (string, error)
 	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error
+	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
 	GetMessages(ctx context.Context, chatObjectId string, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
@@ -100,6 +101,12 @@ func (s *service) AddMessage(ctx context.Context, chatObjectId string, message *
 func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		return sb.EditMessage(ctx, messageId, newMessage)
+	})
+}
+
+func (s *service) ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error {
+	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+		return sb.ToggleMessageReaction(ctx, messageId, emoji)
 	})
 }
 
