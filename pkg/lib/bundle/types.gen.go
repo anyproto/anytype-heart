@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "e166a24cf6f7afa3be1882069fc2df72200d75eb151b423f4d8f364433102344"
+const TypeChecksum = "3def7042f6fd9b6b45d9a38327cfd05b3e7adeab04c0354913e382d05c464122"
 const (
 	TypePrefix = "_ot"
 )
@@ -19,13 +19,11 @@ const (
 	TypeKeyContact        domain.TypeKey = "contact"
 	TypeKeyBookmark       domain.TypeKey = "bookmark"
 	TypeKeyDate           domain.TypeKey = "date"
-	TypeKeyIdea           domain.TypeKey = "idea"
 	TypeKeyTask           domain.TypeKey = "task"
 	TypeKeyRelation       domain.TypeKey = "relation"
 	TypeKeyBook           domain.TypeKey = "book"
 	TypeKeyVideo          domain.TypeKey = "video"
 	TypeKeyDashboard      domain.TypeKey = "dashboard"
-	TypeKeyDailyPlan      domain.TypeKey = "dailyPlan"
 	TypeKeyMovie          domain.TypeKey = "movie"
 	TypeKeyObjectType     domain.TypeKey = "objectType"
 	TypeKeyRelationOption domain.TypeKey = "relationOption"
@@ -99,20 +97,9 @@ var (
 			Layout:        model.ObjectType_profile,
 			Name:          "Contact",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyPhone), MustGetRelationLink(RelationKeyEmail), MustGetRelationLink(RelationKeyCompany), MustGetRelationLink(RelationKeySocialProfile), MustGetRelationLink(RelationKeyOccupation)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyPhone), MustGetRelationLink(RelationKeyEmail), MustGetRelationLink(RelationKeyCompany), MustGetRelationLink(RelationKeySocialProfile)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "contact",
-		},
-		TypeKeyDailyPlan: {
-
-			Description:   "A detailed proposal for doing or achieving something for the day\n",
-			IconEmoji:     "📆",
-			Layout:        model.ObjectType_todo,
-			Name:          "Daily Plan",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTasks)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "dailyPlan",
 		},
 		TypeKeyDashboard: {
 
@@ -170,17 +157,6 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyProgress), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyTasks)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "goal",
-		},
-		TypeKeyIdea: {
-
-			Description:   "A thought or suggestion as to a possible course of action",
-			IconEmoji:     "💡",
-			Layout:        model.ObjectType_basic,
-			Name:          "Idea",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "idea",
 		},
 		TypeKeyImage: {
 

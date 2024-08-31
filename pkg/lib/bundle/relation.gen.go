@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "055949632ab8dc9117ec70c3ec24f1b0f17406318be7f079b5ad883a3d3bee0b"
+const RelationChecksum = "7617243dd2ca3ad0595736102489b0ee198a0cffe05a12c53f4e220cdbd60882"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -72,7 +72,6 @@ const (
 	RelationKeyWorkspaceId               domain.RelationKey = "workspaceId"
 	RelationKeySpaceId                   domain.RelationKey = "spaceId"
 	RelationKeyAudioGenre                domain.RelationKey = "audioGenre"
-	RelationKeyTelegram                  domain.RelationKey = "telegram"
 	RelationKeyName                      domain.RelationKey = "name"
 	RelationKeyMood                      domain.RelationKey = "mood"
 	RelationKeyAudioLyrics               domain.RelationKey = "audioLyrics"
@@ -84,7 +83,6 @@ const (
 	RelationKeyAudioAlbumTrackNumber     domain.RelationKey = "audioAlbumTrackNumber"
 	RelationKeyInternalFlags             domain.RelationKey = "internalFlags"
 	RelationKeySocialProfile             domain.RelationKey = "socialProfile"
-	RelationKeyOccupation                domain.RelationKey = "occupation"
 	RelationKeyCoverX                    domain.RelationKey = "coverX"
 	RelationKeyDescription               domain.RelationKey = "description"
 	RelationKeyPicture                   domain.RelationKey = "picture"
@@ -1124,19 +1122,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyOccupation: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_broccupation",
-			Key:              "occupation",
-			MaxCount:         1,
-			Name:             "Occupation",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyOldAnytypeID: {
 
 			DataSource:       model.Relation_details,
@@ -1828,19 +1813,6 @@ var (
 			Key:              "tasks",
 			Name:             "Tasks",
 			ObjectTypes:      []string{TypePrefix + "task"},
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyTelegram: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_url,
-			Id:               "_brtelegram",
-			Key:              "telegram",
-			MaxCount:         1,
-			Name:             "Telegram",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

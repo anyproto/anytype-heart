@@ -43,8 +43,7 @@
       "phone",
       "email",
       "company",
-      "socialProfile",
-      "occupation"
+      "socialProfile"
     ],
     "description": "Information to make action of communicating or meeting with Human or Company"
   },
@@ -77,20 +76,6 @@
       "tag"
     ],
     "description": "Gregorian calendar date"
-  },
-  {
-    "id": "idea",
-    "name": "Idea",
-    "types": [
-      "Page"
-    ],
-    "emoji": "💡",
-    "hidden": false,
-    "layout": "basic",
-    "relations": [
-      "tag"
-    ],
-    "description": "A thought or suggestion as to a possible course of action"
   },
   {
     "id": "task",
@@ -186,21 +171,6 @@
     "relations": [],
     "description": "Internal home dashboard with favourite objects",
     "restrictObjectCreation": true
-  },
-  {
-    "id": "dailyPlan",
-    "name": "Daily Plan",
-    "types": [
-      "Page"
-    ],
-    "emoji": "📆",
-    "hidden": false,
-    "layout": "todo",
-    "relations": [
-      "tag",
-      "tasks"
-    ],
-    "description": "A detailed proposal for doing or achieving something for the day\n"
   },
   {
     "id": "movie",

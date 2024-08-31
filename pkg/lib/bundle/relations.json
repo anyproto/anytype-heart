@@ -634,15 +634,6 @@
     "source": "details"
   },
   {
-    "format": "url",
-    "hidden": false,
-    "key": "telegram",
-    "maxCount": 1,
-    "name": "Telegram",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Name of the object",
     "format": "shorttext",
     "hidden": true,
@@ -749,15 +740,6 @@
     "key": "socialProfile",
     "maxCount": 1,
     "name": "Profile in social media",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "occupation",
-    "maxCount": 1,
-    "name": "Occupation",
     "readonly": false,
     "source": "details"
   },
