@@ -27,6 +27,8 @@ const (
 	SmartBlockTypeAnytypeProfile    = SmartBlockType(model.SmartBlockType_AnytypeProfile)
 	SmartBlockTypeDate              = SmartBlockType(model.SmartBlockType_Date)
 	SmartBlockTypeIdentity          = SmartBlockType(model.SmartBlockType_Identity)
+	SmartBlockTypeChatObject        = SmartBlockType(model.SmartBlockType_ChatObject)        // Container for any-store based chats
+	SmartBlockTypeChatDerivedObject = SmartBlockType(model.SmartBlockType_ChatDerivedObject) // Any-store based object for chat
 
 	SmartBlockTypeWorkspace      = SmartBlockType(model.SmartBlockType_Workspace)
 	SmartBlockTypeWidget         = SmartBlockType(model.SmartBlockType_Widget)

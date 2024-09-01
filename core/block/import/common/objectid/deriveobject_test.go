@@ -66,4 +66,42 @@ func TestDerivedObject_GetIDAndPayload(t *testing.T) {
 		assert.NotEqual(t, deriveObject.GetInternalKey(sn.SbType), "key")
 		assert.Equal(t, "newId", id)
 	})
+	t.Run("existing object", func(t *testing.T) {
+		// given
+		sf := objectstore.NewStoreFixture(t)
+		service := mock_space.NewMockService(t)
+		deriveObject := newDerivedObject(newExistingObject(sf), service, sf)
+		sn := &common.Snapshot{
+			Id: "oldId",
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Details: &types.Struct{Fields: map[string]*types.Value{
+						bundle.RelationKeyName.String():           pbtypes.String("name"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_number)),
+					}},
+				},
+			},
+			SbType: coresb.SmartBlockTypeRelation,
+		}
+
+		uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, "oldKey")
+		assert.Nil(t, err)
+		sf.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyUniqueKey:      pbtypes.String(uniqueKey.Marshal()),
+				bundle.RelationKeyId:             pbtypes.String("oldId"),
+				bundle.RelationKeyName:           pbtypes.String("name"),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_number)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeySpaceId:        pbtypes.String("spaceId"),
+			},
+		})
+
+		// when
+		id, _, err := deriveObject.GetIDAndPayload(context.Background(), "spaceId", sn, time.Now(), false, objectorigin.Import(model.Import_Pb))
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, "oldId", id)
+	})
 }

@@ -2,10 +2,11 @@ package history
 
 import (
 	"context"
-	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -13,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 	"github.com/samber/lo"
+	"github.com/zeebo/blake3"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -38,6 +40,12 @@ const CName = "history"
 const versionGroupInterval = time.Minute * 5
 
 var log = logging.Logger("anytype-mw-history")
+
+var hashersPool = &sync.Pool{
+	New: func() any {
+		return blake3.New()
+	},
+}
 
 func New() History {
 	return &history{heads: make(map[string]string, 0)}
@@ -124,6 +132,8 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 }
 
 func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error) {
+	hasher := hashersPool.Get().(*blake3.Hasher)
+	defer hashersPool.Put(hasher)
 	if limit <= 0 {
 		limit = 100
 	}
@@ -146,7 +156,7 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 
 		e = tree.IterateFrom(tree.Root().Id, source.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
 			participantId := domain.NewParticipantId(id.SpaceID, c.Identity.Account())
-			data = h.fillVersionData(c, curHeads, participantId, data)
+			data = h.fillVersionData(c, curHeads, participantId, data, hasher)
 			return true
 		})
 		if e != nil {
@@ -194,7 +204,7 @@ func (h *history) retrieveHeads(versionId string) []string {
 	return []string{versionId}
 }
 
-func (h *history) fillVersionData(change *objecttree.Change, curHeads map[string]struct{}, participantId string, data []*pb.RpcHistoryVersion) []*pb.RpcHistoryVersion {
+func (h *history) fillVersionData(change *objecttree.Change, curHeads map[string]struct{}, participantId string, data []*pb.RpcHistoryVersion, hasher *blake3.Hasher) []*pb.RpcHistoryVersion {
 	curHeads[change.Id] = struct{}{}
 	for _, previousId := range change.PreviousIds {
 		delete(curHeads, previousId)
@@ -211,7 +221,10 @@ func (h *history) fillVersionData(change *objecttree.Change, curHeads map[string
 			combinedHeads += head + " "
 		}
 		combinedHeads = strings.TrimSpace(combinedHeads)
-		hashSum := fmt.Sprintf("%x", md5.Sum([]byte(combinedHeads)))
+		hasher.Reset()
+		// nolint: errcheck
+		hasher.Write([]byte(combinedHeads)) // it never returns an error
+		hashSum := hex.EncodeToString(hasher.Sum(nil))
 		h.heads[hashSum] = combinedHeads
 		version.Id = hashSum
 	}

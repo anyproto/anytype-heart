@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestReplaceChunks(t *testing.T) {
@@ -164,5 +165,193 @@ func TestUpdateLinksToObjects(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Equal(t, "url", st.Get("test").Model().GetText().GetIconImage())
+	})
+	t.Run("update data view filters relations", func(t *testing.T) {
+		// given
+		block := &model.Block{
+			Id: "test",
+			Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id: "id",
+						Filters: []*model.BlockContentDataviewFilter{
+							{
+								Id:          "id1",
+								RelationKey: "key",
+								Value:       pbtypes.String("test"),
+							},
+							{
+								Id:          "id1",
+								RelationKey: "key1",
+								Value:       pbtypes.String("test"),
+							},
+						},
+					},
+				},
+			}},
+		}
+		rootBlock := &model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"test"},
+			Content:     &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		}
+		simpleBlock := simple.New(block)
+		rootSimpleBlock := simple.New(rootBlock)
+		st := state.NewDoc("root", map[string]simple.Block{"test": simpleBlock, "root": rootSimpleBlock}).(*state.State)
+
+		// when
+		err := UpdateLinksToObjects(st, map[string]string{"key": "newKey"})
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, "newKey", st.Get("test").Model().GetDataview().GetViews()[0].GetFilters()[0].RelationKey)
+		assert.Equal(t, "key1", st.Get("test").Model().GetDataview().GetViews()[0].GetFilters()[1].RelationKey)
+	})
+	t.Run("update data view filters relations", func(t *testing.T) {
+		// given
+		block := &model.Block{
+			Id: "test",
+			Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id: "id",
+						Filters: []*model.BlockContentDataviewFilter{
+							{
+								Id:          "id1",
+								RelationKey: "key",
+								Value:       pbtypes.String("test"),
+							},
+							{
+								Id:          "id1",
+								RelationKey: "key1",
+								Value:       pbtypes.String("test"),
+							},
+						},
+					},
+				},
+			}},
+		}
+		rootBlock := &model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"test"},
+			Content:     &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		}
+		simpleBlock := simple.New(block)
+		rootSimpleBlock := simple.New(rootBlock)
+		st := state.NewDoc("root", map[string]simple.Block{"test": simpleBlock, "root": rootSimpleBlock}).(*state.State)
+
+		// when
+		err := UpdateLinksToObjects(st, map[string]string{"key": "newKey"})
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, "newKey", st.Get("test").Model().GetDataview().GetViews()[0].GetFilters()[0].RelationKey)
+		assert.Equal(t, "key1", st.Get("test").Model().GetDataview().GetViews()[0].GetFilters()[1].RelationKey)
+	})
+	t.Run("update data view relations", func(t *testing.T) {
+		// given
+		block := &model.Block{
+			Id: "test",
+			Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id: "id",
+						Relations: []*model.BlockContentDataviewRelation{
+							{
+								Key: "key",
+							},
+							{
+								Key: "key1",
+							},
+						},
+					},
+				},
+			}},
+		}
+		rootBlock := &model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"test"},
+			Content:     &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		}
+		simpleBlock := simple.New(block)
+		rootSimpleBlock := simple.New(rootBlock)
+		st := state.NewDoc("root", map[string]simple.Block{"test": simpleBlock, "root": rootSimpleBlock}).(*state.State)
+
+		// when
+		err := UpdateLinksToObjects(st, map[string]string{"key": "newKey"})
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, "newKey", st.Get("test").Model().GetDataview().GetViews()[0].GetRelations()[0].Key)
+		assert.Equal(t, "key1", st.Get("test").Model().GetDataview().GetViews()[0].GetRelations()[1].Key)
+	})
+	t.Run("update data view relations links", func(t *testing.T) {
+		// given
+		block := &model.Block{
+			Id: "test",
+			Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				RelationLinks: []*model.RelationLink{
+					{
+						Key: "key",
+					},
+					{
+						Key: "key1",
+					},
+				},
+			}},
+		}
+		rootBlock := &model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"test"},
+			Content:     &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		}
+		simpleBlock := simple.New(block)
+		rootSimpleBlock := simple.New(rootBlock)
+		st := state.NewDoc("root", map[string]simple.Block{"test": simpleBlock, "root": rootSimpleBlock}).(*state.State)
+
+		// when
+		err := UpdateLinksToObjects(st, map[string]string{"key": "newKey"})
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, "newKey", st.Get("test").Model().GetDataview().GetRelationLinks()[0].Key)
+		assert.Equal(t, "key1", st.Get("test").Model().GetDataview().GetRelationLinks()[1].Key)
+	})
+	t.Run("update data view sort", func(t *testing.T) {
+		// given
+		block := &model.Block{
+			Id: "test",
+			Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id: "id",
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: "key",
+							},
+							{
+								RelationKey: "key1",
+							},
+						},
+					},
+				},
+			}},
+		}
+		rootBlock := &model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"test"},
+			Content:     &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		}
+		simpleBlock := simple.New(block)
+		rootSimpleBlock := simple.New(rootBlock)
+		st := state.NewDoc("root", map[string]simple.Block{"test": simpleBlock, "root": rootSimpleBlock}).(*state.State)
+
+		// when
+		err := UpdateLinksToObjects(st, map[string]string{"key": "newKey"})
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, "newKey", st.Get("test").Model().GetDataview().GetViews()[0].GetSorts()[0].RelationKey)
+		assert.Equal(t, "key1", st.Get("test").Model().GetDataview().GetViews()[0].GetSorts()[1].RelationKey)
 	})
 }

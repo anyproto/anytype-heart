@@ -146,7 +146,7 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		return nil, err
 	}
 
-	return &source{
+	src := &source{
 		ObjectTree:         ot,
 		id:                 id,
 		space:              space,
@@ -158,7 +158,12 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		fileService:        s.fileService,
 		objectStore:        s.objectStore,
 		fileObjectMigrator: s.fileObjectMigrator,
-	}, nil
+	}
+	if sbt == smartblock.SmartBlockTypeChatDerivedObject {
+		return &store{source: src}, nil
+	}
+
+	return src, nil
 }
 
 type ObjectTreeProvider interface {
@@ -200,7 +205,7 @@ func (s *source) Tree() objecttree.ObjectTree {
 	return s.ObjectTree
 }
 
-func (s *source) Update(ot objecttree.ObjectTree) {
+func (s *source) Update(ot objecttree.ObjectTree) error {
 	// here it should work, because we always have the most common snapshot of the changes in tree
 	s.lastSnapshotId = ot.Root().Id
 	prevSnapshot := s.lastSnapshotId
@@ -222,23 +227,25 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to append the state and send it to receiver")
 	}
+	return nil
 }
 
-func (s *source) Rebuild(ot objecttree.ObjectTree) {
+func (s *source) Rebuild(ot objecttree.ObjectTree) error {
 	if s.ObjectTree == nil {
-		return
+		return nil
 	}
 
 	doc, err := s.buildState()
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to build state")
-		return
+		return nil
 	}
 	st := doc.(*state.State)
 	err = s.receiver.StateRebuild(st)
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to send the state to receiver")
 	}
+	return nil
 }
 
 func (s *source) ReadOnly() bool {

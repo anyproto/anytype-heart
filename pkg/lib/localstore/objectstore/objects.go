@@ -269,10 +269,6 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 			Name:   "lastModifiedDate",
 			Fields: []string{bundle.RelationKeyLastModifiedDate.String()},
 		},
-		{
-			Name:   "syncStatus",
-			Fields: []string{bundle.RelationKeySyncStatus.String()},
-		},
 	}
 	err = s.addIndexes(ctx, objects, objectIndexes)
 	if err != nil {
@@ -321,6 +317,7 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	if s.objects != nil {
 		err = errors.Join(err, s.objects.Close())
 	}
+	// TODO Close collections
 	if s.anyStore != nil {
 		err = errors.Join(err, s.anyStore.Close())
 	}

@@ -34,18 +34,19 @@ func New() Service {
 }
 
 type accountService interface {
+	AccountID() string
 	MyParticipantId(string) string
 	PersonalSpaceID() string
 }
 
 type Space interface {
 	Id() string
-	IsPersonal() bool
 	TreeBuilder() objecttreebuilder.TreeBuilder
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
 	StoredIds() []string
+	IsPersonal() bool
 }
 
 type Service interface {
@@ -96,8 +97,22 @@ type BuildOptions struct {
 
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	return objecttreebuilder.BuildTreeOpts{
-		Listener:    b.Listener,
-		TreeBuilder: objecttree.BuildKeyFilterableObjectTree,
+		Listener: b.Listener,
+		TreeBuilder: func(treeStorage treestorage.TreeStorage, aclList list.AclList) (objecttree.ObjectTree, error) {
+			ot, err := objecttree.BuildKeyFilterableObjectTree(treeStorage, aclList)
+			if err != nil {
+				return nil, err
+			}
+			sbt, _, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
+			if err != nil {
+				return nil, err
+			}
+			if sbt == smartblock.SmartBlockTypeChatDerivedObject {
+				// here we have special
+				ot.SetFlusher(objecttree.MarkNewChangeFlusher())
+			}
+			return ot, nil
+		},
 		TreeValidator: func(payload treestorage.TreeStorageCreatePayload, buildFunc objecttree.BuildObjectTreeFunc, aclList list.AclList) (retPayload treestorage.TreeStorageCreatePayload, err error) {
 			return objecttree.ValidateFilterRawTree(payload, aclList)
 		},

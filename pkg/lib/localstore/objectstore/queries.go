@@ -114,7 +114,7 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 		// Debug slow queries
 		if false {
 			dur := time.Since(now)
-			if dur.Milliseconds() > 10 {
+			if dur.Milliseconds() > 100 {
 				explain := ""
 				if exp, expErr := query.Explain(s.componentCtx); expErr == nil {
 					for _, idx := range exp.Indexes {
@@ -130,6 +130,8 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 			}
 		}
 	}()
+	// TODO Some problem with parsing anystoreFilter.String()
+	// TODO It's because of empty And/Or filter
 	iter, err := query.Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("find: %w", err)

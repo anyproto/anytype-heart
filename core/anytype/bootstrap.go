@@ -38,6 +38,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	decorator "github.com/anyproto/anytype-heart/core/block/bookmark/bookmarkimporter"
+	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -250,6 +251,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(files.New()).
 		Register(fileoffloader.New()).
 		Register(fileacl.New()).
+		Register(chats.New()).
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
@@ -305,6 +307,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(payments.New()).
 		Register(paymentscache.New()).
 		Register(peerstatus.New())
+
 }
 
 func MiddlewareVersion() string {
