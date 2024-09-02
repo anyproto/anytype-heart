@@ -83,10 +83,8 @@ github.com/andybalholm/cascadia v1.2.0/go.mod h1:YCyR8vOZT9aZ1CHEd8ap0gMVm2aFgxB
 github.com/andybalholm/cascadia v1.3.1/go.mod h1:R4bJ1UQfqADjvDa4P6HZHLh/3OxWWEqc0Sk8XGwHqvA=
 github.com/andybalholm/cascadia v1.3.2 h1:3Xi6Dw5lHF15JtdcmAHD3i1+T8plmv7BQ/nsViSLyss=
 github.com/andybalholm/cascadia v1.3.2/go.mod h1:7gtRlve5FxPPgIgX36uWBX58OdBsSS6lUvCFb+h7KvU=
-github.com/anyproto/any-store v0.0.2-0.20240812125400-7f6f6d062ebf h1:9VTQc/011fVyucu9bICmjF6+y/T9QdZv6MN7X4gM4S0=
-github.com/anyproto/any-store v0.0.2-0.20240812125400-7f6f6d062ebf/go.mod h1:JV7dJ8+xF1VaCQgFQsD8SZSNlxxTGFbDiF8llkB2ILc=
-github.com/anyproto/any-store v0.0.2 h1:VxcwKQzZLOWUuQndXiqIyoydROrZ9ZuZUeQcnzmPbqc=
-github.com/anyproto/any-store v0.0.2/go.mod h1:MA3sSqRXIp0h9bC2LnMuDGVEFGB3BkI/UuWNCleGHMs=
+github.com/anyproto/any-store v0.0.3 h1:802U8KNiylXUJ1DA12LgnnG/OfTgAXOVRnOIue5qtn0=
+github.com/anyproto/any-store v0.0.3/go.mod h1:MA3sSqRXIp0h9bC2LnMuDGVEFGB3BkI/UuWNCleGHMs=
 github.com/anyproto/any-sync v0.4.31-0.20240826183840-60ce75b4e515 h1:RCrJv9gmraN4kyRM7wjl54y1EL6N+adDvg1RCCvmiiw=
 github.com/anyproto/any-sync v0.4.31-0.20240826183840-60ce75b4e515/go.mod h1:YjwTdTRL6b6GuutJNboJJ1M5D/kkdeSf9qF5xP6wG7Y=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
@@ -301,7 +299,6 @@ github.com/dsoprea/go-utility/v2 v2.0.0-20221003160719-7bc88537c05e/go.mod h1:VZ
 github.com/dsoprea/go-utility/v2 v2.0.0-20221003172846-a3e1774ef349 h1:DilThiXje0z+3UQ5YjYiSRRzVdtamFpvBQXKwMglWqw=
 github.com/dsoprea/go-utility/v2 v2.0.0-20221003172846-a3e1774ef349/go.mod h1:4GC5sXji84i/p+irqghpPFZBF8tRN/Q7+700G0/DLe8=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
-github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
