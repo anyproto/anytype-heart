@@ -216,3 +216,6 @@ packages:
       NodeUsage:
       NetworkConfig:
       Updater:
+  github.com/anyproto/anytype-heart/core/block/import/notion/api/files:
+    interfaces:
+      Downloader:
