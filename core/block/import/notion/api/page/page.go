@@ -71,7 +71,7 @@ func (ds *Service) GetPages(
 	notionImportContext *api.NotionImportContext,
 	relations *property.PropertiesStore,
 	progress process.Progress,
-	fileDownloader *files.FileDownloader,
+	fileDownloader files.Downloader,
 ) (*common.Response, *common.ConvertError) {
 	progress.SetProgressMessage("Start creating pages from notion")
 	convertError := ds.fillNotionImportContext(pages, progress, notionImportContext)
@@ -120,7 +120,7 @@ func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcOb
 	return allSnapshots, ce
 }
 
-func (ds *Service) addWorkToPool(pages []Page, pool *workerpool.WorkerPool, fileDownloader *files.FileDownloader) {
+func (ds *Service) addWorkToPool(pages []Page, pool *workerpool.WorkerPool, fileDownloader files.Downloader) {
 	var (
 		relMutex    = &sync.Mutex{}
 		relOptMutex = &sync.Mutex{}

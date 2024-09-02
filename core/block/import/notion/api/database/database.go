@@ -75,7 +75,7 @@ func (ds *Service) GetDatabase(
 	databases []Database,
 	progress process.Progress,
 	req *api.NotionImportContext,
-	fileDownloader *files.FileDownloader,
+	fileDownloader files.Downloader,
 ) (*common.Response, *property.PropertiesStore, *common.ConvertError) {
 	var (
 		allSnapshots = make([]*common.Snapshot, 0)
@@ -108,7 +108,7 @@ func (ds *Service) makeDatabaseSnapshot(
 	d Database,
 	importContext *api.NotionImportContext,
 	relations *property.PropertiesStore,
-	fileDownloader *files.FileDownloader,
+	fileDownloader files.Downloader,
 ) ([]*common.Snapshot, error) {
 	details, relationLinks := ds.getCollectionDetails(d)
 	detailsStruct := &types.Struct{Fields: details}

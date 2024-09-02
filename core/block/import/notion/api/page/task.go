@@ -47,7 +47,7 @@ type Task struct {
 	propertyService        *property.Service
 	blockService           *block.Service
 	p                      Page
-	fileDownloader         *files.FileDownloader
+	fileDownloader         files.Downloader
 }
 
 func (pt *Task) ID() string {
@@ -91,19 +91,70 @@ func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *common.Conv
 		}
 	}
 	resp := pt.blockService.MapNotionBlocksToAnytype(object.request, notionBlocks, pt.p.ID)
-	pt.uploadFileBlockLocally(resp.Blocks)
+	pt.uploadFilesLocally(resp.Blocks)
 	snapshot := pt.provideSnapshot(resp.Blocks, details, relationLinks)
 	return snapshot, subObjectsSnapshots
 }
 
-func (pt *Task) uploadFileBlockLocally(blocks []*model.Block) {
+func (pt *Task) uploadFilesLocally(blocks []*model.Block) {
+	var (
+		wg               sync.WaitGroup
+		filesUploadTasks []func()
+	)
 	for _, block := range blocks {
 		if block.GetFile() != nil && block.GetFile().GetName() != "" {
-			pt.fileDownloader.AddToQueue(block.GetFile().GetName())
-			localPath := pt.fileDownloader.WaitForLocalPath(block.GetFile().GetName())
-			block.GetFile().Name = localPath
+			task, stop := pt.uploadFileBlock(block, &wg)
+			if stop {
+				break
+			}
+			filesUploadTasks = append(filesUploadTasks, task)
+		}
+		if block.GetText() != nil && block.GetText().GetIconImage() != "" {
+			task, stop := pt.uploadIconImage(block, &wg)
+			if stop {
+				break
+			}
+			filesUploadTasks = append(filesUploadTasks, task)
 		}
 	}
+	for _, task := range filesUploadTasks {
+		go task()
+	}
+	wg.Wait()
+}
+
+func (pt *Task) uploadFileBlock(block *model.Block, wg *sync.WaitGroup) (func(), bool) {
+	file := files.NewFile(block.GetFile().GetName())
+	stop := pt.fileDownloader.QueueFileForDownload(file)
+	if stop {
+		return nil, true
+	}
+	wg.Add(1)
+	return func() {
+		defer wg.Done()
+		localPath, err := file.WaitForLocalPath()
+		if err != nil {
+			log.Errorf("failed to download file: %s", err)
+		}
+		block.GetFile().Name = localPath
+	}, false
+}
+
+func (pt *Task) uploadIconImage(block *model.Block, wg *sync.WaitGroup) (func(), bool) {
+	file := files.NewFile(block.GetText().GetIconImage())
+	stop := pt.fileDownloader.QueueFileForDownload(file)
+	if stop {
+		return nil, true
+	}
+	wg.Add(1)
+	return func() {
+		defer wg.Done()
+		localPath, err := file.WaitForLocalPath()
+		if err != nil {
+			log.Errorf("failed to download file: %s", err)
+		}
+		block.GetText().IconImage = localPath
+	}, false
 }
 
 func (pt *Task) provideDetails(object *DataObject) (map[string]*types.Value, []*model.SmartBlockSnapshotBase, []*model.RelationLink) {

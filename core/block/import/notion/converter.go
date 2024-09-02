@@ -82,12 +82,13 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 		return nil, common.NewFromError(common.ErrNoObjectsToImport, req.Mode)
 	}
 
-	fileDownloader := files.NewFileDownloader(n.tempDirProvider)
+	fileDownloader := files.NewFileDownloader(n.tempDirProvider, progress)
 	err = fileDownloader.Init(ctx, apiKey)
 	if err != nil {
 		return nil, common.NewFromError(err, req.Mode)
 	}
-	go fileDownloader.MapUrlToLocalPath()
+	go fileDownloader.ProcessDownloadedFiles()
+	defer fileDownloader.StopDownload()
 	notionImportContext := api.NewNotionImportContext()
 	dbSnapshots, relations, dbErr := n.dbService.GetDatabase(ctx, req.Mode, db, progress, notionImportContext, fileDownloader)
 	if dbErr != nil {
