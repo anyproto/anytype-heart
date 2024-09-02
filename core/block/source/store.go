@@ -162,18 +162,20 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 	return err
 }
 
-func (s *store) Update(tree objecttree.ObjectTree) {
+func (s *store) Update(tree objecttree.ObjectTree) error {
 	err := s.update(context.Background(), tree)
 	if err != nil {
 		log.With("objectId", s.id).Errorf("update: failed to read store doc: %v", err)
 	}
+	return err
 }
 
-func (s *store) Rebuild(tree objecttree.ObjectTree) {
+func (s *store) Rebuild(tree objecttree.ObjectTree) error {
 	err := s.update(context.Background(), tree)
 	if err != nil {
 		log.With("objectId", s.id).Errorf("rebuild: failed to read store doc: %v", err)
 	}
+	return err
 }
 
 func MarshalStoreChange(change *pb.StoreChange) (result []byte, dataType string, err error) {

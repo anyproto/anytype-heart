@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/any-sync/util/syncqueues"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
@@ -217,6 +218,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
+		Register(syncqueues.New()).
 		Register(peerstore.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
@@ -228,10 +230,11 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(yamux.New()).
 		Register(quic.New()).
 		Register(clientserver.New()).
-		Register(streampool.New()).
 		Register(coordinatorclient.New()).
 		Register(nodeclient.New()).
 		Register(credentialprovider.New()).
+		Register(spacecore.NewStreamOpener()).
+		Register(streampool.New()).
 		Register(commonspace.New()).
 		Register(aclclient.NewAclJoiningClient()).
 		Register(virtualspaceservice.New()).

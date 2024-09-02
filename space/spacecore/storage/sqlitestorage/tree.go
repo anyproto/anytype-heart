@@ -98,6 +98,10 @@ func (t *treeStorage) Heads() ([]string, error) {
 	return t.heads, nil
 }
 
+func (t *treeStorage) GetAllChangeIds() (chs []string, err error) {
+	return nil, fmt.Errorf("get all change ids should not be called")
+}
+
 func (t *treeStorage) SetHeads(heads []string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -156,6 +160,10 @@ func (t *treeStorage) GetRawChange(ctx context.Context, id string) (*treechangep
 		return nil, replaceNoRowsErr(err, treestorage.ErrUnknownChange)
 	}
 	return ch, nil
+}
+
+func (t *treeStorage) GetAppendRawChange(ctx context.Context, buf []byte, id string) (*treechangeproto.RawTreeChangeWithId, error) {
+	return t.GetRawChange(ctx, id)
 }
 
 func (t *treeStorage) HasChange(ctx context.Context, id string) (bool, error) {

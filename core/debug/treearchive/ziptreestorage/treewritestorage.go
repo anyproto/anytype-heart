@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
@@ -42,6 +43,10 @@ func (z *zipTreeWriteStorage) Id() string {
 	return z.id
 }
 
+func (t *zipTreeWriteStorage) GetAllChangeIds() (chs []string, err error) {
+	return nil, fmt.Errorf("get all change ids should not be called")
+}
+
 func (z *zipTreeWriteStorage) Root() (*treechangeproto.RawTreeChangeWithId, error) {
 	panic("should not be implemented")
 }
@@ -75,6 +80,10 @@ func (z *zipTreeWriteStorage) AddRawChangesSetHeads(changes []*treechangeproto.R
 }
 
 func (z *zipTreeWriteStorage) GetRawChange(ctx context.Context, id string) (*treechangeproto.RawTreeChangeWithId, error) {
+	panic("should not be called")
+}
+
+func (z *zipTreeWriteStorage) GetAppendRawChange(ctx context.Context, buf []byte, id string) (*treechangeproto.RawTreeChangeWithId, error) {
 	panic("should not be called")
 }
 
