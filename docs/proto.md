@@ -11154,6 +11154,11 @@ Get marks list in the selected range in text block.
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| clientCachePath | [string](#string) |  |  |
+
+
 
 
 
@@ -27122,6 +27127,7 @@ Used to decode block meta only, without the content itself
 | fileSize | [int32](#int32) |  |  |
 | categories | [string](#string) | repeated |  |
 | language | [string](#string) |  |  |
+| hash | [string](#string) |  |  |
 
 
 

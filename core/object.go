@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
@@ -27,7 +28,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -993,8 +993,8 @@ func (mw *Middleware) ObjectImportUseCase(ctx context.Context, req *pb.RpcObject
 		return resp
 	}
 
-	objCreator := getService[builtinobjects.BuiltinObjects](mw)
-	return response(objCreator.CreateObjectsForUseCase(ctx, req.SpaceId, req.CachePath, req.UseCase))
+	usecaseImporter := getService[gallery.Service](mw)
+	return response(usecaseImporter.ImportBuiltInUseCase(ctx, req.SpaceId, req.CachePath, req.UseCase))
 }
 
 func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObjectImportExperienceRequest) *pb.RpcObjectImportExperienceResponse {
@@ -1010,7 +1010,7 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 		return resp
 	}
 
-	objCreator := getService[builtinobjects.BuiltinObjects](mw)
-	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.CachePath, req.IsNewSpace)
+	experienceImporter := getService[gallery.Service](mw)
+	err := experienceImporter.ImportExperience(ctx, req.SpaceId, req.Url, req.Title, req.CachePath, req.IsNewSpace)
 	return response(common.GetGalleryResponseCode(err), err)
 }

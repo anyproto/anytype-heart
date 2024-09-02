@@ -3618,6 +3618,7 @@ message Rpc {
 
         message DownloadIndex {
             message Request {
+                string clientCachePath = 1;
             }
 
             message Response {

@@ -1184,6 +1184,7 @@ message ManifestInfo {
     int32 fileSize = 10;
     repeated string categories = 11;
     string language = 12;
+    string hash = 13;
 }
 
 enum NameserviceNameType {
