@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const expectedMessage = "Test message"
+const expectedMessage = "test"
 
 func handleConnection(conn net.Conn) error {
 	defer conn.Close()
