@@ -42,8 +42,7 @@
       "tag",
       "phone",
       "email",
-      "company",
-      "socialProfile"
+      "company"
     ],
     "description": "Information to make action of communicating or meeting with Human or Company"
   },
@@ -183,7 +182,6 @@
     "layout": "basic",
     "relations": [
       "tag",
-      "director",
       "genre",
       "status"
     ],

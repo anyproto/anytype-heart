@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "3def7042f6fd9b6b45d9a38327cfd05b3e7adeab04c0354913e382d05c464122"
+const TypeChecksum = "745e40062786ba9e43273b0009612a02af1eb9920ecaf6fab191f86b5cdd33f3"
 const (
 	TypePrefix = "_ot"
 )
@@ -97,7 +97,7 @@ var (
 			Layout:        model.ObjectType_profile,
 			Name:          "Contact",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyPhone), MustGetRelationLink(RelationKeyEmail), MustGetRelationLink(RelationKeyCompany), MustGetRelationLink(RelationKeySocialProfile)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyPhone), MustGetRelationLink(RelationKeyEmail), MustGetRelationLink(RelationKeyCompany)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "contact",
 		},
@@ -177,7 +177,7 @@ var (
 			Layout:        model.ObjectType_basic,
 			Name:          "Movie",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDirector), MustGetRelationLink(RelationKeyGenre), MustGetRelationLink(RelationKeyStatus)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyGenre), MustGetRelationLink(RelationKeyStatus)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "movie",
 		},

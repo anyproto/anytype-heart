@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "7617243dd2ca3ad0595736102489b0ee198a0cffe05a12c53f4e220cdbd60882"
+const RelationChecksum = "031657c702d56fbad494e48152066b3e7e659d9d95dc67e5ef31378f2c0fd81e"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -41,7 +41,6 @@ const (
 	RelationKeyLinkedProjects            domain.RelationKey = "linkedProjects"
 	RelationKeyAudioAlbum                domain.RelationKey = "audioAlbum"
 	RelationKeyLayoutAlign               domain.RelationKey = "layoutAlign"
-	RelationKeyDirector                  domain.RelationKey = "director"
 	RelationKeyStatus                    domain.RelationKey = "status"
 	RelationKeyIsHidden                  domain.RelationKey = "isHidden"
 	RelationKeyIsHiddenDiscovery         domain.RelationKey = "isHiddenDiscovery"
@@ -82,7 +81,6 @@ const (
 	RelationKeyLayout                    domain.RelationKey = "layout"
 	RelationKeyAudioAlbumTrackNumber     domain.RelationKey = "audioAlbumTrackNumber"
 	RelationKeyInternalFlags             domain.RelationKey = "internalFlags"
-	RelationKeySocialProfile             domain.RelationKey = "socialProfile"
 	RelationKeyCoverX                    domain.RelationKey = "coverX"
 	RelationKeyDescription               domain.RelationKey = "description"
 	RelationKeyPicture                   domain.RelationKey = "picture"
@@ -451,18 +449,6 @@ var (
 			Key:              "description",
 			MaxCount:         1,
 			Name:             "Description",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyDirector: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_object,
-			Id:               "_brdirector",
-			Key:              "director",
-			Name:             "Director",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1498,19 +1484,6 @@ var (
 			MaxCount:         1,
 			Name:             "Snippet",
 			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeySocialProfile: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_url,
-			Id:               "_brsocialProfile",
-			Key:              "socialProfile",
-			MaxCount:         1,
-			Name:             "Profile in social media",
-			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

@@ -304,15 +304,6 @@
     "source": "details"
   },
   {
-    "format": "object",
-    "hidden": false,
-    "key": "director",
-    "maxCount": 0,
-    "name": "Director",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Task status",
     "format": "status",
     "hidden": false,
@@ -732,15 +723,6 @@
     "maxCount": 0,
     "name": "Internal flags",
     "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "url",
-    "hidden": false,
-    "key": "socialProfile",
-    "maxCount": 1,
-    "name": "Profile in social media",
-    "readonly": false,
     "source": "details"
   },
   {
