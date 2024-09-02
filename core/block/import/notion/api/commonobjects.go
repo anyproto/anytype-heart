@@ -364,15 +364,16 @@ func UploadFileRelationLocally(fileDownloader files.Downloader, details map[stri
 	var (
 		wg    sync.WaitGroup
 		tasks []func()
+		mu    sync.Mutex
 	)
 	for _, relationLink := range relationLinks {
 		if relationLink.Format == model.RelationFormat_file {
 			fileUrl := details[relationLink.Key].GetStringValue()
 			if fileUrl == "" {
-				tasks = handleListValue(fileDownloader, details, relationLink, &wg, tasks)
+				tasks = handleListValue(fileDownloader, details, relationLink, &wg, tasks, &mu)
 			}
 			if fileUrl != "" {
-				task, stop := addTaskWithFileDownload(fileDownloader, details, relationLink, &wg, fileUrl, 0)
+				task, stop := addTaskWithFileDownload(fileDownloader, details, relationLink, &wg, fileUrl, 0, &mu)
 				if stop {
 					break
 				}
@@ -386,10 +387,17 @@ func UploadFileRelationLocally(fileDownloader files.Downloader, details map[stri
 	wg.Wait()
 }
 
-func handleListValue(fileDownloader files.Downloader, details map[string]*types.Value, relationLink *model.RelationLink, wg *sync.WaitGroup, tasks []func()) []func() {
+func handleListValue(
+	fileDownloader files.Downloader,
+	details map[string]*types.Value,
+	relationLink *model.RelationLink,
+	wg *sync.WaitGroup,
+	tasks []func(),
+	mu *sync.Mutex,
+) []func() {
 	fileUrls := pbtypes.GetStringListValue(details[relationLink.Key])
 	for i, url := range fileUrls {
-		task, stop := addTaskWithFileDownload(fileDownloader, details, relationLink, wg, url, i)
+		task, stop := addTaskWithFileDownload(fileDownloader, details, relationLink, wg, url, i, mu)
 		if stop {
 			break
 		}
@@ -405,6 +413,7 @@ func addTaskWithFileDownload(
 	wg *sync.WaitGroup,
 	url string,
 	urlIdx int,
+	mu *sync.Mutex,
 ) (func(), bool) {
 	file := files.NewFile(url)
 	stop := fileDownloader.QueueFileForDownload(file)
@@ -418,6 +427,8 @@ func addTaskWithFileDownload(
 		if err != nil {
 			logging.Logger("notion").Errorf("failed to download file: %s", err)
 		}
+		mu.Lock()
+		defer mu.Unlock()
 		switch details[relationLink.Key].Kind.(type) {
 		case *types.Value_StringValue:
 			details[relationLink.Key] = pbtypes.String(localPath)

@@ -397,7 +397,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: pr}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 		assert.Nil(t, err)
 
 		// then
