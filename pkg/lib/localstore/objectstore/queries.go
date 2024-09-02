@@ -112,7 +112,7 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 	now := time.Now()
 	defer func() {
 		// Debug slow queries
-		if false {
+		if true {
 			dur := time.Since(now)
 			if dur.Milliseconds() > 100 {
 				explain := ""

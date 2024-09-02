@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	ftIndexInterval         = 1 * time.Second
+	ftIndexInterval         = 3 * time.Second
 	ftIndexForceMinInterval = time.Second * 10
 	ftBatchLimit            = 1000
 	ftBlockMaxSize          = 1024 * 1024

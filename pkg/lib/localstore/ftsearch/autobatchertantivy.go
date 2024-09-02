@@ -2,6 +2,7 @@ package ftsearch
 
 import (
 	"fmt"
+	"time"
 
 	tantivy "github.com/anyproto/tantivy-go"
 	"github.com/blevesearch/bleve/v2/search"
@@ -124,6 +125,12 @@ func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
 
 // Finish indexes the remaining documents in the batch.
 func (f *ftIndexBatcherTantivy) Finish() error {
+	now := time.Now()
+	lendocs, lendelete := len(f.updateDocs), len(f.deleteIds)
+	defer func() {
+		fmt.Println("FTINDEX", lendocs, lendelete, time.Since(now))
+	}()
+
 	err := f.index.DeleteDocuments(fieldIdRaw, f.deleteIds...)
 	if err != nil {
 		return err
