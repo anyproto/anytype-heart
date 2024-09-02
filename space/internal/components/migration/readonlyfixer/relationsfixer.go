@@ -18,7 +18,7 @@ import (
 )
 
 type detailsSettable interface {
-	SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
+	SetDetails(ctx session.Context, details []*model.Detail, showEvent, updateLastUsed bool) (err error)
 }
 
 const MName = "ReadonlyRelationsFixer"
@@ -60,7 +60,7 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 		}}
 		e := space.DoCtx(ctx, pbtypes.GetString(r.Details, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
 			if ds, ok := sb.(detailsSettable); ok {
-				return ds.SetDetails(nil, det, false)
+				return ds.SetDetails(nil, det, false, false)
 			}
 			return nil
 		})

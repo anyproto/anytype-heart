@@ -172,12 +172,14 @@ func (s *Service) setDetails(profile *pb.Profile, icon int64) error {
 	if err := bs.SetDetails(nil,
 		accountObjects.Profile,
 		profileDetails,
+		false,
 	); err != nil {
 		return err
 	}
 	if err := bs.SetDetails(nil,
 		accountObjects.Workspace,
 		accountDetails,
+		false,
 	); err != nil {
 		return err
 	}

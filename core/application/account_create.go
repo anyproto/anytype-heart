@@ -153,6 +153,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	if err := bs.SetDetails(nil,
 		accountObjects.Profile,
 		profileDetails,
+		false,
 	); err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}
@@ -160,6 +161,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	if err := bs.SetDetails(nil,
 		accountObjects.Workspace,
 		commonDetails,
+		false,
 	); err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}

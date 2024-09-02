@@ -1,4 +1,4 @@
-package objecttype
+package lastused
 
 import (
 	"math/rand"

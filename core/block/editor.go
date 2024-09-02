@@ -56,7 +56,7 @@ func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (e
 				Key:   "isArchived",
 				Value: pbtypes.Bool(archived),
 			},
-		}, true)
+		}, true, false)
 	})
 }
 

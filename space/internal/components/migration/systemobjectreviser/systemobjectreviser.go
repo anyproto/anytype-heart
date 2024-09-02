@@ -23,7 +23,7 @@ import (
 )
 
 type detailsSettable interface {
-	SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
+	SetDetails(ctx session.Context, details []*model.Detail, showEvent, updateLastUsed bool) (err error)
 }
 
 const MName = "SystemObjectReviser"
@@ -104,7 +104,7 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 		log.Debug("updating system object", zap.String("source", source), zap.String("space", space.Id()))
 		if err := space.DoCtx(ctx, pbtypes.GetString(localObject, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
 			if ds, ok := sb.(detailsSettable); ok {
-				return ds.SetDetails(nil, details, false)
+				return ds.SetDetails(nil, details, false, false)
 			}
 			return nil
 		}); err != nil {

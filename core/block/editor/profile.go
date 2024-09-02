@@ -131,7 +131,7 @@ func (p *Profile) StateMigrations() migration.Migrations {
 }
 
 func (p *Profile) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
-	if err = p.AllOperations.SetDetails(ctx, details, showEvent); err != nil {
+	if err = p.AllOperations.SetDetails(ctx, details, showEvent, false); err != nil {
 		return
 	}
 

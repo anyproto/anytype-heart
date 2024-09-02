@@ -353,7 +353,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 			return
 		}
 		err = cache.Do(oc.service, spc.DerivedIDs().Workspace, func(ws basic.CommonOperations) error {
-			if err := ws.SetDetails(nil, details, false); err != nil {
+			if err := ws.SetDetails(nil, details, false, false); err != nil {
 				return err
 			}
 			return nil

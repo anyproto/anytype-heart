@@ -9,7 +9,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -103,12 +103,16 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	sb.Unlock()
 	id = sb.Id()
 
-	if sbType == coresb.SmartBlockTypeObjectType && pbtypes.GetInt64(newDetails, bundle.RelationKeyLastUsedDate.String()) == 0 {
-		objecttype.UpdateLastUsedDate(spc, s.objectStore, domain.TypeKey(
-			strings.TrimPrefix(pbtypes.GetString(newDetails, bundle.RelationKeyUniqueKey.String()), addr.ObjectTypeKeyToIdPrefix)),
-		)
+	if pbtypes.GetInt64(newDetails, bundle.RelationKeyLastUsedDate.String()) == 0 {
+		uk := pbtypes.GetString(newDetails, bundle.RelationKeyUniqueKey.String())
+		switch sbType {
+		case coresb.SmartBlockTypeObjectType:
+			lastused.UpdateLastUsedDate(spc, s.objectStore, domain.TypeKey(strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)))
+		case coresb.SmartBlockTypeRelation:
+			lastused.UpdateLastUsedDate(spc, s.objectStore, domain.RelationKey(strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)))
+		}
 	} else if pbtypes.GetInt64(newDetails, bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
-		objecttype.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys[0])
+		lastused.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys[0])
 	}
 
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs

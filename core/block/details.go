@@ -16,9 +16,9 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func (s *Service) SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error) {
+func (s *Service) SetDetails(ctx session.Context, objectId string, details []*model.Detail, updateLastUsed bool) (err error) {
 	return cache.Do(s, objectId, func(b basic.DetailsSettable) error {
-		return b.SetDetails(ctx, details, true)
+		return b.SetDetails(ctx, details, true, updateLastUsed)
 	})
 }
 
@@ -27,8 +27,8 @@ func (s *Service) SetDetailsList(ctx session.Context, objectIds []string, detail
 		resultError error
 		anySucceed  bool
 	)
-	for _, objectId := range objectIds {
-		err := s.SetDetails(ctx, objectId, details)
+	for i, objectId := range objectIds {
+		err := s.SetDetails(ctx, objectId, details, i == 0)
 		if err != nil {
 			resultError = errors.Join(resultError, err)
 		} else {
@@ -45,15 +45,15 @@ func (s *Service) SetDetailsList(ctx session.Context, objectIds []string, detail
 }
 
 // ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
-func (s *Service) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
+func (s *Service) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error), updateLastUsed bool) (err error) {
 	return cache.Do(s, objectId, func(du basic.DetailsUpdatable) error {
-		return du.UpdateDetails(modifier)
+		return du.UpdateDetails(modifier, updateLastUsed)
 	})
 }
 
 func (s *Service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesRequest) (resultError error) {
 	var anySucceed bool
-	for _, objectId := range req.ObjectIds {
+	for i, objectId := range req.ObjectIds {
 		err := s.ModifyDetails(objectId, func(current *types.Struct) (*types.Struct, error) {
 			for _, op := range req.Operations {
 				if !pbtypes.IsEmptyValue(op.Set) {
@@ -65,7 +65,7 @@ func (s *Service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesReque
 				removeValueFromListDetail(current, op.RelationKey, op.Remove)
 			}
 			return current, nil
-		})
+		}, i == 0)
 		if err != nil {
 			resultError = errors.Join(resultError, err)
 		} else {
