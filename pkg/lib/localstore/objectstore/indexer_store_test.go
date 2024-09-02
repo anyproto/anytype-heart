@@ -14,9 +14,9 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	s := NewStoreFixture(t)
 
 	t.Run("add to queue", func(t *testing.T) {
-		require.NoError(t, s.AddToIndexQueue("one"))
-		require.NoError(t, s.AddToIndexQueue("one"))
-		require.NoError(t, s.AddToIndexQueue("two"))
+		require.NoError(t, s.AddToIndexQueue(ctx, "one"))
+		require.NoError(t, s.AddToIndexQueue(ctx, "one"))
+		require.NoError(t, s.AddToIndexQueue(ctx, "two"))
 
 		ids, err := s.ListIDsFromFullTextQueue(0)
 		require.NoError(t, err)
@@ -37,9 +37,9 @@ func TestIndexerBatch(t *testing.T) {
 	s := NewStoreFixture(t)
 
 	t.Run("batch - no more than limit", func(t *testing.T) {
-		require.NoError(t, s.AddToIndexQueue("one"))
-		require.NoError(t, s.AddToIndexQueue("two"))
-		require.NoError(t, s.AddToIndexQueue("three"))
+		require.NoError(t, s.AddToIndexQueue(ctx, "one"))
+		require.NoError(t, s.AddToIndexQueue(ctx, "two"))
+		require.NoError(t, s.AddToIndexQueue(ctx, "three"))
 
 		var batches [][]string
 		err := s.BatchProcessFullTextQueue(context.Background(), 2, func(ids []string) error {
@@ -89,7 +89,7 @@ func TestHeadsHash(t *testing.T) {
 	t.Run("previous hash is not found", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		got, err := s.GetLastIndexedHeadsHash("id1")
+		got, err := s.GetLastIndexedHeadsHash(ctx, "id1")
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
@@ -99,9 +99,9 @@ func TestHeadsHash(t *testing.T) {
 
 		want := "hash1"
 
-		require.NoError(t, s.SaveLastIndexedHeadsHash("id1", want))
+		require.NoError(t, s.SaveLastIndexedHeadsHash(ctx, "id1", want))
 
-		got, err := s.GetLastIndexedHeadsHash("id1")
+		got, err := s.GetLastIndexedHeadsHash(ctx, "id1")
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})

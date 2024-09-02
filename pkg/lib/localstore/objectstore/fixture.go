@@ -28,6 +28,8 @@ type StoreFixture struct {
 // nolint: unused
 const spaceName = "space1"
 
+var ctx = context.Background()
+
 func NewStoreFixture(t testing.TB) *StoreFixture {
 	ctx, cancel := context.WithCancel(context.Background())
 

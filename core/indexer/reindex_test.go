@@ -75,9 +75,9 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 
 		favs := []string{"fav1", "fav2"}
 		trash := []string{"trash1", "trash2"}
-		err := fx.store.UpdateObjectLinks("home", favs)
+		err := fx.store.UpdateObjectLinks(ctx, "home", favs)
 		require.NoError(t, err)
-		err = fx.store.UpdateObjectLinks("bin", trash)
+		err = fx.store.UpdateObjectLinks(ctx, "bin", trash)
 		require.NoError(t, err)
 
 		homeLinks, err := fx.store.GetOutboundLinksByID("home")
@@ -260,9 +260,9 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		// given
 		favs := []string{"fav1", "fav2"}
 		trash := []string{"trash1", "trash2"}
-		err = fx.store.UpdateObjectLinks("home", favs)
+		err = fx.store.UpdateObjectLinks(ctx, "home", favs)
 		require.NoError(t, err)
-		err = fx.store.UpdateObjectLinks("bin", trash)
+		err = fx.store.UpdateObjectLinks(ctx, "bin", trash)
 		require.NoError(t, err)
 
 		homeLinks, err := fx.store.GetOutboundLinksByID("home")
@@ -297,11 +297,11 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		obj1links := []string{"obj2", "obj3"}
 		obj2links := []string{"obj1"}
 		obj3links := []string{"obj2"}
-		err = fx.store.UpdateObjectLinks("obj1", obj1links)
+		err = fx.store.UpdateObjectLinks(ctx, "obj1", obj1links)
 		require.NoError(t, err)
-		err = fx.store.UpdateObjectLinks("obj2", obj2links)
+		err = fx.store.UpdateObjectLinks(ctx, "obj2", obj2links)
 		require.NoError(t, err)
-		err = fx.store.UpdateObjectLinks("obj3", obj3links)
+		err = fx.store.UpdateObjectLinks(ctx, "obj3", obj3links)
 		require.NoError(t, err)
 
 		storedObj1links, err := fx.store.GetOutboundLinksByID("obj1")
