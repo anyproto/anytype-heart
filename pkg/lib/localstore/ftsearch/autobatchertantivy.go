@@ -73,7 +73,7 @@ func (f *ftSearchTantivy) Iterate(objectId string, fields []string, shouldContin
 }
 
 type ftIndexBatcherTantivy struct {
-	index      *tantivy.Index
+	index      *tantivy.TantivyContext
 	deleteIds  []string
 	updateDocs []*tantivy.Document
 }
