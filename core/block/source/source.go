@@ -565,7 +565,6 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 				} else {
 					st = newState(st, state.NewDoc(ot.Id(), nil).(*state.State))
 				}
-				st.EnableParentIdsCache()
 				st.SetChangeId(change.Id)
 				return true
 			}
@@ -589,7 +588,6 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 				changesAppliedSinceSnapshot++
 			}
 			appliedContent = append(appliedContent, model.Content...)
-			st.EnableParentIdsCache()
 			st.SetChangeId(change.Id)
 			st.ApplyChangeIgnoreErr(model.Content...)
 			st.AddFileKeys(model.FileKeys...)
@@ -610,14 +608,10 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		st.SetLastModified(lastChange.Timestamp, domain.NewParticipantId(spaceId, lastChange.Identity.Account()))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
-	st.ResetParentIdsCache()
 	return
 }
 
 func newState(st *state.State, toAssign *state.State) *state.State {
-	if st != nil {
-		st.ResetParentIdsCache()
-	}
 	st = toAssign
 	return st
 }
