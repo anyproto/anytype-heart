@@ -390,4 +390,4 @@ download-tantivy-all: download-tantivy
 
 download-tantivy-local: remove-libs
 	@mkdir -p $(OUTPUT_DIR)
-	@cp -r $(TANTIVY_GO_PATH)/libs/ $(OUTPUT_DIR)
+	@cp -r $(TANTIVY_GO_PATH)/libs/* $(OUTPUT_DIR)
