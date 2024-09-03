@@ -152,18 +152,10 @@ func (f *file) loadFinishWithError(err error) {
 }
 
 func (f *file) generateFile(do *DataObject) error {
-	hasher := hashersPool.Get().(*blake3.Hasher)
-	defer hashersPool.Put(hasher)
-
-	hasher.Reset()
-	// nolint: errcheck
-	parsesUrl, err := url.Parse(f.url)
+	fileName, err := f.makeFileName()
 	if err != nil {
 		return err
 	}
-	hasher.Write([]byte(parsesUrl.Path))
-	fileExt := filepath.Ext(parsesUrl.Path)
-	fileName := hex.EncodeToString(hasher.Sum(nil)) + fileExt
 	fullPath := filepath.Join(do.dirPath, fileName)
 	file, err := os.Open(fullPath)
 	if err != nil && !os.IsNotExist(err) {
@@ -182,6 +174,21 @@ func (f *file) generateFile(do *DataObject) error {
 	f.File = tmpFile
 	f.localPath = fullPath
 	return nil
+}
+
+func (f *file) makeFileName() (string, error) {
+	hasher := hashersPool.Get().(*blake3.Hasher)
+	defer hashersPool.Put(hasher)
+	hasher.Reset()
+	parsesUrl, err := url.Parse(f.url)
+	if err != nil {
+		return "", err
+	}
+	// nolint: errcheck
+	hasher.Write([]byte(parsesUrl.Path))
+	fileExt := filepath.Ext(parsesUrl.Path)
+	fileName := hex.EncodeToString(hasher.Sum(nil)) + fileExt
+	return fileName, nil
 }
 
 func (f *file) monitorFileDownload(counter *datacounter.ReaderCounter, done, progressCh chan struct{}) {
