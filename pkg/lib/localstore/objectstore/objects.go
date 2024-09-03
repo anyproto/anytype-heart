@@ -66,12 +66,12 @@ type ObjectStore interface {
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
 	UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error
-	UpdateObjectLinks(id string, links []string) error
+	UpdateObjectLinks(ctx context.Context, id string, links []string) error
 	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
 	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error
 
 	DeleteObject(id domain.FullID) error
-	DeleteDetails(id ...string) error
+	DeleteDetails(ctx context.Context, id ...string) error
 	DeleteLinks(id ...string) error
 
 	GetDetails(id string) (*model.ObjectDetails, error)
@@ -97,10 +97,12 @@ type ObjectStore interface {
 
 	GetObjectType(url string) (*model.ObjectType, error)
 	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
+
+	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 }
 
 type IndexerStore interface {
-	AddToIndexQueue(id string) error
+	AddToIndexQueue(ctx context.Context, id string) error
 	ListIDsFromFullTextQueue(limit int) ([]string, error)
 	RemoveIDsFromFullTextQueue(ids []string) error
 	FTSearch() ftsearch.FTSearch
@@ -111,8 +113,8 @@ type IndexerStore interface {
 	// SaveChecksums Used to save checksums and force reindex counter
 	SaveChecksums(spaceID string, checksums *model.ObjectStoreChecksums) (err error)
 
-	GetLastIndexedHeadsHash(id string) (headsHash string, err error)
-	SaveLastIndexedHeadsHash(id string, headsHash string) (err error)
+	GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error)
+	SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error)
 }
 
 type AccountStore interface {
@@ -310,6 +312,10 @@ func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection
 		}
 	}
 	return coll.EnsureIndex(ctx, toCreate...)
+}
+
+func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
+	return s.anyStore.WriteTx(ctx)
 }
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {

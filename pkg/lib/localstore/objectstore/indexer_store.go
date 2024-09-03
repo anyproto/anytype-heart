@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func (s *dsObjectStore) AddToIndexQueue(id string) error {
+func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, id string) error {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -22,7 +22,7 @@ func (s *dsObjectStore) AddToIndexQueue(id string) error {
 	obj := arena.NewObject()
 	obj.Set("id", arena.NewString(id))
 
-	_, err := s.fulltextQueue.UpsertOne(s.componentCtx, obj)
+	_, err := s.fulltextQueue.UpsertOne(ctx, obj)
 	return err
 }
 
@@ -114,16 +114,16 @@ func (s *dsObjectStore) GetGlobalChecksums() (checksums *model.ObjectStoreChecks
 const headsStateField = "h"
 
 // GetLastIndexedHeadsHash return empty hash without error if record was not found
-func (s *dsObjectStore) GetLastIndexedHeadsHash(id string) (headsHash string, err error) {
-	doc, err := s.headsState.FindId(s.componentCtx, id)
+func (s *dsObjectStore) GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error) {
+	doc, err := s.headsState.FindId(ctx, id)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return "", nil
 	}
 	return string(doc.Value().GetStringBytes(headsStateField)), nil
 }
 
-func (s *dsObjectStore) SaveLastIndexedHeadsHash(id string, headsHash string) error {
-	_, err := s.headsState.UpsertId(s.componentCtx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
+func (s *dsObjectStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) error {
+	_, err := s.headsState.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
 		val.Set(headsStateField, arena.NewString(headsHash))
 		return val, true, nil
 	}))
