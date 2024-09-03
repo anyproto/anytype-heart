@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -315,7 +316,7 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 	if len(inboundLinks) == 0 {
 		err = oc.service.DeleteObject(hash)
 		if err != nil {
-			log.With("file", hash).Errorf("failed to delete file: %s", err)
+			log.With("file", hash).Errorf("failed to delete file: %s", anyerror.CleanupError(err))
 		}
 	}
 }

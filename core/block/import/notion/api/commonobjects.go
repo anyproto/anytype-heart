@@ -306,6 +306,21 @@ func SetIcon(details map[string]*types.Value, icon *Icon) *model.RelationLink {
 	return nil
 }
 
+func SetCover(details map[string]*types.Value, cover *FileObject) {
+	if cover == nil || details == nil {
+		return
+	}
+	if cover.Type == External {
+		details[bundle.RelationKeyCoverId.String()] = pbtypes.String(cover.External.URL)
+		details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
+	}
+
+	if cover.Type == File {
+		details[bundle.RelationKeyCoverId.String()] = pbtypes.String(cover.File.URL)
+		details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
+	}
+}
+
 type userType string
 
 // User represent User Object object from Notion https://developers.notion.com/reference/user

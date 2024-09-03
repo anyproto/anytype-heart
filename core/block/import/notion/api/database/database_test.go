@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -379,6 +380,29 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 }
 
 func Test_makeDatabaseSnapshot(t *testing.T) {
+	t.Run("Databases have properties with same name and relation - don't create additional relation", func(t *testing.T) {
+		// given
+		p := property.DatabaseSelect{
+			Property: property.Property{
+				ID:   "id",
+				Name: "Name",
+			},
+		}
+		pr := property.DatabaseProperties{"Name": &p}
+		dbService := New(nil)
+		req := property.NewPropertiesStore()
+		req.AddSnapshotByNameAndFormat(p.Name, int64(p.GetFormat()), &model.SmartBlockSnapshotBase{})
+		db := Database{Properties: pr}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		assert.Nil(t, err)
+
+		// then
+		assert.Len(t, snapshot, 1)
+		assert.NotEqual(t, sb.SmartBlockTypeRelation, snapshot[0].SbType)
+	})
+
 	t.Run("Database has Select property with Tag name", func(t *testing.T) {
 		// given
 		p := property.DatabaseSelect{
@@ -389,10 +413,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		pr := property.DatabaseProperties{"Tag": &p}
 		dbService := New(nil)
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		db := Database{Properties: pr}
 
 		// when
@@ -413,10 +434,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		properties := property.DatabaseProperties{"Tags": &selectProperty}
 		dbService := New(nil)
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		db := Database{Properties: properties}
 
 		// when
@@ -436,10 +454,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		selectProperty := property.DatabaseProperties{"Tags": &multiSelectProperty}
 		dbService := New(nil)
-		properties := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		properties := property.NewPropertiesStore()
 		db := Database{Properties: selectProperty}
 
 		// when
@@ -459,10 +474,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		selectProperty := property.DatabaseProperties{"Tag": &multiSelectProperty}
 		dbService := New(nil)
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		db := Database{Properties: selectProperty}
 
 		// when
@@ -488,10 +500,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		properties := property.DatabaseProperties{"Tag": &multiSelectProperty, "Tags": &selectProperty}
 		dbService := New(nil)
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		db := Database{Properties: properties}
 
 		// when
@@ -518,10 +527,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		properties := property.DatabaseProperties{"Tag": &multiSelectProperty, "tags": &selectProperty}
 		dbService := New(nil)
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		db := Database{Properties: properties}
 
 		// when
@@ -607,10 +613,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		properties := property.DatabaseProperties{"": &selectProperty}
 		dbService := New(nil)
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		db := Database{Properties: properties}
 
 		// when
@@ -619,5 +622,38 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
 		assert.Equal(t, property.UntitledProperty, pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyName.String()))
+	})
+	t.Run("Database has cover file icon - details have relations coverId and coverType", func(t *testing.T) {
+		dbService := New(nil)
+		db := Database{Cover: &api.FileObject{
+			Type: api.File,
+			File: api.FileProperty{
+				URL: "url",
+			},
+		}}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		cover := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyCoverId.String())
+		coverType := pbtypes.GetInt64(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyCoverType.String())
+		assert.Equal(t, "url", cover)
+		assert.Equal(t, int64(1), coverType)
+	})
+	t.Run("Database doesn't have cover - details don't have neither coverType nor coverId", func(t *testing.T) {
+		dbService := New(nil)
+		db := Database{}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		cover := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyCoverId.String())
+		assert.Equal(t, "", cover)
 	})
 }
