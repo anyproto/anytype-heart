@@ -31,14 +31,15 @@ type DataObject struct {
 
 type LocalFileProvider interface {
 	workerpool.ITask
-
 	GetUrl() string
 	GetLocalPath() string
 	WaitForLocalPath() (string, error)
-	LoadDone(string)
+	LoadDone()
 }
 
 type file struct {
+	*os.File
+
 	url       string
 	localPath string
 
@@ -54,8 +55,7 @@ func NewFile(url string) LocalFileProvider {
 	}
 }
 
-func (f *file) LoadDone(localPath string) {
-	f.localPath = localPath
+func (f *file) LoadDone() {
 	close(f.loadDone)
 }
 
@@ -84,28 +84,34 @@ func (f *file) Execute(data interface{}) interface{} {
 		return fmt.Errorf("wrong format of data for file downloading")
 	}
 
-	fullPath, tmpFile, err := f.generateFileName(do)
+	err := f.generateFileName(do)
 
-	defer tmpFile.Close()
+	defer func() {
+		f.Close()
+		if err != nil && !os.IsExist(err) {
+			os.Remove(f.localPath)
+		}
+	}()
+
 	if err != nil {
 		if os.IsExist(err) {
-			f.LoadDone(fullPath)
+			f.LoadDone()
 			return f
 		}
 		f.loadFinishWithError(err)
 		return f
 	}
 
-	if err = f.downloadFile(do.ctx, tmpFile, fullPath); err != nil {
+	if err = f.downloadFile(do.ctx); err != nil {
 		f.loadFinishWithError(err)
 		return f
 	}
 
-	f.LoadDone(fullPath)
+	f.LoadDone()
 	return f
 }
 
-func (f *file) downloadFile(ctx context.Context, tmpFile *os.File, fullPath string) error {
+func (f *file) downloadFile(ctx context.Context) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, f.url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to make request with context: %w", err)
@@ -125,9 +131,8 @@ func (f *file) downloadFile(ctx context.Context, tmpFile *os.File, fullPath stri
 	defer close(done)
 	go f.monitorFileDownload(ctx, counter, done, progressCh)
 
-	_, err = io.Copy(tmpFile, counter)
+	_, err = io.Copy(f.File, counter)
 	if err != nil {
-		os.Remove(fullPath)
 		return fmt.Errorf("failed to download file: %w", err)
 	}
 	select {
@@ -145,7 +150,7 @@ func (f *file) loadFinishWithError(err error) {
 	close(f.errCh)
 }
 
-func (f *file) generateFileName(do *DataObject) (string, *os.File, error) {
+func (f *file) generateFileName(do *DataObject) error {
 	hasher := hashersPool.Get().(*blake3.Hasher)
 	defer hashersPool.Put(hasher)
 
@@ -154,23 +159,27 @@ func (f *file) generateFileName(do *DataObject) (string, *os.File, error) {
 	hasher.Write([]byte(f.url))
 	parsesUrl, err := url.Parse(f.url)
 	if err != nil {
-		return "", nil, err
+		return err
 	}
 	fileExt := filepath.Ext(parsesUrl.Path)
 	fileName := hex.EncodeToString(hasher.Sum(nil)) + fileExt
 	fullPath := filepath.Join(do.dirPath, fileName)
 	file, err := os.Open(fullPath)
 	if err != nil && !os.IsNotExist(err) {
-		return "", nil, err
+		return err
 	}
 	if file != nil {
-		return fullPath, file, os.ErrExist
+		f.File = file
+		f.localPath = fullPath
+		return os.ErrExist
 	}
 	tmpFile, err := os.Create(fullPath)
 	if err != nil {
-		return "", nil, err
+		return err
 	}
-	return fullPath, tmpFile, nil
+	f.File = tmpFile
+	f.localPath = fullPath
+	return nil
 }
 
 func (f *file) monitorFileDownload(

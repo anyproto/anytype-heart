@@ -108,15 +108,16 @@ func TestFileDownloader_process(t *testing.T) {
 		fileDownloader := NewFileDownloader(tempDirProvider, process.NewNoOp()).(*fileDownloader)
 
 		// when
-		file := NewFile("test")
-		file.LoadDone("localPath")
-		fileDownloader.process(file)
+		f := NewFile("test")
+		downloadFile := f.(*file)
+		downloadFile.localPath = "localPath"
+		fileDownloader.process(downloadFile)
 
 		// then
 		_, ok := fileDownloader.filesInProgress.Load("test")
 		assert.False(t, ok)
-		f, ok := fileDownloader.urlToFile.Load("test")
+		newFile, ok := fileDownloader.urlToFile.Load("test")
 		assert.True(t, ok)
-		assert.Equal(t, "localPath", f.(LocalFileProvider).GetLocalPath())
+		assert.Equal(t, "localPath", newFile.(LocalFileProvider).GetLocalPath())
 	})
 }

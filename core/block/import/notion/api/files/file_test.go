@@ -56,11 +56,11 @@ func TestFile_downloadFile(t *testing.T) {
 		}))
 		defer server.Close()
 
-		file := &file{url: server.URL}
+		file := &file{url: server.URL, File: tmpFile, localPath: tmpFile.Name()}
 		ctx := context.Background()
 
 		// when
-		err = file.downloadFile(ctx, tmpFile, tmpFile.Name())
+		err = file.downloadFile(ctx)
 
 		// then
 		assert.NoError(t, err)
@@ -75,11 +75,11 @@ func TestFile_downloadFile(t *testing.T) {
 		}))
 		defer server.Close()
 
-		file := &file{url: server.URL}
+		file := &file{url: server.URL, File: tmpFile}
 		ctx := context.Background()
 
 		// when
-		err = file.downloadFile(ctx, tmpFile, tmpFile.Name())
+		err = file.downloadFile(ctx)
 
 		// then
 		assert.Error(t, err)
@@ -104,7 +104,7 @@ func TestFile_downloadFile(t *testing.T) {
 		defer cancel()
 
 		// when
-		err = file.downloadFile(ctx, tmpFile, tmpFile.Name())
+		err = file.downloadFile(ctx)
 
 		// then
 		assert.Error(t, err)
@@ -119,13 +119,13 @@ func TestFile_generateFileName(t *testing.T) {
 		file := NewFile("url").(*file)
 
 		// when
-		fullPath, tmpFile, err := file.generateFileName(do)
-		defer os.Remove(fullPath)
+		err := file.generateFileName(do)
+		defer os.Remove(file.GetLocalPath())
 
 		// then
 		assert.NoError(t, err)
-		assert.NotNil(t, tmpFile)
-		assert.FileExists(t, fullPath)
+		assert.NotNil(t, file.File)
+		assert.FileExists(t, file.GetLocalPath())
 	})
 	t.Run("generate name, file exists", func(t *testing.T) {
 		// given
@@ -136,13 +136,15 @@ func TestFile_generateFileName(t *testing.T) {
 		// when
 		existingFilePath := filepath.Join(dirPath, "68b26ffaae8944a7a8ab6951bdd0a44f0492fe65838858051ecaa24746d2a470")
 		_, err := os.Create(existingFilePath)
-		fullPath, tmpFile, err := file.generateFileName(do)
-		defer os.Remove(fullPath)
+		assert.NoError(t, err)
+
+		err = file.generateFileName(do)
+		defer os.Remove(file.GetLocalPath())
 
 		// then
 		assert.ErrorIs(t, err, os.ErrExist)
-		assert.NotNil(t, tmpFile)
-		assert.Equal(t, existingFilePath, fullPath)
+		assert.NotNil(t, file.File)
+		assert.Equal(t, existingFilePath, file.GetLocalPath())
 	})
 	t.Run("generate name, url error", func(t *testing.T) {
 		// given
@@ -151,12 +153,12 @@ func TestFile_generateFileName(t *testing.T) {
 		file := NewFile("://invalid-url").(*file)
 
 		// when
-		fullPath, tmpFile, err := file.generateFileName(do)
+		err := file.generateFileName(do)
 
 		// then
 		assert.Error(t, err)
-		assert.Nil(t, tmpFile)
-		assert.Equal(t, "", fullPath)
+		assert.Nil(t, file.File)
+		assert.Equal(t, "", file.GetLocalPath())
 	})
 	t.Run("generate name, file creation error", func(t *testing.T) {
 		// given
@@ -165,11 +167,11 @@ func TestFile_generateFileName(t *testing.T) {
 		file := NewFile("url").(*file)
 
 		// when
-		fullPath, tmpFile, err := file.generateFileName(do)
+		err := file.generateFileName(do)
 
 		// then
 		assert.Error(t, err)
-		assert.Nil(t, tmpFile)
-		assert.Equal(t, "", fullPath)
+		assert.Nil(t, file.File)
+		assert.Equal(t, "", file.GetLocalPath())
 	})
 }
