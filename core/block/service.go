@@ -524,7 +524,13 @@ func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceReques
 			return true
 		})
 		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
-		return sb.Apply(st, smartblock.NoRestrictions)
+
+		flags := internalflag.NewFromState(st)
+		// set with source is no longer empty
+		flags.Remove(model.InternalFlag_editorDeleteEmpty)
+		flags.AddToState(st)
+
+		return sb.Apply(st, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	})
 }
 
