@@ -55,12 +55,12 @@ func (pt *Task) ID() string {
 func (pt *Task) Execute(data interface{}) interface{} {
 	do := data.(*DataObject)
 	allErrors := common.NewError(do.mode)
-	snapshot, subObjectsSnapshots := pt.makeSnapshotFromPages(do, allErrors)
+	snapshot, relationsAndOptionsSnapshots := pt.makeSnapshotFromPages(do, allErrors)
 	if allErrors.ShouldAbortImport(0, model.Import_Notion) {
 		return &Result{ce: allErrors}
 	}
 	pageId := do.request.NotionPageIdsToAnytype[pt.p.ID]
-	resultSnapshots := make([]*common.Snapshot, 0, 1+len(subObjectsSnapshots))
+	resultSnapshots := make([]*common.Snapshot, 0, 1+len(relationsAndOptionsSnapshots))
 	sn := &common.Snapshot{
 		Id:       pageId,
 		FileName: pt.p.URL,
@@ -68,7 +68,7 @@ func (pt *Task) Execute(data interface{}) interface{} {
 		SbType:   smartblock.SmartBlockTypePage,
 	}
 	resultSnapshots = append(resultSnapshots, sn)
-	for _, objectsSnapshot := range subObjectsSnapshots {
+	for _, objectsSnapshot := range relationsAndOptionsSnapshots {
 		sbType := pt.getSmartBlockTypeAndID(objectsSnapshot)
 		resultSnapshots = append(resultSnapshots, &common.Snapshot{
 			Id:       pbtypes.GetString(objectsSnapshot.Details, bundle.RelationKeyId.String()),
@@ -80,7 +80,7 @@ func (pt *Task) Execute(data interface{}) interface{} {
 }
 
 func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *common.ConvertError) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase) {
-	details, subObjectsSnapshots, relationLinks := pt.provideDetails(object)
+	details, relationsAndOptionsSnapshots, relationLinks := pt.provideDetails(object)
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(object.ctx, pt.p.ID, object.apiKey, pageSize, object.mode)
 	if blocksAndChildrenErr != nil {
 		allErrors.Merge(blocksAndChildrenErr)
@@ -90,7 +90,7 @@ func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *common.Conv
 	}
 	resp := pt.blockService.MapNotionBlocksToAnytype(object.request, notionBlocks, pt.p.ID)
 	snapshot := pt.provideSnapshot(resp.Blocks, details, relationLinks)
-	return snapshot, subObjectsSnapshots
+	return snapshot, relationsAndOptionsSnapshots
 }
 
 func (pt *Task) provideDetails(object *DataObject) (map[string]*types.Value, []*model.SmartBlockSnapshotBase, []*model.RelationLink) {
@@ -174,11 +174,11 @@ func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 	hasTag, tagExist bool) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
 	pt.relationCreateMutex.Lock()
 	defer pt.relationCreateMutex.Unlock()
-	snapshot, key, subObjectsSnapshots := pt.provideRelationSnapshot(relation, propObject, name, hasTag, tagExist)
+	snapshot, key, relationsAndOptionsSnapshots := pt.provideRelationSnapshot(relation, propObject, name, hasTag, tagExist)
 	if key == "" {
 		key = pbtypes.GetString(snapshot.GetDetails(), bundle.RelationKeyRelationKey.String())
 	}
-	subObjectsSnapshots = append(subObjectsSnapshots, pt.provideRelationOptionsSnapshots(key, propObject, relation)...)
+	relationsAndOptionsSnapshots = append(relationsAndOptionsSnapshots, pt.provideRelationOptionsSnapshots(key, propObject, relation)...)
 	if err := pt.setDetails(propObject, key, details); err != nil {
 		return nil, nil, err
 	}
@@ -186,7 +186,7 @@ func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 		Key:    key,
 		Format: propObject.GetFormat(),
 	}
-	return subObjectsSnapshots, relationLink, nil
+	return relationsAndOptionsSnapshots, relationLink, nil
 }
 
 func (pt *Task) provideRelationSnapshot(
@@ -196,8 +196,8 @@ func (pt *Task) provideRelationSnapshot(
 	hasTag, tagExist bool,
 ) (*model.SmartBlockSnapshotBase, string, []*model.SmartBlockSnapshotBase) {
 	var (
-		key                 string
-		subObjectsSnapshots []*model.SmartBlockSnapshotBase
+		key                          string
+		relationsAndOptionsSnapshots []*model.SmartBlockSnapshotBase
 	)
 	snapshot := relation.GetSnapshotByNameAndFormat(name, int64(propObject.GetFormat()))
 	if snapshot == nil {
@@ -206,11 +206,11 @@ func (pt *Task) provideRelationSnapshot(
 			if snapshot != nil {
 				relation.WriteToRelationsMap(propObject.GetID(), snapshot)
 				relation.AddSnapshotByNameAndFormat(name, int64(propObject.GetFormat()), snapshot)
-				subObjectsSnapshots = append(subObjectsSnapshots, snapshot)
+				relationsAndOptionsSnapshots = append(relationsAndOptionsSnapshots, snapshot)
 			}
 		}
 	}
-	return snapshot, key, subObjectsSnapshots
+	return snapshot, key, relationsAndOptionsSnapshots
 }
 
 func (pt *Task) getRelationSnapshot(name string, propObject property.Object, hasTag, tagExist bool) (*model.SmartBlockSnapshotBase, string) {
@@ -233,11 +233,11 @@ func (pt *Task) getRelationSnapshot(name string, propObject property.Object, has
 func (pt *Task) provideRelationOptionsSnapshots(id string, propObject property.Object, relation *property.PropertiesStore) []*model.SmartBlockSnapshotBase {
 	pt.relationOptCreateMutex.Lock()
 	defer pt.relationOptCreateMutex.Unlock()
-	subObjectsSnapshots := make([]*model.SmartBlockSnapshotBase, 0)
+	relationsAndOptionsSnapshots := make([]*model.SmartBlockSnapshotBase, 0)
 	if isPropertyTag(propObject) {
-		subObjectsSnapshots = append(subObjectsSnapshots, getRelationOptions(propObject, id, relation)...)
+		relationsAndOptionsSnapshots = append(relationsAndOptionsSnapshots, getRelationOptions(propObject, id, relation)...)
 	}
-	return subObjectsSnapshots
+	return relationsAndOptionsSnapshots
 }
 
 func (pt *Task) getRelationDetails(key string, name string, propObject property.Object) *types.Struct {
