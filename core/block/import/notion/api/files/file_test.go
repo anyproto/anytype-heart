@@ -119,7 +119,7 @@ func TestFile_generateFileName(t *testing.T) {
 		file := NewFile("url").(*file)
 
 		// when
-		err := file.generateFileName(do)
+		err := file.generateFile(do)
 		defer os.Remove(file.GetLocalPath())
 
 		// then
@@ -138,7 +138,7 @@ func TestFile_generateFileName(t *testing.T) {
 		_, err := os.Create(existingFilePath)
 		assert.NoError(t, err)
 
-		err = file.generateFileName(do)
+		err = file.generateFile(do)
 		defer os.Remove(file.GetLocalPath())
 
 		// then
@@ -153,7 +153,7 @@ func TestFile_generateFileName(t *testing.T) {
 		file := NewFile("://invalid-url").(*file)
 
 		// when
-		err := file.generateFileName(do)
+		err := file.generateFile(do)
 
 		// then
 		assert.Error(t, err)
@@ -167,7 +167,7 @@ func TestFile_generateFileName(t *testing.T) {
 		file := NewFile("url").(*file)
 
 		// when
-		err := file.generateFileName(do)
+		err := file.generateFile(do)
 
 		// then
 		assert.Error(t, err)

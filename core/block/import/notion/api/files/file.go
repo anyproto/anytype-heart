@@ -84,7 +84,7 @@ func (f *file) Execute(data interface{}) interface{} {
 		return fmt.Errorf("wrong format of data for file downloading")
 	}
 
-	err := f.generateFileName(do)
+	err := f.generateFile(do)
 
 	defer func() {
 		f.Close()
@@ -150,7 +150,7 @@ func (f *file) loadFinishWithError(err error) {
 	close(f.errCh)
 }
 
-func (f *file) generateFileName(do *DataObject) error {
+func (f *file) generateFile(do *DataObject) error {
 	hasher := hashersPool.Get().(*blake3.Hasher)
 	defer hashersPool.Put(hasher)
 
