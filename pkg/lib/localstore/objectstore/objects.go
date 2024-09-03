@@ -248,6 +248,14 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 
 	objectIndexes := []anystore.IndexInfo{
 		{
+			Name:   "uniqueKey",
+			Fields: []string{bundle.RelationKeyUniqueKey.String()},
+		},
+		{
+			Name:   "source",
+			Fields: []string{bundle.RelationKeySource.String()},
+		},
+		{
 			Name:   "layout",
 			Fields: []string{bundle.RelationKeyLayout.String()},
 		},
@@ -256,20 +264,22 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 			Fields: []string{bundle.RelationKeyType.String()},
 		},
 		{
-			Name:   "spaceId",
-			Fields: []string{bundle.RelationKeySpaceId.String()},
-		},
-		{
 			Name:   "relationKey",
 			Fields: []string{bundle.RelationKeyRelationKey.String()},
 		},
 		{
-			Name:   "uniqueKey",
-			Fields: []string{bundle.RelationKeyUniqueKey.String()},
-		},
-		{
 			Name:   "lastModifiedDate",
 			Fields: []string{bundle.RelationKeyLastModifiedDate.String()},
+		},
+		{
+			Name:   "fileId",
+			Fields: []string{bundle.RelationKeyFileId.String()},
+			Sparse: true,
+		},
+		{
+			Name:   "oldAnytypeID",
+			Fields: []string{bundle.RelationKeyOldAnytypeID.String()},
+			Sparse: true,
 		},
 	}
 	err = s.addIndexes(ctx, objects, objectIndexes)
