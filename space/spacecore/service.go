@@ -24,7 +24,6 @@ import (
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/crypto"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/treesyncer"
@@ -63,7 +62,6 @@ type SpaceCoreService interface {
 	Pick(ctx context.Context, id string) (*AnySpace, error)
 	CloseSpace(ctx context.Context, id string) error
 
-	StreamPool() streampool.StreamPool
 	app.ComponentRunnable
 }
 
@@ -80,7 +78,6 @@ type service struct {
 	peerStore            peerstore.PeerStore
 	peerService          peerservice.PeerService
 	poolManager          PoolManager
-	streamHandler        *streamHandler
 	syncStatusService    syncStatusService
 }
 
@@ -101,16 +98,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
+	s.streamPool = a.MustComponent(streampool.CName).(streampool.StreamPool)
 	s.syncStatusService = app.MustComponent[syncStatusService](a)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
-	s.streamHandler = &streamHandler{spaceCore: s}
-
-	s.streamPool = a.MustComponent(streampool.CName).(streampool.Service).NewStreamPool(s.streamHandler, streampool.StreamConfig{
-		SendQueueSize:    300,
-		DialQueueWorkers: 4,
-		DialQueueSize:    300,
-	})
 	s.spaceCache = ocache.New(
 		s.loadSpace,
 		ocache.WithLogger(log.Sugar()),
@@ -205,23 +196,6 @@ func (s *service) Pick(ctx context.Context, id string) (space *AnySpace, err err
 	return v.(*AnySpace), nil
 }
 
-func (s *service) HandleMessage(ctx context.Context, senderId string, req *spacesyncproto.ObjectSyncMessage) (err error) {
-	var msg = &spacesyncproto.SpaceSubscription{}
-	if err = msg.Unmarshal(req.Payload); err != nil {
-		return
-	}
-	log.InfoCtx(ctx, "got subscription message", zap.Strings("spaceIds", msg.SpaceIds))
-	if msg.Action == spacesyncproto.SpaceSubscriptionAction_Subscribe {
-		return s.streamPool.AddTagsCtx(ctx, msg.SpaceIds...)
-	} else {
-		return s.streamPool.RemoveTagsCtx(ctx, msg.SpaceIds...)
-	}
-}
-
-func (s *service) StreamPool() streampool.StreamPool {
-	return s.streamPool
-}
-
 func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
 	networkID := s.nodeConf.Configuration().NetworkId
 	delConf, err := coordinatorproto.PrepareDeleteConfirmation(s.accountKeys.SignKey, spaceID, s.accountKeys.PeerId, networkID)
@@ -238,7 +212,10 @@ func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
 
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
 	statusService := objectsyncstatus.NewSyncStatusService()
-	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id), SyncStatus: statusService})
+	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{
+		TreeSyncer: treesyncer.NewTreeSyncer(id),
+		SyncStatus: statusService,
+	})
 	if err != nil {
 		return
 	}
