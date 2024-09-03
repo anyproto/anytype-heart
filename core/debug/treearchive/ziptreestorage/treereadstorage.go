@@ -50,6 +50,10 @@ func NewZipTreeReadStorage(id string, zr *zip.ReadCloser) (st treestorage.TreeSt
 	return
 }
 
+func (t *zipTreeReadStorage) GetAllChangeIds() (chs []string, err error) {
+	return nil, fmt.Errorf("get all change ids should not be called")
+}
+
 func (z *zipTreeReadStorage) Id() string {
 	return z.id
 }
@@ -75,6 +79,10 @@ func (z *zipTreeReadStorage) AddRawChangesSetHeads(changes []*treechangeproto.Ra
 }
 
 func (z *zipTreeReadStorage) GetRawChange(ctx context.Context, id string) (*treechangeproto.RawTreeChangeWithId, error) {
+	return z.readChange(id)
+}
+
+func (z *zipTreeReadStorage) GetAppendRawChange(ctx context.Context, buf []byte, id string) (*treechangeproto.RawTreeChangeWithId, error) {
 	return z.readChange(id)
 }
 
