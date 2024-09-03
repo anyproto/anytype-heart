@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -31,7 +30,6 @@ const (
 type Service struct {
 	blockService    *block.Service
 	propertyService *property.Service
-	tempDirProvider core.TempDirProvider
 }
 
 // New is a constructor for Service
