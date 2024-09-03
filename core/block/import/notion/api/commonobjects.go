@@ -360,81 +360,78 @@ func RichTextToDescription(rt []*RichText) string {
 	return richText.String()
 }
 
+type relationUploadData struct {
+	fileDownloader files.Downloader
+
+	details map[string]*types.Value
+	mu      sync.Mutex
+
+	tasks []func()
+	wg    sync.WaitGroup
+}
+
+type relationFileMetaData struct {
+	relationKey  string
+	url          string
+	idxInDetails int
+}
+
 func UploadFileRelationLocally(fileDownloader files.Downloader, details map[string]*types.Value, relationLinks []*model.RelationLink) {
-	var (
-		wg    sync.WaitGroup
-		tasks []func()
-		mu    sync.Mutex
-	)
+	data := &relationUploadData{fileDownloader: fileDownloader, details: details}
 	for _, relationLink := range relationLinks {
 		if relationLink.Format == model.RelationFormat_file {
 			fileUrl := details[relationLink.Key].GetStringValue()
 			if fileUrl == "" {
-				tasks = handleListValue(fileDownloader, details, relationLink, &wg, tasks, &mu)
+				handleListValue(data, relationLink.Key)
 			}
 			if fileUrl != "" {
-				task, stop := addTaskWithFileDownload(fileDownloader, details, relationLink, &wg, fileUrl, 0, &mu)
+				fileMetaData := &relationFileMetaData{relationKey: relationLink.Key, url: fileUrl}
+				stop := queueTaskWithFileDownload(data, fileMetaData)
 				if stop {
 					break
 				}
-				tasks = append(tasks, task)
 			}
 		}
 	}
-	for _, task := range tasks {
+	for _, task := range data.tasks {
 		go task()
 	}
-	wg.Wait()
+	data.wg.Wait()
 }
 
-func handleListValue(
-	fileDownloader files.Downloader,
-	details map[string]*types.Value,
-	relationLink *model.RelationLink,
-	wg *sync.WaitGroup,
-	tasks []func(),
-	mu *sync.Mutex,
-) []func() {
-	fileUrls := pbtypes.GetStringListValue(details[relationLink.Key])
+func handleListValue(data *relationUploadData, relationKey string) {
+	fileUrls := pbtypes.GetStringListValue(data.details[relationKey])
 	for i, url := range fileUrls {
-		task, stop := addTaskWithFileDownload(fileDownloader, details, relationLink, wg, url, i, mu)
+		fileMetaData := &relationFileMetaData{relationKey, url, i}
+		stop := queueTaskWithFileDownload(data, fileMetaData)
 		if stop {
 			break
 		}
-		tasks = append(tasks, task)
 	}
-	return tasks
 }
 
-func addTaskWithFileDownload(
-	fileDownloader files.Downloader,
-	details map[string]*types.Value,
-	relationLink *model.RelationLink,
-	wg *sync.WaitGroup,
-	url string,
-	urlIdx int,
-	mu *sync.Mutex,
-) (func(), bool) {
-	file, stop := fileDownloader.QueueFileForDownload(url)
+func queueTaskWithFileDownload(data *relationUploadData, fileMetaData *relationFileMetaData) bool {
+	file, stop := data.fileDownloader.QueueFileForDownload(fileMetaData.url)
 	if stop {
-		return nil, true
+		return true
 	}
-	wg.Add(1)
-	return func() {
-		defer wg.Done()
+	data.wg.Add(1)
+	data.tasks = append(data.tasks, func() {
+		defer data.wg.Done()
 		localPath, err := file.WaitForLocalPath()
 		if err != nil {
 			logging.Logger("notion").Errorf("failed to download file: %s", err)
 		}
-		mu.Lock()
-		defer mu.Unlock()
-		switch details[relationLink.Key].Kind.(type) {
+		data.mu.Lock()
+		defer data.mu.Unlock()
+		switch data.details[fileMetaData.relationKey].Kind.(type) {
 		case *types.Value_StringValue:
-			details[relationLink.Key] = pbtypes.String(localPath)
+			data.details[fileMetaData.relationKey] = pbtypes.String(localPath)
 		case *types.Value_ListValue:
-			fileUrlsList := pbtypes.GetStringListValue(details[relationLink.Key])
-			fileUrlsList[urlIdx] = localPath
-			details[relationLink.Key] = pbtypes.StringList(fileUrlsList)
+			fileUrlsList := pbtypes.GetStringListValue(data.details[fileMetaData.relationKey])
+			fileUrlsList[fileMetaData.idxInDetails] = localPath
+			data.details[fileMetaData.relationKey] = pbtypes.StringList(fileUrlsList)
 		}
-	}, false
+	})
+	return false
 }

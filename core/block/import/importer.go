@@ -81,7 +81,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	converters := []common.Converter{
 		markdown.New(i.tempDirProvider, col),
-		notion.New(col, i.tempDirProvider),
+		notion.New(col),
 		pbc.New(col, accountService, i.tempDirProvider),
 		web.NewConverter(),
 		html.New(col, i.tempDirProvider),

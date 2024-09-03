@@ -120,12 +120,10 @@ func TestFile_generateFileName(t *testing.T) {
 
 		// when
 		err := file.generateFile(do)
-		defer os.Remove(file.GetLocalPath())
 
 		// then
 		assert.NoError(t, err)
 		assert.NotNil(t, file.File)
-		assert.FileExists(t, file.GetLocalPath())
 	})
 	t.Run("generate name, file exists", func(t *testing.T) {
 		// given
@@ -139,7 +137,6 @@ func TestFile_generateFileName(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = file.generateFile(do)
-		defer os.Remove(file.GetLocalPath())
 
 		// then
 		assert.ErrorIs(t, err, os.ErrExist)

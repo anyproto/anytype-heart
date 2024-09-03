@@ -22,17 +22,17 @@ func (_m *MockDownloader) EXPECT() *MockDownloader_Expecter {
 	return &MockDownloader_Expecter{mock: &_m.Mock}
 }
 
-// Init provides a mock function with given fields: ctx, token
-func (_m *MockDownloader) Init(ctx context.Context, token string) error {
-	ret := _m.Called(ctx, token)
+// Init provides a mock function with given fields: ctx
+func (_m *MockDownloader) Init(ctx context.Context) error {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Init")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = rf(ctx, token)
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -47,14 +47,13 @@ type MockDownloader_Init_Call struct {
 
 // Init is a helper method to define mock.On call
 //   - ctx context.Context
-//   - token string
-func (_e *MockDownloader_Expecter) Init(ctx interface{}, token interface{}) *MockDownloader_Init_Call {
-	return &MockDownloader_Init_Call{Call: _e.mock.On("Init", ctx, token)}
+func (_e *MockDownloader_Expecter) Init(ctx interface{}) *MockDownloader_Init_Call {
+	return &MockDownloader_Init_Call{Call: _e.mock.On("Init", ctx)}
 }
 
-func (_c *MockDownloader_Init_Call) Run(run func(ctx context.Context, token string)) *MockDownloader_Init_Call {
+func (_c *MockDownloader_Init_Call) Run(run func(ctx context.Context)) *MockDownloader_Init_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -64,7 +63,7 @@ func (_c *MockDownloader_Init_Call) Return(_a0 error) *MockDownloader_Init_Call 
 	return _c
 }
 
-func (_c *MockDownloader_Init_Call) RunAndReturn(run func(context.Context, string) error) *MockDownloader_Init_Call {
+func (_c *MockDownloader_Init_Call) RunAndReturn(run func(context.Context) error) *MockDownloader_Init_Call {
 	_c.Call.Return(run)
 	return _c
 }

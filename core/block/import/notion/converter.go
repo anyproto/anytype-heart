@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/search"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 )
 
 const (
@@ -29,19 +28,17 @@ const (
 )
 
 type Notion struct {
-	search          *search.Service
-	dbService       *database.Service
-	pgService       *page.Service
-	tempDirProvider core.TempDirProvider
+	search    *search.Service
+	dbService *database.Service
+	pgService *page.Service
 }
 
-func New(c *collection.Service, tempDirProvider core.TempDirProvider) common.Converter {
+func New(c *collection.Service) common.Converter {
 	cl := client.NewClient()
 	return &Notion{
-		search:          search.New(cl),
-		dbService:       database.New(c),
-		pgService:       page.New(cl),
-		tempDirProvider: tempDirProvider,
+		search:    search.New(cl),
+		dbService: database.New(c),
+		pgService: page.New(cl),
 	}
 }
 
@@ -82,8 +79,8 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 		return nil, common.NewFromError(common.ErrNoObjectsToImport, req.Mode)
 	}
 
-	fileDownloader := files.NewFileDownloader(n.tempDirProvider, progress)
-	err = fileDownloader.Init(ctx, apiKey)
+	fileDownloader := files.NewFileDownloader(progress)
+	err = fileDownloader.Init(ctx)
 	if err != nil {
 		return nil, common.NewFromError(err, req.Mode)
 	}

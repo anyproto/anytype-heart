@@ -2,46 +2,43 @@ package files
 
 import (
 	"context"
-	"encoding/hex"
 	"os"
 	"path/filepath"
 	"sync"
 
-	"github.com/zeebo/blake3"
-
 	"github.com/anyproto/anytype-heart/core/block/import/common/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 )
 
-const workersNumber = 5
+const (
+	workersNumber          = 5
+	anytypeNotionImportDir = "anytype_notion_import"
+)
 
 type Downloader interface {
-	Init(ctx context.Context, token string) error
+	Init(ctx context.Context) error
 	QueueFileForDownload(url string) (LocalFileProvider, bool)
 	ProcessDownloadedFiles()
 	StopDownload()
 }
 
 type fileDownloader struct {
-	pool            *workerpool.WorkerPool
-	tempDirProvider core.TempDirProvider
-	progress        process.Progress
+	pool     *workerpool.WorkerPool
+	progress process.Progress
 
 	urlToFile       sync.Map
 	filesInProgress sync.Map
 }
 
-func NewFileDownloader(tempDirProvider core.TempDirProvider, progress process.Progress) Downloader {
+func NewFileDownloader(progress process.Progress) Downloader {
 	return &fileDownloader{
-		pool:            workerpool.NewPool(workersNumber),
-		tempDirProvider: tempDirProvider,
-		progress:        progress,
+		pool:     workerpool.NewPool(workersNumber),
+		progress: progress,
 	}
 }
 
-func (d *fileDownloader) Init(ctx context.Context, token string) error {
-	dirPath, err := d.createTempDir(token)
+func (d *fileDownloader) Init(ctx context.Context) error {
+	dirPath, err := d.createTempDir()
 	if err != nil {
 		return err
 	}
@@ -52,16 +49,8 @@ func (d *fileDownloader) Init(ctx context.Context, token string) error {
 	return nil
 }
 
-func (d *fileDownloader) createTempDir(token string) (string, error) {
-	hasher := hashersPool.Get().(*blake3.Hasher)
-	defer hashersPool.Put(hasher)
-
-	hasher.Reset()
-	// nolint: errcheck
-	hasher.Write([]byte(token))
-	tokenHash := hex.EncodeToString(hasher.Sum(nil))
-
-	dirPath := filepath.Join(d.tempDirProvider.TempDir(), tokenHash)
+func (d *fileDownloader) createTempDir() (string, error) {
+	dirPath := filepath.Join(os.TempDir(), anytypeNotionImportDir)
 	err := os.MkdirAll(dirPath, 0700)
 	if err != nil && !os.IsExist(err) {
 		return "", err

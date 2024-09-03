@@ -51,7 +51,7 @@ func NewFile(url string) LocalFileProvider {
 	return &file{
 		url:      url,
 		loadDone: make(chan struct{}),
-		errCh:    make(chan error),
+		errCh:    make(chan error, 1),
 	}
 }
 
@@ -81,15 +81,16 @@ func (f *file) WaitForLocalPath() (string, error) {
 func (f *file) Execute(data interface{}) interface{} {
 	do, ok := data.(*DataObject)
 	if !ok {
-		return fmt.Errorf("wrong format of data for file downloading")
+		f.loadFinishWithError(fmt.Errorf("wrong format of data for file downloading"))
+		return f
 	}
 
 	err := f.generateFile(do)
 
 	defer func() {
 		f.Close()
-		if err != nil && !os.IsExist(err) {
-			os.Remove(f.localPath)
+		if err != nil && !os.IsExist(err) && f.File != nil {
+			os.Remove(f.Name())
 		}
 	}()
 
@@ -129,7 +130,7 @@ func (f *file) downloadFile(ctx context.Context) error {
 	progressCh := make(chan struct{}, 1)
 	done := make(chan struct{})
 	defer close(done)
-	go f.monitorFileDownload(ctx, counter, done, progressCh)
+	go f.monitorFileDownload(counter, done, progressCh)
 
 	_, err = io.Copy(f.File, counter)
 	if err != nil {
@@ -141,7 +142,7 @@ func (f *file) downloadFile(ctx context.Context) error {
 	case <-progressCh:
 		return fmt.Errorf("failed to download file, no progress")
 	default:
-		return nil
+		return os.Rename(f.File.Name(), f.localPath)
 	}
 }
 
@@ -156,11 +157,11 @@ func (f *file) generateFile(do *DataObject) error {
 
 	hasher.Reset()
 	// nolint: errcheck
-	hasher.Write([]byte(f.url))
 	parsesUrl, err := url.Parse(f.url)
 	if err != nil {
 		return err
 	}
+	hasher.Write([]byte(parsesUrl.Path))
 	fileExt := filepath.Ext(parsesUrl.Path)
 	fileName := hex.EncodeToString(hasher.Sum(nil)) + fileExt
 	fullPath := filepath.Join(do.dirPath, fileName)
@@ -173,7 +174,8 @@ func (f *file) generateFile(do *DataObject) error {
 		f.localPath = fullPath
 		return os.ErrExist
 	}
-	tmpFile, err := os.Create(fullPath)
+	tempFilePath := filepath.Join(do.dirPath, "_"+fileName)
+	tmpFile, err := os.Create(tempFilePath)
 	if err != nil {
 		return err
 	}
@@ -182,19 +184,13 @@ func (f *file) generateFile(do *DataObject) error {
 	return nil
 }
 
-func (f *file) monitorFileDownload(
-	ctx context.Context,
-	counter *datacounter.ReaderCounter,
-	done, progressCh chan struct{},
-) {
+func (f *file) monitorFileDownload(counter *datacounter.ReaderCounter, done, progressCh chan struct{}) {
 	timeout := time.Second * 30
 	func() {
 		lastCount := counter.Count()
 		for {
 			select {
 			case <-done:
-				return
-			case <-ctx.Done():
 				return
 			case <-time.After(timeout):
 				currentCount := counter.Count()
