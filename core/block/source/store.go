@@ -82,9 +82,15 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	if err != nil {
 		return
 	}
+	// checking if we have any data in the store regarding the tree (i.e. if tree is first arrived or created)
+	allIsNew := false
+	if _, err := tx.GetOrder(s.id); err != nil {
+		allIsNew = true
+	}
 	applier := &storeApply{
-		tx: tx,
-		ot: s.ObjectTree,
+		tx:       tx,
+		allIsNew: allIsNew,
+		ot:       s.ObjectTree,
 	}
 	if err = applier.Apply(); err != nil {
 		return errors.Join(tx.Rollback(), err)

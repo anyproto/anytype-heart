@@ -62,7 +62,6 @@ type SpaceCoreService interface {
 	Pick(ctx context.Context, id string) (*AnySpace, error)
 	CloseSpace(ctx context.Context, id string) error
 
-	StreamPool() streampool.StreamPool
 	app.ComponentRunnable
 }
 
@@ -99,6 +98,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
+	s.streamPool = a.MustComponent(streampool.CName).(streampool.StreamPool)
 	s.syncStatusService = app.MustComponent[syncStatusService](a)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
@@ -194,10 +194,6 @@ func (s *service) Pick(ctx context.Context, id string) (space *AnySpace, err err
 		return
 	}
 	return v.(*AnySpace), nil
-}
-
-func (s *service) StreamPool() streampool.StreamPool {
-	return s.streamPool
 }
 
 func (s *service) Delete(ctx context.Context, spaceID string) (err error) {

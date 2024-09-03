@@ -5,14 +5,16 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 type storeApply struct {
-	tx *storestate.StoreStateTx
-	ot objecttree.ObjectTree
+	tx       *storestate.StoreStateTx
+	ot       objecttree.ObjectTree
+	allIsNew bool
 
 	prevOrder  string
 	prevChange *objecttree.Change
@@ -25,16 +27,12 @@ func (a *storeApply) Apply() (err error) {
 	maxOrder := a.tx.GetMaxOrder()
 	isEmpty := maxOrder == ""
 	iterErr := a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
-		// Ignore header
-		if change.Id == a.ot.Id() {
+		// not a new change - remember and continue
+		if !a.allIsNew && !change.IsNew && !isEmpty {
+			a.prevChange = change
+			a.prevOrder = ""
 			return true
 		}
-		// not a new change - remember and continue
-		// if !change.IsNew && !isEmpty {
-		// 	a.prevChange = change
-		// 	a.prevOrder = ""
-		// 	return true
-		// }
 		currOrder, curOrdErr := a.tx.GetOrder(change.Id)
 		if curOrdErr != nil {
 			if !errors.Is(curOrdErr, storestate.ErrOrderNotFound) {
@@ -93,6 +91,10 @@ func (a *storeApply) Apply() (err error) {
 func (a *storeApply) applyChange(change *objecttree.Change, order string) (err error) {
 	storeChange, ok := change.Model.(*pb.StoreChange)
 	if !ok {
+		// if it is root
+		if _, ok := change.Model.(*treechangeproto.TreeChangeInfo); ok {
+			return a.tx.SetOrder(change.Id, order)
+		}
 		return fmt.Errorf("unexpected change content type: %T", change.Model)
 	}
 	set := storestate.ChangeSet{
