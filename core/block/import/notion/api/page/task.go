@@ -124,8 +124,7 @@ func (pt *Task) uploadFilesLocally(blocks []*model.Block) {
 }
 
 func (pt *Task) uploadFileBlock(block *model.Block, wg *sync.WaitGroup) (func(), bool) {
-	file := files.NewFile(block.GetFile().GetName())
-	stop := pt.fileDownloader.QueueFileForDownload(file)
+	file, stop := pt.fileDownloader.QueueFileForDownload(block.GetFile().GetName())
 	if stop {
 		return nil, true
 	}
@@ -141,8 +140,7 @@ func (pt *Task) uploadFileBlock(block *model.Block, wg *sync.WaitGroup) (func(),
 }
 
 func (pt *Task) uploadIconImage(block *model.Block, wg *sync.WaitGroup) (func(), bool) {
-	file := files.NewFile(block.GetText().GetIconImage())
-	stop := pt.fileDownloader.QueueFileForDownload(file)
+	file, stop := pt.fileDownloader.QueueFileForDownload(block.GetText().GetIconImage())
 	if stop {
 		return nil, true
 	}

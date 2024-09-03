@@ -36,7 +36,7 @@ func Test_GetDatabaseSuccess(t *testing.T) {
 	ds := database.New(nil)
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	downloader := mock_files.NewMockDownloader(t)
-	downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(true)
+	downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(nil, true)
 	databases, _, ce := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db, progress, api.NewNotionImportContext(), downloader)
 
 	assert.NotNil(t, databases)

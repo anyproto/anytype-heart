@@ -568,7 +568,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// when
 		downloader := mock_files.NewMockDownloader(t)
-		downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(true)
+		downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(nil, true)
 		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, downloader)
 
 		// then
@@ -588,7 +588,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// when
 		downloader := mock_files.NewMockDownloader(t)
-		downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(true)
+		downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(nil, true)
 		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, downloader)
 
 		// then
@@ -640,7 +640,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// when
 		downloader := mock_files.NewMockDownloader(t)
-		downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(true)
+		downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(nil, true)
 		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, downloader)
 
 		// then

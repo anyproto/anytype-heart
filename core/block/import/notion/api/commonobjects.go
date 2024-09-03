@@ -415,8 +415,7 @@ func addTaskWithFileDownload(
 	urlIdx int,
 	mu *sync.Mutex,
 ) (func(), bool) {
-	file := files.NewFile(url)
-	stop := fileDownloader.QueueFileForDownload(file)
+	file, stop := fileDownloader.QueueFileForDownload(url)
 	if stop {
 		return nil, true
 	}

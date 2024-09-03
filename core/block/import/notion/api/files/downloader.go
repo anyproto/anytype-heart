@@ -18,7 +18,7 @@ const workersNumber = 5
 
 type Downloader interface {
 	Init(ctx context.Context, token string) error
-	QueueFileForDownload(file LocalFileProvider) bool
+	QueueFileForDownload(url string) (LocalFileProvider, bool)
 	ProcessDownloadedFiles()
 	StopDownload()
 }
@@ -28,9 +28,8 @@ type fileDownloader struct {
 	tempDirProvider core.TempDirProvider
 	progress        process.Progress
 
-	urlToLocalPath    sync.Map
-	filesInProgress   sync.Map
-	filesSubscription sync.Map
+	urlToFile       sync.Map
+	filesInProgress sync.Map
 }
 
 func NewFileDownloader(tempDirProvider core.TempDirProvider, progress process.Progress) Downloader {
@@ -70,80 +69,62 @@ func (d *fileDownloader) createTempDir(token string) (string, error) {
 	return dirPath, nil
 }
 
-func (d *fileDownloader) QueueFileForDownload(file LocalFileProvider) bool {
+func (d *fileDownloader) QueueFileForDownload(url string) (LocalFileProvider, bool) {
 	select {
 	case <-d.progress.Canceled():
-		return true
+		return nil, true
 	default:
 	}
 
-	url := file.GetUrl()
-	if localPath, ok := d.getFileFromCache(url); ok {
-		file.LoadDone(localPath)
-		return false
+	if cachedFile, ok := d.getFileFromCache(url); ok {
+		return cachedFile, false
 	}
 
-	if d.isFileInProgress(url) {
-		d.subscribeToFile(url, file)
-		return false
+	if fileInProgress, ok := d.isFileInProgress(url); ok {
+		return fileInProgress, false
 	}
 
-	d.markFileInProgress(url)
-	return d.pool.AddWork(file)
+	newFile := NewFile(url)
+	d.markFileInProgress(newFile)
+	return newFile, d.pool.AddWork(newFile)
 }
 
 func (d *fileDownloader) ProcessDownloadedFiles() {
 	for result := range d.pool.Results() {
-		downloadedFile := result.(FileInfoProvider)
+		downloadedFile := result.(LocalFileProvider)
 		d.process(downloadedFile)
 	}
 }
 
-func (d *fileDownloader) process(downloadedFile FileInfoProvider) {
+func (d *fileDownloader) process(downloadedFile LocalFileProvider) {
 	url := downloadedFile.GetUrl()
 
-	localPath := downloadedFile.GetLocalPath()
-	d.saveFileInfo(url, localPath)
-	d.notifySubscribers(url, localPath)
+	d.saveFileInfo(downloadedFile)
 	d.markFileCompleted(url)
 }
 
-func (d *fileDownloader) getFileFromCache(url string) (string, bool) {
-	if path, ok := d.urlToLocalPath.Load(url); ok {
-		return path.(string), true
+func (d *fileDownloader) getFileFromCache(url string) (LocalFileProvider, bool) {
+	if file, ok := d.urlToFile.Load(url); ok {
+		return file.(LocalFileProvider), true
 	}
-	return "", false
+	return nil, false
 }
 
-func (d *fileDownloader) isFileInProgress(url string) bool {
-	_, inProgress := d.filesInProgress.Load(url)
-	return inProgress
-}
-
-func (d *fileDownloader) markFileInProgress(url string) {
-	d.filesInProgress.Store(url, struct{}{})
-}
-
-func (d *fileDownloader) subscribeToFile(url string, file LocalFileProvider) {
-	subscriptionCh := make(chan string)
-	subscribers, _ := d.filesSubscription.LoadOrStore(url, []chan string{})
-	d.filesSubscription.Store(url, append(subscribers.([]chan string), subscriptionCh))
-	file.SubscribeToExistingDownload(subscriptionCh)
-}
-
-func (d *fileDownloader) saveFileInfo(url, localPath string) {
-	if localPath != "" {
-		d.urlToLocalPath.Store(url, localPath)
+func (d *fileDownloader) isFileInProgress(url string) (LocalFileProvider, bool) {
+	file, inProgress := d.filesInProgress.Load(url)
+	if inProgress {
+		return file.(LocalFileProvider), inProgress
 	}
+	return nil, false
 }
 
-func (d *fileDownloader) notifySubscribers(url, localPath string) {
-	if subscribers, ok := d.filesSubscription.Load(url); ok {
-		for _, sub := range subscribers.([]chan string) {
-			sub <- localPath
-			close(sub)
-		}
-		d.filesSubscription.Delete(url)
+func (d *fileDownloader) markFileInProgress(newFile LocalFileProvider) {
+	d.filesInProgress.Store(newFile.GetUrl(), newFile)
+}
+
+func (d *fileDownloader) saveFileInfo(downloadedFile LocalFileProvider) {
+	if downloadedFile.GetLocalPath() != "" {
+		d.urlToFile.Store(downloadedFile.GetUrl(), downloadedFile)
 	}
 }
 

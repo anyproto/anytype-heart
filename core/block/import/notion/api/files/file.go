@@ -29,40 +29,29 @@ type DataObject struct {
 	ctx     context.Context
 }
 
-type FileInfoProvider interface {
-	GetUrl() string
-	GetLocalPath() string
-}
-
 type LocalFileProvider interface {
 	workerpool.ITask
-	FileInfoProvider
 
+	GetUrl() string
+	GetLocalPath() string
 	WaitForLocalPath() (string, error)
 	LoadDone(string)
-	SubscribeToExistingDownload(ch chan string)
 }
 
 type file struct {
 	url       string
 	localPath string
 
-	loadDone   chan struct{}
-	errCh      chan error
-	subscribed chan string
+	loadDone chan struct{}
+	errCh    chan error
 }
 
 func NewFile(url string) LocalFileProvider {
 	return &file{
-		url:        url,
-		loadDone:   make(chan struct{}),
-		subscribed: make(chan string),
-		errCh:      make(chan error),
+		url:      url,
+		loadDone: make(chan struct{}),
+		errCh:    make(chan error),
 	}
-}
-
-func (f *file) SubscribeToExistingDownload(subscribed chan string) {
-	f.subscribed = subscribed
 }
 
 func (f *file) LoadDone(localPath string) {
@@ -81,8 +70,6 @@ func (f *file) GetLocalPath() string {
 func (f *file) WaitForLocalPath() (string, error) {
 	for {
 		select {
-		case localPath := <-f.subscribed:
-			return localPath, nil
 		case <-f.loadDone:
 			return f.localPath, nil
 		case err := <-f.errCh:

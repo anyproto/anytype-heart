@@ -101,22 +101,34 @@ func (_c *MockDownloader_ProcessDownloadedFiles_Call) RunAndReturn(run func()) *
 	return _c
 }
 
-// QueueFileForDownload provides a mock function with given fields: file
-func (_m *MockDownloader) QueueFileForDownload(file files.LocalFileProvider) bool {
-	ret := _m.Called(file)
+// QueueFileForDownload provides a mock function with given fields: url
+func (_m *MockDownloader) QueueFileForDownload(url string) (files.LocalFileProvider, bool) {
+	ret := _m.Called(url)
 
 	if len(ret) == 0 {
 		panic("no return value specified for QueueFileForDownload")
 	}
 
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(files.LocalFileProvider) bool); ok {
-		r0 = rf(file)
+	var r0 files.LocalFileProvider
+	var r1 bool
+	if rf, ok := ret.Get(0).(func(string) (files.LocalFileProvider, bool)); ok {
+		return rf(url)
+	}
+	if rf, ok := ret.Get(0).(func(string) files.LocalFileProvider); ok {
+		r0 = rf(url)
 	} else {
-		r0 = ret.Get(0).(bool)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(files.LocalFileProvider)
+		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string) bool); ok {
+		r1 = rf(url)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	return r0, r1
 }
 
 // MockDownloader_QueueFileForDownload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'QueueFileForDownload'
@@ -125,24 +137,24 @@ type MockDownloader_QueueFileForDownload_Call struct {
 }
 
 // QueueFileForDownload is a helper method to define mock.On call
-//   - file files.LocalFileProvider
-func (_e *MockDownloader_Expecter) QueueFileForDownload(file interface{}) *MockDownloader_QueueFileForDownload_Call {
-	return &MockDownloader_QueueFileForDownload_Call{Call: _e.mock.On("QueueFileForDownload", file)}
+//   - url string
+func (_e *MockDownloader_Expecter) QueueFileForDownload(url interface{}) *MockDownloader_QueueFileForDownload_Call {
+	return &MockDownloader_QueueFileForDownload_Call{Call: _e.mock.On("QueueFileForDownload", url)}
 }
 
-func (_c *MockDownloader_QueueFileForDownload_Call) Run(run func(file files.LocalFileProvider)) *MockDownloader_QueueFileForDownload_Call {
+func (_c *MockDownloader_QueueFileForDownload_Call) Run(run func(url string)) *MockDownloader_QueueFileForDownload_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(files.LocalFileProvider))
+		run(args[0].(string))
 	})
 	return _c
 }
 
-func (_c *MockDownloader_QueueFileForDownload_Call) Return(_a0 bool) *MockDownloader_QueueFileForDownload_Call {
-	_c.Call.Return(_a0)
+func (_c *MockDownloader_QueueFileForDownload_Call) Return(_a0 files.LocalFileProvider, _a1 bool) *MockDownloader_QueueFileForDownload_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockDownloader_QueueFileForDownload_Call) RunAndReturn(run func(files.LocalFileProvider) bool) *MockDownloader_QueueFileForDownload_Call {
+func (_c *MockDownloader_QueueFileForDownload_Call) RunAndReturn(run func(string) (files.LocalFileProvider, bool)) *MockDownloader_QueueFileForDownload_Call {
 	_c.Call.Return(run)
 	return _c
 }
