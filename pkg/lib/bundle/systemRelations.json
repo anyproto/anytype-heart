@@ -85,5 +85,7 @@
   "globalName",
   "syncDate",
   "syncStatus",
-  "syncError"
+  "syncError",
+  "scope",
+  "lastUsedDate"
 ]
