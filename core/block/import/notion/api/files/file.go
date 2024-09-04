@@ -157,7 +157,7 @@ func (f *file) generateFile(do *DataObject) error {
 		return err
 	}
 	fullPath := filepath.Join(do.dirPath, fileName)
-	file, err := os.Open(fullPath)
+	file, err := os.OpenFile(fullPath, os.O_RDWR, 0600)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
