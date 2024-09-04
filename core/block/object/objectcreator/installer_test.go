@@ -33,7 +33,7 @@ func TestInstaller_queryDeletedObjects(t *testing.T) {
 	}{
 		{false, false, spaceId, bundle.TypeKeyGoal},
 		{false, false, spaceId, bundle.RelationKeyGenre},
-		{true, false, spaceId, bundle.TypeKeyDailyPlan},
+		{true, false, spaceId, bundle.TypeKeyTask},
 		{true, false, spaceId, bundle.RelationKeyLinkedProjects},
 		{false, true, spaceId, bundle.TypeKeyBook},
 		{false, true, spaceId, bundle.RelationKeyStarred},
