@@ -3,11 +3,19 @@ package lastused
 import (
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -47,4 +55,73 @@ func TestSetLastUsedDateForInitialType(t *testing.T) {
 		assert.True(t, isLastUsedDateGreater(detailMap[bundle.TypeKeyCollection.BundledURL()], detailMap[bundle.TypeKeyAudio.BundledURL()]))
 		assert.True(t, isLastUsedDateGreater(detailMap[bundle.TypeKeyCollection.BundledURL()], detailMap[bundle.TypeKeyClassNote.BundledURL()]))
 	})
+}
+
+func TestUpdateLastUsedDate(t *testing.T) {
+	const spaceId = "space"
+
+	isLastUsedDateRecent := func(details *types.Struct, deltaSeconds int64) bool {
+		return pbtypes.GetInt64(details, bundle.RelationKeyLastUsedDate.String())+deltaSeconds > time.Now().Unix()
+	}
+
+	store := objectstore.NewStoreFixture(t)
+	store.AddObjects(t, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:        pbtypes.String(bundle.RelationKeyCamera.URL()),
+			bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
+			bundle.RelationKeyUniqueKey: pbtypes.String(bundle.RelationKeyCamera.URL()),
+		},
+		{
+			bundle.RelationKeyId:        pbtypes.String(bundle.TypeKeyDiaryEntry.URL()),
+			bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
+			bundle.RelationKeyUniqueKey: pbtypes.String(bundle.TypeKeyDiaryEntry.URL()),
+		},
+		{
+			bundle.RelationKeyId:        pbtypes.String("rel-custom"),
+			bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
+			bundle.RelationKeyUniqueKey: pbtypes.String("rel-custom"),
+		},
+		{
+			bundle.RelationKeyId:        pbtypes.String("opt-done"),
+			bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
+			bundle.RelationKeyUniqueKey: pbtypes.String("opt-done"),
+		},
+	})
+
+	getSpace := func() smartblock.Space {
+		spc := mock_clientspace.NewMockSpace(t)
+		spc.EXPECT().Id().Return(spaceId)
+		spc.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, apply func(smartblock.SmartBlock) error) error {
+			sb := smarttest.New(id)
+			err := apply(sb)
+			require.NoError(t, err)
+
+			assert.True(t, isLastUsedDateRecent(sb.LocalDetails(), 5))
+			return nil
+		})
+		return spc
+	}
+
+	for _, tc := range []struct {
+		name     string
+		key      Key
+		getSpace func() smartblock.Space
+	}{
+		{"built-in relation", bundle.RelationKeyCamera, getSpace},
+		{"built-in type", bundle.TypeKeyDiaryEntry, getSpace},
+		{"custom relation", domain.RelationKey("custom"), getSpace},
+		{"option", domain.TypeKey("opt-done"), func() smartblock.Space {
+			spc := mock_clientspace.NewMockSpace(t)
+			return spc
+		}},
+		{"type that is not in store", bundle.TypeKeyAudio, func() smartblock.Space {
+			spc := mock_clientspace.NewMockSpace(t)
+			spc.EXPECT().Id().Return(spaceId)
+			return spc
+		}},
+	} {
+		t.Run("update lastUsedDate of "+tc.name, func(t *testing.T) {
+			UpdateLastUsedDate(tc.getSpace(), store, tc.key)
+		})
+	}
 }
