@@ -32,7 +32,7 @@ func TestSetLastUsedDateForInitialType(t *testing.T) {
 			bundle.TypeKeyCollection.BundledURL(),
 			bundle.TypeKeyTask.BundledURL(),
 			bundle.TypeKeyPage.BundledURL(),
-			bundle.TypeKeyClassNote.BundledURL(),
+			bundle.TypeKeyDiaryEntry.BundledURL(),
 			bundle.TypeKeyAudio.BundledURL(),
 		}
 		rand.Shuffle(len(ots), func(i, j int) {
@@ -53,7 +53,7 @@ func TestSetLastUsedDateForInitialType(t *testing.T) {
 		assert.True(t, isLastUsedDateGreater(detailMap[bundle.TypeKeyTask.BundledURL()], detailMap[bundle.TypeKeySet.BundledURL()]))
 		assert.True(t, isLastUsedDateGreater(detailMap[bundle.TypeKeySet.BundledURL()], detailMap[bundle.TypeKeyCollection.BundledURL()]))
 		assert.True(t, isLastUsedDateGreater(detailMap[bundle.TypeKeyCollection.BundledURL()], detailMap[bundle.TypeKeyAudio.BundledURL()]))
-		assert.True(t, isLastUsedDateGreater(detailMap[bundle.TypeKeyCollection.BundledURL()], detailMap[bundle.TypeKeyClassNote.BundledURL()]))
+		assert.True(t, isLastUsedDateGreater(detailMap[bundle.TypeKeyCollection.BundledURL()], detailMap[bundle.TypeKeyDiaryEntry.BundledURL()]))
 	})
 }
 
