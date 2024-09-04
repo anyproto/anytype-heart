@@ -351,7 +351,7 @@ func (s *Service) SetSpaceInfo(req *pb.RpcWorkspaceSetInfoRequest) error {
 			Value: v,
 		})
 	}
-	return s.SetDetails(nil, workspaceId, setDetails, false)
+	return s.SetDetails(nil, workspaceId, setDetails)
 }
 
 func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
@@ -548,7 +548,7 @@ func (s *Service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
 				Value: pbtypes.String(id),
 			},
-		}, false, false); err != nil {
+		}, false); err != nil {
 			return err
 		}
 		return nil

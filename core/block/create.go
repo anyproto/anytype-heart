@@ -64,7 +64,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 				Value: v,
 			})
 		}
-		return b.SetDetails(nil, details, true, false)
+		return b.SetDetails(nil, details, true)
 	})
 	if err != nil {
 		return "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)

@@ -32,12 +32,32 @@ type detailUpdate struct {
 	value *types.Value
 }
 
-func (bs *basic) SetDetails(ctx session.Context, details []*model.Detail, showEvent, updateLastUsed bool) (err error) {
+func (bs *basic) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+	_, err = bs.setDetails(ctx, details, showEvent)
+	return err
+}
+
+func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+	var keys []domain.RelationKey
+	keys, err = bs.setDetails(ctx, details, showEvent)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for _, key := range keys {
+			lastused.UpdateLastUsedDate(bs.Space(), bs.objectStore, key)
+		}
+	}()
+	return nil
+}
+
+func (bs *basic) setDetails(ctx session.Context, details []*model.Detail, showEvent bool) (updatedKeys []domain.RelationKey, err error) {
 	s := bs.NewStateCtx(ctx)
 
 	// Collect updates handling special cases. These cases could update details themselves, so we
 	// have to apply changes later
-	updates, keys := bs.collectDetailUpdates(details, s)
+	updates, updatedKeys := bs.collectDetailUpdates(details, s)
 	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
 	s.SetDetails(newDetails)
 
@@ -46,50 +66,58 @@ func (bs *basic) SetDetails(ctx session.Context, details []*model.Detail, showEv
 	flags.AddToState(s)
 
 	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
-		return
-	}
-
-	if updateLastUsed {
-		go func() {
-			for _, key := range keys {
-				lastused.UpdateLastUsedDate(bs.Space(), bs.objectStore, key)
-			}
-		}()
+		return nil, err
 	}
 
 	bs.discardOwnSetDetailsEvent(ctx, showEvent)
-	return nil
+	return updatedKeys, nil
 }
 
-func (bs *basic) UpdateDetails(update func(current *types.Struct) (*types.Struct, error), updateLastUsed bool) (err error) {
+func (bs *basic) UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+	_, _, err = bs.updateDetails(update)
+	return err
+}
+
+func (bs *basic) UpdateDetailsAndLastUsed(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+	var oldDetails, newDetails *types.Struct
+	oldDetails, newDetails, err = bs.updateDetails(update)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		diff := pbtypes.StructDiff(oldDetails, newDetails)
+		if diff == nil || diff.Fields == nil {
+			return
+		}
+		for key, _ := range diff.Fields {
+			lastused.UpdateLastUsedDate(bs.Space(), bs.objectStore, domain.RelationKey(key))
+		}
+	}()
+
+	return err
+}
+
+func (bs *basic) updateDetails(update func(current *types.Struct) (*types.Struct, error)) (oldDetails, newDetails *types.Struct, err error) {
 	if update == nil {
-		return fmt.Errorf("update function is nil")
+		return nil, nil, fmt.Errorf("update function is nil")
 	}
 	s := bs.NewState()
 
-	oldDetails := s.CombinedDetails()
+	oldDetails = s.CombinedDetails()
 	oldDetailsCopy := pbtypes.CopyStruct(oldDetails, true)
 
-	newDetails, err := update(oldDetails)
+	newDetails, err = update(oldDetailsCopy)
 	if err != nil {
 		return
 	}
 	s.SetDetails(newDetails)
 
 	if err = bs.addRelationLinks(s, maps.Keys(newDetails.Fields)...); err != nil {
-		return
+		return nil, nil, err
 	}
 
-	if updateLastUsed {
-		go func() {
-			diff := pbtypes.StructDiff(oldDetailsCopy, newDetails)
-			for key, _ := range diff.Fields {
-				lastused.UpdateLastUsedDate(bs.Space(), bs.objectStore, domain.RelationKey(key))
-			}
-		}()
-	}
-
-	return bs.Apply(s)
+	return oldDetails, newDetails, bs.Apply(s)
 }
 
 func (bs *basic) collectDetailUpdates(details []*model.Detail, s *state.State) ([]*detailUpdate, []domain.RelationKey) {

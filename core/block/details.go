@@ -16,9 +16,15 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func (s *Service) SetDetails(ctx session.Context, objectId string, details []*model.Detail, updateLastUsed bool) (err error) {
+func (s *Service) SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error) {
 	return cache.Do(s, objectId, func(b basic.DetailsSettable) error {
-		return b.SetDetails(ctx, details, true, updateLastUsed)
+		return b.SetDetails(ctx, details, true)
+	})
+}
+
+func (s *Service) SetDetailsAndUpdateLastUsed(ctx session.Context, objectId string, details []*model.Detail) (err error) {
+	return cache.Do(s, objectId, func(b basic.DetailsSettable) error {
+		return b.SetDetailsAndUpdateLastUsed(ctx, details, true)
 	})
 }
 
@@ -28,7 +34,11 @@ func (s *Service) SetDetailsList(ctx session.Context, objectIds []string, detail
 		anySucceed  bool
 	)
 	for i, objectId := range objectIds {
-		err := s.SetDetails(ctx, objectId, details, i == 0)
+		setDetailsFunc := s.SetDetails
+		if i == 0 {
+			setDetailsFunc = s.SetDetailsAndUpdateLastUsed
+		}
+		err := setDetailsFunc(ctx, objectId, details)
 		if err != nil {
 			resultError = errors.Join(resultError, err)
 		} else {
@@ -45,16 +55,26 @@ func (s *Service) SetDetailsList(ctx session.Context, objectIds []string, detail
 }
 
 // ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
-func (s *Service) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error), updateLastUsed bool) (err error) {
+func (s *Service) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
 	return cache.Do(s, objectId, func(du basic.DetailsUpdatable) error {
-		return du.UpdateDetails(modifier, updateLastUsed)
+		return du.UpdateDetails(modifier)
+	})
+}
+
+func (s *Service) ModifyDetailsAndUpdateLastUsed(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
+	return cache.Do(s, objectId, func(du basic.DetailsUpdatable) error {
+		return du.UpdateDetailsAndLastUsed(modifier)
 	})
 }
 
 func (s *Service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesRequest) (resultError error) {
 	var anySucceed bool
 	for i, objectId := range req.ObjectIds {
-		err := s.ModifyDetails(objectId, func(current *types.Struct) (*types.Struct, error) {
+		modifyDetailsFunc := s.ModifyDetails
+		if i == 0 {
+			modifyDetailsFunc = s.ModifyDetailsAndUpdateLastUsed
+		}
+		err := modifyDetailsFunc(objectId, func(current *types.Struct) (*types.Struct, error) {
 			for _, op := range req.Operations {
 				if !pbtypes.IsEmptyValue(op.Set) {
 					// Set operation has higher priority than Add and Remove, because it modifies full value
@@ -65,7 +85,7 @@ func (s *Service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesReque
 				removeValueFromListDetail(current, op.RelationKey, op.Remove)
 			}
 			return current, nil
-		}, i == 0)
+		})
 		if err != nil {
 			resultError = errors.Join(resultError, err)
 		} else {

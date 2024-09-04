@@ -57,7 +57,7 @@ type ObjectCreator interface {
 }
 
 type DetailsSetter interface {
-	SetDetails(ctx session.Context, objectId string, details []*model.Detail, updateLastUsed bool) (err error)
+	SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error)
 }
 
 type service struct {
@@ -204,7 +204,7 @@ func (s *service) UpdateObject(objectId string, getContent *bookmark.ObjectConte
 		})
 	}
 
-	return s.detailsSetter.SetDetails(nil, objectId, details, false)
+	return s.detailsSetter.SetDetails(nil, objectId, details)
 }
 
 func (s *service) FetchAsync(spaceID string, blockID string, params bookmark.FetchParams) {

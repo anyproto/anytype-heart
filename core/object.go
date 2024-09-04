@@ -44,7 +44,7 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetDetails(ctx, req.ContextId, req.GetDetails(), true)
+		return bs.SetDetailsAndUpdateLastUsed(ctx, req.ContextId, req.GetDetails())
 	})
 	if err != nil {
 		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)
@@ -882,7 +882,7 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 		return bs.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
 			d := pbtypes.CopyStruct(current, false)
 			return internalflag.PutToDetails(d, req.InternalFlags), nil
-		}, false)
+		})
 	})
 	if err != nil {
 		return response(pb.RpcObjectSetInternalFlagsResponseError_UNKNOWN_ERROR, err)

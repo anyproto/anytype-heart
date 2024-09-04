@@ -399,7 +399,7 @@ func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id stri
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
 				Value: pbtypes.String(id),
 			},
-		}, false,
+		},
 	); err != nil {
 		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err)
 	}

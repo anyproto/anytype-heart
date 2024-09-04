@@ -64,11 +64,13 @@ type CommonOperations interface {
 }
 
 type DetailsSettable interface {
-	SetDetails(ctx session.Context, details []*model.Detail, showEvent, updateLastUsed bool) (err error)
+	SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
+	SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
 }
 
 type DetailsUpdatable interface {
-	UpdateDetails(update func(current *types.Struct) (*types.Struct, error), updateLastUsed bool) (err error)
+	UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error)
+	UpdateDetailsAndLastUsed(update func(current *types.Struct) (*types.Struct, error)) (err error)
 }
 
 type Restrictionable interface {
