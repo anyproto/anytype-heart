@@ -3,12 +3,15 @@ package api
 import (
 	"encoding/json"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -355,4 +358,80 @@ func RichTextToDescription(rt []*RichText) string {
 		}
 	}
 	return richText.String()
+}
+
+type relationUploadData struct {
+	fileDownloader files.Downloader
+
+	details map[string]*types.Value
+	mu      sync.Mutex
+
+	tasks []func()
+	wg    sync.WaitGroup
+}
+
+type relationFileMetaData struct {
+	relationKey  string
+	url          string
+	idxInDetails int
+}
+
+func UploadFileRelationLocally(fileDownloader files.Downloader, details map[string]*types.Value, relationLinks []*model.RelationLink) {
+	data := &relationUploadData{fileDownloader: fileDownloader, details: details}
+	for _, relationLink := range relationLinks {
+		if relationLink.Format == model.RelationFormat_file {
+			fileUrl := details[relationLink.Key].GetStringValue()
+			if fileUrl == "" {
+				handleListValue(data, relationLink.Key)
+			}
+			if fileUrl != "" {
+				fileMetaData := &relationFileMetaData{relationKey: relationLink.Key, url: fileUrl}
+				stop := queueTaskWithFileDownload(data, fileMetaData)
+				if stop {
+					break
+				}
+			}
+		}
+	}
+	for _, task := range data.tasks {
+		go task()
+	}
+	data.wg.Wait()
+}
+
+func handleListValue(data *relationUploadData, relationKey string) {
+	fileUrls := pbtypes.GetStringListValue(data.details[relationKey])
+	for i, url := range fileUrls {
+		fileMetaData := &relationFileMetaData{relationKey, url, i}
+		stop := queueTaskWithFileDownload(data, fileMetaData)
+		if stop {
+			break
+		}
+	}
+}
+
+func queueTaskWithFileDownload(data *relationUploadData, fileMetaData *relationFileMetaData) bool {
+	file, stop := data.fileDownloader.QueueFileForDownload(fileMetaData.url)
+	if stop {
+		return true
+	}
+	data.wg.Add(1)
+	data.tasks = append(data.tasks, func() {
+		defer data.wg.Done()
+		localPath, err := file.WaitForLocalPath()
+		if err != nil {
+			logging.Logger("notion").Errorf("failed to download file: %s", err)
+		}
+		data.mu.Lock()
+		defer data.mu.Unlock()
+		switch data.details[fileMetaData.relationKey].Kind.(type) {
+		case *types.Value_StringValue:
+			data.details[fileMetaData.relationKey] = pbtypes.String(localPath)
+		case *types.Value_ListValue:
+			fileUrlsList := pbtypes.GetStringListValue(data.details[fileMetaData.relationKey])
+			fileUrlsList[fileMetaData.idxInDetails] = localPath
+			data.details[fileMetaData.relationKey] = pbtypes.StringList(fileUrlsList)
+		}
+	})
+	return false
 }

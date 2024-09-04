@@ -4,8 +4,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/files/mock_files"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -395,7 +397,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: pr}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 		assert.Nil(t, err)
 
 		// then
@@ -417,7 +419,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: pr}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
@@ -438,7 +440,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
@@ -458,7 +460,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: selectProperty}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), properties)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), properties, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, properties.PropertyIdsToSnapshots, 1)
@@ -478,7 +480,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: selectProperty}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
@@ -504,7 +506,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
@@ -531,7 +533,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
@@ -547,7 +549,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Nil(t, err)
@@ -565,7 +567,9 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		downloader := mock_files.NewMockDownloader(t)
+		downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(nil, true)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, downloader)
 
 		// then
 		assert.Nil(t, err)
@@ -583,7 +587,9 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		downloader := mock_files.NewMockDownloader(t)
+		downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(nil, true)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, downloader)
 
 		// then
 		assert.Nil(t, err)
@@ -596,7 +602,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Nil(t, err)
@@ -617,7 +623,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
@@ -633,7 +639,9 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		downloader := mock_files.NewMockDownloader(t)
+		downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(nil, true)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, downloader)
 
 		// then
 		assert.Nil(t, err)
@@ -648,7 +656,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Nil(t, err)
