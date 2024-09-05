@@ -553,56 +553,32 @@ func TestFilterOptionsEqual(t *testing.T) {
 		"optionId3": "3",
 	}
 	t.Run("one option, ok", func(t *testing.T) {
-		eq := FilterOptionsEqual{
-			Key:     "k",
-			Options: optionIdToName,
-			Value:   pbtypes.StringList([]string{"optionId1"}).GetListValue(),
-		}
+		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1"})}}
 		assertFilter(t, eq, obj, true)
 	})
 	t.Run("two options, ok", func(t *testing.T) {
-		eq := FilterOptionsEqual{
-			Key:     "k",
-			Options: optionIdToName,
-			Value:   pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(),
-		}
+		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId3"})}}
 		assertFilter(t, eq, obj, true)
 	})
 	t.Run("two options, ok, not existing options are discarded", func(t *testing.T) {
-		eq := FilterOptionsEqual{
-			Key:     "k",
-			Options: optionIdToName,
-			Value:   pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(),
-		}
+		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId3", "optionId7000"})}}
 		assertFilter(t, eq, obj, true)
 	})
 	t.Run("two options, not ok", func(t *testing.T) {
-		eq := FilterOptionsEqual{
-			Key:     "k",
-			Options: optionIdToName,
-			Value:   pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(),
-		}
+		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId3"})}}
 		assertFilter(t, eq, obj, false)
 	})
 	t.Run("two options, not ok, because object has 1 option", func(t *testing.T) {
-		eq := FilterOptionsEqual{
-			Key:     "k",
-			Options: optionIdToName,
-			Value:   pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(),
-		}
+		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1"})}}
 		assertFilter(t, eq, obj, false)
 	})
 	t.Run("two options, not ok, because object has 3 options", func(t *testing.T) {
-		eq := FilterOptionsEqual{
-			Key:     "k",
-			Options: optionIdToName,
-			Value:   pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(),
-		}
+		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId2", "optionId3"})}}
 		assertFilter(t, eq, obj, false)
 	})

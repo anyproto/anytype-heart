@@ -198,20 +198,13 @@ func makeFilterByCondition(spaceID string, rawFilter *model.BlockContentDataview
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return FilterOptionsEqual{
-			Key:     rawFilter.RelationKey,
-			Value:   list,
-			Options: optionsToMap(spaceID, rawFilter.RelationKey, store),
-		}, nil
+		return newFilterOptionsEqual(&fastjson.Arena{}, rawFilter.RelationKey, list, optionsToMap(spaceID, rawFilter.RelationKey, store)), nil
 	case model.BlockContentDataviewFilter_NotExactIn:
 		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return FilterNot{FilterOptionsEqual{
-			Key:   rawFilter.RelationKey,
-			Value: list,
-		}}, nil
+		return FilterNot{newFilterOptionsEqual(&fastjson.Arena{}, rawFilter.RelationKey, list, optionsToMap(spaceID, rawFilter.RelationKey, store))}, nil
 	case model.BlockContentDataviewFilter_Exists:
 		return FilterExists{
 			Key: rawFilter.RelationKey,
@@ -615,13 +608,29 @@ func (l FilterAllIn) AnystoreFilter() query.Filter {
 	return query.And(conds)
 }
 
+func newFilterOptionsEqual(arena *fastjson.Arena, key string, value *types.ListValue, options map[string]string) *FilterOptionsEqual {
+	f := &FilterOptionsEqual{
+		arena:   arena,
+		Key:     key,
+		Value:   value,
+		Options: options,
+	}
+	f.compileValueFilter()
+	return f
+}
+
 type FilterOptionsEqual struct {
+	arena *fastjson.Arena
+
 	Key     string
 	Value   *types.ListValue
 	Options map[string]string
+
+	// valueFilter is precompiled filter without key selector
+	valueFilter query.Filter
 }
 
-func (exIn FilterOptionsEqual) FilterObject(g *types.Struct) bool {
+func (exIn *FilterOptionsEqual) FilterObject(g *types.Struct) bool {
 	val := pbtypes.Get(g, exIn.Key)
 	if val == nil {
 		return false
@@ -661,20 +670,48 @@ func (exIn FilterOptionsEqual) FilterObject(g *types.Struct) bool {
 	return true
 }
 
-func (exIn FilterOptionsEqual) AnystoreFilter() query.Filter {
-	path := []string{exIn.Key}
-	conds := make([]query.Filter, 0, len(exIn.Value.GetValues())+1)
-	conds = append(conds, query.Key{
-		Path:   path,
-		Filter: query.Size{Size: int64(len(exIn.Value.GetValues()))},
-	})
-	for _, v := range exIn.Value.GetValues() {
-		conds = append(conds, query.Key{
-			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, scalarPbValueToAny(v)),
-		})
+func (exIn *FilterOptionsEqual) Ok(v *fastjson.Value) bool {
+	defer exIn.arena.Reset()
+
+	arr := v.GetArray(exIn.Key)
+	// Just fall back to precompiled filter
+	if len(arr) == 0 {
+		return exIn.valueFilter.Ok(v.Get(exIn.Key))
 	}
-	return query.And(conds)
+
+	// Discard deleted options
+	optionList := exIn.arena.NewArray()
+	var i int
+	for _, arrVal := range arr {
+		optionId := string(arrVal.GetStringBytes())
+		_, ok := exIn.Options[optionId]
+		if ok {
+			optionList.SetArrayItem(i, exIn.arena.NewString(optionId))
+			i++
+		}
+	}
+	return exIn.valueFilter.Ok(optionList)
+}
+
+func (exIn *FilterOptionsEqual) compileValueFilter() {
+	conds := make([]query.Filter, 0, len(exIn.Value.GetValues())+1)
+	conds = append(conds, query.Size{Size: int64(len(exIn.Value.GetValues()))})
+	for _, v := range exIn.Value.GetValues() {
+		conds = append(conds, query.NewComp(query.CompOpEq, scalarPbValueToAny(v)))
+	}
+	exIn.valueFilter = query.And(conds)
+}
+
+func (exIn *FilterOptionsEqual) IndexBounds(fieldName string, bs query.Bounds) (bounds query.Bounds) {
+	return bs
+}
+
+func (exIn *FilterOptionsEqual) AnystoreFilter() query.Filter {
+	return exIn
+}
+
+func (exIn *FilterOptionsEqual) String() string {
+	return "{}"
 }
 
 func optionsToMap(spaceID string, key string, store ObjectStore) map[string]string {
