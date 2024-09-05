@@ -15,6 +15,10 @@ on:
         description: 'Run perf test times'
         required: true
         default: '0'
+      nightly-mode:
+        description: 'Nightly build. Use staging network and do not publish to maven'
+        required: true
+        default: 'false'
   schedule:
     - cron: '0 0 * * *' # every day at midnight
       filters:
@@ -94,6 +98,10 @@ jobs:
             VERSION=${{ github.event.inputs.alpha_version }}
             if [ -z "$VERSION" ]; then
               VERSION=$(git rev-parse --short HEAD)
+            fi
+            if [[ "${{ github.event.inputs.nightly-mode }}" == "true" ]]; then
+             echo ${{ secrets.STAGING_NODE_CONF }} > ./deps/anytype-staging-node.conf
+             echo ANY_SYNC_NETWORK=./deps/anytype-staging-node.conf >> $GITHUB_ENV
             fi
           fi
           if [ -z "$VERSION" ]; then
@@ -241,8 +249,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
+      - name: Publish ios lib to maven
+        run: |
+          gradle publish
+        if: github.event.inputs.nightly-mode == false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USER: ${{ github.actor }}
           MAVEN_ARTIFACT_ID: 'anytype-heart-ios'
-          MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'
+          MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'    
       - name: Make java protos
         run: |
           make protos-java
@@ -267,6 +282,7 @@ jobs:
       - name: Publish android lib to maven
         run: |
           gradle publish
+        if: github.event.inputs.nightly-mode == false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
@@ -397,7 +413,7 @@ jobs:
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
       - name: Release
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.event.inputs.nightly-mode == 'false'
         uses: softprops/action-gh-release@v1
         with:
           prerelease: ${{ contains(github.ref, '-rc') }}
@@ -405,3 +421,15 @@ jobs:
           files: '.release/*'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload file to bucket
+        uses: jovicon/s3-upload-github-action@master
+        if: github.event.inputs.nightly-mode == 'true'
+        with:
+          args: --acl public-read
+        env:
+          FILE: ./release/
+          AWS_REGION: 'us-central-1'
+          S3_BUCKET: ${{ secrets.NIGHTLY_AWS_S3_BUCKET }}
+          S3_KEY: ${{ secrets.NIGHTLY_AWS_S3_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.NIGHTLY_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.NIGHTLY_AWS_SECRET_ACCESS_KEY }}
