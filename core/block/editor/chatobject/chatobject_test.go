@@ -121,7 +121,6 @@ func TestEditMessage(t *testing.T) {
 	// Edit
 	editedMessage := givenMessage()
 	editedMessage.Message.Text = "edited text!"
-	editedMessage.Reactions.Reactions["🥰"].Ids = []string{"identity1"}
 
 	changeId = "messageId2"
 	fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(applyToStore(changeId))
@@ -145,6 +144,10 @@ func TestEditMessage(t *testing.T) {
 	assert.NotZero(t, got.CreatedAt)
 	got.CreatedAt = 0
 	assert.Equal(t, want, got)
+}
+
+func TestToggleReaction(t *testing.T) {
+	// TODO Implement
 }
 
 func applyToStore(changeId string) func(ctx context.Context, params source.PushStoreChangeParams) (string, error) {
