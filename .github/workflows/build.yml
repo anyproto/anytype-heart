@@ -251,7 +251,7 @@ jobs:
       - name: Publish ios lib to maven
         run: |
           gradle publish
-        if: github.event.inputs.nightly-mode == false
+        if: github.event.inputs.nightly-mode == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
@@ -281,7 +281,7 @@ jobs:
       - name: Publish android lib to maven
         run: |
           gradle publish
-        if: github.event.inputs.nightly-mode == false
+        if: github.event.inputs.nightly-mode == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
