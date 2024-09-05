@@ -100,7 +100,7 @@ jobs:
               VERSION=$(git rev-parse --short HEAD)
             fi
             if [[ "${{ github.event.inputs.nightly-mode }}" == "true" ]]; then
-             echo ${{ secrets.STAGING_NODE_CONF }} > ./deps/anytype-staging-node.conf
+             echo "${{ secrets.STAGING_NODE_CONF }}" > ./deps/anytype-staging-node.conf
              echo ANY_SYNC_NETWORK=./deps/anytype-staging-node.conf >> $GITHUB_ENV
             fi
           fi
