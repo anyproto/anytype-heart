@@ -26,6 +26,15 @@ func assertFilter(t *testing.T, f Filter, obj *types.Struct, expected bool) {
 	assert.Equal(t, expected, anystoreFilter.Ok(val))
 }
 
+func assertFilterNoParseValidation(t *testing.T, f Filter, obj *types.Struct, expected bool) {
+	assert.Equal(t, expected, f.FilterObject(obj))
+	anystoreFilter := f.AnystoreFilter()
+	arena := &fastjson.Arena{}
+	val := pbtypes.ProtoToJson(arena, obj)
+	result := anystoreFilter.Ok(val)
+	assert.Equal(t, expected, result)
+}
+
 func TestEq_FilterObject(t *testing.T) {
 	t.Run("eq", func(t *testing.T) {
 		t.Run("ok", func(t *testing.T) {
@@ -908,5 +917,52 @@ func TestMakeFilters(t *testing.T) {
 		assert.NotNil(t, filters.(FiltersOr))
 		assert.NotNil(t, filters.(FiltersOr)[0].(FilterEq))
 		assert.NotNil(t, filters.(FiltersOr)[1].(FilterEq))
+	})
+}
+
+func TestFilter2ValuesComp_FilterObject(t *testing.T) {
+	t.Run("equal", func(t *testing.T) {
+		eq := Filter2ValuesComp{
+			Key1: "a",
+			Key2: "b",
+			Cond: model.BlockContentDataviewFilter_Equal,
+		}
+		obj1 := &types.Struct{Fields: map[string]*types.Value{
+			"a": pbtypes.String("x"),
+			"b": pbtypes.String("x"),
+		}}
+		obj2 := &types.Struct{Fields: map[string]*types.Value{
+			"a": pbtypes.String("x"),
+			"b": pbtypes.String("y"),
+		}}
+		obj3 := &types.Struct{Fields: map[string]*types.Value{
+			"b": pbtypes.String("x"),
+		}}
+		assertFilterNoParseValidation(t, eq, obj1, true)
+		assertFilterNoParseValidation(t, eq, obj2, false)
+		assertFilterNoParseValidation(t, eq, obj3, false)
+	})
+
+	t.Run("greater", func(t *testing.T) {
+		eq := Filter2ValuesComp{
+			Key1: "a",
+			Key2: "b",
+			Cond: model.BlockContentDataviewFilter_Greater,
+		}
+		obj1 := &types.Struct{Fields: map[string]*types.Value{
+			"a": pbtypes.Int64(100),
+			"b": pbtypes.Int64(200),
+		}}
+		obj2 := &types.Struct{Fields: map[string]*types.Value{
+			"a": pbtypes.Int64(300),
+			"b": pbtypes.Int64(-500),
+		}}
+		obj3 := &types.Struct{Fields: map[string]*types.Value{
+			"a": pbtypes.String("xxx"),
+			"b": pbtypes.String("ddd"),
+		}}
+		assertFilterNoParseValidation(t, eq, obj1, false)
+		assertFilterNoParseValidation(t, eq, obj2, true)
+		assertFilterNoParseValidation(t, eq, obj3, true)
 	})
 }
