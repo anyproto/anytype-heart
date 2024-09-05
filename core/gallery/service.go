@@ -9,8 +9,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -55,6 +57,8 @@ var (
 		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: "strategic_writing",
 		pb.RpcObjectImportUseCaseRequest_EMPTY:             "empty",
 	}
+
+	errOutdatedArchive = fmt.Errorf("archive is outdated")
 )
 
 type Service interface {
@@ -109,12 +113,17 @@ func (s *service) ImportBuiltInUseCase(
 	title, found := ucCodeToTitle[useCase]
 	if !found {
 		return pb.RpcObjectImportUseCaseResponseError_BAD_INPUT,
-			fmt.Errorf("failed to import builtinObjects: invalid Use Case value: %v", useCase)
+			fmt.Errorf("failed to import built-in usecase: invalid Use Case value: %v", useCase)
+	}
+
+	if cachePath == "" {
+		return pb.RpcObjectImportUseCaseResponseError_BAD_INPUT,
+			fmt.Errorf("failed to import built-in usecase: no path to client cache provided")
 	}
 
 	if err = s.ImportExperience(ctx, spaceID, "", title, cachePath, true); err != nil {
 		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR,
-			fmt.Errorf("failed to import builtinObjects for Use Case %s: %w",
+			fmt.Errorf("failed to import built-in usecase %s: %w",
 				pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)
 	}
 
@@ -156,32 +165,18 @@ func (s *service) getPathAndRemoveFunc(
 		return url, func(_ string) {}, nil
 	}
 
-	isLocalArchiveUpToDate := true
+	var (
+		cachedArchive []byte
+		downloadLink  string
+	)
 
-	cachedArchive, clientIndex, cacheErr := readClientCache(cachePath, title)
-
-	if cacheErr == nil {
-		if localManifest, err := getManifestByTitle(clientIndex, title); err == nil {
-			if url == "" {
-				url = localManifest.DownloadLink
-			}
-
-			latestManifest, err := s.indexCache.GetManifest(url, downloadManifestTimeoutSeconds)
-			if err == nil && latestManifest.Hash != localManifest.Hash {
-				// if hashes are different, then we can get fresher version of archive from remote
-				isLocalArchiveUpToDate = false
-			}
-			log.Error("failed to get latest manifest", zap.String("url", url), zap.Error(err))
-		}
+	cachedArchive, downloadLink, err = s.getArchiveFromCache(title, cachePath)
+	if err == nil {
+		return s.saveArchiveToTempFile(cachedArchive)
 	}
 
-	if cachedArchive != nil && isLocalArchiveUpToDate {
-		path = filepath.Join(s.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
-		if err = os.WriteFile(path, cachedArchive, 0644); err != nil {
-			return "", nil, fmt.Errorf("failed to save use case archive to temporary file: %w", err)
-		}
-
-		return path, removeTempFile, nil
+	if errors.Is(err, errOutdatedArchive) {
+		url = downloadLink
 	}
 
 	path, err = s.downloadZipToFile(url, progress)
@@ -191,13 +186,7 @@ func (s *service) getPathAndRemoveFunc(
 
 	if cachedArchive != nil {
 		log.Warn("failed to download archive from remote. Importing cached archive", zap.Error(err))
-
-		path = filepath.Join(s.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
-		if err = os.WriteFile(path, cachedArchive, 0644); err != nil {
-			return "", nil, fmt.Errorf("failed to save use case archive to temporary file: %w", err)
-		}
-
-		return path, removeTempFile, nil
+		return s.saveArchiveToTempFile(cachedArchive)
 	}
 
 	if pErr := progress.Cancel(); pErr != nil {
@@ -208,6 +197,45 @@ func (s *service) getPathAndRemoveFunc(
 		err = fmt.Errorf("invalid path to file: '%s'", url)
 	}
 	return "", nil, err
+}
+
+func (s *service) getArchiveFromCache(
+	title, cachePath string,
+) (archive []byte, downloadLink string, err error) {
+	archives, index, err := readClientCache(cachePath, false)
+	if err != nil {
+		return nil, "", err
+	}
+
+	archive = archives[title]
+	if archive == nil {
+		return nil, "", fmt.Errorf("archive is not cached")
+	}
+
+	cachedManifest, err := getManifestByTitle(index, title)
+	if err != nil {
+		return nil, "", err
+	}
+
+	downloadLink = cachedManifest.DownloadLink
+
+	latestManifest, err := s.indexCache.GetManifest(downloadLink, downloadManifestTimeoutSeconds)
+	if err == nil && latestManifest.Hash != cachedManifest.Hash {
+		// if hashes are different, then we can get fresher version of archive from remote
+		return archive, downloadLink, errOutdatedArchive
+	}
+	if err != nil {
+		log.Error("failed to get latest manifest", zap.String("downloadLink", downloadLink), zap.Error(err))
+	}
+	return archive, downloadLink, nil
+}
+
+func (s *service) saveArchiveToTempFile(archive []byte) (path string, removeFunc func(string), err error) {
+	path = filepath.Join(s.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
+	if err = os.WriteFile(path, archive, 0644); err != nil {
+		return "", nil, fmt.Errorf("failed to save archive to temporary file: %w", err)
+	}
+	return path, removeTempFile, nil
 }
 
 func removeTempFile(path string) {
@@ -229,7 +257,7 @@ func readData(f *zip.File) ([]byte, error) {
 	return data, nil
 }
 
-func readClientCache(cachePath, title string) (data []byte, index *pb.RpcGalleryDownloadIndexResponse, err error) {
+func readClientCache(cachePath string, readOnlyIndex bool) (archives map[string][]byte, index *pb.RpcGalleryDownloadIndexResponse, err error) {
 	if cachePath == "" {
 		return nil, nil, fmt.Errorf("no cache path specified")
 	}
@@ -238,7 +266,9 @@ func readClientCache(cachePath, title string) (data []byte, index *pb.RpcGallery
 		return nil, nil, err
 	}
 	defer r.Close()
-	zipName := title + ".zip"
+
+	archives = make(map[string][]byte)
+
 	for _, f := range r.File {
 		if f.Name == indexName {
 			indexData, err := readData(f)
@@ -249,15 +279,24 @@ func readClientCache(cachePath, title string) (data []byte, index *pb.RpcGallery
 			if err != nil {
 				return nil, nil, err
 			}
+			if readOnlyIndex {
+				return nil, index, nil
+			}
 			continue
 		}
 
-		if f.Name == zipName {
-			data, err = readData(f)
-			if err != nil {
-				return nil, nil, err
-			}
+		ext := path.Ext(f.Name)
+		if ext != ".zip" {
+			return nil, nil, fmt.Errorf("zip archive is expected, got: '%s'", f.Name)
 		}
+		title := strings.TrimSuffix(f.Name, ext)
+
+		var data []byte
+		data, err = readData(f)
+		if err != nil {
+			return nil, nil, err
+		}
+		archives[title] = data
 	}
 	return
 }
@@ -408,6 +447,9 @@ func getArchiveReaderAndSize(url string) (reader io.ReadCloser, size int64, err 
 }
 
 func getManifestByTitle(index *pb.RpcGalleryDownloadIndexResponse, title string) (*model.ManifestInfo, error) {
+	if index == nil {
+		return nil, fmt.Errorf("index is nil")
+	}
 	for _, manifest := range index.Experiences {
 		if manifest.Title == title {
 			return manifest, nil

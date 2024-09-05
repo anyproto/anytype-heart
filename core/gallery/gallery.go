@@ -54,11 +54,11 @@ var whitelist = map[string]*regexp.Regexp{
 	"storage.gallery.any.coop":  regexp.MustCompile(`.*`),
 }
 
-// GetGalleryIndex first tries to get gallery index from different places in following order:
+// GetGalleryIndex tries to get gallery index from different places in following order:
 // 1. Middleware index cache
 // 2. Remote index (with HTTP request timeout = 1 second)
 // 3. Client cache, path to which is passed by argument
-// 4. Remote index (with HTTP request timeout more than one second)
+// 4. Remote index (with default HTTP request timeout)
 func (s *service) GetGalleryIndex(clientCachePath string) (index *pb.RpcGalleryDownloadIndexResponse, err error) {
 	index, err = s.indexCache.GetIndex(1)
 	if err == nil {
@@ -66,7 +66,7 @@ func (s *service) GetGalleryIndex(clientCachePath string) (index *pb.RpcGalleryD
 	}
 
 	log.Warn("failed to get gallery index. Getting it from client cache", zap.Error(err))
-	_, index, err = readClientCache(clientCachePath, "")
+	_, index, err = readClientCache(clientCachePath, true)
 	if err == nil {
 		return index, nil
 	}

@@ -37,7 +37,7 @@ func TestIsInWhitelist(t *testing.T) {
 }
 
 func TestDownloadManifestAndValidateSchema(t *testing.T) {
-	schema := schemaResponse{Schema: "http://localhost" + port + "/schema.json"}
+	schema := "http://localhost" + port + "/schema.json"
 	server := startHttpServer()
 	defer server.Shutdown(nil)
 
