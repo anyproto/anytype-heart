@@ -205,7 +205,7 @@ func (s *source) Tree() objecttree.ObjectTree {
 	return s.ObjectTree
 }
 
-func (s *source) Update(ot objecttree.ObjectTree) {
+func (s *source) Update(ot objecttree.ObjectTree) error {
 	// here it should work, because we always have the most common snapshot of the changes in tree
 	s.lastSnapshotId = ot.Root().Id
 	prevSnapshot := s.lastSnapshotId
@@ -227,23 +227,25 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to append the state and send it to receiver")
 	}
+	return nil
 }
 
-func (s *source) Rebuild(ot objecttree.ObjectTree) {
+func (s *source) Rebuild(ot objecttree.ObjectTree) error {
 	if s.ObjectTree == nil {
-		return
+		return nil
 	}
 
 	doc, err := s.buildState()
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to build state")
-		return
+		return nil
 	}
 	st := doc.(*state.State)
 	err = s.receiver.StateRebuild(st)
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to send the state to receiver")
 	}
+	return nil
 }
 
 func (s *source) ReadOnly() bool {
@@ -565,7 +567,6 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 				} else {
 					st = newState(st, state.NewDoc(ot.Id(), nil).(*state.State))
 				}
-				st.EnableParentIdsCache()
 				st.SetChangeId(change.Id)
 				return true
 			}
@@ -589,7 +590,6 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 				changesAppliedSinceSnapshot++
 			}
 			appliedContent = append(appliedContent, model.Content...)
-			st.EnableParentIdsCache()
 			st.SetChangeId(change.Id)
 			st.ApplyChangeIgnoreErr(model.Content...)
 			st.AddFileKeys(model.FileKeys...)
@@ -610,14 +610,10 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		st.SetLastModified(lastChange.Timestamp, domain.NewParticipantId(spaceId, lastChange.Identity.Account()))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
-	st.ResetParentIdsCache()
 	return
 }
 
 func newState(st *state.State, toAssign *state.State) *state.State {
-	if st != nil {
-		st.ResetParentIdsCache()
-	}
 	st = toAssign
 	return st
 }

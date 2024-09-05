@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/net/streampool"
+
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/metric"
@@ -387,6 +389,14 @@ func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
 
 func (c *Config) GetNodeConfStorePath() string {
 	return filepath.Join(c.RepoPath, "nodeconf")
+}
+
+func (c *Config) GetStreamConfig() streampool.StreamConfig {
+	return streampool.StreamConfig{
+		SendQueueSize:    300,
+		DialQueueWorkers: 4,
+		DialQueueSize:    300,
+	}
 }
 
 func (c *Config) GetYamux() yamux.Config {
