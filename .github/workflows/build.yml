@@ -78,7 +78,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/cache@v3
-        if: github.event_name != 'schedule'
+        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
         with:
           path: |
             ~/go/pkg/mod
@@ -297,6 +297,18 @@ jobs:
           files: '.release/*'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload file to bucket
+        uses: jovicon/s3-upload-github-action@master
+        if: github.event.inputs.nightly-mode == 'true'
+        with:
+          args: --acl public-read
+        env:
+          FILE: ./release/
+          AWS_REGION: 'us-central-1'
+          S3_BUCKET: ${{ secrets.NIGHTLY_AWS_S3_BUCKET }}
+          S3_KEY: ${{ secrets.NIGHTLY_AWS_S3_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.NIGHTLY_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.NIGHTLY_AWS_SECRET_ACCESS_KEY }}
   build_linux:
     if: github.event_name == 'push'
     runs-on: ubuntu-22.04
@@ -347,7 +359,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/cache@v3
-        if: github.event_name != 'schedule'
+        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
         with:
           path: |
             ~/go/pkg/mod
@@ -422,15 +434,3 @@ jobs:
           files: '.release/*'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload file to bucket
-        uses: jovicon/s3-upload-github-action@master
-        if: github.event.inputs.nightly-mode == 'true'
-        with:
-          args: --acl public-read
-        env:
-          FILE: ./release/
-          AWS_REGION: 'us-central-1'
-          S3_BUCKET: ${{ secrets.NIGHTLY_AWS_S3_BUCKET }}
-          S3_KEY: ${{ secrets.NIGHTLY_AWS_S3_KEY }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.NIGHTLY_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.NIGHTLY_AWS_SECRET_ACCESS_KEY }}
