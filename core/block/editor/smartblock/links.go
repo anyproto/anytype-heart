@@ -37,7 +37,7 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))
 }
 
-func (sb *smartBlock) injectMentionsDetails(s *state.State) {
+func (sb *smartBlock) injectMentions(s *state.State) {
 	mentions := objectlink.DependentObjectIDs(s, sb.Space(), objectlink.Flags{
 		Blocks:                   true,
 		Details:                  false,

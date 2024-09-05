@@ -1454,7 +1454,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	sb.injectLinksDetails(s)
-	sb.injectMentionsDetails(s)
+	sb.injectMentions(s)
 	sb.updateBackLinks(s)
 }
 
