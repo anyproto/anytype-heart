@@ -90,7 +90,7 @@ func (bs *basic) UpdateDetailsAndLastUsed(update func(current *types.Struct) (*t
 		if diff == nil || diff.Fields == nil {
 			return
 		}
-		for key, _ := range diff.Fields {
+		for key := range diff.Fields {
 			lastused.UpdateLastUsedDate(bs.Space(), bs.objectStore, domain.RelationKey(key))
 		}
 	}()
