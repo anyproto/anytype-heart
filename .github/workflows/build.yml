@@ -316,7 +316,7 @@ jobs:
       - name: Upload build artifacts to S3
         if: github.event.inputs.nightly-mode == 'true'
         run: |
-          aws s3 cp ./release/ s3://${{ secrets.NIGHTLY_AWS_S3_BUCKET }}/mw/
+          aws s3 cp ./release/ s3://${{ secrets.NIGHTLY_AWS_S3_BUCKET }}/mw/ --recursive --acl public-read
       # }}
 
   build_linux:
