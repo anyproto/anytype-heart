@@ -35,7 +35,7 @@ func (a *aclIndexCleaner) Name() (name string) {
 }
 
 func (a *aclIndexCleaner) Run(ctx context.Context) (err error) {
-	return nil
+	return a.indexer.RemoveAclIndexes(a.status.SpaceId())
 }
 
 func (a *aclIndexCleaner) Close(ctx context.Context) (err error) {

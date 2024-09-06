@@ -136,13 +136,6 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 			participantState := state.NewDoc(id, nil).(*state.State)
 			// Set object type here in order to derive value of Type relation in smartblock.Init
 			participantState.SetObjectTypeKey(bundle.TypeKeyParticipant)
-			records, err := s.objectStore.QueryByID([]string{id})
-			if err != nil {
-				return nil, err
-			}
-			if len(records) > 0 {
-				participantState.SetDetails(records[0].Details)
-			}
 			params := StaticSourceParams{
 				Id: domain.FullID{
 					ObjectID: id,
