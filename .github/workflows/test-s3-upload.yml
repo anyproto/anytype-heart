@@ -22,5 +22,5 @@ jobs:
 
       - name: Upload build artifacts to S3
         run: |
-					echo testbytest > ./testfile
+          echo testbytest > ./testfile
           aws s3 cp ./testfile s3://${{ secrets.NIGHTLY_AWS_S3_BUCKET }}/ --recursive --acl public-read
