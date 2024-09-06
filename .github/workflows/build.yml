@@ -40,7 +40,7 @@ jobs:
     steps:
       - name: validate agent
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "ARM64" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.perf-test }}" != '0' && "${{ github.event.inputs.run-on-runner }}" != "ARM64" ]]; then
             echo "Invalid runner"
             exit 1
           fi
@@ -145,7 +145,7 @@ jobs:
           RUN_COUNT=${{ github.event.inputs.perf-test }}
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             RUN_COUNT=10
-          fi          
+          fi
           cd cmd/perftester/
           CGO_ENABLED="1" go run main.go $RUN_COUNT
         env:
@@ -257,7 +257,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
           MAVEN_ARTIFACT_ID: 'anytype-heart-ios'
-          MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'    
+          MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'
       - name: Make java protos
         run: |
           make protos-java
