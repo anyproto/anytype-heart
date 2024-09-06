@@ -48,3 +48,10 @@ func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {
 func TimeToID(t time.Time) string {
 	return DatePrefix + t.Format("2006-01-02")
 }
+
+func DateIDToDayStart(id string) (time.Time, error) {
+	if !strings.HasPrefix(id, DatePrefix) {
+		return time.Time{}, fmt.Errorf("invalid id: date prefix not found")
+	}
+	return time.Parse("2006-01-02", strings.TrimPrefix(id, DatePrefix))
+}

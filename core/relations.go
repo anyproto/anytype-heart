@@ -80,7 +80,31 @@ func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb
 	return response(pb.RpcRelationListRemoveOptionResponseError_NULL, nil)
 }
 
-func (mw *Middleware) RelationOptions(cctx context.Context, request *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {
+func (mw *Middleware) RelationOptions(_ context.Context, _ *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {
 	// TODO implement me
 	panic("implement me")
+}
+
+func (mw *Middleware) RelationListWithValue(_ context.Context, req *pb.RpcRelationListWithValueRequest) *pb.RpcRelationListWithValueResponse {
+	response := func(keys []string, counters []int64, err error) *pb.RpcRelationListWithValueResponse {
+		m := &pb.RpcRelationListWithValueResponse{Error: &pb.RpcRelationListWithValueResponseError{Code: pb.RpcRelationListWithValueResponseError_NULL}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		} else {
+			m.RelationKeys = keys
+			m.Counters = counters
+		}
+		return m
+	}
+
+	var (
+		keys     []string
+		counters []int64
+	)
+
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		keys, counters, err = bs.ListRelationsWithValue(req.SpaceId, req.Value)
+		return
+	})
+	return response(keys, counters, err)
 }
