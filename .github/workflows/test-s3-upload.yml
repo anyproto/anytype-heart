@@ -13,7 +13,9 @@ jobs:
     steps:
       - name: Install AWS CLI
         run: |
-          #brew install awscli
+          if ! which aws; then
+            brew install awscli
+          fi
           aws --version  # check version AWS CLI
 
       - name: Configure AWS credentials
