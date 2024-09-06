@@ -304,7 +304,7 @@ jobs:
           args: --acl public-read
         env:
           FILE: ./release/
-          AWS_REGION: 'us-central-1'
+          AWS_REGION: 'eu-central-1'
           S3_BUCKET: ${{ secrets.NIGHTLY_AWS_S3_BUCKET }}
           S3_KEY: ${{ secrets.NIGHTLY_AWS_S3_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.NIGHTLY_AWS_ACCESS_KEY_ID }}
