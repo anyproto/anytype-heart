@@ -118,13 +118,12 @@ func makeFilterByCondition(spaceID string, rawFilter *model.BlockContentDataview
 		}
 	}
 
-	// TODO: make normal protocol!!!
-	if rawFilter.RelationProperty != "" && strings.HasPrefix(rawFilter.RelationProperty, "$") {
-		return Filter2ValuesComp{
-			Key1: rawFilter.RelationKey,
-			Key2: strings.TrimPrefix(rawFilter.RelationProperty, "$"),
-			Cond: rawFilter.Condition,
-		}, nil
+	if str := pbtypes.GetStructValue(rawFilter.Value); str != nil {
+		filter, err := makeComplexFilter(rawFilter, str)
+		if err == nil {
+			return filter, nil
+		}
+		log.Errorf("failed to build complex filter: %v", err)
 	}
 
 	switch rawFilter.Condition {
@@ -212,6 +211,19 @@ func makeFilterByCondition(spaceID string, rawFilter *model.BlockContentDataview
 	default:
 		return nil, fmt.Errorf("unexpected filter cond: %v", rawFilter.Condition)
 	}
+}
+
+func makeComplexFilter(rawFilter *model.BlockContentDataviewFilter, s *types.Struct) (Filter, error) {
+	filterType := pbtypes.GetString(s, bundle.RelationKeyType.String())
+	switch filterType {
+	case "valueFromRelation":
+		return Filter2ValuesComp{
+			Key1: rawFilter.RelationKey,
+			Key2: pbtypes.GetString(s, bundle.RelationKeyRelationKey.String()),
+			Cond: rawFilter.Condition,
+		}, nil
+	}
+	return nil, fmt.Errorf("unsupported type of complex filter: %s", filterType)
 }
 
 type WithNestedFilter interface {
