@@ -897,7 +897,7 @@ func (i Filter2ValuesComp) AnystoreFilter() query.Filter {
 	case model.BlockContentDataviewFilter_NotEqual:
 		op = query.CompOpNe
 	}
-	return Anystore2ValuesComp{
+	return &Anystore2ValuesComp{
 		Path1:  []string{i.Key1},
 		Path2:  []string{i.Key2},
 		CompOp: op,
@@ -910,7 +910,7 @@ type Anystore2ValuesComp struct {
 	buf1, buf2   []byte
 }
 
-func (e Anystore2ValuesComp) Ok(v *fastjson.Value) bool {
+func (e *Anystore2ValuesComp) Ok(v *fastjson.Value) bool {
 	value1 := v.Get(e.Path1...)
 	value2 := v.Get(e.Path2...)
 	comp := bytes.Compare(encoding.AppendJSONValue(e.buf1[:0], value1), encoding.AppendJSONValue(e.buf2[:0], value2))
@@ -932,11 +932,11 @@ func (e Anystore2ValuesComp) Ok(v *fastjson.Value) bool {
 	}
 }
 
-func (e Anystore2ValuesComp) IndexBounds(_ string, bs query.Bounds) (bounds query.Bounds) {
+func (e *Anystore2ValuesComp) IndexBounds(_ string, bs query.Bounds) (bounds query.Bounds) {
 	return bs
 }
 
-func (e Anystore2ValuesComp) String() string {
+func (e *Anystore2ValuesComp) String() string {
 	var comp string
 	switch e.CompOp {
 	case query.CompOpEq:
