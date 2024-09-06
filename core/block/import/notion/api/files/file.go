@@ -142,6 +142,7 @@ func (f *file) downloadFile(ctx context.Context) error {
 	case <-progressCh:
 		return fmt.Errorf("failed to download file, no progress")
 	default:
+		f.Close()
 		return os.Rename(f.File.Name(), f.localPath)
 	}
 }
