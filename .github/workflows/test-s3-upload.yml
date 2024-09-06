@@ -24,3 +24,4 @@ jobs:
         run: |
           echo testbytest > ./testfile
           aws s3 cp ./testfile s3://${{ secrets.NIGHTLY_AWS_S3_BUCKET }}/ --recursive --acl public-read
+
