@@ -123,7 +123,10 @@ func generateFiltersGetter(value *types.Value) (filtersGetter, error) {
 
 	switch t := value.Kind.(type) {
 	case *types.Value_StringValue:
-		sbt, _ := typeprovider.SmartblockTypeFromID(t.StringValue)
+		sbt, err := typeprovider.SmartblockTypeFromID(t.StringValue)
+		if err != nil {
+			log.Errorf("failed to determine smartblock type: %v", err)
+		}
 		if sbt != coresb.SmartBlockTypeDate {
 			return func(spaceId string, rel *model.Relation) ([]*model.BlockContentDataviewFilter, error) {
 				if !slices.Contains(stringFormats, rel.Format) {
