@@ -2,6 +2,9 @@ name: Build and Upload to S3
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - nightly-ci-test
 
 jobs:
   build:
