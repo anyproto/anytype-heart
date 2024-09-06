@@ -280,16 +280,16 @@ jobs:
           gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf json
           mv android_lib_${VERSION}.tar.gz .release/
       - name: Publish android lib to maven
+        if: github.event.inputs.nightly-mode == 'false'
         run: |
           gradle publish
-        if: github.event.inputs.nightly-mode == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
           MAVEN_ARTIFACT_ID: 'anytype-heart-android'
           MAVEN_ARTIFACT_NAME: 'lib.aar'
       - name: Release
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.event.inputs.nightly-mode == 'false'
         uses: softprops/action-gh-release@v1
         with:
           prerelease: ${{ contains(github.ref, '-rc') }}
@@ -297,18 +297,28 @@ jobs:
           files: '.release/*'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload file to bucket
-        uses: jovicon/s3-upload-github-action@master
+
+      # upload release artifacts to s3 {{
+      - name: Install AWS CLI
         if: github.event.inputs.nightly-mode == 'true'
+        run: |
+          if ! which aws; then
+            brew install awscli
+          fi
+          aws --version
+      - name: Configure AWS credentials
+        if: github.event.inputs.nightly-mode == 'true'
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          args: --acl public-read
-        env:
-          FILE: ./release/
-          AWS_REGION: 'eu-central-1'
-          S3_BUCKET: ${{ secrets.NIGHTLY_AWS_S3_BUCKET }}
-          S3_KEY: ${{ secrets.NIGHTLY_AWS_S3_KEY }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.NIGHTLY_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.NIGHTLY_AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.NIGHTLY_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.NIGHTLY_AWS_SECRET_ACCESS_KEY }}
+          aws-region: 'eu-central-1'
+      - name: Upload build artifacts to S3
+        if: github.event.inputs.nightly-mode == 'true'
+        run: |
+          aws s3 cp ./release/ s3://${{ secrets.NIGHTLY_AWS_S3_BUCKET }}/mw/
+      # }}
+
   build_linux:
     if: github.event_name == 'push'
     runs-on: ubuntu-22.04
