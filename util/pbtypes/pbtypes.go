@@ -276,16 +276,6 @@ func GetStringListValue(v *types.Value) []string {
 	return nil
 }
 
-func GetStructValue(v *types.Value) *types.Struct {
-	if v == nil {
-		return nil
-	}
-	if str, ok := v.Kind.(*types.Value_StructValue); ok {
-		return str.StructValue
-	}
-	return nil
-}
-
 func GetList(v *types.Value) []*types.Value {
 	if v == nil {
 		return nil

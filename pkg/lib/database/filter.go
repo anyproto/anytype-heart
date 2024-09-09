@@ -118,7 +118,7 @@ func makeFilterByCondition(spaceID string, rawFilter *model.BlockContentDataview
 		}
 	}
 
-	if str := pbtypes.GetStructValue(rawFilter.Value); str != nil {
+	if str := rawFilter.Value.GetStructValue(); str != nil {
 		filter, err := makeComplexFilter(rawFilter, str)
 		if err == nil {
 			return filter, nil
@@ -898,22 +898,24 @@ func (i Filter2ValuesComp) AnystoreFilter() query.Filter {
 		op = query.CompOpNe
 	}
 	return &Anystore2ValuesComp{
-		Path1:  []string{i.Key1},
-		Path2:  []string{i.Key2},
-		CompOp: op,
+		RelationKey1: i.Key1,
+		RelationKey2: i.Key2,
+		CompOp:       op,
 	}
 }
 
 type Anystore2ValuesComp struct {
-	Path1, Path2 []string
-	CompOp       query.CompOp
-	buf1, buf2   []byte
+	RelationKey1, RelationKey2 string
+	CompOp                     query.CompOp
+	buf1, buf2                 []byte
 }
 
 func (e *Anystore2ValuesComp) Ok(v *fastjson.Value) bool {
-	value1 := v.Get(e.Path1...)
-	value2 := v.Get(e.Path2...)
-	comp := bytes.Compare(encoding.AppendJSONValue(e.buf1[:0], value1), encoding.AppendJSONValue(e.buf2[:0], value2))
+	value1 := v.Get(e.RelationKey1)
+	value2 := v.Get(e.RelationKey2)
+	e.buf1 = encoding.AppendJSONValue(e.buf1[:0], value1)
+	e.buf2 = encoding.AppendJSONValue(e.buf2[:0], value2)
+	comp := bytes.Compare(e.buf1, e.buf2)
 	switch e.CompOp {
 	case query.CompOpEq:
 		return comp == 0
@@ -954,5 +956,5 @@ func (e *Anystore2ValuesComp) String() string {
 	default:
 		panic(fmt.Errorf("unexpected comp op: %v", e.CompOp))
 	}
-	return fmt.Sprintf(`{"$comp_values": {"%s": ["%s", "%s"]}}`, comp, strings.Join(e.Path1, "."), strings.Join(e.Path2, "."))
+	return fmt.Sprintf(`{"$comp_values": {"%s": ["%s", "%s"]}}`, comp, e.RelationKey1, e.RelationKey2)
 }
