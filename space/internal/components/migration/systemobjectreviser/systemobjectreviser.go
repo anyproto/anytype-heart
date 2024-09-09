@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/gogo/protobuf/types"
@@ -20,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type detailsSettable interface {
@@ -100,6 +102,16 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 		return false, nil
 	}
 	details := buildDiffDetails(marketObject, localObject)
+
+	recRelsDetail, err := checkRecommendedRelations(ctx, space, marketObject, localObject)
+	if err != nil {
+		log.Error("failed to check recommended relations", zap.Error(err))
+	}
+
+	if recRelsDetail != nil {
+		details = append(details, recRelsDetail)
+	}
+
 	if len(details) != 0 {
 		log.Debug("updating system object", zap.String("source", source), zap.String("space", space.Id()))
 		if err := space.DoCtx(ctx, pbtypes.GetString(localObject, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
@@ -149,4 +161,40 @@ func buildDiffDetails(origin, current *types.Struct) (details []*model.Detail) {
 		details = append(details, &model.Detail{Key: key, Value: value})
 	}
 	return
+}
+
+func checkRecommendedRelations(ctx context.Context, space dependencies.SpaceWithCtx, origin, current *types.Struct) (newValue *model.Detail, err error) {
+	localIds := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
+	bundledIds := pbtypes.GetStringList(origin, bundle.RelationKeyRecommendedRelations.String())
+
+	newIds := make([]string, 0, len(bundledIds))
+	for _, bundledId := range bundledIds {
+		if !strings.HasPrefix(bundledId, addr.BundledRelationURLPrefix) {
+			return nil, fmt.Errorf("invalid recommended bundled relation id: %s. %s prefix is expected",
+				bundledId, addr.BundledRelationURLPrefix)
+		}
+		key := strings.TrimPrefix(bundledId, addr.BundledRelationURLPrefix)
+		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, key)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: we derive ids from space, but the very objects could be not installed to space
+		id, err := space.DeriveObjectID(ctx, uk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to derive recommended relation with key '%s': %w", key, err)
+		}
+
+		newIds = append(newIds, id)
+	}
+
+	_, added := slice.DifferenceRemovedAdded(localIds, newIds)
+	if len(added) == 0 {
+		return nil, nil
+	}
+
+	return &model.Detail{
+		Key:   bundle.RelationKeyRecommendedRelations.String(),
+		Value: pbtypes.StringList(append(localIds, added...)),
+	}, nil
 }
