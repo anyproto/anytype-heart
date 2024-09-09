@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "031657c702d56fbad494e48152066b3e7e659d9d95dc67e5ef31378f2c0fd81e"
+const RelationChecksum = "68778695c5d49dd1ffbab91e13bd9769d80fd89de3a77902cec1c5066e5495a8"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -141,6 +141,7 @@ const (
 	RelationKeySyncStatus                domain.RelationKey = "syncStatus"
 	RelationKeySyncDate                  domain.RelationKey = "syncDate"
 	RelationKeySyncError                 domain.RelationKey = "syncError"
+	RelationKeyMentions                  domain.RelationKey = "mentions"
 )
 
 var (
@@ -1078,6 +1079,19 @@ var (
 			Key:              "mediaArtistURL",
 			MaxCount:         1,
 			Name:             "Media Artist URL",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyMentions: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Objects that are mentioned in blocks of this object",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brmentions",
+			Key:              "mentions",
+			Name:             "Mentions",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
