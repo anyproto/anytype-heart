@@ -9,7 +9,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -103,23 +102,30 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	sb.Unlock()
 	id = sb.Id()
 
-	if pbtypes.GetInt64(newDetails, bundle.RelationKeyLastUsedDate.String()) == 0 {
-		uk := pbtypes.GetString(newDetails, bundle.RelationKeyUniqueKey.String())
-		switch sbType {
-		case coresb.SmartBlockTypeObjectType:
-			lastused.UpdateLastUsedDate(spc, s.objectStore, domain.TypeKey(strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)))
-		case coresb.SmartBlockTypeRelation:
-			lastused.UpdateLastUsedDate(spc, s.objectStore, domain.RelationKey(strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)))
-		}
-	} else if pbtypes.GetInt64(newDetails, bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
-		lastused.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys[0])
-	}
+	s.updateLastUsedDate(spc.Id(), sbType, newDetails, objectTypeKeys[0])
 
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
 	ev.ObjectId = id
 	metrics.Service.Send(ev)
 	return id, newDetails, nil
+}
+
+func (s *service) updateLastUsedDate(spaceId string, sbType coresb.SmartBlockType, details *types.Struct, typeKey domain.TypeKey) {
+	if pbtypes.GetInt64(details, bundle.RelationKeyLastUsedDate.String()) != 0 {
+		return
+	}
+	uk := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
+	switch sbType {
+	case coresb.SmartBlockTypeObjectType:
+		s.lastUsedUpdater.UpdateLastUsedDate(spaceId, domain.TypeKey(strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)))
+	case coresb.SmartBlockTypeRelation:
+		s.lastUsedUpdater.UpdateLastUsedDate(spaceId, domain.RelationKey(strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)))
+	default:
+		if pbtypes.GetInt64(details, bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
+			s.lastUsedUpdater.UpdateLastUsedDate(spaceId, typeKey)
+		}
+	}
 }
 
 func objectTypeKeysToSmartBlockType(typeKeys []domain.TypeKey) coresb.SmartBlockType {

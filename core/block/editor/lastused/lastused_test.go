@@ -1,6 +1,7 @@
 package lastused
 
 import (
+	"context"
 	"math/rand"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -60,6 +62,8 @@ func TestSetLastUsedDateForInitialType(t *testing.T) {
 func TestUpdateLastUsedDate(t *testing.T) {
 	const spaceId = "space"
 
+	ts := time.Now().Unix()
+
 	isLastUsedDateRecent := func(details *types.Struct, deltaSeconds int64) bool {
 		return pbtypes.GetInt64(details, bundle.RelationKeyLastUsedDate.String())+deltaSeconds > time.Now().Unix()
 	}
@@ -88,10 +92,12 @@ func TestUpdateLastUsedDate(t *testing.T) {
 		},
 	})
 
-	getSpace := func() smartblock.Space {
+	u := updater{store: store}
+
+	getSpace := func() clientspace.Space {
 		spc := mock_clientspace.NewMockSpace(t)
 		spc.EXPECT().Id().Return(spaceId)
-		spc.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, apply func(smartblock.SmartBlock) error) error {
+		spc.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, id string, apply func(smartblock.SmartBlock) error) error {
 			sb := smarttest.New(id)
 			err := apply(sb)
 			require.NoError(t, err)
@@ -105,23 +111,23 @@ func TestUpdateLastUsedDate(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		key      Key
-		getSpace func() smartblock.Space
+		getSpace func() clientspace.Space
 	}{
 		{"built-in relation", bundle.RelationKeyCamera, getSpace},
 		{"built-in type", bundle.TypeKeyDiaryEntry, getSpace},
 		{"custom relation", domain.RelationKey("custom"), getSpace},
-		{"option", domain.TypeKey("opt-done"), func() smartblock.Space {
+		{"option", domain.TypeKey("opt-done"), func() clientspace.Space {
 			spc := mock_clientspace.NewMockSpace(t)
 			return spc
 		}},
-		{"type that is not in store", bundle.TypeKeyAudio, func() smartblock.Space {
+		{"type that is not in store", bundle.TypeKeyAudio, func() clientspace.Space {
 			spc := mock_clientspace.NewMockSpace(t)
 			spc.EXPECT().Id().Return(spaceId)
 			return spc
 		}},
 	} {
 		t.Run("update lastUsedDate of "+tc.name, func(t *testing.T) {
-			UpdateLastUsedDate(tc.getSpace(), store, tc.key)
+			u.updateLastUsedDate(tc.getSpace(), tc.key, ts)
 		})
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/maps"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -43,12 +42,9 @@ func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*mod
 	if err != nil {
 		return err
 	}
-
-	go func() {
-		for _, key := range keys {
-			lastused.UpdateLastUsedDate(bs.Space(), bs.objectStore, key)
-		}
-	}()
+	for _, key := range keys {
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), key)
+	}
 	return nil
 }
 
@@ -85,17 +81,15 @@ func (bs *basic) UpdateDetailsAndLastUsed(update func(current *types.Struct) (*t
 		return err
 	}
 
-	go func() {
-		diff := pbtypes.StructDiff(oldDetails, newDetails)
-		if diff == nil || diff.Fields == nil {
-			return
-		}
-		for key := range diff.Fields {
-			lastused.UpdateLastUsedDate(bs.Space(), bs.objectStore, domain.RelationKey(key))
-		}
-	}()
+	diff := pbtypes.StructDiff(oldDetails, newDetails)
+	if diff == nil || diff.Fields == nil {
+		return nil
+	}
 
-	return err
+	for key := range diff.Fields {
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), domain.RelationKey(key))
+	}
+	return nil
 }
 
 func (bs *basic) updateDetails(update func(current *types.Struct) (*types.Struct, error)) (oldDetails, newDetails *types.Struct, err error) {
@@ -124,10 +118,10 @@ func (bs *basic) collectDetailUpdates(details []*model.Detail, s *state.State) (
 	updates := make([]*detailUpdate, 0, len(details))
 	keys := make([]domain.RelationKey, 0, len(details))
 	for _, detail := range details {
-		update, key, err := bs.createDetailUpdate(s, detail)
+		update, err := bs.createDetailUpdate(s, detail)
 		if err == nil {
 			updates = append(updates, update)
-			keys = append(keys, key)
+			keys = append(keys, domain.RelationKey(update.key))
 		} else {
 			log.Errorf("can't set detail %s: %s", detail.Key, err)
 		}
@@ -152,25 +146,25 @@ func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *type
 	return newDetails
 }
 
-func (bs *basic) createDetailUpdate(st *state.State, detail *model.Detail) (*detailUpdate, domain.RelationKey, error) {
+func (bs *basic) createDetailUpdate(st *state.State, detail *model.Detail) (*detailUpdate, error) {
 	if detail.Value != nil {
 		if err := pbtypes.ValidateValue(detail.Value); err != nil {
-			return nil, "", fmt.Errorf("detail %s validation error: %w", detail.Key, err)
+			return nil, fmt.Errorf("detail %s validation error: %w", detail.Key, err)
 		}
 		if err := bs.setDetailSpecialCases(st, detail); err != nil {
-			return nil, "", fmt.Errorf("special case: %w", err)
+			return nil, fmt.Errorf("special case: %w", err)
 		}
 		if err := bs.addRelationLink(st, detail.Key); err != nil {
-			return nil, "", err
+			return nil, err
 		}
 		if err := bs.validateDetailFormat(bs.SpaceID(), detail.Key, detail.Value); err != nil {
-			return nil, "", fmt.Errorf("failed to validate relation: %w", err)
+			return nil, fmt.Errorf("failed to validate relation: %w", err)
 		}
 	}
 	return &detailUpdate{
 		key:   detail.Key,
 		value: detail.Value,
-	}, domain.RelationKey(detail.Key), nil
+	}, nil
 }
 
 func (bs *basic) validateDetailFormat(spaceID string, key string, v *types.Value) error {
@@ -392,7 +386,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 	removeInternalFlags(s)
 
 	if pbtypes.GetInt64(bs.CombinedDetails(), bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
-		lastused.UpdateLastUsedDate(bs.Space(), bs.objectStore, objectTypeKeys[0])
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), objectTypeKeys[0])
 	}
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
