@@ -47,7 +47,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	})
 
 	t.Run("ordinary type", func(t *testing.T) {
-		assert.NoError(t, rs.GetRestrictions(givenObjectType(bundle.TypeKeyDailyPlan)).Object.Check(
+		assert.NoError(t, rs.GetRestrictions(givenObjectType(bundle.TypeKeyDiaryEntry)).Object.Check(
 			model.Restrictions_Details,
 			model.Restrictions_Delete,
 			model.Restrictions_CreateObjectOfThisType,
@@ -55,14 +55,14 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	})
 
 	t.Run("ordinary type has basic restrictions", func(t *testing.T) {
-		assert.ErrorIs(t, rs.GetRestrictions(givenObjectType(bundle.TypeKeyDailyPlan)).Object.Check(
+		assert.ErrorIs(t, rs.GetRestrictions(givenObjectType(bundle.TypeKeyDiaryEntry)).Object.Check(
 			model.Restrictions_Blocks,
 			model.Restrictions_LayoutChange,
 		), ErrRestricted)
 	})
 
 	t.Run("ordinary relation has basic restrictions", func(t *testing.T) {
-		assert.ErrorIs(t, rs.GetRestrictions(givenObjectType(bundle.TypeKeyDailyPlan)).Object.Check(
+		assert.ErrorIs(t, rs.GetRestrictions(givenObjectType(bundle.TypeKeyDiaryEntry)).Object.Check(
 			model.Restrictions_TypeChange,
 		), ErrRestricted)
 	})
@@ -73,7 +73,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	})
 
 	t.Run("ordinary relation", func(t *testing.T) {
-		assert.NoError(t, rs.GetRestrictions(givenRelation(bundle.RelationKeyImdbRating)).Object.Check(
+		assert.NoError(t, rs.GetRestrictions(givenRelation(bundle.RelationKeyAudioLyrics)).Object.Check(
 			model.Restrictions_Delete,
 			model.Restrictions_Relations,
 			model.Restrictions_Details,

@@ -144,7 +144,8 @@ type dsObjectStore struct {
 	virtualSpaces    anystore.Collection
 	pendingDetails   anystore.Collection
 
-	arenaPool *fastjson.ArenaPool
+	arenaPool          *fastjson.ArenaPool
+	collatorBufferPool *collatorBufferPool
 
 	fts ftsearch.FTSearch
 
@@ -181,6 +182,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 		s.fts = fts.(ftsearch.FTSearch)
 	}
 	s.arenaPool = &fastjson.ArenaPool{}
+	s.collatorBufferPool = newCollatorBufferPool()
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
 	s.oldStore = app.MustComponent[oldstore.Service](a)
 
