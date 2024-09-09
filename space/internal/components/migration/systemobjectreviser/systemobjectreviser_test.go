@@ -236,7 +236,7 @@ func TestReviseSystemObject(t *testing.T) {
 		}).Maybe()
 
 		// when
-		marketObjects["_otpage"].Fields["recommendedRelations"] = pbtypes.StringList([]string{"_brname", "_brtag"})
+		marketObjects["_otpage"].Fields["recommendedRelations"] = pbtypes.StringList([]string{"_brname", "_brorigin"})
 		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
 
 		// then
@@ -251,6 +251,28 @@ func TestReviseSystemObject(t *testing.T) {
 			bundle.RelationKeySourceObject.String():         pbtypes.String("_otpage"),
 			bundle.RelationKeyUniqueKey.String():            pbtypes.String("ot-page"),
 			bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList([]string{"rel-name", "rel-tag"}),
+		}}
+		space := mock_space.NewMockSpace(t)
+		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return addr.ObjectTypeKeyToIdPrefix + key.InternalKey(), nil
+		}).Maybe()
+
+		// when
+		marketObjects["_otpage"].Fields["recommendedRelations"] = pbtypes.StringList([]string{"_brname", "_brtag"})
+		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
+
+		// then
+		assert.NoError(t, err)
+		assert.False(t, toRevise)
+	})
+
+	t.Run("recommendedRelations list is updated by not system relations", func(t *testing.T) {
+		// given
+		rel := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyRevision.String():             pbtypes.Int64(2),
+			bundle.RelationKeySourceObject.String():         pbtypes.String("_otpage"),
+			bundle.RelationKeyUniqueKey.String():            pbtypes.String("ot-page"),
+			bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList([]string{"rel-name"}),
 		}}
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {

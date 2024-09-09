@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -179,7 +180,12 @@ func checkRecommendedRelations(ctx context.Context, space dependencies.SpaceWith
 			return nil, err
 		}
 
-		// TODO: we derive ids from space, but the very objects could be not installed to space
+		// we should add only system relations to object types, because non-system could be not installed to space yet
+		if !lo.Contains(bundle.SystemRelations, domain.RelationKey(uk.InternalKey())) {
+			log.Debug("recommended relation is not system, so we are not adding it to the type object", zap.String("relation key", key))
+			continue
+		}
+
 		id, err := space.DeriveObjectID(ctx, uk)
 		if err != nil {
 			return nil, fmt.Errorf("failed to derive recommended relation with key '%s': %w", key, err)
