@@ -312,7 +312,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.NIGHTLY_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.NIGHTLY_AWS_SECRET_ACCESS_KEY }}
-          aws-region: 'eu-central-1'
+          aws-region: ${{ secrets.NIGHTLY_AWS_REGION }}
       - name: Upload build artifacts to S3
         if: github.event.inputs.nightly-mode == 'true'
         run: |
