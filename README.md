@@ -11,7 +11,7 @@ Middleware library for Anytype, distributed as part of the Anytype clients.
 - [Project workflows](docs/Flow.md)
 
 ### CLI tools
-- [Usecase generator](docs/UsecaseGenerator.md)
+- [Usecase validator](docs/UsecaseValidator.md)
 - [Export Archive unpacker](docs/ExportArchiveUnpacker.md)
 
 ## Contribution
