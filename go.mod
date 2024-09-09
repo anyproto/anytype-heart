@@ -1,10 +1,11 @@
 module github.com/anyproto/anytype-heart
 
 go 1.22
+toolchain go1.23.1
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
-	github.com/PuerkitoBio/goquery v1.9.2
+	github.com/PuerkitoBio/goquery v1.10.0
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.0.2-0.20240812125400-7f6f6d062ebf
