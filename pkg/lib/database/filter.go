@@ -215,8 +215,8 @@ func makeFilterByCondition(spaceID string, rawFilter *model.BlockContentDataview
 
 func makeComplexFilter(rawFilter *model.BlockContentDataviewFilter, s *types.Struct) (Filter, error) {
 	filterType := pbtypes.GetString(s, bundle.RelationKeyType.String())
-	switch filterType {
-	case "valueFromRelation":
+	// TODO: rewrite to switch statement once we have more filter types
+	if filterType == "valueFromRelation" {
 		return Filter2ValuesComp{
 			Key1: rawFilter.RelationKey,
 			Key2: pbtypes.GetString(s, bundle.RelationKeyRelationKey.String()),
