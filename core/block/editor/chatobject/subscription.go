@@ -1,6 +1,8 @@
 package chatobject
 
 import (
+	"slices"
+
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -39,11 +41,12 @@ func (s *subscription) flush() {
 	if len(s.eventsBuffer) == 0 {
 		return
 	}
+	messages := slices.Clone(s.eventsBuffer)
 	s.eventSender.Broadcast(&pb.Event{
 		ContextId: s.chatId,
-		Messages:  s.eventsBuffer,
+		Messages:  messages,
 	})
-	s.eventsBuffer = nil
+	s.eventsBuffer = s.eventsBuffer[:0]
 }
 
 func (s *subscription) add(message *model.ChatMessage) {

@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -43,6 +44,7 @@ type fixture struct {
 	source             *mock_source.MockStore
 	accountServiceStub *accountServiceStub
 	sourceCreator      string
+	events             []*pb.EventMessage
 }
 
 const testCreator = "accountId1"
@@ -56,7 +58,6 @@ func newFixture(t *testing.T) *fixture {
 	accountService := &accountServiceStub{accountId: testCreator}
 
 	eventSender := mock_event.NewMockSender(t)
-	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	sb := smarttest.New("chatId1")
 
@@ -67,6 +68,12 @@ func newFixture(t *testing.T) *fixture {
 		accountServiceStub: accountService,
 		sourceCreator:      testCreator,
 	}
+	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(event *pb.Event) {
+		for _, msg := range event.Messages {
+			fx.events = append(fx.events, msg)
+		}
+	}).Return().Maybe()
+
 	source := mock_source.NewMockStore(t)
 	source.EXPECT().ReadStoreDoc(ctx, mock.Anything, mock.Anything).Return(nil)
 	source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(fx.applyToStore).Maybe()
@@ -275,7 +282,12 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 	if err != nil {
 		return "", errors.Join(tx.Rollback(), fmt.Errorf("apply change set: %w", err))
 	}
-	return changeId, tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return "", err
+	}
+	fx.onUpdate()
+	return changeId, nil
 }
 
 func givenMessage() *model.ChatMessage {
