@@ -302,7 +302,7 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 	}
 	for _, id := range ids {
 		if domain.IsFileId(id) {
-			err = i.store.DeleteDetails(id)
+			err = i.store.DeleteDetails(i.runCtx, id)
 			if err != nil {
 				log.Errorf("delete old file %s: %s", id, err)
 			}
@@ -382,7 +382,7 @@ func (i *indexer) removeDetails(spaceId string) error {
 		log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
 	}
 	for _, id := range ids {
-		if err = i.store.DeleteDetails(id); err != nil {
+		if err = i.store.DeleteDetails(i.runCtx, id); err != nil {
 			log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
 		}
 	}
@@ -412,7 +412,7 @@ func (i *indexer) removeOldObjects() (err error) {
 		return
 	}
 
-	err = i.store.DeleteDetails(ids...)
+	err = i.store.DeleteDetails(i.runCtx, ids...)
 	log.With(zap.Int("count", len(ids)), zap.Error(err)).Warnf("removeOldObjects")
 	return err
 }
@@ -484,7 +484,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
 		}
 
-		lastHash, err := i.store.GetLastIndexedHeadsHash(tid)
+		lastHash, err := i.store.GetLastIndexedHeadsHash(ctx, tid)
 		if err != nil {
 			logErr(err)
 			continue

@@ -72,8 +72,8 @@ func (s *dsObjectStore) migrateLocalDetails(objectId string, details *types.Stru
 	return true
 }
 
-func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
-	added, removed, err := s.updateObjectLinks(s.componentCtx, id, links)
+func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links []string) error {
+	added, removed, err := s.updateObjectLinks(ctx, id, links)
 	if err != nil {
 		return err
 	}
