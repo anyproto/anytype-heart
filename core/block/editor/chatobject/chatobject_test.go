@@ -81,8 +81,6 @@ func newFixture(t *testing.T) *fixture {
 	return fx
 }
 
-// TODO Test ChatHandler: validate in BeforeCreate that creator from change equals to creator from message
-
 func TestAddMessage(t *testing.T) {
 	ctx := context.Background()
 	fx := newFixture(t)
@@ -105,14 +103,32 @@ func TestAddMessage(t *testing.T) {
 	assertMessagesEqual(t, want, got)
 }
 
-func assertMessagesEqual(t *testing.T, want, got *model.ChatMessage) {
-	// Cleanup order id
-	assert.NotEmpty(t, got.OrderId)
-	got.OrderId = ""
-	// Cleanup timestamp
-	assert.NotZero(t, got.CreatedAt)
-	got.CreatedAt = 0
-	assert.Equal(t, want, got)
+func TestGetMessages(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+
+	for i := 0; i < 10; i++ {
+		inputMessage := givenMessage()
+		inputMessage.Message.Text = fmt.Sprintf("text %d", i+1)
+		messageId, err := fx.AddMessage(ctx, inputMessage)
+		require.NoError(t, err)
+		assert.NotEmpty(t, messageId)
+	}
+
+	messages, err := fx.GetMessages(ctx, "", 5)
+	require.NoError(t, err)
+	wantTexts := []string{"text 6", "text 7", "text 8", "text 9", "text 10"}
+	for i, msg := range messages {
+		assert.Equal(t, wantTexts[i], msg.Message.Text)
+	}
+
+	lastOrderId := messages[0].OrderId
+	messages, err = fx.GetMessages(ctx, lastOrderId, 10)
+	require.NoError(t, err)
+	wantTexts = []string{"text 1", "text 2", "text 3", "text 4", "text 5"}
+	for i, msg := range messages {
+		assert.Equal(t, wantTexts[i], msg.Message.Text)
+	}
 }
 
 func TestEditMessage(t *testing.T) {
@@ -310,4 +326,14 @@ func givenMessage() *model.ChatMessage {
 			},
 		},
 	}
+}
+
+func assertMessagesEqual(t *testing.T, want, got *model.ChatMessage) {
+	// Cleanup order id
+	assert.NotEmpty(t, got.OrderId)
+	got.OrderId = ""
+	// Cleanup timestamp
+	assert.NotZero(t, got.CreatedAt)
+	got.CreatedAt = 0
+	assert.Equal(t, want, got)
 }

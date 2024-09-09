@@ -108,20 +108,24 @@ func (s *storeObject) GetMessages(ctx context.Context, beforeOrderId string, lim
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
+	var msgs []*model.ChatMessage
 	if beforeOrderId != "" {
 		qry := coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, beforeOrderId)}).Sort(descOrder).Limit(uint(limit))
-		msgs, err := s.queryMessages(ctx, qry)
+		msgs, err = s.queryMessages(ctx, qry)
 		if err != nil {
 			return nil, fmt.Errorf("query messages: %w", err)
 		}
-		sort.Slice(msgs, func(i, j int) bool {
-			return msgs[i].OrderId < msgs[j].OrderId
-		})
-		return msgs, nil
 	} else {
 		qry := coll.Find(nil).Sort(descOrder).Limit(uint(limit))
-		return s.queryMessages(ctx, qry)
+		msgs, err = s.queryMessages(ctx, qry)
+		if err != nil {
+			return nil, fmt.Errorf("query messages: %w", err)
+		}
 	}
+	sort.Slice(msgs, func(i, j int) bool {
+		return msgs[i].OrderId < msgs[j].OrderId
+	})
+	return msgs, nil
 }
 
 func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) ([]*model.ChatMessage, error) {
