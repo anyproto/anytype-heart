@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/gogo/protobuf/types"
 
@@ -361,4 +362,34 @@ func StructDiffIntoEventsWithSubIds(contextId string, diff *types.Struct, keys [
 	}
 
 	return
+}
+
+func sortEventMessages(msgs []simple.EventMessage) {
+	eventGroup := func(msg simple.EventMessage) int {
+		switch msg.Msg.Value.(type) {
+		case *pb.EventMessageValueOfBlockAdd:
+			return 0
+		case *pb.EventMessageValueOfBlockDelete:
+			return 1
+		case *pb.EventMessageValueOfBlockSetChildrenIds:
+			return 2
+		case *pb.EventMessageValueOfObjectDetailsSet:
+			return 3
+		case *pb.EventMessageValueOfObjectDetailsAmend:
+			return 4
+		case *pb.EventMessageValueOfObjectDetailsUnset:
+			return 5
+		case *pb.EventMessageValueOfBlockDataviewViewSet:
+			return 6
+		case *pb.EventMessageValueOfBlockDataviewViewDelete:
+			return 7
+		default:
+			return 1000
+		}
+	}
+
+	sort.SliceStable(msgs, func(i, j int) bool {
+		a, b := msgs[i], msgs[j]
+		return eventGroup(a) < eventGroup(b)
+	})
 }
