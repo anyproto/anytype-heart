@@ -171,6 +171,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
       - name: Make JS protos
+        if: github.event_name == 'push' || github.event.inputs.nightly-mode == 'true'
         run: |
           make protos-js
           mv dist/js/pb protobuf
@@ -178,7 +179,6 @@ jobs:
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
-        if: github.event_name == 'push'
       - name: Add system relations/types jsons
         run: |
           mkdir -p json/
@@ -187,6 +187,7 @@ jobs:
           cp pkg/lib/bundle/internalRelations.json ./json
           cp pkg/lib/bundle/internalTypes.json ./json
       - name: Upload protobuf artifact for linux build
+        if: github.event_name == 'push' || github.event.inputs.nightly-mode == 'true'
         uses: actions/upload-artifact@v2
         with:
           name: libs
@@ -194,8 +195,8 @@ jobs:
             protobuf
           if-no-files-found: error
           retention-days: 1
-        if: github.event_name == 'push'
       - name: Pack server win
+        if: github.event_name == 'push' || github.event.inputs.nightly-mode == 'true'
         run: |
           declare -a arr=("windows-amd64")
           for i in "${arr[@]}"
@@ -205,8 +206,8 @@ jobs:
           zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf json
           mv js_${VERSION}_${OSARCH}.zip .release/
           done
-        if: github.event_name == 'push'
       - name: Pack server osx
+        if: github.event_name == 'push' || github.event.inputs.nightly-mode == 'true'
         run: |
           declare -a arr=("darwin-amd64" "darwin-arm64")
           for i in "${arr[@]}"
@@ -216,7 +217,6 @@ jobs:
           tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
-        if: github.event_name == 'push'
       - name: Make swift protos
         run: |
           mkdir -p .release
