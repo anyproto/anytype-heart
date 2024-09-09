@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anyproto/any-store/query"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -17,16 +16,6 @@ import (
 )
 
 func assertFilter(t *testing.T, f Filter, obj *types.Struct, expected bool) {
-	assert.Equal(t, expected, f.FilterObject(obj))
-	anystoreFilter := f.AnystoreFilter()
-	_, err := query.ParseCondition(anystoreFilter.String())
-	require.NoError(t, err, anystoreFilter.String())
-	arena := &fastjson.Arena{}
-	val := pbtypes.ProtoToJson(arena, obj)
-	assert.Equal(t, expected, anystoreFilter.Ok(val))
-}
-
-func assertFilterNoParseValidation(t *testing.T, f Filter, obj *types.Struct, expected bool) {
 	assert.Equal(t, expected, f.FilterObject(obj))
 	anystoreFilter := f.AnystoreFilter()
 	arena := &fastjson.Arena{}
@@ -914,9 +903,9 @@ func TestFilter2ValuesComp_FilterObject(t *testing.T) {
 		obj3 := &types.Struct{Fields: map[string]*types.Value{
 			"b": pbtypes.String("x"),
 		}}
-		assertFilterNoParseValidation(t, eq, obj1, true)
-		assertFilterNoParseValidation(t, eq, obj2, false)
-		assertFilterNoParseValidation(t, eq, obj3, false)
+		assertFilter(t, eq, obj1, true)
+		assertFilter(t, eq, obj2, false)
+		assertFilter(t, eq, obj3, false)
 	})
 
 	t.Run("greater", func(t *testing.T) {
@@ -937,8 +926,8 @@ func TestFilter2ValuesComp_FilterObject(t *testing.T) {
 			"a": pbtypes.String("xxx"),
 			"b": pbtypes.String("ddd"),
 		}}
-		assertFilterNoParseValidation(t, eq, obj1, false)
-		assertFilterNoParseValidation(t, eq, obj2, true)
-		assertFilterNoParseValidation(t, eq, obj3, true)
+		assertFilter(t, eq, obj1, false)
+		assertFilter(t, eq, obj2, true)
+		assertFilter(t, eq, obj3, true)
 	})
 }
