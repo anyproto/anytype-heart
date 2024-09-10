@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -69,37 +68,27 @@ func (s *Service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 }
 
 func (s *Service) ListRelationsWithValue(spaceId string, value *types.Value) (keys []string, counters []int64, err error) {
-	var (
-		allRelations   relationutils.Relations
-		getFilters     func(spaceId string, rel *model.Relation) ([]*model.BlockContentDataviewFilter, error)
-		countersByKeys = make(map[string]int64)
-	)
+	countersByKeys := make(map[string]int64)
+	detailHandlesValue := generateFilter(value)
 
-	allRelations, err = s.objectStore.ListAllRelations(spaceId)
+	err = s.objectStore.QueryAndProcess(database.Query{Filters: []*model.BlockContentDataviewFilter{{
+		RelationKey: bundle.RelationKeySpaceId.String(),
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		Value:       pbtypes.String(spaceId),
+	}}}, func(details *types.Struct) {
+		for key, v := range details.Fields {
+			if detailHandlesValue(v) {
+				if counter, ok := countersByKeys[key]; ok {
+					countersByKeys[key] = counter + 1
+				} else {
+					countersByKeys[key] = 1
+				}
+			}
+		}
+	})
+
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to list all relations: %w", err)
-	}
-
-	getFilters, err = generateFiltersGetter(value)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	for _, rel := range allRelations {
-		filters, err := getFilters(spaceId, rel.Relation)
-		if err != nil {
-			continue
-		}
-		records, err := s.objectStore.Query(database.Query{
-			Filters: filters,
-		})
-		if err != nil {
-			log.Errorf("failed to query objects: %v", err)
-			continue
-		}
-		if len(records) != 0 {
-			countersByKeys[rel.Key] = int64(len(records))
-		}
+		return nil, nil, fmt.Errorf("failed to query objects: %w", err)
 	}
 
 	keys = maps.Keys(countersByKeys)
@@ -112,132 +101,40 @@ func (s *Service) ListRelationsWithValue(spaceId string, value *types.Value) (ke
 	return keys, counters, nil
 }
 
-func generateFiltersGetter(value *types.Value) (filtersGetter, error) {
-	stringFormats := []model.RelationFormat{
-		model.RelationFormat_longtext,
-		model.RelationFormat_shorttext,
-		model.RelationFormat_status,
-		model.RelationFormat_tag,
-		model.RelationFormat_object,
+func generateFilter(value *types.Value) func(v *types.Value) bool {
+	equalFilter := func(v *types.Value) bool {
+		return v.Equal(value)
 	}
 
-	switch t := value.Kind.(type) {
-	case *types.Value_StringValue:
-		sbt, err := typeprovider.SmartblockTypeFromID(t.StringValue)
-		if err != nil {
-			log.Errorf("failed to determine smartblock type: %v", err)
-		}
-		if sbt != coresb.SmartBlockTypeDate {
-			return func(spaceId string, rel *model.Relation) ([]*model.BlockContentDataviewFilter, error) {
-				if !slices.Contains(stringFormats, rel.Format) {
-					return nil, fmt.Errorf("unsupported format %q", rel.Format)
-				}
-				return simpleFilters(spaceId, rel.Key, value), nil
-			}, nil
-		}
-
-		start, err := addr.DateIDToDayStart(t.StringValue)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert date id to day start: %w", err)
-		}
-		end := start.Add(24 * time.Hour)
-
-		return func(spaceId string, rel *model.Relation) ([]*model.BlockContentDataviewFilter, error) {
-			switch rel.Format {
-			case model.RelationFormat_date:
-				return dateRangeFilters(spaceId, rel.Key, start, end), nil
-			case model.RelationFormat_longtext,
-				model.RelationFormat_shorttext,
-				model.RelationFormat_object:
-				return simpleFilters(spaceId, rel.Key, value), nil
-			}
-			return nil, fmt.Errorf("unsupported format %q", rel.Format)
-		}, nil
-	case *types.Value_NumberValue:
-		return func(spaceId string, rel *model.Relation) ([]*model.BlockContentDataviewFilter, error) {
-			if rel.Format != model.RelationFormat_number {
-				return nil, fmt.Errorf("unsupported format %q", rel.Format)
-			}
-			return simpleFilters(spaceId, rel.Key, value), nil
-		}, nil
-	case *types.Value_BoolValue:
-		return func(spaceId string, rel *model.Relation) ([]*model.BlockContentDataviewFilter, error) {
-			if rel.Format != model.RelationFormat_checkbox {
-				return nil, fmt.Errorf("unsupported format %q", rel.Format)
-			}
-			return simpleFilters(spaceId, rel.Key, value), nil
-		}, nil
-	case *types.Value_ListValue:
-		if pbtypes.GetStringListValue(value) != nil {
-			return func(spaceId string, rel *model.Relation) ([]*model.BlockContentDataviewFilter, error) {
-				if !slices.Contains(stringFormats, rel.Format) {
-					return nil, fmt.Errorf("unsupported format %q", rel.Format)
-				}
-				return listFilters(spaceId, rel.Key, value), nil
-			}, nil
-		}
-
-		if pbtypes.GetIntListValue(value) != nil {
-			return func(spaceId string, rel *model.Relation) ([]*model.BlockContentDataviewFilter, error) {
-				if rel.Format != model.RelationFormat_number {
-					return nil, fmt.Errorf("unsupported format %q", rel.Format)
-				}
-				return listFilters(spaceId, rel.Key, value), nil
-			}, nil
-		}
-
-		return nil, fmt.Errorf("unsupported list value type: %T", t.ListValue.Values[0])
-	default:
-		return nil, fmt.Errorf("unsupported value type: %T", value)
+	stringValue := value.GetStringValue()
+	if stringValue == "" {
+		return equalFilter
 	}
-}
 
-func simpleFilters(spaceId, key string, value *types.Value) []*model.BlockContentDataviewFilter {
-	return []*model.BlockContentDataviewFilter{
-		{
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceId),
-		},
-		{
-			RelationKey: key,
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       value,
-		},
+	sbt, err := typeprovider.SmartblockTypeFromID(stringValue)
+	if err != nil {
+		log.Errorf("failed to determine smartblock type: %v", err)
 	}
-}
 
-func listFilters(spaceId, key string, value *types.Value) []*model.BlockContentDataviewFilter {
-	return []*model.BlockContentDataviewFilter{
-		{
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceId),
-		},
-		{
-			RelationKey: key,
-			Condition:   model.BlockContentDataviewFilter_AllIn,
-			Value:       value,
-		},
+	if sbt != coresb.SmartBlockTypeDate {
+		return equalFilter
 	}
-}
 
-func dateRangeFilters(spaceId, key string, start, end time.Time) []*model.BlockContentDataviewFilter {
-	return []*model.BlockContentDataviewFilter{
-		{
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceId),
-		},
-		{
-			RelationKey: key,
-			Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
-			Value:       pbtypes.Int64(start.Unix()),
-		},
-		{
-			RelationKey: key,
-			Condition:   model.BlockContentDataviewFilter_Less,
-			Value:       pbtypes.Int64(end.Unix()),
-		},
+	start, err := addr.DateIDToDayStart(stringValue)
+	if err != nil {
+		log.Errorf("failed to convert date id to day start: %v", err)
+		return equalFilter
+	}
+
+	end := start.Add(24 * time.Hour)
+	startTimestamp := start.Unix()
+	endTimestamp := end.Unix()
+
+	return func(v *types.Value) bool {
+		numberValue := int64(v.GetNumberValue())
+		if numberValue != 0 && numberValue >= startTimestamp && numberValue < endTimestamp {
+			return true
+		}
+		return equalFilter(v)
 	}
 }

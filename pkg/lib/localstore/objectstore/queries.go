@@ -504,3 +504,41 @@ func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub databa
 	s.addSubscriptionIfNotExists(sub)
 	return
 }
+
+func (s *dsObjectStore) QueryAndProcess(q database.Query, proc func(details *types.Struct)) error {
+	arena := s.arenaPool.Get()
+	defer s.arenaPool.Put(arena)
+
+	filters, err := database.NewFilters(q, s, arena)
+	if err != nil {
+		return fmt.Errorf("new filters: %w", err)
+	}
+
+	anystoreFilter := filters.FilterObj.AnystoreFilter()
+	query := s.objects.Find(anystoreFilter)
+
+	iter, err := query.Iter(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("find: %w", err)
+	}
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return errors.Join(fmt.Errorf("get doc: %w", err), iter.Close())
+		}
+		details, err := pbtypes.JsonToProto(doc.Value())
+		if err != nil {
+			return errors.Join(fmt.Errorf("json to proto: %w", err), iter.Close())
+		}
+		proc(details)
+	}
+	err = iter.Err()
+	if err != nil {
+		return errors.Join(fmt.Errorf("iterate: %w", err), iter.Close())
+	}
+	err = iter.Close()
+	if err != nil {
+		return fmt.Errorf("close iterator: %w", err)
+	}
+	return nil
+}
