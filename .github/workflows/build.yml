@@ -384,7 +384,20 @@ jobs:
           GIT_SUMMARY=$(git describe --tags --always)
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
-          echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION=${{ github.event.inputs.alpha_version }}
+            if [ -z "$VERSION" ]; then
+              VERSION=$(git rev-parse --short HEAD)
+            fi
+            if [[ "${{ github.event.inputs.nightly-mode }}" == "true" ]]; then
+             echo "${{ secrets.STAGING_NODE_CONF }}" > ./deps/anytype-staging-node.conf
+             echo ANY_SYNC_NETWORK=./deps/anytype-staging-node.conf >> $GITHUB_ENV
+            fi
+          fi
+          if [ -z "$VERSION" ]; then
+            VERSION=${GITHUB_REF##*/}
+          fi
+          echo VERSION=${VERSION} >> $GITHUB_ENV
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
       - name: Go mod download
         run: |
@@ -444,3 +457,21 @@ jobs:
           files: '.release/*'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # upload release artifacts to s3 {{
+      - name: Check aws version
+        if: github.event.inputs.nightly-mode == 'true'
+        run: |
+          aws --version
+      - name: Configure AWS credentials
+        if: github.event.inputs.nightly-mode == 'true'
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.NIGHTLY_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.NIGHTLY_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.NIGHTLY_AWS_REGION }}
+      - name: Upload build artifacts to S3
+        if: github.event.inputs.nightly-mode == 'true'
+        run: |
+          aws s3 cp .release/ s3://${{ secrets.NIGHTLY_AWS_S3_BUCKET }}/mw/ --recursive --acl public-read
+      # }}
