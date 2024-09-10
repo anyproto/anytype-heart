@@ -45,10 +45,10 @@ jobs:
             exit 1
           fi
       - name: Install Go
+        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
         uses: actions/setup-go@v1
         with:
           go-version: 1.22
-        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Setup GO
         run: |
           go version
@@ -56,6 +56,7 @@ jobs:
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
       - name: Install patched gox
+        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
         run: |
           mkdir -p "$GOPATH/src/github.com/mitchellh"
           cd "$GOPATH/src/github.com/mitchellh"
@@ -64,8 +65,8 @@ jobs:
           git fetch
           git checkout db6184738b77fbd5089e5fa1112177f391c91b24
           go install github.com/mitchellh/gox
-        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Install brew and node deps
+        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
         run: |
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/d600b1f7119f6e6a4e97fb83233b313b0468b7e4/Formula/s/swift-protobuf.rb --output swift-protobuf.rb
@@ -74,7 +75,6 @@ jobs:
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install mingw-w64
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install grpcurl
           npm i -g node-gyp
-        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -86,8 +86,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Install old MacOS SDK (for backward compatibility of CGO)
-        run: source .github/install_macos_sdk.sh 10.15
         if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
+        run: source .github/install_macos_sdk.sh 10.15
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
@@ -139,6 +139,7 @@ jobs:
           CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           ls -lha .
       - name: run perf tests
+        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
         run: |
           echo "Running perf tests"
           make download-tantivy-all
@@ -153,15 +154,15 @@ jobs:
           TEST_MNEMONIC: ${{ secrets.TEST_MNEMONIC }}
           PROM_KEY: ${{ secrets.PROMETHEUS_USERNAME }}
           PROM_PASSWORD: ${{ secrets.PROMETHEUS_PASSWORD }}
-        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
       - name: Archive perf tests results
+        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
         uses: actions/upload-artifact@v4
         with:
           name: pprofs
           path: |
             *.pprof
-        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
       - name: end run perf tests
+        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
         run: |
           rm -rf *.pprof
           echo "End running perf tests"
@@ -169,7 +170,6 @@ jobs:
           gh run watch ${{ github.run_id }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
       - name: Make JS protos
         if: github.event_name == 'push' || github.event.inputs.nightly-mode == 'true'
         run: |
@@ -250,9 +250,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
       - name: Publish ios lib to maven
+        if: github.event.inputs.nightly-mode == 'false'
         run: |
           gradle publish
-        if: github.event.inputs.nightly-mode == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
