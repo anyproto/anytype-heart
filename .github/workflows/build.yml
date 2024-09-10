@@ -320,7 +320,7 @@ jobs:
       # }}
 
   build_linux:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event.inputs.nightly-mode == 'true'
     runs-on: ubuntu-22.04
     steps:
       - name: Install Go
