@@ -4,7 +4,7 @@ The majority of search filters for ObjectSearch-requests have simple format `key
 ```json
 {
      "RelationKey": "type",
-     "condition": 2, // equals
+     "condition": 2, // is not equal
      "value": {
         "stringValue": "ot-page"
      }
@@ -45,7 +45,7 @@ All objects that has similar name and description:
 ```json
 {
   "RelationKey": "name",
-  "condition": 1,
+  "condition": 1, // equals
   "value": {
     "structValue": {
       "fields": {
