@@ -16,7 +16,7 @@ func TestSubscription(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		inputMessage := givenMessage()
 		inputMessage.Message.Text = fmt.Sprintf("text %d", i+1)
-		messageId, err := fx.AddMessage(ctx, inputMessage)
+		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
 		require.NoError(t, err)
 		assert.NotEmpty(t, messageId)
 	}
@@ -29,7 +29,7 @@ func TestSubscription(t *testing.T) {
 	}
 
 	t.Run("add message", func(t *testing.T) {
-		messageId, err := fx.AddMessage(ctx, givenMessage())
+		messageId, err := fx.AddMessage(ctx, nil, givenMessage())
 		require.NoError(t, err)
 		require.Len(t, fx.events, 1)
 

@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -90,12 +91,15 @@ func newFixture(t *testing.T) *fixture {
 
 func TestAddMessage(t *testing.T) {
 	ctx := context.Background()
+	sessionCtx := session.NewContext()
+
 	fx := newFixture(t)
 
 	inputMessage := givenMessage()
-	messageId, err := fx.AddMessage(ctx, inputMessage)
+	messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
 	require.NoError(t, err)
 	assert.NotEmpty(t, messageId)
+	assert.NotEmpty(t, sessionCtx.GetMessages())
 
 	messages, err := fx.GetMessages(ctx, "", 0)
 	require.NoError(t, err)
@@ -117,7 +121,7 @@ func TestGetMessages(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		inputMessage := givenMessage()
 		inputMessage.Message.Text = fmt.Sprintf("text %d", i+1)
-		messageId, err := fx.AddMessage(ctx, inputMessage)
+		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
 		require.NoError(t, err)
 		assert.NotEmpty(t, messageId)
 	}
@@ -146,7 +150,7 @@ func TestEditMessage(t *testing.T) {
 		// Add
 		inputMessage := givenMessage()
 
-		messageId, err := fx.AddMessage(ctx, inputMessage)
+		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
 		require.NoError(t, err)
 		assert.NotEmpty(t, messageId)
 
@@ -176,7 +180,7 @@ func TestEditMessage(t *testing.T) {
 		// Add
 		inputMessage := givenMessage()
 
-		messageId, err := fx.AddMessage(ctx, inputMessage)
+		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
 		require.NoError(t, err)
 		assert.NotEmpty(t, messageId)
 
@@ -212,7 +216,7 @@ func TestToggleReaction(t *testing.T) {
 	inputMessage := givenMessage()
 	inputMessage.Reactions = nil
 
-	messageId, err := fx.AddMessage(ctx, inputMessage)
+	messageId, err := fx.AddMessage(ctx, nil, inputMessage)
 	require.NoError(t, err)
 	assert.NotEmpty(t, messageId)
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -19,7 +20,7 @@ import (
 const CName = "core.block.chats"
 
 type Service interface {
-	AddMessage(ctx context.Context, chatObjectId string, message *model.ChatMessage) (string, error)
+	AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *model.ChatMessage) (string, error)
 	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
@@ -88,11 +89,11 @@ func (s *service) GetStoreDb() anystore.DB {
 	return s.db
 }
 
-func (s *service) AddMessage(ctx context.Context, chatObjectId string, message *model.ChatMessage) (string, error) {
+func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *model.ChatMessage) (string, error) {
 	var messageId string
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
-		messageId, err = sb.AddMessage(ctx, message)
+		messageId, err = sb.AddMessage(ctx, sessionCtx, message)
 		return err
 	})
 	return messageId, err

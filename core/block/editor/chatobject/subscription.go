@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -11,6 +12,8 @@ import (
 type subscription struct {
 	chatId      string
 	eventSender event.Sender
+
+	sessionContext session.Context
 
 	eventsBuffer []*pb.EventMessage
 
@@ -34,19 +37,29 @@ func (s *subscription) close() {
 	s.enabled = false
 }
 
+// setSessionContext sets the session context for the current operation
+func (s *subscription) setSessionContext(ctx session.Context) {
+	s.sessionContext = ctx
+}
+
 func (s *subscription) flush() {
-	if !s.enabled {
-		return
-	}
+	defer func() {
+		s.eventsBuffer = s.eventsBuffer[:0]
+	}()
+
 	if len(s.eventsBuffer) == 0 {
 		return
 	}
-	messages := slices.Clone(s.eventsBuffer)
-	s.eventSender.Broadcast(&pb.Event{
-		ContextId: s.chatId,
-		Messages:  messages,
-	})
-	s.eventsBuffer = s.eventsBuffer[:0]
+
+	if s.sessionContext != nil {
+		s.sessionContext.SetMessages(s.chatId, slices.Clone(s.eventsBuffer))
+		s.sessionContext = nil
+	} else if s.enabled {
+		s.eventSender.Broadcast(&pb.Event{
+			ContextId: s.chatId,
+			Messages:  slices.Clone(s.eventsBuffer),
+		})
+	}
 }
 
 func (s *subscription) add(message *model.ChatMessage) {
@@ -107,6 +120,9 @@ func (s *subscription) updateReactions(message *model.ChatMessage) {
 }
 
 func (s *subscription) canSend(message *model.ChatMessage) bool {
+	if s.sessionContext != nil {
+		return true
+	}
 	if !s.enabled {
 		return false
 	}
