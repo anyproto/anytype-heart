@@ -50,7 +50,7 @@ func (sb *smartBlock) injectMentions(s *state.State) {
 		NoImages:                 true,
 	})
 	mentions = slice.RemoveMut(mentions, sb.Id())
-	s.SetLocalDetail(bundle.RelationKeyMentions.String(), pbtypes.StringList(mentions))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyMentions, pbtypes.StringList(mentions))
 }
 
 func isBacklinksChanged(msgs []simple.EventMessage) bool {
