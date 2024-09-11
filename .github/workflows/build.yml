@@ -36,7 +36,7 @@ permissions:
 name: Build
 jobs:
   build:
-    runs-on: ${{ github.event_name == 'push' && 'macos-13' || (github.event.inputs.run-on-runner || 'ARM64') }}
+    runs-on: ${{ github.event_name == 'push' && 'macos-14' || (github.event.inputs.run-on-runner || 'ARM64') }}
     steps:
       - name: validate agent
         run: |
@@ -85,9 +85,6 @@ jobs:
           key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-${{ matrix.go-version }}-
-      - name: Install old MacOS SDK (for backward compatibility of CGO)
-        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
-        run: source .github/install_macos_sdk.sh 10.15
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
@@ -125,6 +122,9 @@ jobs:
           make setup-go
           make setup-gomobile
           which gomobile
+      - name: Install old MacOS SDK (for backward compatibility of CGO)
+        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
+        run: source .github/install_macos_sdk.sh 10.15
       - name: Cross-compile library mac/win
         run: |
           make download-tantivy-all
