@@ -47,7 +47,7 @@ var log = logger.NewNamed("update-last-used-date")
 type ObjectUsageUpdater interface {
 	app.ComponentRunnable
 
-	UpdateLastUsedDate(spaceId string, key Key)
+	UpdateLastUsedDate(spaceId string, key Key, timeStamp int64)
 }
 
 func New() ObjectUsageUpdater {
@@ -93,8 +93,8 @@ func (u *updater) Close(context.Context) error {
 	return nil
 }
 
-func (u *updater) UpdateLastUsedDate(spaceId string, key Key) {
-	if err := u.msgBatch.Add(u.ctx, message{spaceId: spaceId, key: key, time: time.Now().Unix()}); err != nil {
+func (u *updater) UpdateLastUsedDate(spaceId string, key Key, ts int64) {
+	if err := u.msgBatch.Add(u.ctx, message{spaceId: spaceId, key: key, time: ts}); err != nil {
 		log.Error("failed to add last used date info to message batch", zap.Error(err), zap.String("key", key.String()))
 	}
 }

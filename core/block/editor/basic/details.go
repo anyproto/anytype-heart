@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/maps"
@@ -42,8 +43,9 @@ func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*mod
 	if err != nil {
 		return err
 	}
+	ts := time.Now().Unix()
 	for _, key := range keys {
-		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), key)
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), key, ts)
 	}
 	return nil
 }
@@ -85,9 +87,9 @@ func (bs *basic) UpdateDetailsAndLastUsed(update func(current *types.Struct) (*t
 	if diff == nil || diff.Fields == nil {
 		return nil
 	}
-
+	ts := time.Now().Unix()
 	for key := range diff.Fields {
-		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), domain.RelationKey(key))
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), domain.RelationKey(key), ts)
 	}
 	return nil
 }
@@ -386,7 +388,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 	removeInternalFlags(s)
 
 	if pbtypes.GetInt64(bs.CombinedDetails(), bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
-		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), objectTypeKeys[0])
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), objectTypeKeys[0], time.Now().Unix())
 	}
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])

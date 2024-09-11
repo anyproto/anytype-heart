@@ -116,14 +116,15 @@ func (s *service) updateLastUsedDate(spaceId string, sbType coresb.SmartBlockTyp
 		return
 	}
 	uk := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
+	ts := time.Now().Unix()
 	switch sbType {
 	case coresb.SmartBlockTypeObjectType:
-		s.lastUsedUpdater.UpdateLastUsedDate(spaceId, domain.TypeKey(strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)))
+		s.lastUsedUpdater.UpdateLastUsedDate(spaceId, domain.TypeKey(strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)), ts)
 	case coresb.SmartBlockTypeRelation:
-		s.lastUsedUpdater.UpdateLastUsedDate(spaceId, domain.RelationKey(strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)))
+		s.lastUsedUpdater.UpdateLastUsedDate(spaceId, domain.RelationKey(strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)), ts)
 	default:
 		if pbtypes.GetInt64(details, bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
-			s.lastUsedUpdater.UpdateLastUsedDate(spaceId, typeKey)
+			s.lastUsedUpdater.UpdateLastUsedDate(spaceId, typeKey, ts)
 		}
 	}
 }
