@@ -653,6 +653,20 @@ func (mr *MockObjectStoreMockRecorder) Query(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockObjectStore)(nil).Query), arg0)
 }
 
+// QueryAndProcess mocks base method.
+func (m *MockObjectStore) QueryAndProcess(arg0 database.Query, arg1 func(*types.Struct)) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryAndProcess", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// QueryAndProcess indicates an expected call of QueryAndProcess.
+func (mr *MockObjectStoreMockRecorder) QueryAndProcess(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryAndProcess", reflect.TypeOf((*MockObjectStore)(nil).QueryAndProcess), arg0, arg1)
+}
+
 // QueryByID mocks base method.
 func (m *MockObjectStore) QueryByID(arg0 []string) ([]database.Record, error) {
 	m.ctrl.T.Helper()

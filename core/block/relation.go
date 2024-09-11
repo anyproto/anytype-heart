@@ -23,8 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-type filtersGetter func(spaceId string, rel *model.Relation) ([]*model.BlockContentDataviewFilter, error)
-
 var ErrBundledTypeIsReadonly = fmt.Errorf("can't modify bundled object type")
 
 func (s *Service) ObjectTypeRelationAdd(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
@@ -132,7 +130,7 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 
 	return func(v *types.Value) bool {
 		numberValue := int64(v.GetNumberValue())
-		if numberValue != 0 && numberValue >= startTimestamp && numberValue < endTimestamp {
+		if numberValue >= startTimestamp && numberValue < endTimestamp {
 			return true
 		}
 		return equalFilter(v)
