@@ -97,6 +97,8 @@ func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModif
 				if creator != ch.Change.Creator {
 					return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify someone else's message"))
 				}
+				result.Set(modifiedAtKey, a.NewNumberInt(int(ch.Change.Timestamp)))
+				model.ModifiedAt = ch.Change.Timestamp
 				d.subscription.updateFull(model)
 			default:
 				return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)

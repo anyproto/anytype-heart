@@ -7,11 +7,12 @@ import (
 )
 
 const (
-	creatorKey   = "creator"
-	createdAtKey = "createdAt"
-	reactionsKey = "reactions"
-	contentKey   = "content"
-	orderKey     = "_o"
+	creatorKey    = "creator"
+	createdAtKey  = "createdAt"
+	modifiedAtKey = "modifiedAt"
+	reactionsKey  = "reactions"
+	contentKey    = "content"
+	orderKey      = "_o"
 )
 
 type messageWrapper struct {
@@ -108,6 +109,9 @@ func marshalModel(arena *fastjson.Arena, msg *model.ChatMessage) *fastjson.Value
 	}
 
 	root := arena.NewObject()
+	root.Set(creatorKey, arena.NewString(msg.Creator))
+	root.Set(createdAtKey, arena.NewNumberInt(int(msg.CreatedAt)))
+	root.Set(modifiedAtKey, arena.NewNumberInt(int(msg.ModifiedAt)))
 	root.Set("replyToMessageId", arena.NewString(msg.ReplyToMessageId))
 	root.Set(contentKey, content)
 	root.Set(reactionsKey, reactions)
@@ -119,6 +123,7 @@ func (m *messageWrapper) toModel() *model.ChatMessage {
 		Id:               string(m.val.GetStringBytes("id")),
 		Creator:          string(m.val.GetStringBytes(creatorKey)),
 		CreatedAt:        m.val.GetInt64(createdAtKey),
+		ModifiedAt:       m.val.GetInt64(modifiedAtKey),
 		OrderId:          string(m.val.GetStringBytes("_o", "id")),
 		ReplyToMessageId: string(m.val.GetStringBytes("replyToMessageId")),
 		Message:          m.contentToModel(),

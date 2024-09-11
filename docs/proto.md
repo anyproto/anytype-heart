@@ -27772,6 +27772,7 @@ Used to decode block meta only, without the content itself
 | orderId | [string](#string) |  | Used for subscriptions |
 | creator | [string](#string) |  | Identifier for the message creator |
 | createdAt | [int64](#int64) |  |  |
+| modifiedAt | [int64](#int64) |  |  |
 | replyToMessageId | [string](#string) |  | Identifier for the message being replied to |
 | message | [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent) |  | Message content |
 | attachments | [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment) | repeated | Attachments slice |
