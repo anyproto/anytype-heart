@@ -852,7 +852,7 @@ func TestHistory_Versions(t *testing.T) {
 		history := newFixture(t, currChange, objectId, spaceID, versionId)
 
 		// when
-		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 0)
+		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 0, false)
 
 		// then
 		assert.Nil(t, err)
@@ -907,7 +907,7 @@ func TestHistory_Versions(t *testing.T) {
 		history := newFixture(t, currChange, objectId, spaceID, versionId)
 
 		// when
-		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 10)
+		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 10, false)
 
 		// then
 		assert.Nil(t, err)
@@ -958,7 +958,7 @@ func TestHistory_Versions(t *testing.T) {
 		history := newFixture(t, currChange, objectId, spaceID, versionId)
 
 		// when
-		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 10)
+		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 10, false)
 
 		// then
 		assert.Nil(t, err)
@@ -984,7 +984,7 @@ func TestHistory_Versions(t *testing.T) {
 		history.spaceService = spaceService
 
 		// when
-		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 10)
+		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 10, false)
 
 		// then
 		assert.Nil(t, err)
@@ -1089,7 +1089,7 @@ func TestHistory_Versions(t *testing.T) {
 		history := newFixture(t, currChange, objectId, spaceID, versionId)
 
 		// when
-		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 10)
+		resp, err := history.Versions(domain.FullID{ObjectID: objectId, SpaceID: spaceID}, versionId, 10, false)
 
 		// then
 		assert.Nil(t, err)
