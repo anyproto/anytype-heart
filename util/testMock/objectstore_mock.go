@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	anystore "github.com/anyproto/any-store"
 	app "github.com/anyproto/any-sync/app"
 	coordinatorproto "github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	domain "github.com/anyproto/anytype-heart/core/domain"
@@ -49,17 +50,17 @@ func (m *MockObjectStore) EXPECT() *MockObjectStoreMockRecorder {
 }
 
 // AddToIndexQueue mocks base method.
-func (m *MockObjectStore) AddToIndexQueue(arg0 string) error {
+func (m *MockObjectStore) AddToIndexQueue(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddToIndexQueue", arg0)
+	ret := m.ctrl.Call(m, "AddToIndexQueue", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddToIndexQueue indicates an expected call of AddToIndexQueue.
-func (mr *MockObjectStoreMockRecorder) AddToIndexQueue(arg0 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) AddToIndexQueue(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddToIndexQueue", reflect.TypeOf((*MockObjectStore)(nil).AddToIndexQueue), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddToIndexQueue", reflect.TypeOf((*MockObjectStore)(nil).AddToIndexQueue), arg0, arg1)
 }
 
 // BatchProcessFullTextQueue mocks base method.
@@ -91,10 +92,10 @@ func (mr *MockObjectStoreMockRecorder) Close(arg0 any) *gomock.Call {
 }
 
 // DeleteDetails mocks base method.
-func (m *MockObjectStore) DeleteDetails(arg0 ...string) error {
+func (m *MockObjectStore) DeleteDetails(arg0 context.Context, arg1 ...string) error {
 	m.ctrl.T.Helper()
-	varargs := []any{}
-	for _, a := range arg0 {
+	varargs := []any{arg0}
+	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "DeleteDetails", varargs...)
@@ -103,9 +104,10 @@ func (m *MockObjectStore) DeleteDetails(arg0 ...string) error {
 }
 
 // DeleteDetails indicates an expected call of DeleteDetails.
-func (mr *MockObjectStoreMockRecorder) DeleteDetails(arg0 ...any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) DeleteDetails(arg0 any, arg1 ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDetails", reflect.TypeOf((*MockObjectStore)(nil).DeleteDetails), arg0...)
+	varargs := append([]any{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDetails", reflect.TypeOf((*MockObjectStore)(nil).DeleteDetails), varargs...)
 }
 
 // DeleteLinks mocks base method.
@@ -324,18 +326,18 @@ func (mr *MockObjectStoreMockRecorder) GetInboundLinksByID(arg0 any) *gomock.Cal
 }
 
 // GetLastIndexedHeadsHash mocks base method.
-func (m *MockObjectStore) GetLastIndexedHeadsHash(arg0 string) (string, error) {
+func (m *MockObjectStore) GetLastIndexedHeadsHash(arg0 context.Context, arg1 string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLastIndexedHeadsHash", arg0)
+	ret := m.ctrl.Call(m, "GetLastIndexedHeadsHash", arg0, arg1)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetLastIndexedHeadsHash indicates an expected call of GetLastIndexedHeadsHash.
-func (mr *MockObjectStoreMockRecorder) GetLastIndexedHeadsHash(arg0 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) GetLastIndexedHeadsHash(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).GetLastIndexedHeadsHash), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).GetLastIndexedHeadsHash), arg0, arg1)
 }
 
 // GetObjectByUniqueKey mocks base method.
@@ -772,17 +774,17 @@ func (mr *MockObjectStoreMockRecorder) SaveChecksums(arg0, arg1 any) *gomock.Cal
 }
 
 // SaveLastIndexedHeadsHash mocks base method.
-func (m *MockObjectStore) SaveLastIndexedHeadsHash(arg0, arg1 string) error {
+func (m *MockObjectStore) SaveLastIndexedHeadsHash(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveLastIndexedHeadsHash", arg0, arg1)
+	ret := m.ctrl.Call(m, "SaveLastIndexedHeadsHash", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveLastIndexedHeadsHash indicates an expected call of SaveLastIndexedHeadsHash.
-func (mr *MockObjectStoreMockRecorder) SaveLastIndexedHeadsHash(arg0, arg1 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) SaveLastIndexedHeadsHash(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).SaveLastIndexedHeadsHash), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).SaveLastIndexedHeadsHash), arg0, arg1, arg2)
 }
 
 // SaveVirtualSpace mocks base method.
@@ -854,17 +856,17 @@ func (mr *MockObjectStoreMockRecorder) UpdateObjectDetails(arg0, arg1, arg2 any)
 }
 
 // UpdateObjectLinks mocks base method.
-func (m *MockObjectStore) UpdateObjectLinks(arg0 string, arg1 []string) error {
+func (m *MockObjectStore) UpdateObjectLinks(arg0 context.Context, arg1 string, arg2 []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateObjectLinks", arg0, arg1)
+	ret := m.ctrl.Call(m, "UpdateObjectLinks", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateObjectLinks indicates an expected call of UpdateObjectLinks.
-func (mr *MockObjectStoreMockRecorder) UpdateObjectLinks(arg0, arg1 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) UpdateObjectLinks(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateObjectLinks", reflect.TypeOf((*MockObjectStore)(nil).UpdateObjectLinks), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateObjectLinks", reflect.TypeOf((*MockObjectStore)(nil).UpdateObjectLinks), arg0, arg1, arg2)
 }
 
 // UpdatePendingLocalDetails mocks base method.
@@ -879,4 +881,19 @@ func (m *MockObjectStore) UpdatePendingLocalDetails(arg0 string, arg1 func(*type
 func (mr *MockObjectStoreMockRecorder) UpdatePendingLocalDetails(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePendingLocalDetails", reflect.TypeOf((*MockObjectStore)(nil).UpdatePendingLocalDetails), arg0, arg1)
+}
+
+// WriteTx mocks base method.
+func (m *MockObjectStore) WriteTx(arg0 context.Context) (anystore.WriteTx, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WriteTx", arg0)
+	ret0, _ := ret[0].(anystore.WriteTx)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// WriteTx indicates an expected call of WriteTx.
+func (mr *MockObjectStoreMockRecorder) WriteTx(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteTx", reflect.TypeOf((*MockObjectStore)(nil).WriteTx), arg0)
 }

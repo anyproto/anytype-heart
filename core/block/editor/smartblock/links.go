@@ -37,6 +37,22 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))
 }
 
+func (sb *smartBlock) injectMentions(s *state.State) {
+	mentions := objectlink.DependentObjectIDs(s, sb.Space(), objectlink.Flags{
+		Blocks:                   true,
+		Details:                  false,
+		Relations:                false,
+		Types:                    false,
+		Collection:               false,
+		DataviewBlockOnlyTarget:  true,
+		NoSystemRelations:        true,
+		NoHiddenBundledRelations: true,
+		NoImages:                 true,
+	})
+	mentions = slice.RemoveMut(mentions, sb.Id())
+	s.SetDetailAndBundledRelation(bundle.RelationKeyMentions, pbtypes.StringList(mentions))
+}
+
 func isBacklinksChanged(msgs []simple.EventMessage) bool {
 	for _, msg := range msgs {
 		if amend, ok := msg.Msg.Value.(*pb.EventMessageValueOfObjectDetailsAmend); ok {

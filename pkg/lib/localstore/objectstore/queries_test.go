@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
+	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -921,7 +922,7 @@ func TestQueryRaw(t *testing.T) {
 		obj3 := makeObjectWithName("id3", "name3")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-		flt, err := database.NewFilters(database.Query{}, s, arena)
+		flt, err := database.NewFilters(database.Query{}, s, arena, &collate.Buffer{})
 		require.NoError(t, err)
 
 		recs, err := s.QueryRaw(flt, 0, 0)
@@ -944,7 +945,7 @@ func TestQueryRaw(t *testing.T) {
 					Value:       pbtypes.String("foo"),
 				},
 			},
-		}, s, arena)
+		}, s, arena, &collate.Buffer{})
 		require.NoError(t, err)
 
 		recs, err := s.QueryRaw(flt, 0, 0)
@@ -975,7 +976,7 @@ func TestQueryRaw(t *testing.T) {
 						Value:       pbtypes.String("ot-note"),
 					},
 				},
-			}, s, arena)
+			}, s, arena, &collate.Buffer{})
 			require.NoError(t, err)
 
 			recs, err := s.QueryRaw(flt, 0, 0)
@@ -1022,7 +1023,7 @@ func TestQueryRaw(t *testing.T) {
 						Value:       pbtypes.Int64(int64(model.ObjectType_basic)),
 					},
 				},
-			}, s, arena)
+			}, s, arena, &collate.Buffer{})
 			require.NoError(t, err)
 
 			recs, err := s.QueryRaw(flt, 0, 0)

@@ -14,6 +14,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
+	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 
@@ -190,7 +191,7 @@ func (s *service) Search(req SubscribeRequest) (*SubscribeResponse, error) {
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
-	f, err := database.NewFilters(q, s.objectStore, arena)
+	f, err := database.NewFilters(q, s.objectStore, arena, &collate.Buffer{})
 	if err != nil {
 		return nil, fmt.Errorf("new database filters: %w", err)
 	}
@@ -401,7 +402,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
-	flt, err := database.NewFilters(q, s.objectStore, arena)
+	flt, err := database.NewFilters(q, s.objectStore, arena, &collate.Buffer{})
 	if err != nil {
 		return nil, err
 	}

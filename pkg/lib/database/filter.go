@@ -1,6 +1,7 @@
 package database
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"regexp"
@@ -116,6 +117,15 @@ func makeFilterByCondition(spaceID string, rawFilter *model.BlockContentDataview
 			Value:            pbtypes.Bool(true),
 		}
 	}
+
+	if str := rawFilter.Value.GetStructValue(); str != nil {
+		filter, err := makeComplexFilter(rawFilter, str)
+		if err == nil {
+			return filter, nil
+		}
+		log.Errorf("failed to build complex filter: %v", err)
+	}
+
 	switch rawFilter.Condition {
 	case model.BlockContentDataviewFilter_Equal,
 		model.BlockContentDataviewFilter_Greater,
@@ -201,6 +211,19 @@ func makeFilterByCondition(spaceID string, rawFilter *model.BlockContentDataview
 	default:
 		return nil, fmt.Errorf("unexpected filter cond: %v", rawFilter.Condition)
 	}
+}
+
+func makeComplexFilter(rawFilter *model.BlockContentDataviewFilter, s *types.Struct) (Filter, error) {
+	filterType := pbtypes.GetString(s, bundle.RelationKeyType.String())
+	// TODO: rewrite to switch statement once we have more filter types
+	if filterType == "valueFromRelation" {
+		return Filter2ValuesComp{
+			Key1: rawFilter.RelationKey,
+			Key2: pbtypes.GetString(s, bundle.RelationKeyRelationKey.String()),
+			Cond: rawFilter.Condition,
+		}, nil
+	}
+	return nil, fmt.Errorf("unsupported type of complex filter: %s", filterType)
 }
 
 type WithNestedFilter interface {
@@ -844,4 +867,94 @@ func (i *FilterNestedNotIn) AnystoreFilter() query.Filter {
 
 func (i *FilterNestedNotIn) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
 	return fn(i)
+}
+
+type Filter2ValuesComp struct {
+	Key1, Key2 string
+	Cond       model.BlockContentDataviewFilterCondition
+}
+
+func (i Filter2ValuesComp) FilterObject(g *types.Struct) bool {
+	val1 := pbtypes.Get(g, i.Key1)
+	val2 := pbtypes.Get(g, i.Key2)
+	eq := FilterEq{Value: val2, Cond: i.Cond}
+	return eq.filterObject(val1)
+}
+
+func (i Filter2ValuesComp) AnystoreFilter() query.Filter {
+	var op query.CompOp
+	switch i.Cond {
+	case model.BlockContentDataviewFilter_Equal:
+		op = query.CompOpEq
+	case model.BlockContentDataviewFilter_Greater:
+		op = query.CompOpGt
+	case model.BlockContentDataviewFilter_GreaterOrEqual:
+		op = query.CompOpGte
+	case model.BlockContentDataviewFilter_Less:
+		op = query.CompOpLt
+	case model.BlockContentDataviewFilter_LessOrEqual:
+		op = query.CompOpLte
+	case model.BlockContentDataviewFilter_NotEqual:
+		op = query.CompOpNe
+	}
+	return &Anystore2ValuesComp{
+		RelationKey1: i.Key1,
+		RelationKey2: i.Key2,
+		CompOp:       op,
+	}
+}
+
+type Anystore2ValuesComp struct {
+	RelationKey1, RelationKey2 string
+	CompOp                     query.CompOp
+	buf1, buf2                 []byte
+}
+
+func (e *Anystore2ValuesComp) Ok(v *fastjson.Value) bool {
+	value1 := v.Get(e.RelationKey1)
+	value2 := v.Get(e.RelationKey2)
+	e.buf1 = encoding.AppendJSONValue(e.buf1[:0], value1)
+	e.buf2 = encoding.AppendJSONValue(e.buf2[:0], value2)
+	comp := bytes.Compare(e.buf1, e.buf2)
+	switch e.CompOp {
+	case query.CompOpEq:
+		return comp == 0
+	case query.CompOpGt:
+		return comp > 0
+	case query.CompOpGte:
+		return comp >= 0
+	case query.CompOpLt:
+		return comp < 0
+	case query.CompOpLte:
+		return comp <= 0
+	case query.CompOpNe:
+		return comp != 0
+	default:
+		panic(fmt.Errorf("unexpected comp op: %v", e.CompOp))
+	}
+}
+
+func (e *Anystore2ValuesComp) IndexBounds(_ string, bs query.Bounds) (bounds query.Bounds) {
+	return bs
+}
+
+func (e *Anystore2ValuesComp) String() string {
+	var comp string
+	switch e.CompOp {
+	case query.CompOpEq:
+		comp = "$eq"
+	case query.CompOpGt:
+		comp = "$gt"
+	case query.CompOpGte:
+		comp = "$gte"
+	case query.CompOpLt:
+		comp = "$lt"
+	case query.CompOpLte:
+		comp = "$lte"
+	case query.CompOpNe:
+		comp = "$ne"
+	default:
+		panic(fmt.Errorf("unexpected comp op: %v", e.CompOp))
+	}
+	return fmt.Sprintf(`{"$comp_values": {"%s": ["%s", "%s"]}}`, comp, e.RelationKey1, e.RelationKey2)
 }

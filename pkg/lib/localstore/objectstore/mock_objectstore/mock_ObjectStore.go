@@ -3,9 +3,10 @@
 package mock_objectstore
 
 import (
-	context "context"
-
+	anystore "github.com/anyproto/any-store"
 	app "github.com/anyproto/any-sync/app"
+
+	context "context"
 
 	coordinatorproto "github.com/anyproto/any-sync/coordinator/coordinatorproto"
 
@@ -39,17 +40,17 @@ func (_m *MockObjectStore) EXPECT() *MockObjectStore_Expecter {
 	return &MockObjectStore_Expecter{mock: &_m.Mock}
 }
 
-// AddToIndexQueue provides a mock function with given fields: id
-func (_m *MockObjectStore) AddToIndexQueue(id string) error {
-	ret := _m.Called(id)
+// AddToIndexQueue provides a mock function with given fields: ctx, id
+func (_m *MockObjectStore) AddToIndexQueue(ctx context.Context, id string) error {
+	ret := _m.Called(ctx, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddToIndexQueue")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, id)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -63,14 +64,15 @@ type MockObjectStore_AddToIndexQueue_Call struct {
 }
 
 // AddToIndexQueue is a helper method to define mock.On call
+//   - ctx context.Context
 //   - id string
-func (_e *MockObjectStore_Expecter) AddToIndexQueue(id interface{}) *MockObjectStore_AddToIndexQueue_Call {
-	return &MockObjectStore_AddToIndexQueue_Call{Call: _e.mock.On("AddToIndexQueue", id)}
+func (_e *MockObjectStore_Expecter) AddToIndexQueue(ctx interface{}, id interface{}) *MockObjectStore_AddToIndexQueue_Call {
+	return &MockObjectStore_AddToIndexQueue_Call{Call: _e.mock.On("AddToIndexQueue", ctx, id)}
 }
 
-func (_c *MockObjectStore_AddToIndexQueue_Call) Run(run func(id string)) *MockObjectStore_AddToIndexQueue_Call {
+func (_c *MockObjectStore_AddToIndexQueue_Call) Run(run func(ctx context.Context, id string)) *MockObjectStore_AddToIndexQueue_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -80,7 +82,7 @@ func (_c *MockObjectStore_AddToIndexQueue_Call) Return(_a0 error) *MockObjectSto
 	return _c
 }
 
-func (_c *MockObjectStore_AddToIndexQueue_Call) RunAndReturn(run func(string) error) *MockObjectStore_AddToIndexQueue_Call {
+func (_c *MockObjectStore_AddToIndexQueue_Call) RunAndReturn(run func(context.Context, string) error) *MockObjectStore_AddToIndexQueue_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -179,13 +181,14 @@ func (_c *MockObjectStore_Close_Call) RunAndReturn(run func(context.Context) err
 	return _c
 }
 
-// DeleteDetails provides a mock function with given fields: id
-func (_m *MockObjectStore) DeleteDetails(id ...string) error {
+// DeleteDetails provides a mock function with given fields: ctx, id
+func (_m *MockObjectStore) DeleteDetails(ctx context.Context, id ...string) error {
 	_va := make([]interface{}, len(id))
 	for _i := range id {
 		_va[_i] = id[_i]
 	}
 	var _ca []interface{}
+	_ca = append(_ca, ctx)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
@@ -194,8 +197,8 @@ func (_m *MockObjectStore) DeleteDetails(id ...string) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(...string) error); ok {
-		r0 = rf(id...)
+	if rf, ok := ret.Get(0).(func(context.Context, ...string) error); ok {
+		r0 = rf(ctx, id...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -209,21 +212,22 @@ type MockObjectStore_DeleteDetails_Call struct {
 }
 
 // DeleteDetails is a helper method to define mock.On call
+//   - ctx context.Context
 //   - id ...string
-func (_e *MockObjectStore_Expecter) DeleteDetails(id ...interface{}) *MockObjectStore_DeleteDetails_Call {
+func (_e *MockObjectStore_Expecter) DeleteDetails(ctx interface{}, id ...interface{}) *MockObjectStore_DeleteDetails_Call {
 	return &MockObjectStore_DeleteDetails_Call{Call: _e.mock.On("DeleteDetails",
-		append([]interface{}{}, id...)...)}
+		append([]interface{}{ctx}, id...)...)}
 }
 
-func (_c *MockObjectStore_DeleteDetails_Call) Run(run func(id ...string)) *MockObjectStore_DeleteDetails_Call {
+func (_c *MockObjectStore_DeleteDetails_Call) Run(run func(ctx context.Context, id ...string)) *MockObjectStore_DeleteDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]string, len(args)-0)
-		for i, a := range args[0:] {
+		variadicArgs := make([]string, len(args)-1)
+		for i, a := range args[1:] {
 			if a != nil {
 				variadicArgs[i] = a.(string)
 			}
 		}
-		run(variadicArgs...)
+		run(args[0].(context.Context), variadicArgs...)
 	})
 	return _c
 }
@@ -233,7 +237,7 @@ func (_c *MockObjectStore_DeleteDetails_Call) Return(_a0 error) *MockObjectStore
 	return _c
 }
 
-func (_c *MockObjectStore_DeleteDetails_Call) RunAndReturn(run func(...string) error) *MockObjectStore_DeleteDetails_Call {
+func (_c *MockObjectStore_DeleteDetails_Call) RunAndReturn(run func(context.Context, ...string) error) *MockObjectStore_DeleteDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1032,9 +1036,9 @@ func (_c *MockObjectStore_GetInboundLinksByID_Call) RunAndReturn(run func(string
 	return _c
 }
 
-// GetLastIndexedHeadsHash provides a mock function with given fields: id
-func (_m *MockObjectStore) GetLastIndexedHeadsHash(id string) (string, error) {
-	ret := _m.Called(id)
+// GetLastIndexedHeadsHash provides a mock function with given fields: ctx, id
+func (_m *MockObjectStore) GetLastIndexedHeadsHash(ctx context.Context, id string) (string, error) {
+	ret := _m.Called(ctx, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetLastIndexedHeadsHash")
@@ -1042,17 +1046,17 @@ func (_m *MockObjectStore) GetLastIndexedHeadsHash(id string) (string, error) {
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
-		return rf(id)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
+		return rf(ctx, id)
 	}
-	if rf, ok := ret.Get(0).(func(string) string); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = rf(ctx, id)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(id)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, id)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1066,14 +1070,15 @@ type MockObjectStore_GetLastIndexedHeadsHash_Call struct {
 }
 
 // GetLastIndexedHeadsHash is a helper method to define mock.On call
+//   - ctx context.Context
 //   - id string
-func (_e *MockObjectStore_Expecter) GetLastIndexedHeadsHash(id interface{}) *MockObjectStore_GetLastIndexedHeadsHash_Call {
-	return &MockObjectStore_GetLastIndexedHeadsHash_Call{Call: _e.mock.On("GetLastIndexedHeadsHash", id)}
+func (_e *MockObjectStore_Expecter) GetLastIndexedHeadsHash(ctx interface{}, id interface{}) *MockObjectStore_GetLastIndexedHeadsHash_Call {
+	return &MockObjectStore_GetLastIndexedHeadsHash_Call{Call: _e.mock.On("GetLastIndexedHeadsHash", ctx, id)}
 }
 
-func (_c *MockObjectStore_GetLastIndexedHeadsHash_Call) Run(run func(id string)) *MockObjectStore_GetLastIndexedHeadsHash_Call {
+func (_c *MockObjectStore_GetLastIndexedHeadsHash_Call) Run(run func(ctx context.Context, id string)) *MockObjectStore_GetLastIndexedHeadsHash_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -1083,7 +1088,7 @@ func (_c *MockObjectStore_GetLastIndexedHeadsHash_Call) Return(headsHash string,
 	return _c
 }
 
-func (_c *MockObjectStore_GetLastIndexedHeadsHash_Call) RunAndReturn(run func(string) (string, error)) *MockObjectStore_GetLastIndexedHeadsHash_Call {
+func (_c *MockObjectStore_GetLastIndexedHeadsHash_Call) RunAndReturn(run func(context.Context, string) (string, error)) *MockObjectStore_GetLastIndexedHeadsHash_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2708,17 +2713,17 @@ func (_c *MockObjectStore_SaveChecksums_Call) RunAndReturn(run func(string, *mod
 	return _c
 }
 
-// SaveLastIndexedHeadsHash provides a mock function with given fields: id, headsHash
-func (_m *MockObjectStore) SaveLastIndexedHeadsHash(id string, headsHash string) error {
-	ret := _m.Called(id, headsHash)
+// SaveLastIndexedHeadsHash provides a mock function with given fields: ctx, id, headsHash
+func (_m *MockObjectStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) error {
+	ret := _m.Called(ctx, id, headsHash)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SaveLastIndexedHeadsHash")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string) error); ok {
-		r0 = rf(id, headsHash)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, id, headsHash)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -2732,15 +2737,16 @@ type MockObjectStore_SaveLastIndexedHeadsHash_Call struct {
 }
 
 // SaveLastIndexedHeadsHash is a helper method to define mock.On call
+//   - ctx context.Context
 //   - id string
 //   - headsHash string
-func (_e *MockObjectStore_Expecter) SaveLastIndexedHeadsHash(id interface{}, headsHash interface{}) *MockObjectStore_SaveLastIndexedHeadsHash_Call {
-	return &MockObjectStore_SaveLastIndexedHeadsHash_Call{Call: _e.mock.On("SaveLastIndexedHeadsHash", id, headsHash)}
+func (_e *MockObjectStore_Expecter) SaveLastIndexedHeadsHash(ctx interface{}, id interface{}, headsHash interface{}) *MockObjectStore_SaveLastIndexedHeadsHash_Call {
+	return &MockObjectStore_SaveLastIndexedHeadsHash_Call{Call: _e.mock.On("SaveLastIndexedHeadsHash", ctx, id, headsHash)}
 }
 
-func (_c *MockObjectStore_SaveLastIndexedHeadsHash_Call) Run(run func(id string, headsHash string)) *MockObjectStore_SaveLastIndexedHeadsHash_Call {
+func (_c *MockObjectStore_SaveLastIndexedHeadsHash_Call) Run(run func(ctx context.Context, id string, headsHash string)) *MockObjectStore_SaveLastIndexedHeadsHash_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
@@ -2750,7 +2756,7 @@ func (_c *MockObjectStore_SaveLastIndexedHeadsHash_Call) Return(err error) *Mock
 	return _c
 }
 
-func (_c *MockObjectStore_SaveLastIndexedHeadsHash_Call) RunAndReturn(run func(string, string) error) *MockObjectStore_SaveLastIndexedHeadsHash_Call {
+func (_c *MockObjectStore_SaveLastIndexedHeadsHash_Call) RunAndReturn(run func(context.Context, string, string) error) *MockObjectStore_SaveLastIndexedHeadsHash_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2977,17 +2983,17 @@ func (_c *MockObjectStore_UpdateObjectDetails_Call) RunAndReturn(run func(contex
 	return _c
 }
 
-// UpdateObjectLinks provides a mock function with given fields: id, links
-func (_m *MockObjectStore) UpdateObjectLinks(id string, links []string) error {
-	ret := _m.Called(id, links)
+// UpdateObjectLinks provides a mock function with given fields: ctx, id, links
+func (_m *MockObjectStore) UpdateObjectLinks(ctx context.Context, id string, links []string) error {
+	ret := _m.Called(ctx, id, links)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateObjectLinks")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, []string) error); ok {
-		r0 = rf(id, links)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string) error); ok {
+		r0 = rf(ctx, id, links)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -3001,15 +3007,16 @@ type MockObjectStore_UpdateObjectLinks_Call struct {
 }
 
 // UpdateObjectLinks is a helper method to define mock.On call
+//   - ctx context.Context
 //   - id string
 //   - links []string
-func (_e *MockObjectStore_Expecter) UpdateObjectLinks(id interface{}, links interface{}) *MockObjectStore_UpdateObjectLinks_Call {
-	return &MockObjectStore_UpdateObjectLinks_Call{Call: _e.mock.On("UpdateObjectLinks", id, links)}
+func (_e *MockObjectStore_Expecter) UpdateObjectLinks(ctx interface{}, id interface{}, links interface{}) *MockObjectStore_UpdateObjectLinks_Call {
+	return &MockObjectStore_UpdateObjectLinks_Call{Call: _e.mock.On("UpdateObjectLinks", ctx, id, links)}
 }
 
-func (_c *MockObjectStore_UpdateObjectLinks_Call) Run(run func(id string, links []string)) *MockObjectStore_UpdateObjectLinks_Call {
+func (_c *MockObjectStore_UpdateObjectLinks_Call) Run(run func(ctx context.Context, id string, links []string)) *MockObjectStore_UpdateObjectLinks_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].([]string))
+		run(args[0].(context.Context), args[1].(string), args[2].([]string))
 	})
 	return _c
 }
@@ -3019,7 +3026,7 @@ func (_c *MockObjectStore_UpdateObjectLinks_Call) Return(_a0 error) *MockObjectS
 	return _c
 }
 
-func (_c *MockObjectStore_UpdateObjectLinks_Call) RunAndReturn(run func(string, []string) error) *MockObjectStore_UpdateObjectLinks_Call {
+func (_c *MockObjectStore_UpdateObjectLinks_Call) RunAndReturn(run func(context.Context, string, []string) error) *MockObjectStore_UpdateObjectLinks_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3067,6 +3074,64 @@ func (_c *MockObjectStore_UpdatePendingLocalDetails_Call) Return(_a0 error) *Moc
 }
 
 func (_c *MockObjectStore_UpdatePendingLocalDetails_Call) RunAndReturn(run func(string, func(*types.Struct) (*types.Struct, error)) error) *MockObjectStore_UpdatePendingLocalDetails_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WriteTx provides a mock function with given fields: ctx
+func (_m *MockObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WriteTx")
+	}
+
+	var r0 anystore.WriteTx
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (anystore.WriteTx, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) anystore.WriteTx); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(anystore.WriteTx)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectStore_WriteTx_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteTx'
+type MockObjectStore_WriteTx_Call struct {
+	*mock.Call
+}
+
+// WriteTx is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockObjectStore_Expecter) WriteTx(ctx interface{}) *MockObjectStore_WriteTx_Call {
+	return &MockObjectStore_WriteTx_Call{Call: _e.mock.On("WriteTx", ctx)}
+}
+
+func (_c *MockObjectStore_WriteTx_Call) Run(run func(ctx context.Context)) *MockObjectStore_WriteTx_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_WriteTx_Call) Return(_a0 anystore.WriteTx, _a1 error) *MockObjectStore_WriteTx_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockObjectStore_WriteTx_Call) RunAndReturn(run func(context.Context) (anystore.WriteTx, error)) *MockObjectStore_WriteTx_Call {
 	_c.Call.Return(run)
 	return _c
 }

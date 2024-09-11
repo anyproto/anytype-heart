@@ -14,8 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *dsObjectStore) DeleteDetails(ids ...string) error {
-	txn, err := s.anyStore.WriteTx(s.componentCtx)
+func (s *dsObjectStore) DeleteDetails(ctx context.Context, ids ...string) error {
+	txn, err := s.anyStore.WriteTx(ctx)
 	if err != nil {
 		return fmt.Errorf("write txn: %w", err)
 	}

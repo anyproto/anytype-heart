@@ -46,6 +46,9 @@ const (
 
 	// ForceLinksReindexCounter forces to erase links from store and reindex them
 	ForceLinksReindexCounter int32 = 1
+
+	// ForceMarketplaceReindex forces to do reindex only for marketplace space
+	ForceMarketplaceReindex int32 = 1
 )
 
 func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
@@ -111,6 +114,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.LinksErase != ForceLinksReindexCounter {
 		flags.eraseLinks = true
+	}
+	if spaceID == addr.AnytypeMarketplaceWorkspace && checksums.MarketplaceForceReindexCounter != ForceMarketplaceReindex {
+		flags.enableAll()
 	}
 	return flags, nil
 }
@@ -296,7 +302,7 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 	}
 	for _, id := range ids {
 		if domain.IsFileId(id) {
-			err = i.store.DeleteDetails(id)
+			err = i.store.DeleteDetails(i.runCtx, id)
 			if err != nil {
 				log.Errorf("delete old file %s: %s", id, err)
 			}
@@ -376,7 +382,7 @@ func (i *indexer) removeDetails(spaceId string) error {
 		log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
 	}
 	for _, id := range ids {
-		if err = i.store.DeleteDetails(id); err != nil {
+		if err = i.store.DeleteDetails(i.runCtx, id); err != nil {
 			log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
 		}
 	}
@@ -406,7 +412,7 @@ func (i *indexer) removeOldObjects() (err error) {
 		return
 	}
 
-	err = i.store.DeleteDetails(ids...)
+	err = i.store.DeleteDetails(i.runCtx, ids...)
 	log.With(zap.Int("count", len(ids)), zap.Error(err)).Warnf("removeOldObjects")
 	return err
 }
@@ -478,7 +484,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
 		}
 
-		lastHash, err := i.store.GetLastIndexedHeadsHash(tid)
+		lastHash, err := i.store.GetLastIndexedHeadsHash(ctx, tid)
 		if err != nil {
 			logErr(err)
 			continue
@@ -525,8 +531,8 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space smartblock.Spac
 	return
 }
 
-func (i *indexer) getLatestChecksums() model.ObjectStoreChecksums {
-	return model.ObjectStoreChecksums{
+func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.ObjectStoreChecksums) {
+	checksums = model.ObjectStoreChecksums{
 		BundledObjectTypes:               bundle.TypeChecksum,
 		BundledRelations:                 bundle.RelationChecksum,
 		BundledTemplates:                 i.btHash.Hash(),
@@ -539,10 +545,14 @@ func (i *indexer) getLatestChecksums() model.ObjectStoreChecksums {
 		AreDeletedObjectsReindexed:       true,
 		LinksErase:                       ForceLinksReindexCounter,
 	}
+	if isMarketplace {
+		checksums.MarketplaceForceReindexCounter = ForceMarketplaceReindex
+	}
+	return
 }
 
 func (i *indexer) saveLatestChecksums(spaceID string) error {
-	checksums := i.getLatestChecksums()
+	checksums := i.getLatestChecksums(spaceID == addr.AnytypeMarketplaceWorkspace)
 	return i.store.SaveChecksums(spaceID, &checksums)
 }
 

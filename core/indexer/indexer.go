@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
@@ -54,6 +55,12 @@ type Hasher interface {
 	Hash() string
 }
 
+type indexTask struct {
+	info    smartblock.DocInfo
+	options []smartblock.IndexOption
+	done    chan error
+}
+
 type indexer struct {
 	store          objectstore.ObjectStore
 	fileStore      filestore.FileStore
@@ -61,8 +68,10 @@ type indexer struct {
 	picker         cache.ObjectGetter
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
+	batcher        *mb.MB[indexTask]
 
-	quit            chan struct{}
+	runCtx          context.Context
+	runCtxCancel    context.CancelFunc
 	ftQueueFinished chan struct{}
 	config          *config.Config
 
@@ -81,10 +90,11 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.picker = app.MustComponent[cache.ObjectGetter](a)
-	i.quit = make(chan struct{})
-	i.ftQueueFinished = make(chan struct{})
+	i.runCtx, i.runCtxCancel = context.WithCancel(context.Background())
 	i.forceFt = make(chan struct{})
 	i.config = app.MustComponent[*config.Config](a)
+	i.batcher = mb.New[indexTask](100)
+	go i.indexBatchLoop()
 	return
 }
 
@@ -100,14 +110,71 @@ func (i *indexer) StartFullTextIndex() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
+	i.ftQueueFinished = make(chan struct{})
 	go i.ftLoopRoutine()
 	return
 }
 
+func (i *indexer) indexBatchLoop() {
+	for {
+		tasks, err := i.batcher.Wait(i.runCtx)
+		if err != nil {
+			return
+		}
+		if iErr := i.indexBatch(tasks); iErr != nil {
+			log.Warnf("indexBatch error: %v", iErr)
+		}
+	}
+}
+
+func (i *indexer) indexBatch(tasks []indexTask) (err error) {
+	tx, err := i.store.WriteTx(i.runCtx)
+	if err != nil {
+		return err
+	}
+	st := time.Now()
+
+	closeTasks := func(closeErr error) {
+		for _, t := range tasks {
+			if closeErr != nil {
+				select {
+				case t.done <- closeErr:
+				default:
+				}
+			} else {
+				close(t.done)
+			}
+		}
+	}
+
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			if err = tx.Commit(); err != nil {
+				closeTasks(err)
+			} else {
+				closeTasks(nil)
+			}
+			log.Infof("indexBatch: indexed %d docs for a %v: err: %v", len(tasks), time.Since(st), err)
+		}
+	}()
+
+	for _, task := range tasks {
+		if iErr := i.index(tx.Context(), task.info, task.options...); iErr != nil {
+			task.done <- iErr
+		}
+	}
+	return
+}
+
 func (i *indexer) Close(ctx context.Context) (err error) {
-	close(i.quit)
-	// we need to wait for the ftQueue processing to be finished gracefully. Because we may be in the middle of badger transaction
-	<-i.ftQueueFinished
+	_ = i.batcher.Close()
+	if i.runCtxCancel != nil {
+		i.runCtxCancel()
+		// we need to wait for the ftQueue processing to be finished gracefully. Because we may be in the middle of badger transaction
+		<-i.ftQueueFinished
+	}
 	return nil
 }
 
@@ -129,10 +196,23 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	if err != nil {
 		return
 	}
-	return i.store.DeleteDetails(ids...)
+	return i.store.DeleteDetails(i.runCtx, ids...)
 }
 
 func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
+	done := make(chan error)
+	if err := i.batcher.Add(ctx, indexTask{
+		info:    info,
+		options: options,
+		done:    done,
+	}); err != nil {
+		return err
+	}
+	err, _ := <-done
+	return err
+}
+
+func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
 	// options are stored in smartblock pkg because of cyclic dependency :(
 	startTime := time.Now()
 	opts := &smartblock.IndexOptions{}
@@ -150,7 +230,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 			return
 		}
 
-		err = i.store.SaveLastIndexedHeadsHash(info.Id, headHashToIndex)
+		err = i.store.SaveLastIndexedHeadsHash(ctx, info.Id, headHashToIndex)
 		if err != nil {
 			log.With("objectID", info.Id).Errorf("failed to save indexed heads hash: %v", err)
 		}
@@ -161,7 +241,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 		return nil
 	}
 
-	lastIndexedHash, err := i.store.GetLastIndexedHeadsHash(info.Id)
+	lastIndexedHash, err := i.store.GetLastIndexedHeadsHash(ctx, info.Id)
 	if err != nil {
 		log.With("object", info.Id).Errorf("failed to get last indexed heads hash: %v", err)
 	}
@@ -180,7 +260,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 	indexSetTime := time.Now()
 	var hasError bool
 	if indexLinks {
-		if err = i.store.UpdateObjectLinks(info.Id, info.Links); err != nil {
+		if err = i.store.UpdateObjectLinks(ctx, info.Id, info.Links); err != nil {
 			hasError = true
 			log.With("objectID", info.Id).Errorf("failed to save object links: %v", err)
 		}
@@ -208,12 +288,12 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 		}
 
 		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
-			if err := i.store.AddToIndexQueue(info.Id); err != nil {
+			if err := i.store.AddToIndexQueue(ctx, info.Id); err != nil {
 				log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
 			}
 		}
 	} else {
-		_ = i.store.DeleteDetails(info.Id)
+		_ = i.store.DeleteDetails(ctx, info.Id)
 	}
 	indexDetailsTime := time.Now()
 	detailsCount := 0

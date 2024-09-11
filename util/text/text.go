@@ -37,7 +37,14 @@ func Truncate(text string, length int) string {
 }
 
 func UTF16RuneCountString(str string) int {
-	return len(utf16.Encode([]rune(str)))
+	buf := make([]uint16, 0, 2)
+	var n int
+	for _, s := range str {
+		buf = utf16.AppendRune(buf, s)
+		n += len(buf)
+		buf = buf[:0]
+	}
+	return n
 }
 
 func UTF16RuneCount(bStr []byte) int {

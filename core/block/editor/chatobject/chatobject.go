@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -28,7 +29,7 @@ const (
 type StoreObject interface {
 	smartblock.SmartBlock
 
-	AddMessage(ctx context.Context, message *model.ChatMessage) (string, error)
+	AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error)
 	GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
@@ -108,20 +109,24 @@ func (s *storeObject) GetMessages(ctx context.Context, beforeOrderId string, lim
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
+	var msgs []*model.ChatMessage
 	if beforeOrderId != "" {
 		qry := coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, beforeOrderId)}).Sort(descOrder).Limit(uint(limit))
-		msgs, err := s.queryMessages(ctx, qry)
+		msgs, err = s.queryMessages(ctx, qry)
 		if err != nil {
 			return nil, fmt.Errorf("query messages: %w", err)
 		}
-		sort.Slice(msgs, func(i, j int) bool {
-			return msgs[i].OrderId < msgs[j].OrderId
-		})
-		return msgs, nil
 	} else {
 		qry := coll.Find(nil).Sort(descOrder).Limit(uint(limit))
-		return s.queryMessages(ctx, qry)
+		msgs, err = s.queryMessages(ctx, qry)
+		if err != nil {
+			return nil, fmt.Errorf("query messages: %w", err)
+		}
 	}
+	sort.Slice(msgs, func(i, j int) bool {
+		return msgs[i].OrderId < msgs[j].OrderId
+	})
+	return msgs, nil
 }
 
 func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) ([]*model.ChatMessage, error) {
@@ -148,7 +153,7 @@ func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) (
 	return res, errors.Join(iter.Close(), err)
 }
 
-func (s *storeObject) AddMessage(ctx context.Context, message *model.ChatMessage) (string, error) {
+func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error) {
 	// TODO Use one arena for whole object
 	arena := &fastjson.Arena{}
 	obj := marshalModel(arena, message)
@@ -159,6 +164,7 @@ func (s *storeObject) AddMessage(ctx context.Context, message *model.ChatMessage
 		return "", fmt.Errorf("create chat: %w", err)
 	}
 
+	s.subscription.setSessionContext(sessionCtx)
 	messageId, err := s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
 		State:   s.store,

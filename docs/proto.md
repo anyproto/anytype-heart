@@ -9945,6 +9945,7 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Chat.AddMessage.Response.Error](#anytype-Rpc-Chat-AddMessage-Response-Error) |  |  |
 | messageId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
 
@@ -27041,6 +27042,7 @@ Precondition: user A and user B opened the same block
 | areOldFilesRemoved | [bool](#bool) |  |  |
 | areDeletedObjectsReindexed | [bool](#bool) |  |  |
 | linksErase | [int32](#int32) |  |  |
+| marketplaceForceReindexCounter | [int32](#int32) |  |  |
 
 
 

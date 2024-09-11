@@ -40,15 +40,7 @@ func (i *indexer) ForceFTIndex() {
 // MUST NOT be called more than once
 func (i *indexer) ftLoopRoutine() {
 	ticker := time.NewTicker(ftIndexInterval)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		select {
-		case <-i.quit:
-			cancel()
-		case <-ctx.Done():
-		}
-	}()
+	ctx := i.runCtx
 
 	i.runFullTextIndexer(ctx)
 	defer close(i.ftQueueFinished)
@@ -229,7 +221,7 @@ func (i *indexer) ftInit() error {
 				return err
 			}
 			for _, id := range ids {
-				if err := i.store.AddToIndexQueue(id); err != nil {
+				if err := i.store.AddToIndexQueue(i.runCtx, id); err != nil {
 					return err
 				}
 			}

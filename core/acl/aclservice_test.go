@@ -15,16 +15,20 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/list/mock_list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl/headupdater"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/commonspace/sync/syncdeps"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/cidutil"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -143,6 +147,23 @@ func (m mockSyncAcl) SetHeadUpdater(updater headupdater.HeadUpdater) {
 }
 
 func (m mockSyncAcl) SetAclUpdater(updater headupdater.AclUpdater) {
+}
+
+func (m mockSyncAcl) HandleHeadUpdate(ctx context.Context, statusUpdater syncstatus.StatusUpdater, headUpdate drpc.Message) (syncdeps.Request, error) {
+	return nil, nil
+}
+func (m mockSyncAcl) HandleStreamRequest(ctx context.Context, rq syncdeps.Request, updater syncdeps.QueueSizeUpdater, send func(resp proto.Message) error) (syncdeps.Request, error) {
+	return nil, nil
+}
+func (m mockSyncAcl) HandleDeprecatedRequest(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
+	return nil, nil
+}
+
+func (m mockSyncAcl) HandleResponse(ctx context.Context, peerId string, objectId string, resp syncdeps.Response) error {
+	return nil
+}
+func (m mockSyncAcl) ResponseCollector() syncdeps.ResponseCollector {
+	return nil
 }
 
 func TestService_MakeShareable(t *testing.T) {

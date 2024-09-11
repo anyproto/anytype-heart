@@ -277,7 +277,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 	t.Run("with no links added", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectLinks("id1", []string{})
+		err := s.UpdateObjectLinks(ctx, "id1", []string{})
 		require.NoError(t, err)
 
 		out, err := s.GetOutboundLinksByID("id1")
@@ -288,7 +288,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 	t.Run("with some links added", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectLinks("id1", []string{"id2", "id3"})
+		err := s.UpdateObjectLinks(ctx, "id1", []string{"id2", "id3"})
 		require.NoError(t, err)
 
 		s.assertOutboundLinks(t, "id1", []string{"id2", "id3"})
@@ -301,7 +301,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 
 		s.givenExistingLinks(t)
 
-		err := s.UpdateObjectLinks("id1", []string{"id2", "id3"})
+		err := s.UpdateObjectLinks(ctx, "id1", []string{"id2", "id3"})
 		require.NoError(t, err)
 
 		s.assertOutboundLinks(t, "id1", []string{"id2", "id3"})
@@ -314,7 +314,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 
 		s.givenExistingLinks(t)
 
-		err := s.UpdateObjectLinks("id1", []string{})
+		err := s.UpdateObjectLinks(ctx, "id1", []string{})
 		require.NoError(t, err)
 
 		s.assertOutboundLinks(t, "id1", nil)
@@ -344,7 +344,7 @@ func (fx *StoreFixture) assertOutboundLinks(t *testing.T, id string, links []str
 }
 
 func (fx *StoreFixture) givenExistingLinks(t *testing.T) {
-	err := fx.UpdateObjectLinks("id1", []string{"id2"})
+	err := fx.UpdateObjectLinks(ctx, "id1", []string{"id2"})
 	require.NoError(t, err)
 
 	fx.assertOutboundLinks(t, "id1", []string{"id2"})

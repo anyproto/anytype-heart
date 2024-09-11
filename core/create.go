@@ -3,16 +3,14 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -39,73 +37,18 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	if err != nil {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
-	if req.WithChat || model.ObjectTypeLayout(pbtypes.GetInt64(newDetails, bundle.RelationKeyLayout.String())) == model.ObjectType_chat {
-		_, err = mw.addChat(cctx, id)
-		if err != nil {
-			return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
-		}
+	if req.WithChat {
+		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
 	}
 	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails, nil)
 }
 
-// TODO Should be in object creator service
-func (mw *Middleware) addChat(cctx context.Context, objectId string) (string, error) {
-	var spaceId string
-	err := mw.doBlockService(func(bs *block.Service) error {
-		sb, err := bs.GetObject(cctx, objectId)
-		if err != nil {
-			return err
-		}
-		spaceId = sb.SpaceID()
-		return nil
-	})
-	if err != nil {
-		return "", err
-	}
-
-	chatDetails := &types.Struct{Fields: map[string]*types.Value{}}
-	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatDerivedObject, objectId)
-	if err != nil {
-		return "", err
-	}
-	chatDetails.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(chatUniqueKey.Marshal())
-
-	chatReq := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeyChatDerived,
-		Details:       chatDetails,
-	}
-
-	chatId, _, err := getService[objectcreator.Service](mw).CreateObject(cctx, spaceId, chatReq)
-	if err != nil {
-		return "", err
-	}
-
-	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ModifyDetails(objectId, func(current *types.Struct) (*types.Struct, error) {
-			if current == nil {
-				return nil, errors.New("object not found")
-			}
-			current.Fields[bundle.RelationKeyChatId.String()] = pbtypes.String(chatId)
-			current.Fields[bundle.RelationKeyHasChat.String()] = pbtypes.Bool(true)
-			return current, nil
-		})
-	})
-	return chatId, err
-}
-
 func (mw *Middleware) ObjectChatAdd(cctx context.Context, req *pb.RpcObjectChatAddRequest) *pb.RpcObjectChatAddResponse {
-	chatId, err := mw.addChat(cctx, req.ObjectId)
-
-	code := mapErrorCode(err,
-		errToCode(err, pb.RpcObjectChatAddResponseError_UNKNOWN_ERROR),
-	)
-
 	return &pb.RpcObjectChatAddResponse{
 		Error: &pb.RpcObjectChatAddResponseError{
-			Code:        code,
-			Description: getErrorDescription(err),
+			Code:        pb.RpcObjectChatAddResponseError_UNKNOWN_ERROR,
+			Description: "not implemented",
 		},
-		ChatId: chatId,
 	}
 }
 
@@ -144,10 +87,7 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
 	if req.WithChat {
-		_, err = mw.addChat(cctx, id)
-		if err != nil {
-			return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
-		}
+		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
 	}
 	return response(pb.RpcObjectCreateSetResponseError_NULL, id, newDetails, nil)
 }
@@ -171,11 +111,9 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
 	}
 	if req.WithChat {
-		_, err = mw.addChat(cctx, id)
-		if err != nil {
-			return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
-		}
+		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
 	}
+
 	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, newDetails, nil)
 }
 
@@ -276,11 +214,9 @@ func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjec
 	if err != nil {
 		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", err, nil)
 	}
+
 	if req.WithChat {
-		_, err = mw.addChat(cctx, id)
-		if err != nil {
-			return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", err, nil)
-		}
+		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", fmt.Errorf("WithChat is not implemented"), nil)
 	}
 	return response(pb.RpcObjectCreateFromUrlResponseError_NULL, id, nil, newDetails)
 }
