@@ -58,9 +58,8 @@ type updater struct {
 	store        objectstore.ObjectStore
 	spaceService space.Service
 
-	ctx     context.Context
-	cancel  context.CancelFunc
-	started bool
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	msgBatch *mb.MB[message]
 }
@@ -77,14 +76,13 @@ func (u *updater) Init(a *app.App) error {
 }
 
 func (u *updater) Run(context.Context) error {
-	u.started = true
 	u.ctx, u.cancel = context.WithCancel(context.Background())
 	go u.lastUsedUpdateHandler()
 	return nil
 }
 
 func (u *updater) Close(context.Context) error {
-	if u.started {
+	if u.cancel != nil {
 		u.cancel()
 	}
 	if err := u.msgBatch.Close(); err != nil {
