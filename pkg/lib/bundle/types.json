@@ -156,7 +156,8 @@
       "origin"
     ],
     "description": "The recording of moving visual images",
-    "restrictObjectCreation": true
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "dashboard",
@@ -358,7 +359,8 @@
       "origin"
     ],
     "description": "A representation of the external form of a person or thing in art",
-    "restrictObjectCreation": true
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "profile",
@@ -398,7 +400,8 @@
       "origin"
     ],
     "description": "Sound when recorded, with ability to reproduce",
-    "restrictObjectCreation": true
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "goal",
@@ -435,7 +438,8 @@
       "origin"
     ],
     "description": "Computer resource for recording data in a computer storage device",
-    "restrictObjectCreation": true
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "project",
