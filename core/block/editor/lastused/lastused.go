@@ -2,6 +2,7 @@ package lastused
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -154,33 +155,30 @@ func (u *updater) updateLastUsedDateForKeysInSpace(spaceId string, keys map[Key]
 	}
 
 	for key, timeStamp := range keys {
-		u.updateLastUsedDate(spc, key, timeStamp)
+		if err = u.updateLastUsedDate(spc, key, timeStamp); err != nil {
+			log.Error("failed to update last used date", zap.String("spaceId", spaceId), zap.String("key", key.String()), zap.Error(err))
+		}
 	}
 }
 
-func (u *updater) updateLastUsedDate(spc clientspace.Space, key Key, ts int64) {
+func (u *updater) updateLastUsedDate(spc clientspace.Space, key Key, ts int64) error {
 	uk, err := domain.UnmarshalUniqueKey(key.URL())
 	if err != nil {
-		log.Error("failed to unmarshall key", zap.String("key", key.String()), zap.Error(err))
-		return
+		return fmt.Errorf("failed to unmarshall key: %w", err)
 	}
 
 	if uk.SmartblockType() != coresb.SmartBlockTypeObjectType && uk.SmartblockType() != coresb.SmartBlockTypeRelation {
-		log.Error("cannot update lastUsedDate for object with invalid smartBlock type. Only object types and relations are expected",
-			zap.String("key", key.String()), zap.String("smartBlock type", uk.SmartblockType().String()))
-		return
+		return fmt.Errorf("cannot update lastUsedDate for object with invalid smartBlock type. Only object types and relations are expected")
 	}
 
 	details, err := u.store.GetObjectByUniqueKey(spc.Id(), uk)
 	if err != nil {
-		log.Error("failed to get details of type object '%s': %v", zap.String("key", key.String()), zap.Error(err))
-		return
+		return fmt.Errorf("failed to get details: %w", err)
 	}
 
 	id := pbtypes.GetString(details.Details, bundle.RelationKeyId.String())
 	if id == "" {
-		log.Error("failed to get id from details of type object '%s': %w", zap.String("key", key.String()), zap.Error(err))
-		return
+		return fmt.Errorf("failed to get id from details: %w", err)
 	}
 
 	if err = spc.DoCtx(u.ctx, id, func(sb smartblock.SmartBlock) error {
@@ -188,8 +186,9 @@ func (u *updater) updateLastUsedDate(spc clientspace.Space, key Key, ts int64) {
 		st.SetLocalDetail(bundle.RelationKeyLastUsedDate.String(), pbtypes.Int64(ts))
 		return sb.Apply(st)
 	}); err != nil {
-		log.Error("failed to set lastUsedDate to type object '%s': %w", zap.String("key", key.String()), zap.Error(err))
+		return fmt.Errorf("failed to set lastUsedDate to object: %w", err)
 	}
+	return nil
 }
 
 func SetLastUsedDateForInitialObjectType(id string, details *types.Struct) {

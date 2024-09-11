@@ -109,25 +109,31 @@ func TestUpdateLastUsedDate(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name     string
-		key      Key
-		getSpace func() clientspace.Space
+		name            string
+		key             Key
+		getSpace        func() clientspace.Space
+		isErrorExpected bool
 	}{
-		{"built-in relation", bundle.RelationKeyCamera, getSpace},
-		{"built-in type", bundle.TypeKeyDiaryEntry, getSpace},
-		{"custom relation", domain.RelationKey("custom"), getSpace},
+		{"built-in relation", bundle.RelationKeyCamera, getSpace, false},
+		{"built-in type", bundle.TypeKeyDiaryEntry, getSpace, false},
+		{"custom relation", domain.RelationKey("custom"), getSpace, false},
 		{"option", domain.TypeKey("opt-done"), func() clientspace.Space {
 			spc := mock_clientspace.NewMockSpace(t)
 			return spc
-		}},
+		}, true},
 		{"type that is not in store", bundle.TypeKeyAudio, func() clientspace.Space {
 			spc := mock_clientspace.NewMockSpace(t)
 			spc.EXPECT().Id().Return(spaceId)
 			return spc
-		}},
+		}, true},
 	} {
 		t.Run("update lastUsedDate of "+tc.name, func(t *testing.T) {
-			u.updateLastUsedDate(tc.getSpace(), tc.key, ts)
+			err := u.updateLastUsedDate(tc.getSpace(), tc.key, ts)
+			if tc.isErrorExpected {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }
