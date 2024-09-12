@@ -1291,7 +1291,7 @@ func TestDsObjectStore_QueryAndProcess(t *testing.T) {
 
 	t.Run("counter", func(t *testing.T) {
 		var counter = 0
-		err := s.QueryAndProcess(database.Query{Filters: []*model.BlockContentDataviewFilter{{
+		err := s.QueryIterate(database.Query{Filters: []*model.BlockContentDataviewFilter{{
 			RelationKey: bundle.RelationKeySpaceId.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.String(spaceId),
@@ -1305,7 +1305,7 @@ func TestDsObjectStore_QueryAndProcess(t *testing.T) {
 
 	t.Run("favorites collector", func(t *testing.T) {
 		favs := make([]string, 0)
-		err := s.QueryAndProcess(database.Query{Filters: []*model.BlockContentDataviewFilter{{
+		err := s.QueryIterate(database.Query{Filters: []*model.BlockContentDataviewFilter{{
 			RelationKey: bundle.RelationKeySpaceId.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.String(spaceId),
@@ -1321,7 +1321,7 @@ func TestDsObjectStore_QueryAndProcess(t *testing.T) {
 
 	t.Run("name and description analyzer", func(t *testing.T) {
 		ids := make([]string, 0)
-		err := s.QueryAndProcess(database.Query{Filters: []*model.BlockContentDataviewFilter{{
+		err := s.QueryIterate(database.Query{Filters: []*model.BlockContentDataviewFilter{{
 			RelationKey: bundle.RelationKeySpaceId.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.String(spaceId),

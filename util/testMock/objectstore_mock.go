@@ -653,20 +653,6 @@ func (mr *MockObjectStoreMockRecorder) Query(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockObjectStore)(nil).Query), arg0)
 }
 
-// QueryAndProcess mocks base method.
-func (m *MockObjectStore) QueryAndProcess(arg0 database.Query, arg1 func(*types.Struct)) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryAndProcess", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// QueryAndProcess indicates an expected call of QueryAndProcess.
-func (mr *MockObjectStoreMockRecorder) QueryAndProcess(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryAndProcess", reflect.TypeOf((*MockObjectStore)(nil).QueryAndProcess), arg0, arg1)
-}
-
 // QueryByID mocks base method.
 func (m *MockObjectStore) QueryByID(arg0 []string) ([]database.Record, error) {
 	m.ctrl.T.Helper()
@@ -696,6 +682,20 @@ func (m *MockObjectStore) QueryByIDAndSubscribeForChanges(arg0 []string, arg1 da
 func (mr *MockObjectStoreMockRecorder) QueryByIDAndSubscribeForChanges(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryByIDAndSubscribeForChanges", reflect.TypeOf((*MockObjectStore)(nil).QueryByIDAndSubscribeForChanges), arg0, arg1)
+}
+
+// QueryIterate mocks base method.
+func (m *MockObjectStore) QueryIterate(arg0 database.Query, arg1 func(*types.Struct)) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryIterate", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// QueryIterate indicates an expected call of QueryIterate.
+func (mr *MockObjectStoreMockRecorder) QueryIterate(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryIterate", reflect.TypeOf((*MockObjectStore)(nil).QueryIterate), arg0, arg1)
 }
 
 // QueryObjectIDs mocks base method.

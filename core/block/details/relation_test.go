@@ -1,4 +1,4 @@
-package block
+package details
 
 import (
 	"testing"
@@ -70,7 +70,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		},
 	})
 
-	bs := Service{objectStore: store}
+	bs := service{store: store}
 
 	for _, tc := range []struct {
 		name             string

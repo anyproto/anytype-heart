@@ -38,6 +38,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	decorator "github.com/anyproto/anytype-heart/core/block/bookmark/bookmarkimporter"
 	"github.com/anyproto/anytype-heart/core/block/collection"
+	"github.com/anyproto/anytype-heart/core/block/details"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/export"
@@ -265,6 +266,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(core.New()).
 		Register(core.NewTempDirService()).
 		Register(treemanager.New()).
+		Register(details.New()).
 		Register(block.New()).
 		Register(indexer.New()).
 		Register(detailsupdater.New()).

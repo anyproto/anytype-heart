@@ -1,14 +1,15 @@
-package block
+package details
 
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -25,7 +26,7 @@ import (
 
 var ErrBundledTypeIsReadonly = fmt.Errorf("can't modify bundled object type")
 
-func (s *Service) ObjectTypeRelationAdd(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
+func (s *service) ObjectTypeAddRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
 	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
 		return ErrBundledTypeIsReadonly
 	}
@@ -46,7 +47,7 @@ func (s *Service) ObjectTypeRelationAdd(ctx context.Context, objectTypeId string
 	})
 }
 
-func (s *Service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
+func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
 	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
 		return ErrBundledTypeIsReadonly
 	}
@@ -65,11 +66,11 @@ func (s *Service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 	})
 }
 
-func (s *Service) ListRelationsWithValue(spaceId string, value *types.Value) (keys []string, counters []int64, err error) {
+func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) (keys []string, counters []int64, err error) {
 	countersByKeys := make(map[string]int64)
 	detailHandlesValue := generateFilter(value)
 
-	err = s.objectStore.QueryAndProcess(database.Query{Filters: []*model.BlockContentDataviewFilter{{
+	err = s.store.QueryIterate(database.Query{Filters: []*model.BlockContentDataviewFilter{{
 		RelationKey: bundle.RelationKeySpaceId.String(),
 		Condition:   model.BlockContentDataviewFilter_Equal,
 		Value:       pbtypes.String(spaceId),
@@ -111,16 +112,16 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 
 	sbt, err := typeprovider.SmartblockTypeFromID(stringValue)
 	if err != nil {
-		log.Errorf("failed to determine smartblock type: %v", err)
+		log.Error("failed to determine smartblock type", zap.Error(err))
 	}
 
 	if sbt != coresb.SmartBlockTypeDate {
 		return equalFilter
 	}
 
-	start, err := addr.DateIDToDayStart(stringValue)
+	start, err := dateIDToDayStart(stringValue)
 	if err != nil {
-		log.Errorf("failed to convert date id to day start: %v", err)
+		log.Error("failed to convert date id to day start", zap.Error(err))
 		return equalFilter
 	}
 
@@ -135,4 +136,11 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 		}
 		return equalFilter(v)
 	}
+}
+
+func dateIDToDayStart(id string) (time.Time, error) {
+	if !strings.HasPrefix(id, addr.DatePrefix) {
+		return time.Time{}, fmt.Errorf("invalid id: date prefix not found")
+	}
+	return time.Parse("2006-01-02", strings.TrimPrefix(id, addr.DatePrefix))
 }

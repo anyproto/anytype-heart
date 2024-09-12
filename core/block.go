@@ -416,40 +416,6 @@ func (mw *Middleware) ObjectListDelete(cctx context.Context, req *pb.RpcObjectLi
 	return response(pb.RpcObjectListDeleteResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectListSetIsArchived(cctx context.Context, req *pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectListSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectListSetIsArchivedResponse {
-		m := &pb.RpcObjectListSetIsArchivedResponse{Error: &pb.RpcObjectListSetIsArchivedResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetPagesIsArchived(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectListSetIsArchivedResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectListSetIsArchivedResponseError_NULL, nil)
-}
-func (mw *Middleware) ObjectListSetIsFavorite(cctx context.Context, req *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse {
-	response := func(code pb.RpcObjectListSetIsFavoriteResponseErrorCode, err error) *pb.RpcObjectListSetIsFavoriteResponse {
-		m := &pb.RpcObjectListSetIsFavoriteResponse{Error: &pb.RpcObjectListSetIsFavoriteResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetPagesIsFavorite(*req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectListSetIsFavoriteResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectListSetIsFavoriteResponseError_NULL, nil)
-}
-
 func (mw *Middleware) BlockReplace(cctx context.Context, req *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockReplaceResponseErrorCode, blockId string, err error) *pb.RpcBlockReplaceResponse {

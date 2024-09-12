@@ -1,4 +1,4 @@
-package block
+package details
 
 import (
 	"testing"

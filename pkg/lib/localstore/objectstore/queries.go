@@ -505,7 +505,7 @@ func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub databa
 	return
 }
 
-func (s *dsObjectStore) QueryAndProcess(q database.Query, proc func(details *types.Struct)) error {
+func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *types.Struct)) error {
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
