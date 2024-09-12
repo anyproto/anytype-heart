@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace"
-
-	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 )
 
 func newAnySpace(cc commonspace.Space) (*AnySpace, error) {
@@ -15,7 +13,6 @@ func newAnySpace(cc commonspace.Space) (*AnySpace, error) {
 
 type AnySpace struct {
 	commonspace.Space
-	statusWatcher objectsyncstatus.StatusWatcher
 }
 
 func (s *AnySpace) Init(ctx context.Context) (err error) {

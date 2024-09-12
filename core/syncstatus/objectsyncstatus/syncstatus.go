@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestate"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 
@@ -18,7 +17,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -50,15 +48,9 @@ type StatusUpdater interface {
 	RemoveAllExcept(senderId string, differentRemoteIds []string)
 }
 
-type StatusWatcher interface {
-	Watch(treeId string) (err error)
-	Unwatch(treeId string)
-}
-
 type StatusService interface {
 	app.ComponentRunnable
 	StatusUpdater
-	StatusWatcher
 }
 
 type treeStatus struct {
@@ -80,13 +72,11 @@ type syncStatusService struct {
 	synced     []string
 	tempSynced map[string]struct{}
 	treeHeads  map[string]treeHeadsEntry
-	watchers   map[string]struct{}
 
 	updateIntervalSecs int
 	updateTimeout      time.Duration
 
 	syncDetailsUpdater Updater
-	nodeStatus         nodestatus.NodeStatus
 	config             *config.Config
 	nodeConfService    nodeconf.Service
 }
@@ -95,7 +85,6 @@ func NewSyncStatusService() StatusService {
 	return &syncStatusService{
 		tempSynced: map[string]struct{}{},
 		treeHeads:  map[string]treeHeadsEntry{},
-		watchers:   map[string]struct{}{},
 	}
 }
 
@@ -113,7 +102,6 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 	s.syncDetailsUpdater = app.MustComponent[Updater](a)
 	s.config = app.MustComponent[*config.Config](a)
 	s.nodeConfService = app.MustComponent[nodeconf.Service](a)
-	s.nodeStatus = app.MustComponent[nodestatus.NodeStatus](a)
 	return
 }
 
@@ -201,36 +189,6 @@ func (s *syncStatusService) addTreeHead(treeId string, heads []string, status Sy
 		heads:      headsCopy,
 		syncStatus: status,
 	}
-}
-
-func (s *syncStatusService) Watch(treeId string) (err error) {
-	s.Lock()
-	defer s.Unlock()
-	_, ok := s.treeHeads[treeId]
-	if !ok {
-		var (
-			st    treestorage.TreeStorage
-			heads []string
-		)
-		st, err = s.storage.TreeStorage(treeId)
-		if err != nil {
-			return
-		}
-		heads, err = st.Heads()
-		if err != nil {
-			return
-		}
-		s.addTreeHead(treeId, heads, StatusUnknown)
-	}
-
-	s.watchers[treeId] = struct{}{}
-	return
-}
-
-func (s *syncStatusService) Unwatch(treeId string) {
-	s.Lock()
-	defer s.Unlock()
-	delete(s.watchers, treeId)
 }
 
 func (s *syncStatusService) RemoveAllExcept(senderId string, differentRemoteIds []string) {
