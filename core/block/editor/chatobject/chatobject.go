@@ -154,8 +154,11 @@ func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) (
 }
 
 func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error) {
-	// TODO Use one arena for whole object
-	arena := &fastjson.Arena{}
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
 	obj := marshalModel(arena, message)
 
 	builder := storestate.Builder{}
@@ -191,7 +194,11 @@ func (s *storeObject) DeleteMessage(ctx context.Context, messageId string) error
 }
 
 func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error {
-	arena := &fastjson.Arena{}
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
 	obj := marshalModel(arena, newMessage)
 
 	builder := storestate.Builder{}
@@ -211,7 +218,11 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 }
 
 func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error {
-	arena := &fastjson.Arena{}
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
 
 	hasReaction, err := s.hasMyReaction(ctx, arena, messageId, emoji)
 	if err != nil {

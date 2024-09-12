@@ -170,6 +170,8 @@ func TestEditMessage(t *testing.T) {
 		want.Creator = testCreator
 
 		got := messages[0]
+		assert.True(t, got.ModifiedAt > 0)
+		got.ModifiedAt = 0
 		assertMessagesEqual(t, want, got)
 	})
 
