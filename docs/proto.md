@@ -25927,6 +25927,7 @@ Precondition: user A and user B opened the same block
 | Syncing | 1 |  |
 | Error | 2 |  |
 | Offline | 3 |  |
+| NetworkNeedsUpdate | 4 |  |
 
 
 
@@ -26197,6 +26198,7 @@ Precondition: user A and user B opened the same block
 | areOldFilesRemoved | [bool](#bool) |  |  |
 | areDeletedObjectsReindexed | [bool](#bool) |  |  |
 | linksErase | [int32](#int32) |  |  |
+| marketplaceForceReindexCounter | [int32](#int32) |  |  |
 
 
 

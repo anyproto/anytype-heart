@@ -25,7 +25,7 @@ var fileRequiredRelations = append(pageRequiredRelations, []domain.RelationKey{
 }...)
 
 func (f *ObjectFactory) newFile(sb smartblock.SmartBlock) *File {
-	basicComponent := basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService)
+	basicComponent := basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater)
 	return &File{
 		SmartBlock:        sb,
 		ChangeReceiver:    sb.(source.ChangeReceiver),
@@ -86,12 +86,13 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 	f.SmartBlock.AddHook(f.reconciler.FileObjectHook(domain.FullID{SpaceID: f.SpaceID(), ObjectID: f.Id()}), smartblock.HookBeforeApply)
 
 	if !ctx.IsNewObject {
-		err = f.fileObjectService.EnsureFileAddedToSyncQueue(domain.FullID{ObjectID: f.Id(), SpaceID: f.SpaceID()}, ctx.State.Details())
+		fullId := domain.FullID{ObjectID: f.Id(), SpaceID: f.SpaceID()}
+		err = f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, ctx.State.Details())
 		if err != nil {
 			log.Errorf("failed to ensure file added to sync queue: %v", err)
 		}
 		f.AddHook(func(applyInfo smartblock.ApplyInfo) error {
-			return f.fileObjectService.EnsureFileAddedToSyncQueue(domain.FullID{ObjectID: f.Id(), SpaceID: f.SpaceID()}, applyInfo.State.Details())
+			return f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, applyInfo.State.Details())
 		}, smartblock.HookOnStateRebuild)
 	}
 	return nil
