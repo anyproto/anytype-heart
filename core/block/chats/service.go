@@ -34,9 +34,14 @@ type Service interface {
 	app.ComponentRunnable
 }
 
+type configProvider interface {
+	GetAnyStoreConfig() *anystore.Config
+}
+
 type service struct {
-	repoPath string
-	db       anystore.DB
+	repoPath       string
+	anyStoreConfig *anystore.Config
+	db             anystore.DB
 
 	objectGetter cache.ObjectGetter
 }
@@ -51,6 +56,7 @@ func (s *service) Name() string {
 
 func (s *service) Init(a *app.App) error {
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
+	s.anyStoreConfig = app.MustComponent[configProvider](a).GetAnyStoreConfig()
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
 
 	return nil
@@ -69,7 +75,7 @@ func (s *service) Run(ctx context.Context) error {
 }
 
 func (s *service) runDatabase(ctx context.Context, path string) error {
-	store, err := anystore.Open(ctx, path, nil)
+	store, err := anystore.Open(ctx, path, s.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
