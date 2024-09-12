@@ -260,7 +260,7 @@ protos-swift:
 	@echo 'Generating swift protobuf files'
 	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Public --swift_out=./dist/ios/protobuf pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 		@echo 'Generated swift protobuf files at ./dist/ios/pb'
-	
+
 protos-swift-local: protos-swift
 	@echo 'Clear proto files'
 	@rm -rf ./dist/ios/protobuf/protos
@@ -325,14 +325,14 @@ install-linter:
 run-linter:
 ifdef GOLANGCI_LINT_BRANCH
 	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --timeout 15m --verbose
-else 
+else
 	@golangci-lint run -v ./... --new-from-rev=origin/main --timeout 15m --verbose
 endif
 
 run-linter-fix:
 ifdef GOLANGCI_LINT_BRANCH
 	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --timeout 15m --fix
-else 
+else
 	@golangci-lint run -v ./... --new-from-rev=origin/main --timeout 15m --fix
 endif
 
@@ -390,4 +390,4 @@ download-tantivy-all: download-tantivy
 
 download-tantivy-local: remove-libs
 	@mkdir -p $(OUTPUT_DIR)
-	@cp -r $(TANTIVY_GO_PATH)/libs/ $(OUTPUT_DIR)
+	@cp -r $(TANTIVY_GO_PATH)/libs/* $(OUTPUT_DIR)

@@ -247,6 +247,14 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 
 	objectIndexes := []anystore.IndexInfo{
 		{
+			Name:   "uniqueKey",
+			Fields: []string{bundle.RelationKeyUniqueKey.String()},
+		},
+		{
+			Name:   "source",
+			Fields: []string{bundle.RelationKeySource.String()},
+		},
+		{
 			Name:   "layout",
 			Fields: []string{bundle.RelationKeyLayout.String()},
 		},
@@ -255,32 +263,22 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 			Fields: []string{bundle.RelationKeyType.String()},
 		},
 		{
-			Name:   "spaceId",
-			Fields: []string{bundle.RelationKeySpaceId.String()},
-		},
-		{
 			Name:   "relationKey",
 			Fields: []string{bundle.RelationKeyRelationKey.String()},
-		},
-		{
-			Name:   "uniqueKey",
-			Fields: []string{bundle.RelationKeyUniqueKey.String()},
 		},
 		{
 			Name:   "lastModifiedDate",
 			Fields: []string{bundle.RelationKeyLastModifiedDate.String()},
 		},
 		{
-			Name:   "syncStatus",
-			Fields: []string{bundle.RelationKeySyncStatus.String()},
+			Name:   "fileId",
+			Fields: []string{bundle.RelationKeyFileId.String()},
+			Sparse: true,
 		},
 		{
-			Name:   "isDeleted",
-			Fields: []string{bundle.RelationKeyIsDeleted.String()},
-		},
-		{
-			Name:   "isArchived",
-			Fields: []string{bundle.RelationKeyIsArchived.String()},
+			Name:   "oldAnytypeID",
+			Fields: []string{bundle.RelationKeyOldAnytypeID.String()},
+			Sparse: true,
 		},
 	}
 	err = s.addIndexes(ctx, objects, objectIndexes)
@@ -315,6 +313,7 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection, indexes []anystore.IndexInfo) error {
 	gotIndexes := coll.GetIndexes()
 	toCreate := indexes[:0]
+	var toDrop []string
 	for _, idx := range indexes {
 		if !slices.ContainsFunc(gotIndexes, func(i anystore.Index) bool {
 			return i.Info().Name == idx.Name
@@ -322,7 +321,25 @@ func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection
 			toCreate = append(toCreate, idx)
 		}
 	}
+	for _, idx := range gotIndexes {
+		if !slices.ContainsFunc(indexes, func(i anystore.IndexInfo) bool {
+			return i.Name == idx.Info().Name
+		}) {
+			toDrop = append(toDrop, idx.Info().Name)
+		}
+	}
+	if len(toDrop) > 0 {
+		for _, indexName := range toDrop {
+			if err := coll.DropIndex(ctx, indexName); err != nil {
+				return err
+			}
+		}
+	}
 	return coll.EnsureIndex(ctx, toCreate...)
+}
+
+func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
+	return s.anyStore.WriteTx(ctx)
 }
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {
@@ -330,6 +347,7 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	if s.objects != nil {
 		err = errors.Join(err, s.objects.Close())
 	}
+	// TODO Close collections
 	if s.anyStore != nil {
 		err = errors.Join(err, s.anyStore.Close())
 	}

@@ -1328,5 +1328,15 @@
     "name": "Sync error",
     "readonly": true,
     "source": "local"
+  },
+  {
+    "description": "Objects that are mentioned in blocks of this object",
+    "format": "object",
+    "hidden": true,
+    "key": "mentions",
+    "maxCount": 0,
+    "name": "Mentions",
+    "readonly": true,
+    "source": "local"
   }
 ]

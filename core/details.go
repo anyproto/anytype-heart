@@ -22,7 +22,7 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 		}
 		return m
 	}
-	err := getService[details.Service](mw).SetDetails(ctx, req.ContextId, req.GetDetails())
+	err := getService[details.Service](mw).SetDetailsAndUpdateLastUsed(ctx, req.ContextId, req.GetDetails())
 	if err != nil {
 		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)
 	}
