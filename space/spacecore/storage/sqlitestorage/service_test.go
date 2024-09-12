@@ -195,6 +195,9 @@ type testConfig struct {
 func (t *testConfig) GetSpaceStorePath() string {
 	return filepath.Join(t.tmpDir, "spaceStore.db")
 }
+func (t *testConfig) GetTempDirPath() string {
+	return ""
+}
 
 func (t *testConfig) Init(a *app.App) (err error) {
 	return nil

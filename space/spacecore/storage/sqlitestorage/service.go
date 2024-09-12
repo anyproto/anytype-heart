@@ -30,6 +30,7 @@ var (
 
 type configGetter interface {
 	GetSpaceStorePath() string
+	GetTempDirPath() string
 }
 
 type storageService struct {
@@ -64,6 +65,7 @@ type storageService struct {
 		getBind *sql.Stmt
 	}
 	dbPath       string
+	dbTempPath   string
 	lockedSpaces map[string]*lockSpace
 
 	ctx       context.Context
@@ -88,6 +90,7 @@ func New() *storageService {
 
 func (s *storageService) Init(a *app.App) (err error) {
 	s.dbPath = a.MustComponent("config").(configGetter).GetSpaceStorePath()
+	s.dbTempPath = a.MustComponent("config").(configGetter).GetTempDirPath()
 	s.lockedSpaces = map[string]*lockSpace{}
 	if s.checkpointAfterWrite == 0 {
 		s.checkpointAfterWrite = time.Second
@@ -123,6 +126,13 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 		return
 	}
 	s.writeDb.SetMaxOpenConns(1)
+	if s.dbTempPath != "" {
+		if _, err = s.writeDb.Exec("PRAGMA temp_store_directory = '" + s.dbTempPath + "';"); err != nil {
+			log.Error("write:: failed to set temp store directory", zap.Error(err))
+			return
+		}
+	}
+
 	if _, err = s.writeDb.Exec(sqlCreateTables); err != nil {
 		log.With(zap.String("db", "spacestore_sqlite"), zap.String("type", "createtable"), zap.Error(err)).Error("failed to open db")
 		return
@@ -131,6 +141,12 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 	if s.readDb, err = sql.Open(driverName, connectionUri); err != nil {
 		log.With(zap.String("db", "spacestore_sqlite"), zap.String("type", "read"), zap.Error(err)).Error("failed to open db")
 		return
+	}
+	if s.dbTempPath != "" {
+		if _, err = s.readDb.Exec("PRAGMA temp_store_directory = '" + s.dbTempPath + "';"); err != nil {
+			log.Error("read:: failed to set temp store directory", zap.Error(err))
+			return
+		}
 	}
 	s.readDb.SetMaxOpenConns(10)
 
