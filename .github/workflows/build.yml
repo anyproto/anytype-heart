@@ -137,7 +137,6 @@ jobs:
           gox -cgo -ldflags="$FLAGS" -osarch="darwin/arm64" --tags="$BUILD_TAG_NETWORK nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           make protos-server
           CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="$BUILD_TAG_NETWORK nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
-          ls -lha .
       - name: run perf tests
         if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
         run: |
@@ -186,15 +185,6 @@ jobs:
           cp pkg/lib/bundle/systemTypes.json ./json
           cp pkg/lib/bundle/internalRelations.json ./json
           cp pkg/lib/bundle/internalTypes.json ./json
-      - name: Upload protobuf artifact for linux build
-        if: github.event_name == 'push' || github.event.inputs.nightly-mode == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: libs
-          path: |
-            protobuf
-          if-no-files-found: error
-          retention-days: 1
       - name: Pack server win
         if: github.event_name == 'push' || github.event.inputs.nightly-mode == 'true'
         run: |
