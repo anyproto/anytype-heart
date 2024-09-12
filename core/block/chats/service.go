@@ -25,6 +25,7 @@ type Service interface {
 	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
 	GetMessages(ctx context.Context, chatObjectId string, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
+	GetMessage(ctx context.Context, chatObjectId string, messageId string) (*model.ChatMessage, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe(chatObjectId string) error
 
@@ -125,6 +126,19 @@ func (s *service) GetMessages(ctx context.Context, chatObjectId string, beforeOr
 			return err
 		}
 		res = msgs
+		return nil
+	})
+	return res, err
+}
+
+func (s *service) GetMessage(ctx context.Context, chatObjectId string, messageId string) (*model.ChatMessage, error) {
+	var res *model.ChatMessage
+	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+		msg, err := sb.GetMessage(ctx, messageId)
+		if err != nil {
+			return err
+		}
+		res = msg
 		return nil
 	})
 	return res, err

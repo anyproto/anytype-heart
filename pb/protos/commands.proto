@@ -7382,6 +7382,30 @@ message Rpc {
             }
         }
 
+        message GetMessage {
+            message Request {
+                string chatObjectId = 1;
+                string messageId = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                model.ChatMessage message = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
         message SubscribeLastMessages {
             message Request {
                 string chatObjectId = 1;  // Identifier for the chat

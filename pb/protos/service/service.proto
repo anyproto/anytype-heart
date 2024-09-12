@@ -366,6 +366,7 @@ service ClientCommands {
     rpc ChatToggleMessageReaction (anytype.Rpc.Chat.ToggleMessageReaction.Request) returns (anytype.Rpc.Chat.ToggleMessageReaction.Response);
     rpc ChatDeleteMessage (anytype.Rpc.Chat.DeleteMessage.Request) returns (anytype.Rpc.Chat.DeleteMessage.Response);
     rpc ChatGetMessages (anytype.Rpc.Chat.GetMessages.Request) returns (anytype.Rpc.Chat.GetMessages.Response);
+    rpc ChatGetMessage (anytype.Rpc.Chat.GetMessage.Request) returns (anytype.Rpc.Chat.GetMessage.Response);
     rpc ChatSubscribeLastMessages (anytype.Rpc.Chat.SubscribeLastMessages.Request) returns (anytype.Rpc.Chat.SubscribeLastMessages.Response);
     rpc ChatUnsubscribe (anytype.Rpc.Chat.Unsubscribe.Request) returns (anytype.Rpc.Chat.Unsubscribe.Response);
 }

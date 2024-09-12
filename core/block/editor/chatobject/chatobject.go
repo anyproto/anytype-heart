@@ -31,6 +31,7 @@ type StoreObject interface {
 
 	AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error)
 	GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
+	GetMessage(ctx context.Context, messageId string) (*model.ChatMessage, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
@@ -102,6 +103,21 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 func (s *storeObject) onUpdate() {
 	s.subscription.flush()
+}
+
+func (s *storeObject) GetMessage(ctx context.Context, messageId string) (*model.ChatMessage, error) {
+	coll, err := s.store.Collection(ctx, collectionName)
+	if err != nil {
+		return nil, fmt.Errorf("get collection: %w", err)
+	}
+
+	obj, err := coll.FindId(ctx, messageId)
+	if err != nil {
+		return nil, fmt.Errorf("find id: %w", err)
+	}
+
+	msg := newMessageWrapper(nil, obj.Value())
+	return msg.toModel(), nil
 }
 
 func (s *storeObject) GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error) {

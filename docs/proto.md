@@ -547,6 +547,10 @@
     - [Rpc.Chat.EditMessageContent.Request](#anytype-Rpc-Chat-EditMessageContent-Request)
     - [Rpc.Chat.EditMessageContent.Response](#anytype-Rpc-Chat-EditMessageContent-Response)
     - [Rpc.Chat.EditMessageContent.Response.Error](#anytype-Rpc-Chat-EditMessageContent-Response-Error)
+    - [Rpc.Chat.GetMessage](#anytype-Rpc-Chat-GetMessage)
+    - [Rpc.Chat.GetMessage.Request](#anytype-Rpc-Chat-GetMessage-Request)
+    - [Rpc.Chat.GetMessage.Response](#anytype-Rpc-Chat-GetMessage-Response)
+    - [Rpc.Chat.GetMessage.Response.Error](#anytype-Rpc-Chat-GetMessage-Response-Error)
     - [Rpc.Chat.GetMessages](#anytype-Rpc-Chat-GetMessages)
     - [Rpc.Chat.GetMessages.Request](#anytype-Rpc-Chat-GetMessages-Request)
     - [Rpc.Chat.GetMessages.Response](#anytype-Rpc-Chat-GetMessages-Response)
@@ -1325,6 +1329,7 @@
     - [Rpc.Chat.AddMessage.Response.Error.Code](#anytype-Rpc-Chat-AddMessage-Response-Error-Code)
     - [Rpc.Chat.DeleteMessage.Response.Error.Code](#anytype-Rpc-Chat-DeleteMessage-Response-Error-Code)
     - [Rpc.Chat.EditMessageContent.Response.Error.Code](#anytype-Rpc-Chat-EditMessageContent-Response-Error-Code)
+    - [Rpc.Chat.GetMessage.Response.Error.Code](#anytype-Rpc-Chat-GetMessage-Response-Error-Code)
     - [Rpc.Chat.GetMessages.Response.Error.Code](#anytype-Rpc-Chat-GetMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
@@ -2156,6 +2161,7 @@
 | ChatToggleMessageReaction | [Rpc.Chat.ToggleMessageReaction.Request](#anytype-Rpc-Chat-ToggleMessageReaction-Request) | [Rpc.Chat.ToggleMessageReaction.Response](#anytype-Rpc-Chat-ToggleMessageReaction-Response) |  |
 | ChatDeleteMessage | [Rpc.Chat.DeleteMessage.Request](#anytype-Rpc-Chat-DeleteMessage-Request) | [Rpc.Chat.DeleteMessage.Response](#anytype-Rpc-Chat-DeleteMessage-Response) |  |
 | ChatGetMessages | [Rpc.Chat.GetMessages.Request](#anytype-Rpc-Chat-GetMessages-Request) | [Rpc.Chat.GetMessages.Response](#anytype-Rpc-Chat-GetMessages-Response) |  |
+| ChatGetMessage | [Rpc.Chat.GetMessage.Request](#anytype-Rpc-Chat-GetMessage-Request) | [Rpc.Chat.GetMessage.Response](#anytype-Rpc-Chat-GetMessage-Response) |  |
 | ChatSubscribeLastMessages | [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request) | [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response) |  |
 | ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
 
@@ -10076,6 +10082,64 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Chat.EditMessageContent.Response.Error.Code](#anytype-Rpc-Chat-EditMessageContent-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetMessage"></a>
+
+### Rpc.Chat.GetMessage
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetMessage-Request"></a>
+
+### Rpc.Chat.GetMessage.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| messageId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetMessage-Response"></a>
+
+### Rpc.Chat.GetMessage.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.GetMessage.Response.Error](#anytype-Rpc-Chat-GetMessage-Response-Error) |  |  |
+| message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetMessage-Response-Error"></a>
+
+### Rpc.Chat.GetMessage.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.GetMessage.Response.Error.Code](#anytype-Rpc-Chat-GetMessage-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -21187,6 +21251,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Chat-EditMessageContent-Response-Error-Code"></a>
 
 ### Rpc.Chat.EditMessageContent.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-GetMessage-Response-Error-Code"></a>
+
+### Rpc.Chat.GetMessage.Response.Error.Code
 
 
 | Name | Number | Description |
