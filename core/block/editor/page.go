@@ -236,6 +236,7 @@ func (p *Page) StateMigrations() migration.Migrations {
 			Version: 3,
 			Proc: func(s *state.State) {
 				p.migrateRelationOptions(s)
+				p.migrateTag(s)
 			},
 		},
 	})
@@ -273,5 +274,38 @@ func (p *Page) migrateRelationOptions(s *state.State) {
 		}
 		s.SetDetail(bundle.RelationKeyType.String(), pbtypes.String(tagType[0]))
 		s.SetObjectTypeKey(bundle.TypeKeyTag)
+	}
+}
+
+func (p *Page) migrateTag(s *state.State) {
+	if layout, _ := s.Layout(); layout == model.ObjectType_relation {
+		relationKey := pbtypes.GetString(s.CombinedDetails(), bundle.RelationKeyUniqueKey.String())
+		if relationKey != bundle.RelationKeyTag.URL() {
+			return
+		}
+		tagType, _, err := p.objectStore.QueryObjectIDs(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyUniqueKey.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(bundle.TypeKeyTag.URL()),
+				},
+				{
+					RelationKey: bundle.RelationKeySpaceId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(p.SpaceID()),
+				},
+			},
+		})
+		if err != nil {
+			log.Errorf("failed to get object by unique key: %v", err)
+			return
+		}
+		if len(tagType) == 0 {
+			log.Errorf("type not exists")
+			return
+		}
+		s.SetDetail(bundle.RelationKeyRelationFormatObjectTypes.String(), pbtypes.StringList([]string{tagType[0]}))
+		s.SetDetail(bundle.RelationKeyRelationFormat.String(), pbtypes.Int64(int64(model.RelationFormat_object)))
 	}
 }
