@@ -23,9 +23,9 @@ import (
 )
 
 var (
-	ftIndexInterval         = 10 * time.Second
+	ftIndexInterval         = 1 * time.Second
 	ftIndexForceMinInterval = time.Second * 10
-	ftBatchLimit            = 100
+	ftBatchLimit            = 1000
 	ftBlockMaxSize          = 1024 * 1024
 )
 
@@ -90,24 +90,26 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) {
 			}
 
 			for _, doc := range objDocs {
+				if err != nil {
+					return fmt.Errorf("batcher delete: %w", err)
+				}
 				err = batcher.UpdateDoc(doc)
 				if err != nil {
 					return fmt.Errorf("batcher add: %w", err)
 				}
 			}
 		}
-
+		err := batcher.Finish()
+		if err != nil {
+			return fmt.Errorf("finish batch: %w", err)
+		}
 		return nil
 	})
 	if err != nil {
 		log.Errorf("list ids from full-text queue: %v", err)
 		return
 	}
-	err = batcher.Finish()
-	if err != nil {
-		log.Errorf("finish batcher: %v", err)
-		return
-	}
+
 }
 
 func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.SearchDoc) (changed []ftsearch.SearchDoc, removedIds []string, err error) {

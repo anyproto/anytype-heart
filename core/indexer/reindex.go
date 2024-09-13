@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/util/slice"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -46,16 +46,19 @@ const (
 
 	// ForceLinksReindexCounter forces to erase links from store and reindex them
 	ForceLinksReindexCounter int32 = 1
+
+	// ForceMarketplaceReindex forces to do reindex only for marketplace space
+	ForceMarketplaceReindex int32 = 1
 )
 
 func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	checksums, err := i.store.GetChecksums(spaceID)
-	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 		return reindexFlags{}, err
 	}
 	if checksums == nil {
 		checksums, err = i.store.GetGlobalChecksums()
-		if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 			return reindexFlags{}, err
 		}
 
@@ -111,6 +114,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.LinksErase != ForceLinksReindexCounter {
 		flags.eraseLinks = true
+	}
+	if spaceID == addr.AnytypeMarketplaceWorkspace && checksums.MarketplaceForceReindexCounter != ForceMarketplaceReindex {
+		flags.enableAll()
 	}
 	return flags, nil
 }
@@ -219,8 +225,9 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 	}
 	for _, id := range ids {
 		err := space.DoLockedIfNotExists(id, func() error {
-			return i.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, error) {
-				return helper.InjectsSyncDetails(details, syncStatus, syncError), nil
+			return i.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
+				details = helper.InjectsSyncDetails(details, syncStatus, syncError)
+				return details, true, nil
 			})
 		})
 		if err != nil {
@@ -524,8 +531,8 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space smartblock.Spac
 	return
 }
 
-func (i *indexer) getLatestChecksums() model.ObjectStoreChecksums {
-	return model.ObjectStoreChecksums{
+func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.ObjectStoreChecksums) {
+	checksums = model.ObjectStoreChecksums{
 		BundledObjectTypes:               bundle.TypeChecksum,
 		BundledRelations:                 bundle.RelationChecksum,
 		BundledTemplates:                 i.btHash.Hash(),
@@ -538,10 +545,14 @@ func (i *indexer) getLatestChecksums() model.ObjectStoreChecksums {
 		AreDeletedObjectsReindexed:       true,
 		LinksErase:                       ForceLinksReindexCounter,
 	}
+	if isMarketplace {
+		checksums.MarketplaceForceReindexCounter = ForceMarketplaceReindex
+	}
+	return
 }
 
 func (i *indexer) saveLatestChecksums(spaceID string) error {
-	checksums := i.getLatestChecksums()
+	checksums := i.getLatestChecksums(spaceID == addr.AnytypeMarketplaceWorkspace)
 	return i.store.SaveChecksums(spaceID, &checksums)
 }
 
@@ -562,10 +573,14 @@ func (i *indexer) getIdsForTypes(space smartblock.Space, sbt ...coresb.SmartBloc
 }
 
 func (i *indexer) GetLogFields() []zap.Field {
+	i.lock.Lock()
+	defer i.lock.Unlock()
 	return i.reindexLogFields
 }
 
 func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalIds, succeedIds int, spent time.Duration) {
+	i.lock.Lock()
+	defer i.lock.Unlock()
 	i.reindexLogFields = append(i.reindexLogFields, zap.Int("r_"+reindexType.String(), totalIds))
 	if succeedIds < totalIds {
 		i.reindexLogFields = append(i.reindexLogFields, zap.Int("r_"+reindexType.String()+"_failed", totalIds-succeedIds))

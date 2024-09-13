@@ -58,7 +58,7 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 	return &Page{
 		SmartBlock:     sb,
 		ChangeReceiver: sb.(source.ChangeReceiver),
-		AllOperations:  basic.NewBasic(sb, f.objectStore, f.layoutConverter),
+		AllOperations:  basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
 		IHistory:       basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
@@ -183,8 +183,8 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			case model.ObjectType_note:
 				templates = append(templates,
 					template.WithNameToFirstBlock,
+					template.WithFirstTextBlock,
 					template.WithNoTitle,
-					template.WithNoDescription,
 				)
 			case model.ObjectType_todo:
 				templates = append(templates,

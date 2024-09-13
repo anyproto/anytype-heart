@@ -33,14 +33,14 @@ func TestInstaller_queryDeletedObjects(t *testing.T) {
 	}{
 		{false, false, spaceId, bundle.TypeKeyGoal},
 		{false, false, spaceId, bundle.RelationKeyGenre},
-		{true, false, spaceId, bundle.TypeKeyDailyPlan},
+		{true, false, spaceId, bundle.TypeKeyTask},
 		{true, false, spaceId, bundle.RelationKeyLinkedProjects},
 		{false, true, spaceId, bundle.TypeKeyBook},
 		{false, true, spaceId, bundle.RelationKeyStarred},
 		{true, true, spaceId, bundle.TypeKeyProject},    // not valid, but we should handle this
 		{true, true, spaceId, bundle.RelationKeyArtist}, // not valid, but we should handle this
 		{false, true, "otherSpaceId", bundle.TypeKeyDiaryEntry},
-		{true, false, "otherSpaceId", bundle.RelationKeyComposer},
+		{true, false, "otherSpaceId", bundle.RelationKeyAudioAlbum},
 	} {
 		store.AddObjects(t, []objectstore.TestObject{{
 			bundle.RelationKeyId:           pbtypes.String(obj.key.URL()),

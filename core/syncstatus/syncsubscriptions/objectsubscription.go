@@ -55,17 +55,6 @@ func NewIdSubscription(service subscription.Service, request subscription.Subscr
 	}
 }
 
-func NewObjectSubscription[T any](service subscription.Service, params SubscriptionParams[T]) *ObjectSubscription[T] {
-	return &ObjectSubscription[T]{
-		request: params.Request,
-		service: service,
-		ch:      make(chan struct{}),
-		extract: params.Extract,
-		update:  params.Update,
-		unset:   params.Unset,
-	}
-}
-
 type ObjectSubscription[T any] struct {
 	request subscription.SubscribeRequest
 	service subscription.Service

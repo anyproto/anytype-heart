@@ -2,8 +2,10 @@ package dataview
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/globalsign/mgo/bson"
 	"github.com/google/uuid"
 
@@ -21,7 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -83,10 +85,15 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return
 	}
 
+	flags := internalflag.NewFromState(s)
+	// set with source is no longer empty
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(s)
+
 	if len(source) == 0 {
 		s.Unlink(blockId)
 		s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-		return d.Apply(s, smartblock.NoRestrictions)
+		return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	}
 
 	dvContent, err := BlockBySource(d.objectStore, source)
@@ -104,7 +111,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 	}
 
 	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-	return d.Apply(s, smartblock.NoRestrictions)
+	return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
 
 func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKeys []string, showEvent bool) error {
@@ -428,7 +435,7 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 func (d *sdataview) injectActiveViews(info smartblock.ApplyInfo) (err error) {
 	s := info.State
 	views, err := d.objectStore.GetActiveViews(d.Id())
-	if badgerhelper.IsNotFound(err) {
+	if errors.Is(err, anystore.ErrDocNotFound) {
 		return nil
 	}
 	if err != nil {
