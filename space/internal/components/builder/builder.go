@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	dependencies2 "github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
@@ -37,8 +38,9 @@ type spaceBuilder struct {
 	personalSpaceId string
 	status          spacestatus.SpaceStatus
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx         context.Context
+	cancel      context.CancelFunc
+	objectStore objectstore.ObjectStore
 }
 
 func (b *spaceBuilder) Init(a *app.App) (err error) {
@@ -51,6 +53,7 @@ func (b *spaceBuilder) Init(a *app.App) (err error) {
 	b.objectFactory = app.MustComponent[objectcache.ObjectFactory](a)
 	b.storageService = app.MustComponent[storage.ClientStorage](a)
 	b.personalSpaceId, err = b.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
+	b.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return
 }
 
@@ -95,6 +98,7 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context, disableRemoteLoad bool) (
 		StorageService:  b.storageService,
 		SpaceCore:       b.spaceCore,
 		LoadCtx:         b.ctx,
+		ObjectStore:     b.objectStore,
 	}
 	space, err := clientspace.BuildSpace(ctx, deps)
 	if err != nil {
