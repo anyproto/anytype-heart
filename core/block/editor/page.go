@@ -272,5 +272,6 @@ func (p *Page) migrateRelationOptions(s *state.State) {
 			return
 		}
 		s.SetDetail(bundle.RelationKeyType.String(), pbtypes.String(tagType[0]))
+		s.SetObjectTypeKey(bundle.TypeKeyTag)
 	}
 }
