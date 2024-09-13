@@ -207,8 +207,44 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}
 	}
 
+	if !flags.objects {
+		i.migrateRelationOptions(space)
+	}
 	i.addSyncDetails(space)
 	return i.saveLatestChecksums(space.Id())
+}
+
+func (i *indexer) migrateRelationOptions(space clientspace.Space) {
+	relationOptions, _, err := i.store.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			},
+			{
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.RelationKeyTag.String()),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String(space.Id()),
+			},
+		},
+	})
+	if err != nil {
+		return
+	}
+	for _, optionId := range relationOptions {
+		err = space.Do(optionId, func(sb smartblock.SmartBlock) error {
+			return nil
+		})
+		if err != nil {
+			log.Debug("failed to migrate relation option", zap.Error(err))
+		}
+	}
 }
 
 func (i *indexer) addSyncDetails(space clientspace.Space) {
