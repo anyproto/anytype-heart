@@ -160,7 +160,7 @@ func (l *localDiscovery) notifyPeerToPeerStatus(newAddrs addrs.InterfacesAddrs) 
 }
 
 func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
-	return len(newAddrs.Interfaces) == 0 || IsLoopBack(newAddrs.Interfaces)
+	return len(newAddrs.Interfaces) == 0 || IsLoopBack(newAddrs.NetInterfaces())
 }
 
 func IsLoopBack(interfaces []net.Interface) bool {

@@ -9741,6 +9741,11 @@ Get marks list in the selected range in text block.
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| dir | [string](#string) |  | empty means using OS-provided temp dir |
+
+
 
 
 
@@ -25958,6 +25963,7 @@ Precondition: user A and user B opened the same block
 | Synced | 3 |  |
 | Failed | 4 |  |
 | IncompatibleVersion | 5 |  |
+| NetworkNeedsUpdate | 6 |  |
 
 
 
