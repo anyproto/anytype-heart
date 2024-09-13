@@ -248,7 +248,8 @@ func (p *Page) migrateRelationOptions(s *state.State) {
 		if relationKey != bundle.RelationKeyTag.String() {
 			return
 		}
-		s.RemoveRelation([]string{bundle.RelationKeyRelationKey.String(), bundle.RelationKeyUniqueKey.String()}...)
+		s.RemoveRelation(bundle.RelationKeyRelationKey.String())
+		s.RemoveRelation(bundle.RelationKeyUniqueKey.String())
 		s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(model.ObjectType_tag)))
 		tagType, _, err := p.objectStore.QueryObjectIDs(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
