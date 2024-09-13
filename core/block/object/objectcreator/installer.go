@@ -10,7 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -226,7 +226,7 @@ func (s *service) prepareDetailsForInstallingObject(
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 
 	if isNewSpace {
-		objecttype.SetLastUsedDateForInitialObjectType(sourceId, details)
+		lastused.SetLastUsedDateForInitialObjectType(sourceId, details)
 	}
 
 	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())

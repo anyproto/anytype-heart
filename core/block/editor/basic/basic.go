@@ -7,6 +7,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
@@ -65,10 +66,12 @@ type CommonOperations interface {
 
 type DetailsSettable interface {
 	SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
+	SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
 }
 
 type DetailsUpdatable interface {
 	UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error)
+	UpdateDetailsAndLastUsed(update func(current *types.Struct) (*types.Struct, error)) (err error)
 }
 
 type Restrictionable interface {
@@ -104,12 +107,14 @@ func NewBasic(
 	objectStore objectstore.ObjectStore,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
+	lastUsedUpdater lastused.ObjectUsageUpdater,
 ) AllOperations {
 	return &basic{
 		SmartBlock:        sb,
 		objectStore:       objectStore,
 		layoutConverter:   layoutConverter,
 		fileObjectService: fileObjectService,
+		lastUsedUpdater:   lastUsedUpdater,
 	}
 }
 
@@ -119,6 +124,7 @@ type basic struct {
 	objectStore       objectstore.ObjectStore
 	layoutConverter   converter.LayoutConverter
 	fileObjectService fileobject.Service
+	lastUsedUpdater   lastused.ObjectUsageUpdater
 }
 
 func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id string, err error) {

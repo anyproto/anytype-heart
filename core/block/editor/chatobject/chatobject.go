@@ -31,6 +31,7 @@ type StoreObject interface {
 
 	AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error)
 	GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
+	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
@@ -102,6 +103,27 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 func (s *storeObject) onUpdate() {
 	s.subscription.flush()
+}
+
+func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error) {
+	coll, err := s.store.Collection(ctx, collectionName)
+	if err != nil {
+		return nil, fmt.Errorf("get collection: %w", err)
+	}
+	txn, err := coll.ReadTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("start read tx: %w", err)
+	}
+	messages := make([]*model.ChatMessage, 0, len(messageIds))
+	for _, messageId := range messageIds {
+		obj, err := coll.FindId(txn.Context(), messageId)
+		if err != nil {
+			return nil, errors.Join(txn.Commit(), fmt.Errorf("find id: %w", err))
+		}
+		msg := newMessageWrapper(nil, obj.Value())
+		messages = append(messages, msg.toModel())
+	}
+	return messages, txn.Commit()
 }
 
 func (s *storeObject) GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error) {

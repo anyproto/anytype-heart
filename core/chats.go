@@ -76,6 +76,20 @@ func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMe
 	}
 }
 
+func (mw *Middleware) ChatGetMessagesByIds(cctx context.Context, req *pb.RpcChatGetMessagesByIdsRequest) *pb.RpcChatGetMessagesByIdsResponse {
+	chatService := getService[chats.Service](mw)
+
+	messages, err := chatService.GetMessagesByIds(cctx, req.ChatObjectId, req.MessageIds)
+	code := mapErrorCode[pb.RpcChatGetMessagesByIdsResponseErrorCode](err)
+	return &pb.RpcChatGetMessagesByIdsResponse{
+		Messages: messages,
+		Error: &pb.RpcChatGetMessagesByIdsResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) ChatSubscribeLastMessages(cctx context.Context, req *pb.RpcChatSubscribeLastMessagesRequest) *pb.RpcChatSubscribeLastMessagesResponse {
 	chatService := getService[chats.Service](mw)
 
