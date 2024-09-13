@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestate"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"golang.org/x/exp/slices"
@@ -66,7 +65,6 @@ type Updater interface {
 type syncStatusService struct {
 	sync.Mutex
 	periodicSync periodicsync.PeriodicSync
-	storage      spacestorage.SpaceStorage
 
 	spaceId    string
 	synced     []string
@@ -93,7 +91,6 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 	s.updateIntervalSecs = syncUpdateInterval
 	s.updateTimeout = syncTimeout
 	s.spaceId = sharedState.SpaceId
-	s.storage = app.MustComponent[spacestorage.SpaceStorage](a)
 	s.periodicSync = periodicsync.NewPeriodicSync(
 		s.updateIntervalSecs,
 		s.updateTimeout,
