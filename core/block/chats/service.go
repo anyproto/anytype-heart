@@ -25,7 +25,7 @@ type Service interface {
 	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
 	GetMessages(ctx context.Context, chatObjectId string, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
-	GetMessage(ctx context.Context, chatObjectId string, messageId string) (*model.ChatMessage, error)
+	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe(chatObjectId string) error
 
@@ -33,6 +33,8 @@ type Service interface {
 
 	app.ComponentRunnable
 }
+
+var _ Service = (*service)(nil)
 
 type configProvider interface {
 	GetAnyStoreConfig() *anystore.Config
@@ -137,10 +139,10 @@ func (s *service) GetMessages(ctx context.Context, chatObjectId string, beforeOr
 	return res, err
 }
 
-func (s *service) GetMessage(ctx context.Context, chatObjectId string, messageId string) (*model.ChatMessage, error) {
-	var res *model.ChatMessage
+func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error) {
+	var res []*model.ChatMessage
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		msg, err := sb.GetMessage(ctx, messageId)
+		msg, err := sb.GetMessagesByIds(ctx, messageIds)
 		if err != nil {
 			return err
 		}

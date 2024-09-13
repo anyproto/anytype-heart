@@ -7382,15 +7382,15 @@ message Rpc {
             }
         }
 
-        message GetMessage {
+        message GetMessagesByIds {
             message Request {
                 string chatObjectId = 1;
-                string messageId = 2;
+                repeated string messageIds = 2;
             }
 
             message Response {
                 Error error = 1;
-                model.ChatMessage message = 2;
+                repeated model.ChatMessage messages = 2;
 
                 message Error {
                     Code code = 1;
