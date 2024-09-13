@@ -258,7 +258,7 @@ func (p *Page) migrateRelationOptions(s *state.State) {
 				},
 				{
 					RelationKey: bundle.RelationKeySpaceId.String(),
-					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String(p.SpaceID()),
 				},
 			},

@@ -229,7 +229,7 @@ func (i *indexer) migrateRelationOptions(space clientspace.Space) {
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(space.Id()),
 			},
 		},
