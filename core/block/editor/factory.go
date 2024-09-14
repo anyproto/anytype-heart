@@ -161,6 +161,7 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) smartblock.Sma
 		f.objectStore,
 		f.indexer,
 		f.eventSender,
+		f.storeDbProvider,
 	)
 }
 

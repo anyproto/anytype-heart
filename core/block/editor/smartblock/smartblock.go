@@ -9,9 +9,12 @@ import (
 	"sync"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/valyala/fastjson"
 
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -97,6 +100,7 @@ func New(
 	objectStore objectstore.ObjectStore,
 	indexer Indexer,
 	eventSender event.Sender,
+	dbProvider StoreDbProvider,
 ) SmartBlock {
 	s := &smartBlock{
 		currentParticipantId: currentParticipantId,
@@ -111,6 +115,7 @@ func New(
 		objectStore:        objectStore,
 		indexer:            indexer,
 		eventSender:        eventSender,
+		dbProvider:         dbProvider,
 	}
 	return s
 }
@@ -130,6 +135,10 @@ type Space interface {
 	DoLockedIfNotExists(objectID string, proc func() error) error // TODO Temporarily before rewriting favorites/archive mechanism
 
 	StoredIds() []string
+}
+
+type StoreDbProvider interface {
+	GetStoreDb() anystore.DB
 }
 
 type SmartBlock interface {
@@ -246,6 +255,9 @@ type smartBlock struct {
 	objectStore        objectstore.ObjectStore
 	indexer            Indexer
 	eventSender        event.Sender
+	dbProvider         StoreDbProvider
+
+	coll anystore.Collection
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -310,6 +322,12 @@ func (sb *smartBlock) ObjectTypeID() string {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
+	coll, err := sb.dbProvider.GetStoreDb().Collection(ctx.Ctx, "blocks")
+	if err != nil {
+		return err
+	}
+	sb.coll = coll
+
 	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, bundle.RequiredInternalRelations...)
 	if sb.Doc, err = ctx.Source.ReadDoc(ctx.Ctx, sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)
@@ -659,6 +677,60 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		return
 	}
+
+	txn, err := sb.coll.WriteTx(context.Background())
+	if err != nil {
+		return err
+	}
+
+	var touchedBlocks []string
+	var deletedBlocks []string
+
+	_, err = sb.coll.FindId(txn.Context(), sb.Id())
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		for _, b := range sb.Blocks() {
+			touchedBlocks = append(touchedBlocks, b.Id)
+		}
+	}
+
+	for _, msg := range msgs {
+		ev := msg.Msg
+		switch v := ev.Value.(type) {
+		case *pb.EventMessageValueOfBlockSetText:
+			touchedBlocks = append(touchedBlocks, v.BlockSetText.Id)
+		case *pb.EventMessageValueOfBlockAdd:
+			for _, b := range v.BlockAdd.Blocks {
+				touchedBlocks = append(touchedBlocks, b.Id)
+			}
+		case *pb.EventMessageValueOfBlockDelete:
+			for _, id := range v.BlockDelete.BlockIds {
+				deletedBlocks = append(deletedBlocks, id)
+			}
+		case *pb.EventMessageValueOfBlockSetChildrenIds:
+			touchedBlocks = append(touchedBlocks, v.BlockSetChildrenIds.Id)
+		}
+	}
+
+	if len(deletedBlocks)+len(touchedBlocks) > 0 {
+		_, err = sb.coll.UpsertId(txn.Context(), sb.Id(), query.ModifyFunc(func(a *fastjson.Arena, v *fastjson.Value) (result *fastjson.Value, modified bool, err error) {
+			for _, id := range touchedBlocks {
+				block := s.Pick(id)
+				v.Set(id, marshalBlock(a, block.Model()))
+			}
+			return v, true, nil
+		}))
+
+		if err != nil {
+			return errors.Join(txn.Rollback(), err)
+		}
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return fmt.Errorf("commit txn: %w", err)
+	}
+
+	fmt.Println("TOUCHED", s.RootId(), touchedBlocks)
 
 	// we may have layout changed, so we need to update restrictions
 	sb.updateRestrictions()
@@ -1292,6 +1364,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 
 func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	docInfo := sb.getDocInfo(s)
+
 	if err := sb.indexer.Index(context.Background(), docInfo, opts...); err != nil {
 		log.Errorf("index object %s error: %s", sb.Id(), err)
 	}
