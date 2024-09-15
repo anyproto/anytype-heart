@@ -1338,5 +1338,15 @@
     "name": "Mentions",
     "readonly": true,
     "source": "local"
+  },
+  {
+    "description": "Should time be shown for relation values with date format",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "includeTime",
+    "maxCount": 0,
+    "name": "IncludeTime",
+    "readonly": true,
+    "source": "local"
   }
 ]

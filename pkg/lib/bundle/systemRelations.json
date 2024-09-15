@@ -88,5 +88,6 @@
   "syncError",
   "scope",
   "lastUsedDate",
-  "mentions"
+  "mentions",
+  "includeTime"
 ]
