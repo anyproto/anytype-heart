@@ -26436,7 +26436,7 @@ Bookmark is to keep a web-link and to preview a content.
 | value | [google.protobuf.Value](#google-protobuf-Value) |  |  |
 | quickOption | [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption) |  |  |
 | format | [RelationFormat](#anytype-model-RelationFormat) |  |  |
-| includeTime | [bool](#bool) |  |  |
+| includeTime | [bool](#bool) |  | deprecated |
 | nestedFilters | [Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 
 
@@ -26507,9 +26507,10 @@ Bookmark is to keep a web-link and to preview a content.
 | key | [string](#string) |  |  |
 | isVisible | [bool](#bool) |  |  |
 | width | [int32](#int32) |  | the displayed column % calculated based on other visible relations |
-| dateIncludeTime | [bool](#bool) |  |  |
-| timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  |  |
-| dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  |  |
+| isReadOnly | [bool](#bool) |  | deprecated |
+| dateIncludeTime | [bool](#bool) |  | deprecated |
+| timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  | deprecated |
+| dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  | deprecated |
 
 
 
@@ -26528,7 +26529,7 @@ Bookmark is to keep a web-link and to preview a content.
 | type | [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type) |  |  |
 | customOrder | [google.protobuf.Value](#google-protobuf-Value) | repeated |  |
 | format | [RelationFormat](#anytype-model-RelationFormat) |  |  |
-| includeTime | [bool](#bool) |  |  |
+| includeTime | [bool](#bool) |  | deprecated |
 | id | [string](#string) |  |  |
 | emptyPlacement | [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType) |  |  |
 
@@ -27945,7 +27946,7 @@ stored |
 <a name="anytype-model-Block-Content-Dataview-Relation-DateFormat"></a>
 
 ### Block.Content.Dataview.Relation.DateFormat
-
+deprecated
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
@@ -27960,7 +27961,7 @@ stored |
 <a name="anytype-model-Block-Content-Dataview-Relation-TimeFormat"></a>
 
 ### Block.Content.Dataview.Relation.TimeFormat
-
+deprecated
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
