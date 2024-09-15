@@ -581,12 +581,13 @@
   {
     "description": "Adds the object to the home dashboard",
     "format": "checkbox",
-    "hidden": true,
+    "hidden": false,
     "key": "isFavorite",
     "maxCount": 1,
     "name": "Favorited",
     "readonly": false,
-    "source": "account"
+    "source": "account",
+    "revision": 2
   },
   {
     "description": "Space object belongs to",
