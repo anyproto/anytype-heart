@@ -57,7 +57,7 @@ func (f *file) audioDetails(ctx context.Context) (*domain.Details, error) {
 		d.SetString(bundle.RelationKeyAudioAlbum, t.Album())
 	}
 	if t.Artist() != "" {
-		d.SetString(bundle.RelationKeyAudioArtist, t.Artist())
+		d.SetString(bundle.RelationKeyArtist, t.Artist())
 	}
 	if t.Genre() != "" {
 		d.SetString(bundle.RelationKeyAudioGenre, t.Genre())

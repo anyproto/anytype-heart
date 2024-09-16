@@ -4,8 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
+	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/maps"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -24,11 +28,29 @@ import (
 var log = logging.Logger("anytype-mw-editor-basic")
 
 func (bs *basic) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
+	_, err = bs.setDetails(ctx, details, showEvent)
+	return err
+}
+
+func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+	var keys []domain.RelationKey
+	keys, err = bs.setDetails(ctx, details, showEvent)
+	if err != nil {
+		return err
+	}
+	ts := time.Now().Unix()
+	for _, key := range keys {
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), key, ts)
+	}
+	return nil
+}
+
+func (bs *basic) setDetails(ctx session.Context, details []вщьфшт.Detail, showEvent bool) (updatedKeys []domain.RelationKey, err error) {
 	s := bs.NewStateCtx(ctx)
 
 	// Collect updates handling special cases. These cases could update details themselves, so we
 	// have to apply changes later
-	updates := bs.collectDetailUpdates(details, s)
+	updates, updatedKeys := bs.collectDetailUpdates(details, s)
 	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
 	s.SetDetails(newDetails)
 
@@ -37,43 +59,71 @@ func (bs *basic) SetDetails(ctx session.Context, details []domain.Detail, showEv
 	flags.AddToState(s)
 
 	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
-		return
+		return nil, err
 	}
 
 	bs.discardOwnSetDetailsEvent(ctx, showEvent)
+	return updatedKeys, nil
+}
+
+func (bs *basic) UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+	_, _, err = bs.updateDetails(update)
+	return err
+}
+
+func (bs *basic) UpdateDetailsAndLastUsed(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+	var oldDetails, newDetails *types.Struct
+	oldDetails, newDetails, err = bs.updateDetails(update)
+	if err != nil {
+		return err
+	}
+
+	diff := pbtypes.StructDiff(oldDetails, newDetails)
+	if diff == nil || diff.Fields == nil {
+		return nil
+	}
+	ts := time.Now().Unix()
+	for key := range diff.Fields {
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), domain.RelationKey(key), ts)
+	}
 	return nil
 }
 
-func (bs *basic) UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error) {
+func (bs *basic) updateDetails(update func(current *domain.Details) (*domain.Details, error)) (oldDetails, newDetails *types.Struct, err error) {
 	if update == nil {
-		return fmt.Errorf("update function is nil")
+		return nil, nil, fmt.Errorf("update function is nil")
 	}
 	s := bs.NewState()
 
-	newDetails, err := update(s.CombinedDetails())
+	oldDetails = s.CombinedDetails()
+	oldDetailsCopy := pbtypes.CopyStruct(oldDetails, true)
+
+	newDetails, err = update(oldDetailsCopy)
 	if err != nil {
 		return
 	}
 	s.SetDetails(newDetails)
 
 	if err = bs.addRelationLinks(s, newDetails.Keys()...); err != nil {
-		return
+		return nil, nil, err
 	}
 
-	return bs.Apply(s)
+	return oldDetails, newDetails, bs.Apply(s)
 }
 
-func (bs *basic) collectDetailUpdates(details []domain.Detail, s *state.State) []domain.Detail {
+func (bs *basic) collectDetailUpdates(details []domain.Detail, s *state.State) ([]*detailUpdate, []domain.RelationKey) {
 	updates := make([]domain.Detail, 0, len(details))
+	keys := make([]domain.RelationKey, 0, len(details))
 	for _, detail := range details {
 		update, err := bs.createDetailUpdate(s, detail)
 		if err == nil {
 			updates = append(updates, update)
+			keys = append(keys, domain.RelationKey(update.key))
 		} else {
 			log.Errorf("can't set detail %s: %s", detail.Key, err)
 		}
 	}
-	return updates
+	return updates, keys
 }
 
 func applyDetailUpdates(oldDetails *domain.Details, updates []domain.Detail) *domain.Details {
@@ -327,7 +377,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 	removeInternalFlags(s)
 
 	if bs.CombinedDetails().GetInt64(bundle.RelationKeyOrigin) == int64(model.ObjectOrigin_none) {
-		objecttype.UpdateLastUsedDate(bs.Space(), bs.objectStore, objectTypeKeys[0])
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), objectTypeKeys[0], time.Now().Unix())
 	}
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])

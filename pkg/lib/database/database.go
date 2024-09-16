@@ -2,6 +2,7 @@ package database
 
 import (
 	"github.com/valyala/fastjson"
+	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -176,7 +177,7 @@ func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	return sorts
 }
 
-func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena) (filters *Filters, err error) {
+func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena, collatorBuffer *collate.Buffer) (filters *Filters, err error) {
 	// spaceID could be empty
 	spaceID := getSpaceIDFromFilters(qry.Filters)
 	qry.Filters = injectDefaultFilters(qry.Filters)
@@ -184,9 +185,10 @@ func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena) (filters *F
 	filters = new(Filters)
 
 	qb := queryBuilder{
-		spaceId:     spaceID,
-		arena:       arena,
-		objectStore: store,
+		spaceId:        spaceID,
+		arena:          arena,
+		objectStore:    store,
+		collatorBuffer: collatorBuffer,
 	}
 
 	filterObj, err := MakeFilters(qry.Filters, store)
@@ -200,9 +202,10 @@ func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena) (filters *F
 }
 
 type queryBuilder struct {
-	spaceId     string
-	arena       *fastjson.Arena
-	objectStore ObjectStore
+	spaceId        string
+	arena          *fastjson.Arena
+	objectStore    ObjectStore
+	collatorBuffer *collate.Buffer
 }
 
 func getSpaceIDFromFilters(filters []FilterRequest) string {
@@ -232,6 +235,7 @@ func (b *queryBuilder) extractOrder(sorts []SortRequest) SetOrder {
 				relationFormat: format,
 				Store:          b.objectStore,
 				arena:          b.arena,
+				collatorBuffer: b.collatorBuffer,
 			}
 			order = b.appendCustomOrder(sort, order, keyOrder)
 		}

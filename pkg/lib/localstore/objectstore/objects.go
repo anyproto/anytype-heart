@@ -64,12 +64,12 @@ type ObjectStore interface {
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
 	UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error
-	UpdateObjectLinks(id string, links []string) error
+	UpdateObjectLinks(ctx context.Context, id string, links []string) error
 	UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error
 	ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error
 
 	DeleteObject(id domain.FullID) error
-	DeleteDetails(id ...string) error
+	DeleteDetails(ctx context.Context, id ...string) error
 	DeleteLinks(id ...string) error
 
 	GetDetails(id string) (*domain.Details, error)
@@ -95,10 +95,12 @@ type ObjectStore interface {
 
 	GetObjectType(url string) (*model.ObjectType, error)
 	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
+
+	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 }
 
 type IndexerStore interface {
-	AddToIndexQueue(id string) error
+	AddToIndexQueue(ctx context.Context, id string) error
 	ListIDsFromFullTextQueue(limit int) ([]string, error)
 	RemoveIDsFromFullTextQueue(ids []string) error
 	FTSearch() ftsearch.FTSearch
@@ -109,8 +111,8 @@ type IndexerStore interface {
 	// SaveChecksums Used to save checksums and force reindex counter
 	SaveChecksums(spaceID string, checksums *model.ObjectStoreChecksums) (err error)
 
-	GetLastIndexedHeadsHash(id string) (headsHash string, err error)
-	SaveLastIndexedHeadsHash(id string, headsHash string) (err error)
+	GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error)
+	SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error)
 }
 
 type AccountStore interface {
@@ -124,10 +126,15 @@ type VirtualSpacesStore interface {
 	DeleteVirtualSpace(spaceID string) error
 }
 
+type configProvider interface {
+	GetAnyStoreConfig() *anystore.Config
+}
+
 type dsObjectStore struct {
 	oldStore oldstore.Service
 
 	repoPath         string
+	anyStoreConfig   *anystore.Config
 	sourceService    SourceDetailsFromID
 	anyStore         anystore.DB
 	objects          anystore.Collection
@@ -140,7 +147,8 @@ type dsObjectStore struct {
 	virtualSpaces    anystore.Collection
 	pendingDetails   anystore.Collection
 
-	arenaPool *fastjson.ArenaPool
+	arenaPool          *fastjson.ArenaPool
+	collatorBufferPool *collatorBufferPool
 
 	fts ftsearch.FTSearch
 
@@ -177,7 +185,9 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 		s.fts = fts.(ftsearch.FTSearch)
 	}
 	s.arenaPool = &fastjson.ArenaPool{}
+	s.collatorBufferPool = newCollatorBufferPool()
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
+	s.anyStoreConfig = app.MustComponent[configProvider](a).GetAnyStoreConfig()
 	s.oldStore = app.MustComponent[oldstore.Service](a)
 
 	return nil
@@ -200,7 +210,7 @@ func (s *dsObjectStore) Run(ctx context.Context) error {
 }
 
 func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
-	store, err := anystore.Open(ctx, path, nil)
+	store, err := anystore.Open(ctx, path, s.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -244,6 +254,14 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 
 	objectIndexes := []anystore.IndexInfo{
 		{
+			Name:   "uniqueKey",
+			Fields: []string{bundle.RelationKeyUniqueKey.String()},
+		},
+		{
+			Name:   "source",
+			Fields: []string{bundle.RelationKeySource.String()},
+		},
+		{
 			Name:   "layout",
 			Fields: []string{bundle.RelationKeyLayout.String()},
 		},
@@ -252,20 +270,22 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 			Fields: []string{bundle.RelationKeyType.String()},
 		},
 		{
-			Name:   "spaceId",
-			Fields: []string{bundle.RelationKeySpaceId.String()},
-		},
-		{
 			Name:   "relationKey",
 			Fields: []string{bundle.RelationKeyRelationKey.String()},
 		},
 		{
-			Name:   "uniqueKey",
-			Fields: []string{bundle.RelationKeyUniqueKey.String()},
-		},
-		{
 			Name:   "lastModifiedDate",
 			Fields: []string{bundle.RelationKeyLastModifiedDate.String()},
+		},
+		{
+			Name:   "fileId",
+			Fields: []string{bundle.RelationKeyFileId.String()},
+			Sparse: true,
+		},
+		{
+			Name:   "oldAnytypeID",
+			Fields: []string{bundle.RelationKeyOldAnytypeID.String()},
+			Sparse: true,
 		},
 	}
 	err = s.addIndexes(ctx, objects, objectIndexes)
@@ -300,6 +320,7 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection, indexes []anystore.IndexInfo) error {
 	gotIndexes := coll.GetIndexes()
 	toCreate := indexes[:0]
+	var toDrop []string
 	for _, idx := range indexes {
 		if !slices.ContainsFunc(gotIndexes, func(i anystore.Index) bool {
 			return i.Info().Name == idx.Name
@@ -307,7 +328,25 @@ func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection
 			toCreate = append(toCreate, idx)
 		}
 	}
+	for _, idx := range gotIndexes {
+		if !slices.ContainsFunc(indexes, func(i anystore.IndexInfo) bool {
+			return i.Name == idx.Info().Name
+		}) {
+			toDrop = append(toDrop, idx.Info().Name)
+		}
+	}
+	if len(toDrop) > 0 {
+		for _, indexName := range toDrop {
+			if err := coll.DropIndex(ctx, indexName); err != nil {
+				return err
+			}
+		}
+	}
 	return coll.EnsureIndex(ctx, toCreate...)
+}
+
+func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
+	return s.anyStore.WriteTx(ctx)
 }
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {

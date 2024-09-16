@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/any-sync/util/syncqueues"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
@@ -41,6 +42,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
@@ -217,6 +219,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
+		Register(syncqueues.New()).
 		Register(peerstore.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
@@ -228,10 +231,11 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(yamux.New()).
 		Register(quic.New()).
 		Register(clientserver.New()).
-		Register(streampool.New()).
 		Register(coordinatorclient.New()).
 		Register(nodeclient.New()).
 		Register(credentialprovider.New()).
+		Register(spacecore.NewStreamOpener()).
+		Register(streampool.New()).
 		Register(commonspace.New()).
 		Register(aclclient.NewAclJoiningClient()).
 		Register(virtualspaceservice.New()).
@@ -303,8 +307,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
 		Register(paymentscache.New()).
-		Register(peerstatus.New())
-
+		Register(peerstatus.New()).
+		Register(lastused.New())
 }
 
 func MiddlewareVersion() string {

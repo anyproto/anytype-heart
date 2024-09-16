@@ -134,7 +134,7 @@ func newStoreFixture(t *testing.T) *objectstore.StoreFixture {
 func newParticipantTest(t *testing.T) (*participant, error) {
 	sb := smarttest.New("root")
 	store := newStoreFixture(t)
-	basicComponent := basic.NewBasic(sb, store, nil, nil)
+	basicComponent := basic.NewBasic(sb, store, nil, nil, nil)
 	p := &participant{
 		SmartBlock:       sb,
 		DetailsUpdatable: basicComponent,

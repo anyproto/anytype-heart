@@ -53,6 +53,13 @@ func (c *layoutConverter) Convert(space smartblock.Space, st *state.State, fromL
 		return nil
 	}
 
+	if fromLayout == model.ObjectType_chat || fromLayout == model.ObjectType_chatDerived {
+		return fmt.Errorf("can't convert from chat")
+	}
+	if toLayout == model.ObjectType_chat || toLayout == model.ObjectType_chatDerived {
+		return fmt.Errorf("can't convert to chat")
+	}
+
 	if fromLayout == model.ObjectType_note && toLayout == model.ObjectType_collection {
 		return c.fromNoteToCollection(st)
 	}

@@ -3,11 +3,13 @@ package spacecore
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
 )
@@ -27,15 +29,15 @@ func (r *rpcHandler) AclGetRecords(ctx context.Context, request *spacesyncproto.
 }
 
 func (r *rpcHandler) ObjectSync(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
-	sp, err := r.s.Get(ctx, req.SpaceId)
+	return nil, fmt.Errorf("nt implemented")
+}
+
+func (r *rpcHandler) ObjectSyncRequestStream(req *spacesyncproto.ObjectSyncMessage, stream spacesyncproto.DRPCSpaceSync_ObjectSyncRequestStreamStream) (err error) {
+	sp, err := r.s.Get(stream.Context(), req.SpaceId)
 	if err != nil {
-		if err != spacesyncproto.ErrSpaceMissing {
-			err = spacesyncproto.ErrUnexpected
-		}
-		return
+		return err
 	}
-	resp, err = sp.HandleSyncRequest(ctx, req)
-	return
+	return sp.HandleStreamSyncRequest(stream.Context(), req, stream)
 }
 
 func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceproto.SpaceExchangeRequest) (resp *clientspaceproto.SpaceExchangeResponse, err error) {
@@ -49,8 +51,21 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 			return nil, err
 		}
 		var portAddrs []string
+		peerAddr := peer.CtxPeerAddr(ctx)
+
+		if peerAddr != "" {
+			// prioritize address remote peer connected us from
+			if u, errParse := url.Parse(peerAddr); errParse == nil {
+				portAddrs = append(portAddrs, u.Host)
+			}
+		}
+
 		for _, ip := range request.LocalServer.Ips {
-			portAddrs = append(portAddrs, fmt.Sprintf("%s:%d", ip, request.LocalServer.Port))
+			addr := fmt.Sprintf("%s:%d", ip, request.LocalServer.Port)
+			if slices.Contains(portAddrs, addr) {
+				continue
+			}
+			portAddrs = append(portAddrs, addr)
 		}
 		r.s.peerService.SetPeerAddrs(peerId, portAddrs)
 		r.s.peerStore.UpdateLocalPeer(peerId, request.SpaceIds)
@@ -114,5 +129,5 @@ func (r *rpcHandler) HeadSync(ctx context.Context, req *spacesyncproto.HeadSyncR
 }
 
 func (r *rpcHandler) ObjectSyncStream(stream spacesyncproto.DRPCSpaceSync_ObjectSyncStreamStream) error {
-	return r.s.streamPool.ReadStream(stream)
+	return r.s.streamPool.ReadStream(stream, 300)
 }

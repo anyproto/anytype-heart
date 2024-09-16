@@ -6,11 +6,13 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/blevesearch/bleve/v2/search"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
+	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -269,8 +271,11 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
+	collatorBuffer := s.collatorBufferPool.get()
+	defer s.collatorBufferPool.put(collatorBuffer)
+
 	q.FullText = strings.TrimSpace(q.FullText)
-	filters, err := database.NewFilters(q, s, arena)
+	filters, err := database.NewFilters(q, s, arena, collatorBuffer)
 	if err != nil {
 		return nil, fmt.Errorf("new filters: %w", err)
 	}
@@ -518,4 +523,27 @@ func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub databa
 
 	s.addSubscriptionIfNotExists(sub)
 	return
+}
+
+type collatorBufferPool struct {
+	pool *sync.Pool
+}
+
+func newCollatorBufferPool() *collatorBufferPool {
+	return &collatorBufferPool{
+		pool: &sync.Pool{
+			New: func() interface{} {
+				return &collate.Buffer{}
+			},
+		},
+	}
+}
+
+func (p *collatorBufferPool) get() *collate.Buffer {
+	return p.pool.Get().(*collate.Buffer)
+}
+
+func (p *collatorBufferPool) put(b *collate.Buffer) {
+	b.Reset()
+	p.pool.Put(b)
 }

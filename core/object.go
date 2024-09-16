@@ -52,7 +52,7 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 				Value: domain.ValueFromProto(det.Value),
 			})
 		}
-		return bs.SetDetails(ctx, req.ContextId, details)
+		return bs.SetDetailsAndUpdateLastUsed(ctx, req.ContextId, details)
 	})
 	if err != nil {
 		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)

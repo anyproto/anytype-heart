@@ -12,6 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -19,11 +20,12 @@ import (
 const CName = "core.block.chats"
 
 type Service interface {
-	AddMessage(ctx context.Context, chatObjectId string, message *model.ChatMessage) (string, error)
+	AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *model.ChatMessage) (string, error)
 	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
 	GetMessages(ctx context.Context, chatObjectId string, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
+	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe(chatObjectId string) error
 
@@ -32,9 +34,16 @@ type Service interface {
 	app.ComponentRunnable
 }
 
+var _ Service = (*service)(nil)
+
+type configProvider interface {
+	GetAnyStoreConfig() *anystore.Config
+}
+
 type service struct {
-	repoPath string
-	db       anystore.DB
+	repoPath       string
+	anyStoreConfig *anystore.Config
+	db             anystore.DB
 
 	objectGetter cache.ObjectGetter
 }
@@ -49,6 +58,7 @@ func (s *service) Name() string {
 
 func (s *service) Init(a *app.App) error {
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
+	s.anyStoreConfig = app.MustComponent[configProvider](a).GetAnyStoreConfig()
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
 
 	return nil
@@ -67,7 +77,7 @@ func (s *service) Run(ctx context.Context) error {
 }
 
 func (s *service) runDatabase(ctx context.Context, path string) error {
-	store, err := anystore.Open(ctx, path, nil)
+	store, err := anystore.Open(ctx, path, s.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -88,11 +98,11 @@ func (s *service) GetStoreDb() anystore.DB {
 	return s.db
 }
 
-func (s *service) AddMessage(ctx context.Context, chatObjectId string, message *model.ChatMessage) (string, error) {
+func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *model.ChatMessage) (string, error) {
 	var messageId string
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
-		messageId, err = sb.AddMessage(ctx, message)
+		messageId, err = sb.AddMessage(ctx, sessionCtx, message)
 		return err
 	})
 	return messageId, err
@@ -124,6 +134,19 @@ func (s *service) GetMessages(ctx context.Context, chatObjectId string, beforeOr
 			return err
 		}
 		res = msgs
+		return nil
+	})
+	return res, err
+}
+
+func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error) {
+	var res []*model.ChatMessage
+	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+		msg, err := sb.GetMessagesByIds(ctx, messageIds)
+		if err != nil {
+			return err
+		}
+		res = msg
 		return nil
 	})
 	return res, err

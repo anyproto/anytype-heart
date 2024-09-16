@@ -66,7 +66,8 @@ func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 	st := state.NewDoc(s.id, nil).(*state.State)
 	// Set object type here in order to derive value of Type relation in smartblock.Init
 	st.SetObjectTypeKey(bundle.TypeKeyChatDerived)
-	st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_chatDerived))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_chatDerived)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, pbtypes.Bool(true))
 	return st, nil
 }
 
@@ -82,9 +83,15 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	if err != nil {
 		return
 	}
+	// checking if we have any data in the store regarding the tree (i.e. if tree is first arrived or created)
+	allIsNew := false
+	if _, err := tx.GetOrder(s.id); err != nil {
+		allIsNew = true
+	}
 	applier := &storeApply{
-		tx: tx,
-		ot: s.ObjectTree,
+		tx:       tx,
+		allIsNew: allIsNew,
+		ot:       s.ObjectTree,
 	}
 	if err = applier.Apply(); err != nil {
 		return errors.Join(tx.Rollback(), err)
@@ -162,18 +169,20 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 	return err
 }
 
-func (s *store) Update(tree objecttree.ObjectTree) {
+func (s *store) Update(tree objecttree.ObjectTree) error {
 	err := s.update(context.Background(), tree)
 	if err != nil {
 		log.With("objectId", s.id).Errorf("update: failed to read store doc: %v", err)
 	}
+	return err
 }
 
-func (s *store) Rebuild(tree objecttree.ObjectTree) {
+func (s *store) Rebuild(tree objecttree.ObjectTree) error {
 	err := s.update(context.Background(), tree)
 	if err != nil {
 		log.With("objectId", s.id).Errorf("rebuild: failed to read store doc: %v", err)
 	}
+	return err
 }
 
 func MarshalStoreChange(change *pb.StoreChange) (result []byte, dataType string, err error) {

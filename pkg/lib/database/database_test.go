@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/valyala/fastjson"
+	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -143,7 +144,7 @@ func Test_NewFilters(t *testing.T) {
 		mockStore := NewMockObjectStore(t)
 
 		// when
-		filters, err := NewFilters(Query{}, mockStore, &fastjson.Arena{})
+		filters, err := NewFilters(Query{}, mockStore, &fastjson.Arena{}, &collate.Buffer{})
 
 		// then
 		assert.Nil(t, err)
@@ -175,7 +176,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// when
-		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{}, &collate.Buffer{})
 
 		// when
 		assert.Nil(t, err)
@@ -215,7 +216,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// then
-		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{}, &collate.Buffer{})
 
 		// when
 		assert.Nil(t, err)
@@ -255,7 +256,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// then
-		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{}, &collate.Buffer{})
 
 		// when
 		assert.Nil(t, err)
@@ -295,7 +296,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// then
-		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{}, &collate.Buffer{})
 
 		// when
 		assert.Nil(t, err)
@@ -329,7 +330,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// then
-		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{})
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{}, &collate.Buffer{})
 
 		// when
 		assert.Nil(t, err)

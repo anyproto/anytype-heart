@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -224,7 +224,7 @@ func (s *service) prepareDetailsForInstallingObject(
 	details.SetBool(bundle.RelationKeyIsReadonly, false)
 
 	if isNewSpace {
-		objecttype.SetLastUsedDateForInitialObjectType(sourceId, details)
+		lastused.SetLastUsedDateForInitialObjectType(sourceId, details)
 	}
 
 	bundledRelationIds := details.GetStringList(bundle.RelationKeyRecommendedRelations)

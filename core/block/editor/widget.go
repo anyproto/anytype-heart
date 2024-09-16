@@ -29,7 +29,7 @@ func NewWidgetObject(
 	objectStore objectstore.ObjectStore,
 	layoutConverter converter.LayoutConverter,
 ) *WidgetObject {
-	bs := basic.NewBasic(sb, objectStore, layoutConverter, nil)
+	bs := basic.NewBasic(sb, objectStore, layoutConverter, nil, nil)
 	return &WidgetObject{
 		SmartBlock: sb,
 		Movable:    bs,

@@ -136,8 +136,6 @@ type State struct {
 	groupId                  string
 	noObjectType             bool
 	originalCreatedTimestamp int64 // pass here from snapshots when importing objects
-	parentIdsCache           map[string]string
-	isParentIdsCacheEnabled  bool
 }
 
 func (s *State) MigrationVersion() uint32 {
@@ -216,18 +214,9 @@ func (s *State) Set(b simple.Block) {
 	if !s.Exists(b.Model().Id) {
 		s.Add(b)
 	} else {
-		s.removeFromCache(s.Pick(b.Model().Id).Model().ChildrenIds...)
 		s.setChildrenIds(b.Model(), b.Model().ChildrenIds)
 		s.blocks[b.Model().Id] = b
 		s.blockInit(b)
-	}
-}
-
-func (s *State) removeFromCache(ids ...string) {
-	if s.isParentIdsCacheEnabled {
-		for _, id := range ids {
-			delete(s.parentIdsCache, id)
-		}
 	}
 }
 
@@ -266,7 +255,6 @@ func (s *State) CleanupBlock(id string) bool {
 	)
 	for t != nil {
 		if _, ok = t.blocks[id]; ok {
-			s.removeFromCache(id)
 			delete(t.blocks, id)
 			return true
 		}
@@ -324,28 +312,6 @@ func (s *State) HasParent(id, parentId string) bool {
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {
-	var cacheFound simple.Block
-	if s.isParentIdsCacheEnabled {
-		cache := s.getParentIdsCache()
-		if parentId, ok := cache[id]; ok {
-			cacheFound = s.Pick(parentId)
-		}
-		// if cacheFound != nil {
-		// 	rootId := s.RootId()
-		// 	topParentId := cacheFound.Model().Id
-		// 	for topParentId != rootId {
-		// 		if nextId, ok := cache[topParentId]; ok {
-		// 			topParentId = nextId
-		// 		} else {
-		// 			cacheFound = nil
-		// 			break
-		// 		}
-		// 	}
-		// }
-		// restore this code after checking if cache is working correctly
-		// return
-	}
-
 	s.Iterate(func(b simple.Block) bool {
 		if slice.FindPos(b.Model().ChildrenIds, id) != -1 {
 			res = b
@@ -353,50 +319,7 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 		}
 		return true
 	})
-
-	// remove this code after checking if cache is working correctly
-	if s.isParentIdsCacheEnabled && res != cacheFound {
-		// var cacheFoundId, resFoundId string
-		// if cacheFound != nil {
-		// 	cacheFoundId = cacheFound.Model().Id
-		// }
-		// if res != nil {
-		// 	resFoundId = res.Model().Id
-		// }
-		// log.With("id", id).
-		// 	With("cacheFoundId", cacheFoundId).
-		// 	With("resFoundId", resFoundId).
-		// 	With("objId", s.RootId()).
-		// 	Warn("discrepancy in state parent search")
-	}
-
 	return
-}
-
-func (s *State) ResetParentIdsCache() {
-	s.parentIdsCache = nil
-	s.isParentIdsCacheEnabled = false
-}
-
-func (s *State) EnableParentIdsCache() bool {
-	if s.isParentIdsCacheEnabled {
-		return true
-	}
-	s.isParentIdsCacheEnabled = true
-	return false
-}
-
-func (s *State) getParentIdsCache() map[string]string {
-	if s.parentIdsCache == nil {
-		s.parentIdsCache = make(map[string]string)
-		s.Iterate(func(block simple.Block) bool {
-			for _, id := range block.Model().ChildrenIds {
-				s.parentIdsCache[id] = block.Model().Id
-			}
-			return true
-		})
-	}
-	return s.parentIdsCache
 }
 
 func (s *State) IsChild(parentId, childId string) bool {
@@ -503,12 +426,6 @@ func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action undo.Action
 }
 
 func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
-	alreadyEnabled := s.EnableParentIdsCache()
-	defer func() {
-		if !alreadyEnabled {
-			s.ResetParentIdsCache()
-		}
-	}()
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
@@ -770,6 +687,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 
 	msgs = s.processTrailingDuplicatedEvents(msgs)
+
+	sortEventMessages(msgs)
 	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }

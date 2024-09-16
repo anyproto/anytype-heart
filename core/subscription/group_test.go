@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/valyala/fastjson"
+	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/kanban"
@@ -61,7 +62,7 @@ func TestGroupTag(t *testing.T) {
 
 	q := database.Query{}
 
-	f, err := database.NewFilters(q, database.NewMockObjectStore(t), &fastjson.Arena{})
+	f, err := database.NewFilters(q, database.NewMockObjectStore(t), &fastjson.Arena{}, &collate.Buffer{})
 	require.NoError(t, err)
 	filterTag := database.FilterNot{Filter: database.FilterEmpty{Key: kanbanKey}}
 	f.FilterObj = database.FiltersAnd{f.FilterObj, filterTag}

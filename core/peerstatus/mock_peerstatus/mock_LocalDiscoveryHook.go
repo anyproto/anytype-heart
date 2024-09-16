@@ -4,6 +4,7 @@ package mock_peerstatus
 
 import (
 	app "github.com/anyproto/any-sync/app"
+	localdiscovery "github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -111,68 +112,35 @@ func (_c *MockLocalDiscoveryHook_Name_Call) RunAndReturn(run func() string) *Moc
 	return _c
 }
 
-// RegisterP2PNotPossible provides a mock function with given fields: hook
-func (_m *MockLocalDiscoveryHook) RegisterP2PNotPossible(hook func()) {
+// RegisterDiscoveryPossibilityHook provides a mock function with given fields: hook
+func (_m *MockLocalDiscoveryHook) RegisterDiscoveryPossibilityHook(hook func(localdiscovery.DiscoveryPossibility)) {
 	_m.Called(hook)
 }
 
-// MockLocalDiscoveryHook_RegisterP2PNotPossible_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterP2PNotPossible'
-type MockLocalDiscoveryHook_RegisterP2PNotPossible_Call struct {
+// MockLocalDiscoveryHook_RegisterDiscoveryPossibilityHook_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterDiscoveryPossibilityHook'
+type MockLocalDiscoveryHook_RegisterDiscoveryPossibilityHook_Call struct {
 	*mock.Call
 }
 
-// RegisterP2PNotPossible is a helper method to define mock.On call
-//   - hook func()
-func (_e *MockLocalDiscoveryHook_Expecter) RegisterP2PNotPossible(hook interface{}) *MockLocalDiscoveryHook_RegisterP2PNotPossible_Call {
-	return &MockLocalDiscoveryHook_RegisterP2PNotPossible_Call{Call: _e.mock.On("RegisterP2PNotPossible", hook)}
+// RegisterDiscoveryPossibilityHook is a helper method to define mock.On call
+//   - hook func(localdiscovery.DiscoveryPossibility)
+func (_e *MockLocalDiscoveryHook_Expecter) RegisterDiscoveryPossibilityHook(hook interface{}) *MockLocalDiscoveryHook_RegisterDiscoveryPossibilityHook_Call {
+	return &MockLocalDiscoveryHook_RegisterDiscoveryPossibilityHook_Call{Call: _e.mock.On("RegisterDiscoveryPossibilityHook", hook)}
 }
 
-func (_c *MockLocalDiscoveryHook_RegisterP2PNotPossible_Call) Run(run func(hook func())) *MockLocalDiscoveryHook_RegisterP2PNotPossible_Call {
+func (_c *MockLocalDiscoveryHook_RegisterDiscoveryPossibilityHook_Call) Run(run func(hook func(localdiscovery.DiscoveryPossibility))) *MockLocalDiscoveryHook_RegisterDiscoveryPossibilityHook_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(func()))
+		run(args[0].(func(localdiscovery.DiscoveryPossibility)))
 	})
 	return _c
 }
 
-func (_c *MockLocalDiscoveryHook_RegisterP2PNotPossible_Call) Return() *MockLocalDiscoveryHook_RegisterP2PNotPossible_Call {
+func (_c *MockLocalDiscoveryHook_RegisterDiscoveryPossibilityHook_Call) Return() *MockLocalDiscoveryHook_RegisterDiscoveryPossibilityHook_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *MockLocalDiscoveryHook_RegisterP2PNotPossible_Call) RunAndReturn(run func(func())) *MockLocalDiscoveryHook_RegisterP2PNotPossible_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// RegisterResetNotPossible provides a mock function with given fields: hook
-func (_m *MockLocalDiscoveryHook) RegisterResetNotPossible(hook func()) {
-	_m.Called(hook)
-}
-
-// MockLocalDiscoveryHook_RegisterResetNotPossible_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterResetNotPossible'
-type MockLocalDiscoveryHook_RegisterResetNotPossible_Call struct {
-	*mock.Call
-}
-
-// RegisterResetNotPossible is a helper method to define mock.On call
-//   - hook func()
-func (_e *MockLocalDiscoveryHook_Expecter) RegisterResetNotPossible(hook interface{}) *MockLocalDiscoveryHook_RegisterResetNotPossible_Call {
-	return &MockLocalDiscoveryHook_RegisterResetNotPossible_Call{Call: _e.mock.On("RegisterResetNotPossible", hook)}
-}
-
-func (_c *MockLocalDiscoveryHook_RegisterResetNotPossible_Call) Run(run func(hook func())) *MockLocalDiscoveryHook_RegisterResetNotPossible_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(func()))
-	})
-	return _c
-}
-
-func (_c *MockLocalDiscoveryHook_RegisterResetNotPossible_Call) Return() *MockLocalDiscoveryHook_RegisterResetNotPossible_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MockLocalDiscoveryHook_RegisterResetNotPossible_Call) RunAndReturn(run func(func())) *MockLocalDiscoveryHook_RegisterResetNotPossible_Call {
+func (_c *MockLocalDiscoveryHook_RegisterDiscoveryPossibilityHook_Call) RunAndReturn(run func(func(localdiscovery.DiscoveryPossibility))) *MockLocalDiscoveryHook_RegisterDiscoveryPossibilityHook_Call {
 	_c.Call.Return(run)
 	return _c
 }

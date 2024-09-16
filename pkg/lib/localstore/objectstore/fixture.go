@@ -71,6 +71,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		arenaPool:          &fastjson.ArenaPool{},
 		repoPath:           walletService.RepoPath(),
 		oldStore:           oldStore,
+		collatorBufferPool: newCollatorBufferPool(),
 	}
 
 	t.Cleanup(func() {

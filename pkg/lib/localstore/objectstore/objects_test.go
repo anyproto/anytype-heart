@@ -69,7 +69,7 @@ func Test_removeByPrefix(t *testing.T) {
 			bundle.RelationKeySpaceId: domain.String(spaceId),
 		})
 		require.NoError(t, s.UpdateObjectDetails(context2.Background(), objId, details))
-		require.NoError(t, s.UpdateObjectLinks(objId, links))
+		require.NoError(t, s.UpdateObjectLinks(ctx, objId, links))
 	}
 
 	// Test huge transaction
@@ -177,7 +177,7 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 	obj3 := makeObjectWithName("id3", "name3")
 	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-	err := s.UpdateObjectLinks("id1", []string{"id2", "id3"})
+	err := s.UpdateObjectLinks(ctx, "id1", []string{"id2", "id3"})
 	require.NoError(t, err)
 
 	t.Run("links of first object", func(t *testing.T) {
@@ -248,13 +248,13 @@ func TestDeleteObject(t *testing.T) {
 		obj := makeObjectWithName("id1", "name1")
 		s.AddObjects(t, []TestObject{obj})
 
-		err := s.UpdateObjectLinks("id2", []string{"id1"})
+		err := s.UpdateObjectLinks(ctx, "id2", []string{"id1"})
 		require.NoError(t, err)
 
-		err = s.SaveLastIndexedHeadsHash("id1", "hash1")
+		err = s.SaveLastIndexedHeadsHash(ctx, "id1", "hash1")
 		require.NoError(t, err)
 
-		err = s.AddToIndexQueue("id1")
+		err = s.AddToIndexQueue(ctx, "id1")
 		require.NoError(t, err)
 
 		// Act
@@ -282,7 +282,7 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, inbound)
 
-		hash, err := s.GetLastIndexedHeadsHash("id1")
+		hash, err := s.GetLastIndexedHeadsHash(ctx, "id1")
 		require.NoError(t, err)
 		assert.Empty(t, hash)
 
@@ -296,7 +296,7 @@ func TestDeleteDetails(t *testing.T) {
 	s := NewStoreFixture(t)
 	s.AddObjects(t, []TestObject{makeObjectWithName("id1", "name1")})
 
-	err := s.DeleteDetails("id1")
+	err := s.DeleteDetails(ctx, "id1")
 	require.NoError(t, err)
 
 	got, err := s.GetDetails("id1")

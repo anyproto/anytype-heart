@@ -57,7 +57,7 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 	return &Page{
 		SmartBlock:     sb,
 		ChangeReceiver: sb.(source.ChangeReceiver),
-		AllOperations:  basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService),
+		AllOperations:  basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
 		IHistory:       basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,

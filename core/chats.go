@@ -8,12 +8,14 @@ import (
 )
 
 func (mw *Middleware) ChatAddMessage(cctx context.Context, req *pb.RpcChatAddMessageRequest) *pb.RpcChatAddMessageResponse {
+	ctx := mw.newContext(cctx)
 	chatService := getService[chats.Service](mw)
 
-	messageId, err := chatService.AddMessage(cctx, req.ChatObjectId, req.Message)
+	messageId, err := chatService.AddMessage(cctx, ctx, req.ChatObjectId, req.Message)
 	code := mapErrorCode[pb.RpcChatAddMessageResponseErrorCode](err)
 	return &pb.RpcChatAddMessageResponse{
 		MessageId: messageId,
+		Event:     ctx.GetResponseEvent(),
 		Error: &pb.RpcChatAddMessageResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
@@ -68,6 +70,20 @@ func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMe
 	return &pb.RpcChatGetMessagesResponse{
 		Messages: messages,
 		Error: &pb.RpcChatGetMessagesResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) ChatGetMessagesByIds(cctx context.Context, req *pb.RpcChatGetMessagesByIdsRequest) *pb.RpcChatGetMessagesByIdsResponse {
+	chatService := getService[chats.Service](mw)
+
+	messages, err := chatService.GetMessagesByIds(cctx, req.ChatObjectId, req.MessageIds)
+	code := mapErrorCode[pb.RpcChatGetMessagesByIdsResponseErrorCode](err)
+	return &pb.RpcChatGetMessagesByIdsResponse{
+		Messages: messages,
+		Error: &pb.RpcChatGetMessagesByIdsResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
