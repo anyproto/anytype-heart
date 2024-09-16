@@ -491,6 +491,7 @@ func getDetailsForRelationOption(name, rel string) (string, *types.Struct) {
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_tag))
 	if rel != bundle.RelationKeyTag.String() {
 		details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(rel)
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
