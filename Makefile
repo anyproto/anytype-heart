@@ -260,7 +260,7 @@ protos-swift:
 	@echo 'Generating swift protobuf files'
 	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Public --swift_out=./dist/ios/protobuf pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 		@echo 'Generated swift protobuf files at ./dist/ios/pb'
-	
+
 protos-swift-local: protos-swift
 	@echo 'Clear proto files'
 	@rm -rf ./dist/ios/protobuf/protos
@@ -325,21 +325,21 @@ install-linter:
 run-linter:
 ifdef GOLANGCI_LINT_BRANCH
 	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --timeout 15m --verbose
-else 
+else
 	@golangci-lint run -v ./... --new-from-rev=origin/main --timeout 15m --verbose
 endif
 
 run-linter-fix:
 ifdef GOLANGCI_LINT_BRANCH
 	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --timeout 15m --fix
-else 
+else
 	@golangci-lint run -v ./... --new-from-rev=origin/main --timeout 15m --fix
 endif
 
 ### Tantivy Section
 
 REPO := anyproto/tantivy-go
-VERSION := v0.0.8
+VERSION := v0.1.0
 OUTPUT_DIR := deps/libs
 SHA_FILE = tantivity_sha256.txt
 
@@ -363,7 +363,10 @@ define remove_arch
 	rm -f $(OUTPUT_DIR)/$(1)
 endef
 
-download-tantivy: $(TANTIVY_LIBS)
+remove-libs:
+	@rm -rf deps/libs/*
+
+download-tantivy: remove-libs $(TANTIVY_LIBS)
 
 $(TANTIVY_LIBS):
 	@mkdir -p $(OUTPUT_DIR)/$(shell echo $@ | cut -d'.' -f1)
@@ -371,20 +374,20 @@ $(TANTIVY_LIBS):
 	@tar -C $(OUTPUT_DIR)/$(shell echo $@ | cut -d'.' -f1) -xvzf $(OUTPUT_DIR)/$@
 
 download-tantivy-all-force: download-tantivy
-	@rm -f $(SHA_FILE)
+	rm -f $(SHA_FILE)
 	@for file in $(TANTIVY_LIBS); do \
 		echo "SHA256 $(OUTPUT_DIR)/$$file" ; \
 		shasum -a 256 $(OUTPUT_DIR)/$$file | awk '{print $$1 "  " "'$(OUTPUT_DIR)/$$file'" }' >> $(SHA_FILE); \
 	done
+	@rm -rf deps/libs/*.tar.gz
 	@echo "SHA256 checksums generated."
 
 download-tantivy-all: download-tantivy
-	@rm -rf /deps/libs/*
 	@echo "Validating SHA256 checksums..."
 	@shasum -a 256 -c $(SHA_FILE) --status || { echo "Hash mismatch detected."; exit 1; }
 	@echo "All files are valid."
+	@rm -rf deps/libs/*.tar.gz
 
-download-tantivy-local:
-	@rm -rf /deps/libs/*
+download-tantivy-local: remove-libs
 	@mkdir -p $(OUTPUT_DIR)
-	@cp -r $(TANTIVY_GO_PATH)/libs/ $(OUTPUT_DIR)
+	@cp -r $(TANTIVY_GO_PATH)/libs/* $(OUTPUT_DIR)
