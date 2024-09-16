@@ -4,11 +4,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/files/mock_files"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -379,6 +382,29 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 }
 
 func Test_makeDatabaseSnapshot(t *testing.T) {
+	t.Run("Databases have properties with same name and relation - don't create additional relation", func(t *testing.T) {
+		// given
+		p := property.DatabaseSelect{
+			Property: property.Property{
+				ID:   "id",
+				Name: "Name",
+			},
+		}
+		pr := property.DatabaseProperties{"Name": &p}
+		dbService := New(nil)
+		req := property.NewPropertiesStore()
+		req.AddSnapshotByNameAndFormat(p.Name, int64(p.GetFormat()), &model.SmartBlockSnapshotBase{})
+		db := Database{Properties: pr}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
+		assert.Nil(t, err)
+
+		// then
+		assert.Len(t, snapshot, 1)
+		assert.NotEqual(t, sb.SmartBlockTypeRelation, snapshot[0].SbType)
+	})
+
 	t.Run("Database has Select property with Tag name", func(t *testing.T) {
 		// given
 		p := property.DatabaseSelect{
@@ -389,14 +415,11 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		pr := property.DatabaseProperties{"Tag": &p}
 		dbService := New(nil)
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		db := Database{Properties: pr}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
@@ -413,14 +436,11 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		properties := property.DatabaseProperties{"Tags": &selectProperty}
 		dbService := New(nil)
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
@@ -436,14 +456,11 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		selectProperty := property.DatabaseProperties{"Tags": &multiSelectProperty}
 		dbService := New(nil)
-		properties := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		properties := property.NewPropertiesStore()
 		db := Database{Properties: selectProperty}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), properties)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), properties, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, properties.PropertyIdsToSnapshots, 1)
@@ -459,14 +476,11 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		selectProperty := property.DatabaseProperties{"Tag": &multiSelectProperty}
 		dbService := New(nil)
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		db := Database{Properties: selectProperty}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
@@ -488,14 +502,11 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		properties := property.DatabaseProperties{"Tag": &multiSelectProperty, "Tags": &selectProperty}
 		dbService := New(nil)
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
@@ -518,14 +529,11 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		properties := property.DatabaseProperties{"Tag": &multiSelectProperty, "tags": &selectProperty}
 		dbService := New(nil)
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
@@ -541,7 +549,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Nil(t, err)
@@ -559,7 +567,9 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		downloader := mock_files.NewMockDownloader(t)
+		downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(nil, true)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, downloader)
 
 		// then
 		assert.Nil(t, err)
@@ -577,7 +587,9 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		downloader := mock_files.NewMockDownloader(t)
+		downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(nil, true)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, downloader)
 
 		// then
 		assert.Nil(t, err)
@@ -590,7 +602,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Nil(t, err)
@@ -607,17 +619,49 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}
 		properties := property.DatabaseProperties{"": &selectProperty}
 		dbService := New(nil)
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req, mock_files.NewMockDownloader(t))
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
 		assert.Equal(t, property.UntitledProperty, pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyName.String()))
+	})
+	t.Run("Database has cover file icon - details have relations coverId and coverType", func(t *testing.T) {
+		dbService := New(nil)
+		db := Database{Cover: &api.FileObject{
+			Type: api.File,
+			File: api.FileProperty{
+				URL: "url",
+			},
+		}}
+
+		// when
+		downloader := mock_files.NewMockDownloader(t)
+		downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(nil, true)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, downloader)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		cover := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyCoverId.String())
+		coverType := pbtypes.GetInt64(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyCoverType.String())
+		assert.Equal(t, "url", cover)
+		assert.Equal(t, int64(1), coverType)
+	})
+	t.Run("Database doesn't have cover - details don't have neither coverType nor coverId", func(t *testing.T) {
+		dbService := New(nil)
+		db := Database{}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil, mock_files.NewMockDownloader(t))
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		cover := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyCoverId.String())
+		assert.Equal(t, "", cover)
 	})
 }
