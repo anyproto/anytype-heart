@@ -259,10 +259,10 @@ func (pt *Task) provideRelationSnapshot(
 	propObject property.Object,
 	name string,
 	hasTag, tagExist bool,
-) (*model.SmartBlockSnapshotBase, string, []*model.SmartBlockSnapshotBase) {
+) (*common.StateSnapshot, string, []*common.StateSnapshot) {
 	var (
 		key                          string
-		relationsAndOptionsSnapshots []*model.SmartBlockSnapshotBase
+		relationsAndOptionsSnapshots []*common.StateSnapshot
 	)
 	snapshot := relation.GetSnapshotByNameAndFormat(name, int64(propObject.GetFormat()))
 	if snapshot == nil {

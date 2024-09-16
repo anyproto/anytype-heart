@@ -194,7 +194,7 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 	name, relationKey string,
 	st *state.State) *common.Snapshot {
 	rel, sn := ds.provideRelationSnapshot(relations, databaseProperty, name, relationKey)
-	relKey := pbtypes.GetString(rel.GetDetails(), bundle.RelationKeyRelationKey.String())
+	relKey := rel.Details.GetString(bundle.RelationKeyRelationKey)
 	databaseProperty.SetDetail(relKey, st.Details())
 	relationLinks := &model.RelationLink{
 		Key:    relKey,
@@ -219,7 +219,7 @@ func (ds *Service) provideRelationSnapshot(
 	relations *property.PropertiesStore,
 	databaseProperty property.DatabasePropertyHandler,
 	name, relationKey string,
-) (*model.SmartBlockSnapshotBase, *common.Snapshot) {
+) (*common.StateSnapshot, *common.Snapshot) {
 	var sn *common.Snapshot
 	rel := relations.GetSnapshotByNameAndFormat(name, int64(databaseProperty.GetFormat()))
 	if rel == nil {
@@ -269,9 +269,9 @@ func (ds *Service) getRelationDetails(databaseProperty property.DatabaseProperty
 	return details
 }
 
-func (ds *Service) getCollectionDetails(d Database) (map[string]*types.Value, []*model.RelationLink) {
-	details := make(map[string]*types.Value, 0)
-	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(d.ID)
+func (ds *Service) getCollectionDetails(d Database) (*domain.Details, []*model.RelationLink) {
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeySourceFilePath, d.ID)
 	if len(d.Title) > 0 {
 		details.SetString(bundle.RelationKeyName, d.Title[0].PlainText)
 	}
@@ -301,8 +301,8 @@ func (ds *Service) getCollectionDetails(d Database) (map[string]*types.Value, []
 	return details, relationLinks
 }
 
-func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, detailsStruct *types.Struct, links []*model.RelationLink) (string, *common.Snapshot) {
-	snapshot := &model.SmartBlockSnapshotBase{
+func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, details *domain.Details, links []*model.RelationLink) (string, *common.Snapshot) {
+	snapshot := &common.StateSnapshot{
 		Blocks:        st.Blocks(),
 		Details:       details,
 		ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
