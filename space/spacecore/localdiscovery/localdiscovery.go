@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	gonet "net"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -27,12 +28,15 @@ type Hook int
 
 var interfacesSortPriority = []string{"wlan", "wl", "en", "eth", "tun", "tap", "utun", "lo"}
 
+type DiscoveryPossibility int
+
 const (
-	PeerToPeerImpossible Hook = 0
-	PeerToPeerPossible   Hook = 1
+	DiscoveryPossible               DiscoveryPossibility = 0
+	DiscoveryNoInterfaces           DiscoveryPossibility = 2
+	DiscoveryLocalNetworkRestricted DiscoveryPossibility = 3
 )
 
-type HookCallback func()
+type HookCallback func(state DiscoveryPossibility)
 
 type localDiscovery struct {
 	server *zeroconf.Server
@@ -54,12 +58,13 @@ type localDiscovery struct {
 	notifier    Notifier
 	m           sync.Mutex
 
-	hookMu sync.Mutex
-	hooks  map[Hook][]HookCallback
+	hookMu    sync.Mutex
+	hookState DiscoveryPossibility
+	hooks     []HookCallback
 }
 
 func New() LocalDiscovery {
-	return &localDiscovery{hooks: make(map[Hook][]HookCallback, 0)}
+	return &localDiscovery{hooks: make([]HookCallback, 0)}
 }
 
 func (l *localDiscovery) SetNotifier(notifier Notifier) {
@@ -70,7 +75,7 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.manualStart = a.MustComponent(config.CName).(*config.Config).DontStartLocalNetworkSyncAutomatically
 	l.nodeConf = a.MustComponent(config.CName).(*config.Config).GetNodeConf()
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
-	l.periodicCheck = periodicsync.NewPeriodicSync(5, 0, l.checkAddrs, log)
+	l.periodicCheck = periodicsync.NewPeriodicSync(5, 0, l.refreshInterfaces, log)
 	l.drpcServer = app.MustComponent[clientserver.ClientServer](a)
 	return
 }
@@ -86,7 +91,7 @@ func (l *localDiscovery) Run(ctx context.Context) (err error) {
 
 func (l *localDiscovery) Start() (err error) {
 	if !l.drpcServer.ServerStarted() {
-		l.executeHook(PeerToPeerImpossible)
+		l.notifyP2PPossibilityState(DiscoveryNoInterfaces)
 		return
 	}
 	l.m.Lock()
@@ -142,28 +147,27 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (l *localDiscovery) RegisterP2PNotPossible(hook func()) {
+func (l *localDiscovery) RegisterDiscoveryPossibilityHook(hook func(state DiscoveryPossibility)) {
 	l.hookMu.Lock()
 	defer l.hookMu.Unlock()
-	l.hooks[PeerToPeerImpossible] = append(l.hooks[PeerToPeerImpossible], hook)
+	l.hooks = append(l.hooks, hook)
 }
 
-func (l *localDiscovery) RegisterResetNotPossible(hook func()) {
-	l.hookMu.Lock()
-	defer l.hookMu.Unlock()
-	l.hooks[PeerToPeerPossible] = append(l.hooks[PeerToPeerPossible], hook)
-}
-
-func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
+func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	newAddrs, err := addrs.GetInterfacesAddrs()
-	l.notifyPeerToPeerStatus(newAddrs)
-	if err != nil {
-		return fmt.Errorf("getting iface addresses: %w", err)
+	if !addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) {
+		// only replace existing interface structs in case if we have a different set of addresses
+		// this optimization allows to save syscalls to get addrs for every iface, as we have a cache
+		newAddrs.Interfaces = filterMulticastInterfaces(newAddrs.Interfaces)
+		newAddrs.SortInterfacesWithPriority(interfacesSortPriority)
+		fmt.Printf("#p2p local discovery: new interfaces(%d) %v\n", len(newAddrs.Interfaces), newAddrs.NetInterfaces())
+
 	}
 
-	newAddrs.SortInterfacesWithPriority(interfacesSortPriority)
-
+	l.notifyP2PPossibilityState(l.getP2PPossibility(newAddrs))
 	if newAddrs.Equal(l.interfacesAddrs) && l.server != nil {
+		// we do additional check after we filter and sort multicast interfaces
+		// so this equal check is more precise
 		return
 	}
 	l.interfacesAddrs = newAddrs
@@ -225,9 +229,9 @@ func (l *localDiscovery) startServer() (err error) {
 		l.ipv4, // do not include ipv6 addresses, because they are disabled
 		nil,
 		l.interfacesAddrs.NetInterfaces(),
-		zeroconf.TTL(60),
+		zeroconf.TTL(3600), // big ttl because we don't have re-broadcasting
 		zeroconf.ServerSelectIPTraffic(zeroconf.IPv4), // disable ipv6 for now
-		zeroconf.WriteTimeout(time.Second*1),
+		zeroconf.WriteTimeout(time.Second*3),
 	)
 	return
 }
@@ -267,47 +271,68 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 
 func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEntry) {
 	defer l.closeWait.Done()
-	newAddrs, err := addrs.GetInterfacesAddrs()
-	l.notifyPeerToPeerStatus(newAddrs)
-
-	if err != nil {
-		return
-	}
-	newAddrs.SortInterfacesWithPriority(interfacesSortPriority)
 	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch,
-		zeroconf.ClientWriteTimeout(time.Second*1),
-		zeroconf.SelectIfaces(newAddrs.NetInterfaces()),
+		zeroconf.ClientWriteTimeout(time.Second*3),
+		zeroconf.SelectIfaces(l.interfacesAddrs.NetInterfaces()),
 		zeroconf.SelectIPTraffic(zeroconf.IPv4)); err != nil {
 		log.Error("browsing failed", zap.Error(err))
 	}
 }
 
-func (l *localDiscovery) notifyPeerToPeerStatus(newAddrs addrs.InterfacesAddrs) {
-	if l.notifyP2PNotPossible(newAddrs) {
-		l.executeHook(PeerToPeerImpossible)
-	} else {
-		l.executeHook(PeerToPeerPossible)
+func (l *localDiscovery) GetOwnAddresses() OwnAddresses {
+	return OwnAddresses{
+		Addrs: l.ipv4,
+		Port:  l.port,
 	}
 }
-
-func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
-	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.NetInterfaces())
-}
-
-func (l *localDiscovery) executeHook(hook Hook) {
-	hooks := l.getHooks(hook)
-	for _, callback := range hooks {
-		callback()
+func (l *localDiscovery) getP2PPossibility(newAddrs addrs.InterfacesAddrs) DiscoveryPossibility {
+	// some sophisticated logic for ios, because of possible Local Network Restrictions
+	var err error
+	interfaces := newAddrs.Interfaces
+	for _, iface := range interfaces {
+		if runtime.GOOS == "ios" {
+			// on ios we have to check only en interfaces
+			if !strings.HasPrefix(iface.Name, "en") {
+				// en1 used for wifi
+				// en2 used for wired connection
+				continue
+			}
+		}
+		addrs := iface.GetAddr()
+		if len(addrs) == 0 {
+			continue
+		}
+		for _, addr := range addrs {
+			if ip, ok := addr.(*gonet.IPNet); ok {
+				ipv4 := ip.IP.To4()
+				if ipv4 == nil {
+					continue
+				}
+				err = testSelfConnection(ipv4.String())
+				if err != nil {
+					log.Warn(fmt.Sprintf("self connection via %s to %s failed: %v", iface.Name, ipv4.String(), err))
+				} else {
+					return DiscoveryPossible
+				}
+				break
+			}
+		}
 	}
+	if err != nil {
+		// todo: double check network state provided by the client?
+		return DiscoveryLocalNetworkRestricted
+	}
+	return DiscoveryNoInterfaces
 }
 
-func (l *localDiscovery) getHooks(hook Hook) []HookCallback {
+func (l *localDiscovery) notifyP2PPossibilityState(state DiscoveryPossibility) {
 	l.hookMu.Lock()
 	defer l.hookMu.Unlock()
-	if hooks, ok := l.hooks[hook]; ok {
-		callback := make([]HookCallback, 0, len(hooks))
-		callback = append(callback, hooks...)
-		return callback
+	if state == l.hookState {
+		return
 	}
-	return nil
+	l.hookState = state
+	for _, callback := range l.hooks {
+		callback(state)
+	}
 }

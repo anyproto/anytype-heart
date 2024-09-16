@@ -26699,6 +26699,7 @@ Precondition: user A and user B opened the same block
 | NotConnected | 0 |  |
 | NotPossible | 1 |  |
 | Connected | 2 |  |
+| Restricted | 3 |  |
 
 
 
