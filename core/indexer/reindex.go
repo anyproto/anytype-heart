@@ -46,6 +46,9 @@ const (
 
 	// ForceLinksReindexCounter forces to erase links from store and reindex them
 	ForceLinksReindexCounter int32 = 1
+
+	// ForceMarketplaceReindex forces to do reindex only for marketplace space
+	ForceMarketplaceReindex int32 = 1
 )
 
 func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
@@ -111,6 +114,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.LinksErase != ForceLinksReindexCounter {
 		flags.eraseLinks = true
+	}
+	if spaceID == addr.AnytypeMarketplaceWorkspace && checksums.MarketplaceForceReindexCounter != ForceMarketplaceReindex {
+		flags.enableAll()
 	}
 	return flags, nil
 }
@@ -525,8 +531,8 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space smartblock.Spac
 	return
 }
 
-func (i *indexer) getLatestChecksums() model.ObjectStoreChecksums {
-	return model.ObjectStoreChecksums{
+func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.ObjectStoreChecksums) {
+	checksums = model.ObjectStoreChecksums{
 		BundledObjectTypes:               bundle.TypeChecksum,
 		BundledRelations:                 bundle.RelationChecksum,
 		BundledTemplates:                 i.btHash.Hash(),
@@ -539,10 +545,14 @@ func (i *indexer) getLatestChecksums() model.ObjectStoreChecksums {
 		AreDeletedObjectsReindexed:       true,
 		LinksErase:                       ForceLinksReindexCounter,
 	}
+	if isMarketplace {
+		checksums.MarketplaceForceReindexCounter = ForceMarketplaceReindex
+	}
+	return
 }
 
 func (i *indexer) saveLatestChecksums(spaceID string) error {
-	checksums := i.getLatestChecksums()
+	checksums := i.getLatestChecksums(spaceID == addr.AnytypeMarketplaceWorkspace)
 	return i.store.SaveChecksums(spaceID, &checksums)
 }
 

@@ -89,15 +89,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "instructions",
-    "maxCount": 1,
-    "name": "Instructions",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Done checkbox used to render action layout. ",
     "format": "checkbox",
     "hidden": true,
@@ -126,15 +117,6 @@
     "name": "Bundled Template",
     "readonly": true,
     "source": "derived"
-  },
-  {
-    "format": "date",
-    "hidden": false,
-    "key": "dateOfBirth",
-    "maxCount": 1,
-    "name": "Birthday",
-    "readonly": false,
-    "source": "details"
   },
   {
     "description": "Object restrictions list",
@@ -187,43 +169,6 @@
     "source": "account"
   },
   {
-    "format": "file",
-    "hidden": false,
-    "key": "thumbnailImage",
-    "maxCount": 0,
-    "name": "Thumbnail image",
-    "objectTypes": [
-      "image"
-    ],
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "file",
-    "hidden": false,
-    "key": "attachments",
-    "maxCount": 0,
-    "name": "Attachments",
-    "objectTypes": [
-      "file",
-      "image",
-      "video",
-      "audio"
-    ],
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "description": "The artist that performed this album or recording",
-    "format": "longtext",
-    "hidden": false,
-    "key": "audioArtist",
-    "maxCount": 1,
-    "name": "Recording Artist",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "List of related tasks\n",
     "format": "object",
     "hidden": false,
@@ -245,15 +190,6 @@
     "name": "Snippet",
     "readonly": true,
     "source": "derived"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "hypothesisAssumptions",
-    "maxCount": 1,
-    "name": "Hypothesis & assumptions",
-    "readonly": false,
-    "source": "details"
   },
   {
     "description": "Type of the underlying value",
@@ -307,15 +243,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "solution",
-    "maxCount": 1,
-    "name": "Solution",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Year when this object were released",
     "format": "number",
     "hidden": false,
@@ -332,24 +259,6 @@
     "key": "coverScale",
     "maxCount": 1,
     "name": "Cover scale",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "url",
-    "hidden": false,
-    "key": "twitter",
-    "maxCount": 1,
-    "name": "Twitter",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "userStories",
-    "maxCount": 1,
-    "name": "User stories",
     "readonly": false,
     "source": "details"
   },
@@ -385,15 +294,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "problem",
-    "maxCount": 1,
-    "name": "Problem",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Specify visual align of the layout",
     "format": "number",
     "hidden": true,
@@ -404,75 +304,12 @@
     "source": "details"
   },
   {
-    "format": "object",
-    "hidden": false,
-    "key": "class",
-    "maxCount": 0,
-    "name": "Class",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "number",
-    "hidden": false,
-    "key": "difficulty",
-    "maxCount": 1,
-    "name": "Difficulty",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "object",
-    "hidden": false,
-    "key": "director",
-    "maxCount": 0,
-    "name": "Director",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Task status",
     "format": "status",
     "hidden": false,
     "key": "status",
     "maxCount": 1,
     "name": "Status",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "logic",
-    "maxCount": 1,
-    "name": "Logic",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "alternative",
-    "maxCount": 1,
-    "name": "Alternative",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "object",
-    "hidden": false,
-    "key": "linkedContacts",
-    "maxCount": 0,
-    "name": "Linked Contacts",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "number",
-    "hidden": false,
-    "key": "rottenTomatoesRating",
-    "maxCount": 1,
-    "name": "Rotten Tomatoes rating",
     "readonly": false,
     "source": "details"
   },
@@ -497,24 +334,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "additional",
-    "maxCount": 1,
-    "name": "Additional",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "number",
-    "hidden": false,
-    "key": "budget",
-    "maxCount": 1,
-    "name": "Budget",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Artist name",
     "format": "longtext",
     "hidden": true,
@@ -522,15 +341,6 @@
     "maxCount": 1,
     "name": "Media Artist Name",
     "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "rating",
-    "maxCount": 1,
-    "name": "Rating",
-    "readonly": false,
     "source": "details"
   },
   {
@@ -571,24 +381,6 @@
     "source": "derived"
   },
   {
-    "format": "object",
-    "hidden": false,
-    "key": "stakeholders",
-    "maxCount": 0,
-    "name": "Stakeholders",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "measureOfSuccess",
-    "maxCount": 1,
-    "name": "Measure of success",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "List of recommended relations",
     "format": "object",
     "hidden": true,
@@ -619,24 +411,6 @@
     "key": "recommendedLayout",
     "maxCount": 1,
     "name": "Recommended layout",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "result",
-    "maxCount": 1,
-    "name": "Result",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "checkbox",
-    "hidden": false,
-    "key": "reflection",
-    "maxCount": 1,
-    "name": "Reflection",
     "readonly": false,
     "source": "details"
   },
@@ -681,15 +455,6 @@
     "key": "dueDate",
     "maxCount": 1,
     "name": "Due date",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "records",
-    "maxCount": 1,
-    "name": "Records",
     "readonly": false,
     "source": "details"
   },
@@ -756,24 +521,6 @@
     "source": "details"
   },
   {
-    "format": "object",
-    "hidden": false,
-    "key": "events",
-    "maxCount": 0,
-    "name": "Events",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "timeframe",
-    "maxCount": 1,
-    "name": "Timeframe",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Indicates whether the object is read-only. Means it can't be edited and archived",
     "format": "checkbox",
     "hidden": true,
@@ -832,15 +579,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "materials",
-    "maxCount": 1,
-    "name": "Materials",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Adds the object to the home dashboard",
     "format": "checkbox",
     "hidden": true,
@@ -849,15 +587,6 @@
     "name": "Favorited",
     "readonly": false,
     "source": "account"
-  },
-  {
-    "format": "object",
-    "hidden": false,
-    "key": "stars",
-    "maxCount": 0,
-    "name": "Stars",
-    "readonly": false,
-    "source": "details"
   },
   {
     "description": "Space object belongs to",
@@ -896,30 +625,6 @@
     "source": "details"
   },
   {
-    "format": "url",
-    "hidden": false,
-    "key": "telegram",
-    "maxCount": 1,
-    "name": "Telegram",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "file",
-    "hidden": false,
-    "key": "trailer",
-    "maxCount": 0,
-    "name": "Trailer",
-    "objectTypes": [
-      "file",
-      "image",
-      "video",
-      "audio"
-    ],
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Name of the object",
     "format": "shorttext",
     "hidden": true,
@@ -945,33 +650,6 @@
     "key": "audioLyrics",
     "maxCount": 1,
     "name": "Lyrics",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "url",
-    "hidden": false,
-    "key": "instagram",
-    "maxCount": 1,
-    "name": "Instagram",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "tag",
-    "hidden": false,
-    "key": "classType",
-    "maxCount": 0,
-    "name": "Class type",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "howToReproduce",
-    "maxCount": 1,
-    "name": "How-to reproduce",
     "readonly": false,
     "source": "details"
   },
@@ -1038,24 +716,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "placeOfBirth",
-    "maxCount": 1,
-    "name": "Place of birth",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "composer",
-    "maxCount": 1,
-    "name": "Composer",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Set of internal flags",
     "format": "number",
     "hidden": true,
@@ -1063,24 +723,6 @@
     "maxCount": 0,
     "name": "Internal flags",
     "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "url",
-    "hidden": false,
-    "key": "socialProfile",
-    "maxCount": 1,
-    "name": "Profile in social media",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "occupation",
-    "maxCount": 1,
-    "name": "Occupation",
-    "readonly": false,
     "source": "details"
   },
   {
@@ -1099,15 +741,6 @@
     "key": "description",
     "maxCount": 1,
     "name": "Description",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "url",
-    "hidden": false,
-    "key": "facebook",
-    "maxCount": 1,
-    "name": "Facebook",
     "readonly": false,
     "source": "details"
   },
@@ -1145,15 +778,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "objectives",
-    "maxCount": 1,
-    "name": "Objectives",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "format": "number",
     "hidden": false,
     "key": "cameraIso",
@@ -1182,24 +806,6 @@
     "readonly": true,
     "source": "derived",
     "revision": 3
-  },
-  {
-    "format": "number",
-    "hidden": false,
-    "key": "servings",
-    "maxCount": 1,
-    "name": "Servings",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "tag",
-    "hidden": false,
-    "key": "category",
-    "maxCount": 0,
-    "name": "Category",
-    "readonly": false,
-    "source": "details"
   },
   {
     "description": "Can contains image hash, color or prebuild bg id, depends on coverType relation",
@@ -1236,15 +842,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "questions",
-    "maxCount": 1,
-    "name": "Questions",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Width of image/video in pixels",
     "format": "number",
     "hidden": false,
@@ -1277,15 +874,6 @@
     "source": "details"
   },
   {
-    "format": "status",
-    "hidden": false,
-    "key": "gender",
-    "maxCount": 1,
-    "name": "Gender",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Hides the object",
     "format": "checkbox",
     "hidden": true,
@@ -1314,15 +902,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "job",
-    "maxCount": 1,
-    "name": "Job",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Important relations that always appear at the top of the object",
     "format": "object",
     "hidden": true,
@@ -1341,15 +920,6 @@
     "key": "phone",
     "maxCount": 1,
     "name": "Phone",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "number",
-    "hidden": false,
-    "key": "imdbRating",
-    "maxCount": 1,
-    "name": "IMDb rating",
     "readonly": false,
     "source": "details"
   },
@@ -1756,6 +1326,16 @@
     "key": "syncError",
     "maxCount": 1,
     "name": "Sync error",
+    "readonly": true,
+    "source": "local"
+  },
+  {
+    "description": "Objects that are mentioned in blocks of this object",
+    "format": "object",
+    "hidden": true,
+    "key": "mentions",
+    "maxCount": 0,
+    "name": "Mentions",
     "readonly": true,
     "source": "local"
   }

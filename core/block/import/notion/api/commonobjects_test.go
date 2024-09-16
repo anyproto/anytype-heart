@@ -4,8 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -256,4 +258,67 @@ func Test_GetFileBlockVideo(t *testing.T) {
 	assert.NotNil(t, imageBlock.GetFile())
 	assert.Equal(t, imageBlock.GetFile().Name, "https:/example.ru/")
 	assert.Equal(t, imageBlock.GetFile().Type, model.BlockContentFile_Video)
+}
+
+func TestSetCover(t *testing.T) {
+	t.Run("cover is nil", func(t *testing.T) {
+		// given
+		details := make(map[string]*types.Value, 0)
+
+		// when
+		SetCover(details, nil)
+
+		// then
+		assert.Empty(t, details)
+	})
+	t.Run("details are nil", func(t *testing.T) {
+		// given
+		var details map[string]*types.Value
+
+		// when
+		SetCover(details, &FileObject{
+			Name: "filename",
+			Type: External,
+			External: FileProperty{
+				URL: "url",
+			},
+		})
+
+		// then
+		assert.Empty(t, details)
+	})
+	t.Run("external type", func(t *testing.T) {
+		// given
+		details := make(map[string]*types.Value, 0)
+
+		// when
+		SetCover(details, &FileObject{
+			Name: "filename",
+			Type: External,
+			External: FileProperty{
+				URL: "url",
+			},
+		})
+
+		// then
+		assert.Equal(t, "url", details[bundle.RelationKeyCoverId.String()].GetStringValue())
+		assert.Equal(t, float64(1), details[bundle.RelationKeyCoverType.String()].GetNumberValue())
+	})
+	t.Run("file type", func(t *testing.T) {
+		// given
+		details := make(map[string]*types.Value, 0)
+
+		// when
+		SetCover(details, &FileObject{
+			Name: "filename",
+			Type: File,
+			File: FileProperty{
+				URL: "url",
+			},
+		})
+
+		// then
+		assert.Equal(t, "url", details[bundle.RelationKeyCoverId.String()].GetStringValue())
+		assert.Equal(t, float64(1), details[bundle.RelationKeyCoverType.String()].GetNumberValue())
+	})
 }
