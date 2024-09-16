@@ -169,6 +169,43 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
+	if s.newAccount {
+		return s.createAccount(ctx)
+	}
+	return s.initAccount(ctx)
+}
+
+func (s *service) initAccount(ctx context.Context) (err error) {
+	err = s.initMarketplaceSpace(ctx)
+	if err != nil {
+		return fmt.Errorf("init marketplace space: %w", err)
+	}
+	err = s.initTechSpace(ctx)
+	if err != nil {
+		return fmt.Errorf("init tech space: %w", err)
+	}
+	err = s.initPersonalSpace(ctx)
+	if err != nil {
+		if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
+			err = ErrSpaceNotExists
+		}
+		// fix for the users that have wrong network id stored in the folder
+		err2 := s.config.ResetStoredNetworkId()
+		if err2 != nil {
+			log.Error("reset network id", zap.Error(err2))
+		}
+		return fmt.Errorf("init personal space: %w", err)
+	}
+	s.techSpace.WakeUpViews()
+	// only persist networkId after successful space init
+	err = s.config.PersistAccountNetworkId()
+	if err != nil {
+		log.Error("persist network id to config", zap.Error(err))
+	}
+	return nil
+}
+
+func (s *service) createAccount(ctx context.Context) (err error) {
 	err = s.initMarketplaceSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("init marketplace space: %w", err)

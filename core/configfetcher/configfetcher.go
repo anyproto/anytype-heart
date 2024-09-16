@@ -115,6 +115,7 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 			close(c.fetched)
 		})
 	}()
+	// TODO: [PS] - refactor this to use tech space
 	personalSpaceID := c.account.PersonalSpaceID()
 	res, err := c.client.StatusCheck(ctx, personalSpaceID)
 	if err == coordinatorproto.ErrSpaceNotExists {

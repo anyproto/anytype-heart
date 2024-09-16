@@ -100,6 +100,7 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
+	// TODO: [PS] - refactor this to use tech space
 	personalSpace, err := s.spaceService.GetPersonalSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
