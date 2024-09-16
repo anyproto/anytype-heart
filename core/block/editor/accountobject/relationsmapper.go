@@ -12,7 +12,6 @@ type KeyType int
 const (
 	KeyTypeString KeyType = iota
 	KeyTypeInt64
-	KeyTypeBool
 )
 
 type relationsMapper struct {
@@ -32,9 +31,17 @@ func (r *relationsMapper) GetRelationKey(key string, val *fastjson.Value) (*type
 	}
 	switch kt {
 	case KeyTypeString:
-		return pbtypes.String(string(val.GetStringBytes(key))), true
+		val := val.GetStringBytes(key)
+		if val == nil {
+			return nil, false
+		}
+		return pbtypes.String(string(val)), true
 	case KeyTypeInt64:
-		return pbtypes.Int64(val.GetInt64(key)), true
+		val := val.GetInt64(key)
+		if val == 0 {
+			return nil, false
+		}
+		return pbtypes.Int64(val), true
 	case KeyTypeBool:
 		return pbtypes.Bool(val.GetBool(key)), true
 	}
