@@ -398,6 +398,85 @@ func ValueToInterface(v *types.Value) interface{} {
 	}
 }
 
+func InterfaceToValue(i any) *types.Value {
+	switch v := i.(type) {
+	case nil:
+		return Null()
+	case float64:
+		return Float64(v)
+	case float32:
+		return Float64(float64(v))
+	case int:
+		return Int64(int64(v))
+	case int64:
+		return Int64(v)
+	case int32:
+		return Int64(int64(v))
+	case uint:
+		return Int64(int64(v))
+	case uint64:
+		return Int64(int64(v))
+	case uint32:
+		return Int64(int64(v))
+	case string:
+		return String(v)
+	case bool:
+		return Bool(v)
+	case map[string]any:
+		fields := make(map[string]*types.Value)
+		for k, val := range v {
+			fields[k] = InterfaceToValue(val)
+		}
+		return &types.Value{
+			Kind: &types.Value_StructValue{StructValue: &types.Struct{Fields: fields}},
+		}
+	case []string:
+		return StringList(v)
+	case []int:
+		vals := make([]*types.Value, len(v))
+		for i, val := range v {
+			vals[i] = Int64(int64(val))
+		}
+		return &types.Value{
+			Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+		}
+	case []int64:
+		vals := make([]*types.Value, len(v))
+		for i, val := range v {
+			vals[i] = Int64(val)
+		}
+		return &types.Value{
+			Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+		}
+	case []float64:
+		vals := make([]*types.Value, len(v))
+		for i, val := range v {
+			vals[i] = Float64(val)
+		}
+		return &types.Value{
+			Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+		}
+	case []bool:
+		vals := make([]*types.Value, len(v))
+		for i, val := range v {
+			vals[i] = Bool(val)
+		}
+		return &types.Value{
+			Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+		}
+	case []any:
+		vals := make([]*types.Value, len(v))
+		for i, val := range v {
+			vals[i] = InterfaceToValue(val)
+		}
+		return &types.Value{
+			Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+		}
+	default:
+		panic(fmt.Sprintf("InterfaceToValue: unsupported type %T", v))
+	}
+}
+
 // deprecated
 func BundledRelationIdToKey(id string) (string, error) {
 	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
