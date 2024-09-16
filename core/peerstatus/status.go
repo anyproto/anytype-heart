@@ -73,7 +73,7 @@ type p2pStatus struct {
 	peerStore     peerstore.PeerStore
 
 	sync.Mutex
-	p2pLastState   localdiscovery.DiscoveryPossibility // global flag means p2p is not possible because of network
+	p2pLastState   localdiscovery.DiscoveryPossibility
 	workerFinished chan struct{}
 	refreshSpaceId chan string
 
