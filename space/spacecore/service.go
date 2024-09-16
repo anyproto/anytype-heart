@@ -78,12 +78,6 @@ type service struct {
 	peerStore            peerstore.PeerStore
 	peerService          peerservice.PeerService
 	poolManager          PoolManager
-	syncStatusService    syncStatusService
-}
-
-type syncStatusService interface {
-	RegisterSpace(space commonspace.Space, sw objectsyncstatus.StatusWatcher)
-	UnregisterSpace(space commonspace.Space)
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -98,8 +92,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
-	s.streamPool = a.MustComponent(streampool.CName).(streampool.StreamPool)
-	s.syncStatusService = app.MustComponent[syncStatusService](a)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
 	s.spaceCache = ocache.New(
@@ -219,7 +211,7 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 	if err != nil {
 		return
 	}
-	ns, err := newAnySpace(cc, s.syncStatusService, statusService)
+	ns, err := newAnySpace(cc)
 	if err != nil {
 		return
 	}

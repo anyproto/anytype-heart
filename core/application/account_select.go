@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	trace2 "runtime/trace"
 	"strings"
 
@@ -40,9 +41,10 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		return nil, ErrEmptyAccountID
 	}
 
-	s.traceRecorder.start()
-	defer s.traceRecorder.stop()
-
+	if runtime.GOOS != "android" && runtime.GOOS != "ios" {
+		s.traceRecorder.start()
+		defer s.traceRecorder.stop()
+	}
 	s.cancelStartIfInProcess()
 	s.lock.Lock()
 	defer s.lock.Unlock()
