@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "8b79add6b322acbcee123ad178c1aee523a2d9b9f219c391903530b29e554a1e"
+const TypeChecksum = "484213e7add27b39575e6713ab48172c4361061b1df02c99ba08b7395bb87d1f"
 const (
 	TypePrefix = "_ot"
 )
