@@ -2,8 +2,8 @@ package property
 
 import (
 	"fmt"
+
 	"github.com/anyproto/anytype-heart/core/block/import/common"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type UniqueKey string
@@ -13,8 +13,8 @@ func MakeUniqueKey(name string, format int64) UniqueKey {
 }
 
 type PropertiesStore struct {
-	PropertyIdsToSnapshots map[string]*common.StateSnapshot
-	RelationsIdsToOptions  map[string][]*common.StateSnapshot
+	PropertyIdsToSnapshots    map[string]*common.StateSnapshot
+	RelationsIdsToOptions     map[string][]*common.StateSnapshot
 	uniquePropertyToSnapshots map[UniqueKey]*common.StateSnapshot
 }
 
@@ -26,7 +26,7 @@ func NewPropertiesStore() *PropertiesStore {
 	}
 }
 
-func (m *PropertiesStore) GetSnapshotByNameAndFormat(name string, format int64) *model.SmartBlockSnapshotBase {
+func (m *PropertiesStore) GetSnapshotByNameAndFormat(name string, format int64) *common.StateSnapshot {
 	uk := MakeUniqueKey(name, format)
 	if snapshot, ok := m.uniquePropertyToSnapshots[uk]; ok {
 		return snapshot
@@ -34,7 +34,7 @@ func (m *PropertiesStore) GetSnapshotByNameAndFormat(name string, format int64) 
 	return nil
 }
 
-func (m *PropertiesStore) AddSnapshotByNameAndFormat(name string, format int64, sn *model.SmartBlockSnapshotBase) {
+func (m *PropertiesStore) AddSnapshotByNameAndFormat(name string, format int64, sn *common.StateSnapshot) {
 	uk := MakeUniqueKey(name, format)
 	if _, ok := m.uniquePropertyToSnapshots[uk]; !ok {
 		m.uniquePropertyToSnapshots[uk] = sn

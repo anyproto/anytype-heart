@@ -40,12 +40,12 @@ func (s *service) createChat(ctx context.Context, space clientspace.Space, detai
 }
 
 func (s *service) addChatDerivedObject(ctx context.Context, space clientspace.Space, st *state.State, chatObjectId string) error {
-	chatDetails := &types.Struct{Fields: map[string]*types.Value{}}
+	chatDetails := domain.NewDetails()
 	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatDerivedObject, chatObjectId)
 	if err != nil {
 		return fmt.Errorf("create payload: %w", err)
 	}
-	chatDetails.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(chatUniqueKey.Marshal())
+	chatDetails.SetString(bundle.RelationKeyUniqueKey, chatUniqueKey.Marshal())
 
 	chatReq := CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyChatDerived,
@@ -57,8 +57,8 @@ func (s *service) addChatDerivedObject(ctx context.Context, space clientspace.Sp
 		return fmt.Errorf("create object: %w", err)
 	}
 
-	st.SetDetailAndBundledRelation(bundle.RelationKeyChatId, pbtypes.String(chatId))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyHasChat, pbtypes.Bool(true))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyChatId, domain.String(chatId))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyHasChat, domain.Bool(true))
 	return nil
 }
 

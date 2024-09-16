@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -21,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -110,7 +108,7 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 	}
 
 	if recRelsDetail != nil {
-		details = append(details, recRelsDetail)
+		details.Set(recRelsDetail.Key, recRelsDetail.Value)
 	}
 
 	if details.Len() > 0 {
@@ -168,9 +166,9 @@ func buildDiffDetails(origin, current *domain.Details) *domain.Details {
 	return details
 }
 
-func checkRecommendedRelations(ctx context.Context, space dependencies.SpaceWithCtx, origin, current *types.Struct) (newValue *model.Detail, err error) {
-	localIds := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
-	bundledIds := pbtypes.GetStringList(origin, bundle.RelationKeyRecommendedRelations.String())
+func checkRecommendedRelations(ctx context.Context, space dependencies.SpaceWithCtx, origin, current *domain.Details) (newValue *domain.Detail, err error) {
+	localIds := current.GetStringList(bundle.RelationKeyRecommendedRelations)
+	bundledIds := origin.GetStringList(bundle.RelationKeyRecommendedRelations)
 
 	newIds := make([]string, 0, len(bundledIds))
 	for _, bundledId := range bundledIds {
@@ -203,8 +201,8 @@ func checkRecommendedRelations(ctx context.Context, space dependencies.SpaceWith
 		return nil, nil
 	}
 
-	return &model.Detail{
-		Key:   bundle.RelationKeyRecommendedRelations.String(),
-		Value: pbtypes.StringList(append(localIds, added...)),
+	return &domain.Detail{
+		Key:   bundle.RelationKeyRecommendedRelations,
+		Value: domain.StringList(append(localIds, added...)),
 	}, nil
 }

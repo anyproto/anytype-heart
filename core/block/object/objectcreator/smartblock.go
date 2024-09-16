@@ -109,11 +109,11 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	return id, newDetails, nil
 }
 
-func (s *service) updateLastUsedDate(spaceId string, sbType coresb.SmartBlockType, details *types.Struct, typeKey domain.TypeKey) {
-	if pbtypes.GetInt64(details, bundle.RelationKeyLastUsedDate.String()) != 0 {
+func (s *service) updateLastUsedDate(spaceId string, sbType coresb.SmartBlockType, details *domain.Details, typeKey domain.TypeKey) {
+	if details.GetInt64(bundle.RelationKeyLastUsedDate) != 0 {
 		return
 	}
-	uk := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
+	uk := details.GetString(bundle.RelationKeyUniqueKey)
 	ts := time.Now().Unix()
 	switch sbType {
 	case coresb.SmartBlockTypeObjectType:
@@ -121,7 +121,7 @@ func (s *service) updateLastUsedDate(spaceId string, sbType coresb.SmartBlockTyp
 	case coresb.SmartBlockTypeRelation:
 		s.lastUsedUpdater.UpdateLastUsedDate(spaceId, domain.RelationKey(strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)), ts)
 	default:
-		if pbtypes.GetInt64(details, bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
+		if details.GetInt64(bundle.RelationKeyOrigin) == int64(model.ObjectOrigin_none) {
 			s.lastUsedUpdater.UpdateLastUsedDate(spaceId, typeKey, ts)
 		}
 	}

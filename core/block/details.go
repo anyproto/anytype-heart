@@ -60,7 +60,7 @@ func (s *Service) ModifyDetails(objectId string, modifier func(current *domain.D
 	})
 }
 
-func (s *Service) ModifyDetailsAndUpdateLastUsed(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
+func (s *Service) ModifyDetailsAndUpdateLastUsed(objectId string, modifier func(current *domain.Details) (*domain.Details, error)) (err error) {
 	return cache.Do(s, objectId, func(du basic.DetailsUpdatable) error {
 		return du.UpdateDetailsAndLastUsed(modifier)
 	})
