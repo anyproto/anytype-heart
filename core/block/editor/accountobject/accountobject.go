@@ -9,6 +9,7 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logger.NewNamed("common.editor.accountobject")
@@ -37,6 +39,8 @@ type ProfileSubscription = func(ctx context.Context, profile ProfileDetails) err
 
 type AccountObject interface {
 	smartblock.SmartBlock
+	SetSharedSpacesLimit(limit int) (err error)
+	SetProfileDetails(details *types.Struct) (err error)
 }
 
 type StoreDbProvider interface {
@@ -62,9 +66,10 @@ func New(sb smartblock.SmartBlock, dbProvider StoreDbProvider) AccountObject {
 		SmartBlock: sb,
 		dbProvider: dbProvider,
 		relMapper: newRelationsMapper(map[string]KeyType{
-			bundle.RelationKeyName.String():        KeyTypeString,
-			bundle.RelationKeyDescription.String(): KeyTypeString,
-			bundle.RelationKeyIconImage.String():   KeyTypeString,
+			bundle.RelationKeyName.String():              KeyTypeString,
+			bundle.RelationKeyDescription.String():       KeyTypeString,
+			bundle.RelationKeyIconImage.String():         KeyTypeString,
+			bundle.RelationKeySharedSpacesLimit.String(): KeyTypeInt64,
 		}),
 	}
 }
@@ -136,6 +141,26 @@ func (a *accountObject) onUpdate() {
 		log.Warn("state rebuild", zap.Error(err))
 		return
 	}
+}
+
+func (a *accountObject) SetSharedSpacesLimit(limit int) (err error) {
+	st := a.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, pbtypes.Int64(int64(limit)))
+	return a.Apply(st)
+}
+
+func (a *accountObject) GetSharedSpacesLimit() (limit int) {
+	return int(pbtypes.GetInt64(a.CombinedDetails(), bundle.RelationKeySharedSpacesLimit.String()))
+}
+
+func (a *accountObject) SetProfileDetails(details *types.Struct) (err error) {
+	st := a.NewState()
+	for key := range a.relMapper.keys {
+		if val, ok := details.Fields[key]; ok {
+			st.SetDetailAndBundledRelation(domain.RelationKey(key), val)
+		}
+	}
+	return a.Apply(st)
 }
 
 func (a *accountObject) update(ctx context.Context, st *state.State) (err error) {

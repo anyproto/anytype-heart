@@ -13,6 +13,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/accountobject"
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -44,6 +45,7 @@ type TechSpace interface {
 	WaitViews() error
 	TechSpaceId() string
 	DoSpaceView(ctx context.Context, spaceID string, apply func(spaceView SpaceView) error) (err error)
+	DoAccountObject(ctx context.Context, apply func(accountObject accountobject.AccountObject) error) (err error)
 	SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) (err error)
 	GetSpaceView(ctx context.Context, spaceId string) (SpaceView, error)
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
@@ -80,8 +82,9 @@ func New() TechSpace {
 }
 
 type techSpace struct {
-	techCore    commonspace.Space
-	objectCache objectcache.Cache
+	techCore        commonspace.Space
+	objectCache     objectcache.Cache
+	accountObjectId string
 
 	mu sync.Mutex
 
@@ -262,6 +265,11 @@ func (s *techSpace) accountObjectCreate(ctx context.Context) (err error) {
 }
 
 func (s *techSpace) AccountObjectId() (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.accountObjectId != "" {
+		return s.accountObjectId, nil
+	}
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeAccountObject, s.techCore.Id())
 	if err != nil {
 		return "", err
@@ -272,6 +280,7 @@ func (s *techSpace) AccountObjectId() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	s.accountObjectId = payload.RootRawChange.Id
 	return payload.RootRawChange.Id, nil
 }
 
@@ -306,6 +315,25 @@ func (s *techSpace) DoSpaceView(ctx context.Context, spaceID string, apply func(
 	spaceView.Lock()
 	defer spaceView.Unlock()
 	return apply(spaceView)
+}
+
+func (s *techSpace) DoAccountObject(ctx context.Context, apply func(accountObject accountobject.AccountObject) error) (err error) {
+	id, err := s.AccountObjectId()
+	if err != nil {
+		return err
+	}
+	obj, err := s.objectCache.GetObject(ctx, id)
+	if err != nil {
+		return ErrSpaceViewNotExists
+	}
+	accountObject, ok := obj.(accountobject.AccountObject)
+	if !ok {
+		return ErrNotASpaceView
+	}
+
+	accountObject.Lock()
+	defer accountObject.Unlock()
+	return apply(accountObject)
 }
 
 func (s *techSpace) getViewIdLocked(ctx context.Context, spaceId string) (viewId string, err error) {

@@ -45,7 +45,7 @@ func New(app *app.App, params Params) Loader {
 		Register(aclobjectmanager.New(params.OwnerMetadata)).
 		Register(invitemigrator.New()).
 		Register(participantwatcher.New()).
-		Register(migration.New())
+		Register(migration.New(params.IsPersonal))
 	return &loader{
 		app: child,
 	}

@@ -12,9 +12,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
+	"github.com/anyproto/anytype-heart/space/internal/components/migration/profilemigrator"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/readonlyfixer"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/systemobjectreviser"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const (
@@ -29,20 +31,22 @@ type Migration interface {
 	Name() string
 }
 
-func New() *Runner {
-	return &Runner{}
+func New(isPersonal bool) *Runner {
+	return &Runner{isPersonal: isPersonal}
 }
 
 type Runner struct {
 	store       objectstore.ObjectStore
 	spaceLoader spaceloader.SpaceLoader
+	techSpace   techspace.TechSpace
 
-	ctx      context.Context
-	cancel   context.CancelFunc
-	spc      clientspace.Space
-	loadErr  error
-	waitLoad chan struct{}
-	started  bool
+	ctx        context.Context
+	cancel     context.CancelFunc
+	spc        clientspace.Space
+	loadErr    error
+	waitLoad   chan struct{}
+	started    bool
+	isPersonal bool
 
 	app.ComponentRunnable
 }
@@ -54,6 +58,7 @@ func (r *Runner) Name() string {
 func (r *Runner) Init(a *app.App) error {
 	r.store = app.MustComponent[objectstore.ObjectStore](a)
 	r.spaceLoader = app.MustComponent[spaceloader.SpaceLoader](a)
+	r.techSpace = app.MustComponent[techspace.TechSpace](a)
 
 	r.waitLoad = make(chan struct{})
 	return nil
@@ -91,7 +96,15 @@ func (r *Runner) runMigrations() {
 		break
 	}
 
-	if err := r.run(systemobjectreviser.Migration{}, readonlyfixer.Migration{}); err != nil {
+	migrations := []Migration{
+		systemobjectreviser.Migration{},
+		readonlyfixer.Migration{},
+	}
+	if r.isPersonal {
+		migrations = append(migrations, profilemigrator.Migration{TechSpace: r.techSpace})
+	}
+
+	if err := r.run(migrations...); err != nil {
 		log.Error("failed to run default migrations", zap.String("spaceId", r.spc.Id()), zap.Error(err))
 	}
 }
