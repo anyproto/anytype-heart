@@ -188,6 +188,14 @@ func (d *GenericMap[K]) GetInt64List(key K) []int64 {
 	return d.Get(key).Int64List()
 }
 
+func (d *GenericMap[K]) TryMapValue(key K) (ValueMap, bool) {
+	return d.Get(key).TryMapValue()
+}
+
+func (d *GenericMap[K]) GetMapValue(key K) ValueMap {
+	return d.Get(key).MapValue()
+}
+
 func (d *GenericMap[K]) Copy() *GenericMap[K] {
 	if d == nil {
 		return nil
@@ -276,6 +284,7 @@ const (
 	ValueTypeFloat
 	ValueTypeStringList
 	ValueTypeFloatList
+	ValueTypeMap = 7
 )
 
 func Invalid() Value {
@@ -340,6 +349,13 @@ func ValueList(vs []Value) Value {
 	return StringList(nil)
 }
 
+type ValueMap = *GenericMap[string]
+
+func NewValueMap(m map[string]Value) Value {
+	vmap := ValueMap(&GenericMap[string]{data: m})
+	return Value{ok: true, value: vmap}
+}
+
 func (v Value) Raw() any {
 	_, ok := v.value.(nullValue)
 	if ok {
@@ -362,7 +378,12 @@ func ValueFromProto(value *types.Value) Value {
 	case *types.Value_NumberValue:
 		return Float64(value.GetNumberValue())
 	case *types.Value_StructValue:
-		// TODO Not implemented
+		val := value.GetStructValue()
+		m := make(map[string]Value, len(val.GetFields()))
+		for k, v := range val.GetFields() {
+			m[k] = ValueFromProto(v)
+		}
+		return NewValueMap(m)
 	case *types.Value_ListValue:
 		if list := pbtypes.ListValueToFloats(value.GetListValue()); len(list) > 0 {
 			return Float64List(list)
@@ -586,6 +607,25 @@ func (v Value) TryWrapToList() ([]Value, error) {
 	return nil, fmt.Errorf("unsupported type: %v", v.Type())
 }
 
+func (v Value) MapValue() ValueMap {
+	if !v.ok {
+		return nil
+	}
+	m, ok := v.value.(ValueMap)
+	if !ok {
+		return nil
+	}
+	return m
+}
+
+func (v Value) TryMapValue() (ValueMap, bool) {
+	if !v.ok {
+		return nil, false
+	}
+	m, ok := v.value.(ValueMap)
+	return m, ok
+}
+
 func (v Value) Type() ValueType {
 	if !v.ok {
 		return ValueTypeNone
@@ -603,6 +643,8 @@ func (v Value) Type() ValueType {
 		return ValueTypeStringList
 	case []float64:
 		return ValueTypeFloatList
+	case ValueMap:
+		return ValueTypeMap
 	default:
 		return ValueTypeNone
 	}
@@ -625,6 +667,13 @@ func (v Value) ToProto() *types.Value {
 		return pbtypes.StringList(v)
 	case []float64:
 		return pbtypes.FloatList(v)
+	case ValueMap:
+		s := &types.Struct{Fields: make(map[string]*types.Value, v.Len())}
+		v.Iterate(func(k string, v Value) bool {
+			s.Fields[k] = v.ToProto()
+			return true
+		})
+		return pbtypes.Struct(s)
 	default:
 		panic("integrity violation")
 	}
@@ -708,6 +757,40 @@ func (v Value) Compare(other Value) int {
 		}
 	}
 
+	{
+		v1, ok := v.TryMapValue()
+		v2, _ := other.TryMapValue()
+		if ok {
+			return compareMaps(v1, v2)
+		}
+	}
+
+	return 0
+}
+
+func compareMaps(a, b ValueMap) int {
+	if a.Len() < b.Len() {
+		return -1
+	} else if a.Len() > b.Len() {
+		return 1
+	}
+
+	keysA := a.Keys()
+	keysB := b.Keys()
+	sort.Strings(keysA)
+	sort.Strings(keysB)
+
+	// keys first
+	if res := slices.Compare(keysA, keysB); res != 0 {
+		return res
+	}
+
+	for _, k := range keysA {
+		if res := a.Get(k).Compare(b.Get(k)); res != 0 {
+			return res
+		}
+	}
+
 	return 0
 }
 
@@ -721,6 +804,10 @@ func (v Value) Equal(other Value) bool {
 
 	if v.IsNull() && other.IsNull() {
 		return true
+	}
+
+	if v.Type() != other.Type() {
+		return false
 	}
 
 	{
@@ -784,10 +871,18 @@ func (v Value) Equal(other Value) bool {
 		}
 	}
 
+	{
+		v1, ok := v.TryMapValue()
+		v2, _ := other.TryMapValue()
+		if ok {
+			return v1.Equal(v2)
+		}
+	}
+
 	return false
 }
 
-func (v Value) Match(nullCase func(), boolCase func(v bool), floatCase func(v float64), stringCase func(v string), stringListCase func(v []string), floatListCase func(v []float64)) {
+func (v Value) Match(nullCase func(), boolCase func(v bool), floatCase func(v float64), stringCase func(v string), stringListCase func(v []string), floatListCase func(v []float64), mapListCase func(v ValueMap)) {
 	if !v.ok {
 		return
 	}
@@ -804,10 +899,12 @@ func (v Value) Match(nullCase func(), boolCase func(v bool), floatCase func(v fl
 		stringListCase(v)
 	case []float64:
 		floatListCase(v)
+	case ValueMap:
+		mapListCase(v)
 	}
+
 }
 
-// TODO Refactor, maybe remove Match function
 func (v Value) IsEmpty() bool {
 	if !v.ok {
 		return true
@@ -827,6 +924,8 @@ func (v Value) IsEmpty() bool {
 			ok = len(v) == 0
 		}, func(v []float64) {
 			ok = len(v) == 0
+		}, func(v ValueMap) {
+			ok = v.Len() == 0
 		})
 	return ok
 }

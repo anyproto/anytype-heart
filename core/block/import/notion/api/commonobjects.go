@@ -8,8 +8,8 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/files"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -308,18 +308,18 @@ func SetIcon(details *domain.Details, icon *Icon) *model.RelationLink {
 	return nil
 }
 
-func SetCover(details map[string]*types.Value, cover *FileObject) {
+func SetCover(details *domain.Details, cover *FileObject) {
 	if cover == nil || details == nil {
 		return
 	}
 	if cover.Type == External {
-		details[bundle.RelationKeyCoverId.String()] = pbtypes.String(cover.External.URL)
-		details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
+		details.Set(bundle.RelationKeyCoverId, domain.String(cover.External.URL))
+		details.Set(bundle.RelationKeyCoverType, domain.Int64(1))
 	}
 
 	if cover.Type == File {
-		details[bundle.RelationKeyCoverId.String()] = pbtypes.String(cover.File.URL)
-		details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
+		details.Set(bundle.RelationKeyCoverId, domain.String(cover.File.URL))
+		details.Set(bundle.RelationKeyCoverType, domain.Int64(1))
 	}
 }
 
@@ -362,7 +362,7 @@ func RichTextToDescription(rt []*RichText) string {
 type relationUploadData struct {
 	fileDownloader files.Downloader
 
-	details map[string]*types.Value
+	details *domain.Details
 	mu      sync.Mutex
 
 	tasks []func()
@@ -370,21 +370,21 @@ type relationUploadData struct {
 }
 
 type relationFileMetaData struct {
-	relationKey  string
+	relationKey  domain.RelationKey
 	url          string
 	idxInDetails int
 }
 
-func UploadFileRelationLocally(fileDownloader files.Downloader, details map[string]*types.Value, relationLinks []*model.RelationLink) {
+func UploadFileRelationLocally(fileDownloader files.Downloader, details *domain.Details, relationLinks []*model.RelationLink) {
 	data := &relationUploadData{fileDownloader: fileDownloader, details: details}
 	for _, relationLink := range relationLinks {
 		if relationLink.Format == model.RelationFormat_file {
-			fileUrl := details[relationLink.Key].GetStringValue()
+			fileUrl := details.GetString(domain.RelationKey(relationLink.Key))
 			if fileUrl == "" {
-				handleListValue(data, relationLink.Key)
+				handleListValue(data, domain.RelationKey(relationLink.Key))
 			}
 			if fileUrl != "" {
-				fileMetaData := &relationFileMetaData{relationKey: relationLink.Key, url: fileUrl}
+				fileMetaData := &relationFileMetaData{relationKey: domain.RelationKey(relationLink.Key), url: fileUrl}
 				stop := queueTaskWithFileDownload(data, fileMetaData)
 				if stop {
 					break
@@ -398,8 +398,8 @@ func UploadFileRelationLocally(fileDownloader files.Downloader, details map[stri
 	data.wg.Wait()
 }
 
-func handleListValue(data *relationUploadData, relationKey string) {
-	fileUrls := pbtypes.GetStringListValue(data.details[relationKey])
+func handleListValue(data *relationUploadData, relationKey domain.RelationKey) {
+	fileUrls := data.details.GetStringList(relationKey)
 	for i, url := range fileUrls {
 		fileMetaData := &relationFileMetaData{relationKey, url, i}
 		stop := queueTaskWithFileDownload(data, fileMetaData)
@@ -423,13 +423,13 @@ func queueTaskWithFileDownload(data *relationUploadData, fileMetaData *relationF
 		}
 		data.mu.Lock()
 		defer data.mu.Unlock()
-		switch data.details[fileMetaData.relationKey].Kind.(type) {
-		case *types.Value_StringValue:
-			data.details[fileMetaData.relationKey] = pbtypes.String(localPath)
-		case *types.Value_ListValue:
-			fileUrlsList := pbtypes.GetStringListValue(data.details[fileMetaData.relationKey])
+
+		if _, ok := data.details.TryString(fileMetaData.relationKey); ok {
+			data.details.SetString(fileMetaData.relationKey, localPath)
+		}
+		if fileUrlsList, ok := data.details.TryStringList(fileMetaData.relationKey); ok {
 			fileUrlsList[fileMetaData.idxInDetails] = localPath
-			data.details[fileMetaData.relationKey] = pbtypes.StringList(fileUrlsList)
+			data.details.SetStringList(fileMetaData.relationKey, fileUrlsList)
 		}
 	})
 	return false

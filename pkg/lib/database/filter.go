@@ -123,7 +123,7 @@ func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store Object
 		}
 	}
 
-	if str := rawFilter.Value.GetStructValue(); str != nil {
+	if str, ok := rawFilter.Value.TryMapValue(); ok {
 		filter, err := makeComplexFilter(rawFilter, str)
 		if err == nil {
 			return filter, nil
@@ -248,13 +248,13 @@ func wrapValueToFloatList(val domain.Value) ([]float64, error) {
 	return nil, fmt.Errorf("unsupported type: %v", val.Type())
 }
 
-func makeComplexFilter(rawFilter *model.BlockContentDataviewFilter, s *types.Struct) (Filter, error) {
-	filterType := pbtypes.GetString(s, bundle.RelationKeyType.String())
+func makeComplexFilter(rawFilter FilterRequest, s domain.ValueMap) (Filter, error) {
+	filterType := s.GetString(bundle.RelationKeyType.String())
 	// TODO: rewrite to switch statement once we have more filter types
 	if filterType == "valueFromRelation" {
 		return Filter2ValuesComp{
 			Key1: rawFilter.RelationKey,
-			Key2: pbtypes.GetString(s, bundle.RelationKeyRelationKey.String()),
+			Key2: domain.RelationKey(s.GetString(bundle.RelationKeyRelationKey.String())),
 			Cond: rawFilter.Condition,
 		}, nil
 	}
@@ -873,13 +873,13 @@ func (i *FilterNestedNotIn) IterateNestedFilters(fn func(nestedFilter Filter) er
 }
 
 type Filter2ValuesComp struct {
-	Key1, Key2 string
+	Key1, Key2 domain.RelationKey
 	Cond       model.BlockContentDataviewFilterCondition
 }
 
-func (i Filter2ValuesComp) FilterObject(g *types.Struct) bool {
-	val1 := pbtypes.Get(g, i.Key1)
-	val2 := pbtypes.Get(g, i.Key2)
+func (i Filter2ValuesComp) FilterObject(g *domain.Details) bool {
+	val1 := g.Get(i.Key1)
+	val2 := g.Get(i.Key2)
 	eq := FilterEq{Value: val2, Cond: i.Cond}
 	return eq.filterObject(val1)
 }
@@ -901,8 +901,8 @@ func (i Filter2ValuesComp) AnystoreFilter() query.Filter {
 		op = query.CompOpNe
 	}
 	return &Anystore2ValuesComp{
-		RelationKey1: i.Key1,
-		RelationKey2: i.Key2,
+		RelationKey1: string(i.Key1),
+		RelationKey2: string(i.Key2),
 		CompOp:       op,
 	}
 }

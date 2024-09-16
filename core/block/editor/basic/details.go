@@ -6,10 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
-	"github.com/gogo/protobuf/types"
-	"golang.org/x/exp/maps"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -32,7 +28,7 @@ func (bs *basic) SetDetails(ctx session.Context, details []domain.Detail, showEv
 	return err
 }
 
-func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	var keys []domain.RelationKey
 	keys, err = bs.setDetails(ctx, details, showEvent)
 	if err != nil {
@@ -45,7 +41,7 @@ func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*mod
 	return nil
 }
 
-func (bs *basic) setDetails(ctx session.Context, details []вщьфшт.Detail, showEvent bool) (updatedKeys []domain.RelationKey, err error) {
+func (bs *basic) setDetails(ctx session.Context, details []domain.Detail, showEvent bool) (updatedKeys []domain.RelationKey, err error) {
 	s := bs.NewStateCtx(ctx)
 
 	// Collect updates handling special cases. These cases could update details themselves, so we
@@ -66,37 +62,36 @@ func (bs *basic) setDetails(ctx session.Context, details []вщьфшт.Detail, 
 	return updatedKeys, nil
 }
 
-func (bs *basic) UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+func (bs *basic) UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error) {
 	_, _, err = bs.updateDetails(update)
 	return err
 }
 
-func (bs *basic) UpdateDetailsAndLastUsed(update func(current *types.Struct) (*types.Struct, error)) (err error) {
-	var oldDetails, newDetails *types.Struct
-	oldDetails, newDetails, err = bs.updateDetails(update)
+func (bs *basic) UpdateDetailsAndLastUsed(update func(current *domain.Details) (*domain.Details, error)) error {
+	oldDetails, newDetails, err := bs.updateDetails(update)
 	if err != nil {
 		return err
 	}
 
-	diff := pbtypes.StructDiff(oldDetails, newDetails)
-	if diff == nil || diff.Fields == nil {
+	diff := domain.StructDiff(oldDetails, newDetails)
+	if diff.Len() == 0 {
 		return nil
 	}
 	ts := time.Now().Unix()
-	for key := range diff.Fields {
-		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), domain.RelationKey(key), ts)
+	for _, key := range diff.Keys() {
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), key, ts)
 	}
 	return nil
 }
 
-func (bs *basic) updateDetails(update func(current *domain.Details) (*domain.Details, error)) (oldDetails, newDetails *types.Struct, err error) {
+func (bs *basic) updateDetails(update func(current *domain.Details) (*domain.Details, error)) (oldDetails *domain.Details, newDetails *domain.Details, err error) {
 	if update == nil {
 		return nil, nil, fmt.Errorf("update function is nil")
 	}
 	s := bs.NewState()
 
 	oldDetails = s.CombinedDetails()
-	oldDetailsCopy := pbtypes.CopyStruct(oldDetails, true)
+	oldDetailsCopy := oldDetails.Copy()
 
 	newDetails, err = update(oldDetailsCopy)
 	if err != nil {
@@ -111,14 +106,14 @@ func (bs *basic) updateDetails(update func(current *domain.Details) (*domain.Det
 	return oldDetails, newDetails, bs.Apply(s)
 }
 
-func (bs *basic) collectDetailUpdates(details []domain.Detail, s *state.State) ([]*detailUpdate, []domain.RelationKey) {
+func (bs *basic) collectDetailUpdates(details []domain.Detail, s *state.State) ([]domain.Detail, []domain.RelationKey) {
 	updates := make([]domain.Detail, 0, len(details))
 	keys := make([]domain.RelationKey, 0, len(details))
 	for _, detail := range details {
 		update, err := bs.createDetailUpdate(s, detail)
 		if err == nil {
 			updates = append(updates, update)
-			keys = append(keys, domain.RelationKey(update.key))
+			keys = append(keys, update.Key)
 		} else {
 			log.Errorf("can't set detail %s: %s", detail.Key, err)
 		}
