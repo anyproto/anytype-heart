@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -21,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
+	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -37,6 +39,10 @@ type ObjectDeleter interface {
 type accountService interface {
 	PersonalSpaceID() string
 	MyParticipantId(spaceId string) string
+}
+
+type deviceService interface {
+	SaveDeviceInfo(info smartblock.ApplyInfo) error
 }
 
 type ObjectFactory struct {
@@ -58,7 +64,10 @@ type ObjectFactory struct {
 	fileObjectService   fileobject.Service
 	processService      process.Service
 	fileUploaderService fileuploader.Service
+	fileReconciler      reconciler.Reconciler
 	objectDeleter       ObjectDeleter
+	deviceService       deviceService
+	lastUsedUpdater     lastused.ObjectUsageUpdater
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -85,6 +94,9 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.processService = app.MustComponent[process.Service](a)
 	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
+	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
+	f.deviceService = app.MustComponent[deviceService](a)
+	f.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
 	return nil
 }
 
@@ -182,6 +194,8 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		return nil, fmt.Errorf("subobject not supported via factory")
 	case coresb.SmartBlockTypeParticipant:
 		return f.newParticipant(sb), nil
+	case coresb.SmartBlockTypeDevicesObject:
+		return NewDevicesObject(sb, f.deviceService), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

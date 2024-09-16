@@ -5,8 +5,6 @@ package addrs
 
 import (
 	"net"
-
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func SetInterfaceAddrsGetter(getter InterfaceAddrsGetter) {}
@@ -31,10 +29,6 @@ func GetInterfacesAddrs() (iAddrs InterfacesAddrs, err error) {
 	if err != nil {
 		return
 	}
-	iAddrs.Interfaces = ifaces
-
-	iAddrs.Interfaces = slice.Filter(iAddrs.Interfaces, func(iface net.Interface) bool {
-		return iface.Flags&net.FlagUp != 0 && iface.Flags&net.FlagMulticast != 0
-	})
+	iAddrs.Interfaces = WrapInterfaces(ifaces)
 	return
 }

@@ -30,6 +30,13 @@ func CopyBlock(in *model.Block) (out *model.Block) {
 	return
 }
 
+func EnsureStructInited(s *types.Struct) *types.Struct {
+	if s == nil || s.Fields == nil {
+		return &types.Struct{Fields: make(map[string]*types.Value)}
+	}
+	return s
+}
+
 func CopyStruct(s *types.Struct, copyVals bool) *types.Struct {
 	if s == nil {
 		return nil
@@ -197,6 +204,27 @@ func CopyNotification(in *model.Notification) (out *model.Notification) {
 	err = out.Unmarshal(buf[:size])
 	if err != nil {
 		log.Debugf("failed to unmarshal notification: %s", err)
+	}
+	bytesPool.Put(buf)
+	return
+}
+
+func CopyDevice(in *model.DeviceInfo) (out *model.DeviceInfo) {
+	var err error
+	buf := bytesPool.Get().([]byte)
+	size := in.Size()
+	if cap(buf) < size {
+		buf = make([]byte, 0, size)
+	}
+	// nolint:errcheck
+	size, err = in.MarshalToSizedBuffer(buf[:size])
+	if err != nil {
+		log.Debugf("failed to marshal size buffer: %s", err)
+	}
+	out = &model.DeviceInfo{}
+	err = out.Unmarshal(buf[:size])
+	if err != nil {
+		log.Debugf("failed to unmarshal deviceInfo: %s", err)
 	}
 	bytesPool.Put(buf)
 	return

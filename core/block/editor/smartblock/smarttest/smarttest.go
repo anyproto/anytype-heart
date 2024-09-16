@@ -118,6 +118,10 @@ func (s *stubSpace) IsPersonal() bool {
 	return false
 }
 
+func (s *stubSpace) StoredIds() []string {
+	return nil
+}
+
 func (st *SmartTest) Space() smartblock.Space {
 	if st.space != nil {
 		return st.space
@@ -169,10 +173,6 @@ func (st *SmartTest) SetLocker(locker smartblock.Locker) {}
 
 func (st *SmartTest) Tree() objecttree.ObjectTree {
 	return st.objectTree
-}
-
-func (st *SmartTest) SetRestrictions(r restriction.Restrictions) {
-	st.TestRestrictions = r
 }
 
 func (st *SmartTest) Restrictions() restriction.Restrictions {

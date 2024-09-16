@@ -30,7 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -269,7 +269,6 @@ func (u *uploader) SetUrl(url string) Uploader {
 
 		// setting timeout to avoid locking for a long time
 		cl := http.DefaultClient
-		cl.Timeout = time.Second * 20
 
 		resp, err := cl.Do(req)
 		if err != nil {
@@ -327,7 +326,7 @@ func (u *uploader) SetFile(path string) Uploader {
 	u.getReader = func(ctx context.Context) (*fileReader, error) {
 		f, err := os.Open(path)
 		if err != nil {
-			return nil, oserror.TransformError(err)
+			return nil, anyerror.CleanupError(err)
 		}
 
 		buf := bufio.NewReaderSize(f, bufSize)

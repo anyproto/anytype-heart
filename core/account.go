@@ -125,8 +125,8 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 	}
 }
 
-func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
-	status, err := mw.applicationService.AccountDelete(cctx, req)
+func (mw *Middleware) AccountDelete(cctx context.Context, _ *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
+	status, err := mw.applicationService.AccountDelete(cctx)
 	code := mapErrorCode(err,
 		errToCode(application.ErrAccountIsAlreadyDeleted, pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED),
 		errToCode(net.ErrUnableToConnect, pb.RpcAccountDeleteResponseError_UNABLE_TO_CONNECT),

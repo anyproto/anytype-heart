@@ -8,18 +8,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -58,6 +64,10 @@ func newFixture(t *testing.T) *fixture {
 	eventSender := mock_event.NewMockSender(t)
 	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
+	ctrl := gomock.NewController(t)
+	wallet := mock_wallet.NewMockWallet(t)
+	wallet.EXPECT().Name().Return(wallet2.CName)
+	wallet.EXPECT().RepoPath().Return("repo/path")
 	ctx := context.Background()
 	a := new(app.App)
 	a.Register(dataStoreProvider)
@@ -68,6 +78,9 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(blockStorage)
 	a.Register(objectStore)
 	a.Register(rpcStoreService)
+	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
+	a.Register(testutil.PrepareMock(ctx, a, wallet))
+	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
 	err = a.Start(ctx)
 	require.NoError(t, err)
 
@@ -85,28 +98,8 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func TestFileAdd(t *testing.T) {
-	fx := newFixture(t)
+	fx, got, uploaded := getFixtureAndFileInfo(t)
 	ctx := context.Background()
-
-	uploaded := make(chan struct{})
-	fx.fileSyncService.OnUploaded(func(objectId string) error {
-		close(uploaded)
-		return nil
-	})
-
-	lastModifiedDate := time.Now()
-	buf := strings.NewReader(testFileContent)
-	fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
-
-	opts := []AddOption{
-		WithName(testFileName),
-		WithLastModifiedDate(lastModifiedDate.Unix()),
-		WithReader(buf),
-	}
-	got, err := fx.FileAdd(ctx, spaceId, opts...)
-	require.NoError(t, err)
-	assert.NotEmpty(t, got.FileId)
-	got.Commit()
 
 	t.Run("expect decrypting content", func(t *testing.T) {
 		file, err := fx.FileByHash(ctx, domain.FullFileId{FileId: got.FileId, SpaceId: spaceId})
@@ -136,7 +129,7 @@ func TestFileAdd(t *testing.T) {
 	})
 
 	t.Run("check that file is uploaded to backup node", func(t *testing.T) {
-		err = fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
+		err := fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
 		require.NoError(t, err)
 		<-uploaded
 		infos, err := fx.rpcStore.FilesInfo(ctx, spaceId, got.FileId)
@@ -146,6 +139,32 @@ func TestFileAdd(t *testing.T) {
 
 		assert.Equal(t, got.FileId.String(), infos[0].FileId)
 	})
+}
+
+func getFixtureAndFileInfo(t *testing.T) (*fixture, *AddResult, chan struct{}) {
+	fx := newFixture(t)
+	ctx := context.Background()
+
+	uploaded := make(chan struct{})
+	fx.fileSyncService.OnUploaded(func(objectId string, fileId domain.FullFileId) error {
+		close(uploaded)
+		return nil
+	})
+
+	lastModifiedDate := time.Now()
+	buf := strings.NewReader(testFileContent)
+	fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
+
+	opts := []AddOption{
+		WithName(testFileName),
+		WithLastModifiedDate(lastModifiedDate.Unix()),
+		WithReader(buf),
+	}
+	got, err := fx.FileAdd(ctx, spaceId, opts...)
+	require.NoError(t, err)
+	assert.NotEmpty(t, got.FileId)
+	got.Commit()
+	return fx, got, uploaded
 }
 
 func TestIndexFile(t *testing.T) {
@@ -199,7 +218,7 @@ func TestFileAddWithCustomKeys(t *testing.T) {
 		ctx := context.Background()
 
 		uploaded := make(chan struct{})
-		fx.fileSyncService.OnUploaded(func(objectId string) error {
+		fx.fileSyncService.OnUploaded(func(objectId string, fileId domain.FullFileId) error {
 			close(uploaded)
 			return nil
 		})
@@ -237,7 +256,7 @@ func TestFileAddWithCustomKeys(t *testing.T) {
 				ctx := context.Background()
 
 				uploaded := make(chan struct{})
-				fx.fileSyncService.OnUploaded(func(objectId string) error {
+				fx.fileSyncService.OnUploaded(func(objectId string, fileId domain.FullFileId) error {
 					close(uploaded)
 					return nil
 				})

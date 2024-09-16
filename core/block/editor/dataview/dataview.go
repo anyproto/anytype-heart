@@ -2,8 +2,10 @@ package dataview
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/globalsign/mgo/bson"
 	"github.com/google/uuid"
 
@@ -21,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -35,7 +38,7 @@ type Dataview interface {
 	GetDataview(blockID string) (*model.BlockContentDataview, error)
 
 	DeleteView(ctx session.Context, blockId string, viewId string, showEvent bool) error
-	SetActiveView(ctx session.Context, blockId string, activeViewId string, limit int, offset int) error
+	SetActiveView(ctx session.Context, blockId string, activeViewId string) error
 	CreateView(ctx session.Context, blockID string,
 		view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error)
 	SetViewPosition(ctx session.Context, blockId string, viewId string, position uint32) error
@@ -55,6 +58,7 @@ func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) 
 		objectStore: objectStore,
 	}
 	sb.AddHook(dv.checkDVBlocks, smartblock.HookBeforeApply)
+	sb.AddHook(dv.injectActiveViews, smartblock.HookBeforeApply)
 	return dv
 }
 
@@ -81,10 +85,15 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return
 	}
 
+	flags := internalflag.NewFromState(s)
+	// set with source is no longer empty
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(s)
+
 	if len(source) == 0 {
 		s.Unlink(blockId)
 		s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-		return d.Apply(s, smartblock.NoRestrictions)
+		return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	}
 
 	dvContent, err := BlockBySource(d.objectStore, source)
@@ -102,7 +111,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 	}
 
 	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-	return d.Apply(s, smartblock.NoRestrictions)
+	return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
 
 func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKeys []string, showEvent bool) error {
@@ -201,7 +210,7 @@ func (d *sdataview) UpdateView(ctx session.Context, blockID string, viewID strin
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId string, limit int, offset int) error {
+func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId string) error {
 	s := d.NewStateCtx(ctx)
 
 	dvBlock, err := getDataviewBlock(s, id)
@@ -214,8 +223,12 @@ func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId s
 	}
 	dvBlock.SetActiveView(activeViewId)
 
+	if err = d.objectStore.SetActiveView(d.Id(), id, activeViewId); err != nil {
+		return err
+	}
+
 	d.SmartBlock.CheckSubscriptions()
-	return d.Apply(s)
+	return d.Apply(s, smartblock.NoHooks)
 }
 
 func (d *sdataview) SetViewPosition(ctx session.Context, blockId string, viewId string, position uint32) (err error) {
@@ -417,6 +430,34 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 		return true
 	})
 	return
+}
+
+func (d *sdataview) injectActiveViews(info smartblock.ApplyInfo) (err error) {
+	s := info.State
+	views, err := d.objectStore.GetActiveViews(d.Id())
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil
+	}
+	if err != nil {
+		log.With("objectId", s.RootId()).Warnf("failed to get list of active views from store: %v", err)
+		return
+	}
+
+	for blockId, viewId := range views {
+		b := s.Pick(blockId)
+		if b == nil {
+			log.With("objectId", s.RootId()).Warnf("failed to get block '%s' to inject active view", blockId)
+			continue
+		}
+		dv := b.Model().GetDataview()
+		if dv == nil {
+			log.With("objectId", s.RootId()).Warnf("block '%s' is not dataview, so cannot inject active view", blockId)
+			continue
+		}
+		dv.ActiveView = viewId
+	}
+
+	return nil
 }
 
 func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {

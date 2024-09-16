@@ -36,6 +36,7 @@ func TestMigrateFiles(t *testing.T) {
 		)
 		space := mock_clientspace.NewMockSpace(t)
 		spaceId := "spaceId"
+		space.EXPECT().IsPersonal().Return(true)
 		space.EXPECT().Id().Return(spaceId)
 		space.EXPECT().DeriveObjectIdWithAccountSignature(mock.Anything, mock.Anything).Return(objectId, nil)
 		space.EXPECT().GetObject(mock.Anything, objectId).Return(nil, fmt.Errorf("not found"))
@@ -86,6 +87,7 @@ func TestMigrateFiles(t *testing.T) {
 			bb.Root(bb.ID("root")),
 		)
 		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().IsPersonal().Return(true)
 		space.EXPECT().Id().Return("spaceId")
 		space.EXPECT().DeriveObjectIdWithAccountSignature(mock.Anything, mock.Anything).Return(objectId, nil)
 
@@ -171,6 +173,7 @@ func TestMigrateIds(t *testing.T) {
 		)
 
 		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().IsPersonal().Return(true)
 
 		fx.MigrateFileIdsInBlocks(st, space)
 	})
@@ -188,6 +191,7 @@ func TestMigrateIds(t *testing.T) {
 		)
 
 		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().IsPersonal().Return(true)
 
 		fx.MigrateFileIdsInBlocks(st, space)
 	})
@@ -202,9 +206,10 @@ func TestMigrateIds(t *testing.T) {
 				bb.ID(objectId),
 			),
 		)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyAttachments, pbtypes.StringList([]string{fileId.String()}))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.StringList([]string{fileId.String()}))
 
 		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().IsPersonal().Return(true)
 
 		fx.objectStore.AddObjects(t, []objectstore.TestObject{
 			{
@@ -222,7 +227,7 @@ func TestMigrateIds(t *testing.T) {
 				bb.ID(objectId),
 			),
 		)
-		wantState.SetDetailAndBundledRelation(bundle.RelationKeyAttachments, pbtypes.StringList([]string{fileId.String()}))
+		wantState.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.StringList([]string{fileId.String()}))
 
 		bb.AssertTreesEqual(t, wantState.Blocks(), st.Blocks())
 		assert.Equal(t, wantState.Details(), st.Details())
@@ -253,6 +258,7 @@ func TestMigrateIds(t *testing.T) {
 		st.SetDetailAndBundledRelation(bundle.RelationKeyAssignee, pbtypes.StringList([]string{fileId.String()}))
 
 		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().IsPersonal().Return(true)
 		space.EXPECT().DeriveObjectIdWithAccountSignature(mock.Anything, mock.Anything).Return(expectedFileObjectId, nil)
 
 		fx.MigrateFileIdsInBlocks(st, space)

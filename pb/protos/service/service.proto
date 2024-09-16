@@ -73,6 +73,7 @@ service ClientCommands {
     rpc ObjectCreate (anytype.Rpc.Object.Create.Request) returns (anytype.Rpc.Object.Create.Response);
     rpc ObjectCreateBookmark (anytype.Rpc.Object.CreateBookmark.Request) returns (anytype.Rpc.Object.CreateBookmark.Response);
     rpc ObjectCreateFromUrl (anytype.Rpc.Object.CreateFromUrl.Request) returns (anytype.Rpc.Object.CreateFromUrl.Response);
+    rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
 
     // ObjectCreateSet just creates the new set, without adding the link to it from some other page
     rpc ObjectCreateSet (anytype.Rpc.Object.CreateSet.Request) returns (anytype.Rpc.Object.CreateSet.Response);
@@ -99,6 +100,7 @@ service ClientCommands {
     rpc ObjectListSetIsFavorite (anytype.Rpc.Object.ListSetIsFavorite.Request) returns (anytype.Rpc.Object.ListSetIsFavorite.Response);
     rpc ObjectListSetObjectType (anytype.Rpc.Object.ListSetObjectType.Request) returns (anytype.Rpc.Object.ListSetObjectType.Response);
     rpc ObjectListSetDetails (anytype.Rpc.Object.ListSetDetails.Request) returns (anytype.Rpc.Object.ListSetDetails.Response);
+    rpc ObjectListModifyDetailValues (anytype.Rpc.Object.ListModifyDetailValues.Request) returns (anytype.Rpc.Object.ListModifyDetailValues.Response);
     rpc ObjectApplyTemplate (anytype.Rpc.Object.ApplyTemplate.Request) returns (anytype.Rpc.Object.ApplyTemplate.Response);
     // ObjectToSet creates new set from given object and removes object
     rpc ObjectToSet (anytype.Rpc.Object.ToSet.Request) returns (anytype.Rpc.Object.ToSet.Response);
@@ -145,11 +147,12 @@ service ClientCommands {
     rpc HistoryShowVersion (anytype.Rpc.History.ShowVersion.Request) returns (anytype.Rpc.History.ShowVersion.Response);
     rpc HistoryGetVersions (anytype.Rpc.History.GetVersions.Request) returns (anytype.Rpc.History.GetVersions.Response);
     rpc HistorySetVersion (anytype.Rpc.History.SetVersion.Request) returns (anytype.Rpc.History.SetVersion.Response);
+    rpc HistoryDiffVersions (anytype.Rpc.History.DiffVersions.Request) returns (anytype.Rpc.History.DiffVersions.Response);
 
     // Files
     // ***
-    rpc FileOffload (anytype.Rpc.File.Offload.Request) returns (anytype.Rpc.File.Offload.Response);
     rpc FileSpaceOffload (anytype.Rpc.File.SpaceOffload.Request) returns (anytype.Rpc.File.SpaceOffload.Response);
+    rpc FileReconcile (anytype.Rpc.File.Reconcile.Request) returns (anytype.Rpc.File.Reconcile.Response);
     rpc FileListOffload (anytype.Rpc.File.ListOffload.Request) returns (anytype.Rpc.File.ListOffload.Response);
     rpc FileUpload (anytype.Rpc.File.Upload.Request) returns (anytype.Rpc.File.Upload.Response);
     rpc FileDownload (anytype.Rpc.File.Download.Request) returns (anytype.Rpc.File.Download.Response);
@@ -306,6 +309,8 @@ service ClientCommands {
     rpc DebugPing (anytype.Rpc.Debug.Ping.Request) returns (anytype.Rpc.Debug.Ping.Response);
     rpc DebugSubscriptions (anytype.Rpc.Debug.Subscriptions.Request) returns (anytype.Rpc.Debug.Subscriptions.Response);
     rpc DebugOpenedObjects (anytype.Rpc.Debug.OpenedObjects.Request) returns (anytype.Rpc.Debug.OpenedObjects.Response);
+    rpc DebugRunProfiler (anytype.Rpc.Debug.RunProfiler.Request) returns (anytype.Rpc.Debug.RunProfiler.Response);
+    rpc DebugAccountSelectTrace (anytype.Rpc.Debug.AccountSelectTrace.Request) returns (anytype.Rpc.Debug.AccountSelectTrace.Response);
 
     rpc MetricsSetParameters (anytype.Rpc.Metrics.SetParameters.Request) returns (anytype.Rpc.Metrics.SetParameters.Response);
 
@@ -351,4 +356,18 @@ service ClientCommands {
     rpc NameServiceResolveAnyId( anytype.Rpc.NameService.ResolveAnyId.Request ) returns (anytype.Rpc.NameService.ResolveAnyId.Response);
     
     rpc BroadcastPayloadEvent (anytype.Rpc.Broadcast.PayloadEvent.Request) returns (anytype.Rpc.Broadcast.PayloadEvent.Response);
+
+    rpc DeviceSetName (anytype.Rpc.Device.SetName.Request) returns (anytype.Rpc.Device.SetName.Response);
+    rpc DeviceList (anytype.Rpc.Device.List.Request) returns (anytype.Rpc.Device.List.Response);
+    rpc DeviceNetworkStateSet (anytype.Rpc.Device.NetworkState.Set.Request) returns (anytype.Rpc.Device.NetworkState.Set.Response);
+
+    // Chats dummy impl
+    rpc ChatAddMessage (anytype.Rpc.Chat.AddMessage.Request) returns (anytype.Rpc.Chat.AddMessage.Response);
+    rpc ChatEditMessageContent (anytype.Rpc.Chat.EditMessageContent.Request) returns (anytype.Rpc.Chat.EditMessageContent.Response);
+    rpc ChatToggleMessageReaction (anytype.Rpc.Chat.ToggleMessageReaction.Request) returns (anytype.Rpc.Chat.ToggleMessageReaction.Response);
+    rpc ChatDeleteMessage (anytype.Rpc.Chat.DeleteMessage.Request) returns (anytype.Rpc.Chat.DeleteMessage.Response);
+    rpc ChatGetMessages (anytype.Rpc.Chat.GetMessages.Request) returns (anytype.Rpc.Chat.GetMessages.Response);
+    rpc ChatGetMessagesByIds (anytype.Rpc.Chat.GetMessagesByIds.Request) returns (anytype.Rpc.Chat.GetMessagesByIds.Response);
+    rpc ChatSubscribeLastMessages (anytype.Rpc.Chat.SubscribeLastMessages.Request) returns (anytype.Rpc.Chat.SubscribeLastMessages.Response);
+    rpc ChatUnsubscribe (anytype.Rpc.Chat.Unsubscribe.Request) returns (anytype.Rpc.Chat.Unsubscribe.Response);
 }

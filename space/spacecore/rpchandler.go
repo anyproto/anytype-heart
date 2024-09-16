@@ -3,11 +3,13 @@ package spacecore
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
 )
@@ -49,8 +51,21 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 			return nil, err
 		}
 		var portAddrs []string
+		peerAddr := peer.CtxPeerAddr(ctx)
+
+		if peerAddr != "" {
+			// prioritize address remote peer connected us from
+			if u, errParse := url.Parse(peerAddr); errParse == nil {
+				portAddrs = append(portAddrs, u.Host)
+			}
+		}
+
 		for _, ip := range request.LocalServer.Ips {
-			portAddrs = append(portAddrs, fmt.Sprintf("%spaceCore:%d", ip, request.LocalServer.Port))
+			addr := fmt.Sprintf("%s:%d", ip, request.LocalServer.Port)
+			if slices.Contains(portAddrs, addr) {
+				continue
+			}
+			portAddrs = append(portAddrs, addr)
 		}
 		r.s.peerService.SetPeerAddrs(peerId, portAddrs)
 		r.s.peerStore.UpdateLocalPeer(peerId, request.SpaceIds)

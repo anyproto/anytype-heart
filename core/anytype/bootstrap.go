@@ -40,6 +40,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
@@ -53,10 +54,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
+	"github.com/anyproto/anytype-heart/core/device"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
+	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
@@ -70,9 +74,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/payments"
 	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
+	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -81,6 +91,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/coordinatorclient"
@@ -92,7 +103,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/space/spacecore/syncstatusprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
@@ -197,7 +207,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		// Data storages
 		Register(clientds.New()).
 		Register(debugstat.New()).
-		Register(ftsearch.New()).
+		// Register(ftsearch.BleveNew()).
+		Register(ftsearch.TantivyNew()).
+		Register(oldstore.New()).
 		Register(objectstore.New()).
 		Register(backlinks.New()).
 		Register(filestore.New()).
@@ -206,7 +218,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
 		Register(peerstore.New()).
-		Register(syncstatusprovider.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
 		Register(metric.New()).
@@ -226,6 +237,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(virtualspaceservice.New()).
 		Register(spacecore.New()).
 		Register(idresolver.New()).
+		Register(device.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
@@ -234,6 +246,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(files.New()).
+		Register(fileoffloader.New()).
 		Register(fileacl.New()).
 		Register(source.New()).
 		Register(spacefactory.New()).
@@ -241,6 +254,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(deletioncontroller.New()).
 		Register(invitestore.New()).
 		Register(filesync.New()).
+		Register(reconciler.New()).
 		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
 		Register(inviteservice.New()).
 		Register(acl.New()).
@@ -254,6 +268,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(treemanager.New()).
 		Register(block.New()).
 		Register(indexer.New()).
+		Register(detailsupdater.New()).
+		Register(session.NewHookRunner()).
+		Register(spacesyncstatus.NewSpaceSyncStatus()).
+		Register(nodestatus.NewNodeStatus()).
 		Register(syncstatus.New()).
 		Register(history.New()).
 		Register(gateway.New()).
@@ -264,24 +282,28 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(collection.New()).
 		Register(subscription.New()).
+		Register(syncsubscriptions.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).
 		Register(importer.New()).
 		Register(decorator.New()).
 		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).
+		Register(device.NewDevices()).
 		Register(editor.NewObjectFactory()).
 		Register(objectgraph.NewBuilder()).
 		Register(account.New()).
 		Register(profiler.New()).
 		Register(identity.New(30*time.Second, 10*time.Second)).
 		Register(templateservice.New()).
-		Register(notifications.New()).
+		Register(notifications.New(time.Second * 10)).
 		Register(paymentserviceclient.New()).
 		Register(nameservice.New()).
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
-		Register(paymentscache.New())
+		Register(paymentscache.New()).
+		Register(peerstatus.New()).
+		Register(lastused.New())
 }
 
 func MiddlewareVersion() string {

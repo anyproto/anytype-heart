@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -145,6 +146,9 @@ func (d *debug) SpaceSummary(ctx context.Context, spaceID string) (summary Space
 
 func (d *debug) DebugStat() (string, error) {
 	stats := d.statService.GetStat()
+	sort.Slice(stats.Stats, func(i, j int) bool {
+		return stats.Stats[i].Type < stats.Stats[j].Type
+	})
 	marshaled, err := json.Marshal(stats)
 	if err != nil {
 		return "", err
@@ -161,7 +165,7 @@ func (d *debug) TreeHeads(ctx context.Context, id string) (info TreeInfo, err er
 	if err != nil {
 		return
 	}
-	tree, err := spc.TreeBuilder().BuildHistoryTree(ctx, id, objecttreebuilder.HistoryTreeOpts{})
+	tree, err := spc.TreeBuilder().BuildHistoryTree(ctx, id, objecttreebuilder.HistoryTreeOpts{Heads: []string{""}})
 	if err != nil {
 		return
 	}
@@ -183,7 +187,7 @@ func (d *debug) DumpTree(ctx context.Context, objectID string, path string, anon
 	if err != nil {
 		return
 	}
-	tree, err := spc.TreeBuilder().BuildHistoryTree(ctx, objectID, objecttreebuilder.HistoryTreeOpts{BuildFullTree: true})
+	tree, err := spc.TreeBuilder().BuildHistoryTree(ctx, objectID, objecttreebuilder.HistoryTreeOpts{})
 	if err != nil {
 		return
 	}

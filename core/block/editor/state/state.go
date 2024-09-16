@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
@@ -118,6 +117,7 @@ type State struct {
 	localDetails      *types.Struct
 	relationLinks     pbtypes.RelationLinks
 	notifications     map[string]*model.Notification
+	deviceStore       map[string]*model.DeviceInfo
 
 	migrationVersion uint32
 
@@ -134,8 +134,6 @@ type State struct {
 	groupId                  string
 	noObjectType             bool
 	originalCreatedTimestamp int64 // pass here from snapshots when importing objects
-	parentIdsCache           map[string]string
-	isParentIdsCacheEnabled  bool
 }
 
 func (s *State) MigrationVersion() uint32 {
@@ -214,18 +212,9 @@ func (s *State) Set(b simple.Block) {
 	if !s.Exists(b.Model().Id) {
 		s.Add(b)
 	} else {
-		s.removeFromCache(s.Pick(b.Model().Id).Model().ChildrenIds...)
 		s.setChildrenIds(b.Model(), b.Model().ChildrenIds)
 		s.blocks[b.Model().Id] = b
 		s.blockInit(b)
-	}
-}
-
-func (s *State) removeFromCache(ids ...string) {
-	if s.isParentIdsCacheEnabled {
-		for _, id := range ids {
-			delete(s.parentIdsCache, id)
-		}
 	}
 }
 
@@ -321,28 +310,6 @@ func (s *State) HasParent(id, parentId string) bool {
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {
-	var cacheFound simple.Block
-	if s.isParentIdsCacheEnabled {
-		cache := s.getParentIdsCache()
-		if parentId, ok := cache[id]; ok {
-			cacheFound = s.Pick(parentId)
-		}
-		if cacheFound != nil {
-			rootId := s.RootId()
-			topParentId := cacheFound.Model().Id
-			for topParentId != rootId {
-				if nextId, ok := cache[topParentId]; ok {
-					topParentId = nextId
-				} else {
-					cacheFound = nil
-					break
-				}
-			}
-		}
-		// restore this code after checking if cache is working correctly
-		// return
-	}
-
 	s.Iterate(func(b simple.Block) bool {
 		if slice.FindPos(b.Model().ChildrenIds, id) != -1 {
 			res = b
@@ -350,50 +317,7 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 		}
 		return true
 	})
-
-	// remove this code after checking if cache is working correctly
-	if s.isParentIdsCacheEnabled && res != cacheFound {
-		var cacheFoundId, resFoundId string
-		if cacheFound != nil {
-			cacheFoundId = cacheFound.Model().Id
-		}
-		if res != nil {
-			resFoundId = res.Model().Id
-		}
-		log.With("id", id).
-			With("cacheFoundId", cacheFoundId).
-			With("resFoundId", resFoundId).
-			With("objId", s.RootId()).
-			Warn("discrepancy in state parent search")
-	}
-
 	return
-}
-
-func (s *State) ResetParentIdsCache() {
-	s.parentIdsCache = nil
-	s.isParentIdsCacheEnabled = false
-}
-
-func (s *State) EnableParentIdsCache() bool {
-	if s.isParentIdsCacheEnabled {
-		return true
-	}
-	s.isParentIdsCacheEnabled = true
-	return false
-}
-
-func (s *State) getParentIdsCache() map[string]string {
-	if s.parentIdsCache == nil {
-		s.parentIdsCache = make(map[string]string)
-		s.Iterate(func(block simple.Block) bool {
-			for _, id := range block.Model().ChildrenIds {
-				s.parentIdsCache[id] = block.Model().Id
-			}
-			return true
-		})
-	}
-	return s.parentIdsCache
 }
 
 func (s *State) IsChild(parentId, childId string) bool {
@@ -500,12 +424,6 @@ func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action undo.Action
 }
 
 func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
-	alreadyEnabled := s.EnableParentIdsCache()
-	defer func() {
-		if !alreadyEnabled {
-			s.ResetParentIdsCache()
-		}
-	}()
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
@@ -762,6 +680,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.notifications = s.notifications
 	}
 
+	if s.parent != nil && s.deviceStore != nil {
+		s.parent.deviceStore = s.deviceStore
+	}
+
 	msgs = s.processTrailingDuplicatedEvents(msgs)
 	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
@@ -934,7 +856,7 @@ func (s *State) SetDetails(d *types.Struct) *State {
 
 // SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
 func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value *types.Value) {
-	s.AddBundledRelations(key)
+	s.AddBundledRelationLinks(key)
 	s.SetDetail(key.String(), value)
 	return
 }
@@ -1207,15 +1129,6 @@ func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
 	}
 
 	for _, key := range s.FileRelationKeys() {
-		if key == bundle.RelationKeyCoverId.String() {
-			v := pbtypes.GetString(details, key)
-			_, err := cid.Decode(v)
-			if err != nil {
-				// this is an exception cause coverId can contain not a file hash but color
-				continue
-			}
-		}
-
 		s.modifyIdsInDetail(details, key, modifier)
 	}
 }
@@ -1403,6 +1316,7 @@ func (s *State) Copy() *State {
 		originalCreatedTimestamp: s.originalCreatedTimestamp,
 		fileInfo:                 s.fileInfo,
 		notifications:            s.notifications,
+		deviceStore:              s.deviceStore,
 	}
 	return copy
 }
@@ -1927,13 +1841,19 @@ func (s *State) SelectRoots(ids []string) []string {
 	return res
 }
 
-func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
-	links := make([]*model.RelationLink, 0, len(keys))
+func (s *State) AddBundledRelationLinks(keys ...domain.RelationKey) {
+	existingLinks := s.PickRelationLinks()
+
+	var links []*model.RelationLink
 	for _, key := range keys {
-		rel := bundle.MustGetRelation(key)
-		links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
+		if !existingLinks.Has(key.String()) {
+			rel := bundle.MustGetRelation(key)
+			links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
+		}
 	}
-	s.AddRelationLinks(links...)
+	if len(links) > 0 {
+		s.AddRelationLinks(links...)
+	}
 }
 
 func (s *State) GetNotificationById(id string) *model.Notification {
@@ -1975,6 +1895,73 @@ func (s *State) findStateWithNonEmptyNotifications() *State {
 		iterState = iterState.parent
 	}
 	return iterState
+}
+
+func (s *State) ListDevices() map[string]*model.DeviceInfo {
+	iterState := s.findStateWithDeviceInfo()
+	if iterState == nil {
+		return nil
+	}
+	return iterState.deviceStore
+}
+
+func (s *State) findStateWithDeviceInfo() *State {
+	iterState := s
+	for iterState != nil && iterState.deviceStore == nil {
+		iterState = iterState.parent
+	}
+	return iterState
+}
+
+func (s *State) AddDevice(device *model.DeviceInfo) {
+	if s.deviceStore == nil {
+		s.deviceStore = map[string]*model.DeviceInfo{}
+	}
+	if s.parent != nil {
+		for _, d := range s.parent.ListDevices() {
+			if _, ok := s.deviceStore[d.Id]; !ok {
+				s.deviceStore[d.Id] = pbtypes.CopyDevice(d)
+			}
+		}
+	}
+	if _, ok := s.deviceStore[device.Id]; ok {
+		return
+	}
+	s.deviceStore[device.Id] = device
+}
+
+func (s *State) SetDeviceName(id, name string) {
+	if s.deviceStore == nil {
+		s.deviceStore = map[string]*model.DeviceInfo{}
+	}
+	if s.parent != nil {
+		for _, d := range s.parent.ListDevices() {
+			if _, ok := s.deviceStore[d.Id]; !ok {
+				s.deviceStore[d.Id] = pbtypes.CopyDevice(d)
+			}
+		}
+	}
+	if _, ok := s.deviceStore[id]; !ok {
+		device := &model.DeviceInfo{
+			Id:      id,
+			Name:    name,
+			AddDate: time.Now().Unix(),
+		}
+		s.deviceStore[id] = device
+		return
+	}
+	s.deviceStore[id].Name = name
+}
+
+func (s *State) GetDevice(id string) *model.DeviceInfo {
+	iterState := s.findStateWithDeviceInfo()
+	if iterState == nil {
+		return nil
+	}
+	if device, ok := iterState.deviceStore[id]; ok {
+		return device
+	}
+	return nil
 }
 
 // UniqueKeyInternal is the second part of uniquekey.UniqueKey. It used together with smartblock type for the ID derivation

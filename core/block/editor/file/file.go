@@ -26,7 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -220,6 +220,9 @@ func (sf *sfile) updateFile(ctx session.Context, id, groupId string, apply func(
 }
 
 func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
+	if err = sf.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+		return err
+	}
 	proc := &dropFilesProcess{
 		spaceID:             sf.SpaceID(),
 		processService:      sf.processService,
@@ -393,7 +396,7 @@ func (dp *dropFilesProcess) Init(paths []string) (err error) {
 		entry := &dropFileEntry{path: path, name: filepath.Base(path)}
 		ok, e := dp.readdir(entry, true)
 		if e != nil {
-			return oserror.TransformError(err)
+			return anyerror.CleanupError(err)
 		}
 		if ok {
 			dp.root.child = append(dp.root.child, entry)

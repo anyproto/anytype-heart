@@ -1,4 +1,3 @@
-//go:generate mockgen -destination mock_rpcstore/mock_rpcstore.go github.com/anyproto/anytype-heart/core/filestorage/rpcstore Service,RpcStore
 package rpcstore
 
 import (
@@ -31,7 +30,7 @@ type service struct {
 func (s *service) Init(a *app.App) (err error) {
 	s.pool = a.MustComponent(pool.CName).(pool.Pool)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
-	s.peerStore.AddObserver(func(peerId string, spaceIds []string) {
+	s.peerStore.AddObserver(func(peerId string, _, spaceIds []string, peerRemoved bool) {
 		select {
 		case s.peerUpdateCh <- struct{}{}:
 		default:

@@ -32,12 +32,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("import")
 
-// Service incapsulate logic with creation of given smartblocks
+// Service encapsulate logic with creation of given smartblocks
 type Service interface {
 	//nolint:lll
 	Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error)
@@ -81,12 +82,10 @@ func New(service BlockService,
 func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error) {
 	snapshot := sn.Snapshot.Data
 	oldIDtoNew := dataObject.oldIDtoNew
-	fileIDs := dataObject.fileIDs
 	ctx := dataObject.ctx
 	origin := dataObject.origin
 	spaceID := dataObject.spaceID
 
-	var err error
 	newID := oldIDtoNew[sn.Id]
 
 	if sn.SbType == coresb.SmartBlockTypeFile {
@@ -99,18 +98,22 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType)).(*state.State)
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(pbtypes.GetInt64(snapshot.Details, bundle.RelationKeyLastModifiedDate.String())))
 
-	var filesToDelete []string
+	var (
+		filesToDelete []string
+		err           error
+	)
 	defer func() {
 		// delete file in ipfs if there is error after creation
 		oc.onFinish(err, st, filesToDelete)
 	}()
 
-	common.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
+	common.UpdateObjectIDsInRelations(st, oldIDtoNew)
 
-	if err = common.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
+	if err = common.UpdateLinksToObjects(st, oldIDtoNew); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
 	}
 
+	oc.updateKeys(st, oldIDtoNew)
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
 		oc.setSpaceDashboardID(spaceID, st)
 		return nil, newID, nil
@@ -255,7 +258,9 @@ func (oc *ObjectCreator) createNewObject(
 		}
 	})
 	if err == nil {
+		sb.Lock()
 		respDetails = sb.Details()
+		sb.Unlock()
 	} else if errors.Is(err, treestorage.ErrTreeExists) {
 		err = spc.Do(newID, func(sb smartblock.SmartBlock) error {
 			respDetails = sb.Details()
@@ -311,7 +316,7 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 	if len(inboundLinks) == 0 {
 		err = oc.service.DeleteObject(hash)
 		if err != nil {
-			log.With("file", hash).Errorf("failed to delete file: %s", err)
+			log.With("file", hash).Errorf("failed to delete file: %s", anyerror.CleanupError(err))
 		}
 	}
 }
@@ -534,4 +539,37 @@ func (oc *ObjectCreator) getExistingWidgetsTargetIDs(oldState *state.State) (map
 		return nil, err
 	}
 	return existingWidgetsTargetIDs, nil
+}
+
+func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]string) {
+	for key, value := range st.Details().GetFields() {
+		if newKey, ok := oldIDtoNew[key]; ok && newKey != key {
+			oc.updateDetails(st, newKey, value, key)
+		}
+	}
+
+	if newKey, ok := oldIDtoNew[st.ObjectTypeKey().String()]; ok {
+		st.SetObjectTypeKey(domain.TypeKey(newKey))
+	}
+}
+
+func (oc *ObjectCreator) updateDetails(st *state.State, newKey string, value *types.Value, key string) {
+	st.SetDetail(newKey, value)
+	link := oc.findRelationLinkByKey(st, key)
+	if link != nil {
+		link.Key = newKey
+		st.AddRelationLinks(link)
+	}
+	st.RemoveRelation(key)
+}
+
+func (oc *ObjectCreator) findRelationLinkByKey(st *state.State, key string) *model.RelationLink {
+	relationLinks := st.GetRelationLinks()
+	var link *model.RelationLink
+	for _, link = range relationLinks {
+		if link.Key == key {
+			break
+		}
+	}
+	return link
 }

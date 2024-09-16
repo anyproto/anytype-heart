@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/objectcreator/mock_blockservice"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
@@ -39,7 +40,7 @@ func TestObjectCreator_Create(t *testing.T) {
 		importedSpaceIdParticipantId := domain.NewParticipantId(importedSpaceId, identity)
 
 		oldToNew := map[string]string{importedSpaceIdParticipantId: participantId}
-		dataObject := NewDataObject(context.Background(), oldToNew, nil, nil, objectorigin.Import(model.Import_Pb), spaceID)
+		dataObject := NewDataObject(context.Background(), oldToNew, nil, objectorigin.Import(model.Import_Pb), spaceID)
 		sn := &common.Snapshot{
 			Id:     importedSpaceIdParticipantId,
 			SbType: coresb.SmartBlockTypeParticipant,
@@ -82,5 +83,71 @@ func TestObjectCreator_Create(t *testing.T) {
 		assert.Nil(t, create)
 		assert.Equal(t, participantId, id)
 		assert.Equal(t, testDetails, testParticipant.CombinedDetails())
+	})
+}
+
+func TestObjectCreator_updateKeys(t *testing.T) {
+	t.Run("updateKeys - update relation key", func(t *testing.T) {
+		// given
+		oc := ObjectCreator{}
+		oldToNew := map[string]string{"oldId": "newId", "oldKey": "newKey"}
+		doc := state.NewDoc("oldId", nil).(*state.State)
+		doc.SetDetails(&types.Struct{Fields: map[string]*types.Value{
+			"oldKey": pbtypes.String("test"),
+		}})
+		doc.AddRelationLinks(&model.RelationLink{
+			Key: "oldKey",
+		})
+		// when
+		oc.updateKeys(doc, oldToNew)
+
+		// then
+		assert.Nil(t, doc.Details().GetFields()["oldKey"])
+		assert.Equal(t, pbtypes.String("test"), doc.Details().GetFields()["newKey"])
+		assert.True(t, doc.HasRelation("newKey"))
+	})
+	t.Run("updateKeys - update object type key", func(t *testing.T) {
+		// given
+		oc := ObjectCreator{}
+		oldToNew := map[string]string{"oldId": "newId", "oldKey": "newKey"}
+		doc := state.NewDoc("oldId", nil).(*state.State)
+		doc.SetObjectTypeKey("oldKey")
+
+		// when
+		oc.updateKeys(doc, oldToNew)
+
+		// then
+		assert.Equal(t, domain.TypeKey("newKey"), doc.ObjectTypeKey())
+	})
+	t.Run("nothing to update - update object type key", func(t *testing.T) {
+		// given
+		oc := ObjectCreator{}
+		oldToNew := map[string]string{"oldId": "newId", "oldKey": "newKey"}
+		doc := state.NewDoc("oldId", nil).(*state.State)
+
+		// when
+		oc.updateKeys(doc, oldToNew)
+
+		// then
+		assert.Nil(t, doc.Details().GetFields()["newKey"])
+		assert.Equal(t, domain.TypeKey(""), doc.ObjectTypeKey())
+	})
+	t.Run("keys are the same", func(t *testing.T) {
+		// given
+		oc := ObjectCreator{}
+		oldToNew := map[string]string{"oldId": "newId", "key": "key"}
+		doc := state.NewDoc("oldId", nil).(*state.State)
+		doc.SetDetails(&types.Struct{Fields: map[string]*types.Value{
+			"key": pbtypes.String("test"),
+		}})
+		doc.AddRelationLinks(&model.RelationLink{
+			Key: "key",
+		})
+		// when
+		oc.updateKeys(doc, oldToNew)
+
+		// then
+		assert.Equal(t, pbtypes.String("test"), doc.Details().GetFields()["key"])
+		assert.True(t, doc.HasRelation("key"))
 	})
 }

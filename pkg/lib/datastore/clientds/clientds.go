@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 const (
@@ -105,6 +105,31 @@ func openBadgerWithRecover(opts badger.Options) (db *badger.DB, err error) {
 	return db, err
 }
 
+func isBadgerCorrupted(err error) bool {
+	if strings.Contains(err.Error(), "checksum mismatch") {
+		return true
+	}
+	if strings.Contains(err.Error(), "checksum is empty") {
+		return true
+	}
+	if strings.Contains(err.Error(), "EOF") {
+		return true
+	}
+	if strings.Contains(err.Error(), "file does not exist") {
+		return true
+	}
+	if strings.Contains(err.Error(), "Unable to parse log") {
+		return true
+	}
+	if strings.Contains(err.Error(), "Level validation err") {
+		return true
+	}
+	if strings.Contains(err.Error(), "failed to read index") {
+		return true
+	}
+	return false
+}
+
 func (r *clientds) Init(a *app.App) (err error) {
 	// TODO: looks like we do a lot of stuff on Init here. We should consider moving it to the Run
 	r.closing = make(chan struct{})
@@ -143,15 +168,15 @@ func (r *clientds) Init(a *app.App) (err error) {
 	opts.ValueDir = opts.Dir
 
 	r.localstoreDS, err = openBadgerWithRecover(opts)
-	err = oserror.TransformError(err)
-	if err != nil && strings.Contains(err.Error(), "checksum mismatch") {
+	err = anyerror.CleanupError(err)
+	if err != nil && isBadgerCorrupted(err) {
 		// because localstore contains mostly recoverable info (with th only exception of objects' lastOpenedDate)
 		// we can just remove and recreate it
 		err2 := os.Rename(opts.Dir, filepath.Join(opts.Dir, "-corrupted"))
 		log.Errorf("failed to rename corrupted localstore: %s", err2)
 		var errAfterRemove error
 		r.localstoreDS, errAfterRemove = openBadgerWithRecover(opts)
-		errAfterRemove = oserror.TransformError(errAfterRemove)
+		errAfterRemove = anyerror.CleanupError(errAfterRemove)
 		log.With("db", "localstore").With("reset", true).With("err_remove", errAfterRemove).With("err", err.Error()).Errorf("failed to open db")
 		if errAfterRemove != nil {
 			// should not happen, but just in case
@@ -168,7 +193,7 @@ func (r *clientds) Init(a *app.App) (err error) {
 		opts.ValueDir = opts.Dir
 		r.spaceDS, err = openBadgerWithRecover(opts)
 		if err != nil {
-			err = oserror.TransformError(err)
+			err = anyerror.CleanupError(err)
 			log.With("db", "spacestore").With("reset", false).With("err", err.Error()).Errorf("failed to open db")
 			return err
 		}

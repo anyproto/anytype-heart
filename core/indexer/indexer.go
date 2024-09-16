@@ -3,9 +3,9 @@ package indexer
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -63,10 +64,12 @@ type indexer struct {
 
 	quit            chan struct{}
 	ftQueueFinished chan struct{}
+	config          *config.Config
 
 	btHash  Hasher
 	forceFt chan struct{}
 
+	lock             sync.Mutex
 	reindexLogFields []zap.Field
 }
 
@@ -81,6 +84,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.quit = make(chan struct{})
 	i.ftQueueFinished = make(chan struct{})
 	i.forceFt = make(chan struct{})
+	i.config = app.MustComponent[*config.Config](a)
 	return
 }
 
@@ -184,14 +188,9 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 
 	indexLinksTime := time.Now()
 	if indexDetails {
-		if err := i.store.UpdateObjectDetails(info.Id, details); err != nil {
-			if errors.Is(err, objectstore.ErrDetailsNotChanged) {
-				metrics.ObjectDetailsHeadsNotChangedCounter.Add(1)
-				log.With("objectID", info.Id).With("hashesAreEqual", lastIndexedHash == headHashToIndex).With("lastHashIsEmpty", lastIndexedHash == "").With("skipFlagSet", opts.SkipIfHeadsNotChanged).Debugf("details have not changed")
-			} else {
-				hasError = true
-				log.With("objectID", info.Id).Errorf("can't update object store: %v", err)
-			}
+		if err := i.store.UpdateObjectDetails(ctx, info.Id, details); err != nil {
+			hasError = true
+			log.With("objectID", info.Id).Errorf("can't update object store: %v", err)
 		} else {
 			// todo: remove temp log
 			if lastIndexedHash == headHashToIndex {

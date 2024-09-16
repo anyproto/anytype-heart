@@ -37,6 +37,8 @@ type indexer struct {
 	indexQueue   *mb.MB[indexRequest]
 	isQueuedLock sync.RWMutex
 	isQueued     map[domain.FullID]struct{}
+
+	closeWg *sync.WaitGroup
 }
 
 func (s *service) newIndexer() *indexer {
@@ -47,6 +49,8 @@ func (s *service) newIndexer() *indexer {
 
 		indexQueue: mb.New[indexRequest](0),
 		isQueued:   make(map[domain.FullID]struct{}),
+
+		closeWg: &sync.WaitGroup{},
 	}
 	ind.initQuery()
 	return ind
@@ -54,12 +58,17 @@ func (s *service) newIndexer() *indexer {
 
 func (ind *indexer) run() {
 	ind.indexCtx, ind.indexCancel = context.WithCancel(context.Background())
+
+	ind.closeWg.Add(1)
 	go ind.runIndexingProvider()
+
+	ind.closeWg.Add(1)
 	go ind.runIndexingWorker()
 }
 
 func (ind *indexer) close() error {
 	ind.indexCancel()
+	ind.closeWg.Wait()
 	return ind.indexQueue.Close()
 }
 
@@ -143,6 +152,8 @@ const indexingProviderPeriod = 60 * time.Second
 
 // runIndexingProvider provides worker with job to do
 func (ind *indexer) runIndexingProvider() {
+	defer ind.closeWg.Done()
+
 	ticker := time.NewTicker(indexingProviderPeriod)
 	run := func() {
 		if err := ind.addToQueueFromObjectStore(ind.indexCtx); err != nil {
@@ -162,6 +173,8 @@ func (ind *indexer) runIndexingProvider() {
 }
 
 func (ind *indexer) runIndexingWorker() {
+	defer ind.closeWg.Done()
+
 	for {
 		select {
 		case <-ind.indexCtx.Done():
@@ -217,7 +230,7 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	for k := range details.Fields {
 		keys = append(keys, domain.RelationKey(k))
 	}
-	st.AddBundledRelations(keys...)
+	st.AddBundledRelationLinks(keys...)
 
 	details = pbtypes.StructMerge(prevDetails, details, false)
 	st.SetDetails(details)

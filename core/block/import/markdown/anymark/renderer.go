@@ -121,6 +121,9 @@ func (r *Renderer) renderCodeBlock(_ util.BufWriter,
 	n ast.Node,
 	entering bool) (ast.WalkStatus, error) {
 	r.openTextBlockWithStyle(entering, model.BlockContentText_Code, nil)
+	if entering {
+		r.writeLines(source, n)
+	}
 	return ast.WalkContinue, nil
 }
 

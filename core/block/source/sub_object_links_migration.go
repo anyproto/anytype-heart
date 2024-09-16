@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -27,15 +26,10 @@ type subObjectsAndProfileLinksMigration struct {
 	identityObjectID string
 	sbType           smartblock.SmartBlockType
 	space            Space
-	objectStore      objectstore.ObjectStore
+	objectStore      RelationGetter
 }
 
-func NewSubObjectsAndProfileLinksMigration(
-	sbType smartblock.SmartBlockType,
-	space Space,
-	identityObjectID string,
-	objectStore objectstore.ObjectStore,
-) *subObjectsAndProfileLinksMigration {
+func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore RelationGetter) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,
@@ -97,7 +91,12 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 	}
 }
 
+// Migrate works only in personal space
 func (m *subObjectsAndProfileLinksMigration) Migrate(s *state.State) {
+	if !m.space.IsPersonal() {
+		return
+	}
+
 	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeProfilePage, "")
 	if err != nil {
 		log.Errorf("migration: failed to create unique key for profile: %s", err)
@@ -193,7 +192,7 @@ func (m *subObjectsAndProfileLinksMigration) migrateFilter(filter *model.BlockCo
 		log.With("relationKey", filter.RelationKey).Warnf("empty filter value")
 		return nil
 	}
-	relation, err := m.objectStore.GetRelationByKey(filter.RelationKey)
+	relation, err := m.objectStore.GetRelationByKey(m.space.Id(), filter.RelationKey)
 	if err != nil {
 		log.Warnf("migration: failed to get relation by key %s: %s", filter.RelationKey, err)
 	}

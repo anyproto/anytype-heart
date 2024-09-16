@@ -2,6 +2,7 @@ package filesync
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -93,13 +94,13 @@ func TestFileSync_AddFile(t *testing.T) {
 	})
 
 	t.Run("file object has been deleted - stop uploading", func(t *testing.T) {
-		fx := newFixture(t, 1024)
+		fx := newFixture(t, 1024*1024*1024)
 		defer fx.Finish(t)
 
 		fileId, _ := fx.givenFileAddedToDAG(t)
 		spaceId := "space1"
 
-		fx.onUploadStarted = func(fileObjectId string) error {
+		fx.onUploadStarted = func(objectId string, fileId domain.FullFileId) error {
 			return spacestorage.ErrTreeStorageAlreadyDeleted
 		}
 
@@ -173,7 +174,7 @@ func TestUpload(t *testing.T) {
 		spaceId := "space1"
 		fileId, _ := fx.givenFileAddedToDAG(t)
 
-		err := fx.uploadFile(ctx, spaceId, fileId)
+		err := fx.uploadFile(ctx, spaceId, fileId, "")
 		require.NoError(t, err)
 
 		assert.True(t, fx.rpcStore.Stats().BlocksAdded() > 0)
@@ -187,13 +188,13 @@ func TestUpload(t *testing.T) {
 		spaceId := "space1"
 		fileId, _ := fx.givenFileAddedToDAG(t)
 
-		err := fx.uploadFile(ctx, spaceId, fileId)
+		err := fx.uploadFile(ctx, spaceId, fileId, "")
 		require.NoError(t, err)
 
 		assert.True(t, fx.rpcStore.Stats().BlocksAdded() > 0)
 		assert.True(t, fx.rpcStore.Stats().CidsBinded() == 0)
 
-		err = fx.uploadFile(ctx, spaceId, fileId)
+		err = fx.uploadFile(ctx, spaceId, fileId, "")
 		require.NoError(t, err)
 
 		assert.True(t, fx.rpcStore.Stats().CidsBinded() == fx.rpcStore.Stats().BlocksAdded())
@@ -206,7 +207,7 @@ func TestUpload(t *testing.T) {
 		spaceId := "space1"
 		fileId, _ := fx.givenFileAddedToDAG(t)
 
-		err := fx.uploadFile(ctx, spaceId, fileId)
+		err := fx.uploadFile(ctx, spaceId, fileId, "")
 		var errLimit *errLimitReached
 		require.ErrorAs(t, err, &errLimit)
 	})
@@ -238,7 +239,7 @@ func TestUpload(t *testing.T) {
 			go func(fileId domain.FileId) {
 				defer wg.Done()
 
-				err := fx.uploadFile(ctx, spaceId, fileId)
+				err := fx.uploadFile(ctx, spaceId, fileId, "")
 				if err != nil {
 					errorsLock.Lock()
 					errors = append(errors, err)
@@ -266,4 +267,23 @@ func TestUpload(t *testing.T) {
 		// Number of uploaded files == number of tried files - number of errors
 		assert.Equal(t, len(filesInfo), numberOfFiles-len(errors))
 	})
+}
+
+func TestBlocksAvailabilityResponseMarshalUnmarshal(t *testing.T) {
+	resp := &blocksAvailabilityResponse{
+		bytesToUpload: 123,
+		bytesToBind:   234,
+		cidsToUpload: map[cid.Cid]struct{}{
+			cid.MustParse("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"): {},
+		},
+	}
+
+	data, err := json.Marshal(resp)
+	require.NoError(t, err)
+
+	unmarshaledResp := &blocksAvailabilityResponse{}
+	err = json.Unmarshal(data, &unmarshaledResp)
+	require.NoError(t, err)
+
+	assert.Equal(t, resp, unmarshaledResp)
 }

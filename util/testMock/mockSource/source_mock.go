@@ -5,6 +5,7 @@
 //
 //	mockgen -package mockSource -destination source_mock.go github.com/anyproto/anytype-heart/core/block/source Service,Source
 //
+
 // Package mockSource is a generated GoMock package.
 package mockSource
 
@@ -60,7 +61,7 @@ func (mr *MockServiceMockRecorder) DetailsFromIdBasedSource(arg0 any) *gomock.Ca
 }
 
 // IDsListerBySmartblockType mocks base method.
-func (m *MockService) IDsListerBySmartblockType(arg0 string, arg1 smartblock.SmartBlockType) (source.IDsLister, error) {
+func (m *MockService) IDsListerBySmartblockType(arg0 source.Space, arg1 smartblock.SmartBlockType) (source.IDsLister, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IDsListerBySmartblockType", arg0, arg1)
 	ret0, _ := ret[0].(source.IDsLister)

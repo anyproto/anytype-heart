@@ -20,7 +20,7 @@ func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRe
 		return &pb.RpcLinkPreviewResponse{
 			Error: &pb.RpcLinkPreviewResponseError{
 				Code:        pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
-				Description: fmt.Sprintf("failed to parse url: %v", err),
+				Description: fmt.Sprintf("failed to parse url: %v", getErrorDescription(err)),
 			},
 		}
 	}
@@ -33,7 +33,7 @@ func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRe
 		}
 	}
 	lp := mw.applicationService.GetApp().MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
-	data, _, err := lp.Fetch(ctx, u.String())
+	data, _, _, err := lp.Fetch(ctx, u.String())
 	if err != nil {
 		// trim the actual url from the error
 		errTrimmed := strings.Replace(err.Error(), u.String(), "<url>", -1)

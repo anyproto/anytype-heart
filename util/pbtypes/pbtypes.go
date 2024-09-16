@@ -117,16 +117,24 @@ func IsEmptyValueOrAbsent(s *types.Struct, name string) bool {
 	if !exists {
 		return true
 	}
-	if _, ok := value.Kind.(*types.Value_StringValue); ok {
-		return len(GetString(s, name)) == 0
+	return IsEmptyValue(value)
+}
+
+func IsEmptyValue(value *types.Value) bool {
+	if value == nil {
+		return true
 	}
 
-	if _, ok := value.Kind.(*types.Value_NumberValue); ok {
-		return GetFloat64(s, name) == 0
+	if v, ok := value.Kind.(*types.Value_StringValue); ok {
+		return len(v.StringValue) == 0
 	}
 
-	if _, ok := value.Kind.(*types.Value_BoolValue); ok {
-		return !GetBool(s, name)
+	if v, ok := value.Kind.(*types.Value_NumberValue); ok {
+		return v.NumberValue == 0
+	}
+
+	if v, ok := value.Kind.(*types.Value_BoolValue); ok {
+		return !v.BoolValue
 	}
 
 	if _, ok := value.Kind.(*types.Value_ListValue); ok {
@@ -187,12 +195,24 @@ func GetStringList(s *types.Struct, name string) []string {
 		return nil
 	}
 
-	if v, ok := s.Fields[name]; !ok {
-		return nil
-	} else {
+	if v, ok := s.Fields[name]; ok {
 		return GetStringListValue(v)
-
 	}
+	return nil
+}
+
+func GetValueList(s *types.Struct, name string) []*types.Value {
+	if s == nil || s.Fields == nil {
+		return nil
+	}
+
+	if v, ok := s.Fields[name]; ok {
+		if list, ok := v.Kind.(*types.Value_ListValue); ok {
+			return list.ListValue.Values
+		}
+		return []*types.Value{v}
+	}
+	return nil
 }
 
 // UpdateStringList updates a string list field using modifier function and returns updated value
@@ -254,6 +274,16 @@ func GetStringListValue(v *types.Value) []string {
 		return []string{val.StringValue}
 	}
 	return nil
+}
+
+func GetList(v *types.Value) []*types.Value {
+	if v == nil {
+		return nil
+	}
+	if list, ok := v.Kind.(*types.Value_ListValue); ok {
+		return list.ListValue.Values
+	}
+	return []*types.Value{v}
 }
 
 func ListValueToStrings(list *types.ListValue) []string {
@@ -375,28 +405,6 @@ func BundledRelationIdToKey(id string) (string, error) {
 	}
 
 	return "", fmt.Errorf("incorrect id format")
-}
-
-type Getter interface {
-	Get(key string) *types.Value
-}
-
-type structGetter struct {
-	st *types.Struct
-}
-
-func ValueGetter(s *types.Struct) Getter {
-	return &structGetter{s}
-}
-
-func (sg *structGetter) Get(key string) *types.Value {
-	if sg == nil {
-		return nil
-	}
-	if sg.st.Fields == nil {
-		return nil
-	}
-	return sg.st.Fields[key]
 }
 
 func Map(s *types.Struct, keys ...string) *types.Struct {

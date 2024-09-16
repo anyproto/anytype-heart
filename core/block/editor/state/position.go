@@ -174,29 +174,22 @@ func (s *State) wrapToRow(opId string, parent, b simple.Block) (row simple.Block
 	if pos == -1 {
 		return nil, fmt.Errorf("creating row: can't find child[%s] in given parent[%s]", b.Model().Id, parent.Model().Id)
 	}
-	s.removeFromCache(parent.Model().ChildrenIds[pos])
+	// do not need to remove from cache
 	parent.Model().ChildrenIds[pos] = row.Model().Id
-	s.addCacheIds(parent.Model(), row.Model().Id)
 	return
 }
 
 func (s *State) setChildrenIds(parent *model.Block, childrenIds []string) {
 	parent.ChildrenIds = childrenIds
-	s.addCacheIds(parent, childrenIds...)
+}
+
+// do not use this method outside of normalization
+func (s *State) SetChildrenIds(parent *model.Block, childrenIds []string) {
+	s.setChildrenIds(parent, childrenIds)
 }
 
 func (s *State) removeChildren(parent *model.Block, childrenId string) {
 	parent.ChildrenIds = slice.RemoveMut(parent.ChildrenIds, childrenId)
-	s.removeFromCache(childrenId)
-}
-
-func (s *State) addCacheIds(parent *model.Block, childrenIds ...string) {
-	if s.isParentIdsCacheEnabled {
-		cache := s.getParentIdsCache()
-		for _, childId := range childrenIds {
-			cache[childId] = parent.Id
-		}
-	}
 }
 
 func (s *State) prependChildrenIds(block *model.Block, ids ...string) {

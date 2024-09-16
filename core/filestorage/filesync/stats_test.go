@@ -1,6 +1,9 @@
 package filesync
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -91,6 +94,12 @@ func TestSpaceUsageUpdate(t *testing.T) {
 			makeLimitUpdatedEvent(limit * 10),
 		}
 
-		assert.Equal(t, wantEvents, fx.events)
+		if !assert.Equal(t, wantEvents, fx.events) {
+			m := json.NewEncoder(os.Stdout)
+			m.SetIndent("", "  ")
+			m.Encode(wantEvents)
+			fmt.Println("---")
+			m.Encode(fx.events)
+		}
 	})
 }

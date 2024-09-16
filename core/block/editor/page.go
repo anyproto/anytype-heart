@@ -23,6 +23,18 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+var pageRequiredRelations = []domain.RelationKey{
+	bundle.RelationKeyCoverId,
+	bundle.RelationKeyCoverScale,
+	bundle.RelationKeyCoverType,
+	bundle.RelationKeyCoverX,
+	bundle.RelationKeyCoverY,
+	bundle.RelationKeySnippet,
+	bundle.RelationKeyFeaturedRelations,
+	bundle.RelationKeyLinks,
+	bundle.RelationKeyLayoutAlign,
+}
+
 type Page struct {
 	smartblock.SmartBlock
 	basic.AllOperations
@@ -46,7 +58,7 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 	return &Page{
 		SmartBlock:     sb,
 		ChangeReceiver: sb.(source.ChangeReceiver),
-		AllOperations:  basic.NewBasic(sb, f.objectStore, f.layoutConverter),
+		AllOperations:  basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
 		IHistory:       basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
@@ -72,6 +84,7 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, pageRequiredRelations...)
 	if ctx.ObjectTypeKeys == nil && (ctx.State == nil || len(ctx.State.ObjectTypeKeys()) == 0) && ctx.IsNewObject {
 		ctx.ObjectTypeKeys = []domain.TypeKey{bundle.TypeKeyPage}
 	}
@@ -162,7 +175,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				template.WithLayout(layout),
 				template.WithDefaultFeaturedRelations,
 				template.WithFeaturedRelations,
-				template.WithRequiredRelations(),
 				template.WithLinkFieldsMigration,
 				template.WithCreatorRemovedFromFeaturedRelations,
 			}
@@ -171,8 +183,8 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			case model.ObjectType_note:
 				templates = append(templates,
 					template.WithNameToFirstBlock,
+					template.WithFirstTextBlock,
 					template.WithNoTitle,
-					template.WithNoDescription,
 				)
 			case model.ObjectType_todo:
 				templates = append(templates,

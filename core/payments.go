@@ -12,6 +12,13 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
+// Semantics in case of NO INTERNET:
+//
+// If called with req.NoCache -> returns error
+// If called without req.NoCache:
+//
+//	has no fresh data -> returns error
+//	has fresh data -> returns data
 func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) *pb.RpcMembershipGetStatusResponse {
 	log.Info("payments - client asked to get a subscription status", zap.Any("req", req))
 
@@ -32,7 +39,7 @@ func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMember
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
-		errStr := err.Error()
+		errStr := getErrorDescription(err)
 		if code == pb.RpcMembershipGetStatusResponseError_CAN_NOT_CONNECT {
 			errStr = "please connect to the internet"
 		}
@@ -70,7 +77,7 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
-		errStr := err.Error()
+		errStr := getErrorDescription(err)
 		if code == pb.RpcMembershipIsNameValidResponseError_CAN_NOT_CONNECT {
 			errStr = "please connect to the internet"
 		}
@@ -108,7 +115,7 @@ func (mw *Middleware) MembershipRegisterPaymentRequest(ctx context.Context, req 
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
-		errStr := err.Error()
+		errStr := getErrorDescription(err)
 		if code == pb.RpcMembershipRegisterPaymentRequestResponseError_CAN_NOT_CONNECT {
 			errStr = "please connect to the internet"
 		}
@@ -139,7 +146,7 @@ func (mw *Middleware) MembershipGetPortalLinkUrl(ctx context.Context, req *pb.Rp
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
-		errStr := err.Error()
+		errStr := getErrorDescription(err)
 		if code == pb.RpcMembershipGetPortalLinkUrlResponseError_CAN_NOT_CONNECT {
 			errStr = "please connect to the internet"
 		}
@@ -176,7 +183,7 @@ func (mw *Middleware) MembershipGetVerificationEmail(ctx context.Context, req *p
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
-		errStr := err.Error()
+		errStr := getErrorDescription(err)
 		if code == pb.RpcMembershipGetVerificationEmailResponseError_CAN_NOT_CONNECT {
 			errStr = "please connect to the internet"
 		}
@@ -223,7 +230,7 @@ func (mw *Middleware) MembershipVerifyEmailCode(ctx context.Context, req *pb.Rpc
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
-		errStr := err.Error()
+		errStr := getErrorDescription(err)
 		if code == pb.RpcMembershipVerifyEmailCodeResponseError_CAN_NOT_CONNECT {
 			errStr = "please connect to the internet"
 		}
@@ -259,7 +266,7 @@ func (mw *Middleware) MembershipFinalize(ctx context.Context, req *pb.RpcMembers
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
-		errStr := err.Error()
+		errStr := getErrorDescription(err)
 		if code == pb.RpcMembershipFinalizeResponseError_CAN_NOT_CONNECT {
 			errStr = "please connect to the internet"
 		}
@@ -290,7 +297,7 @@ func (mw *Middleware) MembershipGetTiers(ctx context.Context, req *pb.RpcMembers
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
-		errStr := err.Error()
+		errStr := getErrorDescription(err)
 		if code == pb.RpcMembershipGetTiersResponseError_CAN_NOT_CONNECT {
 			errStr = "please connect to the internet"
 		}
@@ -317,14 +324,13 @@ func (mw *Middleware) MembershipVerifyAppStoreReceipt(ctx context.Context, req *
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PAYMENT_NODE_ERROR),
 			errToCode(net.ErrUnableToConnect, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PAYMENT_NODE_ERROR),
 			errToCode(payments.ErrCacheProblem, pb.RpcMembershipVerifyAppStoreReceiptResponseError_CACHE_ERROR),
-			errToCode(proto.ErrInvalidReceipt, pb.RpcMembershipVerifyAppStoreReceiptResponseError_INVALID_RECEIPT),
 			errToCode(proto.ErrUnknown, pb.RpcMembershipVerifyAppStoreReceiptResponseError_UNKNOWN_ERROR),
 		)
 
 		return &pb.RpcMembershipVerifyAppStoreReceiptResponse{
 			Error: &pb.RpcMembershipVerifyAppStoreReceiptResponseError{
 				Code:        code,
-				Description: err.Error(),
+				Description: getErrorDescription(err),
 			},
 		}
 	}
