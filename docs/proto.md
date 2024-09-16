@@ -29468,6 +29468,8 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | spaceView | 18 |  |
 | participant | 19 |  |
 | pdf | 20 |  |
+| chat | 21 |  |
+| chatDerived | 22 |  |
 
 
 
@@ -29620,6 +29622,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | FileObject | 533 |  |
 | NotificationObject | 535 |  |
 | DevicesObject | 536 |  |
+| ChatObject | 537 | Container for any-store based chats |
+| ChatDerivedObject | 544 | Any-store based object for chat |
 
 
 
