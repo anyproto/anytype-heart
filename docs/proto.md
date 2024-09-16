@@ -1955,7 +1955,6 @@
 | ObjectCreate | [Rpc.Object.Create.Request](#anytype-Rpc-Object-Create-Request) | [Rpc.Object.Create.Response](#anytype-Rpc-Object-Create-Response) | ObjectCreate just creates the new page, without adding the link to it from some other page |
 | ObjectCreateBookmark | [Rpc.Object.CreateBookmark.Request](#anytype-Rpc-Object-CreateBookmark-Request) | [Rpc.Object.CreateBookmark.Response](#anytype-Rpc-Object-CreateBookmark-Response) |  |
 | ObjectCreateFromUrl | [Rpc.Object.CreateFromUrl.Request](#anytype-Rpc-Object-CreateFromUrl-Request) | [Rpc.Object.CreateFromUrl.Response](#anytype-Rpc-Object-CreateFromUrl-Response) |  |
-| ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 | ObjectCreateSet | [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request) | [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response) | ObjectCreateSet just creates the new set, without adding the link to it from some other page |
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request) | [Rpc.Object.Graph.Response](#anytype-Rpc-Object-Graph-Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request) | [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response) |  |
@@ -2164,6 +2163,7 @@
 | ChatGetMessagesByIds | [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request) | [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response) |  |
 | ChatSubscribeLastMessages | [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request) | [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response) |  |
 | ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
+| ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 
  
 
@@ -10403,6 +10403,11 @@ Get marks list in the selected range in text block.
 
 ### Rpc.Debug.AccountSelectTrace.Request
 
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| dir | [string](#string) |  | empty means using OS-provided temp dir |
 
 
 
@@ -26821,6 +26826,7 @@ Precondition: user A and user B opened the same block
 | NotConnected | 0 |  |
 | NotPossible | 1 |  |
 | Connected | 2 |  |
+| Restricted | 3 |  |
 
 
 
@@ -26879,6 +26885,7 @@ Precondition: user A and user B opened the same block
 | Synced | 3 |  |
 | Failed | 4 |  |
 | IncompatibleVersion | 5 |  |
+| NetworkNeedsUpdate | 6 |  |
 
 
 

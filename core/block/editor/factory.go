@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -70,6 +71,7 @@ type ObjectFactory struct {
 	objectDeleter       ObjectDeleter
 	deviceService       deviceService
 	storeDbProvider     chatobject.StoreDbProvider
+	lastUsedUpdater     lastused.ObjectUsageUpdater
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -99,6 +101,10 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.fileObjectService = app.MustComponent[fileobject.Service](a)
 	f.restrictionService = app.MustComponent[restriction.Service](a)
 	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
+	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
+	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
+	f.deviceService = app.MustComponent[deviceService](a)
+	f.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
 	return nil
 }
 

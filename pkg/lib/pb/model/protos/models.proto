@@ -578,7 +578,6 @@ message Block {
                 View = 4;
             }
         }
-
         message Chat {
 
         }

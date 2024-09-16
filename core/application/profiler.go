@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/klauspost/compress/flate"
 	exptrace "golang.org/x/exp/trace"
 
 	"github.com/anyproto/anytype-heart/util/debug"
@@ -91,6 +92,9 @@ type zipFile struct {
 
 func createZipArchive(w io.Writer, files []zipFile) error {
 	zipw := zip.NewWriter(w)
+	zipw.RegisterCompressor(zip.Deflate, func(w io.Writer) (io.WriteCloser, error) {
+		return flate.NewWriter(w, flate.BestSpeed)
+	})
 	err := func() error {
 		for _, file := range files {
 			f, err := zipw.Create(file.name)
@@ -107,8 +111,8 @@ func createZipArchive(w io.Writer, files []zipFile) error {
 	return errors.Join(err, zipw.Close())
 }
 
-func (s *Service) SaveLoginTrace() (string, error) {
-	return s.traceRecorder.save()
+func (s *Service) SaveLoginTrace(dir string) (string, error) {
+	return s.traceRecorder.save(dir)
 }
 
 // traceRecorder is a helper to start and stop flight trace recorder
@@ -118,7 +122,8 @@ type traceRecorder struct {
 	lastRecordedBuf *bytes.Buffer // contains zip archive of trace
 }
 
-func (r *traceRecorder) save() (string, error) {
+// empty dir means use system temp dir
+func (r *traceRecorder) save(dir string) (string, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -138,7 +143,7 @@ func (r *traceRecorder) save() (string, error) {
 		traceReader = buf
 	}
 
-	f, err := os.CreateTemp("", "account-select-trace-*.zip")
+	f, err := os.CreateTemp(dir, "account-select-trace-*.zip")
 	if err != nil {
 		return "", fmt.Errorf("create temp file: %w", err)
 	}

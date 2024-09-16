@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/query"
 	"github.com/valyala/fastjson"
 
@@ -23,7 +24,16 @@ func (d ChatHandler) CollectionName() string {
 }
 
 func (d ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err error) {
-	_, err = s.Collection(ctx, collectionName)
+	coll, err := s.Collection(ctx, collectionName)
+	if err != nil {
+		return err
+	}
+	iErr := coll.EnsureIndex(ctx, anystore.IndexInfo{
+		Fields: []string{"_o.id"},
+	})
+	if iErr != nil && !errors.Is(iErr, anystore.ErrIndexExists) {
+		return iErr
+	}
 	return
 }
 
