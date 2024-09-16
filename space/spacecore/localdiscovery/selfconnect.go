@@ -16,7 +16,7 @@ func handleConnection(conn net.Conn) error {
 	reader := bufio.NewReader(conn)
 	message, err := reader.ReadString('\n')
 	if err != nil {
-		return fmt.Errorf("error reading message: %v", err)
+		return fmt.Errorf("error reading message: %w", err)
 	}
 
 	// Trim newline characters and validate the message
@@ -32,7 +32,7 @@ func handleConnection(conn net.Conn) error {
 func startServer(ip string) (listener net.Listener, port int, err error) {
 	listener, err = net.Listen("tcp", ip+":0")
 	if err != nil {
-		return nil, 0, fmt.Errorf("error starting server: %v", err)
+		return nil, 0, fmt.Errorf("error starting server: %w", err)
 	}
 
 	port = listener.Addr().(*net.TCPAddr).Port
@@ -43,13 +43,13 @@ func startServer(ip string) (listener net.Listener, port int, err error) {
 func sendMessage(ip string, port int, message string) error {
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), 3*time.Second)
 	if err != nil {
-		return fmt.Errorf("error connecting: %v", err)
+		return fmt.Errorf("error connecting: %w", err)
 	}
 	defer conn.Close()
 
-	_, err = fmt.Fprintf(conn, message+"\n")
+	_, err = fmt.Fprintf(conn, "%s\n", message)
 	if err != nil {
-		return fmt.Errorf("error sending message: %v", err)
+		return fmt.Errorf("error sending message: %w", err)
 	}
 
 	return nil
