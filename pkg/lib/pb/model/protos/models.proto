@@ -97,6 +97,7 @@ message Block {
         Content.TableColumn tableColumn = 27;
         Content.TableRow tableRow = 28;
         Content.Widget widget = 29;
+        Content.Chat chat = 30;
     }
 
     message Restrictions {
@@ -573,6 +574,9 @@ message Block {
                 CompactList = 3;
                 View = 4;
             }
+        }
+        message Chat {
+
         }
     }
 }
