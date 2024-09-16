@@ -402,8 +402,7 @@ func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusSta
 	pool.AddPeer(context.Background(), peer)
 	store := peerstore.New()
 	hookRegister := mock_peerstatus.NewMockLocalDiscoveryHook(t)
-	hookRegister.EXPECT().RegisterP2PNotPossible(mock.Anything).Return()
-	hookRegister.EXPECT().RegisterResetNotPossible(mock.Anything).Return()
+	hookRegister.EXPECT().RegisterDiscoveryPossibilityHook(mock.Anything).Return()
 
 	a := &app.App{}
 	ctx := context.Background()
