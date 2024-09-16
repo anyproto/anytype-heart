@@ -8,6 +8,16 @@ import (
 
 // TODO: chats are temporary done as dummy API for clients to merge the API
 
+func (mw *Middleware) ObjectChatAdd(ctx context.Context, request *pb.RpcObjectChatAddRequest) *pb.RpcObjectChatAddResponse {
+	// TODO implement me
+	return &pb.RpcObjectChatAddResponse{
+		Error: &pb.RpcObjectChatAddResponseError{
+			Code:        pb.RpcObjectChatAddResponseError_UNKNOWN_ERROR,
+			Description: "not implemented",
+		},
+	}
+}
+
 func (mw *Middleware) ChatAddMessage(ctx context.Context, request *pb.RpcChatAddMessageRequest) *pb.RpcChatAddMessageResponse {
 	// TODO implement me
 	return &pb.RpcChatAddMessageResponse{
