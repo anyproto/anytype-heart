@@ -357,4 +357,14 @@ service ClientCommands {
     rpc DeviceSetName (anytype.Rpc.Device.SetName.Request) returns (anytype.Rpc.Device.SetName.Response);
     rpc DeviceList (anytype.Rpc.Device.List.Request) returns (anytype.Rpc.Device.List.Response);
     rpc DeviceNetworkStateSet (anytype.Rpc.Device.NetworkState.Set.Request) returns (anytype.Rpc.Device.NetworkState.Set.Response);
+
+    // Chats dummy impl
+    rpc ChatAddMessage (anytype.Rpc.Chat.AddMessage.Request) returns (anytype.Rpc.Chat.AddMessage.Response);
+    rpc ChatEditMessageContent (anytype.Rpc.Chat.EditMessageContent.Request) returns (anytype.Rpc.Chat.EditMessageContent.Response);
+    rpc ChatToggleMessageReaction (anytype.Rpc.Chat.ToggleMessageReaction.Request) returns (anytype.Rpc.Chat.ToggleMessageReaction.Response);
+    rpc ChatDeleteMessage (anytype.Rpc.Chat.DeleteMessage.Request) returns (anytype.Rpc.Chat.DeleteMessage.Response);
+    rpc ChatGetMessages (anytype.Rpc.Chat.GetMessages.Request) returns (anytype.Rpc.Chat.GetMessages.Response);
+    rpc ChatGetMessagesByIds (anytype.Rpc.Chat.GetMessagesByIds.Request) returns (anytype.Rpc.Chat.GetMessagesByIds.Response);
+    rpc ChatSubscribeLastMessages (anytype.Rpc.Chat.SubscribeLastMessages.Request) returns (anytype.Rpc.Chat.SubscribeLastMessages.Response);
+    rpc ChatUnsubscribe (anytype.Rpc.Chat.Unsubscribe.Request) returns (anytype.Rpc.Chat.Unsubscribe.Response);
 }

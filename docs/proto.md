@@ -526,6 +526,39 @@
     - [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request)
     - [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response)
     - [Rpc.Broadcast.PayloadEvent.Response.Error](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error)
+    - [Rpc.Chat](#anytype-Rpc-Chat)
+    - [Rpc.Chat.AddMessage](#anytype-Rpc-Chat-AddMessage)
+    - [Rpc.Chat.AddMessage.Request](#anytype-Rpc-Chat-AddMessage-Request)
+    - [Rpc.Chat.AddMessage.Response](#anytype-Rpc-Chat-AddMessage-Response)
+    - [Rpc.Chat.AddMessage.Response.Error](#anytype-Rpc-Chat-AddMessage-Response-Error)
+    - [Rpc.Chat.DeleteMessage](#anytype-Rpc-Chat-DeleteMessage)
+    - [Rpc.Chat.DeleteMessage.Request](#anytype-Rpc-Chat-DeleteMessage-Request)
+    - [Rpc.Chat.DeleteMessage.Response](#anytype-Rpc-Chat-DeleteMessage-Response)
+    - [Rpc.Chat.DeleteMessage.Response.Error](#anytype-Rpc-Chat-DeleteMessage-Response-Error)
+    - [Rpc.Chat.EditMessageContent](#anytype-Rpc-Chat-EditMessageContent)
+    - [Rpc.Chat.EditMessageContent.Request](#anytype-Rpc-Chat-EditMessageContent-Request)
+    - [Rpc.Chat.EditMessageContent.Response](#anytype-Rpc-Chat-EditMessageContent-Response)
+    - [Rpc.Chat.EditMessageContent.Response.Error](#anytype-Rpc-Chat-EditMessageContent-Response-Error)
+    - [Rpc.Chat.GetMessages](#anytype-Rpc-Chat-GetMessages)
+    - [Rpc.Chat.GetMessages.Request](#anytype-Rpc-Chat-GetMessages-Request)
+    - [Rpc.Chat.GetMessages.Response](#anytype-Rpc-Chat-GetMessages-Response)
+    - [Rpc.Chat.GetMessages.Response.Error](#anytype-Rpc-Chat-GetMessages-Response-Error)
+    - [Rpc.Chat.GetMessagesByIds](#anytype-Rpc-Chat-GetMessagesByIds)
+    - [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request)
+    - [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response)
+    - [Rpc.Chat.GetMessagesByIds.Response.Error](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error)
+    - [Rpc.Chat.SubscribeLastMessages](#anytype-Rpc-Chat-SubscribeLastMessages)
+    - [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request)
+    - [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response)
+    - [Rpc.Chat.SubscribeLastMessages.Response.Error](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error)
+    - [Rpc.Chat.ToggleMessageReaction](#anytype-Rpc-Chat-ToggleMessageReaction)
+    - [Rpc.Chat.ToggleMessageReaction.Request](#anytype-Rpc-Chat-ToggleMessageReaction-Request)
+    - [Rpc.Chat.ToggleMessageReaction.Response](#anytype-Rpc-Chat-ToggleMessageReaction-Response)
+    - [Rpc.Chat.ToggleMessageReaction.Response.Error](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error)
+    - [Rpc.Chat.Unsubscribe](#anytype-Rpc-Chat-Unsubscribe)
+    - [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request)
+    - [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response)
+    - [Rpc.Chat.Unsubscribe.Response.Error](#anytype-Rpc-Chat-Unsubscribe-Response-Error)
     - [Rpc.Debug](#anytype-Rpc-Debug)
     - [Rpc.Debug.AccountSelectTrace](#anytype-Rpc-Debug-AccountSelectTrace)
     - [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request)
@@ -1281,6 +1314,14 @@
     - [Rpc.BlockWidget.SetTargetId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code)
     - [Rpc.BlockWidget.SetViewId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code)
     - [Rpc.Broadcast.PayloadEvent.Response.Error.Code](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code)
+    - [Rpc.Chat.AddMessage.Response.Error.Code](#anytype-Rpc-Chat-AddMessage-Response-Error-Code)
+    - [Rpc.Chat.DeleteMessage.Response.Error.Code](#anytype-Rpc-Chat-DeleteMessage-Response-Error-Code)
+    - [Rpc.Chat.EditMessageContent.Response.Error.Code](#anytype-Rpc-Chat-EditMessageContent-Response-Error-Code)
+    - [Rpc.Chat.GetMessages.Response.Error.Code](#anytype-Rpc-Chat-GetMessages-Response-Error-Code)
+    - [Rpc.Chat.GetMessagesByIds.Response.Error.Code](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error-Code)
+    - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
+    - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
+    - [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code)
     - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
@@ -1578,6 +1619,11 @@
     - [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout)
     - [Event.Block.Set.Widget.Limit](#anytype-Event-Block-Set-Widget-Limit)
     - [Event.Block.Set.Widget.ViewId](#anytype-Event-Block-Set-Widget-ViewId)
+    - [Event.Chat](#anytype-Event-Chat)
+    - [Event.Chat.Add](#anytype-Event-Chat-Add)
+    - [Event.Chat.Delete](#anytype-Event-Chat-Delete)
+    - [Event.Chat.Update](#anytype-Event-Chat-Update)
+    - [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LimitUpdated](#anytype-Event-File-LimitUpdated)
@@ -1703,6 +1749,12 @@
     - [Block.Content.Widget](#anytype-model-Block-Content-Widget)
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
+    - [ChatMessage](#anytype-model-ChatMessage)
+    - [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment)
+    - [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent)
+    - [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions)
+    - [ChatMessage.Reactions.IdentityList](#anytype-model-ChatMessage-Reactions-IdentityList)
+    - [ChatMessage.Reactions.ReactionsEntry](#anytype-model-ChatMessage-Reactions-ReactionsEntry)
     - [Detail](#anytype-model-Detail)
     - [DeviceInfo](#anytype-model-DeviceInfo)
     - [Export](#anytype-model-Export)
@@ -1783,6 +1835,7 @@
     - [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout)
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
+    - [ChatMessage.Attachment.AttachmentType](#anytype-model-ChatMessage-Attachment-AttachmentType)
     - [DeviceNetworkType](#anytype-model-DeviceNetworkType)
     - [Export.Format](#anytype-model-Export-Format)
     - [FileIndexingStatus](#anytype-model-FileIndexingStatus)
@@ -2088,6 +2141,14 @@
 | DeviceSetName | [Rpc.Device.SetName.Request](#anytype-Rpc-Device-SetName-Request) | [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response) |  |
 | DeviceList | [Rpc.Device.List.Request](#anytype-Rpc-Device-List-Request) | [Rpc.Device.List.Response](#anytype-Rpc-Device-List-Response) |  |
 | DeviceNetworkStateSet | [Rpc.Device.NetworkState.Set.Request](#anytype-Rpc-Device-NetworkState-Set-Request) | [Rpc.Device.NetworkState.Set.Response](#anytype-Rpc-Device-NetworkState-Set-Response) |  |
+| ChatAddMessage | [Rpc.Chat.AddMessage.Request](#anytype-Rpc-Chat-AddMessage-Request) | [Rpc.Chat.AddMessage.Response](#anytype-Rpc-Chat-AddMessage-Response) | Chats dummy impl |
+| ChatEditMessageContent | [Rpc.Chat.EditMessageContent.Request](#anytype-Rpc-Chat-EditMessageContent-Request) | [Rpc.Chat.EditMessageContent.Response](#anytype-Rpc-Chat-EditMessageContent-Response) |  |
+| ChatToggleMessageReaction | [Rpc.Chat.ToggleMessageReaction.Request](#anytype-Rpc-Chat-ToggleMessageReaction-Request) | [Rpc.Chat.ToggleMessageReaction.Response](#anytype-Rpc-Chat-ToggleMessageReaction-Response) |  |
+| ChatDeleteMessage | [Rpc.Chat.DeleteMessage.Request](#anytype-Rpc-Chat-DeleteMessage-Request) | [Rpc.Chat.DeleteMessage.Response](#anytype-Rpc-Chat-DeleteMessage-Response) |  |
+| ChatGetMessages | [Rpc.Chat.GetMessages.Request](#anytype-Rpc-Chat-GetMessages-Request) | [Rpc.Chat.GetMessages.Response](#anytype-Rpc-Chat-GetMessages-Response) |  |
+| ChatGetMessagesByIds | [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request) | [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response) |  |
+| ChatSubscribeLastMessages | [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request) | [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response) |  |
+| ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
 
  
 
@@ -9708,6 +9769,480 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Broadcast.PayloadEvent.Response.Error.Code](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat"></a>
+
+### Rpc.Chat
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddMessage"></a>
+
+### Rpc.Chat.AddMessage
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddMessage-Request"></a>
+
+### Rpc.Chat.AddMessage.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddMessage-Response"></a>
+
+### Rpc.Chat.AddMessage.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.AddMessage.Response.Error](#anytype-Rpc-Chat-AddMessage-Response-Error) |  |  |
+| messageId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddMessage-Response-Error"></a>
+
+### Rpc.Chat.AddMessage.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.AddMessage.Response.Error.Code](#anytype-Rpc-Chat-AddMessage-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-DeleteMessage"></a>
+
+### Rpc.Chat.DeleteMessage
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-DeleteMessage-Request"></a>
+
+### Rpc.Chat.DeleteMessage.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| messageId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-DeleteMessage-Response"></a>
+
+### Rpc.Chat.DeleteMessage.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.DeleteMessage.Response.Error](#anytype-Rpc-Chat-DeleteMessage-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-DeleteMessage-Response-Error"></a>
+
+### Rpc.Chat.DeleteMessage.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.DeleteMessage.Response.Error.Code](#anytype-Rpc-Chat-DeleteMessage-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-EditMessageContent"></a>
+
+### Rpc.Chat.EditMessageContent
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-EditMessageContent-Request"></a>
+
+### Rpc.Chat.EditMessageContent.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| messageId | [string](#string) |  |  |
+| editedMessage | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-EditMessageContent-Response"></a>
+
+### Rpc.Chat.EditMessageContent.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.EditMessageContent.Response.Error](#anytype-Rpc-Chat-EditMessageContent-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-EditMessageContent-Response-Error"></a>
+
+### Rpc.Chat.EditMessageContent.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.EditMessageContent.Response.Error.Code](#anytype-Rpc-Chat-EditMessageContent-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetMessages"></a>
+
+### Rpc.Chat.GetMessages
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetMessages-Request"></a>
+
+### Rpc.Chat.GetMessages.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| beforeOrderId | [string](#string) |  | OrderId of the message before which to get messages |
+| limit | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetMessages-Response"></a>
+
+### Rpc.Chat.GetMessages.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.GetMessages.Response.Error](#anytype-Rpc-Chat-GetMessages-Response-Error) |  |  |
+| messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetMessages-Response-Error"></a>
+
+### Rpc.Chat.GetMessages.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.GetMessages.Response.Error.Code](#anytype-Rpc-Chat-GetMessages-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetMessagesByIds"></a>
+
+### Rpc.Chat.GetMessagesByIds
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetMessagesByIds-Request"></a>
+
+### Rpc.Chat.GetMessagesByIds.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| messageIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetMessagesByIds-Response"></a>
+
+### Rpc.Chat.GetMessagesByIds.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.GetMessagesByIds.Response.Error](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error) |  |  |
+| messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetMessagesByIds-Response-Error"></a>
+
+### Rpc.Chat.GetMessagesByIds.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.GetMessagesByIds.Response.Error.Code](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SubscribeLastMessages"></a>
+
+### Rpc.Chat.SubscribeLastMessages
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SubscribeLastMessages-Request"></a>
+
+### Rpc.Chat.SubscribeLastMessages.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  | Identifier for the chat |
+| limit | [int32](#int32) |  | Number of max last messages to return and subscribe |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SubscribeLastMessages-Response"></a>
+
+### Rpc.Chat.SubscribeLastMessages.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.SubscribeLastMessages.Response.Error](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error) |  |  |
+| messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated | List of messages |
+| numMessagesBefore | [int32](#int32) |  | Number of messages before the returned messages |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SubscribeLastMessages-Response-Error"></a>
+
+### Rpc.Chat.SubscribeLastMessages.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ToggleMessageReaction"></a>
+
+### Rpc.Chat.ToggleMessageReaction
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ToggleMessageReaction-Request"></a>
+
+### Rpc.Chat.ToggleMessageReaction.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| messageId | [string](#string) |  |  |
+| emoji | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ToggleMessageReaction-Response"></a>
+
+### Rpc.Chat.ToggleMessageReaction.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.ToggleMessageReaction.Response.Error](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ToggleMessageReaction-Response-Error"></a>
+
+### Rpc.Chat.ToggleMessageReaction.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Unsubscribe"></a>
+
+### Rpc.Chat.Unsubscribe
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Unsubscribe-Request"></a>
+
+### Rpc.Chat.Unsubscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  | Identifier for the chat |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Unsubscribe-Response"></a>
+
+### Rpc.Chat.Unsubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.Unsubscribe.Response.Error](#anytype-Rpc-Chat-Unsubscribe-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Unsubscribe-Response-Error"></a>
+
+### Rpc.Chat.Unsubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -20501,6 +21036,110 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Chat-AddMessage-Response-Error-Code"></a>
+
+### Rpc.Chat.AddMessage.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-DeleteMessage-Response-Error-Code"></a>
+
+### Rpc.Chat.DeleteMessage.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-EditMessageContent-Response-Error-Code"></a>
+
+### Rpc.Chat.EditMessageContent.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-GetMessages-Response-Error-Code"></a>
+
+### Rpc.Chat.GetMessages.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-GetMessagesByIds-Response-Error-Code"></a>
+
+### Rpc.Chat.GetMessagesByIds.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code"></a>
+
+### Rpc.Chat.SubscribeLastMessages.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code"></a>
+
+### Rpc.Chat.ToggleMessageReaction.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-Unsubscribe-Response-Error-Code"></a>
+
+### Rpc.Chat.Unsubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code"></a>
 
 ### Rpc.Debug.AccountSelectTrace.Response.Error.Code
@@ -24915,6 +25554,80 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Chat"></a>
+
+### Event.Chat
+
+
+
+
+
+
+
+<a name="anytype-Event-Chat-Add"></a>
+
+### Event.Chat.Add
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| orderId | [string](#string) |  |  |
+| message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Chat-Delete"></a>
+
+### Event.Chat.Delete
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Chat-Update"></a>
+
+### Event.Chat.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Chat-UpdateReactions"></a>
+
+### Event.Chat.UpdateReactions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| reactions | [model.ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-File"></a>
 
 ### Event.File
@@ -25117,6 +25830,10 @@ Precondition: user A opened a block
 | spaceSyncStatusUpdate | [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update) |  |  |
 | p2pStatusUpdate | [Event.P2PStatus.Update](#anytype-Event-P2PStatus-Update) |  |  |
 | importFinish | [Event.Import.Finish](#anytype-Event-Import-Finish) |  |  |
+| chatAdd | [Event.Chat.Add](#anytype-Event-Chat-Add) |  |  |
+| chatUpdate | [Event.Chat.Update](#anytype-Event-Chat-Update) |  |  |
+| chatUpdateReactions | [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions) |  |  |
+| chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 
 
 
@@ -26911,6 +27628,108 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-ChatMessage"></a>
+
+### ChatMessage
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Unique message identifier |
+| orderId | [string](#string) |  | Used for subscriptions |
+| creator | [string](#string) |  | Identifier for the message creator |
+| createdAt | [int64](#int64) |  |  |
+| modifiedAt | [int64](#int64) |  |  |
+| replyToMessageId | [string](#string) |  | Identifier for the message being replied to |
+| message | [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent) |  | Message content |
+| attachments | [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment) | repeated | Attachments slice |
+| reactions | [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions) |  | Reactions to the message |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-Attachment"></a>
+
+### ChatMessage.Attachment
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| target | [string](#string) |  | Identifier for the attachment object |
+| type | [ChatMessage.Attachment.AttachmentType](#anytype-model-ChatMessage-Attachment-AttachmentType) |  | Type of attachment |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageContent"></a>
+
+### ChatMessage.MessageContent
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| text | [string](#string) |  | The text content of the message part |
+| style | [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style) |  | The style/type of the message part |
+| marks | [Block.Content.Text.Mark](#anytype-model-Block-Content-Text-Mark) | repeated | List of marks applied to the text |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-Reactions"></a>
+
+### ChatMessage.Reactions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| reactions | [ChatMessage.Reactions.ReactionsEntry](#anytype-model-ChatMessage-Reactions-ReactionsEntry) | repeated | Map of emoji to list of user IDs |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-Reactions-IdentityList"></a>
+
+### ChatMessage.Reactions.IdentityList
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated | List of user IDs |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-Reactions-ReactionsEntry"></a>
+
+### ChatMessage.Reactions.ReactionsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [ChatMessage.Reactions.IdentityList](#anytype-model-ChatMessage-Reactions-IdentityList) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Detail"></a>
 
 ### Detail
@@ -28271,6 +29090,19 @@ stored |
 | VerticalAlignTop | 0 |  |
 | VerticalAlignMiddle | 1 |  |
 | VerticalAlignBottom | 2 |  |
+
+
+
+<a name="anytype-model-ChatMessage-Attachment-AttachmentType"></a>
+
+### ChatMessage.Attachment.AttachmentType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| FILE | 0 | File attachment |
+| IMAGE | 1 | Image attachment |
+| LINK | 2 | Link attachment |
 
 
 
