@@ -90,8 +90,13 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return fmt.Errorf("read store doc: %w", err)
 	}
-
-	return nil
+	st := a.NewState()
+	err = a.update(a.ctx, a.NewState())
+	if err != nil {
+		return fmt.Errorf("update state: %w", err)
+	}
+	// TODO: [PS] not sure that this works :-)
+	return a.SmartBlock.(source.ChangeReceiver).StateRebuild(st)
 }
 
 func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string, err error) {
@@ -126,6 +131,11 @@ func (a *accountObject) onUpdate() {
 		log.Warn("get profile details", zap.Error(err))
 		return
 	}
+	err = a.SmartBlock.(source.ChangeReceiver).StateRebuild(st)
+	if err != nil {
+		log.Warn("state rebuild", zap.Error(err))
+		return
+	}
 }
 
 func (a *accountObject) update(ctx context.Context, st *state.State) (err error) {
@@ -148,7 +158,6 @@ func (a *accountObject) update(ctx context.Context, st *state.State) (err error)
 		}
 		st.SetDetailAndBundledRelation(domain.RelationKey(key), pbVal)
 	}
-	err = a.SmartBlock.(source.ChangeReceiver).StateRebuild(st)
 	if err != nil {
 		return errors.Join(txn.Commit(), fmt.Errorf("state rebuild: %w", err))
 	}

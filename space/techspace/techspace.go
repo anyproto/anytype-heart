@@ -3,7 +3,6 @@ package techspace
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -19,10 +18,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "client.space.techspace"
@@ -54,6 +51,7 @@ type TechSpace interface {
 	SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error)
 	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
 	SpaceViewId(id string) (string, error)
+	AccountObjectId() (string, error)
 }
 
 type SpaceView interface {
@@ -103,10 +101,10 @@ func (s *techSpace) Name() (name string) {
 }
 
 func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error) {
-	// TODO: init an account document
 	s.techCore = techCoreSpace
 	s.objectCache = objectCache
-	return
+	// TODO: [PS] we should wait for account object first
+	return s.accountObjectCreate(context.Background())
 }
 
 func (s *techSpace) WakeUpViews() {
@@ -245,32 +243,36 @@ func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string, info sp
 }
 
 func (s *techSpace) accountObjectCreate(ctx context.Context) (err error) {
-	details := &types.Struct{Fields: map[string]*types.Value{}}
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeAccountObject, s.techCore.Id())
 	if err != nil {
-		return fmt.Errorf("create payload: %w", err)
+		return
 	}
-	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
-
-	chatReq := CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeyChatDerived,
-		Details:       details,
-	}
-
 	initFunc := func(id string) *editorsb.InitContext {
 		st := state.NewDoc(id, nil).(*state.State)
-		info.UpdateDetails(st)
 		return &editorsb.InitContext{Ctx: ctx, SpaceID: s.techCore.Id(), State: st}
 	}
-
-	chatId, _, err := s.createObjectInSpace(ctx, space, chatReq)
+	_, err = s.objectCache.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+		Key:      uniqueKey,
+		InitFunc: initFunc,
+	})
 	if err != nil {
-		return fmt.Errorf("create object: %w", err)
+		return
 	}
+	return
+}
 
-	st.SetDetailAndBundledRelation(bundle.RelationKeyChatId, pbtypes.String(chatId))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyHasChat, pbtypes.Bool(true))
-	return nil
+func (s *techSpace) AccountObjectId() (string, error) {
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeAccountObject, s.techCore.Id())
+	if err != nil {
+		return "", err
+	}
+	payload, err := s.objectCache.DeriveTreePayload(context.Background(), payloadcreator.PayloadDerivationParams{
+		Key: uniqueKey,
+	})
+	if err != nil {
+		return "", err
+	}
+	return payload.RootRawChange.Id, nil
 }
 
 func (s *techSpace) deriveSpaceViewID(ctx context.Context, spaceID string) (string, error) {
