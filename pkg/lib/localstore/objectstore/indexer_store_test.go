@@ -13,6 +13,8 @@ import (
 func TestDsObjectStore_IndexQueue(t *testing.T) {
 	s := NewStoreFixture(t)
 
+	ctx := context.Background()
+
 	t.Run("add to queue", func(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue(ctx, "one"))
 		require.NoError(t, s.AddToIndexQueue(ctx, "one"))
@@ -35,6 +37,7 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 
 func TestIndexerBatch(t *testing.T) {
 	s := NewStoreFixture(t)
+	ctx := context.Background()
 
 	t.Run("batch - no more than limit", func(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue(ctx, "one"))
@@ -88,6 +91,7 @@ func TestIndexerChecksums(t *testing.T) {
 func TestHeadsHash(t *testing.T) {
 	t.Run("previous hash is not found", func(t *testing.T) {
 		s := NewStoreFixture(t)
+		ctx := context.Background()
 
 		got, err := s.GetLastIndexedHeadsHash(ctx, "id1")
 		require.NoError(t, err)
@@ -96,6 +100,7 @@ func TestHeadsHash(t *testing.T) {
 
 	t.Run("save and load hash", func(t *testing.T) {
 		s := NewStoreFixture(t)
+		ctx := context.Background()
 
 		want := "hash1"
 

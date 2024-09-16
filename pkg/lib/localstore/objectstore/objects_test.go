@@ -49,6 +49,8 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 
 func Test_removeByPrefix(t *testing.T) {
 	s := NewStoreFixture(t)
+	ctx := context2.Background()
+
 	var key = make([]byte, 32)
 	spaceId := "space1"
 	objectsCount := 10
@@ -172,6 +174,7 @@ func TestHasIDs(t *testing.T) {
 
 func TestGetWithLinksInfoByID(t *testing.T) {
 	s := NewStoreFixture(t)
+	ctx := context2.Background()
 	obj1 := makeObjectWithName("id1", "name1")
 	obj2 := makeObjectWithName("id2", "name2")
 	obj3 := makeObjectWithName("id3", "name3")
@@ -245,6 +248,7 @@ func TestDeleteObject(t *testing.T) {
 	t.Run("delete object", func(t *testing.T) {
 		// Arrange
 		s := NewStoreFixture(t)
+		ctx := context2.Background()
 		obj := makeObjectWithName("id1", "name1")
 		s.AddObjects(t, []TestObject{obj})
 
@@ -294,6 +298,7 @@ func TestDeleteObject(t *testing.T) {
 
 func TestDeleteDetails(t *testing.T) {
 	s := NewStoreFixture(t)
+	ctx := context2.Background()
 	s.AddObjects(t, []TestObject{makeObjectWithName("id1", "name1")})
 
 	err := s.DeleteDetails(ctx, "id1")
