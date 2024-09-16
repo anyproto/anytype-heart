@@ -30,13 +30,13 @@ func TestImageExif_Mill(t *testing.T) {
 			}
 
 			if exif.Width != i.Width {
-				t.Errorf("wrong width")
+				t.Errorf("wrong width %v %v", exif.Width, i.Width)
 			}
 			if exif.Height != i.Height {
-				t.Errorf("wrong height")
+				t.Errorf("wrong height %v %v", exif.Height, i.Height)
 			}
 			if exif.Format != i.Format {
-				t.Errorf("wrong format")
+				t.Errorf("wrong format %v %v", exif.Format, i.Format)
 			}
 		})
 	}

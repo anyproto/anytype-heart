@@ -33,7 +33,7 @@ type Dashboard struct {
 func NewDashboard(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, layoutConverter converter.LayoutConverter) *Dashboard {
 	return &Dashboard{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter, nil),
+		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter, nil, nil),
 		Collection:    collection.NewCollection(sb, objectStore),
 		objectStore:   objectStore,
 	}

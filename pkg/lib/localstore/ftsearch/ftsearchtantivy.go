@@ -36,15 +36,16 @@ func TantivyNew() FTSearch {
 }
 
 var specialChars = map[rune]struct{}{
-	'+': {}, '-': {}, '&': {}, '|': {}, '!': {}, '(': {}, ')': {}, '{': {}, '}': {},
-	'[': {}, ']': {}, '^': {}, '"': {}, '~': {}, '*': {}, '?': {}, ':': {},
+	'+': {}, '^': {}, '`': {}, ':': {}, '{': {},
+	'}': {}, '"': {}, '[': {}, ']': {}, '(': {},
+	')': {}, '~': {}, '!': {}, '\\': {}, '*': {},
 }
 
 type ftSearchTantivy struct {
 	rootPath   string
 	ftsPath    string
 	builderId  string
-	index      *tantivy.Index
+	index      *tantivy.TantivyContext
 	schema     *tantivy.Schema
 	parserPool *fastjson.ParserPool
 }
@@ -158,7 +159,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 		return err
 	}
 
-	index, err := tantivy.NewIndexWithSchema(f.ftsPath, schema)
+	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
 	if err != nil {
 		return err
 	}
@@ -350,10 +351,11 @@ func escapeQuery(query string) string {
 
 	for _, char := range query {
 		if _, found := specialChars[char]; found {
-			escapedQuery.WriteRune('\\')
+			escapedQuery.WriteRune(' ')
 		}
 		escapedQuery.WriteRune(char)
 	}
 
-	return escapedQuery.String()
+	resultQuery := escapedQuery.String()
+	return "(\"" + resultQuery + "\" OR " + resultQuery + ")"
 }
