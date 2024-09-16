@@ -66,6 +66,7 @@ func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
 	}
 	// TODO: move this to android side
 	newAddrs, err := addrs.GetInterfacesAddrs()
+	newAddrs = filterMulticastInterfaces(newAddrs)
 	l.notifyPeerToPeerStatus(newAddrs)
 
 	if err != nil {
