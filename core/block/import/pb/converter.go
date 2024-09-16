@@ -315,6 +315,7 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
 	id, profileID, path string,
 	isMigration bool,
 	pbFiles source.Source) (string, error) {
+	p.normalizeRelationLinks(snapshot)
 	if snapshot.SbType == model.SmartBlockType_STRelationOption {
 		p.normalizeRelationOption(snapshot)
 	}
@@ -337,6 +338,15 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
 		}
 	}
 	return id, nil
+}
+
+func (p *Pb) normalizeRelationLinks(snapshot *pb.SnapshotWithType) {
+	for _, link := range snapshot.Snapshot.Data.RelationLinks {
+		if link.Key == bundle.RelationKeyTag.String() {
+			link.Format = model.RelationFormat_object
+			break
+		}
+	}
 }
 
 func (p *Pb) normalizeRelationOption(snapshot *pb.SnapshotWithType) {
