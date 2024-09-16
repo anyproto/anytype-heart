@@ -154,27 +154,9 @@ func (s *spaceStorage) WriteSpaceHash(hash string) error {
 	})
 }
 
-func (s *spaceStorage) WriteOldSpaceHash(hash string) error {
-	return s.objDb.Update(func(txn *badger.Txn) error {
-		return txn.Set(s.keys.OldSpaceHash(), []byte(hash))
-	})
-}
-
 func (s *spaceStorage) ReadSpaceHash() (hash string, err error) {
 	err = s.objDb.View(func(txn *badger.Txn) error {
 		res, err := getTxn(txn, s.keys.SpaceHash())
-		if err != nil {
-			return err
-		}
-		hash = string(res)
-		return nil
-	})
-	return
-}
-
-func (s *spaceStorage) ReadOldSpaceHash() (hash string, err error) {
-	err = s.objDb.View(func(txn *badger.Txn) error {
-		res, err := getTxn(txn, s.keys.OldSpaceHash())
 		if err != nil {
 			return err
 		}
