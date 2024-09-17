@@ -42,8 +42,6 @@ func (r *relationsMapper) GetRelationKey(key string, val *fastjson.Value) (*type
 			return nil, false
 		}
 		return pbtypes.Int64(val), true
-	case KeyTypeBool:
-		return pbtypes.Bool(val.GetBool(key)), true
 	}
 	return nil, false
 }
@@ -64,8 +62,6 @@ func (r *relationsMapper) GetStoreKey(key string, val *types.Value) (res any, ok
 		if res == 0 {
 			return nil, false
 		}
-	case KeyTypeBool:
-		res = val.GetBoolValue()
 	}
 	return res, true
 }

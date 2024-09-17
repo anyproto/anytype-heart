@@ -31,6 +31,7 @@ func (m Migration) Run(ctx context.Context, logger logger.CtxLogger, store depen
 	if err != nil {
 		return
 	}
+	// TODO: [PS] add icon image migration
 	var details *types.Struct
 	err = space.DoCtx(ctx, profileObjectId, func(sb smartblock.SmartBlock) error {
 		details = pbtypes.CopyStructFields(sb.CombinedDetails(),
@@ -44,6 +45,9 @@ func (m Migration) Run(ctx context.Context, logger logger.CtxLogger, store depen
 		return
 	}
 	err = m.TechSpace.DoAccountObject(ctx, func(accountObject accountobject.AccountObject) error {
+		if accountObject.CombinedDetails().GetFields()[bundle.RelationKeyName.String()].GetStringValue() != "" {
+			return nil
+		}
 		return accountObject.SetProfileDetails(details)
 	})
 	return

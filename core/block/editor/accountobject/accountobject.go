@@ -66,10 +66,9 @@ func New(sb smartblock.SmartBlock, dbProvider StoreDbProvider) AccountObject {
 		SmartBlock: sb,
 		dbProvider: dbProvider,
 		relMapper: newRelationsMapper(map[string]KeyType{
-			bundle.RelationKeyName.String():              KeyTypeString,
-			bundle.RelationKeyDescription.String():       KeyTypeString,
-			bundle.RelationKeyIconImage.String():         KeyTypeString,
-			bundle.RelationKeySharedSpacesLimit.String(): KeyTypeInt64,
+			bundle.RelationKeyName.String():        KeyTypeString,
+			bundle.RelationKeyDescription.String(): KeyTypeString,
+			bundle.RelationKeyIconImage.String():   KeyTypeString,
 		}),
 	}
 }
@@ -155,10 +154,9 @@ func (a *accountObject) GetSharedSpacesLimit() (limit int) {
 
 func (a *accountObject) SetProfileDetails(details *types.Struct) (err error) {
 	st := a.NewState()
-	for key := range a.relMapper.keys {
-		if val, ok := details.Fields[key]; ok {
-			st.SetDetailAndBundledRelation(domain.RelationKey(key), val)
-		}
+	// we should set everything in local state, but not everything in the store (this should be filtered in OnPushChange)
+	for key, val := range details.Fields {
+		st.SetDetailAndBundledRelation(domain.RelationKey(key), val)
 	}
 	return a.Apply(st)
 }
