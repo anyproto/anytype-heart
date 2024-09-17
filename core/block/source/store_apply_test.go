@@ -29,6 +29,8 @@ var ctx = context.Background()
 func TestStoreApply_RealTree(t *testing.T) {
 	update := func(fx *storeFx, heads []string, chs []*treechangeproto.RawTreeChangeWithId) {
 		tx := fx.RequireTx(t)
+		defer tx.Rollback()
+
 		_, err := fx.realTree.AddRawChangesWithUpdater(ctx, objecttree.RawChangesPayload{
 			NewHeads:   heads,
 			RawChanges: chs,
@@ -48,6 +50,8 @@ func TestStoreApply_RealTree(t *testing.T) {
 			changes = append(changes, testChange(order, false))
 		}
 		tx := fx.RequireTx(t)
+		defer tx.Rollback()
+
 		fx.AssertOrder(t, tx, changes...)
 	}
 	t.Run("new real tree - 1,2,3 then 4,5", func(t *testing.T) {
@@ -301,6 +305,7 @@ func newRealTreeStoreFx(t testing.TB) *storeFx {
 		db:            db,
 	}
 	tx := fx.RequireTx(t)
+	defer tx.Rollback()
 	applier := &storeApply{
 		tx:       tx,
 		allIsNew: true,

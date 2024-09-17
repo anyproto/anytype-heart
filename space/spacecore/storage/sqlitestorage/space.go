@@ -264,26 +264,10 @@ func (s *spaceStorage) WriteSpaceHash(hash string) error {
 	return nil
 }
 
-func (s *spaceStorage) WriteOldSpaceHash(hash string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if _, err := s.service.stmt.updateSpaceOldHash.Exec(hash, s.spaceId); err != nil {
-		return err
-	}
-	s.oldHash = hash
-	return nil
-}
-
 func (s *spaceStorage) ReadSpaceHash() (hash string, err error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.hash, nil
-}
-
-func (s *spaceStorage) ReadOldSpaceHash() (hash string, err error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.oldHash, nil
 }
 
 func (s *spaceStorage) Close(_ context.Context) (err error) {
