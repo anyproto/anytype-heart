@@ -46,7 +46,6 @@ type localDiscovery struct {
 	notifier    Notifier
 	drpcServer  clientserver.ClientServer
 	manualStart bool
-	m           sync.Mutex
 
 	hookMu       sync.Mutex
 	hookState    DiscoveryPossibility
@@ -116,8 +115,6 @@ func (l *localDiscovery) refreshInterfaces() {
 }
 
 func (l *localDiscovery) Start() (err error) {
-	l.m.Lock()
-	defer l.m.Unlock()
 	if !l.drpcServer.ServerStarted() {
 		l.notifyP2PPossibilityState(DiscoveryNoInterfaces)
 		return
