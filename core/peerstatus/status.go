@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
@@ -29,6 +30,7 @@ const (
 	Connected    Status = 1
 	NotPossible  Status = 2
 	NotConnected Status = 3
+	Restricted   Status = 4
 )
 
 func (s Status) ToPb() pb.EventP2PStatusStatus {
@@ -39,6 +41,9 @@ func (s Status) ToPb() pb.EventP2PStatusStatus {
 		return pb.EventP2PStatus_NotConnected
 	case NotPossible:
 		return pb.EventP2PStatus_NotPossible
+	case Restricted:
+		return pb.EventP2PStatus_Restricted
+
 	}
 	// default status is NotConnected
 	return pb.EventP2PStatus_NotConnected
@@ -46,8 +51,7 @@ func (s Status) ToPb() pb.EventP2PStatusStatus {
 
 type LocalDiscoveryHook interface {
 	app.Component
-	RegisterP2PNotPossible(hook func())
-	RegisterResetNotPossible(hook func())
+	RegisterDiscoveryPossibilityHook(hook func(state localdiscovery.DiscoveryPossibility))
 }
 
 type PeerToPeerStatus interface {
@@ -69,7 +73,7 @@ type p2pStatus struct {
 	peerStore     peerstore.PeerStore
 
 	sync.Mutex
-	p2pNotPossible bool // global flag means p2p is not possible because of network
+	p2pLastState   localdiscovery.DiscoveryPossibility
 	workerFinished chan struct{}
 	refreshSpaceId chan string
 
@@ -92,8 +96,7 @@ func (p *p2pStatus) Init(a *app.App) (err error) {
 	p.peersConnectionPool = app.MustComponent[pool.Service](a)
 	localDiscoveryHook := app.MustComponent[LocalDiscoveryHook](a)
 	sessionHookRunner := app.MustComponent[session.HookRunner](a)
-	localDiscoveryHook.RegisterP2PNotPossible(p.setNotPossibleStatus)
-	localDiscoveryHook.RegisterResetNotPossible(p.resetNotPossibleStatus)
+	localDiscoveryHook.RegisterDiscoveryPossibilityHook(p.setNotPossibleStatus)
 	sessionHookRunner.RegisterHook(p.sendStatusForNewSession)
 	p.ctx, p.contextCancel = context.WithCancel(context.Background())
 	p.peerStore.AddObserver(func(peerId string, spaceIdsBefore, spaceIdsAfter []string, peerRemoved bool) {
@@ -136,24 +139,13 @@ func (p *p2pStatus) Name() (name string) {
 	return CName
 }
 
-func (p *p2pStatus) setNotPossibleStatus() {
+func (p *p2pStatus) setNotPossibleStatus(state localdiscovery.DiscoveryPossibility) {
 	p.Lock()
-	if p.p2pNotPossible {
+	if p.p2pLastState == state {
 		p.Unlock()
 		return
 	}
-	p.p2pNotPossible = true
-	p.Unlock()
-	p.refreshAllSpaces()
-}
-
-func (p *p2pStatus) resetNotPossibleStatus() {
-	p.Lock()
-	if !p.p2pNotPossible {
-		p.Unlock()
-		return
-	}
-	p.p2pNotPossible = false
+	p.p2pLastState = state
 	p.Unlock()
 	p.refreshAllSpaces()
 }
@@ -232,7 +224,7 @@ func (p *p2pStatus) processSpaceStatusUpdate(spaceId string) {
 		p.spaceIds[spaceId] = currentStatus
 	}
 	connectionCount := p.countOpenConnections(spaceId)
-	newStatus := p.getResultStatus(p.p2pNotPossible, connectionCount)
+	newStatus := p.getResultStatus(p.p2pLastState, connectionCount)
 
 	if currentStatus.status != newStatus || currentStatus.connectionsCount != connectionCount {
 		p.sendEvent("", spaceId, newStatus.ToPb(), connectionCount)
@@ -241,15 +233,18 @@ func (p *p2pStatus) processSpaceStatusUpdate(spaceId string) {
 	}
 }
 
-func (p *p2pStatus) getResultStatus(notPossible bool, connectionCount int64) Status {
-	if notPossible && connectionCount == 0 {
-		return NotPossible
-	}
+func (p *p2pStatus) getResultStatus(state localdiscovery.DiscoveryPossibility, connectionCount int64) Status {
 	if connectionCount == 0 {
+		if state == localdiscovery.DiscoveryNoInterfaces {
+			return NotPossible
+		}
+		if state == localdiscovery.DiscoveryLocalNetworkRestricted {
+			return Restricted
+		}
 		return NotConnected
-	} else {
-		return Connected
 	}
+
+	return Connected
 }
 
 func (p *p2pStatus) countOpenConnections(spaceId string) int64 {

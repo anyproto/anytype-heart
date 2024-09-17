@@ -117,6 +117,9 @@ func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string)
 	messages := make([]*model.ChatMessage, 0, len(messageIds))
 	for _, messageId := range messageIds {
 		obj, err := coll.FindId(txn.Context(), messageId)
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			continue
+		}
 		if err != nil {
 			return nil, errors.Join(txn.Commit(), fmt.Errorf("find id: %w", err))
 		}

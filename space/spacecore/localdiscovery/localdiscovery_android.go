@@ -66,6 +66,7 @@ func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
 	}
 	// TODO: move this to android side
 	newAddrs, err := addrs.GetInterfacesAddrs()
+	newAddrs = filterMulticastInterfaces(newAddrs)
 	l.notifyPeerToPeerStatus(newAddrs)
 
 	if err != nil {
@@ -160,7 +161,7 @@ func (l *localDiscovery) notifyPeerToPeerStatus(newAddrs addrs.InterfacesAddrs) 
 }
 
 func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
-	return len(newAddrs.Interfaces) == 0 || IsLoopBack(newAddrs.Interfaces)
+	return len(newAddrs.Interfaces) == 0 || IsLoopBack(newAddrs.NetInterfaces())
 }
 
 func IsLoopBack(interfaces []net.Interface) bool {

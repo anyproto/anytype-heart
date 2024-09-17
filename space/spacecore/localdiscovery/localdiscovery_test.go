@@ -80,34 +80,34 @@ func TestLocalDiscovery_Init(t *testing.T) {
 }
 
 func TestLocalDiscovery_checkAddrs(t *testing.T) {
-	t.Run("checkAddrs - server run successfully", func(t *testing.T) {
+	t.Run("refreshInterfaces - server run successfully", func(t *testing.T) {
 		// given
 		f := newFixture(t)
 
 		// when
 		ld := f.LocalDiscovery.(*localDiscovery)
 		ld.port = 6789
-		err := ld.checkAddrs(context.Background())
+		err := ld.refreshInterfaces(context.Background())
 
 		// then
 		assert.Nil(t, err)
 	})
-	t.Run("checkAddrs - server run successfully and send update to peer to peer status hook", func(t *testing.T) {
+	t.Run("refreshInterfaces - server run successfully and send update to peer to peer status hook", func(t *testing.T) {
 		// given
 		f := newFixture(t)
 
 		// when
 		ld := f.LocalDiscovery.(*localDiscovery)
-		var hookCalled atomic.Bool
-		ld.RegisterResetNotPossible(func() {
-			hookCalled.Store(true)
+		var hookCalled atomic.Int64
+		ld.RegisterDiscoveryPossibilityHook(func(state DiscoveryPossibility) {
+			hookCalled.Store(int64(state))
 		})
 		ld.port = 6789
-		err := ld.checkAddrs(context.Background())
+		err := ld.refreshInterfaces(context.Background())
 
 		// then
 		assert.Nil(t, err)
-		assert.True(t, hookCalled.Load())
+		assert.True(t, hookCalled.Load() == int64(DiscoveryPossible))
 	})
 }
 
