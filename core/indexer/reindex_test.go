@@ -6,7 +6,6 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/mock_spacestorage"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -117,10 +116,10 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 	t.Run("full marketplace reindex on force flag update", func(t *testing.T) {
 		// given
 		fx := NewIndexerFixture(t)
-		fx.objectStore.AddObjects(t, []objectstore.TestObject{map[domain.RelationKey]*types.Value{
-			bundle.RelationKeyId:      pbtypes.String("relationThatWillBeDeleted"),
-			bundle.RelationKeyName:    pbtypes.String("Relation-That-Will-Be-Deleted"),
-			bundle.RelationKeySpaceId: pbtypes.String(spaceId),
+		fx.objectStore.AddObjects(t, []objectstore.TestObject{{
+			bundle.RelationKeyId:      domain.String("relationThatWillBeDeleted"),
+			bundle.RelationKeyName:    domain.String("Relation-That-Will-Be-Deleted"),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
 		}})
 
 		checksums := fx.getLatestChecksums(true)
@@ -142,7 +141,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		// then
 		det, err := fx.store.GetDetails("relationThatWillBeDeleted")
 		assert.NoError(t, err)
-		assert.Empty(t, det.Details.Fields)
+		assert.True(t, det.Len() == 0)
 	})
 }
 

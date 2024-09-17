@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -263,17 +263,17 @@ func Test_GetFileBlockVideo(t *testing.T) {
 func TestSetCover(t *testing.T) {
 	t.Run("cover is nil", func(t *testing.T) {
 		// given
-		details := make(map[string]*types.Value, 0)
+		details := domain.NewDetails()
 
 		// when
 		SetCover(details, nil)
 
 		// then
-		assert.Empty(t, details)
+		assert.True(t, details.Len() == 0)
 	})
 	t.Run("details are nil", func(t *testing.T) {
 		// given
-		var details map[string]*types.Value
+		var details *domain.Details
 
 		// when
 		SetCover(details, &FileObject{
@@ -289,7 +289,7 @@ func TestSetCover(t *testing.T) {
 	})
 	t.Run("external type", func(t *testing.T) {
 		// given
-		details := make(map[string]*types.Value, 0)
+		details := domain.NewDetails()
 
 		// when
 		SetCover(details, &FileObject{
@@ -301,12 +301,12 @@ func TestSetCover(t *testing.T) {
 		})
 
 		// then
-		assert.Equal(t, "url", details[bundle.RelationKeyCoverId.String()].GetStringValue())
-		assert.Equal(t, float64(1), details[bundle.RelationKeyCoverType.String()].GetNumberValue())
+		assert.Equal(t, "url", details.GetString(bundle.RelationKeyCoverId))
+		assert.Equal(t, int64(1), details.GetInt64(bundle.RelationKeyCoverType))
 	})
 	t.Run("file type", func(t *testing.T) {
 		// given
-		details := make(map[string]*types.Value, 0)
+		details := domain.NewDetails()
 
 		// when
 		SetCover(details, &FileObject{
@@ -318,7 +318,7 @@ func TestSetCover(t *testing.T) {
 		})
 
 		// then
-		assert.Equal(t, "url", details[bundle.RelationKeyCoverId.String()].GetStringValue())
-		assert.Equal(t, float64(1), details[bundle.RelationKeyCoverType.String()].GetNumberValue())
+		assert.Equal(t, "url", details.GetString(bundle.RelationKeyCoverId))
+		assert.Equal(t, int64(1), details.GetInt64(bundle.RelationKeyCoverType))
 	})
 }

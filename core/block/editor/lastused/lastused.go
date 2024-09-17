@@ -188,7 +188,7 @@ func (u *updater) updateLastUsedDate(spc clientspace.Space, key Key, ts int64) e
 }
 
 func SetLastUsedDateForInitialObjectType(id string, details *domain.Details) {
-	if !strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || details == nil || details.Len() == 0 {
+	if !strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || details == nil {
 		return
 	}
 

@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -394,7 +393,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		pr := property.DatabaseProperties{"Name": &p}
 		dbService := New(nil)
 		req := property.NewPropertiesStore()
-		req.AddSnapshotByNameAndFormat(p.Name, int64(p.GetFormat()), &model.SmartBlockSnapshotBase{})
+		req.AddSnapshotByNameAndFormat(p.Name, int64(p.GetFormat()), &common.StateSnapshot{})
 		db := Database{Properties: pr}
 
 		// when
@@ -403,7 +402,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 
 		// then
 		assert.Len(t, snapshot, 1)
-		assert.NotEqual(t, sb.SmartBlockTypeRelation, snapshot[0].SbType)
+		assert.NotEqual(t, sb.SmartBlockTypeRelation, snapshot[0].Snapshot.SbType)
 	})
 
 	t.Run("Database has Select property with Tag name", func(t *testing.T) {
@@ -647,8 +646,8 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, snapshot, 1)
-		cover := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyCoverId.String())
-		coverType := pbtypes.GetInt64(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyCoverType.String())
+		cover := snapshot[0].Snapshot.Data.Details.GetString(bundle.RelationKeyCoverId)
+		coverType := snapshot[0].Snapshot.Data.Details.GetInt64(bundle.RelationKeyCoverType)
 		assert.Equal(t, "url", cover)
 		assert.Equal(t, int64(1), coverType)
 	})
@@ -662,7 +661,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, snapshot, 1)
-		cover := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyCoverId.String())
+		cover := snapshot[0].Snapshot.Data.Details.GetString(bundle.RelationKeyCoverId)
 		assert.Equal(t, "", cover)
 	})
 }

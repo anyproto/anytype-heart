@@ -271,6 +271,7 @@ func (fx *StoreFixture) assertPendingLocalDetails(t *testing.T) {
 func TestUpdateObjectLinks(t *testing.T) {
 	t.Run("with no links added", func(t *testing.T) {
 		s := NewStoreFixture(t)
+		ctx := context.Background()
 
 		err := s.UpdateObjectLinks(ctx, "id1", []string{})
 		require.NoError(t, err)
@@ -282,6 +283,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 
 	t.Run("with some links added", func(t *testing.T) {
 		s := NewStoreFixture(t)
+		ctx := context.Background()
 
 		err := s.UpdateObjectLinks(ctx, "id1", []string{"id2", "id3"})
 		require.NoError(t, err)
@@ -293,6 +295,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 
 	t.Run("with some existing links, add new links", func(t *testing.T) {
 		s := NewStoreFixture(t)
+		ctx := context.Background()
 
 		s.givenExistingLinks(t)
 
@@ -306,6 +309,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 
 	t.Run("with some existing links, remove links", func(t *testing.T) {
 		s := NewStoreFixture(t)
+		ctx := context.Background()
 
 		s.givenExistingLinks(t)
 
@@ -339,6 +343,7 @@ func (fx *StoreFixture) assertOutboundLinks(t *testing.T, id string, links []str
 }
 
 func (fx *StoreFixture) givenExistingLinks(t *testing.T) {
+	ctx := context.Background()
 	err := fx.UpdateObjectLinks(ctx, "id1", []string{"id2"})
 	require.NoError(t, err)
 

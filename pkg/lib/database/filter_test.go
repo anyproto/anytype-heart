@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anyproto/any-store/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -881,17 +880,17 @@ func TestFilter2ValuesComp_FilterObject(t *testing.T) {
 			Key2: "b",
 			Cond: model.BlockContentDataviewFilter_Equal,
 		}
-		obj1 := &types.Struct{Fields: map[string]*types.Value{
-			"a": pbtypes.String("x"),
-			"b": pbtypes.String("x"),
-		}}
-		obj2 := &types.Struct{Fields: map[string]*types.Value{
-			"a": pbtypes.String("x"),
-			"b": pbtypes.String("y"),
-		}}
-		obj3 := &types.Struct{Fields: map[string]*types.Value{
-			"b": pbtypes.String("x"),
-		}}
+		obj1 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"a": domain.String("x"),
+			"b": domain.String("x"),
+		})
+		obj2 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"a": domain.String("x"),
+			"b": domain.String("y"),
+		})
+		obj3 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"b": domain.String("x"),
+		})
 		assertFilter(t, eq, obj1, true)
 		assertFilter(t, eq, obj2, false)
 		assertFilter(t, eq, obj3, false)
@@ -903,18 +902,18 @@ func TestFilter2ValuesComp_FilterObject(t *testing.T) {
 			Key2: "b",
 			Cond: model.BlockContentDataviewFilter_Greater,
 		}
-		obj1 := &types.Struct{Fields: map[string]*types.Value{
-			"a": pbtypes.Int64(100),
-			"b": pbtypes.Int64(200),
-		}}
-		obj2 := &types.Struct{Fields: map[string]*types.Value{
-			"a": pbtypes.Int64(300),
-			"b": pbtypes.Int64(-500),
-		}}
-		obj3 := &types.Struct{Fields: map[string]*types.Value{
-			"a": pbtypes.String("xxx"),
-			"b": pbtypes.String("ddd"),
-		}}
+		obj1 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"a": domain.Int64(100),
+			"b": domain.Int64(200),
+		})
+		obj2 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"a": domain.Int64(300),
+			"b": domain.Int64(-500),
+		})
+		obj3 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"a": domain.String("xxx"),
+			"b": domain.String("ddd"),
+		})
 		assertFilter(t, eq, obj1, false)
 		assertFilter(t, eq, obj2, true)
 		assertFilter(t, eq, obj3, true)

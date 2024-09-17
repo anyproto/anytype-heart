@@ -1039,7 +1039,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 	})
 	t.Run("Page has property which already exist - don't create new relation", func(t *testing.T) {
 		// given
-		details := make(map[string]*types.Value, 0)
+		details := domain.NewDetails()
 		c := client.NewClient()
 		selectProperty := property.SelectItem{
 			Object: "",
@@ -1055,7 +1055,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			p:                      Page{Properties: properties},
 		}
 		req := property.NewPropertiesStore()
-		req.AddSnapshotByNameAndFormat("Name", int64(selectProperty.GetFormat()), &model.SmartBlockSnapshotBase{})
+		req.AddSnapshotByNameAndFormat("Name", int64(selectProperty.GetFormat()), &common.StateSnapshot{})
 		do := &DataObject{
 			request:   &api.NotionImportContext{},
 			relations: req,
@@ -1175,9 +1175,9 @@ func TestTask_provideDetails(t *testing.T) {
 		details, _ := pageTask.prepareDetails()
 
 		// then
-		assert.Contains(t, details, bundle.RelationKeyCoverType.String())
-		assert.Contains(t, details, bundle.RelationKeyCoverId.String())
-		assert.Equal(t, "file", details[bundle.RelationKeyCoverId.String()].GetStringValue())
+		assert.True(t, details.Has(bundle.RelationKeyCoverType))
+		assert.True(t, details.Has(bundle.RelationKeyCoverId))
+		assert.Equal(t, "file", details.GetString(bundle.RelationKeyCoverId))
 	})
 	t.Run("Page doesn't have cover - details doesn't have relations coverId and coverType", func(t *testing.T) {
 		c := client.NewClient()
@@ -1193,7 +1193,7 @@ func TestTask_provideDetails(t *testing.T) {
 		details, _ := pageTask.prepareDetails()
 
 		// then
-		assert.Empty(t, details[bundle.RelationKeyCoverType.String()])
-		assert.Empty(t, details[bundle.RelationKeyCoverId.String()])
+		assert.False(t, details.Has(bundle.RelationKeyCoverType))
+		assert.False(t, details.Has(bundle.RelationKeyCoverId))
 	})
 }
