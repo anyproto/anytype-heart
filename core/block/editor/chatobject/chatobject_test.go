@@ -142,6 +142,27 @@ func TestGetMessages(t *testing.T) {
 	}
 }
 
+func TestGetMessagesByIds(t *testing.T) {
+	ctx := context.Background()
+	sessionCtx := session.NewContext()
+
+	fx := newFixture(t)
+
+	inputMessage := givenMessage()
+	messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
+	require.NoError(t, err)
+
+	messages, err := fx.GetMessagesByIds(ctx, []string{messageId, "wrongId"})
+	require.NoError(t, err)
+	require.Len(t, messages, 1)
+
+	want := givenMessage()
+	want.Id = messageId
+	want.Creator = testCreator
+	got := messages[0]
+	assertMessagesEqual(t, want, got)
+}
+
 func TestEditMessage(t *testing.T) {
 	t.Run("edit own message", func(t *testing.T) {
 		ctx := context.Background()
