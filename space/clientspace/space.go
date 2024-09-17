@@ -215,7 +215,7 @@ func (s *space) migrateRelationOptions(objectStore objectstore.ObjectStore) erro
 }
 
 func (s *space) migrateTag(objectStore objectstore.ObjectStore) error {
-	ralation, _, err := objectStore.QueryObjectIDs(database.Query{
+	relation, _, err := objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -228,6 +228,11 @@ func (s *space) migrateTag(objectStore objectstore.ObjectStore) error {
 				Value:       pbtypes.String(bundle.RelationKeyTag.URL()),
 			},
 			{
+				RelationKey: bundle.RelationKeyRelationFormat.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.RelationFormat_tag)),
+			},
+			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(s.Id()),
@@ -237,10 +242,10 @@ func (s *space) migrateTag(objectStore objectstore.ObjectStore) error {
 	if err != nil {
 		return err
 	}
-	if len(ralation) == 0 {
+	if len(relation) == 0 {
 		return nil
 	}
-	err = s.Do(ralation[0], func(sb smartblock.SmartBlock) error {
+	err = s.Do(relation[0], func(sb smartblock.SmartBlock) error {
 		return nil
 	})
 	return nil

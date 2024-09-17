@@ -281,32 +281,32 @@ func (p *Page) migrateRelationOptions(s *state.State) {
 func (p *Page) migrateTag(s *state.State) {
 	if layout, _ := s.Layout(); layout == model.ObjectType_relation {
 		relationKey := pbtypes.GetString(s.CombinedDetails(), bundle.RelationKeyUniqueKey.String())
-		if relationKey != bundle.RelationKeyTag.URL() {
-			return
-		}
-		tagType, _, err := p.objectStore.QueryObjectIDs(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyUniqueKey.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(bundle.TypeKeyTag.URL()),
+		relationFormat := pbtypes.GetInt64(s.CombinedDetails(), bundle.RelationKeyRelationFormat.String())
+		if relationKey == bundle.RelationKeyTag.URL() && relationFormat == int64(model.RelationFormat_tag) {
+			tagType, _, err := p.objectStore.QueryObjectIDs(database.Query{
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyUniqueKey.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String(bundle.TypeKeyTag.URL()),
+					},
+					{
+						RelationKey: bundle.RelationKeySpaceId.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String(p.SpaceID()),
+					},
 				},
-				{
-					RelationKey: bundle.RelationKeySpaceId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(p.SpaceID()),
-				},
-			},
-		})
-		if err != nil {
-			log.Errorf("failed to get object by unique key: %v", err)
-			return
+			})
+			if err != nil {
+				log.Errorf("failed to get object by unique key: %v", err)
+				return
+			}
+			if len(tagType) == 0 {
+				log.Errorf("type not exists")
+				return
+			}
+			s.SetDetail(bundle.RelationKeyRelationFormatObjectTypes.String(), pbtypes.StringList([]string{tagType[0]}))
+			s.SetDetail(bundle.RelationKeyRelationFormat.String(), pbtypes.Int64(int64(model.RelationFormat_object)))
 		}
-		if len(tagType) == 0 {
-			log.Errorf("type not exists")
-			return
-		}
-		s.SetDetail(bundle.RelationKeyRelationFormatObjectTypes.String(), pbtypes.StringList([]string{tagType[0]}))
-		s.SetDetail(bundle.RelationKeyRelationFormat.String(), pbtypes.Int64(int64(model.RelationFormat_object)))
 	}
 }
