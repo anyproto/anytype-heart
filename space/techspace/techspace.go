@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -258,8 +259,13 @@ func (s *techSpace) accountObjectCreate(ctx context.Context) (err error) {
 		Key:      uniqueKey,
 		InitFunc: initFunc,
 	})
-	if err != nil {
-		return
+	if errors.Is(err, treestorage.ErrTreeExists) {
+		accId, err := s.AccountObjectId()
+		if err != nil {
+			return err
+		}
+		_, err = s.objectCache.GetObject(ctx, accId)
+		return err
 	}
 	return
 }
