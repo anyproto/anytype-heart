@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/details"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -151,7 +151,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	}
 	accountObjects := spc.DerivedIDs()
 
-	ds := app.MustComponent[details.Service](s.app)
+	ds := app.MustComponent[detailservice.Service](s.app)
 	if err := ds.SetDetails(nil,
 		accountObjects.Profile,
 		profileDetails,

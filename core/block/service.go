@@ -17,7 +17,7 @@ import (
 
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/details"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
@@ -102,7 +102,7 @@ type Service struct {
 	tempDirProvider      core.TempDirProvider
 	builtinObjectService builtinObjects
 	fileObjectService    fileobject.Service
-	detailsService       details.Service
+	detailsService       detailservice.Service
 
 	fileService         files.Service
 	fileUploaderService fileuploader.Service
@@ -147,7 +147,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
-	s.detailsService = app.MustComponent[details.Service](a)
+	s.detailsService = app.MustComponent[detailservice.Service](a)
 	return
 }
 

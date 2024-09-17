@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/details"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -49,7 +49,7 @@ type ObjectDeleter interface {
 }
 
 type ObjectCreator struct {
-	detailsService details.Service
+	detailsService detailservice.Service
 	spaceService   space.Service
 	objectStore    objectstore.ObjectStore
 	relationSyncer *syncer.FileRelationSyncer
@@ -58,7 +58,7 @@ type ObjectCreator struct {
 	objectDeleter  ObjectDeleter
 }
 
-func New(detailsService details.Service,
+func New(detailsService detailservice.Service,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
 	relationSyncer *syncer.FileRelationSyncer,

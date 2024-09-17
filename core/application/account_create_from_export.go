@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block/details"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -160,7 +160,7 @@ func (s *Service) getBootstrapConfig(req *pb.RpcAccountRecoverFromLegacyExportRe
 
 func (s *Service) setDetails(profile *pb.Profile, icon int64) error {
 	profileDetails, accountDetails := buildDetails(profile, icon)
-	ds := app.MustComponent[details.Service](s.app)
+	ds := app.MustComponent[detailservice.Service](s.app)
 
 	spaceService := app.MustComponent[space.Service](s.app)
 	spc, err := spaceService.GetPersonalSpace(context.Background())

@@ -7,7 +7,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/anyproto/anytype-heart/core/block/details/mock_details"
+	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -27,7 +27,7 @@ func TestObjectCreator_Create(t *testing.T) {
 	t.Run("participant object - don't update it", func(t *testing.T) {
 		// given
 		spaceID := "spaceId"
-		detailsService := mock_details.NewMockService(t)
+		detailsService := mock_detailservice.NewMockService(t)
 		mockService := mock_space.NewMockService(t)
 		mockSpace := mock_clientspace.NewMockSpace(t)
 		mockSpace.EXPECT().IsReadOnly().Return(true)

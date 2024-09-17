@@ -18,7 +18,7 @@ import (
 	"github.com/miolini/datacounter"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/details"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -146,7 +146,7 @@ type BuiltinObjects interface {
 }
 
 type builtinObjects struct {
-	detailsService details.Service
+	detailsService detailservice.Service
 	importer       importer.Importer
 	store          objectstore.ObjectStore
 	tempDirService core.TempDirProvider
@@ -160,7 +160,7 @@ func New() BuiltinObjects {
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
-	b.detailsService = app.MustComponent[details.Service](a)
+	b.detailsService = app.MustComponent[detailservice.Service](a)
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
 	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
