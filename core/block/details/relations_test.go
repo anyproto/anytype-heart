@@ -1,12 +1,17 @@
 package details
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -14,8 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-const spaceId = "spaceId"
 
 func relationObject(key domain.RelationKey, format model.RelationFormat) objectstore.TestObject {
 	return objectstore.TestObject{
@@ -116,4 +119,92 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 			assert.Equal(t, tc.expectedCounters, counters)
 		})
 	}
+}
+
+func TestService_ObjectTypeAddRelations(t *testing.T) {
+	t.Run("add recommended relations", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		sb := smarttest.New(bundle.TypeKeyTask.URL())
+		sb.SetSpace(fx.space)
+		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
+			assert.Equal(t, bundle.TypeKeyTask.URL(), objectId)
+			return sb, nil
+		})
+		fx.space.EXPECT().GetRelationIdByKey(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, key domain.RelationKey) (string, error) {
+			return key.URL(), nil
+		})
+
+		// when
+		err := fx.ObjectTypeAddRelations(nil, bundle.TypeKeyTask.URL(), []domain.RelationKey{
+			bundle.RelationKeyAssignee, bundle.RelationKeyDone,
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, []string{bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL()},
+			pbtypes.GetStringList(sb.Details(), bundle.RelationKeyRecommendedRelations.String()))
+	})
+
+	t.Run("editing of bundled types is prohibited", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		// when
+		err := fx.ObjectTypeAddRelations(nil, bundle.TypeKeyTask.BundledURL(), []domain.RelationKey{
+			bundle.RelationKeyAssignee, bundle.RelationKeyDone,
+		})
+
+		// then
+		assert.Error(t, err)
+		assert.ErrorIs(t, ErrBundledTypeIsReadonly, err)
+	})
+}
+
+func TestService_ObjectTypeRemoveRelations(t *testing.T) {
+	t.Run("remove recommended relations", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		sb := smarttest.New(bundle.TypeKeyTask.URL())
+		sb.SetSpace(fx.space)
+		sb.Doc.(*state.State).SetDetails(&types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList([]string{
+				bundle.RelationKeyAssignee.URL(),
+				bundle.RelationKeyIsFavorite.URL(),
+				bundle.RelationKeyDone.URL(),
+				bundle.RelationKeyLinkedProjects.URL(),
+			}),
+		}})
+		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
+			assert.Equal(t, bundle.TypeKeyTask.URL(), objectId)
+			return sb, nil
+		})
+		fx.space.EXPECT().GetRelationIdByKey(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, key domain.RelationKey) (string, error) {
+			return key.URL(), nil
+		})
+
+		// when
+		err := fx.ObjectTypeRemoveRelations(nil, bundle.TypeKeyTask.URL(), []domain.RelationKey{
+			bundle.RelationKeyAssignee, bundle.RelationKeyDone,
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, []string{bundle.RelationKeyIsFavorite.URL(), bundle.RelationKeyLinkedProjects.URL()},
+			pbtypes.GetStringList(sb.Details(), bundle.RelationKeyRecommendedRelations.String()))
+	})
+
+	t.Run("editing of bundled types is prohibited", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		// when
+		err := fx.ObjectTypeRemoveRelations(nil, bundle.TypeKeyTask.BundledURL(), []domain.RelationKey{
+			bundle.RelationKeyAssignee, bundle.RelationKeyDone,
+		})
+
+		// then
+		assert.Error(t, err)
+		assert.ErrorIs(t, ErrBundledTypeIsReadonly, err)
+	})
 }

@@ -107,7 +107,7 @@ func (s *service) SetIsArchived(objectId string, isArchived bool) error {
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	if err := s.checkArchivedRestriction(isArchived, spaceID, objectId); err != nil {
+	if err := s.checkArchivedRestriction(isArchived, objectId); err != nil {
 		return err
 	}
 	return s.objectLinksCollectionModify(spc.DerivedIDs().Archive, objectId, isArchived)
@@ -166,7 +166,7 @@ func (s *service) SetListIsArchived(objectIds []string, isArchived bool) error {
 	return multiErr.ErrorOrNil()
 }
 
-func (s *service) checkArchivedRestriction(isArchived bool, spaceID string, objectId string) error {
+func (s *service) checkArchivedRestriction(isArchived bool, objectId string) error {
 	if !isArchived {
 		return nil
 	}
@@ -220,7 +220,7 @@ func (s *service) setIsArchivedForObjects(spaceID string, objectIDs []string, is
 		}
 		for _, id := range ids {
 			var err error
-			if restrErr := s.checkArchivedRestriction(isArchived, spaceID, id); restrErr != nil {
+			if restrErr := s.checkArchivedRestriction(isArchived, id); restrErr != nil {
 				err = restrErr
 			} else {
 				if isArchived {
