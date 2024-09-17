@@ -94,19 +94,34 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return fmt.Errorf("read store doc: %w", err)
 	}
+	coll, err := a.state.Collection(ctx.Ctx, collectionName)
+	if err != nil {
+		return fmt.Errorf("get collection: %w", err)
+	}
+	_, err = coll.FindId(ctx.Ctx, accountDocument)
+	if err != nil {
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			err = coll.Insert(ctx.Ctx, fmt.Sprintf(`{"id":"%s"}`, accountDocument))
+			if err != nil {
+				return fmt.Errorf("insert account document: %w", err)
+			}
+			return nil
+		}
+		return fmt.Errorf("find id: %w", err)
+	}
 	st := a.NewState()
-	err = a.update(a.ctx, a.NewState())
+	err = a.update(a.ctx, st)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
 	}
 	// TODO: [PS] not sure that this works :-)
-	return a.SmartBlock.(source.ChangeReceiver).StateRebuild(st)
+	return a.SmartBlock.Apply(st, smartblock.NotPushChanges, smartblock.NoEvent, smartblock.NoHistory, smartblock.SkipIfNoChanges)
 }
 
 func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string, err error) {
 	var (
 		chs     = params.Changes
-		builder = storestate.Builder{}
+		builder = &storestate.Builder{}
 	)
 	for _, ch := range chs {
 		set := ch.GetDetailsSet()
@@ -120,6 +135,9 @@ func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string,
 				return "", fmt.Errorf("modify content: %w", err)
 			}
 		}
+	}
+	if builder.StoreChange == nil {
+		return "", nil
 	}
 	return a.storeSource.PushStoreChange(a.ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
@@ -166,13 +184,9 @@ func (a *accountObject) update(ctx context.Context, st *state.State) (err error)
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
-	txn, err := coll.ReadTx(ctx)
+	obj, err := coll.FindId(ctx, accountDocument)
 	if err != nil {
-		return fmt.Errorf("start read tx: %w", err)
-	}
-	obj, err := coll.FindId(txn.Context(), accountDocument)
-	if err != nil {
-		return errors.Join(txn.Commit(), fmt.Errorf("find id: %w", err))
+		return fmt.Errorf("find id: %w", err)
 	}
 	for key := range a.relMapper.keys {
 		pbVal, ok := a.relMapper.GetRelationKey(key, obj.Value())
@@ -181,8 +195,5 @@ func (a *accountObject) update(ctx context.Context, st *state.State) (err error)
 		}
 		st.SetDetailAndBundledRelation(domain.RelationKey(key), pbVal)
 	}
-	if err != nil {
-		return errors.Join(txn.Commit(), fmt.Errorf("state rebuild: %w", err))
-	}
-	return txn.Commit()
+	return
 }
