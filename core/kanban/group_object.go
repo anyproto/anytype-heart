@@ -14,7 +14,10 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const defaultGroup = "empty"
+const (
+	defaultGroup = "empty"
+	columnLimit  = 100
+)
 
 type GroupObject struct {
 	key                  string
@@ -59,7 +62,7 @@ func (t *GroupObject) retrieveObjectsWithGivenRelation(f *database.Filters, spac
 		f.FilterObj = database.FiltersAnd{f.FilterObj, filterEmptyRelation}
 	}
 
-	return t.store.QueryRaw(f, 100, 0)
+	return t.store.QueryRaw(f, 0, 0)
 }
 
 func (t *GroupObject) retrieveObjectsWithGivenType(spaceID string, relation database.Record) ([]database.Record, error) {
@@ -77,7 +80,7 @@ func (t *GroupObject) retrieveObjectsWithGivenType(spaceID string, relation data
 	if len(objectTypes) == 0 {
 		filter = t.makeFilterForEmptyObjectTypesList(spaceFilter)
 	}
-	return t.store.QueryRaw(filter, 100, 0)
+	return t.store.QueryRaw(filter, 0, 0)
 }
 
 func (t *GroupObject) makeFilterForEmptyObjectTypesList(spaceFilter database.FilterEq) *database.Filters {
@@ -133,42 +136,58 @@ func (t *GroupObject) retrieveRelationFromStore(spaceID string) (database.Record
 	return relations[0], nil
 }
 
-func (t *GroupObject) MakeGroups() (GroupSlice, error) {
-	var groups GroupSlice
-	uniqMap := make(map[string]bool)
+func (t *GroupObject) MakeGroups() (GroupCounts, error) {
+	uniqMap := make(map[string]GroupCount)
 	for _, v := range t.objectsWithGivenType {
-		groups = t.makeGroupsFromObjectsWithGivenType(v, uniqMap, groups)
+		t.makeGroupsFromObjectsWithGivenType(v, uniqMap)
 	}
 	for _, v := range t.objectsWithRelation {
-		groups = t.makeGroupsFromObjectsWithRelation(v, uniqMap, groups)
+		t.makeGroupsFromObjectsWithRelation(v, uniqMap)
+	}
+
+	var groups GroupCounts = make([]GroupCount, 0, len(uniqMap))
+	for _, group := range uniqMap {
+		groups = append(groups, group)
+	}
+	sort.Sort(groups)
+	if groups.Len() > columnLimit {
+		groups = groups[:columnLimit]
 	}
 	return groups, nil
 }
 
-func (t *GroupObject) makeGroupsFromObjectsWithGivenType(v database.Record, uniqMap map[string]bool, groups GroupSlice) GroupSlice {
+func (t *GroupObject) makeGroupsFromObjectsWithGivenType(v database.Record, uniqMap map[string]GroupCount) {
 	if objectId := pbtypes.GetString(v.Details, bundle.RelationKeyId.String()); objectId != "" {
-		uniqMap[objectId] = true
-		groups = append(groups, Group{
-			Id:   objectId,
-			Data: GroupData{Ids: []string{objectId}},
-		})
+		uniqMap[objectId] = GroupCount{
+			Group: Group{
+				Id:   objectId,
+				Data: GroupData{Ids: []string{objectId}},
+			},
+		}
 	}
-	return groups
 }
 
-func (t *GroupObject) makeGroupsFromObjectsWithRelation(v database.Record, uniqMap map[string]bool, groups GroupSlice) GroupSlice {
+func (t *GroupObject) makeGroupsFromObjectsWithRelation(v database.Record, uniqMap map[string]GroupCount) {
 	if objectIds := pbtypes.GetStringList(v.Details, t.key); len(objectIds) > 1 {
 		sort.Strings(objectIds)
 		hash := strings.Join(objectIds, "")
-		if !uniqMap[hash] {
-			uniqMap[hash] = true
-			groups = append(groups, Group{
-				Id:   hash,
-				Data: GroupData{Ids: objectIds},
-			})
+		if groups, ok := uniqMap[hash]; !ok {
+			uniqMap[hash] = GroupCount{
+				Group: Group{
+					Id:   hash,
+					Data: GroupData{Ids: objectIds},
+				},
+				Count: 1,
+			}
+		} else {
+			groups.Count += 1
 		}
 	}
-	return groups
+	if objectIds := pbtypes.GetStringList(v.Details, t.key); len(objectIds) == 1 {
+		if groups, ok := uniqMap[objectIds[0]]; ok {
+			groups.Count += 1
+		}
+	}
 }
 
 func (t *GroupObject) MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, error) {
@@ -178,8 +197,6 @@ func (t *GroupObject) MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, 
 	if err != nil {
 		return nil, err
 	}
-
-	sort.Sort(groups)
 
 	for _, g := range groups {
 		result = append(result, &model.BlockContentDataviewGroup{

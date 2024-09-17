@@ -25,7 +25,6 @@ type Service interface {
 
 type Grouper interface {
 	InitGroups(spaceID string, f *database.Filters) error
-	MakeGroups() (GroupSlice, error)
 	MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, error)
 }
 
