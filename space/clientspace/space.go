@@ -171,6 +171,10 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	if err != nil {
 		log.Error("failed to migrate relation options", zap.Error(err))
 	}
+	err = s.migrateTag(objectStore)
+	if err != nil {
+		log.Error("failed to migrate relation options", zap.Error(err))
+	}
 	if !disableRemoteLoad {
 		s.common.TreeSyncer().StartSync()
 	}
@@ -207,6 +211,38 @@ func (s *space) migrateRelationOptions(objectStore objectstore.ObjectStore) erro
 			log.Debug("failed to migrate relation option", zap.Error(err))
 		}
 	}
+	return nil
+}
+
+func (s *space) migrateTag(objectStore objectstore.ObjectStore) error {
+	ralation, _, err := objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.RelationKeyTag.URL()),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(s.Id()),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if len(ralation) == 0 {
+		return nil
+	}
+	err = s.Do(ralation[0], func(sb smartblock.SmartBlock) error {
+		return nil
+	})
 	return nil
 }
 
