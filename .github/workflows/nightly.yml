@@ -36,9 +36,12 @@ jobs:
           go-version: '1.22'
           check-latest: true
 
-      - name: Check GO version
-        shell: bash
-        run: go version
+      - name: Setup GO
+        run: |
+          go version
+          echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
+          echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
+          echo $(go env GOPATH)/bin >> $GITHUB_PATH
 
       - name: Install patched gox
         run: |
