@@ -760,6 +760,7 @@ message ObjectType {
         pdf = 20;
         chat = 21;
         chatDerived = 22;
+        tag = 23;
     }
 }
 
