@@ -93,6 +93,7 @@ func New(
 			bundle.RelationKeyName.String():        KeyTypeString,
 			bundle.RelationKeyDescription.String(): KeyTypeString,
 			bundle.RelationKeyIconImage.String():   KeyTypeString,
+			bundle.RelationKeyIconOption.String():  KeyTypeInt64,
 		}),
 	}
 }
@@ -121,6 +122,7 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
+	a.ctx, a.cancel = context.WithCancel(context.Background())
 	_, err = coll.FindId(ctx.Ctx, accountDocument)
 	if err != nil {
 		if errors.Is(err, anystore.ErrDocNotFound) {
@@ -132,7 +134,6 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 		}
 		return fmt.Errorf("find id: %w", err)
 	}
-	a.ctx, a.cancel = context.WithCancel(context.Background())
 	st := a.NewState()
 	err = a.update(a.ctx, st)
 	if err != nil {
