@@ -1,6 +1,8 @@
 package accountobject
 
 import (
+	"fmt"
+
 	"github.com/gogo/protobuf/types"
 	"github.com/valyala/fastjson"
 
@@ -57,6 +59,7 @@ func (r *relationsMapper) GetStoreKey(key string, val *types.Value) (res any, ok
 		if res == "" {
 			return nil, false
 		}
+		res = fmt.Sprintf(`"%s"`, res)
 	case KeyTypeInt64:
 		res = int64(val.GetNumberValue())
 		if res == 0 {

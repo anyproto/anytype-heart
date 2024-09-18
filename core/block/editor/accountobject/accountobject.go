@@ -102,8 +102,7 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return err
 	}
-	a.ctx, a.cancel = context.WithCancel(ctx.Ctx)
-	stateStore, err := storestate.New(a.ctx, a.Id(), a.dbProvider.GetStoreDb(), accountHandler{})
+	stateStore, err := storestate.New(ctx.Ctx, a.Id(), a.dbProvider.GetStoreDb(), accountHandler{})
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
 	}
@@ -133,12 +132,12 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 		}
 		return fmt.Errorf("find id: %w", err)
 	}
+	a.ctx, a.cancel = context.WithCancel(context.Background())
 	st := a.NewState()
 	err = a.update(a.ctx, st)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
 	}
-	// TODO: [PS] not sure that this works :-)
 	return a.SmartBlock.Apply(st, smartblock.NotPushChanges, smartblock.NoEvent, smartblock.NoHistory, smartblock.SkipIfNoChanges)
 }
 
