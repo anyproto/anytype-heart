@@ -138,7 +138,7 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
 	}
-	return a.SmartBlock.Apply(st, smartblock.NotPushChanges, smartblock.NoEvent, smartblock.NoHistory, smartblock.SkipIfNoChanges)
+	return a.SmartBlock.Apply(st, smartblock.NotPushChanges, smartblock.NoHistory, smartblock.SkipIfNoChanges)
 }
 
 func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string, err error) {

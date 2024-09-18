@@ -93,6 +93,7 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
+	s.myIdentity = s.accountService.AccountID()
 	techSpace, err := s.spaceService.GetTechSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
