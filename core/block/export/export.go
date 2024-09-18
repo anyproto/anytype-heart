@@ -299,12 +299,12 @@ func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested 
 	}
 
 	if isProtobuf {
-		existed := make(map[string]struct{}, 0)
-		allRelations, allTypes, err := e.getRelatedDerivedObjects(spaceId, docs, existed)
+		processedObjects := make(map[string]struct{}, 0)
+		allRelations, allTypes, err := e.getRelatedDerivedObjects(spaceId, docs, processedObjects)
 		if err != nil {
 			return nil, err
 		}
-		templateRelations, templateTypes, err := e.processTemplates(spaceId, docs, allTypes, existed)
+		templateRelations, templateTypes, err := e.getTemplateRelationsAndTypes(spaceId, docs, allTypes, processedObjects)
 		if err != nil {
 			return nil, err
 		}
@@ -706,26 +706,30 @@ func (e *export) cleanupFile(wr writer) {
 	os.Remove(wr.Path())
 }
 
-func (e *export) getRelatedDerivedObjects(spaceId string, objects map[string]*types.Struct, existed map[string]struct{}) ([]string, []string, error) {
+func (e *export) getRelatedDerivedObjects(
+	spaceId string,
+	objects map[string]*types.Struct,
+	processedObjects map[string]struct{},
+) ([]string, []string, error) {
 	allRelations, allTypes, err := e.collectDerivedObjects(objects)
 	if err != nil {
 		return nil, nil, err
 	}
-	// get derived objects only from types and templates,
+	// get derived objects only from types,
 	// because relations currently have only system relations and object type
 	if len(allTypes) > 0 {
 		typesMap := make(map[string]*types.Struct, 0)
 		for _, object := range allTypes {
-			if _, ok := existed[object]; ok {
+			if _, ok := processedObjects[object]; ok {
 				continue
 			}
-			existed[object] = struct{}{}
+			processedObjects[object] = struct{}{}
 			typesMap[object] = nil
 		}
 		if len(typesMap) == 0 {
 			return allRelations, allTypes, nil
 		}
-		relations, objectTypes, err := e.getRelatedDerivedObjects(spaceId, typesMap, existed)
+		relations, objectTypes, err := e.getRelatedDerivedObjects(spaceId, typesMap, processedObjects)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -736,7 +740,7 @@ func (e *export) getRelatedDerivedObjects(spaceId string, objects map[string]*ty
 }
 
 func (e *export) collectDerivedObjects(objects map[string]*types.Struct) ([]string, []string, error) {
-	var relations, objectsToExport []string
+	var relations, objectsTypes []string
 	for id := range objects {
 		err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
 			state := b.NewState()
@@ -751,15 +755,15 @@ func (e *export) collectDerivedObjects(objects map[string]*types.Struct) ([]stri
 			}
 			objectTypeId := pbtypes.GetString(details, bundle.RelationKeyType.String())
 			setOfList := pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
-			objectsToExport = lo.Union(objectsToExport, setOfList)
-			objectsToExport = lo.Union(objectsToExport, []string{objectTypeId})
+			objectsTypes = lo.Union(objectsTypes, setOfList)
+			objectsTypes = lo.Union(objectsTypes, []string{objectTypeId})
 			return nil
 		})
 		if err != nil {
 			return nil, nil, err
 		}
 	}
-	return relations, objectsToExport, nil
+	return relations, objectsTypes, nil
 }
 
 func (e *export) getDataviewRelations(state *state.State) ([]string, error) {
@@ -994,7 +998,12 @@ func (e *export) getRelationOptions(spaceId, relationKey string) ([]database.Rec
 	return relationOptionsDetails, nil
 }
 
-func (e *export) processTemplates(spaceId string, objects map[string]*types.Struct, allTypes []string, existed map[string]struct{}) ([]string, []string, error) {
+func (e *export) getTemplateRelationsAndTypes(
+	spaceId string,
+	objects map[string]*types.Struct,
+	allTypes []string,
+	existed map[string]struct{},
+) ([]string, []string, error) {
 	templates, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -1015,20 +1024,18 @@ func (e *export) processTemplates(spaceId string, objects map[string]*types.Stru
 	if len(templates) == 0 {
 		return nil, nil, nil
 	}
-	templatesMap := make(map[string]*types.Struct, len(objects))
+	templatesObjects := make(map[string]*types.Struct, len(templates))
 	for _, template := range templates {
 		id := pbtypes.GetString(template.Details, bundle.RelationKeyId.String())
 		objects[id] = template.Details
-		templatesMap[id] = template.Details
+		templatesObjects[id] = template.Details
 	}
-	allRelations, types, err := e.getRelatedDerivedObjects(spaceId, templatesMap, existed)
+	// get derived objects from template
+	templateRelations, templateType, err := e.getRelatedDerivedObjects(spaceId, templatesObjects, existed)
 	if err != nil {
 		return nil, nil, err
 	}
-	for id, object := range templatesMap {
-		objects[id] = object
-	}
-	return allRelations, types, nil
+	return templateRelations, templateType, nil
 }
 
 func isLinkedObjectExist(rec []database.Record) bool {
