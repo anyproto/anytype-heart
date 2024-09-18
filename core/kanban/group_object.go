@@ -34,12 +34,12 @@ func (t *GroupObject) InitGroups(spaceId string, f *database.Filters) error {
 
 	t.objectsWithGivenType, err = t.retrieveObjectsWithGivenType(spaceId, relation)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to init kanban by object relation: %w", err)
 	}
 
 	t.objectsWithRelation, err = t.retrieveObjectsWithGivenRelation(f, spaceId)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to init kanban by object relation: %w", err)
 	}
 	return nil
 }
@@ -127,7 +127,7 @@ func (t *GroupObject) retrieveRelationFromStore(spaceID string) (database.Record
 
 	relations, err := t.store.QueryRaw(&database.Filters{FilterObj: relationFilter}, 0, 0)
 	if err != nil {
-		return database.Record{}, fmt.Errorf("init kanban by tag, objectStore query error: %w", err)
+		return database.Record{}, err
 	}
 
 	if len(relations) == 0 {
