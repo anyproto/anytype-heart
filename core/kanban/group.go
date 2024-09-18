@@ -23,7 +23,7 @@ type GroupData struct {
 	Ids []string
 }
 
-type GroupCounts []GroupCount
+type GroupCounts []*GroupCount
 
 func (gc GroupCounts) Len() int {
 	return len(gc)

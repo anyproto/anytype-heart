@@ -137,7 +137,7 @@ func (t *GroupObject) retrieveRelationFromStore(spaceID string) (database.Record
 }
 
 func (t *GroupObject) MakeGroups() (GroupCounts, error) {
-	uniqMap := make(map[string]GroupCount)
+	uniqMap := make(map[string]*GroupCount)
 	for _, v := range t.objectsWithGivenType {
 		t.makeGroupsFromObjectsWithGivenType(v, uniqMap)
 	}
@@ -145,7 +145,7 @@ func (t *GroupObject) MakeGroups() (GroupCounts, error) {
 		t.makeGroupsFromObjectsWithRelation(v, uniqMap)
 	}
 
-	var groups GroupCounts = make([]GroupCount, 0, len(uniqMap))
+	var groups GroupCounts = make([]*GroupCount, 0, len(uniqMap))
 	for _, group := range uniqMap {
 		groups = append(groups, group)
 	}
@@ -156,9 +156,9 @@ func (t *GroupObject) MakeGroups() (GroupCounts, error) {
 	return groups, nil
 }
 
-func (t *GroupObject) makeGroupsFromObjectsWithGivenType(v database.Record, uniqMap map[string]GroupCount) {
+func (t *GroupObject) makeGroupsFromObjectsWithGivenType(v database.Record, uniqMap map[string]*GroupCount) {
 	if objectId := pbtypes.GetString(v.Details, bundle.RelationKeyId.String()); objectId != "" {
-		uniqMap[objectId] = GroupCount{
+		uniqMap[objectId] = &GroupCount{
 			Group: Group{
 				Id:   objectId,
 				Data: GroupData{Ids: []string{objectId}},
@@ -167,12 +167,12 @@ func (t *GroupObject) makeGroupsFromObjectsWithGivenType(v database.Record, uniq
 	}
 }
 
-func (t *GroupObject) makeGroupsFromObjectsWithRelation(v database.Record, uniqMap map[string]GroupCount) {
+func (t *GroupObject) makeGroupsFromObjectsWithRelation(v database.Record, uniqMap map[string]*GroupCount) {
 	if objectIds := pbtypes.GetStringList(v.Details, t.key); len(objectIds) > 1 {
 		sort.Strings(objectIds)
 		hash := strings.Join(objectIds, "")
 		if groups, ok := uniqMap[hash]; !ok {
-			uniqMap[hash] = GroupCount{
+			uniqMap[hash] = &GroupCount{
 				Group: Group{
 					Id:   hash,
 					Data: GroupData{Ids: objectIds},
@@ -180,12 +180,12 @@ func (t *GroupObject) makeGroupsFromObjectsWithRelation(v database.Record, uniqM
 				Count: 1,
 			}
 		} else {
-			groups.Count += 1
+			groups.Count = groups.Count + 1
 		}
 	}
 	if objectIds := pbtypes.GetStringList(v.Details, t.key); len(objectIds) == 1 {
 		if groups, ok := uniqMap[objectIds[0]]; ok {
-			groups.Count += 1
+			groups.Count = groups.Count + 1
 		}
 	}
 }
