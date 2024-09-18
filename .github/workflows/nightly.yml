@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: 'macos-12'
+    runs-on: 'macos-14'
     steps:
       - name: Install Go
         uses: actions/setup-go@v4
