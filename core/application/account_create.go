@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -104,6 +103,7 @@ func (s *Service) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, a
 }
 
 func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAccountCreateRequest, newAcc *model.Account) error {
+	techSpaceId := app.MustComponent[space.Service](s.app).TechSpaceId()
 	personalSpaceId := app.MustComponent[account.Service](s.app).PersonalSpaceID()
 	var err error
 	newAcc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, personalSpaceId)
@@ -126,7 +126,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	profileDetails = append(profileDetails, commonDetails...)
 
 	if req.GetAvatarLocalPath() != "" {
-		hash, _, err := bs.UploadFile(context.Background(), personalSpaceId, block.FileUploadRequest{
+		hash, _, err := bs.UploadFile(context.Background(), techSpaceId, block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: req.GetAvatarLocalPath(),
 				Type:      model.BlockContentFile_Image,
@@ -142,16 +142,18 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 			})
 		}
 	}
-
 	spaceService := app.MustComponent[space.Service](s.app)
 	spc, err := spaceService.Get(ctx, personalSpaceId)
 	if err != nil {
-		return fmt.Errorf("get personal space: %w", err)
+		return errors.Join(ErrSetDetails, err)
 	}
 	accountObjects := spc.DerivedIDs()
-
+	accId, err := spaceService.TechSpace().AccountObjectId()
+	if err != nil {
+		return errors.Join(ErrSetDetails, err)
+	}
 	if err := bs.SetDetails(nil,
-		accountObjects.Profile,
+		accId,
 		profileDetails,
 	); err != nil {
 		return errors.Join(ErrSetDetails, err)
