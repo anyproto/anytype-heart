@@ -18,6 +18,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -130,16 +132,50 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 			if err != nil {
 				return fmt.Errorf("insert account document: %w", err)
 			}
-			return nil
+		} else {
+			return fmt.Errorf("find id: %w", err)
 		}
-		return fmt.Errorf("find id: %w", err)
 	}
 	st := a.NewState()
 	err = a.update(a.ctx, st)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
 	}
+	err = a.initState(st)
+	if err != nil {
+		return fmt.Errorf("init state: %w", err)
+	}
 	return a.SmartBlock.Apply(st, smartblock.NotPushChanges, smartblock.NoHistory, smartblock.SkipIfNoChanges)
+}
+
+func (a *accountObject) initState(st *state.State) error {
+	template.InitTemplate(st,
+		template.WithTitle,
+		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeyProfile}),
+		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_profile))),
+		template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
+	)
+	blockId := "identity"
+	st.Set(simple.New(&model.Block{
+		Id: blockId,
+		Content: &model.BlockContentOfRelation{
+			Relation: &model.BlockContentRelation{
+				Key: bundle.RelationKeyProfileOwnerIdentity.String(),
+			},
+		},
+		Restrictions: &model.BlockRestrictions{
+			Edit:   true,
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+		},
+	}))
+	err := st.InsertTo(state.TitleBlockID, model.Block_Bottom, blockId)
+	if err != nil {
+		return fmt.Errorf("insert block: %w", err)
+	}
+	st.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(true))
+	return nil
 }
 
 func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string, err error) {
