@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/files"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -46,6 +47,7 @@ type Task struct {
 	propertyService        *property.Service
 	blockService           *block.Service
 	p                      Page
+	fileDownloader         files.Downloader
 }
 
 func (pt *Task) ID() string {
@@ -55,12 +57,12 @@ func (pt *Task) ID() string {
 func (pt *Task) Execute(data interface{}) interface{} {
 	do := data.(*DataObject)
 	allErrors := common.NewError(do.mode)
-	snapshot, subObjectsSnapshots := pt.makeSnapshotFromPages(do, allErrors)
+	snapshot, relationsAndOptionsSnapshots := pt.makeSnapshotFromPages(do, allErrors)
 	if allErrors.ShouldAbortImport(0, model.Import_Notion) {
 		return &Result{ce: allErrors}
 	}
 	pageId := do.request.NotionPageIdsToAnytype[pt.p.ID]
-	resultSnapshots := make([]*common.Snapshot, 0, 1+len(subObjectsSnapshots))
+	resultSnapshots := make([]*common.Snapshot, 0, 1+len(relationsAndOptionsSnapshots))
 	sn := &common.Snapshot{
 		Id:       pageId,
 		FileName: pt.p.URL,
@@ -68,7 +70,7 @@ func (pt *Task) Execute(data interface{}) interface{} {
 		SbType:   smartblock.SmartBlockTypePage,
 	}
 	resultSnapshots = append(resultSnapshots, sn)
-	for _, objectsSnapshot := range subObjectsSnapshots {
+	for _, objectsSnapshot := range relationsAndOptionsSnapshots {
 		sbType := pt.getSmartBlockTypeAndID(objectsSnapshot)
 		resultSnapshots = append(resultSnapshots, &common.Snapshot{
 			Id:       pbtypes.GetString(objectsSnapshot.Details, bundle.RelationKeyId.String()),
@@ -80,7 +82,7 @@ func (pt *Task) Execute(data interface{}) interface{} {
 }
 
 func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *common.ConvertError) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase) {
-	details, subObjectsSnapshots, relationLinks := pt.provideDetails(object)
+	details, relationsAndOptionsSnapshots, relationLinks := pt.provideDetails(object)
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(object.ctx, pt.p.ID, object.apiKey, pageSize, object.mode)
 	if blocksAndChildrenErr != nil {
 		allErrors.Merge(blocksAndChildrenErr)
@@ -89,15 +91,75 @@ func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *common.Conv
 		}
 	}
 	resp := pt.blockService.MapNotionBlocksToAnytype(object.request, notionBlocks, pt.p.ID)
+	pt.uploadFilesLocally(resp.Blocks)
 	snapshot := pt.provideSnapshot(resp.Blocks, details, relationLinks)
-	return snapshot, subObjectsSnapshots
+	return snapshot, relationsAndOptionsSnapshots
+}
+
+func (pt *Task) uploadFilesLocally(blocks []*model.Block) {
+	var (
+		wg               sync.WaitGroup
+		filesUploadTasks []func()
+	)
+	for _, block := range blocks {
+		if block.GetFile() != nil && block.GetFile().GetName() != "" {
+			task, stop := pt.uploadFileBlock(block, &wg)
+			if stop {
+				break
+			}
+			filesUploadTasks = append(filesUploadTasks, task)
+		}
+		if block.GetText() != nil && block.GetText().GetIconImage() != "" {
+			task, stop := pt.uploadIconImage(block, &wg)
+			if stop {
+				break
+			}
+			filesUploadTasks = append(filesUploadTasks, task)
+		}
+	}
+	for _, task := range filesUploadTasks {
+		go task()
+	}
+	wg.Wait()
+}
+
+func (pt *Task) uploadFileBlock(block *model.Block, wg *sync.WaitGroup) (func(), bool) {
+	file, stop := pt.fileDownloader.QueueFileForDownload(block.GetFile().GetName())
+	if stop {
+		return nil, true
+	}
+	wg.Add(1)
+	return func() {
+		defer wg.Done()
+		localPath, err := file.WaitForLocalPath()
+		if err != nil {
+			log.Errorf("failed to download file: %s", err)
+		}
+		block.GetFile().Name = localPath
+	}, false
+}
+
+func (pt *Task) uploadIconImage(block *model.Block, wg *sync.WaitGroup) (func(), bool) {
+	file, stop := pt.fileDownloader.QueueFileForDownload(block.GetText().GetIconImage())
+	if stop {
+		return nil, true
+	}
+	wg.Add(1)
+	return func() {
+		defer wg.Done()
+		localPath, err := file.WaitForLocalPath()
+		if err != nil {
+			log.Errorf("failed to download file: %s", err)
+		}
+		block.GetText().IconImage = localPath
+	}, false
 }
 
 func (pt *Task) provideDetails(object *DataObject) (map[string]*types.Value, []*model.SmartBlockSnapshotBase, []*model.RelationLink) {
 	details, relationLinks := pt.prepareDetails()
 	relationsSnapshots, notionRelationLinks := pt.handlePageProperties(object, details)
 	relationLinks = append(relationLinks, notionRelationLinks...)
-	addCoverDetail(pt.p, details)
+	api.UploadFileRelationLocally(pt.fileDownloader, details, relationLinks)
 	return details, relationsSnapshots, relationLinks
 }
 
@@ -120,6 +182,14 @@ func (pt *Task) prepareDetails() (map[string]*types.Value, []*model.RelationLink
 			relationLinks = append(relationLinks, iconRelationLink)
 		}
 	}
+	if pt.p.Cover != nil {
+		api.SetCover(details, pt.p.Cover)
+		relationLinks = append(relationLinks, &model.RelationLink{
+			Key:    bundle.RelationKeyCoverId.String(),
+			Format: model.RelationFormat_file,
+		})
+	}
+
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(pt.p.Archived)
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
 	createdTime := common.ConvertStringToTime(pt.p.CreatedTime)
@@ -167,22 +237,11 @@ func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 	hasTag, tagExist bool) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
 	pt.relationCreateMutex.Lock()
 	defer pt.relationCreateMutex.Unlock()
-	var (
-		snapshot            *model.SmartBlockSnapshotBase
-		key                 string
-		subObjectsSnapshots []*model.SmartBlockSnapshotBase
-	)
-	if snapshot = relation.ReadRelationsMap(propObject.GetID()); snapshot == nil {
-		snapshot, key = pt.getRelationSnapshot(name, propObject, hasTag, tagExist)
-		if snapshot != nil {
-			relation.WriteToRelationsMap(propObject.GetID(), snapshot)
-			subObjectsSnapshots = append(subObjectsSnapshots, snapshot)
-		}
-	}
+	snapshot, key, relationsAndOptionsSnapshots := pt.provideRelationSnapshot(relation, propObject, name, hasTag, tagExist)
 	if key == "" {
 		key = pbtypes.GetString(snapshot.GetDetails(), bundle.RelationKeyRelationKey.String())
 	}
-	subObjectsSnapshots = append(subObjectsSnapshots, pt.provideRelationOptionsSnapshots(key, propObject, relation)...)
+	relationsAndOptionsSnapshots = append(relationsAndOptionsSnapshots, pt.provideRelationOptionsSnapshots(key, propObject, relation)...)
 	if err := pt.setDetails(propObject, key, details); err != nil {
 		return nil, nil, err
 	}
@@ -190,10 +249,34 @@ func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 		Key:    key,
 		Format: propObject.GetFormat(),
 	}
-	return subObjectsSnapshots, relationLink, nil
+	return relationsAndOptionsSnapshots, relationLink, nil
 }
 
-func (pt *Task) getRelationSnapshot(name string, propObject property.Object, hasTag bool, tagExist bool) (*model.SmartBlockSnapshotBase, string) {
+func (pt *Task) provideRelationSnapshot(
+	relation *property.PropertiesStore,
+	propObject property.Object,
+	name string,
+	hasTag, tagExist bool,
+) (*model.SmartBlockSnapshotBase, string, []*model.SmartBlockSnapshotBase) {
+	var (
+		key                          string
+		relationsAndOptionsSnapshots []*model.SmartBlockSnapshotBase
+	)
+	snapshot := relation.GetSnapshotByNameAndFormat(name, int64(propObject.GetFormat()))
+	if snapshot == nil {
+		if snapshot = relation.ReadRelationsMap(propObject.GetID()); snapshot == nil {
+			snapshot, key = pt.getRelationSnapshot(name, propObject, hasTag, tagExist)
+			if snapshot != nil {
+				relation.WriteToRelationsMap(propObject.GetID(), snapshot)
+				relation.AddSnapshotByNameAndFormat(name, int64(propObject.GetFormat()), snapshot)
+				relationsAndOptionsSnapshots = append(relationsAndOptionsSnapshots, snapshot)
+			}
+		}
+	}
+	return snapshot, key, relationsAndOptionsSnapshots
+}
+
+func (pt *Task) getRelationSnapshot(name string, propObject property.Object, hasTag, tagExist bool) (*model.SmartBlockSnapshotBase, string) {
 	key := bson.NewObjectId().Hex()
 	if propObject.GetPropertyType() == property.PropertyConfigTypeTitle {
 		return nil, bundle.RelationKeyName.String()
@@ -213,11 +296,11 @@ func (pt *Task) getRelationSnapshot(name string, propObject property.Object, has
 func (pt *Task) provideRelationOptionsSnapshots(id string, propObject property.Object, relation *property.PropertiesStore) []*model.SmartBlockSnapshotBase {
 	pt.relationOptCreateMutex.Lock()
 	defer pt.relationOptCreateMutex.Unlock()
-	subObjectsSnapshots := make([]*model.SmartBlockSnapshotBase, 0)
+	relationsAndOptionsSnapshots := make([]*model.SmartBlockSnapshotBase, 0)
 	if isPropertyTag(propObject) {
-		subObjectsSnapshots = append(subObjectsSnapshots, getRelationOptions(propObject, id, relation)...)
+		relationsAndOptionsSnapshots = append(relationsAndOptionsSnapshots, getRelationOptions(propObject, id, relation)...)
 	}
-	return subObjectsSnapshots
+	return relationsAndOptionsSnapshots
 }
 
 func (pt *Task) getRelationDetails(key string, name string, propObject property.Object) *types.Struct {
@@ -339,20 +422,6 @@ func handleRelationItem(properties []interface{}, pr *property.RelationItem) {
 		relationItems = append(relationItems, o.(*property.Relation))
 	}
 	pr.Relation = relationItems
-}
-
-func addCoverDetail(p Page, details map[string]*types.Value) {
-	if p.Cover != nil {
-		if p.Cover.Type == api.External {
-			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(p.Cover.External.URL)
-			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
-		}
-
-		if p.Cover.Type == api.File {
-			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(p.Cover.File.URL)
-			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
-		}
-	}
 }
 
 func isPropertyPaginated(pr property.Object) bool {

@@ -38,10 +38,7 @@ func Test_handlePagePropertiesSelect(t *testing.T) {
 		relationCreateMutex:    &sync.Mutex{},
 		p:                      Page{Properties: properties},
 	}
-	req := &property.PropertiesStore{
-		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-	}
+	req := property.NewPropertiesStore()
 	do := &DataObject{
 		request:   &api.NotionImportContext{},
 		relations: req,
@@ -101,10 +98,7 @@ func Test_handlePagePropertiesLastEditedTime(t *testing.T) {
 		relationCreateMutex:    &sync.Mutex{},
 		p:                      Page{Properties: properties},
 	}
-	req := &property.PropertiesStore{
-		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-	}
+	req := property.NewPropertiesStore()
 	do := &DataObject{
 		request:   &api.NotionImportContext{},
 		relations: req,
@@ -134,10 +128,7 @@ func Test_handlePagePropertiesRichText(t *testing.T) {
 		relationCreateMutex:    &sync.Mutex{},
 		p:                      Page{Properties: properties},
 	}
-	req := &property.PropertiesStore{
-		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-	}
+	req := property.NewPropertiesStore()
 	do := &DataObject{
 		ctx:       context.Background(),
 		request:   &api.NotionImportContext{},
@@ -172,10 +163,7 @@ func Test_handlePagePropertiesDate(t *testing.T) {
 			relationCreateMutex:    &sync.Mutex{},
 			p:                      Page{Properties: properties},
 		}
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		do := &DataObject{
 			ctx:       context.Background(),
 			request:   &api.NotionImportContext{},
@@ -211,10 +199,7 @@ func Test_handlePagePropertiesDate(t *testing.T) {
 			relationCreateMutex:    &sync.Mutex{},
 			p:                      Page{Properties: properties},
 		}
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		do := &DataObject{
 			ctx:       context.Background(),
 			request:   &api.NotionImportContext{},
@@ -253,10 +238,7 @@ func Test_handlePagePropertiesStatus(t *testing.T) {
 		relationCreateMutex:    &sync.Mutex{},
 		p:                      Page{Properties: properties},
 	}
-	req := &property.PropertiesStore{
-		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-	}
+	req := property.NewPropertiesStore()
 	do := &DataObject{
 		request:   &api.NotionImportContext{},
 		relations: req,
@@ -320,10 +302,7 @@ func Test_handlePageProperties(t *testing.T) {
 			relationCreateMutex:    &sync.Mutex{},
 			p:                      Page{Properties: properties},
 		}
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		do := &DataObject{
 			request:   &api.NotionImportContext{},
 			relations: req,
@@ -355,10 +334,7 @@ func Test_handlePagePropertiesNumber(t *testing.T) {
 		relationCreateMutex:    &sync.Mutex{},
 		p:                      Page{Properties: properties},
 	}
-	req := &property.PropertiesStore{
-		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-	}
+	req := property.NewPropertiesStore()
 	do := &DataObject{
 		request:   &api.NotionImportContext{},
 		relations: req,
@@ -394,10 +370,7 @@ func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 		relationCreateMutex:    &sync.Mutex{},
 		p:                      Page{Properties: properties},
 	}
-	req := &property.PropertiesStore{
-		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-	}
+	req := property.NewPropertiesStore()
 	do := &DataObject{
 		request:   &api.NotionImportContext{},
 		relations: req,
@@ -463,10 +436,7 @@ func Test_handlePagePropertiesCheckbox(t *testing.T) {
 		relationCreateMutex:    &sync.Mutex{},
 		p:                      Page{Properties: properties},
 	}
-	req := &property.PropertiesStore{
-		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-	}
+	req := property.NewPropertiesStore()
 	do := &DataObject{
 		request:   &api.NotionImportContext{},
 		relations: req,
@@ -497,10 +467,7 @@ func Test_handlePagePropertiesEmail(t *testing.T) {
 		relationCreateMutex:    &sync.Mutex{},
 		p:                      Page{Properties: properties},
 	}
-	req := &property.PropertiesStore{
-		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-	}
+	req := property.NewPropertiesStore()
 	do := &DataObject{
 		request:   &api.NotionImportContext{},
 		relations: req,
@@ -538,10 +505,7 @@ func Test_handlePagePropertiesRelation(t *testing.T) {
 		relationCreateMutex:    &sync.Mutex{},
 		p:                      Page{Properties: properties},
 	}
-	store := &property.PropertiesStore{
-		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-	}
+	store := property.NewPropertiesStore()
 	do := &DataObject{
 		ctx:       context.Background(),
 		request:   req,
@@ -578,10 +542,7 @@ func Test_handlePagePropertiesPeople(t *testing.T) {
 		relationCreateMutex:    &sync.Mutex{},
 		p:                      Page{Properties: properties},
 	}
-	store := &property.PropertiesStore{
-		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-	}
+	store := property.NewPropertiesStore()
 	do := &DataObject{
 		request:   &api.NotionImportContext{},
 		relations: store,
@@ -621,10 +582,7 @@ func Test_handlePagePropertiesFormula(t *testing.T) {
 		relationCreateMutex:    &sync.Mutex{},
 		p:                      Page{Properties: properties},
 	}
-	store := &property.PropertiesStore{
-		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-	}
+	store := property.NewPropertiesStore()
 	do := &DataObject{
 		request:   &api.NotionImportContext{},
 		relations: store,
@@ -654,10 +612,7 @@ func Test_handlePagePropertiesTitle(t *testing.T) {
 		relationCreateMutex:    &sync.Mutex{},
 		p:                      Page{Properties: properties},
 	}
-	store := &property.PropertiesStore{
-		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-	}
+	store := property.NewPropertiesStore()
 	do := &DataObject{
 		request:   &api.NotionImportContext{},
 		relations: store,
@@ -709,10 +664,7 @@ func Test_handleRollupProperties(t *testing.T) {
 		relationCreateMutex:    &sync.Mutex{},
 		p:                      Page{Properties: properties},
 	}
-	store := &property.PropertiesStore{
-		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-	}
+	store := property.NewPropertiesStore()
 	do := &DataObject{
 		request:   &api.NotionImportContext{},
 		relations: store,
@@ -756,10 +708,7 @@ func Test_handlePagePropertiesUniqueID(t *testing.T) {
 			relationCreateMutex:    &sync.Mutex{},
 			p:                      Page{Properties: properties},
 		}
-		store := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		store := property.NewPropertiesStore()
 		do := &DataObject{
 			request:   &api.NotionImportContext{},
 			relations: store,
@@ -797,10 +746,7 @@ func Test_handlePagePropertiesUniqueID(t *testing.T) {
 			relationCreateMutex:    &sync.Mutex{},
 			p:                      Page{Properties: properties},
 		}
-		store := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		store := property.NewPropertiesStore()
 		do := &DataObject{
 			request:   &api.NotionImportContext{},
 			relations: store,
@@ -841,10 +787,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			relationCreateMutex:    &sync.Mutex{},
 			p:                      Page{Properties: properties},
 		}
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		do := &DataObject{
 			request:   &api.NotionImportContext{},
 			relations: req,
@@ -880,10 +823,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			relationCreateMutex:    &sync.Mutex{},
 			p:                      Page{Properties: properties},
 		}
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		do := &DataObject{
 			request:   &api.NotionImportContext{},
 			relations: req,
@@ -920,10 +860,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			relationCreateMutex:    &sync.Mutex{},
 			p:                      Page{Properties: properties},
 		}
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		do := &DataObject{
 			request:   &api.NotionImportContext{},
 			relations: req,
@@ -960,10 +897,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			relationCreateMutex:    &sync.Mutex{},
 			p:                      Page{Properties: properties},
 		}
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		do := &DataObject{
 			request:   &api.NotionImportContext{},
 			relations: req,
@@ -1010,10 +944,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			relationCreateMutex:    &sync.Mutex{},
 			p:                      Page{Properties: properties},
 		}
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		do := &DataObject{
 			request:   &api.NotionImportContext{},
 			relations: req,
@@ -1061,10 +992,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			relationCreateMutex:    &sync.Mutex{},
 			p:                      Page{Properties: properties},
 		}
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		do := &DataObject{
 			request:   &api.NotionImportContext{},
 			relations: req,
@@ -1097,10 +1025,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			relationCreateMutex:    &sync.Mutex{},
 			p:                      Page{Properties: properties},
 		}
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
+		req := property.NewPropertiesStore()
 		do := &DataObject{
 			request:   &api.NotionImportContext{},
 			relations: req,
@@ -1113,6 +1038,36 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 		assert.Len(t, snapshots, 1) // 1 relation
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
 		assert.Equal(t, property.UntitledProperty, pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyName.String()))
+	})
+	t.Run("Page has property which already exist - don't create new relation", func(t *testing.T) {
+		// given
+		details := make(map[string]*types.Value, 0)
+		c := client.NewClient()
+		selectProperty := property.SelectItem{
+			Object: "",
+			ID:     "id1",
+			Type:   string(property.PropertyConfigTypeSelect),
+			Select: property.SelectOption{},
+		}
+		properties := property.Properties{"Name": &selectProperty}
+		pageTask := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: properties},
+		}
+		req := property.NewPropertiesStore()
+		req.AddSnapshotByNameAndFormat("Name", int64(selectProperty.GetFormat()), &model.SmartBlockSnapshotBase{})
+		do := &DataObject{
+			request:   &api.NotionImportContext{},
+			relations: req,
+		}
+
+		// when
+		snapshots, _ := pageTask.handlePageProperties(do, details)
+
+		// then
+		assert.Len(t, snapshots, 0)
 	})
 }
 
@@ -1199,5 +1154,48 @@ func TestTask_provideDetails(t *testing.T) {
 		// then
 		assert.NotContains(t, details, bundle.RelationKeyIconImage.String())
 		assert.NotContains(t, details, bundle.RelationKeyIconEmoji.String())
+	})
+	t.Run("Page has cover - details have relation coverId and coverType", func(t *testing.T) {
+		c := client.NewClient()
+		page := Page{
+			Cover: &api.FileObject{
+				Name: "file",
+				Type: api.File,
+				File: api.FileProperty{
+					URL: "file",
+				},
+			},
+		}
+		pageTask := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      page,
+		}
+
+		// when
+		details, _ := pageTask.prepareDetails()
+
+		// then
+		assert.Contains(t, details, bundle.RelationKeyCoverType.String())
+		assert.Contains(t, details, bundle.RelationKeyCoverId.String())
+		assert.Equal(t, "file", details[bundle.RelationKeyCoverId.String()].GetStringValue())
+	})
+	t.Run("Page doesn't have cover - details doesn't have relations coverId and coverType", func(t *testing.T) {
+		c := client.NewClient()
+		page := Page{}
+		pageTask := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      page,
+		}
+
+		// when
+		details, _ := pageTask.prepareDetails()
+
+		// then
+		assert.Empty(t, details[bundle.RelationKeyCoverType.String()])
+		assert.Empty(t, details[bundle.RelationKeyCoverId.String()])
 	})
 }

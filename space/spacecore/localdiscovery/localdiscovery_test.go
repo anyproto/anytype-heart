@@ -15,6 +15,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/device/mock_device"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver/mock_clientserver"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -22,10 +23,11 @@ import (
 
 type fixture struct {
 	LocalDiscovery
-	nodeConf     *mock_nodeconf.MockService
-	eventSender  *mock_event.MockSender
-	clientServer *mock_clientserver.MockClientServer
-	account      *mock_accountservice.MockService
+	nodeConf      *mock_nodeconf.MockService
+	eventSender   *mock_event.MockSender
+	clientServer  *mock_clientserver.MockClientServer
+	deviceService *mock_device.MockNetworkState
+	account       *mock_accountservice.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -33,7 +35,7 @@ func newFixture(t *testing.T) *fixture {
 	c := &config.Config{}
 	nodeConf := mock_nodeconf.NewMockService(ctrl)
 	eventSender := mock_event.NewMockSender(t)
-
+	deviceService := mock_device.NewMockNetworkState(t)
 	clientServer := mock_clientserver.NewMockClientServer(t)
 	accountKeys, err := accountdata.NewRandom()
 	assert.Nil(t, err)
@@ -45,6 +47,7 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, a, nodeConf)).
 		Register(testutil.PrepareMock(ctx, a, eventSender)).
 		Register(account).
+		Register(testutil.PrepareMock(ctx, a, deviceService)).
 		Register(testutil.PrepareMock(ctx, a, clientServer))
 
 	discovery := New()
@@ -56,6 +59,7 @@ func newFixture(t *testing.T) *fixture {
 		nodeConf:       nodeConf,
 		eventSender:    eventSender,
 		clientServer:   clientServer,
+		deviceService:  deviceService,
 		account:        account,
 	}
 	return f
@@ -65,10 +69,10 @@ func TestLocalDiscovery_Init(t *testing.T) {
 	t.Run("init success", func(t *testing.T) {
 		// given
 		f := newFixture(t)
-
 		// when
 		f.clientServer.EXPECT().ServerStarted().Return(true)
 		f.clientServer.EXPECT().Port().Return(6789)
+		f.deviceService.EXPECT().RegisterHook(mock.Anything).Return()
 
 		err := f.Run(context.Background())
 		assert.Nil(t, err)
@@ -80,34 +84,34 @@ func TestLocalDiscovery_Init(t *testing.T) {
 }
 
 func TestLocalDiscovery_checkAddrs(t *testing.T) {
-	t.Run("checkAddrs - server run successfully", func(t *testing.T) {
+	t.Run("refreshInterfaces - server run successfully", func(t *testing.T) {
 		// given
 		f := newFixture(t)
 
 		// when
 		ld := f.LocalDiscovery.(*localDiscovery)
 		ld.port = 6789
-		err := ld.checkAddrs(context.Background())
+		err := ld.refreshInterfaces(context.Background())
 
 		// then
 		assert.Nil(t, err)
 	})
-	t.Run("checkAddrs - server run successfully and send update to peer to peer status hook", func(t *testing.T) {
+	t.Run("refreshInterfaces - server run successfully and send update to peer to peer status hook", func(t *testing.T) {
 		// given
 		f := newFixture(t)
 
 		// when
 		ld := f.LocalDiscovery.(*localDiscovery)
-		var hookCalled atomic.Bool
-		ld.RegisterResetNotPossible(func() {
-			hookCalled.Store(true)
+		var hookCalled atomic.Int64
+		ld.RegisterDiscoveryPossibilityHook(func(state DiscoveryPossibility) {
+			hookCalled.Store(int64(state))
 		})
 		ld.port = 6789
-		err := ld.checkAddrs(context.Background())
+		err := ld.refreshInterfaces(context.Background())
 
 		// then
 		assert.Nil(t, err)
-		assert.True(t, hookCalled.Load())
+		assert.True(t, hookCalled.Load() == int64(DiscoveryPossible))
 	})
 }
 
