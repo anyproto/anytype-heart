@@ -6,7 +6,6 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/accountobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -44,7 +43,7 @@ func (m Migration) Run(ctx context.Context, logger logger.CtxLogger, store depen
 	if err != nil {
 		return
 	}
-	err = m.TechSpace.DoAccountObject(ctx, func(accountObject accountobject.AccountObject) error {
+	err = m.TechSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
 		if accountObject.CombinedDetails().GetFields()[bundle.RelationKeyName.String()].GetStringValue() != "" {
 			return nil
 		}

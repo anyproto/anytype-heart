@@ -12,17 +12,24 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
+	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-var log = logger.NewNamed("common.editor.accountobject")
+var log = logger.NewNamedSugared("common.editor.accountobject")
 
 const (
 	collectionName  = "account"
@@ -39,6 +46,7 @@ type ProfileSubscription = func(ctx context.Context, profile ProfileDetails) err
 
 type AccountObject interface {
 	smartblock.SmartBlock
+	basic.DetailsSettable
 	SetSharedSpacesLimit(limit int) (err error)
 	SetProfileDetails(details *types.Struct) (err error)
 }
@@ -51,6 +59,7 @@ var _ AccountObject = (*accountObject)(nil)
 
 type accountObject struct {
 	smartblock.SmartBlock
+	bs                  basic.DetailsSettable
 	profileSubscription ProfileSubscription
 	dbProvider          StoreDbProvider
 	state               *storestate.StoreState
@@ -61,8 +70,23 @@ type accountObject struct {
 	relMapper           *relationsMapper
 }
 
-func New(sb smartblock.SmartBlock, dbProvider StoreDbProvider) AccountObject {
+func (a *accountObject) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+	return a.bs.SetDetails(ctx, details, showEvent)
+}
+
+func (a *accountObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+	return a.bs.SetDetailsAndUpdateLastUsed(ctx, details, showEvent)
+}
+
+func New(
+	sb smartblock.SmartBlock,
+	dbProvider StoreDbProvider,
+	objectStore objectstore.ObjectStore,
+	layoutConverter converter.LayoutConverter,
+	fileObjectService fileobject.Service,
+	lastUsedUpdater lastused.ObjectUsageUpdater) AccountObject {
 	return &accountObject{
+		bs:         basic.NewBasic(sb, objectStore, layoutConverter, fileObjectService, lastUsedUpdater),
 		SmartBlock: sb,
 		dbProvider: dbProvider,
 		relMapper: newRelationsMapper(map[string]KeyType{

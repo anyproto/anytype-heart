@@ -113,7 +113,10 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountInfo, error) {
-
+	accountId, err := s.spaceService.TechSpace().AccountObjectId()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get account id: %w", err)
+	}
 	deviceKey := s.wallet.GetDevicePrivkey()
 	deviceId := deviceKey.GetPublic().PeerId()
 
@@ -133,11 +136,11 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		cfg.CustomFileStorePath = s.wallet.RepoPath()
 	}
 
-	profileSpace, err := s.spaceService.GetPersonalSpace(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("get personal space: %w", err)
-	}
-	profileObjectId := profileSpace.DerivedIDs().Profile
+	// profileSpace, err := s.spaceService.GetPersonalSpace(ctx)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("get personal space: %w", err)
+	// }
+	// profileObjectId := profileSpace.DerivedIDs().Profile
 
 	techSpaceId, err := s.spaceCore.DeriveID(ctx, spacecore.TechSpaceType)
 	if err != nil {
@@ -161,7 +164,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 	return &model.AccountInfo{
 		HomeObjectId:           ids.Home,
 		ArchiveObjectId:        ids.Archive,
-		ProfileObjectId:        profileObjectId,
+		ProfileObjectId:        accountId,
 		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
 		DeviceId:               deviceId,
 		AccountSpaceId:         spaceID,

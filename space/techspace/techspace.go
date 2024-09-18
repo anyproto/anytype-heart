@@ -14,7 +14,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/accountobject"
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -37,6 +36,12 @@ var (
 	ErrNotStarted         = errors.New("techspace not started")
 )
 
+type AccountObject interface {
+	editorsb.SmartBlock
+	SetSharedSpacesLimit(limit int) (err error)
+	SetProfileDetails(details *types.Struct) (err error)
+}
+
 type TechSpace interface {
 	app.Component
 	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error)
@@ -46,7 +51,7 @@ type TechSpace interface {
 	WaitViews() error
 	TechSpaceId() string
 	DoSpaceView(ctx context.Context, spaceID string, apply func(spaceView SpaceView) error) (err error)
-	DoAccountObject(ctx context.Context, apply func(accountObject accountobject.AccountObject) error) (err error)
+	DoAccountObject(ctx context.Context, apply func(accountObject AccountObject) error) (err error)
 	SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) (err error)
 	GetSpaceView(ctx context.Context, spaceId string) (SpaceView, error)
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
@@ -323,7 +328,7 @@ func (s *techSpace) DoSpaceView(ctx context.Context, spaceID string, apply func(
 	return apply(spaceView)
 }
 
-func (s *techSpace) DoAccountObject(ctx context.Context, apply func(accountObject accountobject.AccountObject) error) (err error) {
+func (s *techSpace) DoAccountObject(ctx context.Context, apply func(accountObject AccountObject) error) (err error) {
 	id, err := s.AccountObjectId()
 	if err != nil {
 		return err
@@ -332,7 +337,7 @@ func (s *techSpace) DoAccountObject(ctx context.Context, apply func(accountObjec
 	if err != nil {
 		return ErrSpaceViewNotExists
 	}
-	accountObject, ok := obj.(accountobject.AccountObject)
+	accountObject, ok := obj.(AccountObject)
 	if !ok {
 		return ErrNotASpaceView
 	}

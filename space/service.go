@@ -19,7 +19,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block/editor/accountobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -28,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "client.space"
@@ -259,7 +259,7 @@ func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space
 }
 
 func (s *service) UpdateSharedLimits(ctx context.Context, limits int) error {
-	return s.techSpace.DoAccountObject(ctx, func(accObj accountobject.AccountObject) error {
+	return s.techSpace.DoAccountObject(ctx, func(accObj techspace.AccountObject) error {
 		return accObj.SetSharedSpacesLimit(limits)
 	})
 }
