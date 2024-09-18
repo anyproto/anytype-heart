@@ -184,6 +184,9 @@ packages:
   github.com/anyproto/anytype-heart/core/peerstatus:
     interfaces:
       LocalDiscoveryHook:
+  github.com/anyproto/anytype-heart/core/device:
+    interfaces:
+      NetworkState:
   github.com/anyproto/anytype-heart/space/spacecore/localdiscovery:
     interfaces:
       Notifier:

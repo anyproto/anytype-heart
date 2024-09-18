@@ -177,15 +177,6 @@ jobs:
           cp pkg/lib/bundle/systemTypes.json ./json
           cp pkg/lib/bundle/internalRelations.json ./json
           cp pkg/lib/bundle/internalTypes.json ./json
-      - name: Upload protobuf artifact for linux build
-        uses: actions/upload-artifact@v4
-        with:
-          name: libs
-          path: |
-            protobuf
-          if-no-files-found: error
-          retention-days: 1
-        if: github.event_name == 'push'
       - name: Pack server win
         run: |
           declare -a arr=("windows-amd64")

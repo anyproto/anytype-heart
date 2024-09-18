@@ -78,6 +78,5 @@ func GetInterfacesAddrs() (addrs InterfacesAddrs, err error) {
 		addrs.Interfaces = append(addrs.Interfaces, ifaceWrapped)
 	}
 
-	addrs.Interfaces = filterInterfaces(addrs.Interfaces)
 	return
 }
