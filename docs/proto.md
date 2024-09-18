@@ -26699,7 +26699,7 @@ Precondition: user A and user B opened the same block
 | NotConnected | 0 |  |
 | NotPossible | 1 |  |
 | Connected | 2 |  |
-| Restricted | 3 |  |
+| Restricted | 3 | only for ios for now, fallback to NotPossible if not implemented on client |
 
 
 
@@ -29471,6 +29471,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | pdf | 20 |  |
 | chat | 21 |  |
 | chatDerived | 22 |  |
+| tag | 23 |  |
 
 
 
