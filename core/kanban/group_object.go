@@ -180,24 +180,22 @@ func (t *GroupObject) makeGroupsFromObjectsWithRelation(v database.Record, uniqM
 				Count: 1,
 			}
 		} else {
-			groups.Count = groups.Count + 1
+			groups.Count++
 		}
 	}
 	if objectIds := pbtypes.GetStringList(v.Details, t.key); len(objectIds) == 1 {
 		if groups, ok := uniqMap[objectIds[0]]; ok {
-			groups.Count = groups.Count + 1
+			groups.Count++
 		}
 	}
 }
 
 func (t *GroupObject) MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, error) {
-	var result []*model.BlockContentDataviewGroup
-
 	groups, err := t.MakeGroups()
 	if err != nil {
 		return nil, err
 	}
-
+	result := make([]*model.BlockContentDataviewGroup, 0, len(groups))
 	for _, g := range groups {
 		result = append(result, &model.BlockContentDataviewGroup{
 			Id: Hash(g.Id),
