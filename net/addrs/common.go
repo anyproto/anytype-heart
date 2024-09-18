@@ -34,7 +34,7 @@ type NetInterfaceWithAddrCache struct {
 }
 type InterfacesAddrs struct {
 	Interfaces []NetInterfaceWithAddrCache
-	Addrs      []net.Addr // addrs without attachment to specific interface. Used as a fallback mechanism
+	Addrs      []net.Addr // addrs without attachment to specific interface. Used as cheap(1 syscall) way to check if smth has changed
 }
 
 func WrapInterface(iface net.Interface) NetInterfaceWithAddrCache {
@@ -75,6 +75,25 @@ func (i NetInterfaceWithAddrCache) GetAddr() []net.Addr {
 		return true
 	})
 	return i.cachedAddrs
+}
+
+func NetAddrsEqualUnordered(a, b []net.Addr) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for _, addr := range a {
+		found := false
+		for _, addr2 := range b {
+			if addr.String() == addr2.String() {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 func (i InterfacesAddrs) Equal(other InterfacesAddrs) bool {
@@ -315,15 +334,4 @@ func (i InterfacesAddrs) findInterfacePosByIP(ip net.IP) (pos int, equal bool) {
 		}
 	}
 	return -1, false
-}
-
-func filterInterfaces(ifaces []NetInterfaceWithAddrCache) []NetInterfaceWithAddrCache {
-	return slice.Filter(ifaces, func(iface NetInterfaceWithAddrCache) bool {
-		if iface.Flags&net.FlagUp != 0 && iface.Flags&net.FlagMulticast != 0 && iface.Flags&net.FlagLoopback == 0 {
-			if len(iface.GetAddr()) > 0 {
-				return true
-			}
-		}
-		return false
-	})
 }
