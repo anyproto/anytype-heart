@@ -31,12 +31,15 @@ func init() {
 }
 
 const (
-	JPEG Format = "jpeg"
-	PNG  Format = "png"
-	GIF  Format = "gif"
-	ICO  Format = "vnd.microsoft.icon"
-	WEBP Format = "webp"
-	HEIC Format = "heic"
+	JPEG     Format = "jpeg"
+	PNG      Format = "png"
+	GIF      Format = "gif"
+	ICO      Format = "vnd.microsoft.icon"
+	WEBP     Format = "webp"
+	HEIC     Format = "heic"
+	PSD      Format = "psd"
+	PSD_MIME Format = "vnd.adobe.photoshop"
+	TIFF     Format = "tiff"
 )
 
 func IsImage(mime string) bool {
@@ -51,7 +54,7 @@ func IsImage(mime string) bool {
 
 func isImageFormatSupported(format Format) bool {
 	switch format {
-	case JPEG, PNG, GIF, ICO, WEBP, HEIC:
+	case JPEG, PNG, GIF, ICO, WEBP, HEIC, PSD_MIME, PSD, TIFF:
 		return true
 	}
 	return false
@@ -120,6 +123,10 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		return m.resizeGIF(&imgConfig, r)
 	case HEIC:
 		return m.resizeHEIC(&imgConfig, r)
+	case TIFF:
+		return m.resizeTIFF(&imgConfig, r)
+	case PSD:
+		return m.resizePSD(&imgConfig, r)
 	}
 
 	return nil, fmt.Errorf("unknown format")
@@ -332,6 +339,47 @@ func (m *ImageResize) resizeGIF(imgConfig *image.Config, r io.ReadSeeker) (*Resu
 		Meta: map[string]interface{}{
 			"width":  gifImg.Config.Width,
 			"height": gifImg.Config.Height,
+		},
+	}, nil
+}
+
+func (m *ImageResize) resizeTIFF(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
+	// tiff resizes to jpeg
+	img, _, err := image.Decode(r)
+	if err != nil {
+		return nil, fmt.Errorf("decode tiff: %w", err)
+	}
+	var height int
+	width, err := strconv.Atoi(m.Opts.Width)
+	if err != nil {
+		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
+	}
+
+	resized := imaging.Resize(img, width, 0, imaging.Lanczos)
+	width, height = resized.Rect.Max.X, resized.Rect.Max.Y
+
+	quality, err := strconv.Atoi(m.Opts.Quality)
+	if err != nil {
+		return nil, fmt.Errorf("invalid quality: " + m.Opts.Quality)
+	}
+
+	buf := pool.Get()
+	defer func() {
+		_ = buf.Close()
+	}()
+
+	if err = jpeg.Encode(buf, resized, &jpeg.Options{Quality: quality}); err != nil {
+		return nil, err
+	}
+	readSeekCloser, err := buf.GetReadSeekCloser()
+	if err != nil {
+		return nil, err
+	}
+	return &Result{
+		File: readSeekCloser,
+		Meta: map[string]interface{}{
+			"width":  width,
+			"height": height,
 		},
 	}, nil
 }

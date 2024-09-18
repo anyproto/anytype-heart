@@ -37,7 +37,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/syncstatus"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -96,7 +95,6 @@ func New() *Service {
 }
 
 type Service struct {
-	syncStatus           syncstatus.Service
 	eventSender          event.Sender
 	process              process.Service
 	app                  *app.App
@@ -137,7 +135,6 @@ func (s *Service) Name() string {
 }
 
 func (s *Service) Init(a *app.App) (err error) {
-	s.syncStatus = a.MustComponent(syncstatus.CName).(syncstatus.Service)
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.eventSender = a.MustComponent(event.CName).(event.Sender)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
@@ -202,14 +199,6 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		}
 		afterShowTime := time.Now()
 
-		_, err = s.syncStatus.Watch(id.SpaceID, id.ObjectID, nil)
-
-		if err == nil {
-			ob.AddHook(func(_ smartblock.ApplyInfo) error {
-				s.syncStatus.Unwatch(id.SpaceID, id.ObjectID)
-				return nil
-			}, smartblock.HookOnClose)
-		}
 		if err != nil && !errors.Is(err, treestorage.ErrUnknownTreeId) {
 			log.Errorf("failed to watch status for object %s: %s", id, err)
 		}
@@ -528,7 +517,13 @@ func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceReques
 			return true
 		})
 		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
-		return sb.Apply(st, smartblock.NoRestrictions)
+
+		flags := internalflag.NewFromState(st)
+		// set with source is no longer empty
+		flags.Remove(model.InternalFlag_editorDeleteEmpty)
+		flags.AddToState(st)
+
+		return sb.Apply(st, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	})
 }
 

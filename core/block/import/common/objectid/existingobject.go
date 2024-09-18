@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -36,8 +37,13 @@ func (e *existingObject) GetIDAndPayload(_ context.Context, spaceID string, sn *
 			return id, treestorage.TreeStorageCreatePayload{}, nil
 		}
 	}
-	relationOption := e.getExistingRelationOption(sn)
-	return relationOption, treestorage.TreeStorageCreatePayload{}, nil
+	if sn.SbType == sb.SmartBlockTypeRelationOption {
+		return e.getExistingRelationOption(sn, spaceID), treestorage.TreeStorageCreatePayload{}, nil
+	}
+	if sn.SbType == sb.SmartBlockTypeRelation {
+		return e.getExistingRelation(sn, spaceID), treestorage.TreeStorageCreatePayload{}, nil
+	}
+	return "", treestorage.TreeStorageCreatePayload{}, nil
 }
 
 func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snapshot) (string, error) {
@@ -106,7 +112,7 @@ func (e *existingObject) getExistingObject(spaceID string, sn *common.Snapshot) 
 	return ""
 }
 
-func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot) string {
+func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot, spaceID string) string {
 	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
 	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
 	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
@@ -123,8 +129,46 @@ func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot) st
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
+			},
+		},
+	})
+	if err == nil && len(ids) > 0 {
+		return ids[0]
+	}
+	return ""
+}
+
+func (e *existingObject) getExistingRelation(snapshot *common.Snapshot, spaceID string) string {
+	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
+	format := pbtypes.GetFloat64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
+	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyName.String(),
+				Value:       pbtypes.String(name),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyRelationFormat.String(),
+				Value:       pbtypes.Float64(format),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
 			},
 		},
 	})

@@ -61,7 +61,7 @@ func (f *file) audioDetails(ctx context.Context) (*types.Struct, error) {
 		d.Fields[bundle.RelationKeyAudioAlbum.String()] = pbtypes.String(t.Album())
 	}
 	if t.Artist() != "" {
-		d.Fields[bundle.RelationKeyAudioArtist.String()] = pbtypes.String(t.Artist())
+		d.Fields[bundle.RelationKeyArtist.String()] = pbtypes.String(t.Artist())
 	}
 	if t.Genre() != "" {
 		d.Fields[bundle.RelationKeyAudioGenre.String()] = pbtypes.String(t.Genre())

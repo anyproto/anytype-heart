@@ -50,7 +50,7 @@ func Test(t *testing.T) {
 			{Relation: bundle.MustGetRelation(bundle.RelationKeyId)},
 			{Relation: bundle.MustGetRelation(bundle.RelationKeyName)},
 			{Relation: bundle.MustGetRelation(bundle.RelationKeyAuthor)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyAttachments)},
+			{Relation: bundle.MustGetRelation(bundle.RelationKeyLinkedProjects)},
 		}, nil)
 		fixture.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*types.Struct{},
@@ -72,7 +72,7 @@ func Test(t *testing.T) {
 			{Relation: bundle.MustGetRelation(bundle.RelationKeyId)},
 			{Relation: bundle.MustGetRelation(bundle.RelationKeyName)},
 			{Relation: bundle.MustGetRelation(bundle.RelationKeyAssignee)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyAttachments)},
+			{Relation: bundle.MustGetRelation(bundle.RelationKeyLinkedProjects)},
 		}, nil)
 		fixture.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*types.Struct{
@@ -125,7 +125,7 @@ func Test_isRelationShouldBeIncludedAsEdge(t *testing.T) {
 			false,
 		},
 		{"file relation",
-			&relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyTrailer)},
+			&relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyPicture)},
 			true,
 		},
 		{"custom relation",

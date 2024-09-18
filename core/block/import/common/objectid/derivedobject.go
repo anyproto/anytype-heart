@@ -33,11 +33,15 @@ func newDerivedObject(existingObject *existingObject, spaceService space.Service
 }
 
 func (d *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, _ time.Time, getExisting bool, _ objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
-	id, payload, err := d.existingObject.GetIDAndPayload(ctx, spaceID, sn, getExisting)
+	id, payload, err := d.existingObject.GetIDAndPayload(ctx, spaceID, sn, true)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, err
 	}
 	if id != "" {
+		d.internalKey, err = d.getInternalKey(spaceID, id)
+		if err != nil {
+			return "", treestorage.TreeStorageCreatePayload{}, err
+		}
 		return id, payload, nil
 	}
 	rawUniqueKey := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
@@ -95,4 +99,30 @@ func (d *derivedObject) isDeletedObject(spaceId string, uniqueKey string) bool {
 		},
 	})
 	return err == nil && len(ids) > 0
+}
+
+func (d *derivedObject) getInternalKey(spaceID, objectId string) (string, error) {
+	ids, err := d.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyId.String(),
+				Value:       pbtypes.String(objectId),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
+			},
+		},
+	})
+	if err == nil && len(ids) > 0 {
+		uniqueKey := pbtypes.GetString(ids[0].Details, bundle.RelationKeyUniqueKey.String())
+		key, err := domain.UnmarshalUniqueKey(uniqueKey)
+		if err != nil {
+			return "", nil
+		}
+		return key.InternalKey(), err
+	}
+	return "", nil
 }

@@ -186,6 +186,7 @@ func newTestPeer(id string) *testPeer {
 type testPeer struct {
 	id     string
 	closed chan struct{}
+	ctx    context.Context
 }
 
 func (t *testPeer) SetTTL(ttl time.Duration) {
@@ -203,8 +204,7 @@ func (t *testPeer) AcquireDrpcConn(ctx context.Context) (drpc.Conn, error) {
 func (t *testPeer) ReleaseDrpcConn(conn drpc.Conn) {}
 
 func (t *testPeer) Context() context.Context {
-	// TODO implement me
-	panic("implement me")
+	return t.ctx
 }
 
 func (t *testPeer) Accept() (conn net.Conn, err error) {

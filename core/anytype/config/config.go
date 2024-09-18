@@ -6,8 +6,10 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/config"
@@ -67,7 +69,9 @@ type Config struct {
 	PeferYamuxTransport                    bool
 	SpaceStorageMode                       storage.SpaceStorageMode
 	NetworkMode                            pb.RpcAccountNetworkMode
-	NetworkCustomConfigFilePath            string `json:",omitempty"` // not saved to config
+	NetworkCustomConfigFilePath            string           `json:",omitempty"` // not saved to config
+	SqliteTempPath                         string           `json:",omitempty"` // not saved to config
+	AnyStoreConfig                         *anystore.Config `json:",omitempty"` // not saved to config
 
 	RepoPath    string
 	AnalyticsId string
@@ -179,6 +183,16 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		return fmt.Errorf("repo is missing")
 	}
 	c.RepoPath = repoPath
+	c.AnyStoreConfig = &anystore.Config{}
+	if runtime.GOOS == "android" {
+		split := strings.Split(repoPath, "/files/")
+		if len(split) == 1 {
+			return fmt.Errorf("failed to split repo path: %s", repoPath)
+		}
+		c.SqliteTempPath = filepath.Join(split[0], "cache")
+		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
+		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + c.SqliteTempPath + "'"
+	}
 
 	if !c.DisableFileConfig {
 		var confRequired ConfigRequired
@@ -282,6 +296,14 @@ func (c *Config) GetConfigPath() string {
 
 func (c *Config) GetSpaceStorePath() string {
 	return filepath.Join(c.RepoPath, "spaceStore.db")
+}
+
+func (c *Config) GetTempDirPath() string {
+	return c.SqliteTempPath
+}
+
+func (c *Config) GetAnyStoreConfig() *anystore.Config {
+	return c.AnyStoreConfig
 }
 
 func (c *Config) IsNewAccount() bool {

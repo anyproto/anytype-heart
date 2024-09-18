@@ -82,7 +82,7 @@ jobs:
             ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Install old MacOS SDK (for backward compatibility of CGO)
         run: source .github/install_macos_sdk.sh 10.15
-        if: github.event.inputs.run-on-runner != 'ARM64'
+        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
@@ -129,7 +129,6 @@ jobs:
           make protos-server
           CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           ls -lha .
-        if: github.event_name == 'push'
       - name: run perf tests
         run: |
           echo "Running perf tests"
@@ -178,15 +177,6 @@ jobs:
           cp pkg/lib/bundle/systemTypes.json ./json
           cp pkg/lib/bundle/internalRelations.json ./json
           cp pkg/lib/bundle/internalTypes.json ./json
-      - name: Upload protobuf artifact for linux build
-        uses: actions/upload-artifact@v2
-        with:
-          name: libs
-          path: |
-            protobuf
-          if-no-files-found: error
-          retention-days: 1
-        if: github.event_name == 'push'
       - name: Pack server win
         run: |
           declare -a arr=("windows-amd64")
@@ -233,6 +223,9 @@ jobs:
           go install go.uber.org/mock/mockgen@v0.3.0
           make test-deps
           gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector timetzdata" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
+          mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
+          go run cmd/iosrepack/main.go
+          mv dist/ios/Lib.xcframework .
           gtar --exclude ".*" -czvf ios_framework.tar.gz Lib.xcframework protobuf json
           gradle publish
           mv ios_framework.tar.gz .release/ios_framework_${VERSION}.tar.gz
@@ -377,7 +370,7 @@ jobs:
           cp pkg/lib/bundle/internalRelations.json ./json
           cp pkg/lib/bundle/internalTypes.json ./json
       - name: Upload protobuf artifact for linux build
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: libs
           path: |

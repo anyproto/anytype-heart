@@ -224,7 +224,7 @@ func (mw *Middleware) DebugRunProfiler(cctx context.Context, req *pb.RpcDebugRun
 }
 
 func (mw *Middleware) DebugAccountSelectTrace(cctx context.Context, req *pb.RpcDebugAccountSelectTraceRequest) *pb.RpcDebugAccountSelectTraceResponse {
-	path, err := mw.applicationService.SaveLoginTrace()
+	path, err := mw.applicationService.SaveLoginTrace(req.Dir)
 	if err != nil {
 		return &pb.RpcDebugAccountSelectTraceResponse{
 			Error: &pb.RpcDebugAccountSelectTraceResponseError{

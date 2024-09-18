@@ -9,9 +9,10 @@ Middleware library for Anytype, distributed as part of the Anytype clients.
 - [Project architecture](docs/Architecture.md)
 - [Style guide](docs/Codestyle.md)
 - [Project workflows](docs/Flow.md)
+- [Complex filters](docs/ComplexFilters.md)
 
 ### CLI tools
-- [Usecase generator](docs/UsecaseGenerator.md)
+- [Usecase validator](docs/UsecaseValidator.md)
 - [Export Archive unpacker](docs/ExportArchiveUnpacker.md)
 
 ## Contribution

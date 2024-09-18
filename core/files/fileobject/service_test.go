@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/session"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -68,6 +69,16 @@ func (c *dummyConfig) Name() string {
 	return "dummyConfig"
 }
 
+type dummyObjectArchiver struct{}
+
+func (a *dummyObjectArchiver) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error {
+	return nil
+}
+
+func (a *dummyObjectArchiver) Name() string { return "dummyObjectArchiver" }
+
+func (a *dummyObjectArchiver) Init(_ *app.App) error { return nil }
+
 const testResolveRetryDelay = 5 * time.Millisecond
 
 func newFixture(t *testing.T) *fixture {
@@ -85,6 +96,7 @@ func newFixture(t *testing.T) *fixture {
 	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 	fileService := files.New()
 	spaceService := mock_space.NewMockService(t)
+	spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(nil, fmt.Errorf("not needed")).Maybe()
 	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
 	svc := New(testResolveRetryDelay, testResolveRetryDelay)
@@ -114,6 +126,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
+	a.Register(&dummyObjectArchiver{})
 
 	err = a.Start(ctx)
 	require.NoError(t, err)

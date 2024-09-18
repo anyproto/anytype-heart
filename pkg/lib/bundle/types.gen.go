@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "fea3b06c998f4c974f06b3b0714b26dd2c5a7fa35ce9dc8b8f17d7c619215f7b"
+const TypeChecksum = "8b79add6b322acbcee123ad178c1aee523a2d9b9f219c391903530b29e554a1e"
 const (
 	TypePrefix = "_ot"
 )
@@ -18,15 +18,12 @@ const (
 	TypeKeyNote           domain.TypeKey = "note"
 	TypeKeyContact        domain.TypeKey = "contact"
 	TypeKeyBookmark       domain.TypeKey = "bookmark"
-	TypeKeyWeeklyPlan     domain.TypeKey = "weeklyPlan"
 	TypeKeyDate           domain.TypeKey = "date"
-	TypeKeyIdea           domain.TypeKey = "idea"
 	TypeKeyTask           domain.TypeKey = "task"
 	TypeKeyRelation       domain.TypeKey = "relation"
 	TypeKeyBook           domain.TypeKey = "book"
 	TypeKeyVideo          domain.TypeKey = "video"
 	TypeKeyDashboard      domain.TypeKey = "dashboard"
-	TypeKeyDailyPlan      domain.TypeKey = "dailyPlan"
 	TypeKeyMovie          domain.TypeKey = "movie"
 	TypeKeyObjectType     domain.TypeKey = "objectType"
 	TypeKeyRelationOption domain.TypeKey = "relationOption"
@@ -36,16 +33,12 @@ const (
 	TypeKeyTemplate       domain.TypeKey = "template"
 	TypeKeySet            domain.TypeKey = "set"
 	TypeKeyCollection     domain.TypeKey = "collection"
-	TypeKeyClassNote      domain.TypeKey = "classNote"
 	TypeKeyDiaryEntry     domain.TypeKey = "diaryEntry"
 	TypeKeyPage           domain.TypeKey = "page"
 	TypeKeyImage          domain.TypeKey = "image"
-	TypeKeyBug            domain.TypeKey = "bug"
 	TypeKeyProfile        domain.TypeKey = "profile"
 	TypeKeyAudio          domain.TypeKey = "audio"
 	TypeKeyGoal           domain.TypeKey = "goal"
-	TypeKeyFeature        domain.TypeKey = "feature"
-	TypeKeyDocument       domain.TypeKey = "document"
 	TypeKeyFile           domain.TypeKey = "file"
 	TypeKeyProject        domain.TypeKey = "project"
 )
@@ -59,8 +52,9 @@ var (
 			Layout:                 model.ObjectType_file,
 			Name:                   "Audio",
 			Readonly:               true,
-			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioAlbumTrackNumber), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyComposer), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyAudioArtist), MustGetRelationLink(RelationKeyAudioLyrics)},
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioAlbumTrackNumber), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyAudioLyrics), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyOrigin)},
 			RestrictObjectCreation: true,
+			Revision:               1,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "audio",
 		},
@@ -71,7 +65,7 @@ var (
 			Layout:        model.ObjectType_basic,
 			Name:          "Book",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAuthor), MustGetRelationLink(RelationKeyCategory), MustGetRelationLink(RelationKeyRating), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyStarred), MustGetRelationLink(RelationKeyUrl)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAuthor), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyStarred), MustGetRelationLink(RelationKeyUrl)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "book",
 		},
@@ -85,28 +79,6 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeySource), MustGetRelationLink(RelationKeyPicture)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "bookmark",
-		},
-		TypeKeyBug: {
-
-			Description:   "An error, fault or flaw in any computer program or a hardware system. A bug produces unexpected results or causes a system to behave unexpectedly",
-			IconEmoji:     "🐞",
-			Layout:        model.ObjectType_todo,
-			Name:          "Bug (Software)",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyHowToReproduce), MustGetRelationLink(RelationKeyResult), MustGetRelationLink(RelationKeyAdditional), MustGetRelationLink(RelationKeyAttachments), MustGetRelationLink(RelationKeyAssignee), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyPriority)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "bug",
-		},
-		TypeKeyClassNote: {
-
-			Description:   "Note for recording lectures or seminars",
-			IconEmoji:     "👨🏻\u200d🏫",
-			Layout:        model.ObjectType_basic,
-			Name:          "Class Note",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyClass), MustGetRelationLink(RelationKeyClassType), MustGetRelationLink(RelationKeyRecords), MustGetRelationLink(RelationKeyQuestions), MustGetRelationLink(RelationKeyMaterials), MustGetRelationLink(RelationKeyTasks), MustGetRelationLink(RelationKeyReflection)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "classNote",
 		},
 		TypeKeyCollection: {
 
@@ -126,20 +98,9 @@ var (
 			Layout:        model.ObjectType_profile,
 			Name:          "Contact",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyPhone), MustGetRelationLink(RelationKeyEmail), MustGetRelationLink(RelationKeyDateOfBirth), MustGetRelationLink(RelationKeyPlaceOfBirth), MustGetRelationLink(RelationKeyCompany), MustGetRelationLink(RelationKeySocialProfile), MustGetRelationLink(RelationKeyJob), MustGetRelationLink(RelationKeyLinkedContacts), MustGetRelationLink(RelationKeyOccupation), MustGetRelationLink(RelationKeyInstagram), MustGetRelationLink(RelationKeyGender), MustGetRelationLink(RelationKeyFacebook)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyPhone), MustGetRelationLink(RelationKeyEmail), MustGetRelationLink(RelationKeyCompany)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "contact",
-		},
-		TypeKeyDailyPlan: {
-
-			Description:   "A detailed proposal for doing or achieving something for the day\n",
-			IconEmoji:     "📆",
-			Layout:        model.ObjectType_todo,
-			Name:          "Daily Plan",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTasks), MustGetRelationLink(RelationKeyEvents)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "dailyPlan",
 		},
 		TypeKeyDashboard: {
 
@@ -175,28 +136,6 @@ var (
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "diaryEntry",
 		},
-		TypeKeyDocument: {
-
-			Description:   "A piece of matter that provides information or evidence or that serves as an official record",
-			IconEmoji:     "📃",
-			Layout:        model.ObjectType_basic,
-			Name:          "Document",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "document",
-		},
-		TypeKeyFeature: {
-
-			Description:   "A distinguishing characteristic of a software item (e.g., performance, portability, or functionality)",
-			IconEmoji:     "🪁",
-			Layout:        model.ObjectType_todo,
-			Name:          "Feature",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyHypothesisAssumptions), MustGetRelationLink(RelationKeyProblem), MustGetRelationLink(RelationKeyUserStories), MustGetRelationLink(RelationKeyLogic), MustGetRelationLink(RelationKeyMeasureOfSuccess), MustGetRelationLink(RelationKeyAttachments), MustGetRelationLink(RelationKeyAssignee), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyPriority)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "feature",
-		},
 		TypeKeyFile: {
 
 			Description:            "Computer resource for recording data in a computer storage device",
@@ -204,8 +143,9 @@ var (
 			Layout:                 model.ObjectType_file,
 			Name:                   "File",
 			Readonly:               true,
-			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt)},
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyOrigin)},
 			RestrictObjectCreation: true,
+			Revision:               1,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "file",
 		},
@@ -220,17 +160,6 @@ var (
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "goal",
 		},
-		TypeKeyIdea: {
-
-			Description:   "A thought or suggestion as to a possible course of action",
-			IconEmoji:     "💡",
-			Layout:        model.ObjectType_basic,
-			Name:          "Idea",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyProblem), MustGetRelationLink(RelationKeySolution), MustGetRelationLink(RelationKeyAlternative)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "idea",
-		},
 		TypeKeyImage: {
 
 			Description:            "A representation of the external form of a person or thing in art",
@@ -238,8 +167,9 @@ var (
 			Layout:                 model.ObjectType_image,
 			Name:                   "Image",
 			Readonly:               true,
-			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFocalRatio), MustGetRelationLink(RelationKeyFileExt)},
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFocalRatio), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyOrigin)},
 			RestrictObjectCreation: true,
+			Revision:               1,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "image",
 		},
@@ -250,7 +180,7 @@ var (
 			Layout:        model.ObjectType_basic,
 			Name:          "Movie",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDirector), MustGetRelationLink(RelationKeyStars), MustGetRelationLink(RelationKeyGenre), MustGetRelationLink(RelationKeyTrailer), MustGetRelationLink(RelationKeyRating), MustGetRelationLink(RelationKeyImdbRating), MustGetRelationLink(RelationKeyRottenTomatoesRating), MustGetRelationLink(RelationKeyStatus)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyGenre), MustGetRelationLink(RelationKeyStatus)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "movie",
 		},
@@ -318,7 +248,7 @@ var (
 			Layout:        model.ObjectType_basic,
 			Name:          "Project",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyObjectives), MustGetRelationLink(RelationKeyScope), MustGetRelationLink(RelationKeyTimeframe), MustGetRelationLink(RelationKeyBudget), MustGetRelationLink(RelationKeyStakeholders), MustGetRelationLink(RelationKeyTasks)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTasks)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "project",
 		},
@@ -329,7 +259,7 @@ var (
 			Layout:        model.ObjectType_basic,
 			Name:          "Recipe",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTime), MustGetRelationLink(RelationKeyServings), MustGetRelationLink(RelationKeyIngredients), MustGetRelationLink(RelationKeyInstructions), MustGetRelationLink(RelationKeyDifficulty)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTime), MustGetRelationLink(RelationKeyIngredients)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "recipe",
 		},
@@ -400,7 +330,7 @@ var (
 			Layout:        model.ObjectType_todo,
 			Name:          "Task",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAssignee), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyAttachments), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyDone), MustGetRelationLink(RelationKeyPriority), MustGetRelationLink(RelationKeyTasks), MustGetRelationLink(RelationKeyLinkedProjects)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAssignee), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyDone), MustGetRelationLink(RelationKeyPriority), MustGetRelationLink(RelationKeyTasks), MustGetRelationLink(RelationKeyLinkedProjects)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "task",
 		},
@@ -422,21 +352,11 @@ var (
 			Layout:                 model.ObjectType_file,
 			Name:                   "Video",
 			Readonly:               true,
-			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt)},
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyOrigin)},
 			RestrictObjectCreation: true,
+			Revision:               1,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "video",
-		},
-		TypeKeyWeeklyPlan: {
-
-			Description:   "The act of organizing your activities and tasks for the week",
-			IconEmoji:     "🗓️",
-			Layout:        model.ObjectType_todo,
-			Name:          "Weekly Plan",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyEvents), MustGetRelationLink(RelationKeyTasks)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "weeklyPlan",
 		},
 	}
 )
