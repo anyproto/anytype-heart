@@ -462,7 +462,7 @@
     "types": [
       "ChatObject"
     ],
-    "emoji": "",
+    "emoji": "💬",
     "hidden": false,
     "layout": "chat",
     "relations": [

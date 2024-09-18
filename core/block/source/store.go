@@ -198,7 +198,9 @@ func (s *store) Rebuild(tree objecttree.ObjectTree) error {
 
 func MarshalStoreChange(change *pb.StoreChange) (result []byte, dataType string, err error) {
 	data := bytesPool.Get().([]byte)[:0]
-	defer bytesPool.Put(data)
+	defer func() {
+		bytesPool.Put(data)
+	}()
 
 	data = slices.Grow(data, change.Size())
 	n, err := change.MarshalTo(data)
@@ -221,7 +223,9 @@ func UnmarshalStoreChange(treeChange *objecttree.Change, data []byte) (result an
 	change := &pb.StoreChange{}
 	if treeChange.DataType == dataTypeSnappy {
 		buf := bytesPool.Get().([]byte)[:0]
-		defer bytesPool.Put(buf)
+		defer func() {
+			bytesPool.Put(buf)
+		}()
 
 		var n int
 		if n, err = snappy.DecodedLen(data); err == nil {

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "3da4579be319ff172a0cd6577f0a0391df8e3b2e06c4bfc7b59f6c8ca9db8d82"
+const TypeChecksum = "752a5ff6d42b46a76dd9d389fd73e7310959bfab7ba5e2c372971bdadadc1f4f"
 const (
 	TypePrefix = "_ot"
 )
@@ -85,6 +85,7 @@ var (
 		TypeKeyChat: {
 
 			Description:   "A chat",
+			IconEmoji:     "💬",
 			Layout:        model.ObjectType_chat,
 			Name:          "Chat",
 			Readonly:      true,
