@@ -245,10 +245,9 @@ func (s *space) migrateTag(objectStore objectstore.ObjectStore) error {
 	if len(relation) == 0 {
 		return nil
 	}
-	err = s.Do(relation[0], func(sb smartblock.SmartBlock) error {
+	return s.Do(relation[0], func(sb smartblock.SmartBlock) error {
 		return nil
 	})
-	return nil
 }
 
 func (s *space) Id() string {
