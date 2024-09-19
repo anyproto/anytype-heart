@@ -1,0 +1,101 @@
+on:
+  workflow_dispatch:
+    inputs:
+      run-on-runner:
+        description: 'Specify the runner to use'
+        required: true
+        default: 'ARM64'
+      perf-test:
+        description: 'Run perf test times'
+        required: true
+        default: '0'
+  schedule:
+    - cron: '0 0 * * *' # every day at midnight
+      filters:
+        branches:
+          include:
+            - 'feature/chat'
+
+
+permissions:
+  actions: 'write'
+  contents: 'write'
+
+
+name: Build
+jobs:
+  build:
+    runs-on: 'ARM64'
+    steps:
+      - name: Setup GO
+        run: |
+          go version
+          echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
+          echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
+          echo $(go env GOPATH)/bin >> $GITHUB_PATH
+      - name: Checkout
+        uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ matrix.go-version }}-
+      - name: Set env vars
+        env:
+          UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
+          INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
+        run: |
+          GIT_SUMMARY=$(git describe --tags --always)
+          echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION=${{ github.event.inputs.alpha_version }}
+            if [ -z "$VERSION" ]; then
+              VERSION=$(git rev-parse --short HEAD)
+            fi
+          fi
+          if [ -z "$VERSION" ]; then
+            VERSION=${GITHUB_REF##*/}
+          fi
+          echo VERSION=${VERSION} >> $GITHUB_ENV
+          echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
+          echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
+          echo $(pwd)/deps >> $GITHUB_PATH
+          echo "${GOBIN}" >> $GITHUB_PATH
+          git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
+      - name: Go mod download
+        run: |
+          go mod download
+      - name: install protoc
+        run: |
+          make setup-protoc
+      - name: setup go
+        run: |
+          make setup-go
+          make setup-gomobile
+          which gomobile
+      - name: run perf tests
+        run: |
+          echo "Running perf tests"
+          make download-tantivy-all
+          RUN_COUNT=${{ github.event.inputs.perf-test }}
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            RUN_COUNT=100
+          fi          
+          cd cmd/perfstand/account_create
+          CGO_ENABLED="1" go run main.go $RUN_COUNT
+          cd ../account_select
+          CGO_ENABLED="1" go run main.go $RUN_COUNT
+        env:
+          TEST_MNEMONIC: ${{ secrets.TEST_MNEMONIC_30000 }}
+          CH_API_KEY: ${{ secrets.CH_API_KEY }}
+          ACCOUNT_HASH: ${{ secrets.ACCOUNT_HASH_30000 }}
+          ACCOUNT_SPACE: ${{ secrets.ACCOUNT_SPACE_30000 }}
+          ROOT_FOLDER: ${{ secrets.ROOT_FOLDER }}
+      - name: Archive perf tests results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pprofs
+          path: |
+            *.pprof
