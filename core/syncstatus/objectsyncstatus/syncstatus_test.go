@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestate"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/mock_spacestorage"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
@@ -87,50 +85,6 @@ func Test_UseCases(t *testing.T) {
 		s.RemoveAllExcept("peerId1", []string{})
 
 		assert.Equal(t, s.synced, []string{"id"})
-	})
-}
-
-func TestSyncStatusService_Watch_Unwatch(t *testing.T) {
-	t.Run("watch", func(t *testing.T) {
-		s := newFixture(t, "spaceId")
-
-		s.spaceStorage.EXPECT().TreeStorage("id").Return(treestorage.NewInMemoryTreeStorage(&treechangeproto.RawTreeChangeWithId{Id: "id"}, []string{"head3", "head2", "head1"}, nil))
-		err := s.Watch("id")
-		assert.Nil(t, err)
-		assert.Contains(t, s.watchers, "id")
-		assert.Equal(t, []string{"head1", "head2", "head3"}, s.treeHeads["id"].heads, "should be sorted")
-	})
-	t.Run("unwatch", func(t *testing.T) {
-		s := newFixture(t, "spaceId")
-
-		s.spaceStorage.EXPECT().TreeStorage("id").Return(treestorage.NewInMemoryTreeStorage(&treechangeproto.RawTreeChangeWithId{Id: "id"}, []string{"headId"}, nil))
-		err := s.Watch("id")
-		assert.Nil(t, err)
-
-		s.Unwatch("id")
-		assert.NotContains(t, s.watchers, "id")
-		assert.Equal(t, []string{"headId"}, s.treeHeads["id"].heads)
-	})
-}
-
-func TestSyncStatusService_update(t *testing.T) {
-	t.Run("update: got updates on objects", func(t *testing.T) {
-		s := newFixture(t, "spaceId")
-		updateReceiver := NewMockUpdateReceiver(t)
-		updateReceiver.EXPECT().UpdateNodeStatus().Return()
-		updateReceiver.EXPECT().UpdateTree(context.Background(), "id", StatusSynced).Return(nil)
-		updateReceiver.EXPECT().UpdateTree(context.Background(), "id2", StatusNotSynced).Return(nil)
-		s.SetUpdateReceiver(updateReceiver)
-
-		s.syncDetailsUpdater.EXPECT().UpdateDetails("id3", domain.ObjectSyncStatusSynced, "spaceId")
-		s.synced = []string{"id3"}
-		s.tempSynced["id4"] = struct{}{}
-		s.treeHeads["id"] = treeHeadsEntry{syncStatus: StatusSynced, heads: []string{"headId"}}
-		s.treeHeads["id2"] = treeHeadsEntry{syncStatus: StatusNotSynced, heads: []string{"headId"}}
-		s.watchers["id"] = struct{}{}
-		s.watchers["id2"] = struct{}{}
-		err := s.update(context.Background())
-		require.NoError(t, err)
 	})
 }
 

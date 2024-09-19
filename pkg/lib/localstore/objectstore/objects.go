@@ -127,10 +127,15 @@ type VirtualSpacesStore interface {
 	DeleteVirtualSpace(spaceID string) error
 }
 
+type configProvider interface {
+	GetAnyStoreConfig() *anystore.Config
+}
+
 type dsObjectStore struct {
 	oldStore oldstore.Service
 
 	repoPath         string
+	anyStoreConfig   *anystore.Config
 	sourceService    SourceDetailsFromID
 	anyStore         anystore.DB
 	objects          anystore.Collection
@@ -181,6 +186,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	}
 	s.arenaPool = &fastjson.ArenaPool{}
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
+	s.anyStoreConfig = app.MustComponent[configProvider](a).GetAnyStoreConfig()
 	s.oldStore = app.MustComponent[oldstore.Service](a)
 
 	return nil
@@ -203,7 +209,7 @@ func (s *dsObjectStore) Run(ctx context.Context) error {
 }
 
 func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
-	store, err := anystore.Open(ctx, path, nil)
+	store, err := anystore.Open(ctx, path, s.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
