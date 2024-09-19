@@ -1762,8 +1762,6 @@
     - [Block.Content.Dataview.Filter.Condition](#anytype-model-Block-Content-Dataview-Filter-Condition)
     - [Block.Content.Dataview.Filter.Operator](#anytype-model-Block-Content-Dataview-Filter-Operator)
     - [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption)
-    - [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat)
-    - [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat)
     - [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType)
     - [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type)
     - [Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size)
@@ -26436,7 +26434,7 @@ Bookmark is to keep a web-link and to preview a content.
 | value | [google.protobuf.Value](#google-protobuf-Value) |  |  |
 | quickOption | [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption) |  |  |
 | format | [RelationFormat](#anytype-model-RelationFormat) |  |  |
-| includeTime | [bool](#bool) |  | deprecated |
+| includeTime | [bool](#bool) |  |  |
 | nestedFilters | [Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 
 
@@ -26507,10 +26505,7 @@ Bookmark is to keep a web-link and to preview a content.
 | key | [string](#string) |  |  |
 | isVisible | [bool](#bool) |  |  |
 | width | [int32](#int32) |  | the displayed column % calculated based on other visible relations |
-| isReadOnly | [bool](#bool) |  | deprecated |
-| dateIncludeTime | [bool](#bool) |  | deprecated |
-| timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  | deprecated |
-| dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  | deprecated |
+| isReadOnly | [bool](#bool) |  | bool dateIncludeTime = 5; // deprecated TimeFormat timeFormat = 6; // deprecated DateFormat dateFormat = 7; // deprecated |
 
 
 
@@ -26529,7 +26524,7 @@ Bookmark is to keep a web-link and to preview a content.
 | type | [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type) |  |  |
 | customOrder | [google.protobuf.Value](#google-protobuf-Value) | repeated |  |
 | format | [RelationFormat](#anytype-model-RelationFormat) |  |  |
-| includeTime | [bool](#bool) |  | deprecated |
+| includeTime | [bool](#bool) |  |  |
 | id | [string](#string) |  |  |
 | emptyPlacement | [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType) |  |  |
 
@@ -27940,33 +27935,6 @@ stored |
 | NextMonth | 9 |  |
 | NumberOfDaysAgo | 10 |  |
 | NumberOfDaysNow | 11 |  |
-
-
-
-<a name="anytype-model-Block-Content-Dataview-Relation-DateFormat"></a>
-
-### Block.Content.Dataview.Relation.DateFormat
-deprecated
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| MonthAbbrBeforeDay | 0 | Jul 30, 2020 |
-| MonthAbbrAfterDay | 1 | 30 Jul 2020 |
-| Short | 2 | 30/07/2020 |
-| ShortUS | 3 | 07/30/2020 |
-| ISO | 4 | 2020-07-30 |
-
-
-
-<a name="anytype-model-Block-Content-Dataview-Relation-TimeFormat"></a>
-
-### Block.Content.Dataview.Relation.TimeFormat
-deprecated
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Format12 | 0 |  |
-| Format24 | 1 |  |
 
 
 

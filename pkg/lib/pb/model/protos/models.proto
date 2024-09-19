@@ -380,25 +380,10 @@ message Block {
                 string key = 1;
                 bool isVisible = 2;
                 int32 width = 3; // the displayed column % calculated based on other visible relations
-                bool isReadOnly = 4; // deprecated
-                bool dateIncludeTime = 5; // deprecated
-                TimeFormat timeFormat = 6; // deprecated
-                DateFormat dateFormat = 7; // deprecated
-
-                // deprecated
-                enum DateFormat {
-                    MonthAbbrBeforeDay = 0; // Jul 30, 2020
-                    MonthAbbrAfterDay = 1; // 30 Jul 2020
-                    Short = 2; // 30/07/2020
-                    ShortUS = 3; // 07/30/2020
-                    ISO = 4; // 2020-07-30
-                }
-
-                // deprecated
-                enum TimeFormat {
-                    Format12 = 0;
-                    Format24 = 1;
-                }
+                bool isReadOnly = 4;
+                // bool dateIncludeTime = 5; // deprecated
+                // TimeFormat timeFormat = 6; // deprecated
+                // DateFormat dateFormat = 7; // deprecated
             }
 
             message Sort {
@@ -406,7 +391,7 @@ message Block {
                 Type type = 2;
                 repeated google.protobuf.Value customOrder = 3;
                 RelationFormat format = 4;
-                bool includeTime = 5; // deprecated
+                bool includeTime = 5;
                 string id = 6;
                 EmptyType emptyPlacement = 7;
 
@@ -432,7 +417,7 @@ message Block {
                 google.protobuf.Value value = 4;
                 QuickOption quickOption = 6;
                 RelationFormat format = 7;
-                bool includeTime = 8; // deprecated
+                bool includeTime = 8;
                 repeated Filter nestedFilters = 10;
 
                 enum Operator {
