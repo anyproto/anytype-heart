@@ -269,6 +269,7 @@ type CreateRequest struct {
 	FileId                domain.FileId
 	EncryptionKeys        map[string]string
 	ObjectOrigin          objectorigin.ObjectOrigin
+	ImageKind             model.ImageKind
 	AdditionalDetails     *types.Struct
 	AsyncMetadataIndexing bool
 }
@@ -306,7 +307,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		return "", nil, fmt.Errorf("file hash is empty")
 	}
 
-	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin)
+	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin, req.ImageKind)
 
 	payload, err := space.CreateTreePayload(ctx, payloadcreator.PayloadCreationParams{
 		Time:           time.Now(),
@@ -355,7 +356,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	return id, object, nil
 }
 
-func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin) *types.Struct {
+func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin, kind model.ImageKind) *types.Struct {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyFileId.String(): pbtypes.String(fileId.String()),
@@ -368,6 +369,9 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 		},
 	}
 	origin.AddToDetails(details)
+	if kind != model.ImageKind_Basic {
+		details.Fields[bundle.RelationKeyImageKind.String()] = pbtypes.Int64(int64(kind))
+	}
 	return details
 }
 

@@ -200,8 +200,12 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 		log.Debug("Image requests to upload after paste:", uploadArr)
 		for _, r := range uploadArr {
 			r.ContextId = req.ContextId
-			req := block.UploadRequest{ObjectOrigin: objectorigin.Clipboard(), RpcBlockUploadRequest: r}
-			if err = bs.UploadBlockFile(nil, req, groupId); err != nil {
+			req := block.UploadRequest{
+				RpcBlockUploadRequest: r,
+				ObjectOrigin:          objectorigin.Clipboard(),
+				ImageKind:             model.ImageKind_AutomaticallyCreated,
+			}
+			if _, err = bs.UploadBlockFile(nil, req, groupId, false); err != nil {
 				return err
 			}
 		}
@@ -309,7 +313,8 @@ func (mw *Middleware) BlockUpload(cctx context.Context, req *pb.RpcBlockUploadRe
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		req := block.UploadRequest{RpcBlockUploadRequest: *req, ObjectOrigin: objectorigin.None()}
-		return bs.UploadBlockFile(nil, req, "")
+		_, err = bs.UploadBlockFile(nil, req, "", false)
+		return err
 	})
 	if err != nil {
 		return response(pb.RpcBlockUploadResponseError_UNKNOWN_ERROR, err)

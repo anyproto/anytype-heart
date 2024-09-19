@@ -808,8 +808,12 @@ func (s *Service) pasteBlocks(id string, content *bookmark.ObjectContent) error 
 	}
 	for _, r := range uploadArr {
 		r.ContextId = id
-		uploadReq := UploadRequest{RpcBlockUploadRequest: r, ObjectOrigin: objectorigin.Webclipper()}
-		if err = s.UploadBlockFile(nil, uploadReq, groupID); err != nil {
+		uploadReq := UploadRequest{
+			RpcBlockUploadRequest: r,
+			ObjectOrigin:          objectorigin.Webclipper(),
+			ImageKind:             model.ImageKind_AutomaticallyCreated,
+		}
+		if _, err = s.UploadBlockFile(nil, uploadReq, groupID, false); err != nil {
 			return err
 		}
 	}

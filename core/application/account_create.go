@@ -130,6 +130,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: req.GetAvatarLocalPath(),
 				Type:      model.BlockContentFile_Image,
+				ImageKind: model.ImageKind_Icon,
 			},
 			ObjectOrigin: objectorigin.None(),
 		})
