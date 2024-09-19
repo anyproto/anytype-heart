@@ -484,6 +484,7 @@
       "tag",
       "description"
     ],
-    "description": "A chat derived object"
+    "description": "A chat derived object",
+    "revision": 1
   }
 ]
