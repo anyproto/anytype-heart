@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "0ccb069416aeaebca02358d1cf986a72322333e92ab36428f706cd2dc0f55db5"
+const TypeChecksum = "a475473f827167d93b818920569ea0f2c758761ef24d6a6bcb8da6b009f01904"
 const (
 	TypePrefix = "_ot"
 )
@@ -337,6 +337,7 @@ var (
 		TypeKeyTemplate: {
 
 			Description:   "Sample object that has already some details in place and used to create objects from",
+			IconEmoji:     "🧩",
 			Layout:        model.ObjectType_basic,
 			Name:          "Template",
 			Readonly:      true,
