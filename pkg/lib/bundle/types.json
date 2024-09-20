@@ -269,13 +269,14 @@
       "Template"
     ],
     "emoji": "",
-    "hidden": true,
+    "hidden": false,
     "layout": "basic",
     "relations": [
       "targetObjectType",
       "templateIsBundled"
     ],
-    "description": "Sample object that has already some details in place and used to create objects from"
+    "description": "Sample object that has already some details in place and used to create objects from",
+    "revision": 1
   },
   {
     "id": "set",
