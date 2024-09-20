@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "68778695c5d49dd1ffbab91e13bd9769d80fd89de3a77902cec1c5066e5495a8"
+const RelationChecksum = "a8068f8bee7828cfa88a4cf262a8276bf2cbf1eadc9934dd52c5c06be2d02bbd"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -459,13 +459,13 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Done checkbox used to render action layout. ",
 			Format:           model.RelationFormat_checkbox,
-			Hidden:           true,
 			Id:               "_brdone",
 			Key:              "done",
 			MaxCount:         1,
 			Name:             "Done",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyDueDate: {
