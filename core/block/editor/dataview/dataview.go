@@ -33,7 +33,6 @@ var log = logging.Logger("anytype-mw-editor-dataview")
 type Dataview interface {
 	SetSource(ctx session.Context, blockId string, source []string) (err error)
 
-	// GetAggregatedRelations(blockId string) ([]*model.Relation, error)
 	GetDataviewRelations(blockId string) ([]*model.Relation, error)
 	GetDataview(blockID string) (*model.BlockContentDataview, error)
 

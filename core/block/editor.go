@@ -138,19 +138,6 @@ func (s *Service) SetFieldsList(ctx session.Context, req pb.RpcBlockListSetField
 	})
 }
 
-func (s *Service) GetAggregatedRelations(
-	ctx session.Context,
-	req pb.RpcBlockDataviewRelationListAvailableRequest,
-) (relations []*model.Relation, err error) {
-	err = cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		// todo: remove or replace
-		// relations, err = b.GetAggregatedRelations(req.BlockId)
-		return err
-	})
-
-	return
-}
-
 func (s *Service) UpdateDataviewView(ctx session.Context, req pb.RpcBlockDataviewViewUpdateRequest) error {
 	return cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
 		return b.UpdateView(ctx, req.BlockId, req.ViewId, req.View, true)
