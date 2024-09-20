@@ -28,6 +28,7 @@ type LoadWaiter interface {
 type Loader interface {
 	mode.Process
 	LoadWaiter
+	WaitMigrations(ctx context.Context) error
 }
 
 type Params struct {
@@ -66,4 +67,9 @@ func (l *loader) CanTransition(next mode.Mode) bool {
 func (l *loader) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) {
 	spaceLoader := app.MustComponent[spaceloader.SpaceLoader](l.app)
 	return spaceLoader.WaitLoad(ctx)
+}
+
+func (l *loader) WaitMigrations(ctx context.Context) error {
+	migrator := app.MustComponent[*migration.Runner](l.app)
+	return migrator.Wait(ctx)
 }

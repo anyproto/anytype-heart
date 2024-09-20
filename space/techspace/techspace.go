@@ -40,6 +40,8 @@ type AccountObject interface {
 	editorsb.SmartBlock
 	SetSharedSpacesLimit(limit int) (err error)
 	SetProfileDetails(details *types.Struct) (err error)
+	SetAnalyticsId(analyticsId string) (err error)
+	AnalyticsId() string
 }
 
 type TechSpace interface {

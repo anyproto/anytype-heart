@@ -12,6 +12,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
@@ -36,6 +37,7 @@ var log = logger.NewNamedSugared("common.editor.accountobject")
 const (
 	collectionName  = "account"
 	accountDocument = "accountObject"
+	analyticsKey    = "analyticsId"
 )
 
 type ProfileDetails struct {
@@ -49,6 +51,8 @@ type ProfileSubscription = func(ctx context.Context, profile ProfileDetails) err
 type AccountObject interface {
 	smartblock.SmartBlock
 	basic.DetailsSettable
+	GetAnalyticsId() (string, error)
+	SetAnalyticsId(id string) error
 	SetSharedSpacesLimit(limit int) (err error)
 	SetProfileDetails(details *types.Struct) (err error)
 }
@@ -70,6 +74,7 @@ type accountObject struct {
 	cancel              context.CancelFunc
 	mx                  sync.Mutex
 	relMapper           *relationsMapper
+	cfg                 *config.Config
 }
 
 func (a *accountObject) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
@@ -86,11 +91,13 @@ func New(
 	objectStore objectstore.ObjectStore,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
-	lastUsedUpdater lastused.ObjectUsageUpdater) AccountObject {
+	lastUsedUpdater lastused.ObjectUsageUpdater,
+	cfg *config.Config) AccountObject {
 	return &accountObject{
 		bs:         basic.NewBasic(sb, objectStore, layoutConverter, fileObjectService, lastUsedUpdater),
 		SmartBlock: sb,
 		dbProvider: dbProvider,
+		cfg:        cfg,
 		relMapper: newRelationsMapper(map[string]KeyType{
 			bundle.RelationKeyName.String():        KeyTypeString,
 			bundle.RelationKeyDescription.String(): KeyTypeString,
@@ -128,7 +135,13 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	_, err = coll.FindId(ctx.Ctx, accountDocument)
 	if err != nil {
 		if errors.Is(err, anystore.ErrDocNotFound) {
-			err = coll.Insert(ctx.Ctx, fmt.Sprintf(`{"id":"%s"}`, accountDocument))
+			var docToInsert string
+			if a.cfg.IsNewAccount() {
+				docToInsert = fmt.Sprintf(`{"id":"%s","analyticsId":"%s"}`, accountDocument, a.cfg.AnalyticsId)
+			} else {
+				docToInsert = fmt.Sprintf(`{"id":"%s"}`, accountDocument)
+			}
+			err = coll.Insert(ctx.Ctx, docToInsert)
 			if err != nil {
 				return fmt.Errorf("insert account document: %w", err)
 			}
@@ -206,6 +219,10 @@ func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string,
 	})
 }
 
+func (a *accountObject) SetAnalyticsId(id string) error {
+	return a.setValue(analyticsKey, id)
+}
+
 func (a *accountObject) onUpdate() {
 	st := a.NewState()
 	err := a.update(a.ctx, st)
@@ -218,6 +235,34 @@ func (a *accountObject) onUpdate() {
 		log.Warn("state rebuild", zap.Error(err))
 		return
 	}
+}
+
+func (a *accountObject) setValue(key string, val any) error {
+	builder := &storestate.Builder{}
+	err := builder.Modify(collectionName, accountDocument, []string{key}, pb.ModifyOp_Set, val)
+	if err != nil {
+		return nil
+	}
+	_, err = a.storeSource.PushStoreChange(a.ctx, source.PushStoreChangeParams{
+		Changes: builder.ChangeSet,
+		State:   a.state,
+		Time:    time.Now(),
+	})
+	return err
+}
+
+func (a *accountObject) GetAnalyticsId() (id string, err error) {
+	coll, err := a.state.Collection(a.ctx, collectionName)
+	if err != nil {
+		err = fmt.Errorf("get collection: %w", err)
+		return
+	}
+	obj, err := coll.FindId(a.ctx, accountDocument)
+	if err != nil {
+		err = fmt.Errorf("find id: %w", err)
+		return
+	}
+	return string(obj.Value().GetStringBytes(analyticsKey)), nil
 }
 
 func (a *accountObject) SetSharedSpacesLimit(limit int) (err error) {

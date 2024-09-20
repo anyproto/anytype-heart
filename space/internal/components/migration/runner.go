@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
-	"github.com/anyproto/anytype-heart/space/internal/components/migration/profilemigrator"
+	"github.com/anyproto/anytype-heart/space/internal/components/migration/personalmigrator"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/readonlyfixer"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/systemobjectreviser"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
@@ -40,13 +40,14 @@ type Runner struct {
 	spaceLoader spaceloader.SpaceLoader
 	techSpace   techspace.TechSpace
 
-	ctx        context.Context
-	cancel     context.CancelFunc
-	spc        clientspace.Space
-	loadErr    error
-	waitLoad   chan struct{}
-	started    bool
-	isPersonal bool
+	ctx         context.Context
+	cancel      context.CancelFunc
+	spc         clientspace.Space
+	loadErr     error
+	waitLoad    chan struct{}
+	waitMigrate chan struct{}
+	started     bool
+	isPersonal  bool
 
 	app.ComponentRunnable
 }
@@ -60,6 +61,7 @@ func (r *Runner) Init(a *app.App) error {
 	r.spaceLoader = app.MustComponent[spaceloader.SpaceLoader](a)
 	r.techSpace = app.MustComponent[techspace.TechSpace](a)
 
+	r.waitMigrate = make(chan struct{})
 	r.waitLoad = make(chan struct{})
 	return nil
 }
@@ -101,7 +103,7 @@ func (r *Runner) runMigrations() {
 		readonlyfixer.Migration{},
 	}
 	if r.isPersonal {
-		migrations = append(migrations, profilemigrator.Migration{TechSpace: r.techSpace})
+		migrations = append(migrations, personalmigrator.Migration{TechSpace: r.techSpace})
 	}
 
 	if err := r.run(migrations...); err != nil {
@@ -109,7 +111,17 @@ func (r *Runner) runMigrations() {
 	}
 }
 
+func (r *Runner) Wait(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-r.waitMigrate:
+		return nil
+	}
+}
+
 func (r *Runner) run(migrations ...Migration) (err error) {
+	defer close(r.waitMigrate)
 	spaceId := r.spc.Id()
 
 	for _, m := range migrations {

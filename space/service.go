@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -69,7 +70,7 @@ type Service interface {
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 	AccountMetadataSymKey() crypto.SymKey
 	AccountMetadataPayload() []byte
-
+	WaitPersonalSpaceMigration(ctx context.Context) (err error)
 	app.ComponentRunnable
 }
 
@@ -245,6 +246,18 @@ func (s *service) Create(ctx context.Context) (clientspace.Space, error) {
 func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
 	waiter := newSpaceWaiter(s, s.ctx, waitSpaceDelay)
 	return waiter.waitSpace(ctx, spaceId)
+}
+
+func (s *service) WaitPersonalSpaceMigration(ctx context.Context) (err error) {
+	waiter := newSpaceWaiter(s, s.ctx, waitSpaceDelay)
+	_, err = waiter.waitSpace(ctx, s.personalSpaceId)
+	if err != nil {
+		return fmt.Errorf("wait personal space: %w", err)
+	}
+	s.mu.Lock()
+	ctrl := s.spaceControllers[s.personalSpaceId]
+	s.mu.Unlock()
+	return ctrl.Current().(loader.Loader).WaitMigrations(ctx)
 }
 
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {

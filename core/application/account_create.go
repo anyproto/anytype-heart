@@ -104,9 +104,8 @@ func (s *Service) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, a
 
 func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAccountCreateRequest, newAcc *model.Account) error {
 	techSpaceId := app.MustComponent[space.Service](s.app).TechSpaceId()
-	personalSpaceId := app.MustComponent[account.Service](s.app).PersonalSpaceID()
 	var err error
-	newAcc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, personalSpaceId)
+	newAcc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx)
 	if err != nil {
 		return err
 	}
@@ -143,11 +142,6 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 		}
 	}
 	spaceService := app.MustComponent[space.Service](s.app)
-	spc, err := spaceService.Get(ctx, personalSpaceId)
-	if err != nil {
-		return errors.Join(ErrSetDetails, err)
-	}
-	accountObjects := spc.DerivedIDs()
 	accId, err := spaceService.TechSpace().AccountObjectId()
 	if err != nil {
 		return errors.Join(ErrSetDetails, err)
@@ -155,13 +149,6 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	if err := bs.SetDetails(nil,
 		accId,
 		profileDetails,
-	); err != nil {
-		return errors.Join(ErrSetDetails, err)
-	}
-
-	if err := bs.SetDetails(nil,
-		accountObjects.Workspace,
-		commonDetails,
 	); err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}
