@@ -69,6 +69,17 @@ func (s *service) startStatus(ctx context.Context, info spaceinfo.SpacePersisten
 		s.mu.Unlock()
 		return ctrl, nil
 	}
+	if info.SpaceID == s.personalSpaceId {
+		s.mu.Unlock()
+		err = s.loadPersonalSpace(ctx)
+		if err != nil {
+			return nil, err
+		}
+		s.mu.Lock()
+		ctrl := s.spaceControllers[info.SpaceID]
+		s.mu.Unlock()
+		return ctrl, nil
+	}
 	wait := make(chan struct{})
 	s.waiting[info.SpaceID] = controllerWaiter{
 		wait: wait,

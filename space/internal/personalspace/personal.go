@@ -92,14 +92,17 @@ func (s *spaceController) newLoader() loader.Loader {
 }
 
 func (s *spaceController) Update() error {
+	// TODO: [PS] Implement for deletion
 	return nil
 }
 
 func (s *spaceController) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+	// TODO: [PS] Implement for deletion
 	return nil
 }
 
 func (s *spaceController) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) error {
+	// TODO: [PS] Implement for deletion
 	return nil
 }
 
