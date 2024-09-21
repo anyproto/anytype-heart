@@ -205,7 +205,7 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 				ObjectOrigin:          objectorigin.Clipboard(),
 				ImageKind:             model.ImageKind_AutomaticallyCreated,
 			}
-			if _, err = bs.UploadBlockFile(nil, req, groupId, false); err != nil {
+			if _, err = bs.UploadBlockFile(ctx, req, groupId, false); err != nil {
 				return err
 			}
 		}
@@ -313,7 +313,7 @@ func (mw *Middleware) BlockUpload(cctx context.Context, req *pb.RpcBlockUploadRe
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		req := block.UploadRequest{RpcBlockUploadRequest: *req, ObjectOrigin: objectorigin.None()}
-		_, err = bs.UploadBlockFile(nil, req, "", false)
+		_, err = bs.UploadBlockFile(ctx, req, "", false)
 		return err
 	})
 	if err != nil {
