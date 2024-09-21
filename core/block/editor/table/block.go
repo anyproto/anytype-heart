@@ -250,7 +250,6 @@ func (tb Table) normalizeColumns() {
 	}
 
 	if invalidFound {
-		tb.s.RemoveFromCache(toRemove)
 		tb.s.SetChildrenIds(tb.Columns(), colIds)
 	}
 }
@@ -292,7 +291,6 @@ func (tb Table) normalizeRows() {
 	}
 
 	if invalidFound {
-		tb.s.RemoveFromCache(toRemove)
 		tb.s.SetChildrenIds(tb.Rows(), rowIds)
 	}
 }

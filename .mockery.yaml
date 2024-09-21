@@ -184,6 +184,9 @@ packages:
   github.com/anyproto/anytype-heart/core/peerstatus:
     interfaces:
       LocalDiscoveryHook:
+  github.com/anyproto/anytype-heart/core/device:
+    interfaces:
+      NetworkState:
   github.com/anyproto/anytype-heart/space/spacecore/localdiscovery:
     interfaces:
       Notifier:
@@ -201,11 +204,6 @@ packages:
   github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus:
     interfaces:
       Updater:
-      UpdateReceiver:
-        config:
-          dir: "{{.InterfaceDir}}"
-          outpkg: "{{.PackageName}}"
-          inpackage: true
   github.com/anyproto/anytype-heart/space/spacecore/peermanager:
     interfaces:
       Updater:
@@ -219,3 +217,6 @@ packages:
       NodeUsage:
       NetworkConfig:
       Updater:
+  github.com/anyproto/anytype-heart/core/block/import/notion/api/files:
+    interfaces:
+      Downloader:

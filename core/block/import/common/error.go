@@ -79,7 +79,7 @@ func (ce *ConvertError) GetResultError(importType model.ImportType) error {
 		case errors.Is(e, ErrFailedToReceiveListOfObjects):
 			return ErrFailedToReceiveListOfObjects
 		case errors.Is(e, ErrFileLoad):
-			return e
+			return fmt.Errorf("import type: %s: %w", importType.String(), e)
 		case errors.Is(e, list.ErrInsufficientPermissions):
 			return e
 		case errors.Is(e, ErrNoObjectsToImport):

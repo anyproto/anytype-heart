@@ -147,6 +147,9 @@ func (s *service) ImportBuiltInUseCase(
 	}
 
 	if cachePath == "" {
+		if ctx == nil {
+			ctx = context.Background()
+		}
 		// TODO: Remove this call when clients support cache
 		return s.importUseCase(ctx, spaceID, title, useCase)
 		// return pb.RpcObjectImportUseCaseResponseError_BAD_INPUT,

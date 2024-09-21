@@ -44,7 +44,7 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetDetails(ctx, req.ContextId, req.GetDetails())
+		return bs.SetDetailsAndUpdateLastUsed(ctx, req.ContextId, req.GetDetails())
 	})
 	if err != nil {
 		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)

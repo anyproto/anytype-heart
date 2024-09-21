@@ -1134,7 +1134,7 @@ func TestFinalizeSubscription(t *testing.T) {
 }
 
 func TestGetTiers(t *testing.T) {
-	t.Run("fail if no cache, pp client returned error", func(t *testing.T) {
+	t.Run("do not fail if no cache, pp client returned error", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
@@ -1145,13 +1145,30 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().IsCacheDisabled().Return(false)
 		fx.cache.EXPECT().IsCacheExpired().Return(false)
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, nil)
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
+			return nil
+		})
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{
+				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
+				Status:           psp.SubscriptionStatus_StatusActive,
+				DateStarted:      uint64(timeNow.Unix()),
+				DateEnds:         uint64(subsExpire.Unix()),
+				IsAutoRenew:      true,
+				PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+				RequestedAnyName: "something.any",
+			}, nil
+		}).MinTimes(1)
+
+		fx.expectLimitsUpdated()
 
 		req := pb.RpcMembershipGetTiersRequest{
 			NoCache: false,
 			Locale:  "en_US",
 		}
-		_, err := fx.GetTiers(ctx, &req)
-		assert.Error(t, err)
+		out, err := fx.GetTiers(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, len(out.Tiers))
 	})
 
 	t.Run("success if no cache, empty response", func(t *testing.T) {

@@ -87,11 +87,15 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 	for _, view := range dataView.GetViews() {
 		for _, filter := range view.GetFilters() {
 			updateObjectIDsInFilter(filter, oldIDtoNew)
+			updateRelationKeyInFilter(oldIDtoNew, filter)
 		}
 
 		if view.DefaultTemplateId != "" {
 			view.DefaultTemplateId = oldIDtoNew[view.DefaultTemplateId]
 		}
+
+		updateRelationsInView(view, oldIDtoNew)
+		updateSortsInView(view, oldIDtoNew)
 	}
 	for _, group := range dataView.GetGroupOrders() {
 		for _, vg := range group.ViewGroups {
@@ -106,6 +110,37 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 				group.ObjectIds[i] = newId
 			}
 		}
+	}
+	updateRelationsLinksInView(dataView, oldIDtoNew)
+}
+
+func updateSortsInView(view *model.BlockContentDataviewView, oldIDtoNew map[string]string) {
+	for _, sort := range view.GetSorts() {
+		if newKey, ok := oldIDtoNew[sort.RelationKey]; ok && sort.RelationKey != newKey {
+			sort.RelationKey = newKey
+		}
+	}
+}
+
+func updateRelationsLinksInView(dataView *model.BlockContentDataview, oldIDtoNew map[string]string) {
+	for _, relationLink := range dataView.GetRelationLinks() {
+		if newKey, ok := oldIDtoNew[relationLink.Key]; ok && relationLink.Key != newKey {
+			relationLink.Key = newKey
+		}
+	}
+}
+
+func updateRelationsInView(view *model.BlockContentDataviewView, oldIDtoNew map[string]string) {
+	for _, relation := range view.Relations {
+		if newKey, ok := oldIDtoNew[relation.Key]; ok && relation.Key != newKey {
+			relation.Key = newKey
+		}
+	}
+}
+
+func updateRelationKeyInFilter(oldIDtoNew map[string]string, filter *model.BlockContentDataviewFilter) {
+	if newKey, ok := oldIDtoNew[filter.RelationKey]; ok && filter.RelationKey != newKey {
+		filter.RelationKey = newKey
 	}
 }
 
@@ -276,6 +311,10 @@ func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]strin
 				continue
 			}
 			newTarget = addr.MissingObject
+			_, err := cid.Decode(val) // this can be url, because for notion import we store url for following upload
+			if err != nil {
+				newTarget = val
+			}
 		}
 		objectsIDs[i] = newTarget
 	}

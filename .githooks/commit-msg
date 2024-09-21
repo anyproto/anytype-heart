@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # The script below adds the branch name automatically to
 # every one of your commit messages. The regular expression
 # below searches for linear issue key's. The issue key will

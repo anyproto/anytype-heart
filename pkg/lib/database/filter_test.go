@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anyproto/any-store/query"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -19,11 +18,10 @@ import (
 func assertFilter(t *testing.T, f Filter, obj *types.Struct, expected bool) {
 	assert.Equal(t, expected, f.FilterObject(obj))
 	anystoreFilter := f.AnystoreFilter()
-	_, err := query.ParseCondition(anystoreFilter.String())
-	require.NoError(t, err, anystoreFilter.String())
 	arena := &fastjson.Arena{}
 	val := pbtypes.ProtoToJson(arena, obj)
-	assert.Equal(t, expected, anystoreFilter.Ok(val))
+	result := anystoreFilter.Ok(val)
+	assert.Equal(t, expected, result)
 }
 
 func TestEq_FilterObject(t *testing.T) {
@@ -123,6 +121,23 @@ func TestEq_FilterObject(t *testing.T) {
 		assertFilter(t, eq, obj, true)
 
 		obj = &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Float64(2)}}
+		assertFilter(t, eq, obj, false)
+	})
+
+	t.Run("not equal true: no key", func(t *testing.T) {
+		eq := FilterEq{Key: "k", Value: pbtypes.Bool(true), Cond: model.BlockContentDataviewFilter_NotEqual}
+		obj := &types.Struct{Fields: map[string]*types.Value{}}
+		assertFilter(t, eq, obj, true)
+
+		obj = &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Bool(true)}}
+		assertFilter(t, eq, obj, false)
+	})
+	t.Run("not equal false: no key", func(t *testing.T) {
+		eq := FilterEq{Key: "k", Value: pbtypes.Bool(false), Cond: model.BlockContentDataviewFilter_NotEqual}
+		obj := &types.Struct{Fields: map[string]*types.Value{}}
+		assertFilter(t, eq, obj, true)
+
+		obj = &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Bool(false)}}
 		assertFilter(t, eq, obj, false)
 	})
 }
@@ -432,7 +447,7 @@ func TestMakeAndFilter(t *testing.T) {
 }
 
 func TestNestedFilters(t *testing.T) {
-	t.Run("simple", func(t *testing.T) {
+	t.Run("equal", func(t *testing.T) {
 		store := NewMockObjectStore(t)
 		// Query will occur while nested filter resolving
 		store.EXPECT().QueryRaw(mock.Anything, 0, 0).Return([]Record{
@@ -467,6 +482,44 @@ func TestNestedFilters(t *testing.T) {
 		assertFilter(t, f, obj2, true)
 	})
 
+	t.Run("not equal", func(t *testing.T) {
+		store := NewMockObjectStore(t)
+		// Query will occur while nested filter resolving
+		store.EXPECT().QueryRaw(mock.Anything, 0, 0).Return([]Record{
+			{
+				Details: &types.Struct{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():        pbtypes.String("id1"),
+						bundle.RelationKeyUniqueKey.String(): pbtypes.String("ot-note"),
+					},
+				},
+			},
+			{
+				Details: &types.Struct{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():        pbtypes.String("id2"),
+						bundle.RelationKeyUniqueKey.String(): pbtypes.String("ot-note"),
+					},
+				},
+			},
+		}, nil)
+
+		f, err := MakeFilter("spaceId", &model.BlockContentDataviewFilter{
+			RelationKey: "type.uniqueKey",
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.String("ot-note"),
+		}, store)
+		require.NoError(t, err)
+
+		obj1 := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyType.String(): pbtypes.StringList([]string{"id1"})}}
+		obj2 := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyType.String(): pbtypes.StringList([]string{"id2", "id1"})}}
+		obj3 := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyType.String(): pbtypes.StringList([]string{"id3"})}}
+		obj4 := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyType.String(): pbtypes.StringList([]string{"id4", "id5"})}}
+		assertFilter(t, f, obj1, false)
+		assertFilter(t, f, obj2, false)
+		assertFilter(t, f, obj3, true)
+		assertFilter(t, f, obj4, true)
+	})
 }
 
 func TestFilterExists(t *testing.T) {
@@ -489,56 +542,32 @@ func TestFilterOptionsEqual(t *testing.T) {
 		"optionId3": "3",
 	}
 	t.Run("one option, ok", func(t *testing.T) {
-		eq := FilterOptionsEqual{
-			Key:     "k",
-			Options: optionIdToName,
-			Value:   pbtypes.StringList([]string{"optionId1"}).GetListValue(),
-		}
+		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1"})}}
 		assertFilter(t, eq, obj, true)
 	})
 	t.Run("two options, ok", func(t *testing.T) {
-		eq := FilterOptionsEqual{
-			Key:     "k",
-			Options: optionIdToName,
-			Value:   pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(),
-		}
+		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId3"})}}
 		assertFilter(t, eq, obj, true)
 	})
 	t.Run("two options, ok, not existing options are discarded", func(t *testing.T) {
-		eq := FilterOptionsEqual{
-			Key:     "k",
-			Options: optionIdToName,
-			Value:   pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(),
-		}
+		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId3", "optionId7000"})}}
 		assertFilter(t, eq, obj, true)
 	})
 	t.Run("two options, not ok", func(t *testing.T) {
-		eq := FilterOptionsEqual{
-			Key:     "k",
-			Options: optionIdToName,
-			Value:   pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(),
-		}
+		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId3"})}}
 		assertFilter(t, eq, obj, false)
 	})
 	t.Run("two options, not ok, because object has 1 option", func(t *testing.T) {
-		eq := FilterOptionsEqual{
-			Key:     "k",
-			Options: optionIdToName,
-			Value:   pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(),
-		}
+		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1"})}}
 		assertFilter(t, eq, obj, false)
 	})
 	t.Run("two options, not ok, because object has 3 options", func(t *testing.T) {
-		eq := FilterOptionsEqual{
-			Key:     "k",
-			Options: optionIdToName,
-			Value:   pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(),
-		}
+		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId2", "optionId3"})}}
 		assertFilter(t, eq, obj, false)
 	})
@@ -853,5 +882,52 @@ func TestMakeFilters(t *testing.T) {
 		assert.NotNil(t, filters.(FiltersOr))
 		assert.NotNil(t, filters.(FiltersOr)[0].(FilterEq))
 		assert.NotNil(t, filters.(FiltersOr)[1].(FilterEq))
+	})
+}
+
+func TestFilter2ValuesComp_FilterObject(t *testing.T) {
+	t.Run("equal", func(t *testing.T) {
+		eq := Filter2ValuesComp{
+			Key1: "a",
+			Key2: "b",
+			Cond: model.BlockContentDataviewFilter_Equal,
+		}
+		obj1 := &types.Struct{Fields: map[string]*types.Value{
+			"a": pbtypes.String("x"),
+			"b": pbtypes.String("x"),
+		}}
+		obj2 := &types.Struct{Fields: map[string]*types.Value{
+			"a": pbtypes.String("x"),
+			"b": pbtypes.String("y"),
+		}}
+		obj3 := &types.Struct{Fields: map[string]*types.Value{
+			"b": pbtypes.String("x"),
+		}}
+		assertFilter(t, eq, obj1, true)
+		assertFilter(t, eq, obj2, false)
+		assertFilter(t, eq, obj3, false)
+	})
+
+	t.Run("greater", func(t *testing.T) {
+		eq := Filter2ValuesComp{
+			Key1: "a",
+			Key2: "b",
+			Cond: model.BlockContentDataviewFilter_Greater,
+		}
+		obj1 := &types.Struct{Fields: map[string]*types.Value{
+			"a": pbtypes.Int64(100),
+			"b": pbtypes.Int64(200),
+		}}
+		obj2 := &types.Struct{Fields: map[string]*types.Value{
+			"a": pbtypes.Int64(300),
+			"b": pbtypes.Int64(-500),
+		}}
+		obj3 := &types.Struct{Fields: map[string]*types.Value{
+			"a": pbtypes.String("xxx"),
+			"b": pbtypes.String("ddd"),
+		}}
+		assertFilter(t, eq, obj1, false)
+		assertFilter(t, eq, obj2, true)
+		assertFilter(t, eq, obj3, true)
 	})
 }

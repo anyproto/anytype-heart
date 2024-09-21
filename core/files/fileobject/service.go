@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -81,6 +82,7 @@ type service struct {
 	objectStore     objectstore.ObjectStore
 	spaceIdResolver idresolver.Resolver
 	migrationQueue  *persistentqueue.Queue[*migrationItem]
+	objectArchiver  objectArchiver
 
 	indexer *indexer
 
@@ -120,6 +122,7 @@ func (s *service) Init(a *app.App) error {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
+	s.objectArchiver = app.MustComponent[objectArchiver](a)
 	cfg := app.MustComponent[configProvider](a)
 
 	s.indexer = s.newIndexer()
@@ -148,13 +151,60 @@ func (s *service) Run(_ context.Context) error {
 	go func() {
 		defer s.closeWg.Done()
 
-		err := s.ensureNotSyncedFilesAddedToQueue()
+		err := s.deleteMigratedFilesInNonPersonalSpaces(context.Background())
+		if err != nil {
+			log.Errorf("delete migrated files in non personal spaces: %v", err)
+		}
+		err = s.ensureNotSyncedFilesAddedToQueue()
 		if err != nil {
 			log.Errorf("ensure not synced files added to queue: %v", err)
 		}
 	}()
 	s.indexer.run()
 	s.migrationQueue.Run()
+	return nil
+}
+
+type objectArchiver interface {
+	SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error
+}
+
+func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) error {
+	personalSpace, err := s.spaceService.GetPersonalSpace(ctx)
+	if err != nil {
+		return err
+	}
+
+	objectIds, _, err := s.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyFileId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEmpty,
+			},
+			{
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEmpty,
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String(personalSpace.Id()),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if len(objectIds) > 0 {
+		err = s.objectArchiver.SetPagesIsArchived(nil, pb.RpcObjectListSetIsArchivedRequest{
+			ObjectIds:  objectIds,
+			IsArchived: true,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

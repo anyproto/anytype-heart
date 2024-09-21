@@ -272,7 +272,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus))
 
 	// 5 - Send all messages to the client if needed
-	if !isUpdateRequired(cacheErr, isCacheDisabled, isCacheExpired, cachedStatus, status) {
+	if !isUpdateRequired(cacheErr, isCacheExpired, cachedStatus, status) {
 		// no need to send events or enable/disable cache
 		return &out, nil
 	}
@@ -323,7 +323,7 @@ func canReturnCachedStatus(s *pb.RpcMembershipGetStatusResponse) bool {
 	return s != nil && s.Data != nil && (s.Error == nil || s.Error.Code == pb.RpcMembershipGetStatusResponseError_NULL)
 }
 
-func isUpdateRequired(cacheErr error, isCacheDisabled bool, isCacheExpired bool, cachedStatus *pb.RpcMembershipGetStatusResponse, status *proto.GetSubscriptionResponse) bool {
+func isUpdateRequired(cacheErr error, isCacheExpired bool, cachedStatus *pb.RpcMembershipGetStatusResponse, status *proto.GetSubscriptionResponse) bool {
 	// 1 - If cache was empty or expired
 	// -> treat at is if data was different
 	isCacheEmpty := cacheErr != nil || cachedStatus == nil || cachedStatus.Data == nil || isCacheExpired
@@ -890,11 +890,12 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 	// empty return or error
 	tiers, err := s.ppclient.GetAllTiers(ctx, &reqSigned)
 	if err != nil {
-		// if error here -> we do not create empty array
-		// with GetStatus above the logic is different
-		// there we create empty status and save it to cache
-		log.Error("can not get tiers from payment node", zap.Error(err))
-		return nil, err
+		// If PP node didn't answer -> create empty tiers response
+		log.Info("creating empty tiers in cache because can not get tiers from the payment node")
+
+		tiers = &proto.GetTiersResponse{
+			Tiers: make([]*proto.TierData, 0),
+		}
 	}
 
 	// 3 - return out
