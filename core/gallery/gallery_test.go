@@ -8,10 +8,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const port = ":7070"
+const (
+	port        = ":7070"
+	testVersion = "v2"
+)
 
 //go:embed testdata/schema.json
 var schemaJSON []byte
@@ -24,16 +28,16 @@ func TestStripTags(t *testing.T) {
 }
 
 func TestIsInWhitelist(t *testing.T) {
-	assert.True(t, IsInWhitelist("https://raw.githubusercontent.com/anyproto/secretrepo/blob/README.md"))
-	assert.False(t, IsInWhitelist("https://raw.githubusercontent.com/fakeany/anyproto/secretrepo/blob/README.md"))
-	assert.True(t, IsInWhitelist("ftp://raw.githubusercontent.com/anyproto/ftpserver/README.md"))
-	assert.True(t, IsInWhitelist("http://github.com/anyproto/othersecretrepo/virus.exe"))
-	assert.False(t, IsInWhitelist("ftp://github.com/anygroto/othersecretrepoclone/notAvirus.php?breakwhitelist=github.com/anyproto"))
-	assert.True(t, IsInWhitelist("http://community.anytype.io/localstorage/knowledge_base.zip"))
-	assert.True(t, IsInWhitelist("anytype://anytype.io/localstorage/knowledge_base.zip"))
-	assert.True(t, IsInWhitelist("anytype://gallery.any.coop/"))
-	assert.True(t, IsInWhitelist("anytype://tools.gallery.any.coop/somethingveryimportant.zip"))
-	assert.True(t, IsInWhitelist("http://storage.gallery.any.coop/img_with_kitten.jpeg"))
+	assert.True(t, isInWhitelist("https://raw.githubusercontent.com/anyproto/secretrepo/blob/README.md"))
+	assert.False(t, isInWhitelist("https://raw.githubusercontent.com/fakeany/anyproto/secretrepo/blob/README.md"))
+	assert.True(t, isInWhitelist("ftp://raw.githubusercontent.com/anyproto/ftpserver/README.md"))
+	assert.True(t, isInWhitelist("http://github.com/anyproto/othersecretrepo/virus.exe"))
+	assert.False(t, isInWhitelist("ftp://github.com/anygroto/othersecretrepoclone/notAvirus.php?breakwhitelist=github.com/anyproto"))
+	assert.True(t, isInWhitelist("http://community.anytype.io/localstorage/knowledge_base.zip"))
+	assert.True(t, isInWhitelist("anytype://anytype.io/localstorage/knowledge_base.zip"))
+	assert.True(t, isInWhitelist("anytype://gallery.any.coop/"))
+	assert.True(t, isInWhitelist("anytype://tools.gallery.any.coop/somethingveryimportant.zip"))
+	assert.True(t, isInWhitelist("http://storage.gallery.any.coop/img_with_kitten.jpeg"))
 }
 
 func TestDownloadManifestAndValidateSchema(t *testing.T) {
@@ -128,6 +132,18 @@ func startHttpServer() *http.Server {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(schemaJSON)
 	})
+	handler.HandleFunc("/index.json", func(w http.ResponseWriter, req *http.Request) {
+		version := req.Header.Get(versionHeader)
+		if version == testVersion {
+			w.WriteHeader(http.StatusNotModified)
+		} else {
+			w.Header().Set(eTagHeader, testVersion)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		info := buildIndex()
+		rawInfo, _ := json.Marshal(info)
+		_, _ = w.Write(rawInfo)
+	})
 	server := &http.Server{Addr: port, Handler: handler}
 	go server.ListenAndServe()
 	return server
@@ -146,5 +162,13 @@ func buildInfo() *model.ManifestInfo {
 		FileSize:     42,
 		Categories:   []string{"Education", "Work"},
 		Language:     "hi-IN",
+	}
+}
+
+func buildIndex() *pb.RpcGalleryDownloadIndexResponse {
+	return &pb.RpcGalleryDownloadIndexResponse{
+		Experiences: []*model.ManifestInfo{
+			buildInfo(),
+		},
 	}
 }

@@ -103,12 +103,12 @@ type Service interface {
 }
 
 type service struct {
-	importer       importer.Importer
-	store          objectstore.ObjectStore
-	tempDirService core.TempDirProvider
-	progress       process.Service
-	notifications  notifications.Notifications
-	indexCache     IndexCache
+	importer        importer.Importer
+	spaceNameGetter objectstore.SpaceNameGetter
+	tempDirService  core.TempDirProvider
+	progress        process.Service
+	notifications   notifications.Notifications
+	indexCache      IndexCache
 }
 
 func New() Service {
@@ -117,7 +117,7 @@ func New() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.importer = a.MustComponent(importer.CName).(importer.Importer)
-	s.store = app.MustComponent[objectstore.ObjectStore](a)
+	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	s.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	s.progress = a.MustComponent(process.CName).(process.Service)
 	s.notifications = app.MustComponent[notifications.Notifications](a)
@@ -181,7 +181,7 @@ func (s *service) ImportExperience(ctx context.Context, spaceID, url, title, cac
 		return err
 	}
 
-	importErr := s.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
+	importErr := s.importArchive(ctx, spaceID, path, title, progress, isNewSpace)
 	progress.FinishWithNotification(s.provideNotification(spaceID, progress, err, title), err)
 
 	if err != nil {
@@ -207,7 +207,7 @@ func (s *service) importUseCase(
 		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to save built-in usecase in temp file: %w", err)
 	}
 
-	err = s.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, nil, true)
+	err = s.importArchive(ctx, spaceID, path, title, nil, true)
 	remove(path)
 
 	if err != nil {
@@ -226,16 +226,15 @@ func (s *service) getPathAndRemoveFunc(
 
 	var (
 		cachedArchive []byte
-		downloadLink  string
 	)
 
-	cachedArchive, downloadLink, err = s.getArchiveFromCache(title, cachePath)
+	cachedArchive, err = s.getArchiveFromCache(url, cachePath)
 	if err == nil {
 		return s.saveArchiveToTempFile(cachedArchive)
 	}
 
 	if errors.Is(err, errOutdatedArchive) {
-		url = downloadLink
+		log.Debug("archive in client cache is outdated. Trying to download it from remote")
 	}
 
 	path, err = s.downloadZipToFile(url, progress)
@@ -259,21 +258,21 @@ func (s *service) getPathAndRemoveFunc(
 }
 
 func (s *service) getArchiveFromCache(
-	title, cachePath string,
-) (archive []byte, downloadLink string, err error) {
+	downloadLink, cachePath string,
+) (archive []byte, err error) {
 	archives, index, err := readClientCache(cachePath, false)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
-	archive = archives[title]
+	archive = archives[downloadLink]
 	if archive == nil {
-		return nil, "", fmt.Errorf("archive is not cached")
+		return nil, fmt.Errorf("archive is not cached")
 	}
 
-	cachedManifest, err := getManifestByTitle(index, title)
+	cachedManifest, err := getManifestByDownloadLink(index, downloadLink)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	downloadLink = cachedManifest.DownloadLink
@@ -281,12 +280,12 @@ func (s *service) getArchiveFromCache(
 	latestManifest, err := s.indexCache.GetManifest(downloadLink, downloadManifestTimeoutSeconds)
 	if err == nil && latestManifest.Hash != cachedManifest.Hash {
 		// if hashes are different, then we can get fresher version of archive from remote
-		return archive, downloadLink, errOutdatedArchive
+		return archive, errOutdatedArchive
 	}
 	if err != nil {
 		log.Error("failed to get latest manifest", zap.String("downloadLink", downloadLink), zap.Error(err))
 	}
-	return archive, downloadLink, nil
+	return archive, nil
 }
 
 func (s *service) saveArchiveToTempFile(archive []byte) (path string, removeFunc func(string), err error) {
@@ -316,6 +315,7 @@ func readData(f *zip.File) ([]byte, error) {
 	return data, nil
 }
 
+// readClientCache returns Gallery Index and map of archives aggregated by DownloadLink
 func readClientCache(cachePath string, readOnlyIndex bool) (archives map[string][]byte, index *pb.RpcGalleryDownloadIndexResponse, err error) {
 	if cachePath == "" {
 		return nil, nil, fmt.Errorf("no cache path specified")
@@ -329,18 +329,30 @@ func readClientCache(cachePath string, readOnlyIndex bool) (archives map[string]
 	archives = make(map[string][]byte)
 
 	for _, f := range r.File {
+		if f.Name != indexName {
+			continue
+		}
+		indexData, err := readData(f)
+		if err != nil {
+			return nil, nil, err
+		}
+		err = json.Unmarshal(indexData, &index)
+		if err != nil {
+			return nil, nil, err
+		}
+		if readOnlyIndex {
+			return nil, index, nil
+		}
+		break
+	}
+
+	if index == nil {
+		return nil, nil, fmt.Errorf("no index file found")
+	}
+	downloadLinks := generateMapOfDownloadLinksByNames(index)
+
+	for _, f := range r.File {
 		if f.Name == indexName {
-			indexData, err := readData(f)
-			if err != nil {
-				return nil, nil, err
-			}
-			err = json.Unmarshal(indexData, &index)
-			if err != nil {
-				return nil, nil, err
-			}
-			if readOnlyIndex {
-				return nil, index, nil
-			}
 			continue
 		}
 
@@ -348,20 +360,26 @@ func readClientCache(cachePath string, readOnlyIndex bool) (archives map[string]
 		if ext != ".zip" {
 			return nil, nil, fmt.Errorf("zip archive is expected, got: '%s'", f.Name)
 		}
-		title := strings.TrimSuffix(f.Name, ext)
 
 		var data []byte
 		data, err = readData(f)
 		if err != nil {
 			return nil, nil, err
 		}
-		archives[title] = data
+
+		name := strings.TrimSuffix(f.Name, ext)
+		link, found := downloadLinks[name]
+		if !found {
+			return nil, nil, fmt.Errorf("archive '%s' is presented in cache, but not in the index", name)
+		}
+
+		archives[link] = data
 	}
 	return
 }
 
 func (s *service) provideNotification(spaceID string, progress process.Progress, err error, title string) *model.Notification {
-	spaceName := s.store.GetSpaceName(spaceID)
+	spaceName := s.spaceNameGetter.GetSpaceName(spaceID)
 	return &model.Notification{
 		Status:  model.Notification_Created,
 		IsLocal: true,
@@ -379,7 +397,6 @@ func (s *service) provideNotification(spaceID string, progress process.Progress,
 func (s *service) importArchive(
 	ctx context.Context,
 	spaceID, path, title string,
-	importType pb.RpcObjectImportRequestPbParamsType,
 	progress process.Progress,
 	isNewSpace bool,
 ) (err error) {
@@ -397,7 +414,7 @@ func (s *service) importArchive(
 					Path:            []string{path},
 					NoCollection:    true,
 					CollectionTitle: title,
-					ImportType:      importType,
+					ImportType:      pb.RpcObjectImportRequestPbParams_EXPERIENCE,
 				}},
 			IsNewSpace: isNewSpace,
 		},
@@ -414,7 +431,7 @@ func (s *service) downloadZipToFile(url string, progress process.Progress) (path
 	if err = uri.ValidateURI(url); err != nil {
 		return "", fmt.Errorf("provided URL is not valid: %w", err)
 	}
-	if !IsInWhitelist(url) {
+	if !isInWhitelist(url) {
 		return "", fmt.Errorf("provided URL is not in whitelist")
 	}
 
@@ -505,23 +522,19 @@ func getArchiveReaderAndSize(url string) (reader io.ReadCloser, size int64, err 
 	return resp.Body, size, nil
 }
 
-func getManifestByTitle(index *pb.RpcGalleryDownloadIndexResponse, title string) (*model.ManifestInfo, error) {
-	if index == nil {
-		return nil, fmt.Errorf("index is nil")
-	}
+func getManifestByDownloadLink(index *pb.RpcGalleryDownloadIndexResponse, link string) (*model.ManifestInfo, error) {
 	for _, manifest := range index.Experiences {
-		if manifest.Title == title {
+		if manifest.DownloadLink == link {
 			return manifest, nil
 		}
 	}
-	return nil, fmt.Errorf("failed to find manifest for title: %s", title)
+	return nil, fmt.Errorf("failed to find manifest for url: %s", link)
 }
 
-func getManifestByDownloadLink(index *pb.RpcGalleryDownloadIndexResponse, url string) (*model.ManifestInfo, error) {
+func generateMapOfDownloadLinksByNames(index *pb.RpcGalleryDownloadIndexResponse) map[string]string {
+	m := make(map[string]string)
 	for _, manifest := range index.Experiences {
-		if manifest.DownloadLink == url {
-			return manifest, nil
-		}
+		m[manifest.Name] = manifest.DownloadLink
 	}
-	return nil, fmt.Errorf("failed to find manifest for url: %s", url)
+	return m
 }

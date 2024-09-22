@@ -1,0 +1,10 @@
+{
+  "experiences": [
+    {
+      "title": "Get Started",
+      "name": "get_started",
+      "downloadLink": "https://github.com/anyproto/gallery/raw/main/experiences/get_started/get_started.zip",
+      "hash": "hash1"
+    }
+  ]
+}

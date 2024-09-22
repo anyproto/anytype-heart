@@ -1,9 +1,7 @@
 package gallery
 
 import (
-	_ "embed"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,8 +23,7 @@ const (
 	defaultTimeout = time.Second * 30
 
 	versionHeader = "If-None-Match"
-
-	indexURI = "https://tools.gallery.any.coop/app-index.json"
+	eTagHeader    = "ETag"
 )
 
 type schemaResponse struct {
@@ -83,7 +80,7 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 	if err = uri.ValidateURI(url); err != nil {
 		return nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
-	if checkWhitelist && !IsInWhitelist(url) {
+	if checkWhitelist && !isInWhitelist(url) {
 		return nil, fmt.Errorf("URL '%s' is not in whitelist", url)
 	}
 	raw, _, err := getRawJson(url, 0, "")
@@ -107,7 +104,7 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 	}
 
 	for _, urlToCheck := range append(info.Screenshots, info.DownloadLink) {
-		if !IsInWhitelist(urlToCheck) {
+		if !isInWhitelist(urlToCheck) {
 			return nil, fmt.Errorf("URL '%s' provided in manifest is not in whitelist", urlToCheck)
 		}
 	}
@@ -116,47 +113,7 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 	return info, nil
 }
 
-// downloadGalleryIndex accepts
-// timeoutInSeconds - timeout to wait for HTTP response
-// version - eTag of gallery index, that allows us to fetch index faster
-// withManifestValidation - a flag that indicates that every manifest should be validated
-func downloadGalleryIndex(timeoutInSeconds int, version string, withManifestValidation bool) (response *pb.RpcGalleryDownloadIndexResponse, newVersion string, err error) {
-	raw, newVersion, err := getRawJson(indexURI, timeoutInSeconds, version)
-	if err != nil {
-		if errors.Is(err, ErrNotModified) {
-			return nil, version, err
-		}
-		return nil, "", fmt.Errorf("%w: %w", ErrDownloadIndex, err)
-	}
-
-	response = &pb.RpcGalleryDownloadIndexResponse{}
-	err = json.Unmarshal(raw, &response)
-	if err != nil {
-		return nil, "", fmt.Errorf("%w to get lists of categories and experiences from gallery index: %w", ErrUnmarshalJson, err)
-	}
-
-	if withManifestValidation {
-		schemas := &schemaList{}
-		err = json.Unmarshal(raw, schemas)
-		if err != nil {
-			return nil, "", fmt.Errorf("%w to get list of manifest schemas from gallery index: %w", ErrUnmarshalJson, err)
-		}
-
-		if len(schemas.Experiences) != len(response.Experiences) {
-			return nil, "", fmt.Errorf("invalid number of manifests with schema. Expected: %d, Actual: %d", len(response.Experiences), len(schemas.Experiences))
-		}
-
-		for i, info := range response.Experiences {
-			if err = validateManifest(schemas.Experiences[i].Schema, info); err != nil {
-				return nil, "", fmt.Errorf("manifest validation error: %w", err)
-			}
-		}
-	}
-
-	return response, newVersion, nil
-}
-
-func IsInWhitelist(url string) bool {
+func isInWhitelist(url string) bool {
 	if len(whitelist) == 0 {
 		return true
 	}
@@ -199,7 +156,7 @@ func getRawJson(url string, timeoutInSeconds int, currentVersion string) (body [
 		return nil, "", fmt.Errorf("failed to get json file. Status: %s", res.Status)
 	}
 
-	newVersion = res.Header.Get(versionHeader)
+	newVersion = res.Header.Get(eTagHeader)
 
 	if res.Body != nil {
 		defer res.Body.Close()
@@ -210,21 +167,6 @@ func getRawJson(url string, timeoutInSeconds int, currentVersion string) (body [
 		return nil, "", err
 	}
 	return body, newVersion, nil
-}
-
-func validateManifest(schema string, info *model.ManifestInfo) error {
-	if err := validateSchema(schema, info); err != nil {
-		return fmt.Errorf("manifest does not correspond scema: %w", err)
-	}
-
-	for _, urlToCheck := range append(info.Screenshots, info.DownloadLink) {
-		if !IsInWhitelist(urlToCheck) {
-			return fmt.Errorf("URL '%s' provided in manifest is not in whitelist", urlToCheck)
-		}
-	}
-
-	info.Description = stripTags(info.Description)
-	return nil
 }
 
 func validateSchema(schema string, info *model.ManifestInfo) (err error) {

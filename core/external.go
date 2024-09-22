@@ -109,7 +109,6 @@ func (mw *Middleware) GalleryDownloadManifest(_ context.Context, req *pb.RpcGall
 }
 
 func (mw *Middleware) GalleryDownloadIndex(_ context.Context, req *pb.RpcGalleryDownloadIndexRequest) *pb.RpcGalleryDownloadIndexResponse {
-	// TODO: add noCache argument to request
 	response, err := getService[gallery.Service](mw).GetGalleryIndex(req.ClientCachePath)
 	if response == nil {
 		response = &pb.RpcGalleryDownloadIndexResponse{}
