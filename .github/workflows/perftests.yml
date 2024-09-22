@@ -1,3 +1,4 @@
+#https://linear.app/anytype/issue/GO-3985/make-performance-report-on-the-stand
 on:
   workflow_dispatch:
     inputs:
@@ -8,7 +9,7 @@ on:
       perf-test:
         description: 'Run perf test times'
         required: true
-        default: '0'
+        default: '100'
   schedule:
     - cron: '0 0 * * *' # every day at midnight
       filters:
@@ -22,7 +23,7 @@ permissions:
   contents: 'write'
 
 
-name: Build
+name: Perf tests
 jobs:
   build:
     runs-on: 'ARM64'
@@ -35,13 +36,6 @@ jobs:
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
       - name: Checkout
         uses: actions/checkout@v3
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
@@ -83,19 +77,26 @@ jobs:
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             RUN_COUNT=100
           fi          
+          echo $PERF_CONFIG_STAGING > config.json
+          mv .github/staging_fake.yml staging_fake.yml
+          PERF_CONFIG=$PWD/config.json
           cd cmd/perfstand/account_create
-          CGO_ENABLED="1" go run main.go $RUN_COUNT
+          CGO_ENABLED="1" go run main.go $PERF_CONFIG $RUN_COUNT
           cd ../account_select
-          CGO_ENABLED="1" go run main.go $RUN_COUNT
+          CGO_ENABLED="1" go run main.go $PERF_CONFIG $RUN_COUNT
+          cd ../../..
+          echo $PERF_CONFIG_LOCAL > ./config.json
+          cd cmd/perfstand/account_create
+          CGO_ENABLED="1" go run main.go $PERF_CONFIG $RUN_COUNT
+          cd ../account_select
+          CGO_ENABLED="1" go run main.go $PERF_CONFIG $RUN_COUNT
         env:
-          TEST_MNEMONIC: ${{ secrets.TEST_MNEMONIC_30000 }}
-          CH_API_KEY: ${{ secrets.CH_API_KEY }}
-          ACCOUNT_HASH: ${{ secrets.ACCOUNT_HASH_30000 }}
-          ACCOUNT_SPACE: ${{ secrets.ACCOUNT_SPACE_30000 }}
-          ROOT_FOLDER: ${{ secrets.ROOT_FOLDER }}
+          PERF_CONFIG_STAGING: ${{ secrets.PERF_CONFIG_STAGING }}
+          PERF_CONFIG_LOCAL: ${{ secrets.PERF_CONFIG_LOCAL }}
+          CH_API_KEY: ${{ secrets.CH_PERF_API_KEY }}
       - name: Archive perf tests results
         uses: actions/upload-artifact@v4
         with:
-          name: pprofs
+          name: traces
           path: |
-            *.pprof
+            *.log
