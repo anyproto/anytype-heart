@@ -186,6 +186,8 @@ func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSp
 		if err != nil {
 			return
 		}
+	} else {
+		return analyticsId, nil
 	}
 	err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
 		analyticsId, err = accountObject.GetAnalyticsId()
