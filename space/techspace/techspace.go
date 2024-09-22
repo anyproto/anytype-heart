@@ -41,7 +41,7 @@ type AccountObject interface {
 	SetSharedSpacesLimit(limit int) (err error)
 	SetProfileDetails(details *types.Struct) (err error)
 	SetAnalyticsId(analyticsId string) (err error)
-	AnalyticsId() string
+	GetAnalyticsId() (string, error)
 }
 
 type TechSpace interface {
@@ -337,6 +337,7 @@ func (s *techSpace) DoAccountObject(ctx context.Context, apply func(accountObjec
 	}
 	obj, err := s.objectCache.GetObject(ctx, id)
 	if err != nil {
+		// TODO: [PS] check specific error
 		return ErrSpaceViewNotExists
 	}
 	accountObject, ok := obj.(AccountObject)

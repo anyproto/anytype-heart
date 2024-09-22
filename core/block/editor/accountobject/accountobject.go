@@ -220,7 +220,7 @@ func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string,
 }
 
 func (a *accountObject) SetAnalyticsId(id string) error {
-	return a.setValue(analyticsKey, id)
+	return a.setValue(analyticsKey, fmt.Sprintf(`"%s"`, id))
 }
 
 func (a *accountObject) onUpdate() {

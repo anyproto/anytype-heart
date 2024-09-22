@@ -121,7 +121,7 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 
 	analyticsId, err := s.getAnalyticsId(ctx, s.spaceService.TechSpace())
 	if err != nil {
-		log.Errorf("failed to get analytics id: %s", err)
+		return nil, fmt.Errorf("failed to get analytics id: %s", err)
 	}
 
 	gwAddr := s.gateway.Addr()
@@ -175,7 +175,10 @@ func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSp
 		return s.config.AnalyticsId, nil
 	}
 	err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
-		analyticsId = accountObject.AnalyticsId()
+		analyticsId, err = accountObject.GetAnalyticsId()
+		if err != nil {
+			log.Debug("failed to get analytics id: %s", err)
+		}
 		return nil
 	})
 	if analyticsId == "" {
@@ -185,8 +188,8 @@ func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSp
 		}
 	}
 	err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
-		analyticsId = accountObject.AnalyticsId()
-		return nil
+		analyticsId, err = accountObject.GetAnalyticsId()
+		return err
 	})
 	return
 }
