@@ -65,7 +65,7 @@ func TestService_Init(t *testing.T) {
 		defer ctxCancel2()
 
 		factory.EXPECT().CreateAndSetTechSpace(ctx2).Return(&clientspace.TechSpace{}, nil)
-		require.NoError(t, serv.initTechSpace(ctx2))
+		require.NoError(t, serv.loadTechSpace(ctx2))
 
 		s, err := serv.Get(ctx2, serv.techSpaceId)
 		require.NoError(t, err)
