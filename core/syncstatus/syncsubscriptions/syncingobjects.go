@@ -43,7 +43,7 @@ func (s *syncingObjects) Run() error {
 			},
 		},
 	}
-	s.objectSubscription = NewIdSubscription(s.service, objectReq)
+	s.objectSubscription = NewIdSubscription(s.service, bundle.RelationKeyId, objectReq)
 	errObjects := s.objectSubscription.Run()
 	if errObjects != nil {
 		return fmt.Errorf("error running syncing objects: %w", errObjects)

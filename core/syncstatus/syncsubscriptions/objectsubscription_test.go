@@ -115,7 +115,7 @@ func TestIdSubscription(t *testing.T) {
 		Records: records,
 	}
 	subService.EXPECT().Search(mock.Anything).Return(subscribeResponse, nil)
-	sub := NewIdSubscription(subService, subscription.SubscribeRequest{})
+	sub := NewIdSubscription(subService, bundle.RelationKeyId, subscription.SubscribeRequest{})
 	err := sub.Run()
 	require.NoError(t, err)
 	time.Sleep(100 * time.Millisecond)

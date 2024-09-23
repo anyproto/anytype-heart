@@ -6,10 +6,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 func TestCount(t *testing.T) {
-	objSubscription := NewIdSubscription(nil, subscription.SubscribeRequest{})
+	objSubscription := NewIdSubscription(nil, bundle.RelationKeyId, subscription.SubscribeRequest{})
 	objSubscription.sub = map[string]*entry[struct{}]{
 		"1": newEmptyEntry[struct{}](),
 		"2": newEmptyEntry[struct{}](),

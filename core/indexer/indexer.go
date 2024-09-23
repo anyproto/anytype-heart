@@ -17,6 +17,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -55,12 +57,13 @@ type Hasher interface {
 }
 
 type indexer struct {
-	store          objectstore.ObjectStore
-	fileStore      filestore.FileStore
-	source         source.Service
-	picker         cache.ObjectGetter
-	ftsearch       ftsearch.FTSearch
-	storageService storage.ClientStorage
+	store               objectstore.ObjectStore
+	fileStore           filestore.FileStore
+	source              source.Service
+	picker              cache.ObjectGetter
+	ftsearch            ftsearch.FTSearch
+	storageService      storage.ClientStorage
+	subscriptionService subscription.Service
 
 	quit            chan struct{}
 	ftQueueFinished chan struct{}
@@ -85,6 +88,8 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.ftQueueFinished = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	i.config = app.MustComponent[*config.Config](a)
+	i.subscriptionService = app.MustComponent[subscription.Service](a)
+
 	return
 }
 
@@ -208,7 +213,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 		}
 
 		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
-			if err := i.store.AddToIndexQueue(info.Id); err != nil {
+			if err := i.store.AddToIndexQueue(domain.FullID{SpaceID: info.Space.Id(), ObjectID: info.Id}); err != nil {
 				log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
 			}
 		}

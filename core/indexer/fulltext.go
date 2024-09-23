@@ -14,6 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -25,7 +27,7 @@ import (
 var (
 	ftIndexInterval         = 1 * time.Second
 	ftIndexForceMinInterval = time.Second * 10
-	ftBatchLimit            = 1000
+	ftBatchLimit            = 50
 	ftBlockMaxSize          = 1024 * 1024
 )
 
@@ -50,7 +52,45 @@ func (i *indexer) ftLoopRoutine() {
 		}
 	}()
 
-	i.runFullTextIndexer(ctx)
+	objectReq := subscription.SubscribeRequest{
+		SubId:             fmt.Sprintf("lastOpenedSpaces"),
+		Internal:          true,
+		NoDepSubscription: true,
+		Keys:              []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyLastOpenedDate.String(), bundle.RelationKeyLastModifiedDate.String()},
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
+			},
+		},
+		Sorts: []*model.BlockContentDataviewSort{
+			{
+				RelationKey:    bundle.RelationKeyLastOpenedDate.String(),
+				Type:           model.BlockContentDataviewSort_Desc,
+				IncludeTime:    true,
+				Format:         model.RelationFormat_date,
+				EmptyPlacement: model.BlockContentDataviewSort_End,
+			},
+		},
+	}
+	sub := syncsubscriptions.NewIdSubscription(i.subscriptionService, bundle.RelationKeyTargetSpaceId, objectReq)
+	err := sub.Run()
+	if err != nil {
+		log.Errorf("error running syncing objects: %v", err)
+		return
+	}
+	getIds := func() []string {
+		var ids = make([]string, 0, sub.Len())
+		sub.Iterate(func(id string, _ struct{}) bool {
+			ids = append(ids, id)
+			return true
+		})
+		log.Warnf("ft space ids priority: %v", ids)
+		return ids
+	}
+	log.Warnf("start ft queue processor")
+	i.runFullTextIndexer(ctx, getIds())
 	defer close(i.ftQueueFinished)
 	var lastForceIndex time.Time
 	for {
@@ -58,19 +98,19 @@ func (i *indexer) ftLoopRoutine() {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			i.runFullTextIndexer(ctx)
+			i.runFullTextIndexer(ctx, getIds())
 		case <-i.forceFt:
 			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
-				i.runFullTextIndexer(ctx)
+				i.runFullTextIndexer(ctx, getIds())
 				lastForceIndex = time.Now()
 			}
 		}
 	}
 }
 
-func (i *indexer) runFullTextIndexer(ctx context.Context) {
+func (i *indexer) runFullTextIndexer(ctx context.Context, spaceIdsPriority []string) {
 	batcher := i.ftsearch.NewAutoBatcher(ftsearch.AutoBatcherRecommendedMaxDocs, ftsearch.AutoBatcherRecommendedMaxSize)
-	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(objectIds []string) error {
+	err := i.store.BatchProcessFullTextQueue(ctx, spaceIdsPriority, ftBatchLimit, func(objectIds []string) error {
 		for _, objectId := range objectIds {
 			objDocs, err := i.prepareSearchDocument(ctx, objectId)
 			if err != nil {
@@ -224,14 +264,26 @@ func (i *indexer) ftInit() error {
 			return err
 		}
 		if docCount == 0 {
-			ids, err := i.store.ListIds()
+			spaceIds, err := i.storageService.AllSpaceIds()
 			if err != nil {
 				return err
 			}
-			for _, id := range ids {
-				if err := i.store.AddToIndexQueue(id); err != nil {
+			var fullIds []domain.FullID
+			for _, spaceId := range spaceIds {
+				ids, err := i.store.ListIdsBySpace(spaceId)
+				if err != nil {
 					return err
 				}
+				for _, id := range ids {
+					fullIds = append(fullIds, domain.FullID{
+						ObjectID: id,
+						SpaceID:  spaceId,
+					})
+				}
+			}
+			err = i.store.AddToIndexQueue(fullIds...)
+			if err != nil {
+				return err
 			}
 		}
 	}
