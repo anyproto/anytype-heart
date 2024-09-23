@@ -12,8 +12,6 @@ import (
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
-	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -203,18 +201,18 @@ func (s *service) createAccount(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("init tech space: %w", err)
 	}
-	err = s.initPersonalSpace(ctx)
-	if err != nil {
-		if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
-			err = ErrSpaceNotExists
-		}
-		// fix for the users that have wrong network id stored in the folder
-		err2 := s.config.ResetStoredNetworkId()
-		if err2 != nil {
-			log.Error("reset network id", zap.Error(err2))
-		}
-		return fmt.Errorf("init personal space: %w", err)
-	}
+	// err = s.initPersonalSpace(ctx)
+	// if err != nil {
+	// 	if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
+	// 		err = ErrSpaceNotExists
+	// 	}
+	// 	// fix for the users that have wrong network id stored in the folder
+	// 	err2 := s.config.ResetStoredNetworkId()
+	// 	if err2 != nil {
+	// 		log.Error("reset network id", zap.Error(err2))
+	// 	}
+	// 	return fmt.Errorf("init personal space: %w", err)
+	// }
 	s.techSpace.WakeUpViews()
 	// only persist networkId after successful space init
 	err = s.config.PersistAccountNetworkId()
