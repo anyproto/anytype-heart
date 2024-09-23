@@ -237,10 +237,10 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
-	progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
+	progress.FinishWithNotification(b.provideNotification(spaceID, progress, importErr, title), importErr)
 
-	if err != nil {
-		log.Errorf("failed to send notification: %v", err)
+	if importErr != nil {
+		log.Errorf("failed to send notification: %v", importErr)
 	}
 
 	if isNewSpace {
