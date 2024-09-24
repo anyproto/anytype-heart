@@ -405,8 +405,8 @@ func (s *service) downloadZipToFile(url string, progress process.Progress) (path
 				readerMutex.Lock()
 				if countReader != nil && size != 0 {
 					count := countReader.Count()
-					if count > uint64(^int64(0)) {
-						count = uint64(^int64(0))
+					if count > uint64(^int64(0)+1) {
+						count = uint64(^int64(0) + 1)
 					}
 					progress.SetDone(archiveDownloadingPercents + archiveCopyingPercents*int64(count)/size)
 				} else if counter < archiveDownloadingPercents {
