@@ -52,7 +52,7 @@ func (b *dashboardInjector) Name() (name string) {
 
 func (b *dashboardInjector) InjectMigrationDashboard(spaceID string) (err error) {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
-	if err = os.WriteFile(path, migrationDashboardZip, 0644); err != nil {
+	if err = os.WriteFile(path, migrationDashboardZip, 0600); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %w", err)
 	}
 

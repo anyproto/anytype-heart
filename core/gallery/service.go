@@ -238,7 +238,7 @@ func (s *service) getArchiveFromCache(downloadLink, cachePath string) (archive [
 
 func (s *service) saveArchiveToTempFile(archive []byte) (path string, removeFunc func(string), err error) {
 	path = filepath.Join(s.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
-	if err = os.WriteFile(path, archive, 0644); err != nil {
+	if err = os.WriteFile(path, archive, 0600); err != nil {
 		return "", nil, fmt.Errorf("failed to save archive to temporary file: %w", err)
 	}
 	return path, removeTempFile, nil
@@ -404,7 +404,7 @@ func (s *service) downloadZipToFile(url string, progress process.Progress) (path
 			case <-time.After(time.Second):
 				readerMutex.Lock()
 				if countReader != nil && size != 0 {
-					progress.SetDone(archiveDownloadingPercents + int64(archiveCopyingPercents*countReader.Count())/size)
+					progress.SetDone(archiveDownloadingPercents + archiveCopyingPercents*int64(countReader.Count())/size)
 				} else if counter < archiveDownloadingPercents {
 					counter++
 					progress.SetDone(counter)

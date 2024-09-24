@@ -110,34 +110,30 @@ func (c *cache) GetManifest(downloadLink string, timeoutInSeconds int) (info *mo
 	}
 
 	index, newVersion, err := c.downloadGalleryIndex(timeoutInSeconds, version, true)
-	if err != nil {
-		if errors.Is(err, ErrNotModified) {
-			manifest, err := getManifestByDownloadLink(localIndex, downloadLink)
-			if err != nil {
-				return nil, err
-			}
-			return manifest, nil
-		}
+	if err == nil {
+		c.storage.save(index, newVersion)
 
-		if localIndex != nil {
-			log.Warn("failed to download index from remote. Returning local index", zap.Error(err))
-			manifest, err := getManifestByDownloadLink(localIndex, downloadLink)
-			if err != nil {
-				return nil, err
-			}
-			return manifest, nil
-		}
-
-		return nil, err
+		return getManifestByDownloadLink(index, downloadLink)
 	}
 
-	c.storage.save(index, newVersion)
-
-	manifest, err := getManifestByDownloadLink(index, downloadLink)
-	if err != nil {
-		return nil, err
+	if errors.Is(err, ErrNotModified) {
+		manifest, err := getManifestByDownloadLink(localIndex, downloadLink)
+		if err != nil {
+			return nil, err
+		}
+		return manifest, nil
 	}
-	return manifest, nil
+
+	if localIndex != nil {
+		log.Warn("failed to download index from remote. Returning local index", zap.Error(err))
+		manifest, err := getManifestByDownloadLink(localIndex, downloadLink)
+		if err != nil {
+			return nil, err
+		}
+		return manifest, nil
+	}
+
+	return nil, err
 }
 
 type cacheStorage interface {
@@ -179,12 +175,12 @@ func (s *storage) save(index *pb.RpcGalleryDownloadIndexResponse, version string
 		return
 	}
 
-	if err = os.WriteFile(s.indexPath, data, 0777); err != nil {
+	if err = os.WriteFile(s.indexPath, data, 0600); err != nil {
 		log.Error("failed to save local gallery index", zap.Error(err))
 		return
 	}
 
-	if err = os.WriteFile(s.versionPath, []byte(version), 0777); err != nil {
+	if err = os.WriteFile(s.versionPath, []byte(version), 0600); err != nil {
 		log.Error("failed to save local gallery version", zap.Error(err))
 	}
 }
