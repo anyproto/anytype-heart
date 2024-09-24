@@ -28,7 +28,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
-	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -499,32 +498,6 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 		return err
 	}
 	return s.objectLinksCollectionModify(spc.DerivedIDs().Archive, req.ContextId, req.IsArchived)
-}
-
-func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
-	return cache.Do(s, req.ContextId, func(sb smartblock.SmartBlock) error {
-		st := sb.NewStateCtx(ctx)
-		// nolint:errcheck
-		_ = st.Iterate(func(b simple.Block) (isContinue bool) {
-			if dv := b.Model().GetDataview(); dv != nil {
-				for _, view := range dv.Views {
-					view.DefaultTemplateId = ""
-					view.DefaultObjectTypeId = ""
-				}
-				st.Set(b)
-				return false
-			}
-			return true
-		})
-		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
-
-		flags := internalflag.NewFromState(st)
-		// set with source is no longer empty
-		flags.Remove(model.InternalFlag_editorDeleteEmpty)
-		flags.AddToState(st)
-
-		return sb.Apply(st, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
-	})
 }
 
 func (s *Service) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error) {
