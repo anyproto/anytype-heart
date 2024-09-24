@@ -41,8 +41,8 @@ const (
 	downloadManifestTimeoutSeconds = 1
 
 	contentLengthHeader        = "Content-Length"
-	archiveDownloadingPercents = 30
-	archiveCopyingPercents     = 10
+	archiveDownloadingPercents = uint64(30)
+	archiveCopyingPercents     = uint64(10)
 
 	indexName = "app-index.json"
 )
@@ -56,7 +56,7 @@ var (
 
 	// TODO: GO-4131 Fill in download links when built-in usecases will be downloaded to gallery
 	ucCodeToInfo = map[pb.RpcObjectImportUseCaseRequestUseCase]builtInUseCaseInfo{
-		pb.RpcObjectImportUseCaseRequest_GET_STARTED:       {"Get Started", ""},
+		pb.RpcObjectImportUseCaseRequest_GET_STARTED:       {"Get Started", "https://storage.gallery.any.coop/get_started/get_started.zip"},
 		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {"Personal Projects", ""},
 		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    {"Knowledge Base", ""},
 		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       {"Notes and Diary", ""},
@@ -387,14 +387,14 @@ func (s *service) downloadZipToFile(url string, progress process.Progress) (path
 
 	var (
 		countReader *datacounter.ReaderCounter
-		size        int64
+		size        uint64
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	readerMutex := sync.Mutex{}
 	defer cancel()
 	go func() {
-		counter := int64(0)
+		counter := uint64(0)
 		for {
 			select {
 			case <-ctx.Done():
@@ -404,10 +404,10 @@ func (s *service) downloadZipToFile(url string, progress process.Progress) (path
 			case <-time.After(time.Second):
 				readerMutex.Lock()
 				if countReader != nil && size != 0 {
-					progress.SetDone(archiveDownloadingPercents + archiveCopyingPercents*int64(countReader.Count())/size)
+					progress.SetDone(int64(archiveDownloadingPercents + archiveCopyingPercents*countReader.Count()/size))
 				} else if counter < archiveDownloadingPercents {
 					counter++
-					progress.SetDone(counter)
+					progress.SetDone(int64(counter))
 				}
 				readerMutex.Unlock()
 			}
@@ -436,7 +436,7 @@ func (s *service) downloadZipToFile(url string, progress process.Progress) (path
 		return "", err
 	}
 
-	progress.SetDone(archiveDownloadingPercents + archiveCopyingPercents)
+	progress.SetDone(int64(archiveDownloadingPercents + archiveCopyingPercents))
 	return path, nil
 }
 
@@ -450,7 +450,7 @@ func (s *service) setupProgress() (process.Notificationable, error) {
 	return progress, nil
 }
 
-func getArchiveReaderAndSize(url string) (reader io.ReadCloser, size int64, err error) {
+func getArchiveReaderAndSize(url string) (reader io.ReadCloser, size uint64, err error) {
 	client := http.Client{Timeout: 15 * time.Second}
 	// nolint: gosec
 	resp, err := client.Get(url)
@@ -464,7 +464,7 @@ func getArchiveReaderAndSize(url string) (reader io.ReadCloser, size int64, err 
 	}
 
 	contentLengthStr := resp.Header.Get(contentLengthHeader)
-	if size, err = strconv.ParseInt(contentLengthStr, 10, 64); err != nil {
+	if size, err = strconv.ParseUint(contentLengthStr, 10, 64); err != nil {
 		resp.Body.Close()
 		return nil, 0, fmt.Errorf("failed to get zip size from Content-Length: %w", err)
 	}
