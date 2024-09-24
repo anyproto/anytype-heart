@@ -75,8 +75,8 @@ func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) (ke
 		Condition:   model.BlockContentDataviewFilter_Equal,
 		Value:       pbtypes.String(spaceId),
 	}}}, func(details *types.Struct) {
-		for key, v := range details.Fields {
-			if detailHandlesValue(v) {
+		for key, valueToCheck := range details.Fields {
+			if detailHandlesValue(valueToCheck) {
 				if counter, ok := countersByKeys[key]; ok {
 					countersByKeys[key] = counter + 1
 				} else {

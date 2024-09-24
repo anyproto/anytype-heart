@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -141,29 +140,29 @@ func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
 }
 
 func (s *service) SetListIsArchived(objectIds []string, isArchived bool) error {
-	objectIDsPerSpace, err := s.partitionObjectIDsBySpaceID(objectIds)
+	objectIdsPerSpace, err := s.partitionObjectIdsBySpaceId(objectIds)
 	if err != nil {
 		return fmt.Errorf("partition object ids by spaces: %w", err)
 	}
 
 	var (
-		multiErr   multierror.Error
+		resultErr  error
 		anySucceed bool
 	)
-	for spaceID, objectIDs := range objectIDsPerSpace {
-		err = s.setIsArchivedForObjects(spaceID, objectIDs, isArchived)
+	for spaceId, objectIdsOfThisSpace := range objectIdsPerSpace {
+		err = s.setIsArchivedForObjects(spaceId, objectIdsOfThisSpace, isArchived)
 		if err != nil {
-			log.Error("failed to set isArchived to objects", zap.String("spaceId", spaceID),
-				zap.Strings("objectIDs", objectIDs), zap.Bool("isArchived", isArchived), zap.Error(err))
-			multiErr.Errors = append(multiErr.Errors, err)
-		} else {
-			anySucceed = true
+			log.Error("failed to set isArchived to objects", zap.String("spaceId", spaceId),
+				zap.Strings("objectIds", objectIdsOfThisSpace), zap.Bool("isArchived", isArchived), zap.Error(err))
+			resultErr = errors.Join(resultErr, err)
+			continue
 		}
+		anySucceed = true
 	}
 	if anySucceed {
 		return nil
 	}
-	return multiErr.ErrorOrNil()
+	return resultErr
 }
 
 func (s *service) checkArchivedRestriction(isArchived bool, objectId string) error {
@@ -189,20 +188,20 @@ func (s *service) objectLinksCollectionModify(collectionId string, objectId stri
 	})
 }
 
-func (s *service) partitionObjectIDsBySpaceID(objectIDs []string) (map[string][]string, error) {
-	res := map[string][]string{}
-	for _, objectID := range objectIDs {
-		spaceID, err := s.resolver.ResolveSpaceID(objectID)
+func (s *service) partitionObjectIdsBySpaceId(objectIds []string) (map[string][]string, error) {
+	res := make(map[string][]string, len(objectIds))
+	for _, objectId := range objectIds {
+		spaceId, err := s.resolver.ResolveSpaceID(objectId)
 		if err != nil {
-			return nil, fmt.Errorf("resolve spaceID: %w", err)
+			return nil, fmt.Errorf("resolve spaceId: %w", err)
 		}
-		res[spaceID] = append(res[spaceID], objectID)
+		res[spaceId] = append(res[spaceId], objectId)
 	}
 	return res, nil
 }
 
-func (s *service) setIsArchivedForObjects(spaceID string, objectIDs []string, isArchived bool) error {
-	spc, err := s.spaceService.Get(context.Background(), spaceID)
+func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, isArchived bool) error {
+	spc, err := s.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
@@ -212,37 +211,39 @@ func (s *service) setIsArchivedForObjects(spaceID string, objectIDs []string, is
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
-		var multiErr multierror.Error
-		var anySucceed bool
-		ids, err := s.store.HasIDs(objectIDs...)
+		ids, err := s.store.HasIDs(objectIds...)
 		if err != nil {
 			return err
 		}
-		for _, id := range ids {
-			var err error
-			if restrErr := s.checkArchivedRestriction(isArchived, id); restrErr != nil {
-				err = restrErr
-			} else {
-				if isArchived {
-					err = archive.AddObject(id)
-				} else {
-					err = archive.RemoveObject(id)
-				}
-			}
-			if err != nil {
-				log.Error("failed to set isArchived", zap.String("objectId", id), zap.Bool("isArchived", isArchived), zap.Error(err))
-				multiErr.Errors = append(multiErr.Errors, err)
-				continue
-			}
-			anySucceed = true
-		}
+		anySucceed, err := s.modifyArchiveLinks(archive, isArchived, ids...)
 
-		if err := multiErr.ErrorOrNil(); err != nil {
+		if err != nil {
 			log.Warn("failed to archive", zap.Error(err))
 		}
 		if anySucceed {
 			return nil
 		}
-		return multiErr.ErrorOrNil()
+		return err
 	})
+}
+
+func (s *service) modifyArchiveLinks(
+	coll collection.Collection, value bool, ids ...string,
+) (anySucceed bool, resultErr error) {
+	for _, id := range ids {
+		err := s.checkArchivedRestriction(value, id)
+		if err == nil {
+			if value {
+				err = coll.AddObject(id)
+			} else {
+				err = coll.RemoveObject(id)
+			}
+		}
+		if err != nil {
+			resultErr = errors.Join(resultErr, err)
+			continue
+		}
+		anySucceed = true
+	}
+	return
 }

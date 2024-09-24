@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/blevesearch/bleve/v2/search"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
@@ -505,7 +506,7 @@ func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub databa
 	return
 }
 
-func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *types.Struct)) error {
+func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *types.Struct)) (err error) {
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
@@ -521,24 +522,33 @@ func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *types.
 	if err != nil {
 		return fmt.Errorf("find: %w", err)
 	}
-	for iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return errors.Join(fmt.Errorf("get doc: %w", err), iter.Close())
+
+	defer func() {
+		if iterCloseErr := iter.Close(); iterCloseErr != nil {
+			err = errors.Join(iterCloseErr, err)
 		}
-		details, err := pbtypes.JsonToProto(doc.Value())
+	}()
+
+	for iter.Next() {
+		var doc anystore.Doc
+		doc, err = iter.Doc()
 		if err != nil {
-			return errors.Join(fmt.Errorf("json to proto: %w", err), iter.Close())
+			err = fmt.Errorf("get doc: %w", err)
+			return
+		}
+
+		var details *types.Struct
+		details, err = pbtypes.JsonToProto(doc.Value())
+		if err != nil {
+			err = fmt.Errorf("json to proto: %w", err)
+			return
 		}
 		proc(details)
 	}
 	err = iter.Err()
 	if err != nil {
-		return errors.Join(fmt.Errorf("iterate: %w", err), iter.Close())
+		err = fmt.Errorf("iterate: %w", err)
+		return
 	}
-	err = iter.Close()
-	if err != nil {
-		return fmt.Errorf("close iterator: %w", err)
-	}
-	return nil
+	return
 }
