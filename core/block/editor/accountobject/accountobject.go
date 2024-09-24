@@ -53,6 +53,7 @@ type AccountObject interface {
 	basic.DetailsSettable
 	GetAnalyticsId() (string, error)
 	SetAnalyticsId(id string) error
+	SetIconImage(image string) (err error)
 	SetSharedSpacesLimit(limit int) (err error)
 	SetProfileDetails(details *types.Struct) (err error)
 }
@@ -281,6 +282,12 @@ func (a *accountObject) SetProfileDetails(details *types.Struct) (err error) {
 	for key, val := range details.Fields {
 		st.SetDetailAndBundledRelation(domain.RelationKey(key), val)
 	}
+	return a.Apply(st)
+}
+
+func (a *accountObject) SetIconImage(image string) (err error) {
+	st := a.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(image))
 	return a.Apply(st)
 }
 

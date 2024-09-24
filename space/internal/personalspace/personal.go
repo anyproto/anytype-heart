@@ -6,9 +6,9 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/space/internal/components/personalmigration"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/initial"
@@ -19,6 +19,11 @@ import (
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
+
+type Personal interface {
+	spacecontroller.SpaceController
+	WaitMigrations(ctx context.Context) error
+}
 
 var log = logger.NewNamed("common.space.personalspace")
 
@@ -66,6 +71,8 @@ type spaceController struct {
 	techSpace techspace.TechSpace
 	status    spacestatus.SpaceStatus
 
+	personalMigration personalmigration.Runner
+
 	sm *mode.StateMachine
 	mx sync.Mutex
 }
@@ -110,10 +117,16 @@ func (s *spaceController) SpaceId() string {
 }
 
 func (s *spaceController) newLoader() loader.Loader {
+	s.mx.Lock()
+	s.personalMigration = personalmigration.New()
+	s.mx.Unlock()
 	return loader.New(s.app, loader.Params{
 		SpaceId:       s.spaceId,
 		IsPersonal:    true,
 		OwnerMetadata: s.metadata,
+		AdditionalComps: []app.Component{
+			s.personalMigration,
+		},
 	})
 }
 
@@ -160,12 +173,9 @@ func (s *spaceController) Delete(ctx context.Context) error {
 }
 
 func (s *spaceController) Close(ctx context.Context) error {
-	if s.loader == nil {
-		return nil
-	}
-	loaderErr := s.loader.Close(ctx)
-	appErr := s.app.Close(ctx)
-	return multierr.Combine(loaderErr, appErr)
+	s.sm.Close()
+	// this closes status
+	return s.app.Close(ctx)
 }
 
 func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
@@ -174,4 +184,14 @@ func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
 
 func (s *spaceController) GetLocalStatus() spaceinfo.LocalStatus {
 	return s.status.GetLocalStatus()
+}
+
+func (s *spaceController) WaitMigrations(ctx context.Context) error {
+	s.mx.Lock()
+	if s.personalMigration == nil {
+		s.mx.Unlock()
+		return nil
+	}
+	s.mx.Unlock()
+	return s.personalMigration.WaitProfile(ctx)
 }

@@ -28,13 +28,13 @@ type LoadWaiter interface {
 type Loader interface {
 	mode.Process
 	LoadWaiter
-	WaitMigrations(ctx context.Context) error
 }
 
 type Params struct {
-	SpaceId       string
-	IsPersonal    bool
-	OwnerMetadata []byte
+	SpaceId         string
+	IsPersonal      bool
+	OwnerMetadata   []byte
+	AdditionalComps []app.Component
 }
 
 func New(app *app.App, params Params) Loader {
@@ -46,7 +46,10 @@ func New(app *app.App, params Params) Loader {
 		Register(aclobjectmanager.New(params.OwnerMetadata)).
 		Register(invitemigrator.New()).
 		Register(participantwatcher.New()).
-		Register(migration.New(params.IsPersonal))
+		Register(migration.New())
+	for _, comp := range params.AdditionalComps {
+		child.Register(comp)
+	}
 	return &loader{
 		app: child,
 	}
@@ -67,9 +70,4 @@ func (l *loader) CanTransition(next mode.Mode) bool {
 func (l *loader) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) {
 	spaceLoader := app.MustComponent[spaceloader.SpaceLoader](l.app)
 	return spaceLoader.WaitLoad(ctx)
-}
-
-func (l *loader) WaitMigrations(ctx context.Context) error {
-	migrator := app.MustComponent[*migration.Runner](l.app)
-	return migrator.Wait(ctx)
 }

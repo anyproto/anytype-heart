@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
-	"github.com/anyproto/anytype-heart/space/internal/components/migration/personalmigrator"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/readonlyfixer"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/systemobjectreviser"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
@@ -31,8 +30,8 @@ type Migration interface {
 	Name() string
 }
 
-func New(isPersonal bool) *Runner {
-	return &Runner{isPersonal: isPersonal}
+func New() *Runner {
+	return &Runner{}
 }
 
 type Runner struct {
@@ -40,14 +39,12 @@ type Runner struct {
 	spaceLoader spaceloader.SpaceLoader
 	techSpace   techspace.TechSpace
 
-	ctx         context.Context
-	cancel      context.CancelFunc
-	spc         clientspace.Space
-	loadErr     error
-	waitLoad    chan struct{}
-	waitMigrate chan struct{}
-	started     bool
-	isPersonal  bool
+	ctx      context.Context
+	cancel   context.CancelFunc
+	spc      clientspace.Space
+	loadErr  error
+	waitLoad chan struct{}
+	started  bool
 
 	app.ComponentRunnable
 }
@@ -60,8 +57,6 @@ func (r *Runner) Init(a *app.App) error {
 	r.store = app.MustComponent[objectstore.ObjectStore](a)
 	r.spaceLoader = app.MustComponent[spaceloader.SpaceLoader](a)
 	r.techSpace = app.MustComponent[techspace.TechSpace](a)
-
-	r.waitMigrate = make(chan struct{})
 	r.waitLoad = make(chan struct{})
 	return nil
 }
@@ -102,26 +97,13 @@ func (r *Runner) runMigrations() {
 		systemobjectreviser.Migration{},
 		readonlyfixer.Migration{},
 	}
-	if r.isPersonal {
-		migrations = append(migrations, personalmigrator.Migration{TechSpace: r.techSpace})
-	}
 
 	if err := r.run(migrations...); err != nil {
 		log.Error("failed to run default migrations", zap.String("spaceId", r.spc.Id()), zap.Error(err))
 	}
 }
 
-func (r *Runner) Wait(ctx context.Context) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-r.waitMigrate:
-		return nil
-	}
-}
-
 func (r *Runner) run(migrations ...Migration) (err error) {
-	defer close(r.waitMigrate)
 	spaceId := r.spc.Id()
 
 	for _, m := range migrations {

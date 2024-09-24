@@ -23,8 +23,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/personalspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
-	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -264,7 +264,7 @@ func (s *service) WaitPersonalSpaceMigration(ctx context.Context) (err error) {
 	s.mu.Lock()
 	ctrl := s.spaceControllers[s.personalSpaceId]
 	s.mu.Unlock()
-	return ctrl.Current().(loader.Loader).WaitMigrations(ctx)
+	return ctrl.(personalspace.Personal).WaitMigrations(ctx)
 }
 
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
