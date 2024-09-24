@@ -71,14 +71,7 @@ func (s *service) startStatus(ctx context.Context, info spaceinfo.SpacePersisten
 	}
 	if info.SpaceID == s.personalSpaceId {
 		s.mu.Unlock()
-		err = s.loadPersonalSpace(ctx)
-		if err != nil {
-			return nil, err
-		}
-		s.mu.Lock()
-		ctrl := s.spaceControllers[info.SpaceID]
-		s.mu.Unlock()
-		return ctrl, nil
+		return s.startPersonalSpace(ctx)
 	}
 	wait := make(chan struct{})
 	s.waiting[info.SpaceID] = controllerWaiter{
@@ -112,24 +105,24 @@ func (s *service) waitLoad(ctx context.Context, ctrl spacecontroller.SpaceContro
 	return nil, fmt.Errorf("failed to load space, mode is %d: %w", ctrl.Mode(), ErrFailedToLoad)
 }
 
-func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
+func (s *service) startPersonalSpace(ctx context.Context) (ctrl spacecontroller.SpaceController, err error) {
 	s.mu.Lock()
 	wait := make(chan struct{})
 	s.waiting[s.personalSpaceId] = controllerWaiter{
 		wait: wait,
 	}
 	s.mu.Unlock()
-	ctrl, err := s.factory.NewPersonalSpace(ctx, s.accountMetadataPayload)
-	if err != nil {
-		return
-	}
-	_, err = ctrl.Current().(loader.LoadWaiter).WaitLoad(ctx)
+	ctrl, err = s.factory.NewPersonalSpace(ctx, s.accountMetadataPayload)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if err != nil {
-		return err
-	}
 	close(wait)
+	if err != nil {
+		s.waiting[s.personalSpaceId] = controllerWaiter{
+			wait: wait,
+			err:  err,
+		}
+		return nil, err
+	}
 	s.spaceControllers[s.personalSpaceId] = ctrl
 	return
 }

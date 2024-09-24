@@ -195,9 +195,10 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 			if err != nil {
 				return fmt.Errorf("init tech space: %w", err)
 			}
-			err = s.loadPersonalSpace(ctx)
+			// we don't wait for it here to be consistent
+			_, err := s.startPersonalSpace(ctx)
 			if err != nil {
-				return fmt.Errorf("init personal space: %w", err)
+				return fmt.Errorf("start personal space: %w", err)
 			}
 		} else {
 			return fmt.Errorf("init tech space: %w", err)
