@@ -408,6 +408,7 @@ func (s *service) downloadZipToFile(url string, progress process.Progress) (path
 					if count > uint64(^int64(0)+1) {
 						count = uint64(^int64(0) + 1)
 					}
+					// nolint:gosec
 					progress.SetDone(archiveDownloadingPercents + archiveCopyingPercents*int64(count)/size)
 				} else if counter < archiveDownloadingPercents {
 					counter++
