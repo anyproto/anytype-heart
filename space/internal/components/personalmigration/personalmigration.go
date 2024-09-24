@@ -45,7 +45,7 @@ type uploader interface {
 }
 
 type fileObjectGetter interface {
-	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
+	GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error)
 }
 
 type runner struct {
@@ -149,7 +149,7 @@ func (r *runner) migrateIcon(oldIcon string) (err error) {
 	if oldIcon == "" {
 		return
 	}
-	fileId, err := r.fileObjectGetter.GetFileIdFromObject(oldIcon)
+	fileId, err := r.fileObjectGetter.GetFileIdFromObjectWaitLoad(r.ctx, oldIcon)
 	if err != nil {
 		return
 	}
