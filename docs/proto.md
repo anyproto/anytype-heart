@@ -29173,7 +29173,7 @@ stored |
 | Basic | 0 |  |
 | Cover | 1 |  |
 | Icon | 2 |  |
-| AutomaticallyCreated | 3 |  |
+| AutomaticallyAdded | 3 |  |
 
 
 

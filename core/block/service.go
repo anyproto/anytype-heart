@@ -811,7 +811,7 @@ func (s *Service) pasteBlocks(id string, content *bookmark.ObjectContent) error 
 		uploadReq := UploadRequest{
 			RpcBlockUploadRequest: r,
 			ObjectOrigin:          objectorigin.Webclipper(),
-			ImageKind:             model.ImageKind_AutomaticallyCreated,
+			ImageKind:             model.ImageKind_AutomaticallyAdded,
 		}
 		if _, err = s.UploadBlockFile(nil, uploadReq, groupID, false); err != nil {
 			return err

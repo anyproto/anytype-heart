@@ -203,7 +203,7 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 			req := block.UploadRequest{
 				RpcBlockUploadRequest: r,
 				ObjectOrigin:          objectorigin.Clipboard(),
-				ImageKind:             model.ImageKind_AutomaticallyCreated,
+				ImageKind:             model.ImageKind_AutomaticallyAdded,
 			}
 			if _, err = bs.UploadBlockFile(ctx, req, groupId, false); err != nil {
 				return err
