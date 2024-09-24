@@ -3,6 +3,7 @@ package syncer
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/ipfs/go-cid"
@@ -46,6 +47,9 @@ func (s *IconSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b sim
 		uplErr := s.updateTextBlock(id, "", b)
 		if uplErr != nil {
 			return fmt.Errorf("%w: %s", common.ErrFileLoad, uplErr.Error())
+		}
+		if os.IsNotExist(err) {
+			return err
 		}
 		return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
 	}

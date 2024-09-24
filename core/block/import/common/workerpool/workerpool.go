@@ -27,9 +27,9 @@ func NewPool(numWorkers int) *WorkerPool {
 
 func (p *WorkerPool) AddWork(t ITask) bool {
 	select {
-	case p.tasks <- t:
 	case <-p.quit:
 		return true
+	case p.tasks <- t:
 	}
 	return false
 }
@@ -50,9 +50,9 @@ func (p *WorkerPool) works(data interface{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for task := range p.tasks {
 		select {
-		case p.results <- task.Execute(data):
 		case <-p.quit:
 			return
+		case p.results <- task.Execute(data):
 		}
 	}
 }

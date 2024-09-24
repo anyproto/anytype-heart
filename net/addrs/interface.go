@@ -5,9 +5,6 @@ package addrs
 
 import (
 	"net"
-	"slices"
-
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func SetInterfaceAddrsGetter(getter InterfaceAddrsGetter) {}
@@ -32,16 +29,6 @@ func GetInterfacesAddrs() (iAddrs InterfacesAddrs, err error) {
 	if err != nil {
 		return
 	}
-	iAddrs.Interfaces = ifaces
-
-	iAddrs.Interfaces = slice.Filter(iAddrs.Interfaces, func(iface net.Interface) bool {
-		return iface.Flags&net.FlagUp != 0 && iface.Flags&net.FlagMulticast != 0
-	})
+	iAddrs.Interfaces = WrapInterfaces(ifaces)
 	return
-}
-
-func IsLoopBack(interfaces []net.Interface) bool {
-	return len(interfaces) == 1 && slices.ContainsFunc(interfaces, func(n net.Interface) bool {
-		return n.Flags&net.FlagLoopback != 0
-	})
 }
