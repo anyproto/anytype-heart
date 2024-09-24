@@ -34,7 +34,7 @@ func New(app *app.App, params Params) Remover {
 	child.Register(aclindexcleaner.New()).
 		Register(builder.New()).
 		Register(spaceloader.New(params.StopIfMandatoryFail, true)).
-		Register(migration.New(false))
+		Register(migration.New())
 	return &remover{
 		app: child,
 	}
