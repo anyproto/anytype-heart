@@ -85,8 +85,8 @@ github.com/andybalholm/cascadia v1.3.2 h1:3Xi6Dw5lHF15JtdcmAHD3i1+T8plmv7BQ/nsVi
 github.com/andybalholm/cascadia v1.3.2/go.mod h1:7gtRlve5FxPPgIgX36uWBX58OdBsSS6lUvCFb+h7KvU=
 github.com/anyproto/any-store v0.0.6 h1:FOBtNL6osrlzBu4wmiFqKZOa8pkL5Ena2LfVser8nig=
 github.com/anyproto/any-store v0.0.6/go.mod h1:MA3sSqRXIp0h9bC2LnMuDGVEFGB3BkI/UuWNCleGHMs=
-github.com/anyproto/any-sync v0.4.30 h1:2nnoVQF9WiBIw8pzwuOubwqf7a+xvZPDkXHmykTPi0k=
-github.com/anyproto/any-sync v0.4.30/go.mod h1:YjwTdTRL6b6GuutJNboJJ1M5D/kkdeSf9qF5xP6wG7Y=
+github.com/anyproto/any-sync v0.5.2 h1:Ph84HH+8kFB0Os+Z8X3HjIKcUMRRck73JbuG/ieCnkw=
+github.com/anyproto/any-sync v0.5.2/go.mod h1:oLo4tkNYdum85NCE1QaRzy4KPK+RlBMkhTH6U27ZvX0=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580/go.mod h1:T/uWAYxrXdaXw64ihI++9RMbKTCpKd/yE9+saARew7k=
 github.com/anyproto/go-chash v0.1.0 h1:I9meTPjXFRfXZHRJzjOHC/XF7Q5vzysKkiT/grsogXY=
@@ -105,8 +105,12 @@ github.com/anyproto/go-slip21 v1.0.0 h1:CI7lUqTIwmPOEGVAj4jyNLoICvueh++0U2HoAi3m
 github.com/anyproto/go-slip21 v1.0.0/go.mod h1:gbIJt7HAdr5DuT4f2pFTKCBSUWYsm/fysHBNqgsuxT0=
 github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139 h1:Wp9z0Q2kAstznWUmTZyOb9UgpVmUgYt1LXRvK/cg10E=
 github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139/go.mod h1:1zaDDQVWTRwNksmTUTkcVXqgNF28YHiEUIm8FL9Z+II=
+github.com/anyproto/lexid v0.0.2 h1:sYMbqBEOwAK+0JlX360oPPCqV4b2N7NtVhvT4gZD+5w=
+github.com/anyproto/lexid v0.0.2/go.mod h1:2RfpYiZkgoNmSDklXdwCCwGlso1FIp9Te8ZtoF3/Ehg=
 github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38 h1:80jke82/c+bNQQpnx4VO3Mi/lAxARyyfUpZvFaPxdzE=
 github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
+github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5 h1:aY7tBzQ+z8Hr/v8vOL4/EaKwPZx+J/ClZ1WuD6sqPvE=
+github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5/go.mod h1:5+PHE01DgsDPkralb8MYmGg2sPQahsqEJ9ue7ciDHKg=
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c h1:GicoaTUyB2mtCIl3YMrO0OzysqRT5GA4vuvDsqEkhSM=
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
 github.com/anyproto/tantivy-go v0.1.1 h1:IdeZca63wV7/C+wMpkntImdh/mkkEddQJTShGEVxGe0=
