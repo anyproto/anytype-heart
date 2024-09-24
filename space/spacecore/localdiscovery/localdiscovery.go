@@ -147,6 +147,7 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	newAddrs, err := addrs.GetInterfacesAddrs()
 	if addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) {
 		// this optimization allows to save syscalls to get addrs for every iface
+		// also we may receive a new ip address on the existing interface
 		l.discoveryPossibilitySwapState(func(currentState DiscoveryPossibility) DiscoveryPossibility {
 			if currentState != DiscoveryLocalNetworkRestricted {
 				return currentState
@@ -166,7 +167,7 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 		// so this equal check is more precise
 		return
 	}
-	log.Info("net interfaces configuration changed, restarting mdns server")
+	log.With(zap.Strings("ifaces", newAddrs.InterfaceNames())).Info("net interfaces configuration changed, restarting mdns server")
 	l.interfacesAddrs = newAddrs
 	if l.server != nil {
 		l.cancel()
@@ -174,11 +175,15 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 		l.closeWait.Wait()
 		l.closeWait = sync.WaitGroup{}
 	}
+	if len(l.interfacesAddrs.Interfaces) == 0 {
+		return nil
+	}
 	l.ctx, l.cancel = context.WithCancel(ctx)
 	if err = l.startServer(); err != nil {
 		return fmt.Errorf("starting mdns server: %w", err)
 	}
 	l.startQuerying(l.ctx)
+	log.Debug("mdns server started")
 	return
 }
 
@@ -228,7 +233,7 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 			Addrs:  portAddrs,
 			PeerId: entry.Instance,
 		}
-		log.Debug("discovered peer", zap.Strings("addrs", peer.Addrs), zap.String("peerId", peer.PeerId))
+		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId))
 		if l.notifier != nil {
 			l.notifier.PeerDiscovered(peer, OwnAddresses{
 				Addrs: l.ipv4,
