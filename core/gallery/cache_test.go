@@ -1,8 +1,8 @@
 package gallery
 
 import (
-	"context"
-	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,23 +11,18 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-var ctx = context.Background()
-
 func TestIndexCache_GetIndex(t *testing.T) {
-	server := startHttpServer()
-	defer server.Shutdown(nil)
-
-	t.Run("get index from cache, no url provided", func(t *testing.T) {
+	t.Run("get index from cache, failed to retrieve remote cache", func(t *testing.T) {
 		// given
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
 		c := cache{
-			getLocalIndex: func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-				return &pb.RpcGalleryDownloadIndexResponse{}, nil
-			},
-			getLocalVersion: func(string) (string, error) {
-				return "v1", nil
-			},
-			save: func(path string, index *pb.RpcGalleryDownloadIndexResponse, version string) {
-				panic("no need to save cache")
+			indexURL: server.URL + "/index.json",
+			storage: &testCacheStorage{
+				index:   &pb.RpcGalleryDownloadIndexResponse{},
+				version: "v1",
 			},
 		}
 
@@ -40,18 +35,20 @@ func TestIndexCache_GetIndex(t *testing.T) {
 
 	t.Run("get index from remote, version differs", func(t *testing.T) {
 		// given
+		server := buildServer(t, "")
+		defer server.Close()
+
 		c := cache{
-			indexURL: "http://localhost" + port + "/index.json",
-			getLocalIndex: func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-				return &pb.RpcGalleryDownloadIndexResponse{}, nil
-			},
-			getLocalVersion: func(string) (string, error) {
-				return "v1", nil
-			},
-			save: func(path string, index *pb.RpcGalleryDownloadIndexResponse, version string) {
-				assert.Equal(t, "v2", version)
-				assert.NotNil(t, index)
-				assert.Len(t, index.Experiences, 1)
+			indexURL: server.URL + "/index.json",
+			storage: &testCacheStorage{
+				index:   &pb.RpcGalleryDownloadIndexResponse{},
+				version: "v1",
+				assertSave: func(index *pb.RpcGalleryDownloadIndexResponse, version string) {
+					assert.Equal(t, "v2", version)
+					assert.NotNil(t, index)
+					assert.Len(t, index.Experiences, 1)
+					assert.Equal(t, "name", index.Experiences[0].Name)
+				},
 			},
 		}
 
@@ -62,20 +59,21 @@ func TestIndexCache_GetIndex(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, index)
 		assert.Len(t, index.Experiences, 1)
+		assert.Equal(t, "name", index.Experiences[0].Name)
 	})
 
 	t.Run("get index from remote, version is the same", func(t *testing.T) {
 		// given
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotModified)
+		}))
+		defer server.Close()
+
 		c := cache{
-			indexURL: "http://localhost" + port + "/index.json",
-			getLocalIndex: func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-				return &pb.RpcGalleryDownloadIndexResponse{}, nil
-			},
-			getLocalVersion: func(string) (string, error) {
-				return "v2", nil
-			},
-			save: func(path string, index *pb.RpcGalleryDownloadIndexResponse, version string) {
-				panic("no need to save cache")
+			indexURL: server.URL + "/index.json",
+			storage: &testCacheStorage{
+				index:   &pb.RpcGalleryDownloadIndexResponse{},
+				version: "v2",
 			},
 		}
 
@@ -90,18 +88,18 @@ func TestIndexCache_GetIndex(t *testing.T) {
 
 	t.Run("failed to read local index", func(t *testing.T) {
 		// given
+		server := buildServer(t, "")
+		defer server.Close()
+
 		c := cache{
-			indexURL: "http://localhost" + port + "/index.json",
-			getLocalIndex: func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-				return nil, errors.New("error on read")
-			},
-			getLocalVersion: func(string) (string, error) {
-				return "v1", nil
-			},
-			save: func(path string, index *pb.RpcGalleryDownloadIndexResponse, version string) {
-				assert.Equal(t, "v2", version)
-				assert.NotNil(t, index)
-				assert.Len(t, index.Experiences, 1)
+			indexURL: server.URL + "/index.json",
+			storage: &testCacheStorage{
+				version: "v1",
+				assertSave: func(index *pb.RpcGalleryDownloadIndexResponse, version string) {
+					assert.Equal(t, "v2", version)
+					assert.NotNil(t, index)
+					assert.Len(t, index.Experiences, 1)
+				},
 			},
 		}
 
@@ -112,17 +110,18 @@ func TestIndexCache_GetIndex(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, index)
 		assert.Len(t, index.Experiences, 1)
+		assert.Equal(t, "name", index.Experiences[0].Name)
 	})
 
 	t.Run("failed to both read local index and download remote one", func(t *testing.T) {
 		// given
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusConflict)
+		}))
+		defer server.Close()
 		c := cache{
-			getLocalIndex: func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-				return nil, errors.New("error on read")
-			},
-			save: func(path string, index *pb.RpcGalleryDownloadIndexResponse, version string) {
-				panic("nothing to save")
-			},
+			indexURL: server.URL + "/index.json",
+			storage:  &testCacheStorage{},
 		}
 
 		// when
@@ -134,23 +133,23 @@ func TestIndexCache_GetIndex(t *testing.T) {
 }
 
 func TestIndexCache_GetManifest(t *testing.T) {
-	server := startHttpServer()
-	defer server.Shutdown(nil)
+	const link = "https://github.com/anyproto/gallery/raw/main/experiences/knowledge_base/knowledge_base.zip"
 
-	t.Run("get manifest from cache, no url provided", func(t *testing.T) {
+	t.Run("get manifest from cache, failed to fetch index from remote", func(t *testing.T) {
 		// given
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
 		c := cache{
-			getLocalIndex: func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-				return &pb.RpcGalleryDownloadIndexResponse{Experiences: []*model.ManifestInfo{{
+			indexURL: server.URL + "/index.json",
+			storage: &testCacheStorage{
+				index: &pb.RpcGalleryDownloadIndexResponse{Experiences: []*model.ManifestInfo{{
 					DownloadLink: "test.link",
 					Name:         "test",
-				}}}, nil
-			},
-			getLocalVersion: func(string) (string, error) {
-				return "v1", nil
-			},
-			save: func(path string, index *pb.RpcGalleryDownloadIndexResponse, version string) {
-				panic("no need to save cache")
+				}}},
+				version: "v1",
 			},
 		}
 
@@ -165,23 +164,24 @@ func TestIndexCache_GetManifest(t *testing.T) {
 
 	t.Run("get manifest from remote, version differs", func(t *testing.T) {
 		// given
+		server := buildServer(t, "")
+		defer server.Close()
+
 		c := cache{
-			indexURL: "http://localhost" + port + "/index.json",
-			getLocalIndex: func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-				return &pb.RpcGalleryDownloadIndexResponse{}, nil
-			},
-			getLocalVersion: func(string) (string, error) {
-				return "v1", nil
-			},
-			save: func(path string, index *pb.RpcGalleryDownloadIndexResponse, version string) {
-				assert.Equal(t, "v2", version)
-				assert.NotNil(t, index)
-				assert.Len(t, index.Experiences, 1)
+			indexURL: server.URL + "/index.json",
+			storage: &testCacheStorage{
+				index:   &pb.RpcGalleryDownloadIndexResponse{},
+				version: "v1",
+				assertSave: func(index *pb.RpcGalleryDownloadIndexResponse, version string) {
+					assert.Equal(t, "v2", version)
+					assert.NotNil(t, index)
+					assert.Len(t, index.Experiences, 1)
+				},
 			},
 		}
 
 		// when
-		info, err := c.GetManifest("https://github.com/anyproto/gallery/raw/main/experiences/knowledge_base/knowledge_base.zip", 0)
+		info, err := c.GetManifest(link, 0)
 
 		// then
 		assert.NoError(t, err)
@@ -191,19 +191,19 @@ func TestIndexCache_GetManifest(t *testing.T) {
 
 	t.Run("get manifest from remote, version is the same", func(t *testing.T) {
 		// given
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotModified)
+		}))
+		defer server.Close()
+
 		c := cache{
-			indexURL: "http://localhost" + port + "/index.json",
-			getLocalIndex: func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-				return &pb.RpcGalleryDownloadIndexResponse{Experiences: []*model.ManifestInfo{{
+			indexURL: server.URL + "/index.json",
+			storage: &testCacheStorage{
+				index: &pb.RpcGalleryDownloadIndexResponse{Experiences: []*model.ManifestInfo{{
 					DownloadLink: "test.link",
 					Name:         "test",
-				}}}, nil
-			},
-			getLocalVersion: func(string) (string, error) {
-				return "v2", nil
-			},
-			save: func(path string, index *pb.RpcGalleryDownloadIndexResponse, version string) {
-				panic("no need to save cache")
+				}}},
+				version: "v2",
 			},
 		}
 
@@ -218,23 +218,23 @@ func TestIndexCache_GetManifest(t *testing.T) {
 
 	t.Run("failed to read local index", func(t *testing.T) {
 		// given
+		server := buildServer(t, "")
+		defer server.Close()
+
 		c := cache{
-			indexURL: "http://localhost" + port + "/index.json",
-			getLocalIndex: func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-				return nil, errors.New("error on read")
-			},
-			getLocalVersion: func(string) (string, error) {
-				return "v1", nil
-			},
-			save: func(path string, index *pb.RpcGalleryDownloadIndexResponse, version string) {
-				assert.Equal(t, "v2", version)
-				assert.NotNil(t, index)
-				assert.Len(t, index.Experiences, 1)
+			indexURL: server.URL + "/index.json",
+			storage: &testCacheStorage{
+				version: "v1",
+				assertSave: func(index *pb.RpcGalleryDownloadIndexResponse, version string) {
+					assert.Equal(t, "v2", version)
+					assert.NotNil(t, index)
+					assert.Len(t, index.Experiences, 1)
+				},
 			},
 		}
 
 		// when
-		info, err := c.GetManifest("https://github.com/anyproto/gallery/raw/main/experiences/knowledge_base/knowledge_base.zip", 0)
+		info, err := c.GetManifest(link, 0)
 
 		// then
 		assert.NoError(t, err)
@@ -244,13 +244,14 @@ func TestIndexCache_GetManifest(t *testing.T) {
 
 	t.Run("failed to both read local index and download remote one", func(t *testing.T) {
 		// given
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusConflict)
+		}))
+		defer server.Close()
+
 		c := cache{
-			getLocalIndex: func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-				return nil, errors.New("error on read")
-			},
-			save: func(path string, index *pb.RpcGalleryDownloadIndexResponse, version string) {
-				panic("nothing to save")
-			},
+			indexURL: server.URL + "/index.json",
+			storage:  &testCacheStorage{},
 		}
 
 		// when

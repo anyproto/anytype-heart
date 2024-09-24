@@ -2,7 +2,7 @@ package gallery
 
 import (
 	"context"
-	"errors"
+	"os"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -58,17 +58,18 @@ func newFixture(t *testing.T) *fixture {
 	importer := mock_importer.NewMockImporter(t)
 	tempDirService := mock_core.NewMockTempDirProvider(t)
 	notifService := mock_notifications.NewMockNotifications(t)
-	indexCache := &cache{save: func(path string, index *pb.RpcGalleryDownloadIndexResponse, version string) {}}
+	indexCache := &cache{}
 
 	notifService.EXPECT().CreateAndSend(mock.Anything).Maybe().Return(nil)
 
 	s := &service{
-		importer:        importer,
-		spaceNameGetter: &spaceNameGetter{},
-		tempDirService:  tempDirService,
-		progress:        &dumbProgress{},
-		notifications:   notifService,
-		indexCache:      indexCache,
+		importer:          importer,
+		spaceNameGetter:   &spaceNameGetter{},
+		tempDirService:    tempDirService,
+		progress:          &dumbProgress{},
+		notifications:     notifService,
+		indexCache:        indexCache,
+		withUrlValidation: false,
 	}
 
 	return &fixture{
@@ -81,10 +82,11 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func TestService_ImportExperience(t *testing.T) {
-	t.Run("import local experience, no client cache", func(t *testing.T) {
+	t.Run("import experience by local path", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.importer.EXPECT().Import(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, req *importer.ImportRequest) *importer.ImportResponse {
+			assert.Equal(t, "./testdata/client_cache/get_started.zip", req.Params.(*pb.RpcObjectImportRequestParamsOfPbParams).PbParams.Path[0])
 			assert.Equal(t, model.ObjectOrigin_usecase, req.Origin.Origin)
 			assert.Equal(t, model.Import_Pb, req.Origin.ImportType)
 			assert.Equal(t, spaceId, req.SpaceId)
@@ -94,105 +96,255 @@ func TestService_ImportExperience(t *testing.T) {
 		})
 
 		// when
-		err := fx.ImportExperience(nil, spaceId, "./testdata/empty_experience.zip", "empty", "", true)
+		err := fx.ImportExperience(nil, spaceId, "./testdata/client_cache/get_started.zip", "Empty", "", true)
 
 		// then
 		assert.NoError(t, err)
 	})
 
-	// t.Run("import remote experience, with client cache", func(t *testing.T) {
-	// 	// given
-	// 	fx := newFixture(t)
-	// 	fx.importer.EXPECT().Import(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, req *importer.ImportRequest) *importer.ImportResponse {
-	// 		assert.Equal(t, model.ObjectOrigin_usecase, req.Origin.Origin)
-	// 		assert.Equal(t, model.Import_Pb, req.Origin.ImportType)
-	// 		assert.Equal(t, spaceId, req.SpaceId)
-	// 		assert.False(t, req.IsMigration)
-	// 		assert.False(t, req.NoProgress)
-	// 		return &importer.ImportResponse{}
-	// 	})
-	//
-	// 	fx.indexCache.getLocalIndex = func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-	// 		return &pb.RpcGalleryDownloadIndexResponse{}, nil
-	// 	}
-	//
-	// 	// when
-	// 	url := "https://github.com/anyproto/gallery/raw/main/experiences/get_started/get_started.zip"
-	// 	err := fx.ImportExperience(nil, spaceId, url, "Get Started", cachePath, true)
-	//
-	// 	// then
-	// 	assert.NoError(t, err)
-	// })
-}
-
-func TestService_GetGalleryIndex(t *testing.T) {
-	server := startHttpServer()
-	defer server.Shutdown(nil)
-
-	t.Run("get gallery index from middleware cache", func(t *testing.T) {
+	t.Run("import experience from client cache, as hash is the same", func(t *testing.T) {
 		// given
+		server := buildServer(t, "hash1")
+		defer server.Close()
+
+		var (
+			path string
+			url  = "http://127.0.0.1:37373/get_started.zip"
+		)
+
 		fx := newFixture(t)
-		fx.indexCache.getLocalIndex = func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-			return buildIndex(), nil
+		fx.importer.EXPECT().Import(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, req *importer.ImportRequest) *importer.ImportResponse {
+			path = req.Params.(*pb.RpcObjectImportRequestParamsOfPbParams).PbParams.Path[0]
+			assert.NotEmpty(t, path)
+			assert.Equal(t, model.ObjectOrigin_usecase, req.Origin.Origin)
+			assert.Equal(t, model.Import_Pb, req.Origin.ImportType)
+			assert.Equal(t, spaceId, req.SpaceId)
+			assert.False(t, req.IsMigration)
+			assert.False(t, req.NoProgress)
+			return &importer.ImportResponse{}
+		})
+
+		fx.indexCache.storage = &testCacheStorage{
+			version: "v2",
+			index: &pb.RpcGalleryDownloadIndexResponse{
+				Experiences: []*model.ManifestInfo{{
+					DownloadLink: url,
+					Hash:         "hash1",
+				}},
+			},
 		}
-		fx.indexCache.getLocalVersion = func(string) (string, error) {
-			return "v1", nil
-		}
+		fx.indexCache.indexURL = server.URL + "/index.json"
+
+		fx.tempDirService.EXPECT().TempDir().Return("./testdata")
 
 		// when
-		index, err := fx.GetGalleryIndex("")
+		err := fx.ImportExperience(nil, spaceId, url, "Get Started", cachePath, true)
 
 		// then
 		assert.NoError(t, err)
-		assert.NotNil(t, index)
-		assert.Len(t, index.Experiences, 1)
-		assert.Equal(t, "name", index.Experiences[0].Name)
+		_, err = os.Stat(path)
+		assert.Error(t, err)
 	})
 
-	t.Run("get gallery index from client cache", func(t *testing.T) {
+	t.Run("import experience from client cache, as hash check is failed", func(t *testing.T) {
 		// given
+		server := buildServer(t, "hash1")
+		defer server.Close()
+
+		var (
+			path string
+			url  = "http://127.0.0.1:37373/get_started.zip"
+		)
+
 		fx := newFixture(t)
-		fx.indexCache.getLocalIndex = func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-			return nil, errors.New("failed to get local index")
-		}
+		fx.importer.EXPECT().Import(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, req *importer.ImportRequest) *importer.ImportResponse {
+			path = req.Params.(*pb.RpcObjectImportRequestParamsOfPbParams).PbParams.Path[0]
+			assert.NotEmpty(t, path)
+			assert.Equal(t, model.ObjectOrigin_usecase, req.Origin.Origin)
+			assert.Equal(t, model.Import_Pb, req.Origin.ImportType)
+			assert.Equal(t, spaceId, req.SpaceId)
+			assert.False(t, req.IsMigration)
+			assert.False(t, req.NoProgress)
+			return &importer.ImportResponse{}
+		})
+
+		fx.indexCache.storage = &testCacheStorage{}
+
+		fx.tempDirService.EXPECT().TempDir().Return("./testdata")
 
 		// when
-		index, err := fx.GetGalleryIndex("./testdata/client_cache.zip")
+		err := fx.ImportExperience(nil, spaceId, url, "Get Started", cachePath, true)
 
 		// then
 		assert.NoError(t, err)
-		assert.NotNil(t, index)
-		assert.Len(t, index.Experiences, 1)
-		assert.Equal(t, "get_started", index.Experiences[0].Name)
+		_, err = os.Stat(path)
+		assert.Error(t, err)
 	})
 
-	t.Run("get gallery index from remote", func(t *testing.T) {
+	t.Run("import outdated experience from client cache, as remote download is failed", func(t *testing.T) {
 		// given
+		var (
+			path string
+			url  = "http://127.0.0.1:37373/get_started.zip"
+		)
+
 		fx := newFixture(t)
-		fx.indexCache.indexURL = "http://localhost" + port + "/index.json"
-		fx.indexCache.getLocalIndex = func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-			return nil, errors.New("failed to get local index")
+		fx.importer.EXPECT().Import(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, req *importer.ImportRequest) *importer.ImportResponse {
+			path = req.Params.(*pb.RpcObjectImportRequestParamsOfPbParams).PbParams.Path[0]
+			assert.NotEmpty(t, path)
+			assert.Equal(t, model.ObjectOrigin_usecase, req.Origin.Origin)
+			assert.Equal(t, model.Import_Pb, req.Origin.ImportType)
+			assert.Equal(t, spaceId, req.SpaceId)
+			assert.False(t, req.IsMigration)
+			assert.False(t, req.NoProgress)
+			return &importer.ImportResponse{}
+		})
+
+		fx.indexCache.storage = &testCacheStorage{
+			version: "v2",
+			index: &pb.RpcGalleryDownloadIndexResponse{
+				Experiences: []*model.ManifestInfo{{
+					DownloadLink: url,
+					Hash:         "hash2",
+				}},
+			},
 		}
 
+		fx.tempDirService.EXPECT().TempDir().Return("./testdata")
+
 		// when
-		index, err := fx.GetGalleryIndex("./testdata/client_cache.zip")
+		err := fx.ImportExperience(nil, spaceId, url, "Get Started", cachePath, true)
 
 		// then
 		assert.NoError(t, err)
-		assert.NotNil(t, index)
-		assert.Len(t, index.Experiences, 1)
-		assert.Equal(t, "name", index.Experiences[0].Name)
+		_, err = os.Stat(path)
+		assert.Error(t, err)
 	})
 
-	t.Run("failed to get index from all places", func(t *testing.T) {
+	t.Run("import experience from remote, as no client cache is specified", func(t *testing.T) {
 		// given
+		server := buildServer(t, "hash1")
+		defer server.Close()
+
+		var (
+			path string
+			url  = "http://127.0.0.1:" + port + "/get_started.zip"
+		)
+
 		fx := newFixture(t)
-		fx.indexCache.getLocalIndex = func(string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-			return nil, errors.New("failed to get local index")
-		}
+		fx.importer.EXPECT().Import(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, req *importer.ImportRequest) *importer.ImportResponse {
+			path = req.Params.(*pb.RpcObjectImportRequestParamsOfPbParams).PbParams.Path[0]
+			assert.NotEmpty(t, path)
+			assert.Equal(t, model.ObjectOrigin_usecase, req.Origin.Origin)
+			assert.Equal(t, model.Import_Pb, req.Origin.ImportType)
+			assert.Equal(t, spaceId, req.SpaceId)
+			assert.False(t, req.IsMigration)
+			assert.False(t, req.NoProgress)
+			return &importer.ImportResponse{}
+		})
+
+		fx.indexCache.storage = &testCacheStorage{}
+
+		fx.tempDirService.EXPECT().TempDir().Return("./testdata")
 
 		// when
-		_, err := fx.GetGalleryIndex("invalid_path")
+		err := fx.ImportExperience(nil, spaceId, url, "Get Started", "", true)
+
+		// then
+		assert.NoError(t, err)
+		_, err = os.Stat(path)
+		assert.Error(t, err)
+	})
+
+	t.Run("import experience from remote, as it is not presented in client cache", func(t *testing.T) {
+		// given
+		server := buildServer(t, "hash1")
+		defer server.Close()
+
+		var (
+			path string
+			url  = "http://127.0.0.1:" + port + "/experience.zip"
+		)
+
+		fx := newFixture(t)
+		fx.importer.EXPECT().Import(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, req *importer.ImportRequest) *importer.ImportResponse {
+			path = req.Params.(*pb.RpcObjectImportRequestParamsOfPbParams).PbParams.Path[0]
+			assert.NotEmpty(t, path)
+			assert.Equal(t, model.ObjectOrigin_usecase, req.Origin.Origin)
+			assert.Equal(t, model.Import_Pb, req.Origin.ImportType)
+			assert.Equal(t, spaceId, req.SpaceId)
+			assert.False(t, req.IsMigration)
+			assert.False(t, req.NoProgress)
+			return &importer.ImportResponse{}
+		})
+
+		fx.indexCache.storage = &testCacheStorage{}
+
+		fx.tempDirService.EXPECT().TempDir().Return("./testdata")
+
+		// when
+		err := fx.ImportExperience(nil, spaceId, url, "Experience", cachePath, true)
+
+		// then
+		assert.NoError(t, err)
+		_, err = os.Stat(path)
+		assert.Error(t, err)
+	})
+
+	t.Run("import experience from remote, as version in client cache is outdated", func(t *testing.T) {
+		// given
+		server := buildServer(t, "hash2")
+		defer server.Close()
+
+		var (
+			path string
+			url  = "http://127.0.0.1:" + port + "/get_started.zip"
+		)
+
+		fx := newFixture(t)
+		fx.importer.EXPECT().Import(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, req *importer.ImportRequest) *importer.ImportResponse {
+			path = req.Params.(*pb.RpcObjectImportRequestParamsOfPbParams).PbParams.Path[0]
+			assert.NotEmpty(t, path)
+			assert.Equal(t, model.ObjectOrigin_usecase, req.Origin.Origin)
+			assert.Equal(t, model.Import_Pb, req.Origin.ImportType)
+			assert.Equal(t, spaceId, req.SpaceId)
+			assert.False(t, req.IsMigration)
+			assert.False(t, req.NoProgress)
+			return &importer.ImportResponse{}
+		})
+
+		fx.indexCache.storage = &testCacheStorage{
+			version: "v2",
+			index: &pb.RpcGalleryDownloadIndexResponse{
+				Experiences: []*model.ManifestInfo{{
+					DownloadLink: url,
+					Hash:         "hash2",
+				}},
+			},
+		}
+
+		fx.tempDirService.EXPECT().TempDir().Return("./testdata")
+
+		// when
+		err := fx.ImportExperience(nil, spaceId, url, "Get Started", cachePath, true)
+
+		// then
+		assert.NoError(t, err)
+		_, err = os.Stat(path)
+		assert.Error(t, err)
+	})
+
+	t.Run("failed to import experience from all places", func(t *testing.T) {
+		// given
+		var (
+			url = "http://127.0.0.1:" + port + "/get_started.zip"
+		)
+
+		fx := newFixture(t)
+		fx.indexCache.storage = &testCacheStorage{}
+
+		// when
+		err := fx.ImportExperience(nil, spaceId, url, "Get Started", "", true)
 
 		// then
 		assert.Error(t, err)

@@ -35,35 +35,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
-// TODO: Remove all embeds when clients support cache
-//
-//go:embed builtin/get_started.zip
-var getStartedZip []byte
-
-//go:embed builtin/personal_projects.zip
-var personalProjectsZip []byte
-
-//go:embed builtin/knowledge_base.zip
-var knowledgeBaseZip []byte
-
-//go:embed builtin/notes_diary.zip
-var notesDiaryZip []byte
-
-//go:embed builtin/strategic_writing.zip
-var strategicWritingZip []byte
-
-//go:embed builtin/empty.zip
-var emptyZip []byte
-
-var archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
-	pb.RpcObjectImportUseCaseRequest_GET_STARTED:       getStartedZip,
-	pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: personalProjectsZip,
-	pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    knowledgeBaseZip,
-	pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       notesDiaryZip,
-	pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: strategicWritingZip,
-	pb.RpcObjectImportUseCaseRequest_EMPTY:             emptyZip,
-}
-
 const (
 	CName                          = "gallery-service"
 	injectionTimeout               = 30 * time.Second
@@ -76,16 +47,21 @@ const (
 	indexName = "app-index.json"
 )
 
+type builtInUseCaseInfo struct {
+	Title, DownloadLink string
+}
+
 var (
 	log = logger.NewNamed(CName)
 
-	ucCodeToTitle = map[pb.RpcObjectImportUseCaseRequestUseCase]string{
-		pb.RpcObjectImportUseCaseRequest_GET_STARTED:       "get_started",
-		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: "personal_projects",
-		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    "knowledge_base",
-		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       "notes_diary",
-		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: "strategic_writing",
-		pb.RpcObjectImportUseCaseRequest_EMPTY:             "empty",
+	// TODO: GO-4131 Fill in download links when built-in usecases will be downloaded to gallery
+	ucCodeToInfo = map[pb.RpcObjectImportUseCaseRequestUseCase]builtInUseCaseInfo{
+		pb.RpcObjectImportUseCaseRequest_GET_STARTED:       {"Get Started", ""},
+		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {"Personal Projects", ""},
+		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    {"Knowledge Base", ""},
+		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       {"Notes and Diary", ""},
+		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: {"Strategic Writing", ""},
+		pb.RpcObjectImportUseCaseRequest_EMPTY:             {"Empty", ""},
 	}
 
 	errOutdatedArchive = fmt.Errorf("archive is outdated")
@@ -100,6 +76,7 @@ type Service interface {
 	) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 
 	GetGalleryIndex(clientCachePath string) (*pb.RpcGalleryDownloadIndexResponse, error)
+	GetManifest(url string, checkWhitelist bool) (info *model.ManifestInfo, err error)
 }
 
 type service struct {
@@ -109,6 +86,8 @@ type service struct {
 	progress        process.Service
 	notifications   notifications.Notifications
 	indexCache      IndexCache
+
+	withUrlValidation bool
 }
 
 func New() Service {
@@ -122,6 +101,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.progress = a.MustComponent(process.CName).(process.Service)
 	s.notifications = app.MustComponent[notifications.Notifications](a)
 	s.indexCache = app.MustComponent[IndexCache](a)
+
+	s.withUrlValidation = true
 	return
 }
 
@@ -140,7 +121,7 @@ func (s *service) ImportBuiltInUseCase(
 
 	start := time.Now()
 
-	title, found := ucCodeToTitle[useCase]
+	info, found := ucCodeToInfo[useCase]
 	if !found {
 		return pb.RpcObjectImportUseCaseResponseError_BAD_INPUT,
 			fmt.Errorf("failed to import built-in usecase: invalid Use Case value: %v", useCase)
@@ -150,19 +131,19 @@ func (s *service) ImportBuiltInUseCase(
 		if ctx == nil {
 			ctx = context.Background()
 		}
-		// TODO: Remove this call when clients support cache
-		return s.importUseCase(ctx, spaceID, title, useCase)
+		// TODO: GO-4131 Remove this call when clients support cache
+		return s.importUseCase(ctx, spaceID, info.Title, useCase)
 		// return pb.RpcObjectImportUseCaseResponseError_BAD_INPUT,
 		// 	fmt.Errorf("failed to import built-in usecase: no path to client cache provided")
 	}
 
-	if err = s.ImportExperience(ctx, spaceID, "", title, cachePath, true); err != nil {
+	if err = s.ImportExperience(ctx, spaceID, info.DownloadLink, info.Title, cachePath, true); err != nil {
 		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR,
 			fmt.Errorf("failed to import built-in usecase %s: %w",
 				pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)
 	}
 
-	spent := time.Now().Sub(start)
+	spent := time.Since(start)
 	if spent > injectionTimeout {
 		log.Debug("built-in objects injection time exceeded timeout", zap.String("timeout", injectionTimeout.String()), zap.String("spent", spent.String()))
 	}
@@ -171,64 +152,41 @@ func (s *service) ImportBuiltInUseCase(
 }
 
 func (s *service) ImportExperience(ctx context.Context, spaceID, url, title, cachePath string, isNewSpace bool) (err error) {
-	progress, err := s.setupProgress()
+	var (
+		progress      process.Notificationable
+		pathToArchive string
+		remove        = func(string) {}
+	)
+
+	defer func() {
+		if remove != nil && pathToArchive != "" {
+			remove(pathToArchive)
+		}
+		progress.FinishWithNotification(s.provideNotification(spaceID, progress, err, title), err)
+	}()
+
+	progress, err = s.setupProgress()
 	if err != nil {
 		return err
 	}
 
-	path, removeFunc, err := s.getPathAndRemoveFunc(url, title, cachePath, spaceID, progress)
+	pathToArchive, remove, err = s.getPathAndRemoveFunc(url, cachePath, progress)
 	if err != nil {
 		return err
 	}
 
-	importErr := s.importArchive(ctx, spaceID, path, title, progress, isNewSpace)
-	progress.FinishWithNotification(s.provideNotification(spaceID, progress, err, title), err)
-
-	if err != nil {
-		log.Error("failed to send notification", zap.Error(err))
-	}
-
-	removeFunc(path)
-	return importErr
-}
-
-// TODO: Remove this method when clients support cache
-func (s *service) importUseCase(
-	ctx context.Context, spaceID, title string, useCase pb.RpcObjectImportUseCaseRequestUseCase,
-) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error) {
-	archive, found := archives[useCase]
-	if !found {
-		return pb.RpcObjectImportUseCaseResponseError_BAD_INPUT,
-			fmt.Errorf("failed to import built-in usecase: invalid Use Case value: %v", useCase)
-	}
-
-	path, remove, err := s.saveArchiveToTempFile(archive)
-	if err != nil {
-		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to save built-in usecase in temp file: %w", err)
-	}
-
-	err = s.importArchive(ctx, spaceID, path, title, nil, true)
-	remove(path)
-
-	if err != nil {
-		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR, err
-	}
-	return pb.RpcObjectImportUseCaseResponseError_NULL, nil
+	err = s.importArchive(ctx, spaceID, pathToArchive, title, progress, isNewSpace)
+	return err
 }
 
 func (s *service) getPathAndRemoveFunc(
-	url, title, cachePath, spaceID string,
-	progress process.Notificationable,
+	url, cachePath string, progress process.Notificationable,
 ) (path string, removeFunc func(string), err error) {
 	if _, err = os.Stat(url); err == nil {
-		return url, func(_ string) {}, nil
+		return url, func(string) {}, nil
 	}
 
-	var (
-		cachedArchive []byte
-	)
-
-	cachedArchive, err = s.getArchiveFromCache(url, cachePath)
+	cachedArchive, err := s.getArchiveFromCache(url, cachePath)
 	if err == nil {
 		return s.saveArchiveToTempFile(cachedArchive)
 	}
@@ -246,20 +204,10 @@ func (s *service) getPathAndRemoveFunc(
 		log.Warn("failed to download archive from remote. Importing cached archive", zap.Error(err))
 		return s.saveArchiveToTempFile(cachedArchive)
 	}
-
-	if pErr := progress.Cancel(); pErr != nil {
-		log.Error("failed to cancel progress", zap.String("progress id", progress.Id()), zap.Error(pErr))
-	}
-	progress.FinishWithNotification(s.provideNotification(spaceID, progress, err, title), err)
-	if errors.Is(err, uri.ErrFilepathNotSupported) {
-		err = fmt.Errorf("invalid path to file: '%s'", url)
-	}
 	return "", nil, err
 }
 
-func (s *service) getArchiveFromCache(
-	downloadLink, cachePath string,
-) (archive []byte, err error) {
+func (s *service) getArchiveFromCache(downloadLink, cachePath string) (archive []byte, err error) {
 	archives, index, err := readClientCache(cachePath, false)
 	if err != nil {
 		return nil, err
@@ -316,7 +264,7 @@ func readData(f *zip.File) ([]byte, error) {
 }
 
 // readClientCache returns Gallery Index and map of archives aggregated by DownloadLink
-func readClientCache(cachePath string, readOnlyIndex bool) (archives map[string][]byte, index *pb.RpcGalleryDownloadIndexResponse, err error) {
+func readClientCache(cachePath string, indexOnly bool) (archives map[string][]byte, index *pb.RpcGalleryDownloadIndexResponse, err error) {
 	if cachePath == "" {
 		return nil, nil, fmt.Errorf("no cache path specified")
 	}
@@ -340,7 +288,7 @@ func readClientCache(cachePath string, readOnlyIndex bool) (archives map[string]
 		if err != nil {
 			return nil, nil, err
 		}
-		if readOnlyIndex {
+		if indexOnly {
 			return nil, index, nil
 		}
 		break
@@ -428,11 +376,13 @@ func (s *service) importArchive(
 }
 
 func (s *service) downloadZipToFile(url string, progress process.Progress) (path string, err error) {
-	if err = uri.ValidateURI(url); err != nil {
-		return "", fmt.Errorf("provided URL is not valid: %w", err)
-	}
-	if !isInWhitelist(url) {
-		return "", fmt.Errorf("provided URL is not in whitelist")
+	if s.withUrlValidation {
+		if err = uri.ValidateURI(url); err != nil {
+			return "", fmt.Errorf("provided URL is not valid: %w. Or invalid path to file", err)
+		}
+		if !isInWhitelist(url) {
+			return "", fmt.Errorf("provided URL is not in whitelist")
+		}
 	}
 
 	var (

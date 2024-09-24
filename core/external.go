@@ -104,7 +104,7 @@ func (mw *Middleware) GalleryDownloadManifest(_ context.Context, req *pb.RpcGall
 		}
 		return m
 	}
-	info, err := gallery.DownloadManifest(req.Url, true)
+	info, err := getService[gallery.Service](mw).GetManifest(req.Url, true)
 	return response(info, err)
 }
 

@@ -3,7 +3,7 @@
     {
       "title": "Get Started",
       "name": "get_started",
-      "downloadLink": "https://github.com/anyproto/gallery/raw/main/experiences/get_started/get_started.zip",
+      "downloadLink": "http://127.0.0.1:37373/get_started.zip",
       "hash": "hash1"
     }
   ]

@@ -1,13 +1,14 @@
 package gallery
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
@@ -34,12 +35,8 @@ type IndexCache interface {
 }
 
 type cache struct {
+	storage  cacheStorage
 	indexURL string
-	path     string
-
-	getLocalVersion func(path string) (string, error)
-	getLocalIndex   func(path string) (*pb.RpcGalleryDownloadIndexResponse, error)
-	save            func(path string, index *pb.RpcGalleryDownloadIndexResponse, version string)
 }
 
 func NewCache() IndexCache {
@@ -47,14 +44,17 @@ func NewCache() IndexCache {
 }
 
 func (c *cache) Init(a *app.App) error {
-	c.path = filepath.Join(app.MustComponent[wallet.Wallet](a).RepoPath(), galleryDir)
-	if err := os.Mkdir(c.path, 0777); err != nil && !os.IsExist(err) {
+	path := filepath.Join(app.MustComponent[wallet.Wallet](a).RepoPath(), galleryDir)
+	if err := os.Mkdir(path, 0777); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("failed to init gallery index directory: %w", err)
 	}
+
+	c.storage = &storage{
+		versionPath: filepath.Join(path, verFileName),
+		indexPath:   filepath.Join(path, indexFileName),
+	}
+
 	c.indexURL = indexURI
-	c.getLocalVersion = getLocalVersion
-	c.getLocalIndex = getLocalIndex
-	c.save = saveIndexAndVersion
 	return nil
 }
 
@@ -63,20 +63,20 @@ func (c *cache) Name() string {
 }
 
 func (c *cache) GetIndex(timeoutInSeconds int) (*pb.RpcGalleryDownloadIndexResponse, error) {
-	localIndex, err := c.getLocalIndex(c.path)
+	localIndex, err := c.storage.getIndex()
 	if err != nil {
 		log.Warn("failed to read local index. Need to refetch index from remote", zap.Error(err))
 	}
 
 	version := ""
 	if localIndex != nil {
-		version, err = c.getLocalVersion(c.path)
+		version, err = c.storage.getVersion()
 		if err != nil {
 			log.Warn("failed to read local version. Need to refetch version from remote", zap.Error(err))
 		}
 	}
 
-	index, newVersion, err := downloadGalleryIndex(c.indexURL, timeoutInSeconds, version, false)
+	index, newVersion, err := c.downloadGalleryIndex(timeoutInSeconds, version, false)
 	if err != nil {
 		if errors.Is(err, ErrNotModified) {
 			return localIndex, nil
@@ -90,26 +90,26 @@ func (c *cache) GetIndex(timeoutInSeconds int) (*pb.RpcGalleryDownloadIndexRespo
 		return nil, err
 	}
 
-	go c.save(c.path, index, newVersion)
+	c.storage.save(index, newVersion)
 
 	return index, nil
 }
 
 func (c *cache) GetManifest(downloadLink string, timeoutInSeconds int) (info *model.ManifestInfo, err error) {
-	localIndex, err := c.getLocalIndex(c.path)
+	localIndex, err := c.storage.getIndex()
 	if err != nil {
 		log.Warn("failed to read local index. Need to refetch index from remote", zap.Error(err))
 	}
 
 	version := ""
 	if localIndex != nil {
-		version, err = c.getLocalVersion(c.path)
+		version, err = c.storage.getVersion()
 		if err != nil {
 			log.Warn("failed to read local version. Need to refetch version from remote", zap.Error(err))
 		}
 	}
 
-	index, newVersion, err := downloadGalleryIndex(c.indexURL, timeoutInSeconds, version, true)
+	index, newVersion, err := c.downloadGalleryIndex(timeoutInSeconds, version, true)
 	if err != nil {
 		if errors.Is(err, ErrNotModified) {
 			manifest, err := getManifestByDownloadLink(localIndex, downloadLink)
@@ -131,7 +131,7 @@ func (c *cache) GetManifest(downloadLink string, timeoutInSeconds int) (info *mo
 		return nil, err
 	}
 
-	go c.save(c.path, index, newVersion)
+	c.storage.save(index, newVersion)
 
 	manifest, err := getManifestByDownloadLink(index, downloadLink)
 	if err != nil {
@@ -140,9 +140,18 @@ func (c *cache) GetManifest(downloadLink string, timeoutInSeconds int) (info *mo
 	return manifest, nil
 }
 
-func getLocalIndex(path string) (*pb.RpcGalleryDownloadIndexResponse, error) {
-	indexPath := filepath.Join(path, indexFileName)
-	rawData, err := os.ReadFile(indexPath)
+type cacheStorage interface {
+	getIndex() (*pb.RpcGalleryDownloadIndexResponse, error)
+	getVersion() (string, error)
+	save(index *pb.RpcGalleryDownloadIndexResponse, version string)
+}
+
+type storage struct {
+	versionPath, indexPath string
+}
+
+func (s *storage) getIndex() (*pb.RpcGalleryDownloadIndexResponse, error) {
+	rawData, err := os.ReadFile(s.indexPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read local gallery index: %w", err)
 	}
@@ -154,41 +163,38 @@ func getLocalIndex(path string) (*pb.RpcGalleryDownloadIndexResponse, error) {
 	return index, nil
 }
 
-func getLocalVersion(path string) (string, error) {
-	verPath := filepath.Join(path, verFileName)
-	rawData, err := os.ReadFile(verPath)
+func (s *storage) getVersion() (string, error) {
+	rawData, err := os.ReadFile(s.versionPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read local gallery index version: %w", err)
 	}
 	return string(rawData), nil
 }
 
-func saveIndexAndVersion(path string, index *pb.RpcGalleryDownloadIndexResponse, version string) {
+// TODO: Maybe we should save info to files async?
+func (s *storage) save(index *pb.RpcGalleryDownloadIndexResponse, version string) {
 	data, err := proto.Marshal(index)
 	if err != nil {
 		log.Error("failed to marshal local gallery index", zap.Error(err))
 		return
 	}
 
-	indexPath := filepath.Join(path, indexFileName)
-	if err = os.WriteFile(indexPath, data, 0777); err != nil {
+	if err = os.WriteFile(s.indexPath, data, 0777); err != nil {
 		log.Error("failed to save local gallery index", zap.Error(err))
 		return
 	}
 
-	verPath := filepath.Join(path, verFileName)
-	if err = os.WriteFile(verPath, []byte(version), 0777); err != nil {
+	if err = os.WriteFile(s.versionPath, []byte(version), 0777); err != nil {
 		log.Error("failed to save local gallery version", zap.Error(err))
 	}
 }
 
-func downloadGalleryIndex(
-	indexURL string,
+func (c *cache) downloadGalleryIndex(
 	timeoutInSeconds int, // timeout to wait for HTTP response
-	version string, // Etag of gallery index, that allows us to fetch index faster
+	version string, // Etag of gallery index, that allows to fetch index faster
 	withManifestValidation bool, // a flag that indicates that every manifest should be validated
 ) (response *pb.RpcGalleryDownloadIndexResponse, newVersion string, err error) {
-	raw, newVersion, err := getRawJson(indexURL, timeoutInSeconds, version)
+	raw, newVersion, err := getRawJson(c.indexURL, timeoutInSeconds, version)
 	if err != nil {
 		if errors.Is(err, ErrNotModified) {
 			return nil, version, err
@@ -197,24 +203,14 @@ func downloadGalleryIndex(
 	}
 
 	response = &pb.RpcGalleryDownloadIndexResponse{}
-	err = json.Unmarshal(raw, &response)
+	err = jsonpb.Unmarshal(bytes.NewReader(raw), response)
 	if err != nil {
 		return nil, "", fmt.Errorf("%w to get lists of categories and experiences from gallery index: %w", ErrUnmarshalJson, err)
 	}
 
 	if withManifestValidation {
-		schemas := &schemaList{}
-		err = json.Unmarshal(raw, schemas)
-		if err != nil {
-			return nil, "", fmt.Errorf("%w to get list of manifest schemas from gallery index: %w", ErrUnmarshalJson, err)
-		}
-
-		if len(schemas.Experiences) != len(response.Experiences) {
-			return nil, "", fmt.Errorf("invalid number of manifests with schema. Expected: %d, Actual: %d", len(response.Experiences), len(schemas.Experiences))
-		}
-
-		for i, info := range response.Experiences {
-			if err = validateManifest(schemas.Experiences[i].Schema, info); err != nil {
+		for _, info := range response.Experiences {
+			if err = validateManifest(info.Schema, info); err != nil {
 				return nil, "", fmt.Errorf("manifest validation error: %w", err)
 			}
 		}

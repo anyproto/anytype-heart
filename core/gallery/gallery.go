@@ -1,6 +1,7 @@
 package gallery
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/jsonpb"
 	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/xeipuuv/gojsonschema"
 	"go.uber.org/zap"
@@ -25,14 +27,6 @@ const (
 	versionHeader = "If-None-Match"
 	eTagHeader    = "ETag"
 )
-
-type schemaResponse struct {
-	Schema string `json:"$schema"`
-}
-
-type schemaList struct {
-	Experiences []schemaResponse `json:"experiences"`
-}
 
 var (
 	ErrUnmarshalJson = fmt.Errorf("failed to unmarshall json")
@@ -63,6 +57,8 @@ func (s *service) GetGalleryIndex(clientCachePath string) (index *pb.RpcGalleryD
 	}
 
 	log.Warn("failed to get gallery index. Getting it from client cache", zap.Error(err))
+
+	// TODO: GO-4131 Maybe we should not return index from client cache, as it could be reduced (need to be discussed)
 	_, index, err = readClientCache(clientCachePath, true)
 	if err == nil {
 		return index, nil
@@ -76,7 +72,7 @@ func (s *service) GetGalleryIndex(clientCachePath string) (index *pb.RpcGalleryD
 	return index, nil
 }
 
-func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo, err error) {
+func (s *service) GetManifest(url string, checkWhitelist bool) (info *model.ManifestInfo, err error) {
 	if err = uri.ValidateURI(url); err != nil {
 		return nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
@@ -88,8 +84,8 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 		return nil, err
 	}
 
-	schemaResp := schemaResponse{}
-	err = json.Unmarshal(raw, &schemaResp)
+	info = &model.ManifestInfo{}
+	err = jsonpb.Unmarshal(bytes.NewReader(raw), info)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshall json to get schema: %w", err)
 	}
@@ -99,7 +95,7 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 		return nil, fmt.Errorf("failed to unmarshall json to get manifest: %w", err)
 	}
 
-	if err = validateSchema(schemaResp.Schema, info); err != nil {
+	if err = validateSchema(info.Schema, info); err != nil {
 		return nil, err
 	}
 
@@ -183,7 +179,6 @@ func validateSchema(schema string, info *model.ManifestInfo) (err error) {
 	if !result.Valid() {
 		return buildResultError(result)
 	}
-	info.Schema = schema
 	return nil
 }
 
