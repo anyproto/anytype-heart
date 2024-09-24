@@ -69,7 +69,6 @@ func init() {
 		}
 		DefaultDataviewRelations = append(DefaultDataviewRelations, rel)
 	}
-	DefaultDataviewRelations = append(DefaultDataviewRelations, bundle.RelationKeyDone)
 	DefaultDataviewRelations = append(DefaultDataviewRelations, bundle.RelationKeyTag)
 }
 

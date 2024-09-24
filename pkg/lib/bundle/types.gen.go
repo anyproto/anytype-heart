@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "b299d1418abfafe39839bf7659145f3ea0cc32882bd67cefc163935606eaf596"
+const TypeChecksum = "f3ae9931142aa23ec9696ccb60fe1a68b4fdafcc345e307e0a26d4fb98a0686c"
 const (
 	TypePrefix = "_ot"
 )
@@ -362,11 +362,12 @@ var (
 		TypeKeyTemplate: {
 
 			Description:   "Sample object that has already some details in place and used to create objects from",
-			Hidden:        true,
+			IconEmoji:     "🧩",
 			Layout:        model.ObjectType_basic,
 			Name:          "Template",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTargetObjectType), MustGetRelationLink(RelationKeyTemplateIsBundled)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Template},
 			Url:           TypePrefix + "template",
 		},
