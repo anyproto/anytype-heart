@@ -17,7 +17,7 @@ import (
 
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/editor"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
@@ -40,7 +40,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -57,14 +56,9 @@ import (
 	_ "github.com/anyproto/anytype-heart/core/block/simple/widget"
 )
 
-const (
-	CName = "block-service"
-)
+const CName = "block-service"
 
-var (
-	ErrUnexpectedBlockType = errors.New("unexpected block type")
-	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
-)
+var ErrUnknownObjectType = fmt.Errorf("unknown object type")
 
 var log = logging.Logger("anytype-mw-service")
 
@@ -96,7 +90,6 @@ func New() *Service {
 type Service struct {
 	eventSender          event.Sender
 	process              process.Service
-	app                  *app.App
 	objectStore          objectstore.ObjectStore
 	restriction          restriction.Service
 	bookmark             bookmarksvc.Service
@@ -107,6 +100,7 @@ type Service struct {
 	tempDirProvider      core.TempDirProvider
 	builtinObjectService builtinObjects
 	fileObjectService    fileobject.Service
+	detailsService       detailservice.Service
 
 	fileService         files.Service
 	fileUploaderService fileuploader.Service
@@ -150,7 +144,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
-	s.app = a
+	s.detailsService = app.MustComponent[detailservice.Service](a)
 	return
 }
 
@@ -324,207 +318,8 @@ func (s *Service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string,
 	panic("should be removed")
 }
 
-func (s *Service) SetSpaceInfo(req *pb.RpcWorkspaceSetInfoRequest) error {
-	ctx := context.TODO()
-	spc, err := s.spaceService.Get(ctx, req.SpaceId)
-	if err != nil {
-		return err
-	}
-	workspaceId := spc.DerivedIDs().Workspace
-
-	setDetails := make([]*model.Detail, 0, len(req.Details.GetFields()))
-	for k, v := range req.Details.GetFields() {
-		setDetails = append(setDetails, &model.Detail{
-			Key:   k,
-			Value: v,
-		})
-	}
-	return s.SetDetails(nil, workspaceId, setDetails)
-}
-
 func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
 	panic("should be removed")
-}
-
-func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error {
-	objectIDsPerSpace, err := s.partitionObjectIDsBySpaceID(req.ObjectIds)
-	if err != nil {
-		return fmt.Errorf("partition object ids by spaces: %w", err)
-	}
-
-	var (
-		multiErr   multierror.Error
-		anySucceed bool
-	)
-	for spaceID, objectIDs := range objectIDsPerSpace {
-		err = s.setIsArchivedForObjects(spaceID, objectIDs, req.IsArchived)
-		if err != nil {
-			log.With("spaceID", spaceID, "objectIDs", objectIDs).Errorf("failed to set isArchived=%t objects in space: %s", req.IsArchived, err)
-			multiErr.Errors = append(multiErr.Errors, err)
-		} else {
-			anySucceed = true
-		}
-	}
-	if anySucceed {
-		return nil
-	}
-	return multiErr.ErrorOrNil()
-}
-
-func (s *Service) setIsArchivedForObjects(spaceID string, objectIDs []string, isArchived bool) error {
-	spc, err := s.spaceService.Get(context.Background(), spaceID)
-	if err != nil {
-		return fmt.Errorf("get space: %w", err)
-	}
-	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(collection.Collection)
-		if !ok {
-			return fmt.Errorf("unexpected archive block type: %T", b)
-		}
-
-		var multiErr multierror.Error
-		var anySucceed bool
-		ids, err := s.objectStore.HasIDs(objectIDs...)
-		if err != nil {
-			return err
-		}
-		for _, id := range ids {
-			var err error
-			if restrErr := s.checkArchivedRestriction(isArchived, spaceID, id); restrErr != nil {
-				err = restrErr
-			} else {
-				if isArchived {
-					err = archive.AddObject(id)
-				} else {
-					err = archive.RemoveObject(id)
-				}
-			}
-			if err != nil {
-				log.With("objectID", id).Errorf("failed to set isArchived=%t for object: %s", isArchived, err)
-				multiErr.Errors = append(multiErr.Errors, err)
-				continue
-			}
-			anySucceed = true
-		}
-
-		if err := multiErr.ErrorOrNil(); err != nil {
-			log.Warnf("failed to archive: %s", err)
-		}
-		if anySucceed {
-			return nil
-		}
-		return multiErr.ErrorOrNil()
-	})
-}
-
-func (s *Service) partitionObjectIDsBySpaceID(objectIDs []string) (map[string][]string, error) {
-	res := map[string][]string{}
-	for _, objectID := range objectIDs {
-		spaceID, err := s.resolver.ResolveSpaceID(objectID)
-		if err != nil {
-			return nil, fmt.Errorf("resolve spaceID: %w", err)
-		}
-		res[spaceID] = append(res[spaceID], objectID)
-	}
-	return res, nil
-}
-
-func (s *Service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) error {
-	ids, err := s.objectStore.HasIDs(req.ObjectIds...)
-	if err != nil {
-		return err
-	}
-	var (
-		anySucceed  bool
-		resultError error
-	)
-	for _, id := range ids {
-		err := s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{
-			ContextId:  id,
-			IsFavorite: req.IsFavorite,
-		})
-		if err != nil {
-			log.Errorf("failed to favorite object %s: %s", id, err)
-			resultError = errors.Join(resultError, err)
-		} else {
-			anySucceed = true
-		}
-	}
-	if resultError != nil {
-		log.Warnf("failed to set objects as favorite: %s", resultError)
-	}
-	if anySucceed {
-		return nil
-	}
-	return resultError
-}
-
-func (s *Service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
-	return cache.Do(s, collectionId, func(b smartblock.SmartBlock) error {
-		coll, ok := b.(collection.Collection)
-		if !ok {
-			return fmt.Errorf("unsupported sb block type: %T", b)
-		}
-		if value {
-			return coll.AddObject(objectId)
-		} else {
-			return coll.RemoveObject(objectId)
-		}
-	})
-}
-
-func (s *Service) SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err error) {
-	spaceID, err := s.resolver.ResolveSpaceID(req.ContextId)
-	if err != nil {
-		return fmt.Errorf("resolve spaceID: %w", err)
-	}
-	spc, err := s.spaceService.Get(context.Background(), spaceID)
-	if err != nil {
-		return fmt.Errorf("get space: %w", err)
-	}
-	return s.objectLinksCollectionModify(spc.DerivedIDs().Home, req.ContextId, req.IsFavorite)
-}
-
-func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err error) {
-	spaceID, err := s.resolver.ResolveSpaceID(req.ContextId)
-	if err != nil {
-		return fmt.Errorf("resolve spaceID: %w", err)
-	}
-	spc, err := s.spaceService.Get(context.Background(), spaceID)
-	if err != nil {
-		return fmt.Errorf("get space: %w", err)
-	}
-	if err := s.checkArchivedRestriction(req.IsArchived, spaceID, req.ContextId); err != nil {
-		return err
-	}
-	return s.objectLinksCollectionModify(spc.DerivedIDs().Archive, req.ContextId, req.IsArchived)
-}
-
-func (s *Service) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error) {
-	err = cache.Do(s, workspaceId, func(ws *editor.Workspaces) error {
-		if ws.Type() != coresb.SmartBlockTypeWorkspace {
-			return ErrUnexpectedBlockType
-		}
-		if err = ws.SetDetails(ctx, []*model.Detail{
-			{
-				Key:   bundle.RelationKeySpaceDashboardId.String(),
-				Value: pbtypes.String(id),
-			},
-		}, false); err != nil {
-			return err
-		}
-		return nil
-	})
-	return id, err
-}
-
-func (s *Service) checkArchivedRestriction(isArchived bool, spaceID string, objectId string) error {
-	if !isArchived {
-		return nil
-	}
-	return cache.Do(s, objectId, func(sb smartblock.SmartBlock) error {
-		return s.restriction.CheckRestrictions(sb, model.Restrictions_Delete)
-	})
 }
 
 func (s *Service) DeleteArchivedObjects(objectIDs []string) error {
@@ -711,8 +506,7 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 		return
 	}
 
-	oStore := s.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	res, err := oStore.GetWithLinksInfoByID(spaceID, id)
+	res, err := s.objectStore.GetWithLinksInfoByID(spaceID, id)
 	if err != nil {
 		return
 	}
