@@ -167,7 +167,7 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 		// so this equal check is more precise
 		return
 	}
-	log.With(zap.Strings("ifaces", newAddrs.InterfaceNames())).Info("net interfaces configuration changed, restarting mdns server")
+	log.With(zap.Strings("ifaces", newAddrs.InterfaceNames())).Info("net interfaces configuration changed")
 	l.interfacesAddrs = newAddrs
 	if l.server != nil {
 		l.cancel()
