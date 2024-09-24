@@ -55,7 +55,6 @@ type runner struct {
 	fileObjectGetter fileObjectGetter
 	fileGetter       files.Service
 	fileUploader     fileuploader.Service
-	// GetFileIdFromObject(objectId string) (domain.FullFileId, error)
 
 	ctx                context.Context
 	cancel             context.CancelFunc
@@ -208,7 +207,7 @@ func (r *runner) runMigrations() {
 		log.Error("failed to migrate profile", zap.String("spaceId", r.spc.Id()))
 		return
 	}
-	if hasIcon {
+	if !hasIcon {
 		err = r.migrateIcon(iconId)
 		if err != nil {
 			log.Error("failed to migrate icon", zap.String("spaceId", r.spc.Id()))
