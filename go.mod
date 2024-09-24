@@ -44,7 +44,7 @@ require (
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hbagdi/go-unsplash v0.0.0-20230414214043-474fc02c9119
-	github.com/huandu/skiplist v1.2.0
+	github.com/huandu/skiplist v1.2.1
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/ipfs/boxo v0.13.1
 	github.com/ipfs/go-block-format v0.2.0
