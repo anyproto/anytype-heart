@@ -46,7 +46,6 @@ type Service interface {
 	ListRelationsWithValue(spaceId string, value *types.Value) (keys []string, counters []int64, err error)
 
 	SetSpaceInfo(spaceId string, details *types.Struct) error
-	SetSource(ctx session.Context, objectId string, source []string) error
 	SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error)
 
 	SetIsFavorite(objectId string, isFavorite bool) error

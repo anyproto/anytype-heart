@@ -201,7 +201,7 @@ func (c *ChildDatabase) GetBlock(importContext *api.NotionImportContext, pageID,
 
 	id := bson.NewObjectId().Hex()
 	if err != nil || targetBlockID == "" {
-		block := template.MakeCollectionDataviewContent()
+		block := template.MakeDataviewContent(true, nil, nil)
 		block.Dataview.TargetObjectId = targetBlockID
 		return &model.Block{
 			Id:          id,
