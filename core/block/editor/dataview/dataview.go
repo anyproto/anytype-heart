@@ -221,7 +221,7 @@ func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId s
 	}
 	dvBlock.SetActiveView(activeViewId)
 
-	if err = d.objectStore.SetActiveView(d.Id(), id, activeViewId); err != nil {
+	if err = d.objectStore.SetActiveView(d.SpaceID(), d.Id(), id, activeViewId); err != nil {
 		return err
 	}
 
@@ -395,7 +395,7 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 
 func (d *sdataview) injectActiveViews(info smartblock.ApplyInfo) (err error) {
 	s := info.State
-	views, err := d.objectStore.GetActiveViews(d.Id())
+	views, err := d.objectStore.GetActiveViews(d.SpaceID(), d.Id())
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return nil
 	}

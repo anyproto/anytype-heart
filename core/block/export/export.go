@@ -344,7 +344,7 @@ func (e *export) addDerivedObjects(spaceId string, docs map[string]*types.Struct
 }
 
 func (e *export) getNested(spaceID string, id string, docs map[string]*types.Struct) []string {
-	links, err := e.objectStore.GetOutboundLinksByID(id)
+	links, err := e.objectStore.GetOutboundLinksByID(spaceID, id)
 	if err != nil {
 		log.Errorf("export failed to get outbound links for id: %s", err)
 		return nil

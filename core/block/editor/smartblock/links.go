@@ -13,7 +13,7 @@ import (
 )
 
 func (sb *smartBlock) updateBackLinks(s *state.State) {
-	backLinks, err := sb.objectStore.GetInboundLinksByID(sb.Id())
+	backLinks, err := sb.objectStore.GetInboundLinksByID(sb.SpaceID(), sb.Id())
 	if err != nil {
 		log.With("objectID", sb.Id()).Errorf("failed to get inbound links from object store: %s", err)
 		return

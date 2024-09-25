@@ -82,13 +82,13 @@ type ObjectStore interface {
 	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
 	GetUniqueKeyById(spaceId string, id string) (key domain.UniqueKey, err error)
 
-	GetInboundLinksByID(id string) ([]string, error)
-	GetOutboundLinksByID(id string) ([]string, error)
+	GetInboundLinksByID(spaceId string, id string) ([]string, error)
+	GetOutboundLinksByID(spaceId string, id string) ([]string, error)
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
 
-	SetActiveView(objectId, blockId, viewId string) error
-	SetActiveViews(objectId string, views map[string]string) error
-	GetActiveViews(objectId string) (map[string]string, error)
+	SetActiveView(spaceId string, objectId, blockId, viewId string) error
+	SetActiveViews(spaceId string, objectId string, views map[string]string) error
+	GetActiveViews(spaceId string, objectId string) (map[string]string, error)
 
 	GetRelationLink(spaceID string, key string) (*model.RelationLink, error)
 	FetchRelationByKey(spaceID string, key string) (relation *relationutils.Relation, err error)

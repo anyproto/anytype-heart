@@ -70,11 +70,11 @@ func (s *dsObjectStore) GetWithLinksInfoByID(spaceId string, id string) (*model.
 	}, nil
 }
 
-func (s *dsObjectStore) GetOutboundLinksByID(id string) ([]string, error) {
+func (s *dsObjectStore) GetOutboundLinksByID(spaceId string, id string) ([]string, error) {
 	return s.findOutboundLinks(s.componentCtx, id)
 }
 
-func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
+func (s *dsObjectStore) GetInboundLinksByID(spaceId string, id string) ([]string, error) {
 	return s.findInboundLinks(s.componentCtx, id)
 }
 
