@@ -2,8 +2,6 @@ package personalmigration
 
 import (
 	"context"
-	"errors"
-	"io"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -15,10 +13,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/techspace"
@@ -46,6 +44,7 @@ type uploader interface {
 
 type fileObjectGetter interface {
 	GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error)
+	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *types.Struct, err error)
 }
 
 type runner struct {
@@ -79,7 +78,6 @@ func (r *runner) Init(a *app.App) error {
 	r.techSpace = app.MustComponent[techspace.TechSpace](a)
 	r.fileObjectGetter = app.MustComponent[fileObjectGetter](a)
 	r.fileGetter = app.MustComponent[files.Service](a)
-	r.fileUploader = app.MustComponent[fileuploader.Service](a)
 
 	r.waitMigrateProfile = make(chan struct{})
 	r.waitMigrate = make(chan struct{})
@@ -110,6 +108,18 @@ func (r *runner) waitSpace() {
 
 func (r *runner) migrateProfile() (hasIcon bool, oldIcon string, err error) {
 	defer close(r.waitMigrateProfile)
+	shouldMigrateProfile := true
+	err = r.techSpace.DoAccountObject(r.ctx, func(accountObject techspace.AccountObject) error {
+		if accountObject.CombinedDetails().GetFields()[bundle.RelationKeyName.String()].GetStringValue() != "" {
+			shouldMigrateProfile = false
+			hasIcon, err = accountObject.IsIconMigrated()
+			return err
+		}
+		return nil
+	})
+	if !shouldMigrateProfile && hasIcon {
+		return
+	}
 	space := r.spc
 	ids := space.DerivedIDs()
 	var details *types.Struct
@@ -123,6 +133,9 @@ func (r *runner) migrateProfile() (hasIcon bool, oldIcon string, err error) {
 	if err != nil {
 		return
 	}
+	if !shouldMigrateProfile {
+		return
+	}
 	var analyticsId string
 	err = space.DoCtx(r.ctx, ids.Workspace, func(sb smartblock.SmartBlock) error {
 		analyticsId = sb.NewState().GetSetting(state.SettingsAnalyticsId).GetStringValue()
@@ -132,10 +145,6 @@ func (r *runner) migrateProfile() (hasIcon bool, oldIcon string, err error) {
 		return
 	}
 	err = r.techSpace.DoAccountObject(r.ctx, func(accountObject techspace.AccountObject) error {
-		if accountObject.CombinedDetails().GetFields()[bundle.RelationKeyName.String()].GetStringValue() != "" {
-			hasIcon = accountObject.CombinedDetails().GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue() != ""
-			return nil
-		}
 		err = accountObject.SetAnalyticsId(analyticsId)
 		if err != nil {
 			return err
@@ -147,49 +156,31 @@ func (r *runner) migrateProfile() (hasIcon bool, oldIcon string, err error) {
 
 func (r *runner) migrateIcon(oldIcon string) (err error) {
 	if oldIcon == "" {
+		err = r.techSpace.DoAccountObject(r.ctx, func(accountObject techspace.AccountObject) error {
+			return accountObject.MigrateIconImage("")
+		})
 		return
 	}
-	fileId, err := r.fileObjectGetter.GetFileIdFromObjectWaitLoad(r.ctx, oldIcon)
+	_, err = r.fileObjectGetter.GetFileIdFromObjectWaitLoad(r.ctx, oldIcon)
 	if err != nil {
 		return
 	}
-	image, err := r.fileGetter.ImageByHash(r.ctx, fileId)
+	var fileInfo state.FileInfo
+	err = r.spc.DoCtx(r.ctx, oldIcon, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		fileInfo = st.GetFileInfo()
+		return nil
+	})
 	if err != nil {
-		return
+		return err
 	}
-	file, err := image.GetOriginalFile()
-	if err != nil {
-		return
-	}
-	reader, err := file.Reader(r.ctx)
-	if err != nil {
-		return
-	}
-	var (
-		total []byte
-		buf   = make([]byte, 1024)
-	)
-	for {
-		n, err := reader.Read(buf)
-		// can we have n bytes and err == EOF?
-		total = append(total, buf[:n]...)
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				return err
-			}
-			break
-		}
-	}
-
-	upl := r.fileUploader.NewUploader(r.spc.Id(), objectorigin.None())
-	upl.SetType(model.BlockContentFile_Image)
-	upl.SetBytes(total)
-	res := upl.Upload(r.ctx)
-	if res.Err != nil {
-		return res.Err
-	}
+	id, _, err := r.fileObjectGetter.Create(r.ctx, r.spc.Id(), filemodels.CreateRequest{
+		FileId:         fileInfo.FileId,
+		EncryptionKeys: fileInfo.EncryptionKeys,
+		ObjectOrigin:   objectorigin.None(),
+	})
 	err = r.techSpace.DoAccountObject(r.ctx, func(accountObject techspace.AccountObject) error {
-		return accountObject.SetIconImage(res.FileObjectId)
+		return accountObject.MigrateIconImage(id)
 	})
 	return
 }

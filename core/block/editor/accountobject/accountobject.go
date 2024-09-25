@@ -10,6 +10,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/gogo/protobuf/types"
+	"github.com/valyala/fastjson"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -38,6 +39,7 @@ const (
 	collectionName  = "account"
 	accountDocument = "accountObject"
 	analyticsKey    = "analyticsId"
+	iconMigration   = "iconMigration"
 )
 
 type ProfileDetails struct {
@@ -51,11 +53,12 @@ type ProfileSubscription = func(ctx context.Context, profile ProfileDetails) err
 type AccountObject interface {
 	smartblock.SmartBlock
 	basic.DetailsSettable
-	GetAnalyticsId() (string, error)
-	SetAnalyticsId(id string) error
-	SetIconImage(image string) (err error)
 	SetSharedSpacesLimit(limit int) (err error)
 	SetProfileDetails(details *types.Struct) (err error)
+	MigrateIconImage(image string) (err error)
+	IsIconMigrated() (bool, error)
+	SetAnalyticsId(analyticsId string) (err error)
+	GetAnalyticsId() (string, error)
 }
 
 type StoreDbProvider interface {
@@ -138,9 +141,9 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 		if errors.Is(err, anystore.ErrDocNotFound) {
 			var docToInsert string
 			if a.cfg.IsNewAccount() {
-				docToInsert = fmt.Sprintf(`{"id":"%s","analyticsId":"%s"}`, accountDocument, a.cfg.AnalyticsId)
+				docToInsert = fmt.Sprintf(`{"id":"%s","analyticsId":"%s","%s":"true"}`, accountDocument, a.cfg.AnalyticsId, iconMigration)
 			} else {
-				docToInsert = fmt.Sprintf(`{"id":"%s"}`, accountDocument)
+				docToInsert = fmt.Sprintf(`{"id":"%s","%s":"true"}`, accountDocument, iconMigration)
 			}
 			err = coll.Insert(ctx.Ctx, docToInsert)
 			if err != nil {
@@ -252,7 +255,7 @@ func (a *accountObject) setValue(key string, val any) error {
 	return err
 }
 
-func (a *accountObject) GetAnalyticsId() (id string, err error) {
+func (a *accountObject) getValue() (val *fastjson.Value, err error) {
 	coll, err := a.state.Collection(a.ctx, collectionName)
 	if err != nil {
 		err = fmt.Errorf("get collection: %w", err)
@@ -263,7 +266,15 @@ func (a *accountObject) GetAnalyticsId() (id string, err error) {
 		err = fmt.Errorf("find id: %w", err)
 		return
 	}
-	return string(obj.Value().GetStringBytes(analyticsKey)), nil
+	return obj.Value(), nil
+}
+
+func (a *accountObject) GetAnalyticsId() (id string, err error) {
+	val, err := a.getValue()
+	if err != nil {
+		return
+	}
+	return string(val.GetStringBytes(analyticsKey)), nil
 }
 
 func (a *accountObject) SetSharedSpacesLimit(limit int) (err error) {
@@ -285,10 +296,24 @@ func (a *accountObject) SetProfileDetails(details *types.Struct) (err error) {
 	return a.Apply(st)
 }
 
-func (a *accountObject) SetIconImage(image string) (err error) {
-	st := a.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(image))
-	return a.Apply(st)
+func (a *accountObject) MigrateIconImage(image string) (err error) {
+	if image != "" {
+		st := a.NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(image))
+		err = a.Apply(st)
+		if err != nil {
+			return fmt.Errorf("set icon image: %w", err)
+		}
+	}
+	return a.setValue(iconMigration, `"true"`)
+}
+
+func (a *accountObject) IsIconMigrated() (res bool, err error) {
+	val, err := a.getValue()
+	if err != nil {
+		return
+	}
+	return string(val.GetStringBytes(iconMigration)) != "", nil
 }
 
 func (a *accountObject) update(ctx context.Context, st *state.State) (err error) {

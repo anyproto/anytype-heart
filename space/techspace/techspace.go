@@ -40,7 +40,8 @@ type AccountObject interface {
 	editorsb.SmartBlock
 	SetSharedSpacesLimit(limit int) (err error)
 	SetProfileDetails(details *types.Struct) (err error)
-	SetIconImage(image string) (err error)
+	MigrateIconImage(image string) (err error)
+	IsIconMigrated() (bool, error)
 	SetAnalyticsId(analyticsId string) (err error)
 	GetAnalyticsId() (string, error)
 }
