@@ -105,7 +105,7 @@ func (s *service) GetManifest(url string, checkWhitelist bool) (info *model.Mani
 		}
 	}
 
-	info.Description = stripTags(info.Description)
+	stripTags(info)
 	return info, nil
 }
 
@@ -182,11 +182,12 @@ func validateSchema(schema string, info *model.ManifestInfo) (err error) {
 	return nil
 }
 
-func stripTags(str string) string {
-	if _, err := html.Parse(strings.NewReader(str)); err != nil {
-		return str
+func stripTags(info *model.ManifestInfo) {
+	description := info.Description
+	if _, err := html.Parse(strings.NewReader(description)); err != nil {
+		return
 	}
-	return strip.StripTags(str)
+	info.Description = strip.StripTags(description)
 }
 
 func buildResultError(result *gojsonschema.Result) error {

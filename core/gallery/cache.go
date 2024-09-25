@@ -63,39 +63,18 @@ func (c *cache) Name() string {
 }
 
 func (c *cache) GetIndex(timeoutInSeconds int) (*pb.RpcGalleryDownloadIndexResponse, error) {
-	localIndex, err := c.storage.getIndex()
-	if err != nil {
-		log.Warn("failed to read local index. Need to refetch index from remote", zap.Error(err))
-	}
-
-	version := ""
-	if localIndex != nil {
-		version, err = c.storage.getVersion()
-		if err != nil {
-			log.Warn("failed to read local version. Need to refetch version from remote", zap.Error(err))
-		}
-	}
-
-	index, newVersion, err := c.downloadGalleryIndex(timeoutInSeconds, version, false)
-	if err != nil {
-		if errors.Is(err, ErrNotModified) {
-			return localIndex, nil
-		}
-
-		if localIndex != nil {
-			log.Warn("failed to download index from remote. Returning local index", zap.Error(err))
-			return localIndex, nil
-		}
-
-		return nil, err
-	}
-
-	c.storage.save(index, newVersion)
-
-	return index, nil
+	return c.getRecentIndex(timeoutInSeconds, false)
 }
 
 func (c *cache) GetManifest(downloadLink string, timeoutInSeconds int) (info *model.ManifestInfo, err error) {
+	index, err := c.getRecentIndex(timeoutInSeconds, true)
+	if err != nil {
+		return nil, err
+	}
+	return getManifestByDownloadLink(index, downloadLink)
+}
+
+func (c *cache) getRecentIndex(timeout int, withManifestValidation bool) (*pb.RpcGalleryDownloadIndexResponse, error) {
 	localIndex, err := c.storage.getIndex()
 	if err != nil {
 		log.Warn("failed to read local index. Need to refetch index from remote", zap.Error(err))
@@ -109,31 +88,52 @@ func (c *cache) GetManifest(downloadLink string, timeoutInSeconds int) (info *mo
 		}
 	}
 
-	index, newVersion, err := c.downloadGalleryIndex(timeoutInSeconds, version, true)
+	index, newVersion, err := c.downloadGalleryIndex(timeout, version, withManifestValidation)
 	if err == nil {
 		c.storage.save(index, newVersion)
-
-		return getManifestByDownloadLink(index, downloadLink)
+		return index, nil
 	}
 
 	if errors.Is(err, ErrNotModified) {
-		manifest, err := getManifestByDownloadLink(localIndex, downloadLink)
-		if err != nil {
-			return nil, err
-		}
-		return manifest, nil
+		return localIndex, nil
 	}
 
 	if localIndex != nil {
 		log.Warn("failed to download index from remote. Returning local index", zap.Error(err))
-		manifest, err := getManifestByDownloadLink(localIndex, downloadLink)
-		if err != nil {
-			return nil, err
+		return localIndex, nil
+	}
+	return nil, err
+}
+
+func (c *cache) downloadGalleryIndex(
+	timeoutInSeconds int, // timeout to wait for HTTP response
+	version string, // Etag of gallery index, that allows to fetch index faster
+	withManifestValidation bool, // a flag that indicates that every manifest should be validated
+) (response *pb.RpcGalleryDownloadIndexResponse, newVersion string, err error) {
+	raw, newVersion, err := getRawJson(c.indexURL, timeoutInSeconds, version)
+	if err != nil {
+		if errors.Is(err, ErrNotModified) {
+			return nil, version, err
 		}
-		return manifest, nil
+		return nil, "", fmt.Errorf("%w: %w", ErrDownloadIndex, err)
 	}
 
-	return nil, err
+	response = &pb.RpcGalleryDownloadIndexResponse{}
+	err = jsonpb.Unmarshal(bytes.NewReader(raw), response)
+	if err != nil {
+		return nil, "", fmt.Errorf("%w to get lists of categories and experiences from gallery index: %w", ErrUnmarshalJson, err)
+	}
+
+	if withManifestValidation {
+		for _, info := range response.Experiences {
+			stripTags(info)
+			if err = validateManifest(info.Schema, info); err != nil {
+				return nil, "", fmt.Errorf("manifest validation error: %w", err)
+			}
+		}
+	}
+
+	return response, newVersion, nil
 }
 
 type cacheStorage interface {
@@ -185,36 +185,6 @@ func (s *storage) save(index *pb.RpcGalleryDownloadIndexResponse, version string
 	}
 }
 
-func (c *cache) downloadGalleryIndex(
-	timeoutInSeconds int, // timeout to wait for HTTP response
-	version string, // Etag of gallery index, that allows to fetch index faster
-	withManifestValidation bool, // a flag that indicates that every manifest should be validated
-) (response *pb.RpcGalleryDownloadIndexResponse, newVersion string, err error) {
-	raw, newVersion, err := getRawJson(c.indexURL, timeoutInSeconds, version)
-	if err != nil {
-		if errors.Is(err, ErrNotModified) {
-			return nil, version, err
-		}
-		return nil, "", fmt.Errorf("%w: %w", ErrDownloadIndex, err)
-	}
-
-	response = &pb.RpcGalleryDownloadIndexResponse{}
-	err = jsonpb.Unmarshal(bytes.NewReader(raw), response)
-	if err != nil {
-		return nil, "", fmt.Errorf("%w to get lists of categories and experiences from gallery index: %w", ErrUnmarshalJson, err)
-	}
-
-	if withManifestValidation {
-		for _, info := range response.Experiences {
-			if err = validateManifest(info.Schema, info); err != nil {
-				return nil, "", fmt.Errorf("manifest validation error: %w", err)
-			}
-		}
-	}
-
-	return response, newVersion, nil
-}
-
 func validateManifest(schema string, info *model.ManifestInfo) error {
 	if err := validateSchema(schema, info); err != nil {
 		return fmt.Errorf("manifest does not correspond scema: %w", err)
@@ -225,7 +195,5 @@ func validateManifest(schema string, info *model.ManifestInfo) error {
 			return fmt.Errorf("URL '%s' provided in manifest is not in whitelist", urlToCheck)
 		}
 	}
-
-	info.Description = stripTags(info.Description)
 	return nil
 }

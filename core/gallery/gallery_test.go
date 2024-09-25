@@ -9,13 +9,15 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestStripTags(t *testing.T) {
 	bareString := `Links:FooBarBaz`
 	taggedString := `<p>Links:</p><ul><li><a href="foo">Foo</a><li><a href="/bar/baz">BarBaz</a></ul><script>Malware that will destroy yor computer</script>`
-	stripedString := stripTags(taggedString)
-	assert.Equal(t, bareString, stripedString)
+	info := &model.ManifestInfo{Description: taggedString}
+	stripTags(info)
+	assert.Equal(t, bareString, info.Description)
 }
 
 func TestIsInWhitelist(t *testing.T) {

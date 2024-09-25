@@ -128,9 +128,6 @@ func (s *service) ImportBuiltInUseCase(
 	}
 
 	if cachePath == "" {
-		if ctx == nil {
-			ctx = context.Background()
-		}
 		// TODO: GO-4131 Remove this call when clients support cache
 		return s.importUseCase(ctx, spaceID, info.Title, useCase)
 		// return pb.RpcObjectImportUseCaseResponseError_BAD_INPUT,
@@ -274,8 +271,6 @@ func readClientCache(cachePath string, indexOnly bool) (archives map[string][]by
 	}
 	defer r.Close()
 
-	archives = make(map[string][]byte)
-
 	for _, f := range r.File {
 		if f.Name != indexName {
 			continue
@@ -299,6 +294,7 @@ func readClientCache(cachePath string, indexOnly bool) (archives map[string][]by
 	}
 	downloadLinks := generateMapOfDownloadLinksByNames(index)
 
+	archives = make(map[string][]byte, len(index.Experiences))
 	for _, f := range r.File {
 		if f.Name == indexName {
 			continue
@@ -487,7 +483,7 @@ func getManifestByDownloadLink(index *pb.RpcGalleryDownloadIndexResponse, link s
 }
 
 func generateMapOfDownloadLinksByNames(index *pb.RpcGalleryDownloadIndexResponse) map[string]string {
-	m := make(map[string]string)
+	m := make(map[string]string, len(index.Experiences))
 	for _, manifest := range index.Experiences {
 		m[manifest.Name] = manifest.DownloadLink
 	}
