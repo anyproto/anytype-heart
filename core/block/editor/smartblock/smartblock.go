@@ -907,7 +907,7 @@ func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
 
 func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails *types.Struct, hasPendingLocalDetails bool) {
 	// Consume pending details
-	err := sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
+	err := sb.objectStore.UpdatePendingLocalDetails(sb.SpaceID(), sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
 		if len(pending.GetFields()) > 0 {
 			hasPendingLocalDetails = true
 		}

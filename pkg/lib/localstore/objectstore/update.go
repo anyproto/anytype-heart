@@ -21,7 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error {
+func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, spaceId string, id string, details *types.Struct) error {
 	if details == nil {
 		return nil
 	}
@@ -72,7 +72,7 @@ func (s *dsObjectStore) migrateLocalDetails(objectId string, details *types.Stru
 	return true
 }
 
-func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links []string) error {
+func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, spaceId string, id string, links []string) error {
 	added, removed, err := s.updateObjectLinks(ctx, id, links)
 	if err != nil {
 		return err
@@ -89,7 +89,7 @@ func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links 
 	return nil
 }
 
-func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
+func (s *dsObjectStore) UpdatePendingLocalDetails(spaceId string, id string, proc func(details *types.Struct) (*types.Struct, error)) error {
 	if proc == nil {
 		return nil
 	}
@@ -157,7 +157,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 
 // ModifyObjectDetails updates existing details in store using modification function `proc`
 // `proc` should return ErrDetailsNotChanged in case old details are empty or no changes were made
-func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error {
+func (s *dsObjectStore) ModifyObjectDetails(spaceId string, id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error {
 	if proc == nil {
 		return nil
 	}

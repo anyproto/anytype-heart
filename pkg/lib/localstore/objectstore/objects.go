@@ -69,10 +69,10 @@ type ObjectStore interface {
 
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
-	UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error
-	UpdateObjectLinks(ctx context.Context, id string, links []string) error
-	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
-	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error
+	UpdateObjectDetails(ctx context.Context, spaceId string, id string, details *types.Struct) error
+	UpdateObjectLinks(ctx context.Context, spaceId string, id string, links []string) error
+	UpdatePendingLocalDetails(spaceId string, id string, proc func(details *types.Struct) (*types.Struct, error)) error
+	ModifyObjectDetails(spaceId string, id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error
 
 	DeleteObject(id domain.FullID) error
 	DeleteDetails(ctx context.Context, spaceId string, ids []string) error

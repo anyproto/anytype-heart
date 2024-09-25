@@ -121,7 +121,7 @@ func (p *objectLinksCollection) ModifyLocalDetails(
 	// we do this under lock to prevent races if the object is created in parallel
 	// because in that case we can lose changes
 	err = p.Space().DoLockedIfNotExists(objectId, func() error {
-		return p.objectStore.UpdatePendingLocalDetails(objectId, modifier)
+		return p.objectStore.UpdatePendingLocalDetails(p.SpaceID(), objectId, modifier)
 	})
 	if err != nil && !errors.Is(err, ocache.ErrExists) {
 		return err

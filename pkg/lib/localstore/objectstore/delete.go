@@ -43,7 +43,7 @@ func (s *dsObjectStore) DeleteObject(id domain.FullID) error {
 		return errors.Join(txn.Rollback(), err)
 	}
 	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
-	err = s.UpdateObjectDetails(txn.Context(), id.ObjectID, &types.Struct{
+	err = s.UpdateObjectDetails(txn.Context(), id.SpaceID, id.ObjectID, &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyId.String():        pbtypes.String(id.ObjectID),
 			bundle.RelationKeySpaceId.String():   pbtypes.String(id.SpaceID),

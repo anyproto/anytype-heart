@@ -255,7 +255,7 @@ func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ..
 	indexSetTime := time.Now()
 	var hasError bool
 	if indexLinks {
-		if err = i.store.UpdateObjectLinks(ctx, info.Id, info.Links); err != nil {
+		if err = i.store.UpdateObjectLinks(ctx, info.Space.Id(), info.Id, info.Links); err != nil {
 			hasError = true
 			log.With("objectID", info.Id).Errorf("failed to save object links: %v", err)
 		}
@@ -263,7 +263,7 @@ func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ..
 
 	indexLinksTime := time.Now()
 	if indexDetails {
-		if err := i.store.UpdateObjectDetails(ctx, info.Id, details); err != nil {
+		if err := i.store.UpdateObjectDetails(ctx, info.Space.Id(), info.Id, details); err != nil {
 			hasError = true
 			log.With("objectID", info.Id).Errorf("can't update object store: %v", err)
 		} else {
