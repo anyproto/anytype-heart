@@ -79,7 +79,7 @@ func (d *discoveryObserver) ServiceType() string {
 func (d *discoveryObserver) ObserveChange(result ObservationResult) {
 	// in the newer android API it can return multiple IPs separated by comma
 	// sorry, slices are not supported in the bridge :'(
-	var ips = strings.Split(result.Ip()[0], ",")
+	var ips = strings.Split(result.Ip(), ",")
 	var addrs = make([]string, 0, len(ips))
 	for _, ip := range ips {
 		addrs = append(addrs, fmt.Sprintf("%s:%d", ip, result.Port()))
