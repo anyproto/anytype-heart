@@ -126,7 +126,8 @@ func (r *runner) migrateProfile() (hasIcon bool, oldIcon string, err error) {
 	err = space.DoCtx(r.ctx, ids.Profile, func(sb smartblock.SmartBlock) error {
 		details = pbtypes.CopyStructFields(sb.CombinedDetails(),
 			bundle.RelationKeyName.String(),
-			bundle.RelationKeyDescription.String())
+			bundle.RelationKeyDescription.String(),
+			bundle.RelationKeyIconOption.String())
 		oldIcon = sb.CombinedDetails().GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue()
 		return nil
 	})
