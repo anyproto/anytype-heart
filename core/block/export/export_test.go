@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter/pbjson"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -77,16 +76,18 @@ func Test_docsForExport(t *testing.T) {
 			sbtProvider: provider,
 		}
 
+		expCtx := &exportContext{
+			spaceId:       "spaceId",
+			docs:          map[string]*types.Struct{},
+			includeNested: true,
+			reqIds:        []string{"id"},
+		}
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
-			ObjectIds:     []string{"id"},
-			IncludeNested: true,
-		})
+		err = e.docsForExport(expCtx)
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(docsForExport))
+		assert.Equal(t, 2, len(expCtx.docs))
 	})
 	t.Run("get object with non existing links", func(t *testing.T) {
 		// given
@@ -112,17 +113,19 @@ func Test_docsForExport(t *testing.T) {
 			objectStore: storeFixture,
 			sbtProvider: provider,
 		}
+		expCtx := &exportContext{
+			spaceId:       "spaceId",
+			includeNested: true,
+			reqIds:        []string{"id"},
+			docs:          map[string]*types.Struct{},
+		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
-			ObjectIds:     []string{"id"},
-			IncludeNested: true,
-		})
+		err = e.docsForExport(expCtx)
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 1, len(docsForExport))
+		assert.Equal(t, 1, len(expCtx.docs))
 	})
 	t.Run("get object with non existing relation", func(t *testing.T) {
 		// given
@@ -180,15 +183,17 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
-			ObjectIds: []string{"id"},
-			Format:    model.Export_Protobuf,
-		})
+		expCtx := &exportContext{
+			spaceId: "spaceId",
+			docs:    map[string]*types.Struct{},
+			format:  model.Export_Protobuf,
+			reqIds:  []string{"id"},
+		}
+		err = e.docsForExport(expCtx)
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 1, len(docsForExport))
+		assert.Equal(t, 1, len(expCtx.docs))
 	})
 	t.Run("get object with existing relation", func(t *testing.T) {
 		// given
@@ -255,17 +260,19 @@ func Test_docsForExport(t *testing.T) {
 			objectStore: storeFixture,
 			picker:      objectGetter,
 		}
+		expCtx := &exportContext{
+			spaceId: "spaceId",
+			format:  model.Export_Protobuf,
+			reqIds:  []string{"id"},
+			docs:    map[string]*types.Struct{},
+		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
-			ObjectIds: []string{"id"},
-			Format:    model.Export_Protobuf,
-		})
+		err = e.docsForExport(expCtx)
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(docsForExport))
+		assert.Equal(t, 2, len(expCtx.docs))
 	})
 
 	t.Run("get relation options - no relation options", func(t *testing.T) {
@@ -331,17 +338,19 @@ func Test_docsForExport(t *testing.T) {
 			objectStore: storeFixture,
 			picker:      objectGetter,
 		}
+		expCtx := &exportContext{
+			spaceId: "spaceId",
+			format:  model.Export_Protobuf,
+			reqIds:  []string{"id"},
+			docs:    map[string]*types.Struct{},
+		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
-			ObjectIds: []string{"id"},
-			Format:    model.Export_Protobuf,
-		})
+		err = e.docsForExport(expCtx)
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(docsForExport))
+		assert.Equal(t, 2, len(expCtx.docs))
 	})
 	t.Run("get relation options - 1 relation option", func(t *testing.T) {
 		// given
@@ -418,18 +427,21 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
+		expCtx := &exportContext{
+			spaceId: "spaceId",
+			format:  model.Export_Protobuf,
+			reqIds:  []string{"id"},
+			docs:    map[string]*types.Struct{},
+		}
+
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
-			ObjectIds: []string{"id"},
-			Format:    model.Export_Protobuf,
-		})
+		err = e.docsForExport(expCtx)
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 3, len(docsForExport))
+		assert.Equal(t, 3, len(expCtx.docs))
 		var objectIds []string
-		for objectId := range docsForExport {
+		for objectId := range expCtx.docs {
 			objectIds = append(objectIds, objectId)
 		}
 		assert.Contains(t, objectIds, optionId)
@@ -590,17 +602,20 @@ func Test_docsForExport(t *testing.T) {
 			sbtProvider: provider,
 		}
 
+		expCtx := &exportContext{
+			spaceId:       "spaceId",
+			includeNested: true,
+			format:        model.Export_Protobuf,
+			reqIds:        []string{"id"},
+			docs:          map[string]*types.Struct{},
+		}
+
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
-			ObjectIds:     []string{"id"},
-			Format:        model.Export_Protobuf,
-			IncludeNested: true,
-		})
+		err = e.docsForExport(expCtx)
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 6, len(docsForExport))
+		assert.Equal(t, 6, len(expCtx.docs))
 	})
 	t.Run("get derived objects, object type have missing relations - return only object and its type", func(t *testing.T) {
 		// given
@@ -664,16 +679,19 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
+		expCtx := &exportContext{
+			spaceId: "spaceId",
+			docs:    map[string]*types.Struct{},
+			format:  model.Export_Protobuf,
+			reqIds:  []string{"id"},
+		}
+
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
-			ObjectIds: []string{"id"},
-			Format:    model.Export_Protobuf,
-		})
+		err = e.docsForExport(expCtx)
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(docsForExport))
+		assert.Equal(t, 2, len(expCtx.docs))
 	})
 	t.Run("objects without links", func(t *testing.T) {
 		// given
@@ -743,17 +761,19 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
+		expCtx := &exportContext{
+			spaceId: "spaceId",
+			docs:    map[string]*types.Struct{},
+			format:  model.Export_Protobuf,
+			reqIds:  []string{"id"},
+		}
+
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
-			ObjectIds:     []string{"id"},
-			IncludeNested: true,
-			Format:        model.Export_Protobuf,
-		})
+		err = e.docsForExport(expCtx)
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(docsForExport))
+		assert.Equal(t, 2, len(expCtx.docs))
 	})
 	t.Run("objects with dataview", func(t *testing.T) {
 		// given
@@ -864,18 +884,20 @@ func Test_docsForExport(t *testing.T) {
 			objectStore: storeFixture,
 			picker:      objectGetter,
 		}
+		expCtx := &exportContext{
+			spaceId:       "spaceId",
+			docs:          map[string]*types.Struct{},
+			format:        model.Export_Protobuf,
+			reqIds:        []string{"id"},
+			includeNested: true,
+		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
-			ObjectIds:     []string{"id"},
-			IncludeNested: true,
-			Format:        model.Export_Protobuf,
-		})
+		err = e.docsForExport(expCtx)
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 3, len(docsForExport))
+		assert.Equal(t, 3, len(expCtx.docs))
 	})
 	t.Run("objects without file", func(t *testing.T) {
 		// given
@@ -950,18 +972,21 @@ func Test_docsForExport(t *testing.T) {
 			spaceService: service,
 		}
 
+		expCtx := &exportContext{
+			spaceId:       "spaceId",
+			docs:          map[string]*types.Struct{},
+			format:        model.Export_Protobuf,
+			reqIds:        []string{"id"},
+			includeNested: true,
+			includeFiles:  true,
+		}
+
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
-			ObjectIds:     []string{"id"},
-			IncludeFiles:  true,
-			IncludeNested: true,
-			Format:        model.Export_Protobuf,
-		})
+		err = e.docsForExport(expCtx)
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(docsForExport))
+		assert.Equal(t, 2, len(expCtx.docs))
 	})
 	t.Run("objects without file, not protobuf export", func(t *testing.T) {
 		// given
@@ -996,18 +1021,21 @@ func Test_docsForExport(t *testing.T) {
 			spaceService: service,
 		}
 
+		expCtx := &exportContext{
+			spaceId:       "spaceId",
+			docs:          map[string]*types.Struct{},
+			format:        model.Export_Markdown,
+			reqIds:        []string{"id"},
+			includeNested: true,
+			includeFiles:  true,
+		}
+
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
-			ObjectIds:     []string{"id"},
-			IncludeFiles:  true,
-			IncludeNested: true,
-			Format:        model.Export_Markdown,
-		})
+		err = e.docsForExport(expCtx)
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 1, len(docsForExport))
+		assert.Equal(t, 1, len(expCtx.docs))
 	})
 
 	t.Run("get derived objects - relation, object type with recommended relations, template with link", func(t *testing.T) {
@@ -1137,17 +1165,18 @@ func Test_docsForExport(t *testing.T) {
 			objectStore: storeFixture,
 			picker:      objectGetter,
 		}
+		expCtx := &exportContext{
+			spaceId: "spaceId",
+			docs:    map[string]*types.Struct{},
+			format:  model.Export_Protobuf,
+			reqIds:  []string{"id"},
+		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
-			ObjectIds: []string{"id"},
-			Format:    model.Export_Protobuf,
-		})
-
+		err = e.docsForExport(expCtx)
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 5, len(docsForExport))
+		assert.Equal(t, 5, len(expCtx.docs))
 	})
 }
 
@@ -1234,7 +1263,7 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 		e := &export{objectStore: fixture}
 
 		// when
-		records, err := e.queryObjectsFromStoreByIds("spaceId", ids)
+		records, err := e.queryObjectsFromStoreByIds(&exportContext{spaceId: "spaceId", reqIds: ids})
 
 		// then
 		assert.Nil(t, err)
@@ -1257,7 +1286,7 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 		e := &export{objectStore: fixture}
 
 		// when
-		records, err := e.queryObjectsFromStoreByIds("spaceId", ids)
+		records, err := e.queryObjectsFromStoreByIds(&exportContext{spaceId: "spaceId", reqIds: ids})
 
 		// then
 		assert.Nil(t, err)
