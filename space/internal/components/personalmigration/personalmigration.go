@@ -153,7 +153,11 @@ func (r *runner) migrateIcon(oldIcon string) (err error) {
 	if err != nil {
 		return
 	}
-	file, err := r.fileGetter.FileByHash(r.ctx, fileId)
+	image, err := r.fileGetter.ImageByHash(r.ctx, fileId)
+	if err != nil {
+		return
+	}
+	file, err := image.GetOriginalFile()
 	if err != nil {
 		return
 	}
