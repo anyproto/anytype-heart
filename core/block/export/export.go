@@ -286,30 +286,25 @@ func (e *export) queryObjectsFromStoreByIds(spaceId string, reqIds []string) ([]
 }
 
 func (e *export) queryAndFilterObjectsByIds(spaceId string, reqIds []string) ([]database.Record, error) {
-	idsSet := createSet(reqIds)
-
-	allObjects, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	result := make([]database.Record, 0, len(reqIds))
-	for _, object := range allObjects {
-		id := pbtypes.GetString(object.Details, bundle.RelationKeyId.String())
-		if _, found := idsSet[id]; found {
-			result = append(result, object)
+	var allObjects []database.Record
+	const singleBatchCount = 50
+	for j := 0; j < len(reqIds); {
+		if j+singleBatchCount < len(reqIds) {
+			records, err := e.queryObjectsByIds(spaceId, reqIds[j:j+singleBatchCount])
+			if err != nil {
+				return nil, err
+			}
+			allObjects = append(allObjects, records...)
+		} else {
+			records, err := e.queryObjectsByIds(spaceId, reqIds[j:])
+			if err != nil {
+				return nil, err
+			}
+			allObjects = append(allObjects, records...)
 		}
+		j = j + singleBatchCount
 	}
-
-	return result, nil
+	return allObjects, nil
 }
 
 func (e *export) queryObjectsByIds(spaceId string, reqIds []string) ([]database.Record, error) {
@@ -327,14 +322,6 @@ func (e *export) queryObjectsByIds(spaceId string, reqIds []string) ([]database.
 			},
 		},
 	})
-}
-
-func createSet(ids []string) map[string]struct{} {
-	set := make(map[string]struct{}, len(ids))
-	for _, id := range ids {
-		set[id] = struct{}{}
-	}
-	return set
 }
 
 func (e *export) processNotProtobuf(spaceId string, docs map[string]*types.Struct, includeNested, includeFiles bool) (map[string]*types.Struct, error) {
@@ -571,12 +558,12 @@ func (e *export) getTemplatesRelationsAndTypes(spaceId string, allObjects map[st
 	return templateRelations, templateType, nil
 }
 
-func (e *export) addRelationsAndTypes(spaceId string, allObjects map[string]*types.Struct, typesAndTemplates []string, relations []string) error {
+func (e *export) addRelationsAndTypes(spaceId string, allObjects map[string]*types.Struct, types []string, relations []string) error {
 	err := e.addRelations(spaceId, allObjects, relations)
 	if err != nil {
 		return err
 	}
-	err = e.processObjectType(spaceId, typesAndTemplates, allObjects)
+	err = e.processObjectType(spaceId, types, allObjects)
 	if err != nil {
 		return err
 	}
