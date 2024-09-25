@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -160,7 +160,7 @@ func (s *Service) getBootstrapConfig(req *pb.RpcAccountRecoverFromLegacyExportRe
 
 func (s *Service) setDetails(profile *pb.Profile, icon int64) error {
 	profileDetails, accountDetails := buildDetails(profile, icon)
-	bs := s.app.MustComponent(block.CName).(*block.Service)
+	ds := app.MustComponent[detailservice.Service](s.app)
 
 	spaceService := app.MustComponent[space.Service](s.app)
 	spc, err := spaceService.GetPersonalSpace(context.Background())
@@ -169,13 +169,13 @@ func (s *Service) setDetails(profile *pb.Profile, icon int64) error {
 	}
 	accountObjects := spc.DerivedIDs()
 
-	if err := bs.SetDetails(nil,
+	if err := ds.SetDetails(nil,
 		accountObjects.Profile,
 		profileDetails,
 	); err != nil {
 		return err
 	}
-	if err := bs.SetDetails(nil,
+	if err := ds.SetDetails(nil,
 		accountObjects.Workspace,
 		accountDetails,
 	); err != nil {
