@@ -25,7 +25,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{}
 
 		// when
-		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
+		collection, err := collectionProvider.ProvideCollection(nil, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -38,7 +38,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{}
 
 		// when
-		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
+		collection, err := collectionProvider.ProvideCollection(nil, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -51,7 +51,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{CollectionTitle: "test"}
 
 		// when
-		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
+		collection, err := collectionProvider.ProvideCollection(nil, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -128,7 +128,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
+		collection, err := p.ProvideCollection(&snapshotSet{List: allSnapshot, Widget: widgetSnapshot}, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -199,7 +199,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
+		collection, err := p.ProvideCollection(&snapshotSet{List: allSnapshot, Widget: widgetSnapshot}, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -234,7 +234,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(nil, widgetSnapshot, nil, params, nil, false)
+		collection, err := p.ProvideCollection(&snapshotSet{Widget: widgetSnapshot}, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -248,7 +248,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
 		// when
-		collection, err := p.ProvideCollection(nil, nil, nil, params, nil, false)
+		collection, err := p.ProvideCollection(nil, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -271,7 +271,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 			},
 		}
 		// when
-		collection, err := p.ProvideCollection(nil, nil, nil, params, workspace, false)
+		collection, err := p.ProvideCollection(&snapshotSet{Workspace: workspace}, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -296,7 +296,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 			},
 		}
 		// when
-		collection, err := p.ProvideCollection(nil, nil, nil, params, workspace, false)
+		collection, err := p.ProvideCollection(&snapshotSet{Workspace: workspace}, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -309,7 +309,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
 		// when
-		collection, err := p.ProvideCollection(nil, nil, nil, params, nil, true)
+		collection, err := p.ProvideCollection(nil, nil, params, true)
 
 		// then
 		assert.Nil(t, err)
@@ -342,7 +342,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(nil, widgetSnapshot, nil, params, nil, false)
+		collection, err := p.ProvideCollection(&snapshotSet{Widget: widgetSnapshot}, nil, params, false)
 
 		// then
 		assert.Nil(t, err)

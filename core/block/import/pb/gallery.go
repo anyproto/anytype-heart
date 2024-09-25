@@ -27,27 +27,29 @@ func NewGalleryImport(service *collection.Service) *GalleryImport {
 	return &GalleryImport{service: service}
 }
 
-func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
-	widget *common.Snapshot,
+func (g *GalleryImport) ProvideCollection(
+	snapshots *snapshotSet,
 	_ map[string]string,
 	params *pb.RpcObjectImportRequestPbParams,
-	workspaceSnapshot *common.Snapshot,
 	isNewSpace bool,
 ) (collectionsSnapshots []*common.Snapshot, err error) {
 	if isNewSpace {
 		return nil, nil
 	}
+	if snapshots == nil {
+		snapshots = &snapshotSet{List: []*common.Snapshot{}}
+	}
 	var widgetObjects []string
-	if widget != nil {
-		widgetObjects = g.getObjectsFromWidgets(widget)
+	if snapshots.Widget != nil {
+		widgetObjects = g.getObjectsFromWidgets(snapshots.Widget)
 	}
 	var (
 		icon     string
 		fileKeys []*pb.ChangeFileKeys
 	)
-	if workspaceSnapshot != nil { // we use space icon for import collection
-		icon = pbtypes.GetString(workspaceSnapshot.Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
-		fileKeys = lo.Filter(workspaceSnapshot.Snapshot.FileKeys, func(item *pb.ChangeFileKeys, index int) bool { return item.Hash == icon })
+	if snapshots.Workspace != nil { // we use space icon for import collection
+		icon = pbtypes.GetString(snapshots.Workspace.Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
+		fileKeys = lo.Filter(snapshots.Workspace.Snapshot.FileKeys, func(item *pb.ChangeFileKeys, index int) bool { return item.Hash == icon })
 	}
 	collectionName := params.GetCollectionTitle() // collection name should be the name of experience
 	if collectionName == "" {
@@ -55,12 +57,12 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 	}
 	rootCollection := common.NewRootCollection(g.service)
 	if len(widgetObjects) > 0 {
-		collectionsSnapshots, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, fileKeys, widget, collectionsSnapshots)
+		collectionsSnapshots, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, fileKeys, snapshots.Widget, collectionsSnapshots)
 		if err != nil {
 			return nil, err
 		}
 	}
-	objectsIDs := g.getObjectsIDs(snapshots)
+	objectsIDs := g.getObjectsIDs(snapshots.List)
 	objectsCollection, err := rootCollection.MakeRootCollection(collectionName, objectsIDs, icon, fileKeys, false, true)
 	if err != nil {
 		return nil, err
