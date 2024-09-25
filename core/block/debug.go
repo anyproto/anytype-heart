@@ -69,7 +69,7 @@ func (s *Service) debugListObjectsPerSpace(req *http.Request) ([]debugObject, er
 }
 
 func (s *Service) debugListObjects(req *http.Request) ([]debugObject, error) {
-	ids, err := s.objectStore.ListIds()
+	ids, err := s.objectStore.ListIdsCrossSpace()
 	if err != nil {
 		return nil, fmt.Errorf("list ids: %w", err)
 	}

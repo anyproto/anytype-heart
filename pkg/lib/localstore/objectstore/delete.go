@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *dsObjectStore) DeleteDetails(ctx context.Context, ids ...string) error {
+func (s *dsObjectStore) DeleteDetails(ctx context.Context, spaceId string, ids []string) error {
 	txn, err := s.anyStore.WriteTx(ctx)
 	if err != nil {
 		return fmt.Errorf("write txn: %w", err)
@@ -79,7 +79,7 @@ func (s *dsObjectStore) DeleteObject(id domain.FullID) error {
 	return nil
 }
 
-func (s *dsObjectStore) DeleteLinks(ids ...string) error {
+func (s *dsObjectStore) DeleteLinks(spaceId string, ids []string) error {
 	txn, err := s.links.WriteTx(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("read txn: %w", err)

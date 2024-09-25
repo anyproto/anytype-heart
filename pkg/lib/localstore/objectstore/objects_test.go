@@ -121,7 +121,7 @@ func TestListIds(t *testing.T) {
 	t.Run("with empty store", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		got, err := s.ListIds()
+		got, err := s.ListIdsCrossSpace()
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
@@ -132,7 +132,7 @@ func TestListIds(t *testing.T) {
 			makeObjectWithName("id2", "name2"),
 		})
 
-		got, err := s.ListIds()
+		got, err := s.ListIdsCrossSpace()
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id1", "id2"}, got)
 	})

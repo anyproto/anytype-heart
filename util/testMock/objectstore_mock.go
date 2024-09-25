@@ -570,7 +570,7 @@ func (mr *MockObjectStoreMockRecorder) ListIDsFromFullTextQueue(arg0 any) *gomoc
 // ListIds mocks base method.
 func (m *MockObjectStore) ListIds() ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListIds")
+	ret := m.ctrl.Call(m, "ListIdsCrossSpace")
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -579,7 +579,7 @@ func (m *MockObjectStore) ListIds() ([]string, error) {
 // ListIds indicates an expected call of ListIds.
 func (mr *MockObjectStoreMockRecorder) ListIds() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIds", reflect.TypeOf((*MockObjectStore)(nil).ListIds))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIdsCrossSpace", reflect.TypeOf((*MockObjectStore)(nil).ListIds))
 }
 
 // ListIdsBySpace mocks base method.

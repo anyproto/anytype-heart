@@ -20,7 +20,7 @@ import (
 func (s *service) createSet(ctx context.Context, space clientspace.Space, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
-	dvContent, err := dataview.BlockBySource(s.objectStore, req.Source)
+	dvContent, err := dataview.BlockBySource(s.objectStore, space.Id(), req.Source)
 	if err != nil {
 		return
 	}

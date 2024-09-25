@@ -97,8 +97,8 @@ func (s *dsObjectStore) FetchRelationByLinks(spaceId string, links pbtypes.Relat
 	return s.FetchRelationByKeys(spaceId, keys...)
 }
 
-func (s *dsObjectStore) GetRelationByID(id string) (*model.Relation, error) {
-	det, err := s.GetDetails(id)
+func (s *dsObjectStore) GetRelationByID(spaceId string, id string) (*model.Relation, error) {
+	det, err := s.GetDetails(spaceId, id)
 	if err != nil {
 		return nil, err
 	}

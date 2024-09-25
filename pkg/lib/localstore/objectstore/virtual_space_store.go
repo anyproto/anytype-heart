@@ -72,7 +72,7 @@ func (s *dsObjectStore) DeleteVirtualSpace(spaceID string) error {
 	if err != nil {
 		return err
 	}
-	err = s.DeleteDetails(s.componentCtx, ids...)
+	err = s.DeleteDetails(s.componentCtx, spaceID, ids)
 	if err != nil {
 		return err
 	}

@@ -378,7 +378,7 @@ func (e *export) getNested(spaceID string, id string, docs map[string]*types.Str
 func (e *export) fillLinkedFiles(space clientspace.Space, id string, docs map[string]*types.Struct) error {
 	return space.Do(id, func(b sb.SmartBlock) error {
 		b.NewState().IterateLinkedFiles(func(fileObjectId string) {
-			details, err := e.objectStore.GetDetails(fileObjectId)
+			details, err := e.objectStore.GetDetails(space.Id(), fileObjectId)
 			if err != nil {
 				log.Errorf("failed to get details for file object id %s: %v", fileObjectId, err)
 				return
@@ -813,7 +813,7 @@ func (e *export) processObject(spaceId string, object *types.Struct,
 	objectTypeId := pbtypes.GetString(object, bundle.RelationKeyType.String())
 
 	var err error
-	derivedObjects, typesAndTemplates, err = e.addObjectType(objectTypeId, derivedObjects, typesAndTemplates)
+	derivedObjects, typesAndTemplates, err = e.addObjectType(spaceId, objectTypeId, derivedObjects, typesAndTemplates)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -829,8 +829,8 @@ func (e *export) processObject(spaceId string, object *types.Struct,
 	return derivedObjects, typesAndTemplates, nil
 }
 
-func (e *export) addObjectType(objectTypeId string, derivedObjects []database.Record, typesAndTemplates []database.Record) ([]database.Record, []database.Record, error) {
-	objectTypeDetails, err := e.objectStore.GetDetails(objectTypeId)
+func (e *export) addObjectType(spaceId string, objectTypeId string, derivedObjects []database.Record, typesAndTemplates []database.Record) ([]database.Record, []database.Record, error) {
+	objectTypeDetails, err := e.objectStore.GetDetails(spaceId, objectTypeId)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -850,7 +850,7 @@ func (e *export) addObjectType(objectTypeId string, derivedObjects []database.Re
 		if relation == addr.MissingObject {
 			continue
 		}
-		details, err := e.objectStore.GetDetails(relation)
+		details, err := e.objectStore.GetDetails(spaceId, relation)
 		if err != nil {
 			return nil, nil, err
 		}

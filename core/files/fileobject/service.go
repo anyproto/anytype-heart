@@ -55,7 +55,7 @@ type Service interface {
 	app.ComponentRunnable
 
 	InitEmptyFileState(st *state.State)
-	DeleteFileData(objectId string) error
+	DeleteFileData(spaceId string, objectId string) error
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
 	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
 	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
@@ -444,11 +444,14 @@ func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *t
 }
 
 func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error) {
-	details, err := s.objectStore.GetDetails(objectId)
+	spaceId, err := s.spaceIdResolver.ResolveSpaceID(objectId)
+	if err != nil {
+		return domain.FullFileId{}, fmt.Errorf("resolve space id: %w", err)
+	}
+	details, err := s.objectStore.GetDetails(spaceId, objectId)
 	if err != nil {
 		return domain.FullFileId{}, fmt.Errorf("get object details: %w", err)
 	}
-	spaceId := pbtypes.GetString(details.Details, bundle.RelationKeySpaceId.String())
 	fileId := pbtypes.GetString(details.Details, bundle.RelationKeyFileId.String())
 	if fileId == "" {
 		return domain.FullFileId{}, ErrEmptyFileId
@@ -507,7 +510,7 @@ func (s *service) resolveSpaceIdWithRetry(ctx context.Context, objectId string) 
 	return spaceId, err
 }
 
-func (s *service) DeleteFileData(objectId string) error {
+func (s *service) DeleteFileData(spaceId string, objectId string) error {
 	fullId, err := s.GetFileIdFromObject(objectId)
 	if err != nil {
 		return fmt.Errorf("get file id from object: %w", err)
@@ -536,7 +539,7 @@ func (s *service) DeleteFileData(objectId string) error {
 		if err := s.fileSync.DeleteFile(objectId, fullId); err != nil {
 			return fmt.Errorf("failed to remove file from sync: %w", err)
 		}
-		_, err = s.fileOffloader.FileOffload(context.Background(), objectId, true)
+		_, err = s.fileOffloader.FileOffloadFullId(context.Background(), domain.FullID{SpaceID: spaceId, ObjectID: objectId}, true)
 		if err != nil {
 			return err
 		}

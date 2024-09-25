@@ -191,7 +191,7 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	if err != nil {
 		return
 	}
-	return i.store.DeleteDetails(i.runCtx, ids...)
+	return i.store.DeleteDetails(i.runCtx, spaceId, ids)
 }
 
 func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
@@ -288,7 +288,7 @@ func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ..
 			}
 		}
 	} else {
-		_ = i.store.DeleteDetails(ctx, info.Id)
+		_ = i.store.DeleteDetails(ctx, info.Space.Id(), []string{info.Id})
 	}
 	indexDetailsTime := time.Now()
 	detailsCount := 0

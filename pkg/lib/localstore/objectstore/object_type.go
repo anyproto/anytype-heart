@@ -14,12 +14,12 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
+func (s *dsObjectStore) GetObjectType(spaceId string, id string) (*model.ObjectType, error) {
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
 		return bundle.GetTypeByUrl(id)
 	}
 
-	details, err := s.GetDetails(id)
+	details, err := s.GetDetails(spaceId, id)
 	if err != nil {
 		return nil, err
 	}
@@ -37,11 +37,11 @@ func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get type key from raw unique key: %w", err)
 	}
-	ot := s.extractObjectTypeFromDetails(details.Details, id, objectTypeKey)
+	ot := s.extractObjectTypeFromDetails(spaceId, details.Details, id, objectTypeKey)
 	return ot, nil
 }
 
-func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url string, objectTypeKey domain.TypeKey) *model.ObjectType {
+func (s *dsObjectStore) extractObjectTypeFromDetails(spaceId string, details *types.Struct, url string, objectTypeKey domain.TypeKey) *model.ObjectType {
 	return &model.ObjectType{
 		Url:        url,
 		Key:        string(objectTypeKey),
@@ -51,15 +51,15 @@ func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url 
 		IsArchived: pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String()),
 		// we use Page for all custom object types
 		Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-		RelationLinks: s.getRelationLinksForRecommendedRelations(details),
+		RelationLinks: s.getRelationLinksForRecommendedRelations(spaceId, details),
 	}
 }
 
-func (s *dsObjectStore) getRelationLinksForRecommendedRelations(details *types.Struct) []*model.RelationLink {
+func (s *dsObjectStore) getRelationLinksForRecommendedRelations(spaceId string, details *types.Struct) []*model.RelationLink {
 	recommendedRelationIDs := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
 	relationLinks := make([]*model.RelationLink, 0, len(recommendedRelationIDs))
 	for _, relationID := range recommendedRelationIDs {
-		relation, err := s.GetRelationByID(relationID)
+		relation, err := s.GetRelationByID(spaceId, relationID)
 		if err != nil {
 			log.Errorf("failed to get relation %s: %s", relationID, err)
 		} else {

@@ -297,7 +297,7 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 	}
 	for _, id := range ids {
 		if domain.IsFileId(id) {
-			err = i.store.DeleteDetails(i.runCtx, id)
+			err = i.store.DeleteDetails(i.runCtx, spaceId, []string{id})
 			if err != nil {
 				log.Errorf("delete old file %s: %s", id, err)
 			}
@@ -377,7 +377,7 @@ func (i *indexer) removeDetails(spaceId string) error {
 		log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
 	}
 	for _, id := range ids {
-		if err = i.store.DeleteDetails(i.runCtx, id); err != nil {
+		if err = i.store.DeleteDetails(i.runCtx, spaceId, []string{id}); err != nil {
 			log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
 		}
 	}
@@ -386,7 +386,7 @@ func (i *indexer) removeDetails(spaceId string) error {
 
 // removeOldObjects removes all objects that are not supported anymore (e.g. old subobjects) and no longer returned by the underlying source
 func (i *indexer) removeOldObjects() (err error) {
-	ids, err := i.store.ListIds()
+	ids, err := i.store.ListIdsCrossSpace()
 	if err != nil {
 		return err
 	}
@@ -407,7 +407,7 @@ func (i *indexer) removeOldObjects() (err error) {
 		return
 	}
 
-	err = i.store.DeleteDetails(i.runCtx, ids...)
+	err = i.store.DeleteDetails(i.runCtx, "TODOSPACE", ids)
 	log.With(zap.Int("count", len(ids)), zap.Error(err)).Warnf("removeOldObjects")
 	return err
 }
@@ -443,7 +443,7 @@ func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, f
 		}
 
 		for _, id := range ids {
-			if err = i.store.DeleteLinks(id); err != nil {
+			if err = i.store.DeleteLinks(spaceId, []string{id}); err != nil {
 				log.Errorf("reindex failed to delete links(eraseLinks): %v", err)
 			}
 		}

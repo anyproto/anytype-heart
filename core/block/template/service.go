@@ -171,7 +171,7 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 		return nil, spacestorage.ErrTreeStorageAlreadyDeleted
 	}
 
-	err = s.updateTypeKey(st)
+	err = s.updateTypeKey(sb.SpaceID(), st)
 	if err != nil {
 		return
 	}
@@ -343,11 +343,11 @@ func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *s
 	return
 }
 
-func (s *service) updateTypeKey(st *state.State) (err error) {
+func (s *service) updateTypeKey(spaceId string, st *state.State) (err error) {
 	objectTypeId := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
 	if objectTypeId != "" {
 		var uniqueKey domain.UniqueKey
-		uniqueKey, err = s.store.GetUniqueKeyById(objectTypeId)
+		uniqueKey, err = s.store.GetUniqueKeyById(spaceId, objectTypeId)
 		if err != nil {
 			err = fmt.Errorf("get target object type %s: %w", objectTypeId, err)
 		} else if uniqueKey.SmartblockType() != coresb.SmartBlockTypeObjectType {

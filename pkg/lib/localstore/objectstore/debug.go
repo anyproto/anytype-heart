@@ -15,5 +15,5 @@ func (s *dsObjectStore) DebugRouter(r chi.Router) {
 
 func (s *dsObjectStore) debugDetails(req *http.Request) (*model.ObjectDetails, error) {
 	id := chi.URLParam(req, "id")
-	return s.GetDetails(id)
+	return s.GetDetails("TODO", id)
 }

@@ -231,7 +231,7 @@ func (d *debug) DumpTree(ctx context.Context, objectID string, path string, anon
 
 func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []string, path string) (filename string, err error) {
 	if len(objIds) == 0 {
-		objIds, err = d.store.ListIds()
+		objIds, err = d.store.ListIdsCrossSpace()
 		if err != nil {
 			return "", err
 		}

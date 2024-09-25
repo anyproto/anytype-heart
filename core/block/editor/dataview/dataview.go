@@ -94,7 +94,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	}
 
-	dvContent, err := BlockBySource(d.objectStore, source)
+	dvContent, err := BlockBySource(d.objectStore, d.SpaceID(), source)
 	if err != nil {
 		return
 	}
@@ -432,14 +432,14 @@ func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 	return nil, fmt.Errorf("not a dataview block")
 }
 
-func BlockBySource(objectStore objectstore.ObjectStore, sources []string) (*model.BlockContentOfDataview, error) {
+func BlockBySource(objectStore objectstore.ObjectStore, spaceId string, sources []string) (*model.BlockContentOfDataview, error) {
 	// Empty schema
 	if len(sources) == 0 {
 		return template.MakeDataviewContent(false, nil, nil), nil
 	}
 
 	// Try object type
-	objectType, err := objectStore.GetObjectType(sources[0])
+	objectType, err := objectStore.GetObjectType(spaceId, sources[0])
 	if err == nil {
 		return template.MakeDataviewContent(false, objectType, nil), nil
 	}
@@ -447,7 +447,7 @@ func BlockBySource(objectStore objectstore.ObjectStore, sources []string) (*mode
 	// Finally, try relations
 	relations := make([]*model.RelationLink, 0, len(sources))
 	for _, relId := range sources {
-		rel, err := objectStore.GetRelationByID(relId)
+		rel, err := objectStore.GetRelationByID(spaceId, relId)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
 		}

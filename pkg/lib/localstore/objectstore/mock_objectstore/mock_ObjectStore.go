@@ -1960,7 +1960,7 @@ func (_m *MockObjectStore) ListIds() ([]string, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for ListIds")
+		panic("no return value specified for ListIdsCrossSpace")
 	}
 
 	var r0 []string
@@ -1985,14 +1985,14 @@ func (_m *MockObjectStore) ListIds() ([]string, error) {
 	return r0, r1
 }
 
-// MockObjectStore_ListIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListIds'
+// MockObjectStore_ListIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListIdsCrossSpace'
 type MockObjectStore_ListIds_Call struct {
 	*mock.Call
 }
 
 // ListIds is a helper method to define mock.On call
 func (_e *MockObjectStore_Expecter) ListIds() *MockObjectStore_ListIds_Call {
-	return &MockObjectStore_ListIds_Call{Call: _e.mock.On("ListIds")}
+	return &MockObjectStore_ListIds_Call{Call: _e.mock.On("ListIdsCrossSpace")}
 }
 
 func (_c *MockObjectStore_ListIds_Call) Run(run func()) *MockObjectStore_ListIds_Call {

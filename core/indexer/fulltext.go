@@ -216,7 +216,7 @@ func (i *indexer) ftInit() error {
 			return err
 		}
 		if docCount == 0 {
-			ids, err := i.store.ListIds()
+			ids, err := i.store.ListIdsCrossSpace()
 			if err != nil {
 				return err
 			}

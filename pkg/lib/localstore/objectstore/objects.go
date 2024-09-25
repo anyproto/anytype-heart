@@ -61,10 +61,10 @@ type ObjectStore interface {
 	QueryObjectIDs(spaceId string, q database.Query) (ids []string, total int, err error)
 	QueryIterate(spaceId string, q database.Query, proc func(details *types.Struct)) error
 
-	HasIDs(ids ...string) (exists []string, err error)
+	HasIDs(spaceId string, ids []string) (exists []string, err error)
 	GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error)
 	List(spaceID string, includeArchived bool) ([]*model.ObjectInfo, error)
-	ListIds() ([]string, error)
+	ListIdsCrossSpace() ([]string, error)
 	ListIdsBySpace(spaceId string) ([]string, error)
 
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
@@ -75,12 +75,12 @@ type ObjectStore interface {
 	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error
 
 	DeleteObject(id domain.FullID) error
-	DeleteDetails(ctx context.Context, id ...string) error
-	DeleteLinks(id ...string) error
+	DeleteDetails(ctx context.Context, spaceId string, ids []string) error
+	DeleteLinks(spaceId string, ids []string) error
 
-	GetDetails(id string) (*model.ObjectDetails, error)
+	GetDetails(spaceId string, id string) (*model.ObjectDetails, error)
 	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
-	GetUniqueKeyById(id string) (key domain.UniqueKey, err error)
+	GetUniqueKeyById(spaceId string, id string) (key domain.UniqueKey, err error)
 
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)
@@ -95,11 +95,11 @@ type ObjectStore interface {
 	FetchRelationByKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error)
 	FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
 	ListAllRelations(spaceId string) (relations relationutils.Relations, err error)
-	GetRelationByID(id string) (relation *model.Relation, err error)
+	GetRelationByID(spaceId string, id string) (relation *model.Relation, err error)
 	GetRelationByKey(spaceId string, key string) (*model.Relation, error)
 	GetRelationFormatByKey(spaceId string, key string) (model.RelationFormat, error)
 
-	GetObjectType(url string) (*model.ObjectType, error)
+	GetObjectType(spaceId string, id string) (*model.ObjectType, error)
 	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
 
 	WriteTx(ctx context.Context) (anystore.WriteTx, error)
@@ -400,7 +400,7 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 
 // GetDetails returns empty struct without errors in case details are not found
 // todo: get rid of this or change the name method!
-func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
+func (s *dsObjectStore) GetDetails(spaceId string, id string) (*model.ObjectDetails, error) {
 	doc, err := s.objects.FindId(s.componentCtx, id)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return &model.ObjectDetails{
@@ -419,8 +419,8 @@ func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 	}, nil
 }
 
-func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
-	details, err := s.GetDetails(id)
+func (s *dsObjectStore) GetUniqueKeyById(spaceId string, id string) (domain.UniqueKey, error) {
+	details, err := s.GetDetails(spaceId, id)
 	if err != nil {
 		return nil, err
 	}
@@ -449,7 +449,7 @@ func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*model.Obj
 	return s.GetByIDs(spaceID, ids)
 }
 
-func (s *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
+func (s *dsObjectStore) HasIDs(spaceId string, ids []string) (exists []string, err error) {
 	for _, id := range ids {
 		_, err := s.objects.FindId(s.componentCtx, id)
 		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
@@ -471,7 +471,7 @@ func (s *dsObjectStore) ListIdsBySpace(spaceId string) ([]string, error) {
 	return ids, err
 }
 
-func (s *dsObjectStore) ListIds() ([]string, error) {
+func (s *dsObjectStore) ListIdsCrossSpace() ([]string, error) {
 	var ids []string
 	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
 	if err != nil {

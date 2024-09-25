@@ -898,7 +898,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 }
 
 func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
-	storedDetails, err := sb.objectStore.GetDetails(sb.Id())
+	storedDetails, err := sb.objectStore.GetDetails(sb.SpaceID(), sb.Id())
 	if err != nil || storedDetails == nil {
 		return nil, err
 	}
