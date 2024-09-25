@@ -291,7 +291,7 @@ func (s *service) TemplateClone(spaceId string, id string) (templateId string, e
 }
 
 func (s *service) TemplateExportAll(ctx context.Context, path string) (string, error) {
-	docIds, _, err := s.store.QueryObjectIDs(database.Query{
+	records, err := s.store.QueryCrossSpace(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyIsArchived.String(),
@@ -314,12 +314,16 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 	if err != nil {
 		return "", err
 	}
-	if len(docIds) == 0 {
+	if len(records) == 0 {
 		return "", fmt.Errorf("no templates")
+	}
+	ids := make([]string, 0, len(records))
+	for _, rec := range records {
+		ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
 	}
 	path, _, err = s.exporter.Export(ctx, pb.RpcObjectListExportRequest{
 		Path:      path,
-		ObjectIds: docIds,
+		ObjectIds: ids,
 		Format:    model.Export_Protobuf,
 		Zip:       true,
 	})

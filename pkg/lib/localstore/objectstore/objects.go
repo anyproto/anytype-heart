@@ -50,13 +50,16 @@ type ObjectStore interface {
 	SubscribeForAll(callback func(rec database.Record))
 
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
-	Query(q database.Query) (records []database.Record, err error)
+	Query(spaceId string, q database.Query) (records []database.Record, err error)
+	QueryCrossSpace(q database.Query) (records []database.Record, err error)
 
-	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
+	QueryRaw(spaceId string, f *database.Filters, limit int, offset int) (records []database.Record, err error)
+	QueryRawCrossSpace(f *database.Filters, limit int, offset int) (records []database.Record, err error)
+
 	QueryByID(ids []string) (records []database.Record, err error)
 	QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
-	QueryObjectIDs(q database.Query) (ids []string, total int, err error)
-	QueryIterate(q database.Query, proc func(details *types.Struct)) error
+	QueryObjectIDs(spaceId string, q database.Query) (ids []string, total int, err error)
+	QueryIterate(spaceId string, q database.Query, proc func(details *types.Struct)) error
 
 	HasIDs(ids ...string) (exists []string, err error)
 	GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error)
@@ -94,7 +97,7 @@ type ObjectStore interface {
 	ListAllRelations(spaceId string) (relations relationutils.Relations, err error)
 	GetRelationByID(id string) (relation *model.Relation, err error)
 	GetRelationByKey(spaceId string, key string) (*model.Relation, error)
-	GetRelationFormatByKey(key string) (model.RelationFormat, error)
+	GetRelationFormatByKey(spaceId string, key string) (model.RelationFormat, error)
 
 	GetObjectType(url string) (*model.ObjectType, error)
 	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
@@ -430,13 +433,6 @@ func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
 
 func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*model.ObjectInfo, error) {
 	var filters []*model.BlockContentDataviewFilter
-	if spaceID != "" {
-		filters = append(filters, &model.BlockContentDataviewFilter{
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceID),
-		})
-	}
 	if includeArchived {
 		filters = append(filters, &model.BlockContentDataviewFilter{
 			RelationKey: bundle.RelationKeyIsArchived.String(),
@@ -444,7 +440,7 @@ func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*model.Obj
 			Value:       pbtypes.Bool(true),
 		})
 	}
-	ids, _, err := s.QueryObjectIDs(database.Query{
+	ids, _, err := s.QueryObjectIDs(spaceID, database.Query{
 		Filters: filters,
 	})
 	if err != nil {
@@ -471,15 +467,7 @@ func (s *dsObjectStore) GetByIDs(spaceID string, ids []string) ([]*model.ObjectI
 }
 
 func (s *dsObjectStore) ListIdsBySpace(spaceId string) ([]string, error) {
-	ids, _, err := s.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
-		},
-	})
+	ids, _, err := s.QueryObjectIDs(spaceId, database.Query{Filters: nil})
 	return ids, err
 }
 
@@ -559,17 +547,12 @@ func (s *dsObjectStore) getObjectsInfo(ctx context.Context, spaceID string, ids 
 }
 
 func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error) {
-	records, err := s.Query(database.Query{
+	records, err := s.Query(spaceId, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
 				Value:       pbtypes.String(uniqueKey.Marshal()),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceId),
 			},
 		},
 		Limit: 2,

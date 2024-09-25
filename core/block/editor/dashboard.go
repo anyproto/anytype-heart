@@ -75,17 +75,12 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 		return
 	}
 
-	records, err := p.objectStore.Query(database.Query{
+	records, err := p.objectStore.Query(p.SpaceID(), database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyIsFavorite.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Bool(true),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(p.SpaceID()),
 			},
 		},
 	})

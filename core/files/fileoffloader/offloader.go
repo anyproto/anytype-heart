@@ -109,7 +109,7 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 	gc := s.fileStorage.NewLocalStoreGarbageCollector()
 
 	if !includeNotPinned {
-		records, err := s.objectStore.Query(database.Query{
+		records, err := s.objectStore.QueryCrossSpace(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyFileId.String(),
@@ -144,13 +144,8 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 }
 
 func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
-	records, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(spaceId, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
@@ -185,17 +180,12 @@ func (s *service) offloadFileSafe(ctx context.Context,
 	record database.Record,
 	includeNotPinned bool,
 ) (uint64, error) {
-	existingObjects, err := s.objectStore.Query(database.Query{
+	existingObjects, err := s.objectStore.Query(spaceId, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(fileId),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String(spaceId),
 			},
 		},
 	})

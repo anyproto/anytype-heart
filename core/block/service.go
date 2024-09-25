@@ -397,7 +397,7 @@ func (s *Service) RemoveListOption(optionIds []string, checkInObjects bool) erro
 				st := b.NewState()
 				relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
 
-				records, err := s.objectStore.Query(database.Query{
+				records, err := s.objectStore.Query(b.SpaceID(), database.Query{
 					Filters: []*model.BlockContentDataviewFilter{
 						{
 							Condition:   model.BlockContentDataviewFilter_Equal,

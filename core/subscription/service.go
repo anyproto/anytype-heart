@@ -299,7 +299,7 @@ func initSubEntries(objectStore objectstore.ObjectStore, f *database.Filters, su
 }
 
 func queryEntries(objectStore objectstore.ObjectStore, f *database.Filters) ([]*entry, error) {
-	records, err := objectStore.QueryRaw(f, 0, 0)
+	records, err := objectStore.QueryRaw("TODO", f, 0, 0)
 	if err != nil {
 		return nil, fmt.Errorf("objectStore query error: %w", err)
 	}

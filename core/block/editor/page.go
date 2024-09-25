@@ -115,7 +115,7 @@ func (p *Page) isRelationDeleted(ctx *smartblock.InitContext) bool {
 }
 
 func (p *Page) deleteRelationOptions(spaceID string, relationKey string) error {
-	relationOptions, _, err := p.objectStore.QueryObjectIDs(database.Query{
+	relationOptions, _, err := p.objectStore.QueryObjectIDs(spaceID, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyRelationKey.String(),

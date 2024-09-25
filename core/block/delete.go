@@ -84,7 +84,7 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 		return fmt.Errorf("on delete: %w", err)
 	}
 	if sbType == coresb.SmartBlockTypeRelation {
-		err := s.deleteRelationOptions(relationKey)
+		err := s.deleteRelationOptions(id.SpaceID, relationKey)
 		if err != nil {
 			return fmt.Errorf("failed to delete relation options of deleted relation: %w", err)
 		}
@@ -92,8 +92,8 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 	return nil
 }
 
-func (s *Service) deleteRelationOptions(relationKey string) error {
-	relationOptions, _, err := s.objectStore.QueryObjectIDs(database.Query{
+func (s *Service) deleteRelationOptions(spaceId string, relationKey string) error {
+	relationOptions, _, err := s.objectStore.QueryObjectIDs(spaceId, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),

@@ -78,16 +78,11 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 		return
 	}
 
-	records, err := p.objectStore.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+	records, err := p.objectStore.QueryRaw(p.SpaceID(), &database.Filters{FilterObj: database.FiltersAnd{
 		database.FilterEq{
 			Key:   bundle.RelationKeyIsArchived.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.Bool(true),
-		},
-		database.FilterEq{
-			Key:   bundle.RelationKeySpaceId.String(),
-			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.String(p.SpaceID()),
 		},
 	}}, 0, 0)
 	if err != nil {

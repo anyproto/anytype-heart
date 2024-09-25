@@ -174,7 +174,7 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 		return err
 	}
 
-	objectIds, _, err := s.objectStore.QueryObjectIDs(database.Query{
+	records, err := s.objectStore.QueryCrossSpace(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -194,8 +194,12 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 	if err != nil {
 		return err
 	}
-	if len(objectIds) > 0 {
-		if err = s.objectArchiver.SetListIsArchived(objectIds, true); err != nil {
+	if len(records) > 0 {
+		ids := make([]string, 0, len(records))
+		for _, record := range records {
+			ids = append(ids, pbtypes.GetString(record.Details, bundle.RelationKeyId.String()))
+		}
+		if err = s.objectArchiver.SetListIsArchived(ids, true); err != nil {
 			return err
 		}
 	}
@@ -205,7 +209,7 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 
 // After migrating to new sync queue we need to ensure that all not synced files are added to the queue
 func (s *service) ensureNotSyncedFilesAddedToQueue() error {
-	records, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.QueryCrossSpace(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -369,7 +373,7 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 // CreateFromImport creates file object from imported raw IPFS file. Encryption keys for this file should exist in file store.
 func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error) {
 	// Check that fileId is not a file object id
-	recs, _, err := s.objectStore.QueryObjectIDs(database.Query{
+	recs, _, err := s.objectStore.QueryObjectIDs(fileId.SpaceId, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
@@ -414,32 +418,8 @@ func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uplo
 	return nil
 }
 
-func (s *service) GetObjectIdByFileId(fileId domain.FullFileId) (string, error) {
-	records, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyFileId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.FileId.String()),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.SpaceId),
-			},
-		},
-	})
-	if err != nil {
-		return "", fmt.Errorf("query objects by file hash: %w", err)
-	}
-	if len(records) == 0 {
-		return "", ErrObjectNotFound
-	}
-	return pbtypes.GetString(records[0].Details, bundle.RelationKeyId.String()), nil
-}
-
 func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error) {
-	records, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(fileId.SpaceId, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -532,7 +512,7 @@ func (s *service) DeleteFileData(objectId string) error {
 	if err != nil {
 		return fmt.Errorf("get file id from object: %w", err)
 	}
-	records, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.QueryCrossSpace(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),

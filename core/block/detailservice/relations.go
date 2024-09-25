@@ -18,7 +18,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -70,11 +69,7 @@ func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) (ke
 	countersByKeys := make(map[string]int64)
 	detailHandlesValue := generateFilter(value)
 
-	err = s.store.QueryIterate(database.Query{Filters: []*model.BlockContentDataviewFilter{{
-		RelationKey: bundle.RelationKeySpaceId.String(),
-		Condition:   model.BlockContentDataviewFilter_Equal,
-		Value:       pbtypes.String(spaceId),
-	}}}, func(details *types.Struct) {
+	err = s.store.QueryIterate(spaceId, database.Query{Filters: nil}, func(details *types.Struct) {
 		for key, valueToCheck := range details.Fields {
 			if detailHandlesValue(valueToCheck) {
 				if counter, ok := countersByKeys[key]; ok {

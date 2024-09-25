@@ -32,9 +32,13 @@ const (
 	minFulltextScore = 0.02
 )
 
-func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
-	recs, err := s.performQuery(q)
+func (s *dsObjectStore) Query(spaceId string, q database.Query) ([]database.Record, error) {
+	recs, err := s.performQuery(spaceId, q)
 	return recs, err
+}
+
+func (s *dsObjectStore) QueryCrossSpace(q database.Query) ([]database.Record, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 // getObjectsWithObjectInRelation returns objects that have a relation with the given object in the value, while also matching the given filters
@@ -161,11 +165,15 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 	return records, nil
 }
 
-func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
+func (s *dsObjectStore) QueryRaw(spaceId string, filters *database.Filters, limit int, offset int) ([]database.Record, error) {
 	if filters == nil || filters.FilterObj == nil {
 		return nil, fmt.Errorf("filter cannot be nil or unitialized")
 	}
 	return s.queryAnyStore(filters.FilterObj, filters.Order, uint(limit), uint(offset))
+}
+
+func (s *dsObjectStore) QueryRawCrossSpace(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
@@ -262,7 +270,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	return records[offset:], nil
 }
 
-func (s *dsObjectStore) performQuery(q database.Query) (records []database.Record, err error) {
+func (s *dsObjectStore) performQuery(spaceId string, q database.Query) (records []database.Record, err error) {
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
@@ -287,7 +295,7 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 
 		return s.QueryFromFulltext(fulltextResults, *filters, q.Limit, q.Offset, q.FullText)
 	}
-	return s.QueryRaw(filters, q.Limit, q.Offset)
+	return s.QueryRaw(spaceId, filters, q.Limit, q.Offset)
 }
 
 // jsonHighlightToRanges converts json highlight to runes ranges
@@ -447,8 +455,8 @@ func iterateOverAndFilters(fs []database.Filter) []string {
 }
 
 // TODO: objstore: no one uses total
-func (s *dsObjectStore) QueryObjectIDs(q database.Query) (ids []string, total int, err error) {
-	recs, err := s.performQuery(q)
+func (s *dsObjectStore) QueryObjectIDs(spaceId string, q database.Query) (ids []string, total int, err error) {
+	recs, err := s.performQuery(spaceId, q)
 	if err != nil {
 		return nil, 0, fmt.Errorf("build query: %w", err)
 	}
@@ -536,7 +544,7 @@ func (p *collatorBufferPool) put(b *collate.Buffer) {
 	p.pool.Put(b)
 }
 
-func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *types.Struct)) (err error) {
+func (s *dsObjectStore) QueryIterate(spaceId string, q database.Query, proc func(details *types.Struct)) (err error) {
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 

@@ -237,7 +237,7 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 }
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
-	recs, err := i.store.Query(database.Query{
+	recs, err := i.store.Query(space.Id(), database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
@@ -274,13 +274,8 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 	if !flags.removeOldFiles {
 		return nil
 	}
-	ids, _, err := i.store.QueryObjectIDs(database.Query{
+	ids, _, err := i.store.QueryObjectIDs(spaceId, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
@@ -340,7 +335,7 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 	}
 
 	if flags.bundledTemplates {
-		existing, _, err := i.store.QueryObjectIDs(database.Query{
+		existing, _, err := i.store.QueryObjectIDs(space.Id(), database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyType.String(),

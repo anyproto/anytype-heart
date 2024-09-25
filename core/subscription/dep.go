@@ -122,7 +122,7 @@ func (ds *dependencyService) isRelationObject(key string) bool {
 	if isObj, ok := ds.isRelationObjMap[key]; ok {
 		return isObj
 	}
-	relFormat, err := ds.s.objectStore.GetRelationFormatByKey(key)
+	relFormat, err := ds.s.objectStore.GetRelationFormatByKey("TODO", key)
 	if err != nil {
 		log.Errorf("can't get relation %s: %v", key, err)
 		return false

@@ -169,7 +169,7 @@ func (b *queryBuilder) extractOrder(sorts []*model.BlockContentDataviewSort) Set
 	if len(sorts) > 0 {
 		order := SetOrder{}
 		for _, sort := range sorts {
-			format, err := b.objectStore.GetRelationFormatByKey(sort.RelationKey)
+			format, err := b.objectStore.GetRelationFormatByKey(b.spaceId, sort.RelationKey)
 			if err != nil {
 				format = sort.Format
 			}
@@ -249,7 +249,7 @@ type Filters struct {
 }
 
 // ListRelationOptions returns options for specific relation
-func ListRelationOptions(store ObjectStore, spaceID string, relationKey string) (options []*model.RelationOption, err error) {
+func ListRelationOptions(store ObjectStore, spaceId string, relationKey string) (options []*model.RelationOption, err error) {
 	filters := []*model.BlockContentDataviewFilter{
 		{
 			Condition:   model.BlockContentDataviewFilter_Equal,
@@ -262,14 +262,7 @@ func ListRelationOptions(store ObjectStore, spaceID string, relationKey string) 
 			Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}
-	if spaceID != "" {
-		filters = append(filters, &model.BlockContentDataviewFilter{
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Value:       pbtypes.String(spaceID),
-		})
-	}
-	records, err := store.Query(Query{
+	records, err := store.Query(spaceId, Query{
 		Filters: filters,
 	})
 

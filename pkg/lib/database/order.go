@@ -21,9 +21,9 @@ type Order interface {
 
 // ObjectStore interface is used to enrich filters
 type ObjectStore interface {
-	Query(q Query) (records []Record, err error)
-	QueryRaw(filters *Filters, limit int, offset int) ([]Record, error)
-	GetRelationFormatByKey(key string) (model.RelationFormat, error)
+	Query(spaceId string, q Query) (records []Record, err error)
+	QueryRaw(spaceId string, filters *Filters, limit int, offset int) ([]Record, error)
+	GetRelationFormatByKey(spaceId string, key string) (model.RelationFormat, error)
 }
 
 type SetOrder []Order
