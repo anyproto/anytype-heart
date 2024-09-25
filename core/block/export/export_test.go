@@ -1009,6 +1009,146 @@ func Test_docsForExport(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, 1, len(docsForExport))
 	})
+
+	t.Run("get derived objects - relation, object type with recommended relations, template with link", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		objectTypeKey := "customObjectType"
+		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeKey)
+		assert.Nil(t, err)
+
+		relationKey := "key"
+		uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
+
+		recommendedRelationKey := "recommendedRelationKey"
+		recommendedRelationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, recommendedRelationKey)
+		assert.Nil(t, err)
+
+		relationObjectTypeKey := "relation"
+		relationObjectTypeUK, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, relationObjectTypeKey)
+		assert.Nil(t, err)
+
+		storeFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:      pbtypes.String("id"),
+				bundle.RelationKeySetOf:   pbtypes.StringList([]string{relationKey}),
+				bundle.RelationKeyType:    pbtypes.String(objectTypeKey),
+				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+			},
+			{
+				bundle.RelationKeyId:          pbtypes.String(relationKey),
+				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:   pbtypes.String(uniqueKey.Marshal()),
+				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeyType:        pbtypes.String(relationObjectTypeKey),
+			},
+			{
+				bundle.RelationKeyId:                   pbtypes.String(objectTypeKey),
+				bundle.RelationKeyUniqueKey:            pbtypes.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:               pbtypes.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyRecommendedRelations: pbtypes.StringList([]string{recommendedRelationKey}),
+				bundle.RelationKeySpaceId:              pbtypes.String("spaceId"),
+				bundle.RelationKeyType:                 pbtypes.String(objectTypeKey),
+			},
+			{
+				bundle.RelationKeyId:        pbtypes.String(relationObjectTypeKey),
+				bundle.RelationKeyUniqueKey: pbtypes.String(relationObjectTypeUK.Marshal()),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:   pbtypes.String("spaceId"),
+				bundle.RelationKeyType:      pbtypes.String(objectTypeKey),
+			},
+			{
+				bundle.RelationKeyId:          pbtypes.String(recommendedRelationKey),
+				bundle.RelationKeyRelationKey: pbtypes.String(recommendedRelationKey),
+				bundle.RelationKeyUniqueKey:   pbtypes.String(recommendedRelationUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+			},
+		})
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+
+		smartBlockTest := smarttest.New("id")
+		doc := smartBlockTest.NewState().SetDetails(&types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():    pbtypes.String("id"),
+				bundle.RelationKeySetOf.String(): pbtypes.StringList([]string{relationKey}),
+				bundle.RelationKeyType.String():  pbtypes.String(objectTypeKey),
+			}})
+		doc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		smartBlockTest.Doc = doc
+
+		objectType := smarttest.New(objectTypeKey)
+		objectTypeDoc := objectType.NewState().SetDetails(&types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():   pbtypes.String(objectTypeKey),
+				bundle.RelationKeyType.String(): pbtypes.String(objectTypeKey),
+			}})
+		objectTypeDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		objectType.Doc = objectTypeDoc
+
+		relationObject := smarttest.New(relationKey)
+		relationObjectDoc := relationObject.NewState().SetDetails(&types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():   pbtypes.String(relationKey),
+				bundle.RelationKeyType.String(): pbtypes.String(relationObjectTypeKey),
+			}})
+		relationObjectDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		relationObject.Doc = relationObjectDoc
+
+		relationObjectType := smarttest.New(relationObjectTypeKey)
+		relationObjectTypeDoc := relationObjectType.NewState().SetDetails(&types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():   pbtypes.String(relationObjectTypeKey),
+				bundle.RelationKeyType.String(): pbtypes.String(objectTypeKey),
+			}})
+		relationObjectTypeDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		relationObjectType.Doc = relationObjectTypeDoc
+
+		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), objectTypeKey).Return(objectType, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), relationKey).Return(relationObject, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), relationObjectTypeKey).Return(relationObjectType, nil)
+
+		e := &export{
+			objectStore: storeFixture,
+			picker:      objectGetter,
+		}
+
+		// when
+		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
+			SpaceId:   "spaceId",
+			ObjectIds: []string{"id"},
+			Format:    model.Export_Protobuf,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, 5, len(docsForExport))
+	})
 }
 
 func Test_provideFileName(t *testing.T) {
