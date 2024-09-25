@@ -64,6 +64,7 @@ type Service interface {
 	Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error)
 	Delete(ctx context.Context, id string) (err error)
 	TechSpaceId() string
+	PersonalSpaceId() string
 	TechSpace() *clientspace.TechSpace
 	GetPersonalSpace(ctx context.Context) (space clientspace.Space, err error)
 	GetTechSpace(ctx context.Context) (space clientspace.Space, err error)

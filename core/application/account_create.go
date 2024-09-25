@@ -103,12 +103,16 @@ func (s *Service) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, a
 }
 
 func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAccountCreateRequest, newAcc *model.Account) error {
-	techSpaceId := app.MustComponent[space.Service](s.app).TechSpaceId()
+	spaceService := app.MustComponent[space.Service](s.app)
+	techSpaceId := spaceService.TechSpaceId()
+	personalSpaceId := spaceService.PersonalSpaceId()
 	var err error
 	newAcc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx)
 	if err != nil {
 		return err
 	}
+	// TODO: remove it release 8, this is need for client to set "My First Space" as space name
+	newAcc.Info.AccountSpaceId = personalSpaceId
 
 	bs := s.app.MustComponent(block.CName).(*block.Service)
 	commonDetails := []*model.Detail{
@@ -141,7 +145,6 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 			})
 		}
 	}
-	spaceService := app.MustComponent[space.Service](s.app)
 	accId, err := spaceService.TechSpace().AccountObjectId()
 	if err != nil {
 		return errors.Join(ErrSetDetails, err)
