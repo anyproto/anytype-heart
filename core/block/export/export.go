@@ -263,7 +263,7 @@ func (e *export) docsForExport(spaceID string, req pb.RpcObjectListExportRequest
 }
 
 func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested, includeFiles, isProtobuf bool) (map[string]*types.Struct, error) {
-	res, err := e.queryObjectsFromStoreByIds(spaceId, reqIds)
+	res, err := e.queryObjectsFromStoreByIds(spaceId, reqIds, bundle.RelationKeyId.String())
 	if err != nil {
 		return nil, err
 	}
@@ -278,40 +278,40 @@ func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested,
 	return e.processNotProtobuf(spaceId, docs, includeNested, includeFiles)
 }
 
-func (e *export) queryObjectsFromStoreByIds(spaceId string, reqIds []string) ([]database.Record, error) {
+func (e *export) queryObjectsFromStoreByIds(spaceId string, reqIds []string, relationFilter string) ([]database.Record, error) {
 	if len(reqIds) > objectIdsLimit {
-		return e.queryAndFilterObjectsByIds(spaceId, reqIds)
+		return e.queryAndFilterObjectsByRelation(spaceId, reqIds, relationFilter)
 	}
-	return e.queryObjectsByIds(spaceId, reqIds)
+	return e.queryObjectsByIds(spaceId, reqIds, relationFilter)
 }
 
-func (e *export) queryAndFilterObjectsByIds(spaceId string, reqIds []string) ([]database.Record, error) {
+func (e *export) queryAndFilterObjectsByRelation(spaceId string, reqIds []string, relationFilter string) ([]database.Record, error) {
 	var allObjects []database.Record
 	const singleBatchCount = 50
 	for j := 0; j < len(reqIds); {
 		if j+singleBatchCount < len(reqIds) {
-			records, err := e.queryObjectsByIds(spaceId, reqIds[j:j+singleBatchCount])
+			records, err := e.queryObjectsByIds(spaceId, reqIds[j:j+singleBatchCount], relationFilter)
 			if err != nil {
 				return nil, err
 			}
 			allObjects = append(allObjects, records...)
 		} else {
-			records, err := e.queryObjectsByIds(spaceId, reqIds[j:])
+			records, err := e.queryObjectsByIds(spaceId, reqIds[j:], relationFilter)
 			if err != nil {
 				return nil, err
 			}
 			allObjects = append(allObjects, records...)
 		}
-		j = j + singleBatchCount
+		j += singleBatchCount
 	}
 	return allObjects, nil
 }
 
-func (e *export) queryObjectsByIds(spaceId string, reqIds []string) ([]database.Record, error) {
+func (e *export) queryObjectsByIds(spaceId string, reqIds []string, relationFilter string) ([]database.Record, error) {
 	return e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				RelationKey: bundle.RelationKeyId.String(),
+				RelationKey: relationFilter,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       pbtypes.StringList(reqIds),
 			},
@@ -530,20 +530,8 @@ func (e *export) getTemplatesRelationsAndTypes(
 	allTypes []string,
 	processedObjects map[string]struct{},
 ) ([]string, []string, []string, error) {
-	templates, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(allTypes),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
-		},
-	})
+
+	templates, err := e.queryAndFilterObjectsByRelation(spaceId, allTypes, bundle.RelationKeyTargetObjectType.String())
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -607,20 +595,7 @@ func (e *export) getRelationsFromStore(spaceId string, relations []string) ([]da
 		}
 		uniqueKeys = append(uniqueKeys, uniqueKey.Marshal())
 	}
-	storeRelations, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(uniqueKeys),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
-		},
-	})
+	storeRelations, err := e.queryAndFilterObjectsByRelation(spaceId, uniqueKeys, bundle.RelationKeyUniqueKey.String())
 	if err != nil {
 		return nil, err
 	}
@@ -687,20 +662,7 @@ func (e *export) getRelationOptions(spaceId, relationKey string) ([]database.Rec
 }
 
 func (e *export) processObjectTypesAndSetOfList(spaceId string, objectTypes []string, allObjects map[string]*types.Struct, setOfList []string) error {
-	objectDetails, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyId.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(lo.Union(objectTypes, setOfList)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
-		},
-	})
+	objectDetails, err := e.queryAndFilterObjectsByRelation(spaceId, lo.Union(objectTypes, setOfList), bundle.RelationKeyId.String())
 	if err != nil {
 		return err
 	}
@@ -746,20 +708,7 @@ func (e *export) addObjectsAndCollectRecommendedRelations(
 }
 
 func (e *export) addRecommendedRelations(spaceId string, recommendedRelations []string, allObjects map[string]*types.Struct) error {
-	relations, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyId.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(recommendedRelations),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
-		},
-	})
+	relations, err := e.queryAndFilterObjectsByRelation(spaceId, recommendedRelations, bundle.RelationKeyId.String())
 	if err != nil {
 		return err
 	}
