@@ -48,7 +48,7 @@ type AccountObject interface {
 
 type TechSpace interface {
 	app.Component
-	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error)
+	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool) (err error)
 	Close(ctx context.Context) (err error)
 
 	WakeUpViews()
@@ -113,11 +113,16 @@ func (s *techSpace) Name() (name string) {
 	return CName
 }
 
-func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error) {
+func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool) (err error) {
 	s.techCore = techCoreSpace
 	s.objectCache = objectCache
-	// TODO: [PS] we should wait for account object first
-	return s.accountObjectCreate(context.Background())
+	if !create {
+		exists, err := s.accountObjectExists(s.ctx)
+		if err != nil || exists {
+			return err
+		}
+	}
+	return s.accountObjectCreate(s.ctx)
 }
 
 func (s *techSpace) WakeUpViews() {
@@ -206,6 +211,18 @@ func (s *techSpace) SpaceViewExists(ctx context.Context, spaceId string) (exists
 	defer cancel()
 	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
 	_, getErr := s.objectCache.GetObject(ctx, viewId)
+	return getErr == nil, nil
+}
+
+func (s *techSpace) accountObjectExists(ctx context.Context) (exists bool, err error) {
+	objId, err := s.AccountObjectId()
+	if err != nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, spaceViewCheckTimeout)
+	defer cancel()
+	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
+	_, getErr := s.objectCache.GetObject(ctx, objId)
 	return getErr == nil, nil
 }
 

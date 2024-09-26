@@ -123,7 +123,7 @@ func (s *spaceFactory) CreateAndSetTechSpace(ctx context.Context) (*clientspace.
 	s.techSpace = ts
 	s.app = s.app.ChildApp()
 	s.app.Register(s.techSpace)
-	err = ts.Run(techCoreSpace, ts.Cache)
+	err = ts.Run(techCoreSpace, ts.Cache, true)
 	if err != nil {
 		return nil, fmt.Errorf("run tech space: %w", err)
 	}
@@ -154,7 +154,7 @@ func (s *spaceFactory) LoadAndSetTechSpace(ctx context.Context) (*clientspace.Te
 	s.techSpace = ts
 	s.app = s.app.ChildApp()
 	s.app.Register(s.techSpace)
-	err = ts.Run(techCoreSpace, ts.Cache)
+	err = ts.Run(techCoreSpace, ts.Cache, false)
 	if err != nil {
 		return nil, fmt.Errorf("run tech space: %w", err)
 	}
