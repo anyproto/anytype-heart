@@ -1,4 +1,4 @@
-package objectstore
+package spaceobjects
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *dsObjectStore) GetRelationLink(spaceID string, key string) (*model.RelationLink, error) {
+func (s *dsObjectStore) GetRelationLink(key string) (*model.RelationLink, error) {
 	bundledRel, err := bundle.GetRelation(domain.RelationKey(key))
 	if err == nil {
 		return &model.RelationLink{
@@ -23,14 +23,14 @@ func (s *dsObjectStore) GetRelationLink(spaceID string, key string) (*model.Rela
 		}, nil
 	}
 
-	rel, err := s.FetchRelationByKey(spaceID, key)
+	rel, err := s.FetchRelationByKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("get relation: %w", err)
 	}
 	return rel.RelationLink(), nil
 }
 
-func (s *dsObjectStore) FetchRelationByKey(spaceID string, key string) (relation *relationutils.Relation, err error) {
+func (s *dsObjectStore) FetchRelationByKey(key string) (relation *relationutils.Relation, err error) {
 	bundledRel, err := bundle.GetRelation(domain.RelationKey(key))
 	if err == nil {
 		return &relationutils.Relation{Relation: bundledRel}, nil
@@ -50,7 +50,7 @@ func (s *dsObjectStore) FetchRelationByKey(spaceID string, key string) (relation
 		},
 	}
 
-	records, err := s.Query(spaceID, q)
+	records, err := s.Query(q)
 	if err != nil {
 		return
 	}
@@ -60,7 +60,7 @@ func (s *dsObjectStore) FetchRelationByKey(spaceID string, key string) (relation
 	return nil, ErrObjectNotFound
 }
 
-func (s *dsObjectStore) FetchRelationByKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error) {
+func (s *dsObjectStore) FetchRelationByKeys(keys ...string) (relations relationutils.Relations, err error) {
 	uks := make([]string, 0, len(keys))
 
 	for _, key := range keys {
@@ -70,7 +70,7 @@ func (s *dsObjectStore) FetchRelationByKeys(spaceId string, keys ...string) (rel
 		}
 		uks = append(uks, uk.Marshal())
 	}
-	records, err := s.Query(spaceId, database.Query{
+	records, err := s.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
@@ -89,16 +89,16 @@ func (s *dsObjectStore) FetchRelationByKeys(spaceId string, keys ...string) (rel
 	return
 }
 
-func (s *dsObjectStore) FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
+func (s *dsObjectStore) FetchRelationByLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
 	keys := make([]string, 0, len(links))
 	for _, l := range links {
 		keys = append(keys, l.Key)
 	}
-	return s.FetchRelationByKeys(spaceId, keys...)
+	return s.FetchRelationByKeys(keys...)
 }
 
-func (s *dsObjectStore) GetRelationByID(spaceId string, id string) (*model.Relation, error) {
-	det, err := s.GetDetails(spaceId, id)
+func (s *dsObjectStore) GetRelationByID(id string) (*model.Relation, error) {
+	det, err := s.GetDetails(id)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (s *dsObjectStore) GetRelationByID(spaceId string, id string) (*model.Relat
 	return rel.Relation, nil
 }
 
-func (s *dsObjectStore) ListAllRelations(spaceId string) (relations relationutils.Relations, err error) {
+func (s *dsObjectStore) ListAllRelations() (relations relationutils.Relations, err error) {
 	filters := []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyLayout.String(),
@@ -120,7 +120,7 @@ func (s *dsObjectStore) ListAllRelations(spaceId string) (relations relationutil
 		},
 	}
 
-	relations2, err := s.Query(spaceId, database.Query{
+	relations2, err := s.Query(database.Query{
 		Filters: filters,
 	})
 	if err != nil {
@@ -133,7 +133,7 @@ func (s *dsObjectStore) ListAllRelations(spaceId string) (relations relationutil
 	return
 }
 
-func (s *dsObjectStore) GetRelationByKey(spaceId string, key string) (*model.Relation, error) {
+func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 	q := database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -149,7 +149,7 @@ func (s *dsObjectStore) GetRelationByKey(spaceId string, key string) (*model.Rel
 		},
 	}
 
-	records, err := s.Query(spaceId, q)
+	records, err := s.Query(q)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +163,7 @@ func (s *dsObjectStore) GetRelationByKey(spaceId string, key string) (*model.Rel
 	return rel.Relation, nil
 }
 
-func (s *dsObjectStore) GetRelationFormatByKey(spaceId string, key string) (model.RelationFormat, error) {
+func (s *dsObjectStore) GetRelationFormatByKey(key string) (model.RelationFormat, error) {
 	rel, err := bundle.GetRelation(domain.RelationKey(key))
 	if err == nil {
 		return rel.Format, nil
@@ -184,7 +184,7 @@ func (s *dsObjectStore) GetRelationFormatByKey(spaceId string, key string) (mode
 		},
 	}
 
-	records, err := s.Query(spaceId, q)
+	records, err := s.Query(q)
 	if err != nil {
 		return 0, err
 	}

@@ -1,4 +1,4 @@
-package objectstore
+package spaceobjects
 
 import (
 	"errors"
@@ -32,13 +32,9 @@ const (
 	minFulltextScore = 0.02
 )
 
-func (s *dsObjectStore) Query(spaceId string, q database.Query) ([]database.Record, error) {
-	recs, err := s.performQuery(spaceId, q)
+func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
+	recs, err := s.performQuery(q)
 	return recs, err
-}
-
-func (s *dsObjectStore) QueryCrossSpace(q database.Query) ([]database.Record, error) {
-	return nil, fmt.Errorf("not implemented")
 }
 
 // getObjectsWithObjectInRelation returns objects that have a relation with the given object in the value, while also matching the given filters
@@ -165,15 +161,11 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 	return records, nil
 }
 
-func (s *dsObjectStore) QueryRaw(spaceId string, filters *database.Filters, limit int, offset int) ([]database.Record, error) {
+func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
 	if filters == nil || filters.FilterObj == nil {
 		return nil, fmt.Errorf("filter cannot be nil or unitialized")
 	}
 	return s.queryAnyStore(filters.FilterObj, filters.Order, uint(limit), uint(offset))
-}
-
-func (s *dsObjectStore) QueryRawCrossSpace(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
-	return nil, fmt.Errorf("not implemented")
 }
 
 func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
@@ -270,7 +262,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	return records[offset:], nil
 }
 
-func (s *dsObjectStore) performQuery(spaceId string, q database.Query) (records []database.Record, err error) {
+func (s *dsObjectStore) performQuery(q database.Query) (records []database.Record, err error) {
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
@@ -295,7 +287,7 @@ func (s *dsObjectStore) performQuery(spaceId string, q database.Query) (records 
 
 		return s.QueryFromFulltext(fulltextResults, *filters, q.Limit, q.Offset, q.FullText)
 	}
-	return s.QueryRaw(spaceId, filters, q.Limit, q.Offset)
+	return s.QueryRaw(filters, q.Limit, q.Offset)
 }
 
 // jsonHighlightToRanges converts json highlight to runes ranges
@@ -455,8 +447,8 @@ func iterateOverAndFilters(fs []database.Filter) []string {
 }
 
 // TODO: objstore: no one uses total
-func (s *dsObjectStore) QueryObjectIDs(spaceId string, q database.Query) (ids []string, total int, err error) {
-	recs, err := s.performQuery(spaceId, q)
+func (s *dsObjectStore) QueryObjectIDs(q database.Query) (ids []string, total int, err error) {
+	recs, err := s.performQuery(q)
 	if err != nil {
 		return nil, 0, fmt.Errorf("build query: %w", err)
 	}
@@ -467,7 +459,7 @@ func (s *dsObjectStore) QueryObjectIDs(spaceId string, q database.Query) (ids []
 	return ids, len(recs), nil
 }
 
-func (s *dsObjectStore) QueryByID(spaceId string, ids []string) (records []database.Record, err error) {
+func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err error) {
 	for _, id := range ids {
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
@@ -497,46 +489,16 @@ func (s *dsObjectStore) QueryByID(spaceId string, ids []string) (records []datab
 	return
 }
 
-func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) (records []database.Record, err error) {
-	for _, id := range ids {
-		// Don't use spaceID because expected objects are virtual
-		if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
-			if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
-				details, err := s.sourceService.DetailsFromIdBasedSource(id)
-				if err != nil {
-					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
-					continue
-				}
-				details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
-				records = append(records, database.Record{Details: details})
-				continue
-			}
-		}
-		doc, err := s.objects.FindId(s.componentCtx, id)
-		if err != nil {
-			log.Infof("QueryByIds failed to find id: %s", id)
-			continue
-		}
-		details, err := pbtypes.JsonToProto(doc.Value())
-		if err != nil {
-			log.Errorf("QueryByIds failed to extract details: %s", id)
-			continue
-		}
-		records = append(records, database.Record{Details: details})
-	}
-	return
-}
-
-func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(spaceId string, ids []string, sub database.Subscription) (records []database.Record, closeFunc func(), err error) {
-	s.Lock()
-	defer s.Unlock()
+func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, closeFunc func(), err error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
 	if sub == nil {
 		err = fmt.Errorf("subscription func is nil")
 		return
 	}
 	sub.Subscribe(ids)
-	records, err = s.QueryByID(spaceId, ids)
+	records, err = s.QueryByID(ids)
 	if err != nil {
 		// can mean only the datastore is already closed, so we can resign and return
 		log.Errorf("QueryByIDAndSubscribeForChanges failed to query ids: %v", err)
@@ -574,7 +536,7 @@ func (p *collatorBufferPool) put(b *collate.Buffer) {
 	p.pool.Put(b)
 }
 
-func (s *dsObjectStore) QueryIterate(spaceId string, q database.Query, proc func(details *types.Struct)) (err error) {
+func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *types.Struct)) (err error) {
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
@@ -622,4 +584,25 @@ func (s *dsObjectStore) QueryIterate(spaceId string, q database.Query, proc func
 		return
 	}
 	return
+}
+
+func (s *dsObjectStore) ListIds() ([]string, error) {
+	var ids []string
+	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
+	if err != nil {
+		return nil, fmt.Errorf("find all: %w", err)
+	}
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, errors.Join(fmt.Errorf("get doc: %w", err), iter.Close())
+		}
+		id := doc.Value().GetStringBytes("id")
+		ids = append(ids, string(id))
+	}
+	err = iter.Err()
+	if err != nil {
+		return nil, errors.Join(fmt.Errorf("iterate: %w", err), iter.Close())
+	}
+	return ids, iter.Close()
 }

@@ -1,4 +1,4 @@
-package objectstore
+package spaceobjects
 
 import (
 	"context"
@@ -14,14 +14,13 @@ import (
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, spaceId string, id string, details *types.Struct) error {
+func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error {
 	if details == nil {
 		return nil
 	}
@@ -49,7 +48,7 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, spaceId string,
 		return jsonVal, true, nil
 	}))
 	if isModified {
-		s.sendUpdatesToSubscriptions(id, details)
+		s.subManager.sendUpdatesToSubscriptions(id, details)
 	}
 
 	if err != nil {
@@ -72,24 +71,18 @@ func (s *dsObjectStore) migrateLocalDetails(objectId string, details *types.Stru
 	return true
 }
 
-func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, spaceId string, id string, links []string) error {
+func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links []string) error {
 	added, removed, err := s.updateObjectLinks(ctx, id, links)
 	if err != nil {
 		return err
 	}
-	s.RLock()
-	defer s.RUnlock()
-	if s.onLinksUpdateCallback != nil && len(added)+len(removed) > 0 {
-		s.onLinksUpdateCallback(LinksUpdateInfo{
-			LinksFromId: id,
-			Added:       added,
-			Removed:     removed,
-		})
-	}
+
+	s.subManager.updateObjectLinks(id, added, removed)
+
 	return nil
 }
 
-func (s *dsObjectStore) UpdatePendingLocalDetails(spaceId string, id string, proc func(details *types.Struct) (*types.Struct, error)) error {
+func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
 	if proc == nil {
 		return nil
 	}
@@ -157,7 +150,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(spaceId string, id string, pro
 
 // ModifyObjectDetails updates existing details in store using modification function `proc`
 // `proc` should return ErrDetailsNotChanged in case old details are empty or no changes were made
-func (s *dsObjectStore) ModifyObjectDetails(spaceId string, id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error {
+func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error {
 	if proc == nil {
 		return nil
 	}
@@ -191,7 +184,7 @@ func (s *dsObjectStore) ModifyObjectDetails(spaceId string, id string, proc func
 		if len(diff) == 0 {
 			return nil, false, nil
 		}
-		s.sendUpdatesToSubscriptions(id, newDetails)
+		s.subManager.sendUpdatesToSubscriptions(id, newDetails)
 		return jsonVal, true, nil
 	}))
 
@@ -217,19 +210,4 @@ func (s *dsObjectStore) updateObjectLinks(ctx context.Context, id string, links 
 		return val, len(added)+len(removed) > 0, nil
 	}))
 	return
-}
-
-func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
-	detCopy := pbtypes.CopyStruct(details, false)
-	detCopy.Fields[database.RecordIDField] = pbtypes.ToValue(id)
-	s.RLock()
-	defer s.RUnlock()
-	if s.onChangeCallback != nil {
-		s.onChangeCallback(database.Record{
-			Details: detCopy,
-		})
-	}
-	for _, sub := range s.subscriptions {
-		_ = sub.PublishAsync(id, detCopy)
-	}
 }

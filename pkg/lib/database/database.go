@@ -262,7 +262,7 @@ func ListRelationOptions(store ObjectStore, spaceId string, relationKey string) 
 			Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}
-	records, err := store.Query(spaceId, Query{
+	records, err := store.Query(Query{
 		Filters: filters,
 	})
 

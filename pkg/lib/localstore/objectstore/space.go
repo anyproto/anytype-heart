@@ -12,8 +12,14 @@ type SpaceNameGetter interface {
 }
 
 func (d *dsObjectStore) GetSpaceName(spaceId string) string {
-	records, err := d.Query(spaceId, database.Query{
+	techSpaceId := "TODOSPACEtechspace"
+	records, err := d.SpaceId(techSpaceId).Query(techSpaceId, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyTargetSpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,

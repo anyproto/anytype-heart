@@ -1,4 +1,4 @@
-package objectstore
+package spaceobjects
 
 import (
 	"testing"

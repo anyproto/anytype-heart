@@ -1,4 +1,4 @@
-package objectstore
+package spaceobjects
 
 import (
 	"encoding/json"
@@ -6,10 +6,11 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/valyala/fastjson"
 )
 
 // SetActiveViews accepts map of active views by blocks, as objects can handle multiple dataview blocks
-func (s *dsObjectStore) SetActiveViews(spaceId string, objectId string, views map[string]string) error {
+func (s *dsObjectStore) SetActiveViews(objectId string, views map[string]string) error {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -24,8 +25,8 @@ func (s *dsObjectStore) SetActiveViews(spaceId string, objectId string, views ma
 	return err
 }
 
-func (s *dsObjectStore) SetActiveView(spaceId string, objectId, blockId, viewId string) error {
-	views, err := s.GetActiveViews(spaceId, objectId)
+func (s *dsObjectStore) SetActiveView(objectId, blockId, viewId string) error {
+	views, err := s.GetActiveViews(objectId)
 	// if active views are not found in BD, or we could not parse them, then we need to rewrite them
 	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 		return err
@@ -34,11 +35,11 @@ func (s *dsObjectStore) SetActiveView(spaceId string, objectId, blockId, viewId 
 		views = make(map[string]string, 1)
 	}
 	views[blockId] = viewId
-	return s.SetActiveViews(spaceId, objectId, views)
+	return s.SetActiveViews(objectId, views)
 }
 
 // GetActiveViews returns a map of activeViews by block ids
-func (s *dsObjectStore) GetActiveViews(spaceId string, objectId string) (map[string]string, error) {
+func (s *dsObjectStore) GetActiveViews(objectId string) (map[string]string, error) {
 	doc, err := s.activeViews.FindId(s.componentCtx, objectId)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return nil, nil
@@ -50,4 +51,16 @@ func (s *dsObjectStore) GetActiveViews(spaceId string, objectId string) (map[str
 	views := map[string]string{}
 	err = json.Unmarshal(val, &views)
 	return views, err
+}
+
+func keyValueItem(arena *fastjson.Arena, key string, value any) (*fastjson.Value, error) {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := arena.NewObject()
+	obj.Set("id", arena.NewString(key))
+	obj.Set("value", arena.NewStringBytes(raw))
+	return obj, nil
 }
