@@ -225,7 +225,7 @@ func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ..
 			return
 		}
 
-		err = i.store.SaveLastIndexedHeadsHash(ctx, info.Id, headHashToIndex)
+		err = i.store.SaveLastIndexedHeadsHash(ctx, info.Space.Id(), info.Id, headHashToIndex)
 		if err != nil {
 			log.With("objectID", info.Id).Errorf("failed to save indexed heads hash: %v", err)
 		}
@@ -236,7 +236,7 @@ func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ..
 		return nil
 	}
 
-	lastIndexedHash, err := i.store.GetLastIndexedHeadsHash(ctx, info.Id)
+	lastIndexedHash, err := i.store.GetLastIndexedHeadsHash(ctx, info.Space.Id(), info.Id)
 	if err != nil {
 		log.With("object", info.Id).Errorf("failed to get last indexed heads hash: %v", err)
 	}

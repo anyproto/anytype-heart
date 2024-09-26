@@ -360,7 +360,7 @@ func (e *export) getNested(spaceID string, id string, docs map[string]*types.Str
 			if !validType(sbt) {
 				continue
 			}
-			rec, qErr := e.objectStore.QueryByID([]string{link})
+			rec, qErr := e.objectStore.QueryByID(spaceID, []string{link})
 			if qErr != nil {
 				log.Errorf("failed to query id %s, err: %s", qErr, err)
 				continue

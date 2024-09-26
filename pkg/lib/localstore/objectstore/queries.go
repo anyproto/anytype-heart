@@ -467,7 +467,7 @@ func (s *dsObjectStore) QueryObjectIDs(spaceId string, q database.Query) (ids []
 	return ids, len(recs), nil
 }
 
-func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err error) {
+func (s *dsObjectStore) QueryByID(spaceId string, ids []string) (records []database.Record, err error) {
 	for _, id := range ids {
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
@@ -497,7 +497,37 @@ func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err 
 	return
 }
 
-func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, closeFunc func(), err error) {
+func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) (records []database.Record, err error) {
+	for _, id := range ids {
+		// Don't use spaceID because expected objects are virtual
+		if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
+			if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
+				details, err := s.sourceService.DetailsFromIdBasedSource(id)
+				if err != nil {
+					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
+					continue
+				}
+				details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+				records = append(records, database.Record{Details: details})
+				continue
+			}
+		}
+		doc, err := s.objects.FindId(s.componentCtx, id)
+		if err != nil {
+			log.Infof("QueryByIds failed to find id: %s", id)
+			continue
+		}
+		details, err := pbtypes.JsonToProto(doc.Value())
+		if err != nil {
+			log.Errorf("QueryByIds failed to extract details: %s", id)
+			continue
+		}
+		records = append(records, database.Record{Details: details})
+	}
+	return
+}
+
+func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(spaceId string, ids []string, sub database.Subscription) (records []database.Record, closeFunc func(), err error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -506,7 +536,7 @@ func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub databa
 		return
 	}
 	sub.Subscribe(ids)
-	records, err = s.QueryByID(ids)
+	records, err = s.QueryByID(spaceId, ids)
 	if err != nil {
 		// can mean only the datastore is already closed, so we can resign and return
 		log.Errorf("QueryByIDAndSubscribeForChanges failed to query ids: %v", err)

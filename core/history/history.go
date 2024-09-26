@@ -102,7 +102,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		Types:     true,
 	})
 	// nolint:errcheck
-	meta, _ := h.objectStore.QueryByID(dependentObjectIDs)
+	meta, _ := h.objectStore.QueryByIdCrossSpace(dependentObjectIDs)
 
 	meta = append(meta, database.Record{Details: s.CombinedDetails()})
 	details := make([]*model.ObjectViewDetailsSet, 0, len(meta))
@@ -263,7 +263,7 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 		Relations: false,
 		Types:     true,
 	})
-	meta, err := h.objectStore.QueryByID(dependentObjectIDs)
+	meta, err := h.objectStore.QueryByIdCrossSpace(dependentObjectIDs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get dependencies: %w", err)
 	}

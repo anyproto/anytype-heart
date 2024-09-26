@@ -479,7 +479,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
 		}
 
-		lastHash, err := i.store.GetLastIndexedHeadsHash(ctx, tid)
+		lastHash, err := i.store.GetLastIndexedHeadsHash(ctx, space.Id(), tid)
 		if err != nil {
 			logErr(err)
 			continue

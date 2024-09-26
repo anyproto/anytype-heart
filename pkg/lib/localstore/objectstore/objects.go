@@ -39,32 +39,39 @@ var (
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
 
+type CrossSpace interface {
+	QueryCrossSpace(q database.Query) (records []database.Record, err error)
+	QueryRawCrossSpace(f *database.Filters, limit int, offset int) (records []database.Record, err error)
+	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
+
+	SubscribeForAll(callback func(rec database.Record))
+	ListIdsCrossSpace() ([]string, error)
+	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
+
+	AccountStore
+	VirtualSpacesStore
+	IndexerStore
+}
+
 // nolint: interfacebloat
 type ObjectStore interface {
 	app.ComponentRunnable
-	IndexerStore
-	AccountStore
-	VirtualSpacesStore
-	SpaceNameGetter
 
-	SubscribeForAll(callback func(rec database.Record))
+	SpaceNameGetter
+	CrossSpace
 
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(spaceId string, q database.Query) (records []database.Record, err error)
-	QueryCrossSpace(q database.Query) (records []database.Record, err error)
-
 	QueryRaw(spaceId string, f *database.Filters, limit int, offset int) (records []database.Record, err error)
-	QueryRawCrossSpace(f *database.Filters, limit int, offset int) (records []database.Record, err error)
-
-	QueryByID(ids []string) (records []database.Record, err error)
-	QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
+	QueryByID(spaceId string, ids []string) (records []database.Record, err error)
+	QueryByIDAndSubscribeForChanges(spaceId string, ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
 	QueryObjectIDs(spaceId string, q database.Query) (ids []string, total int, err error)
 	QueryIterate(spaceId string, q database.Query, proc func(details *types.Struct)) error
 
 	HasIDs(spaceId string, ids []string) (exists []string, err error)
 	GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error)
 	List(spaceID string, includeArchived bool) ([]*model.ObjectInfo, error)
-	ListIdsCrossSpace() ([]string, error)
+
 	ListIdsBySpace(spaceId string) ([]string, error)
 
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
@@ -100,7 +107,6 @@ type ObjectStore interface {
 	GetRelationFormatByKey(spaceId string, key string) (model.RelationFormat, error)
 
 	GetObjectType(spaceId string, id string) (*model.ObjectType, error)
-	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
 
 	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 }
@@ -117,8 +123,8 @@ type IndexerStore interface {
 	// SaveChecksums Used to save checksums and force reindex counter
 	SaveChecksums(spaceID string, checksums *model.ObjectStoreChecksums) (err error)
 
-	GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error)
-	SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error)
+	GetLastIndexedHeadsHash(ctx context.Context, spaceId string, id string) (headsHash string, err error)
+	SaveLastIndexedHeadsHash(ctx context.Context, spaceId string, id string, headsHash string) (err error)
 }
 
 type AccountStore interface {

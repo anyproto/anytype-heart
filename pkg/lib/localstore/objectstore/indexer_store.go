@@ -114,7 +114,7 @@ func (s *dsObjectStore) GetGlobalChecksums() (checksums *model.ObjectStoreChecks
 const headsStateField = "h"
 
 // GetLastIndexedHeadsHash return empty hash without error if record was not found
-func (s *dsObjectStore) GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error) {
+func (s *dsObjectStore) GetLastIndexedHeadsHash(ctx context.Context, spaceId string, id string) (headsHash string, err error) {
 	doc, err := s.headsState.FindId(ctx, id)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return "", nil
@@ -122,7 +122,7 @@ func (s *dsObjectStore) GetLastIndexedHeadsHash(ctx context.Context, id string) 
 	return string(doc.Value().GetStringBytes(headsStateField)), nil
 }
 
-func (s *dsObjectStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) error {
+func (s *dsObjectStore) SaveLastIndexedHeadsHash(ctx context.Context, spaceId string, id string, headsHash string) error {
 	_, err := s.headsState.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
 		val.Set(headsStateField, arena.NewString(headsHash))
 		return val, true, nil

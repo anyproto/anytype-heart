@@ -117,7 +117,7 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 		closeSub func()
 	)
 
-	records, closeSub, err = s.objectStore.QueryByIDAndSubscribeForChanges([]string{profileObjectId}, sub)
+	records, closeSub, err = s.objectStore.QueryByIDAndSubscribeForChanges(personalSpace.Id(), []string{profileObjectId}, sub)
 	if err != nil {
 		return err
 	}

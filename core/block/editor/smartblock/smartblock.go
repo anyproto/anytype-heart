@@ -456,7 +456,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	sb.setDependentIDs(depIDs)
 
 	var records []database.Record
-	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIDAndSubscribeForChanges(sb.depIds, sb.recordsSub)
+	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIDAndSubscribeForChanges(sb.SpaceID(), sb.depIds, sb.recordsSub)
 	if err != nil {
 		// datastore unavailable, cancel the subscription
 		sb.recordsSub.Close()
@@ -804,7 +804,7 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 		return true
 	}
 	newIDs := sb.recordsSub.Subscribe(sb.depIds)
-	records, err := sb.objectStore.QueryByID(newIDs)
+	records, err := sb.objectStore.QueryByID(sb.SpaceID(), newIDs)
 	if err != nil {
 		log.Errorf("queryById error: %v", err)
 	}
