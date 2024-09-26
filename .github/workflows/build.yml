@@ -15,10 +15,6 @@ on:
         description: 'Run perf test times'
         required: true
         default: '0'
-      nightly-mode:
-        description: 'Nightly build. Use staging network and do not publish to maven'
-        required: true
-        default: 'false'
   schedule:
     - cron: '0 0 * * *' # every day at midnight
       filters:
@@ -100,10 +96,6 @@ jobs:
             if [ -z "$VERSION" ]; then
               VERSION=$(git rev-parse --short HEAD)
             fi
-            if [[ "${{ github.event.inputs.nightly-mode }}" == "true" ]]; then
-             echo "${{ secrets.STAGING_NODE_CONF }}" > ./core/anytype/config/nodes/custom.yml
-             echo BUILD_TAG_NETWORK=envnetworkcustom >> $GITHUB_ENV
-            fi
           fi
           if [ -z "$VERSION" ]; then
             VERSION=${GITHUB_REF##*/}
@@ -170,7 +162,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Make JS protos
-        if: github.event_name == 'push' || github.event.inputs.nightly-mode == 'true'
+        if: github.event_name == 'push'
         run: |
           make protos-js
           mv dist/js/pb protobuf
@@ -186,7 +178,7 @@ jobs:
           cp pkg/lib/bundle/internalRelations.json ./json
           cp pkg/lib/bundle/internalTypes.json ./json
       - name: Pack server win
-        if: github.event_name == 'push' || github.event.inputs.nightly-mode == 'true'
+        if: github.event_name == 'push'
         run: |
           declare -a arr=("windows-amd64")
           for i in "${arr[@]}"
@@ -197,7 +189,7 @@ jobs:
           mv js_${VERSION}_${OSARCH}.zip .release/
           done
       - name: Pack server osx
-        if: github.event_name == 'push' || github.event.inputs.nightly-mode == 'true'
+        if: github.event_name == 'push'
         run: |
           declare -a arr=("darwin-amd64" "darwin-arm64")
           for i in "${arr[@]}"
@@ -240,7 +232,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
       - name: Publish ios lib to maven
-        if: github.event.inputs.nightly-mode == 'false'
         run: |
           gradle publish
         env:
@@ -270,7 +261,6 @@ jobs:
           gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf json
           mv android_lib_${VERSION}.tar.gz .release/
       - name: Publish android lib to maven
-        if: github.event.inputs.nightly-mode == 'false'
         run: |
           gradle publish
         env:
@@ -279,7 +269,7 @@ jobs:
           MAVEN_ARTIFACT_ID: 'anytype-heart-android'
           MAVEN_ARTIFACT_NAME: 'lib.aar'
       - name: Release
-        if: github.event_name == 'push' && github.event.inputs.nightly-mode == 'false'
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v1
         with:
           prerelease: ${{ contains(github.ref, '-rc') }}
@@ -288,29 +278,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # upload release artifacts to s3 {{
-      - name: Install AWS CLI
-        if: github.event.inputs.nightly-mode == 'true'
-        run: |
-          if ! which aws; then
-            brew install awscli
-          fi
-          aws --version
-      - name: Configure AWS credentials
-        if: github.event.inputs.nightly-mode == 'true'
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.NIGHTLY_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.NIGHTLY_AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.NIGHTLY_AWS_REGION }}
-      - name: Upload build artifacts to S3
-        if: github.event.inputs.nightly-mode == 'true'
-        run: |
-          aws s3 cp .release/ s3://${{ secrets.NIGHTLY_AWS_S3_BUCKET }}/mw/ --recursive --acl public-read
-      # }}
-
   build_linux:
-    if: github.event_name == 'push' || github.event.inputs.nightly-mode == 'true'
+    if: github.event_name == 'push'
     runs-on: ubuntu-22.04
     steps:
       - name: Install Go
@@ -379,10 +348,6 @@ jobs:
             if [ -z "$VERSION" ]; then
               VERSION=$(git rev-parse --short HEAD)
             fi
-            if [[ "${{ github.event.inputs.nightly-mode }}" == "true" ]]; then
-             echo "${{ secrets.STAGING_NODE_CONF }}" > ./core/anytype/config/nodes/custom.yml
-             echo BUILD_TAG_NETWORK=envnetworkcustom >> $GITHUB_ENV
-            fi
           fi
           if [ -z "$VERSION" ]; then
             VERSION=${GITHUB_REF##*/}
@@ -439,7 +404,7 @@ jobs:
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
       - name: Release
-        if: github.event_name == 'push' && github.event.inputs.nightly-mode == 'false'
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v1
         with:
           prerelease: ${{ contains(github.ref, '-rc') }}
@@ -447,21 +412,3 @@ jobs:
           files: '.release/*'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # upload release artifacts to s3 {{
-      - name: Check aws version
-        if: github.event.inputs.nightly-mode == 'true'
-        run: |
-          aws --version
-      - name: Configure AWS credentials
-        if: github.event.inputs.nightly-mode == 'true'
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.NIGHTLY_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.NIGHTLY_AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.NIGHTLY_AWS_REGION }}
-      - name: Upload build artifacts to S3
-        if: github.event.inputs.nightly-mode == 'true'
-        run: |
-          aws s3 cp .release/ s3://${{ secrets.NIGHTLY_AWS_S3_BUCKET }}/mw/ --recursive --acl public-read
-      # }}
