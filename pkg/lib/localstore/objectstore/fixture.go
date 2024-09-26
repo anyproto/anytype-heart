@@ -62,7 +62,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		arenaPool:          &fastjson.ArenaPool{},
 		repoPath:           walletService.RepoPath(),
 		oldStore:           oldStore,
-		collatorBufferPool: newCollatorBufferPool(),
+		// collatorBufferPool: newCollatorBufferPool(),
 	}
 
 	t.Cleanup(func() {
@@ -128,7 +128,7 @@ func (fx *StoreFixture) AddObjects(t testing.TB, objects []TestObject) {
 	for _, obj := range objects {
 		id := obj[bundle.RelationKeyId].GetStringValue()
 		require.NotEmpty(t, id)
-		err := fx.UpdateObjectDetails(context.Background(), "TODOSPACE", id, makeDetails(obj))
+		err := fx.SpaceId("TODOSPACE").UpdateObjectDetails(context.Background(), id, makeDetails(obj))
 		require.NoError(t, err)
 	}
 }

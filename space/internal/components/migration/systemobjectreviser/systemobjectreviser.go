@@ -70,7 +70,7 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 }
 
 func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string) (map[string]*types.Struct, error) {
-	records, err := store.Query(spaceId, database.Query{
+	records, err := store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),

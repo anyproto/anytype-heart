@@ -728,7 +728,7 @@ func (exIn *FilterOptionsEqual) String() string {
 
 func optionsToMap(spaceID string, key string, store ObjectStore) map[string]string {
 	result := make(map[string]string)
-	options, err := ListRelationOptions(store, spaceID, key)
+	options, err := store.ListRelationOptions(key)
 	if err != nil {
 		log.Warn("nil objectStore for getting options")
 		return result
@@ -747,7 +747,7 @@ func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFil
 	if err != nil {
 		return nil, fmt.Errorf("make nested filter %s -> %s: %w", relationKey, nestedRelationKey, err)
 	}
-	records, err := store.QueryRaw(spaceID, &Filters{FilterObj: nestedFilter}, 0, 0)
+	records, err := store.QueryRaw(&Filters{FilterObj: nestedFilter}, 0, 0)
 	if err != nil {
 		return nil, fmt.Errorf("enrich nested filter %s: %w", nestedFilter, err)
 	}
@@ -822,7 +822,7 @@ func makeFilterNestedNotIn(spaceID string, rawFilter *model.BlockContentDataview
 	if err != nil {
 		return nil, fmt.Errorf("make nested filter %s -> %s: %w", relationKey, nestedRelationKey, err)
 	}
-	records, err := store.QueryRaw(spaceID, &Filters{FilterObj: subQueryFilter}, 0, 0)
+	records, err := store.QueryRaw(&Filters{FilterObj: subQueryFilter}, 0, 0)
 	if err != nil {
 		return nil, fmt.Errorf("enrich nested filter: %w", err)
 	}

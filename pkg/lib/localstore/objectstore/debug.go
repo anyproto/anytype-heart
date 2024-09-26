@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -14,6 +15,7 @@ func (s *dsObjectStore) DebugRouter(r chi.Router) {
 }
 
 func (s *dsObjectStore) debugDetails(req *http.Request) (*model.ObjectDetails, error) {
-	id := chi.URLParam(req, "id")
-	return s.GetDetails("TODO", id)
+	// id := chi.URLParam(req, "id")
+	return nil, fmt.Errorf("not implemented")
+	// return s.GetDetails("TODO", id)
 }

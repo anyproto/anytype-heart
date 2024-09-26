@@ -6,10 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/query"
-	"github.com/valyala/fastjson"
-
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -109,23 +105,4 @@ func (s *dsObjectStore) SaveChecksums(spaceId string, checksums *model.ObjectSto
 func (s *dsObjectStore) GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error) {
 	// TODO What to do?
 	return s.GetChecksums("global")
-}
-
-const headsStateField = "h"
-
-// GetLastIndexedHeadsHash return empty hash without error if record was not found
-func (s *dsObjectStore) GetLastIndexedHeadsHash(ctx context.Context, spaceId string, id string) (headsHash string, err error) {
-	doc, err := s.headsState.FindId(ctx, id)
-	if errors.Is(err, anystore.ErrDocNotFound) {
-		return "", nil
-	}
-	return string(doc.Value().GetStringBytes(headsStateField)), nil
-}
-
-func (s *dsObjectStore) SaveLastIndexedHeadsHash(ctx context.Context, spaceId string, id string, headsHash string) error {
-	_, err := s.headsState.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
-		val.Set(headsStateField, arena.NewString(headsHash))
-		return val, true, nil
-	}))
-	return err
 }

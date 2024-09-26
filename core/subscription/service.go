@@ -635,7 +635,7 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 		if uk, err = domain.UnmarshalUniqueKey(source); err != nil {
 			// todo: gradually escalate to return error
 			log.Info("Using object id instead of uniqueKey is deprecated in the Source")
-			uk, err = s.objectStore.GetUniqueKeyById("TODO", source)
+			uk, err = s.objectStore.SpaceId("TODOSPACE").GetUniqueKeyById(source)
 			if err != nil {
 				return nil, err
 			}
@@ -653,7 +653,7 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 			RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value:       pbtypes.StringList(typeUniqueKeys),
-		}, s.objectStore)
+		}, s.objectStore.SpaceId("TODOSPACE"))
 		if err != nil {
 			return nil, fmt.Errorf("make nested filter: %w", err)
 		}

@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -27,10 +27,10 @@ type Dashboard struct {
 	basic.AllOperations
 	collection.Collection
 
-	objectStore objectstore.ObjectStore
+	objectStore spaceobjects.Store
 }
 
-func NewDashboard(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, layoutConverter converter.LayoutConverter) *Dashboard {
+func NewDashboard(sb smartblock.SmartBlock, objectStore spaceobjects.Store, layoutConverter converter.LayoutConverter) *Dashboard {
 	return &Dashboard{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter, nil, nil),
@@ -75,7 +75,7 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 		return
 	}
 
-	records, err := p.objectStore.Query(p.SpaceID(), database.Query{
+	records, err := p.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyIsFavorite.String(),

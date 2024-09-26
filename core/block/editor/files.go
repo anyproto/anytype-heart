@@ -25,12 +25,13 @@ var fileRequiredRelations = append(pageRequiredRelations, []domain.RelationKey{
 }...)
 
 func (f *ObjectFactory) newFile(sb smartblock.SmartBlock) *File {
-	basicComponent := basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater)
+	store := f.objectStore.SpaceId(sb.SpaceID())
+	basicComponent := basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater)
 	return &File{
 		SmartBlock:        sb,
 		ChangeReceiver:    sb.(source.ChangeReceiver),
 		AllOperations:     basicComponent,
-		Text:              stext.NewText(sb, f.objectStore, f.eventSender),
+		Text:              stext.NewText(sb, store, f.eventSender),
 		fileObjectService: f.fileObjectService,
 		reconciler:        f.fileReconciler,
 	}

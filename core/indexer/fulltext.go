@@ -210,7 +210,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 }
 
 func (i *indexer) ftInit() error {
-	if ft := i.store.FTSearch(); ft != nil {
+	if ft := i.ftsearch; ft != nil {
 		docCount, err := ft.DocCount()
 		if err != nil {
 			return err

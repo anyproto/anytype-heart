@@ -192,7 +192,7 @@ func (m *subObjectsAndProfileLinksMigration) migrateFilter(filter *model.BlockCo
 		log.With("relationKey", filter.RelationKey).Warnf("empty filter value")
 		return nil
 	}
-	relation, err := m.objectStore.GetRelationByKey(m.space.Id(), filter.RelationKey)
+	relation, err := m.objectStore.GetRelationByKey(filter.RelationKey)
 	if err != nil {
 		log.Warnf("migration: failed to get relation by key %s: %s", filter.RelationKey, err)
 	}

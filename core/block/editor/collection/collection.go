@@ -10,13 +10,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var ErrObjectNotFound = fmt.Errorf("object not found")
 
-func NewCollection(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) Collection {
+func NewCollection(sb smartblock.SmartBlock, objectStore spaceobjects.Store) Collection {
 	return &objectLinksCollection{SmartBlock: sb, objectStore: objectStore}
 }
 
@@ -33,7 +33,7 @@ type Collection interface {
 
 type objectLinksCollection struct {
 	smartblock.SmartBlock
-	objectStore objectstore.ObjectStore
+	objectStore spaceobjects.Store
 }
 
 func (p *objectLinksCollection) AddObject(id string) (err error) {
@@ -121,7 +121,7 @@ func (p *objectLinksCollection) ModifyLocalDetails(
 	// we do this under lock to prevent races if the object is created in parallel
 	// because in that case we can lose changes
 	err = p.Space().DoLockedIfNotExists(objectId, func() error {
-		return p.objectStore.UpdatePendingLocalDetails(p.SpaceID(), objectId, modifier)
+		return p.objectStore.UpdatePendingLocalDetails(objectId, modifier)
 	})
 	if err != nil && !errors.Is(err, ocache.ErrExists) {
 		return err

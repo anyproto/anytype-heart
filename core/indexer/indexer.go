@@ -179,7 +179,7 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 }
 
 func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
-	ids, _, err := i.store.QueryObjectIDs(spaceId, database.Query{
+	ids, _, err := i.store.SpaceId(spaceId).QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -191,7 +191,7 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	if err != nil {
 		return
 	}
-	return i.store.DeleteDetails(i.runCtx, spaceId, ids)
+	return i.store.SpaceId(spaceId).DeleteDetails(i.runCtx, ids)
 }
 
 func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
@@ -225,7 +225,7 @@ func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ..
 			return
 		}
 
-		err = i.store.SaveLastIndexedHeadsHash(ctx, info.Space.Id(), info.Id, headHashToIndex)
+		err = i.store.SpaceId(info.Space.Id()).SaveLastIndexedHeadsHash(ctx, info.Id, headHashToIndex)
 		if err != nil {
 			log.With("objectID", info.Id).Errorf("failed to save indexed heads hash: %v", err)
 		}

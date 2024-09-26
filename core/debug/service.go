@@ -250,8 +250,10 @@ func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []str
 	var wr io.Writer
 	m := jsonpb.Marshaler{Indent: " "}
 
+	store := d.store.SpaceId(spaceID)
+
 	for _, objId := range objIds {
-		doc, err := d.store.GetWithLinksInfoByID(spaceID, objId)
+		doc, err := store.GetWithLinksInfoByID(objId)
 		if err != nil {
 			var err2 error
 			wr, err2 = zw.Create(fmt.Sprintf("%s.txt", objId))

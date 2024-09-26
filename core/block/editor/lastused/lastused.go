@@ -169,7 +169,7 @@ func (u *updater) updateLastUsedDate(spc clientspace.Space, key Key, ts int64) e
 		return fmt.Errorf("cannot update lastUsedDate for object with invalid smartBlock type. Only object types and relations are expected")
 	}
 
-	details, err := u.store.GetObjectByUniqueKey(spc.Id(), uk)
+	details, err := u.store.SpaceId(spc.Id()).GetObjectByUniqueKey(uk)
 	if err != nil {
 		return fmt.Errorf("failed to get details: %w", err)
 	}

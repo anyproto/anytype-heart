@@ -113,7 +113,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		})
 	}
 
-	relations, err := h.objectStore.FetchRelationByLinks(id.SpaceID, s.PickRelationLinks())
+	relations, err := h.objectStore.SpaceId(id.SpaceID).FetchRelationByLinks(s.PickRelationLinks())
 	if err != nil {
 		return nil, nil, fmt.Errorf("fetch relations by links: %w", err)
 	}

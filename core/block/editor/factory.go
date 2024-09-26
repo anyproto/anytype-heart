@@ -28,6 +28,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -152,20 +153,21 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
 }
 
-func (f *ObjectFactory) produceSmartblock(space smartblock.Space) smartblock.SmartBlock {
+func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.SmartBlock, spaceobjects.Store) {
+	store := f.objectStore.SpaceId(space.Id())
 	return smartblock.New(
 		space,
 		f.accountService.MyParticipantId(space.Id()),
 		f.fileStore,
 		f.restrictionService,
-		f.objectStore,
+		store,
 		f.indexer,
 		f.eventSender,
-	)
+	), store
 }
 
 func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType) (smartblock.SmartBlock, error) {
-	sb := f.produceSmartblock(space)
+	sb, store := f.produceSmartblock(space)
 	switch sbType {
 	case coresb.SmartBlockTypePage,
 		coresb.SmartBlockTypeDate,
@@ -177,9 +179,9 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeChatObject:
 		return f.newPage(sb), nil
 	case coresb.SmartBlockTypeArchive:
-		return NewArchive(sb, f.objectStore), nil
+		return NewArchive(sb, store), nil
 	case coresb.SmartBlockTypeHome:
-		return NewDashboard(sb, f.objectStore, f.layoutConverter), nil
+		return NewDashboard(sb, store, f.layoutConverter), nil
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
 		return f.newProfile(sb), nil
@@ -189,13 +191,13 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeBundledTemplate:
 		return f.newTemplate(sb), nil
 	case coresb.SmartBlockTypeWorkspace:
-		return f.newWorkspace(sb), nil
+		return f.newWorkspace(sb, store), nil
 	case coresb.SmartBlockTypeSpaceView:
 		return f.newSpaceView(sb), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, f.objectStore, f.layoutConverter), nil
+		return NewWidgetObject(sb, store, f.layoutConverter), nil
 	case coresb.SmartBlockTypeNotificationObject:
 		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:

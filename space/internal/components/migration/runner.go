@@ -104,7 +104,7 @@ func (r *Runner) run(migrations ...Migration) (err error) {
 			err = errors.Join(err, e)
 			return
 		}
-		toMigrate, migrated, e := m.Run(r.ctx, log, r.store, r.spc)
+		toMigrate, migrated, e := m.Run(r.ctx, log, r.store.SpaceId(r.spc.Id()), r.spc)
 		if e != nil {
 			err = errors.Join(err, wrapError(e, m.Name(), spaceId, migrated, toMigrate))
 			continue

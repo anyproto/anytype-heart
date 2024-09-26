@@ -95,7 +95,7 @@ func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
 		resultError error
 	)
 	for spaceId, objectIds := range objectIdsPerSpace {
-		ids, err := s.store.HasIDs(spaceId, objectIds)
+		ids, err := s.store.SpaceId(spaceId).HasIDs(objectIds)
 		if err != nil {
 			return err
 		}
@@ -193,7 +193,7 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
-		ids, err := s.store.HasIDs(spaceId, objectIds)
+		ids, err := s.store.SpaceId(spaceId).HasIDs(objectIds)
 		if err != nil {
 			return err
 		}

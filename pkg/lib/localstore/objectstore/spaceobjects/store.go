@@ -74,8 +74,12 @@ type Store interface {
 	GetRelationByID(id string) (relation *model.Relation, err error)
 	GetRelationByKey(key string) (*model.Relation, error)
 	GetRelationFormatByKey(key string) (model.RelationFormat, error)
+	ListRelationOptions(relationKey string) (options []*model.RelationOption, err error)
 
 	GetObjectType(id string) (*model.ObjectType, error)
+
+	GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error)
+	SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error)
 
 	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 }

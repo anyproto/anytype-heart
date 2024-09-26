@@ -37,6 +37,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -94,7 +95,7 @@ func New(
 	currentParticipantId string,
 	fileStore filestore.FileStore,
 	restrictionService restriction.Service,
-	objectStore objectstore.ObjectStore,
+	objectStore spaceobjects.Store,
 	indexer Indexer,
 	eventSender event.Sender,
 ) SmartBlock {
@@ -243,7 +244,7 @@ type smartBlock struct {
 	// Deps
 	fileStore          filestore.FileStore
 	restrictionService restriction.Service
-	objectStore        objectstore.ObjectStore
+	objectStore        spaceobjects.Store
 	indexer            Indexer
 	eventSender        event.Sender
 }
@@ -297,7 +298,7 @@ func (sb *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 	return
 }
 
-func (sb *smartBlock) ObjectStore() objectstore.ObjectStore {
+func (sb *smartBlock) ObjectStore() spaceobjects.Store {
 	return sb.objectStore
 }
 
@@ -456,7 +457,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	sb.setDependentIDs(depIDs)
 
 	var records []database.Record
-	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIDAndSubscribeForChanges(sb.SpaceID(), sb.depIds, sb.recordsSub)
+	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIDAndSubscribeForChanges(sb.depIds, sb.recordsSub)
 	if err != nil {
 		// datastore unavailable, cancel the subscription
 		sb.recordsSub.Close()
@@ -804,7 +805,7 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 		return true
 	}
 	newIDs := sb.recordsSub.Subscribe(sb.depIds)
-	records, err := sb.objectStore.QueryByID(sb.SpaceID(), newIDs)
+	records, err := sb.objectStore.QueryByID(newIDs)
 	if err != nil {
 		log.Errorf("queryById error: %v", err)
 	}
@@ -858,7 +859,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	}
 	// todo: filter-out existing relation links?
 	// in the most cases it should save as an objectstore query
-	relations, err := sb.objectStore.FetchRelationByKeys(sb.SpaceID(), relationKeys...)
+	relations, err := sb.objectStore.FetchRelationByKeys(relationKeys...)
 	if err != nil {
 		return
 	}
@@ -898,7 +899,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 }
 
 func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
-	storedDetails, err := sb.objectStore.GetDetails(sb.SpaceID(), sb.Id())
+	storedDetails, err := sb.objectStore.GetDetails(sb.Id())
 	if err != nil || storedDetails == nil {
 		return nil, err
 	}
@@ -907,7 +908,7 @@ func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
 
 func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails *types.Struct, hasPendingLocalDetails bool) {
 	// Consume pending details
-	err := sb.objectStore.UpdatePendingLocalDetails(sb.SpaceID(), sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
+	err := sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
 		if len(pending.GetFields()) > 0 {
 			hasPendingLocalDetails = true
 		}
@@ -1234,7 +1235,7 @@ func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	} else {
 		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.objectStore.FetchRelationByLinks(sb.SpaceID(), links)
+	rels, _ := sb.objectStore.FetchRelationByLinks(links)
 	return rels
 }
 

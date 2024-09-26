@@ -64,9 +64,6 @@ type IndexerStore interface {
 	GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error)
 	// SaveChecksums Used to save checksums and force reindex counter
 	SaveChecksums(spaceID string, checksums *model.ObjectStoreChecksums) (err error)
-
-	GetLastIndexedHeadsHash(ctx context.Context, spaceId string, id string) (headsHash string, err error)
-	SaveLastIndexedHeadsHash(ctx context.Context, spaceId string, id string, headsHash string) (err error)
 }
 
 type AccountStore interface {

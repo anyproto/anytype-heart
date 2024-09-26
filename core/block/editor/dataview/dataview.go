@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -50,7 +50,7 @@ type Dataview interface {
 	GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error)
 }
 
-func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) Dataview {
+func NewDataview(sb smartblock.SmartBlock, objectStore spaceobjects.Store) Dataview {
 	dv := &sdataview{
 		SmartBlock:  sb,
 		objectStore: objectStore,
@@ -62,7 +62,7 @@ func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) 
 
 type sdataview struct {
 	smartblock.SmartBlock
-	objectStore objectstore.ObjectStore
+	objectStore spaceobjects.Store
 }
 
 func (d *sdataview) GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error) {
@@ -94,7 +94,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	}
 
-	dvContent, err := BlockBySource(d.objectStore, d.SpaceID(), source)
+	dvContent, err := BlockBySource(d.objectStore, source)
 	if err != nil {
 		return
 	}
@@ -119,7 +119,7 @@ func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKe
 		return err
 	}
 	for _, key := range relationKeys {
-		relation, err2 := d.objectStore.FetchRelationByKey(d.SpaceID(), key)
+		relation, err2 := d.objectStore.FetchRelationByKey(key)
 		if err2 != nil {
 			return err2
 		}
@@ -221,7 +221,7 @@ func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId s
 	}
 	dvBlock.SetActiveView(activeViewId)
 
-	if err = d.objectStore.SetActiveView(d.SpaceID(), d.Id(), id, activeViewId); err != nil {
+	if err = d.objectStore.SetActiveView(d.Id(), id, activeViewId); err != nil {
 		return err
 	}
 
@@ -395,7 +395,7 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 
 func (d *sdataview) injectActiveViews(info smartblock.ApplyInfo) (err error) {
 	s := info.State
-	views, err := d.objectStore.GetActiveViews(d.SpaceID(), d.Id())
+	views, err := d.objectStore.GetActiveViews(d.Id())
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return nil
 	}
@@ -432,14 +432,14 @@ func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 	return nil, fmt.Errorf("not a dataview block")
 }
 
-func BlockBySource(objectStore objectstore.ObjectStore, spaceId string, sources []string) (*model.BlockContentOfDataview, error) {
+func BlockBySource(objectStore spaceobjects.Store, sources []string) (*model.BlockContentOfDataview, error) {
 	// Empty schema
 	if len(sources) == 0 {
 		return template.MakeDataviewContent(false, nil, nil), nil
 	}
 
 	// Try object type
-	objectType, err := objectStore.GetObjectType(spaceId, sources[0])
+	objectType, err := objectStore.GetObjectType(sources[0])
 	if err == nil {
 		return template.MakeDataviewContent(false, objectType, nil), nil
 	}
@@ -447,7 +447,7 @@ func BlockBySource(objectStore objectstore.ObjectStore, spaceId string, sources 
 	// Finally, try relations
 	relations := make([]*model.RelationLink, 0, len(sources))
 	for _, relId := range sources {
-		rel, err := objectStore.GetRelationByID(spaceId, relId)
+		rel, err := objectStore.GetRelationByID(relId)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
 		}

@@ -44,7 +44,7 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 	}
 	f.FilterObj = database.FiltersOr{f.FilterObj, relationOptionFilter}
 
-	records, err := t.store.QueryRaw(spaceID, f, 0, 0)
+	records, err := t.store.SpaceId(spaceID).QueryRaw(f, 0, 0)
 	if err != nil {
 		return fmt.Errorf("init kanban by tag, objectStore query error: %w", err)
 	}

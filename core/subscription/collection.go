@@ -229,7 +229,7 @@ func (c *collectionObserver) fetchEntries(ids []string) []*entry {
 	if len(missingIDs) == 0 {
 		return res
 	}
-	recs, err := c.objectStore.QueryByID("TODOSPACE", missingIDs)
+	recs, err := c.objectStore.SpaceId("TODOSPACE").QueryByID(missingIDs)
 	if err != nil {
 		log.Error("can't query by ids:", err)
 	}
