@@ -29,11 +29,11 @@ Repository provides `flake.nix` with `devShell` which has all the build dependen
 ```bash
 nix develop .
 ```
-
-It is also convenient to use nix shell with [direnv](https://direnv.net/) with [nix-direnv](https://github.com/nix-community/nix-direnv),
-which enables `devShell` when you `cd` into directory.
-
-With direnv, you can also switch environments per project in your code editor: [emacs-direnv](https://github.com/wbolster/emacs-direnv)
+> [!TIP]
+> It is also convenient to use nix shell with [direnv](https://direnv.net/) with [nix-direnv](https://github.com/nix-community/nix-direnv),
+> which enables `devShell` when you `cd` into directory.
+>
+> With direnv, you can also switch environments per project in your code editor: [emacs-direnv](https://github.com/wbolster/emacs-direnv)
 
 ### Install custom protoc
 `make setup-protoc` to install grpc-web plugin (see [Protogen](https://github.com/anyproto/anytype-heart/blob/main/docs/Protogen.md) for additional information)
