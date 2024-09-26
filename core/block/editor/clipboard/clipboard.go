@@ -524,11 +524,13 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 			},
 		})
 		s.Add(b)
+
 		if err = cb.file.UploadState(ctx, s, b.Model().Id, file.FileSource{
-			Bytes:  fs.Data,
-			Path:   fs.LocalPath,
-			Name:   fs.Name,
-			Origin: objectorigin.Clipboard(),
+			Bytes:     fs.Data,
+			Path:      fs.LocalPath,
+			Name:      fs.Name,
+			Origin:    objectorigin.Clipboard(),
+			ImageKind: getImageKind(fs.Name),
 		}, false); err != nil {
 			return
 		}
@@ -539,6 +541,21 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 		return
 	}
 	return blockIds, cb.Apply(s)
+}
+
+func getImageKind(filename string) model.ImageKind {
+	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
+	fileExt := filepath.Ext(filename)
+	if fileExt == "" {
+		return model.ImageKind_Basic
+	}
+	fileExt = fileExt[1:]
+	for _, ext := range imageFormats {
+		if strings.EqualFold(fileExt, ext) {
+			return model.ImageKind_AutomaticallyAdded
+		}
+	}
+	return model.ImageKind_Basic
 }
 
 func (cb *clipboard) getFileBlockPosition(req *pb.RpcBlockPasteRequest) model.BlockPosition {

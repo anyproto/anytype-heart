@@ -237,7 +237,6 @@ service ClientCommands {
     rpc BlockDataviewSetSource (anytype.Rpc.BlockDataview.SetSource.Request) returns (anytype.Rpc.BlockDataview.SetSource.Response);
     rpc BlockDataviewRelationAdd (anytype.Rpc.BlockDataview.Relation.Add.Request) returns (anytype.Rpc.BlockDataview.Relation.Add.Response);
     rpc BlockDataviewRelationDelete (anytype.Rpc.BlockDataview.Relation.Delete.Request) returns (anytype.Rpc.BlockDataview.Relation.Delete.Response);
-    rpc BlockDataviewRelationListAvailable (anytype.Rpc.BlockDataview.Relation.ListAvailable.Request) returns (anytype.Rpc.BlockDataview.Relation.ListAvailable.Response);
     rpc BlockDataviewGroupOrderUpdate (anytype.Rpc.BlockDataview.GroupOrder.Update.Request) returns (anytype.Rpc.BlockDataview.GroupOrder.Update.Response);
     rpc BlockDataviewObjectOrderUpdate (anytype.Rpc.BlockDataview.ObjectOrder.Update.Request) returns (anytype.Rpc.BlockDataview.ObjectOrder.Update.Response);
     rpc BlockDataviewObjectOrderMove (anytype.Rpc.BlockDataview.ObjectOrder.Move.Request) returns (anytype.Rpc.BlockDataview.ObjectOrder.Move.Response);

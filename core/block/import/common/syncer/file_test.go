@@ -74,14 +74,15 @@ func TestFileSyncer_Sync(t *testing.T) {
 		simpleBlock := simple.New(block)
 		service := mock_syncer.NewMockBlockService(t)
 		params := pb.RpcBlockUploadRequest{
-			FilePath: "not exist",
-			BlockId:  simpleBlock.Model().GetId(),
+			ContextId: id.ObjectID,
+			FilePath:  "not exist",
+			BlockId:   simpleBlock.Model().GetId(),
 		}
 		dto := block2.UploadRequest{
 			RpcBlockUploadRequest: params,
 			ObjectOrigin:          objectorigin.Import(model.Import_Pb),
 		}
-		service.EXPECT().UploadFileBlock(id.ObjectID, dto).Return("", os.ErrNotExist)
+		service.EXPECT().UploadBlockFile(nil, dto, "", false).Return("", os.ErrNotExist)
 		syncer := NewFileSyncer(service, nil)
 
 		// when
@@ -104,14 +105,15 @@ func TestFileSyncer_Sync(t *testing.T) {
 		simpleBlock := simple.New(block)
 		service := mock_syncer.NewMockBlockService(t)
 		params := pb.RpcBlockUploadRequest{
-			FilePath: "not exist",
-			BlockId:  simpleBlock.Model().GetId(),
+			ContextId: id.ObjectID,
+			FilePath:  "not exist",
+			BlockId:   simpleBlock.Model().GetId(),
 		}
 		dto := block2.UploadRequest{
 			RpcBlockUploadRequest: params,
 			ObjectOrigin:          objectorigin.Import(model.Import_Pb),
 		}
-		service.EXPECT().UploadFileBlock(id.ObjectID, dto).Return("", fmt.Errorf("new error"))
+		service.EXPECT().UploadBlockFile(nil, dto, "", false).Return("", fmt.Errorf("new error"))
 		syncer := NewFileSyncer(service, nil)
 
 		// when
@@ -134,14 +136,15 @@ func TestFileSyncer_Sync(t *testing.T) {
 		simpleBlock := simple.New(block)
 		service := mock_syncer.NewMockBlockService(t)
 		params := pb.RpcBlockUploadRequest{
-			FilePath: "exist",
-			BlockId:  simpleBlock.Model().GetId(),
+			ContextId: id.ObjectID,
+			FilePath:  "exist",
+			BlockId:   simpleBlock.Model().GetId(),
 		}
 		dto := block2.UploadRequest{
 			RpcBlockUploadRequest: params,
 			ObjectOrigin:          objectorigin.Import(model.Import_Pb),
 		}
-		service.EXPECT().UploadFileBlock(id.ObjectID, dto).Return("fileId", nil)
+		service.EXPECT().UploadBlockFile(nil, dto, "", false).Return("fileId", nil)
 		syncer := NewFileSyncer(service, nil)
 
 		// when
@@ -163,14 +166,15 @@ func TestFileSyncer_Sync(t *testing.T) {
 		simpleBlock := simple.New(block)
 		service := mock_syncer.NewMockBlockService(t)
 		params := pb.RpcBlockUploadRequest{
-			Url:     "http://example.com",
-			BlockId: simpleBlock.Model().GetId(),
+			ContextId: id.ObjectID,
+			Url:       "http://example.com",
+			BlockId:   simpleBlock.Model().GetId(),
 		}
 		dto := block2.UploadRequest{
 			RpcBlockUploadRequest: params,
 			ObjectOrigin:          objectorigin.Import(model.Import_Pb),
 		}
-		service.EXPECT().UploadFileBlock(id.ObjectID, dto).Return("fileId", nil)
+		service.EXPECT().UploadBlockFile(nil, dto, "", false).Return("fileId", nil)
 		syncer := NewFileSyncer(service, nil)
 
 		// when

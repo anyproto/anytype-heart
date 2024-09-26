@@ -62,12 +62,13 @@ type File interface {
 }
 
 type FileSource struct {
-	Path    string
-	Url     string // nolint:revive
-	Bytes   []byte
-	Name    string
-	GroupID string
-	Origin  objectorigin.ObjectOrigin
+	Path      string
+	Url       string // nolint:revive
+	Bytes     []byte
+	Name      string
+	GroupID   string
+	Origin    objectorigin.ObjectOrigin
+	ImageKind model.ImageKind
 }
 
 type sfile struct {
@@ -160,8 +161,9 @@ func (sf *sfile) CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateA
 		return
 	}
 	if err = sf.upload(s, newId, FileSource{
-		Path: req.LocalPath,
-		Url:  req.Url,
+		Path:      req.LocalPath,
+		Url:       req.Url,
+		ImageKind: req.ImageKind,
 	}, false).Err; err != nil {
 		return
 	}
@@ -179,6 +181,9 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 		return fileuploader.UploadResult{Err: fmt.Errorf("not a file block")}
 	}
 	upl := sf.newUploader(source.Origin).SetBlock(f)
+	if source.ImageKind != model.ImageKind_Basic {
+		upl.SetImageKind(source.ImageKind)
+	}
 	if source.Path != "" {
 		upl.SetFile(source.Path)
 	} else if source.Url != "" {

@@ -66,11 +66,12 @@ func (s *FileSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b sim
 			BlockId: b.Model().Id,
 		}
 	}
+	params.ContextId = id.ObjectID
 	dto := block.UploadRequest{
 		RpcBlockUploadRequest: params,
 		ObjectOrigin:          origin,
 	}
-	_, err := s.service.UploadFileBlock(id.ObjectID, dto)
+	_, err := s.service.UploadBlockFile(nil, dto, "", false)
 	if os.IsNotExist(err) {
 		return anyerror.CleanupError(err)
 	}
