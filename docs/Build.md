@@ -45,3 +45,16 @@ Instructions to setup environment for Android: [here](https://github.com/anyprot
    Parameters:
     - `ANY_SYNC_NETWORK=/path/to/network.yml` — build using self-hosted [network configuration](https://tech.anytype.io/anytype-heart/configuration)
 2. `make protos-java` to generate java protobuf bindings into `dist/android/pb`
+
+#### Nix
+
+Repository provides `flake.nix` with `devShell` which has all the build dependencies (excluding tentivy-go pre-compiled libraries yet).
+
+```bash
+nix develop .
+```
+
+It is also convenient to use nix shell with [direnv](https://direnv.net/) with [nix-direnv](https://github.com/nix-community/nix-direnv),
+which enables `devShell` when you `cd` into directory.
+
+With direnv, you can also switch environments per project in your code editor: [emacs-direnv](https://github.com/wbolster/emacs-direnv)
