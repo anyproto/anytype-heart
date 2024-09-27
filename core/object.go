@@ -93,7 +93,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	}
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	records, err := ds.QueryCrossSpace(database.Query{
+	records, err := ds.SpaceId(req.SpaceId).Query(database.Query{
 		Filters:  req.Filters,
 		Sorts:    req.Sorts,
 		Offset:   int(req.Offset),
@@ -143,7 +143,7 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	if req.ReturnHTMLHighlightsInsteadOfRanges {
 		highlighter = ftsearch.HtmlHighlightFormatter
 	}
-	results, err := ds.QueryCrossSpace(database.Query{
+	results, err := ds.SpaceId(req.SpaceId).Query(database.Query{
 		Filters:     req.Filters,
 		Sorts:       req.Sorts,
 		Offset:      int(req.Offset),

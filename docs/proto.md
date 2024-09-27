@@ -15593,6 +15593,7 @@ deprecated in favor of SearchWithMeta
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated |  |
 | fullText | [string](#string) |  |  |
@@ -15786,6 +15787,7 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated |  |
 | fullText | [string](#string) |  |  |

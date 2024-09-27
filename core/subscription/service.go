@@ -352,7 +352,7 @@ func (s *service) subscribeForCollection(req SubscribeRequest, f *database.Filte
 }
 
 func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error) {
-	records, err := s.objectStore.QueryByIdCrossSpace(req.Ids)
+	records, err := s.objectStore.SpaceId(req.SpaceId).QueryByID(req.Ids)
 	if err != nil {
 		return
 	}
