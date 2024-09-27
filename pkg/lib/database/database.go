@@ -126,13 +126,12 @@ func injectDefaultOrder(qry Query, sorts []*model.BlockContentDataviewSort) []*m
 
 func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena, collatorBuffer *collate.Buffer) (filters *Filters, err error) {
 	// spaceID could be empty
-	spaceID := getSpaceIDFromFilters(qry.Filters)
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	qry.Sorts = injectDefaultOrder(qry, qry.Sorts)
 	filters = new(Filters)
 
 	qb := queryBuilder{
-		spaceId:        spaceID,
+		spaceId:        store.SpaceId(),
 		arena:          arena,
 		objectStore:    store,
 		collatorBuffer: collatorBuffer,

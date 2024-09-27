@@ -220,20 +220,52 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 	s.subManager.SubscribeForAll(callback)
 }
 
-func (s *dsObjectStore) ListIdsCrossSpace() ([]string, error) {
-	return nil, fmt.Errorf("not implemented")
+func (s *dsObjectStore) listStores() []spaceobjects.Store {
+	s.Lock()
+	stores := make([]spaceobjects.Store, 0, len(s.stores))
+	for _, store := range s.stores {
+		stores = append(stores, store)
+	}
+	s.Unlock()
+	return stores
 }
 
-func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) (records []database.Record, err error) {
-	return nil, fmt.Errorf("not implemented")
+func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceobjects.Store) ([]T, error)) ([]T, error) {
+	stores := s.listStores()
+
+	var result []T
+	for _, store := range stores {
+		items, err := proc(store)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, items...)
+	}
+	return result, nil
+}
+
+func (s *dsObjectStore) ListIdsCrossSpace() ([]string, error) {
+	return collectCrossSpace(s, func(store spaceobjects.Store) ([]string, error) {
+		return store.ListIds()
+	})
+}
+
+func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) ([]database.Record, error) {
+	return collectCrossSpace(s, func(store spaceobjects.Store) ([]database.Record, error) {
+		return store.QueryByID(ids)
+	})
 }
 
 func (s *dsObjectStore) QueryCrossSpace(q database.Query) ([]database.Record, error) {
-	return nil, fmt.Errorf("not implemented")
+	return collectCrossSpace(s, func(store spaceobjects.Store) ([]database.Record, error) {
+		return store.Query(q)
+	})
 }
 
 func (s *dsObjectStore) QueryRawCrossSpace(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
-	return nil, fmt.Errorf("not implemented")
+	return collectCrossSpace(s, func(store spaceobjects.Store) ([]database.Record, error) {
+		return store.QueryRaw(filters, limit, offset)
+	})
 }
 
 func (s *dsObjectStore) SubscribeLinksUpdate(callback func(info spaceobjects.LinksUpdateInfo)) {

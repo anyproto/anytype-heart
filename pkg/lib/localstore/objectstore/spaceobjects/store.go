@@ -29,6 +29,8 @@ var (
 )
 
 type Store interface {
+	SpaceId() string
+
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(q database.Query) (records []database.Record, err error)
 	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
@@ -272,4 +274,8 @@ func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection
 		}
 	}
 	return coll.EnsureIndex(ctx, toCreate...)
+}
+
+func (s *dsObjectStore) SpaceId() string {
+	return s.spaceId
 }
