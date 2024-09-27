@@ -327,6 +327,7 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 	subService := mw.applicationService.GetApp().MustComponent(subscription.CName).(subscription.Service)
 
 	resp, err := subService.Search(subscription.SubscribeRequest{
+		SpaceId:           req.SpaceId,
 		SubId:             req.SubId,
 		Filters:           req.Filters,
 		Sorts:             req.Sorts,

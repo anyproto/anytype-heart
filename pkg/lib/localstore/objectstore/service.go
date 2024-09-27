@@ -81,8 +81,13 @@ type configProvider interface {
 	GetAnyStoreConfig() *anystore.Config
 }
 
+type TechSpaceIdProvider interface {
+	TechSpaceId() string
+}
+
 type dsObjectStore struct {
 	repoPath       string
+	techSpaceId    string
 	anyStoreConfig *anystore.Config
 
 	anyStore anystore.DB
@@ -94,10 +99,11 @@ type dsObjectStore struct {
 
 	arenaPool *fastjson.ArenaPool
 
-	fts           ftsearch.FTSearch
-	subManager    *spaceobjects.SubscriptionManager
-	sourceService spaceobjects.SourceDetailsFromID
-	oldStore      oldstore.Service
+	fts                 ftsearch.FTSearch
+	subManager          *spaceobjects.SubscriptionManager
+	sourceService       spaceobjects.SourceDetailsFromID
+	oldStore            oldstore.Service
+	techSpaceIdProvider TechSpaceIdProvider
 
 	sync.Mutex
 	stores map[string]spaceobjects.Store
@@ -128,6 +134,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
 	s.anyStoreConfig = app.MustComponent[configProvider](a).GetAnyStoreConfig()
 	s.oldStore = app.MustComponent[oldstore.Service](a)
+	s.techSpaceIdProvider = app.MustComponent[TechSpaceIdProvider](a)
 
 	return nil
 }
@@ -137,6 +144,8 @@ func (s *dsObjectStore) Name() (name string) {
 }
 
 func (s *dsObjectStore) Run(ctx context.Context) error {
+	s.techSpaceId = s.techSpaceIdProvider.TechSpaceId()
+
 	dbDir := filepath.Join(s.repoPath, "objectstore")
 	_, err := os.Stat(dbDir)
 	if errors.Is(err, os.ErrNotExist) {

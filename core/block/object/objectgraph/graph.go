@@ -75,6 +75,7 @@ func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, 
 	})...)
 
 	resp, err := gr.subscriptionService.Search(subscription.SubscribeRequest{
+		SpaceId:      req.SpaceId,
 		Source:       req.SetSource,
 		Filters:      req.Filters,
 		Keys:         lo.Map(relations.Models(), func(rel *model.Relation, _ int) string { return rel.Key }),

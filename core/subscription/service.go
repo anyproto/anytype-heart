@@ -199,7 +199,7 @@ func (s *service) Search(req SubscribeRequest) (*SubscribeResponse, error) {
 	}
 
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.Source)
+		sourceFilter, err := s.filtersFromSource(req.SpaceId, req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
@@ -411,7 +411,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 	}
 
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.Source)
+		sourceFilter, err := s.filtersFromSource(req.SpaceId, req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
@@ -420,7 +420,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 
 	var colObserver *collectionObserver
 	if req.CollectionId != "" {
-		colObserver, err = s.newCollectionObserver(req.CollectionId, req.SubId)
+		colObserver, err = s.newCollectionObserver(req.SpaceId, req.CollectionId, req.SubId)
 		if err != nil {
 			return nil, err
 		}
@@ -625,20 +625,21 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	return dur
 }
 
-func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
+func (s *service) filtersFromSource(spaceId string, sources []string) (database.Filter, error) {
 	var relTypeFilter database.FiltersOr
 	var (
 		relKeys        []string
 		typeUniqueKeys []string
 	)
 
+	store := s.objectStore.SpaceId(spaceId)
 	var err error
 	for _, source := range sources {
 		var uk domain.UniqueKey
 		if uk, err = domain.UnmarshalUniqueKey(source); err != nil {
 			// todo: gradually escalate to return error
 			log.Info("Using object id instead of uniqueKey is deprecated in the Source")
-			uk, err = s.objectStore.SpaceId("TODOSPACE").GetUniqueKeyById(source)
+			uk, err = store.GetUniqueKeyById(source)
 			if err != nil {
 				return nil, err
 			}
@@ -656,7 +657,7 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 			RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value:       pbtypes.StringList(typeUniqueKeys),
-		}, s.objectStore.SpaceId("TODOSPACE"))
+		}, store)
 		if err != nil {
 			return nil, fmt.Errorf("make nested filter: %w", err)
 		}
