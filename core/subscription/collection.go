@@ -179,7 +179,7 @@ func (c *collectionSub) close() {
 }
 
 func (s *service) newCollectionSub(
-	id, collectionID string, keys, filterDepIds []string, flt database.Filter, order database.Order, limit, offset int, disableDepSub bool,
+	id string, spaceId string, collectionID string, keys, filterDepIds []string, flt database.Filter, order database.Order, limit, offset int, disableDepSub bool,
 ) (*collectionSub, error) {
 	obs, err := s.newCollectionObserver(collectionID, id)
 	if err != nil {
@@ -191,7 +191,7 @@ func (s *service) newCollectionSub(
 		flt = database.FiltersAnd{obs, flt}
 	}
 
-	ssub := s.newSortedSub(id, keys, flt, order, limit, offset)
+	ssub := s.newSortedSub(id, spaceId, keys, flt, order, limit, offset)
 	ssub.disableDep = disableDepSub
 	if !ssub.disableDep {
 		ssub.forceSubIds = filterDepIds

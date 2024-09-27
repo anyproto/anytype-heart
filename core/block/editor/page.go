@@ -53,8 +53,8 @@ type Page struct {
 	objectDeleter     ObjectDeleter
 }
 
-func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
-	store := f.objectStore.SpaceId(sb.SpaceID())
+func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page {
+	store := f.objectStore.SpaceId(spaceId)
 	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Page{
 		SmartBlock:     sb,

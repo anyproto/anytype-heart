@@ -111,6 +111,8 @@ func New() ObjectStore {
 	return &dsObjectStore{
 		componentCtx:       ctx,
 		componentCtxCancel: cancel,
+		subManager:         &spaceobjects.SubscriptionManager{},
+		stores:             map[string]spaceobjects.Store{},
 	}
 }
 

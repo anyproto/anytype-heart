@@ -30,8 +30,8 @@ type participant struct {
 	basic.DetailsUpdatable
 }
 
-func (f *ObjectFactory) newParticipant(sb smartblock.SmartBlock) *participant {
-	store := f.objectStore.SpaceId(sb.SpaceID())
+func (f *ObjectFactory) newParticipant(spaceId string, sb smartblock.SmartBlock) *participant {
+	store := f.objectStore.SpaceId(spaceId)
 	basicComponent := basic.NewBasic(sb, store, f.layoutConverter, nil, f.lastUsedUpdater)
 	return &participant{
 		SmartBlock:       sb,

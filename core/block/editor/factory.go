@@ -177,19 +177,19 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeRelation,
 		coresb.SmartBlockTypeRelationOption,
 		coresb.SmartBlockTypeChatObject:
-		return f.newPage(sb), nil
+		return f.newPage(space.Id(), sb), nil
 	case coresb.SmartBlockTypeArchive:
 		return NewArchive(sb, store), nil
 	case coresb.SmartBlockTypeHome:
 		return NewDashboard(sb, store, f.layoutConverter), nil
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
-		return f.newProfile(sb), nil
+		return f.newProfile(space.Id(), sb), nil
 	case coresb.SmartBlockTypeFileObject:
-		return f.newFile(sb), nil
+		return f.newFile(space.Id(), sb), nil
 	case coresb.SmartBlockTypeTemplate,
 		coresb.SmartBlockTypeBundledTemplate:
-		return f.newTemplate(sb), nil
+		return f.newTemplate(space.Id(), sb), nil
 	case coresb.SmartBlockTypeWorkspace:
 		return f.newWorkspace(sb, store), nil
 	case coresb.SmartBlockTypeSpaceView:
@@ -203,7 +203,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
 	case coresb.SmartBlockTypeParticipant:
-		return f.newParticipant(sb), nil
+		return f.newParticipant(space.Id(), sb), nil
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeChatDerivedObject:

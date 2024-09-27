@@ -24,8 +24,8 @@ var fileRequiredRelations = append(pageRequiredRelations, []domain.RelationKey{
 	bundle.RelationKeyFileSyncStatus,
 }...)
 
-func (f *ObjectFactory) newFile(sb smartblock.SmartBlock) *File {
-	store := f.objectStore.SpaceId(sb.SpaceID())
+func (f *ObjectFactory) newFile(spaceId string, sb smartblock.SmartBlock) *File {
+	store := f.objectStore.SpaceId(spaceId)
 	basicComponent := basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater)
 	return &File{
 		SmartBlock:        sb,

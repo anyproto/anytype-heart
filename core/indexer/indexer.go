@@ -94,7 +94,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.forceFt = make(chan struct{})
 	i.config = app.MustComponent[*config.Config](a)
 	i.batcher = mb.New[indexTask](100)
-	go i.indexBatchLoop()
+	// go i.indexBatchLoop()
 	return
 }
 
@@ -115,58 +115,58 @@ func (i *indexer) StartFullTextIndex() (err error) {
 	return
 }
 
-func (i *indexer) indexBatchLoop() {
-	for {
-		tasks, err := i.batcher.Wait(i.runCtx)
-		if err != nil {
-			return
-		}
-		if iErr := i.indexBatch(tasks); iErr != nil {
-			log.Warnf("indexBatch error: %v", iErr)
-		}
-	}
-}
+// func (i *indexer) indexBatchLoop() {
+// 	for {
+// 		tasks, err := i.batcher.Wait(i.runCtx)
+// 		if err != nil {
+// 			return
+// 		}
+// 		if iErr := i.indexBatch(tasks); iErr != nil {
+// 			log.Warnf("indexBatch error: %v", iErr)
+// 		}
+// 	}
+// }
 
-func (i *indexer) indexBatch(tasks []indexTask) (err error) {
-	tx, err := i.store.WriteTx(i.runCtx)
-	if err != nil {
-		return err
-	}
-	st := time.Now()
-
-	closeTasks := func(closeErr error) {
-		for _, t := range tasks {
-			if closeErr != nil {
-				select {
-				case t.done <- closeErr:
-				default:
-				}
-			} else {
-				close(t.done)
-			}
-		}
-	}
-
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		} else {
-			if err = tx.Commit(); err != nil {
-				closeTasks(err)
-			} else {
-				closeTasks(nil)
-			}
-			log.Infof("indexBatch: indexed %d docs for a %v: err: %v", len(tasks), time.Since(st), err)
-		}
-	}()
-
-	for _, task := range tasks {
-		if iErr := i.index(tx.Context(), task.info, task.options...); iErr != nil {
-			task.done <- iErr
-		}
-	}
-	return
-}
+// func (i *indexer) indexBatch(tasks []indexTask) (err error) {
+// 	tx, err := i.store.WriteTx(i.runCtx)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	st := time.Now()
+//
+// 	closeTasks := func(closeErr error) {
+// 		for _, t := range tasks {
+// 			if closeErr != nil {
+// 				select {
+// 				case t.done <- closeErr:
+// 				default:
+// 				}
+// 			} else {
+// 				close(t.done)
+// 			}
+// 		}
+// 	}
+//
+// 	defer func() {
+// 		if err != nil {
+// 			_ = tx.Rollback()
+// 		} else {
+// 			if err = tx.Commit(); err != nil {
+// 				closeTasks(err)
+// 			} else {
+// 				closeTasks(nil)
+// 			}
+// 			log.Infof("indexBatch: indexed %d docs for a %v: err: %v", len(tasks), time.Since(st), err)
+// 		}
+// 	}()
+//
+// 	for _, task := range tasks {
+// 		if iErr := i.index(tx.Context(), task.info, task.options...); iErr != nil {
+// 			task.done <- iErr
+// 		}
+// 	}
+// 	return
+// }
 
 func (i *indexer) Close(ctx context.Context) (err error) {
 	_ = i.batcher.Close()
@@ -195,16 +195,18 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 }
 
 func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
-	done := make(chan error)
-	if err := i.batcher.Add(ctx, indexTask{
-		info:    info,
-		options: options,
-		done:    done,
-	}); err != nil {
-		return err
-	}
-	err, _ := <-done
-	return err
+	return i.index(ctx, info, options...)
+
+	// done := make(chan error)
+	// if err := i.batcher.Add(ctx, indexTask{
+	// 	info:    info,
+	// 	options: options,
+	// 	done:    done,
+	// }); err != nil {
+	// 	return err
+	// }
+	// err, _ := <-done
+	// return err
 }
 
 func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
@@ -236,7 +238,9 @@ func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ..
 		return nil
 	}
 
-	lastIndexedHash, err := i.store.GetLastIndexedHeadsHash(ctx, info.Space.Id(), info.Id)
+	store := i.store.SpaceId(info.Space.Id())
+
+	lastIndexedHash, err := store.GetLastIndexedHeadsHash(ctx, info.Id)
 	if err != nil {
 		log.With("object", info.Id).Errorf("failed to get last indexed heads hash: %v", err)
 	}
@@ -255,7 +259,7 @@ func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ..
 	indexSetTime := time.Now()
 	var hasError bool
 	if indexLinks {
-		if err = i.store.UpdateObjectLinks(ctx, info.Space.Id(), info.Id, info.Links); err != nil {
+		if err = store.UpdateObjectLinks(ctx, info.Id, info.Links); err != nil {
 			hasError = true
 			log.With("objectID", info.Id).Errorf("failed to save object links: %v", err)
 		}
@@ -263,7 +267,7 @@ func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ..
 
 	indexLinksTime := time.Now()
 	if indexDetails {
-		if err := i.store.UpdateObjectDetails(ctx, info.Space.Id(), info.Id, details); err != nil {
+		if err := store.UpdateObjectDetails(ctx, info.Id, details); err != nil {
 			hasError = true
 			log.With("objectID", info.Id).Errorf("can't update object store: %v", err)
 		} else {
@@ -288,7 +292,7 @@ func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ..
 			}
 		}
 	} else {
-		_ = i.store.DeleteDetails(ctx, info.Space.Id(), []string{info.Id})
+		_ = store.DeleteDetails(ctx, []string{info.Id})
 	}
 	indexDetailsTime := time.Now()
 	detailsCount := 0

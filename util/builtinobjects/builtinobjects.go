@@ -456,7 +456,7 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 
 func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string, err error) {
 	var ids []string
-	if ids, _, err = b.store.QueryObjectIDs(spaceID, database.Query{
+	if ids, _, err = b.store.SpaceId(spaceID).QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,

@@ -36,8 +36,8 @@ type Profile struct {
 	fileObjectService fileobject.Service
 }
 
-func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
-	store := f.objectStore.SpaceId(sb.SpaceID())
+func (f *ObjectFactory) newProfile(spaceId string, sb smartblock.SmartBlock) *Profile {
+	store := f.objectStore.SpaceId(spaceId)
 	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Profile{
 		SmartBlock:    sb,

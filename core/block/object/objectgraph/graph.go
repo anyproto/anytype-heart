@@ -65,7 +65,7 @@ func (gr *Builder) Name() (name string) {
 }
 
 func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error) {
-	relations, err := gr.objectStore.ListAllRelations(req.SpaceId)
+	relations, err := gr.objectStore.SpaceId(req.SpaceId).ListAllRelations()
 	if err != nil {
 		return nil, nil, err
 	}

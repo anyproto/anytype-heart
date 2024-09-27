@@ -1874,6 +1874,7 @@ message Rpc {
 
         message SearchSubscribe {
             message Request {
+                string spaceId = 15;
                 // (optional) subscription identifier
                 // client can provide some string or middleware will generate it automatically
                 // if subId is already registered on middleware, the new query will replace previous subscription
@@ -1958,6 +1959,7 @@ message Rpc {
 
         message SubscribeIds {
             message Request {
+                string spaceId = 13;
                 // (optional) subscription identifier
                 // client can provide some string or middleware will generate it automatically
                 // if subId is already registered on middleware, the new query will replace previous subscription

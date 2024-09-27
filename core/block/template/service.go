@@ -347,7 +347,7 @@ func (s *service) updateTypeKey(spaceId string, st *state.State) (err error) {
 	objectTypeId := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
 	if objectTypeId != "" {
 		var uniqueKey domain.UniqueKey
-		uniqueKey, err = s.store.GetUniqueKeyById(spaceId, objectTypeId)
+		uniqueKey, err = s.store.SpaceId(spaceId).GetUniqueKeyById(objectTypeId)
 		if err != nil {
 			err = fmt.Errorf("get target object type %s: %w", objectTypeId, err)
 		} else if uniqueKey.SmartblockType() != coresb.SmartBlockTypeObjectType {
