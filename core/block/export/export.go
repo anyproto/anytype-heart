@@ -65,8 +65,6 @@ const (
 	filesObjects              = "filesObjects"
 )
 
-const objectIdsLimit = 900
-
 var log = logging.Logger("anytype-mw-export")
 
 type Export interface {
@@ -263,7 +261,7 @@ func (e *export) docsForExport(spaceID string, req pb.RpcObjectListExportRequest
 }
 
 func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested, includeFiles, isProtobuf bool) (map[string]*types.Struct, error) {
-	res, err := e.queryObjectsFromStoreByIds(spaceId, reqIds, bundle.RelationKeyId.String())
+	res, err := e.queryAndFilterObjectsByRelation(spaceId, reqIds, bundle.RelationKeyId.String())
 	if err != nil {
 		return nil, err
 	}
@@ -276,13 +274,6 @@ func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested,
 		return e.processProtobuf(spaceId, docs, includeNested, includeFiles)
 	}
 	return e.processNotProtobuf(spaceId, docs, includeNested, includeFiles)
-}
-
-func (e *export) queryObjectsFromStoreByIds(spaceId string, reqIds []string, relationFilter string) ([]database.Record, error) {
-	if len(reqIds) > objectIdsLimit {
-		return e.queryAndFilterObjectsByRelation(spaceId, reqIds, relationFilter)
-	}
-	return e.queryObjectsByIds(spaceId, reqIds, relationFilter)
 }
 
 func (e *export) queryAndFilterObjectsByRelation(spaceId string, reqIds []string, relationFilter string) ([]database.Record, error) {
