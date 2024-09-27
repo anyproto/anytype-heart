@@ -65,7 +65,7 @@ func TestOffloadAllFiles(t *testing.T) {
 	fileNode2, err := fx.commonFile.AddFile(ctx, generateTestFileData(t, 2*1024*1024))
 	require.NoError(t, err)
 
-	fx.objectStore.AddObjects(t, []objectstore.TestObject{
+	fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:               pbtypes.String("fileObjectId1"),
 			bundle.RelationKeyFileId:           pbtypes.String(fileNode1.Cid().String()),

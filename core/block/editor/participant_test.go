@@ -121,8 +121,8 @@ func newStoreFixture(t *testing.T) *objectstore.StoreFixture {
 		bundle.RelationKeyId, bundle.RelationKeyParticipantPermissions, bundle.RelationKeyLastModifiedBy,
 		bundle.RelationKeySpaceId, bundle.RelationKeyParticipantStatus, bundle.RelationKeyIsHiddenDiscovery,
 	} {
-		store.AddObjects(t, []objectstore.TestObject{{
-			bundle.RelationKeySpaceId:     pbtypes.String(""),
+		store.AddObjects(t, "space1", []objectstore.TestObject{{
+			bundle.RelationKeySpaceId:     pbtypes.String("space1"),
 			bundle.RelationKeyUniqueKey:   pbtypes.String(rel.URL()),
 			bundle.RelationKeyId:          pbtypes.String(rel.String()),
 			bundle.RelationKeyRelationKey: pbtypes.String(rel.String()),

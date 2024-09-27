@@ -1,13 +1,10 @@
 package dataview
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
-	anystore "github.com/anyproto/any-store"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -16,21 +13,21 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const objId = "root"
 
 type fixture struct {
-	store *mock_objectstore.MockObjectStore
+	store *spaceobjects.StoreFixture
 	sb    *smarttest.SmartTest
 
 	*sdataview
 }
 
 func newFixture(t *testing.T) *fixture {
-	store := mock_objectstore.NewMockObjectStore(t)
+	store := spaceobjects.NewStoreFixture(t)
 	sb := smarttest.New(objId)
 
 	dv := NewDataview(sb, store).(*sdataview)
@@ -56,7 +53,7 @@ func TestDataviewCollectionImpl_SetViewPosition(t *testing.T) {
 				},
 			},
 		}}))
-		fx.store.EXPECT().GetActiveViews(mock.Anything).Return(nil, nil).Maybe()
+
 		return fx.sdataview, fx.sb
 	}
 	assertViewPositions := func(viewId string, pos uint32, exp []string) {
@@ -106,14 +103,12 @@ func TestInjectActiveView(t *testing.T) {
 		// given
 		blocksToView := map[string]string{dv1: "view1", dv2: "view2"}
 		fx := newFixture(t)
-		fx.store.EXPECT().GetActiveViews(mock.Anything).RunAndReturn(func(id string) (map[string]string, error) {
-			assert.Equal(t, objId, id)
-			return blocksToView, nil
-		})
+		err := fx.store.SetActiveViews(objId, blocksToView)
+		require.NoError(t, err)
 		info := getInfo()
 
 		// when
-		err := fx.injectActiveViews(info)
+		err = fx.injectActiveViews(info)
 		st := info.State
 
 		// then
@@ -126,10 +121,6 @@ func TestInjectActiveView(t *testing.T) {
 	t.Run("do nothing if active views are not found in DB", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.store.EXPECT().GetActiveViews(mock.Anything).RunAndReturn(func(id string) (map[string]string, error) {
-			assert.Equal(t, objId, id)
-			return nil, anystore.ErrDocNotFound
-		})
 		info := getInfo()
 
 		// when
@@ -137,21 +128,5 @@ func TestInjectActiveView(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-	})
-
-	t.Run("fail on other DB error", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		fx.store.EXPECT().GetActiveViews(mock.Anything).RunAndReturn(func(id string) (map[string]string, error) {
-			assert.Equal(t, objId, id)
-			return nil, errors.New("badger was stolen by UFO")
-		})
-		info := getInfo()
-
-		// when
-		err := fx.injectActiveViews(info)
-
-		// then
-		assert.Error(t, err)
 	})
 }

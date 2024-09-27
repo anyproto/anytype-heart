@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -35,12 +35,6 @@ func TestSmartBlock_Init(t *testing.T) {
 	// given
 	id := "one"
 	fx := newFixture(id, t)
-
-	fx.store.EXPECT().GetDetails(mock.Anything).Return(&model.ObjectDetails{
-		Details: &types.Struct{Fields: map[string]*types.Value{}},
-	}, nil).Maybe()
-	fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
-	fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	// when
 	initCtx := fx.init(t, []*model.Block{{Id: id}})
@@ -60,11 +54,6 @@ func TestSmartBlock_Apply(t *testing.T) {
 		// given
 		fx := newFixture("", t)
 
-		fx.store.EXPECT().GetDetails(mock.Anything).Maybe().Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, nil)
-		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
-		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 
 		fx.init(t, []*model.Block{{Id: "1"}})
@@ -95,11 +84,6 @@ func TestBasic_SetAlign(t *testing.T) {
 		// given
 		fx := newFixture("", t)
 
-		fx.store.EXPECT().GetDetails(mock.Anything).Maybe().Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, nil)
-		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
-		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 		fx.init(t, []*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
@@ -120,11 +104,6 @@ func TestBasic_SetAlign(t *testing.T) {
 		// given
 		fx := newFixture("", t)
 
-		fx.store.EXPECT().GetDetails(mock.Anything).Maybe().Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, nil)
-		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
-		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 		fx.init(t, []*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
@@ -171,34 +150,12 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		fx.store.EXPECT().GetDetails(id).Return(nil, nil)
-
 		// when
 		details, err := fx.getDetailsFromStore()
 
 		// then
 		assert.NoError(t, err)
 		assert.Nil(t, details)
-	})
-
-	t.Run("failure on retrieving details from store", func(t *testing.T) {
-		// given
-		fx := newFixture(id, t)
-
-		details := &model.ObjectDetails{Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				"someKey": pbtypes.String("someValue"),
-			},
-		}}
-		someErr := errors.New("some error")
-		fx.store.EXPECT().GetDetails(id).Return(details, someErr)
-
-		// when
-		detailsFromStore, err := fx.getDetailsFromStore()
-
-		// then
-		assert.True(t, errors.Is(err, someErr))
-		assert.Nil(t, detailsFromStore)
 	})
 }
 
@@ -497,7 +454,7 @@ func TestInjectDerivedDetails(t *testing.T) {
 }
 
 type fixture struct {
-	store              *mock_objectstore.MockObjectStore
+	store              *spaceobjects.StoreFixture
 	restrictionService *mock_restriction.MockService
 	indexer            *MockIndexer
 	eventSender        *mock_event.MockSender
@@ -507,7 +464,7 @@ type fixture struct {
 }
 
 func newFixture(id string, t *testing.T) *fixture {
-	objectStore := mock_objectstore.NewMockObjectStore(t)
+	objectStore := spaceobjects.NewStoreFixture(t)
 
 	indexer := NewMockIndexer(t)
 

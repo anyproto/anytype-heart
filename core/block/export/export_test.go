@@ -47,11 +47,13 @@ func TestFileNamer_Get(t *testing.T) {
 	assert.Equal(t, len(names), len(nl))
 }
 
+const spaceId = "space1"
+
 func Test_docsForExport(t *testing.T) {
 	t.Run("get object with existing links", func(t *testing.T) {
 		// given
 		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:   pbtypes.String("id"),
 				bundle.RelationKeyName: pbtypes.String("name1"),
@@ -61,7 +63,7 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyName: pbtypes.String("name2"),
 			},
 		})
-		err := storeFixture.UpdateObjectLinks(context.Background(), "id", []string{"id1"})
+		err := storeFixture.SpaceId(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
 		assert.Nil(t, err)
 
 		provider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
@@ -85,7 +87,7 @@ func Test_docsForExport(t *testing.T) {
 	t.Run("get object with non existing links", func(t *testing.T) {
 		// given
 		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:   pbtypes.String("id"),
 				bundle.RelationKeyName: pbtypes.String("name"),
@@ -120,7 +122,7 @@ func Test_docsForExport(t *testing.T) {
 		// given
 		storeFixture := objectstore.NewStoreFixture(t)
 		relationKey := "key"
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:            pbtypes.String("id"),
 				domain.RelationKey(relationKey): pbtypes.String("value"),
@@ -171,7 +173,7 @@ func Test_docsForExport(t *testing.T) {
 		uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:            pbtypes.String("id"),
 				domain.RelationKey(relationKey): pbtypes.String("value"),
@@ -231,7 +233,7 @@ func Test_docsForExport(t *testing.T) {
 		uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:            pbtypes.String("id"),
 				domain.RelationKey(relationKey): pbtypes.String("value"),
@@ -291,7 +293,7 @@ func Test_docsForExport(t *testing.T) {
 		optionUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, optionId)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:            pbtypes.String("id"),
 				domain.RelationKey(relationKey): pbtypes.String(optionId),
@@ -370,7 +372,7 @@ func Test_docsForExport(t *testing.T) {
 		templateId := "templateId"
 
 		linkedObjectId := "linkedObjectId"
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:            pbtypes.String("id"),
 				domain.RelationKey(relationKey): pbtypes.String("test"),
@@ -459,7 +461,7 @@ func Test_docsForExport(t *testing.T) {
 		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeKey)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:   pbtypes.String("id"),
 				bundle.RelationKeyType: pbtypes.String(objectTypeKey),

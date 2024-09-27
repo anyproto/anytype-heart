@@ -137,7 +137,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 		time.Sleep(testBatchTimeout / 4)
 
-		fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
+		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
 				bundle.RelationKeySpaceId:     pbtypes.String("space1"),
@@ -260,7 +260,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 		time.Sleep(testBatchTimeout / 4)
 
-		fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
+		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
 				bundle.RelationKeySpaceId:     pbtypes.String("space1"),
@@ -274,7 +274,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 		fx.updateGlobalName(newName)
 		time.Sleep(testBatchTimeout / 4)
 
-		fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
+		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
 				bundle.RelationKeySpaceId:     pbtypes.String("space1"),
@@ -372,7 +372,7 @@ func TestWaitForDetails(t *testing.T) {
 			Key:  "key1",
 		},
 	}, nil)
-	fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
+	fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
 			bundle.RelationKeySpaceId:     pbtypes.String("space1"),

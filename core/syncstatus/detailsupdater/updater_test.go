@@ -125,7 +125,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		fx := newUpdateDetailsFixture(t)
 		updTester := newUpdateTester(t, 1, 1)
 
-		fx.subscriptionService.StoreFixture.AddObjects(t, []objectstore.TestObject{
+		fx.subscriptionService.StoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id1"),
 				bundle.RelationKeySpaceId: pbtypes.String("space1"),
@@ -223,7 +223,7 @@ func TestSyncStatusUpdater_UpdateSpaceDetails(t *testing.T) {
 	fx := newUpdateDetailsFixture(t)
 	updTester := newUpdateTester(t, 3, 3)
 
-	fx.subscriptionService.StoreFixture.AddObjects(t, []objectstore.TestObject{
+	fx.subscriptionService.StoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:         pbtypes.String("id1"),
 			bundle.RelationKeySpaceId:    pbtypes.String("space1"),

@@ -30,6 +30,12 @@ func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*types.Struct, erro
 	return nil, fmt.Errorf("not found")
 }
 
+type stubTechSpaceIdProvider struct{}
+
+func (s *stubTechSpaceIdProvider) TechSpaceId() string {
+	return "test-tech-space"
+}
+
 var ctx = context.Background()
 
 func NewStoreFixture(t testing.TB) *StoreFixture {
@@ -57,14 +63,16 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	require.NoError(t, err)
 
 	ds := &dsObjectStore{
-		componentCtx:       ctx,
-		componentCtxCancel: cancel,
-		fts:                fullText,
-		sourceService:      &detailsFromId{},
-		arenaPool:          &fastjson.ArenaPool{},
-		repoPath:           walletService.RepoPath(),
-		oldStore:           oldStore,
-		stores:             map[string]spaceobjects.Store{},
+		componentCtx:        ctx,
+		componentCtxCancel:  cancel,
+		fts:                 fullText,
+		sourceService:       &detailsFromId{},
+		arenaPool:           &fastjson.ArenaPool{},
+		repoPath:            walletService.RepoPath(),
+		oldStore:            oldStore,
+		stores:              map[string]spaceobjects.Store{},
+		techSpaceIdProvider: &stubTechSpaceIdProvider{},
+		subManager:          &spaceobjects.SubscriptionManager{},
 	}
 
 	t.Cleanup(func() {
@@ -84,8 +92,10 @@ func (fx *StoreFixture) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (fx *StoreFixture) AddObjects(t testing.TB, objects []spaceobjects.TestObject) {
-	store := fx.SpaceId("test")
+type TestObject = spaceobjects.TestObject
+
+func (fx *StoreFixture) AddObjects(t testing.TB, spaceId string, objects []spaceobjects.TestObject) {
+	store := fx.SpaceId(spaceId)
 	for _, obj := range objects {
 		id := obj[bundle.RelationKeyId].GetStringValue()
 		require.NotEmpty(t, id)

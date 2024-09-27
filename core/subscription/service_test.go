@@ -811,7 +811,7 @@ func TestService_Search(t *testing.T) {
 		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
 		assert.Nil(t, err)
 
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, spaceID, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
@@ -886,7 +886,7 @@ func TestService_Search(t *testing.T) {
 		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
 		assert.Nil(t, err)
 
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, spaceID, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
@@ -936,7 +936,7 @@ func TestService_Search(t *testing.T) {
 		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
 		assert.Nil(t, err)
 
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, spaceID, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
@@ -1004,7 +1004,7 @@ func TestService_Search(t *testing.T) {
 		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
 		assert.Nil(t, err)
 
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, spaceID, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
@@ -1052,7 +1052,7 @@ func TestService_Search(t *testing.T) {
 		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
 		assert.Nil(t, err)
 
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, spaceID, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
@@ -1093,7 +1093,7 @@ func TestService_Search(t *testing.T) {
 		id := "id"
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
-		fx.store.AddObjects(t, []objectstore.TestObject{{bundle.RelationKeyId: pbtypes.String(id), bundle.RelationKeyName: pbtypes.String("name")}})
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{{bundle.RelationKeyId: pbtypes.String(id), bundle.RelationKeyName: pbtypes.String("name")}})
 
 		// when
 		sub, err := fx.SubscribeIdsReq(pb.RpcObjectSubscribeIdsRequest{
@@ -1119,7 +1119,7 @@ func TestService_Search(t *testing.T) {
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:   pbtypes.String(id),
 				bundle.RelationKeyName: pbtypes.String(relationValue),
@@ -1164,7 +1164,7 @@ func TestService_Search(t *testing.T) {
 func addTestObjects(t *testing.T, source, relationKey, option1, option2, spaceID string, fx *fixtureRealStore) error {
 	objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
 	assert.Nil(t, err)
-	fx.store.AddObjects(t, []objectstore.TestObject{
+	fx.store.AddObjects(t, spaceID, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:            pbtypes.String("1"),
 			bundle.RelationKeySpaceId:       pbtypes.String(spaceID),
@@ -1186,7 +1186,7 @@ func addTestObjects(t *testing.T, source, relationKey, option1, option2, spaceID
 }
 
 func addTestObjectsForNestedFilters(t *testing.T, fx *fixtureRealStore, spaceID, option1, option2, option3, tag1, tag2 string) {
-	fx.store.AddObjects(t, []objectstore.TestObject{
+	fx.store.AddObjects(t, spaceID, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:      pbtypes.String("1"),
 			bundle.RelationKeySpaceId: pbtypes.String(spaceID),
@@ -1374,7 +1374,7 @@ func testCreateSubscriptionWithNestedFilter(t *testing.T) *fixtureRealStore {
 	require.Empty(t, resp.Records)
 
 	t.Run("add nested object", func(t *testing.T) {
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				"id":   pbtypes.String("assignee1"),
 				"name": pbtypes.String("Joe Doe"),
@@ -1409,7 +1409,7 @@ func testCreateSubscriptionWithNestedFilter(t *testing.T) *fixtureRealStore {
 	})
 
 	t.Run("add object satisfying nested filter", func(t *testing.T) {
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				"id":       pbtypes.String("task1"),
 				"assignee": pbtypes.String("assignee1"),

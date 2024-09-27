@@ -69,7 +69,7 @@ func (q *dummyFulltextQueue) ListIDsFromFullTextQueue(limit int) ([]string, erro
 	return q.ids[:limit], nil
 }
 
-func NewStoreFixture(t *testing.T) *StoreFixture {
+func NewStoreFixture(t testing.TB) *StoreFixture {
 	walletService := mock_wallet.NewMockWallet(t)
 	walletService.EXPECT().Name().Return(wallet.CName).Maybe()
 	walletService.EXPECT().RepoPath().Return(t.TempDir())

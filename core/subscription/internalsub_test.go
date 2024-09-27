@@ -44,7 +44,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 	require.Empty(t, resp.Records)
 
 	t.Run("amend details not related to filter", func(t *testing.T) {
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             pbtypes.String("id1"),
 				bundle.RelationKeyName:           pbtypes.String("task1"),
@@ -53,7 +53,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 			},
 		})
 		time.Sleep(batchTime)
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       pbtypes.String("id1"),
 				bundle.RelationKeyName:     pbtypes.String("task1 renamed"),
@@ -74,7 +74,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 	})
 
 	t.Run("amend details related to filter -- remove from subscription", func(t *testing.T) {
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       pbtypes.String("id2"),
 				bundle.RelationKeyName:     pbtypes.String("task2"),
@@ -83,7 +83,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 		})
 		time.Sleep(batchTime)
 
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       pbtypes.String("id2"),
 				bundle.RelationKeyName:     pbtypes.String("task2"),
@@ -112,7 +112,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 
 	t.Run("try to add after close", func(t *testing.T) {
 		time.Sleep(batchTime)
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       pbtypes.String("id3"),
 				bundle.RelationKeyName:     pbtypes.String("task2"),
@@ -175,7 +175,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 	require.Empty(t, resp1.Records)
 
 	t.Run("amend details not related to filter", func(t *testing.T) {
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             pbtypes.String("id1"),
 				bundle.RelationKeyName:           pbtypes.String("task1"),
@@ -184,7 +184,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 			},
 		})
 		time.Sleep(batchTime)
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       pbtypes.String("id1"),
 				bundle.RelationKeyName:     pbtypes.String("task1 renamed"),
@@ -208,7 +208,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 	})
 
 	t.Run("amend details related to filter -- remove from subscription", func(t *testing.T) {
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       pbtypes.String("id2"),
 				bundle.RelationKeyName:     pbtypes.String("task2"),
@@ -217,7 +217,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		})
 		time.Sleep(batchTime)
 
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       pbtypes.String("id2"),
 				bundle.RelationKeyName:     pbtypes.String("task2"),
@@ -240,7 +240,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 	})
 
 	t.Run("add item satisfying filters from all subscription", func(t *testing.T) {
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       pbtypes.String("id3"),
 				bundle.RelationKeyName:     pbtypes.String("Jane Doe"),

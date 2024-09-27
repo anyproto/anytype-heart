@@ -47,9 +47,6 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
-  github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore:
-    interfaces:
-      ObjectStore:
   github.com/anyproto/anytype-heart/core/block/restriction:
     interfaces:
       Service:

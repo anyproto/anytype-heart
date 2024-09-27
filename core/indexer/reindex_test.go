@@ -118,7 +118,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 	t.Run("full marketplace reindex on force flag update", func(t *testing.T) {
 		// given
 		fx := NewIndexerFixture(t)
-		fx.objectStore.AddObjects(t, []objectstore.TestObject{map[domain.RelationKey]*types.Value{
+		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{map[domain.RelationKey]*types.Value{
 			bundle.RelationKeyId:      pbtypes.String("relationThatWillBeDeleted"),
 			bundle.RelationKeyName:    pbtypes.String("Relation-That-Will-Be-Deleted"),
 			bundle.RelationKeySpaceId: pbtypes.String(spaceId),
@@ -155,7 +155,7 @@ func TestReindexDeletedObjects(t *testing.T) {
 	)
 	fx := NewIndexerFixture(t)
 
-	fx.objectStore.AddObjects(t, []objectstore.TestObject{
+	fx.objectStore.AddObjects(t, spaceId3, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:        pbtypes.String("1"),
 			bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
@@ -250,7 +250,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		},
 	)
 
-	fx.objectStore.AddObjects(t, []objectstore.TestObject{
+	fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:      pbtypes.String("fav1"),
 			bundle.RelationKeySpaceId: pbtypes.String(spaceId1),
@@ -267,6 +267,8 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 			bundle.RelationKeyId:      pbtypes.String("trash2"),
 			bundle.RelationKeySpaceId: pbtypes.String(spaceId1),
 		},
+	})
+	fx.objectStore.AddObjects(t, spaceId2, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:      pbtypes.String("obj1"),
 			bundle.RelationKeySpaceId: pbtypes.String(spaceId2),
@@ -394,7 +396,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 		const spaceId1 = "spaceId1"
 		fx := NewIndexerFixture(t)
 
-		fx.objectStore.AddObjects(t, []objectstore.TestObject{
+		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:        pbtypes.String("1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
@@ -432,7 +434,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 		const spaceId1 = "spaceId1"
 		fx := NewIndexerFixture(t)
 
-		fx.objectStore.AddObjects(t, []objectstore.TestObject{
+		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:        pbtypes.String("1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),

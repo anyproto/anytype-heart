@@ -45,7 +45,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 	t.Run("add new details", func(t *testing.T) {
 		// given
 		f := newDUFixture(t)
-		f.store.AddObjects(t, []objectstore.TestObject{{
+		f.store.AddObjects(t, spaceId, []objectstore.TestObject{{
 			bundle.RelationKeyId:             pbtypes.String("rel-aperture"),
 			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
 			bundle.RelationKeyRelationKey:    pbtypes.String("aperture"),
@@ -88,7 +88,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 			Value: pbtypes.String("123"),
 		}}, false)
 		assert.NoError(t, err)
-		f.store.AddObjects(t, []objectstore.TestObject{{
+		f.store.AddObjects(t, spaceId, []objectstore.TestObject{{
 			bundle.RelationKeyId:             pbtypes.String("rel-spaceDashboardId"),
 			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
 			bundle.RelationKeyRelationKey:    pbtypes.String("spaceDashboardId"),
