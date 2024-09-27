@@ -90,6 +90,12 @@ type SourceDetailsFromID interface {
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
 }
 
+type FulltextQueue interface {
+	RemoveIDsFromFullTextQueue(ids []string) error
+	AddToIndexQueue(ctx context.Context, id string) error
+	ListIDsFromFullTextQueue(limit int) ([]string, error)
+}
+
 type dsObjectStore struct {
 	initErr error
 
@@ -101,15 +107,13 @@ type dsObjectStore struct {
 	activeViews    anystore.Collection
 	pendingDetails anystore.Collection
 
-	// Collections from common service
-	fulltextQueue anystore.Collection
-
 	// Deps
 	anyStoreConfig *anystore.Config
 	fts            ftsearch.FTSearch
 	sourceService  SourceDetailsFromID
 	oldStore       oldstore.Service
 	subManager     *SubscriptionManager
+	fulltextQueue  FulltextQueue
 
 	componentCtx       context.Context
 	arenaPool          *fastjson.ArenaPool
@@ -123,6 +127,7 @@ type Deps struct {
 	OldStore       oldstore.Service
 	SubManager     *SubscriptionManager
 	DbPath         string
+	FulltextQueue  FulltextQueue
 }
 
 func New(componentCtx context.Context, spaceId string, deps Deps) Store {
@@ -136,6 +141,7 @@ func New(componentCtx context.Context, spaceId string, deps Deps) Store {
 		oldStore:           deps.OldStore,
 		fts:                deps.Fts,
 		subManager:         deps.SubManager,
+		fulltextQueue:      deps.FulltextQueue,
 	}
 	err := s.runDatabase(componentCtx, deps.DbPath)
 	if err != nil {
@@ -163,10 +169,6 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	objects, err := store.Collection(ctx, "objects")
 	if err != nil {
 		return errors.Join(store.Close(), fmt.Errorf("open objects collection: %w", err))
-	}
-	fulltextQueue, err := store.Collection(ctx, "fulltext_queue")
-	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open fulltextQueue collection: %w", err))
 	}
 	links, err := store.Collection(ctx, "links")
 	if err != nil {
@@ -239,7 +241,6 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	}
 
 	s.objects = objects
-	s.fulltextQueue = fulltextQueue
 	s.links = links
 	s.headsState = headsState
 	s.activeViews = activeViews

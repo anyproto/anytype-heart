@@ -76,6 +76,64 @@ func (_c *MockObjectStore_GetRelationFormatByKey_Call) RunAndReturn(run func(str
 	return _c
 }
 
+// ListRelationOptions provides a mock function with given fields: relationKey
+func (_m *MockObjectStore) ListRelationOptions(relationKey string) ([]*model.RelationOption, error) {
+	ret := _m.Called(relationKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListRelationOptions")
+	}
+
+	var r0 []*model.RelationOption
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]*model.RelationOption, error)); ok {
+		return rf(relationKey)
+	}
+	if rf, ok := ret.Get(0).(func(string) []*model.RelationOption); ok {
+		r0 = rf(relationKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.RelationOption)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(relationKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectStore_ListRelationOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListRelationOptions'
+type MockObjectStore_ListRelationOptions_Call struct {
+	*mock.Call
+}
+
+// ListRelationOptions is a helper method to define mock.On call
+//   - relationKey string
+func (_e *MockObjectStore_Expecter) ListRelationOptions(relationKey interface{}) *MockObjectStore_ListRelationOptions_Call {
+	return &MockObjectStore_ListRelationOptions_Call{Call: _e.mock.On("ListRelationOptions", relationKey)}
+}
+
+func (_c *MockObjectStore_ListRelationOptions_Call) Run(run func(relationKey string)) *MockObjectStore_ListRelationOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_ListRelationOptions_Call) Return(options []*model.RelationOption, err error) *MockObjectStore_ListRelationOptions_Call {
+	_c.Call.Return(options, err)
+	return _c
+}
+
+func (_c *MockObjectStore_ListRelationOptions_Call) RunAndReturn(run func(string) ([]*model.RelationOption, error)) *MockObjectStore_ListRelationOptions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Query provides a mock function with given fields: q
 func (_m *MockObjectStore) Query(q Query) ([]Record, error) {
 	ret := _m.Called(q)
@@ -190,6 +248,51 @@ func (_c *MockObjectStore_QueryRaw_Call) Return(_a0 []Record, _a1 error) *MockOb
 }
 
 func (_c *MockObjectStore_QueryRaw_Call) RunAndReturn(run func(*Filters, int, int) ([]Record, error)) *MockObjectStore_QueryRaw_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SpaceId provides a mock function with given fields:
+func (_m *MockObjectStore) SpaceId() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for SpaceId")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockObjectStore_SpaceId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SpaceId'
+type MockObjectStore_SpaceId_Call struct {
+	*mock.Call
+}
+
+// SpaceId is a helper method to define mock.On call
+func (_e *MockObjectStore_Expecter) SpaceId() *MockObjectStore_SpaceId_Call {
+	return &MockObjectStore_SpaceId_Call{Call: _e.mock.On("SpaceId")}
+}
+
+func (_c *MockObjectStore_SpaceId_Call) Run(run func()) *MockObjectStore_SpaceId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_SpaceId_Call) Return(_a0 string) *MockObjectStore_SpaceId_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_SpaceId_Call) RunAndReturn(run func() string) *MockObjectStore_SpaceId_Call {
 	_c.Call.Return(run)
 	return _c
 }

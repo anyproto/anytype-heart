@@ -209,6 +209,7 @@ func (s *dsObjectStore) SpaceId(spaceId string) spaceobjects.Store {
 			Fts:            s.fts,
 			SubManager:     s.subManager,
 			DbPath:         filepath.Join(s.repoPath, "objectstore", fmt.Sprintf("%s.db", spaceId)),
+			FulltextQueue:  s,
 		})
 		s.stores[spaceId] = store
 	}

@@ -51,8 +51,8 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	if err != nil {
 		return rollback(fmt.Errorf("failed to overwrite details and relations: %w", err))
 	}
-	err = s.fulltextQueue.DeleteId(txn.Context(), id)
-	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+	err = s.fulltextQueue.RemoveIDsFromFullTextQueue([]string{id})
+	if err != nil {
 		return rollback(fmt.Errorf("delete: fulltext queue: %w", err))
 	}
 

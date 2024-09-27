@@ -207,17 +207,17 @@ func (_c *MockService_CreateFromImport_Call) RunAndReturn(run func(domain.FullFi
 	return _c
 }
 
-// DeleteFileData provides a mock function with given fields: objectId
-func (_m *MockService) DeleteFileData(objectId string) error {
-	ret := _m.Called(objectId)
+// DeleteFileData provides a mock function with given fields: spaceId, objectId
+func (_m *MockService) DeleteFileData(spaceId string, objectId string) error {
+	ret := _m.Called(spaceId, objectId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteFileData")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(objectId)
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(spaceId, objectId)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -231,14 +231,15 @@ type MockService_DeleteFileData_Call struct {
 }
 
 // DeleteFileData is a helper method to define mock.On call
+//   - spaceId string
 //   - objectId string
-func (_e *MockService_Expecter) DeleteFileData(objectId interface{}) *MockService_DeleteFileData_Call {
-	return &MockService_DeleteFileData_Call{Call: _e.mock.On("DeleteFileData", objectId)}
+func (_e *MockService_Expecter) DeleteFileData(spaceId interface{}, objectId interface{}) *MockService_DeleteFileData_Call {
+	return &MockService_DeleteFileData_Call{Call: _e.mock.On("DeleteFileData", spaceId, objectId)}
 }
 
-func (_c *MockService_DeleteFileData_Call) Run(run func(objectId string)) *MockService_DeleteFileData_Call {
+func (_c *MockService_DeleteFileData_Call) Run(run func(spaceId string, objectId string)) *MockService_DeleteFileData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(string), args[1].(string))
 	})
 	return _c
 }
@@ -248,7 +249,7 @@ func (_c *MockService_DeleteFileData_Call) Return(_a0 error) *MockService_Delete
 	return _c
 }
 
-func (_c *MockService_DeleteFileData_Call) RunAndReturn(run func(string) error) *MockService_DeleteFileData_Call {
+func (_c *MockService_DeleteFileData_Call) RunAndReturn(run func(string, string) error) *MockService_DeleteFileData_Call {
 	_c.Call.Return(run)
 	return _c
 }
