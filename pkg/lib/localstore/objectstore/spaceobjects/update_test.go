@@ -102,7 +102,7 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 		s := NewStoreFixture(t)
 		s.AddObjects(t, []TestObject{makeObjectWithName("id1", "foo")})
 
-		s.SubscribeForAll(func(rec database.Record) {
+		s.subManager.SubscribeForAll(func(rec database.Record) {
 			require.Fail(t, "unexpected call")
 		})
 
@@ -115,7 +115,7 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 		obj := makeObjectWithName("id1", "foo")
 
 		var called int
-		s.SubscribeForAll(func(rec database.Record) {
+		s.subManager.SubscribeForAll(func(rec database.Record) {
 			called++
 			assert.Equal(t, makeDetails(obj), rec.Details)
 		})
@@ -130,7 +130,7 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 
 		updatedObj := makeObjectWithNameAndDescription("id1", "foobar", "bar")
 		var called int
-		s.SubscribeForAll(func(rec database.Record) {
+		s.subManager.SubscribeForAll(func(rec database.Record) {
 			called++
 			assert.Equal(t, makeDetails(updatedObj), rec.Details)
 		})

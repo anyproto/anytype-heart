@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -21,13 +21,13 @@ import (
 
 type fixture struct {
 	Builder
-	objectStoreMock         *mock_objectstore.MockObjectStore
+	objectStoreMock         *objectstore.StoreFixture
 	sbtProviderMock         *mock_typeprovider.MockSmartBlockTypeProvider
 	subscriptionServiceMock *mock_subscription.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
-	objectStore := mock_objectstore.NewMockObjectStore(t)
+	objectStore := objectstore.NewStoreFixture(t)
 	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	subscriptionService := mock_subscription.NewMockService(t)
 

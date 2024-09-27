@@ -22,11 +22,10 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func New(id string) *SmartTest {
@@ -62,7 +61,7 @@ type SmartTest struct {
 	App              *app.App
 	objectTree       objecttree.ObjectTree
 	isDeleted        bool
-	os               *testMock.MockObjectStore
+	os               *spaceobjects.StoreFixture
 	space            smartblock.Space
 
 	// Rudimentary hooks
@@ -140,10 +139,6 @@ func (st *SmartTest) IsLocked() bool {
 
 func (st *SmartTest) Locked() bool {
 	return false
-}
-
-func (st *SmartTest) ObjectStore() objectstore.ObjectStore {
-	return st.os
 }
 
 func (st *SmartTest) SetIsDeleted() {
@@ -416,10 +411,6 @@ func (st *SmartTest) Close() (err error) {
 
 func (st *SmartTest) TryClose(objectTTL time.Duration) (res bool, err error) {
 	return
-}
-
-func (st *SmartTest) SetObjectStore(os *testMock.MockObjectStore) {
-	st.os = os
 }
 
 func (st *SmartTest) Inner() smartblock.SmartBlock {

@@ -210,7 +210,7 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 		}).Return(nil)
 
 		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, []objectstore.TestObject{map[domain.RelationKey]*types.Value{
+		storeFixture.AddObjects(t, spaceID, []objectstore.TestObject{map[domain.RelationKey]*types.Value{
 			bundle.RelationKeyLayout:        pbtypes.Int64(int64(model.ObjectType_spaceView)),
 			bundle.RelationKeyId:            pbtypes.String("spaceViewId"),
 			bundle.RelationKeyTargetSpaceId: pbtypes.String(spaceID),

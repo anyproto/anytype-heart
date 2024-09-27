@@ -298,10 +298,6 @@ func (sb *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 	return
 }
 
-func (sb *smartBlock) ObjectStore() spaceobjects.Store {
-	return sb.objectStore
-}
-
 func (sb *smartBlock) Type() smartblock.SmartBlockType {
 	return sb.source.Type()
 }
