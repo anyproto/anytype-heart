@@ -7,7 +7,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -30,7 +30,7 @@ var log = logging.Logger("collection-service")
 type Service struct {
 	lock        *sync.RWMutex
 	collections map[string]map[string]chan []string
-	picker      block.ObjectGetter
+	picker      cache.ObjectGetter
 	objectStore objectstore.ObjectStore
 }
 
@@ -42,7 +42,7 @@ func New() *Service {
 }
 
 func (s *Service) Init(a *app.App) (err error) {
-	s.picker = app.MustComponent[block.ObjectGetter](a)
+	s.picker = app.MustComponent[cache.ObjectGetter](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
@@ -95,13 +95,13 @@ func (s *Service) Sort(ctx session.Context, req *pb.RpcObjectCollectionSortReque
 }
 
 func (s *Service) updateCollection(ctx session.Context, contextID string, modifier func(src []string) []string) error {
-	return block.DoStateCtx(s.picker, ctx, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
+	return cache.DoStateCtx(s.picker, ctx, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
 		lst := s.GetStoreSlice(template.CollectionStoreKey)
 		lst = modifier(lst)
 		s.UpdateStoreSlice(template.CollectionStoreKey, lst)
 		internalflag.Set{}.AddToState(s)
 		return nil
-	})
+	}, smartblock.KeepInternalFlags)
 }
 
 func (s *Service) collectionAddHookOnce(sb smartblock.SmartBlock) {
@@ -141,7 +141,7 @@ func (s *Subscription) Close() {
 func (s *Service) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
 	var initialObjectIDs []string
 
-	err := block.DoState(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
+	err := cache.DoState(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
 		s.collectionAddHookOnce(sb)
 
 		initialObjectIDs = st.GetStoreSlice(template.CollectionStoreKey)
@@ -190,11 +190,9 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 
 	newState := state.NewDoc("", nil).NewState().SetDetails(details)
 
-	tmpls := []template.StateTransformer{
-		template.WithRequiredRelations(),
-	}
+	tmpls := []template.StateTransformer{}
 
-	blockContent := template.MakeCollectionDataviewContent()
+	blockContent := template.MakeDataviewContent(true, nil, nil)
 	tmpls = append(tmpls,
 		template.WithDataview(blockContent, false),
 	)
@@ -204,7 +202,7 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 }
 
 func (s *Service) ObjectToCollection(id string) error {
-	return block.DoState(s.picker, id, func(st *state.State, b basic.CommonOperations) error {
+	return cache.DoState(s.picker, id, func(st *state.State, b basic.CommonOperations) error {
 		s.setDefaultObjectTypeToViews(st)
 		return b.SetObjectTypesInState(st, []domain.TypeKey{bundle.TypeKeyCollection}, true)
 	})

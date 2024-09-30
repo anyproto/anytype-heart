@@ -40,7 +40,7 @@ func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
 	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Profile{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),
+		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
@@ -56,7 +56,7 @@ func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
 			f.fileService,
 			f.fileObjectService,
 		),
-		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
+		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService),
 		TableEditor:       table.NewEditor(sb),
 		eventSender:       f.eventSender,
 		fileObjectService: f.fileObjectService,
@@ -82,10 +82,6 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 			template.InitTemplate(st,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
 				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
-				template.WithTitle,
-				template.WithFeaturedRelations,
-				template.WithRequiredRelations(),
-				migrationWithIdentityBlock,
 				migrationSetHidden,
 			)
 		},
@@ -126,10 +122,15 @@ func (p *Profile) StateMigrations() migration.Migrations {
 			Version: 3,
 			Proc:    migrationSetHidden,
 		},
+		{
+			Version: 4,
+			Proc: func(s *state.State) {
+			},
+		},
 	})
 }
 
-func (p *Profile) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (p *Profile) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
 	if err = p.AllOperations.SetDetails(ctx, details, showEvent); err != nil {
 		return
 	}

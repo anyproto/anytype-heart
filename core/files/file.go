@@ -34,15 +34,6 @@ type file struct {
 	node    *service
 }
 
-func (s *service) newFile(spaceId string, fileId domain.FileId, info *storage.FileInfo) File {
-	return &file{
-		spaceID: spaceId,
-		fileId:  fileId,
-		info:    info,
-		node:    s,
-	}
-}
-
 type FileMeta struct {
 	Media            string
 	Name             string
@@ -70,7 +61,7 @@ func (f *file) audioDetails(ctx context.Context) (*types.Struct, error) {
 		d.Fields[bundle.RelationKeyAudioAlbum.String()] = pbtypes.String(t.Album())
 	}
 	if t.Artist() != "" {
-		d.Fields[bundle.RelationKeyAudioArtist.String()] = pbtypes.String(t.Artist())
+		d.Fields[bundle.RelationKeyArtist.String()] = pbtypes.String(t.Artist())
 	}
 	if t.Genre() != "" {
 		d.Fields[bundle.RelationKeyAudioGenre.String()] = pbtypes.String(t.Genre())
@@ -105,6 +96,10 @@ func (f *file) Details(ctx context.Context) (*types.Struct, domain.TypeKey, erro
 		Fields: commonDetails,
 	}
 
+	if meta.Media == "application/pdf" {
+		typeKey = bundle.TypeKeyFile
+		t.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_pdf))
+	}
 	if strings.HasPrefix(meta.Media, "video") {
 		typeKey = bundle.TypeKeyVideo
 		t.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_video))

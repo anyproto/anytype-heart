@@ -100,3 +100,12 @@ func TestUnsortedEquals(t *testing.T) {
 	assert.False(t, UnsortedEqual([]string{"a", "b", "c"}, []string{"a", "b"}))
 	assert.False(t, UnsortedEqual([]string{"a", "b", "c"}, []string{"a", "b", "c", "d"}))
 }
+
+func TestMergeUniqBy(t *testing.T) {
+	strEqual := func(v1, v2 string) bool {
+		return v1 == v2
+	}
+	assert.Equal(t, MergeUniqBy([]string{"a", "b", "c"}, []string{"a", "b"}, strEqual), []string{"a", "b", "c"})
+	assert.Equal(t, MergeUniqBy([]string{}, []string{"a", "b"}, strEqual), []string{"a", "b"})
+	assert.Equal(t, MergeUniqBy([]string{"a", "b", "c"}, []string{"z", "d"}, strEqual), []string{"a", "b", "c", "z", "d"})
+}

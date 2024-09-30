@@ -94,8 +94,8 @@ type FileStore interface {
 	GetFileVariant(fileId domain.FileContentId) (*storage.FileInfo, error)
 	GetFileVariantBySource(mill string, source string, opts string) (*storage.FileInfo, error)
 	GetFileVariantByChecksum(mill string, checksum string) (*storage.FileInfo, error)
+	DeleteFileVariants(variantIds []domain.FileContentId) error
 
-	LinkFileVariantToFile(fileId domain.FileId, fileContentId domain.FileContentId) error
 	ListFileIds() ([]domain.FileId, error)
 	ListFileVariants(fileId domain.FileId) ([]*storage.FileInfo, error)
 	ListAllFileVariants() ([]*storage.FileInfo, error)
@@ -304,7 +304,7 @@ func (s *dsFileStore) GetFileKeys(fileId domain.FileId) (map[string]string, erro
 
 func (s *dsFileStore) LinkFileVariantToFile(fileId domain.FileId, childId domain.FileContentId) error {
 	return s.updateTxn(func(txn *badger.Txn) error {
-		file, err := s.getChild(txn, childId)
+		file, err := s.getVariant(txn, childId)
 		if err != nil {
 			return err
 		}
@@ -334,11 +334,11 @@ func (s *dsFileStore) LinkFileVariantToFile(fileId domain.FileId, childId domain
 
 func (s *dsFileStore) GetFileVariant(childId domain.FileContentId) (*storage.FileInfo, error) {
 	return badgerhelper.ViewTxnWithResult(s.db, func(txn *badger.Txn) (*storage.FileInfo, error) {
-		return s.getChild(txn, childId)
+		return s.getVariant(txn, childId)
 	})
 }
 
-func (s *dsFileStore) getChild(txn *badger.Txn, childId domain.FileContentId) (*storage.FileInfo, error) {
+func (s *dsFileStore) getVariant(txn *badger.Txn, childId domain.FileContentId) (*storage.FileInfo, error) {
 	fileInfoKey := filesInfoBase.ChildString(childId.String())
 	file, err := badgerhelper.GetValueTxn(txn, fileInfoKey.Bytes(), unmarshalFileInfo)
 	if badgerhelper.IsNotFound(err) {
@@ -432,7 +432,7 @@ func (s *dsFileStore) ListAllFileVariants() ([]*storage.FileInfo, error) {
 
 		infos := make([]*storage.FileInfo, 0, len(childrenIds))
 		for _, childId := range childrenIds {
-			info, err := s.getChild(txn, domain.FileContentId(childId))
+			info, err := s.getVariant(txn, domain.FileContentId(childId))
 			if err != nil {
 				return nil, err
 			}
@@ -459,7 +459,7 @@ func (s *dsFileStore) DeleteFile(fileId domain.FileId) error {
 			file.Targets = slice.RemoveMut(file.Targets, fileId.String())
 
 			if len(file.Targets) == 0 {
-				if derr := s.deleteFile(txn, file); derr != nil {
+				if derr := s.deleteFileVariant(txn, file); derr != nil {
 					return fmt.Errorf("failed to delete file %s: %w", file.Hash, derr)
 				}
 			} else {
@@ -484,7 +484,25 @@ func (s *dsFileStore) DeleteFile(fileId domain.FileId) error {
 	})
 }
 
-func (s *dsFileStore) deleteFile(txn *badger.Txn, file *storage.FileInfo) error {
+func (s *dsFileStore) DeleteFileVariants(variantIds []domain.FileContentId) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
+		for _, variantId := range variantIds {
+			variant, err := s.getVariant(txn, variantId)
+			if err != nil {
+				log.Errorf("delete file variant: failed to get file variant %s: %s", variantId, err)
+				continue
+			}
+			err = s.deleteFileVariant(txn, variant)
+			if err != nil {
+				log.Errorf("delete file variant: %s: %s", variantId, err)
+				continue
+			}
+		}
+		return nil
+	})
+}
+
+func (s *dsFileStore) deleteFileVariant(txn *badger.Txn, file *storage.FileInfo) error {
 	err := localstore.RemoveIndexesWithTxn(s, txn, file, file.Hash)
 	if err != nil {
 		return err

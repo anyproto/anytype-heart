@@ -211,7 +211,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) (noChange bool) {
 	newInSet := true
 	if s.filter != nil {
-		newInSet = s.filter.FilterObject(e)
+		newInSet = s.filter.FilterObject(e.data)
 	}
 	curr := s.cache.Get(e.id)
 	curInSet := curr != nil
@@ -352,7 +352,7 @@ func (s *sortedSub) Compare(lhs, rhs interface{}) (comp int) {
 		return 0
 	}
 	if s.order != nil {
-		comp = s.order.Compare(le, re)
+		comp = s.order.Compare(le.data, re.data)
 	}
 	// when order isn't set or equal - sort by id
 	if comp == 0 {
@@ -371,6 +371,10 @@ func (s *sortedSub) CalcScore(key interface{}) float64 {
 
 func (s *sortedSub) hasDep() bool {
 	return s.depSub != nil
+}
+
+func (s *sortedSub) getDep() subscription {
+	return s.depSub
 }
 
 func (s *sortedSub) close() {

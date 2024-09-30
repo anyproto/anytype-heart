@@ -1,14 +1,15 @@
 package common
 
 import (
-	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/samber/lo"
+	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
@@ -31,16 +32,6 @@ var randomIcons = []string{"📓", "📕", "📗", "📘", "📙", "📖", "📔
 
 var log = logging.Logger("import")
 
-func GetSourceDetail(fileName, importPath string) string {
-	var source bytes.Buffer
-	source.WriteString(strings.TrimPrefix(filepath.Ext(fileName), "."))
-	source.WriteString(":")
-	source.WriteString(importPath)
-	source.WriteRune(filepath.Separator)
-	source.WriteString(fileName)
-	return source.String()
-}
-
 func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLayout) *types.Struct {
 	creationTime, modTime := filetime.ExtractFileTimes(sourcePath)
 	if name == "" {
@@ -49,9 +40,11 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 	if emoji == "" {
 		emoji = slice.GetRandomString(randomIcons, name)
 	}
+	h := sha256.Sum256([]byte(sourcePath))
+	hash := hex.EncodeToString(h[:])
 	fields := map[string]*types.Value{
 		bundle.RelationKeyName.String():             pbtypes.String(name),
-		bundle.RelationKeySourceFilePath.String():   pbtypes.String(sourcePath),
+		bundle.RelationKeySourceFilePath.String():   pbtypes.String(hash),
 		bundle.RelationKeyIconEmoji.String():        pbtypes.String(emoji),
 		bundle.RelationKeyCreatedDate.String():      pbtypes.Int64(creationTime),
 		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(modTime),
@@ -60,16 +53,16 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 	return &types.Struct{Fields: fields}
 }
 
-func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesIDs []string) error {
+func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string) error {
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		// TODO I think we should use some kind of iterator by object ids
 		switch block := bl.(type) {
 		case link.Block:
-			handleLinkBlock(oldIDtoNew, block, st, filesIDs)
+			handleLinkBlock(oldIDtoNew, block, st)
 		case bookmark.Block:
 			handleBookmarkBlock(oldIDtoNew, block, st)
 		case text.Block:
-			handleTextBlock(oldIDtoNew, block, st, filesIDs)
+			handleTextBlock(oldIDtoNew, block, st)
 		case dataview.Block:
 			handleDataviewBlock(block, oldIDtoNew, st)
 		case file.Block:
@@ -94,11 +87,15 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 	for _, view := range dataView.GetViews() {
 		for _, filter := range view.GetFilters() {
 			updateObjectIDsInFilter(filter, oldIDtoNew)
+			updateRelationKeyInFilter(oldIDtoNew, filter)
 		}
 
 		if view.DefaultTemplateId != "" {
 			view.DefaultTemplateId = oldIDtoNew[view.DefaultTemplateId]
 		}
+
+		updateRelationsInView(view, oldIDtoNew)
+		updateSortsInView(view, oldIDtoNew)
 	}
 	for _, group := range dataView.GetGroupOrders() {
 		for _, vg := range group.ViewGroups {
@@ -113,6 +110,37 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 				group.ObjectIds[i] = newId
 			}
 		}
+	}
+	updateRelationsLinksInView(dataView, oldIDtoNew)
+}
+
+func updateSortsInView(view *model.BlockContentDataviewView, oldIDtoNew map[string]string) {
+	for _, sort := range view.GetSorts() {
+		if newKey, ok := oldIDtoNew[sort.RelationKey]; ok && sort.RelationKey != newKey {
+			sort.RelationKey = newKey
+		}
+	}
+}
+
+func updateRelationsLinksInView(dataView *model.BlockContentDataview, oldIDtoNew map[string]string) {
+	for _, relationLink := range dataView.GetRelationLinks() {
+		if newKey, ok := oldIDtoNew[relationLink.Key]; ok && relationLink.Key != newKey {
+			relationLink.Key = newKey
+		}
+	}
+}
+
+func updateRelationsInView(view *model.BlockContentDataviewView, oldIDtoNew map[string]string) {
+	for _, relation := range view.Relations {
+		if newKey, ok := oldIDtoNew[relation.Key]; ok && relation.Key != newKey {
+			relation.Key = newKey
+		}
+	}
+}
+
+func updateRelationKeyInFilter(oldIDtoNew map[string]string, filter *model.BlockContentDataviewFilter) {
+	if newKey, ok := oldIDtoNew[filter.RelationKey]; ok && filter.RelationKey != newKey {
+		filter.RelationKey = newKey
 	}
 }
 
@@ -147,11 +175,9 @@ func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *s
 	st.Set(simple.New(block.Model()))
 }
 
-func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
+func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
 	targetBlockID := block.Model().GetLink().TargetBlockId
-	if lo.Contains(filesIDs, targetBlockID) {
-		return
-	}
+
 	newTarget := oldIDtoNew[targetBlockID]
 	if newTarget == "" {
 		if widget.IsPredefinedWidgetTargetId(targetBlockID) {
@@ -168,15 +194,20 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 }
 
 func handleFileBlock(oldIdToNew map[string]string, block simple.Block, st *state.State) {
-	targetObjectId := block.Model().GetFile().TargetObjectId
-	if targetObjectId == "" {
-		return
+	if targetObjectId := block.Model().GetFile().TargetObjectId; targetObjectId != "" {
+		newId := oldIdToNew[targetObjectId]
+		if newId == "" {
+			newId = addr.MissingObject
+		}
+		block.Model().GetFile().TargetObjectId = newId
 	}
-	newId := oldIdToNew[targetObjectId]
-	if newId == "" {
-		newId = addr.MissingObject
+	if hash := block.Model().GetFile().GetHash(); hash != "" {
+		// Means that we created file object for this file
+		newId := oldIdToNew[hash]
+		if newId != "" {
+			block.Model().GetFile().TargetObjectId = newId
+		}
 	}
-	block.Model().GetFile().TargetObjectId = newId
 	st.Set(simple.New(block.Model()))
 }
 
@@ -196,11 +227,15 @@ func isBundledObjects(targetObjectID string) bool {
 	return false
 }
 
-func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
+func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
 	if iconImage := block.Model().GetText().GetIconImage(); iconImage != "" {
 		newTarget := oldIDtoNew[iconImage]
 		if newTarget == "" {
-			newTarget = addr.MissingObject
+			newTarget = iconImage
+			_, err := cid.Decode(newTarget) // this can be url, because for notion import we store url to picture
+			if err == nil {
+				newTarget = addr.MissingObject
+			}
 		}
 		block.Model().GetText().IconImage = newTarget
 	}
@@ -208,9 +243,6 @@ func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 	for i, mark := range marks {
 		if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
 			continue
-		}
-		if lo.Contains(filesIDs, mark.Param) {
-			return
 		}
 		if isBundledObjects(mark.Param) {
 			return
@@ -225,7 +257,7 @@ func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 	st.Set(simple.New(block.Model()))
 }
 
-func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, filesIDs []string) {
+func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string) {
 	rels := st.GetRelationLinks()
 	for k, v := range st.Details().GetFields() {
 		relLink := rels.Get(k)
@@ -241,7 +273,7 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, f
 			continue
 		}
 		// For example, RelationKeySetOf is handled here
-		handleObjectRelation(st, oldIDtoNew, v, k, filesIDs)
+		handleObjectRelation(st, oldIDtoNew, v, k)
 	}
 }
 
@@ -253,26 +285,23 @@ func isLinkToObject(relLink *model.RelationLink) bool {
 		relLink.Format == model.RelationFormat_file
 }
 
-func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v *types.Value, k string, filesIDs []string) {
+func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v *types.Value, k string) {
 	if _, ok := v.GetKind().(*types.Value_StringValue); ok {
 		objectsID := v.GetStringValue()
-		newObjectIDs := getNewObjectsIDForRelation([]string{objectsID}, oldIDtoNew, filesIDs)
+		newObjectIDs := getNewObjectsIDForRelation([]string{objectsID}, oldIDtoNew)
 		if len(newObjectIDs) != 0 {
 			st.SetDetail(k, pbtypes.String(newObjectIDs[0]))
 		}
 		return
 	}
 	objectsIDs := pbtypes.GetStringListValue(v)
-	objectsIDs = getNewObjectsIDForRelation(objectsIDs, oldIDtoNew, filesIDs)
+	objectsIDs = getNewObjectsIDForRelation(objectsIDs, oldIDtoNew)
 	st.SetDetail(k, pbtypes.StringList(objectsIDs))
 }
 
-func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]string, filesIDs []string) []string {
+func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]string) []string {
 	for i, val := range objectsIDs {
 		if val == "" {
-			continue
-		}
-		if lo.Contains(filesIDs, val) {
 			continue
 		}
 		newTarget := oldIDtoNew[val]
@@ -282,6 +311,10 @@ func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]strin
 				continue
 			}
 			newTarget = addr.MissingObject
+			_, err := cid.Decode(val) // this can be url, because for notion import we store url for following upload
+			if err != nil {
+				newTarget = val
+			}
 		}
 		objectsIDs[i] = newTarget
 	}
@@ -344,7 +377,7 @@ func AddRelationsToDataView(collectionState *state.State, relationLink *model.Re
 				err := dataView.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
 					Key:       relationLink.Key,
 					IsVisible: true,
-					Width:     192,
+					Width:     dataview.DefaultViewRelationWidth,
 				})
 				if err != nil {
 					return true

@@ -3,8 +3,6 @@ package spacecore
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -30,6 +28,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/treesyncer"
+	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
@@ -61,6 +60,8 @@ type SpaceCoreService interface {
 	DeriveID(ctx context.Context, spaceType string) (id string, err error)
 	Delete(ctx context.Context, spaceID string) (err error)
 	Get(ctx context.Context, id string) (*AnySpace, error)
+	Pick(ctx context.Context, id string) (*AnySpace, error)
+	CloseSpace(ctx context.Context, id string) error
 
 	StreamPool() streampool.StreamPool
 	app.ComponentRunnable
@@ -80,12 +81,6 @@ type service struct {
 	peerService          peerservice.PeerService
 	poolManager          PoolManager
 	streamHandler        *streamHandler
-	syncStatusService    syncStatusService
-}
-
-type syncStatusService interface {
-	RegisterSpace(space commonspace.Space)
-	UnregisterSpace(space commonspace.Space)
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -100,7 +95,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
-	s.syncStatusService = app.MustComponent[syncStatusService](a)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
 	s.streamHandler = &streamHandler{spaceCore: s}
@@ -132,12 +126,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 	return
 }
 
-func parseReplicationKey(spaceID string) (uint64, error) {
-	parts := strings.Split(spaceID, ".")
-	raw := parts[len(parts)-1]
-	return strconv.ParseUint(raw, 36, 64)
-}
-
 func (s *service) Derive(ctx context.Context, spaceType string) (space *AnySpace, err error) {
 	payload := commonspace.SpaceDerivePayload{
 		SigningKey: s.wallet.GetAccountPrivkey(),
@@ -153,6 +141,11 @@ func (s *service) Derive(ctx context.Context, spaceType string) (space *AnySpace
 		return
 	}
 	return obj.(*AnySpace), nil
+}
+
+func (s *service) CloseSpace(ctx context.Context, id string) error {
+	_, err := s.spaceCache.Remove(ctx, id)
+	return err
 }
 
 func (s *service) DeriveID(ctx context.Context, spaceType string) (id string, err error) {
@@ -197,6 +190,14 @@ func (s *service) Get(ctx context.Context, id string) (space *AnySpace, err erro
 	return v.(*AnySpace), nil
 }
 
+func (s *service) Pick(ctx context.Context, id string) (space *AnySpace, err error) {
+	v, err := s.spaceCache.Pick(ctx, id)
+	if err != nil {
+		return
+	}
+	return v.(*AnySpace), nil
+}
+
 func (s *service) HandleMessage(ctx context.Context, senderId string, req *spacesyncproto.ObjectSyncMessage) (err error) {
 	var msg = &spacesyncproto.SpaceSubscription{}
 	if err = msg.Unmarshal(req.Payload); err != nil {
@@ -229,11 +230,12 @@ func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
 }
 
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
-	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id)})
+	statusService := objectsyncstatus.NewSyncStatusService()
+	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id), SyncStatus: statusService})
 	if err != nil {
 		return
 	}
-	ns, err := newAnySpace(cc, s.syncStatusService)
+	ns, err := newAnySpace(cc)
 	if err != nil {
 		return
 	}

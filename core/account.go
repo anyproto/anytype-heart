@@ -23,6 +23,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO),
 		errToCode(application.ErrFailedToWriteConfig, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG),
 		errToCode(application.ErrSetDetails, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME),
+		errToCode(context.Canceled, pb.RpcAccountCreateResponseError_ACCOUNT_CREATION_IS_CANCELED),
 	)
 	return &pb.RpcAccountCreateResponse{
 		Config:  nil,
@@ -59,6 +60,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		errToCode(application.ErrNoMnemonicProvided, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET),
 		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO),
 		errToCode(application.ErrFailedToFindAccountInfo, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO),
+		errToCode(context.Canceled, pb.RpcAccountSelectResponseError_ACCOUNT_LOAD_IS_CANCELED),
 		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
 		errToCode(application.ErrIncompatibleVersion, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION),
 		errToCode(application.ErrFailedToStartApplication, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE),
@@ -123,8 +125,8 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 	}
 }
 
-func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
-	status, err := mw.applicationService.AccountDelete(cctx, req)
+func (mw *Middleware) AccountDelete(cctx context.Context, _ *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
+	status, err := mw.applicationService.AccountDelete(cctx)
 	code := mapErrorCode(err,
 		errToCode(application.ErrAccountIsAlreadyDeleted, pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED),
 		errToCode(net.ErrUnableToConnect, pb.RpcAccountDeleteResponseError_UNABLE_TO_CONNECT),

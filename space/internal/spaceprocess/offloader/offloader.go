@@ -6,7 +6,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceoffloader"
-	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/components/aclindexcleaner"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 )
 
@@ -15,20 +15,15 @@ type Offloader interface {
 	WaitOffload(ctx context.Context) error
 }
 
-type Params struct {
-	Status spacestatus.SpaceStatus
-}
-
 type offloader struct {
 	app            *app.App
 	spaceOffloader spaceoffloader.SpaceOffloader
 }
 
-func New(app *app.App, params Params) Offloader {
+func New(app *app.App) Offloader {
 	child := app.ChildApp()
 	so := spaceoffloader.New()
-	child.Register(params.Status).
-		Register(so)
+	child.Register(aclindexcleaner.New()).Register(so)
 	return &offloader{
 		app:            child,
 		spaceOffloader: so,
@@ -44,7 +39,7 @@ func (o *offloader) Start(ctx context.Context) error {
 }
 
 func (o *offloader) CanTransition(next mode.Mode) bool {
-	return false
+	return true
 }
 
 func (o *offloader) WaitOffload(ctx context.Context) error {

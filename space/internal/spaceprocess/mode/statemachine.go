@@ -16,7 +16,8 @@ const (
 	ModeInitial
 	ModeLoading
 	ModeOffloading
-	ModeInviting
+	ModeJoining
+	ModeRemoving
 )
 
 type WaitResult struct {
@@ -165,6 +166,7 @@ func (s *StateMachine) loop() {
 			s.log.Debug("starting", zap.Int("mode", int(next)))
 			err := cur.Start(s.ctx)
 			if err != nil {
+				s.log.Error("failed to start", zap.Error(err))
 				s.Lock()
 				s.next = ModeUnknown
 				s.mode = ModeInitial

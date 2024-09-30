@@ -1,6 +1,6 @@
 ## Use Case archives validation tool
 
-To use Use Case archives validation tool head to [cmd/usecasevalidator](../cmd/usecasegenerator), build the program
+To use Use Case archives validation tool head to [cmd/usecasevalidator](../cmd/usecasevalidator), build the program
 `go build`
 and run it using
 `./usecasevalidator -path <path_to_archive>`

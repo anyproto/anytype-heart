@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -21,12 +20,20 @@ import (
 
 var log = logging.Logger("import").Desugar()
 
+type IdAndKeyProvider interface {
+	IDProvider
+	InternalKeyProvider
+}
+
 type IDProvider interface {
 	GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error)
 }
 
+type InternalKeyProvider interface {
+	GetInternalKey(sbType sb.SmartBlockType) string
+}
+
 type Provider struct {
-	objectStore                objectstore.ObjectStore
 	idProviderBySmartBlockType map[sb.SmartBlockType]IDProvider
 }
 
@@ -36,20 +43,16 @@ func NewIDProvider(
 	blockService *block.Service,
 	fileStore filestore.FileStore,
 	fileObjectService fileobject.Service,
-	fileService files.Service,
-) IDProvider {
+) IdAndKeyProvider {
 	p := &Provider{
-		objectStore:                objectStore,
 		idProviderBySmartBlockType: make(map[sb.SmartBlockType]IDProvider, 0),
 	}
 	existingObject := newExistingObject(objectStore)
 	treeObject := newTreeObject(existingObject, spaceService)
-	derivedObject := newDerivedObject(existingObject, spaceService)
+	derivedObject := newDerivedObject(existingObject, spaceService, objectStore)
 	fileObject := &fileObject{
-		treeObject:        treeObject,
-		blockService:      blockService,
-		fileService:       fileService,
-		fileObjectService: fileObjectService,
+		treeObject:   treeObject,
+		blockService: blockService,
 	}
 	oldFile := &oldFile{
 		blockService:      blockService,
@@ -66,12 +69,29 @@ func NewIDProvider(
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeFile] = oldFile
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeProfilePage] = derivedObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeTemplate] = treeObject
+	p.idProviderBySmartBlockType[sb.SmartBlockTypeParticipant] = newParticipant()
 	return p
 }
 
-func (p *Provider) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
+func (p *Provider) GetIDAndPayload(
+	ctx context.Context,
+	spaceID string,
+	sn *common.Snapshot,
+	createdTime time.Time,
+	getExisting bool,
+	origin objectorigin.ObjectOrigin,
+) (string, treestorage.TreeStorageCreatePayload, error) {
 	if idProvider, ok := p.idProviderBySmartBlockType[sn.SbType]; ok {
 		return idProvider.GetIDAndPayload(ctx, spaceID, sn, createdTime, getExisting, origin)
 	}
 	return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("unsupported smartblock to import")
+}
+
+func (p *Provider) GetInternalKey(sbType sb.SmartBlockType) string {
+	if idProvider, ok := p.idProviderBySmartBlockType[sbType]; ok {
+		if internalKeyProvider, ok := idProvider.(InternalKeyProvider); ok {
+			return internalKeyProvider.GetInternalKey(sbType)
+		}
+	}
+	return ""
 }

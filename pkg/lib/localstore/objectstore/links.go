@@ -1,12 +1,15 @@
 package objectstore
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
-	"github.com/dgraph-io/badger/v4"
-	ds "github.com/ipfs/go-datastore"
+	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/query"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type LinksUpdateInfo struct {
@@ -14,69 +17,65 @@ type LinksUpdateInfo struct {
 	Added, Removed []string
 }
 
-func (s *dsObjectStore) GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error) {
-	var res *model.ObjectInfoWithLinks
-	err := s.db.View(func(txn *badger.Txn) error {
-		pages, err := s.getObjectsInfo(txn, spaceID, []string{id})
-		if err != nil {
-			return err
-		}
+const linkOutboundField = "o"
 
-		if len(pages) == 0 {
-			return fmt.Errorf("page not found")
-		}
-		page := pages[0]
+func (s *dsObjectStore) GetWithLinksInfoByID(spaceId string, id string) (*model.ObjectInfoWithLinks, error) {
+	txn, err := s.links.ReadTx(s.componentCtx)
+	if err != nil {
+		return nil, fmt.Errorf("read txn: %w", err)
+	}
+	commit := func(err error) error {
+		return errors.Join(txn.Commit(), err)
+	}
+	pages, err := s.getObjectsInfo(txn.Context(), spaceId, []string{id})
+	if err != nil {
+		return nil, commit(err)
+	}
 
-		inboundIds, err := findInboundLinks(txn, id)
-		if err != nil {
-			return fmt.Errorf("find inbound links: %w", err)
-		}
-		outboundsIds, err := findOutboundLinks(txn, id)
-		if err != nil {
-			return fmt.Errorf("find outbound links: %w", err)
-		}
+	if len(pages) == 0 {
+		return nil, commit(fmt.Errorf("page not found"))
+	}
+	page := pages[0]
 
-		inbound, err := s.getObjectsInfo(txn, spaceID, inboundIds)
-		if err != nil {
-			return err
-		}
+	inboundIds, err := s.findInboundLinks(txn.Context(), id)
+	if err != nil {
+		return nil, commit(fmt.Errorf("find inbound links: %w", err))
+	}
+	outboundsIds, err := s.findOutboundLinks(txn.Context(), id)
+	if err != nil {
+		return nil, commit(fmt.Errorf("find outbound links: %w", err))
+	}
 
-		outbound, err := s.getObjectsInfo(txn, spaceID, outboundsIds)
-		if err != nil {
-			return err
-		}
+	inbound, err := s.getObjectsInfo(s.componentCtx, spaceId, inboundIds)
+	if err != nil {
+		return nil, commit(err)
+	}
 
-		res = &model.ObjectInfoWithLinks{
-			Id:   id,
-			Info: page,
-			Links: &model.ObjectLinksInfo{
-				Inbound:  inbound,
-				Outbound: outbound,
-			},
-		}
-		return nil
-	})
-	return res, err
+	outbound, err := s.getObjectsInfo(s.componentCtx, spaceId, outboundsIds)
+	if err != nil {
+		return nil, commit(err)
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return nil, fmt.Errorf("commit txn: %w", err)
+	}
+	return &model.ObjectInfoWithLinks{
+		Id:   id,
+		Info: page,
+		Links: &model.ObjectLinksInfo{
+			Inbound:  inbound,
+			Outbound: outbound,
+		},
+	}, nil
 }
 
 func (s *dsObjectStore) GetOutboundLinksByID(id string) ([]string, error) {
-	var links []string
-	err := s.db.View(func(txn *badger.Txn) error {
-		var err error
-		links, err = findOutboundLinks(txn, id)
-		return err
-	})
-	return links, err
+	return s.findOutboundLinks(s.componentCtx, id)
 }
 
 func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
-	var links []string
-	err := s.db.View(func(txn *badger.Txn) error {
-		var err error
-		links, err = findInboundLinks(txn, id)
-		return err
-	})
-	return links, err
+	return s.findInboundLinks(s.componentCtx, id)
 }
 
 func (s *dsObjectStore) SubscribeLinksUpdate(callback func(info LinksUpdateInfo)) {
@@ -86,28 +85,34 @@ func (s *dsObjectStore) SubscribeLinksUpdate(callback func(info LinksUpdateInfo)
 }
 
 // Find to which IDs specified one has outbound links.
-func findOutboundLinks(txn *badger.Txn, id string) ([]string, error) {
-	return listIDsByPrefix(txn, pagesOutboundLinksBase.ChildString(id).Bytes())
+func (s *dsObjectStore) findOutboundLinks(ctx context.Context, id string) ([]string, error) {
+	doc, err := s.links.FindId(ctx, id)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	arr := doc.Value().GetArray(linkOutboundField)
+	return pbtypes.JsonArrayToStrings(arr), nil
 }
 
 // Find from which IDs specified one has inbound links.
-func findInboundLinks(txn *badger.Txn, id string) ([]string, error) {
-	return listIDsByPrefix(txn, pagesInboundLinksBase.ChildString(id).Bytes())
-}
-
-func pageLinkKeys(id string, out []string) []ds.Key {
-	keys := make([]ds.Key, 0, 2*len(out))
-	// links outgoing from specified node id
-	for _, to := range out {
-		keys = append(keys, outgoingLinkKey(id, to), inboundLinkKey(id, to))
+func (s *dsObjectStore) findInboundLinks(ctx context.Context, id string) ([]string, error) {
+	iter, err := s.links.Find(query.Key{Path: []string{linkOutboundField}, Filter: query.NewComp(query.CompOpEq, id)}).Iter(ctx)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil, nil
 	}
-	return keys
-}
-
-func outgoingLinkKey(from, to string) ds.Key {
-	return pagesOutboundLinksBase.ChildString(from).ChildString(to)
-}
-
-func inboundLinkKey(from, to string) ds.Key {
-	return pagesInboundLinksBase.ChildString(to).ChildString(from)
+	if err != nil {
+		return nil, err
+	}
+	var links []string
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, errors.Join(iter.Close(), fmt.Errorf("get doc: %w", err))
+		}
+		links = append(links, string(doc.Value().GetStringBytes("id")))
+	}
+	return links, iter.Close()
 }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -524,7 +523,7 @@ func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progres
 		}
 
 		if strings.EqualFold(filepath.Ext(name), ".md") || strings.EqualFold(filepath.Ext(name), ".csv") {
-			file.PageID = uuid.New().String()
+			file.PageID = bson.NewObjectId().Hex()
 
 			m.setDetails(file, name, details)
 		}

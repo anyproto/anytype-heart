@@ -23,8 +23,9 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		lp := New()
 		lp.Init(nil)
 
-		info, _, err := lp.Fetch(ctx, ts.URL)
+		info, _, isFile, err := lp.Fetch(ctx, ts.URL)
 		require.NoError(t, err)
+		assert.False(t, isFile)
 		assert.Equal(t, model.LinkPreview{
 			Url:         ts.URL,
 			FaviconUrl:  ts.URL + "/favicon.ico",
@@ -41,7 +42,7 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		lp := New()
 		lp.Init(nil)
 
-		info, _, err := lp.Fetch(ctx, ts.URL)
+		info, _, isFile, err := lp.Fetch(ctx, ts.URL)
 		require.NoError(t, err)
 		assert.Equal(t, model.LinkPreview{
 			Url:         ts.URL,
@@ -51,6 +52,7 @@ func TestLinkPreview_Fetch(t *testing.T) {
 			ImageUrl:    "http://site.com/images/example.jpg",
 			Type:        model.LinkPreview_Page,
 		}, info)
+		assert.False(t, isFile)
 	})
 
 	t.Run("binary image", func(t *testing.T) {
@@ -60,7 +62,7 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		url := ts.URL + "/filename.jpg"
 		lp := New()
 		lp.Init(nil)
-		info, _, err := lp.Fetch(ctx, url)
+		info, _, isFile, err := lp.Fetch(ctx, url)
 		require.NoError(t, err)
 		assert.Equal(t, model.LinkPreview{
 			Url:        url,
@@ -69,23 +71,48 @@ func TestLinkPreview_Fetch(t *testing.T) {
 			ImageUrl:   url,
 			Type:       model.LinkPreview_Image,
 		}, info)
+		assert.True(t, isFile)
 	})
 
-	t.Run("binary", func(t *testing.T) {
-		tr := testReader(0)
-		ts := newTestServer("binary/octed-stream", &tr)
-		defer ts.Close()
-		url := ts.URL + "/filename.jpg"
-		lp := New()
-		lp.Init(nil)
-		info, _, err := lp.Fetch(ctx, url)
-		require.NoError(t, err)
-		assert.Equal(t, model.LinkPreview{
-			Url:        url,
-			Title:      "filename.jpg",
-			FaviconUrl: ts.URL + "/favicon.ico",
-			Type:       model.LinkPreview_Unknown,
-		}, info)
+	t.Run("check content is file by extension", func(t *testing.T) {
+		// given
+		resp := &http.Response{Header: map[string][]string{}}
+
+		// when
+		isFile := checkFileType("http://site.com/images/example.jpg", resp, "")
+
+		// then
+		assert.True(t, isFile)
+	})
+	t.Run("check content is file by content-type", func(t *testing.T) {
+		// given
+		resp := &http.Response{Header: map[string][]string{}}
+
+		// when
+		isFile := checkFileType("htt://example.com/filepath", resp, "application/pdf")
+
+		// then
+		assert.True(t, isFile)
+	})
+	t.Run("check content is file by content-disposition", func(t *testing.T) {
+		// given
+		resp := &http.Response{Header: map[string][]string{"Content-Disposition": {"attachment filename=\"user.csv\""}}}
+
+		// when
+		isFile := checkFileType("htt://example.com/filepath", resp, "")
+
+		// then
+		assert.True(t, isFile)
+	})
+	t.Run("check content is not file", func(t *testing.T) {
+		// given
+		resp := &http.Response{Header: map[string][]string{}}
+
+		// when
+		isFile := checkFileType("htt://example.com/notfile", resp, "")
+
+		// then
+		assert.False(t, isFile)
 	})
 }
 

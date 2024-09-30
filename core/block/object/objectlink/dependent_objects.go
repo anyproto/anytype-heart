@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -30,42 +31,35 @@ type linkSource interface {
 	HasSmartIds() bool
 }
 
-func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, details, relations, objTypes, creatorModifierWorkspace bool) (ids []string) {
-	if blocks {
-		err := s.Iterate(func(b simple.Block) (isContinue bool) {
-			if ls, ok := b.(linkSource); ok {
-				ids = ls.FillSmartIds(ids)
-			}
-			return true
-		})
-		if err != nil {
-			log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
-		}
+type Flags struct {
+	Blocks,
+	Details,
+	Relations,
+	Types,
+	Collection,
+	CreatorModifierWorkspace,
+	DataviewBlockOnlyTarget,
+	NoSystemRelations,
+	NoHiddenBundledRelations,
+	NoImages bool
+}
+
+func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags) (ids []string) {
+	if flags.Blocks {
+		ids = collectIdsFromBlocks(s, flags)
 	}
 
-	if objTypes {
-		for _, objectTypeKey := range s.ObjectTypeKeys() {
-			if objectTypeKey == "" { // TODO is it possible?
-				log.Errorf("sb %s has empty ot", s.RootId())
-				continue
-			}
-			id, err := converter.GetTypeIdByKey(context.Background(), objectTypeKey)
-			if err != nil {
-				log.With("objectID", s.RootId()).Errorf("failed to get object type id by key %s: %s", objectTypeKey, err)
-				continue
-			}
-			ids = append(ids, id)
-		}
+	if flags.Types {
+		ids = append(ids, collectIdsFromTypes(s, converter)...)
 	}
 
 	var det *types.Struct
-	if details {
+	if flags.Details {
 		det = s.CombinedDetails()
 	}
 
 	for _, rel := range s.GetRelationLinks() {
-		// do not index local dates such as lastOpened/lastModified
-		if relations {
+		if flags.Relations {
 			id, err := converter.GetRelationIdByKey(context.Background(), domain.RelationKey(rel.Key))
 			if err != nil {
 				log.With("objectID", s.RootId()).Errorf("failed to get relation id by key %s: %s", rel.Key, err)
@@ -74,65 +68,134 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 			ids = append(ids, id)
 		}
 
-		if !details {
+		if !flags.Details {
 			continue
 		}
 
-		// handle corner cases first for specific formats
-		if rel.Format == model.RelationFormat_date &&
-			!lo.Contains(bundle.LocalAndDerivedRelationKeys, rel.Key) {
-			relInt := pbtypes.GetInt64(det, rel.Key)
-			if relInt > 0 {
-				t := time.Unix(relInt, 0)
-				t = t.In(time.Local)
-				ids = append(ids, addr.TimeToID(t))
-			}
-			continue
-		}
+		ids = append(ids, collectIdsFromDetail(rel, det, flags)...)
+	}
 
-		if rel.Key == bundle.RelationKeyCreator.String() ||
-			rel.Key == bundle.RelationKeyLastModifiedBy.String() {
-			if creatorModifierWorkspace {
-				v := pbtypes.GetString(det, rel.Key)
-				ids = append(ids, v)
-			}
-			continue
-		}
-
-		if rel.Key == bundle.RelationKeyId.String() ||
-			rel.Key == bundle.RelationKeyLinks.String() ||
-			rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
-			rel.Key == bundle.RelationKeyFeaturedRelations.String() {
-			continue
-		}
-
-		if rel.Key == bundle.RelationKeyCoverId.String() {
-			v := pbtypes.GetString(det, rel.Key)
-			_, err := cid.Decode(v)
-			if err != nil {
-				// this is an exception cause coverId can contains not a file hash but color
-				continue
-			}
-			ids = append(ids, v)
-		}
-
-		if rel.Format != model.RelationFormat_object &&
-			rel.Format != model.RelationFormat_file &&
-			rel.Format != model.RelationFormat_status &&
-			rel.Format != model.RelationFormat_tag {
-			continue
-		}
-
-		// add all object relation values as dependents
-		for _, targetID := range pbtypes.GetStringList(det, rel.Key) {
-			if targetID == "" {
-				continue
-			}
-
-			ids = append(ids, targetID)
-		}
+	if flags.Collection {
+		ids = append(ids, s.GetStoreSlice(template.CollectionStoreKey)...)
 	}
 
 	ids = lo.Uniq(ids)
 	return
+}
+
+func collectIdsFromBlocks(s *state.State, flags Flags) (ids []string) {
+	err := s.Iterate(func(b simple.Block) (isContinue bool) {
+		if flags.DataviewBlockOnlyTarget {
+			if dv := b.Model().GetDataview(); dv != nil {
+				if dv.TargetObjectId != "" {
+					ids = append(ids, dv.TargetObjectId)
+				}
+				return true
+			}
+		}
+
+		// if NoImages == false, then file block will be processed with FillSmartIds
+		if flags.NoImages {
+			if f := b.Model().GetFile(); f != nil {
+				if f.TargetObjectId != "" && f.Type != model.BlockContentFile_Image {
+					ids = append(ids, f.TargetObjectId)
+				}
+				return true
+			}
+		}
+
+		if ls, ok := b.(linkSource); ok {
+			ids = ls.FillSmartIds(ids)
+		}
+		return true
+	})
+	if err != nil {
+		log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
+	}
+	return ids
+}
+
+func collectIdsFromTypes(s *state.State, converter KeyToIDConverter) (ids []string) {
+	for _, objectTypeKey := range s.ObjectTypeKeys() {
+		if objectTypeKey == "" { // TODO is it possible?
+			log.Errorf("sb %s has empty ot", s.RootId())
+			continue
+		}
+		id, err := converter.GetTypeIdByKey(context.Background(), objectTypeKey)
+		if err != nil {
+			log.With("objectID", s.RootId()).Errorf("failed to get object type id by key %s: %s", objectTypeKey, err)
+			continue
+		}
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func collectIdsFromDetail(rel *model.RelationLink, det *types.Struct, flags Flags) (ids []string) {
+	if flags.NoSystemRelations {
+		if rel.Format != model.RelationFormat_object || bundle.IsSystemRelation(domain.RelationKey(rel.Key)) {
+			return
+		}
+	}
+
+	if flags.NoHiddenBundledRelations {
+		// Only bundled relations can be hidden, so we don't need to request relations from object store.
+		if r, err := bundle.GetRelation(domain.RelationKey(rel.Key)); err == nil && r.Hidden {
+			return
+		}
+	}
+
+	// handle corner cases first for specific formats
+	if rel.Format == model.RelationFormat_date &&
+		!lo.Contains(bundle.LocalAndDerivedRelationKeys, rel.Key) {
+		relInt := pbtypes.GetInt64(det, rel.Key)
+		if relInt > 0 {
+			t := time.Unix(relInt, 0)
+			t = t.In(time.Local)
+			ids = append(ids, addr.TimeToID(t))
+		}
+		return
+	}
+
+	if rel.Key == bundle.RelationKeyCreator.String() ||
+		rel.Key == bundle.RelationKeyLastModifiedBy.String() {
+		if flags.CreatorModifierWorkspace {
+			v := pbtypes.GetString(det, rel.Key)
+			ids = append(ids, v)
+		}
+		return
+	}
+
+	if rel.Key == bundle.RelationKeyId.String() ||
+		rel.Key == bundle.RelationKeyLinks.String() ||
+		rel.Key == bundle.RelationKeyType.String() || // always skip type because it was processed before
+		rel.Key == bundle.RelationKeyFeaturedRelations.String() {
+		return
+	}
+
+	if rel.Key == bundle.RelationKeyCoverId.String() {
+		v := pbtypes.GetString(det, rel.Key)
+		_, err := cid.Decode(v)
+		if err != nil {
+			// this is an exception cause coverId can contain not a file hash but color
+			return
+		}
+		ids = append(ids, v)
+	}
+
+	if rel.Format != model.RelationFormat_object &&
+		rel.Format != model.RelationFormat_file &&
+		rel.Format != model.RelationFormat_status &&
+		rel.Format != model.RelationFormat_tag {
+		return
+	}
+
+	// add all object relation values as dependents
+	for _, targetID := range pbtypes.GetStringList(det, rel.Key) {
+		if targetID != "" {
+			ids = append(ids, targetID)
+		}
+	}
+
+	return ids
 }

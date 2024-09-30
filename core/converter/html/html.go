@@ -25,17 +25,15 @@ import (
 
 var log = logging.Logger("html-converter").Desugar()
 
-func NewHTMLConverter(spaceID string, fileService files.Service, s *state.State, fileObjectService fileobject.Service) *HTML {
+func NewHTMLConverter(fileService files.Service, s *state.State, fileObjectService fileobject.Service) *HTML {
 	return &HTML{
 		s:                 s,
-		spaceID:           spaceID,
 		fileService:       fileService,
 		fileObjectService: fileObjectService,
 	}
 }
 
 type HTML struct {
-	spaceID           string
 	s                 *state.State
 	buf               *bytes.Buffer
 	fileService       files.Service
@@ -486,7 +484,7 @@ func (h *HTML) getImageBase64(fileId domain.FullFileId) (res string) {
 	if err != nil {
 		return
 	}
-	f, err := im.GetFileForWidth(ctx, 1024)
+	f, err := im.GetFileForWidth(1024)
 	if err != nil {
 		return
 	}

@@ -6,8 +6,6 @@ package localdiscovery
 import (
 	"context"
 	"fmt"
-	gonet "net"
-	"strings"
 	"sync"
 	"time"
 
@@ -20,10 +18,13 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/net/addrs"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 )
 
-var interfacesSortPriority = []string{"en", "wlan", "wl", "eth", "lo"}
+type Hook int
+
+var interfacesSortPriority = []string{"wlan", "wl", "en", "eth", "tun", "tap", "utun", "lo"}
 
 type localDiscovery struct {
 	server *zeroconf.Server
@@ -44,10 +45,15 @@ type localDiscovery struct {
 	started     bool
 	notifier    Notifier
 	m           sync.Mutex
+
+	hookMu       sync.Mutex
+	hookState    DiscoveryPossibility
+	hooks        []HookCallback
+	networkState NetworkStateService
 }
 
 func New() LocalDiscovery {
-	return &localDiscovery{}
+	return &localDiscovery{hooks: make([]HookCallback, 0)}
 }
 
 func (l *localDiscovery) SetNotifier(notifier Notifier) {
@@ -58,8 +64,10 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.manualStart = a.MustComponent(config.CName).(*config.Config).DontStartLocalNetworkSyncAutomatically
 	l.nodeConf = a.MustComponent(config.CName).(*config.Config).GetNodeConf()
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
-	l.periodicCheck = periodicsync.NewPeriodicSync(30, 0, l.checkAddrs, log)
-	l.drpcServer = a.MustComponent(clientserver.CName).(clientserver.ClientServer)
+	l.periodicCheck = periodicsync.NewPeriodicSync(5, 0, l.refreshInterfaces, log)
+	l.drpcServer = app.MustComponent[clientserver.ClientServer](a)
+	l.networkState = app.MustComponent[NetworkStateService](a)
+
 	return
 }
 
@@ -74,6 +82,7 @@ func (l *localDiscovery) Run(ctx context.Context) (err error) {
 
 func (l *localDiscovery) Start() (err error) {
 	if !l.drpcServer.ServerStarted() {
+		l.discoveryPossibilitySetState(DiscoveryNoInterfaces)
 		return
 	}
 	l.m.Lock()
@@ -82,6 +91,9 @@ func (l *localDiscovery) Start() (err error) {
 		return
 	}
 	l.started = true
+	l.networkState.RegisterHook(func(_ model.DeviceNetworkType) {
+		l.refreshInterfaces(l.ctx)
+	})
 
 	l.port = l.drpcServer.Port()
 	l.periodicCheck.Run()
@@ -129,16 +141,33 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
+func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
+	l.m.Lock()
+	defer l.m.Unlock()
 	newAddrs, err := addrs.GetInterfacesAddrs()
-	if err != nil {
+	if addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) {
+		// this optimization allows to save syscalls to get addrs for every iface
+		// also we may receive a new ip address on the existing interface
+		l.discoveryPossibilitySwapState(func(currentState DiscoveryPossibility) DiscoveryPossibility {
+			if currentState != DiscoveryLocalNetworkRestricted {
+				return currentState
+			}
+			// do the check only if we are in restricted state, just in case it was disabled
+			return l.getDiscoveryPossibility(newAddrs)
+		})
 		return
 	}
 
-	newAddrs.SortWithPriority(interfacesSortPriority)
+	newAddrs.Interfaces = filterMulticastInterfaces(newAddrs.Interfaces)
+	newAddrs.SortInterfacesWithPriority(interfacesSortPriority)
+	l.discoveryPossibilitySetState(l.getDiscoveryPossibility(newAddrs))
+
 	if newAddrs.Equal(l.interfacesAddrs) && l.server != nil {
+		// we do additional check after we filter and sort multicast interfaces
+		// so this equal check is more precise
 		return
 	}
+	log.With(zap.Strings("ifaces", newAddrs.InterfaceNames())).Info("net interfaces configuration changed")
 	l.interfacesAddrs = newAddrs
 	if l.server != nil {
 		l.cancel()
@@ -146,24 +175,23 @@ func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
 		l.closeWait.Wait()
 		l.closeWait = sync.WaitGroup{}
 	}
+	if len(l.interfacesAddrs.Interfaces) == 0 {
+		return nil
+	}
 	l.ctx, l.cancel = context.WithCancel(ctx)
 	if err = l.startServer(); err != nil {
-		return
+		return fmt.Errorf("starting mdns server: %w", err)
 	}
 	l.startQuerying(l.ctx)
+	log.Debug("mdns server started")
 	return
 }
 
 func (l *localDiscovery) startServer() (err error) {
 	l.ipv4 = l.ipv4[:0]
-	l.ipv6 = l.ipv6[:0]
-	for _, addr := range l.interfacesAddrs.Addrs {
-		ip := strings.Split(addr.String(), "/")[0]
-		if gonet.ParseIP(ip).To4() != nil {
-			l.ipv4 = append(l.ipv4, ip)
-		} else {
-			l.ipv6 = append(l.ipv6, ip)
-		}
+	ipv4, _ := l.getAddresses() // ignore ipv6 for now
+	for _, ip := range ipv4 {
+		l.ipv4 = append(l.ipv4, ip.String())
 	}
 	log.Debug("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId))
 	l.server, err = zeroconf.RegisterProxy(
@@ -174,10 +202,10 @@ func (l *localDiscovery) startServer() (err error) {
 		l.peerId,
 		l.ipv4, // do not include ipv6 addresses, because they are disabled
 		nil,
-		l.interfacesAddrs.Interfaces,
-		zeroconf.TTL(60),
+		l.interfacesAddrs.NetInterfaces(),
+		zeroconf.TTL(3600), // big ttl because we don't have re-broadcasting
 		zeroconf.ServerSelectIPTraffic(zeroconf.IPv4), // disable ipv6 for now
-		zeroconf.WriteTimeout(time.Second*1),
+		zeroconf.WriteTimeout(time.Second*3),
 	)
 	return
 }
@@ -197,6 +225,7 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 			continue
 		}
 		var portAddrs []string
+		l.interfacesAddrs.SortIPsLikeInterfaces(entry.AddrIPv4)
 		for _, a := range entry.AddrIPv4 {
 			portAddrs = append(portAddrs, fmt.Sprintf("%s:%d", a.String(), entry.Port))
 		}
@@ -204,7 +233,7 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 			Addrs:  portAddrs,
 			PeerId: entry.Instance,
 		}
-		log.Debug("discovered peer", zap.Strings("addrs", peer.Addrs), zap.String("peerId", peer.PeerId))
+		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId))
 		if l.notifier != nil {
 			l.notifier.PeerDiscovered(peer, OwnAddresses{
 				Addrs: l.ipv4,
@@ -216,17 +245,17 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 
 func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEntry) {
 	defer l.closeWait.Done()
-	newAddrs, err := addrs.GetInterfacesAddrs()
-	if err != nil {
-		return
-	}
-
-	newAddrs.SortWithPriority(interfacesSortPriority)
-
 	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch,
-		zeroconf.ClientWriteTimeout(time.Second*1),
-		zeroconf.SelectIfaces(newAddrs.Interfaces),
+		zeroconf.ClientWriteTimeout(time.Second*3),
+		zeroconf.SelectIfaces(l.interfacesAddrs.NetInterfaces()),
 		zeroconf.SelectIPTraffic(zeroconf.IPv4)); err != nil {
 		log.Error("browsing failed", zap.Error(err))
+	}
+}
+
+func (l *localDiscovery) GetOwnAddresses() OwnAddresses {
+	return OwnAddresses{
+		Addrs: l.ipv4,
+		Port:  l.port,
 	}
 }

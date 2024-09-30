@@ -5,8 +5,11 @@ package mock_clientspace
 import (
 	context "context"
 
-	headsync "github.com/anyproto/any-sync/commonspace/headsync"
+	commonspace "github.com/anyproto/any-sync/commonspace"
+
 	domain "github.com/anyproto/anytype-heart/core/domain"
+
+	headsync "github.com/anyproto/any-sync/commonspace/headsync"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -112,6 +115,53 @@ func (_c *MockSpace_CloseBlocks_Call) Return() *MockSpace_CloseBlocks_Call {
 }
 
 func (_c *MockSpace_CloseBlocks_Call) RunAndReturn(run func()) *MockSpace_CloseBlocks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CommonSpace provides a mock function with given fields:
+func (_m *MockSpace) CommonSpace() commonspace.Space {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for CommonSpace")
+	}
+
+	var r0 commonspace.Space
+	if rf, ok := ret.Get(0).(func() commonspace.Space); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(commonspace.Space)
+		}
+	}
+
+	return r0
+}
+
+// MockSpace_CommonSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CommonSpace'
+type MockSpace_CommonSpace_Call struct {
+	*mock.Call
+}
+
+// CommonSpace is a helper method to define mock.On call
+func (_e *MockSpace_Expecter) CommonSpace() *MockSpace_CommonSpace_Call {
+	return &MockSpace_CommonSpace_Call{Call: _e.mock.On("CommonSpace")}
+}
+
+func (_c *MockSpace_CommonSpace_Call) Run(run func()) *MockSpace_CommonSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpace_CommonSpace_Call) Return(_a0 commonspace.Space) *MockSpace_CommonSpace_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_CommonSpace_Call) RunAndReturn(run func() commonspace.Space) *MockSpace_CommonSpace_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -870,6 +920,54 @@ func (_c *MockSpace_Do_Call) RunAndReturn(run func(string, func(smartblock.Smart
 	return _c
 }
 
+// DoCtx provides a mock function with given fields: ctx, objectId, apply
+func (_m *MockSpace) DoCtx(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) error {
+	ret := _m.Called(ctx, objectId, apply)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DoCtx")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, func(smartblock.SmartBlock) error) error); ok {
+		r0 = rf(ctx, objectId, apply)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpace_DoCtx_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DoCtx'
+type MockSpace_DoCtx_Call struct {
+	*mock.Call
+}
+
+// DoCtx is a helper method to define mock.On call
+//   - ctx context.Context
+//   - objectId string
+//   - apply func(smartblock.SmartBlock) error
+func (_e *MockSpace_Expecter) DoCtx(ctx interface{}, objectId interface{}, apply interface{}) *MockSpace_DoCtx_Call {
+	return &MockSpace_DoCtx_Call{Call: _e.mock.On("DoCtx", ctx, objectId, apply)}
+}
+
+func (_c *MockSpace_DoCtx_Call) Run(run func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error)) *MockSpace_DoCtx_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(func(smartblock.SmartBlock) error))
+	})
+	return _c
+}
+
+func (_c *MockSpace_DoCtx_Call) Return(_a0 error) *MockSpace_DoCtx_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_DoCtx_Call) RunAndReturn(run func(context.Context, string, func(smartblock.SmartBlock) error) error) *MockSpace_DoCtx_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DoLockedIfNotExists provides a mock function with given fields: objectID, proc
 func (_m *MockSpace) DoLockedIfNotExists(objectID string, proc func() error) error {
 	ret := _m.Called(objectID, proc)
@@ -1239,6 +1337,51 @@ func (_c *MockSpace_IsPersonal_Call) RunAndReturn(run func() bool) *MockSpace_Is
 	return _c
 }
 
+// IsReadOnly provides a mock function with given fields:
+func (_m *MockSpace) IsReadOnly() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsReadOnly")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockSpace_IsReadOnly_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsReadOnly'
+type MockSpace_IsReadOnly_Call struct {
+	*mock.Call
+}
+
+// IsReadOnly is a helper method to define mock.On call
+func (_e *MockSpace_Expecter) IsReadOnly() *MockSpace_IsReadOnly_Call {
+	return &MockSpace_IsReadOnly_Call{Call: _e.mock.On("IsReadOnly")}
+}
+
+func (_c *MockSpace_IsReadOnly_Call) Run(run func()) *MockSpace_IsReadOnly_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpace_IsReadOnly_Call) Return(_a0 bool) *MockSpace_IsReadOnly_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_IsReadOnly_Call) RunAndReturn(run func() bool) *MockSpace_IsReadOnly_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LoadObjects provides a mock function with given fields: ctx, ids
 func (_m *MockSpace) LoadObjects(ctx context.Context, ids []string) error {
 	ret := _m.Called(ctx, ids)
@@ -1282,6 +1425,40 @@ func (_c *MockSpace_LoadObjects_Call) Return(err error) *MockSpace_LoadObjects_C
 }
 
 func (_c *MockSpace_LoadObjects_Call) RunAndReturn(run func(context.Context, []string) error) *MockSpace_LoadObjects_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// LoadObjectsIgnoreErrs provides a mock function with given fields: ctx, objIDs
+func (_m *MockSpace) LoadObjectsIgnoreErrs(ctx context.Context, objIDs []string) {
+	_m.Called(ctx, objIDs)
+}
+
+// MockSpace_LoadObjectsIgnoreErrs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadObjectsIgnoreErrs'
+type MockSpace_LoadObjectsIgnoreErrs_Call struct {
+	*mock.Call
+}
+
+// LoadObjectsIgnoreErrs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - objIDs []string
+func (_e *MockSpace_Expecter) LoadObjectsIgnoreErrs(ctx interface{}, objIDs interface{}) *MockSpace_LoadObjectsIgnoreErrs_Call {
+	return &MockSpace_LoadObjectsIgnoreErrs_Call{Call: _e.mock.On("LoadObjectsIgnoreErrs", ctx, objIDs)}
+}
+
+func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) Run(run func(ctx context.Context, objIDs []string)) *MockSpace_LoadObjectsIgnoreErrs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) Return() *MockSpace_LoadObjectsIgnoreErrs_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) RunAndReturn(run func(context.Context, []string)) *MockSpace_LoadObjectsIgnoreErrs_Call {
 	_c.Call.Return(run)
 	return _c
 }

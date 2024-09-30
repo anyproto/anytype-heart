@@ -67,6 +67,11 @@
     "detailKey": "sourceFilePath"
   },
   {
+    "action": "remove",
+    "entity": "detail",
+    "detailKey": "recommendedRelations"
+  },
+  {
     "action": "change",
     "entity": "dataViewTarget",
     "objectID": "bafyreihz4ukwxev7ywljtjmv54m4kh7nkptifr3g3xmc3x5yzo6zfe26qy",

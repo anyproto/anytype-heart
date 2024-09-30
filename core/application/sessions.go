@@ -10,34 +10,47 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token string, err error) {
+func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token string, accountId string, err error) {
 	// test if mnemonic is correct
 	mnemonic := req.GetMnemonic()
 	appKey := req.GetAppKey()
 
 	if appKey != "" {
-		wallet := s.app.Component(walletComp.CName)
+		app := s.GetApp()
+		if app == nil {
+			return "", "", ErrApplicationIsNotRunning
+		}
+		wallet := app.Component(walletComp.CName)
 		if wallet == nil {
-			return "", fmt.Errorf("appToken auth not yet supported for the main app")
+			return "", "", fmt.Errorf("appToken auth not yet supported for the main app")
 		}
 		w := wallet.(walletComp.Wallet)
 		appLink, err := w.ReadAppLink(appKey)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		log.Infof("appLink auth %s", appLink.AppName)
-		return s.sessions.StartSession(s.sessionSigningKey)
+		token, err := s.sessions.StartSession(s.sessionSigningKey)
+		if err != nil {
+			return "", "", err
+		}
+		return token, w.Account().SignKey.GetPublic().Account(), nil
 	}
 
 	if s.mnemonic == "" {
 		// todo: rewrite this after appKey auth is implemented
 		// we can derive and check the account in this case
-		return "", errors.Join(ErrBadInput, fmt.Errorf("app authed without mnemonic"))
+		return "", "", errors.Join(ErrBadInput, fmt.Errorf("app authed without mnemonic"))
 	}
 	if s.mnemonic != mnemonic {
-		return "", errors.Join(ErrBadInput, fmt.Errorf("incorrect mnemonic"))
+		return "", "", errors.Join(ErrBadInput, fmt.Errorf("incorrect mnemonic"))
 	}
-	return s.sessions.StartSession(s.sessionSigningKey)
+	token, err = s.sessions.StartSession(s.sessionSigningKey)
+	if err != nil {
+		return "", "", err
+	}
+	// todo: account is empty, to be implemented with GO-1854
+	return token, "", nil
 }
 
 func (s *Service) CloseSession(req *pb.RpcWalletCloseSessionRequest) error {

@@ -16,15 +16,16 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/constant"
-	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -69,7 +70,7 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 
 	profile, err := getUserProfile(req)
 	if err != nil {
-		return RecoverFromLegacyResponse{}, oserror.TransformError(err)
+		return RecoverFromLegacyResponse{}, anyerror.CleanupError(err)
 	}
 
 	err = s.stop()
@@ -88,7 +89,7 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 	s.rootPath = req.RootPath
 	err = os.MkdirAll(s.rootPath, 0700)
 	if err != nil {
-		return RecoverFromLegacyResponse{}, oserror.TransformError(err)
+		return RecoverFromLegacyResponse{}, anyerror.CleanupError(err)
 	}
 	if _, statErr := os.Stat(filepath.Join(s.rootPath, address)); os.IsNotExist(statErr) {
 		if walletErr := core.WalletInitRepo(s.rootPath, res.Identity); walletErr != nil {
@@ -159,7 +160,7 @@ func (s *Service) getBootstrapConfig(req *pb.RpcAccountRecoverFromLegacyExportRe
 
 func (s *Service) setDetails(profile *pb.Profile, icon int64) error {
 	profileDetails, accountDetails := buildDetails(profile, icon)
-	bs := s.app.MustComponent(block.CName).(*block.Service)
+	ds := app.MustComponent[detailservice.Service](s.app)
 
 	spaceService := app.MustComponent[space.Service](s.app)
 	spc, err := spaceService.GetPersonalSpace(context.Background())
@@ -168,38 +169,38 @@ func (s *Service) setDetails(profile *pb.Profile, icon int64) error {
 	}
 	accountObjects := spc.DerivedIDs()
 
-	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: accountObjects.Profile,
-		Details:   profileDetails,
-	}); err != nil {
+	if err := ds.SetDetails(nil,
+		accountObjects.Profile,
+		profileDetails,
+	); err != nil {
 		return err
 	}
-	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: accountObjects.Workspace,
-		Details:   accountDetails,
-	}); err != nil {
+	if err := ds.SetDetails(nil,
+		accountObjects.Workspace,
+		accountDetails,
+	); err != nil {
 		return err
 	}
 	return nil
 }
 
-func buildDetails(profile *pb.Profile, icon int64) (profileDetails []*pb.RpcObjectSetDetailsDetail, accountDetails []*pb.RpcObjectSetDetailsDetail) {
-	profileDetails = []*pb.RpcObjectSetDetailsDetail{{
+func buildDetails(profile *pb.Profile, icon int64) (profileDetails []*model.Detail, accountDetails []*model.Detail) {
+	profileDetails = []*model.Detail{{
 		Key:   bundle.RelationKeyName.String(),
 		Value: pbtypes.String(profile.Name),
 	}}
 	if profile.Avatar == "" {
-		profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
+		profileDetails = append(profileDetails, &model.Detail{
 			Key:   bundle.RelationKeyIconOption.String(),
 			Value: pbtypes.Int64(icon),
 		})
 	} else {
-		profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
+		profileDetails = append(profileDetails, &model.Detail{
 			Key:   bundle.RelationKeyIconImage.String(),
 			Value: pbtypes.String(profile.Avatar),
 		})
 	}
-	accountDetails = []*pb.RpcObjectSetDetailsDetail{{
+	accountDetails = []*model.Detail{{
 		Key:   bundle.RelationKeyIconOption.String(),
 		Value: pbtypes.Int64(icon),
 	}}

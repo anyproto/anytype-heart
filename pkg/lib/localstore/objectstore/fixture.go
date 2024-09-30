@@ -4,19 +4,20 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"path/filepath"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
+	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -27,35 +28,48 @@ type StoreFixture struct {
 // nolint: unused
 const spaceName = "space1"
 
-func NewStoreFixture(t *testing.T) *StoreFixture {
+func NewStoreFixture(t testing.TB) *StoreFixture {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	walletService := mock_wallet.NewMockWallet(t)
-	walletService.EXPECT().Name().Return(wallet.CName)
+	walletService.EXPECT().Name().Return(wallet.CName).Maybe()
 	walletService.EXPECT().RepoPath().Return(t.TempDir())
 
-	fullText := ftsearch.New()
+	fullText := ftsearch.TantivyNew()
 	testApp := &app.App{}
+
+	dataStore, err := datastore.NewInMemory()
+	require.NoError(t, err)
+
+	testApp.Register(dataStore)
 	testApp.Register(walletService)
-	err := fullText.Init(testApp)
+	err = fullText.Init(testApp)
 	require.NoError(t, err)
 	err = fullText.Run(context.Background())
 	require.NoError(t, err)
 
-	badgerDir := filepath.Join(t.TempDir(), "badger")
-	db, err := badger.Open(badger.DefaultOptions(badgerDir))
+	oldStore := oldstore.New()
+	err = oldStore.Init(testApp)
 	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		err = db.Close()
-		require.NoError(t, err)
-	})
 
 	ds := &dsObjectStore{
-		fts:           fullText,
-		sourceService: &detailsFromId{},
-		db:            db,
+		componentCtx:       ctx,
+		componentCtxCancel: cancel,
+		fts:                fullText,
+		sourceService:      &detailsFromId{},
+		arenaPool:          &fastjson.ArenaPool{},
+		repoPath:           walletService.RepoPath(),
+		oldStore:           oldStore,
 	}
-	err = ds.initCache()
+
+	t.Cleanup(func() {
+		_ = fullText.Close(context.Background())
+		_ = ds.Close(context.Background())
+	})
+
+	err = ds.Run(ctx)
 	require.NoError(t, err)
+
 	return &StoreFixture{
 		dsObjectStore: ds,
 	}
@@ -107,11 +121,11 @@ func makeDetails(fields TestObject) *types.Struct {
 	return &types.Struct{Fields: f}
 }
 
-func (fx *StoreFixture) AddObjects(t *testing.T, objects []TestObject) {
+func (fx *StoreFixture) AddObjects(t testing.TB, objects []TestObject) {
 	for _, obj := range objects {
 		id := obj[bundle.RelationKeyId].GetStringValue()
 		require.NotEmpty(t, id)
-		err := fx.UpdateObjectDetails(id, makeDetails(obj))
+		err := fx.UpdateObjectDetails(context.Background(), id, makeDetails(obj))
 		require.NoError(t, err)
 	}
 }

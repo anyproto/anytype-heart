@@ -37,11 +37,23 @@ func GetMill(id string, opts map[string]string) (mill.Mill, error) {
 	}
 }
 
+const (
+	// We have legacy nodes structure that allowed us to add directories and "0" means the first directory
+	// Now we have only one directory in which we have either single file or image variants
+	LinkFile = "0"
+
+	LinkImageOriginal  = "original"
+	LinkImageLarge     = "large"
+	LinkImageSmall     = "small"
+	LinkImageThumbnail = "thumbnail"
+	LinkImageExif      = "exif"
+)
+
 var ImageResizeSchema = &storage.ImageResizeSchema{
 	Name: "image",
 	Links: []*storage.Link{
 		{
-			Name: "original",
+			Name: LinkImageOriginal,
 			Mill: "/image/resize",
 			Opts: map[string]string{
 				"width":   "0",
@@ -49,7 +61,7 @@ var ImageResizeSchema = &storage.ImageResizeSchema{
 			},
 		},
 		{
-			Name: "large",
+			Name: LinkImageLarge,
 			Mill: "/image/resize",
 			Opts: map[string]string{
 				"width":   "1920",
@@ -57,7 +69,7 @@ var ImageResizeSchema = &storage.ImageResizeSchema{
 			},
 		},
 		{
-			Name: "small",
+			Name: LinkImageSmall,
 			Mill: "/image/resize",
 			Opts: map[string]string{
 				"width":   "320",
@@ -65,7 +77,7 @@ var ImageResizeSchema = &storage.ImageResizeSchema{
 			},
 		},
 		{
-			Name: "thumbnail",
+			Name: LinkImageThumbnail,
 			Mill: "/image/resize",
 			Opts: map[string]string{
 				"width":   "100",
@@ -73,7 +85,7 @@ var ImageResizeSchema = &storage.ImageResizeSchema{
 			},
 		},
 		{
-			Name: "exif",
+			Name: LinkImageExif,
 			Mill: "/image/exif",
 		},
 	},

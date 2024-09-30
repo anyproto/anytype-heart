@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
+
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 // SyncDbAfterInactivity shows the minimum time after db was changed to call db.Sync
@@ -54,26 +56,47 @@ func newDbSyncer(db *badger.DB) *dbSyncer {
 }
 
 func (r *clientds) syncer() error {
-	var syncers = []*dbSyncer{
-		newDbSyncer(r.spaceDS),
-		newDbSyncer(r.localstoreDS),
+	defer close(r.syncerFinished)
+	var syncers []*dbSyncer
+	if r.spaceDS != nil {
+		syncers = append(syncers, newDbSyncer(r.spaceDS))
+	}
+	if r.localstoreDS != nil {
+		syncers = append(syncers, newDbSyncer(r.localstoreDS))
 	}
 
 	for {
 		select {
-		case <-r.closed:
+		case <-r.closing:
 			return nil
 		case <-time.After(SyncDbAfterInactivity):
 			for _, syncer := range syncers {
-				maxVersion := syncer.db.MaxVersion()
-				if syncer.LastMaxVersionSynced == maxVersion {
+				select {
+				case <-r.closing:
+					// exit fast in case Close() is already called
+					return nil
+				default:
+				}
+				var maxVersion uint64
+				err := badgerhelper.RetryOnConflict(func() error {
+					return syncer.db.View(func(txn *badger.Txn) error {
+						maxVersion = txn.ReadTs()
+						return nil
+					})
+				})
+				if err != nil {
+					log.Errorf("failed to get max version for %s: %s", syncer.info(), err)
 					continue
 				}
 
 				var skip = true
-				if syncer.LastMaxVersion == maxVersion {
+				if syncer.LastMaxVersion == maxVersion && syncer.LastMaxVersionSynced != maxVersion {
+					// we don't have any writes for the last SyncDbAfterInactivity duration
+					// and the current version is not synced before
 					skip = false
 				} else if syncer.LastMaxVersionSynced+uint64(SyncDbAfterVersions) < maxVersion {
+					// we have some critical amount of writes since the last sync
+					// so we need to force sync despite having write activity
 					// todo: write local metrics on it to test in case of cold account recovery
 					skip = false
 				}

@@ -1,61 +1,58 @@
 package restriction
 
 import (
-	"fmt"
-	"testing"
-
-	"github.com/anyproto/any-sync/app"
-	"github.com/stretchr/testify/require"
-
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 )
 
-type fixture struct {
-	Service
-	objectStoreMock *mock_objectstore.MockObjectStore
+const noLayout = -1
+
+type restrictionHolder struct {
+	sbType    smartblock.SmartBlockType
+	uniqueKey domain.UniqueKey
+	layout    model.ObjectTypeLayout
 }
 
-func newFixture(t *testing.T) *fixture {
-	objectStore := mock_objectstore.NewMockObjectStore(t)
-	objectStore.EXPECT().Name().Return("objectstore")
-
-	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-	sbtProvider.EXPECT().Name().Return("sbtProvider")
-
-	a := &app.App{}
-	a.Register(objectStore)
-	a.Register(sbtProvider)
-	s := New()
-	err := s.Init(a)
-	require.NoError(t, err)
-	return &fixture{
-		Service:         s,
-		objectStoreMock: objectStore,
-	}
+func (rh *restrictionHolder) Type() smartblock.SmartBlockType {
+	return rh.sbType
 }
 
-func fakeDerivedID(key string) string {
-	return fmt.Sprintf("derivedFrom(%s)", key)
+func (rh *restrictionHolder) Layout() (model.ObjectTypeLayout, bool) {
+	return rh.layout, rh.layout != noLayout
+}
+
+func (rh *restrictionHolder) UniqueKey() domain.UniqueKey {
+	return rh.uniqueKey
 }
 
 func givenObjectType(typeKey domain.TypeKey) RestrictionHolder {
-	return newRestrictionHolder(
-		smartblock.SmartBlockTypeObjectType,
-		model.ObjectType_objectType,
-		domain.MustUniqueKey(smartblock.SmartBlockTypeObjectType, typeKey.String()),
-		fakeDerivedID(typeKey.String()),
-	)
+	return &restrictionHolder{
+		sbType:    smartblock.SmartBlockTypeObjectType,
+		layout:    model.ObjectType_objectType,
+		uniqueKey: domain.MustUniqueKey(smartblock.SmartBlockTypeObjectType, typeKey.String()),
+	}
 }
 
 func givenRelation(relationKey domain.RelationKey) RestrictionHolder {
-	return newRestrictionHolder(
-		smartblock.SmartBlockTypeRelation,
-		model.ObjectType_relation,
-		domain.MustUniqueKey(smartblock.SmartBlockTypeRelation, relationKey.String()),
-		fakeDerivedID(relationKey.String()),
-	)
+	return &restrictionHolder{
+		sbType:    smartblock.SmartBlockTypeRelation,
+		layout:    model.ObjectType_relation,
+		uniqueKey: domain.MustUniqueKey(smartblock.SmartBlockTypeRelation, relationKey.String()),
+	}
+}
+
+func givenRestrictionHolder(sbType smartblock.SmartBlockType, typeKey domain.TypeKey) RestrictionHolder {
+	layout := model.ObjectType_basic
+	t, err := bundle.GetType(typeKey)
+	if err == nil {
+		layout = t.Layout
+	}
+	uk, _ := domain.NewUniqueKey(sbType, "")
+	return &restrictionHolder{
+		sbType:    sbType,
+		layout:    layout,
+		uniqueKey: uk,
+	}
 }

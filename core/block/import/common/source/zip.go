@@ -9,7 +9,7 @@ import (
 
 	"github.com/samber/lo"
 
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 type Zip struct {
@@ -50,7 +50,7 @@ func (z *Zip) Iterate(callback func(fileName string, fileReader io.ReadCloser) b
 	for name, file := range z.fileReaders {
 		fileReader, err := file.Open()
 		if err != nil {
-			return oserror.TransformError(err)
+			return anyerror.CleanupError(err)
 		}
 		isContinue := callback(name, fileReader)
 		fileReader.Close()
@@ -65,7 +65,7 @@ func (z *Zip) ProcessFile(fileName string, callback func(fileReader io.ReadClose
 	if file, ok := z.fileReaders[fileName]; ok {
 		fileReader, err := file.Open()
 		if err != nil {
-			return oserror.TransformError(err)
+			return anyerror.CleanupError(err)
 		}
 		defer fileReader.Close()
 		if err = callback(fileReader); err != nil {

@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -26,6 +26,18 @@ type eventKey int
 
 const eventCreate eventKey = 0
 
+type CreateOptions struct {
+	payload *treestorage.TreeStorageCreatePayload
+}
+
+type CreateOption func(opts *CreateOptions)
+
+func WithPayload(payload *treestorage.TreeStorageCreatePayload) CreateOption {
+	return func(opts *CreateOptions) {
+		opts.payload = payload
+	}
+}
+
 // CreateSmartBlockFromState create new object from the provided `createState` and `details`.
 // If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
 // It will return error if some of the relation keys in `details` not installed in the workspace.
@@ -41,6 +53,12 @@ func (s *service) CreateSmartBlockFromState(
 
 func (s *service) CreateSmartBlockFromStateInSpace(
 	ctx context.Context, spc clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State,
+) (id string, newDetails *types.Struct, err error) {
+	return s.CreateSmartBlockFromStateInSpaceWithOptions(ctx, spc, objectTypeKeys, createState)
+}
+
+func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
+	ctx context.Context, spc clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...CreateOption,
 ) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
@@ -74,27 +92,41 @@ func (s *service) CreateSmartBlockFromStateInSpace(
 		}
 	}
 
-	sb, err := createSmartBlock(ctx, spc, initFunc, createState, sbType)
+	sb, err := createSmartBlock(ctx, spc, initFunc, createState, sbType, opts...)
 	if err != nil {
 		return "", nil, err
 	}
 
+	sb.Lock()
 	newDetails = sb.CombinedDetails()
+	sb.Unlock()
 	id = sb.Id()
 
-	if sbType == coresb.SmartBlockTypeObjectType && pbtypes.GetInt64(newDetails, bundle.RelationKeyLastUsedDate.String()) == 0 {
-		objecttype.UpdateLastUsedDate(spc, s.objectStore, domain.TypeKey(
-			strings.TrimPrefix(pbtypes.GetString(newDetails, bundle.RelationKeyUniqueKey.String()), addr.ObjectTypeKeyToIdPrefix)),
-		)
-	} else if pbtypes.GetInt64(newDetails, bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
-		objecttype.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys[0])
-	}
+	s.updateLastUsedDate(spc.Id(), sbType, newDetails, objectTypeKeys[0])
 
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
 	ev.ObjectId = id
 	metrics.Service.Send(ev)
 	return id, newDetails, nil
+}
+
+func (s *service) updateLastUsedDate(spaceId string, sbType coresb.SmartBlockType, details *types.Struct, typeKey domain.TypeKey) {
+	if pbtypes.GetInt64(details, bundle.RelationKeyLastUsedDate.String()) != 0 {
+		return
+	}
+	uk := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
+	ts := time.Now().Unix()
+	switch sbType {
+	case coresb.SmartBlockTypeObjectType:
+		s.lastUsedUpdater.UpdateLastUsedDate(spaceId, domain.TypeKey(strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)), ts)
+	case coresb.SmartBlockTypeRelation:
+		s.lastUsedUpdater.UpdateLastUsedDate(spaceId, domain.RelationKey(strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)), ts)
+	default:
+		if pbtypes.GetInt64(details, bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
+			s.lastUsedUpdater.UpdateLastUsedDate(spaceId, typeKey, ts)
+		}
+	}
 }
 
 func objectTypeKeysToSmartBlockType(typeKeys []domain.TypeKey) coresb.SmartBlockType {
@@ -120,7 +152,7 @@ func objectTypeKeysToSmartBlockType(typeKeys []domain.TypeKey) coresb.SmartBlock
 }
 
 func createSmartBlock(
-	ctx context.Context, spc clientspace.Space, initFunc objectcache.InitFunc, st *state.State, sbType coresb.SmartBlockType,
+	ctx context.Context, spc clientspace.Space, initFunc objectcache.InitFunc, st *state.State, sbType coresb.SmartBlockType, opts ...CreateOption,
 ) (smartblock.SmartBlock, error) {
 	if uKey := st.UniqueKeyInternal(); uKey != "" {
 		uk, err := domain.NewUniqueKey(sbType, uKey)
@@ -139,6 +171,15 @@ func createSmartBlock(
 			})
 		}
 	}
+
+	createOpts := &CreateOptions{}
+	for _, opt := range opts {
+		opt(createOpts)
+	}
+	if createOpts.payload != nil {
+		return spc.CreateTreeObjectWithPayload(ctx, *createOpts.payload, initFunc)
+	}
+
 	return spc.CreateTreeObject(ctx, objectcache.TreeCreationParams{
 		Time:           time.Now(),
 		SmartblockType: sbType,

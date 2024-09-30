@@ -13,6 +13,8 @@ import (
 
 	session "github.com/anyproto/anytype-heart/core/session"
 
+	subscription "github.com/anyproto/anytype-heart/core/subscription"
+
 	types "github.com/gogo/protobuf/types"
 )
 
@@ -213,27 +215,27 @@ func (_c *MockService_Run_Call) RunAndReturn(run func(context.Context) error) *M
 }
 
 // Search provides a mock function with given fields: req
-func (_m *MockService) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectSearchSubscribeResponse, error) {
+func (_m *MockService) Search(req subscription.SubscribeRequest) (*subscription.SubscribeResponse, error) {
 	ret := _m.Called(req)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Search")
 	}
 
-	var r0 *pb.RpcObjectSearchSubscribeResponse
+	var r0 *subscription.SubscribeResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectSearchSubscribeResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(subscription.SubscribeRequest) (*subscription.SubscribeResponse, error)); ok {
 		return rf(req)
 	}
-	if rf, ok := ret.Get(0).(func(pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse); ok {
+	if rf, ok := ret.Get(0).(func(subscription.SubscribeRequest) *subscription.SubscribeResponse); ok {
 		r0 = rf(req)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*pb.RpcObjectSearchSubscribeResponse)
+			r0 = ret.Get(0).(*subscription.SubscribeResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(pb.RpcObjectSearchSubscribeRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(subscription.SubscribeRequest) error); ok {
 		r1 = rf(req)
 	} else {
 		r1 = ret.Error(1)
@@ -248,24 +250,24 @@ type MockService_Search_Call struct {
 }
 
 // Search is a helper method to define mock.On call
-//   - req pb.RpcObjectSearchSubscribeRequest
+//   - req subscription.SubscribeRequest
 func (_e *MockService_Expecter) Search(req interface{}) *MockService_Search_Call {
 	return &MockService_Search_Call{Call: _e.mock.On("Search", req)}
 }
 
-func (_c *MockService_Search_Call) Run(run func(req pb.RpcObjectSearchSubscribeRequest)) *MockService_Search_Call {
+func (_c *MockService_Search_Call) Run(run func(req subscription.SubscribeRequest)) *MockService_Search_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(pb.RpcObjectSearchSubscribeRequest))
+		run(args[0].(subscription.SubscribeRequest))
 	})
 	return _c
 }
 
-func (_c *MockService_Search_Call) Return(resp *pb.RpcObjectSearchSubscribeResponse, err error) *MockService_Search_Call {
+func (_c *MockService_Search_Call) Return(resp *subscription.SubscribeResponse, err error) *MockService_Search_Call {
 	_c.Call.Return(resp, err)
 	return _c
 }
 
-func (_c *MockService_Search_Call) RunAndReturn(run func(pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectSearchSubscribeResponse, error)) *MockService_Search_Call {
+func (_c *MockService_Search_Call) RunAndReturn(run func(subscription.SubscribeRequest) (*subscription.SubscribeResponse, error)) *MockService_Search_Call {
 	_c.Call.Return(run)
 	return _c
 }

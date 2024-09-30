@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer"
@@ -65,6 +66,10 @@ func newVirtualCommonSpace(spaceId string) commonspace.Space {
 
 type virtualCommonSpace struct {
 	spaceId string
+}
+
+func (c *virtualCommonSpace) AclClient() aclclient.AclSpaceClient {
+	return nil
 }
 
 func (c *virtualCommonSpace) IsPersonal() bool {
@@ -137,4 +142,8 @@ func (c *virtualCommonSpace) TryClose(objectTTL time.Duration) (close bool, err 
 
 func (c *virtualCommonSpace) Close() error {
 	return nil
+}
+
+func (c *virtualCommonSpace) IsReadOnly() bool {
+	return false
 }

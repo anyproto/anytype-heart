@@ -21,7 +21,7 @@ func RelationFromStruct(st *types.Struct) *Relation {
 			DefaultValue:     pbtypes.Get(st, bundle.RelationKeyRelationDefaultValue.String()),
 			DataSource:       model.Relation_details,
 			Hidden:           pbtypes.GetBool(st, bundle.RelationKeyIsHidden.String()),
-			ReadOnly:         pbtypes.GetBool(st, bundle.RelationKeyIsReadonly.String()),
+			ReadOnly:         pbtypes.GetBool(st, bundle.RelationKeyRelationReadonlyValue.String()),
 			ReadOnlyRelation: false,
 			Multi:            maxCount > 1,
 			ObjectTypes:      pbtypes.GetStringList(st, bundle.RelationKeyRelationFormatObjectTypes.String()),

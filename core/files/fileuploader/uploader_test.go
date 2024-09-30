@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/gogo/protobuf/types"
@@ -15,7 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/anytype-heart/core/block/getblock/mock_getblock"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	file2 "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -26,6 +28,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -34,7 +39,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func TestUploader_Upload(t *testing.T) {
@@ -62,13 +66,27 @@ func TestUploader_Upload(t *testing.T) {
 		assert.Equal(t, b.Model().GetFile().Name, "unnamed.jpg")
 		assert.Equal(t, res.MIME, "image/jpeg")
 	})
+	t.Run("corrupted image: fall back to file", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.tearDown()
+
+		fileObjectId := fx.expectCreateObject()
+
+		b := newBlock(model.BlockContentFile_Image)
+		res := fx.Uploader.SetBlock(b).SetFile("./testdata/corrupted.jpg").Upload(ctx)
+		require.NoError(t, res.Err)
+		assert.Equal(t, res.FileObjectId, fileObjectId)
+		assert.Equal(t, res.Name, "corrupted.jpg")
+		assert.Equal(t, b.Model().GetFile().Name, "corrupted.jpg")
+		assert.Equal(t, res.MIME, "image/jpeg")
+	})
 	t.Run("image type detect", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 
 		fx.expectCreateObject()
 
-		res := fx.Uploader.AutoType(true).SetFile("./testdata/unnamed.jpg").Upload(ctx)
+		res := fx.Uploader.SetFile("./testdata/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
 	})
 	t.Run("image to file failover", func(t *testing.T) {
@@ -98,7 +116,7 @@ func TestUploader_Upload(t *testing.T) {
 
 		fileObjectId := fx.expectCreateObject()
 
-		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
+		res := fx.Uploader.SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.FileObjectId, fileObjectId)
 		assert.Equal(t, res.Name, "unnamed.jpg")
@@ -120,7 +138,7 @@ func TestUploader_Upload(t *testing.T) {
 
 		fileObjectId := fx.expectCreateObject()
 
-		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
+		res := fx.Uploader.SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.FileObjectId, fileObjectId)
 		assert.Equal(t, res.Name, "filename")
@@ -141,7 +159,7 @@ func TestUploader_Upload(t *testing.T) {
 
 		fileObjectId := fx.expectCreateObject()
 
-		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg?text=text").Upload(ctx)
+		res := fx.Uploader.SetUrl(serv.URL + "/unnamed.jpg?text=text").Upload(ctx)
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.FileObjectId, fileObjectId)
 		assert.Equal(t, res.Name, "unnamed.jpg")
@@ -176,7 +194,8 @@ func TestUploader_Upload(t *testing.T) {
 }
 
 func newFileServiceFixture(t *testing.T) files.Service {
-	dataStoreProvider := datastore.NewInMemory()
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
 
 	blockStorage := filestorage.NewInMemory()
 
@@ -186,8 +205,14 @@ func newFileServiceFixture(t *testing.T) files.Service {
 	fileSyncService := filesync.New()
 	objectStore := objectstore.NewStoreFixture(t)
 	eventSender := mock_event.NewMockSender(t)
+	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	wallet := mock_wallet.NewMockWallet(t)
+	wallet.EXPECT().Name().Return(wallet2.CName)
+	wallet.EXPECT().RepoPath().Return("repo/path")
+
 	a := new(app.App)
 	a.Register(dataStoreProvider)
 	a.Register(filestore.New())
@@ -197,7 +222,11 @@ func newFileServiceFixture(t *testing.T) files.Service {
 	a.Register(blockStorage)
 	a.Register(objectStore)
 	a.Register(rpcStoreService)
-	err := a.Start(ctx)
+	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
+	a.Register(testutil.PrepareMock(ctx, a, wallet))
+	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
+
+	err = a.Start(ctx)
 	require.NoError(t, err)
 
 	s := files.New()
@@ -208,7 +237,7 @@ func newFileServiceFixture(t *testing.T) files.Service {
 }
 
 func newFixture(t *testing.T) *uplFixture {
-	picker := mock_getblock.NewMockObjectGetter(t)
+	picker := mock_cache.NewMockObjectGetter(t)
 	fx := &uplFixture{
 		ctrl:   gomock.NewController(t),
 		picker: picker,
@@ -230,21 +259,8 @@ type uplFixture struct {
 	Uploader
 	fileService       files.Service
 	ctrl              *gomock.Controller
-	picker            *mock_getblock.MockObjectGetter
+	picker            *mock_cache.MockObjectGetter
 	fileObjectService *mock_fileobject.MockService
-}
-
-func (fx *uplFixture) newImage(fileId domain.FileId) *testMock.MockImage {
-	im := testMock.NewMockImage(fx.ctrl)
-	im.EXPECT().FileId().Return(fileId).AnyTimes()
-	return im
-}
-
-func (fx *uplFixture) newFile(fileId domain.FileId, meta *files.FileMeta) *testMock.MockFile {
-	f := testMock.NewMockFile(fx.ctrl)
-	f.EXPECT().FileId().Return(fileId).AnyTimes()
-	f.EXPECT().Meta().Return(meta).AnyTimes()
-	return f
 }
 
 func (fx *uplFixture) tearDown() {

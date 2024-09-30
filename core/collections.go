@@ -12,7 +12,7 @@ func (mw *Middleware) ObjectCollectionAdd(cctx context.Context, req *pb.RpcObjec
 	response := func(code pb.RpcObjectCollectionAddResponseErrorCode, err error) *pb.RpcObjectCollectionAddResponse {
 		m := &pb.RpcObjectCollectionAddResponse{Error: &pb.RpcObjectCollectionAddResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -32,7 +32,7 @@ func (mw *Middleware) ObjectCollectionRemove(cctx context.Context, req *pb.RpcOb
 	response := func(code pb.RpcObjectCollectionRemoveResponseErrorCode, err error) *pb.RpcObjectCollectionRemoveResponse {
 		m := &pb.RpcObjectCollectionRemoveResponse{Error: &pb.RpcObjectCollectionRemoveResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -52,7 +52,7 @@ func (mw *Middleware) ObjectCollectionSort(cctx context.Context, req *pb.RpcObje
 	response := func(code pb.RpcObjectCollectionSortResponseErrorCode, err error) *pb.RpcObjectCollectionSortResponse {
 		m := &pb.RpcObjectCollectionSortResponse{Error: &pb.RpcObjectCollectionSortResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -76,7 +76,7 @@ func (mw *Middleware) ObjectToCollection(_ context.Context, req *pb.RpcObjectToC
 		}
 		if err != nil {
 			resp.Error.Code = pb.RpcObjectToCollectionResponseError_UNKNOWN_ERROR
-			resp.Error.Description = err.Error()
+			resp.Error.Description = getErrorDescription(err)
 		}
 		return resp
 	}

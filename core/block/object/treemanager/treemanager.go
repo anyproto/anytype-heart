@@ -2,7 +2,6 @@ package treemanager
 
 import (
 	"context"
-	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -25,9 +24,6 @@ type treeManager struct {
 	spaceService space.Service
 
 	onDelete func(id domain.FullID) error
-
-	syncStarted bool
-	syncerLock  sync.Mutex
 }
 
 func New() treemanager.TreeManager {

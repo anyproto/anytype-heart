@@ -6,6 +6,8 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"runtime"
+	"sync"
 
 	"github.com/gogo/protobuf/proto"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/conc"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
@@ -23,10 +26,16 @@ var mw = core.New()
 
 func init() {
 	fixTZ()
+	// if android
+	if runtime.GOOS == "android" {
+		// disable GSO on android because incorrect detection
+		// https://github.com/quic-go/quic-go/pull/4447
+		os.Setenv("QUIC_GO_DISABLE_GSO", "1")
+	}
 	fmt.Printf("mw lib: %s\n", vcs.GetVCSInfo().Description())
 
-	PanicHandler = mw.OnPanic
-	metrics.Service.InitWithKeys(metrics.DefaultAmplitudeKey, metrics.DefaultInHouseKey)
+	PanicHandler = conc.OnPanic
+	metrics.Service.InitWithKeys(metrics.DefaultInHouseKey)
 	registerClientCommandsHandler(
 		&ClientCommandsHandlerProxy{
 			client: mw,
@@ -35,15 +44,28 @@ func init() {
 				metrics.SharedLongMethodsInterceptor,
 			},
 		})
-	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
-		go func() {
-			http.ListenAndServe(debug, nil)
-		}()
+	if addr, ok := os.LookupEnv("ANYPROF"); ok && addr != "" {
+		RunDebugServer(addr)
 	}
 }
 
 func SetEventHandler(eh func(event *pb.Event)) {
 	mw.SetEventSender(event.NewCallbackSender(eh))
+}
+
+var debugServerOnce sync.Once
+
+func RunDebugServer(addr string) {
+	fmt.Printf("Running GO debug HTTP server at: %s\n", addr)
+	debugServerOnce.Do(func() {
+		go func() {
+			http.ListenAndServe(addr, nil)
+		}()
+	})
+}
+
+func SetLogLevels(levels string) {
+	logging.SetLogLevels(levels)
 }
 
 func SetEnv(key, value string) {
@@ -52,6 +74,9 @@ func SetEnv(key, value string) {
 
 func SetEventHandlerMobile(eh MessageHandler) {
 	SetEventHandler(func(event *pb.Event) {
+		if len(event.Messages) == 0 {
+			return
+		}
 		b, err := proto.Marshal(event)
 		if err != nil {
 			log.Errorf("eventHandler failed to marshal error: %s", err.Error())

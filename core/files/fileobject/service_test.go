@@ -2,67 +2,112 @@ package fileobject
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
-	bb "github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/tests/testutil"
+	"github.com/anyproto/anytype-heart/util/mutex"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fixture struct {
-	fileService   files.Service
-	objectStore   *objectstore.StoreFixture
-	objectCreator *objectCreatorStub
-	spaceService  *mock_space.MockService
-
+	fileService       files.Service
+	objectStore       *objectstore.StoreFixture
+	objectCreator     *objectCreatorStub
+	spaceService      *mock_space.MockService
+	spaceIdResolver   *mock_idresolver.MockResolver
+	commonFileService fileservice.FileService
 	*service
 }
+
+type dummyConfig struct{}
+
+func (c *dummyConfig) IsLocalOnlyMode() bool {
+	return false
+}
+
+func (c *dummyConfig) Init(_ *app.App) error {
+	return nil
+}
+
+func (c *dummyConfig) Name() string {
+	return "dummyConfig"
+}
+
+type dummyObjectArchiver struct{}
+
+func (a *dummyObjectArchiver) SetListIsArchived(_ []string, _ bool) error {
+	return nil
+}
+
+func (a *dummyObjectArchiver) Name() string { return "dummyObjectArchiver" }
+
+func (a *dummyObjectArchiver) Init(_ *app.App) error { return nil }
+
+const testResolveRetryDelay = 5 * time.Millisecond
 
 func newFixture(t *testing.T) *fixture {
 	fileStore := filestore.New()
 	objectStore := objectstore.NewStoreFixture(t)
 	objectCreator := &objectCreatorStub{}
-	dataStoreProvider := datastore.NewInMemory()
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
 	blockStorage := filestorage.NewInMemory()
-	rpcStore := rpcstore.NewInMemoryStore(1024)
+	rpcStore := rpcstore.NewInMemoryStore(10 * 1024 * 1024)
 	rpcStoreService := rpcstore.NewInMemoryService(rpcStore)
 	commonFileService := fileservice.New()
 	fileSyncService := filesync.New()
 	eventSender := mock_event.NewMockSender(t)
+	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 	fileService := files.New()
 	spaceService := mock_space.NewMockService(t)
+	spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(nil, fmt.Errorf("not needed")).Maybe()
+	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
-	svc := New()
+	svc := New(testResolveRetryDelay, testResolveRetryDelay)
 
 	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	wallet := mock_wallet.NewMockWallet(t)
+	wallet.EXPECT().Name().Return(wallet2.CName)
+	wallet.EXPECT().RepoPath().Return("repo/path")
+
 	a := new(app.App)
+	a.Register(&dummyConfig{})
 	a.Register(dataStoreProvider)
 	a.Register(fileStore)
 	a.Register(objectStore)
@@ -75,15 +120,27 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(fileService)
 	a.Register(objectCreator)
 	a.Register(svc)
+	a.Register(testutil.PrepareMock(ctx, a, spaceIdResolver))
+	a.Register(fileoffloader.New())
+	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
+	a.Register(testutil.PrepareMock(ctx, a, wallet))
+	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
+	a.Register(&dummyObjectArchiver{})
 
-	err := a.Start(ctx)
+	err = a.Start(ctx)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := a.Close(ctx)
+		require.NoError(t, err)
+	})
 
 	fx := &fixture{
-		fileService:   fileService,
-		objectStore:   objectStore,
-		objectCreator: objectCreator,
-		spaceService:  spaceService,
+		fileService:       fileService,
+		objectStore:       objectStore,
+		objectCreator:     objectCreator,
+		spaceService:      spaceService,
+		spaceIdResolver:   spaceIdResolver,
+		commonFileService: commonFileService,
 
 		service: svc.(*service),
 	}
@@ -104,209 +161,12 @@ func (c *objectCreatorStub) Name() string {
 	return "objectCreatorStub"
 }
 
-func (c *objectCreatorStub) CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (c *objectCreatorStub) CreateSmartBlockFromStateInSpaceWithOptions(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...objectcreator.CreateOption) (id string, newDetails *types.Struct, err error) {
 	c.creationState = createState
 	return c.objectId, c.details, nil
 }
 
-func TestMigration(t *testing.T) {
-	t.Run("do not migrate empty file ids", func(t *testing.T) {
-		fx := newFixture(t)
-
-		fileId := ""
-		st := testutil.BuildStateFromAST(
-			bb.Root(
-				bb.ID("root"),
-				bb.Children(bb.File("", bb.FileHash(fileId))),
-			),
-		)
-
-		space := mock_clientspace.NewMockSpace(t)
-
-		fx.MigrateBlocks(st, space, nil)
-	})
-
-	t.Run("do not migrate object itself", func(t *testing.T) {
-		fx := newFixture(t)
-
-		objectId := "objectId"
-		fileId := objectId
-		st := testutil.BuildStateFromAST(
-			bb.Root(
-				bb.ID(objectId),
-				bb.Children(bb.File("", bb.FileHash(fileId))),
-			),
-		)
-
-		space := mock_clientspace.NewMockSpace(t)
-
-		fx.MigrateBlocks(st, space, nil)
-	})
-
-	t.Run("do not migrate already migrated file: fileId equals to objectId", func(t *testing.T) {
-		fx := newFixture(t)
-
-		objectId := "objectId"
-		fileId := domain.FileId("fileId")
-		st := testutil.BuildStateFromAST(
-			bb.Root(
-				bb.ID(objectId),
-				bb.Children(bb.File("", bb.FileHash(fileId.String()))),
-			),
-		)
-
-		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do(fileId.String(), mock.Anything).Return(nil)
-
-		fx.MigrateBlocks(st, space, nil)
-	})
-
-	t.Run("do not migrate already migrated file: objectId is found by fileId in current space", func(t *testing.T) {
-		fx := newFixture(t)
-
-		spaceId := "spaceId"
-		objectId := "objectId"
-		fileId := domain.FileId("fileId")
-		expectedFileObjectId := "fileObjectId"
-		st := testutil.BuildStateFromAST(
-			bb.Root(
-				bb.ID(objectId),
-			),
-		)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyAttachments, pbtypes.StringList([]string{fileId.String()}))
-
-		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do(fileId.String(), mock.Anything).Return(ocache.ErrNotExists)
-		space.EXPECT().Id().Return(spaceId)
-
-		fx.objectStore.AddObjects(t, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:      pbtypes.String(expectedFileObjectId),
-				bundle.RelationKeyFileId:  pbtypes.String(fileId.String()),
-				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
-			},
-		})
-
-		fx.MigrateBlocks(st, space, nil)
-		fx.MigrateDetails(st, space, nil)
-
-		wantState := testutil.BuildStateFromAST(
-			bb.Root(
-				bb.ID(objectId),
-			),
-		)
-		wantState.SetDetailAndBundledRelation(bundle.RelationKeyAttachments, pbtypes.StringList([]string{expectedFileObjectId}))
-
-		bb.AssertTreesEqual(t, wantState.Blocks(), st.Blocks())
-		assert.Equal(t, wantState.Details(), st.Details())
-	})
-
-	t.Run("do not migrate already migrated file: objectId is found by fileId in another space", func(t *testing.T) {
-		fx := newFixture(t)
-
-		spaceId := "spaceId"
-		objectId := "objectId"
-		fileId := domain.FileId("fileObjectIdFromAnotherSpace")
-		st := testutil.BuildStateFromAST(
-			bb.Root(
-				bb.ID(objectId),
-			),
-		)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyAttachments, pbtypes.StringList([]string{fileId.String()}))
-
-		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do(fileId.String(), mock.Anything).Return(ocache.ErrNotExists)
-		space.EXPECT().Id().Return(spaceId)
-
-		fx.objectStore.AddObjects(t, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:      pbtypes.String(fileId.String()),
-				bundle.RelationKeyFileId:  pbtypes.String("fileId"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId2"),
-			},
-		})
-
-		fx.MigrateBlocks(st, space, nil)
-		fx.MigrateDetails(st, space, nil)
-
-		wantState := testutil.BuildStateFromAST(
-			bb.Root(
-				bb.ID(objectId),
-			),
-		)
-		wantState.SetDetailAndBundledRelation(bundle.RelationKeyAttachments, pbtypes.StringList([]string{fileId.String()}))
-
-		bb.AssertTreesEqual(t, wantState.Blocks(), st.Blocks())
-		assert.Equal(t, wantState.Details(), st.Details())
-	})
-
-	t.Run("when file is not migrated yet: derive new object", func(t *testing.T) {
-		fx := newFixture(t)
-
-		spaceId := "spaceId"
-		addedFile := testAddFile(t, fx, spaceId)
-
-		objectId := "objectId"
-		fileId := addedFile.FileId
-		expectedFileObjectId := "fileObjectId"
-		st := testutil.BuildStateFromAST(
-			bb.Root(
-				bb.ID(objectId),
-				bb.Children(
-					bb.File("", bb.FileHash(fileId.String())),
-					bb.Text("sample text", bb.TextIconImage(fileId.String())),
-				),
-			),
-		)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.StringList([]string{fileId.String()}))
-
-		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do(fileId.String(), mock.Anything).Return(ocache.ErrNotExists)
-		space.EXPECT().Id().Return(spaceId)
-		space.EXPECT().DeriveObjectIdWithAccountSignature(mock.Anything, mock.Anything).Return(expectedFileObjectId, nil)
-
-		origin := objectorigin.Import(model.Import_Html)
-		err := fx.fileStore.SetFileOrigin(fileId, origin)
-		require.NoError(t, err)
-
-		fx.objectCreator.objectId = expectedFileObjectId
-
-		expectIndexerCalled(t, fx, expectedFileObjectId)
-
-		keys := map[string]string{
-			"filepath": "key",
-		}
-		keysChanges := []*pb.ChangeFileKeys{
-			{
-				Hash: fileId.String(),
-				Keys: keys,
-			},
-		}
-		fx.MigrateBlocks(st, space, keysChanges)
-		fx.MigrateDetails(st, space, keysChanges)
-
-		assert.Equal(t, pbtypes.GetInt64(fx.objectCreator.creationState.Details(), bundle.RelationKeyOrigin.String()), int64(origin.Origin))
-		assert.Equal(t, pbtypes.GetInt64(fx.objectCreator.creationState.Details(), bundle.RelationKeyImportType.String()), int64(origin.ImportType))
-		assert.Equal(t, state.FileInfo{
-			FileId:         fileId,
-			EncryptionKeys: keys,
-		}, fx.objectCreator.creationState.GetFileInfo())
-
-		wantState := testutil.BuildStateFromAST(
-			bb.Root(
-				bb.ID(objectId),
-				bb.Children(
-					bb.File(expectedFileObjectId, bb.FileHash(fileId.String())),
-					bb.Text("sample text", bb.TextIconImage(expectedFileObjectId)),
-				),
-			),
-		)
-		wantState.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.StringList([]string{expectedFileObjectId}))
-
-		bb.AssertTreesEqual(t, wantState.Blocks(), st.Blocks())
-		assert.Equal(t, wantState.Details(), st.Details())
-	})
-}
+const testFileId = domain.FileId("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku")
 
 func testAddFile(t *testing.T, fx *fixture, spaceId string) *files.AddResult {
 	fileName := "myFile"
@@ -324,9 +184,91 @@ func testAddFile(t *testing.T, fx *fixture, spaceId string) *files.AddResult {
 	return got
 }
 
-func expectIndexerCalled(t *testing.T, fx *fixture, fileObjectId string) {
-	space := mock_clientspace.NewMockSpace(t)
-	space.EXPECT().Do(fileObjectId, mock.Anything).Return(nil)
+const testFileObjectId = "bafyreiebxsn65332wl7qavcxxkfwnsroba5x5h2sshcn7f7cr66ztixb54"
 
-	fx.spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(space, nil)
+func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
+	t.Run("with invalid id expect error", func(t *testing.T) {
+		fx := newFixture(t)
+		_, err := fx.GetFileIdFromObjectWaitLoad(context.Background(), "invalid")
+		require.Error(t, err)
+	})
+
+	t.Run("with file id expect error", func(t *testing.T) {
+		fx := newFixture(t)
+		_, err := fx.GetFileIdFromObjectWaitLoad(context.Background(), testFileId.String())
+		require.Error(t, err)
+	})
+
+	t.Run("with not yet loaded object load object and when timed out expect return error", func(t *testing.T) {
+		fx := newFixture(t)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+		defer cancel()
+
+		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).Return("", fmt.Errorf("not yet resolved"))
+
+		_, err := fx.GetFileIdFromObjectWaitLoad(ctx, testFileObjectId)
+		require.Error(t, err)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+	})
+
+	t.Run("with not yet loaded object load object and return it's file id", func(t *testing.T) {
+		fx := newFixture(t)
+
+		ctx := context.Background()
+		spaceId := "spaceId"
+		resolvedSpace := mutex.NewValue("")
+		resolvedSpaceErr := mutex.NewValue(fmt.Errorf("not yet resolved"))
+		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).RunAndReturn(func(_ string) (string, error) {
+			return resolvedSpace.Get(), resolvedSpaceErr.Get()
+		})
+
+		go func() {
+			time.Sleep(3 * testResolveRetryDelay)
+			resolvedSpace.Set(spaceId)
+			resolvedSpaceErr.Set(nil)
+		}()
+
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().Do(testFileObjectId, mock.Anything).RunAndReturn(func(_ string, apply func(smartblock.SmartBlock) error) error {
+			sb := smarttest.New(testFileObjectId)
+
+			st := sb.Doc.(*state.State)
+			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, pbtypes.String(testFileId.String()))
+
+			return apply(sb)
+		})
+
+		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
+
+		id, err := fx.GetFileIdFromObjectWaitLoad(ctx, testFileObjectId)
+		require.NoError(t, err)
+		assert.Equal(t, domain.FullFileId{
+			SpaceId: spaceId,
+			FileId:  testFileId,
+		}, id)
+	})
+
+	t.Run("with loaded object without file id expect error", func(t *testing.T) {
+		fx := newFixture(t)
+
+		ctx := context.Background()
+		spaceId := "spaceId"
+		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).Return(spaceId, nil)
+
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().Do(testFileObjectId, mock.Anything).RunAndReturn(func(_ string, apply func(smartblock.SmartBlock) error) error {
+			sb := smarttest.New(testFileObjectId)
+
+			st := sb.Doc.(*state.State)
+			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, pbtypes.String(""))
+
+			return apply(sb)
+		})
+
+		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
+
+		_, err := fx.GetFileIdFromObjectWaitLoad(ctx, testFileObjectId)
+		require.ErrorIs(t, err, ErrEmptyFileId)
+	})
 }

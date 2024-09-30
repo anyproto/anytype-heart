@@ -6,11 +6,12 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
+	"github.com/pkg/errors"
 
-	"github.com/anyproto/anytype-heart/core/block/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -24,13 +25,17 @@ import (
 )
 
 type (
-	CollectionService interface {
+	collectionService interface {
 		CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error)
 	}
 
-	TemplateService interface {
+	templateService interface {
 		CreateTemplateStateWithDetails(templateId string, details *types.Struct) (st *state.State, err error)
 		TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
+	}
+
+	bookmarkService interface {
+		CreateObjectAndFetch(ctx context.Context, spaceId string, details *types.Struct) (objectID string, newDetails *types.Struct, err error)
 	}
 )
 
@@ -51,12 +56,11 @@ type Service interface {
 
 type service struct {
 	objectStore       objectstore.ObjectStore
-	collectionService CollectionService
-	bookmark          bookmark.Service
-	app               *app.App
+	collectionService collectionService
+	bookmarkService   bookmarkService
 	spaceService      space.Service
-	templateService   TemplateService
-	fileService       files.Service
+	templateService   templateService
+	lastUsedUpdater   lastused.ObjectUsageUpdater
 }
 
 func NewCreator() Service {
@@ -65,12 +69,11 @@ func NewCreator() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
-	s.collectionService = app.MustComponent[CollectionService](a)
+	s.bookmarkService = app.MustComponent[bookmarkService](a)
+	s.collectionService = app.MustComponent[collectionService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.templateService = app.MustComponent[TemplateService](a)
-	s.fileService = app.MustComponent[files.Service](a)
-	s.app = a
+	s.templateService = app.MustComponent[templateService](a)
+	s.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
 	return nil
 }
 
@@ -106,6 +109,8 @@ func (s *service) CreateObjectUsingObjectUniqueTypeKey(
 	return s.CreateObject(ctx, spaceID, req)
 }
 
+// createObjectInSpace is supposed to be called for user-initiated object creation requests
+// will return Restricted error in case called with types like File or Participant
 func (s *service) createObjectInSpace(
 	ctx context.Context, space clientspace.Space, req CreateObjectRequest,
 ) (id string, details *types.Struct, err error) {
@@ -115,11 +120,14 @@ func (s *service) createObjectInSpace(
 	}
 	details = internalflag.PutToDetails(details, req.InternalFlags)
 
+	if bundle.HasObjectTypeByKey(req.ObjectTypeKey) {
+		if t := bundle.MustGetType(req.ObjectTypeKey); t.RestrictObjectCreation {
+			return "", nil, errors.Wrap(restriction.ErrRestricted, "creation of this object type is restricted")
+		}
+	}
 	switch req.ObjectTypeKey {
 	case bundle.TypeKeyBookmark:
-		return s.createBookmark(ctx, space.Id(), &pb.RpcObjectCreateBookmarkRequest{
-			Details: details,
-		})
+		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), details)
 	case bundle.TypeKeySet:
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_set))
 		return s.createSet(ctx, space, &pb.RpcObjectCreateSetRequest{

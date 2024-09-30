@@ -32,9 +32,7 @@ func (s *service) createSet(ctx context.Context, space clientspace.Space, req *p
 	newState.AddDetails(req.Details)
 	newState.BlocksInit(newState)
 
-	tmpls := []template.StateTransformer{
-		template.WithRequiredRelations(),
-	}
+	tmpls := []template.StateTransformer{}
 
 	for i, view := range dvContent.Dataview.Views {
 		if view.Relations == nil {

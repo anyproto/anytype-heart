@@ -19,38 +19,17 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/indexer"
-	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
-	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectSetDetailsResponseErrorCode, err error) *pb.RpcObjectSetDetailsResponse {
-		m := &pb.RpcObjectSetDetailsResponse{Error: &pb.RpcObjectSetDetailsResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetDetails(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectSetDetailsResponseError_NULL, nil)
-}
 
 func (mw *Middleware) ObjectDuplicate(cctx context.Context, req *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse {
 	response := func(templateId string, err error) *pb.RpcObjectDuplicateResponse {
@@ -60,7 +39,7 @@ func (mw *Middleware) ObjectDuplicate(cctx context.Context, req *pb.RpcObjectDup
 		}
 		if err != nil {
 			m.Error.Code = pb.RpcObjectDuplicateResponseError_UNKNOWN_ERROR
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -83,7 +62,7 @@ func (mw *Middleware) ObjectListDuplicate(cctx context.Context, req *pb.RpcObjec
 		}
 		if err != nil {
 			m.Error.Code = pb.RpcObjectListDuplicateResponseError_UNKNOWN_ERROR
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -99,7 +78,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	response := func(code pb.RpcObjectSearchResponseErrorCode, records []*types.Struct, err error) *pb.RpcObjectSearchResponse {
 		m := &pb.RpcObjectSearchResponse{Error: &pb.RpcObjectSearchResponseError{Code: code}, Records: records}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 
 		return m
@@ -114,7 +93,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	}
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	records, _, err := ds.Query(database.Query{
+	records, err := ds.Query(database.Query{
 		Filters:  req.Filters,
 		Sorts:    req.Sorts,
 		Offset:   int(req.Offset),
@@ -139,6 +118,57 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	}
 
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
+}
+
+func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObjectSearchWithMetaRequest) *pb.RpcObjectSearchWithMetaResponse {
+	response := func(code pb.RpcObjectSearchWithMetaResponseErrorCode, results []*model.SearchResult, err error) *pb.RpcObjectSearchWithMetaResponse {
+		m := &pb.RpcObjectSearchWithMetaResponse{Error: &pb.RpcObjectSearchWithMetaResponseError{Code: code}, Results: results}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+
+		return m
+	}
+
+	if mw.applicationService.GetApp() == nil {
+		return response(pb.RpcObjectSearchWithMetaResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
+	}
+
+	if req.FullText != "" {
+		mw.applicationService.GetApp().MustComponent(indexer.CName).(indexer.Indexer).ForceFTIndex()
+	}
+
+	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	highlighter := ftsearch.DefaultHighlightFormatter
+	if req.ReturnHTMLHighlightsInsteadOfRanges {
+		highlighter = ftsearch.HtmlHighlightFormatter
+	}
+	results, err := ds.Query(database.Query{
+		Filters:     req.Filters,
+		Sorts:       req.Sorts,
+		Offset:      int(req.Offset),
+		Limit:       int(req.Limit),
+		FullText:    req.FullText,
+		Highlighter: highlighter,
+	})
+
+	var resultsModels = make([]*model.SearchResult, 0, len(results))
+	for i, rec := range results {
+		if len(req.Keys) > 0 {
+			rec.Details = pbtypes.StructFilterKeys(rec.Details, req.Keys)
+		}
+		resultsModels = append(resultsModels, &model.SearchResult{
+
+			ObjectId: pbtypes.GetString(rec.Details, database.RecordIDField),
+			Details:  rec.Details,
+			Meta:     []*model.SearchMeta{&(results[i].Meta)},
+		})
+	}
+	if err != nil {
+		return response(pb.RpcObjectSearchWithMetaResponseError_UNKNOWN_ERROR, nil, err)
+	}
+
+	return response(pb.RpcObjectSearchWithMetaResponseError_NULL, resultsModels, nil)
 }
 
 func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []database.Record, req *pb.RpcObjectSearchRequest, store objectstore.ObjectStore) ([]database.Record, error) {
@@ -187,8 +217,8 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 	if err != nil {
 		return nil, fmt.Errorf("make date record: %w", err)
 	}
-	f, _ := database.MakeFiltersAnd(req.Filters, store) //nolint:errcheck
-	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
+	f, _ := database.MakeFilters(req.Filters, store) //nolint:errcheck
+	if f.FilterObject(rec.Details) {
 		return append([]database.Record{rec}, records...), nil
 	}
 	return records, nil
@@ -285,7 +315,7 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 			},
 		}
 		if err != nil {
-			r.Error.Description = err.Error()
+			r.Error.Description = getErrorDescription(err)
 		}
 		return r
 	}
@@ -296,12 +326,30 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 
 	subService := mw.applicationService.GetApp().MustComponent(subscription.CName).(subscription.Service)
 
-	resp, err := subService.Search(*req)
+	resp, err := subService.Search(subscription.SubscribeRequest{
+		SubId:             req.SubId,
+		Filters:           req.Filters,
+		Sorts:             req.Sorts,
+		Limit:             req.Limit,
+		Offset:            req.Offset,
+		Keys:              req.Keys,
+		AfterId:           req.AfterId,
+		BeforeId:          req.BeforeId,
+		Source:            req.Source,
+		IgnoreWorkspace:   req.IgnoreWorkspace,
+		NoDepSubscription: req.NoDepSubscription,
+		CollectionId:      req.CollectionId,
+	})
 	if err != nil {
 		return errResponse(err)
 	}
 
-	return resp
+	return &pb.RpcObjectSearchSubscribeResponse{
+		SubId:        resp.SubId,
+		Records:      resp.Records,
+		Dependencies: resp.Dependencies,
+		Counters:     resp.Counters,
+	}
 }
 
 func (mw *Middleware) ObjectGroupsSubscribe(cctx context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
@@ -313,7 +361,7 @@ func (mw *Middleware) ObjectGroupsSubscribe(cctx context.Context, req *pb.RpcObj
 			},
 		}
 		if err != nil {
-			r.Error.Description = err.Error()
+			r.Error.Description = getErrorDescription(err)
 		}
 		return r
 	}
@@ -340,7 +388,7 @@ func (mw *Middleware) ObjectSubscribeIds(_ context.Context, req *pb.RpcObjectSub
 			},
 		}
 		if err != nil {
-			r.Error.Description = err.Error()
+			r.Error.Description = getErrorDescription(err)
 		}
 		return r
 	}
@@ -368,7 +416,7 @@ func (mw *Middleware) ObjectSearchUnsubscribe(cctx context.Context, req *pb.RpcO
 		}
 		if err != nil {
 			r.Error.Code = pb.RpcObjectSearchUnsubscribeResponseError_UNKNOWN_ERROR
-			r.Error.Description = err.Error()
+			r.Error.Description = getErrorDescription(err)
 		}
 		return r
 	}
@@ -433,7 +481,7 @@ func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectR
 	response := func(code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
 		m := &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -458,7 +506,7 @@ func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObje
 	response := func(code pb.RpcObjectRelationDeleteResponseErrorCode, err error) *pb.RpcObjectRelationDeleteResponse {
 		m := &pb.RpcObjectRelationDeleteResponse{Error: &pb.RpcObjectRelationDeleteResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -478,7 +526,7 @@ func (mw *Middleware) ObjectRelationListAvailable(cctx context.Context, req *pb.
 	response := func(code pb.RpcObjectRelationListAvailableResponseErrorCode, relations []*model.Relation, err error) *pb.RpcObjectRelationListAvailableResponse {
 		m := &pb.RpcObjectRelationListAvailableResponse{Relations: relations, Error: &pb.RpcObjectRelationListAvailableResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -500,7 +548,7 @@ func (mw *Middleware) ObjectSetObjectType(cctx context.Context, req *pb.RpcObjec
 	response := func(code pb.RpcObjectSetObjectTypeResponseErrorCode, err error) *pb.RpcObjectSetObjectTypeResponse {
 		m := &pb.RpcObjectSetObjectTypeResponse{Error: &pb.RpcObjectSetObjectTypeResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -521,7 +569,7 @@ func (mw *Middleware) ObjectListSetObjectType(cctx context.Context, req *pb.RpcO
 	response := func(code pb.RpcObjectListSetObjectTypeResponseErrorCode, err error) *pb.RpcObjectListSetObjectTypeResponse {
 		m := &pb.RpcObjectListSetObjectTypeResponse{Error: &pb.RpcObjectListSetObjectTypeResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -557,7 +605,7 @@ func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSet
 	response := func(code pb.RpcObjectSetLayoutResponseErrorCode, err error) *pb.RpcObjectSetLayoutResponse {
 		m := &pb.RpcObjectSetLayoutResponse{Error: &pb.RpcObjectSetLayoutResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -572,100 +620,12 @@ func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSet
 	return response(pb.RpcObjectSetLayoutResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
-	response := func(code pb.RpcObjectSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectSetIsArchivedResponse {
-		m := &pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetPageIsArchived(*req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectSetIsArchivedResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectSetSource(cctx context.Context,
-	req *pb.RpcObjectSetSourceRequest) *pb.RpcObjectSetSourceResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectSetSourceResponseErrorCode, err error) *pb.RpcObjectSetSourceResponse {
-		m := &pb.RpcObjectSetSourceResponse{Error: &pb.RpcObjectSetSourceResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetSource(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectSetSourceResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectSetSourceResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.RpcObjectWorkspaceSetDashboardRequest) *pb.RpcObjectWorkspaceSetDashboardResponse {
-	ctx := mw.newContext(cctx)
-	response := func(setId string, err error) *pb.RpcObjectWorkspaceSetDashboardResponse {
-		resp := &pb.RpcObjectWorkspaceSetDashboardResponse{
-			ObjectId: setId,
-			Error: &pb.RpcObjectWorkspaceSetDashboardResponseError{
-				Code: pb.RpcObjectWorkspaceSetDashboardResponseError_NULL,
-			},
-		}
-		if err != nil {
-			resp.Error.Code = pb.RpcObjectWorkspaceSetDashboardResponseError_UNKNOWN_ERROR
-			resp.Error.Description = err.Error()
-		} else {
-			resp.Event = mw.getResponseEvent(ctx)
-		}
-		return resp
-	}
-	var (
-		setId string
-		err   error
-	)
-	err = mw.doBlockService(func(bs *block.Service) error {
-		if setId, err = bs.SetWorkspaceDashboardId(ctx, req.ContextId, req.ObjectId); err != nil {
-			return err
-		}
-		return nil
-	})
-	return response(setId, err)
-}
-
-func (mw *Middleware) ObjectSetIsFavorite(cctx context.Context, req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectSetIsFavoriteResponseErrorCode, err error) *pb.RpcObjectSetIsFavoriteResponse {
-		m := &pb.RpcObjectSetIsFavoriteResponse{Error: &pb.RpcObjectSetIsFavoriteResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetPageIsFavorite(*req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectSetIsFavoriteResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectSetIsFavoriteResponseError_NULL, nil)
-}
-
 func (mw *Middleware) ObjectRelationAddFeatured(cctx context.Context, req *pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectRelationAddFeaturedResponseErrorCode, err error) *pb.RpcObjectRelationAddFeaturedResponse {
 		m := &pb.RpcObjectRelationAddFeaturedResponse{Error: &pb.RpcObjectRelationAddFeaturedResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -685,7 +645,7 @@ func (mw *Middleware) ObjectRelationRemoveFeatured(cctx context.Context, req *pb
 	response := func(code pb.RpcObjectRelationRemoveFeaturedResponseErrorCode, err error) *pb.RpcObjectRelationRemoveFeaturedResponse {
 		m := &pb.RpcObjectRelationRemoveFeaturedResponse{Error: &pb.RpcObjectRelationRemoveFeaturedResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -709,7 +669,7 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 		}
 		if err != nil {
 			resp.Error.Code = pb.RpcObjectToSetResponseError_UNKNOWN_ERROR
-			resp.Error.Description = err.Error()
+			resp.Error.Description = getErrorDescription(err)
 		}
 		return resp
 	}
@@ -723,7 +683,7 @@ func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjec
 	response := func(code pb.RpcObjectBookmarkFetchResponseErrorCode, err error) *pb.RpcObjectBookmarkFetchResponse {
 		m := &pb.RpcObjectBookmarkFetchResponse{Error: &pb.RpcObjectBookmarkFetchResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -742,7 +702,7 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 	response := func(code pb.RpcObjectToBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectToBookmarkResponse {
 		m := &pb.RpcObjectToBookmarkResponse{Error: &pb.RpcObjectToBookmarkResponseError{Code: code}, ObjectId: id}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -760,70 +720,42 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 	return response(pb.RpcObjectToBookmarkResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcObjectSetInternalFlagsRequest) *pb.RpcObjectSetInternalFlagsResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectSetInternalFlagsResponseErrorCode, err error) *pb.RpcObjectSetInternalFlagsResponse {
-		m := &pb.RpcObjectSetInternalFlagsResponse{Error: &pb.RpcObjectSetInternalFlagsResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
-			d := pbtypes.CopyStruct(current)
-			return internalflag.PutToDetails(d, req.InternalFlags), nil
-		})
-	})
-	if err != nil {
-		return response(pb.RpcObjectSetInternalFlagsResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectSetInternalFlagsResponseError_NULL, nil)
-}
-
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
-	response := func(code pb.RpcObjectImportResponseErrorCode, rootCollectionID string, err error) *pb.RpcObjectImportResponse {
-		m := &pb.RpcObjectImportResponse{Error: &pb.RpcObjectImportResponseError{Code: code}, CollectionId: rootCollectionID}
+	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
+		m := &pb.RpcObjectImportResponse{
+			Error: &pb.RpcObjectImportResponseError{
+				Code: code,
+			},
+		}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
 
-	originImport := objectorigin.Import(req.Type)
-	rootCollectionId, processID, err := getService[importer.Importer](mw).Import(cctx, req, originImport, nil)
-
-	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSendLocal(&model.Notification{
-		Status:  model.Notification_Created,
-		IsLocal: true,
-		Space:   req.SpaceId,
-		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
-			ProcessId:  processID,
-			ErrorCode:  common.GetImportErrorCode(err),
-			ImportType: req.Type,
-			SpaceId:    req.SpaceId,
-		}},
-	})
-	if notificationSendErr != nil {
-		log.Errorf("failed to send notification: %v", notificationSendErr)
+	importRequest := &importer.ImportRequest{
+		RpcObjectImportRequest: req,
+		Origin:                 objectorigin.Import(req.Type),
+		Progress:               nil,
+		SendNotification:       true,
+		IsSync:                 false,
 	}
+	res := getService[importer.Importer](mw).Import(cctx, importRequest)
 
-	if err == nil {
-		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionId, nil)
+	if res == nil || res.Err == nil {
+		return response(pb.RpcObjectImportResponseError_NULL, nil)
 	}
 	switch {
-	case errors.Is(err, common.ErrNoObjectsToImport):
-		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, "", err)
-	case errors.Is(err, common.ErrCancel):
-		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, "", err)
-	case errors.Is(err, common.ErrLimitExceeded):
-		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, "", err)
-	case errors.Is(err, common.ErrFileLoad):
-		return response(pb.RpcObjectImportResponseError_FILE_LOAD_ERROR, "", err)
+	case errors.Is(res.Err, common.ErrNoObjectsToImport):
+		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, res.Err)
+	case errors.Is(res.Err, common.ErrCancel):
+		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, res.Err)
+	case errors.Is(res.Err, common.ErrLimitExceeded):
+		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, res.Err)
+	case errors.Is(res.Err, common.ErrFileLoad):
+		return response(pb.RpcObjectImportResponseError_FILE_LOAD_ERROR, res.Err)
 	default:
-		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, "", err)
+		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, res.Err)
 	}
 }
 
@@ -831,7 +763,7 @@ func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectIm
 	response := func(res []*pb.RpcObjectImportListImportResponse, code pb.RpcObjectImportListResponseErrorCode, err error) *pb.RpcObjectImportListResponse {
 		m := &pb.RpcObjectImportListResponse{Response: res, Error: &pb.RpcObjectImportListResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -888,7 +820,7 @@ func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjec
 			},
 		}
 		if err != nil {
-			resp.Error.Description = err.Error()
+			resp.Error.Description = getErrorDescription(err)
 		} else {
 			resp.Event = ctx.GetResponseEvent()
 		}
@@ -907,14 +839,12 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 			},
 		}
 		if err != nil {
-			resp.Error.Description = err.Error()
+			resp.Error.Description = getErrorDescription(err)
 		}
 		return resp
 	}
 
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
-	if err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace); err != nil {
-		return response(pb.RpcObjectImportExperienceResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectImportExperienceResponseError_NULL, nil)
+	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace)
+	return response(common.GetGalleryResponseCode(err), err)
 }

@@ -6,8 +6,10 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/config"
@@ -27,12 +29,18 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
 var log = logging.Logger("anytype-config")
 
 const (
 	CName = "config"
+)
+
+const (
+	SpaceStoreBadgerPath = "spacestore"
+	SpaceStoreSqlitePath = "spaceStore.db"
 )
 
 var (
@@ -58,8 +66,12 @@ type Config struct {
 	NewAccount                             bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	DisableThreadsSyncEvents               bool
 	DontStartLocalNetworkSyncAutomatically bool
+	PeferYamuxTransport                    bool
+	SpaceStorageMode                       storage.SpaceStorageMode
 	NetworkMode                            pb.RpcAccountNetworkMode
-	NetworkCustomConfigFilePath            string `json:",omitempty"` // not saved to config
+	NetworkCustomConfigFilePath            string           `json:",omitempty"` // not saved to config
+	SqliteTempPath                         string           `json:",omitempty"` // not saved to config
+	AnyStoreConfig                         *anystore.Config `json:",omitempty"` // not saved to config
 
 	RepoPath    string
 	AnalyticsId string
@@ -72,6 +84,10 @@ type Config struct {
 	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 
 	nodeConf nodeconf.Configuration
+}
+
+func (c *Config) IsLocalOnlyMode() bool {
+	return c.NetworkMode == pb.RpcAccount_LocalOnly
 }
 
 type FSConfig struct {
@@ -142,7 +158,23 @@ func (c *Config) Init(a *app.App) (err error) {
 	if err = c.initFromFileAndEnv(repoPath); err != nil {
 		return
 	}
-	a.MustComponent(peerservice.CName).(quicPreferenceSetter).PreferQuic(true)
+	if !c.PeferYamuxTransport {
+		// PeferYamuxTransport is false by default and used only in case client has some problems with QUIC
+		a.MustComponent(peerservice.CName).(quicPreferenceSetter).PreferQuic(true)
+	}
+	// check if sqlite db exists
+	if _, err2 := os.Stat(filepath.Join(repoPath, SpaceStoreSqlitePath)); err2 == nil {
+		// already have sqlite db
+		c.SpaceStorageMode = storage.SpaceStorageModeSqlite
+	} else if _, err2 = os.Stat(filepath.Join(repoPath, SpaceStoreBadgerPath)); err2 == nil {
+		// old account repos
+		c.SpaceStorageMode = storage.SpaceStorageModeBadger
+	} else {
+		// new account repos
+		// todo: remove temporary log
+		log.Warn("using sqlite storage")
+		c.SpaceStorageMode = storage.SpaceStorageModeSqlite
+	}
 	return
 }
 
@@ -151,6 +183,16 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		return fmt.Errorf("repo is missing")
 	}
 	c.RepoPath = repoPath
+	c.AnyStoreConfig = &anystore.Config{}
+	if runtime.GOOS == "android" {
+		split := strings.Split(repoPath, "/files/")
+		if len(split) == 1 {
+			return fmt.Errorf("failed to split repo path: %s", repoPath)
+		}
+		c.SqliteTempPath = filepath.Join(split[0], "cache")
+		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
+		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + c.SqliteTempPath + "'"
+	}
 
 	if !c.DisableFileConfig {
 		var confRequired ConfigRequired
@@ -250,6 +292,18 @@ func (c *Config) FSConfig() (FSConfig, error) {
 
 func (c *Config) GetConfigPath() string {
 	return filepath.Join(c.RepoPath, ConfigFileName)
+}
+
+func (c *Config) GetSpaceStorePath() string {
+	return filepath.Join(c.RepoPath, "spaceStore.db")
+}
+
+func (c *Config) GetTempDirPath() string {
+	return c.SqliteTempPath
+}
+
+func (c *Config) GetAnyStoreConfig() *anystore.Config {
+	return c.AnyStoreConfig
 }
 
 func (c *Config) IsNewAccount() bool {
@@ -383,4 +437,12 @@ func (c *Config) PersistAccountNetworkId() error {
 	configCopy := c.ConfigRequired
 	configCopy.NetworkId = c.NetworkId
 	return WriteJsonConfig(c.GetConfigPath(), configCopy)
+}
+
+func (c *Config) GetSpaceStorageMode() storage.SpaceStorageMode {
+	return c.SpaceStorageMode
+}
+
+func (c *Config) GetNetworkMode() pb.RpcAccountNetworkMode {
+	return c.NetworkMode
 }

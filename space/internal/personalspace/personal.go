@@ -2,21 +2,20 @@ package personalspace
 
 import (
 	"context"
-	"errors"
 
 	"github.com/anyproto/any-sync/app"
+	"go.uber.org/multierr"
 
-	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
-	"github.com/anyproto/anytype-heart/space/internal/techspace"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
-func NewSpaceController(spaceId string, a *app.App) spacecontroller.SpaceController {
+func NewSpaceController(spaceId string, metadata []byte, a *app.App) spacecontroller.SpaceController {
 	techSpace := a.MustComponent(techspace.CName).(techspace.TechSpace)
 	spaceCore := a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
 	return &spaceController{
@@ -24,20 +23,28 @@ func NewSpaceController(spaceId string, a *app.App) spacecontroller.SpaceControl
 		spaceId:   spaceId,
 		techSpace: techSpace,
 		spaceCore: spaceCore,
+		metadata:  metadata,
 	}
 }
 
+func makeStatusApp(a *app.App, spaceId string) (*app.App, error) {
+	newApp := a.ChildApp()
+	newApp.Register(spacestatus.New(spaceId))
+	err := newApp.Start(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return newApp, nil
+}
+
 type spaceController struct {
-	app     *app.App
-	spaceId string
+	app      *app.App
+	spaceId  string
+	metadata []byte
 
 	loader    loader.Loader
 	spaceCore spacecore.SpaceCoreService
 	techSpace techspace.TechSpace
-}
-
-func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
-	return nil
 }
 
 func (s *spaceController) Start(ctx context.Context) (err error) {
@@ -46,30 +53,22 @@ func (s *spaceController) Start(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-
-	s.loader = s.newLoader()
-	err = s.loader.Start(ctx)
+	exists, err := s.techSpace.SpaceViewExists(ctx, s.spaceId)
 	// This could happen for old accounts
-	if errors.Is(err, spaceloader.ErrSpaceNotExists) {
-		err = s.techSpace.SpaceViewCreate(ctx, s.spaceId, false)
-		if err != nil {
-			return
-		}
-		err = s.loader.Close(ctx)
-		if err != nil {
-			return
-		}
-		s.loader = s.newLoader()
-		err = s.loader.Start(ctx)
+	if !exists || err != nil {
+		info := spaceinfo.NewSpacePersistentInfo(s.spaceId)
+		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
+		err = s.techSpace.SpaceViewCreate(ctx, s.spaceId, false, info)
 		if err != nil {
 			return
 		}
 	}
+	s.app, err = makeStatusApp(s.app, s.spaceId)
 	if err != nil {
 		return
 	}
-
-	return err
+	s.loader = s.newLoader()
+	return s.loader.Start(ctx)
 }
 
 func (s *spaceController) Mode() mode.Mode {
@@ -86,16 +85,37 @@ func (s *spaceController) SpaceId() string {
 
 func (s *spaceController) newLoader() loader.Loader {
 	return loader.New(s.app, loader.Params{
-		SpaceId:             s.spaceId,
-		Status:              spacestatus.New(s.spaceId, spaceinfo.AccountStatusUnknown),
-		StopIfMandatoryFail: true,
+		SpaceId:       s.spaceId,
+		IsPersonal:    true,
+		OwnerMetadata: s.metadata,
 	})
 }
 
-func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
+func (s *spaceController) Update() error {
+	return nil
+}
+
+func (s *spaceController) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+	return nil
+}
+
+func (s *spaceController) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) error {
 	return nil
 }
 
 func (s *spaceController) Close(ctx context.Context) error {
-	return s.loader.Close(ctx)
+	if s.loader == nil {
+		return nil
+	}
+	loaderErr := s.loader.Close(ctx)
+	appErr := s.app.Close(ctx)
+	return multierr.Combine(loaderErr, appErr)
+}
+
+func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
+	return spaceinfo.AccountStatusUnknown
+}
+
+func (s *spaceController) GetLocalStatus() spaceinfo.LocalStatus {
+	return spaceinfo.LocalStatusOk
 }

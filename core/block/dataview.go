@@ -1,6 +1,7 @@
 package block
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -14,7 +15,7 @@ func (s *Service) AddDataviewFilter(
 	viewID string,
 	filter *model.BlockContentDataviewFilter,
 ) (err error) {
-	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
+	return cache.DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
 		if err != nil {
 			return err
@@ -31,7 +32,7 @@ func (s *Service) RemoveDataviewFilters(
 	viewID string,
 	filterIDs []string,
 ) (err error) {
-	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
+	return cache.DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
 		if err != nil {
 			return err
@@ -49,7 +50,7 @@ func (s *Service) ReplaceDataviewFilter(
 	filterID string,
 	filter *model.BlockContentDataviewFilter,
 ) (err error) {
-	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
+	return cache.DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
 		if err != nil {
 			return err
@@ -66,7 +67,7 @@ func (s *Service) ReorderDataviewFilters(
 	viewID string,
 	filterIDs []string,
 ) (err error) {
-	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
+	return cache.DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
 		if err != nil {
 			return err
@@ -83,7 +84,7 @@ func (s *Service) AddDataviewSort(
 	viewID string,
 	sort *model.BlockContentDataviewSort,
 ) (err error) {
-	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
+	return cache.DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
 		if err != nil {
 			return err
@@ -100,7 +101,7 @@ func (s *Service) RemoveDataviewSorts(
 	viewID string,
 	ids []string,
 ) (err error) {
-	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
+	return cache.DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
 		if err != nil {
 			return err
@@ -118,7 +119,7 @@ func (s *Service) ReplaceDataviewSort(
 	id string,
 	sort *model.BlockContentDataviewSort,
 ) (err error) {
-	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
+	return cache.DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
 		if err != nil {
 			return err
@@ -135,7 +136,7 @@ func (s *Service) ReorderDataviewSorts(
 	viewID string,
 	ids []string,
 ) (err error) {
-	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
+	return cache.DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
 		if err != nil {
 			return err
@@ -152,7 +153,7 @@ func (s *Service) AddDataviewViewRelation(
 	viewID string,
 	relation *model.BlockContentDataviewRelation,
 ) (err error) {
-	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
+	return cache.DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
 		if err != nil {
 			return err
@@ -169,7 +170,7 @@ func (s *Service) RemoveDataviewViewRelations(
 	viewID string,
 	relationKeys []string,
 ) (err error) {
-	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
+	return cache.DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
 		if err != nil {
 			return err
@@ -187,7 +188,7 @@ func (s *Service) ReplaceDataviewViewRelation(
 	relationKey string,
 	relation *model.BlockContentDataviewRelation,
 ) (err error) {
-	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
+	return cache.DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
 		if err != nil {
 			return err
@@ -204,7 +205,7 @@ func (s *Service) ReorderDataviewViewRelations(
 	viewID string,
 	relationKeys []string,
 ) (err error) {
-	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
+	return cache.DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
 		if err != nil {
 			return err

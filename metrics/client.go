@@ -8,7 +8,7 @@ import (
 
 	"github.com/cheggaaa/mb/v3"
 
-	"github.com/anyproto/anytype-heart/metrics/amplitude"
+	"github.com/anyproto/anytype-heart/metrics/anymetry"
 )
 
 var (
@@ -19,12 +19,13 @@ var (
 
 type client struct {
 	lock             sync.RWMutex
-	telemetry        amplitude.Service
+	batcherLock      sync.RWMutex
+	telemetry        anymetry.Service
 	aggregatableMap  map[string]SamplableEvent
 	aggregatableChan chan SamplableEvent
 	ctx              context.Context
 	cancel           context.CancelFunc
-	batcher          *mb.MB[amplitude.Event]
+	batcher          *mb.MB[anymetry.Event]
 }
 
 func (c *client) startAggregating() {
@@ -51,9 +52,9 @@ func (c *client) startAggregating() {
 			case <-ctx.Done():
 				c.recordAggregatedData()
 				// we close here so that we are sure that we don't lose the aggregated data
-				batcher := c.batcher
-				if batcher != nil {
-					err := batcher.Close()
+				clientBatcher := c.getBatcher()
+				if clientBatcher != nil {
+					err := clientBatcher.Close()
 					if err != nil {
 						clientMetricsLog.Errorf("failed to close batcher")
 					}
@@ -64,16 +65,16 @@ func (c *client) startAggregating() {
 	}()
 }
 
-func (c *client) startSendingBatchMessages(info amplitude.AppInfoProvider) {
+func (c *client) startSendingBatchMessages(info anymetry.AppInfoProvider) {
 	ctx := c.ctx
 	attempt := 0
 	for {
-		batcher := c.batcher
-		if batcher == nil {
+		clientBatcher := c.getBatcher()
+		if clientBatcher == nil {
 			return
 		}
 		ctx = mb.CtxWithTimeLimit(ctx, sendingTimeLimit)
-		msgs, err := batcher.NewCond().
+		msgs, err := clientBatcher.NewCond().
 			WithMin(sendingQueueLimitMin).
 			WithMax(sendingQueueLimitMax).
 			Wait(ctx)
@@ -82,7 +83,7 @@ func (c *client) startSendingBatchMessages(info amplitude.AppInfoProvider) {
 			return
 		}
 
-		err = c.sendNextBatch(info, batcher, msgs)
+		err = c.sendNextBatch(info, clientBatcher, msgs)
 		timeout := time.Second * 2
 		if err == nil {
 			attempt = 0
@@ -102,28 +103,37 @@ func (c *client) startSendingBatchMessages(info amplitude.AppInfoProvider) {
 }
 
 func (c *client) Close() {
-	c.lock.Lock()
-	if c.batcher == nil {
-		c.lock.Unlock()
+	if c.getBatcher() == nil {
 		return
 	}
-	c.lock.Unlock()
+
 	c.cancel()
 
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.batcher = nil
+	c.setBatcher(nil)
 }
 
-func (c *client) sendNextBatch(info amplitude.AppInfoProvider, batcher *mb.MB[amplitude.Event], msgs []amplitude.Event) (err error) {
-	if len(msgs) == 0 {
-		return
+func (c *client) getBatcher() *mb.MB[anymetry.Event] {
+	defer c.batcherLock.RUnlock()
+	c.batcherLock.RLock()
+	return c.batcher
+}
+
+func (c *client) setBatcher(batcher *mb.MB[anymetry.Event]) {
+	defer c.batcherLock.Unlock()
+	c.batcherLock.Lock()
+	c.batcher = batcher
+}
+
+func (c *client) sendNextBatch(info anymetry.AppInfoProvider, batcher *mb.MB[anymetry.Event], msgs []anymetry.Event) (err error) {
+	clientBatcher := c.getBatcher()
+	if clientBatcher == nil || len(msgs) == 0 {
+		return nil
 	}
 
 	err = c.telemetry.SendEvents(msgs, info)
 	if err != nil {
 		clientMetricsLog.
-			With("unsent messages", len(msgs)+c.batcher.Len()).
+			With("unsent messages", len(msgs)+clientBatcher.Len()).
 			Error("failed to send messages")
 		if batcher != nil {
 			_ = batcher.TryAdd(msgs...) //nolint:errcheck
@@ -138,10 +148,10 @@ func (c *client) sendNextBatch(info amplitude.AppInfoProvider, batcher *mb.MB[am
 }
 
 func (c *client) recordAggregatedData() {
-	c.lock.RLock()
+	c.lock.Lock()
 	toSend := c.aggregatableMap
 	c.aggregatableMap = make(map[string]SamplableEvent)
-	c.lock.RUnlock()
+	c.lock.Unlock()
 	// итерейтим сразу старую мапу и скармливаем ГЦ
 	for _, ev := range toSend {
 		c.send(ev)
@@ -155,14 +165,14 @@ func (c *client) sendSampled(ev SamplableEvent) {
 	}
 }
 
-func (c *client) send(e amplitude.Event) {
+func (c *client) send(e anymetry.Event) {
 	if e == nil {
 		return
 	}
 	e.SetTimestamp()
-	batcher := c.batcher
-	if batcher == nil {
+	clientBatcher := c.getBatcher()
+	if clientBatcher == nil {
 		return
 	}
-	_ = batcher.TryAdd(e) //nolint:errcheck
+	_ = clientBatcher.TryAdd(e) //nolint:errcheck
 }

@@ -12,14 +12,26 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 var (
 	ErrFailedToRemoveAccountData = errors.New("failed to remove account data")
 )
 
+// cancelStartIfInProcess cancels the start process if it is in progress, otherwise does nothing
+func (s *Service) cancelStartIfInProcess() {
+	s.appAccountStartInProcessCancelMutex.Lock()
+	defer s.appAccountStartInProcessCancelMutex.Unlock()
+	if s.appAccountStartInProcessCancel != nil {
+		log.Warn("canceling in-process account start")
+		s.appAccountStartInProcessCancel()
+		s.appAccountStartInProcessCancel = nil
+	}
+}
+
 func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
+	s.cancelStartIfInProcess()
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -30,7 +42,7 @@ func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
 	if req.RemoveData {
 		err := s.accountRemoveLocalData()
 		if err != nil {
-			return errors.Join(ErrFailedToRemoveAccountData, oserror.TransformError(err))
+			return errors.Join(ErrFailedToRemoveAccountData, anyerror.CleanupError(err))
 		}
 	} else {
 		err := s.stop()
@@ -77,7 +89,7 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 		return ErrFailedToStopApplication
 	}
 
-	_, err = s.start(ctx, accountId, rootPath, conf.DontStartLocalNetworkSyncAutomatically, req.NetworkMode, req.NetworkCustomConfigFilePath)
+	_, err = s.start(ctx, accountId, rootPath, conf.DontStartLocalNetworkSyncAutomatically, conf.PeferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath)
 	return err
 }
 

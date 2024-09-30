@@ -126,9 +126,6 @@ func (f *File) Copy() simple.Block {
 }
 
 func (f *File) Validate() error {
-	if f.content.State == model.BlockContentFile_Done && f.content.Size_ == 0 {
-		return fmt.Errorf("empty file size and content State is Done")
-	}
 	return nil
 }
 
@@ -248,6 +245,10 @@ func (f *File) FillSmartIds(ids []string) []string {
 
 func (f *File) HasSmartIds() bool {
 	return f.content.TargetObjectId != ""
+}
+
+func (f *File) IsEmpty() bool {
+	return f.content.TargetObjectId == "" && f.content.Hash == ""
 }
 
 func DetectTypeByMIME(name, mime string) model.BlockContentFileType {

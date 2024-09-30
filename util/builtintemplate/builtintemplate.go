@@ -124,7 +124,7 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 		if _, ok := b.(relation.Block); ok {
 			relKey := b.Model().GetRelation().Key
 			if !st.HasRelation(relKey) {
-				st.AddBundledRelations(domain.RelationKey(relKey))
+				st.AddBundledRelationLinks(domain.RelationKey(relKey))
 			}
 		}
 		return true
@@ -135,7 +135,13 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 	}
 
 	fullID := domain.FullID{SpaceID: space.Id(), ObjectID: id}
-	err = b.source.RegisterStaticSource(b.source.NewStaticSource(fullID, smartblock.SmartBlockTypeBundledTemplate, st.Copy(), nil))
+	params := source.StaticSourceParams{
+		Id:        fullID,
+		SbType:    smartblock.SmartBlockTypeBundledTemplate,
+		State:     st.Copy(),
+		CreatorId: addr.AnytypeProfileId,
+	}
+	err = b.source.RegisterStaticSource(b.source.NewStaticSource(params))
 	if err != nil {
 		return fmt.Errorf("register static source: %w", err)
 	}

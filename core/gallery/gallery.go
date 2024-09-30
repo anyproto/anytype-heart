@@ -22,7 +22,7 @@ import (
 const (
 	timeout = time.Second * 30
 
-	indexURI = "https://tools.gallery.any.coop/index.json"
+	indexURI = "https://tools.gallery.any.coop/app-index.json"
 )
 
 type schemaResponse struct {
@@ -88,32 +88,10 @@ func DownloadGalleryIndex() (*pb.RpcGalleryDownloadIndexResponse, error) {
 		return nil, fmt.Errorf("%w: %w", ErrDownloadIndex, err)
 	}
 
-	manifests := struct {
-		Experiences map[string]*model.ManifestInfo `json:"experiences"`
-	}{}
-	err = json.Unmarshal(raw, &manifests)
-	if err != nil {
-		return nil, fmt.Errorf("%w to get list of manifests from gallery index: %w", ErrUnmarshalJson, err)
-	}
 	response := &pb.RpcGalleryDownloadIndexResponse{}
-
-	for _, manifest := range manifests.Experiences {
-		response.Experiences = append(response.Experiences, manifest)
-	}
-
-	categories := struct {
-		Categories map[string][]string `json:"categories"`
-	}{}
-	err = json.Unmarshal(raw, &categories)
+	err = json.Unmarshal(raw, &response)
 	if err != nil {
-		return nil, fmt.Errorf("%w to get list of categories from gallery index: %w", ErrUnmarshalJson, err)
-	}
-
-	for name, experiences := range categories.Categories {
-		response.Categories = append(response.Categories, &pb.RpcGalleryDownloadIndexResponseCategory{
-			Name:        name,
-			Experiences: experiences,
-		})
+		return nil, fmt.Errorf("%w to get lists of categories and experiences from gallery index: %w", ErrUnmarshalJson, err)
 	}
 
 	return response, nil

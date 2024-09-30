@@ -15,9 +15,16 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 )
 
-const CtxKeyRemoteLoadDisabled = "object_remote_load_disabled"
+type ctxKey string
+
+const CtxKeyRemoteLoadDisabled = ctxKey("object_remote_load_disabled")
+const CtxDoNotCache = ctxKey("do_not_cache")
 
 var ErrRemoteLoadDisabled = fmt.Errorf("remote load disabled")
+
+func ContextWithDoNotCache(ctx context.Context) context.Context {
+	return context.WithValue(ctx, CtxDoNotCache, true)
+}
 
 type proxyStore struct {
 	localStore *flatStore
@@ -65,8 +72,11 @@ func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err er
 		log.Debug("proxyStore remote cid error", zap.String("cid", k.String()), zap.Error(err))
 		return
 	}
-	if addErr := c.localStore.Add(ctx, []blocks.Block{b}); addErr != nil {
-		log.Error("block fetched from origin but got error for add to localStore", zap.Error(addErr))
+
+	if dontCache, ok := ctx.Value(CtxDoNotCache).(bool); !ok || !dontCache {
+		if addErr := c.localStore.Add(ctx, []blocks.Block{b}); addErr != nil {
+			log.Error("block fetched from origin but got error for add to localStore", zap.Error(addErr))
+		}
 	}
 	return
 }

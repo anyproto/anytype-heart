@@ -3,9 +3,11 @@ package files
 import (
 	"context"
 	"encoding/json"
-	"math"
+	"errors"
+	"fmt"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -19,92 +21,106 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const (
-	imageObjectHiddenWidth = 263
-)
-
 type Image interface {
-	Exif(ctx context.Context) (*mill.ImageExifSchema, error)
 	FileId() domain.FileId
 	Details(ctx context.Context) (*types.Struct, error)
-	GetFileForWidth(ctx context.Context, wantWidth int) (File, error)
-	GetFileForLargestWidth(ctx context.Context) (File, error)
-	GetOriginalFile(ctx context.Context) (File, error)
+	GetFileForWidth(wantWidth int) (File, error)
+	GetOriginalFile() (File, error)
 }
 
 var _ Image = (*image)(nil)
 
 type image struct {
-	fileId          domain.FileId
-	spaceID         string
-	variantsByWidth map[int]*storage.FileInfo
-	service         *service
+	fileId             domain.FileId
+	spaceID            string
+	onlyResizeVariants []*storage.FileInfo
+	service            *service
 }
 
-func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
-	if i.variantsByWidth != nil {
-		return i.getFileForWidthFromCache(wantWidth)
-	}
-
-	if wantWidth > 1920 {
-		fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.fileId.String()+"/0/original")
-		if err == nil {
-			return &file{
-				spaceID: i.spaceID,
-				fileId:  i.fileId,
-				info:    fileIndex,
-				node:    i.service,
-			}, nil
+func selectAndSortResizeVariants(variants []*storage.FileInfo) []*storage.FileInfo {
+	onlyResizeVariants := variants[:0]
+	for _, variant := range variants {
+		if variant.Mill == mill.ImageResizeId || variant.Mill == mill.BlobId {
+			onlyResizeVariants = append(onlyResizeVariants, variant)
 		}
 	}
 
-	sizeName := getSizeForWidth(wantWidth)
-	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.fileId.String()+"/0/"+sizeName)
+	// Sort by width
+	sort.Slice(onlyResizeVariants, func(i, j int) bool {
+		return getVariantWidth(onlyResizeVariants[i]) < getVariantWidth(onlyResizeVariants[j])
+	})
+	return onlyResizeVariants
+}
+
+func (i *image) listResizeVariants() ([]*storage.FileInfo, error) {
+	if i.onlyResizeVariants != nil {
+		return i.onlyResizeVariants, nil
+	}
+	variants, err := i.service.fileStore.ListFileVariants(i.fileId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get variants: %w", err)
+	}
+	i.onlyResizeVariants = selectAndSortResizeVariants(variants)
+	return i.onlyResizeVariants, nil
+}
+
+func (i *image) getLargestVariant() (*storage.FileInfo, error) {
+	onlyResizeVariants, err := i.listResizeVariants()
+	if err != nil {
+		return nil, fmt.Errorf("list resize variants: %w", err)
+	}
+	if len(onlyResizeVariants) == 0 {
+		return nil, errors.New("no resize variants")
+	}
+	return onlyResizeVariants[len(onlyResizeVariants)-1], nil
+}
+
+func (i *image) getVariantForWidth(wantWidth int) (*storage.FileInfo, error) {
+	onlyResizeVariants, err := i.listResizeVariants()
+	if err != nil {
+		return nil, fmt.Errorf("list resize variants: %w", err)
 	}
 
+	if len(onlyResizeVariants) == 0 {
+		return nil, errors.New("no resize variants")
+	}
+
+	for _, variant := range onlyResizeVariants {
+		if getVariantWidth(variant) >= wantWidth {
+			return variant, nil
+		}
+	}
+	// return largest if no more suitable variant found
+	return onlyResizeVariants[len(onlyResizeVariants)-1], nil
+}
+
+func getVariantWidth(variantInfo *storage.FileInfo) int {
+	return int(pbtypes.GetInt64(variantInfo.Meta, "width"))
+}
+
+func (i *image) GetFileForWidth(wantWidth int) (File, error) {
+	variant, err := i.getVariantForWidth(wantWidth)
+	if err != nil {
+		return nil, fmt.Errorf("get variant for width: %w", err)
+	}
 	return &file{
 		spaceID: i.spaceID,
 		fileId:  i.fileId,
-		info:    fileIndex,
+		info:    variant,
 		node:    i.service,
 	}, nil
 }
 
 // GetOriginalFile doesn't contains Meta
-func (i *image) GetOriginalFile(ctx context.Context) (File, error) {
-	sizeName := "original"
-	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.fileId.String()+"/0/"+sizeName)
-	if err == nil {
-		return &file{
-			spaceID: i.spaceID,
-			fileId:  i.fileId,
-			info:    fileIndex,
-			node:    i.service,
-		}, nil
-	}
-
-	// fallback for the old schema without an original
-	return i.GetFileForLargestWidth(ctx)
-}
-
-func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
-	if i.variantsByWidth != nil {
-		return i.getFileForWidthFromCache(math.MaxInt32)
-	}
-
-	// fallback to large size, because older image nodes don't have an original
-	sizeName := "large"
-	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.fileId.String()+"/0/"+sizeName)
+func (i *image) GetOriginalFile() (File, error) {
+	variant, err := i.getLargestVariant()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get largest variant: %w", err)
 	}
-
 	return &file{
 		spaceID: i.spaceID,
 		fileId:  i.fileId,
-		info:    fileIndex,
+		info:    variant,
 		node:    i.service,
 	}, nil
 }
@@ -113,16 +129,25 @@ func (i *image) FileId() domain.FileId {
 	return i.fileId
 }
 
-func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
-	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.fileId.String()+"/0/exif")
+func (i *image) getExif(ctx context.Context) (*mill.ImageExifSchema, error) {
+	variants, err := i.service.fileStore.ListFileVariants(i.fileId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get variants: %w", err)
+	}
+	var variant *storage.FileInfo
+	for _, v := range variants {
+		if v.Mill == mill.ImageExifId {
+			variant = v
+		}
+	}
+	if variant == nil {
+		return nil, fmt.Errorf("exif variant not found")
 	}
 
 	f := &file{
 		spaceID: i.spaceID,
 		fileId:  i.fileId,
-		info:    fileIndex,
+		info:    variant,
 		node:    i.service,
 	}
 	r, err := f.Reader(ctx)
@@ -142,7 +167,7 @@ func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
 }
 
 func (i *image) Details(ctx context.Context) (*types.Struct, error) {
-	imageExif, err := i.Exif(ctx)
+	imageExif, err := i.getExif(ctx)
 	if err != nil {
 		log.Errorf("failed to get exif for image: %s", err)
 		imageExif = &mill.ImageExifSchema{}
@@ -151,7 +176,7 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 	commonDetails := calculateCommonDetails(
 		i.fileId,
 		model.ObjectType_image,
-		i.extractLastModifiedDate(ctx, imageExif),
+		i.extractLastModifiedDate(imageExif),
 	)
 
 	details := &types.Struct{
@@ -161,28 +186,25 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 
-	largest, err := i.GetFileForLargestWidth(ctx)
+	largest, err := i.getLargestVariant()
 	if err != nil {
 		return details, nil
 	}
 
-	if v := pbtypes.Get(largest.Info().GetMeta(), "width"); v != nil {
+	if v := pbtypes.Get(largest.GetMeta(), "width"); v != nil {
 		details.Fields[bundle.RelationKeyWidthInPixels.String()] = v
-		if v.GetNumberValue() < imageObjectHiddenWidth {
-			details.Fields[bundle.RelationKeyIsHidden.String()] = pbtypes.Bool(true)
-		}
 	}
 
-	if v := pbtypes.Get(largest.Info().GetMeta(), "height"); v != nil {
+	if v := pbtypes.Get(largest.GetMeta(), "height"); v != nil {
 		details.Fields[bundle.RelationKeyHeightInPixels.String()] = v
 	}
 
-	if largest.Meta() != nil {
-		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(largest.Meta().Name, filepath.Ext(largest.Meta().Name)))
-		details.Fields[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(largest.Meta().Name), "."))
-		details.Fields[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(largest.Meta().Media)
-		details.Fields[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(largest.Meta().Size))
-		details.Fields[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(largest.Meta().Added.Unix()))
+	if largest.Meta != nil {
+		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(largest.Name, filepath.Ext(largest.Name)))
+		details.Fields[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(largest.Name), "."))
+		details.Fields[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(largest.Media)
+		details.Fields[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(largest.Size_))
+		details.Fields[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(largest.Added))
 	}
 
 	if !imageExif.Created.IsZero() {
@@ -234,57 +256,18 @@ func unpackArtist(packed string) (name, url string) {
 	return packed, ""
 }
 
-func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
-	var maxWidth int
-	var maxWidthImage *storage.FileInfo
-
-	var minWidthMatched int
-	var minWidthMatchedImage *storage.FileInfo
-
-	for width, fileIndex := range i.variantsByWidth {
-		if width >= maxWidth {
-			maxWidth = width
-			maxWidthImage = fileIndex
-		}
-
-		if width > wantWidth &&
-			(minWidthMatchedImage == nil || minWidthMatched > width) {
-			minWidthMatchedImage = fileIndex
-			minWidthMatched = width
-		}
-	}
-
-	if minWidthMatchedImage != nil {
-		return &file{
-			spaceID: i.spaceID,
-			fileId:  i.fileId,
-			info:    minWidthMatchedImage,
-			node:    i.service,
-		}, nil
-	} else if maxWidthImage != nil {
-		return &file{
-			spaceID: i.spaceID,
-			fileId:  i.fileId,
-			info:    maxWidthImage,
-			node:    i.service,
-		}, nil
-	}
-
-	return nil, domain.ErrFileNotFound
-}
-
-func (i *image) extractLastModifiedDate(ctx context.Context, imageExif *mill.ImageExifSchema) int64 {
+func (i *image) extractLastModifiedDate(imageExif *mill.ImageExifSchema) int64 {
 	var lastModifiedDate int64
-	largest, err := i.GetFileForLargestWidth(ctx)
+	largest, err := i.getLargestVariant()
 	if err == nil {
-		lastModifiedDate = largest.Meta().LastModifiedDate
+		lastModifiedDate = largest.LastModifiedDate
 	}
 	if lastModifiedDate <= 0 {
 		lastModifiedDate = imageExif.Created.Unix()
 	}
 
 	if lastModifiedDate <= 0 && err == nil {
-		lastModifiedDate = largest.Meta().Added.Unix()
+		lastModifiedDate = largest.Added
 	}
 
 	if lastModifiedDate <= 0 {
@@ -292,25 +275,4 @@ func (i *image) extractLastModifiedDate(ctx context.Context, imageExif *mill.Ima
 	}
 
 	return lastModifiedDate
-}
-
-var imageWidthByName = map[string]int{
-	"thumb": 100,
-	"small": 320,
-	"large": 1920,
-}
-
-func getSizeForWidth(wantWidth int) string {
-	var maxWidth int
-	var maxWidthSize string
-	for sizeName, width := range imageWidthByName {
-		if width >= wantWidth {
-			return sizeName
-		}
-		if width > maxWidth {
-			maxWidthSize = sizeName
-			maxWidth = width
-		}
-	}
-	return maxWidthSize
 }

@@ -6,11 +6,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
@@ -20,8 +24,6 @@ import (
 var emptyMarks [][]*model.BlockContentTextMark
 
 var bold = model.BlockContentTextMark_Bold
-var italic = model.BlockContentTextMark_Italic
-var fontRed = model.BlockContentTextMark_TextColor
 
 func page(blocks ...*model.Block) (sb *smarttest.SmartTest) {
 	sb = smarttest.New("test")
@@ -44,7 +46,7 @@ func page(blocks ...*model.Block) (sb *smarttest.SmartTest) {
 }
 
 func rangePaste(sb *smarttest.SmartTest, t *testing.T, focusId string, focusRange *model.Range, copyRange *model.Range, blocks ...*model.Block) {
-	cb := newFixture(sb)
+	cb := newFixture(t, sb)
 	req := &pb.RpcBlockPasteRequest{
 		ContextId:         sb.Id(),
 		FocusedBlockId:    focusId,
@@ -114,23 +116,6 @@ func shouldBe(sb *smarttest.SmartTest, t *testing.T, shouldBeBLocks ...*model.Bl
 	}
 }
 
-func shouldBeDebug(sb *smarttest.SmartTest, t *testing.T, shouldBeBLocks ...*model.Block) {
-	realBlocks := []*model.Block{}
-	cIds := sb.Pick("test").Model().ChildrenIds
-	for _, cId := range cIds {
-		realBlocks = append(realBlocks, sb.Pick(cId).Model())
-	}
-	fmt.Println(len(realBlocks), len(shouldBeBLocks))
-
-	for i, realBlock := range realBlocks {
-		fmt.Println("Real ", i, realBlock)
-	}
-
-	for i, b := range shouldBeBLocks {
-		fmt.Println("Should ", i, b)
-	}
-}
-
 func createBlocks(idsArr []string, textArr []string, marksArr [][]*model.BlockContentTextMark) []*model.Block {
 	blocks := []*model.Block{}
 	for i := 0; i < len(textArr); i++ {
@@ -197,18 +182,6 @@ func checkBlockText(t *testing.T, sb *smarttest.SmartTest, textArr []string) {
 	assert.Equal(t, textArr, textArr2)
 }
 
-func checkBlockTextDebug(t *testing.T, sb *smarttest.SmartTest, textArr []string) {
-	for i, _ := range textArr {
-		fmt.Println(textArr[i])
-	}
-
-	fmt.Println("--------")
-	cIds := sb.Pick("test").Model().ChildrenIds
-	for _, c := range cIds {
-		fmt.Println("ID:", sb.Pick(c).Model().Id, "cId:", c, "Text:", sb.Pick(c).Model().GetText())
-	}
-}
-
 func checkBlockMarks(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*model.BlockContentTextMark) {
 	cIds := sb.Pick("test").Model().ChildrenIds
 	require.Equal(t, len(cIds), len(marksArr))
@@ -242,12 +215,16 @@ func checkBlockMarksDebug(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*m
 	}
 }
 
-func newFixture(sb smartblock.SmartBlock) Clipboard {
-	return NewClipboard(sb, nil, nil, nil, nil, nil)
+func newFixture(t *testing.T, sb smartblock.SmartBlock) Clipboard {
+	file := file.NewMockFile(t)
+	file.EXPECT().UploadState(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	fos := mock_fileobject.NewMockService(t)
+	fos.EXPECT().GetFileIdFromObject(mock.Anything).Return(domain.FullFileId{}, fmt.Errorf("no fileId")).Maybe()
+	return NewClipboard(sb, file, nil, nil, nil, fos)
 }
 
-func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {
-	cb := newFixture(sb)
+func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) ([]string, bool) {
+	cb := newFixture(t, sb)
 	req := &pb.RpcBlockPasteRequest{}
 	if id != "" {
 		req.FocusedBlockId = id
@@ -258,12 +235,14 @@ func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.
 	req.AnySlot = blocks
 	req.SelectedTextRange = &textRange
 
-	_, _, _, _, err := cb.Paste(nil, req, "")
+	ids, _, _, isSameFocusedBlock, err := cb.Paste(nil, req, "")
 	require.NoError(t, err)
+
+	return ids, isSameFocusedBlock
 }
 
 func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, textSlot string) {
-	cb := newFixture(sb)
+	cb := newFixture(t, sb)
 	req := &pb.RpcBlockPasteRequest{}
 	if id != "" {
 		req.FocusedBlockId = id
@@ -279,7 +258,7 @@ func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model
 }
 
 func pasteHtml(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, htmlSlot string) {
-	cb := newFixture(sb)
+	cb := newFixture(t, sb)
 	req := &pb.RpcBlockPasteRequest{}
 	if id != "" {
 		req.FocusedBlockId = id

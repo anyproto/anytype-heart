@@ -8,7 +8,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	lib "github.com/anyproto/anytype-heart/pb/service"
 )
@@ -26,7 +29,10 @@ func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.Clie
 		log.Fatal("failed to ListenEvents: has a wrong Sender")
 		return
 	}
-
+	if mw.GetApp() != nil {
+		hookRunner := app.MustComponent[session.HookRunner](mw.GetApp())
+		hookRunner.RunHooks(session.NewContext(session.WithSession(req.Token)))
+	}
 	var stopChan = make(chan os.Signal, 2)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	select {

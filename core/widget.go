@@ -12,7 +12,7 @@ func (mw *Middleware) BlockCreateWidget(cctx context.Context, req *pb.RpcBlockCr
 	response := func(code pb.RpcBlockCreateWidgetResponseErrorCode, id string, err error) *pb.RpcBlockCreateWidgetResponse {
 		m := &pb.RpcBlockCreateWidgetResponse{Error: &pb.RpcBlockCreateWidgetResponseError{Code: code}, BlockId: id}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -34,7 +34,7 @@ func (mw *Middleware) BlockWidgetSetTargetId(cctx context.Context, req *pb.RpcBl
 	response := func(code pb.RpcBlockWidgetSetTargetIdResponseErrorCode, id string, err error) *pb.RpcBlockWidgetSetTargetIdResponse {
 		m := &pb.RpcBlockWidgetSetTargetIdResponse{Error: &pb.RpcBlockWidgetSetTargetIdResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -55,7 +55,7 @@ func (mw *Middleware) BlockWidgetSetLayout(cctx context.Context, req *pb.RpcBloc
 	response := func(code pb.RpcBlockWidgetSetLayoutResponseErrorCode, id string, err error) *pb.RpcBlockWidgetSetLayoutResponse {
 		m := &pb.RpcBlockWidgetSetLayoutResponse{Error: &pb.RpcBlockWidgetSetLayoutResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -76,7 +76,7 @@ func (mw *Middleware) BlockWidgetSetLimit(cctx context.Context, req *pb.RpcBlock
 	response := func(code pb.RpcBlockWidgetSetLimitResponseErrorCode, id string, err error) *pb.RpcBlockWidgetSetLimitResponse {
 		m := &pb.RpcBlockWidgetSetLimitResponse{Error: &pb.RpcBlockWidgetSetLimitResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}
@@ -97,7 +97,7 @@ func (mw *Middleware) BlockWidgetSetViewId(cctx context.Context, req *pb.RpcBloc
 	response := func(code pb.RpcBlockWidgetSetViewIdResponseErrorCode, id string, err error) *pb.RpcBlockWidgetSetViewIdResponse {
 		m := &pb.RpcBlockWidgetSetViewIdResponse{Error: &pb.RpcBlockWidgetSetViewIdResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 		}

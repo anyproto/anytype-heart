@@ -180,3 +180,31 @@ nodes:
       - quic://prod-any-sync-consensusnode3.anyclub.org:5430
     types:
       - consensus
+  - peerId: 12D3KooWEja7WjymFFfwzUnuYtGy8SJQw1bUBjYoiZvxzxkfuTzY
+    addresses:
+      - prod-any-sync-ppnode1.anyclub.org:443
+      - prod-any-sync-ppnode1.anyclub.org:1443
+      - quic://prod-any-sync-ppnode1.anyclub.org:5430
+    types:
+      - paymentProcessingNode
+  - peerId: 12D3KooWPThj9uJmh8sc5kexe1J5JUpg9taWbCZUq3bQaZqx6Rih
+    addresses:
+      - prod-any-sync-ppnode2.anyclub.org:443
+      - prod-any-sync-ppnode2.anyclub.org:1443
+      - quic://prod-any-sync-ppnode2.anyclub.org:5430
+    types:
+      - paymentProcessingNode
+  - peerId: 12D3KooWCy5Ng34BB1psTVd6p86aXhgpxivDSc4jy14NKqax681X
+    addresses:
+      - prod-any-sync-nsnode1.anyclub.org:443
+      - prod-any-sync-nsnode1.anyclub.org:1443
+      - quic://prod-any-sync-nsnode1.anyclub.org:5430
+    types:
+      - namingNode
+  - peerId: 12D3KooWAZSPR6AbBzNiCdgxUyfdpWR2ET25SKAVTWhujyTSjuDe
+    addresses:
+      - prod-any-sync-nsnode2.anyclub.org:443
+      - prod-any-sync-nsnode2.anyclub.org:1443
+      - quic://prod-any-sync-nsnode2.anyclub.org:5430
+    types:
+      - namingNode

@@ -10,15 +10,33 @@ packages:
   github.com/anyproto/anytype-heart/core/wallet:
     interfaces:
       Wallet:
+  github.com/anyproto/anytype-heart/core/nameservice:
+    interfaces:
+      Service:
   github.com/anyproto/anytype-heart/core/event:
     interfaces:
       Sender:
-  github.com/anyproto/anytype-heart/core/block/getblock:
+  github.com/anyproto/anytype-heart/core/block/cache:
     interfaces:
       ObjectGetter:
+      ObjectGetterComponent:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/block/editor/file:
+    interfaces:
+      File:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
+  github.com/anyproto/anytype-heart/core/block/editor/smartblock:
+    interfaces:
+      Indexer:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
@@ -38,19 +56,37 @@ packages:
   github.com/anyproto/anytype-heart/core/filestorage/filesync:
     interfaces:
       FileSync:
+  github.com/anyproto/anytype-heart/core/filestorage/rpcstore:
+    interfaces:
+      Service:
+      RpcStore:
   github.com/anyproto/anytype-heart/core/block/import/common/objectid:
     interfaces:
-      IdGetterProvider:
+      IdAndKeyProvider:
   github.com/anyproto/anytype-heart/core/block/import/common/objectcreator:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/block/import/common/syncer:
+    interfaces:
+      BlockService:
   github.com/anyproto/anytype-heart/core/subscription:
     interfaces:
       CollectionService:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
+      Service:
   github.com/anyproto/anytype-heart/core/block/object/objectcache:
     interfaces:
       Cache:
-  github.com/anyproto/anytype-heart/metrics/amplitude:
+  github.com/anyproto/anytype-heart/core/block/object/objectcreator:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/metrics/anymetry:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/invitestore:
     interfaces:
       Service:
   github.com/anyproto/anytype-heart/core/indexer:
@@ -59,9 +95,13 @@ packages:
   github.com/anyproto/anytype-heart/space/spacecore:
     interfaces:
       SpaceCoreService:
-  github.com/anyproto/anytype-heart/space/internal/techspace:
+  github.com/anyproto/anytype-heart/space/spacecore/storage:
+    interfaces:
+      ClientStorage:
+  github.com/anyproto/anytype-heart/space/techspace:
     interfaces:
       TechSpace:
+      SpaceView:
   github.com/anyproto/anytype-heart/space/spacefactory:
     interfaces:
       SpaceFactory:
@@ -69,12 +109,35 @@ packages:
     interfaces:
       SpaceController:
       DeleteController:
+  github.com/anyproto/anytype-heart/space/internal/components/spaceloader:
+    interfaces:
+      SpaceLoader:
+  github.com/anyproto/anytype-heart/space/internal/components/participantwatcher:
+    interfaces:
+      ParticipantWatcher:
+  github.com/anyproto/anytype-heart/space/internal/components/invitemigrator:
+    interfaces:
+      InviteMigrator:
+  github.com/anyproto/anytype-heart/space/internal/components/aclnotifications:
+    interfaces:
+      AclNotification:
+      NotificationSender:
+  github.com/anyproto/anytype-heart/space/internal/components/dependencies:
+    interfaces:
+      SpaceIndexer:
+      IdentityService:
+  github.com/anyproto/anytype-heart/space/internal/components/spacestatus:
+    interfaces:
+      SpaceStatus:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       Service:
   github.com/anyproto/anytype-heart/space/clientspace:
     interfaces:
       Space:
+  github.com/anyproto/anytype-heart/core/anytype/account:
+    interfaces:
+      Service:
   github.com/anyproto/anytype-heart/core/files/fileobject:
     interfaces:
       Service:
@@ -82,3 +145,77 @@ packages:
     interfaces:
       Service:
       File:
+      Image:
+  github.com/anyproto/anytype-heart/core/files/fileacl:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/space/deletioncontroller:
+    interfaces:
+      SpaceManager:
+      DeletionController:
+  github.com/anyproto/anytype-heart/core/domain:
+    interfaces:
+      InviteObject:
+  github.com/anyproto/anytype-heart/core/payments/cache:
+    interfaces:
+      CacheService:
+  github.com/anyproto/anytype-heart/core/block:
+    interfaces:
+      ObjectGetter:
+  github.com/anyproto/anytype-heart/core/block/source:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/block/object/idresolver:
+    interfaces:
+      Resolver:
+  github.com/anyproto/anytype-heart/core/filestorage:
+    interfaces:
+      FileStorage:
+  github.com/anyproto/anytype-heart/util/linkpreview:
+    interfaces:
+      LinkPreview:
+  github.com/anyproto/anytype-heart/space/spacecore/clientserver:
+    interfaces:
+      ClientServer:
+  github.com/anyproto/anytype-heart/core/peerstatus:
+    interfaces:
+      LocalDiscoveryHook:
+  github.com/anyproto/anytype-heart/core/device:
+    interfaces:
+      NetworkState:
+  github.com/anyproto/anytype-heart/space/spacecore/localdiscovery:
+    interfaces:
+      Notifier:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
+  github.com/anyproto/anytype-heart/core/block/object/treesyncer:
+    interfaces:
+      PeerStatusChecker:
+      SyncDetailsUpdater:
+  github.com/anyproto/anytype-heart/core/syncstatus/nodestatus:
+    interfaces:
+      NodeStatus:
+  github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus:
+    interfaces:
+      Updater:
+  github.com/anyproto/anytype-heart/space/spacecore/peermanager:
+    interfaces:
+      Updater:
+      PeerToPeerStatus:
+  github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater:
+    interfaces:
+      SpaceStatusUpdater:
+  github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus:
+    interfaces:
+      SpaceIdGetter:
+      NodeUsage:
+      NetworkConfig:
+      Updater:
+  github.com/anyproto/anytype-heart/core/block/import/notion/api/files:
+    interfaces:
+      Downloader:
+  github.com/anyproto/anytype-heart/core/block/detailservice:
+    interfaces:
+      Service:

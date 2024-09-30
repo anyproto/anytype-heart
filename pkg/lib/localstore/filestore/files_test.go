@@ -11,8 +11,81 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
+
+func TestAddAndDeleteVariants(t *testing.T) {
+	store := newFixture(t)
+
+	variant1 := &storage.FileInfo{
+		Hash:     "fileVariantId1",
+		Source:   "sourceChecksum",
+		Checksum: "variantChecksum1",
+		Mill:     mill.ImageResizeId,
+		Targets:  []string{"fileId1"},
+		Opts:     "optsHash1",
+	}
+	err := store.AddFileVariant(variant1)
+	require.NoError(t, err)
+
+	variant2 := &storage.FileInfo{
+		Hash:     "fileVariantId2",
+		Source:   "sourceChecksum",
+		Checksum: "variantChecksum2",
+		Mill:     mill.ImageResizeId,
+		Targets:  []string{"fileId1"},
+		Opts:     "optsHash2",
+	}
+	err = store.AddFileVariant(variant2)
+	require.NoError(t, err)
+
+	t.Run("retrieve operations", func(t *testing.T) {
+		for _, variant := range []*storage.FileInfo{variant1, variant2} {
+			got, err := store.GetFileVariantByChecksum(mill.ImageResizeId, variant.Checksum)
+			require.NoError(t, err)
+			assert.Equal(t, variant, got)
+
+			got, err = store.GetFileVariantBySource(mill.ImageResizeId, variant.Source, variant.Opts)
+			require.NoError(t, err)
+			assert.Equal(t, variant, got)
+		}
+
+		allFileIds, err := store.ListFileIds()
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []domain.FileId{"fileId1"}, allFileIds)
+
+		variants, err := store.ListFileVariants("fileId")
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []*storage.FileInfo{variant1, variant2}, variants)
+	})
+
+	t.Run("delete", func(t *testing.T) {
+		err = store.DeleteFileVariants([]domain.FileContentId{
+			domain.FileContentId(variant1.Hash),
+			domain.FileContentId("unknownCid"),
+			domain.FileContentId(variant2.Hash),
+		})
+		require.NoError(t, err)
+
+		for _, variant := range []*storage.FileInfo{variant1, variant2} {
+			_, err := store.GetFileVariantByChecksum(mill.ImageResizeId, variant.Checksum)
+			require.Error(t, err)
+
+			_, err = store.GetFileVariantBySource(mill.ImageResizeId, variant.Source, variant.Opts)
+			require.Error(t, err)
+		}
+
+		allFileIds, err := store.ListFileIds()
+		require.NoError(t, err)
+		assert.Empty(t, allFileIds)
+
+		variants, err := store.ListFileVariants("fileId")
+		require.NoError(t, err)
+		assert.Empty(t, variants)
+	})
+
+}
 
 func TestConflictResolution(t *testing.T) {
 	t.Run("add same file concurrently", func(t *testing.T) {

@@ -18,12 +18,6 @@ func (s *service) DebugRouter(r chi.Router) {
 	r.Get("/tree/{rootID}", debug.PlaintextHandler(s.printTree))
 }
 
-type fileDebugInfo struct {
-	Hash       string
-	SyncStatus int
-	IsIndexed  bool
-}
-
 func (s *service) printTree(w io.Writer, req *http.Request) error {
 	rawID := chi.URLParam(req, "rootID")
 	id, err := cid.Parse(rawID)

@@ -22,7 +22,7 @@ func Test_registerBuiltin(t *testing.T) {
 	defer ctrl.Finish()
 
 	sourceService := mockSource.NewMockService(ctrl)
-	sourceService.EXPECT().NewStaticSource(gomock.Any(), gomock.Any(), gomock.Any(), nil).AnyTimes()
+	sourceService.EXPECT().NewStaticSource(gomock.Any()).AnyTimes()
 	sourceService.EXPECT().RegisterStaticSource(gomock.Any()).AnyTimes()
 
 	marketplaceSpace := mock_space.NewMockSpace(t)

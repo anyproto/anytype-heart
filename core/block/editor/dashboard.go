@@ -19,6 +19,9 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
+// required relations for archive beside the bundle.RequiredInternalRelations
+var dashboardRequiredRelations = []domain.RelationKey{}
+
 type Dashboard struct {
 	smartblock.SmartBlock
 	basic.AllOperations
@@ -30,13 +33,14 @@ type Dashboard struct {
 func NewDashboard(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, layoutConverter converter.LayoutConverter) *Dashboard {
 	return &Dashboard{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
+		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter, nil, nil),
 		Collection:    collection.NewCollection(sb, objectStore),
 		objectStore:   objectStore,
 	}
 }
 
 func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, dashboardRequiredRelations...)
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
@@ -55,7 +59,6 @@ func (p *Dashboard) CreationStateMigration(ctx *smartblock.InitContext) migratio
 				template.WithEmpty,
 				template.WithDetailName("Home"),
 				template.WithDetailIconEmoji("🏠"),
-				template.WithRequiredRelations(),
 				template.WithNoDuplicateLinks(),
 			)
 		},
@@ -72,7 +75,7 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 		return
 	}
 
-	records, _, err := p.objectStore.Query(database.Query{
+	records, err := p.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyIsFavorite.String(),

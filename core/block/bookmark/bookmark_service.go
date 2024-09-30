@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -22,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 const CName = "bookmark"
@@ -40,7 +41,8 @@ const CName = "bookmark"
 type ContentFuture func() *bookmark.ObjectContent
 
 type Service interface {
-	CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
+	CreateObjectAndFetch(ctx context.Context, spaceId string, details *types.Struct) (objectID string, newDetails *types.Struct, err error)
+	CreateBookmarkObject(ctx context.Context, spaceId string, details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
 	UpdateObject(objectId string, getContent *bookmark.ObjectContent) error
 	// TODO Maybe Fetch and FetchBookmarkContent do the same thing differently?
 	FetchAsync(spaceID string, blockID string, params bookmark.FetchParams)
@@ -55,7 +57,7 @@ type ObjectCreator interface {
 }
 
 type DetailsSetter interface {
-	SetDetails(ctx session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
+	SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error)
 }
 
 type service struct {
@@ -89,7 +91,28 @@ func (s *service) Name() (name string) {
 
 var log = logging.Logger("anytype-mw-bookmark")
 
-func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture) (objectId string, objectDetails *types.Struct, err error) {
+func (s *service) CreateObjectAndFetch(
+	ctx context.Context, spaceId string, details *types.Struct,
+) (objectID string, newDetails *types.Struct, err error) {
+	source := pbtypes.GetString(details, bundle.RelationKeySource.String())
+	var res ContentFuture
+	if source != "" {
+		u, err := uri.NormalizeURI(source)
+		if err != nil {
+			return "", nil, fmt.Errorf("process uri: %w", err)
+		}
+		res = s.FetchBookmarkContent(spaceId, u, false)
+	} else {
+		res = func() *bookmark.ObjectContent {
+			return nil
+		}
+	}
+	return s.CreateBookmarkObject(ctx, spaceId, details, res)
+}
+
+func (s *service) CreateBookmarkObject(
+	ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture,
+) (objectId string, objectDetails *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("empty details")
 	}
@@ -104,7 +127,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 	}
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
 
-	records, _, err := s.store.Query(database.Query{
+	records, err := s.store.Query(database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
@@ -173,18 +196,15 @@ func detailsFromContent(content *bookmark.ObjectContent) map[string]*types.Value
 func (s *service) UpdateObject(objectId string, getContent *bookmark.ObjectContent) error {
 	detailsMap := detailsFromContent(getContent)
 
-	details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(detailsMap))
+	details := make([]*model.Detail, 0, len(detailsMap))
 	for k, v := range detailsMap {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
+		details = append(details, &model.Detail{
 			Key:   k,
 			Value: v,
 		})
 	}
 
-	return s.detailsSetter.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: objectId,
-		Details:   details,
-	})
+	return s.detailsSetter.SetDetails(nil, objectId, details)
 }
 
 func (s *service) FetchAsync(spaceID string, blockID string, params bookmark.FetchParams) {
@@ -224,7 +244,7 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 
 	updaters := make(chan func(contentBookmark *bookmark.ObjectContent), 1)
 
-	data, body, err := s.linkPreview.Fetch(ctx, url)
+	data, body, isFile, err := s.linkPreview.Fetch(ctx, url)
 	if err != nil {
 		updaters <- func(c *bookmark.ObjectContent) {
 			if c.BookmarkContent == nil {
@@ -296,6 +316,10 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 		go func() {
 			defer wg.Done()
 			updaters <- func(c *bookmark.ObjectContent) {
+				if isFile {
+					s.handleFileBlock(c, url)
+					return
+				}
 				blocks, _, err := anymark.HTMLToBlocks(body, url)
 				if err != nil {
 					log.Errorf("parse blocks: %s", err)
@@ -310,6 +334,19 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 		close(updaters)
 	}()
 	return updaters, nil
+}
+
+func (s *service) handleFileBlock(c *bookmark.ObjectContent, url string) {
+	c.Blocks = append(
+		c.Blocks,
+		&model.Block{
+			Id: bson.NewObjectId().Hex(),
+			Content: &model.BlockContentOfFile{
+				File: &model.BlockContentFile{
+					Name: url,
+				}},
+		},
+	)
 }
 
 func (s *service) fetcher(spaceID string, blockID string, params bookmark.FetchParams) error {

@@ -8,8 +8,9 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -21,12 +22,54 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+func (s *service) BundledObjectsIdsToInstall(
+	ctx context.Context,
+	space clientspace.Space,
+	sourceObjectIds []string,
+) (objectIds []string, err error) {
+	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
+	if err != nil {
+		return nil, fmt.Errorf("get marketplace space: %w", err)
+	}
+
+	existingObjectMap, err := s.listInstalledObjects(space, sourceObjectIds)
+	if err != nil {
+		return nil, fmt.Errorf("list installed objects: %w", err)
+	}
+
+	for _, sourceObjectId := range sourceObjectIds {
+		if _, ok := existingObjectMap[sourceObjectId]; ok {
+			continue
+		}
+
+		err = marketplaceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
+			uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeyUniqueKey.String()))
+			if err != nil {
+				return err
+			}
+			objectId, err := space.DeriveObjectID(ctx, uk)
+			if err != nil {
+				return err
+			}
+			objectIds = append(objectIds, objectId)
+			return nil
+		})
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
 func (s *service) InstallBundledObjects(
 	ctx context.Context,
 	space clientspace.Space,
 	sourceObjectIds []string,
 	isNewSpace bool,
 ) (ids []string, objects []*types.Struct, err error) {
+	if space.IsReadOnly() {
+		return
+	}
 
 	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
@@ -60,8 +103,6 @@ func (s *service) InstallBundledObjects(
 			objects = append(objects, newDetails)
 		}
 	}
-
-	s.reviseSystemObjects(space, existingObjectMap)
 	return
 }
 
@@ -83,6 +124,7 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 		Details:       installingDetails,
 		ObjectTypeKey: objectTypeKey,
 	})
+	log.Desugar().Info("install new object", zap.String("id", id))
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		// we don't want to stop adding other objects
 		log.Errorf("error while block create: %v", err)
@@ -92,7 +134,7 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 }
 
 func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds []string) (map[string]*types.Struct, error) {
-	existingObjects, _, err := s.objectStore.Query(database.Query{
+	existingObjects, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),
@@ -117,34 +159,16 @@ func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds 
 }
 
 func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clientspace.Space, space clientspace.Space, sourceObjectIDs []string) ([]string, []*types.Struct, error) {
-	uninstalledObjects, _, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySourceObject.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(sourceObjectIDs),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(space.Id()),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
-			},
-		},
-	})
+	deletedObjects, err := s.queryDeletedObjects(space, sourceObjectIDs)
 	if err != nil {
-		return nil, nil, fmt.Errorf("query uninstalled objects: %w", err)
+		return nil, nil, fmt.Errorf("query deleted objects: %w", err)
 	}
 
 	var (
 		ids     []string
 		objects []*types.Struct
 	)
-	for _, rec := range uninstalledObjects {
+	for _, rec := range deletedObjects {
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
 		sourceObjectId := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
 		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, sourceObjectId, space, false)
@@ -158,6 +182,7 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 			st.SetDetails(installingDetails)
 			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(false))
 			st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, pbtypes.Bool(false))
 			typeKey = domain.TypeKey(st.UniqueKeyInternal())
 
 			ids = append(ids, id)
@@ -201,7 +226,7 @@ func (s *service) prepareDetailsForInstallingObject(
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 
 	if isNewSpace {
-		objecttype.SetLastUsedDateForInitialObjectType(sourceId, details)
+		lastused.SetLastUsedDateForInitialObjectType(sourceId, details)
 	}
 
 	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
@@ -242,4 +267,34 @@ func (s *service) prepareDetailsForInstallingObject(
 	}
 
 	return details, nil
+}
+
+func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs []string) ([]database.Record, error) {
+	sourceList, err := pbtypes.ValueListWrapper(pbtypes.StringList(sourceObjectIDs))
+	if err != nil {
+		return nil, err
+	}
+	return s.objectStore.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterIn{
+			Key:   bundle.RelationKeySourceObject.String(),
+			Value: sourceList,
+		},
+		database.FilterEq{
+			Key:   bundle.RelationKeySpaceId.String(),
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: pbtypes.String(space.Id()),
+		},
+		database.FiltersOr{
+			database.FilterEq{
+				Key:   bundle.RelationKeyIsDeleted.String(),
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: pbtypes.Bool(true),
+			},
+			database.FilterEq{
+				Key:   bundle.RelationKeyIsArchived.String(),
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: pbtypes.Bool(true),
+			},
+		},
+	}}, 0, 0)
 }

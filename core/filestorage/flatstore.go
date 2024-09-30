@@ -12,6 +12,7 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/query"
 	flatfs "github.com/ipfs/go-ds-flatfs"
 	format "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
@@ -47,7 +48,7 @@ func newFlatStore(path string, eventSender event.Sender, sendEventBatchTimeout t
 }
 
 func (f *flatStore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
-	raw, err := f.ds.Get(ctx, dskey(k))
+	raw, err := f.ds.Get(ctx, flatStoreKey(k))
 	if err == datastore.ErrNotFound {
 		return nil, &format.ErrNotFound{Cid: k}
 	}
@@ -74,14 +75,14 @@ func (f *flatStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Blo
 	return ch
 }
 
-func dskey(c cid.Cid) datastore.Key {
+func flatStoreKey(c cid.Cid) datastore.Key {
 	return datastore.NewKey(strings.ToUpper(c.String()))
 }
 
 func (f *flatStore) Add(ctx context.Context, bs []blocks.Block) error {
 	for _, b := range bs {
-		if err := f.ds.Put(ctx, dskey(b.Cid()), b.RawData()); err != nil {
-			return fmt.Errorf("put %s: %w", dskey(b.Cid()), err)
+		if err := f.ds.Put(ctx, flatStoreKey(b.Cid()), b.RawData()); err != nil {
+			return fmt.Errorf("put %s: %w", flatStoreKey(b.Cid()), err)
 		}
 	}
 	f.sendLocalBytesUsageEvent(ctx)
@@ -89,7 +90,7 @@ func (f *flatStore) Add(ctx context.Context, bs []blocks.Block) error {
 }
 
 func (f *flatStore) Delete(ctx context.Context, c cid.Cid) error {
-	err := f.ds.Delete(ctx, dskey(c))
+	err := f.ds.Delete(ctx, flatStoreKey(c))
 	if err != nil {
 		return err
 	}
@@ -106,7 +107,7 @@ func (f *flatStore) sendLocalBytesUsageEvent(ctx context.Context) {
 
 func (f *flatStore) PartitionByExistence(ctx context.Context, ks []cid.Cid) (exist []cid.Cid, notExist []cid.Cid, err error) {
 	for _, k := range ks {
-		ok, err := f.ds.Has(ctx, dskey(k))
+		ok, err := f.ds.Has(ctx, flatStoreKey(k))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -121,7 +122,7 @@ func (f *flatStore) PartitionByExistence(ctx context.Context, ks []cid.Cid) (exi
 
 func (f *flatStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExist []blocks.Block, err error) {
 	for _, b := range bs {
-		ok, err := f.ds.Has(ctx, dskey(b.Cid()))
+		ok, err := f.ds.Has(ctx, flatStoreKey(b.Cid()))
 		if err != nil {
 			return nil, err
 		}
@@ -134,7 +135,7 @@ func (f *flatStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (not
 
 func (f *flatStore) BlockAvailability(ctx context.Context, ks []cid.Cid) (availability []*fileproto.BlockAvailability, err error) {
 	for _, k := range ks {
-		ok, err := f.ds.Has(ctx, dskey(k))
+		ok, err := f.ds.Has(ctx, flatStoreKey(k))
 		if err != nil {
 			return nil, err
 		}
@@ -200,4 +201,50 @@ func (d *localBytesUsageEventSender) send(usage uint64) {
 			},
 		},
 	})
+}
+
+type LocalStoreGarbageCollector interface {
+	MarkAsUsing(cids []cid.Cid)
+	CollectGarbage(ctx context.Context) error
+}
+
+type flatStoreGarbageCollector struct {
+	flatStore *flatStore
+
+	using map[string]struct{}
+}
+
+func (c *flatStoreGarbageCollector) MarkAsUsing(cids []cid.Cid) {
+	for _, cid := range cids {
+		key := flatStoreKey(cid)
+		c.using[key.String()] = struct{}{}
+	}
+}
+
+func (c *flatStoreGarbageCollector) CollectGarbage(ctx context.Context) error {
+	results, err := c.flatStore.ds.Query(ctx, query.Query{
+		KeysOnly: true,
+	})
+	if err != nil {
+		return fmt.Errorf("query: %w", err)
+	}
+
+	for res := range results.Next() {
+		if _, ok := c.using[res.Key]; !ok {
+			err = c.flatStore.ds.Delete(ctx, datastore.NewKey(res.Key))
+			if err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
+		}
+	}
+
+	c.flatStore.sendLocalBytesUsageEvent(ctx)
+	return results.Close()
+}
+
+func newFlatStoreGarbageCollector(flatStore *flatStore) LocalStoreGarbageCollector {
+	return &flatStoreGarbageCollector{
+		flatStore: flatStore,
+		using:     map[string]struct{}{},
+	}
 }

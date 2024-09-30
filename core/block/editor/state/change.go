@@ -9,6 +9,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -143,6 +144,7 @@ func (s *State) Merge(s2 *State) *State {
 	return s
 }
 
+// ApplyChange used in tests only
 func (s *State) ApplyChange(changes ...*pb.ChangeContent) (err error) {
 	for _, ch := range changes {
 		if err = s.applyChange(ch); err != nil {
@@ -245,6 +247,14 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		}
 	case ch.GetSetFileInfo() != nil:
 		s.setFileInfoFromModel(ch.GetSetFileInfo().GetFileInfo())
+	case ch.GetNotificationCreate() != nil:
+		s.addNotification(ch.GetNotificationCreate().GetNotification())
+	case ch.GetNotificationUpdate() != nil:
+		s.updateNotification(ch.GetNotificationUpdate())
+	case ch.GetDeviceAdd() != nil:
+		s.addDevice(ch.GetDeviceAdd().GetDevice())
+	case ch.GetDeviceUpdate() != nil:
+		s.updateDevice(ch.GetDeviceUpdate())
 	default:
 		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
@@ -261,7 +271,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// set.Value = shortenValueToLimit(s.rootId, set.Key, set.Value)
 	if s.details == nil || s.details.Fields == nil {
-		s.details = pbtypes.CopyStruct(det)
+		s.details = pbtypes.CopyStruct(det, false)
 	}
 	if set.Value != nil {
 		s.details.Fields[set.Key] = set.Value
@@ -279,7 +289,7 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 		}
 	}
 	if s.details == nil || s.details.Fields == nil {
-		s.details = pbtypes.CopyStruct(det)
+		s.details = pbtypes.CopyStruct(det, false)
 	}
 	delete(s.details.Fields, unset.Key)
 	return nil
@@ -389,15 +399,10 @@ func (s *State) changeBlockUpdate(update *pb.ChangeBlockUpdate) error {
 }
 
 func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
-	ns := s.NewState()
 	for _, id := range move.Ids {
-		ns.Unlink(id)
+		s.Unlink(id)
 	}
-	if err := ns.InsertTo(move.TargetId, move.Position, move.Ids...); err != nil {
-		return err
-	}
-	_, _, err := ApplyStateFastOne(ns)
-	return err
+	return s.InsertTo(move.TargetId, move.Position, move.Ids...)
 }
 
 func (s *State) changeStoreKeySet(set *pb.ChangeStoreKeySet) error {
@@ -434,6 +439,46 @@ func (s *State) changeOriginalCreatedTimestampSet(set *pb.ChangeOriginalCreatedT
 
 	s.SetOriginalCreatedTimestamp(set.Ts)
 	return nil
+}
+
+func (s *State) addNotification(notification *model.Notification) {
+	if s.notifications == nil {
+		s.notifications = map[string]*model.Notification{}
+	}
+	if n, ok := s.notifications[notification.Id]; ok && n.Status == model.Notification_Read {
+		return
+	}
+	s.notifications[notification.Id] = notification
+}
+
+func (s *State) updateNotification(update *pb.ChangeNotificationUpdate) {
+	if s.notifications == nil {
+		return
+	}
+	if _, ok := s.notifications[update.Id]; !ok {
+		return
+	}
+	if s.notifications[update.Id].Status == model.Notification_Read {
+		return
+	}
+	s.notifications[update.Id].Status = update.Status
+}
+
+func (s *State) addDevice(deviceInfo *model.DeviceInfo) {
+	if s.deviceStore == nil {
+		s.deviceStore = map[string]*model.DeviceInfo{}
+	}
+	s.deviceStore[deviceInfo.Id] = deviceInfo
+}
+
+func (s *State) updateDevice(update *pb.ChangeDeviceUpdate) {
+	if s.deviceStore == nil {
+		return
+	}
+	if _, ok := s.deviceStore[update.Id]; !ok {
+		return
+	}
+	s.deviceStore[update.Id].Name = update.Name
 }
 
 func (s *State) GetChanges() []*pb.ChangeContent {
@@ -536,6 +581,8 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetRestrictions:
 			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockSetTableRow:
+			updMsgs = append(updMsgs, msg.Msg)
 		default:
 			log.Errorf("unexpected event - can't convert to changes: %T", msg.Msg.GetValue())
 		}
@@ -554,22 +601,28 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		})
 	}
 	if len(newRelLinks) > 0 {
-		cb.AddChange(&pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfRelationAdd{
-				RelationAdd: &pb.ChangeRelationAdd{
-					RelationLinks: newRelLinks,
+		filteredRelationsLinks := s.filterLocalAndDerivedRelations(newRelLinks)
+		if len(filteredRelationsLinks) > 0 {
+			cb.AddChange(&pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfRelationAdd{
+					RelationAdd: &pb.ChangeRelationAdd{
+						RelationLinks: filteredRelationsLinks,
+					},
 				},
-			},
-		})
+			})
+		}
 	}
 	if len(delRelIds) > 0 {
-		cb.AddChange(&pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfRelationRemove{
-				RelationRemove: &pb.ChangeRelationRemove{
-					RelationKey: delRelIds,
+		filteredRelationsKeys := s.filterLocalAndDerivedRelationsByKey(delRelIds)
+		if len(filteredRelationsKeys) > 0 {
+			cb.AddChange(&pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfRelationRemove{
+					RelationRemove: &pb.ChangeRelationRemove{
+						RelationKey: filteredRelationsKeys,
+					},
 				},
-			},
-		})
+			})
+		}
 	}
 	if len(updMsgs) > 0 {
 		cb.AddChange(&pb.ChangeContent{
@@ -586,6 +639,28 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.changes = append(s.changes, s.makeObjectTypesChanges()...)
 	s.changes = append(s.changes, s.makeOriginalCreatedChanges()...)
 	s.changes = append(s.changes, s.diffFileInfo()...)
+	s.changes = append(s.changes, s.makeNotificationChanges()...)
+	s.changes = append(s.changes, s.makeDeviceInfoChanges()...)
+}
+
+func (s *State) filterLocalAndDerivedRelations(newRelLinks pbtypes.RelationLinks) pbtypes.RelationLinks {
+	var relLinksWithoutLocal pbtypes.RelationLinks
+	for _, link := range newRelLinks {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, link.Key) {
+			relLinksWithoutLocal = relLinksWithoutLocal.Append(link)
+		}
+	}
+	return relLinksWithoutLocal
+}
+
+func (s *State) filterLocalAndDerivedRelationsByKey(relationKeys []string) []string {
+	var relKeysWithoutLocal []string
+	for _, key := range relationKeys {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
+			relKeysWithoutLocal = append(relKeysWithoutLocal, key)
+		}
+	}
+	return relKeysWithoutLocal
 }
 
 func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {
@@ -764,6 +839,67 @@ func (s *State) makeOriginalCreatedChanges() (ch []*pb.ChangeContent) {
 	})
 
 	return
+}
+
+func (s *State) makeNotificationChanges() []*pb.ChangeContent {
+	var changes []*pb.ChangeContent
+	for id, notification := range s.notifications {
+		if s.parent == nil {
+			changes = append(changes, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfNotificationCreate{
+					NotificationCreate: &pb.ChangeNotificationCreate{Notification: notification},
+				},
+			})
+			continue
+		}
+		if n := s.parent.GetNotificationById(id); n != nil {
+			if n.Status != notification.Status {
+				changes = append(changes, &pb.ChangeContent{
+					Value: &pb.ChangeContentValueOfNotificationUpdate{
+						NotificationUpdate: &pb.ChangeNotificationUpdate{
+							Id:     notification.Id,
+							Status: notification.Status,
+						},
+					},
+				})
+			}
+		} else {
+			changes = append(changes, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfNotificationCreate{
+					NotificationCreate: &pb.ChangeNotificationCreate{Notification: notification},
+				},
+			})
+		}
+	}
+	return changes
+}
+
+func (s *State) makeDeviceInfoChanges() []*pb.ChangeContent {
+	changes := make([]*pb.ChangeContent, 0)
+	for id, device := range s.deviceStore {
+		if s.parent != nil {
+			if d := s.parent.GetDevice(id); d != nil {
+				if device.Name != d.Name {
+					changes = append(changes, &pb.ChangeContent{
+						Value: &pb.ChangeContentValueOfDeviceUpdate{
+							DeviceUpdate: &pb.ChangeDeviceUpdate{
+								Id:   device.Id,
+								Name: device.Name,
+							},
+						},
+					})
+				}
+				continue
+			}
+		}
+		// if parent is nil or device is absence in parent state
+		changes = append(changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfDeviceAdd{
+				DeviceAdd: &pb.ChangeDeviceAdd{Device: device},
+			},
+		})
+	}
+	return changes
 }
 
 type dstrings struct{ a, b []string }

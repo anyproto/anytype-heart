@@ -29,6 +29,7 @@ message Event {
             Object.Relations.Remove objectRelationsRemove = 53;
 
             Object.Remove objectRemove = 54;
+            Object.Close objectClose = 65;
 
             Object.Restrictions.Set objectRestrictionsSet = 55;
 
@@ -95,11 +96,44 @@ message Event {
             File.LimitReached fileLimitReached = 111;
             File.SpaceUsage fileSpaceUsage = 112;
             File.LocalUsage fileLocalUsage = 113;
+            File.LimitUpdated fileLimitUpdated = 118;
 
             Notification.Send notificationSend = 114;
             Notification.Update notificationUpdate = 115;
 
             Payload.Broadcast payloadBroadcast = 116;
+
+            Membership.Update membershipUpdate = 117;
+
+            Space.SyncStatus.Update spaceSyncStatusUpdate = 119;
+
+            P2PStatus.Update p2pStatusUpdate = 120;
+
+            Import.Finish importFinish = 121;
+
+            Chat.Add chatAdd = 128;
+            Chat.Update chatUpdate = 129;
+            Chat.UpdateReactions chatUpdateReactions = 130;
+            Chat.Delete chatDelete = 131;
+        }
+    }
+
+    message Chat {
+        message Add {
+            string id = 1;
+            string orderId = 2;
+            model.ChatMessage message = 3;
+        }
+        message Delete {
+            string id = 1;
+        }
+        message Update {
+            string id = 1;
+            model.ChatMessage message = 2;
+        }
+        message UpdateReactions {
+            string id = 1;
+            model.ChatMessage.Reactions reactions = 2;
         }
     }
 
@@ -232,6 +266,10 @@ message Event {
                 string id = 1;
                 anytype.model.Restrictions restrictions = 2;
             }
+        }
+
+        message Close {
+            string id = 1;
         }
     }
     message Block {
@@ -1014,6 +1052,7 @@ message Event {
                 Synced = 3;
                 Failed = 4;
                 IncompatibleVersion = 5;
+                NetworkNeedsUpdate = 6;
             }
         }
     }
@@ -1032,6 +1071,16 @@ message Event {
         message LocalUsage {
             uint64 localBytesUsage = 1;
         }
+
+        message LimitUpdated {
+            uint64 bytesLimit = 1;
+        }
+    }
+
+    message Membership {
+        message Update {
+            anytype.model.Membership data = 1;
+        }
     }
 
     message Notification {
@@ -1046,6 +1095,58 @@ message Event {
     message Payload {
         message Broadcast {
             string payload = 1;
+        }
+    }
+
+    message Space {
+        message SyncStatus {
+            message Update {
+                string id = 1;
+                Status status = 2;
+                Network network = 3;
+                SyncError error = 4;
+                int64 syncingObjectsCounter = 5;
+            }
+        }
+        enum Status {
+            Synced = 0;
+            Syncing = 1;
+            Error = 2;
+            Offline = 3;
+            NetworkNeedsUpdate = 4;
+        }
+        enum Network {
+            Anytype = 0;
+            SelfHost = 1;
+            LocalOnly = 2;
+        }
+        enum SyncError {
+            Null = 0;
+            StorageLimitExceed = 1;
+            IncompatibleVersion = 2;
+            NetworkError = 3;
+        }
+    }
+    message P2PStatus {
+        message Update {
+            string spaceId = 1;
+            Status status = 2;
+            int64 devicesCounter = 3;
+        }
+
+        enum Status {
+            NotConnected = 0;
+            NotPossible = 1;
+            Connected = 2;
+            Restricted = 3; // only for ios for now, fallback to NotPossible if not implemented on client
+        }
+    }
+
+    message Import {
+        message Finish {
+            string rootCollectionID = 1;
+            int64 objectsCount = 2;
+            model.Import.Type importType = 3;
         }
     }
 }

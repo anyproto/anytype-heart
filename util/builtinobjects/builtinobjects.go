@@ -17,7 +17,8 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/miolini/datacounter"
 
-	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -36,8 +37,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/constant"
-	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
@@ -101,8 +102,9 @@ var (
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
-			{model.BlockContentWidget_Link, "bafyreiembqdejpkqhupwhukcyqtsjhi43bnqkbp6zfszu26r4c5o6zkeyu", "", true},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
+			{model.BlockContentWidget_Tree, "bafyreib54qrvlara5ickx4sk7mtdmeuwnyrmsdwrrrmvw7rhluwd3mwkg4", "", true},
+			{model.BlockContentWidget_List, "bafyreifvmvqmlmrzzdd4db5gau4fcdhxbii4pkanjdvcjbofmmywhg3zni", "f984ddde-eb13-497e-809a-2b9a96fd3503", true},
+			{model.BlockContentWidget_List, widget.DefaultWidgetFavorite, "", false},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},
@@ -144,7 +146,7 @@ type BuiltinObjects interface {
 }
 
 type builtinObjects struct {
-	blockService   *block.Service
+	detailsService detailservice.Service
 	importer       importer.Importer
 	store          objectstore.ObjectStore
 	tempDirService core.TempDirProvider
@@ -158,7 +160,7 @@ func New() BuiltinObjects {
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
-	b.blockService = a.MustComponent(block.CName).(*block.Service)
+	b.detailsService = app.MustComponent[detailservice.Service](a)
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
 	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
@@ -209,13 +211,19 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		return err
 	}
 
-	var path string
-	removeFunc := func() {}
+	var (
+		path       string
+		removeFunc = func() {}
+	)
 
 	if _, err = os.Stat(url); err == nil {
 		path = url
 	} else {
 		if path, err = b.downloadZipToFile(url, progress); err != nil {
+			if pErr := progress.Cancel(); pErr != nil {
+				log.Errorf("failed to cancel progress %s: %v", progress.Id(), pErr)
+			}
+			progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
 			if errors.Is(err, uri.ErrFilepathNotSupported) {
 				return fmt.Errorf("invalid path to file: '%s'", url)
 			}
@@ -223,24 +231,14 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		}
 		removeFunc = func() {
 			if rmErr := os.Remove(path); rmErr != nil {
-				log.Errorf("failed to remove temporary file: %v", oserror.TransformError(rmErr))
+				log.Errorf("failed to remove temporary file: %v", anyerror.CleanupError(rmErr))
 			}
 		}
 	}
 
 	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
+	progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
 
-	err = b.notifications.CreateAndSendLocal(&model.Notification{
-		Status:  model.Notification_Created,
-		IsLocal: true,
-		Space:   spaceID,
-		Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
-			ProcessId: progress.Id(),
-			ErrorCode: common.GetImportErrorCode(importErr),
-			SpaceId:   spaceID,
-			Name:      title,
-		}},
-	})
 	if err != nil {
 		log.Errorf("failed to send notification: %v", err)
 	}
@@ -253,6 +251,22 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	return importErr
+}
+
+func (b *builtinObjects) provideNotification(spaceID string, progress process.Progress, err error, title string) *model.Notification {
+	spaceName := b.store.GetSpaceName(spaceID)
+	return &model.Notification{
+		Status:  model.Notification_Created,
+		IsLocal: true,
+		Space:   spaceID,
+		Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
+			ProcessId: progress.Id(),
+			ErrorCode: common.GetImportErrorCode(err),
+			SpaceId:   spaceID,
+			Name:      title,
+			SpaceName: spaceName,
+		}},
+	}
 }
 
 func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
@@ -272,7 +286,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	// TODO: GO-2627 Home page handling should be moved to importer
 	b.handleHomePage(path, spaceID, func() {
 		if rmErr := os.Remove(path); rmErr != nil {
-			log.Errorf("failed to remove temporary file: %v", oserror.TransformError(rmErr))
+			log.Errorf("failed to remove temporary file: %v", anyerror.CleanupError(rmErr))
 		}
 	}, useCase == migrationUseCase)
 
@@ -289,24 +303,30 @@ func (b *builtinObjects) importArchive(
 	isNewSpace bool,
 ) (err error) {
 	origin := objectorigin.Usecase()
-	_, _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
-		SpaceId:               spaceID,
-		UpdateExistingObjects: false,
-		Type:                  model.Import_Pb,
-		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
-		NoProgress:            progress == nil,
-		IsMigration:           false,
-		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
-			PbParams: &pb.RpcObjectImportRequestPbParams{
-				Path:            []string{path},
-				NoCollection:    true,
-				CollectionTitle: title,
-				ImportType:      importType,
-			}},
-		IsNewSpace: isNewSpace,
-	}, origin, progress)
+	importRequest := &importer.ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			SpaceId:               spaceID,
+			UpdateExistingObjects: false,
+			Type:                  model.Import_Pb,
+			Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
+			NoProgress:            progress == nil,
+			IsMigration:           false,
+			Params: &pb.RpcObjectImportRequestParamsOfPbParams{
+				PbParams: &pb.RpcObjectImportRequestPbParams{
+					Path:            []string{path},
+					NoCollection:    true,
+					CollectionTitle: title,
+					ImportType:      importType,
+				}},
+			IsNewSpace: isNewSpace,
+		},
+		Origin:   origin,
+		Progress: progress,
+		IsSync:   true,
+	}
+	res := b.importer.Import(ctx, importRequest)
 
-	return err
+	return res.Err
 }
 
 func (b *builtinObjects) handleHomePage(path, spaceId string, removeFunc func(), isMigration bool) {
@@ -372,15 +392,15 @@ func (b *builtinObjects) getOldHomePageId(zipReader *zip.Reader) (id string, err
 }
 
 func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id string) {
-	if err := b.blockService.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: spc.DerivedIDs().Workspace,
-		Details: []*pb.RpcObjectSetDetailsDetail{
+	if err := b.detailsService.SetDetails(nil,
+		spc.DerivedIDs().Workspace,
+		[]*model.Detail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
 				Value: pbtypes.String(id),
 			},
 		},
-	}); err != nil {
+	); err != nil {
 		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err)
 	}
 }
@@ -394,7 +414,7 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 
 	widgetObjectID := spc.DerivedIDs().Widgets
 
-	if err = block.DoStateCtx(b.blockService, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
+	if err = cache.DoStateCtx(b.detailsService, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
 		for _, param := range widgetParams[useCase] {
 			objectID := param.objectID
 			if param.isObjectIDChanged {
@@ -509,7 +529,7 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 	var out *os.File
 	out, err = os.Create(path)
 	if err != nil {
-		return "", oserror.TransformError(err)
+		return "", anyerror.CleanupError(err)
 	}
 	defer out.Close()
 
@@ -521,8 +541,8 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 	return path, nil
 }
 
-func (b *builtinObjects) setupProgress() (process.Progress, error) {
-	progress := process.NewProgress(pb.ModelProcess_Import)
+func (b *builtinObjects) setupProgress() (process.Notificationable, error) {
+	progress := process.NewNotificationProcess(pb.ModelProcess_Import, b.notifications)
 	if err := b.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)
 	}
@@ -532,8 +552,9 @@ func (b *builtinObjects) setupProgress() (process.Progress, error) {
 }
 
 func getArchiveReaderAndSize(url string) (reader io.ReadCloser, size int64, err error) {
+	client := http.Client{Timeout: 15 * time.Second}
 	// nolint: gosec
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 	if err != nil {
 		return nil, 0, err
 	}

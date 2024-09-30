@@ -13,9 +13,9 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
@@ -26,7 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -36,7 +36,7 @@ const (
 
 var log = logging.Logger("anytype-mw-smartfile")
 
-func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker getblock.ObjectGetter, processService process.Service, fileUploaderFactory fileuploader.Service) File {
+func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker cache.ObjectGetter, processService process.Service, fileUploaderFactory fileuploader.Service) File {
 	return &sfile{
 		SmartBlock:          sb,
 		blockService:        blockService,
@@ -47,7 +47,7 @@ func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker getbloc
 }
 
 type BlockService interface {
-	CreateLinkToTheNewObject(ctx context.Context, sctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, err error)
+	CreateLinkToTheNewObject(ctx context.Context, sctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, details *types.Struct, err error)
 }
 
 type File interface {
@@ -57,7 +57,8 @@ type File interface {
 	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
 	CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
 	SetFileStyle(ctx session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error)
-	dropFilesHandler
+	SetFileTargetObjectId(ctx session.Context, blockId, targetObjectId string) error
+	dropFilesHandler // do not remove, used in downcasts
 }
 
 type FileSource struct {
@@ -73,7 +74,7 @@ type sfile struct {
 	smartblock.SmartBlock
 
 	blockService        BlockService
-	picker              getblock.ObjectGetter
+	picker              cache.ObjectGetter
 	processService      process.Service
 	fileUploaderFactory fileuploader.Service
 }
@@ -114,6 +115,34 @@ func (sf *sfile) SetFileStyle(ctx session.Context, style model.BlockContentFileS
 	}
 
 	return sf.Apply(s)
+}
+
+func (sf *sfile) SetFileTargetObjectId(ctx session.Context, blockId, targetObjectId string) error {
+	sb, err := sf.picker.GetObject(context.TODO(), targetObjectId)
+	if err != nil {
+		return err
+	}
+	var blockContentFileType model.BlockContentFileType
+	switch model.ObjectTypeLayout(pbtypes.GetInt64(sb.Details(), bundle.RelationKeyLayout.String())) {
+	case model.ObjectType_image:
+		blockContentFileType = model.BlockContentFile_Image
+	case model.ObjectType_audio:
+		blockContentFileType = model.BlockContentFile_Audio
+	case model.ObjectType_video:
+		blockContentFileType = model.BlockContentFile_Video
+	case model.ObjectType_pdf:
+		blockContentFileType = model.BlockContentFile_PDF
+	default:
+		blockContentFileType = model.BlockContentFile_File
+	}
+
+	return sf.updateFile(ctx, blockId, "", func(b file.Block) error {
+		b.SetTargetObjectId(targetObjectId)
+		b.SetStyle(model.BlockContentFile_Embed)
+		b.SetState(model.BlockContentFile_Done)
+		b.SetType(blockContentFileType)
+		return nil
+	})
 }
 
 func (sf *sfile) CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (newId string, err error) {
@@ -174,7 +203,11 @@ func (sf *sfile) newUploader(origin objectorigin.ObjectOrigin) fileuploader.Uplo
 }
 
 func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) (err error) {
-	s := sf.NewState().SetGroupId(groupId)
+	return sf.updateFile(nil, id, groupId, apply)
+}
+
+func (sf *sfile) updateFile(ctx session.Context, id, groupId string, apply func(b file.Block) error) (err error) {
+	s := sf.NewStateCtx(ctx).SetGroupId(groupId)
 	b := s.Get(id)
 	f, ok := b.(file.Block)
 	if !ok {
@@ -187,6 +220,9 @@ func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) 
 }
 
 func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
+	if err = sf.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+		return err
+	}
 	proc := &dropFilesProcess{
 		spaceID:             sf.SpaceID(),
 		processService:      sf.processService,
@@ -216,7 +252,7 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 				return
 			}
 			sf.Unlock()
-			blockId, pageId, err = sf.blockService.CreateLinkToTheNewObject(context.Background(), nil, &pb.RpcBlockLinkCreateWithObjectRequest{
+			blockId, pageId, _, err = sf.blockService.CreateLinkToTheNewObject(context.Background(), nil, &pb.RpcBlockLinkCreateWithObjectRequest{
 				SpaceId:             sf.SpaceID(),
 				ContextId:           sf.Id(),
 				ObjectTypeUniqueKey: bundle.TypeKeyPage.URL(),
@@ -306,7 +342,7 @@ type dropFilesProcess struct {
 	id             string
 	spaceID        string
 	processService process.Service
-	picker         getblock.ObjectGetter
+	picker         cache.ObjectGetter
 	root           *dropFileEntry
 	total, done    int64
 	cancel         chan struct{}
@@ -360,7 +396,7 @@ func (dp *dropFilesProcess) Init(paths []string) (err error) {
 		entry := &dropFileEntry{path: path, name: filepath.Base(path)}
 		ok, e := dp.readdir(entry, true)
 		if e != nil {
-			return oserror.TransformError(err)
+			return anyerror.CleanupError(err)
 		}
 		if ok {
 			dp.root.child = append(dp.root.child, entry)
@@ -439,7 +475,7 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 		if idx >= len(smartBlockIds) {
 			return
 		}
-		err = getblock.Do(dp.picker, smartBlockIds[idx], func(sb File) error {
+		err = cache.Do(dp.picker, smartBlockIds[idx], func(sb File) error {
 			sbHandler, ok := sb.(dropFilesHandler)
 			if !ok {
 				isContinue = idx != 0
@@ -515,7 +551,7 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 			if canceled {
 				info.err = context.Canceled
 			} else {
-				info.err = dp.addFile(info)
+				dp.addFile(info)
 			}
 			if err := dp.apply(info); err != nil {
 				log.Warnf("can't apply file: %v", err)
@@ -524,11 +560,10 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 	}
 }
 
-func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
+func (dp *dropFilesProcess) addFile(f *dropFileInfo) {
 	upl := dp.fileUploaderFactory.NewUploader(dp.spaceID, objectorigin.DragAndDrop())
 	res := upl.
 		SetName(f.name).
-		AutoType(true).
 		SetFile(f.path).
 		Upload(context.Background())
 
@@ -547,7 +582,7 @@ func (dp *dropFilesProcess) apply(f *dropFileInfo) (err error) {
 			atomic.AddInt64(&dp.done, 1)
 		}
 	}()
-	return getblock.Do(dp.picker, f.pageId, func(sb File) error {
+	return cache.Do(dp.picker, f.pageId, func(sb File) error {
 		sbHandler, ok := sb.(dropFilesHandler)
 		if !ok {
 			return fmt.Errorf("(apply) unexpected smartblock interface %T; want dropFilesHandler", sb)

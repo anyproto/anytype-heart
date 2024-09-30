@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/maps"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -31,12 +32,30 @@ type detailUpdate struct {
 	value *types.Value
 }
 
-func (bs *basic) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (bs *basic) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+	_, err = bs.setDetails(ctx, details, showEvent)
+	return err
+}
+
+func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+	var keys []domain.RelationKey
+	keys, err = bs.setDetails(ctx, details, showEvent)
+	if err != nil {
+		return err
+	}
+	ts := time.Now().Unix()
+	for _, key := range keys {
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), key, ts)
+	}
+	return nil
+}
+
+func (bs *basic) setDetails(ctx session.Context, details []*model.Detail, showEvent bool) (updatedKeys []domain.RelationKey, err error) {
 	s := bs.NewStateCtx(ctx)
 
 	// Collect updates handling special cases. These cases could update details themselves, so we
 	// have to apply changes later
-	updates := bs.collectDetailUpdates(details, s)
+	updates, updatedKeys := bs.collectDetailUpdates(details, s)
 	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
 	s.SetDetails(newDetails)
 
@@ -45,28 +64,75 @@ func (bs *basic) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetai
 	flags.AddToState(s)
 
 	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
-		return
+		return nil, err
 	}
 
 	bs.discardOwnSetDetailsEvent(ctx, showEvent)
+	return updatedKeys, nil
+}
+
+func (bs *basic) UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+	_, _, err = bs.updateDetails(update)
+	return err
+}
+
+func (bs *basic) UpdateDetailsAndLastUsed(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+	var oldDetails, newDetails *types.Struct
+	oldDetails, newDetails, err = bs.updateDetails(update)
+	if err != nil {
+		return err
+	}
+
+	diff := pbtypes.StructDiff(oldDetails, newDetails)
+	if diff == nil || diff.Fields == nil {
+		return nil
+	}
+	ts := time.Now().Unix()
+	for key := range diff.Fields {
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), domain.RelationKey(key), ts)
+	}
 	return nil
 }
 
-func (bs *basic) collectDetailUpdates(details []*pb.RpcObjectSetDetailsDetail, s *state.State) []*detailUpdate {
+func (bs *basic) updateDetails(update func(current *types.Struct) (*types.Struct, error)) (oldDetails, newDetails *types.Struct, err error) {
+	if update == nil {
+		return nil, nil, fmt.Errorf("update function is nil")
+	}
+	s := bs.NewState()
+
+	oldDetails = s.CombinedDetails()
+	oldDetailsCopy := pbtypes.CopyStruct(oldDetails, true)
+
+	newDetails, err = update(oldDetailsCopy)
+	if err != nil {
+		return
+	}
+	s.SetDetails(newDetails)
+
+	if err = bs.addRelationLinks(s, maps.Keys(newDetails.Fields)...); err != nil {
+		return nil, nil, err
+	}
+
+	return oldDetails, newDetails, bs.Apply(s)
+}
+
+func (bs *basic) collectDetailUpdates(details []*model.Detail, s *state.State) ([]*detailUpdate, []domain.RelationKey) {
 	updates := make([]*detailUpdate, 0, len(details))
+	keys := make([]domain.RelationKey, 0, len(details))
 	for _, detail := range details {
 		update, err := bs.createDetailUpdate(s, detail)
 		if err == nil {
 			updates = append(updates, update)
+			keys = append(keys, domain.RelationKey(update.key))
 		} else {
 			log.Errorf("can't set detail %s: %s", detail.Key, err)
 		}
 	}
-	return updates
+	return updates, keys
 }
 
 func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *types.Struct {
-	newDetails := pbtypes.CopyStruct(oldDetails)
+	newDetails := pbtypes.CopyStruct(oldDetails, false)
 	if newDetails == nil || newDetails.Fields == nil {
 		newDetails = &types.Struct{
 			Fields: make(map[string]*types.Value),
@@ -82,7 +148,7 @@ func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *type
 	return newDetails
 }
 
-func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDetailsDetail) (*detailUpdate, error) {
+func (bs *basic) createDetailUpdate(st *state.State, detail *model.Detail) (*detailUpdate, error) {
 	if detail.Value != nil {
 		if err := pbtypes.ValidateValue(detail.Value); err != nil {
 			return nil, fmt.Errorf("detail %s validation error: %w", detail.Key, err)
@@ -90,7 +156,7 @@ func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDeta
 		if err := bs.setDetailSpecialCases(st, detail); err != nil {
 			return nil, fmt.Errorf("special case: %w", err)
 		}
-		if err := bs.addRelationLink(detail.Key, st); err != nil {
+		if err := bs.addRelationLink(st, detail.Key); err != nil {
 			return nil, err
 		}
 		if err := bs.validateDetailFormat(bs.SpaceID(), detail.Key, detail.Value); err != nil {
@@ -235,7 +301,7 @@ func (bs *basic) validateOptions(rel *relationutils.Relation, v []string) error 
 	return nil
 }
 
-func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetDetailsDetail) error {
+func (bs *basic) setDetailSpecialCases(st *state.State, detail *model.Detail) error {
 	if detail.Key == bundle.RelationKeyType.String() {
 		return fmt.Errorf("can't change object type directly: %w", domain.ErrValidationFailed)
 	}
@@ -246,12 +312,24 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetD
 	return nil
 }
 
-func (bs *basic) addRelationLink(relationKey string, st *state.State) error {
+func (bs *basic) addRelationLink(st *state.State, relationKey string) error {
 	relLink, err := bs.objectStore.GetRelationLink(bs.SpaceID(), relationKey)
 	if err != nil || relLink == nil {
 		return fmt.Errorf("failed to get relation: %w", err)
 	}
 	st.AddRelationLinks(relLink)
+	return nil
+}
+
+func (bs *basic) addRelationLinks(st *state.State, relationKeys ...string) error {
+	if len(relationKeys) == 0 {
+		return nil
+	}
+	relations, err := bs.objectStore.FetchRelationByKeys(bs.SpaceID(), relationKeys...)
+	if err != nil || relations == nil {
+		return fmt.Errorf("failed to get relations: %w", err)
+	}
+	st.AddRelationLinks(relations.RelationLinks()...)
 	return nil
 }
 
@@ -310,7 +388,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 	removeInternalFlags(s)
 
 	if pbtypes.GetInt64(bs.CombinedDetails(), bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
-		objecttype.UpdateLastUsedDate(bs.Space(), bs.objectStore, objectTypeKeys[0])
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), objectTypeKeys[0], time.Now().Unix())
 	}
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])

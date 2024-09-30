@@ -1,0 +1,305 @@
+{
+  "sbType": "FileObject",
+  "snapshot": {
+    "data": {
+      "blocks": [
+        {
+          "id": "bafyreieq4gxa3uhpk6dxgvbuzq6fbn3mm75fstmyrqzf4xr4mvowcoxv64",
+          "restrictions": {
+            "edit": true,
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "childrenIds": [
+            "header",
+            "file",
+            "widthInPixels",
+            "heightInPixels",
+            "sizeInBytes"
+          ],
+          "smartblock": {
+
+          }
+        },
+        {
+          "id": "header",
+          "restrictions": {
+            "edit": true,
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "childrenIds": [
+            "title",
+            "featuredRelations"
+          ],
+          "layout": {
+            "style": "Header"
+          }
+        },
+        {
+          "id": "file",
+          "restrictions": {
+            "edit": true,
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "file": {
+            "name": "4399421398_87191e276a_w.jpg",
+            "type": "Image",
+            "mime": "image/jpeg",
+            "size": "25869",
+            "targetObjectId": "bafyreieq4gxa3uhpk6dxgvbuzq6fbn3mm75fstmyrqzf4xr4mvowcoxv64",
+            "state": "Done"
+          }
+        },
+        {
+          "id": "widthInPixels",
+          "restrictions": {
+            "edit": true,
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "relation": {
+            "key": "widthInPixels"
+          }
+        },
+        {
+          "id": "heightInPixels",
+          "restrictions": {
+            "edit": true,
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "relation": {
+            "key": "heightInPixels"
+          }
+        },
+        {
+          "id": "sizeInBytes",
+          "restrictions": {
+            "edit": true,
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "relation": {
+            "key": "sizeInBytes"
+          }
+        },
+        {
+          "id": "title",
+          "fields": {
+              "_detailsKey": [
+                    "name",
+                    "done"
+                  ]
+            },
+          "restrictions": {
+            "edit": true,
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "text": {
+            "style": "Title",
+            "marks": {
+
+            }
+          }
+        },
+        {
+          "id": "featuredRelations",
+          "restrictions": {
+            "edit": true,
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "featuredRelations": {
+
+          }
+        }
+      ],
+      "details": {
+          "addedDate": 1708943421,
+          "backlinks": [
+              ],
+          "createdDate": 1708943421,
+          "creator": "_participant_bafyreifcy5wy3wluu2r2ewcm7v46lpykqqyf5362mn54jsr4w67xn6e6ya_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
+          "featuredRelations": [
+                "type"
+              ],
+          "fileBackupStatus": 1,
+          "fileExt": "jpg",
+          "fileId": "bafybeigidjso2crpld44fik6m6bryaqdhxqgyzxybl5j7wpuxymncxtlvy",
+          "fileIndexingStatus": 1,
+          "fileMimeType": "image/jpeg",
+          "fileSyncStatus": 1,
+          "heightInPixels": 186,
+          "iconImage": "bafyreieq4gxa3uhpk6dxgvbuzq6fbn3mm75fstmyrqzf4xr4mvowcoxv64",
+          "id": "bafyreieq4gxa3uhpk6dxgvbuzq6fbn3mm75fstmyrqzf4xr4mvowcoxv64",
+          "isReadonly": false,
+          "lastModifiedBy": "_participant_bafyreifcy5wy3wluu2r2ewcm7v46lpykqqyf5362mn54jsr4w67xn6e6ya_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
+          "lastModifiedDate": 1708944355,
+          "lastOpenedDate": 1708944335,
+          "layout": 8,
+          "links": [
+              ],
+          "name": "Saturn",
+          "restrictions": [
+                3,
+                6,
+                5,
+                7,
+                8
+              ],
+          "sizeInBytes": 25869,
+          "snippet": "",
+          "source": "files/4399421398_87191e276a_w.jpg",
+          "spaceId": "bafyreifcy5wy3wluu2r2ewcm7v46lpykqqyf5362mn54jsr4w67xn6e6ya.3uxcyvge8is62",
+          "type": "bafyreiekbzgglqe257ir3q3ysj2secryslyb5vtw2e3ujgq65hxslklovq",
+          "widthInPixels": 400
+        },
+      "objectTypes": [
+        "ot-image"
+      ],
+      "relationLinks": [
+        {
+          "key": "isReadonly",
+          "format": "checkbox"
+        },
+        {
+          "key": "layout",
+          "format": "number"
+        },
+        {
+          "key": "widthInPixels",
+          "format": "number"
+        },
+        {
+          "key": "heightInPixels",
+          "format": "number"
+        },
+        {
+          "key": "addedDate",
+          "format": "date"
+        },
+        {
+          "key": "fileIndexingStatus",
+          "format": "number"
+        },
+        {
+          "key": "fileId",
+          "format": "shorttext"
+        },
+        {
+          "key": "lastModifiedDate",
+          "format": "date"
+        },
+        {
+          "key": "name",
+          "format": "shorttext"
+        },
+        {
+          "key": "fileExt"
+        },
+        {
+          "key": "fileMimeType"
+        },
+        {
+          "key": "sizeInBytes",
+          "format": "number"
+        },
+        {
+          "key": "iconImage",
+          "format": "file"
+        },
+        {
+          "key": "spaceId",
+          "format": "object"
+        },
+        {
+          "key": "featuredRelations",
+          "format": "object"
+        },
+        {
+          "key": "creator",
+          "format": "object"
+        },
+        {
+          "key": "createdDate",
+          "format": "date"
+        },
+        {
+          "key": "id",
+          "format": "object"
+        },
+        {
+          "key": "type",
+          "format": "object"
+        },
+        {
+          "key": "snippet"
+        },
+        {
+          "key": "backlinks",
+          "format": "object"
+        },
+        {
+          "key": "fileBackupStatus",
+          "format": "number"
+        },
+        {
+          "key": "fileSyncStatus",
+          "format": "number"
+        },
+        {
+          "key": "lastModifiedBy",
+          "format": "object"
+        },
+        {
+          "key": "restrictions",
+          "format": "number"
+        },
+        {
+          "key": "links",
+          "format": "object"
+        },
+        {
+          "key": "source",
+          "format": "url"
+        }
+      ],
+      "fileInfo": {
+        "fileId": "bafybeigidjso2crpld44fik6m6bryaqdhxqgyzxybl5j7wpuxymncxtlvy",
+        "encryptionKeys": [
+          {
+            "path": "/0/original/",
+            "key": "bwovwcuqms2o22jsipkf4r72r7nef2y57drqndn3pqrtwk5jlxwwq"
+          },
+          {
+            "path": "/0/large/",
+            "key": "bwovwcuqms2o22jsipkf4r72r7nef2y57drqndn3pqrtwk5jlxwwq"
+          },
+          {
+            "path": "/0/small/",
+            "key": "bai7phqac5ld6tvqallxbreqkolu62gwqlrztfmm642ltcokeaiyq"
+          },
+          {
+            "path": "/0/thumbnail/",
+            "key": "blr5zk4bx77tdrasgp7lp362m2dmucftddglixkvktnhz3p6byyea"
+          },
+          {
+            "path": "/0/exif/",
+            "key": "bprfpw2rw7b4iklfw26gq4leghmvl5kiw5z2jle7jo57sfgcbnzka"
+          }
+        ]
+      }
+    }
+  }
+}

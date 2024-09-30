@@ -11,7 +11,7 @@ import (
 )
 
 func TestService_DataviewRestrictions(t *testing.T) {
-	s := newFixture(t)
+	s := service{}
 
 	t.Run("internal types have restrictions", func(t *testing.T) {
 		for _, typeKey := range bundle.InternalTypes {
@@ -38,14 +38,12 @@ func TestService_DataviewRestrictions(t *testing.T) {
 	})
 
 	t.Run("ordinary objects don't have restrictions", func(t *testing.T) {
-		objectTypeID := "derivedFrom(page)"
 		restrictions := s.GetRestrictions(
-			newRestrictionHolder(
-				smartblock.SmartBlockTypePage,
-				model.ObjectType_basic,
-				nil,
-				objectTypeID,
-			),
+			&restrictionHolder{
+				sbType:    smartblock.SmartBlockTypePage,
+				uniqueKey: nil,
+				layout:    model.ObjectType_basic,
+			},
 		)
 		assert.Equal(t, dvRestrictNo, restrictions.Dataview)
 	})

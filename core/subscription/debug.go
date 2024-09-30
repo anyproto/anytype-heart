@@ -233,6 +233,32 @@ func (e *debugEntryCounters) describe(w io.Writer) error {
 
 func (e *debugEntryCounters) noObjectInfo() {}
 
+type debugGroups pb.EventMessageValueOfSubscriptionGroups
+
+func (e *debugGroups) getObjectId() string {
+	return ""
+}
+
+func (e *debugGroups) getSubscriptionIds() []string {
+	return []string{e.SubscriptionGroups.SubId}
+}
+
+func (e *debugGroups) perObjectString() string {
+	return ""
+}
+
+func (e *debugGroups) perSubscriptionString() string {
+	var removeStr string
+	if e.SubscriptionGroups.Remove {
+		removeStr = "REMOVE "
+	}
+	return fmt.Sprintf("[GRP] %s%s", removeStr, e.SubscriptionGroups.Group)
+}
+
+func (e *debugGroups) describe(w io.Writer) error {
+	return nil
+}
+
 type withoutObjectInfo interface {
 	noObjectInfo()
 }
@@ -261,6 +287,8 @@ func newDebugEntry(msg *pb.EventMessage) debugEntry {
 		return (*debugEntryPosition)(v)
 	case *pb.EventMessageValueOfSubscriptionCounters:
 		return (*debugEntryCounters)(v)
+	case *pb.EventMessageValueOfSubscriptionGroups:
+		return (*debugGroups)(v)
 	default:
 		return nil
 	}

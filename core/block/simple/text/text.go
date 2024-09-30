@@ -61,6 +61,7 @@ type Block interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
 	ApplyEvent(e *pb.EventBlockSetText) error
+	MigrateFile(migrateFunc func(oldHash string) (newHash string))
 
 	IsEmpty() bool
 }
@@ -178,8 +179,8 @@ func (t *Text) FillFileHashes(hashes []string) []string {
 func (t *Text) MigrateFile(migrateFunc func(oldHash string) (newHash string)) {
 	if t.content.IconImage != "" {
 		t.content.IconImage = migrateFunc(t.content.IconImage)
-		return
 	}
+	t.ReplaceLinkIds(migrateFunc)
 }
 
 func (t *Text) IterateLinkedFiles(iter func(id string)) {
@@ -741,3 +742,5 @@ func isIncompatibleType(firstType, secondType model.BlockContentTextMarkType) bo
 	}
 	return false
 }
+
+func (t *Text) CanInheritChildrenOnReplace() {}

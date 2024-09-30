@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace"
-	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
+	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
 	"github.com/anyproto/any-sync/metric"
 	"github.com/anyproto/any-sync/net/peerservice"
@@ -20,11 +21,16 @@ import (
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/net/transport/quic"
 	"github.com/anyproto/any-sync/net/transport/yamux"
+	"github.com/anyproto/any-sync/node/nodeclient"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
+	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+
+	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -32,8 +38,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	decorator "github.com/anyproto/anytype-heart/core/block/bookmark/bookmarkimporter"
 	"github.com/anyproto/anytype-heart/core/block/collection"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
@@ -47,20 +55,35 @@ import (
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
+	"github.com/anyproto/anytype-heart/core/device"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
+	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/indexer"
+	"github.com/anyproto/anytype-heart/core/inviteservice"
+	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
+	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/notifications"
+	"github.com/anyproto/anytype-heart/core/payments"
+	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
+	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -69,8 +92,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/coordinatorclient"
+	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/credentialprovider"
@@ -78,7 +104,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/space/spacecore/syncstatusprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
@@ -179,12 +204,13 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 
-	const fileWatcherUpdateInterval = 5 * time.Second
-
 	a.
 		// Data storages
 		Register(clientds.New()).
-		Register(ftsearch.New()).
+		Register(debugstat.New()).
+		// Register(ftsearch.BleveNew()).
+		Register(ftsearch.TantivyNew()).
+		Register(oldstore.New()).
 		Register(objectstore.New()).
 		Register(backlinks.New()).
 		Register(filestore.New()).
@@ -193,7 +219,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
 		Register(peerstore.New()).
-		Register(syncstatusprovider.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
 		Register(metric.New()).
@@ -206,11 +231,14 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(clientserver.New()).
 		Register(streampool.New()).
 		Register(coordinatorclient.New()).
+		Register(nodeclient.New()).
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
+		Register(aclclient.NewAclJoiningClient()).
 		Register(virtualspaceservice.New()).
 		Register(spacecore.New()).
 		Register(idresolver.New()).
+		Register(device.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
@@ -219,11 +247,18 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(files.New()).
+		Register(fileoffloader.New()).
+		Register(fileacl.New()).
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
-		Register(fileobject.New()).
+		Register(deletioncontroller.New()).
+		Register(invitestore.New()).
 		Register(filesync.New()).
+		Register(reconciler.New()).
+		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
+		Register(inviteservice.New()).
+		Register(acl.New()).
 		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
@@ -232,9 +267,14 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(core.New()).
 		Register(core.NewTempDirService()).
 		Register(treemanager.New()).
+		Register(detailservice.New()).
 		Register(block.New()).
 		Register(indexer.New()).
-		Register(syncstatus.New(fileWatcherUpdateInterval)).
+		Register(detailsupdater.New()).
+		Register(session.NewHookRunner()).
+		Register(spacesyncstatus.NewSpaceSyncStatus()).
+		Register(nodestatus.NewNodeStatus()).
+		Register(syncstatus.New()).
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).
@@ -244,19 +284,28 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(collection.New()).
 		Register(subscription.New()).
+		Register(syncsubscriptions.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).
 		Register(importer.New()).
 		Register(decorator.New()).
 		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).
+		Register(device.NewDevices()).
 		Register(editor.NewObjectFactory()).
 		Register(objectgraph.NewBuilder()).
 		Register(account.New()).
 		Register(profiler.New()).
-		Register(identity.New()).
+		Register(identity.New(30*time.Second, 10*time.Second)).
 		Register(templateservice.New()).
-		Register(notifications.New())
+		Register(notifications.New(time.Second * 10)).
+		Register(paymentserviceclient.New()).
+		Register(nameservice.New()).
+		Register(nameserviceclient.New()).
+		Register(payments.New()).
+		Register(paymentscache.New()).
+		Register(peerstatus.New()).
+		Register(lastused.New())
 }
 
 func MiddlewareVersion() string {

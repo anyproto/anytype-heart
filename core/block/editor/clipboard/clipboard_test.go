@@ -1,20 +1,27 @@
 package clipboard
 
 import (
+	"errors"
+	"fmt"
 	"strconv"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -22,8 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	textutil "github.com/anyproto/anytype-heart/util/text"
-
-	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 )
 
 func TestCommonSmart_pasteHtml(t *testing.T) {
@@ -149,13 +154,13 @@ func TestCommonSmart_pasteAny(t *testing.T) {
 		checkBlockText(t, sb, []string{"11111", "22222", "aaaaa", "bbbbb", "55555"})
 	})
 
-	t.Run("9. Save id of focused block", func(t *testing.T) {
+	t.Run("9. Return ids of new blocks", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "44444", "55555"}, emptyMarks))
-		pasteAny(t, sb, "4", model.Range{}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"aaaaa", "bbbbb"}, emptyMarks))
+		ids, isSameFocusedBlock := pasteAny(t, sb, "4", model.Range{}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"aaaaa", "bbbbb"}, emptyMarks))
 		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "44444", "55555"})
-		assert.Equal(t, sb.Blocks()[5].Id, "4")
+		assert.Len(t, ids, 2)
+		assert.False(t, isSameFocusedBlock)
 	})
-
 }
 
 func TestCommonSmart_splitMarks(t *testing.T) {
@@ -618,9 +623,28 @@ func TestClipboard_TitleOps(t *testing.T) {
 		},
 	}
 
+	t.Run("paste - when base64 file", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+		))
+
+		// when
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			HtmlSlot: `<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVEiJtZZPbBtFFMZ/M7ubXdtdb1xSFyeilBapySVU8h8OoFaooFSqiihIVIpQBKci6KEg9Q6H9kovIHoCIVQJJCKE1ENFjnAgcaSGC6rEnxBwA04Tx43t2FnvDAfjkNibxgHxnWb2e/u992bee7tCa00YFsffekFY+nUzFtjW0LrvjRXrCDIAaPLlW0nHL0SsZtVoaF98mLrx3pdhOqLtYPHChahZcYYO7KvPFxvRl5XPp1sN3adWiD1ZAqD6XYK1b/dvE5IWryTt2udLFedwc1+9kLp+vbbpoDh+6TklxBeAi9TL0taeWpdmZzQDry0AcO+jQ12RyohqqoYoo8RDwJrU+qXkjWtfi8Xxt58BdQuwQs9qC/afLwCw8tnQbqYAPsgxE1S6F3EAIXux2oQFKm0ihMsOF71dHYx+f3NND68ghCu1YIoePPQN1pGRABkJ6Bus96CutRZMydTl+TvuiRW1m3n0eDl0vRPcEysqdXn+jsQPsrHMquGeXEaY4Yk4wxWcY5V/9scqOMOVUFthatyTy8QyqwZ+kDURKoMWxNKr2EeqVKcTNOajqKoBgOE28U4tdQl5p5bwCw7BWquaZSzAPlwjlithJtp3pTImSqQRrb2Z8PHGigD4RZuNX6JYj6wj7O4TFLbCO/Mn/m8R+h6rYSUb3ekokRY6f/YukArN979jcW+V/S8g0eT/N3VN3kTqWbQ428m9/8k0P/1aIhF36PccEl6EhOcAUCrXKZXXWS3XKd2vc/TRBG9O5ELC17MmWubD2nKhUKZa26Ba2+D3P+4/MNCFwg59oWVeYhkzgN/JDR8deKBoD7Y+ljEjGZ0sosXVTvbc6RHirr2reNy1OXd6pJsQ+gqjk8VWFYmHrwBzW/n+uMPFiRwHB2I7ih8ciHFxIkd/3Omk5tCDV1t+2nNu5sxxpDFNx+huNhVT3/zMDz8usXC3ddaHBj1GHj/As08fwTS7Kt1HBTmyN29vdwAw+/wbwLVOJ3uAD1wi/dUH7Qei66PfyuRj4Ik9is+hglfbkbfR3cnZm7chlUWLdwmprtCohX4HUtlOcQjLYCu+fzGJH2QRKvP3UNz8bWk1qMxjGTOMThZ3kvgLI5AzFfo379UAAAAASUVORK5CYII=">`,
+		}, "")
+
+		// then
+		assert.Equal(t, "image", sb.Doc.Blocks()[len(sb.Doc.Blocks())-1].GetFile().Name)
+		require.NoError(t, err)
+	})
+
 	t.Run("single to empty title", func(t *testing.T) {
 		st := withTitle(t, "")
-		cb := newFixture(st)
+		cb := newFixture(t, st)
 		_, _, _, _, err := cb.Paste(nil, singleBlockReq, "")
 		require.NoError(t, err)
 		assert.Equal(t, "single", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
@@ -647,7 +671,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 				)))
 
 			// when
-			cb := newFixture(sb)
+			cb := newFixture(t, sb)
 			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 				FocusedBlockId:    "1",
 				SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("1").Model().GetText().Text))},
@@ -680,7 +704,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			)))
 
 		// when
-		cb := newFixture(sb)
+		cb := newFixture(t, sb)
 		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 			FocusedBlockId:    "1",
 			SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("1").Model().GetText().Text))},
@@ -713,7 +737,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 				)))
 
 			// when
-			cb := newFixture(sb)
+			cb := newFixture(t, sb)
 			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 				FocusedBlockId:    "1",
 				SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick(text).Model().GetText().Text))},
@@ -750,7 +774,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 				)))
 
 			// when
-			cb := newFixture(sb)
+			cb := newFixture(t, sb)
 			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 				FocusedBlockId:    "1",
 				SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("1").Model().GetText().Text))},
@@ -761,6 +785,56 @@ func TestClipboard_TitleOps(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			assert.Equal(t, model.BlockContentText_Paragraph, sb.Doc.Pick("1").Model().GetText().Style)
+		})
+	}
+
+	for _, blockId := range []string{
+		template.TitleBlockId,
+		template.DescriptionBlockId,
+	} {
+		t.Run("paste - when to system blockId ("+blockId+")", func(t *testing.T) {
+			// given
+			sb := smarttest.New("text")
+			require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+			sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+				blockbuilder.ID("root"),
+				blockbuilder.Children(
+					blockbuilder.Text(
+						"",
+						blockbuilder.ID(blockId),
+					),
+				)))
+
+			// when
+			cb := newFixture(t, sb)
+			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId: blockId,
+				FileSlot: []*pb.RpcBlockPasteRequestFile{
+					{
+						Name: "image.jpg",
+					},
+				},
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			changes := sb.Doc.(*state.State).GetChanges()
+			_, blockRemoved := lo.Find(changes, func(cc *pb.ChangeContent) bool {
+				if blockRemove, ok := cc.Value.(*pb.ChangeContentValueOfBlockRemove); ok {
+					_, blockIdFound := lo.Find(blockRemove.BlockRemove.Ids, func(s string) bool {
+						return s == blockId
+					})
+					return blockIdFound
+				}
+				return false
+			})
+			require.False(t, blockRemoved)
+
+			_, hasBlockId := lo.Find(sb.Doc.Pick("root").Model().ChildrenIds, func(s string) bool {
+				return s == blockId
+			})
+
+			require.True(t, hasBlockId)
 		})
 	}
 	t.Run("paste - when insert partially", func(t *testing.T) {
@@ -781,7 +855,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			)))
 
 		// when
-		cb := newFixture(sb)
+		cb := newFixture(t, sb)
 		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 			FocusedBlockId:    "1",
 			SelectedTextRange: &model.Range{From: 1, To: 1},
@@ -797,7 +871,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 		// given
 		sb := withTitle(t, "")
 		addDescription(sb, "current description")
-		cb := newFixture(sb)
+		cb := newFixture(t, sb)
 
 		// when
 		_, _, _, _, err := cb.Paste(nil, descriptionBlockReq(), "")
@@ -824,7 +898,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			// given
 			sb := withTitle(t, "")
 			addRelations(sb)
-			cb := newFixture(sb)
+			cb := newFixture(t, sb)
 
 			// when
 			_, _, _, _, err := cb.Paste(nil, requiredBlockReq(blockIdToPasteTo), "")
@@ -836,7 +910,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	}
 	t.Run("single to not empty title", func(t *testing.T) {
 		st := withTitle(t, "title")
-		cb := newFixture(st)
+		cb := newFixture(t, st)
 		req := singleBlockReq
 		req.SelectedTextRange = &model.Range{From: 1, To: 4}
 		_, _, _, _, err := cb.Paste(nil, req, "")
@@ -846,7 +920,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	})
 	t.Run("single to not empty title - select all", func(t *testing.T) {
 		st := withTitle(t, "title")
-		cb := newFixture(st)
+		cb := newFixture(t, st)
 		req := singleBlockReq
 		req.SelectedTextRange = &model.Range{From: 0, To: 5}
 		_, _, _, _, err := cb.Paste(nil, req, "")
@@ -856,7 +930,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	})
 	t.Run("multi to empty title", func(t *testing.T) {
 		st := withTitle(t, "")
-		cb := newFixture(st)
+		cb := newFixture(t, st)
 		_, _, _, _, err := cb.Paste(nil, multiBlockReq, "")
 		require.NoError(t, err)
 		rootChild := st.Doc.Pick(st.RootId()).Model().ChildrenIds
@@ -866,7 +940,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	})
 	t.Run("multi to not empty title", func(t *testing.T) {
 		st := withTitle(t, "title")
-		cb := newFixture(st)
+		cb := newFixture(t, st)
 		_, _, _, _, err := cb.Paste(nil, multiBlockReq, "")
 		require.NoError(t, err)
 		rootChild := st.Doc.Pick(st.RootId()).Model().ChildrenIds
@@ -877,7 +951,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	})
 	t.Run("multi to not empty title with range", func(t *testing.T) {
 		st := withTitle(t, "title")
-		cb := newFixture(st)
+		cb := newFixture(t, st)
 		req := multiBlockReq
 		req.SelectedTextRange = &model.Range{From: 1, To: 4}
 		_, _, _, _, err := cb.Paste(nil, req, "")
@@ -891,7 +965,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	})
 	t.Run("multi to end of title", func(t *testing.T) {
 		st := withTitle(t, "title")
-		cb := newFixture(st)
+		cb := newFixture(t, st)
 		req := multiBlockReq
 		req.SelectedTextRange = &model.Range{From: 5, To: 5}
 		_, _, _, _, err := cb.Paste(nil, req, "")
@@ -907,7 +981,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 		// given
 		ctx := session.NewContext()
 		st := withTitle(t, "real title", "second")
-		cb := newFixture(st)
+		cb := newFixture(t, st)
 
 		secondTextBlock := newTextBlock("second").Model()
 		secondTextBlock.Id = "id0"
@@ -938,7 +1012,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			result           = text
 		)
 		st := withBookmark(t, text, "", url)
-		cb := newFixture(st)
+		cb := newFixture(t, st)
 		textBlock := newTextBlock(text).Model()
 		textBlock.Id = firstTextBlockId
 		bookmark := newBookmark(url).Model()
@@ -968,7 +1042,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			result           = firstText + "\n" + secondText
 		)
 		st := withBookmark(t, firstText, secondText, url)
-		cb := newFixture(st)
+		cb := newFixture(t, st)
 		textBlock := newTextBlock(firstText).Model()
 		textBlock.Id = firstTextBlockId
 		bookmark := newBookmark(url).Model()
@@ -993,7 +1067,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	})
 	t.Run("cut from title", func(t *testing.T) {
 		st := withTitle(t, "title")
-		cb := newFixture(st)
+		cb := newFixture(t, st)
 		req := pb.RpcBlockCutRequest{
 			Blocks: []*model.Block{
 				st.Doc.NewState().Get("title").Model(),
@@ -1008,6 +1082,20 @@ func TestClipboard_TitleOps(t *testing.T) {
 		assert.Contains(t, htmlSlot, ">it<")
 		require.Len(t, anySlot, 1)
 		assert.Equal(t, "it", anySlot[0].GetText().Text)
+	})
+
+	t.Run("do not paste if Blocks restriction is set to smartblock", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.TestRestrictions = restriction.Restrictions{Object: restriction.ObjectRestrictions{model.Restrictions_Blocks}}
+		cb := newFixture(t, sb)
+
+		// when
+		_, _, _, _, err := cb.Paste(nil, nil, "")
+
+		// then
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, restriction.ErrRestricted))
 	})
 }
 
@@ -1026,7 +1114,7 @@ func addRelations(st *smarttest.SmartTest) {
 	state.ApplyState(newState, false)
 }
 
-func TestClipboard_PasteToCodeBock(t *testing.T) {
+func TestClipboard_PasteToCodeBlock(t *testing.T) {
 	sb := smarttest.New("text")
 	require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
 	s := sb.NewState()
@@ -1042,7 +1130,7 @@ func TestClipboard_PasteToCodeBock(t *testing.T) {
 	s.InsertTo("", model.Block_Inner, codeBlock.Model().Id)
 	require.NoError(t, sb.Apply(s))
 
-	cb := newFixture(sb)
+	cb := newFixture(t, sb)
 	_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 		FocusedBlockId:    codeBlock.Model().Id,
 		SelectedTextRange: &model.Range{4, 5},
@@ -1051,6 +1139,48 @@ func TestClipboard_PasteToCodeBock(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "some\nsome text\nhere\ncode", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
 	assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Style)
+}
+
+func TestClipboard_PasteToTableCellBlock(t *testing.T) {
+	// given
+	sb := smarttest.New("text")
+	sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+		blockbuilder.ID("root"),
+		blockbuilder.Children(
+			blockbuilder.Text(
+				"table",
+				blockbuilder.ID("2-2"),
+				blockbuilder.TextStyle(model.BlockContentText_Paragraph),
+			),
+		)))
+
+	// when
+	cb := newFixture(t, sb)
+	_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+		FocusedBlockId:    "2-2",
+		SelectedTextRange: rng(0, 0),
+		AnySlot: []*model.Block{
+			blockbuilder.Text(
+				"text1",
+				blockbuilder.ID("id1"),
+				blockbuilder.TextStyle(model.BlockContentText_Code),
+			).Block(),
+			blockbuilder.Text(
+				"text2",
+				blockbuilder.ID("id2"),
+				blockbuilder.TextStyle(model.BlockContentText_Toggle),
+			).Block(),
+			blockbuilder.Text(
+				"table",
+				blockbuilder.ID("2-2"),
+				blockbuilder.TextStyle(model.BlockContentText_Paragraph),
+			).Block(),
+		},
+	}, "")
+
+	// then
+	require.NoError(t, err)
+	assert.Equal(t, "text1\ntext2\ntabletable", sb.Doc.Pick("2-2").Model().GetText().Text)
 }
 
 func Test_PasteText(t *testing.T) {
@@ -1083,7 +1213,7 @@ func Test_PasteText(t *testing.T) {
 		require.NoError(t, sb.Apply(s))
 
 		// when
-		cb := newFixture(sb)
+		cb := newFixture(t, sb)
 		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 			SelectedBlockIds: []string{"1", "2"},
 			TextSlot:         "One string",
@@ -1112,7 +1242,7 @@ func Test_PasteText(t *testing.T) {
 		require.NoError(t, sb.Apply(s))
 
 		// when
-		cb := newFixture(sb)
+		cb := newFixture(t, sb)
 		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 			SelectedBlockIds: []string{"1"},
 			TextSlot:         "a * b * c",
@@ -1142,7 +1272,7 @@ func Test_CopyAndCutText(t *testing.T) {
 			)))
 
 		// when
-		cb := newFixture(sb)
+		cb := newFixture(t, sb)
 		_, _, anySlotCopy, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
 			Blocks:            []*model.Block{sb.Pick("2").Model()},
 			SelectedTextRange: &model.Range{From: 1, To: 1},
@@ -1179,7 +1309,7 @@ func Test_CopyAndCutText(t *testing.T) {
 			)))
 
 		// when
-		cb := newFixture(sb)
+		cb := newFixture(t, sb)
 		_, _, anySlotCopy, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
 			Blocks:            []*model.Block{sb.Pick("2").Model()},
 			SelectedTextRange: &model.Range{From: 1, To: 2},
@@ -1214,7 +1344,7 @@ func Test_CopyAndCutText(t *testing.T) {
 			)))
 
 		// when
-		cb := newFixture(sb)
+		cb := newFixture(t, sb)
 		_, _, anySlotCopy, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
 			Blocks:            []*model.Block{sb.Pick("2").Model()},
 			SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("2").Model().GetText().Text))},
@@ -1264,7 +1394,7 @@ func Test_CopyAndCutText(t *testing.T) {
 		require.NoError(t, sb.Apply(s))
 
 		// when
-		cb := newFixture(sb)
+		cb := newFixture(t, sb)
 		textSlotCopy, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
 			Blocks: []*model.Block{block1, block2},
 		})
@@ -1295,7 +1425,7 @@ func Test_CopyAndCutText(t *testing.T) {
 		require.NoError(t, sb.Apply(s))
 
 		// when
-		cb := newFixture(sb)
+		cb := newFixture(t, sb)
 		textSlotCopy, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
 			Blocks: []*model.Block{block1, block2, block3, block4, block5, block6},
 		})
@@ -1309,6 +1439,124 @@ func Test_CopyAndCutText(t *testing.T) {
 		const expected = "1. A-1\n\t1. B-1\n2. C-1\nD-1\n1. E-1\n2. F-1"
 		assert.Equal(t, expected, textSlotCopy)
 		assert.Equal(t, expected, textSlotCut)
+	})
+
+	t.Run("cut/copy - text range from 0", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+
+		bl := givenBlockWithStyle(0, "")
+		insertBlock(s, bl, "")
+		require.NoError(t, sb.Apply(s))
+
+		// when
+		cb := newFixture(t, sb)
+		textSlotCopy, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 7},
+			Blocks:            []*model.Block{bl},
+		})
+		textSlotCut, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 7},
+			Blocks:            []*model.Block{bl},
+		})
+
+		// then
+		require.NoError(t, err)
+		const expected = "some te"
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
+		assert.Len(t, sb.Blocks(), 2)
+	})
+
+	t.Run("cut/copy - text range from 0 to the end of block", func(t *testing.T) {
+		// given
+		const expected = "some text 1"
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+
+		bl := givenBlockWithStyle(0, "")
+		insertBlock(s, bl, "")
+		require.NoError(t, sb.Apply(s))
+
+		// when
+		cb := newFixture(t, sb)
+		textSlotCopy, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			SelectedTextRange: &model.Range{From: 0, To: int32(len(expected))},
+			Blocks:            []*model.Block{bl},
+		})
+		textSlotCut, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 0, To: int32(len(expected))},
+			Blocks:            []*model.Block{bl},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
+		assert.Len(t, sb.Blocks(), 1)
+	})
+
+	t.Run("cut/copy - inner text range", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+
+		bl := givenBlockWithStyle(0, "")
+		insertBlock(s, bl, "")
+		require.NoError(t, sb.Apply(s))
+
+		// when
+		cb := newFixture(t, sb)
+		textSlotCopy, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			SelectedTextRange: &model.Range{From: 2, To: 8},
+			Blocks:            []*model.Block{bl},
+		})
+		textSlotCut, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 2, To: 8},
+			Blocks:            []*model.Block{bl},
+		})
+
+		// then
+		require.NoError(t, err)
+		const expected = "me tex"
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
+		assert.Len(t, sb.Blocks(), 2)
+	})
+
+	t.Run("cut/copy - text range from 0 to 0", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+
+		bl := givenBlockWithStyle(0, "")
+		insertBlock(s, bl, "")
+		require.NoError(t, sb.Apply(s))
+
+		// when
+		cb := newFixture(t, sb)
+		textSlotCopy, _, anySlotCopy, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 0},
+			Blocks:            []*model.Block{bl},
+		})
+		textSlotCut, _, anySlotCut, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 0},
+			Blocks:            []*model.Block{bl},
+		})
+
+		// then
+		require.NoError(t, err)
+		const expected = "some text 1"
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
+		assert.Len(t, sb.Blocks(), 1)
+		assert.Len(t, anySlotCopy, 1)
+		assert.Len(t, anySlotCut, 1)
 	})
 }
 
@@ -1453,4 +1701,196 @@ func givenBlockWithStyle(style model.BlockContentTextStyle, emoji string) *model
 			},
 		},
 	}
+}
+
+func Test_splitStringIntoParagraphs(t *testing.T) {
+	type args struct {
+		s                  string
+		lineBreakSoftLimit int
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			"double",
+			args{
+				s: `aaa
+
+bbb
+
+ccc`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{"aaa", "bbb", "ccc"},
+		},
+		{
+			"double with whitespaces",
+			args{
+				s: `aaa
+   
+bbb
+ 
+ccc`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{"aaa", "bbb", "ccc"},
+		},
+		{
+			"more than 2 line breaks with whitespaces",
+			args{
+				s: `aaa
+   
+
+ 
+  
+
+
+bbb
+
+
+ccc`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{"aaa", "bbb", "ccc"},
+		},
+		{
+			"single",
+			args{
+				s: `aaa
+bbb`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{`aaa
+bbb`},
+		},
+		{
+			"mixed",
+			args{
+				s: `aaa
+bbb
+
+ccc`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{`aaa
+bbb`, "ccc"},
+		},
+		{
+			"soft limit",
+			args{
+				s: `very long string that is longer than the soft limit
+bbb`,
+				lineBreakSoftLimit: 15,
+			},
+			[]string{`very long string that is longer than the soft limit`, `bbb`},
+		},
+		{
+			"soft limit disabled",
+			args{
+				s: `very long string
+bbb`,
+				lineBreakSoftLimit: 0,
+			},
+			[]string{`very long string
+bbb`},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, splitStringIntoParagraphs(tt.args.s, tt.args.lineBreakSoftLimit), "splitStringIntoParagraphs(%v, %v)", tt.args.s, tt.args.lineBreakSoftLimit)
+		})
+	}
+}
+
+func TestProcessFileBlock(t *testing.T) {
+	const (
+		fileObject1 = "fileObject1"
+		fileObject2 = "fileObject2"
+		space1      = "space1"
+		space2      = "space2"
+		fileId      = domain.FileId("fileId")
+	)
+
+	sb := smarttest.New("test")
+	sb.SetSpaceId(space1)
+
+	t.Run("old target object id remains if space is the same", func(t *testing.T) {
+		// given
+		file := mock_fileobject.NewMockService(t)
+		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{SpaceId: space1, FileId: fileId}, nil)
+
+		c := &clipboard{
+			SmartBlock:        sb,
+			fileObjectService: file,
+		}
+
+		fb := &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: fileObject1}}
+
+		// when
+		c.processFileBlock(fb)
+
+		// then
+		assert.Equal(t, fileObject1, fb.File.TargetObjectId)
+	})
+
+	t.Run("new target object id is set if space is different", func(t *testing.T) {
+		// given
+		file := mock_fileobject.NewMockService(t)
+		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{SpaceId: space2, FileId: fileId}, nil)
+		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything).Return(fileObject2, nil)
+
+		c := &clipboard{
+			SmartBlock:        sb,
+			fileObjectService: file,
+		}
+
+		fb := &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: fileObject1}}
+
+		// when
+		c.processFileBlock(fb)
+
+		// then
+		assert.Equal(t, fileObject2, fb.File.TargetObjectId)
+	})
+
+	t.Run("old target object id remains if failed to create new object", func(t *testing.T) {
+		// given
+		file := mock_fileobject.NewMockService(t)
+		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{SpaceId: space2, FileId: fileId}, nil)
+		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything).Return("", fmt.Errorf("some error"))
+
+		c := &clipboard{
+			SmartBlock:        sb,
+			fileObjectService: file,
+		}
+
+		fb := &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: fileObject1}}
+
+		// when
+		c.processFileBlock(fb)
+
+		// then
+		assert.Equal(t, fileObject1, fb.File.TargetObjectId)
+	})
+
+	t.Run("old target object id remains if failed to get file id", func(t *testing.T) {
+		// given
+		file := mock_fileobject.NewMockService(t)
+		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{}, fmt.Errorf("not found"))
+
+		c := &clipboard{
+			SmartBlock:        sb,
+			fileObjectService: file,
+		}
+
+		fb := &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: fileObject1}}
+
+		// when
+		c.processFileBlock(fb)
+
+		// then
+		assert.Equal(t, fileObject1, fb.File.TargetObjectId)
+	})
 }

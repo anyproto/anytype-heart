@@ -1,31 +1,40 @@
 package account
 
 import (
-	"errors"
+	"context"
+	"fmt"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 type Profile struct {
-	Id          string
-	AccountAddr string
-	Name        string
-	IconImage   string
-	IconColor   string
+	Id        string
+	AccountId string
+	Name      string
+	IconImage string
+	IconColor string
 }
 
-func (s *service) IdentityObjectId() string {
-	return addr.AccountIdToIdentityObjectId(s.AccountID())
+func (s *service) MyParticipantId(spaceId string) string {
+	return domain.NewParticipantId(spaceId, s.AccountID())
 }
 
-func (s *service) LocalProfile() (Profile, error) {
-	profile := Profile{
-		Id:          s.IdentityObjectId(),
-		AccountAddr: s.wallet.GetAccountPrivkey().GetPublic().Account(),
+func (s *service) ProfileObjectId() (string, error) {
+	ids, err := s.getDerivedIds(context.Background(), s.personalSpaceId)
+	if err != nil {
+		return "", err
 	}
+	return ids.Profile, nil
+}
 
-	if s.objectStore == nil {
-		return profile, errors.New("objectstore not available")
+func (s *service) ProfileInfo() (Profile, error) {
+	profileId, err := s.ProfileObjectId()
+	if err != nil {
+		return Profile{}, fmt.Errorf("get profile id: %w", err)
+	}
+	profile := Profile{
+		Id:        profileId,
+		AccountId: s.AccountID(),
 	}
 
 	profileDetails, err := s.objectStore.GetDetails(profile.Id)

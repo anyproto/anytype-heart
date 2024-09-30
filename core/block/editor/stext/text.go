@@ -25,8 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-const textSizeLimit = 64 * 1024
-
 var setTextApplyInterval = time.Second * 3
 
 type Text interface {

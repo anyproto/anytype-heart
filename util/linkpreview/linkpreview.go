@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -32,15 +33,15 @@ func New() LinkPreview {
 }
 
 const (
-	// read no more than 400 kb
-	maxBytesToRead     = 400000
+	// read no more than 10 mb
+	maxBytesToRead     = 10 * 1024 * 1024
 	maxDescriptionSize = 200
 )
 
 var log = logging.Logger("link-preview")
 
 type LinkPreview interface {
-	Fetch(ctx context.Context, url string) (model.LinkPreview, []byte, error)
+	Fetch(ctx context.Context, url string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error)
 	app.Component
 }
 
@@ -57,27 +58,27 @@ func (l *linkPreview) Name() (name string) {
 	return CName
 }
 
-func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPreview, []byte, error) {
+func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error) {
 	rt := &proxyRoundTripper{RoundTripper: http.DefaultTransport}
 	client := &http.Client{Transport: rt}
 	og := opengraph.New(fetchUrl)
 	og.URL = fetchUrl
 	og.Intent.Context = ctx
 	og.Intent.HTTPClient = client
-	err := og.Fetch()
+	err = og.Fetch()
 	if err != nil {
 		if resp := rt.lastResponse; resp != nil && resp.StatusCode == http.StatusOK {
-			preview, err := l.makeNonHtml(fetchUrl, resp)
+			preview, isFile, err := l.makeNonHtml(fetchUrl, resp)
 			if err != nil {
-				return preview, nil, err
+				return preview, nil, false, err
 			}
-			return preview, rt.lastBody, nil
+			return preview, rt.lastBody, isFile, nil
 		}
-		return model.LinkPreview{}, nil, err
+		return model.LinkPreview{}, nil, false, err
 	}
 
 	if resp := rt.lastResponse; resp != nil && resp.StatusCode != http.StatusOK {
-		return model.LinkPreview{}, nil, fmt.Errorf("invalid http code %d", resp.StatusCode)
+		return model.LinkPreview{}, nil, false, fmt.Errorf("invalid http code %d", resp.StatusCode)
 	}
 	res := l.convertOGToInfo(fetchUrl, og)
 	if len(res.Description) == 0 {
@@ -93,7 +94,7 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 	if err != nil {
 		log.Errorf("failed to decode request %s", err)
 	}
-	return res, decodedResponse, err
+	return res, decodedResponse, false, nil
 }
 
 func decodeResponse(response *proxyRoundTripper) ([]byte, error) {
@@ -149,7 +150,7 @@ func (l *linkPreview) findContent(data []byte) (content string) {
 	return
 }
 
-func (l *linkPreview) makeNonHtml(fetchUrl string, resp *http.Response) (i model.LinkPreview, err error) {
+func (l *linkPreview) makeNonHtml(fetchUrl string, resp *http.Response) (i model.LinkPreview, isFile bool, err error) {
 	ct := resp.Header.Get("Content-Type")
 	i.Url = fetchUrl
 	i.Title = filepath.Base(fetchUrl)
@@ -161,6 +162,7 @@ func (l *linkPreview) makeNonHtml(fetchUrl string, resp *http.Response) (i model
 	} else {
 		i.Type = model.LinkPreview_Unknown
 	}
+	isFile = checkFileType(fetchUrl, resp, ct)
 	pURL, e := uri.ParseURI(fetchUrl)
 	if e == nil {
 		pURL.Path = "favicon.ico"
@@ -168,6 +170,17 @@ func (l *linkPreview) makeNonHtml(fetchUrl string, resp *http.Response) (i model
 		i.FaviconUrl = pURL.String()
 	}
 	return
+}
+
+func checkFileType(url string, resp *http.Response, contentType string) bool {
+	ext := filepath.Ext(url)
+	mimeType := mime.TypeByExtension(ext)
+	return isContentFile(resp, contentType, mimeType)
+}
+
+func isContentFile(resp *http.Response, contentType, mimeType string) bool {
+	return contentType != "" || strings.Contains(resp.Header.Get("Content-Disposition"), "filename") ||
+		mimeType != ""
 }
 
 type proxyRoundTripper struct {

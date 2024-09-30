@@ -8,6 +8,7 @@ import (
 const TruncateEllipsis = " …"
 
 func Truncate(text string, length int) string {
+	length = length - UTF16RuneCountString(TruncateEllipsis)
 	if UTF16RuneCountString(text) <= length {
 		return text
 	}

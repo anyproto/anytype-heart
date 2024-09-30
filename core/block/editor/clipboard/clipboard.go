@@ -1,6 +1,7 @@
 package clipboard
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/converter/html"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -65,8 +67,14 @@ type clipboard struct {
 	fileObjectService fileobject.Service
 }
 
-func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (
+	blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error,
+) {
 	caretPosition = -1
+	if err = cb.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+		return nil, nil, caretPosition, false, err
+	}
+
 	if len(req.FileSlot) > 0 {
 		blockIds, err = cb.pasteFiles(ctx, req)
 		return
@@ -225,7 +233,8 @@ func isRangeSelect(firstTextBlock *model.Block, lastTextBlock *model.Block, rang
 	return firstTextBlock != nil &&
 		lastTextBlock == nil &&
 		rang != nil &&
-		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))
+		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text)) &&
+		rang.To > 0
 }
 
 func unlinkAndClearBlocks(
@@ -249,21 +258,22 @@ func unlinkAndClearBlocks(
 }
 
 func assertBlocks(stateBlocks []*model.Block, requestBlocks []*model.Block) (map[string]*model.Block, error) {
-	if len(requestBlocks) == 0 || requestBlocks[0].Id == "" {
+	if len(requestBlocks) == 0 || requestBlocks[0].GetId() == "" {
 		return nil, errors.New("nothing to cut")
 	}
 
 	idToBlockMap := make(map[string]*model.Block)
 	for _, stateBlock := range stateBlocks {
-		idToBlockMap[stateBlock.Id] = stateBlock
+		idToBlockMap[stateBlock.GetId()] = stateBlock
 	}
 
 	for _, requestBlock := range requestBlocks {
-		if requestBlock.Id == "" {
+		reqId := requestBlock.GetId()
+		if reqId == "" {
 			return nil, errors.New("empty requestBlock id")
 		}
-		if stateBlock, ok := idToBlockMap[requestBlock.Id]; !ok {
-			return nil, fmt.Errorf("requestBlock with id %s not found", stateBlock.Id)
+		if _, ok := idToBlockMap[reqId]; !ok {
+			return nil, fmt.Errorf("requestBlock with id %s not found", reqId)
 		}
 	}
 	return idToBlockMap, nil
@@ -315,8 +325,6 @@ func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, nil
 	}
 
-	textArr := strings.Split(req.TextSlot, "\n")
-
 	if len(req.FocusedBlockId) > 0 {
 		block := cb.Pick(req.FocusedBlockId)
 		if block != nil {
@@ -327,10 +335,12 @@ func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest
 	}
 
 	mdText := whitespace.WhitespaceNormalizeString(req.TextSlot)
-
 	blocks, _, err := anymark.MarkdownToBlocks([]byte(mdText), "", []string{})
 	if err != nil {
-		return cb.pasteRawText(ctx, req, textArr, groupId)
+		// in case we've failed to parse the text as a valid markdown,
+		// split it into text paragraphs with the same logic like in anymark and paste it as a plain text
+		paragraphs := splitStringIntoParagraphs(req.TextSlot, anymark.TextBlockLengthSoftLimit)
+		return cb.pasteRawText(ctx, req, paragraphs, groupId)
 	}
 	req.AnySlot = append(req.AnySlot, blocks...)
 
@@ -376,6 +386,9 @@ func (cb *clipboard) pasteAny(
 			if err = cb.addRelationLinksToDataview(d.Dataview); err != nil {
 				return
 			}
+		}
+		if f, ok := b.Content.(*model.BlockContentOfFile); ok {
+			cb.processFileBlock(f)
 		}
 	}
 	srcState := cb.blocksToState(req.AnySlot)
@@ -452,6 +465,7 @@ func (cb *clipboard) pasteAny(
 	}
 	caretPosition = ctrl.caretPos
 	uploadArr = ctrl.uploadArr
+	blockIds = ctrl.blockIds
 
 	if len(missingRelationKeys) > 0 {
 		if err = cb.AddRelationLinksToState(s, missingRelationKeys...); err != nil {
@@ -496,6 +510,9 @@ func (cb *clipboard) stateToBlocks(s *state.State) []*model.Block {
 }
 
 func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteRequest) (blockIds []string, err error) {
+	if req.FocusedBlockId == template.TitleBlockId || req.FocusedBlockId == template.DescriptionBlockId {
+		req.FocusedBlockId = ""
+	}
 	s := cb.NewStateCtx(ctx)
 	for _, fs := range req.FileSlot {
 		b := simple.New(&model.Block{
@@ -569,7 +586,30 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 }
 
 func (cb *clipboard) newHTMLConverter(s *state.State) *html.HTML {
-	return html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s, cb.fileObjectService)
+	return html.NewHTMLConverter(cb.fileService, s, cb.fileObjectService)
+}
+
+func (cb *clipboard) processFileBlock(f *model.BlockContentOfFile) {
+	fileId, err := cb.fileObjectService.GetFileIdFromObject(f.File.TargetObjectId)
+	if err != nil {
+		log.Errorf("failed to get fileId: %v", err)
+		return
+	}
+
+	if cb.SpaceID() == fileId.SpaceId {
+		return
+	}
+
+	objectId, err := cb.fileObjectService.CreateFromImport(
+		domain.FullFileId{SpaceId: cb.SpaceID(), FileId: fileId.FileId},
+		objectorigin.ObjectOrigin{Origin: model.ObjectOrigin_clipboard},
+	)
+	if err != nil {
+		log.Errorf("failed to create file object: %v", err)
+		return
+	}
+
+	f.File.TargetObjectId = objectId
 }
 
 func renderText(s *state.State, ignoreStyle bool) string {
@@ -638,4 +678,46 @@ func extractTextWithStyleAndTabs(block *model.Block, texts []string, level int, 
 		}
 	}
 	return texts, numberedCount
+}
+
+// splitStringIntoParagraphs splits text into pararagraphs
+// - when text has a double line break, it is considered as a paragraph separator
+// - when text has a single line break, it is considered as a soft line break, not a paragraph separator
+// - when text has a single line break and the current block is longer than the soft limit, it is considered as a paragraph separator
+// - func consider line with whitespaces as a paragraph separator (e.g. "\n   \n")
+func splitStringIntoParagraphs(s string, lineBreakSoftLimit int) []string {
+	var blocks []string
+	var currentBlock strings.Builder
+
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.TrimSpace(line) == "" { // This is a simple proxy for a double line break.
+			if currentBlock.Len() > 0 {
+				blocks = append(blocks, currentBlock.String())
+				currentBlock.Reset()
+			}
+			continue
+		}
+
+		// Add line to current block with space handling for the soft limit.
+		if lineBreakSoftLimit > 0 && currentBlock.Len()+len(line) > lineBreakSoftLimit && currentBlock.Len() > 0 {
+			// Append the current block and start a new one
+			blocks = append(blocks, currentBlock.String())
+			currentBlock.Reset()
+		}
+
+		if currentBlock.Len() > 0 {
+			currentBlock.WriteString("\n")
+		}
+		currentBlock.WriteString(line)
+	}
+
+	// Don't forget to add the last block if it exists.
+	if currentBlock.Len() > 0 {
+		blocks = append(blocks, currentBlock.String())
+	}
+
+	return blocks
 }

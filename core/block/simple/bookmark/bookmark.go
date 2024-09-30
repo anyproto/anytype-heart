@@ -218,3 +218,7 @@ func (b *Bookmark) FillSmartIds(ids []string) []string {
 func (b *Bookmark) HasSmartIds() bool {
 	return b.content.TargetObjectId != ""
 }
+
+func (l *Bookmark) IsEmpty() bool {
+	return l.content.TargetObjectId == ""
+}

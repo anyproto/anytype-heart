@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/anyproto/any-store/query"
 	"github.com/cheggaaa/mb"
 	"github.com/gogo/protobuf/types"
 
@@ -115,12 +116,28 @@ func (c *collectionObserver) updateIDs(ids []string) {
 	}
 }
 
-func (c *collectionObserver) FilterObject(g database.Getter) bool {
+func (c *collectionObserver) FilterObject(g *types.Struct) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	id := g.Get(bundle.RelationKeyId.String()).GetStringValue()
+	val := pbtypes.Get(g, bundle.RelationKeyId.String())
+	id := val.GetStringValue()
 	_, ok := c.idsSet[id]
 	return ok
+}
+
+// AnystoreSort called only once when subscription is created
+func (c *collectionObserver) AnystoreFilter() query.Filter {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	path := []string{bundle.RelationKeyId.String()}
+	filter := make(query.Or, 0, len(c.idsSet))
+	for id := range c.idsSet {
+		filter = append(filter, query.Key{
+			Path:   path,
+			Filter: query.NewComp(query.CompOpEq, id),
+		})
+	}
+	return filter
 }
 
 func (c *collectionObserver) String() string {
@@ -128,12 +145,8 @@ func (c *collectionObserver) String() string {
 }
 
 type collectionSub struct {
-	id           string
-	collectionID string
-
-	sortedSub         *sortedSub
-	observer          *collectionObserver
-	collectionService CollectionService
+	sortedSub *sortedSub
+	observer  *collectionObserver
 }
 
 func (c *collectionSub) init(entries []*entry) (err error) {
@@ -154,6 +167,10 @@ func (c *collectionSub) getActiveRecords() (res []*types.Struct) {
 
 func (c *collectionSub) hasDep() bool {
 	return c.sortedSub.hasDep()
+}
+
+func (c *collectionSub) getDep() subscription {
+	return c.sortedSub.depSub
 }
 
 func (c *collectionSub) close() {
@@ -181,18 +198,14 @@ func (s *service) newCollectionSub(
 	}
 
 	sub := &collectionSub{
-		id:           id,
-		collectionID: collectionID,
-
-		sortedSub:         ssub,
-		observer:          obs,
-		collectionService: s.collectionService,
+		sortedSub: ssub,
+		observer:  obs,
 	}
 
 	entries := obs.listEntries()
 	filtered := entries[:0]
 	for _, e := range entries {
-		if flt.FilterObject(e) {
+		if flt.FilterObject(e.data) {
 			filtered = append(filtered, e)
 		}
 	}

@@ -79,23 +79,25 @@
     "source": "details"
   },
   {
+    "description": "Latest Acl head id",
     "format": "longtext",
-    "hidden": false,
-    "key": "instructions",
+    "hidden": true,
+    "key": "latestAclHeadId",
     "maxCount": 1,
-    "name": "Instructions",
-    "readonly": false,
+    "name": "Latest acl head id",
+    "readonly": true,
     "source": "details"
   },
   {
     "description": "Done checkbox used to render action layout. ",
     "format": "checkbox",
-    "hidden": true,
+    "hidden": false,
     "key": "done",
     "maxCount": 1,
     "name": "Done",
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "Artist URL",
@@ -118,21 +120,42 @@
     "source": "derived"
   },
   {
-    "format": "date",
-    "hidden": false,
-    "key": "dateOfBirth",
-    "maxCount": 1,
-    "name": "Birthday",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Object restrictions list",
     "format": "number",
     "hidden": true,
     "key": "restrictions",
-    "maxCount": 1,
+    "maxCount": 0,
     "name": "Object restrictions",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Readers limit",
+    "format": "number",
+    "hidden": true,
+    "key": "readersLimit",
+    "maxCount": 1,
+    "name": "Readers limit",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Writers limit",
+    "format": "number",
+    "hidden": true,
+    "key": "writersLimit",
+    "maxCount": 1,
+    "name": "Writers limit",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Shared spaces limit",
+    "format": "number",
+    "hidden": true,
+    "key": "sharedSpacesLimit",
+    "maxCount": 1,
+    "name": "Shared spaces limit",
     "readonly": true,
     "source": "derived"
   },
@@ -145,43 +168,6 @@
     "name": "Highlighted",
     "readonly": false,
     "source": "account"
-  },
-  {
-    "format": "file",
-    "hidden": false,
-    "key": "thumbnailImage",
-    "maxCount": 0,
-    "name": "Thumbnail image",
-    "objectTypes": [
-      "image"
-    ],
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "file",
-    "hidden": false,
-    "key": "attachments",
-    "maxCount": 0,
-    "name": "Attachments",
-    "objectTypes": [
-      "file",
-      "image",
-      "video",
-      "audio"
-    ],
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "description": "The artist that performed this album or recording",
-    "format": "longtext",
-    "hidden": false,
-    "key": "audioArtist",
-    "maxCount": 1,
-    "name": "Recording Artist",
-    "readonly": false,
-    "source": "details"
   },
   {
     "description": "List of related tasks\n",
@@ -205,15 +191,6 @@
     "name": "Snippet",
     "readonly": true,
     "source": "derived"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "hypothesisAssumptions",
-    "maxCount": 1,
-    "name": "Hypothesis & assumptions",
-    "readonly": false,
-    "source": "details"
   },
   {
     "description": "Type of the underlying value",
@@ -267,15 +244,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "solution",
-    "maxCount": 1,
-    "name": "Solution",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Year when this object were released",
     "format": "number",
     "hidden": false,
@@ -292,24 +260,6 @@
     "key": "coverScale",
     "maxCount": 1,
     "name": "Cover scale",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "url",
-    "hidden": false,
-    "key": "twitter",
-    "maxCount": 1,
-    "name": "Twitter",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "userStories",
-    "maxCount": 1,
-    "name": "User stories",
     "readonly": false,
     "source": "details"
   },
@@ -345,48 +295,12 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "problem",
-    "maxCount": 1,
-    "name": "Problem",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Specify visual align of the layout",
     "format": "number",
     "hidden": true,
     "key": "layoutAlign",
     "maxCount": 1,
     "name": "Layout align",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "object",
-    "hidden": false,
-    "key": "class",
-    "maxCount": 0,
-    "name": "Class",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "number",
-    "hidden": false,
-    "key": "difficulty",
-    "maxCount": 1,
-    "name": "Difficulty",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "object",
-    "hidden": false,
-    "key": "director",
-    "maxCount": 0,
-    "name": "Director",
     "readonly": false,
     "source": "details"
   },
@@ -401,42 +315,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "logic",
-    "maxCount": 1,
-    "name": "Logic",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "alternative",
-    "maxCount": 1,
-    "name": "Alternative",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "object",
-    "hidden": false,
-    "key": "linkedContacts",
-    "maxCount": 0,
-    "name": "Linked Contacts",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "number",
-    "hidden": false,
-    "key": "rottenTomatoesRating",
-    "maxCount": 1,
-    "name": "Rotten Tomatoes rating",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Specify if object is hidden",
     "format": "checkbox",
     "hidden": true,
@@ -447,21 +325,13 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "additional",
+    "description": "Specify if object discovery is hidden",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isHiddenDiscovery",
     "maxCount": 1,
-    "name": "Additional",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "number",
-    "hidden": false,
-    "key": "budget",
-    "maxCount": 1,
-    "name": "Budget",
-    "readonly": false,
+    "name": "Discovery hidden",
+    "readonly": true,
     "source": "details"
   },
   {
@@ -472,15 +342,6 @@
     "maxCount": 1,
     "name": "Media Artist Name",
     "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "rating",
-    "maxCount": 1,
-    "name": "Rating",
-    "readonly": false,
     "source": "details"
   },
   {
@@ -521,24 +382,6 @@
     "source": "derived"
   },
   {
-    "format": "object",
-    "hidden": false,
-    "key": "stakeholders",
-    "maxCount": 0,
-    "name": "Stakeholders",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "measureOfSuccess",
-    "maxCount": 1,
-    "name": "Measure of success",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "List of recommended relations",
     "format": "object",
     "hidden": true,
@@ -554,12 +397,13 @@
   {
     "description": "Human which created this object",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "creator",
     "maxCount": 1,
     "name": "Created by",
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "revision": 1
   },
   {
     "description": "Recommended layout for new templates and objects of specific objec",
@@ -568,24 +412,6 @@
     "key": "recommendedLayout",
     "maxCount": 1,
     "name": "Recommended layout",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "result",
-    "maxCount": 1,
-    "name": "Result",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "checkbox",
-    "hidden": false,
-    "key": "reflection",
-    "maxCount": 1,
-    "name": "Reflection",
     "readonly": false,
     "source": "details"
   },
@@ -609,8 +435,10 @@
     "source": "details",
     "objectTypes": [
       "profile",
-      "contact"
-    ]
+      "contact",
+      "participant"
+    ],
+    "revision": 1
   },
   {
     "description": "Name of artist",
@@ -628,15 +456,6 @@
     "key": "dueDate",
     "maxCount": 1,
     "name": "Due date",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "records",
-    "maxCount": 1,
-    "name": "Records",
     "readonly": false,
     "source": "details"
   },
@@ -703,24 +522,6 @@
     "source": "details"
   },
   {
-    "format": "object",
-    "hidden": false,
-    "key": "events",
-    "maxCount": 0,
-    "name": "Events",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "timeframe",
-    "maxCount": 1,
-    "name": "Timeframe",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Indicates whether the object is read-only. Means it can't be edited and archived",
     "format": "checkbox",
     "hidden": true,
@@ -751,8 +552,10 @@
     "source": "details",
     "objectTypes": [
       "profile",
-      "contact"
-    ]
+      "contact",
+      "participant"
+    ],
+    "revision": 1
   },
   {
     "format": "longtext",
@@ -777,15 +580,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "materials",
-    "maxCount": 1,
-    "name": "Materials",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Adds the object to the home dashboard",
     "format": "checkbox",
     "hidden": true,
@@ -794,15 +588,6 @@
     "name": "Favorited",
     "readonly": false,
     "source": "account"
-  },
-  {
-    "format": "object",
-    "hidden": false,
-    "key": "stars",
-    "maxCount": 0,
-    "name": "Stars",
-    "readonly": false,
-    "source": "details"
   },
   {
     "description": "Space object belongs to",
@@ -841,30 +626,6 @@
     "source": "details"
   },
   {
-    "format": "url",
-    "hidden": false,
-    "key": "telegram",
-    "maxCount": 1,
-    "name": "Telegram",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "file",
-    "hidden": false,
-    "key": "trailer",
-    "maxCount": 0,
-    "name": "Trailer",
-    "objectTypes": [
-      "file",
-      "image",
-      "video",
-      "audio"
-    ],
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Name of the object",
     "format": "shorttext",
     "hidden": true,
@@ -890,33 +651,6 @@
     "key": "audioLyrics",
     "maxCount": 1,
     "name": "Lyrics",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "url",
-    "hidden": false,
-    "key": "instagram",
-    "maxCount": 1,
-    "name": "Instagram",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "tag",
-    "hidden": false,
-    "key": "classType",
-    "maxCount": 0,
-    "name": "Class type",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "howToReproduce",
-    "maxCount": 1,
-    "name": "How-to reproduce",
     "readonly": false,
     "source": "details"
   },
@@ -983,24 +717,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "placeOfBirth",
-    "maxCount": 1,
-    "name": "Place of birth",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "composer",
-    "maxCount": 1,
-    "name": "Composer",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Set of internal flags",
     "format": "number",
     "hidden": true,
@@ -1008,24 +724,6 @@
     "maxCount": 0,
     "name": "Internal flags",
     "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "url",
-    "hidden": false,
-    "key": "socialProfile",
-    "maxCount": 1,
-    "name": "Profile in social media",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "occupation",
-    "maxCount": 1,
-    "name": "Occupation",
-    "readonly": false,
     "source": "details"
   },
   {
@@ -1044,15 +742,6 @@
     "key": "description",
     "maxCount": 1,
     "name": "Description",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "url",
-    "hidden": false,
-    "key": "facebook",
-    "maxCount": 1,
-    "name": "Facebook",
     "readonly": false,
     "source": "details"
   },
@@ -1090,15 +779,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "objectives",
-    "maxCount": 1,
-    "name": "Objectives",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "format": "number",
     "hidden": false,
     "key": "cameraIso",
@@ -1123,28 +803,10 @@
     "hidden": false,
     "key": "links",
     "maxCount": 0,
-    "name": "Links from this object",
+    "name": "Links",
     "readonly": true,
     "source": "derived",
-    "revision": 2
-  },
-  {
-    "format": "number",
-    "hidden": false,
-    "key": "servings",
-    "maxCount": 1,
-    "name": "Servings",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "tag",
-    "hidden": false,
-    "key": "category",
-    "maxCount": 0,
-    "name": "Category",
-    "readonly": false,
-    "source": "details"
+    "revision": 3
   },
   {
     "description": "Can contains image hash, color or prebuild bg id, depends on coverType relation",
@@ -1164,10 +826,11 @@
     "maxCount": 1,
     "name": "Last modified by",
     "objectTypes": [
-      "profile"
+      "participant"
     ],
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "revision": 1
   },
   {
     "description": "Relation allows multi values",
@@ -1176,15 +839,6 @@
     "key": "relationMaxCount",
     "maxCount": 1,
     "name": "Max values",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "questions",
-    "maxCount": 1,
-    "name": "Questions",
     "readonly": false,
     "source": "details"
   },
@@ -1221,15 +875,6 @@
     "source": "details"
   },
   {
-    "format": "status",
-    "hidden": false,
-    "key": "gender",
-    "maxCount": 1,
-    "name": "Gender",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Hides the object",
     "format": "checkbox",
     "hidden": true,
@@ -1258,15 +903,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "job",
-    "maxCount": 1,
-    "name": "Job",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Important relations that always appear at the top of the object",
     "format": "object",
     "hidden": true,
@@ -1285,15 +921,6 @@
     "key": "phone",
     "maxCount": 1,
     "name": "Phone",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "number",
-    "hidden": false,
-    "key": "imdbRating",
-    "maxCount": 1,
-    "name": "IMDb rating",
     "readonly": false,
     "source": "details"
   },
@@ -1363,6 +990,16 @@
     "name": "Space accessibility",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Space access type, see enum model.SpaceAccessType",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceAccessType",
+    "maxCount": 1,
+    "name": "Space access type",
+    "readonly": false,
+    "source": "derived"
   },
   {
     "description": "File path or url with original object",
@@ -1449,10 +1086,10 @@
     "key": "backlinks",
     "maxCount": 0,
     "hidden": false,
-    "name": "Links to this object",
+    "name": "Backlinks",
     "readonly": true,
     "source": "local",
-    "revision": 2
+    "revision": 3
   },
   {
     "description": "Relation that indicates document has been uninstalled",
@@ -1495,12 +1132,82 @@
     "source": "derived"
   },
   {
+    "description": "Specify if the space is shareable",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceShareableStatus",
+    "maxCount": 1,
+    "name": "Space shareable status",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Specify if access control list is shared",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isAclShared",
+    "maxCount": 1,
+    "name": "Is Acl Shared",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Relation that indicates the status of space that the user is set. Possible values: models.SpaceStatus",
     "format": "number",
     "hidden": true,
     "key": "spaceAccountStatus",
     "maxCount": 1,
     "name": "Space account status",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "CID of invite file for current space. It stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteFileCid",
+    "maxCount": 1,
+    "name": "CID of invite file for current space",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Encoded encryption key of invite file for current space. It stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteFileKey",
+    "maxCount": 1,
+    "name": "Encoded encryption key of invite file for current space",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Participant permissions. Possible values: models.ParticipantPermissions",
+    "format": "number",
+    "hidden": true,
+    "key": "participantPermissions",
+    "maxCount": 1,
+    "name": "Participant permissions",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Identity",
+    "format": "longtext",
+    "hidden": true,
+    "key": "identity",
+    "maxCount": 1,
+    "name": "Identity",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Participant status. Possible values: models.ParticipantStatus",
+    "format": "number",
+    "hidden": true,
+    "key": "participantStatus",
+    "maxCount": 1,
+    "name": "Participant status",
     "readonly": true,
     "source": "details"
   },
@@ -1582,5 +1289,55 @@
     "name": "Import Type",
     "readonly": true,
     "source": "details"
+  },
+  {
+    "description": "Name of profile that the user could be mentioned by",
+    "format": "shorttext",
+    "hidden": false,
+    "key": "globalName",
+    "maxCount": 1,
+    "name": "Global name",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Object sync status",
+    "format": "number",
+    "hidden": true,
+    "key": "syncStatus",
+    "maxCount": 1,
+    "name": "Sync status",
+    "readonly": true,
+    "source": "local"
+  },
+  {
+    "description": "Object sync date",
+    "format": "date",
+    "hidden": true,
+    "key": "syncDate",
+    "maxCount": 1,
+    "name": "Sync date",
+    "readonly": true,
+    "source": "local"
+  },
+  {
+    "description": "Object sync error",
+    "format": "number",
+    "hidden": true,
+    "key": "syncError",
+    "maxCount": 1,
+    "name": "Sync error",
+    "readonly": true,
+    "source": "local"
+  },
+  {
+    "description": "Objects that are mentioned in blocks of this object",
+    "format": "object",
+    "hidden": true,
+    "key": "mentions",
+    "maxCount": 0,
+    "name": "Mentions",
+    "readonly": true,
+    "source": "local"
   }
 ]

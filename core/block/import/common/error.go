@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -77,6 +79,8 @@ func (ce *ConvertError) GetResultError(importType model.ImportType) error {
 		case errors.Is(e, ErrFailedToReceiveListOfObjects):
 			return ErrFailedToReceiveListOfObjects
 		case errors.Is(e, ErrFileLoad):
+			return fmt.Errorf("import type: %s: %w", importType.String(), e)
+		case errors.Is(e, list.ErrInsufficientPermissions):
 			return e
 		case errors.Is(e, ErrNoObjectsToImport):
 			countNoObjectsToImport++
@@ -121,7 +125,21 @@ func GetImportErrorCode(err error) model.ImportErrorCode {
 		return model.Import_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED
 	case errors.Is(err, ErrFileLoad):
 		return model.Import_FILE_LOAD_ERROR
+	case errors.Is(err, list.ErrInsufficientPermissions):
+		return model.Import_INSUFFICIENT_PERMISSIONS
 	default:
 		return model.Import_INTERNAL_ERROR
+	}
+}
+
+func GetGalleryResponseCode(err error) pb.RpcObjectImportExperienceResponseErrorCode {
+	if err == nil {
+		return pb.RpcObjectImportExperienceResponseError_NULL
+	}
+	switch {
+	case errors.Is(err, list.ErrInsufficientPermissions):
+		return pb.RpcObjectImportExperienceResponseError_INSUFFICIENT_PERMISSION
+	default:
+		return pb.RpcObjectImportExperienceResponseError_UNKNOWN_ERROR
 	}
 }

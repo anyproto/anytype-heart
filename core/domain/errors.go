@@ -2,6 +2,5 @@ package domain
 
 import "errors"
 
-var ErrFileNotFound = errors.New("file not found")
-
 var ErrValidationFailed = errors.New("validation failed")
+var ErrObjectIsDeleted = errors.New("object is deleted")

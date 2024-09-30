@@ -6,7 +6,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 )
@@ -16,7 +15,7 @@ var (
 	ErrAccountIsActive         = errors.New("account is active")
 )
 
-func (s *Service) AccountDelete(ctx context.Context, req *pb.RpcAccountDeleteRequest) (*model.AccountStatus, error) {
+func (s *Service) AccountDelete(ctx context.Context) (*model.AccountStatus, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	var (

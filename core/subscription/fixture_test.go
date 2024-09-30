@@ -16,23 +16,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/kanban"
-	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/testMock"
 	"github.com/anyproto/anytype-heart/util/testMock/mockKanban"
 )
-
-type collectionServiceMock struct {
-	*mock_subscription.MockCollectionService
-}
-
-func (c *collectionServiceMock) Name() string {
-	return "collectionService"
-}
-
-func (c *collectionServiceMock) Init(a *app.App) error { return nil }
 
 type fixture struct {
 	Service
@@ -55,7 +44,7 @@ func newFixture(t *testing.T) *fixture {
 	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
 	a.Register(sbtProvider)
 
-	collectionService := &collectionServiceMock{MockCollectionService: mock_subscription.NewMockCollectionService(t)}
+	collectionService := &collectionServiceMock{MockCollectionService: NewMockCollectionService(t)}
 	a.Register(collectionService)
 
 	fx := &fixture{
@@ -102,7 +91,7 @@ func newFixtureWithRealObjectStore(t *testing.T) *fixtureRealStore {
 	kanbanService := kanban.New()
 	a.Register(kanbanService)
 
-	collectionService := &collectionServiceMock{MockCollectionService: mock_subscription.NewMockCollectionService(t)}
+	collectionService := &collectionServiceMock{MockCollectionService: NewMockCollectionService(t)}
 	a.Register(collectionService)
 
 	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)

@@ -14,14 +14,25 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
+type ImportRequest struct {
+	*pb.RpcObjectImportRequest
+	Origin           objectorigin.ObjectOrigin
+	Progress         process.Progress
+	SendNotification bool
+	IsSync           bool
+}
+
+type ImportResponse struct {
+	RootCollectionId string
+	ProcessId        string
+	ObjectsCount     int64
+	Err              error
+}
+
 // Importer encapsulate logic with import
 type Importer interface {
 	app.Component
-	Import(ctx context.Context,
-		req *pb.RpcObjectImportRequest,
-		origin objectorigin.ObjectOrigin,
-		progress process.Progress,
-	) (rootCollectionId string, processId string, err error)
+	Import(ctx context.Context, importRequest *ImportRequest) *ImportResponse
 
 	ListImports(req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error)
 	ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)

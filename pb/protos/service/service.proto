@@ -50,6 +50,19 @@ service ClientCommands {
     // Space
     // ***
     rpc SpaceDelete (anytype.Rpc.Space.Delete.Request) returns (anytype.Rpc.Space.Delete.Response);
+    rpc SpaceInviteGenerate (anytype.Rpc.Space.InviteGenerate.Request) returns (anytype.Rpc.Space.InviteGenerate.Response);
+    rpc SpaceInviteGetCurrent (anytype.Rpc.Space.InviteGetCurrent.Request) returns (anytype.Rpc.Space.InviteGetCurrent.Response);
+    rpc SpaceInviteRevoke(anytype.Rpc.Space.InviteRevoke.Request) returns (anytype.Rpc.Space.InviteRevoke.Response);
+    rpc SpaceInviteView(anytype.Rpc.Space.InviteView.Request) returns (anytype.Rpc.Space.InviteView.Response);
+    rpc SpaceJoin (anytype.Rpc.Space.Join.Request) returns (anytype.Rpc.Space.Join.Response);
+    rpc SpaceJoinCancel (anytype.Rpc.Space.JoinCancel.Request) returns (anytype.Rpc.Space.JoinCancel.Response);
+    rpc SpaceStopSharing (anytype.Rpc.Space.StopSharing.Request) returns (anytype.Rpc.Space.StopSharing.Response);
+    rpc SpaceRequestApprove (anytype.Rpc.Space.RequestApprove.Request) returns (anytype.Rpc.Space.RequestApprove.Response);
+    rpc SpaceRequestDecline (anytype.Rpc.Space.RequestDecline.Request) returns (anytype.Rpc.Space.RequestDecline.Response);
+    rpc SpaceLeaveApprove (anytype.Rpc.Space.LeaveApprove.Request) returns (anytype.Rpc.Space.LeaveApprove.Response);
+    rpc SpaceMakeShareable (anytype.Rpc.Space.MakeShareable.Request) returns (anytype.Rpc.Space.MakeShareable.Response);
+    rpc SpaceParticipantRemove (anytype.Rpc.Space.ParticipantRemove.Request) returns (anytype.Rpc.Space.ParticipantRemove.Response);
+    rpc SpaceParticipantPermissionsChange (anytype.Rpc.Space.ParticipantPermissionsChange.Request) returns (anytype.Rpc.Space.ParticipantPermissionsChange.Response);
 
     // Object
     // ***
@@ -60,11 +73,13 @@ service ClientCommands {
     rpc ObjectCreate (anytype.Rpc.Object.Create.Request) returns (anytype.Rpc.Object.Create.Response);
     rpc ObjectCreateBookmark (anytype.Rpc.Object.CreateBookmark.Request) returns (anytype.Rpc.Object.CreateBookmark.Response);
     rpc ObjectCreateFromUrl (anytype.Rpc.Object.CreateFromUrl.Request) returns (anytype.Rpc.Object.CreateFromUrl.Response);
+    rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
 
     // ObjectCreateSet just creates the new set, without adding the link to it from some other page
     rpc ObjectCreateSet (anytype.Rpc.Object.CreateSet.Request) returns (anytype.Rpc.Object.CreateSet.Response);
     rpc ObjectGraph (anytype.Rpc.Object.Graph.Request) returns (anytype.Rpc.Object.Graph.Response);
     rpc ObjectSearch (anytype.Rpc.Object.Search.Request) returns (anytype.Rpc.Object.Search.Response);
+    rpc ObjectSearchWithMeta (anytype.Rpc.Object.SearchWithMeta.Request) returns (anytype.Rpc.Object.SearchWithMeta.Response);
     rpc ObjectSearchSubscribe (anytype.Rpc.Object.SearchSubscribe.Request) returns (anytype.Rpc.Object.SearchSubscribe.Response);
     rpc ObjectSubscribeIds (anytype.Rpc.Object.SubscribeIds.Request) returns (anytype.Rpc.Object.SubscribeIds.Response);
     rpc ObjectGroupsSubscribe (anytype.Rpc.Object.GroupsSubscribe.Request) returns (anytype.Rpc.Object.GroupsSubscribe.Response);
@@ -84,6 +99,8 @@ service ClientCommands {
     rpc ObjectListSetIsArchived (anytype.Rpc.Object.ListSetIsArchived.Request) returns (anytype.Rpc.Object.ListSetIsArchived.Response);
     rpc ObjectListSetIsFavorite (anytype.Rpc.Object.ListSetIsFavorite.Request) returns (anytype.Rpc.Object.ListSetIsFavorite.Response);
     rpc ObjectListSetObjectType (anytype.Rpc.Object.ListSetObjectType.Request) returns (anytype.Rpc.Object.ListSetObjectType.Response);
+    rpc ObjectListSetDetails (anytype.Rpc.Object.ListSetDetails.Request) returns (anytype.Rpc.Object.ListSetDetails.Response);
+    rpc ObjectListModifyDetailValues (anytype.Rpc.Object.ListModifyDetailValues.Request) returns (anytype.Rpc.Object.ListModifyDetailValues.Response);
     rpc ObjectApplyTemplate (anytype.Rpc.Object.ApplyTemplate.Request) returns (anytype.Rpc.Object.ApplyTemplate.Response);
     // ObjectToSet creates new set from given object and removes object
     rpc ObjectToSet (anytype.Rpc.Object.ToSet.Request) returns (anytype.Rpc.Object.ToSet.Response);
@@ -112,6 +129,7 @@ service ClientCommands {
     rpc ObjectCreateRelationOption (anytype.Rpc.Object.CreateRelationOption.Request) returns (anytype.Rpc.Object.CreateRelationOption.Response);
     rpc RelationListRemoveOption (anytype.Rpc.Relation.ListRemoveOption.Request) returns (anytype.Rpc.Relation.ListRemoveOption.Response);
     rpc RelationOptions (anytype.Rpc.Relation.Options.Request) returns (anytype.Rpc.Relation.Options.Response);
+    rpc RelationListWithValue (anytype.Rpc.Relation.ListWithValue.Request) returns (anytype.Rpc.Relation.ListWithValue.Response);
 
     // Object Relations
     // ***
@@ -130,11 +148,12 @@ service ClientCommands {
     rpc HistoryShowVersion (anytype.Rpc.History.ShowVersion.Request) returns (anytype.Rpc.History.ShowVersion.Response);
     rpc HistoryGetVersions (anytype.Rpc.History.GetVersions.Request) returns (anytype.Rpc.History.GetVersions.Response);
     rpc HistorySetVersion (anytype.Rpc.History.SetVersion.Request) returns (anytype.Rpc.History.SetVersion.Response);
+    rpc HistoryDiffVersions (anytype.Rpc.History.DiffVersions.Request) returns (anytype.Rpc.History.DiffVersions.Response);
 
     // Files
     // ***
-    rpc FileOffload (anytype.Rpc.File.Offload.Request) returns (anytype.Rpc.File.Offload.Response);
     rpc FileSpaceOffload (anytype.Rpc.File.SpaceOffload.Request) returns (anytype.Rpc.File.SpaceOffload.Response);
+    rpc FileReconcile (anytype.Rpc.File.Reconcile.Request) returns (anytype.Rpc.File.Reconcile.Response);
     rpc FileListOffload (anytype.Rpc.File.ListOffload.Request) returns (anytype.Rpc.File.ListOffload.Response);
     rpc FileUpload (anytype.Rpc.File.Upload.Request) returns (anytype.Rpc.File.Upload.Response);
     rpc FileDownload (anytype.Rpc.File.Download.Request) returns (anytype.Rpc.File.Download.Response);
@@ -202,6 +221,7 @@ service ClientCommands {
     // File block commands
     // ***
     rpc BlockFileSetName (anytype.Rpc.BlockFile.SetName.Request) returns (anytype.Rpc.BlockFile.SetName.Response);
+    rpc BlockFileSetTargetObjectId (anytype.Rpc.BlockFile.SetTargetObjectId.Request) returns (anytype.Rpc.BlockFile.SetTargetObjectId.Response);
     rpc BlockImageSetName (anytype.Rpc.BlockImage.SetName.Request) returns (anytype.Rpc.BlockImage.SetName.Response);
     rpc BlockVideoSetName (anytype.Rpc.BlockVideo.SetName.Request) returns (anytype.Rpc.BlockVideo.SetName.Response);
     rpc BlockFileCreateAndUpload (anytype.Rpc.BlockFile.CreateAndUpload.Request) returns (anytype.Rpc.BlockFile.CreateAndUpload.Response);
@@ -231,7 +251,7 @@ service ClientCommands {
     rpc BlockDataviewSortAdd (anytype.Rpc.BlockDataview.Sort.Add.Request) returns (anytype.Rpc.BlockDataview.Sort.Add.Response);
     rpc BlockDataviewSortRemove (anytype.Rpc.BlockDataview.Sort.Remove.Request) returns (anytype.Rpc.BlockDataview.Sort.Remove.Response);
     rpc BlockDataviewSortReplace (anytype.Rpc.BlockDataview.Sort.Replace.Request) returns (anytype.Rpc.BlockDataview.Sort.Replace.Response);
-    rpc BlockDataviewSortSort (anytype.Rpc.BlockDataview.Sort.Sort.Request) returns (anytype.Rpc.BlockDataview.Sort.Sort.Response);
+    rpc BlockDataviewSortSort (anytype.Rpc.BlockDataview.Sort.SSort.Request) returns (anytype.Rpc.BlockDataview.Sort.SSort.Response);
 
     rpc BlockDataviewViewRelationAdd (anytype.Rpc.BlockDataview.ViewRelation.Add.Request) returns (anytype.Rpc.BlockDataview.ViewRelation.Add.Response);
     rpc BlockDataviewViewRelationRemove (anytype.Rpc.BlockDataview.ViewRelation.Remove.Request) returns (anytype.Rpc.BlockDataview.ViewRelation.Remove.Response);
@@ -279,6 +299,7 @@ service ClientCommands {
 
     rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);
 
+    rpc DebugStat (anytype.Rpc.Debug.Stat.Request) returns (anytype.Rpc.Debug.Stat.Response);
     rpc DebugTree (anytype.Rpc.Debug.Tree.Request) returns (anytype.Rpc.Debug.Tree.Response);
     rpc DebugTreeHeads (anytype.Rpc.Debug.TreeHeads.Request) returns (anytype.Rpc.Debug.TreeHeads.Response);
     rpc DebugSpaceSummary (anytype.Rpc.Debug.SpaceSummary.Request) returns (anytype.Rpc.Debug.SpaceSummary.Response);
@@ -287,6 +308,8 @@ service ClientCommands {
     rpc DebugPing (anytype.Rpc.Debug.Ping.Request) returns (anytype.Rpc.Debug.Ping.Response);
     rpc DebugSubscriptions (anytype.Rpc.Debug.Subscriptions.Request) returns (anytype.Rpc.Debug.Subscriptions.Response);
     rpc DebugOpenedObjects (anytype.Rpc.Debug.OpenedObjects.Request) returns (anytype.Rpc.Debug.OpenedObjects.Response);
+    rpc DebugRunProfiler (anytype.Rpc.Debug.RunProfiler.Request) returns (anytype.Rpc.Debug.RunProfiler.Response);
+    rpc DebugAccountSelectTrace (anytype.Rpc.Debug.AccountSelectTrace.Request) returns (anytype.Rpc.Debug.AccountSelectTrace.Response);
 
     rpc MetricsSetParameters (anytype.Rpc.Metrics.SetParameters.Request) returns (anytype.Rpc.Metrics.SetParameters.Response);
 
@@ -295,6 +318,55 @@ service ClientCommands {
 
     rpc NotificationList (anytype.Rpc.Notification.List.Request) returns (anytype.Rpc.Notification.List.Response);
     rpc NotificationReply (anytype.Rpc.Notification.Reply.Request) returns (anytype.Rpc.Notification.Reply.Response);
+    rpc NotificationTest (anytype.Rpc.Notification.Test.Request) returns (anytype.Rpc.Notification.Test.Response);
 
+    // Membership
+    // ***
+    // Get current subscription status (tier, expiration date, etc.)
+    // WARNING: can be cached by Anytype Heart
+    rpc MembershipGetStatus (anytype.Rpc.Membership.GetStatus.Request) returns (anytype.Rpc.Membership.GetStatus.Response);
+    // Check if the requested name is valid and vacant for the requested tier
+    rpc MembershipIsNameValid( anytype.Rpc.Membership.IsNameValid.Request) returns (anytype.Rpc.Membership.IsNameValid.Response);
+    // Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment.
+    rpc MembershipRegisterPaymentRequest (anytype.Rpc.Membership.RegisterPaymentRequest.Request) returns (anytype.Rpc.Membership.RegisterPaymentRequest.Response);
+    // Get a link to the user's subscription management portal. The user should be redirected to this URL to manage their subscription:
+    // a) change his billing details
+    // b) see payment info, invoices, etc
+    // c) cancel the subscription
+    rpc MembershipGetPortalLinkUrl (anytype.Rpc.Membership.GetPortalLinkUrl.Request) returns (anytype.Rpc.Membership.GetPortalLinkUrl.Response);
+    // Check the current status of the verification email
+    rpc MembershipGetVerificationEmailStatus( anytype.Rpc.Membership.GetVerificationEmailStatus.Request) returns (anytype.Rpc.Membership.GetVerificationEmailStatus.Response);
+    // Send a verification code to the user's email. The user should enter this code to verify his email.
+    rpc MembershipGetVerificationEmail (anytype.Rpc.Membership.GetVerificationEmail.Request) returns (anytype.Rpc.Membership.GetVerificationEmail.Response);
+    // Verify the user's email with the code received in the previous step (MembershipGetVerificationEmail)
+    rpc MembershipVerifyEmailCode (anytype.Rpc.Membership.VerifyEmailCode.Request) returns (anytype.Rpc.Membership.VerifyEmailCode.Response);
+    // If your subscription is in PendingRequiresFinalization:
+    // please call MembershipFinalize to finish the process
+    rpc MembershipFinalize (anytype.Rpc.Membership.Finalize.Request) returns (anytype.Rpc.Membership.Finalize.Response);
+    rpc MembershipGetTiers (anytype.Rpc.Membership.GetTiers.Request) returns (anytype.Rpc.Membership.GetTiers.Response);
+    rpc MembershipVerifyAppStoreReceipt (anytype.Rpc.Membership.VerifyAppStoreReceipt.Request) returns (anytype.Rpc.Membership.VerifyAppStoreReceipt.Response);
+
+    // Name Service:
+    // ***
+    // hello.any -> data
+    rpc NameServiceUserAccountGet( anytype.Rpc.NameService.UserAccount.Get.Request) returns (anytype.Rpc.NameService.UserAccount.Get.Response);
+    rpc NameServiceResolveName( anytype.Rpc.NameService.ResolveName.Request) returns (anytype.Rpc.NameService.ResolveName.Response);
+    // 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -> hello.any
+    rpc NameServiceResolveAnyId( anytype.Rpc.NameService.ResolveAnyId.Request ) returns (anytype.Rpc.NameService.ResolveAnyId.Response);
+    
     rpc BroadcastPayloadEvent (anytype.Rpc.Broadcast.PayloadEvent.Request) returns (anytype.Rpc.Broadcast.PayloadEvent.Response);
+
+    rpc DeviceSetName (anytype.Rpc.Device.SetName.Request) returns (anytype.Rpc.Device.SetName.Response);
+    rpc DeviceList (anytype.Rpc.Device.List.Request) returns (anytype.Rpc.Device.List.Response);
+    rpc DeviceNetworkStateSet (anytype.Rpc.Device.NetworkState.Set.Request) returns (anytype.Rpc.Device.NetworkState.Set.Response);
+
+    // Chats dummy impl
+    rpc ChatAddMessage (anytype.Rpc.Chat.AddMessage.Request) returns (anytype.Rpc.Chat.AddMessage.Response);
+    rpc ChatEditMessageContent (anytype.Rpc.Chat.EditMessageContent.Request) returns (anytype.Rpc.Chat.EditMessageContent.Response);
+    rpc ChatToggleMessageReaction (anytype.Rpc.Chat.ToggleMessageReaction.Request) returns (anytype.Rpc.Chat.ToggleMessageReaction.Response);
+    rpc ChatDeleteMessage (anytype.Rpc.Chat.DeleteMessage.Request) returns (anytype.Rpc.Chat.DeleteMessage.Response);
+    rpc ChatGetMessages (anytype.Rpc.Chat.GetMessages.Request) returns (anytype.Rpc.Chat.GetMessages.Response);
+    rpc ChatGetMessagesByIds (anytype.Rpc.Chat.GetMessagesByIds.Request) returns (anytype.Rpc.Chat.GetMessagesByIds.Response);
+    rpc ChatSubscribeLastMessages (anytype.Rpc.Chat.SubscribeLastMessages.Request) returns (anytype.Rpc.Chat.SubscribeLastMessages.Response);
+    rpc ChatUnsubscribe (anytype.Rpc.Chat.Unsubscribe.Request) returns (anytype.Rpc.Chat.Unsubscribe.Response);
 }

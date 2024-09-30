@@ -217,8 +217,23 @@
     "blocks": [{"id":"1","Content":{"file":{"name":"http://static.com/image.png","type":2}}}]
   },
   {
-    "desc": "section linm",
+    "desc": "section link",
     "html": "<img class=\"logo-icon\" src=\"#description\" alt=\"\">",
     "blocks": [{"id":"1","Content":{"file":{"name":"http://test.com/test#description","type":2}}}]
+  },
+  {
+    "desc": "image with data-src atr",
+    "html": "<img class=\"logo-icon\" data-src=\"/static/image.png\" alt=\"\">",
+    "blocks": [{"id":"1","Content":{"file":{"name":"http://test.com/static/image.png","type":2}}}]
+  },
+  {
+    "desc": "image without src",
+    "html": "<img class=\"logo-icon\" alt=\"\">",
+    "blocks": null
+  },
+  {
+    "desc": "image with empty src",
+    "html": "<img class=\"logo-icon\" src=\"\" data-src=\"\" alt=\"\">",
+    "blocks": null
   }
 ]

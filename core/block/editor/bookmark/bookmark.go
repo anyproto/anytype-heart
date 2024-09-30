@@ -10,13 +10,11 @@ import (
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -29,11 +27,10 @@ type CreateAndFetchRequest struct {
 	Origin objectorigin.ObjectOrigin
 }
 
-func NewBookmark(sb smartblock.SmartBlock, bookmarkSvc BookmarkService, objectStore objectstore.ObjectStore) Bookmark {
+func NewBookmark(sb smartblock.SmartBlock, bookmarkSvc BookmarkService) Bookmark {
 	return &sbookmark{
 		SmartBlock:  sb,
 		bookmarkSvc: bookmarkSvc,
-		objectStore: objectStore,
 	}
 }
 
@@ -50,9 +47,7 @@ type BookmarkService interface {
 
 type sbookmark struct {
 	smartblock.SmartBlock
-	picker      getblock.ObjectGetter
 	bookmarkSvc BookmarkService
-	objectStore objectstore.ObjectStore
 }
 
 type BlockService interface {

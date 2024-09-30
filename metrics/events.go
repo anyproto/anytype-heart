@@ -5,7 +5,7 @@ import (
 
 	"github.com/valyala/fastjson"
 
-	"github.com/anyproto/anytype-heart/metrics/amplitude"
+	"github.com/anyproto/anytype-heart/metrics/anymetry"
 )
 
 const (
@@ -61,11 +61,11 @@ type IndexEvent struct {
 	SetRelationsCount       int
 }
 
-func (c *IndexEvent) GetBackend() amplitude.MetricsBackend {
-	return ampl
+func (c *IndexEvent) GetBackend() anymetry.MetricsBackend {
+	return inhouse
 }
 
-func (c *IndexEvent) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent {
+func (c *IndexEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	if c.IndexLinksTimeMs+c.IndexDetailsTimeMs+c.IndexSetRelationsTimeMs < IndexEventThresholdMs {
 		return nil
 	}
@@ -95,11 +95,11 @@ type ReindexEvent struct {
 	IndexesRemoved bool
 }
 
-func (c *ReindexEvent) GetBackend() amplitude.MetricsBackend {
-	return ampl
+func (c *ReindexEvent) GetBackend() anymetry.MetricsBackend {
+	return inhouse
 }
 
-func (c *ReindexEvent) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent {
+func (c *ReindexEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	if c.SpentMs < ReindexEventThresholdsMs {
 		return nil
 	}
@@ -130,11 +130,11 @@ type BlockSplit struct {
 	ObjectId    string
 }
 
-func (c *BlockSplit) GetBackend() amplitude.MetricsBackend {
-	return ampl
+func (c *BlockSplit) GetBackend() anymetry.MetricsBackend {
+	return inhouse
 }
 
-func (c *BlockSplit) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent {
+func (c *BlockSplit) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	if c.ApplyMs+c.AlgorithmMs < BlockSplitEventThresholdsMs {
 		return nil
 	}
@@ -158,11 +158,11 @@ type TreeBuild struct {
 	Request  string
 }
 
-func (c *TreeBuild) GetBackend() amplitude.MetricsBackend {
-	return ampl
+func (c *TreeBuild) GetBackend() anymetry.MetricsBackend {
+	return inhouse
 }
 
-func (c *TreeBuild) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent {
+func (c *TreeBuild) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	event, properties := setupProperties(arena, "tree_build")
 
 	properties.Set("object_id", arena.NewString(c.ObjectId))
@@ -194,11 +194,11 @@ type StateApply struct {
 	ObjectId       string
 }
 
-func (c *StateApply) GetBackend() amplitude.MetricsBackend {
-	return ampl
+func (c *StateApply) GetBackend() anymetry.MetricsBackend {
+	return inhouse
 }
 
-func (c *StateApply) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent {
+func (c *StateApply) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	total := c.StateApplyMs + c.PushChangeMs + c.BeforeApplyMs + c.ApplyHookMs + c.ReportChangeMs
 	if total <= StateApplyThresholdMs {
 		return nil
@@ -224,11 +224,11 @@ type AppStart struct {
 	Extra     map[string]interface{}
 }
 
-func (c *AppStart) GetBackend() amplitude.MetricsBackend {
-	return ampl
+func (c *AppStart) GetBackend() anymetry.MetricsBackend {
+	return inhouse
 }
 
-func (c *AppStart) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent {
+func (c *AppStart) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	event, properties := setupProperties(arena, "app_start")
 
 	properties.Set("request", arena.NewString(c.Request))
@@ -256,11 +256,11 @@ type BlockMerge struct {
 	ObjectId    string
 }
 
-func (c *BlockMerge) GetBackend() amplitude.MetricsBackend {
-	return ampl
+func (c *BlockMerge) GetBackend() anymetry.MetricsBackend {
+	return inhouse
 }
 
-func (c *BlockMerge) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent {
+func (c *BlockMerge) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	event, properties := setupProperties(arena, "block_split")
 
 	properties.Set("object_id", arena.NewString(c.ObjectId))
@@ -281,11 +281,11 @@ type CreateObjectEvent struct {
 	ObjectId                string
 }
 
-func (c *CreateObjectEvent) GetBackend() amplitude.MetricsBackend {
-	return ampl
+func (c *CreateObjectEvent) GetBackend() anymetry.MetricsBackend {
+	return inhouse
 }
 
-func (c *CreateObjectEvent) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent {
+func (c *CreateObjectEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	event, properties := setupProperties(arena, "create_object")
 
 	properties.Set("set_details_ms", arena.NewNumberInt(int(c.SetDetailsMs)))
@@ -310,11 +310,11 @@ type OpenBlockEvent struct {
 	ObjectId       string
 }
 
-func (c *OpenBlockEvent) GetBackend() amplitude.MetricsBackend {
-	return ampl
+func (c *OpenBlockEvent) GetBackend() anymetry.MetricsBackend {
+	return inhouse
 }
 
-func (c *OpenBlockEvent) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent {
+func (c *OpenBlockEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	event, properties := setupProperties(arena, "open_block")
 
 	properties.Set("object_id", arena.NewString(c.ObjectId))
@@ -335,11 +335,11 @@ type ImportStartedEvent struct {
 	ImportType string
 }
 
-func (i *ImportStartedEvent) GetBackend() amplitude.MetricsBackend {
-	return ampl
+func (i *ImportStartedEvent) GetBackend() anymetry.MetricsBackend {
+	return inhouse
 }
 
-func (i *ImportStartedEvent) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent {
+func (i *ImportStartedEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	event, properties := setupProperties(arena, "import_started")
 
 	properties.Set("import_id", arena.NewString(i.ID))
@@ -354,11 +354,11 @@ type ImportFinishedEvent struct {
 	ImportType string
 }
 
-func (i *ImportFinishedEvent) GetBackend() amplitude.MetricsBackend {
-	return ampl
+func (i *ImportFinishedEvent) GetBackend() anymetry.MetricsBackend {
+	return inhouse
 }
 
-func (i *ImportFinishedEvent) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent {
+func (i *ImportFinishedEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	event, properties := setupProperties(arena, "import_finished")
 
 	properties.Set("import_id", arena.NewString(i.ID))
@@ -387,16 +387,36 @@ type MethodEvent struct {
 	description string
 }
 
-func (c *MethodEvent) GetBackend() amplitude.MetricsBackend {
+func (c *MethodEvent) GetBackend() anymetry.MetricsBackend {
 	return inhouse
 }
 
-func (c *MethodEvent) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent {
+func (c *MethodEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	event, properties := setupProperties(arena, "MethodEvent")
 
 	properties.Set("methodName", arena.NewString(c.methodName))
 	properties.Set("middleTime", arena.NewNumberInt(int(c.middleTime)))
 	properties.Set("errorCode", arena.NewNumberInt(int(c.errorCode)))
 	properties.Set("description", arena.NewString(c.description))
+	return event
+}
+
+type LongMethodEvent struct {
+	baseInfo
+	methodName string
+	middleTime int64
+	stack      string
+}
+
+func (c *LongMethodEvent) GetBackend() anymetry.MetricsBackend {
+	return inhouse
+}
+
+func (c *LongMethodEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
+	event, properties := setupProperties(arena, "LongMethodEvent")
+
+	properties.Set("methodName", arena.NewString(c.methodName))
+	properties.Set("middleTime", arena.NewNumberInt(int(c.middleTime)))
+	properties.Set("stack", arena.NewString(c.stack))
 	return event
 }

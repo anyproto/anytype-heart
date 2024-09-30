@@ -39,8 +39,9 @@ type (
 	}
 
 	customInfo struct {
-		isUsed bool
-		id     string
+		isUsed         bool
+		id             string
+		relationFormat model.RelationFormat
 	}
 
 	useCaseInfo struct {
@@ -49,6 +50,7 @@ type (
 		types     map[string]domain.TypeKey
 		templates map[string]string
 		options   map[string]domain.RelationKey
+		files     []string
 
 		customTypesAndRelations map[string]customInfo
 
@@ -60,7 +62,7 @@ type (
 		analytics, validate, creator   bool
 		list, removeRelations, exclude bool
 		collectCustomUsageInfo         bool
-		path, rules                    string
+		path, rules, spaceDashboardId  string
 	}
 )
 
@@ -73,6 +75,7 @@ const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
 var (
 	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
 	errValidationFailed   = fmt.Errorf("validation failed")
+	errSkipObject         = fmt.Errorf("object is invalid, skip it")
 )
 
 func main() {
@@ -164,6 +167,7 @@ func getFlags() (*cliFlags, error) {
 	rules := flag.String("rules", "", "Path to file with processing rules")
 	exclude := flag.Bool("exclude", false, "Exclude objects that did not pass validation")
 	custom := flag.Bool("c", false, "Collect usage information about custom types and relations")
+	spaceDashboardId := flag.String("s", "", "Id of object to be set as Space Dashboard")
 
 	flag.Parse()
 
@@ -181,6 +185,7 @@ func getFlags() (*cliFlags, error) {
 		rules:                  *rules,
 		exclude:                *exclude,
 		collectCustomUsageInfo: *custom,
+		spaceDashboardId:       *spaceDashboardId,
 	}, nil
 }
 
@@ -192,6 +197,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 		types:                   make(map[string]domain.TypeKey, len(files)-1),
 		templates:               make(map[string]string),
 		options:                 make(map[string]domain.RelationKey),
+		files:                   make([]string, 0),
 		customTypesAndRelations: make(map[string]customInfo),
 		profileFileFound:        false,
 	}
@@ -201,7 +207,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			continue
 		}
 
-		if strings.HasPrefix(f.Name, "files/") {
+		if strings.HasPrefix(f.Name, "files") {
 			continue
 		}
 
@@ -229,8 +235,9 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
 			key := strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)
 			info.relations[id] = domain.RelationKey(key)
+			format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
 			if !bundle.HasRelation(key) {
-				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false}
+				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
 			}
 		case model.SmartBlockType_STType:
 			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
@@ -249,14 +256,17 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			} else if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
 				key := strings.TrimPrefix(id, addr.RelationKeyToIdPrefix)
 				info.relations[id] = domain.RelationKey(key)
+				format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
 				if !bundle.HasRelation(key) {
-					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false}
+					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
 				}
 			}
 		case model.SmartBlockType_Template:
 			info.templates[id] = pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyTargetObjectType.String())
 		case model.SmartBlockType_STRelationOption:
 			info.options[id] = domain.RelationKey(pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
+		case model.SmartBlockType_FileObject:
+			info.files = append(info.files, id)
 		}
 	}
 	return
@@ -298,9 +308,9 @@ func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo, flags *c
 			continue
 		}
 		newFileName := f.Name
-		if strings.HasPrefix(newFileName, ".pb.json") {
+		if strings.HasSuffix(newFileName, ".pb.json") {
 			// output of usecase validator is always an archive with protobufs
-			newFileName = strings.TrimPrefix(newFileName, ".json")
+			newFileName = strings.TrimSuffix(newFileName, ".json")
 		}
 		nf, err := zw.Create(newFileName)
 		if err != nil {
@@ -319,10 +329,10 @@ func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo, flags *c
 
 func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags) ([]byte, error) {
 	if name == constant.ProfileFile {
-		return processProfile(data, info)
+		return processProfile(data, info, flags.spaceDashboardId)
 	}
 
-	if strings.HasPrefix(name, "files/") {
+	if strings.HasPrefix(name, "files") {
 		return data, nil
 	}
 
@@ -349,6 +359,10 @@ func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags
 
 	if flags.validate {
 		if err = validate(snapshot, info); err != nil {
+			if errors.Is(err, errSkipObject) {
+				// some validators register errors mentioning that object can be excluded
+				return nil, nil
+			}
 			fmt.Println(err)
 			return nil, errValidationFailed
 		}
@@ -407,17 +421,24 @@ func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	for _, v := range validators {
 		if e := v(snapshot, info); e != nil {
+			if errors.Is(e, errSkipObject) {
+				return errSkipObject
+			}
 			isValid = false
 			err = multierror.Append(err, e)
 		}
 	}
 	if !isValid {
-		return fmt.Errorf("object '%s' is invalid: %w", id, err)
+		return fmt.Errorf("object '%s' (name: '%s') is invalid: %w",
+			id[len(id)-4:], pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String()), err)
 	}
 	return nil
 }
 
 func insertAnalyticsData(s *pb.ChangeSnapshot, info *useCaseInfo) {
+	if s == nil || s.Data == nil || len(s.Data.Blocks) == 0 {
+		return
+	}
 	root := s.Data.Blocks[0]
 	id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
 	f := root.GetFields().GetFields()
@@ -441,7 +462,9 @@ func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
 			bundle.RelationKeyRelationFormatObjectTypes.String(),
 			bundle.RelationKeySourceFilePath.String(),
 			bundle.RelationKeyLinks.String(),
-			bundle.RelationKeyBacklinks.String():
+			bundle.RelationKeyBacklinks.String(),
+			bundle.RelationKeyWorkspaceId.String(),
+			bundle.RelationKeyIdentityProfileLink.String():
 
 			delete(s.Data.Details.Fields, key)
 		}
@@ -453,7 +476,7 @@ func insertCreatorInfo(s *pb.ChangeSnapshot) {
 	s.Data.Details.Fields[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(addr.AnytypeProfileId)
 }
 
-func processProfile(data []byte, info *useCaseInfo) ([]byte, error) {
+func processProfile(data []byte, info *useCaseInfo, spaceDashboardId string) ([]byte, error) {
 	profile := &pb.Profile{}
 	if err := profile.Unmarshal(data); err != nil {
 		e := fmt.Errorf("cannot unmarshal profile: %w", err)
@@ -462,6 +485,12 @@ func processProfile(data []byte, info *useCaseInfo) ([]byte, error) {
 	}
 	profile.Name = ""
 	profile.ProfileId = ""
+
+	if spaceDashboardId != "" {
+		profile.SpaceDashboardId = spaceDashboardId
+		return profile.Marshal()
+	}
+
 	fmt.Println("spaceDashboardId = " + profile.SpaceDashboardId)
 	if _, found := info.objects[profile.SpaceDashboardId]; !found {
 		err := fmt.Errorf("failed to find Space Dashboard object '%s' among provided", profile.SpaceDashboardId)
@@ -517,5 +546,12 @@ func listObjects(info *useCaseInfo) {
 	for id, key := range info.options {
 		obj := info.objects[id]
 		fmt.Printf("%s:\t%32s - %s\n", id[len(id)-4:], obj.Name, key)
+	}
+
+	fmt.Println("\n- File Objects:")
+	fmt.Println("Id:  " + strings.Repeat(" ", 31) + "Name")
+	for _, id := range info.files {
+		obj := info.objects[id]
+		fmt.Printf("%s:\t%32s\n", id[len(id)-4:], obj.Name)
 	}
 }

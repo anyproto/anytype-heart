@@ -20,7 +20,7 @@ func newWorkspace(spaceService space.Service) *workspace {
 	return &workspace{spaceService: spaceService}
 }
 
-func (w *workspace) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, _ time.Time, _ bool, _ objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
+func (w *workspace) GetIDAndPayload(ctx context.Context, spaceID string, _ *common.Snapshot, _ time.Time, _ bool, _ objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
 	spc, err := w.spaceService.Get(ctx, spaceID)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get space : %w", err)

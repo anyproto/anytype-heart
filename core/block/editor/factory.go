@@ -7,11 +7,12 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -21,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
+	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -36,7 +38,11 @@ type ObjectDeleter interface {
 
 type accountService interface {
 	PersonalSpaceID() string
-	IdentityObjectId() string
+	MyParticipantId(spaceId string) string
+}
+
+type deviceService interface {
+	SaveDeviceInfo(info smartblock.ApplyInfo) error
 }
 
 type ObjectFactory struct {
@@ -49,7 +55,7 @@ type ObjectFactory struct {
 	fileStore           filestore.FileStore
 	fileService         files.Service
 	config              *config.Config
-	picker              getblock.ObjectGetter
+	picker              cache.ObjectGetter
 	eventSender         event.Sender
 	restrictionService  restriction.Service
 	indexer             smartblock.Indexer
@@ -58,7 +64,10 @@ type ObjectFactory struct {
 	fileObjectService   fileobject.Service
 	processService      process.Service
 	fileUploaderService fileuploader.Service
+	fileReconciler      reconciler.Reconciler
 	objectDeleter       ObjectDeleter
+	deviceService       deviceService
+	lastUsedUpdater     lastused.ObjectUsageUpdater
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -76,7 +85,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.config = app.MustComponent[*config.Config](a)
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
-	f.picker = app.MustComponent[getblock.ObjectGetter](a)
+	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.spaceService = app.MustComponent[spaceService](a)
@@ -85,6 +94,9 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.processService = app.MustComponent[process.Service](a)
 	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
+	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
+	f.deviceService = app.MustComponent[deviceService](a)
+	f.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
 	return nil
 }
 
@@ -120,21 +132,23 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 		sb.SetLocker(ot)
 	}
 
-	// we probably don't need any locks here, because the object is initialized synchronously
 	initCtx.Source = sc
+	// adding locks as a temporary measure to find the place where we have races in our code
+	sb.Lock()
+	defer sb.Unlock()
 	err = sb.Init(initCtx)
 	if err != nil {
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
 
 	migration.RunMigrations(sb, initCtx)
-	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
+	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
 }
 
 func (f *ObjectFactory) produceSmartblock(space smartblock.Space) smartblock.SmartBlock {
 	return smartblock.New(
 		space,
-		f.accountService.IdentityObjectId(),
+		f.accountService.MyParticipantId(space.Id()),
 		f.fileStore,
 		f.restrictionService,
 		f.objectStore,
@@ -152,7 +166,6 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeBundledObjectType,
 		coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
-		coresb.SmartBlockTypeIdentity,
 		coresb.SmartBlockTypeRelationOption:
 		return f.newPage(sb), nil
 	case coresb.SmartBlockTypeArchive:
@@ -174,9 +187,15 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, f.objectStore, f.layoutConverter, f.accountService), nil
+		return NewWidgetObject(sb, f.objectStore, f.layoutConverter), nil
+	case coresb.SmartBlockTypeNotificationObject:
+		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
+	case coresb.SmartBlockTypeParticipant:
+		return f.newParticipant(sb), nil
+	case coresb.SmartBlockTypeDevicesObject:
+		return NewDevicesObject(sb, f.deviceService), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

@@ -19,7 +19,7 @@ func (mw *Middleware) ObjectUndo(cctx context.Context, req *pb.RpcObjectUndoRequ
 	response := func(code pb.RpcObjectUndoResponseErrorCode, err error) *pb.RpcObjectUndoResponse {
 		m := &pb.RpcObjectUndoResponse{Error: &pb.RpcObjectUndoResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 			m.Counters = &info.Counters
@@ -53,7 +53,7 @@ func (mw *Middleware) ObjectRedo(cctx context.Context, req *pb.RpcObjectRedoRequ
 	response := func(code pb.RpcObjectRedoResponseErrorCode, err error) *pb.RpcObjectRedoResponse {
 		m := &pb.RpcObjectRedoResponse{Error: &pb.RpcObjectRedoResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		} else {
 			m.Event = mw.getResponseEvent(ctx)
 			m.Counters = &info.Counters

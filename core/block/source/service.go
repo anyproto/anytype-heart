@@ -6,6 +6,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -17,11 +20,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
@@ -33,7 +34,7 @@ func New() Service {
 }
 
 type accountService interface {
-	IdentityObjectId() string
+	MyParticipantId(string) string
 	PersonalSpaceID() string
 }
 
@@ -43,15 +44,17 @@ type Space interface {
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
+	StoredIds() []string
+	IsPersonal() bool
 }
 
 type Service interface {
 	NewSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(s Source) error
-	NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
+	NewStaticSource(params StaticSourceParams) SourceWithType
 
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
-	IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error)
+	IDsListerBySmartblockType(space Space, blockType smartblock.SmartBlockType) (IDsLister, error)
 	app.Component
 }
 
@@ -59,12 +62,9 @@ type service struct {
 	sbtProvider        typeprovider.SmartBlockTypeProvider
 	accountService     accountService
 	accountKeysService accountservice.Service
-	fileStore          filestore.FileStore
-	spaceCoreService   spacecore.SpaceCoreService
 	storageService     storage.ClientStorage
 	fileService        files.Service
-	identityService    identityService
-	objectStore        objectstore.ObjectStore
+	objectStore        RelationGetter
 	fileObjectMigrator fileObjectMigrator
 
 	mu        sync.Mutex
@@ -77,13 +77,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.accountService = app.MustComponent[accountService](a)
 	s.accountKeysService = a.MustComponent(accountservice.CName).(accountservice.Service)
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
-	s.spaceCoreService = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
-	s.identityService = app.MustComponent[identityService](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.objectStore = app.MustComponent[RelationGetter](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
 	return
 }
@@ -99,7 +96,11 @@ type BuildOptions struct {
 
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	return objecttreebuilder.BuildTreeOpts{
-		Listener: b.Listener,
+		Listener:    b.Listener,
+		TreeBuilder: objecttree.BuildKeyFilterableObjectTree,
+		TreeValidator: func(payload treestorage.TreeStorageCreatePayload, buildFunc objecttree.BuildObjectTreeFunc, aclList list.AclList) (retPayload treestorage.TreeStorageCreatePayload, err error) {
+			return objecttree.ValidateFilterRawTree(payload, aclList)
+		},
 	}
 }
 
@@ -131,8 +132,20 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 			return NewBundledObjectType(id), nil
 		case smartblock.SmartBlockTypeBundledRelation:
 			return NewBundledRelation(id), nil
-		case smartblock.SmartBlockTypeIdentity:
-			return NewIdentity(s.identityService, id), nil
+		case smartblock.SmartBlockTypeParticipant:
+			participantState := state.NewDoc(id, nil).(*state.State)
+			// Set object type here in order to derive value of Type relation in smartblock.Init
+			participantState.SetObjectTypeKey(bundle.TypeKeyParticipant)
+			params := StaticSourceParams{
+				Id: domain.FullID{
+					ObjectID: id,
+					SpaceID:  space.Id(),
+				},
+				State:     participantState,
+				SbType:    smartblock.SmartBlockTypeParticipant,
+				CreatorId: addr.AnytypeProfileId,
+			}
+			return s.NewStaticSource(params), nil
 		}
 	}
 
@@ -146,7 +159,7 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	return s.newTreeSource(ctx, space, id, buildOptions.BuildTreeOpts())
 }
 
-func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error) {
+func (s *service) IDsListerBySmartblockType(space Space, blockType smartblock.SmartBlockType) (IDsLister, error) {
 	switch blockType {
 	case smartblock.SmartBlockTypeAnytypeProfile:
 		return &anytypeProfile{}, nil
@@ -157,15 +170,19 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 	case smartblock.SmartBlockTypeBundledRelation:
 		return &bundledRelation{}, nil
 	case smartblock.SmartBlockTypeBundledTemplate:
-		return s.NewStaticSource(domain.FullID{}, smartblock.SmartBlockTypeBundledTemplate, nil, nil), nil
+		params := StaticSourceParams{
+			SbType:    smartblock.SmartBlockTypeBundledTemplate,
+			CreatorId: addr.AnytypeProfileId,
+		}
+		return s.NewStaticSource(params), nil
 	default:
 		if err := blockType.Valid(); err != nil {
 			return nil, err
 		}
 		return &source{
-			spaceID:        spaceID,
+			space:          space,
+			spaceID:        space.Id(),
 			smartblockType: blockType,
-			spaceService:   s.spaceCoreService,
 			sbtProvider:    s.sbtProvider,
 		}, nil
 	}

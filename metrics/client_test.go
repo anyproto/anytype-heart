@@ -11,19 +11,19 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/valyala/fastjson"
 
-	"github.com/anyproto/anytype-heart/metrics/amplitude"
-	"github.com/anyproto/anytype-heart/metrics/amplitude/mock_amplitude"
+	"github.com/anyproto/anytype-heart/metrics/anymetry"
+	"github.com/anyproto/anytype-heart/metrics/anymetry/mock_anymetry"
 )
 
 type testEvent struct {
 	baseInfo
 }
 
-func (t testEvent) GetBackend() amplitude.MetricsBackend {
+func (t testEvent) GetBackend() anymetry.MetricsBackend {
 	return inhouse
 }
 
-func (t testEvent) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent {
+func (t testEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	event, _ := setupProperties(arena, "TestEvent")
 	return event
 }
@@ -54,15 +54,15 @@ func (t testAppInfoProvider) GetUserId() string {
 func TestClient_SendEvents(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
-	telemetry := &mock_amplitude.MockService{}
-	//telemetry.EXPECT().SendEvents(mock.Anything, mock.Anything).Return(nil)
+	telemetry := &mock_anymetry.MockService{}
+	// telemetry.EXPECT().SendEvents(mock.Anything, mock.Anything).Return(nil)
 	mutex := sync.Mutex{}
-	var events []amplitude.Event
+	var events []anymetry.Event
 	telemetry.On("SendEvents", mock.Anything, mock.Anything).
 		Return(nil).
 		Run(func(args mock.Arguments) {
 			mutex.Lock()
-			events = args.Get(0).([]amplitude.Event)
+			events = args.Get(0).([]anymetry.Event)
 			mutex.Unlock()
 		})
 
@@ -71,7 +71,7 @@ func TestClient_SendEvents(t *testing.T) {
 		aggregatableChan: make(chan SamplableEvent, bufferSize),
 		ctx:              ctx,
 		cancel:           cancel,
-		batcher:          mb.New[amplitude.Event](0),
+		batcher:          mb.New[anymetry.Event](0),
 		telemetry:        telemetry,
 	}
 
