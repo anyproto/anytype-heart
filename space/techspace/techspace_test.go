@@ -343,7 +343,7 @@ func newFixture(t *testing.T, storeIDs []string) *fixture {
 	fx.techCore.EXPECT().Id().Return(testTechSpaceId).AnyTimes()
 
 	require.NoError(t, fx.a.Start(ctx))
-	err := fx.TechSpace.Run(fx.techCore, fx.objectCache)
+	err := fx.TechSpace.Run(fx.techCore, fx.objectCache, false)
 	require.NoError(t, err)
 
 	// do not cancel wakeUpIds func

@@ -29838,6 +29838,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | DevicesObject | 536 |  |
 | ChatObject | 537 | Container for any-store based chats |
 | ChatDerivedObject | 544 | Any-store based object for chat |
+| AccountObject | 545 | Container for account data in tech space |
 
 
 

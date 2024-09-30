@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
@@ -46,7 +46,7 @@ type service struct {
 	fileService       files.Service
 	tempDirProvider   core.TempDirProvider
 	picker            cache.ObjectGetter
-	fileObjectService fileobject.Service
+	fileObjectService FileObjectService
 }
 
 func New() Service {
@@ -74,7 +74,7 @@ func (f *service) Init(a *app.App) error {
 	f.fileService = app.MustComponent[files.Service](a)
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.picker = app.MustComponent[cache.ObjectGetter](a)
-	f.fileObjectService = app.MustComponent[fileobject.Service](a)
+	f.fileObjectService = app.MustComponent[FileObjectService](a)
 	return nil
 }
 
@@ -140,9 +140,14 @@ func (ur UploadResult) ToBlock() file.Block {
 	}).(file.Block)
 }
 
+type FileObjectService interface {
+	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
+	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *types.Struct, err error)
+}
+
 type uploader struct {
 	spaceId              string
-	fileObjectService    fileobject.Service
+	fileObjectService    FileObjectService
 	picker               cache.ObjectGetter
 	block                file.Block
 	getReader            func(ctx context.Context) (*fileReader, error)
@@ -491,7 +496,7 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.A
 		if err == nil {
 			return id, details, nil
 		}
-		if errors.Is(err, fileobject.ErrObjectNotFound) {
+		if errors.Is(err, filemodels.ErrObjectNotFound) {
 			err = nil
 		}
 		if err != nil {
@@ -499,7 +504,7 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.A
 		}
 	}
 
-	fileObjectId, fileObjectDetails, err := u.fileObjectService.Create(ctx, u.spaceId, fileobject.CreateRequest{
+	fileObjectId, fileObjectDetails, err := u.fileObjectService.Create(ctx, u.spaceId, filemodels.CreateRequest{
 		FileId:            addResult.FileId,
 		EncryptionKeys:    addResult.EncryptionKeys.EncryptionKeys,
 		ObjectOrigin:      u.origin,

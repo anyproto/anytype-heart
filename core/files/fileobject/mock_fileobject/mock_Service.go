@@ -9,7 +9,7 @@ import (
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
 
-	fileobject "github.com/anyproto/anytype-heart/core/files/fileobject"
+	filemodels "github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -84,7 +84,7 @@ func (_c *MockService_Close_Call) RunAndReturn(run func(context.Context) error) 
 }
 
 // Create provides a mock function with given fields: ctx, spaceId, req
-func (_m *MockService) Create(ctx context.Context, spaceId string, req fileobject.CreateRequest) (string, *types.Struct, error) {
+func (_m *MockService) Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (string, *types.Struct, error) {
 	ret := _m.Called(ctx, spaceId, req)
 
 	if len(ret) == 0 {
@@ -94,16 +94,16 @@ func (_m *MockService) Create(ctx context.Context, spaceId string, req fileobjec
 	var r0 string
 	var r1 *types.Struct
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, fileobject.CreateRequest) (string, *types.Struct, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, filemodels.CreateRequest) (string, *types.Struct, error)); ok {
 		return rf(ctx, spaceId, req)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, fileobject.CreateRequest) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, filemodels.CreateRequest) string); ok {
 		r0 = rf(ctx, spaceId, req)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, fileobject.CreateRequest) *types.Struct); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, filemodels.CreateRequest) *types.Struct); ok {
 		r1 = rf(ctx, spaceId, req)
 	} else {
 		if ret.Get(1) != nil {
@@ -111,7 +111,7 @@ func (_m *MockService) Create(ctx context.Context, spaceId string, req fileobjec
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, string, fileobject.CreateRequest) error); ok {
+	if rf, ok := ret.Get(2).(func(context.Context, string, filemodels.CreateRequest) error); ok {
 		r2 = rf(ctx, spaceId, req)
 	} else {
 		r2 = ret.Error(2)
@@ -128,14 +128,14 @@ type MockService_Create_Call struct {
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spaceId string
-//   - req fileobject.CreateRequest
+//   - req filemodels.CreateRequest
 func (_e *MockService_Expecter) Create(ctx interface{}, spaceId interface{}, req interface{}) *MockService_Create_Call {
 	return &MockService_Create_Call{Call: _e.mock.On("Create", ctx, spaceId, req)}
 }
 
-func (_c *MockService_Create_Call) Run(run func(ctx context.Context, spaceId string, req fileobject.CreateRequest)) *MockService_Create_Call {
+func (_c *MockService_Create_Call) Run(run func(ctx context.Context, spaceId string, req filemodels.CreateRequest)) *MockService_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(fileobject.CreateRequest))
+		run(args[0].(context.Context), args[1].(string), args[2].(filemodels.CreateRequest))
 	})
 	return _c
 }
@@ -145,7 +145,7 @@ func (_c *MockService_Create_Call) Return(id string, object *types.Struct, err e
 	return _c
 }
 
-func (_c *MockService_Create_Call) RunAndReturn(run func(context.Context, string, fileobject.CreateRequest) (string, *types.Struct, error)) *MockService_Create_Call {
+func (_c *MockService_Create_Call) RunAndReturn(run func(context.Context, string, filemodels.CreateRequest) (string, *types.Struct, error)) *MockService_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }

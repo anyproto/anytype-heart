@@ -108,8 +108,7 @@ func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 			if err != nil {
 				return nil, err
 			}
-			if sbt == smartblock.SmartBlockTypeChatDerivedObject {
-				// here we have special
+			if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
 				ot.SetFlusher(objecttree.MarkNewChangeFlusher())
 			}
 			return ot, nil

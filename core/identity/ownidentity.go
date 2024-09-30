@@ -19,12 +19,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -93,18 +93,12 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-
 	s.myIdentity = s.accountService.AccountID()
-
-	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeProfilePage, "")
-	if err != nil {
-		return err
-	}
-	personalSpace, err := s.spaceService.GetPersonalSpace(ctx)
+	techSpace, err := s.spaceService.GetTechSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	profileObjectId, err := personalSpace.DeriveObjectID(ctx, uniqueKey)
+	id, err := techSpace.(*clientspace.TechSpace).TechSpace.AccountObjectId()
 	if err != nil {
 		return err
 	}
@@ -117,7 +111,7 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 		closeSub func()
 	)
 
-	records, closeSub, err = s.objectStore.SpaceId(personalSpace.Id()).QueryByIDAndSubscribeForChanges([]string{profileObjectId}, sub)
+	records, closeSub, err = s.objectStore.SpaceId(techSpace.Id()).QueryByIDAndSubscribeForChanges([]string{id}, sub)
 	if err != nil {
 		return err
 	}

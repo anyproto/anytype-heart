@@ -8,7 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -44,7 +44,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 		return fmt.Errorf("subobjects deprecated")
 	case coresb.SmartBlockTypeFileObject:
 		err = s.fileObjectService.DeleteFileData(id.SpaceID, id.ObjectID)
-		if err != nil && !errors.Is(err, fileobject.ErrEmptyFileId) {
+		if err != nil && !errors.Is(err, filemodels.ErrEmptyFileId) {
 			return fmt.Errorf("delete file data: %w", err)
 		}
 		err = spc.DeleteTree(context.Background(), id.ObjectID)

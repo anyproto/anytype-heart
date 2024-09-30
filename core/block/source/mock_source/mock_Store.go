@@ -542,6 +542,39 @@ func (_c *MockStore_ReadStoreDoc_Call) RunAndReturn(run func(context.Context, *s
 	return _c
 }
 
+// SetPushChangeHook provides a mock function with given fields: onPushChange
+func (_m *MockStore) SetPushChangeHook(onPushChange source.PushChangeHook) {
+	_m.Called(onPushChange)
+}
+
+// MockStore_SetPushChangeHook_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetPushChangeHook'
+type MockStore_SetPushChangeHook_Call struct {
+	*mock.Call
+}
+
+// SetPushChangeHook is a helper method to define mock.On call
+//   - onPushChange source.PushChangeHook
+func (_e *MockStore_Expecter) SetPushChangeHook(onPushChange interface{}) *MockStore_SetPushChangeHook_Call {
+	return &MockStore_SetPushChangeHook_Call{Call: _e.mock.On("SetPushChangeHook", onPushChange)}
+}
+
+func (_c *MockStore_SetPushChangeHook_Call) Run(run func(onPushChange source.PushChangeHook)) *MockStore_SetPushChangeHook_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(source.PushChangeHook))
+	})
+	return _c
+}
+
+func (_c *MockStore_SetPushChangeHook_Call) Return() *MockStore_SetPushChangeHook_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockStore_SetPushChangeHook_Call) RunAndReturn(run func(source.PushChangeHook)) *MockStore_SetPushChangeHook_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SpaceID provides a mock function with given fields:
 func (_m *MockStore) SpaceID() string {
 	ret := _m.Called()

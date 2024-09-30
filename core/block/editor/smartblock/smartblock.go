@@ -62,7 +62,8 @@ const (
 	DoSnapshot
 	SkipIfNoChanges
 	KeepInternalFlags
-	IgnoreNoPermissions // Used only for read-only actions like InitObject or OpenObject
+	IgnoreNoPermissions
+	NotPushChanges // Used only for read-only actions like InitObject or OpenObject
 )
 
 type Hook int
@@ -589,6 +590,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		skipIfNoChanges     = false
 		keepInternalFlags   = false
 		ignoreNoPermissions = false
+		notPushChanges      = false
 	)
 	for _, f := range flags {
 		switch f {
@@ -608,6 +610,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			keepInternalFlags = true
 		case IgnoreNoPermissions:
 			ignoreNoPermissions = true
+		case NotPushChanges:
+			notPushChanges = true
 		}
 	}
 
@@ -677,6 +681,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return nil
 	}
 	pushChange := func() error {
+		if notPushChanges {
+			return nil
+		}
 		if !sb.source.ReadOnly() {
 			// We can set details directly in object's state, they'll be indexed correctly
 			st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentParticipantId))
