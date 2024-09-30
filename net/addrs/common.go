@@ -266,6 +266,14 @@ func (i InterfacesAddrs) SortInterfacesWithPriority(priority []string) {
 	slices.SortFunc(i.Interfaces, compare)
 }
 
+func (i InterfacesAddrs) InterfaceNames() []string {
+	var names = make([]string, 0, len(i.Interfaces))
+	for _, iface := range i.Interfaces {
+		names = append(names, iface.Name)
+	}
+	return names
+}
+
 func (i InterfacesAddrs) NetInterfaces() []net.Interface {
 	var s = make([]net.Interface, 0, len(i.Interfaces))
 	for _, iface := range i.Interfaces {
