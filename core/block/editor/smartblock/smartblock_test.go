@@ -136,7 +136,14 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
 			},
 		}
-		fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{Details: details}, nil)
+
+		fx.store.AddObjects(t, []spaceobjects.TestObject{
+			{
+				"id":     pbtypes.String("1"),
+				"number": pbtypes.Float64(2.18281828459045),
+				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
+			},
+		})
 
 		// when
 		detailsFromStore, err := fx.getDetailsFromStore()

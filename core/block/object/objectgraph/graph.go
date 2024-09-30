@@ -1,6 +1,8 @@
 package objectgraph
 
 import (
+	"fmt"
+
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
@@ -65,6 +67,9 @@ func (gr *Builder) Name() (name string) {
 }
 
 func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error) {
+	if req.SpaceId == "" {
+		return nil, nil, fmt.Errorf("spaceId is required")
+	}
 	relations, err := gr.objectStore.SpaceId(req.SpaceId).ListAllRelations()
 	if err != nil {
 		return nil, nil, err

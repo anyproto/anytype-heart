@@ -24,6 +24,10 @@ type StoreFixture struct {
 	FullText ftsearch.FTSearch
 }
 
+func (fx *StoreFixture) TechSpaceId() string {
+	return fx.techSpaceIdProvider.TechSpaceId()
+}
+
 type detailsFromId struct {
 }
 

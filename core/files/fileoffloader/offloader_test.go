@@ -11,12 +11,14 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -33,6 +35,8 @@ func newFixture(t *testing.T) *fixture {
 	objectStore := objectstore.NewStoreFixture(t)
 	fileStore := filestore.New()
 	dataStoreProvider, err := datastore.NewInMemory()
+	spaceIdResolver := mock_idresolver.NewMockResolver(t)
+
 	require.NoError(t, err)
 	offloader := New()
 
@@ -44,6 +48,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(commonFileService)
 	a.Register(objectStore)
 	a.Register(offloader)
+	a.Register(testutil.PrepareMock(ctx, a, spaceIdResolver))
 
 	err = a.Start(ctx)
 	require.NoError(t, err)

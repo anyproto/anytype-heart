@@ -112,7 +112,7 @@ func Test_GrouperTags(t *testing.T) {
 		"tag":  pbtypes.StringList([]string{idTag1, idTag3}),
 	}}))
 
-	grouper, err := kanbanSrv.Grouper("", "tag")
+	grouper, err := kanbanSrv.Grouper("space1", "tag")
 	require.NoError(t, err)
 	err = grouper.InitGroups("", nil)
 	require.NoError(t, err)
