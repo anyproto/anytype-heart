@@ -20,6 +20,7 @@ import (
 )
 
 func Test_GrouperTags(t *testing.T) {
+	const spaceId = "space1"
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
 
@@ -30,12 +31,12 @@ func Test_GrouperTags(t *testing.T) {
 
 	objectStore := objectstore.NewStoreFixture(t)
 
-	objectStore.AddObjects(t, "space1", []objectstore.TestObject{
+	objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:             pbtypes.String("tag1"),
 			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-tag"),
 			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
-			bundle.RelationKeySpaceId:        pbtypes.String("space1"),
+			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
 		},
 	})
 
@@ -46,7 +47,7 @@ func Test_GrouperTags(t *testing.T) {
 		Start(context.Background())
 	require.NoError(t, err)
 
-	store := objectStore.SpaceId("space1")
+	store := objectStore.SpaceId(spaceId)
 
 	require.NoError(t, store.UpdateObjectDetails(context.Background(), "rel-tag", &types.Struct{
 		Fields: map[string]*types.Value{
@@ -112,16 +113,16 @@ func Test_GrouperTags(t *testing.T) {
 		"tag":  pbtypes.StringList([]string{idTag1, idTag3}),
 	}}))
 
-	grouper, err := kanbanSrv.Grouper("space1", "tag")
+	grouper, err := kanbanSrv.Grouper(spaceId, "tag")
 	require.NoError(t, err)
-	err = grouper.InitGroups("", nil)
+	err = grouper.InitGroups(spaceId, nil)
 	require.NoError(t, err)
 	groups, err := grouper.MakeDataViewGroups()
 	require.NoError(t, err)
 	require.Len(t, groups, 6)
 
 	f := &database.Filters{FilterObj: database.FilterEq{Key: "name", Cond: 1, Value: pbtypes.String("three")}}
-	err = grouper.InitGroups("", f)
+	err = grouper.InitGroups(spaceId, f)
 	require.NoError(t, err)
 	groups, err = grouper.MakeDataViewGroups()
 	require.NoError(t, err)

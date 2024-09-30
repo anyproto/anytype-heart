@@ -199,6 +199,7 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 }
 
 func (s *dsObjectStore) SpaceId(spaceId string) spaceobjects.Store {
+	// TODO Check spaceId
 	s.Lock()
 	store, ok := s.stores[spaceId]
 	if !ok {

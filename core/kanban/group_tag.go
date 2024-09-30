@@ -20,6 +20,9 @@ type GroupTag struct {
 }
 
 func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
+	if spaceID == "" {
+		return fmt.Errorf("spaceId is required")
+	}
 	filterTag := database.FiltersAnd{
 		database.FilterNot{Filter: database.FilterEmpty{Key: t.Key}},
 	}

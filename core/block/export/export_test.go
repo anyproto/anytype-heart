@@ -67,15 +67,15 @@ func Test_docsForExport(t *testing.T) {
 		assert.Nil(t, err)
 
 		provider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-		provider.EXPECT().Type("spaceId", "id1").Return(smartblock.SmartBlockTypePage, nil)
+		provider.EXPECT().Type(spaceId, "id1").Return(smartblock.SmartBlockTypePage, nil)
 		e := &export{
 			objectStore: storeFixture,
 			sbtProvider: provider,
 		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
+		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
+			SpaceId:       spaceId,
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 		})
@@ -101,15 +101,15 @@ func Test_docsForExport(t *testing.T) {
 		assert.Nil(t, err)
 
 		provider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-		provider.EXPECT().Type("spaceId", "id1").Return(smartblock.SmartBlockTypePage, nil)
+		provider.EXPECT().Type(spaceId, "id1").Return(smartblock.SmartBlockTypePage, nil)
 		e := &export{
 			objectStore: storeFixture,
 			sbtProvider: provider,
 		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
+		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
+			SpaceId:       spaceId,
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 		})
@@ -156,8 +156,8 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
+		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
+			SpaceId:   spaceId,
 			ObjectIds: []string{"id"},
 			Format:    model.Export_Protobuf,
 		})
@@ -215,8 +215,8 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
+		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
+			SpaceId:   spaceId,
 			ObjectIds: []string{"id"},
 			Format:    model.Export_Protobuf,
 		})
@@ -273,8 +273,8 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
+		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
+			SpaceId:   spaceId,
 			ObjectIds: []string{"id"},
 			Format:    model.Export_Protobuf,
 		})
@@ -340,8 +340,8 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
+		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
+			SpaceId:   spaceId,
 			ObjectIds: []string{"id"},
 			Format:    model.Export_Protobuf,
 		})
@@ -434,7 +434,7 @@ func Test_docsForExport(t *testing.T) {
 		objectGetter.EXPECT().GetObject(context.Background(), objectTypeKey).Return(smartBlockObjectType, nil)
 
 		provider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-		provider.EXPECT().Type("spaceId", linkedObjectId).Return(smartblock.SmartBlockTypePage, nil)
+		provider.EXPECT().Type(spaceId, linkedObjectId).Return(smartblock.SmartBlockTypePage, nil)
 
 		e := &export{
 			objectStore: storeFixture,
@@ -443,8 +443,8 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
+		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
+			SpaceId:       spaceId,
 			ObjectIds:     []string{"id"},
 			Format:        model.Export_Protobuf,
 			IncludeNested: true,
@@ -488,8 +488,8 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
+		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
+			SpaceId:   spaceId,
 			ObjectIds: []string{"id"},
 			Format:    model.Export_Protobuf,
 		})
@@ -506,7 +506,7 @@ func Test_provideFileName(t *testing.T) {
 		e := &export{}
 
 		// when
-		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelation)
+		fileName := e.makeFileName("docId", spaceId, pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelation)
 
 		// then
 		assert.Equal(t, relationsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -516,7 +516,7 @@ func Test_provideFileName(t *testing.T) {
 		e := &export{}
 
 		// when
-		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelationOption)
+		fileName := e.makeFileName("docId", spaceId, pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelationOption)
 
 		// then
 		assert.Equal(t, relationsOptionsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -526,7 +526,7 @@ func Test_provideFileName(t *testing.T) {
 		e := &export{}
 
 		// when
-		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeObjectType)
+		fileName := e.makeFileName("docId", spaceId, pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeObjectType)
 
 		// then
 		assert.Equal(t, typesDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -536,7 +536,7 @@ func Test_provideFileName(t *testing.T) {
 		e := &export{}
 
 		// when
-		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypePage)
+		fileName := e.makeFileName("docId", spaceId, pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypePage)
 
 		// then
 		assert.Equal(t, objectsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -546,7 +546,7 @@ func Test_provideFileName(t *testing.T) {
 		e := &export{}
 
 		// when
-		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeFileObject)
+		fileName := e.makeFileName("docId", spaceId, pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeFileObject)
 
 		// then
 		assert.Equal(t, filesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -555,12 +555,12 @@ func Test_provideFileName(t *testing.T) {
 		// given
 		e := &export{}
 		st := state.NewDoc("root", nil).(*state.State)
-		st.SetDetail(bundle.RelationKeySpaceId.String(), pbtypes.String("spaceId"))
+		st.SetDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(spaceId))
 
 		// when
 		fileName := e.makeFileName("docId", "", pbjson.NewConverter(st), st, smartblock.SmartBlockTypeFileObject)
 
 		// then
-		assert.Equal(t, spaceDirectory+string(filepath.Separator)+"spaceId"+string(filepath.Separator)+filesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
+		assert.Equal(t, spaceDirectory+string(filepath.Separator)+spaceId+string(filepath.Separator)+filesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 }

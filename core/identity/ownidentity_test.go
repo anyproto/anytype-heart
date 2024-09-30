@@ -113,6 +113,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 	t.Run("do not take global name from profile details", func(t *testing.T) {
 		fx := newOwnSubscriptionFixture(t)
 		personalSpace := mock_clientspace.NewMockSpace(t)
+		personalSpace.EXPECT().Id().Return("space1")
 		personalSpace.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(testProfileObjectId, nil)
 		fx.spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(personalSpace, nil)
 		accountSymKey := crypto.NewAES()
@@ -188,6 +189,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 	t.Run("rewrite global name from channel signal", func(t *testing.T) {
 		fx := newOwnSubscriptionFixture(t)
 		personalSpace := mock_clientspace.NewMockSpace(t)
+		personalSpace.EXPECT().Id().Return("space1")
 		personalSpace.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(testProfileObjectId, nil)
 		fx.spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(personalSpace, nil)
 		accountSymKey := crypto.NewAES()
@@ -236,6 +238,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 	t.Run("push profile to identity repo in batches", func(t *testing.T) {
 		fx := newOwnSubscriptionFixture(t)
 		personalSpace := mock_clientspace.NewMockSpace(t)
+		personalSpace.EXPECT().Id().Return("space1")
 		personalSpace.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(testProfileObjectId, nil)
 		fx.spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(personalSpace, nil)
 		accountSymKey := crypto.NewAES()
@@ -338,6 +341,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 func TestWaitForDetails(t *testing.T) {
 	fx := newOwnSubscriptionFixture(t)
 	personalSpace := mock_clientspace.NewMockSpace(t)
+	personalSpace.EXPECT().Id().Return("space1")
 	personalSpace.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(testProfileObjectId, nil)
 	fx.spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(personalSpace, nil)
 	accountSymKey := crypto.NewAES()

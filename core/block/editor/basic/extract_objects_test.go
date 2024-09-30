@@ -619,24 +619,18 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	objectStore := spaceobjects.NewStoreFixture(t)
 
-	// TODO FIX
-	// 	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), gomock.Any()).DoAndReturn(
-	// 		func(_ string, uk domain.UniqueKey) (*model.ObjectDetails, error) {
-	// 			layout := pbtypes.Int64(int64(model.ObjectType_basic))
-	// 			switch uk.InternalKey() {
-	// 			case "note":
-	// 				layout = pbtypes.Int64(int64(model.ObjectType_note))
-	// 			case "task":
-	// 				layout = pbtypes.Int64(int64(model.ObjectType_todo))
-	// 			}
-	// 			return &model.ObjectDetails{
-	// 				Details: &types.Struct{
-	// 					Fields: map[string]*types.Value{
-	// 						bundle.RelationKeyRecommendedLayout.String(): layout,
-	// 					},
-	// 				},
-	// 			}, nil
-	// 		}).AnyTimes()
+	objectStore.AddObjects(t, []spaceobjects.TestObject{
+		{
+			bundle.RelationKeyId:                pbtypes.String("id1"),
+			bundle.RelationKeyUniqueKey:         pbtypes.String("ot-note"),
+			bundle.RelationKeyRecommendedLayout: pbtypes.Int64(int64(model.ObjectType_note)),
+		},
+		{
+			bundle.RelationKeyId:                pbtypes.String("id2"),
+			bundle.RelationKeyUniqueKey:         pbtypes.String("ot-task"),
+			bundle.RelationKeyRecommendedLayout: pbtypes.Int64(int64(model.ObjectType_todo)),
+		},
+	})
 
 	return &fixture{
 		t:     t,
