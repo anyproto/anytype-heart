@@ -331,8 +331,9 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, "space1", []spaceobjects.TestObject{
 			{
-				bundle.RelationKeyId:   pbtypes.String("1"),
-				bundle.RelationKeyName: pbtypes.String("one"),
+				bundle.RelationKeyId:     pbtypes.String("1"),
+				bundle.RelationKeyName:   pbtypes.String("one"),
+				bundle.RelationKeyAuthor: pbtypes.StringList([]string{"force1"}),
 			},
 			// relations
 			{
@@ -363,7 +364,7 @@ func TestService_Search(t *testing.T) {
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyAuthor.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
+					Condition:   model.BlockContentDataviewFilter_In,
 					Value:       pbtypes.StringList([]string{"force1", "force2"}),
 				},
 			},
@@ -471,8 +472,9 @@ func TestService_Search(t *testing.T) {
 			SubId:   "test",
 			Sorts: []*model.BlockContentDataviewSort{
 				{
-					RelationKey: "name",
-					Type:        model.BlockContentDataviewSort_Asc,
+					RelationKey:    "name",
+					Type:           model.BlockContentDataviewSort_Asc,
+					EmptyPlacement: model.BlockContentDataviewSort_End,
 				},
 			},
 			Limit: 2,
@@ -723,9 +725,10 @@ func TestService_Search(t *testing.T) {
 				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel2"),
-				bundle.RelationKeyRelationKey: pbtypes.String(testRelationKey),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:             pbtypes.String("rel2"),
+				bundle.RelationKeyRelationKey:    pbtypes.String(testRelationKey),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
 			},
 		})
 
@@ -763,7 +766,7 @@ func TestService_Search(t *testing.T) {
 			{
 				bundle.RelationKeyId:                pbtypes.String("1"),
 				bundle.RelationKeyName:              pbtypes.String("1"),
-				domain.RelationKey(testRelationKey): pbtypes.String("2"),
+				domain.RelationKey(testRelationKey): pbtypes.StringList([]string{"2"}),
 			},
 			// relations
 			{
@@ -772,9 +775,10 @@ func TestService_Search(t *testing.T) {
 				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel2"),
-				bundle.RelationKeyRelationKey: pbtypes.String(testRelationKey),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:             pbtypes.String("rel2"),
+				bundle.RelationKeyRelationKey:    pbtypes.String(testRelationKey),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
 			},
 			// deps
 			{
@@ -786,7 +790,7 @@ func TestService_Search(t *testing.T) {
 		s := fx.Service.(*service)
 		s.ds = newDependencyService(s)
 
-		var resp, err = fx.Search(SubscribeRequest{
+		resp, err := fx.Search(SubscribeRequest{
 			SpaceId:           "space1",
 			SubId:             subscriptionID,
 			Keys:              []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String(), testRelationKey},
@@ -803,6 +807,7 @@ func TestService_Search(t *testing.T) {
 		assert.Equal(t, "2", pbtypes.GetString(resp.Dependencies[0], bundle.RelationKeyName.String()))
 		assert.Equal(t, "2", pbtypes.GetString(resp.Dependencies[0], bundle.RelationKeyId.String()))
 	})
+
 	t.Run("collection: collection has 3 objects, but limit = 2 - return 2 objects in response", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.a.Close(context.Background())
@@ -1162,9 +1167,10 @@ func TestService_Search(t *testing.T) {
 
 		// when
 		sub, err := fx.SubscribeIdsReq(pb.RpcObjectSubscribeIdsRequest{
-			Ids:   []string{id},
-			SubId: "subID",
-			Keys:  []string{bundle.RelationKeyId.String()},
+			SpaceId: "space1",
+			Ids:     []string{id},
+			SubId:   "subID",
+			Keys:    []string{bundle.RelationKeyId.String()},
 		})
 
 		// then
@@ -1193,8 +1199,9 @@ func TestService_Search(t *testing.T) {
 
 		// when
 		sub, err := fx.SubscribeIdsReq(pb.RpcObjectSubscribeIdsRequest{
-			Ids:  []string{id},
-			Keys: []string{bundle.RelationKeyName.String()},
+			SpaceId: "space1",
+			Ids:     []string{id},
+			Keys:    []string{bundle.RelationKeyName.String()},
 		})
 
 		// then
@@ -1215,7 +1222,8 @@ func TestService_Search(t *testing.T) {
 
 		// when
 		sub, err := fx.SubscribeIdsReq(pb.RpcObjectSubscribeIdsRequest{
-			Ids: []string{id},
+			SpaceId: "space1",
+			Ids:     []string{id},
 		})
 
 		// then

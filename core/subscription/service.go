@@ -355,6 +355,9 @@ func (s *service) subscribeForCollection(req SubscribeRequest, f *database.Filte
 }
 
 func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error) {
+	if req.SpaceId == "" {
+		return nil, fmt.Errorf("spaceId is required")
+	}
 	records, err := s.objectStore.SpaceId(req.SpaceId).QueryByID(req.Ids)
 	if err != nil {
 		return
