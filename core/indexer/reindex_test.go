@@ -157,15 +157,19 @@ func TestReindexDeletedObjects(t *testing.T) {
 	)
 	fx := NewIndexerFixture(t)
 
-	fx.objectStore.AddObjects(t, spaceId3, []objectstore.TestObject{
+	fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:        pbtypes.String("1"),
 			bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 		},
+	})
+	fx.objectStore.AddObjects(t, spaceId2, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:        pbtypes.String("2"),
 			bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 		},
+	})
+	fx.objectStore.AddObjects(t, spaceId3, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:        pbtypes.String("3"),
 			bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
@@ -187,7 +191,6 @@ func TestReindexDeletedObjects(t *testing.T) {
 	t.Run("reindex first space", func(t *testing.T) {
 		storage1 := mock_spacestorage.NewMockSpaceStorage(gomock.NewController(t))
 		storage1.EXPECT().TreeDeletedStatus("1").Return(spacestorage.TreeDeletedStatusDeleted, nil)
-		storage1.EXPECT().TreeDeletedStatus("2").Return("", nil)
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId1)
 		space1.EXPECT().Storage().Return(storage1)
@@ -335,7 +338,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		obj1links := []string{"obj2", "obj3"}
 		obj2links := []string{"obj1"}
 		obj3links := []string{"obj2"}
-		store := fx.store.SpaceId("space1")
+		store := fx.store.SpaceId(spaceId2)
 		err = store.UpdateObjectLinks(ctx, "obj1", obj1links)
 		require.NoError(t, err)
 		err = store.UpdateObjectLinks(ctx, "obj2", obj2links)

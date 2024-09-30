@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
@@ -17,6 +18,9 @@ import (
 var ctx = context.Background()
 
 func TestIndexer(t *testing.T) {
+	space := mock_clientspace.NewMockSpace(t)
+	space.EXPECT().Id().Return("spaceId1").Maybe()
+
 	for _, testCase := range []struct {
 		name    string
 		options smartblock.IndexOption
@@ -35,6 +39,7 @@ func TestIndexer(t *testing.T) {
 			indexerFx := NewIndexerFixture(t)
 			smartTest := smarttest.New("objectId1")
 			smartTest.SetSpaceId("spaceId1")
+			smartTest.SetSpace(space)
 			smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
 				blockbuilder.ID("root"),
 				blockbuilder.Children(
@@ -62,6 +67,7 @@ func TestIndexer(t *testing.T) {
 			indexerFx := NewIndexerFixture(t)
 			smartTest := smarttest.New("objectId1")
 			smartTest.SetSpaceId("spaceId1")
+			smartTest.SetSpace(space)
 			smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
 				blockbuilder.ID("root"),
 				blockbuilder.Children(
@@ -90,6 +96,7 @@ func TestIndexer(t *testing.T) {
 		indexerFx := NewIndexerFixture(t)
 		smartTest := smarttest.New("objectId1")
 		smartTest.SetSpaceId("spaceId1")
+		smartTest.SetSpace(space)
 		smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
 			blockbuilder.ID("root"),
 			blockbuilder.Children(
