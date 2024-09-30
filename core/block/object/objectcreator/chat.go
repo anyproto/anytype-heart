@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -17,19 +18,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) createChat(ctx context.Context, space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
-	payload, err := space.CreateTreePayload(ctx, payloadcreator.PayloadCreationParams{
-		Time:           time.Now(),
-		SmartblockType: smartblock.SmartBlockTypeChatObject,
-	})
-	if err != nil {
-		return "", nil, fmt.Errorf("create tree payload: %w", err)
-	}
-
+func (s *service) createChatWithPayload(ctx context.Context, space clientspace.Space, details *types.Struct, payload treestorage.TreeStorageCreatePayload) (string, *types.Struct, error) {
 	createState := state.NewDoc(payload.RootRawChange.Id, nil).(*state.State)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_chat))
 	createState.SetDetails(details)
-	err = s.addChatDerivedObject(ctx, space, createState, payload.RootRawChange.Id)
+	err := s.addChatDerivedObject(ctx, space, createState, payload.RootRawChange.Id)
 	if err != nil {
 		return "", nil, fmt.Errorf("add chat derived object: %w", err)
 	}
@@ -40,6 +33,17 @@ func (s *service) createChat(ctx context.Context, space clientspace.Space, detai
 	}
 
 	return id, newDetails, nil
+}
+
+func (s *service) createChat(ctx context.Context, space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
+	payload, err := space.CreateTreePayload(ctx, payloadcreator.PayloadCreationParams{
+		Time:           time.Now(),
+		SmartblockType: smartblock.SmartBlockTypeChatObject,
+	})
+	if err != nil {
+		return "", nil, fmt.Errorf("create tree payload: %w", err)
+	}
+	return s.createChatWithPayload(ctx, space, details, payload)
 }
 
 func (s *service) addChatDerivedObject(ctx context.Context, space clientspace.Space, st *state.State, chatObjectId string) error {

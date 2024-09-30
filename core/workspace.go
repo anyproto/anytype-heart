@@ -24,16 +24,16 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		return m
 	}
 
-	var workspaceId string
+	var spaceId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		workspaceId, err = bs.CreateWorkspace(cctx, req)
+		spaceId, err = bs.CreateWorkspace(cctx, req)
 		return
 	})
 	if err != nil {
 		return response("", pb.RpcWorkspaceCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(workspaceId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
+	return response(spaceId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOpenRequest) *pb.RpcWorkspaceOpenResponse {

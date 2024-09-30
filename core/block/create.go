@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -50,6 +51,11 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 }
 
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, err error) {
+	chatUniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeChatObject, "")
+	if err != nil {
+		return "", fmt.Errorf("chat unique key creation: %w", err)
+	}
+
 	newSpace, err := s.spaceService.Create(ctx)
 	if err != nil {
 		return "", fmt.Errorf("error creating space: %w", err)
@@ -73,6 +79,29 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	if err != nil {
 		return "", fmt.Errorf("import use-case: %w", err)
 	}
+
+	chatName := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
+	if chatName == "" {
+		chatName = "Space"
+	}
+
+	chatName += " chat"
+	details := &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyName.String(): pbtypes.String(chatName),
+	}}
+
+	chatId, _, err := s.objectCreator.CreateChatWithUniqueKey(ctx, newSpace.Id(), chatUniqueKey, details)
+	if err != nil {
+		return spaceID, fmt.Errorf("create chat: %w", err)
+	}
+	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
+		return b.SetDetails(nil, []*model.Detail{
+			{
+				Key:   bundle.RelationKeyChatId.String(),
+				Value: pbtypes.String(chatId),
+			}}, true)
+	})
+
 	return newSpace.Id(), err
 }
 

@@ -25,6 +25,7 @@ var smartBlockTypeToKey = map[smartblock.SmartBlockType]string{
 	smartblock.SmartBlockTypeNotificationObject: "notification",
 	smartblock.SmartBlockTypeDevicesObject:      "devices",
 	smartblock.SmartBlockTypeChatDerivedObject:  "chatDerived",
+	smartblock.SmartBlockTypeChatObject:         "chat", // only for space-global chat
 }
 
 // UniqueKey is unique key composed of two parts: smartblock type and internal key.
