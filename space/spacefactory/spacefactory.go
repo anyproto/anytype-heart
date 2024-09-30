@@ -71,6 +71,10 @@ func (s *spaceFactory) CreatePersonalSpace(ctx context.Context, metadata []byte)
 	if err != nil {
 		return
 	}
+	err = coreSpace.Close()
+	if err != nil {
+		return
+	}
 	err = s.storageService.MarkSpaceCreated(coreSpace.Id())
 	if err != nil {
 		return
@@ -95,6 +99,10 @@ func (s *spaceFactory) NewPersonalSpace(ctx context.Context, metadata []byte) (c
 	coreSpace, err := s.spaceCore.Derive(ctx, spacecore.SpaceType)
 	if err != nil {
 		return nil, err
+	}
+	err = coreSpace.Close()
+	if err != nil {
+		return
 	}
 	ctrl, err = personalspace.NewSpaceController(coreSpace.Id(), metadata, s.app)
 	if err != nil {
