@@ -107,7 +107,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	queue := e.blockService.Process().NewQueue(pb.ModelProcess{
 		Id:      bson.NewObjectId().Hex(),
 		State:   0,
-		Message: &pb.ModelProcessMessageOfExport{},
+		Message: &pb.ModelProcessMessageOfExport{Export: &pb.ModelProcessExport{}},
 	}, 4)
 	queue.SetMessage("prepare")
 

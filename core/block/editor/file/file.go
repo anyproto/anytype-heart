@@ -382,7 +382,7 @@ func (dp *dropFilesProcess) Info() pb.ModelProcess {
 			Total: atomic.LoadInt64(&dp.total),
 			Done:  atomic.LoadInt64(&dp.done),
 		},
-		Message: &pb.ModelProcessMessageOfDropFiles{},
+		Message: &pb.ModelProcessMessageOfDropFiles{DropFiles: &pb.ModelProcessDropFiles{}},
 	}
 }
 

@@ -22,7 +22,7 @@ import (
 
 func TestCsv_GetSnapshotsEmptyFile(t *testing.T) {
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{Path: []string{"testdata/test.csv"}},
@@ -47,7 +47,7 @@ func TestCsv_GetSnapshotsEmptyFile(t *testing.T) {
 
 func TestCsv_GetSnapshots(t *testing.T) {
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
@@ -80,7 +80,7 @@ func TestCsv_GetSnapshots(t *testing.T) {
 
 func TestCsv_GetSnapshotsTable(t *testing.T) {
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
@@ -109,7 +109,7 @@ func TestCsv_GetSnapshotsTable(t *testing.T) {
 
 func TestCsv_GetSnapshotsTableUseFirstColumnForRelationsOn(t *testing.T) {
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
@@ -150,7 +150,7 @@ func TestCsv_GetSnapshotsTableUseFirstColumnForRelationsOn(t *testing.T) {
 
 func TestCsv_GetSnapshotsSemiColon(t *testing.T) {
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{Path: []string{"testdata/semicolon.csv"}, Delimiter: ";", UseFirstRowForRelations: true},
@@ -169,7 +169,7 @@ func TestCsv_GetSnapshotsSemiColon(t *testing.T) {
 
 func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
@@ -209,7 +209,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 
 func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
@@ -237,7 +237,7 @@ func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
 
 func TestCsv_GetSnapshotsUseFirstColumnForRelationsOn(t *testing.T) {
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
@@ -284,7 +284,7 @@ func assertSnapshotsHaveDetails(t *testing.T, want []string, objects *common.Sna
 
 func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
@@ -339,7 +339,7 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {
 
 func TestCsv_GetSnapshotsQuotedStrings(t *testing.T) {
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
@@ -360,7 +360,7 @@ func TestCsv_GetSnapshotsQuotedStrings(t *testing.T) {
 
 func TestCsv_GetSnapshotsBigFile(t *testing.T) {
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
@@ -381,7 +381,7 @@ func TestCsv_GetSnapshotsBigFile(t *testing.T) {
 func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOn(t *testing.T) {
 	ctx := context.Background()
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(ctx, &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
@@ -409,7 +409,7 @@ func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOn(t *testing.T
 func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOff(t *testing.T) {
 	ctx := context.Background()
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(ctx, &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
@@ -455,7 +455,7 @@ func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOff(t *testing.
 func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 	ctx := context.Background()
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	// UseFirstRowForRelations is off
 	sn, _ := csv.GetSnapshots(ctx, &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
@@ -561,7 +561,7 @@ func Test_findUniqueRelationAndAddNumber(t *testing.T) {
 
 func Test_findUniqueRelationWithSpaces(t *testing.T) {
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
@@ -603,7 +603,7 @@ func Test_findUniqueRelationWithSpaces(t *testing.T) {
 
 func TestCsv_GetSnapshots10Relations(t *testing.T) {
 	csv := CSV{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	// UseFirstRowForRelations is off
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
@@ -671,7 +671,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 	t.Run("test different columns number in file - table mode", func(t *testing.T) {
 		// given
 		csv := CSV{}
-		p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
 		sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
@@ -709,7 +709,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 	t.Run("test different columns number in file - collection mode", func(t *testing.T) {
 		// given
 		csv := CSV{}
-		p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
 		sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{

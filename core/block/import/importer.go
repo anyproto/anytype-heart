@@ -281,9 +281,9 @@ func shouldReturnError(e error, res *common.Response, req *pb.RpcObjectImportReq
 }
 
 func (i *Import) setupProgressBar(req *ImportRequest) {
-	var progressBarType pb.IsModelProcessMessage = &pb.ModelProcessMessageOfImport{}
+	var progressBarType pb.IsModelProcessMessage = &pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}
 	if req.IsMigration {
-		progressBarType = &pb.ModelProcessMessageOfMigration{}
+		progressBarType = &pb.ModelProcessMessageOfMigration{Migration: &pb.ModelProcessMigration{}}
 	}
 	var progress process.Progress
 	if req.GetNoProgress() {
@@ -321,7 +321,7 @@ func (i *Import) ValidateNotionToken(
 }
 
 func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
-	progress := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+	progress := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 	defer progress.Finish(nil)
 	allErrors := common.NewError(0)
 
