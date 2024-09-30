@@ -1,6 +1,8 @@
 package template
 
 import (
+	"slices"
+
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -9,68 +11,137 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func MakeCollectionDataviewContent() *model.BlockContentOfDataview {
-	relations := []*model.RelationLink{
-		{
-			Format: model.RelationFormat_shorttext,
-			Key:    bundle.RelationKeyName.String(),
-		},
-	}
-	viewRelations := []*model.BlockContentDataviewRelation{
-		{
-			Key:       bundle.RelationKeyName.String(),
-			IsVisible: true,
-		},
-	}
-	for _, relKey := range DefaultDataviewRelations {
-		if pbtypes.HasRelationLink(relations, relKey.String()) {
-			continue
-		}
-		rel := bundle.MustGetRelation(relKey)
-		relations = append(relations, &model.RelationLink{
-			Format: rel.Format,
-			Key:    rel.Key,
-		})
-		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
+const (
+	CollectionStoreKey = "objects"
+	defaultViewName    = "All"
+)
+
+var (
+	defaultDataviewRelations = []domain.RelationKey{
+		bundle.RelationKeyName,
+		bundle.RelationKeyCreatedDate,
+		bundle.RelationKeyCreator,
+		bundle.RelationKeyLastModifiedDate,
+		bundle.RelationKeyLastModifiedBy,
+		bundle.RelationKeyLastOpenedDate,
+		bundle.RelationKeyBacklinks,
 	}
 
-	blockContent := &model.BlockContentOfDataview{
+	defaultCollectionRelations = []domain.RelationKey{
+		bundle.RelationKeyName,
+		bundle.RelationKeyType,
+		bundle.RelationKeyCreatedDate,
+		bundle.RelationKeyCreator,
+		bundle.RelationKeyLastModifiedDate,
+		bundle.RelationKeyLastModifiedBy,
+		bundle.RelationKeyLastOpenedDate,
+		bundle.RelationKeyBacklinks,
+		bundle.RelationKeyTag,
+		bundle.RelationKeyDescription,
+	}
+
+	defaultVisibleRelations = []domain.RelationKey{
+		bundle.RelationKeyName,
+		bundle.RelationKeyType,
+	}
+)
+
+func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*model.RelationLink) *model.BlockContentOfDataview {
+	var (
+		defaultRelations = defaultCollectionRelations
+		visibleRelations = defaultVisibleRelations
+		sorts            = DefaultLastModifiedDateSort()
+	)
+
+	if isCollection {
+		sorts = defaultNameSort()
+	} else if relLinks != nil {
+		for _, relLink := range relLinks {
+			visibleRelations = append(visibleRelations, domain.RelationKey(relLink.Key))
+		}
+	} else if ot != nil {
+		defaultRelations = defaultDataviewRelations
+		relLinks = ot.RelationLinks
+	} else {
+		defaultRelations = defaultDataviewRelations
+	}
+
+	relationLinks, viewRelations := generateRelationLists(defaultRelations, relLinks, visibleRelations)
+
+	return &model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			IsCollection:  true,
-			RelationLinks: relations,
+			IsCollection:  isCollection,
+			RelationLinks: relationLinks,
 			Views: []*model.BlockContentDataviewView{
 				{
-					Id:   bson.NewObjectId().Hex(),
-					Type: model.BlockContentDataviewView_Table,
-					Name: "All",
-					Sorts: []*model.BlockContentDataviewSort{
-						{
-							RelationKey: "name",
-							Type:        model.BlockContentDataviewSort_Asc,
-						},
-					},
+					Id:        bson.NewObjectId().Hex(),
+					Type:      model.BlockContentDataviewView_Table,
+					Name:      defaultViewName,
+					Sorts:     sorts,
 					Filters:   nil,
 					Relations: viewRelations,
 				},
 			},
 		},
 	}
-	return blockContent
 }
 
-var DefaultDataviewRelations = make([]domain.RelationKey, 0, len(bundle.RequiredInternalRelations))
+func generateRelationLists(
+	defaultRelations []domain.RelationKey,
+	additionalRelations []*model.RelationLink,
+	visibleRelations []domain.RelationKey,
+) (
+	relationLinks []*model.RelationLink,
+	viewRelations []*model.BlockContentDataviewRelation,
+) {
+	isVisible := func(key domain.RelationKey) bool {
+		return slices.Contains(visibleRelations, key)
+	}
 
-func init() {
-	// fill DefaultDataviewRelations
-	// deprecated: we should remove this after we merge relations as objects
-	for _, rel := range bundle.RequiredInternalRelations {
-		if bundle.MustGetRelation(rel).Hidden {
+	for _, relKey := range defaultRelations {
+		rel := bundle.MustGetRelation(relKey)
+		relationLinks = append(relationLinks, &model.RelationLink{
+			Format: rel.Format,
+			Key:    rel.Key,
+		})
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{
+			Key:       rel.Key,
+			IsVisible: isVisible(relKey),
+		})
+	}
+
+	for _, relLink := range additionalRelations {
+		if pbtypes.HasRelationLink(relationLinks, relLink.Key) {
 			continue
 		}
-		DefaultDataviewRelations = append(DefaultDataviewRelations, rel)
+		relationLinks = append(relationLinks, &model.RelationLink{
+			Format: relLink.Format,
+			Key:    relLink.Key,
+		})
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{
+			Key:       relLink.Key,
+			IsVisible: isVisible(domain.RelationKey(relLink.Key)),
+		})
 	}
-	DefaultDataviewRelations = append(DefaultDataviewRelations, bundle.RelationKeyDone)
-	DefaultDataviewRelations = append(DefaultDataviewRelations, bundle.RelationKeyTag)
+	return relationLinks, viewRelations
 }
 
-const CollectionStoreKey = "objects"
+func DefaultLastModifiedDateSort() []*model.BlockContentDataviewSort {
+	return []*model.BlockContentDataviewSort{
+		{
+			Id:          bson.NewObjectId().Hex(),
+			RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+			Type:        model.BlockContentDataviewSort_Desc,
+		},
+	}
+}
+
+func defaultNameSort() []*model.BlockContentDataviewSort {
+	return []*model.BlockContentDataviewSort{
+		{
+			Id:          bson.NewObjectId().Hex(),
+			RelationKey: bundle.RelationKeyName.String(),
+			Type:        model.BlockContentDataviewSort_Asc,
+		},
+	}
+}

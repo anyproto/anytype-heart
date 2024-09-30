@@ -73,6 +73,7 @@ service ClientCommands {
     rpc ObjectCreate (anytype.Rpc.Object.Create.Request) returns (anytype.Rpc.Object.Create.Response);
     rpc ObjectCreateBookmark (anytype.Rpc.Object.CreateBookmark.Request) returns (anytype.Rpc.Object.CreateBookmark.Response);
     rpc ObjectCreateFromUrl (anytype.Rpc.Object.CreateFromUrl.Request) returns (anytype.Rpc.Object.CreateFromUrl.Response);
+    rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
 
     // ObjectCreateSet just creates the new set, without adding the link to it from some other page
     rpc ObjectCreateSet (anytype.Rpc.Object.CreateSet.Request) returns (anytype.Rpc.Object.CreateSet.Response);
@@ -128,6 +129,7 @@ service ClientCommands {
     rpc ObjectCreateRelationOption (anytype.Rpc.Object.CreateRelationOption.Request) returns (anytype.Rpc.Object.CreateRelationOption.Response);
     rpc RelationListRemoveOption (anytype.Rpc.Relation.ListRemoveOption.Request) returns (anytype.Rpc.Relation.ListRemoveOption.Response);
     rpc RelationOptions (anytype.Rpc.Relation.Options.Request) returns (anytype.Rpc.Relation.Options.Response);
+    rpc RelationListWithValue (anytype.Rpc.Relation.ListWithValue.Request) returns (anytype.Rpc.Relation.ListWithValue.Response);
 
     // Object Relations
     // ***
@@ -357,4 +359,14 @@ service ClientCommands {
     rpc DeviceSetName (anytype.Rpc.Device.SetName.Request) returns (anytype.Rpc.Device.SetName.Response);
     rpc DeviceList (anytype.Rpc.Device.List.Request) returns (anytype.Rpc.Device.List.Response);
     rpc DeviceNetworkStateSet (anytype.Rpc.Device.NetworkState.Set.Request) returns (anytype.Rpc.Device.NetworkState.Set.Response);
+
+    // Chats dummy impl
+    rpc ChatAddMessage (anytype.Rpc.Chat.AddMessage.Request) returns (anytype.Rpc.Chat.AddMessage.Response);
+    rpc ChatEditMessageContent (anytype.Rpc.Chat.EditMessageContent.Request) returns (anytype.Rpc.Chat.EditMessageContent.Response);
+    rpc ChatToggleMessageReaction (anytype.Rpc.Chat.ToggleMessageReaction.Request) returns (anytype.Rpc.Chat.ToggleMessageReaction.Response);
+    rpc ChatDeleteMessage (anytype.Rpc.Chat.DeleteMessage.Request) returns (anytype.Rpc.Chat.DeleteMessage.Response);
+    rpc ChatGetMessages (anytype.Rpc.Chat.GetMessages.Request) returns (anytype.Rpc.Chat.GetMessages.Response);
+    rpc ChatGetMessagesByIds (anytype.Rpc.Chat.GetMessagesByIds.Request) returns (anytype.Rpc.Chat.GetMessagesByIds.Response);
+    rpc ChatSubscribeLastMessages (anytype.Rpc.Chat.SubscribeLastMessages.Request) returns (anytype.Rpc.Chat.SubscribeLastMessages.Response);
+    rpc ChatUnsubscribe (anytype.Rpc.Chat.Unsubscribe.Request) returns (anytype.Rpc.Chat.Unsubscribe.Response);
 }

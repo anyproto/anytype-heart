@@ -10,20 +10,18 @@ import (
 
 const CName = "networkState"
 
-type OnNetworkUpdateHook func(network model.DeviceNetworkType)
-
 type NetworkState interface {
 	app.Component
 	GetNetworkState() model.DeviceNetworkType
 	SetNetworkState(networkState model.DeviceNetworkType)
-	RegisterHook(hook OnNetworkUpdateHook)
+	RegisterHook(hook func(network model.DeviceNetworkType))
 }
 
 type networkState struct {
 	networkState model.DeviceNetworkType
 	networkMu    sync.Mutex
 
-	onNetworkUpdateHooks []OnNetworkUpdateHook
+	onNetworkUpdateHooks []func(network model.DeviceNetworkType)
 	hookMu               sync.Mutex
 }
 
@@ -47,12 +45,17 @@ func (n *networkState) GetNetworkState() model.DeviceNetworkType {
 
 func (n *networkState) SetNetworkState(networkState model.DeviceNetworkType) {
 	n.networkMu.Lock()
-	n.networkState = networkState
 	defer n.networkMu.Unlock()
+
+	if n.networkState == networkState {
+		// to avoid unnecessary hook calls
+		return
+	}
+	n.networkState = networkState
 	n.runOnNetworkUpdateHook()
 }
 
-func (n *networkState) RegisterHook(hook OnNetworkUpdateHook) {
+func (n *networkState) RegisterHook(hook func(network model.DeviceNetworkType)) {
 	n.hookMu.Lock()
 	defer n.hookMu.Unlock()
 	n.onNetworkUpdateHooks = append(n.onNetworkUpdateHooks, hook)
