@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -94,15 +95,33 @@ func (s *service) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb s
 }
 
 func (s *service) SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error) {
+	if err = s.handleIsFavorite(objectId, details); err != nil {
+		return err
+	}
 	return cache.Do(s, objectId, func(b basic.DetailsSettable) error {
 		return b.SetDetails(ctx, details, true)
 	})
 }
 
 func (s *service) SetDetailsAndUpdateLastUsed(ctx session.Context, objectId string, details []*model.Detail) (err error) {
+	if err = s.handleIsFavorite(objectId, details); err != nil {
+		return err
+	}
 	return cache.Do(s, objectId, func(b basic.DetailsSettable) error {
 		return b.SetDetailsAndUpdateLastUsed(ctx, details, true)
 	})
+}
+
+func (s *service) handleIsFavorite(objectId string, details []*model.Detail) (err error) {
+	for _, detail := range details {
+		if detail.Key == bundle.RelationKeyIsFavorite.String() {
+			if err = s.SetIsFavorite(objectId, detail.Value.GetBoolValue()); err != nil {
+				return err
+			}
+			break
+		}
+	}
+	return nil
 }
 
 func (s *service) SetDetailsList(ctx session.Context, objectIds []string, details []*model.Detail) (err error) {
@@ -145,7 +164,7 @@ func (s *service) ModifyDetailsAndUpdateLastUsed(objectId string, modifier func(
 }
 
 func (s *service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesRequest) (resultError error) {
-	var anySucceed bool
+	var anySucceed, isFavoriteSet, favoriteValue bool
 	for i, objectId := range req.ObjectIds {
 		modifyDetailsFunc := s.ModifyDetails
 		if i == 0 {
@@ -154,6 +173,10 @@ func (s *service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesReque
 		err := modifyDetailsFunc(objectId, func(current *types.Struct) (*types.Struct, error) {
 			for _, op := range req.Operations {
 				if !pbtypes.IsEmptyValue(op.Set) {
+					if op.RelationKey == bundle.RelationKeyIsFavorite.String() {
+						isFavoriteSet = true
+						favoriteValue = op.Set.GetBoolValue()
+					}
 					// Set operation has higher priority than Add and Remove, because it modifies full value
 					current.Fields[op.RelationKey] = op.Set
 					continue
@@ -169,6 +192,13 @@ func (s *service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesReque
 			anySucceed = true
 		}
 	}
+
+	if isFavoriteSet {
+		if err := s.SetListIsFavorite(req.ObjectIds, favoriteValue); err != nil {
+			resultError = errors.Join(resultError, err)
+		}
+	}
+
 	if resultError != nil {
 		log.Warn("ModifyDetailsList", zap.Error(resultError))
 	}
