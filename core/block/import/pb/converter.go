@@ -74,6 +74,10 @@ func (p *Pb) GetSnapshots(_ context.Context, req *pb.RpcObjectImportRequest, pro
 		return nil, common.NewFromError(err, req.Mode)
 	}
 	snapshots := p.getSnapshots()
+	if snapshots == nil {
+		p.errors.Add(fmt.Errorf("PB: no snapshots are gathered"))
+		return nil, p.errors
+	}
 	oldToNewID := p.updateLinksToObjects(snapshots.List)
 	p.updateDetails(snapshots.List)
 	if p.errors.ShouldAbortImport(len(p.params.GetPath()), req.Type) {
@@ -127,11 +131,11 @@ func (p *Pb) getSnapshots() (allSnapshots *snapshotSet) {
 	for _, path := range p.params.GetPath() {
 		if err := p.progress.TryStep(1); err != nil {
 			p.errors.Add(common.ErrCancel)
-			return &snapshotSet{List: []*common.Snapshot{}}
+			return nil
 		}
 		snapshots := p.handleImportPath(path)
 		if p.errors.ShouldAbortImport(len(p.params.GetPath()), model.Import_Pb) {
-			return &snapshotSet{List: []*common.Snapshot{}}
+			return nil
 		}
 		allSnapshots.List = append(allSnapshots.List, snapshots.List...)
 		if snapshots.Widget != nil {

@@ -36,18 +36,16 @@ func (g *GalleryImport) ProvideCollection(
 	if isNewSpace {
 		return nil, nil
 	}
-	if snapshots == nil {
-		snapshots = &snapshotSet{List: []*common.Snapshot{}}
-	}
 	var widgetObjects []string
-	if snapshots.Widget != nil {
+	if snapshots != nil && snapshots.Widget != nil {
 		widgetObjects = g.getObjectsFromWidgets(snapshots.Widget)
 	}
 	var (
-		icon     string
-		fileKeys []*pb.ChangeFileKeys
+		icon       string
+		fileKeys   []*pb.ChangeFileKeys
+		objectsIds []string
 	)
-	if snapshots.Workspace != nil { // we use space icon for import collection
+	if snapshots != nil && snapshots.Workspace != nil { // we use space icon for import collection
 		icon = pbtypes.GetString(snapshots.Workspace.Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
 		fileKeys = lo.Filter(snapshots.Workspace.Snapshot.FileKeys, func(item *pb.ChangeFileKeys, index int) bool { return item.Hash == icon })
 	}
@@ -56,14 +54,16 @@ func (g *GalleryImport) ProvideCollection(
 		collectionName = rootCollectionName
 	}
 	rootCollection := common.NewRootCollection(g.service)
-	if len(widgetObjects) > 0 {
+	if len(widgetObjects) > 0 && snapshots != nil {
 		collectionsSnapshots, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, fileKeys, snapshots.Widget, collectionsSnapshots)
 		if err != nil {
 			return nil, err
 		}
 	}
-	objectsIDs := g.getObjectsIDs(snapshots.List)
-	objectsCollection, err := rootCollection.MakeRootCollection(collectionName, objectsIDs, icon, fileKeys, false, true)
+	if snapshots != nil {
+		objectsIds = g.getObjectsIDs(snapshots.List)
+	}
+	objectsCollection, err := rootCollection.MakeRootCollection(collectionName, objectsIds, icon, fileKeys, false, true)
 	if err != nil {
 		return nil, err
 	}

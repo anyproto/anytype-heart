@@ -11709,7 +11709,7 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| clientCachePath | [string](#string) |  |  |
+| artifactPath | [string](#string) |  |  |
 
 
 
@@ -14623,7 +14623,8 @@ DEPRECATED, GO-1926 |
 | url | [string](#string) |  |  |
 | title | [string](#string) |  |  |
 | isNewSpace | [bool](#bool) |  |  |
-| cachePath | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| artifactPath | [string](#string) |  |  |
 
 
 
@@ -14749,7 +14750,7 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  |  |
-| cachePath | [string](#string) |  |  |
+| artifactPath | [string](#string) |  |  |
 
 
 
@@ -19002,7 +19003,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  | use case |
-| cachePath | [string](#string) |  |  |
+| artifactPath | [string](#string) |  |  |
 
 
 

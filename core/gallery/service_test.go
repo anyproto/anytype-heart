@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	spaceId   = "spaceId"
-	cachePath = "./testdata/client_cache.zip"
+	spaceId      = "spaceId"
+	artifactPath = "./testdata/test_artifact"
 )
 
 type dumbProgress struct {
@@ -86,7 +86,6 @@ func TestService_ImportExperience(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.importer.EXPECT().Import(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, req *importer.ImportRequest) *importer.ImportResponse {
-			assert.Equal(t, "./testdata/client_cache/get_started.zip", req.Params.(*pb.RpcObjectImportRequestParamsOfPbParams).PbParams.Path[0])
 			assert.Equal(t, model.ObjectOrigin_usecase, req.Origin.Origin)
 			assert.Equal(t, model.Import_Pb, req.Origin.ImportType)
 			assert.Equal(t, spaceId, req.SpaceId)
@@ -96,13 +95,17 @@ func TestService_ImportExperience(t *testing.T) {
 		})
 
 		// when
-		err := fx.ImportExperience(nil, spaceId, "./testdata/client_cache/get_started.zip", "Empty", "", true)
+		err := fx.ImportExperience(nil, spaceId, "", UseCaseInfo{
+			Name:         "get_started",
+			Title:        "Empty",
+			DownloadLink: "./testdata/test_artifact/gallery/get_started/get_started.zip",
+		}, true)
 
 		// then
 		assert.NoError(t, err)
 	})
 
-	t.Run("import experience from client cache, as hash is the same", func(t *testing.T) {
+	t.Run("import experience from artifact, as hash is the same", func(t *testing.T) {
 		// given
 		server := buildServer(t, "hash1")
 		defer server.Close()
@@ -135,18 +138,20 @@ func TestService_ImportExperience(t *testing.T) {
 		}
 		fx.indexCache.indexURL = server.URL + "/index.json"
 
-		fx.tempDirService.EXPECT().TempDir().Return("./testdata")
-
 		// when
-		err := fx.ImportExperience(nil, spaceId, url, "Get Started", cachePath, true)
+		err := fx.ImportExperience(nil, spaceId, artifactPath, UseCaseInfo{
+			Name:         "get_started",
+			Title:        "Get Started",
+			DownloadLink: url,
+		}, true)
 
 		// then
 		assert.NoError(t, err)
 		_, err = os.Stat(path)
-		assert.Error(t, err)
+		assert.NoError(t, err)
 	})
 
-	t.Run("import experience from client cache, as hash check is failed", func(t *testing.T) {
+	t.Run("import experience from artifact, as hash check is failed", func(t *testing.T) {
 		// given
 		server := buildServer(t, "hash1")
 		defer server.Close()
@@ -170,18 +175,20 @@ func TestService_ImportExperience(t *testing.T) {
 
 		fx.indexCache.storage = &testCacheStorage{}
 
-		fx.tempDirService.EXPECT().TempDir().Return("./testdata")
-
 		// when
-		err := fx.ImportExperience(nil, spaceId, url, "Get Started", cachePath, true)
+		err := fx.ImportExperience(nil, spaceId, artifactPath, UseCaseInfo{
+			Name:         "get_started",
+			Title:        "Get Started",
+			DownloadLink: url,
+		}, true)
 
 		// then
 		assert.NoError(t, err)
 		_, err = os.Stat(path)
-		assert.Error(t, err)
+		assert.NoError(t, err)
 	})
 
-	t.Run("import outdated experience from client cache, as remote download is failed", func(t *testing.T) {
+	t.Run("import outdated experience from artifact, as remote download is failed", func(t *testing.T) {
 		// given
 		var (
 			path string
@@ -210,18 +217,20 @@ func TestService_ImportExperience(t *testing.T) {
 			},
 		}
 
-		fx.tempDirService.EXPECT().TempDir().Return("./testdata")
-
 		// when
-		err := fx.ImportExperience(nil, spaceId, url, "Get Started", cachePath, true)
+		err := fx.ImportExperience(nil, spaceId, artifactPath, UseCaseInfo{
+			Name:         "get_started",
+			Title:        "Get Started",
+			DownloadLink: url,
+		}, true)
 
 		// then
 		assert.NoError(t, err)
 		_, err = os.Stat(path)
-		assert.Error(t, err)
+		assert.NoError(t, err)
 	})
 
-	t.Run("import experience from remote, as no client cache is specified", func(t *testing.T) {
+	t.Run("import experience from remote, as no artifact is specified", func(t *testing.T) {
 		// given
 		server := buildServer(t, "hash1")
 		defer server.Close()
@@ -248,7 +257,11 @@ func TestService_ImportExperience(t *testing.T) {
 		fx.tempDirService.EXPECT().TempDir().Return("./testdata")
 
 		// when
-		err := fx.ImportExperience(nil, spaceId, url, "Get Started", "", true)
+		err := fx.ImportExperience(nil, spaceId, "", UseCaseInfo{
+			Name:         "get_started",
+			Title:        "Get Started",
+			DownloadLink: url,
+		}, true)
 
 		// then
 		assert.NoError(t, err)
@@ -256,7 +269,7 @@ func TestService_ImportExperience(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("import experience from remote, as it is not presented in client cache", func(t *testing.T) {
+	t.Run("import experience from remote, as it is not presented in artifact", func(t *testing.T) {
 		// given
 		server := buildServer(t, "hash1")
 		defer server.Close()
@@ -283,7 +296,11 @@ func TestService_ImportExperience(t *testing.T) {
 		fx.tempDirService.EXPECT().TempDir().Return("./testdata")
 
 		// when
-		err := fx.ImportExperience(nil, spaceId, url, "Experience", cachePath, true)
+		err := fx.ImportExperience(nil, spaceId, artifactPath, UseCaseInfo{
+			Name:         "experience",
+			Title:        "Experience",
+			DownloadLink: url,
+		}, true)
 
 		// then
 		assert.NoError(t, err)
@@ -291,7 +308,7 @@ func TestService_ImportExperience(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("import experience from remote, as version in client cache is outdated", func(t *testing.T) {
+	t.Run("import experience from remote, as version in artifact is outdated", func(t *testing.T) {
 		// given
 		server := buildServer(t, "hash2")
 		defer server.Close()
@@ -318,6 +335,7 @@ func TestService_ImportExperience(t *testing.T) {
 			index: &pb.RpcGalleryDownloadIndexResponse{
 				Experiences: []*model.ManifestInfo{{
 					DownloadLink: url,
+					Name:         "get_started",
 					Hash:         "hash2",
 				}},
 			},
@@ -326,7 +344,11 @@ func TestService_ImportExperience(t *testing.T) {
 		fx.tempDirService.EXPECT().TempDir().Return("./testdata")
 
 		// when
-		err := fx.ImportExperience(nil, spaceId, url, "Get Started", cachePath, true)
+		err := fx.ImportExperience(nil, spaceId, artifactPath, UseCaseInfo{
+			Name:         "get_started",
+			Title:        "Get Started",
+			DownloadLink: url,
+		}, true)
 
 		// then
 		assert.NoError(t, err)
@@ -344,7 +366,11 @@ func TestService_ImportExperience(t *testing.T) {
 		fx.indexCache.storage = &testCacheStorage{}
 
 		// when
-		err := fx.ImportExperience(nil, spaceId, url, "Get Started", "", true)
+		err := fx.ImportExperience(nil, spaceId, "", UseCaseInfo{
+			Name:         "get_started",
+			Title:        "Get Started",
+			DownloadLink: url,
+		}, true)
 
 		// then
 		assert.Error(t, err)

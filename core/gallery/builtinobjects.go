@@ -4,6 +4,9 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -59,4 +62,12 @@ func (s *service) importUseCase(
 		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR, err
 	}
 	return pb.RpcObjectImportUseCaseResponseError_NULL, nil
+}
+
+func (s *service) saveArchiveToTempFile(archive []byte) (path string, removeFunc func(string), err error) {
+	path = filepath.Join(s.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
+	if err = os.WriteFile(path, archive, 0600); err != nil {
+		return "", nil, fmt.Errorf("failed to save archive to temporary file: %w", err)
+	}
+	return path, removeTempFile, nil
 }

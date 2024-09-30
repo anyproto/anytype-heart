@@ -31,16 +31,13 @@ func (s *SpaceImport) ProvideCollection(
 	if params.GetNoCollection() {
 		return nil, nil
 	}
-	if snapshots == nil {
-		snapshots = &snapshotSet{List: []*common.Snapshot{}}
-	}
 	var (
 		rootObjects        []string
 		widgetFlags        widget.ImportWidgetFlags
 		objectsNotInWidget []*common.Snapshot
 	)
 
-	if snapshots.Widget != nil {
+	if snapshots != nil && snapshots.Widget != nil {
 		widgetFlags, rootObjects = s.getObjectsFromWidget(snapshots.Widget, oldToNewID)
 		objectsNotInWidget = lo.Filter(snapshots.List, func(item *common.Snapshot, index int) bool {
 			return !lo.Contains(rootObjects, item.Id)
@@ -49,7 +46,7 @@ func (s *SpaceImport) ProvideCollection(
 	if !widgetFlags.IsEmpty() || len(rootObjects) > 0 {
 		// add to root collection only objects from widget, dashboard and favorites
 		rootObjects = append(rootObjects, s.filterObjects(widgetFlags, objectsNotInWidget)...)
-	} else {
+	} else if snapshots != nil {
 		// if we don't have any widget, we add everything (except sub objects and templates) to root collection
 		rootObjects = lo.FilterMap(snapshots.List, func(item *common.Snapshot, index int) (string, bool) {
 			if !s.objectShouldBeSkipped(item) {

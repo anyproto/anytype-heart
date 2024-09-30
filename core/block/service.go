@@ -111,7 +111,7 @@ type Service struct {
 
 type builtinObjects interface {
 	ImportBuiltInUseCase(
-		ctx context.Context, spaceID, cachePath string, req pb.RpcObjectImportUseCaseRequestUseCase,
+		ctx context.Context, spaceID, artifactPath string, req pb.RpcObjectImportUseCaseRequestUseCase,
 	) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
 

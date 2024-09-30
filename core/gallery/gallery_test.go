@@ -158,7 +158,7 @@ func TestService_GetGalleryIndex(t *testing.T) {
 		assert.Equal(t, "name", index.Experiences[0].Name)
 	})
 
-	t.Run("get gallery index from client cache", func(t *testing.T) {
+	t.Run("get gallery index from artifact", func(t *testing.T) {
 		// given
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusConflict)
@@ -170,7 +170,7 @@ func TestService_GetGalleryIndex(t *testing.T) {
 		fx.indexCache.indexURL = server.URL
 
 		// when
-		index, err := fx.GetGalleryIndex("./testdata/client_cache.zip")
+		index, err := fx.GetGalleryIndex("./testdata/test_artifact")
 
 		// then
 		assert.NoError(t, err)
@@ -196,7 +196,7 @@ func TestService_GetGalleryIndex(t *testing.T) {
 		fx.indexCache.indexURL = server.URL + "/index.json"
 
 		// when
-		index, err := fx.GetGalleryIndex("./testdata/client_cache.zip")
+		index, err := fx.GetGalleryIndex("./testdata/test_artifact")
 
 		// then
 		assert.NoError(t, err)

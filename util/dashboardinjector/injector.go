@@ -50,11 +50,17 @@ func (b *dashboardInjector) Name() (name string) {
 	return CName
 }
 
-func (b *dashboardInjector) InjectMigrationDashboard(spaceID string) (err error) {
+func (b *dashboardInjector) InjectMigrationDashboard(spaceID string) error {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
-	if err = os.WriteFile(path, migrationDashboardZip, 0600); err != nil {
+	if err := os.WriteFile(path, migrationDashboardZip, 0600); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %w", err)
 	}
+
+	defer func() {
+		if rmErr := os.Remove(path); rmErr != nil {
+			log.Errorf("failed to remove temporary file: %v", anyerror.CleanupError(rmErr))
+		}
+	}()
 
 	importRequest := &importer.ImportRequest{
 		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
@@ -76,13 +82,5 @@ func (b *dashboardInjector) InjectMigrationDashboard(spaceID string) (err error)
 		IsSync: true,
 	}
 	res := b.importer.Import(context.Background(), importRequest)
-
-	if res.Err != nil {
-		return err
-	}
-
-	if rmErr := os.Remove(path); rmErr != nil {
-		log.Errorf("failed to remove temporary file: %v", anyerror.CleanupError(rmErr))
-	}
-	return
+	return res.Err
 }

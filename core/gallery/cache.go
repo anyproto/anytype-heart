@@ -20,9 +20,9 @@ import (
 const (
 	CacheCName = "gallery-index-cache"
 
-	galleryDir    = "gallery"
-	indexFileName = "index.pb"
-	verFileName   = "ver"
+	cacheGalleryDir = "cache/gallery"
+	indexFileName   = "index.pb"
+	eTagFileName    = "index.pb.etag"
 
 	indexURI = "https://tools.gallery.any.coop/app-index.json"
 )
@@ -30,7 +30,7 @@ const (
 type IndexCache interface {
 	app.Component
 
-	GetManifest(downloadLink string, timeoutInSeconds int) (info *model.ManifestInfo, err error)
+	GetManifest(name string, timeoutInSeconds int) (info *model.ManifestInfo, err error)
 	GetIndex(timeoutInSeconds int) (*pb.RpcGalleryDownloadIndexResponse, error)
 }
 
@@ -44,13 +44,13 @@ func NewCache() IndexCache {
 }
 
 func (c *cache) Init(a *app.App) error {
-	path := filepath.Join(app.MustComponent[wallet.Wallet](a).RepoPath(), galleryDir)
-	if err := os.Mkdir(path, 0777); err != nil && !os.IsExist(err) {
+	path := filepath.Join(app.MustComponent[wallet.Wallet](a).RootPath(), cacheGalleryDir)
+	if err := os.MkdirAll(path, 0777); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("failed to init gallery index directory: %w", err)
 	}
 
 	c.storage = &storage{
-		versionPath: filepath.Join(path, verFileName),
+		versionPath: filepath.Join(path, eTagFileName),
 		indexPath:   filepath.Join(path, indexFileName),
 	}
 
@@ -66,12 +66,12 @@ func (c *cache) GetIndex(timeoutInSeconds int) (*pb.RpcGalleryDownloadIndexRespo
 	return c.getRecentIndex(timeoutInSeconds, false)
 }
 
-func (c *cache) GetManifest(downloadLink string, timeoutInSeconds int) (info *model.ManifestInfo, err error) {
+func (c *cache) GetManifest(name string, timeoutInSeconds int) (info *model.ManifestInfo, err error) {
 	index, err := c.getRecentIndex(timeoutInSeconds, true)
 	if err != nil {
 		return nil, err
 	}
-	return getManifestByDownloadLink(index, downloadLink)
+	return getManifestByName(index, name)
 }
 
 func (c *cache) getRecentIndex(timeout int, withManifestValidation bool) (*pb.RpcGalleryDownloadIndexResponse, error) {

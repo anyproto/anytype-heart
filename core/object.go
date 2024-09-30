@@ -824,7 +824,7 @@ func (mw *Middleware) ObjectImportUseCase(ctx context.Context, req *pb.RpcObject
 	}
 
 	usecaseImporter := getService[gallery.Service](mw)
-	return response(usecaseImporter.ImportBuiltInUseCase(ctx, req.SpaceId, req.CachePath, req.UseCase))
+	return response(usecaseImporter.ImportBuiltInUseCase(ctx, req.SpaceId, req.ArtifactPath, req.UseCase))
 }
 
 func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObjectImportExperienceRequest) *pb.RpcObjectImportExperienceResponse {
@@ -841,6 +841,10 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 	}
 
 	experienceImporter := getService[gallery.Service](mw)
-	err := experienceImporter.ImportExperience(ctx, req.SpaceId, req.Url, req.Title, req.CachePath, req.IsNewSpace)
+	err := experienceImporter.ImportExperience(ctx, req.SpaceId, req.ArtifactPath, gallery.UseCaseInfo{
+		Name:         req.Name,
+		Title:        req.Title,
+		DownloadLink: req.Url,
+	}, req.IsNewSpace)
 	return response(common.GetGalleryResponseCode(err), err)
 }

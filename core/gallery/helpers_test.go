@@ -20,7 +20,7 @@ const port = "37373"
 //go:embed testdata/schema.json
 var schemaJSON []byte
 
-//go:embed testdata/client_cache/get_started.zip
+//go:embed testdata/test_artifact/gallery/get_started/get_started.zip
 var testZip []byte
 
 type testCacheStorage struct {

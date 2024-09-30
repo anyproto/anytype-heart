@@ -1,7 +1,6 @@
 package gallery
 
 import (
-	"archive/zip"
 	"context"
 	_ "embed"
 	"encoding/json"
@@ -44,24 +43,25 @@ const (
 	archiveDownloadingPercents = 30
 	archiveCopyingPercents     = 10
 
-	indexName = "app-index.json"
+	artifactGalleryDir = "gallery"
+	indexName          = "app-index.json"
 )
 
-type builtInUseCaseInfo struct {
-	Title, DownloadLink string
+type UseCaseInfo struct {
+	Name, Title, DownloadLink string
 }
 
 var (
 	log = logger.NewNamed(CName)
 
 	// TODO: GO-4131 Fill in download links when built-in usecases will be downloaded to gallery
-	ucCodeToInfo = map[pb.RpcObjectImportUseCaseRequestUseCase]builtInUseCaseInfo{
-		pb.RpcObjectImportUseCaseRequest_GET_STARTED:       {"Get Started", "https://storage.gallery.any.coop/get_started/get_started.zip"},
-		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {"Personal Projects", ""},
-		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    {"Knowledge Base", ""},
-		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       {"Notes and Diary", ""},
-		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: {"Strategic Writing", ""},
-		pb.RpcObjectImportUseCaseRequest_EMPTY:             {"Empty", ""},
+	ucCodeToInfo = map[pb.RpcObjectImportUseCaseRequestUseCase]UseCaseInfo{
+		pb.RpcObjectImportUseCaseRequest_GET_STARTED:       {"get_started", "Get Started", "https://storage.gallery.any.coop/get_started/get_started.zip"},
+		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {"personal_projects", "Personal Projects", ""},
+		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    {"knowledge_base", "Knowledge Base", ""},
+		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       {"notes_diary", "Notes and Diary", ""},
+		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: {"strategic_writing", "Strategic Writing", ""},
+		pb.RpcObjectImportUseCaseRequest_EMPTY:             {"empty", "Empty", ""},
 	}
 
 	errOutdatedArchive = fmt.Errorf("archive is outdated")
@@ -70,12 +70,12 @@ var (
 type Service interface {
 	app.Component
 
-	ImportExperience(ctx context.Context, spaceID, url, title, cachePath string, newSpace bool) (err error)
+	ImportExperience(ctx context.Context, spaceID, artifactPath string, info UseCaseInfo, newSpace bool) (err error)
 	ImportBuiltInUseCase(
-		ctx context.Context, spaceID, cachePath string, req pb.RpcObjectImportUseCaseRequestUseCase,
+		ctx context.Context, spaceID, artifactPath string, req pb.RpcObjectImportUseCaseRequestUseCase,
 	) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 
-	GetGalleryIndex(clientCachePath string) (*pb.RpcGalleryDownloadIndexResponse, error)
+	GetGalleryIndex(artifactPath string) (*pb.RpcGalleryDownloadIndexResponse, error)
 	GetManifest(url string, checkWhitelist bool) (info *model.ManifestInfo, err error)
 }
 
@@ -112,7 +112,7 @@ func (s *service) Name() string {
 
 func (s *service) ImportBuiltInUseCase(
 	ctx context.Context,
-	spaceID, cachePath string,
+	spaceID, artifactPath string,
 	useCase pb.RpcObjectImportUseCaseRequestUseCase,
 ) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error) {
 	if useCase == pb.RpcObjectImportUseCaseRequest_NONE {
@@ -127,14 +127,14 @@ func (s *service) ImportBuiltInUseCase(
 			fmt.Errorf("failed to import built-in usecase: invalid Use Case value: %v", useCase)
 	}
 
-	if cachePath == "" {
+	if artifactPath == "" {
 		// TODO: GO-4131 Remove this call when clients support cache
 		return s.importUseCase(ctx, spaceID, info.Title, useCase)
 		// return pb.RpcObjectImportUseCaseResponseError_BAD_INPUT,
 		// 	fmt.Errorf("failed to import built-in usecase: no path to client cache provided")
 	}
 
-	if err = s.ImportExperience(ctx, spaceID, info.DownloadLink, info.Title, cachePath, true); err != nil {
+	if err = s.ImportExperience(ctx, spaceID, artifactPath, info, true); err != nil {
 		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR,
 			fmt.Errorf("failed to import built-in usecase %s: %w",
 				pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)
@@ -148,7 +148,7 @@ func (s *service) ImportBuiltInUseCase(
 	return pb.RpcObjectImportUseCaseResponseError_NULL, nil
 }
 
-func (s *service) ImportExperience(ctx context.Context, spaceID, url, title, cachePath string, isNewSpace bool) (err error) {
+func (s *service) ImportExperience(ctx context.Context, spaceID, artifactPath string, info UseCaseInfo, isNewSpace bool) (err error) {
 	var (
 		progress      process.Notificationable
 		pathToArchive string
@@ -159,7 +159,7 @@ func (s *service) ImportExperience(ctx context.Context, spaceID, url, title, cac
 		if remove != nil && pathToArchive != "" {
 			remove(pathToArchive)
 		}
-		progress.FinishWithNotification(s.provideNotification(spaceID, progress, err, title), err)
+		progress.FinishWithNotification(s.provideNotification(spaceID, progress, err, info.Title), err)
 	}()
 
 	progress, err = s.setupProgress()
@@ -167,78 +167,68 @@ func (s *service) ImportExperience(ctx context.Context, spaceID, url, title, cac
 		return err
 	}
 
-	pathToArchive, remove, err = s.getPathAndRemoveFunc(url, cachePath, progress)
+	pathToArchive, remove, err = s.getPathAndRemoveFunc(info, artifactPath, progress)
 	if err != nil {
 		return err
 	}
 
-	err = s.importArchive(ctx, spaceID, pathToArchive, title, progress, isNewSpace)
+	err = s.importArchive(ctx, spaceID, pathToArchive, info.Title, progress, isNewSpace)
 	return err
 }
 
 func (s *service) getPathAndRemoveFunc(
-	url, cachePath string, progress process.Notificationable,
+	info UseCaseInfo, artifactPath string, progress process.Notificationable,
 ) (path string, removeFunc func(string), err error) {
-	if _, err = os.Stat(url); err == nil {
-		return url, func(string) {}, nil
+	if _, err = os.Stat(info.DownloadLink); err == nil {
+		return info.DownloadLink, func(string) {}, nil
 	}
 
-	cachedArchive, err := s.getArchiveFromCache(url, cachePath)
+	pathToArchiveInArtifact, err := s.getPathFromArtifact(info.Name, artifactPath)
 	if err == nil {
-		return s.saveArchiveToTempFile(cachedArchive)
+		return pathToArchiveInArtifact, func(string) {}, nil
 	}
 
 	if errors.Is(err, errOutdatedArchive) {
-		log.Debug("archive in client cache is outdated. Trying to download it from remote")
+		log.Debug("archive in the artifact is outdated. Trying to download it from remote")
 	}
 
-	path, err = s.downloadZipToFile(url, progress)
+	path, err = s.downloadZipToFile(info.DownloadLink, progress)
 	if err == nil {
 		return path, removeTempFile, nil
 	}
 
-	if cachedArchive != nil {
-		log.Warn("failed to download archive from remote. Importing cached archive", zap.Error(err))
-		return s.saveArchiveToTempFile(cachedArchive)
+	if pathToArchiveInArtifact != "" {
+		log.Warn("failed to download archive from remote. Importing archive from artifact", zap.Error(err))
+		return pathToArchiveInArtifact, func(string) {}, nil
 	}
 	return "", nil, err
 }
 
-func (s *service) getArchiveFromCache(downloadLink, cachePath string) (archive []byte, err error) {
-	archives, index, err := readClientCache(cachePath, false)
+func (s *service) getPathFromArtifact(name, artifactPath string) (archivePath string, err error) {
+	archivesPaths, index, err := readArtifact(artifactPath, false)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	archive = archives[downloadLink]
-	if archive == nil {
-		return nil, fmt.Errorf("archive is not cached")
+	archivePath = archivesPaths[name]
+	if archivePath == "" {
+		return "", fmt.Errorf("artifact does not contain archive '%s'", name)
 	}
 
-	cachedManifest, err := getManifestByDownloadLink(index, downloadLink)
+	manifestFromArtifact, err := getManifestByName(index, name)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	downloadLink = cachedManifest.DownloadLink
-
-	latestManifest, err := s.indexCache.GetManifest(downloadLink, downloadManifestTimeoutSeconds)
-	if err == nil && latestManifest.Hash != cachedManifest.Hash {
+	latestManifest, err := s.indexCache.GetManifest(name, downloadManifestTimeoutSeconds)
+	if err == nil && latestManifest.Hash != manifestFromArtifact.Hash {
 		// if hashes are different, then we can get fresher version of archive from remote
-		return archive, errOutdatedArchive
+		return archivePath, errOutdatedArchive
 	}
 	if err != nil {
-		log.Error("failed to get latest manifest", zap.String("downloadLink", downloadLink), zap.Error(err))
+		log.Error("failed to get latest manifest", zap.String("name", name), zap.Error(err))
 	}
-	return archive, nil
-}
-
-func (s *service) saveArchiveToTempFile(archive []byte) (path string, removeFunc func(string), err error) {
-	path = filepath.Join(s.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
-	if err = os.WriteFile(path, archive, 0600); err != nil {
-		return "", nil, fmt.Errorf("failed to save archive to temporary file: %w", err)
-	}
-	return path, removeTempFile, nil
+	return archivePath, nil
 }
 
 func removeTempFile(path string) {
@@ -247,77 +237,63 @@ func removeTempFile(path string) {
 	}
 }
 
-func readData(f *zip.File) ([]byte, error) {
-	rd, err := f.Open()
-	if err != nil {
-		return nil, fmt.Errorf("cannot open pb file %s: %w", f.Name, err)
+// readArtifact returns Gallery Index and map of paths to archives aggregated by names
+func readArtifact(artifactPath string, indexOnly bool) (archivesPaths map[string]string, index *pb.RpcGalleryDownloadIndexResponse, err error) {
+	if artifactPath == "" {
+		return nil, nil, fmt.Errorf("no artifact path specified")
 	}
-	defer rd.Close()
-	data, err := io.ReadAll(rd)
+	galleryPath := path.Join(artifactPath, artifactGalleryDir)
+	entries, err := os.ReadDir(galleryPath)
 	if err != nil {
-		return nil, fmt.Errorf("cannot read data from file %s: %w", f.Name, err)
+		return nil, nil, fmt.Errorf("failed to read gallery path %s: %w", galleryPath, err)
 	}
-	return data, nil
-}
 
-// readClientCache returns Gallery Index and map of archives aggregated by DownloadLink
-func readClientCache(cachePath string, indexOnly bool) (archives map[string][]byte, index *pb.RpcGalleryDownloadIndexResponse, err error) {
-	if cachePath == "" {
-		return nil, nil, fmt.Errorf("no cache path specified")
-	}
-	r, err := zip.OpenReader(cachePath)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer r.Close()
-
-	for _, f := range r.File {
-		if f.Name != indexName {
+	archivesPaths = make(map[string]string)
+	for _, entry := range entries {
+		if entry.Name() == indexName {
+			indexData, err := os.ReadFile(path.Join(galleryPath, entry.Name()))
+			if err != nil {
+				return nil, nil, err
+			}
+			err = json.Unmarshal(indexData, &index)
+			if err != nil {
+				return nil, nil, err
+			}
+			if indexOnly {
+				return nil, index, nil
+			}
 			continue
 		}
-		indexData, err := readData(f)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = json.Unmarshal(indexData, &index)
-		if err != nil {
-			return nil, nil, err
-		}
+
 		if indexOnly {
-			return nil, index, nil
+			continue
 		}
-		break
+
+		if !entry.IsDir() {
+			return nil, nil, fmt.Errorf("found non-dir file besides of index: %s", entry.Name())
+		}
+
+		innerEntries, err := os.ReadDir(path.Join(galleryPath, entry.Name()))
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read gallery dir '%s': %w", entry.Name(), err)
+		}
+
+		for _, innerEntry := range innerEntries {
+			if path.Ext(innerEntry.Name()) != ".zip" {
+				continue
+			}
+
+			if strings.TrimSuffix(innerEntry.Name(), ".zip") != entry.Name() {
+				return nil, nil, fmt.Errorf("zip archive should have same name as containg folder. Folder: '%s'. Archive: %s",
+					entry.Name(), innerEntry.Name())
+			}
+
+			archivesPaths[entry.Name()] = path.Join(galleryPath, entry.Name(), innerEntry.Name())
+		}
 	}
 
 	if index == nil {
 		return nil, nil, fmt.Errorf("no index file found")
-	}
-	downloadLinks := generateMapOfDownloadLinksByNames(index)
-
-	archives = make(map[string][]byte, len(index.Experiences))
-	for _, f := range r.File {
-		if f.Name == indexName {
-			continue
-		}
-
-		ext := path.Ext(f.Name)
-		if ext != ".zip" {
-			return nil, nil, fmt.Errorf("zip archive is expected, got: '%s'", f.Name)
-		}
-
-		var data []byte
-		data, err = readData(f)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		name := strings.TrimSuffix(f.Name, ext)
-		link, found := downloadLinks[name]
-		if !found {
-			return nil, nil, fmt.Errorf("archive '%s' is presented in cache, but not in the index", name)
-		}
-
-		archives[link] = data
 	}
 	return
 }
@@ -400,12 +376,8 @@ func (s *service) downloadZipToFile(url string, progress process.Progress) (path
 			case <-time.After(time.Second):
 				readerMutex.Lock()
 				if countReader != nil && size != 0 {
-					count := countReader.Count()
-					if count > uint64(^int64(0)+1) {
-						count = uint64(^int64(0) + 1)
-					}
 					// nolint:gosec
-					progress.SetDone(archiveDownloadingPercents + archiveCopyingPercents*int64(count)/size)
+					progress.SetDone(archiveDownloadingPercents + archiveCopyingPercents*int64(countReader.Count())/size)
 				} else if counter < archiveDownloadingPercents {
 					counter++
 					progress.SetDone(counter)
@@ -416,7 +388,7 @@ func (s *service) downloadZipToFile(url string, progress process.Progress) (path
 	}()
 
 	var reader io.ReadCloser
-	reader, size, err = getArchiveReaderAndSize(url)
+	reader, size, err = getArchiveReaderAndSize(ctx, url)
 	if err != nil {
 		return "", err
 	}
@@ -451,10 +423,13 @@ func (s *service) setupProgress() (process.Notificationable, error) {
 	return progress, nil
 }
 
-func getArchiveReaderAndSize(url string) (reader io.ReadCloser, size int64, err error) {
-	client := http.Client{Timeout: 15 * time.Second}
-	// nolint: gosec
-	resp, err := client.Get(url)
+func getArchiveReaderAndSize(ctx context.Context, url string) (reader io.ReadCloser, size int64, err error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	req = req.WithContext(ctx)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -473,19 +448,11 @@ func getArchiveReaderAndSize(url string) (reader io.ReadCloser, size int64, err 
 	return resp.Body, size, nil
 }
 
-func getManifestByDownloadLink(index *pb.RpcGalleryDownloadIndexResponse, link string) (*model.ManifestInfo, error) {
+func getManifestByName(index *pb.RpcGalleryDownloadIndexResponse, name string) (*model.ManifestInfo, error) {
 	for _, manifest := range index.Experiences {
-		if manifest.DownloadLink == link {
+		if manifest.Name == name {
 			return manifest, nil
 		}
 	}
-	return nil, fmt.Errorf("failed to find manifest for url: %s", link)
-}
-
-func generateMapOfDownloadLinksByNames(index *pb.RpcGalleryDownloadIndexResponse) map[string]string {
-	m := make(map[string]string, len(index.Experiences))
-	for _, manifest := range index.Experiences {
-		m[manifest.Name] = manifest.DownloadLink
-	}
-	return m
+	return nil, fmt.Errorf("failed to find manifest with name: %s", name)
 }

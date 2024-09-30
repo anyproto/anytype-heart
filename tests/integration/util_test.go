@@ -85,7 +85,7 @@ func createAccountAndStartApp(t *testing.T, defaultUsecase pb.RpcObjectImportUse
 		eventQueue: eventQueue,
 	}
 	objCreator := getService[gallery.Service](testApp)
-	_, err = objCreator.ImportBuiltInUseCase(ctx, acc.Info.AccountSpaceId, "./testdata/import/client cache/client_cache.zip", defaultUsecase)
+	_, err = objCreator.ImportBuiltInUseCase(ctx, acc.Info.AccountSpaceId, "./testdata/import/artifact", defaultUsecase)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

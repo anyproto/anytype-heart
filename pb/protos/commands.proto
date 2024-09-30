@@ -1131,7 +1131,7 @@ message Rpc {
             message Request {
                 google.protobuf.Struct details = 1; // object details
                 anytype.Rpc.Object.ImportUseCase.Request.UseCase useCase = 2; // use case
-                string cachePath = 3;
+                string artifactPath = 3;
             }
 
             message Response {
@@ -2697,7 +2697,7 @@ message Rpc {
             message Request {
                 string spaceId = 2;
                 UseCase useCase = 1;
-                string cachePath = 3;
+                string artifactPath = 3;
 
                 enum UseCase {
                     NONE = 0;
@@ -2733,7 +2733,8 @@ message Rpc {
                 string url = 2;
                 string title = 3;
                 bool isNewSpace = 4;
-                string cachePath = 5;
+                string name = 5;
+                string artifactPath = 6;
             }
 
             message Response {
@@ -3664,7 +3665,7 @@ message Rpc {
 
         message DownloadIndex {
             message Request {
-                string clientCachePath = 1;
+                string artifactPath = 1;
             }
 
             message Response {

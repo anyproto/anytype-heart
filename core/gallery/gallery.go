@@ -59,7 +59,7 @@ func (s *service) GetGalleryIndex(clientCachePath string) (index *pb.RpcGalleryD
 	log.Warn("failed to get gallery index. Getting it from client cache", zap.Error(err))
 
 	// TODO: GO-4131 Maybe we should not return index from client cache, as it could be reduced (need to be discussed)
-	_, index, err = readClientCache(clientCachePath, true)
+	_, index, err = readArtifact(clientCachePath, true)
 	if err == nil {
 		return index, nil
 	}

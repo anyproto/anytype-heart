@@ -133,7 +133,7 @@ func TestIndexCache_GetIndex(t *testing.T) {
 }
 
 func TestIndexCache_GetManifest(t *testing.T) {
-	const link = "https://github.com/anyproto/gallery/raw/main/experiences/knowledge_base/knowledge_base.zip"
+	const name = "name"
 
 	t.Run("get manifest from cache, failed to fetch index from remote", func(t *testing.T) {
 		// given
@@ -154,7 +154,7 @@ func TestIndexCache_GetManifest(t *testing.T) {
 		}
 
 		// when
-		info, err := c.GetManifest("test.link", 0)
+		info, err := c.GetManifest("test", 0)
 
 		// then
 		assert.NoError(t, err)
@@ -181,12 +181,12 @@ func TestIndexCache_GetManifest(t *testing.T) {
 		}
 
 		// when
-		info, err := c.GetManifest(link, 0)
+		info, err := c.GetManifest(name, 0)
 
 		// then
 		assert.NoError(t, err)
 		assert.NotNil(t, info)
-		assert.Equal(t, "name", info.Name)
+		assert.Equal(t, name, info.Name)
 	})
 
 	t.Run("get manifest from remote, version is the same", func(t *testing.T) {
@@ -208,7 +208,7 @@ func TestIndexCache_GetManifest(t *testing.T) {
 		}
 
 		// when
-		info, err := c.GetManifest("test.link", 0)
+		info, err := c.GetManifest("test", 0)
 
 		// then
 		assert.NoError(t, err)
@@ -234,12 +234,12 @@ func TestIndexCache_GetManifest(t *testing.T) {
 		}
 
 		// when
-		info, err := c.GetManifest(link, 0)
+		info, err := c.GetManifest(name, 0)
 
 		// then
 		assert.NoError(t, err)
 		assert.NotNil(t, info)
-		assert.Equal(t, "name", info.Name)
+		assert.Equal(t, name, info.Name)
 	})
 
 	t.Run("failed to both read local index and download remote one", func(t *testing.T) {
@@ -255,7 +255,7 @@ func TestIndexCache_GetManifest(t *testing.T) {
 		}
 
 		// when
-		_, err := c.GetManifest("link", 0)
+		_, err := c.GetManifest(name, 0)
 
 		// then
 		assert.Error(t, err)
