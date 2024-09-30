@@ -24,7 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -166,7 +165,7 @@ func (s *service) Run(_ context.Context) error {
 }
 
 type objectArchiver interface {
-	SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error
+	SetListIsArchived(objectIds []string, isArchived bool) error
 }
 
 func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) error {
@@ -196,11 +195,7 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 		return err
 	}
 	if len(objectIds) > 0 {
-		err = s.objectArchiver.SetPagesIsArchived(nil, pb.RpcObjectListSetIsArchivedRequest{
-			ObjectIds:  objectIds,
-			IsArchived: true,
-		})
-		if err != nil {
+		if err = s.objectArchiver.SetListIsArchived(objectIds, true); err != nil {
 			return err
 		}
 	}

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/blevesearch/bleve/v2/search"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
@@ -533,4 +534,54 @@ func (p *collatorBufferPool) get() *collate.Buffer {
 func (p *collatorBufferPool) put(b *collate.Buffer) {
 	b.Reset()
 	p.pool.Put(b)
+}
+
+func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *types.Struct)) (err error) {
+	arena := s.arenaPool.Get()
+	defer s.arenaPool.Put(arena)
+
+	collatorBuffer := s.collatorBufferPool.get()
+	defer s.collatorBufferPool.put(collatorBuffer)
+
+	filters, err := database.NewFilters(q, s, arena, collatorBuffer)
+	if err != nil {
+		return fmt.Errorf("new filters: %w", err)
+	}
+
+	anystoreFilter := filters.FilterObj.AnystoreFilter()
+	query := s.objects.Find(anystoreFilter)
+
+	iter, err := query.Iter(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("find: %w", err)
+	}
+
+	defer func() {
+		if iterCloseErr := iter.Close(); iterCloseErr != nil {
+			err = errors.Join(iterCloseErr, err)
+		}
+	}()
+
+	for iter.Next() {
+		var doc anystore.Doc
+		doc, err = iter.Doc()
+		if err != nil {
+			err = fmt.Errorf("get doc: %w", err)
+			return
+		}
+
+		var details *types.Struct
+		details, err = pbtypes.JsonToProto(doc.Value())
+		if err != nil {
+			err = fmt.Errorf("json to proto: %w", err)
+			return
+		}
+		proc(details)
+	}
+	err = iter.Err()
+	if err != nil {
+		err = fmt.Errorf("iterate: %w", err)
+		return
+	}
+	return
 }

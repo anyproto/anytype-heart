@@ -312,6 +312,7 @@ func (q *Queue[T]) notifyWaiters() {
 	for _, w := range q.waiters {
 		close(w.waitCh)
 	}
+	q.waiters = nil
 	q.currentProcessingKey = nil
 }
 

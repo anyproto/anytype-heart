@@ -282,7 +282,7 @@ protos-java:
 build-server: setup-network-config
 	@echo 'Building anytype-heart server...'
 	@$(eval FLAGS += $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
-	@$(eval TAGS := nosigar nowatchdog)
+	@$(eval TAGS := $(TAGS) nosigar nowatchdog)
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
@@ -338,7 +338,7 @@ endif
 ### Tantivy Section
 
 REPO := anyproto/tantivy-go
-VERSION := v0.1.0
+VERSION := v0.1.1
 OUTPUT_DIR := deps/libs
 SHA_FILE = tantivity_sha256.txt
 

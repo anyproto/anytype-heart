@@ -149,6 +149,7 @@ func buildDiffDetails(origin, current *types.Struct) (details []*model.Detail) {
 		bundle.RelationKeyIsReadonly.String(), bundle.RelationKeyIsHidden.String(),
 		bundle.RelationKeyRevision.String(), bundle.RelationKeyRelationReadonlyValue.String(),
 		bundle.RelationKeyRelationMaxCount.String(), bundle.RelationKeyTargetObjectType.String(),
+		bundle.RelationKeyIconEmoji.String(),
 	})
 
 	for key, value := range diff.Fields {

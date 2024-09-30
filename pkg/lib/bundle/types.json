@@ -268,14 +268,15 @@
     "types": [
       "Template"
     ],
-    "emoji": "",
-    "hidden": true,
+    "emoji": "\uD83E\uDDE9",
+    "hidden": false,
     "layout": "basic",
     "relations": [
       "targetObjectType",
       "templateIsBundled"
     ],
-    "description": "Sample object that has already some details in place and used to create objects from"
+    "description": "Sample object that has already some details in place and used to create objects from",
+    "revision": 1
   },
   {
     "id": "set",
@@ -484,6 +485,7 @@
       "tag",
       "description"
     ],
-    "description": "A chat derived object"
+    "description": "A chat derived object",
+    "revision": 1
   }
 ]
