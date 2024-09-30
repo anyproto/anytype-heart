@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -16,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
@@ -220,8 +222,10 @@ func (sf *sfile) updateFile(ctx session.Context, id, groupId string, apply func(
 }
 
 func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
-	if err = sf.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
-		return err
+	if layout, ok := sf.Layout(); !ok || layout != model.ObjectType_collection {
+		if err = sf.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+			return err
+		}
 	}
 	proc := &dropFilesProcess{
 		spaceID:             sf.SpaceID(),
@@ -247,7 +251,6 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 	for _, entry := range entries {
 		var blockId, pageId string
 		if entry.isDir {
-
 			if err = sf.Apply(s); err != nil {
 				return
 			}
@@ -301,6 +304,14 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 	if info.err == context.Canceled {
 		s := sf.NewState().SetGroupId(info.groupId)
 		s.Unlink(info.blockId)
+		return sf.Apply(s)
+	}
+	if layout, ok := sf.Layout(); ok && layout == model.ObjectType_collection {
+		s := sf.NewState()
+		store := s.GetStoreSlice(template.CollectionStoreKey)
+		if !slices.Contains(store, info.file.TargetObjectId) {
+			s.UpdateStoreSlice(template.CollectionStoreKey, append(store, info.file.TargetObjectId))
+		}
 		return sf.Apply(s)
 	}
 	return sf.UpdateFile(info.blockId, info.groupId, func(f file.Block) error {
@@ -476,6 +487,25 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 			return
 		}
 		err = cache.Do(dp.picker, smartBlockIds[idx], func(sb File) error {
+			smartBlock, ok := sb.(smartblock.SmartBlock)
+			if ok {
+				if layout, ok := smartBlock.Layout(); ok && layout == model.ObjectType_collection {
+					for _, entry := range flatEntries[idx] {
+						if entry.isDir {
+							smartBlockIds = append(smartBlockIds, rootId)
+							flatEntries = append(flatEntries, entry.child)
+							atomic.AddInt64(&dp.done, 1)
+							continue
+						}
+						in <- &dropFileInfo{
+							pageId: smartBlockIds[idx],
+							path:   entry.path,
+							name:   entry.name,
+						}
+					}
+					return nil
+				}
+			}
 			sbHandler, ok := sb.(dropFilesHandler)
 			if !ok {
 				isContinue = idx != 0

@@ -833,54 +833,6 @@ func (_c *MockService_SetListIsFavorite_Call) RunAndReturn(run func([]string, bo
 	return _c
 }
 
-// SetSource provides a mock function with given fields: ctx, objectId, source
-func (_m *MockService) SetSource(ctx session.Context, objectId string, source []string) error {
-	ret := _m.Called(ctx, objectId, source)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetSource")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(session.Context, string, []string) error); ok {
-		r0 = rf(ctx, objectId, source)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockService_SetSource_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetSource'
-type MockService_SetSource_Call struct {
-	*mock.Call
-}
-
-// SetSource is a helper method to define mock.On call
-//   - ctx session.Context
-//   - objectId string
-//   - source []string
-func (_e *MockService_Expecter) SetSource(ctx interface{}, objectId interface{}, source interface{}) *MockService_SetSource_Call {
-	return &MockService_SetSource_Call{Call: _e.mock.On("SetSource", ctx, objectId, source)}
-}
-
-func (_c *MockService_SetSource_Call) Run(run func(ctx session.Context, objectId string, source []string)) *MockService_SetSource_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].(string), args[2].([]string))
-	})
-	return _c
-}
-
-func (_c *MockService_SetSource_Call) Return(_a0 error) *MockService_SetSource_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockService_SetSource_Call) RunAndReturn(run func(session.Context, string, []string) error) *MockService_SetSource_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // SetSpaceInfo provides a mock function with given fields: spaceId, details
 func (_m *MockService) SetSpaceInfo(spaceId string, details *types.Struct) error {
 	ret := _m.Called(spaceId, details)

@@ -219,3 +219,6 @@ packages:
   github.com/anyproto/anytype-heart/core/block/detailservice:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/files/fileuploader:
+    interfaces:
+      Service:
