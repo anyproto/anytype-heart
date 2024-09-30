@@ -45,20 +45,20 @@ func newFixture(t *testing.T) *fixture {
 
 func Test(t *testing.T) {
 	t.Run("sub request - added proper relations", func(t *testing.T) {
-		fixture := newFixture(t)
-		fixture.objectStoreMock.EXPECT().ListAllRelations(mock.Anything).Return([]*relationutils.Relation{
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyId)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyName)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyAuthor)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyLinkedProjects)},
-		}, nil)
-		fixture.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
+		fx := newFixture(t)
+		// fx.objectStoreMock.EXPECT().ListAllRelations(mock.Anything).Return([]*relationutils.Relation{
+		// 	{Relation: bundle.MustGetRelation(bundle.RelationKeyId)},
+		// 	{Relation: bundle.MustGetRelation(bundle.RelationKeyName)},
+		// 	{Relation: bundle.MustGetRelation(bundle.RelationKeyAuthor)},
+		// 	{Relation: bundle.MustGetRelation(bundle.RelationKeyLinkedProjects)},
+		// }, nil)
+		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*types.Struct{},
 		}, nil)
-		fixture.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
+		fx.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
 
 		req := &pb.RpcObjectGraphRequest{}
-		graph, edges, err := fixture.ObjectGraph(req)
+		graph, edges, err := fx.ObjectGraph(req)
 		assert.NoError(t, err)
 		assert.Equal(t, req.Keys[0], "links")
 		assert.Equal(t, len(req.Keys), 4)
@@ -67,14 +67,14 @@ func Test(t *testing.T) {
 	})
 
 	t.Run("graph", func(t *testing.T) {
-		fixture := newFixture(t)
-		fixture.objectStoreMock.EXPECT().ListAllRelations(mock.Anything).Return([]*relationutils.Relation{
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyId)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyName)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyAssignee)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyLinkedProjects)},
-		}, nil)
-		fixture.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
+		fx := newFixture(t)
+		// fx.objectStoreMock.EXPECT().ListAllRelations(mock.Anything).Return([]*relationutils.Relation{
+		// 	{Relation: bundle.MustGetRelation(bundle.RelationKeyId)},
+		// 	{Relation: bundle.MustGetRelation(bundle.RelationKeyName)},
+		// 	{Relation: bundle.MustGetRelation(bundle.RelationKeyAssignee)},
+		// 	{Relation: bundle.MustGetRelation(bundle.RelationKeyLinkedProjects)},
+		// }, nil)
+		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*types.Struct{
 				{Fields: map[string]*types.Value{
 					bundle.RelationKeyId.String():       pbtypes.String("id1"),
@@ -89,11 +89,11 @@ func Test(t *testing.T) {
 				}},
 			},
 		}, nil)
-		fixture.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
-		fixture.sbtProviderMock.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil)
+		fx.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
+		fx.sbtProviderMock.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil)
 
 		req := &pb.RpcObjectGraphRequest{}
-		graph, edges, err := fixture.ObjectGraph(req)
+		graph, edges, err := fx.ObjectGraph(req)
 		assert.NoError(t, err)
 		assert.True(t, len(graph) == 3)
 		assert.True(t, len(edges) == 2)

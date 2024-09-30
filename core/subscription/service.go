@@ -180,6 +180,9 @@ func (s *service) iterateSubscriptions(proc func(sub subscription)) {
 }
 
 func (s *service) Search(req SubscribeRequest) (*SubscribeResponse, error) {
+	if req.SpaceId == "" {
+		return nil, fmt.Errorf("spaceId is required")
+	}
 	if req.SubId == "" {
 		req.SubId = bson.NewObjectId().Hex()
 	}

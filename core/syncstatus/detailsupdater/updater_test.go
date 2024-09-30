@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	domain "github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/mock_detailsupdater"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
@@ -139,7 +139,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			err := proc()
 			require.NoError(t, err)
 
-			details, err := fx.objectStore.GetDetails(objectId)
+			details, err := fx.objectStore.SpaceId("space1").GetDetails(objectId)
 			require.NoError(t, err)
 
 			assert.True(t, pbtypes.GetInt64(details.Details, bundle.RelationKeySyncStatus.String()) == int64(domain.ObjectSyncStatusError))

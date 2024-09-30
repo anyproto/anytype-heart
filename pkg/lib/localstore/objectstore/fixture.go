@@ -21,6 +21,7 @@ import (
 
 type StoreFixture struct {
 	*dsObjectStore
+	FullText ftsearch.FTSearch
 }
 
 type detailsFromId struct {
@@ -85,6 +86,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 
 	return &StoreFixture{
 		dsObjectStore: ds,
+		FullText:      fullText,
 	}
 }
 

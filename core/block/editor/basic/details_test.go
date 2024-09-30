@@ -10,13 +10,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type duFixture struct {
 	sb    *smarttest.SmartTest
-	store *objectstore.StoreFixture
+	store *spaceobjects.StoreFixture
 	basic DetailsUpdatable
 }
 
@@ -30,7 +31,7 @@ func newDUFixture(t *testing.T) *duFixture {
 	sb.SetDetails(nil, nil, false)
 	sb.SetSpaceId(spaceId)
 
-	store := objectstore.NewStoreFixture(t)
+	store := spaceobjects.NewStoreFixture(t)
 
 	b := NewBasic(sb, store, converter.NewLayoutConverter(), nil, nil)
 
@@ -45,7 +46,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 	t.Run("add new details", func(t *testing.T) {
 		// given
 		f := newDUFixture(t)
-		f.store.AddObjects(t, spaceId, []objectstore.TestObject{{
+		f.store.AddObjects(t, []objectstore.TestObject{{
 			bundle.RelationKeyId:             pbtypes.String("rel-aperture"),
 			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
 			bundle.RelationKeyRelationKey:    pbtypes.String("aperture"),
@@ -88,7 +89,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 			Value: pbtypes.String("123"),
 		}}, false)
 		assert.NoError(t, err)
-		f.store.AddObjects(t, spaceId, []objectstore.TestObject{{
+		f.store.AddObjects(t, []objectstore.TestObject{{
 			bundle.RelationKeyId:             pbtypes.String("rel-spaceDashboardId"),
 			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
 			bundle.RelationKeyRelationKey:    pbtypes.String("spaceDashboardId"),

@@ -8,7 +8,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -22,10 +21,10 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 type testCreator struct {
@@ -297,7 +296,6 @@ func TestExtractObjects(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fixture := newFixture(t)
-			defer fixture.cleanUp()
 
 			creator := testCreator{objects: map[string]*smarttest.SmartTest{}}
 			sb := makeTestObject()
@@ -358,7 +356,7 @@ func TestExtractObjects(t *testing.T) {
 	})
 	t.Run("add custom link block", func(t *testing.T) {
 		fixture := newFixture(t)
-		defer fixture.cleanUp()
+
 		creator := testCreator{objects: map[string]*smarttest.SmartTest{}}
 		sb := makeTestObject()
 		creator.Add(sb)
@@ -391,7 +389,7 @@ func TestExtractObjects(t *testing.T) {
 	})
 	t.Run("add custom link block for multiple blocks", func(t *testing.T) {
 		fixture := newFixture(t)
-		defer fixture.cleanUp()
+
 		creator := testCreator{objects: map[string]*smarttest.SmartTest{}}
 		sb := makeTestObject()
 		creator.Add(sb)
@@ -615,39 +613,33 @@ func generateState(root string, blocks []simple.Block) *state.State {
 
 type fixture struct {
 	t     *testing.T
-	ctrl  *gomock.Controller
-	store *testMock.MockObjectStore
+	store *spaceobjects.StoreFixture
 }
 
 func newFixture(t *testing.T) *fixture {
-	ctrl := gomock.NewController(t)
-	objectStore := testMock.NewMockObjectStore(ctrl)
+	objectStore := spaceobjects.NewStoreFixture(t)
 
-	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), gomock.Any()).DoAndReturn(
-		func(_ string, uk domain.UniqueKey) (*model.ObjectDetails, error) {
-			layout := pbtypes.Int64(int64(model.ObjectType_basic))
-			switch uk.InternalKey() {
-			case "note":
-				layout = pbtypes.Int64(int64(model.ObjectType_note))
-			case "task":
-				layout = pbtypes.Int64(int64(model.ObjectType_todo))
-			}
-			return &model.ObjectDetails{
-				Details: &types.Struct{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyRecommendedLayout.String(): layout,
-					},
-				},
-			}, nil
-		}).AnyTimes()
+	// TODO FIX
+	// 	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), gomock.Any()).DoAndReturn(
+	// 		func(_ string, uk domain.UniqueKey) (*model.ObjectDetails, error) {
+	// 			layout := pbtypes.Int64(int64(model.ObjectType_basic))
+	// 			switch uk.InternalKey() {
+	// 			case "note":
+	// 				layout = pbtypes.Int64(int64(model.ObjectType_note))
+	// 			case "task":
+	// 				layout = pbtypes.Int64(int64(model.ObjectType_todo))
+	// 			}
+	// 			return &model.ObjectDetails{
+	// 				Details: &types.Struct{
+	// 					Fields: map[string]*types.Value{
+	// 						bundle.RelationKeyRecommendedLayout.String(): layout,
+	// 					},
+	// 				},
+	// 			}, nil
+	// 		}).AnyTimes()
 
 	return &fixture{
 		t:     t,
-		ctrl:  ctrl,
 		store: objectStore,
 	}
-}
-
-func (fx *fixture) cleanUp() {
-	fx.ctrl.Finish()
 }

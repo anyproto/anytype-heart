@@ -28,7 +28,8 @@ func wrapToEventMessages(vals []pb.IsEventMessageValue) []*pb.EventMessage {
 func TestInternalSubscriptionSingle(t *testing.T) {
 	fx := NewInternalTestService(t)
 	resp, err := fx.Search(SubscribeRequest{
-		SubId: "test",
+		SpaceId: "space1",
+		SubId:   "test",
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyPriority.String(),
@@ -125,7 +126,8 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 func TestInternalSubscriptionMultiple(t *testing.T) {
 	fx := newFixtureWithRealObjectStore(t)
 	resp1, err := fx.Search(SubscribeRequest{
-		SubId: "internal1",
+		SpaceId: "space1",
+		SubId:   "internal1",
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyPriority.String(),
@@ -137,7 +139,8 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		Internal: true,
 	})
 	_, err = fx.Search(SubscribeRequest{
-		SubId: "client1",
+		SpaceId: "space1",
+		SubId:   "client1",
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyPriority.String(),
@@ -148,7 +151,8 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
 	})
 	_, err = fx.Search(SubscribeRequest{
-		SubId: "client2",
+		SpaceId: "space1",
+		SubId:   "client2",
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyPriority.String(),
@@ -159,7 +163,8 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
 	})
 	resp4, err := fx.Search(SubscribeRequest{
-		SubId: "internal2",
+		SpaceId: "space1",
+		SubId:   "internal2",
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyName.String(),
