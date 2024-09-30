@@ -106,6 +106,12 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 	sql.Register(driverName,
 		&sqlite3.SQLiteDriver{
 			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+				if s.dbTempPath != "" {
+					_, err := conn.Exec("PRAGMA temp_store_directory = '"+s.dbTempPath+"';", nil)
+					if err != nil {
+						return err
+					}
+				}
 				conn.RegisterUpdateHook(func(op int, db string, table string, rowid int64) {
 					s.lastWrite.Store(time.Now())
 				})
@@ -126,12 +132,6 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 		return
 	}
 	s.writeDb.SetMaxOpenConns(1)
-	if s.dbTempPath != "" {
-		if _, err = s.writeDb.Exec("PRAGMA temp_store_directory = '" + s.dbTempPath + "';"); err != nil {
-			log.Error("write:: failed to set temp store directory", zap.Error(err))
-			return
-		}
-	}
 
 	if _, err = s.writeDb.Exec(sqlCreateTables); err != nil {
 		log.With(zap.String("db", "spacestore_sqlite"), zap.String("type", "createtable"), zap.Error(err)).Error("failed to open db")
@@ -141,12 +141,6 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 	if s.readDb, err = sql.Open(driverName, connectionUri); err != nil {
 		log.With(zap.String("db", "spacestore_sqlite"), zap.String("type", "read"), zap.Error(err)).Error("failed to open db")
 		return
-	}
-	if s.dbTempPath != "" {
-		if _, err = s.readDb.Exec("PRAGMA temp_store_directory = '" + s.dbTempPath + "';"); err != nil {
-			log.Error("read:: failed to set temp store directory", zap.Error(err))
-			return
-		}
 	}
 	s.readDb.SetMaxOpenConns(10)
 
