@@ -494,7 +494,6 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 						if entry.isDir {
 							smartBlockIds = append(smartBlockIds, rootId)
 							flatEntries = append(flatEntries, entry.child)
-							atomic.AddInt64(&dp.done, 1)
 							continue
 						}
 						in <- &dropFileInfo{
