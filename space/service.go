@@ -171,6 +171,7 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
+	defer s.updater.UpdateCoordinatorStatus()
 	if s.newAccount {
 		return s.createAccount(ctx)
 	}
