@@ -1060,6 +1060,10 @@
     - [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request)
     - [Rpc.Relation.ListRemoveOption.Response](#anytype-Rpc-Relation-ListRemoveOption-Response)
     - [Rpc.Relation.ListRemoveOption.Response.Error](#anytype-Rpc-Relation-ListRemoveOption-Response-Error)
+    - [Rpc.Relation.ListWithValue](#anytype-Rpc-Relation-ListWithValue)
+    - [Rpc.Relation.ListWithValue.Request](#anytype-Rpc-Relation-ListWithValue-Request)
+    - [Rpc.Relation.ListWithValue.Response](#anytype-Rpc-Relation-ListWithValue-Response)
+    - [Rpc.Relation.ListWithValue.Response.Error](#anytype-Rpc-Relation-ListWithValue-Response-Error)
     - [Rpc.Relation.Options](#anytype-Rpc-Relation-Options)
     - [Rpc.Relation.Options.Request](#anytype-Rpc-Relation-Options-Request)
     - [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response)
@@ -1458,6 +1462,7 @@
     - [Rpc.Process.Subscribe.Response.Error.Code](#anytype-Rpc-Process-Subscribe-Response-Error-Code)
     - [Rpc.Process.Unsubscribe.Response.Error.Code](#anytype-Rpc-Process-Unsubscribe-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
+    - [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
     - [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code)
@@ -2008,6 +2013,7 @@
 | ObjectCreateRelationOption | [Rpc.Object.CreateRelationOption.Request](#anytype-Rpc-Object-CreateRelationOption-Request) | [Rpc.Object.CreateRelationOption.Response](#anytype-Rpc-Object-CreateRelationOption-Response) |  |
 | RelationListRemoveOption | [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request) | [Rpc.Relation.ListRemoveOption.Response](#anytype-Rpc-Relation-ListRemoveOption-Response) |  |
 | RelationOptions | [Rpc.Relation.Options.Request](#anytype-Rpc-Relation-Options-Request) | [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response) |  |
+| RelationListWithValue | [Rpc.Relation.ListWithValue.Request](#anytype-Rpc-Relation-ListWithValue-Request) | [Rpc.Relation.ListWithValue.Response](#anytype-Rpc-Relation-ListWithValue-Response) |  |
 | ObjectRelationAdd | [Rpc.ObjectRelation.Add.Request](#anytype-Rpc-ObjectRelation-Add-Request) | [Rpc.ObjectRelation.Add.Response](#anytype-Rpc-ObjectRelation-Add-Response) | Object Relations *** |
 | ObjectRelationDelete | [Rpc.ObjectRelation.Delete.Request](#anytype-Rpc-ObjectRelation-Delete-Request) | [Rpc.ObjectRelation.Delete.Response](#anytype-Rpc-ObjectRelation-Delete-Response) |  |
 | ObjectRelationAddFeatured | [Rpc.ObjectRelation.AddFeatured.Request](#anytype-Rpc-ObjectRelation-AddFeatured-Request) | [Rpc.ObjectRelation.AddFeatured.Response](#anytype-Rpc-ObjectRelation-AddFeatured-Response) |  |
@@ -17523,6 +17529,65 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Relation-ListWithValue"></a>
+
+### Rpc.Relation.ListWithValue
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-ListWithValue-Request"></a>
+
+### Rpc.Relation.ListWithValue.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| value | [google.protobuf.Value](#google-protobuf-Value) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-ListWithValue-Response"></a>
+
+### Rpc.Relation.ListWithValue.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Relation.ListWithValue.Response.Error](#anytype-Rpc-Relation-ListWithValue-Response-Error) |  |  |
+| relationKeys | [string](#string) | repeated |  |
+| counters | [int64](#int64) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-ListWithValue-Response-Error"></a>
+
+### Rpc.Relation.ListWithValue.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Relation-Options"></a>
 
 ### Rpc.Relation.Options
@@ -23048,6 +23113,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Relation-ListWithValue-Response-Error-Code"></a>
+
+### Rpc.Relation.ListWithValue.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Relation-Options-Response-Error-Code"></a>
 
 ### Rpc.Relation.Options.Response.Error.Code
@@ -26910,7 +26988,7 @@ Precondition: user A and user B opened the same block
 | NotConnected | 0 |  |
 | NotPossible | 1 |  |
 | Connected | 2 |  |
-| Restricted | 3 |  |
+| Restricted | 3 | only for ios for now, fallback to NotPossible if not implemented on client |
 
 
 
@@ -29214,6 +29292,10 @@ stored |
 | Codepen | 16 |  |
 | Bilibili | 17 |  |
 | Excalidraw | 18 |  |
+| Kroki | 19 |  |
+| Graphviz | 20 |  |
+| Sketchfab | 21 |  |
+| Image | 22 |  |
 
 
 

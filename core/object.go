@@ -28,29 +28,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
-	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectSetDetailsResponseErrorCode, err error) *pb.RpcObjectSetDetailsResponse {
-		m := &pb.RpcObjectSetDetailsResponse{Error: &pb.RpcObjectSetDetailsResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetDetailsAndUpdateLastUsed(ctx, req.ContextId, req.GetDetails())
-	})
-	if err != nil {
-		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectSetDetailsResponseError_NULL, nil)
-}
 
 func (mw *Middleware) ObjectDuplicate(cctx context.Context, req *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse {
 	response := func(templateId string, err error) *pb.RpcObjectDuplicateResponse {
@@ -621,44 +600,6 @@ func (mw *Middleware) ObjectListSetObjectType(cctx context.Context, req *pb.RpcO
 	return response(pb.RpcObjectListSetObjectTypeResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectListSetDetails(cctx context.Context, req *pb.RpcObjectListSetDetailsRequest) *pb.RpcObjectListSetDetailsResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectListSetDetailsResponseErrorCode, err error) *pb.RpcObjectListSetDetailsResponse {
-		m := &pb.RpcObjectListSetDetailsResponse{Error: &pb.RpcObjectListSetDetailsResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
-
-	if err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetDetailsList(ctx, req.ObjectIds, req.Details)
-	}); err != nil {
-		return response(pb.RpcObjectListSetDetailsResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcObjectListSetDetailsResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectListModifyDetailValues(_ context.Context, req *pb.RpcObjectListModifyDetailValuesRequest) *pb.RpcObjectListModifyDetailValuesResponse {
-	response := func(code pb.RpcObjectListModifyDetailValuesResponseErrorCode, err error) *pb.RpcObjectListModifyDetailValuesResponse {
-		m := &pb.RpcObjectListModifyDetailValuesResponse{Error: &pb.RpcObjectListModifyDetailValuesResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ModifyDetailsList(req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectListModifyDetailValuesResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectListModifyDetailValuesResponseError_NULL, nil)
-}
-
 func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetLayoutResponseErrorCode, err error) *pb.RpcObjectSetLayoutResponse {
@@ -677,94 +618,6 @@ func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSet
 		return response(pb.RpcObjectSetLayoutResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcObjectSetLayoutResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
-	response := func(code pb.RpcObjectSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectSetIsArchivedResponse {
-		m := &pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetPageIsArchived(*req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectSetIsArchivedResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectSetSource(cctx context.Context,
-	req *pb.RpcObjectSetSourceRequest) *pb.RpcObjectSetSourceResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectSetSourceResponseErrorCode, err error) *pb.RpcObjectSetSourceResponse {
-		m := &pb.RpcObjectSetSourceResponse{Error: &pb.RpcObjectSetSourceResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetSource(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectSetSourceResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectSetSourceResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.RpcObjectWorkspaceSetDashboardRequest) *pb.RpcObjectWorkspaceSetDashboardResponse {
-	ctx := mw.newContext(cctx)
-	response := func(setId string, err error) *pb.RpcObjectWorkspaceSetDashboardResponse {
-		resp := &pb.RpcObjectWorkspaceSetDashboardResponse{
-			ObjectId: setId,
-			Error: &pb.RpcObjectWorkspaceSetDashboardResponseError{
-				Code: pb.RpcObjectWorkspaceSetDashboardResponseError_NULL,
-			},
-		}
-		if err != nil {
-			resp.Error.Code = pb.RpcObjectWorkspaceSetDashboardResponseError_UNKNOWN_ERROR
-			resp.Error.Description = getErrorDescription(err)
-		} else {
-			resp.Event = mw.getResponseEvent(ctx)
-		}
-		return resp
-	}
-	var (
-		setId string
-		err   error
-	)
-	err = mw.doBlockService(func(bs *block.Service) error {
-		if setId, err = bs.SetWorkspaceDashboardId(ctx, req.ContextId, req.ObjectId); err != nil {
-			return err
-		}
-		return nil
-	})
-	return response(setId, err)
-}
-
-func (mw *Middleware) ObjectSetIsFavorite(cctx context.Context, req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectSetIsFavoriteResponseErrorCode, err error) *pb.RpcObjectSetIsFavoriteResponse {
-		m := &pb.RpcObjectSetIsFavoriteResponse{Error: &pb.RpcObjectSetIsFavoriteResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetPageIsFavorite(*req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectSetIsFavoriteResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectSetIsFavoriteResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectRelationAddFeatured(cctx context.Context, req *pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse {
@@ -865,29 +718,6 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 		return response(pb.RpcObjectToBookmarkResponseError_UNKNOWN_ERROR, "", err)
 	}
 	return response(pb.RpcObjectToBookmarkResponseError_NULL, id, nil)
-}
-
-func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcObjectSetInternalFlagsRequest) *pb.RpcObjectSetInternalFlagsResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectSetInternalFlagsResponseErrorCode, err error) *pb.RpcObjectSetInternalFlagsResponse {
-		m := &pb.RpcObjectSetInternalFlagsResponse{Error: &pb.RpcObjectSetInternalFlagsResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
-			d := pbtypes.CopyStruct(current, false)
-			return internalflag.PutToDetails(d, req.InternalFlags), nil
-		})
-	})
-	if err != nil {
-		return response(pb.RpcObjectSetInternalFlagsResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectSetInternalFlagsResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {

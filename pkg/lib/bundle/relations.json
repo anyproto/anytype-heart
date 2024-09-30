@@ -91,12 +91,13 @@
   {
     "description": "Done checkbox used to render action layout. ",
     "format": "checkbox",
-    "hidden": true,
+    "hidden": false,
     "key": "done",
     "maxCount": 1,
     "name": "Done",
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "Artist URL",

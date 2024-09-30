@@ -5,20 +5,21 @@ import (
 	"errors"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
-	blockService := getService[*block.Service](mw)
+	detailsService := getService[detailservice.Service](mw)
 	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
 	for _, relKey := range req.RelationKeys {
 		keys = append(keys, domain.RelationKey(relKey))
 	}
 
-	err := blockService.ObjectTypeRelationAdd(cctx, req.ObjectTypeUrl, keys)
+	err := detailsService.ObjectTypeAddRelations(cctx, req.ObjectTypeUrl, keys)
 	code := mapErrorCode(err,
-		errToCode(block.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE),
+		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE),
 	)
 	return &pb.RpcObjectTypeRelationAddResponse{
 		Error: &pb.RpcObjectTypeRelationAddResponseError{
@@ -29,15 +30,15 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 }
 
 func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
-	blockService := getService[*block.Service](mw)
+	detailsService := getService[detailservice.Service](mw)
 	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
 	for _, relKey := range req.RelationKeys {
 		keys = append(keys, domain.RelationKey(relKey))
 	}
 
-	err := blockService.ObjectTypeRemoveRelations(cctx, req.ObjectTypeUrl, keys)
+	err := detailsService.ObjectTypeRemoveRelations(cctx, req.ObjectTypeUrl, keys)
 	code := mapErrorCode(err,
-		errToCode(block.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE),
+		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE),
 	)
 	return &pb.RpcObjectTypeRelationRemoveResponse{
 		Error: &pb.RpcObjectTypeRelationRemoveResponseError{
@@ -80,7 +81,23 @@ func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb
 	return response(pb.RpcRelationListRemoveOptionResponseError_NULL, nil)
 }
 
-func (mw *Middleware) RelationOptions(cctx context.Context, request *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {
+func (mw *Middleware) RelationOptions(_ context.Context, _ *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {
 	// TODO implement me
 	panic("implement me")
+}
+
+func (mw *Middleware) RelationListWithValue(_ context.Context, req *pb.RpcRelationListWithValueRequest) *pb.RpcRelationListWithValueResponse {
+	response := func(keys []string, counters []int64, err error) *pb.RpcRelationListWithValueResponse {
+		m := &pb.RpcRelationListWithValueResponse{Error: &pb.RpcRelationListWithValueResponseError{Code: pb.RpcRelationListWithValueResponseError_NULL}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		} else {
+			m.RelationKeys = keys
+			m.Counters = counters
+		}
+		return m
+	}
+
+	keys, counters, err := getService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, req.Value)
+	return response(keys, counters, err)
 }

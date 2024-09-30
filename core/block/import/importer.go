@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	creator "github.com/anyproto/anytype-heart/core/block/import/common/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/import/common/objectid"
@@ -104,7 +105,8 @@ func (i *Import) Init(a *app.App) (err error) {
 	factory := syncer.New(syncer.NewFileSyncer(i.s, fileObjectService), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, fileObjectService))
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileObjectService)
 	objectCreator := app.MustComponent[objectcreator.Service](a)
-	i.oc = creator.New(i.s, factory, store, relationSyncer, spaceService, objectCreator)
+	detailsService := app.MustComponent[detailservice.Service](a)
+	i.oc = creator.New(detailsService, factory, store, relationSyncer, spaceService, objectCreator, i.s)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	i.notificationService = app.MustComponent[notifications.Notifications](a)
 	i.eventSender = app.MustComponent[event.Sender](a)
