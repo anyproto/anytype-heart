@@ -284,7 +284,7 @@ func readArtifact(artifactPath string, indexOnly bool) (archivesPaths map[string
 			}
 
 			if strings.TrimSuffix(innerEntry.Name(), ".zip") != entry.Name() {
-				return nil, nil, fmt.Errorf("zip archive should have same name as containg folder. Folder: '%s'. Archive: %s",
+				return nil, nil, fmt.Errorf("zip archive should have the same name as containing folder. Folder: '%s'. Archive: %s",
 					entry.Name(), innerEntry.Name())
 			}
 
