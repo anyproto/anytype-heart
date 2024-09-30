@@ -22,12 +22,12 @@ type Progress interface {
 	TryStep(delta int64) error
 }
 
-func NewProgress(pType pb.ModelProcessType) Progress {
+func NewProgress(processMessage pb.IsModelProcessMessage) Progress {
 	return &progress{
-		id:     bson.NewObjectId().Hex(),
-		done:   make(chan struct{}),
-		cancel: make(chan struct{}),
-		pType:  pType,
+		id:             bson.NewObjectId().Hex(),
+		done:           make(chan struct{}),
+		cancel:         make(chan struct{}),
+		processMessage: processMessage,
 	}
 }
 
@@ -36,9 +36,9 @@ type progress struct {
 	done, cancel          chan struct{}
 	totalCount, doneCount int64
 
-	pType    pb.ModelProcessType
-	pMessage string
-	m        sync.Mutex
+	processMessage pb.IsModelProcessMessage
+	pMessage       string
+	m              sync.Mutex
 
 	isCancelled         bool
 	isDone              bool
@@ -128,13 +128,13 @@ func (p *progress) Info() pb.ModelProcess {
 	defer p.m.Unlock()
 	return pb.ModelProcess{
 		Id:    p.id,
-		Type:  p.pType,
 		State: state,
 		Progress: &pb.ModelProcessProgress{
 			Total:   atomic.LoadInt64(&p.totalCount),
 			Done:    atomic.LoadInt64(&p.doneCount),
 			Message: p.pMessage,
 		},
+		Message: p.processMessage,
 	}
 }
 
