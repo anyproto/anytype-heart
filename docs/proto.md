@@ -15669,7 +15669,6 @@ DEPRECATED, GO-1926 |
 | afterId | [string](#string) |  | (optional) pagination: middleware will return results after given id |
 | beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
 | source | [string](#string) | repeated |  |
-| ignoreWorkspace | [string](#string) |  |  |
 | noDepSubscription | [bool](#bool) |  | disable dependent subscription |
 | collectionId | [string](#string) |  |  |
 
@@ -16441,7 +16440,6 @@ DEPRECATED, GO-1926 |
 | subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
 | ids | [string](#string) | repeated | ids for subscribe |
 | keys | [string](#string) | repeated | sorts (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
-| ignoreWorkspace | [string](#string) |  |  |
 | noDepSubscription | [bool](#bool) |  | disable dependent subscription |
 
 

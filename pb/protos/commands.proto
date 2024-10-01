@@ -1899,7 +1899,6 @@ message Rpc {
 
                 repeated string source = 10;
 
-                string ignoreWorkspace = 12;
                 // disable dependent subscription
                 bool noDepSubscription = 13;
                 string collectionId = 14;
@@ -1972,7 +1971,6 @@ message Rpc {
                 // (required)  needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent
                 repeated string keys = 3;
 
-                string ignoreWorkspace = 11;
                 // disable dependent subscription
                 bool noDepSubscription = 12;
             }

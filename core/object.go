@@ -337,7 +337,6 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 		AfterId:           req.AfterId,
 		BeforeId:          req.BeforeId,
 		Source:            req.Source,
-		IgnoreWorkspace:   req.IgnoreWorkspace,
 		NoDepSubscription: req.NoDepSubscription,
 		CollectionId:      req.CollectionId,
 	})

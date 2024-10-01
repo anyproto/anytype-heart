@@ -55,9 +55,8 @@ type SubscribeRequest struct {
 	// (optional) pagination: middleware will return results after given id
 	AfterId string
 	// (optional) pagination: middleware will return results before given id
-	BeforeId        string
-	Source          []string
-	IgnoreWorkspace string
+	BeforeId string
+	Source   []string
 	// disable dependent subscription
 	NoDepSubscription bool
 	CollectionId      string
