@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -46,6 +47,7 @@ var log = logging.Logger("object-service")
 type Service interface {
 	CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *types.Struct, err error)
 	CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, objectUniqueTypeKey string, req CreateObjectRequest) (id string, details *types.Struct, err error)
+	CreateChatWithUniqueKey(ctx context.Context, spaceID string, uniqueKey domain.UniqueKey, details *types.Struct) (id string, newDetails *types.Struct, err error)
 
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
@@ -107,6 +109,23 @@ func (s *service) CreateObjectUsingObjectUniqueTypeKey(
 	}
 	req.ObjectTypeKey = objectTypeKey
 	return s.CreateObject(ctx, spaceID, req)
+}
+
+func (s *service) CreateChatWithUniqueKey(
+	ctx context.Context, spaceID string, uniqueKey domain.UniqueKey, details *types.Struct,
+) (id string, newDetails *types.Struct, err error) {
+	space, err := s.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return "", nil, fmt.Errorf("get space: %w", err)
+	}
+
+	payload, err := space.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{
+		Key: uniqueKey,
+	})
+	if err != nil {
+		return "", nil, fmt.Errorf("derive tree payload: %w", err)
+	}
+	return s.createChatWithPayload(ctx, space, details, payload)
 }
 
 // createObjectInSpace is supposed to be called for user-initiated object creation requests

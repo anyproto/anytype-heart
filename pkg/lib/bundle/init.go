@@ -7,7 +7,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -41,17 +40,6 @@ var internalTypesTypesMap = makeInternalTypesTypesMap()
 func IsInternalType(typeKey domain.TypeKey) bool {
 	_, ok := internalTypesTypesMap[typeKey]
 	return ok
-}
-
-var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]domain.TypeKey{
-	coresb.SmartBlockTypePage:        TypeKeyPage,
-	coresb.SmartBlockTypeProfilePage: TypeKeyProfile,
-	coresb.SmartBlockTypeHome:        TypeKeyDashboard,
-	coresb.SmartBlockTypeTemplate:    TypeKeyTemplate,
-	coresb.SmartBlockTypeWidget:      TypeKeyDashboard,
-	coresb.SmartBlockTypeObjectType:  TypeKeyObjectType,
-	coresb.SmartBlockTypeRelation:    TypeKeyRelation,
-	coresb.SmartBlockTypeSpaceView:   TypeKeySpace,
 }
 
 // filled in init

@@ -90,5 +90,6 @@
   "lastUsedDate",
   "mentions",
   "chatId",
+  "spaceMainChatId",
   "hasChat"
 ]
