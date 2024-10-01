@@ -155,7 +155,7 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 }
 
 func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.SmartBlock, spaceobjects.Store) {
-	store := f.objectStore.SpaceId(space.Id())
+	store := f.objectStore.SpaceStore(space.Id())
 	return smartblock.New(
 		space,
 		f.accountService.MyParticipantId(space.Id()),

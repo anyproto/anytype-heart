@@ -101,7 +101,7 @@ func (fx *StoreFixture) Init(a *app.App) (err error) {
 type TestObject = spaceobjects.TestObject
 
 func (fx *StoreFixture) AddObjects(t testing.TB, spaceId string, objects []spaceobjects.TestObject) {
-	store := fx.SpaceId(spaceId)
+	store := fx.SpaceStore(spaceId)
 	for _, obj := range objects {
 		id := obj[bundle.RelationKeyId].GetStringValue()
 		require.NotEmpty(t, id)

@@ -179,7 +179,7 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 }
 
 func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
-	ids, _, err := i.store.SpaceId(spaceId).QueryObjectIDs(database.Query{
+	ids, _, err := i.store.SpaceStore(spaceId).QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -191,7 +191,7 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	if err != nil {
 		return
 	}
-	return i.store.SpaceId(spaceId).DeleteDetails(i.runCtx, ids)
+	return i.store.SpaceStore(spaceId).DeleteDetails(i.runCtx, ids)
 }
 
 func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
@@ -227,7 +227,7 @@ func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ..
 			return
 		}
 
-		err = i.store.SpaceId(info.Space.Id()).SaveLastIndexedHeadsHash(ctx, info.Id, headHashToIndex)
+		err = i.store.SpaceStore(info.Space.Id()).SaveLastIndexedHeadsHash(ctx, info.Id, headHashToIndex)
 		if err != nil {
 			log.With("objectID", info.Id).Errorf("failed to save indexed heads hash: %v", err)
 		}
@@ -238,7 +238,7 @@ func (i *indexer) index(ctx context.Context, info smartblock.DocInfo, options ..
 		return nil
 	}
 
-	store := i.store.SpaceId(info.Space.Id())
+	store := i.store.SpaceStore(info.Space.Id())
 
 	lastIndexedHash, err := store.GetLastIndexedHeadsHash(ctx, info.Id)
 	if err != nil {

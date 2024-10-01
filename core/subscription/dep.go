@@ -89,7 +89,7 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, spaceId string, dep
 		}
 	}
 	if len(missIds) > 0 {
-		records, err := ds.s.objectStore.SpaceId(spaceId).QueryByID(missIds)
+		records, err := ds.s.objectStore.SpaceStore(spaceId).QueryByID(missIds)
 		if err != nil {
 			log.Errorf("can't query by id: %v", err)
 		}
@@ -122,7 +122,7 @@ func (ds *dependencyService) isRelationObject(spaceId string, key string) bool {
 	if isObj, ok := ds.isRelationObjMap[key]; ok {
 		return isObj
 	}
-	relFormat, err := ds.s.objectStore.SpaceId(spaceId).GetRelationFormatByKey(key)
+	relFormat, err := ds.s.objectStore.SpaceStore(spaceId).GetRelationFormatByKey(key)
 	if err != nil {
 		log.Errorf("can't get relation %s: %v", key, err)
 		return false

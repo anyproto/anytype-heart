@@ -44,11 +44,10 @@ type CrossSpace interface {
 	IndexerStore
 }
 
-// nolint: interfacebloat
 type ObjectStore interface {
 	app.ComponentRunnable
 
-	SpaceId(spaceId string) spaceobjects.Store
+	SpaceStore(spaceId string) spaceobjects.Store
 
 	SpaceNameGetter
 	CrossSpace
@@ -198,7 +197,7 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	return err
 }
 
-func (s *dsObjectStore) SpaceId(spaceId string) spaceobjects.Store {
+func (s *dsObjectStore) SpaceStore(spaceId string) spaceobjects.Store {
 	// TODO Check spaceId
 	s.Lock()
 	store, ok := s.stores[spaceId]

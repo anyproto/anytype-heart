@@ -127,7 +127,7 @@ func (s *service) CreateBookmarkObject(
 	}
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
 
-	records, err := s.store.SpaceId(spaceID).Query(database.Query{
+	records, err := s.store.SpaceStore(spaceID).Query(database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),

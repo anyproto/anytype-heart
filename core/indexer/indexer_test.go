@@ -51,7 +51,7 @@ func TestIndexer(t *testing.T) {
 
 			smartTest.SetType(coresb.SmartBlockTypePage)
 			indexerFx.storageServiceFx.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
-			indexerFx.store.SpaceId("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "7f40bc2814f5297818461f889780a870ea033fe64c5a261117f2b662515a3dba")
+			indexerFx.store.SpaceStore("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "7f40bc2814f5297818461f889780a870ea033fe64c5a261117f2b662515a3dba")
 
 			// when
 			err := indexerFx.Index(context.Background(), smartTest.GetDocInfo(), testCase.options)
@@ -79,7 +79,7 @@ func TestIndexer(t *testing.T) {
 
 			smartTest.SetType(coresb.SmartBlockTypePage)
 			indexerFx.storageServiceFx.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
-			indexerFx.store.SpaceId("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "randomHash")
+			indexerFx.store.SpaceStore("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "randomHash")
 
 			// when
 			err := indexerFx.Index(context.Background(), smartTest.GetDocInfo(), testCase.options)
@@ -108,7 +108,7 @@ func TestIndexer(t *testing.T) {
 
 		smartTest.SetType(coresb.SmartBlockTypePage)
 		indexerFx.storageServiceFx.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
-		indexerFx.store.SpaceId("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "7f40bc2814f5297818461f889780a870ea033fe64c5a261117f2b662515a3dba")
+		indexerFx.store.SpaceStore("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "7f40bc2814f5297818461f889780a870ea033fe64c5a261117f2b662515a3dba")
 
 		// when
 		err := indexerFx.Index(context.Background(), smartTest.GetDocInfo())

@@ -106,7 +106,7 @@ func (r *Runner) runMigrations() {
 func (r *Runner) run(migrations ...Migration) (err error) {
 	spaceId := r.spc.Id()
 
-	store := r.store.SpaceId(spaceId)
+	store := r.store.SpaceStore(spaceId)
 
 	for _, m := range migrations {
 		if e := r.ctx.Err(); e != nil {

@@ -153,7 +153,7 @@ func (c *layoutConverter) fromAnyToSet(space smartblock.Space, st *state.State) 
 	}
 	addFeaturedRelationSetOf(st)
 
-	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceId(space.Id()), source)
+	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceStore(space.Id()), source)
 	if err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) 
 		return []string{}, nil
 	}
 
-	records, err := c.objectStore.SpaceId(spaceID).Query(
+	records, err := c.objectStore.SpaceStore(spaceID).Query(
 		database.Query{
 			Filters: filters,
 		},
@@ -305,7 +305,7 @@ func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []st
 
 func (c *layoutConverter) appendRelationFilters(spaceId string, relationIDs []string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, error) {
 	for _, relationID := range relationIDs {
-		relation, err := c.objectStore.SpaceId(spaceId).GetRelationByID(relationID)
+		relation, err := c.objectStore.SpaceStore(spaceId).GetRelationByID(relationID)
 		if err != nil {
 			return nil, fmt.Errorf("get relation by id %s: %w", relationID, err)
 		}

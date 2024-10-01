@@ -45,7 +45,7 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 	if err != nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, fmt.Errorf("resolve spaceID: %w", err))
 	}
-	page, err := store.SpaceId(spaceID).GetWithLinksInfoByID(req.ObjectId)
+	page, err := store.SpaceStore(spaceID).GetWithLinksInfoByID(req.ObjectId)
 	if err != nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, err)
 	}

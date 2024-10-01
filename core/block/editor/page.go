@@ -54,7 +54,7 @@ type Page struct {
 }
 
 func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page {
-	store := f.objectStore.SpaceId(spaceId)
+	store := f.objectStore.SpaceStore(spaceId)
 	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Page{
 		SmartBlock:     sb,

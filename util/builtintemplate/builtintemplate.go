@@ -158,7 +158,7 @@ func (b *builtinTemplate) setObjectTypes(st *state.State, spaceId string) error 
 		// todo: remove this hack after fixing bundled templates
 		targetObjectTypeKey = domain.TypeKey(strings.TrimPrefix(targetObjectTypeID, addr.BundledObjectTypeURLPrefix))
 	} else {
-		targetObjectType, err := b.objectStore.SpaceId(spaceId).GetObjectType(targetObjectTypeID)
+		targetObjectType, err := b.objectStore.SpaceStore(spaceId).GetObjectType(targetObjectTypeID)
 		if err != nil {
 			return fmt.Errorf("get object type %s: %w", targetObjectTypeID, err)
 		}

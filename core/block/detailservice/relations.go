@@ -69,7 +69,7 @@ func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) (ke
 	countersByKeys := make(map[string]int64)
 	detailHandlesValue := generateFilter(value)
 
-	err = s.store.SpaceId(spaceId).QueryIterate(database.Query{Filters: nil}, func(details *types.Struct) {
+	err = s.store.SpaceStore(spaceId).QueryIterate(database.Query{Filters: nil}, func(details *types.Struct) {
 		for key, valueToCheck := range details.Fields {
 			if detailHandlesValue(valueToCheck) {
 				if counter, ok := countersByKeys[key]; ok {

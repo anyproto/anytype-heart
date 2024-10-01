@@ -207,7 +207,7 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 	}
 
 	err = spc.DoLockedIfNotExists(id, func() error {
-		return uw.store.SpaceId(spaceId).ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
+		return uw.store.SpaceStore(spaceId).ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
 			return updateBacklinks(details, backlinksUpdate)
 		})
 	})

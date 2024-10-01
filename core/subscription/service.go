@@ -196,7 +196,7 @@ func (s *service) Search(req SubscribeRequest) (*SubscribeResponse, error) {
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
-	f, err := database.NewFilters(q, s.objectStore.SpaceId(req.SpaceId), arena, &collate.Buffer{})
+	f, err := database.NewFilters(q, s.objectStore.SpaceStore(req.SpaceId), arena, &collate.Buffer{})
 	if err != nil {
 		return nil, fmt.Errorf("new database filters: %w", err)
 	}
@@ -238,7 +238,7 @@ func (s *service) subscribeForQuery(req SubscribeRequest, f *database.Filters, f
 		sub.forceSubIds = filterDepIds
 	}
 
-	store := s.objectStore.SpaceId(req.SpaceId)
+	store := s.objectStore.SpaceStore(req.SpaceId)
 	// FIXME Nested subscriptions disabled now. We should enable them only by client's request
 	// Uncomment test xTestNestedSubscription after enabling this
 	if withNested, ok := f.FilterObj.(database.WithNestedFilter); ok && false {
@@ -358,7 +358,7 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	if req.SpaceId == "" {
 		return nil, fmt.Errorf("spaceId is required")
 	}
-	records, err := s.objectStore.SpaceId(req.SpaceId).QueryByID(req.Ids)
+	records, err := s.objectStore.SpaceStore(req.SpaceId).QueryByID(req.Ids)
 	if err != nil {
 		return
 	}
@@ -411,7 +411,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
-	flt, err := database.NewFilters(q, s.objectStore.SpaceId(req.SpaceId), arena, &collate.Buffer{})
+	flt, err := database.NewFilters(q, s.objectStore.SpaceStore(req.SpaceId), arena, &collate.Buffer{})
 	if err != nil {
 		return nil, err
 	}
@@ -638,7 +638,7 @@ func (s *service) filtersFromSource(spaceId string, sources []string) (database.
 		typeUniqueKeys []string
 	)
 
-	store := s.objectStore.SpaceId(spaceId)
+	store := s.objectStore.SpaceStore(spaceId)
 	var err error
 	for _, source := range sources {
 		var uk domain.UniqueKey
