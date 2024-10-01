@@ -2,6 +2,7 @@ package fileobject
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -257,7 +258,8 @@ func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *types.St
 
 func (s *service) Close(ctx context.Context) error {
 	s.closeWg.Wait()
-	return s.indexer.close()
+	err := s.migrationQueue.Close()
+	return errors.Join(err, s.indexer.close())
 }
 
 func (s *service) InitEmptyFileState(st *state.State) {

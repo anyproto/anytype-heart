@@ -190,10 +190,17 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	s.componentCtxCancel()
-	// TODO Close collections
 	if s.anyStore != nil {
 		err = errors.Join(err, s.anyStore.Close())
 	}
+
+	s.Lock()
+	for spaceId, store := range s.stores {
+		err = errors.Join(err, store.Close())
+		delete(s.stores, spaceId)
+	}
+	s.Unlock()
+
 	return err
 }
 
