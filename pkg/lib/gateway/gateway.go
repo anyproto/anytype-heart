@@ -62,6 +62,7 @@ type gateway struct {
 	mu                sync.Mutex
 	isServerStarted   bool
 	limitCh           chan struct{}
+	rasterizerSvg     bool
 }
 
 func GatewayAddr() string {
@@ -82,8 +83,16 @@ func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
 	g.fileObjectService = app.MustComponent[fileobject.Service](a)
 	g.addr = GatewayAddr()
+	g.rasterizeSvg()
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
+}
+
+func (g *gateway) rasterizeSvg() {
+	var rasterizerSvg bool
+	flag.BoolVar(&rasterizerSvg, "rasterizerSvg", false, "")
+	flag.Parse()
+	g.rasterizerSvg = rasterizerSvg
 }
 
 func (g *gateway) Name() string {
@@ -378,11 +387,11 @@ func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req 
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
 		file, err = image.GetOriginalFile()
-		if err != nil && errors.Is(err, domain.ErrFileNotFound) {
-			return g.handleSVGFile(ctx, id, err)
-		}
 		if err != nil {
 			return nil, fmt.Errorf("get image file: %w", err)
+		}
+		if filepath.Ext(file.Info().Name) == constant.SvgExt {
+			return g.handleSVGFile(ctx, file)
 		}
 	} else {
 		wantWidth, err := strconv.Atoi(wantWidthStr)
@@ -390,11 +399,11 @@ func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req 
 			return nil, fmt.Errorf("parse width: %w", err)
 		}
 		file, err = image.GetFileForWidth(wantWidth)
-		if err != nil && errors.Is(err, domain.ErrFileNotFound) {
-			return g.handleSVGFile(ctx, id, err)
-		}
 		if err != nil {
 			return nil, fmt.Errorf("get image file: %w", err)
+		}
+		if filepath.Ext(file.Info().Name) == constant.SvgExt {
+			return g.handleSVGFile(ctx, file)
 		}
 	}
 	reader, err := file.Reader(ctx)
@@ -404,31 +413,21 @@ func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req 
 	return &getImageReaderResult{file: file, reader: reader}, nil
 }
 
-func (g *gateway) handleSVGFile(ctx context.Context, id domain.FullFileId, err error) (files.File, io.ReadSeeker, error) {
-	file, fErr := g.fileService.FileByHash(ctx, id)
-	if fErr != nil {
-		return nil, nil, fmt.Errorf("get image by hash: %w", err)
+func (g *gateway) handleSVGFile(ctx context.Context, file files.File) (*getImageReaderResult, error) {
+	reader, err := file.Reader(ctx)
+	if err != nil {
+		return nil, err
 	}
-	if filepath.Ext(file.Info().Name) == constant.SvgExt {
-		reader, err := file.Reader(ctx)
+	if !g.rasterizerSvg {
 		file.Info().Media = svgMedia
-		if g.rasterizeSvg() {
-			reader, err = svg.Rasterize(reader)
-			if err != nil {
-				return nil, nil, err
-			}
-			file.Info().Media = pngMedia
-		}
-		return file, reader, err
+		return &getImageReaderResult{file, reader}, nil
 	}
-	return nil, nil, fmt.Errorf("get image by hash: file is not an image")
-}
-
-func (g *gateway) rasterizeSvg() bool {
-	var rasterizerSvg bool
-	flag.BoolVar(&rasterizerSvg, "rasterizerSvg", false, "")
-	flag.Parse()
-	return rasterizerSvg
+	reader, err = svg.Rasterize(reader)
+	if err != nil {
+		return nil, err
+	}
+	file.Info().Media = pngMedia
+	return &getImageReaderResult{file, reader}, err
 }
 
 func cleanUpPathForLogging(input string) string {
