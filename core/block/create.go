@@ -97,7 +97,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
 		return b.SetDetails(nil, []*model.Detail{
 			{
-				Key:   bundle.RelationKeyChatId.String(),
+				Key:   bundle.RelationKeySpaceMainChatId.String(),
 				Value: pbtypes.String(chatId),
 			}}, true)
 	})
