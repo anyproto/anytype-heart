@@ -41,6 +41,8 @@ const (
 
 var log = logging.Logger("anytype-gateway")
 
+var rasterizerSvg = flag.Bool("rasterizerSvg", false, "")
+
 func New() Gateway {
 	return new(gateway)
 }
@@ -89,10 +91,8 @@ func (g *gateway) Init(a *app.App) (err error) {
 }
 
 func (g *gateway) rasterizeSvg() {
-	var rasterizerSvg bool
-	flag.BoolVar(&rasterizerSvg, "rasterizerSvg", false, "")
 	flag.Parse()
-	g.rasterizerSvg = rasterizerSvg
+	g.rasterizerSvg = *rasterizerSvg
 }
 
 func (g *gateway) Name() string {
