@@ -27,7 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
@@ -161,7 +161,7 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		accountKeysService: s.accountKeysService,
 		sbtProvider:        s.sbtProvider,
 		fileService:        s.fileService,
-		objectStore:        s.objectStore.SpaceStore(space.Id()),
+		objectStore:        s.objectStore.SpaceIndex(space.Id()),
 		fileObjectMigrator: s.fileObjectMigrator,
 	}
 	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
@@ -200,7 +200,7 @@ type source struct {
 	accountService     accountService
 	accountKeysService accountservice.Service
 	sbtProvider        typeprovider.SmartBlockTypeProvider
-	objectStore        spaceobjects.Store
+	objectStore        spaceindex.Store
 	fileObjectMigrator fileObjectMigrator
 }
 

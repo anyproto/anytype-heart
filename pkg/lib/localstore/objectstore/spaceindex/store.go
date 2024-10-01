@@ -1,4 +1,4 @@
-package spaceobjects
+package spaceindex
 
 import (
 	"context"
@@ -21,7 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-var log = logging.Logger("objectstore.spaceobjects")
+var log = logging.Logger("objectstore.spaceindex")
 
 var (
 	ErrObjectNotFound = fmt.Errorf("object not found")

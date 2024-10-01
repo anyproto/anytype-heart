@@ -238,7 +238,7 @@ func (s *Service) setDefaultObjectTypeToViews(spaceId string, st *state.State) {
 }
 
 func (s *Service) isNotCreatableType(spaceId string, id string) bool {
-	uk, err := s.objectStore.SpaceStore(spaceId).GetUniqueKeyById(id)
+	uk, err := s.objectStore.SpaceIndex(spaceId).GetUniqueKeyById(id)
 	if err != nil {
 		return true
 	}

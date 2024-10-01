@@ -121,7 +121,7 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 }
 
 func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
-	ids, _, err := i.store.SpaceStore(spaceId).QueryObjectIDs(database.Query{
+	ids, _, err := i.store.SpaceIndex(spaceId).QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -133,14 +133,14 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	if err != nil {
 		return
 	}
-	return i.store.SpaceStore(spaceId).DeleteDetails(i.runCtx, ids)
+	return i.store.SpaceIndex(spaceId).DeleteDetails(i.runCtx, ids)
 }
 
 func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
 	i.lock.Lock()
 	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
 	if !ok {
-		spaceInd = newSpaceIndexer(i.runCtx, i.store.SpaceStore(info.Space.Id()), i.store, i.storageService)
+		spaceInd = newSpaceIndexer(i.runCtx, i.store.SpaceIndex(info.Space.Id()), i.store, i.storageService)
 		i.spaceIndexers[info.Space.Id()] = spaceInd
 	}
 	i.lock.Unlock()

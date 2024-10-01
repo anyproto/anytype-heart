@@ -10,14 +10,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type duFixture struct {
 	sb    *smarttest.SmartTest
-	store *spaceobjects.StoreFixture
+	store *spaceindex.StoreFixture
 	basic DetailsUpdatable
 }
 
@@ -31,7 +31,7 @@ func newDUFixture(t *testing.T) *duFixture {
 	sb.SetDetails(nil, nil, false)
 	sb.SetSpaceId(spaceId)
 
-	store := spaceobjects.NewStoreFixture(t)
+	store := spaceindex.NewStoreFixture(t)
 
 	b := NewBasic(sb, store, converter.NewLayoutConverter(), nil, nil)
 

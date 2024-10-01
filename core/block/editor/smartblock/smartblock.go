@@ -37,7 +37,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -96,7 +96,7 @@ func New(
 	currentParticipantId string,
 	fileStore filestore.FileStore,
 	restrictionService restriction.Service,
-	objectStore spaceobjects.Store,
+	objectStore spaceindex.Store,
 	indexer Indexer,
 	eventSender event.Sender,
 ) SmartBlock {
@@ -245,7 +245,7 @@ type smartBlock struct {
 	// Deps
 	fileStore          filestore.FileStore
 	restrictionService restriction.Service
-	objectStore        spaceobjects.Store
+	objectStore        spaceindex.Store
 	indexer            Indexer
 	eventSender        event.Sender
 }

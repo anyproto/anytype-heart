@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -137,7 +137,7 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 			},
 		}
 
-		fx.store.AddObjects(t, []spaceobjects.TestObject{
+		fx.store.AddObjects(t, []spaceindex.TestObject{
 			{
 				"id":     pbtypes.String(id),
 				"number": pbtypes.Float64(2.18281828459045),
@@ -455,7 +455,7 @@ func TestInjectDerivedDetails(t *testing.T) {
 }
 
 type fixture struct {
-	store              *spaceobjects.StoreFixture
+	store              *spaceindex.StoreFixture
 	restrictionService *mock_restriction.MockService
 	indexer            *MockIndexer
 	eventSender        *mock_event.MockSender
@@ -465,7 +465,7 @@ type fixture struct {
 }
 
 func newFixture(id string, t *testing.T) *fixture {
-	objectStore := spaceobjects.NewStoreFixture(t)
+	objectStore := spaceindex.NewStoreFixture(t)
 
 	indexer := NewMockIndexer(t)
 

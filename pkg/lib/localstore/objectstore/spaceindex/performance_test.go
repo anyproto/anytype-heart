@@ -1,4 +1,4 @@
-package spaceobjects
+package spaceindex
 
 import (
 	"testing"

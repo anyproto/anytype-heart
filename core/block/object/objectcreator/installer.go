@@ -134,7 +134,7 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 }
 
 func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds []string) (map[string]*types.Struct, error) {
-	existingObjects, err := s.objectStore.SpaceStore(space.Id()).Query(database.Query{
+	existingObjects, err := s.objectStore.SpaceIndex(space.Id()).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),
@@ -269,7 +269,7 @@ func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs [
 	if err != nil {
 		return nil, err
 	}
-	return s.objectStore.SpaceStore(space.Id()).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+	return s.objectStore.SpaceIndex(space.Id()).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
 		database.FilterIn{
 			Key:   bundle.RelationKeySourceObject.String(),
 			Value: sourceList,

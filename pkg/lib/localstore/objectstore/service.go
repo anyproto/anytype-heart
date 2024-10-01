@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -47,7 +47,7 @@ type CrossSpace interface {
 type ObjectStore interface {
 	app.ComponentRunnable
 
-	SpaceStore(spaceId string) spaceobjects.Store
+	SpaceIndex(spaceId string) spaceindex.Store
 
 	SpaceNameGetter
 	CrossSpace
@@ -98,14 +98,14 @@ type dsObjectStore struct {
 
 	arenaPool *fastjson.ArenaPool
 
-	fts                 ftsearch.FTSearch
-	subManager          *spaceobjects.SubscriptionManager
-	sourceService       spaceobjects.SourceDetailsFromID
-	oldStore            oldstore.Service
+	fts           ftsearch.FTSearch
+	subManager    *spaceindex.SubscriptionManager
+	sourceService spaceindex.SourceDetailsFromID
+	oldStore      oldstore.Service
 	techSpaceIdProvider TechSpaceIdProvider
 
 	sync.Mutex
-	stores map[string]spaceobjects.Store
+	stores map[string]spaceindex.Store
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -116,13 +116,13 @@ func New() ObjectStore {
 	return &dsObjectStore{
 		componentCtx:       ctx,
 		componentCtxCancel: cancel,
-		subManager:         &spaceobjects.SubscriptionManager{},
-		stores:             map[string]spaceobjects.Store{},
+		subManager:         &spaceindex.SubscriptionManager{},
+		stores:             map[string]spaceindex.Store{},
 	}
 }
 
 func (s *dsObjectStore) Init(a *app.App) (err error) {
-	s.sourceService = app.MustComponent[spaceobjects.SourceDetailsFromID](a)
+	s.sourceService = app.MustComponent[spaceindex.SourceDetailsFromID](a)
 	fts := a.Component(ftsearch.CName)
 	if fts == nil {
 		log.Warnf("init objectstore without fulltext")
@@ -204,12 +204,12 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	return err
 }
 
-func (s *dsObjectStore) SpaceStore(spaceId string) spaceobjects.Store {
+func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 	// TODO Check spaceId
 	s.Lock()
 	store, ok := s.stores[spaceId]
 	if !ok {
-		store = spaceobjects.New(s.componentCtx, spaceId, spaceobjects.Deps{
+		store = spaceindex.New(s.componentCtx, spaceId, spaceindex.Deps{
 			AnyStoreConfig: s.anyStoreConfig,
 			SourceService:  s.sourceService,
 			OldStore:       s.oldStore,
@@ -228,9 +228,9 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 	s.subManager.SubscribeForAll(callback)
 }
 
-func (s *dsObjectStore) listStores() []spaceobjects.Store {
+func (s *dsObjectStore) listStores() []spaceindex.Store {
 	s.Lock()
-	stores := make([]spaceobjects.Store, 0, len(s.stores))
+	stores := make([]spaceindex.Store, 0, len(s.stores))
 	for _, store := range s.stores {
 		stores = append(stores, store)
 	}
@@ -238,7 +238,7 @@ func (s *dsObjectStore) listStores() []spaceobjects.Store {
 	return stores
 }
 
-func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceobjects.Store) ([]T, error)) ([]T, error) {
+func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store) ([]T, error)) ([]T, error) {
 	stores := s.listStores()
 
 	var result []T
@@ -253,29 +253,29 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceobjects.Sto
 }
 
 func (s *dsObjectStore) ListIdsCrossSpace() ([]string, error) {
-	return collectCrossSpace(s, func(store spaceobjects.Store) ([]string, error) {
+	return collectCrossSpace(s, func(store spaceindex.Store) ([]string, error) {
 		return store.ListIds()
 	})
 }
 
 func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) ([]database.Record, error) {
-	return collectCrossSpace(s, func(store spaceobjects.Store) ([]database.Record, error) {
+	return collectCrossSpace(s, func(store spaceindex.Store) ([]database.Record, error) {
 		return store.QueryByID(ids)
 	})
 }
 
 func (s *dsObjectStore) QueryCrossSpace(q database.Query) ([]database.Record, error) {
-	return collectCrossSpace(s, func(store spaceobjects.Store) ([]database.Record, error) {
+	return collectCrossSpace(s, func(store spaceindex.Store) ([]database.Record, error) {
 		return store.Query(q)
 	})
 }
 
 func (s *dsObjectStore) QueryRawCrossSpace(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
-	return collectCrossSpace(s, func(store spaceobjects.Store) ([]database.Record, error) {
+	return collectCrossSpace(s, func(store spaceindex.Store) ([]database.Record, error) {
 		return store.QueryRaw(filters, limit, offset)
 	})
 }
 
-func (s *dsObjectStore) SubscribeLinksUpdate(callback func(info spaceobjects.LinksUpdateInfo)) {
+func (s *dsObjectStore) SubscribeLinksUpdate(callback func(info spaceindex.LinksUpdateInfo)) {
 	s.subManager.SubscribeLinksUpdate(callback)
 }

@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -43,7 +43,7 @@ const testCreator = "accountId1"
 
 func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
-	store := spaceobjects.NewStoreFixture(t)
+	store := spaceindex.NewStoreFixture(t)
 
 	accountService := &accountServiceStub{accountId: testCreator}
 

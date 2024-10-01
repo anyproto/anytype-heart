@@ -66,7 +66,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		err = indexerFx.ReindexMarketplaceSpace(virtualSpace)
 
 		// then
-		details, err := indexerFx.store.SpaceStore("space1").GetDetails(addr.MissingObject)
+		details, err := indexerFx.store.SpaceIndex("space1").GetDetails(addr.MissingObject)
 		assert.Nil(t, err)
 		assert.NotNil(t, details)
 	})
@@ -75,7 +75,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		// given
 		fx := NewIndexerFixture(t)
 
-		store := fx.store.SpaceStore("space1")
+		store := fx.store.SpaceIndex("space1")
 
 		favs := []string{"fav1", "fav2"}
 		trash := []string{"trash1", "trash2"}
@@ -143,7 +143,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		assert.NoError(t, err)
 
 		// then
-		det, err := fx.store.SpaceStore("space1").GetDetails("relationThatWillBeDeleted")
+		det, err := fx.store.SpaceIndex("space1").GetDetails("relationThatWillBeDeleted")
 		assert.NoError(t, err)
 		assert.Empty(t, det.Details.Fields)
 	})
@@ -300,7 +300,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		// given
 		favs := []string{"fav1", "fav2"}
 		trash := []string{"trash1", "trash2"}
-		store := fx.store.SpaceStore("space1")
+		store := fx.store.SpaceIndex("space1")
 		err = store.UpdateObjectLinks(ctx, "home", favs)
 		require.NoError(t, err)
 		err = store.UpdateObjectLinks(ctx, "bin", trash)
@@ -338,7 +338,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		obj1links := []string{"obj2", "obj3"}
 		obj2links := []string{"obj1"}
 		obj3links := []string{"obj2"}
-		store := fx.store.SpaceStore(spaceId2)
+		store := fx.store.SpaceIndex(spaceId2)
 		err = store.UpdateObjectLinks(ctx, "obj1", obj1links)
 		require.NoError(t, err)
 		err = store.UpdateObjectLinks(ctx, "obj2", obj2links)
@@ -379,7 +379,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 }
 
 func (fx *IndexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
-	ids, _, err := fx.objectStore.SpaceStore(spaceId).QueryObjectIDs(database.Query{
+	ids, _, err := fx.objectStore.SpaceIndex(spaceId).QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),

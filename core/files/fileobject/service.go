@@ -363,7 +363,7 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 // CreateFromImport creates file object from imported raw IPFS file. Encryption keys for this file should exist in file store.
 func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error) {
 	// Check that fileId is not a file object id
-	recs, _, err := s.objectStore.SpaceStore(fileId.SpaceId).QueryObjectIDs(database.Query{
+	recs, _, err := s.objectStore.SpaceIndex(fileId.SpaceId).QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
@@ -409,7 +409,7 @@ func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uplo
 }
 
 func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error) {
-	records, err := s.objectStore.SpaceStore(fileId.SpaceId).Query(database.Query{
+	records, err := s.objectStore.SpaceIndex(fileId.SpaceId).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -438,7 +438,7 @@ func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error
 	if err != nil {
 		return domain.FullFileId{}, fmt.Errorf("resolve space id: %w", err)
 	}
-	details, err := s.objectStore.SpaceStore(spaceId).GetDetails(objectId)
+	details, err := s.objectStore.SpaceIndex(spaceId).GetDetails(objectId)
 	if err != nil {
 		return domain.FullFileId{}, fmt.Errorf("get object details: %w", err)
 	}

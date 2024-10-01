@@ -262,7 +262,7 @@ func (e *export) docsForExport(spaceID string, req pb.RpcObjectListExportRequest
 
 func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested bool, includeFiles bool, isProtobuf bool) (map[string]*types.Struct, error) {
 	docs := make(map[string]*types.Struct)
-	res, err := e.objectStore.SpaceStore(spaceId).Query(database.Query{
+	res, err := e.objectStore.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
@@ -344,7 +344,7 @@ func (e *export) addDerivedObjects(spaceId string, docs map[string]*types.Struct
 }
 
 func (e *export) getNested(spaceID string, id string, docs map[string]*types.Struct) []string {
-	store := e.objectStore.SpaceStore(spaceID)
+	store := e.objectStore.SpaceIndex(spaceID)
 	links, err := store.GetOutboundLinksByID(id)
 	if err != nil {
 		log.Errorf("export failed to get outbound links for id: %s", err)
@@ -378,7 +378,7 @@ func (e *export) getNested(spaceID string, id string, docs map[string]*types.Str
 
 func (e *export) fillLinkedFiles(space clientspace.Space, id string, docs map[string]*types.Struct) error {
 	return space.Do(id, func(b sb.SmartBlock) error {
-		store := e.objectStore.SpaceStore(space.Id())
+		store := e.objectStore.SpaceIndex(space.Id())
 		b.NewState().IterateLinkedFiles(func(fileObjectId string) {
 			details, err := store.GetDetails(fileObjectId)
 			if err != nil {
@@ -393,7 +393,7 @@ func (e *export) fillLinkedFiles(space clientspace.Space, id string, docs map[st
 }
 
 func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProtobuf bool) (map[string]*types.Struct, error) {
-	store := e.objectStore.SpaceStore(spaceID)
+	store := e.objectStore.SpaceIndex(spaceID)
 	res, err := store.List(false)
 	if err != nil {
 		return nil, err
@@ -833,7 +833,7 @@ func (e *export) processObject(spaceId string, object *types.Struct,
 }
 
 func (e *export) addObjectType(spaceId string, objectTypeId string, derivedObjects []database.Record, typesAndTemplates []database.Record) ([]database.Record, []database.Record, error) {
-	store := e.objectStore.SpaceStore(spaceId)
+	store := e.objectStore.SpaceIndex(spaceId)
 	objectTypeDetails, err := store.GetDetails(objectTypeId)
 	if err != nil {
 		return nil, nil, err
@@ -874,7 +874,7 @@ func (e *export) addObjectType(spaceId string, objectTypeId string, derivedObjec
 }
 
 func (e *export) getRelation(spaceId string, key string) (*database.Record, error) {
-	store := e.objectStore.SpaceStore(spaceId)
+	store := e.objectStore.SpaceIndex(spaceId)
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
 		return nil, err
@@ -931,7 +931,7 @@ func (e *export) addRelation(relation database.Record, derivedObjects []database
 }
 
 func (e *export) getRelationOptions(spaceId string, relationKey string) ([]database.Record, error) {
-	relationOptionsDetails, err := e.objectStore.SpaceStore(spaceId).Query(database.Query{
+	relationOptionsDetails, err := e.objectStore.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -962,7 +962,7 @@ func (e *export) getRelationOptions(spaceId string, relationKey string) ([]datab
 }
 
 func (e *export) addTemplates(spaceId string, id string, derivedObjects []database.Record, typesAndTemplates []database.Record) ([]database.Record, []database.Record, error) {
-	templates, err := e.objectStore.SpaceStore(spaceId).Query(database.Query{
+	templates, err := e.objectStore.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyTargetObjectType.String(),
@@ -992,7 +992,7 @@ func (e *export) addTemplates(spaceId string, id string, derivedObjects []databa
 func (e *export) handleSetOfRelation(spaceId string, object *types.Struct, derivedObjects []database.Record) ([]database.Record, error) {
 	setOfList := pbtypes.GetStringList(object, bundle.RelationKeySetOf.String())
 	if len(setOfList) > 0 {
-		types, err := e.objectStore.SpaceStore(spaceId).Query(database.Query{
+		types, err := e.objectStore.SpaceIndex(spaceId).Query(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyId.String(),

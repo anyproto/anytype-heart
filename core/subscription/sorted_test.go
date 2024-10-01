@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -54,7 +54,7 @@ func TestSubscription_Add(t *testing.T) {
 func TestSubscription_Remove(t *testing.T) {
 	newSub := func() *sortedSub {
 		store := objectstore.NewStoreFixture(t)
-		store.AddObjects(t, "space1", []spaceobjects.TestObject{
+		store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:   pbtypes.String("id7"),
 				bundle.RelationKeyName: pbtypes.String("id7"),

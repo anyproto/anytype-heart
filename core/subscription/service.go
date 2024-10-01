@@ -17,7 +17,7 @@ import (
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/kanban"
@@ -195,7 +195,7 @@ func (s *service) Search(req SubscribeRequest) (*SubscribeResponse, error) {
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
-	f, err := database.NewFilters(q, s.objectStore.SpaceStore(req.SpaceId), arena, &collate.Buffer{})
+	f, err := database.NewFilters(q, s.objectStore.SpaceIndex(req.SpaceId), arena, &collate.Buffer{})
 	if err != nil {
 		return nil, fmt.Errorf("new database filters: %w", err)
 	}
@@ -237,7 +237,7 @@ func (s *service) subscribeForQuery(req SubscribeRequest, f *database.Filters, f
 		sub.forceSubIds = filterDepIds
 	}
 
-	store := s.objectStore.SpaceStore(req.SpaceId)
+	store := s.objectStore.SpaceIndex(req.SpaceId)
 	// FIXME Nested subscriptions disabled now. We should enable them only by client's request
 	// Uncomment test xTestNestedSubscription after enabling this
 	if withNested, ok := f.FilterObj.(database.WithNestedFilter); ok && false {
@@ -292,7 +292,7 @@ func (s *service) subscribeForQuery(req SubscribeRequest, f *database.Filters, f
 	}, nil
 }
 
-func initSubEntries(objectStore spaceobjects.Store, f *database.Filters, sub *sortedSub) error {
+func initSubEntries(objectStore spaceindex.Store, f *database.Filters, sub *sortedSub) error {
 	entries, err := queryEntries(objectStore, f)
 	if err != nil {
 		return err
@@ -303,7 +303,7 @@ func initSubEntries(objectStore spaceobjects.Store, f *database.Filters, sub *so
 	return nil
 }
 
-func queryEntries(objectStore spaceobjects.Store, f *database.Filters) ([]*entry, error) {
+func queryEntries(objectStore spaceindex.Store, f *database.Filters) ([]*entry, error) {
 	records, err := objectStore.QueryRaw(f, 0, 0)
 	if err != nil {
 		return nil, fmt.Errorf("objectStore query error: %w", err)
@@ -357,7 +357,7 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	if req.SpaceId == "" {
 		return nil, fmt.Errorf("spaceId is required")
 	}
-	records, err := s.objectStore.SpaceStore(req.SpaceId).QueryByID(req.Ids)
+	records, err := s.objectStore.SpaceIndex(req.SpaceId).QueryByID(req.Ids)
 	if err != nil {
 		return
 	}
@@ -410,7 +410,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
-	flt, err := database.NewFilters(q, s.objectStore.SpaceStore(req.SpaceId), arena, &collate.Buffer{})
+	flt, err := database.NewFilters(q, s.objectStore.SpaceIndex(req.SpaceId), arena, &collate.Buffer{})
 	if err != nil {
 		return nil, err
 	}
@@ -637,7 +637,7 @@ func (s *service) filtersFromSource(spaceId string, sources []string) (database.
 		typeUniqueKeys []string
 	)
 
-	store := s.objectStore.SpaceStore(spaceId)
+	store := s.objectStore.SpaceIndex(spaceId)
 	var err error
 	for _, source := range sources {
 		var uk domain.UniqueKey

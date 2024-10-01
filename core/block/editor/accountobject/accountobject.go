@@ -28,7 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -69,8 +69,8 @@ var _ AccountObject = (*accountObject)(nil)
 
 type accountObject struct {
 	smartblock.SmartBlock
-	spaceObjects        spaceobjects.Store
-	bs                  basic.DetailsSettable
+	spaceObjects spaceindex.Store
+	bs           basic.DetailsSettable
 	profileSubscription ProfileSubscription
 	state               *storestate.StoreState
 	storeSource         source.Store
@@ -91,7 +91,7 @@ func (a *accountObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details
 
 func New(
 	sb smartblock.SmartBlock,
-	spaceObjects spaceobjects.Store,
+	spaceObjects spaceindex.Store,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
 	lastUsedUpdater lastused.ObjectUsageUpdater,

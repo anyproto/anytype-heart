@@ -14,19 +14,19 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
 type spaceIndexer struct {
-	runCtx         context.Context
-	spaceIndex     spaceobjects.Store
-	objectStore    objectstore.ObjectStore
+	runCtx      context.Context
+	spaceIndex  spaceindex.Store
+	objectStore objectstore.ObjectStore
 	storageService storage.ClientStorage
 	batcher        *mb.MB[indexTask]
 }
 
-func newSpaceIndexer(runCtx context.Context, spaceIndex spaceobjects.Store, objectStore objectstore.ObjectStore, storageService storage.ClientStorage) *spaceIndexer {
+func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, storageService storage.ClientStorage) *spaceIndexer {
 	ind := &spaceIndexer{
 		runCtx:         runCtx,
 		spaceIndex:     spaceIndex,

@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -48,13 +48,13 @@ type Page struct {
 	dataview.Dataview
 	table.TableEditor
 
-	objectStore       spaceobjects.Store
+	objectStore       spaceindex.Store
 	fileObjectService fileobject.Service
 	objectDeleter     ObjectDeleter
 }
 
 func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page {
-	store := f.objectStore.SpaceStore(spaceId)
+	store := f.objectStore.SpaceIndex(spaceId)
 	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Page{
 		SmartBlock:     sb,

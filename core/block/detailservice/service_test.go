@@ -276,7 +276,7 @@ func TestService_SetWorkspaceDashboardId(t *testing.T) {
 			assert.Equal(t, wsObjectId, objectId)
 			ws := &editor.Workspaces{
 				SmartBlock:    sb,
-				AllOperations: basic.NewBasic(sb, fx.store.SpaceStore(spaceId), nil, nil, nil),
+				AllOperations: basic.NewBasic(sb, fx.store.SpaceIndex(spaceId), nil, nil, nil),
 			}
 			return ws, nil
 		})
@@ -299,7 +299,7 @@ func TestService_SetWorkspaceDashboardId(t *testing.T) {
 			assert.Equal(t, wsObjectId, objectId)
 			ws := &editor.Workspaces{
 				SmartBlock:    sb,
-				AllOperations: basic.NewBasic(sb, fx.store.SpaceStore(spaceId), nil, nil, nil),
+				AllOperations: basic.NewBasic(sb, fx.store.SpaceIndex(spaceId), nil, nil, nil),
 			}
 			return ws, nil
 		})
@@ -332,7 +332,7 @@ func TestService_SetListIsFavorite(t *testing.T) {
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
 		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			require.Equal(t, homeId, objectId)
-			return editor.NewDashboard(sb, fx.store.SpaceStore(spaceId), nil), nil
+			return editor.NewDashboard(sb, fx.store.SpaceIndex(spaceId), nil), nil
 		})
 
 		// when
@@ -355,7 +355,7 @@ func TestService_SetListIsFavorite(t *testing.T) {
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
 		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			require.Equal(t, homeId, objectId)
-			return editor.NewDashboard(sb, fx.store.SpaceStore(spaceId), nil), nil
+			return editor.NewDashboard(sb, fx.store.SpaceIndex(spaceId), nil), nil
 		})
 
 		// when
@@ -380,7 +380,7 @@ func TestService_SetListIsFavorite(t *testing.T) {
 				return nil, fmt.Errorf("unexpected error")
 			}
 			flag = true
-			return editor.NewDashboard(sb, fx.store.SpaceStore(spaceId), nil), nil
+			return editor.NewDashboard(sb, fx.store.SpaceIndex(spaceId), nil), nil
 		})
 
 		// when
@@ -426,7 +426,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
-				return editor.NewArchive(sb, fx.store.SpaceStore(spaceId)), nil
+				return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
 			}
 			return smarttest.New(objectId), nil
 		})
@@ -448,7 +448,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
-				return editor.NewArchive(sb, fx.store.SpaceStore(spaceId)), nil
+				return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
 			}
 			return smarttest.New(objectId), nil
 		})
@@ -482,7 +482,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
-				return editor.NewArchive(sb, fx.store.SpaceStore(spaceId)), nil
+				return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
 			}
 			return smarttest.New(objectId), nil
 		})
@@ -510,7 +510,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
-				return editor.NewArchive(sb, fx.store.SpaceStore(spaceId)), nil
+				return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
 			}
 			return smarttest.New(objectId), nil
 		})
@@ -532,7 +532,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
-				return editor.NewArchive(sb, fx.store.SpaceStore(spaceId)), nil
+				return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
 			}
 			if objectId == "obj2" {
 				return nil, fmt.Errorf("failed to get object")

@@ -250,7 +250,7 @@ func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []str
 	var wr io.Writer
 	m := jsonpb.Marshaler{Indent: " "}
 
-	store := d.store.SpaceStore(spaceID)
+	store := d.store.SpaceIndex(spaceID)
 
 	for _, objId := range objIds {
 		doc, err := store.GetWithLinksInfoByID(objId)

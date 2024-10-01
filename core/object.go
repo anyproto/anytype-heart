@@ -93,7 +93,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	}
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	records, err := ds.SpaceStore(req.SpaceId).Query(database.Query{
+	records, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
 		Filters:  req.Filters,
 		Sorts:    req.Sorts,
 		Offset:   int(req.Offset),
@@ -143,7 +143,7 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	if req.ReturnHTMLHighlightsInsteadOfRanges {
 		highlighter = ftsearch.HtmlHighlightFormatter
 	}
-	results, err := ds.SpaceStore(req.SpaceId).Query(database.Query{
+	results, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
 		Filters:     req.Filters,
 		Sorts:       req.Sorts,
 		Offset:      int(req.Offset),
@@ -217,7 +217,7 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 	if err != nil {
 		return nil, fmt.Errorf("make date record: %w", err)
 	}
-	f, _ := database.MakeFilters(req.Filters, store.SpaceStore(spaceID)) //nolint:errcheck
+	f, _ := database.MakeFilters(req.Filters, store.SpaceIndex(spaceID)) //nolint:errcheck
 	if f.FilterObject(rec.Details) {
 		return append([]database.Record{rec}, records...), nil
 	}

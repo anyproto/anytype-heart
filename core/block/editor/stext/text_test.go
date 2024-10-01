@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -532,7 +532,7 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		defer ctrl.Finish()
 
 		sb := smarttest.New("test")
-		os := spaceobjects.NewStoreFixture(t)
+		os := spaceindex.NewStoreFixture(t)
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(link.NewLink(&model.Block{
@@ -546,7 +546,7 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		sender := mock_event.NewMockSender(t)
 		tb := NewText(sb, os, sender)
 
-		os.AddObjects(t, []spaceobjects.TestObject{
+		os.AddObjects(t, []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:   pbtypes.String("targetId"),
 				bundle.RelationKeyName: pbtypes.String("link name"),

@@ -63,7 +63,7 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyName: pbtypes.String("name2"),
 			},
 		})
-		err := storeFixture.SpaceStore(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
+		err := storeFixture.SpaceIndex(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
 		assert.Nil(t, err)
 
 		provider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
@@ -97,7 +97,7 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			},
 		})
-		err := storeFixture.SpaceStore(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
+		err := storeFixture.SpaceIndex(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
 		assert.Nil(t, err)
 
 		provider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
@@ -129,7 +129,7 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyType:          pbtypes.String("objectType"),
 			},
 		})
-		err := storeFixture.SpaceStore(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
+		err := storeFixture.SpaceIndex(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
 		assert.Nil(t, err)
 
 		objectGetter := mock_cache.NewMockObjectGetter(t)
@@ -186,7 +186,7 @@ func Test_docsForExport(t *testing.T) {
 			},
 		})
 
-		err = storeFixture.SpaceStore(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
+		err = storeFixture.SpaceIndex(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
 		assert.Nil(t, err)
 
 		objectGetter := mock_cache.NewMockObjectGetter(t)
@@ -406,7 +406,7 @@ func Test_docsForExport(t *testing.T) {
 			},
 		})
 
-		err = storeFixture.SpaceStore(spaceId).UpdateObjectLinks(context.Background(), templateId, []string{linkedObjectId})
+		err = storeFixture.SpaceIndex(spaceId).UpdateObjectLinks(context.Background(), templateId, []string{linkedObjectId})
 		assert.Nil(t, err)
 
 		objectGetter := mock_cache.NewMockObjectGetter(t)

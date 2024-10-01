@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
 type StoreFixture struct {
@@ -75,9 +75,9 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		arenaPool:           &fastjson.ArenaPool{},
 		repoPath:            walletService.RepoPath(),
 		oldStore:            oldStore,
-		stores:              map[string]spaceobjects.Store{},
+		stores:              map[string]spaceindex.Store{},
 		techSpaceIdProvider: &stubTechSpaceIdProvider{},
-		subManager:          &spaceobjects.SubscriptionManager{},
+		subManager:          &spaceindex.SubscriptionManager{},
 	}
 
 	t.Cleanup(func() {
@@ -98,10 +98,10 @@ func (fx *StoreFixture) Init(a *app.App) (err error) {
 	return nil
 }
 
-type TestObject = spaceobjects.TestObject
+type TestObject = spaceindex.TestObject
 
-func (fx *StoreFixture) AddObjects(t testing.TB, spaceId string, objects []spaceobjects.TestObject) {
-	store := fx.SpaceStore(spaceId)
+func (fx *StoreFixture) AddObjects(t testing.TB, spaceId string, objects []spaceindex.TestObject) {
+	store := fx.SpaceIndex(spaceId)
 	for _, obj := range objects {
 		id := obj[bundle.RelationKeyId].GetStringValue()
 		require.NotEmpty(t, id)
@@ -110,7 +110,7 @@ func (fx *StoreFixture) AddObjects(t testing.TB, spaceId string, objects []space
 	}
 }
 
-func makeDetails(fields spaceobjects.TestObject) *types.Struct {
+func makeDetails(fields spaceindex.TestObject) *types.Struct {
 	f := map[string]*types.Value{}
 	for k, v := range fields {
 		f[string(k)] = v

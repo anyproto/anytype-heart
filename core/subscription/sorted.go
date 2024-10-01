@@ -194,7 +194,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	}
 
 	if s.parent != nil {
-		parentEntries, err := queryEntries(s.objectStore.SpaceStore(s.spaceId), &database.Filters{FilterObj: s.parent.filter})
+		parentEntries, err := queryEntries(s.objectStore.SpaceIndex(s.spaceId), &database.Filters{FilterObj: s.parent.filter})
 		if err != nil {
 			panic(err)
 		}

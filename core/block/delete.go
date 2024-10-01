@@ -93,7 +93,7 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 }
 
 func (s *Service) deleteRelationOptions(spaceId string, relationKey string) error {
-	relationOptions, _, err := s.objectStore.SpaceStore(spaceId).QueryObjectIDs(database.Query{
+	relationOptions, _, err := s.objectStore.SpaceIndex(spaceId).QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -144,7 +144,7 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 	if err != nil {
 		log.With("error", err, "objectId", id.ObjectID).Error("failed to perform delete operation on object")
 	}
-	if err := s.objectStore.SpaceStore(id.SpaceID).DeleteObject(id.ObjectID); err != nil {
+	if err := s.objectStore.SpaceIndex(id.SpaceID).DeleteObject(id.ObjectID); err != nil {
 		return fmt.Errorf("delete object from local store: %w", err)
 	}
 
