@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -22,7 +22,7 @@ import (
 func TestService_Search(t *testing.T) {
 	var newSub = func(fx *fixture, subId string) {
 
-		fx.store.AddObjects(t, "space1", []spaceobjects.TestObject{
+		fx.store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:     pbtypes.String("1"),
 				bundle.RelationKeyName:   pbtypes.String("one"),
@@ -64,7 +64,7 @@ func TestService_Search(t *testing.T) {
 
 		newSub(fx, "test")
 
-		fx.store.AddObjects(t, "space1", []spaceobjects.TestObject{
+		fx.store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:   pbtypes.String("author2"),
 				bundle.RelationKeyName: pbtypes.String("author2"),
@@ -329,7 +329,7 @@ func TestService_Search(t *testing.T) {
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
-		fx.store.AddObjects(t, "space1", []spaceobjects.TestObject{
+		fx.store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:     pbtypes.String("1"),
 				bundle.RelationKeyName:   pbtypes.String("one"),
@@ -380,7 +380,7 @@ func TestService_Search(t *testing.T) {
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
-		fx.store.AddObjects(t, "space1", []spaceobjects.TestObject{
+		fx.store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:   pbtypes.String("1"),
 				bundle.RelationKeyName: pbtypes.String("1"),
@@ -446,7 +446,7 @@ func TestService_Search(t *testing.T) {
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
-		fx.store.AddObjects(t, "space1", []spaceobjects.TestObject{
+		fx.store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:   pbtypes.String("1"),
 				bundle.RelationKeyName: pbtypes.String("1"),
@@ -553,7 +553,7 @@ func TestService_Search(t *testing.T) {
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1", "2"}, nil, nil)
 		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
 
-		fx.store.AddObjects(t, "space1", []spaceobjects.TestObject{
+		fx.store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:   pbtypes.String("1"),
 				bundle.RelationKeyName: pbtypes.String("1"),
@@ -601,7 +601,7 @@ func TestService_Search(t *testing.T) {
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1", "2", "3"}, nil, nil)
 		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
 
-		fx.store.AddObjects(t, "space1", []spaceobjects.TestObject{
+		fx.store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:   pbtypes.String("1"),
 				bundle.RelationKeyName: pbtypes.String("1"),
@@ -660,7 +660,7 @@ func TestService_Search(t *testing.T) {
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1", "2", "3"}, nil, nil)
 		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
 
-		fx.store.AddObjects(t, "space1", []spaceobjects.TestObject{
+		fx.store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:   pbtypes.String("1"),
 				bundle.RelationKeyName: pbtypes.String("1"),
@@ -712,7 +712,7 @@ func TestService_Search(t *testing.T) {
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1"}, nil, nil)
 		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
 
-		fx.store.AddObjects(t, "space1", []spaceobjects.TestObject{
+		fx.store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:                pbtypes.String("1"),
 				bundle.RelationKeyName:              pbtypes.String("1"),
@@ -762,7 +762,7 @@ func TestService_Search(t *testing.T) {
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1"}, nil, nil)
 		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
 
-		fx.store.AddObjects(t, "space1", []spaceobjects.TestObject{
+		fx.store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:                pbtypes.String("1"),
 				bundle.RelationKeyName:              pbtypes.String("1"),
@@ -819,7 +819,7 @@ func TestService_Search(t *testing.T) {
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1", "2", "3"}, nil, nil)
 		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
 
-		fx.store.AddObjects(t, "space1", []spaceobjects.TestObject{
+		fx.store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:   pbtypes.String("1"),
 				bundle.RelationKeyName: pbtypes.String("1"),
@@ -1380,7 +1380,7 @@ func xTestNestedSubscription(t *testing.T) {
 	t.Run("update nested object, so it's not satisfying filter anymore", func(t *testing.T) {
 		fx := testCreateSubscriptionWithNestedFilter(t)
 
-		err := fx.store.SpaceStore("space1").UpdateObjectDetails(context.Background(), "assignee1", &types.Struct{
+		err := fx.store.SpaceIndex("space1").UpdateObjectDetails(context.Background(), "assignee1", &types.Struct{
 			Fields: map[string]*types.Value{
 				"id":   pbtypes.String("assignee1"),
 				"name": pbtypes.String("John Doe"),
@@ -1418,7 +1418,7 @@ func xTestNestedSubscription(t *testing.T) {
 	t.Run("update parent object relation so no nested objects satisfy filter anymore", func(t *testing.T) {
 		fx := testCreateSubscriptionWithNestedFilter(t)
 
-		err := fx.store.SpaceStore("space1").UpdateObjectDetails(context.Background(), "task1", &types.Struct{
+		err := fx.store.SpaceIndex("space1").UpdateObjectDetails(context.Background(), "task1", &types.Struct{
 			Fields: map[string]*types.Value{
 				"id":       pbtypes.String("task1"),
 				"assignee": pbtypes.String("assignee2"),

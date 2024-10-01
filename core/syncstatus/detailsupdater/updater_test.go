@@ -139,7 +139,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			err := proc()
 			require.NoError(t, err)
 
-			details, err := fx.objectStore.SpaceStore("space1").GetDetails(objectId)
+			details, err := fx.objectStore.SpaceIndex("space1").GetDetails(objectId)
 			require.NoError(t, err)
 
 			assert.True(t, pbtypes.GetInt64(details.Details, bundle.RelationKeySyncStatus.String()) == int64(domain.ObjectSyncStatusError))

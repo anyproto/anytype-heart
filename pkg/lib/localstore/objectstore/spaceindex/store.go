@@ -1,4 +1,4 @@
-package spaceobjects
+package spaceindex
 
 import (
 	"context"
@@ -21,7 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-var log = logging.Logger("objectstore.spaceobjects")
+var log = logging.Logger("objectstore.spaceindex")
 
 var (
 	ErrObjectNotFound = fmt.Errorf("object not found")
@@ -31,6 +31,7 @@ var (
 type Store interface {
 	SpaceId() string
 	GetDb() anystore.DB
+	Close() error
 
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(q database.Query) (records []database.Record, err error)
@@ -107,6 +108,7 @@ type dsObjectStore struct {
 	headsState     anystore.Collection
 	activeViews    anystore.Collection
 	pendingDetails anystore.Collection
+	collections    []anystore.Collection
 
 	// Deps
 	anyStoreConfig *anystore.Config
@@ -171,27 +173,28 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	objects, err := store.Collection(ctx, "objects")
+	s.db = store
+
+	objects, err := s.newCollection(ctx, "objects")
 	if err != nil {
 		return errors.Join(store.Close(), fmt.Errorf("open objects collection: %w", err))
 	}
-	links, err := store.Collection(ctx, "links")
+	links, err := s.newCollection(ctx, "links")
 	if err != nil {
 		return errors.Join(store.Close(), fmt.Errorf("open links collection: %w", err))
 	}
-	headsState, err := store.Collection(ctx, "headsState")
+	headsState, err := s.newCollection(ctx, "headsState")
 	if err != nil {
 		return errors.Join(store.Close(), fmt.Errorf("open headsState collection: %w", err))
 	}
-	activeViews, err := store.Collection(ctx, "activeViews")
+	activeViews, err := s.newCollection(ctx, "activeViews")
 	if err != nil {
 		return errors.Join(store.Close(), fmt.Errorf("open activeViews collection: %w", err))
 	}
-	pendingDetails, err := store.Collection(ctx, "pendingDetails")
+	pendingDetails, err := s.newCollection(ctx, "pendingDetails")
 	if err != nil {
 		return errors.Join(store.Close(), fmt.Errorf("open pendingDetails collection: %w", err))
 	}
-	s.db = store
 
 	objectIndexes := []anystore.IndexInfo{
 		{
@@ -252,6 +255,24 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	s.pendingDetails = pendingDetails
 
 	return nil
+}
+
+func (s *dsObjectStore) newCollection(ctx context.Context, name string) (anystore.Collection, error) {
+	coll, err := s.db.Collection(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("open collection %s: %w", name, err)
+	}
+	s.collections = append(s.collections, coll)
+	return coll, nil
+}
+
+func (s *dsObjectStore) Close() error {
+	var err error
+	for _, col := range s.collections {
+		err = errors.Join(err, col.Close())
+	}
+	err = errors.Join(s.db.Close())
+	return err
 }
 
 func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection, indexes []anystore.IndexInfo) error {

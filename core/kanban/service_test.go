@@ -47,7 +47,7 @@ func Test_GrouperTags(t *testing.T) {
 		Start(context.Background())
 	require.NoError(t, err)
 
-	store := objectStore.SpaceStore(spaceId)
+	store := objectStore.SpaceIndex(spaceId)
 
 	require.NoError(t, store.UpdateObjectDetails(context.Background(), "rel-tag", &types.Struct{
 		Fields: map[string]*types.Value{

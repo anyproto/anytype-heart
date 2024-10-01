@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -24,12 +24,12 @@ var archiveRequiredRelations = []domain.RelationKey{}
 type Archive struct {
 	smartblock.SmartBlock
 	collection.Collection
-	objectStore spaceobjects.Store
+	objectStore spaceindex.Store
 }
 
 func NewArchive(
 	sb smartblock.SmartBlock,
-	objectStore spaceobjects.Store,
+	objectStore spaceindex.Store,
 ) *Archive {
 	return &Archive{
 		SmartBlock:  sb,

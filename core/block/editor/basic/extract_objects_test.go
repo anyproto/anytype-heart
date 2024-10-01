@@ -21,7 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -613,13 +613,13 @@ func generateState(root string, blocks []simple.Block) *state.State {
 
 type fixture struct {
 	t     *testing.T
-	store *spaceobjects.StoreFixture
+	store *spaceindex.StoreFixture
 }
 
 func newFixture(t *testing.T) *fixture {
-	objectStore := spaceobjects.NewStoreFixture(t)
+	objectStore := spaceindex.NewStoreFixture(t)
 
-	objectStore.AddObjects(t, []spaceobjects.TestObject{
+	objectStore.AddObjects(t, []spaceindex.TestObject{
 		{
 			bundle.RelationKeyId:                pbtypes.String("id1"),
 			bundle.RelationKeyUniqueKey:         pbtypes.String("ot-note"),

@@ -48,7 +48,7 @@ type debugObject struct {
 
 func (s *Service) debugListObjectsPerSpace(req *http.Request) ([]debugObject, error) {
 	spaceId := chi.URLParam(req, "spaceId")
-	ids, _, err := s.objectStore.SpaceStore(spaceId).QueryObjectIDs(database.Query{
+	ids, _, err := s.objectStore.SpaceIndex(spaceId).QueryObjectIDs(database.Query{
 		Filters: nil,
 	})
 	if err != nil {

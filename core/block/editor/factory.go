@@ -29,7 +29,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -152,8 +152,8 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
 }
 
-func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.SmartBlock, spaceobjects.Store) {
-	store := f.objectStore.SpaceStore(space.Id())
+func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.SmartBlock, spaceindex.Store) {
+	store := f.objectStore.SpaceIndex(space.Id())
 	return smartblock.New(
 		space,
 		f.accountService.MyParticipantId(space.Id()),

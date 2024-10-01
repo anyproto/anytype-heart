@@ -9,12 +9,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
 func NewArchiveTest(t *testing.T) (*Archive, error) {
 	sb := smarttest.New("root")
-	objectStore := spaceobjects.NewStoreFixture(t)
+	objectStore := spaceindex.NewStoreFixture(t)
 	a := &Archive{
 		SmartBlock:  sb,
 		Collection:  collection.NewCollection(sb, objectStore),

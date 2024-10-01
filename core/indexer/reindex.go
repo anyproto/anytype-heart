@@ -220,7 +220,7 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 	if err != nil {
 		log.Debug("failed to add sync status relations", zap.Error(err))
 	}
-	store := i.store.SpaceStore(space.Id())
+	store := i.store.SpaceIndex(space.Id())
 	for _, id := range ids {
 		err := space.DoLockedIfNotExists(id, func() error {
 			return store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
@@ -235,7 +235,7 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 }
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
-	store := i.store.SpaceStore(space.Id())
+	store := i.store.SpaceIndex(space.Id())
 	recs, err := store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -273,7 +273,7 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 	if !flags.removeOldFiles {
 		return nil
 	}
-	store := i.store.SpaceStore(spaceId)
+	store := i.store.SpaceIndex(spaceId)
 	ids, _, err := store.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -335,7 +335,7 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 	}
 
 	if flags.bundledTemplates {
-		store := i.store.SpaceStore(space.Id())
+		store := i.store.SpaceIndex(space.Id())
 		existing, _, err := store.QueryObjectIDs(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
@@ -368,7 +368,7 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 }
 
 func (i *indexer) removeDetails(spaceId string) error {
-	store := i.store.SpaceStore(spaceId)
+	store := i.store.SpaceIndex(spaceId)
 	ids, err := store.ListIds()
 	if err != nil {
 		log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
@@ -396,7 +396,7 @@ func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, f
 	}
 
 	if flags.eraseLinks {
-		store := i.store.SpaceStore(spaceId)
+		store := i.store.SpaceIndex(spaceId)
 		ids, err := store.ListIds()
 		if err != nil {
 			log.Errorf("reindex failed to get all ids(eraseLinks): %v", err)
@@ -442,7 +442,7 @@ func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reinde
 }
 
 func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.Space) (toReindex, success int, err error) {
-	store := i.store.SpaceStore(space.Id())
+	store := i.store.SpaceIndex(space.Id())
 	tids := space.StoredIds()
 	var idsToReindex []string
 	for _, tid := range tids {

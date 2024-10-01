@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -48,7 +48,7 @@ func Test(t *testing.T) {
 	t.Run("sub request - added proper relations", func(t *testing.T) {
 		fx := newFixture(t)
 		spaceId := "space1"
-		fx.objectStoreMock.AddObjects(t, spaceId, []spaceobjects.TestObject{
+		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:             pbtypes.String("rel1"),
 				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
@@ -93,7 +93,7 @@ func Test(t *testing.T) {
 	t.Run("graph", func(t *testing.T) {
 		fx := newFixture(t)
 		spaceId := "space1"
-		fx.objectStoreMock.AddObjects(t, spaceId, []spaceobjects.TestObject{
+		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:             pbtypes.String("rel1"),
 				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),

@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -52,13 +52,13 @@ type storeObject struct {
 	storeSource    source.Store
 	store          *storestate.StoreState
 	eventSender    event.Sender
-	subscription   *subscription
-	spaceObjects   spaceobjects.Store
+	subscription *subscription
+	spaceObjects spaceindex.Store
 
 	arenaPool *fastjson.ArenaPool
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService, spaceObjects spaceobjects.Store, eventSender event.Sender) StoreObject {
+func New(sb smartblock.SmartBlock, accountService AccountService, spaceObjects spaceindex.Store, eventSender event.Sender) StoreObject {
 	return &storeObject{
 		SmartBlock:     sb,
 		locker:         sb.(smartblock.Locker),

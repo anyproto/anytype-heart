@@ -22,7 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -61,7 +61,7 @@ type SmartTest struct {
 	App              *app.App
 	objectTree       objecttree.ObjectTree
 	isDeleted        bool
-	os               *spaceobjects.StoreFixture
+	os               *spaceindex.StoreFixture
 	space            smartblock.Space
 
 	// Rudimentary hooks

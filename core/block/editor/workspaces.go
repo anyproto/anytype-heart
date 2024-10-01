@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -33,7 +33,7 @@ type Workspaces struct {
 	migrator     subObjectsMigrator
 }
 
-func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock, store spaceobjects.Store) *Workspaces {
+func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock, store spaceindex.Store) *Workspaces {
 	w := &Workspaces{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),

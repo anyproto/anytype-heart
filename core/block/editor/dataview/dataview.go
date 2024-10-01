@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -50,7 +50,7 @@ type Dataview interface {
 	GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error)
 }
 
-func NewDataview(sb smartblock.SmartBlock, objectStore spaceobjects.Store) Dataview {
+func NewDataview(sb smartblock.SmartBlock, objectStore spaceindex.Store) Dataview {
 	dv := &sdataview{
 		SmartBlock:  sb,
 		objectStore: objectStore,
@@ -62,7 +62,7 @@ func NewDataview(sb smartblock.SmartBlock, objectStore spaceobjects.Store) Datav
 
 type sdataview struct {
 	smartblock.SmartBlock
-	objectStore spaceobjects.Store
+	objectStore spaceindex.Store
 }
 
 func (d *sdataview) GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error) {
@@ -432,7 +432,7 @@ func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 	return nil, fmt.Errorf("not a dataview block")
 }
 
-func BlockBySource(objectStore spaceobjects.Store, sources []string) (*model.BlockContentOfDataview, error) {
+func BlockBySource(objectStore spaceindex.Store, sources []string) (*model.BlockContentOfDataview, error) {
 	// Empty schema
 	if len(sources) == 0 {
 		return template.MakeDataviewContent(false, nil, nil), nil

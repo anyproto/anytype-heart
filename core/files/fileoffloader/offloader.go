@@ -77,7 +77,7 @@ func (s *service) FileOffload(ctx context.Context, objectId string, includeNotPi
 }
 
 func (s *service) FileOffloadFullId(ctx context.Context, id domain.FullID, includeNotPinned bool) (totalSize uint64, err error) {
-	details, err := s.objectStore.SpaceStore(id.SpaceID).GetDetails(id.ObjectID)
+	details, err := s.objectStore.SpaceIndex(id.SpaceID).GetDetails(id.ObjectID)
 	if err != nil {
 		return 0, fmt.Errorf("get object details: %w", err)
 	}
@@ -156,7 +156,7 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 }
 
 func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
-	records, err := s.objectStore.SpaceStore(spaceId).Query(database.Query{
+	records, err := s.objectStore.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -192,7 +192,7 @@ func (s *service) offloadFileSafe(ctx context.Context,
 	record database.Record,
 	includeNotPinned bool,
 ) (uint64, error) {
-	existingObjects, err := s.objectStore.SpaceStore(spaceId).Query(database.Query{
+	existingObjects, err := s.objectStore.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),

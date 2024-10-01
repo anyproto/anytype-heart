@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -104,7 +104,7 @@ type Updatable interface {
 
 func NewBasic(
 	sb smartblock.SmartBlock,
-	objectStore spaceobjects.Store,
+	objectStore spaceindex.Store,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
 	lastUsedUpdater lastused.ObjectUsageUpdater,
@@ -121,8 +121,8 @@ func NewBasic(
 type basic struct {
 	smartblock.SmartBlock
 
-	objectStore       spaceobjects.Store
-	layoutConverter   converter.LayoutConverter
+	objectStore     spaceindex.Store
+	layoutConverter converter.LayoutConverter
 	fileObjectService fileobject.Service
 	lastUsedUpdater   lastused.ObjectUsageUpdater
 }

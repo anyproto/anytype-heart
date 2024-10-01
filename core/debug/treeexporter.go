@@ -56,7 +56,7 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 	}
 
 	e.log.Printf("exported tree for a %v", time.Since(st))
-	data, err := e.s.SpaceStore(e.id.SpaceID).GetByIDs([]string{e.id.ObjectID})
+	data, err := e.s.SpaceIndex(e.id.SpaceID).GetByIDs([]string{e.id.ObjectID})
 	if err != nil {
 		e.log.Printf("can't fetch localstore info: %v", err)
 	} else {

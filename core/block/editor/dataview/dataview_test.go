@@ -13,21 +13,21 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const objId = "root"
 
 type fixture struct {
-	store *spaceobjects.StoreFixture
+	store *spaceindex.StoreFixture
 	sb    *smarttest.SmartTest
 
 	*sdataview
 }
 
 func newFixture(t *testing.T) *fixture {
-	store := spaceobjects.NewStoreFixture(t)
+	store := spaceindex.NewStoreFixture(t)
 	sb := smarttest.New(objId)
 
 	dv := NewDataview(sb, store).(*sdataview)
