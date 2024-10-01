@@ -92,6 +92,7 @@ packages:
     interfaces:
       TechSpace:
       SpaceView:
+      AccountObject:
   github.com/anyproto/anytype-heart/space/spacefactory:
     interfaces:
       SpaceFactory:
