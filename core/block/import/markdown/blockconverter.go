@@ -98,35 +98,62 @@ func (m *mdConverter) processBlocks(shortPath string, file *FileInfo, files map[
 
 func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*FileInfo) {
 	txt := block.GetText()
-	if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
-		txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
-		link := txt.Marks.Marks[0].Param
-		wholeLineLink := m.isWholeLineLink(txt)
-		ext := filepath.Ext(link)
-
-		// todo: bug with multiple markup links in arow when the first is external
-		if file := files[link]; file != nil {
-			if strings.EqualFold(ext, ".csv") {
-				m.processCSVFileLink(block, files, link, wholeLineLink)
-				return
-			}
-			if strings.EqualFold(ext, ".md") {
-				// only convert if this is the only link in the row
-				m.convertToAnytypeLinkBlock(block, wholeLineLink)
-			} else {
-				anymark.ConvertTextToFile(block)
-			}
-			file.HasInboundLinks = true
-		} else if wholeLineLink {
-			m.convertTextToBookmark(block)
+	if txt != nil && txt.Marks != nil {
+		if len(txt.Marks.Marks) == 1 && txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
+			m.handleSingleMark(block, files, txt)
+		} else {
+			m.handleSeveralMarks(block, files, txt)
 		}
 	}
 }
 
-func (m *mdConverter) isWholeLineLink(txt *model.BlockContentText) bool {
+func (m *mdConverter) handleSingleMark(block *model.Block, files map[string]*FileInfo, txt *model.BlockContentText) {
+	link := txt.Marks.Marks[0].Param
+	wholeLineLink := m.isWholeLineLink(txt.Text, txt.Marks.Marks[0])
+	ext := filepath.Ext(link)
+	// todo: bug with multiple markup links in arow when the first is external
+	if file := files[link]; file != nil {
+		if strings.EqualFold(ext, ".csv") {
+			m.processCSVFileLink(block, files, link, wholeLineLink)
+			return
+		}
+		if strings.EqualFold(ext, ".md") {
+			// only convert if this is the only link in the row
+			m.convertToAnytypeLinkBlock(block, wholeLineLink)
+		} else {
+			anymark.ConvertTextToFile(block)
+		}
+		file.HasInboundLinks = true
+	} else if wholeLineLink {
+		m.convertTextToBookmark(block)
+	}
+}
+
+func (m *mdConverter) handleSeveralMarks(block *model.Block, files map[string]*FileInfo, txt *model.BlockContentText) {
+	for _, mark := range txt.Marks.Marks {
+		if mark.Type == model.BlockContentTextMark_Link {
+			link := mark.Param
+			ext := filepath.Ext(link)
+			if file := files[link]; file != nil {
+				if strings.EqualFold(ext, ".md") || strings.EqualFold(ext, ".csv") {
+					mark.Type = model.BlockContentTextMark_Object
+				}
+				if m.isWholeLineLink(txt.Text, mark) {
+					anymark.ConvertTextToFile(block)
+					break
+				}
+				file.HasInboundLinks = true
+			} else if m.isWholeLineLink(txt.Text, mark) {
+				m.convertTextToBookmark(block)
+			}
+		}
+	}
+}
+
+func (m *mdConverter) isWholeLineLink(text string, marks *model.BlockContentTextMark) bool {
 	var wholeLineLink bool
-	textRunes := []rune(txt.Text)
-	var from, to = int(txt.Marks.Marks[0].Range.From), int(txt.Marks.Marks[0].Range.To)
+	textRunes := []rune(text)
+	var from, to = int(marks.Range.From), int(marks.Range.To)
 	if from == 0 || (from < len(textRunes) && len(strings.TrimSpace(string(textRunes[0:from]))) == 0) {
 		if to >= len(textRunes) || len(strings.TrimSpace(string(textRunes[to:]))) == 0 {
 			wholeLineLink = true
