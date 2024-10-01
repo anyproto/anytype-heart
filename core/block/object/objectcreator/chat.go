@@ -64,7 +64,7 @@ func (s *service) addChatDerivedObject(ctx context.Context, space clientspace.Sp
 		return fmt.Errorf("create object: %w", err)
 	}
 
-	st.SetDetailAndBundledRelation(bundle.RelationKeyChatId, pbtypes.String(chatId))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceMainChatId, pbtypes.String(chatId))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyHasChat, pbtypes.Bool(true))
 	return nil
 }

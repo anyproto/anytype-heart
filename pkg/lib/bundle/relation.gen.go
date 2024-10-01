@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "b7871343d3d54c95f5f258631ad14f1157ac9c5c4740e35c06af7ef7136307bf"
+const RelationChecksum = "5f8066b115b5ddb63753b02a8f136fe6c261a99efec064f4931b7c5cbd35df50"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -143,6 +143,7 @@ const (
 	RelationKeySyncError                 domain.RelationKey = "syncError"
 	RelationKeyHasChat                   domain.RelationKey = "hasChat"
 	RelationKeyChatId                    domain.RelationKey = "chatId"
+	RelationKeySpaceMainChatId           domain.RelationKey = "spaceMainChatId"
 	RelationKeyMentions                  domain.RelationKey = "mentions"
 )
 
@@ -1680,6 +1681,20 @@ var (
 			Key:              "spaceLocalStatus",
 			MaxCount:         1,
 			Name:             "Space local status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceMainChatId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Space main chat",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brspaceMainChatId",
+			Key:              "spaceMainChatId",
+			MaxCount:         1,
+			Name:             "Space main chat id",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

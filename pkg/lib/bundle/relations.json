@@ -1351,6 +1351,16 @@
     "source": "derived"
   },
   {
+    "description": "Space main chat",
+    "format": "object",
+    "hidden": true,
+    "key": "spaceMainChatId",
+    "maxCount": 1,
+    "name": "Space main chat id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Objects that are mentioned in blocks of this object",
     "format": "object",
     "hidden": true,
