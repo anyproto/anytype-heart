@@ -89,3 +89,155 @@ func Test_processFiles(t *testing.T) {
 		assert.Len(t, fileBlocks, 0)
 	})
 }
+
+func Test_processTextBlock(t *testing.T) {
+	t.Run("block with single markdown - file doesn't exist", func(t *testing.T) {
+		// given
+		mc := mdConverter{}
+		block := getTestTxtBlock("file.md")
+
+		// when
+		mc.processTextBlock(block, map[string]*FileInfo{})
+
+		// then
+		assert.NotNil(t, block.GetBookmark())
+	})
+	t.Run("block with single markdown - file exists", func(t *testing.T) {
+		mc := mdConverter{}
+		block := getTestTxtBlock("file.md")
+
+		// when
+		mc.processTextBlock(block, map[string]*FileInfo{"file.md": {PageID: "id"}})
+
+		// then
+		assert.NotNil(t, block.GetLink())
+		assert.Equal(t, "file.md", block.GetLink().GetTargetBlockId())
+	})
+	t.Run("block with single markdown - file exists, but not md or csv", func(t *testing.T) {
+		mc := mdConverter{}
+		block := getTestTxtBlock("file.txt")
+
+		// when
+		mc.processTextBlock(block, map[string]*FileInfo{"file.txt": {}})
+
+		// then
+		assert.NotNil(t, block.GetFile())
+		assert.Equal(t, "file.txt", block.GetFile().GetName())
+	})
+	t.Run("block with single markdown - csv file exists", func(t *testing.T) {
+		mc := mdConverter{}
+		block := getTestTxtBlock("file.csv")
+
+		// when
+		mc.processTextBlock(block, map[string]*FileInfo{"file.csv": {}})
+
+		// then
+		assert.NotNil(t, block.GetLink())
+		assert.Equal(t, "file.csv", block.GetLink().GetTargetBlockId())
+	})
+	t.Run("block with multiple markdown - file doesn't exist", func(t *testing.T) {
+		mc := mdConverter{}
+		block := getTestTxtBlockWithMultipleMarks("file.md")
+
+		// when
+		mc.processTextBlock(block, map[string]*FileInfo{})
+
+		// then
+		assert.NotNil(t, block.GetBookmark())
+	})
+	t.Run("block with multiple markdown - file exists", func(t *testing.T) {
+		mc := mdConverter{}
+		block := getTestTxtBlockWithMultipleMarks("file.md")
+
+		// when
+		mc.processTextBlock(block, map[string]*FileInfo{"file.md": {PageID: "id"}})
+
+		// then
+		assert.NotNil(t, block.GetText())
+		assert.Len(t, block.GetText().GetMarks().GetMarks(), 3)
+		assert.Equal(t, "file.md", block.GetText().GetMarks().GetMarks()[1].Param)
+		assert.Equal(t, model.BlockContentTextMark_Object, block.GetText().GetMarks().GetMarks()[1].Type)
+	})
+	t.Run("block with multiple markdown - file exists, but not md or csv", func(t *testing.T) {
+		mc := mdConverter{}
+		block := getTestTxtBlockWithMultipleMarks("file.txt")
+
+		// when
+		mc.processTextBlock(block, map[string]*FileInfo{"file.txt": {}})
+
+		// then
+		assert.NotNil(t, block.GetFile())
+	})
+	t.Run("block with multiple markdown - csv file exists", func(t *testing.T) {
+		mc := mdConverter{}
+		block := getTestTxtBlockWithMultipleMarks("file.csv")
+
+		// when
+		mc.processTextBlock(block, map[string]*FileInfo{"file.csv": {}})
+
+		// then
+		// then
+		assert.NotNil(t, block.GetText())
+		assert.Len(t, block.GetText().GetMarks().GetMarks(), 3)
+		assert.Equal(t, "file.csv", block.GetText().GetMarks().GetMarks()[1].Param)
+		assert.Equal(t, model.BlockContentTextMark_Object, block.GetText().GetMarks().GetMarks()[1].Type)
+	})
+}
+
+func getTestTxtBlock(filename string) *model.Block {
+	return &model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "test",
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{
+							Range: &model.Range{
+								From: 0,
+								To:   4,
+							},
+							Type:  model.BlockContentTextMark_Link,
+							Param: filename,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func getTestTxtBlockWithMultipleMarks(filename string) *model.Block {
+	return &model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "test",
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{
+							Range: &model.Range{
+								From: 0,
+								To:   1,
+							},
+							Type: model.BlockContentTextMark_Bold,
+						},
+						{
+							Range: &model.Range{
+								From: 0,
+								To:   4,
+							},
+							Type:  model.BlockContentTextMark_Link,
+							Param: filename,
+						},
+						{
+							Range: &model.Range{
+								From: 0,
+								To:   2,
+							},
+							Type: model.BlockContentTextMark_Italic,
+						},
+					},
+				},
+			},
+		},
+	}
+}
