@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -39,10 +40,6 @@ type StoreObject interface {
 	Unsubscribe() error
 }
 
-type StoreDbProvider interface {
-	GetStoreDb() anystore.DB
-}
-
 type AccountService interface {
 	AccountID() string
 }
@@ -52,21 +49,21 @@ type storeObject struct {
 	locker smartblock.Locker
 
 	accountService AccountService
-	dbProvider     StoreDbProvider
 	storeSource    source.Store
 	store          *storestate.StoreState
 	eventSender    event.Sender
 	subscription   *subscription
+	spaceObjects   spaceobjects.Store
 
 	arenaPool *fastjson.ArenaPool
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService, dbProvider StoreDbProvider, eventSender event.Sender) StoreObject {
+func New(sb smartblock.SmartBlock, accountService AccountService, spaceObjects spaceobjects.Store, eventSender event.Sender) StoreObject {
 	return &storeObject{
 		SmartBlock:     sb,
 		locker:         sb.(smartblock.Locker),
 		accountService: accountService,
-		dbProvider:     dbProvider,
+		spaceObjects:   spaceObjects,
 		arenaPool:      &fastjson.ArenaPool{},
 		eventSender:    eventSender,
 	}
@@ -79,7 +76,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 	s.subscription = newSubscription(s.Id(), s.eventSender)
 
-	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.dbProvider.GetStoreDb(), ChatHandler{
+	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.spaceObjects.GetDb(), ChatHandler{
 		chatId:       s.Id(),
 		subscription: s.subscription,
 	})

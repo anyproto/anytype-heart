@@ -30,6 +30,7 @@ var (
 
 type Store interface {
 	SpaceId() string
+	GetDb() anystore.DB
 
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(q database.Query) (records []database.Record, err error)
@@ -159,6 +160,10 @@ var _ Store = (*dsObjectStore)(nil)
 
 func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	return s.db.WriteTx(ctx)
+}
+
+func (s *dsObjectStore) GetDb() anystore.DB {
+	return s.db
 }
 
 func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {

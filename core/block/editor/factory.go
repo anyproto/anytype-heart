@@ -71,7 +71,6 @@ type ObjectFactory struct {
 	fileReconciler      reconciler.Reconciler
 	objectDeleter       ObjectDeleter
 	deviceService       deviceService
-	storeDbProvider     chatobject.StoreDbProvider
 	lastUsedUpdater     lastused.ObjectUsageUpdater
 }
 
@@ -97,7 +96,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
-	f.storeDbProvider = app.MustComponent[chatobject.StoreDbProvider](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.fileObjectService = app.MustComponent[fileobject.Service](a)
 	f.restrictionService = app.MustComponent[restriction.Service](a)
@@ -208,9 +206,9 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeChatDerivedObject:
-		return chatobject.New(sb, f.accountService, f.storeDbProvider, f.eventSender), nil
+		return chatobject.New(sb, f.accountService, store, f.eventSender), nil
 	case coresb.SmartBlockTypeAccountObject:
-		return accountobject.New(sb, f.storeDbProvider, store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater, f.config), nil
+		return accountobject.New(sb, store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater, f.config), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

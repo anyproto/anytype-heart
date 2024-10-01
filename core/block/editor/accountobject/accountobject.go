@@ -69,9 +69,9 @@ var _ AccountObject = (*accountObject)(nil)
 
 type accountObject struct {
 	smartblock.SmartBlock
+	spaceObjects        spaceobjects.Store
 	bs                  basic.DetailsSettable
 	profileSubscription ProfileSubscription
-	dbProvider          StoreDbProvider
 	state               *storestate.StoreState
 	storeSource         source.Store
 	ctx                 context.Context
@@ -91,17 +91,16 @@ func (a *accountObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details
 
 func New(
 	sb smartblock.SmartBlock,
-	dbProvider StoreDbProvider,
-	objectStore spaceobjects.Store,
+	spaceObjects spaceobjects.Store,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
 	lastUsedUpdater lastused.ObjectUsageUpdater,
 	cfg *config.Config) AccountObject {
 	return &accountObject{
-		bs:         basic.NewBasic(sb, objectStore, layoutConverter, fileObjectService, lastUsedUpdater),
-		SmartBlock: sb,
-		dbProvider: dbProvider,
-		cfg:        cfg,
+		spaceObjects: spaceObjects,
+		bs:           basic.NewBasic(sb, spaceObjects, layoutConverter, fileObjectService, lastUsedUpdater),
+		SmartBlock:   sb,
+		cfg:          cfg,
 		relMapper: newRelationsMapper(map[string]KeyType{
 			bundle.RelationKeyName.String():        KeyTypeString,
 			bundle.RelationKeyDescription.String(): KeyTypeString,
@@ -116,7 +115,7 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return err
 	}
-	stateStore, err := storestate.New(ctx.Ctx, a.Id(), a.dbProvider.GetStoreDb(), accountHandler{})
+	stateStore, err := storestate.New(ctx.Ctx, a.Id(), a.spaceObjects.GetDb(), accountHandler{})
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
 	}
