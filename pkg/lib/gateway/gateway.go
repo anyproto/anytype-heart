@@ -3,7 +3,6 @@ package gateway
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -39,9 +38,10 @@ const (
 	svgMedia       = "image/svg+xml"
 )
 
-var log = logging.Logger("anytype-gateway")
-
-var rasterizerSvg = flag.Bool("rasterizerSvg", false, "")
+var (
+	log          = logging.Logger("anytype-gateway")
+	rasterizeSvg bool
+)
 
 func New() Gateway {
 	return new(gateway)
@@ -64,7 +64,7 @@ type gateway struct {
 	mu                sync.Mutex
 	isServerStarted   bool
 	limitCh           chan struct{}
-	rasterizerSvg     bool
+	rasterizeSvg      bool
 }
 
 func GatewayAddr() string {
@@ -85,14 +85,9 @@ func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
 	g.fileObjectService = app.MustComponent[fileobject.Service](a)
 	g.addr = GatewayAddr()
-	g.rasterizeSvg()
+	g.rasterizeSvg = rasterizeSvg
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
-}
-
-func (g *gateway) rasterizeSvg() {
-	flag.Parse()
-	g.rasterizerSvg = *rasterizerSvg
 }
 
 func (g *gateway) Name() string {
@@ -418,7 +413,7 @@ func (g *gateway) handleSVGFile(ctx context.Context, file files.File) (*getImage
 	if err != nil {
 		return nil, err
 	}
-	if !g.rasterizerSvg {
+	if !g.rasterizeSvg {
 		file.Info().Media = svgMedia
 		return &getImageReaderResult{file, reader}, nil
 	}
