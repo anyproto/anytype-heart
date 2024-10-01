@@ -29,6 +29,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -70,7 +71,6 @@ type ObjectFactory struct {
 	fileReconciler      reconciler.Reconciler
 	objectDeleter       ObjectDeleter
 	deviceService       deviceService
-	storeDbProvider     chatobject.StoreDbProvider
 	lastUsedUpdater     lastused.ObjectUsageUpdater
 }
 
@@ -96,7 +96,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
-	f.storeDbProvider = app.MustComponent[chatobject.StoreDbProvider](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.fileObjectService = app.MustComponent[fileobject.Service](a)
 	f.restrictionService = app.MustComponent[restriction.Service](a)
@@ -153,20 +152,21 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
 }
 
-func (f *ObjectFactory) produceSmartblock(space smartblock.Space) smartblock.SmartBlock {
+func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.SmartBlock, spaceobjects.Store) {
+	store := f.objectStore.SpaceStore(space.Id())
 	return smartblock.New(
 		space,
 		f.accountService.MyParticipantId(space.Id()),
 		f.fileStore,
 		f.restrictionService,
-		f.objectStore,
+		store,
 		f.indexer,
 		f.eventSender,
-	)
+	), store
 }
 
 func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType) (smartblock.SmartBlock, error) {
-	sb := f.produceSmartblock(space)
+	sb, store := f.produceSmartblock(space)
 	switch sbType {
 	case coresb.SmartBlockTypePage,
 		coresb.SmartBlockTypeDate,
@@ -176,39 +176,39 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeRelation,
 		coresb.SmartBlockTypeRelationOption,
 		coresb.SmartBlockTypeChatObject:
-		return f.newPage(sb), nil
+		return f.newPage(space.Id(), sb), nil
 	case coresb.SmartBlockTypeArchive:
-		return NewArchive(sb, f.objectStore), nil
+		return NewArchive(sb, store), nil
 	case coresb.SmartBlockTypeHome:
-		return NewDashboard(sb, f.objectStore, f.layoutConverter), nil
+		return NewDashboard(sb, store, f.layoutConverter), nil
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
-		return f.newProfile(sb), nil
+		return f.newProfile(space.Id(), sb), nil
 	case coresb.SmartBlockTypeFileObject:
-		return f.newFile(sb), nil
+		return f.newFile(space.Id(), sb), nil
 	case coresb.SmartBlockTypeTemplate,
 		coresb.SmartBlockTypeBundledTemplate:
-		return f.newTemplate(sb), nil
+		return f.newTemplate(space.Id(), sb), nil
 	case coresb.SmartBlockTypeWorkspace:
-		return f.newWorkspace(sb), nil
+		return f.newWorkspace(sb, store), nil
 	case coresb.SmartBlockTypeSpaceView:
 		return f.newSpaceView(sb), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, f.objectStore, f.layoutConverter), nil
+		return NewWidgetObject(sb, store, f.layoutConverter), nil
 	case coresb.SmartBlockTypeNotificationObject:
 		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
 	case coresb.SmartBlockTypeParticipant:
-		return f.newParticipant(sb), nil
+		return f.newParticipant(space.Id(), sb), nil
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeChatDerivedObject:
-		return chatobject.New(sb, f.accountService, f.storeDbProvider, f.eventSender), nil
+		return chatobject.New(sb, f.accountService, store, f.eventSender), nil
 	case coresb.SmartBlockTypeAccountObject:
-		return accountobject.New(sb, f.storeDbProvider, f.objectStore, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater, f.config), nil
+		return accountobject.New(sb, store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater, f.config), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

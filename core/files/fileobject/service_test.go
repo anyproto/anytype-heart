@@ -30,7 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
-	"github.com/anyproto/anytype-heart/core/session"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -72,7 +71,7 @@ func (c *dummyConfig) Name() string {
 
 type dummyObjectArchiver struct{}
 
-func (a *dummyObjectArchiver) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error {
+func (a *dummyObjectArchiver) SetListIsArchived(_ []string, _ bool) error {
 	return nil
 }
 

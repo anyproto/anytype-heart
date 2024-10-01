@@ -3,7 +3,6 @@ package objectstore
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -11,22 +10,36 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/valyala/fastjson"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 )
 
 type StoreFixture struct {
 	*dsObjectStore
+	FullText ftsearch.FTSearch
 }
 
-// nolint: unused
-const spaceName = "space1"
+func (fx *StoreFixture) TechSpaceId() string {
+	return fx.techSpaceIdProvider.TechSpaceId()
+}
+
+type detailsFromId struct {
+}
+
+func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+	return nil, fmt.Errorf("not found")
+}
+
+type stubTechSpaceIdProvider struct{}
+
+func (s *stubTechSpaceIdProvider) TechSpaceId() string {
+	return "test-tech-space"
+}
 
 var ctx = context.Background()
 
@@ -55,14 +68,16 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	require.NoError(t, err)
 
 	ds := &dsObjectStore{
-		componentCtx:       ctx,
-		componentCtxCancel: cancel,
-		fts:                fullText,
-		sourceService:      &detailsFromId{},
-		arenaPool:          &fastjson.ArenaPool{},
-		repoPath:           walletService.RepoPath(),
-		oldStore:           oldStore,
-		collatorBufferPool: newCollatorBufferPool(),
+		componentCtx:        ctx,
+		componentCtxCancel:  cancel,
+		fts:                 fullText,
+		sourceService:       &detailsFromId{},
+		arenaPool:           &fastjson.ArenaPool{},
+		repoPath:            walletService.RepoPath(),
+		oldStore:            oldStore,
+		stores:              map[string]spaceobjects.Store{},
+		techSpaceIdProvider: &stubTechSpaceIdProvider{},
+		subManager:          &spaceobjects.SubscriptionManager{},
 	}
 
 	t.Cleanup(func() {
@@ -75,60 +90,30 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 
 	return &StoreFixture{
 		dsObjectStore: ds,
+		FullText:      fullText,
 	}
-}
-
-type detailsFromId struct {
-}
-
-func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
-	return nil, fmt.Errorf("not found")
 }
 
 func (fx *StoreFixture) Init(a *app.App) (err error) {
 	return nil
 }
 
-type TestObject map[domain.RelationKey]*types.Value
+type TestObject = spaceobjects.TestObject
 
-func generateObjectWithRandomID() TestObject {
-	id := fmt.Sprintf("%d", rand.Int())
-	return TestObject{
-		bundle.RelationKeyId:   pbtypes.String(id),
-		bundle.RelationKeyName: pbtypes.String("name" + id),
+func (fx *StoreFixture) AddObjects(t testing.TB, spaceId string, objects []spaceobjects.TestObject) {
+	store := fx.SpaceStore(spaceId)
+	for _, obj := range objects {
+		id := obj[bundle.RelationKeyId].GetStringValue()
+		require.NotEmpty(t, id)
+		err := store.UpdateObjectDetails(context.Background(), id, makeDetails(obj))
+		require.NoError(t, err)
 	}
 }
 
-func makeObjectWithName(id string, name string) TestObject {
-	return TestObject{
-		bundle.RelationKeyId:      pbtypes.String(id),
-		bundle.RelationKeyName:    pbtypes.String(name),
-		bundle.RelationKeySpaceId: pbtypes.String(spaceName),
-	}
-}
-
-func makeObjectWithNameAndDescription(id string, name string, description string) TestObject {
-	return TestObject{
-		bundle.RelationKeyId:          pbtypes.String(id),
-		bundle.RelationKeyName:        pbtypes.String(name),
-		bundle.RelationKeyDescription: pbtypes.String(description),
-		bundle.RelationKeySpaceId:     pbtypes.String(spaceName),
-	}
-}
-
-func makeDetails(fields TestObject) *types.Struct {
+func makeDetails(fields spaceobjects.TestObject) *types.Struct {
 	f := map[string]*types.Value{}
 	for k, v := range fields {
 		f[string(k)] = v
 	}
 	return &types.Struct{Fields: f}
-}
-
-func (fx *StoreFixture) AddObjects(t testing.TB, objects []TestObject) {
-	for _, obj := range objects {
-		id := obj[bundle.RelationKeyId].GetStringValue()
-		require.NotEmpty(t, id)
-		err := fx.UpdateObjectDetails(context.Background(), id, makeDetails(obj))
-		require.NoError(t, err)
-	}
 }

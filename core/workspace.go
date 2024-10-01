@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -73,10 +74,7 @@ func (mw *Middleware) WorkspaceSetInfo(cctx context.Context, req *pb.RpcWorkspac
 		return m
 	}
 
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.SetSpaceInfo(req)
-		return
-	})
+	err := getService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, req.Details)
 	if err != nil {
 		return response(pb.RpcWorkspaceSetInfoResponseError_UNKNOWN_ERROR, err)
 	}

@@ -32,7 +32,7 @@ func (s *service) ProfileInfo() (Profile, error) {
 		AccountId: s.AccountID(),
 	}
 
-	profileDetails, err := s.objectStore.GetDetails(profile.Id)
+	profileDetails, err := s.objectStore.SpaceStore(s.personalSpaceId).GetDetails(profile.Id)
 	if err != nil {
 		return profile, err
 	}

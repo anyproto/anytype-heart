@@ -17,9 +17,10 @@ var (
 	ErrNoRecords = errors.New("no records with given offset")
 )
 
-func (s *service) newSortedSub(id string, keys []string, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
+func (s *service) newSortedSub(id string, spaceId string, keys []string, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
 	sub := &sortedSub{
 		id:          id,
+		spaceId:     spaceId,
 		keys:        keys,
 		filter:      filter,
 		order:       order,
@@ -33,10 +34,11 @@ func (s *service) newSortedSub(id string, keys []string, filter database.Filter,
 }
 
 type sortedSub struct {
-	id     string
-	keys   []string
-	filter database.Filter
-	order  database.Order
+	id      string
+	spaceId string
+	keys    []string
+	filter  database.Filter
+	order   database.Order
 
 	afterId, beforeId string
 	limit, offset     int
@@ -133,9 +135,9 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	s.compCountBefore.total = s.skl.Len()
 
 	if s.ds != nil && !s.disableDep {
-		s.depKeys = s.ds.depKeys(s.keys)
+		s.depKeys = s.ds.depKeys(s.spaceId, s.keys)
 		if len(s.depKeys) > 0 || len(s.forceSubIds) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, activeEntries, s.keys, s.depKeys, s.forceSubIds)
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", s.spaceId, entries, activeEntries, s.keys, s.depKeys, s.forceSubIds)
 		}
 	}
 	return nil
@@ -172,7 +174,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	}
 
 	wasAddOrRemove, ids := s.diff.diff(ctx, s.id, s.keys)
-	s.ds.depEntriesByEntries(ctx, ids)
+	s.ds.depEntriesByEntries(ctx, s.spaceId, ids)
 
 	hasChanges := false
 	for _, e := range ctx.entries {
@@ -188,11 +190,11 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	}
 
 	if (wasAddOrRemove || hasChanges) && s.depSub != nil {
-		s.ds.refillSubscription(ctx, s.depSub, s.activeEntriesBuf, s.depKeys)
+		s.ds.refillSubscription(s.spaceId, ctx, s.depSub, s.activeEntriesBuf, s.depKeys)
 	}
 
 	if s.parent != nil {
-		parentEntries, err := queryEntries(s.objectStore, &database.Filters{FilterObj: s.parent.filter})
+		parentEntries, err := queryEntries(s.objectStore.SpaceStore(s.spaceId), &database.Filters{FilterObj: s.parent.filter})
 		if err != nil {
 			panic(err)
 		}

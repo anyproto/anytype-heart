@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -39,7 +39,7 @@ type Text interface {
 
 func NewText(
 	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
+	objectStore spaceobjects.Store,
 	eventSender event.Sender,
 ) Text {
 	t := &textImpl{
@@ -57,7 +57,7 @@ var log = logging.Logger("anytype-mw-smartblock")
 
 type textImpl struct {
 	smartblock.SmartBlock
-	objectStore objectstore.ObjectStore
+	objectStore spaceobjects.Store
 	eventSender event.Sender
 
 	lastSetTextId    string

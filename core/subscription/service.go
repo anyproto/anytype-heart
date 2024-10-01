@@ -17,6 +17,7 @@ import (
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/kanban"
@@ -43,6 +44,7 @@ func New() Service {
 }
 
 type SubscribeRequest struct {
+	SpaceId string
 	SubId   string
 	Filters []*model.BlockContentDataviewFilter
 	Sorts   []*model.BlockContentDataviewSort
@@ -53,9 +55,8 @@ type SubscribeRequest struct {
 	// (optional) pagination: middleware will return results after given id
 	AfterId string
 	// (optional) pagination: middleware will return results before given id
-	BeforeId        string
-	Source          []string
-	IgnoreWorkspace string
+	BeforeId string
+	Source   []string
 	// disable dependent subscription
 	NoDepSubscription bool
 	CollectionId      string
@@ -178,6 +179,9 @@ func (s *service) iterateSubscriptions(proc func(sub subscription)) {
 }
 
 func (s *service) Search(req SubscribeRequest) (*SubscribeResponse, error) {
+	if req.SpaceId == "" {
+		return nil, fmt.Errorf("spaceId is required")
+	}
 	if req.SubId == "" {
 		req.SubId = bson.NewObjectId().Hex()
 	}
@@ -191,13 +195,13 @@ func (s *service) Search(req SubscribeRequest) (*SubscribeResponse, error) {
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
-	f, err := database.NewFilters(q, s.objectStore, arena, &collate.Buffer{})
+	f, err := database.NewFilters(q, s.objectStore.SpaceStore(req.SpaceId), arena, &collate.Buffer{})
 	if err != nil {
 		return nil, fmt.Errorf("new database filters: %w", err)
 	}
 
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.Source)
+		sourceFilter, err := s.filtersFromSource(req.SpaceId, req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
@@ -207,7 +211,7 @@ func (s *service) Search(req SubscribeRequest) (*SubscribeResponse, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	filterDepIds := s.depIdsFromFilter(req.Filters)
+	filterDepIds := s.depIdsFromFilter(req.SpaceId, req.Filters)
 	if existing, ok := s.getSubscription(req.SubId); ok {
 		s.deleteSubscription(req.SubId)
 		existing.close()
@@ -226,13 +230,14 @@ func (s *service) Search(req SubscribeRequest) (*SubscribeResponse, error) {
 }
 
 func (s *service) subscribeForQuery(req SubscribeRequest, f *database.Filters, filterDepIds []string) (*SubscribeResponse, error) {
-	sub := s.newSortedSub(req.SubId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
+	sub := s.newSortedSub(req.SubId, req.SpaceId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if req.NoDepSubscription {
 		sub.disableDep = true
 	} else {
 		sub.forceSubIds = filterDepIds
 	}
 
+	store := s.objectStore.SpaceStore(req.SpaceId)
 	// FIXME Nested subscriptions disabled now. We should enable them only by client's request
 	// Uncomment test xTestNestedSubscription after enabling this
 	if withNested, ok := f.FilterObj.(database.WithNestedFilter); ok && false {
@@ -241,8 +246,8 @@ func (s *service) subscribeForQuery(req SubscribeRequest, f *database.Filters, f
 			nestedCount++
 			f, ok := nestedFilter.(*database.FilterNestedIn)
 			if ok {
-				childSub := s.newSortedSub(req.SubId+fmt.Sprintf("-nested-%d", nestedCount), []string{"id"}, f.FilterForNestedObjects, nil, 0, 0)
-				err := initSubEntries(s.objectStore, &database.Filters{FilterObj: f.FilterForNestedObjects}, childSub)
+				childSub := s.newSortedSub(req.SubId+fmt.Sprintf("-nested-%d", nestedCount), req.SpaceId, []string{"id"}, f.FilterForNestedObjects, nil, 0, 0)
+				err := initSubEntries(store, &database.Filters{FilterObj: f.FilterForNestedObjects}, childSub)
 				if err != nil {
 					return fmt.Errorf("init nested sub %s entries: %w", childSub.id, err)
 				}
@@ -258,7 +263,7 @@ func (s *service) subscribeForQuery(req SubscribeRequest, f *database.Filters, f
 		}
 	}
 
-	err := initSubEntries(s.objectStore, f, sub)
+	err := initSubEntries(store, f, sub)
 	if err != nil {
 		return nil, fmt.Errorf("init sub entries: %w", err)
 	}
@@ -287,7 +292,7 @@ func (s *service) subscribeForQuery(req SubscribeRequest, f *database.Filters, f
 	}, nil
 }
 
-func initSubEntries(objectStore objectstore.ObjectStore, f *database.Filters, sub *sortedSub) error {
+func initSubEntries(objectStore spaceobjects.Store, f *database.Filters, sub *sortedSub) error {
 	entries, err := queryEntries(objectStore, f)
 	if err != nil {
 		return err
@@ -298,7 +303,7 @@ func initSubEntries(objectStore objectstore.ObjectStore, f *database.Filters, su
 	return nil
 }
 
-func queryEntries(objectStore objectstore.ObjectStore, f *database.Filters) ([]*entry, error) {
+func queryEntries(objectStore spaceobjects.Store, f *database.Filters) ([]*entry, error) {
 	records, err := objectStore.QueryRaw(f, 0, 0)
 	if err != nil {
 		return nil, fmt.Errorf("objectStore query error: %w", err)
@@ -314,7 +319,7 @@ func queryEntries(objectStore objectstore.ObjectStore, f *database.Filters) ([]*
 }
 
 func (s *service) subscribeForCollection(req SubscribeRequest, f *database.Filters, filterDepIds []string) (*SubscribeResponse, error) {
-	sub, err := s.newCollectionSub(req.SubId, req.CollectionId, req.Keys, filterDepIds, f.FilterObj, f.Order, int(req.Limit), int(req.Offset), req.NoDepSubscription)
+	sub, err := s.newCollectionSub(req.SubId, req.SpaceId, req.CollectionId, req.Keys, filterDepIds, f.FilterObj, f.Order, int(req.Limit), int(req.Offset), req.NoDepSubscription)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +354,10 @@ func (s *service) subscribeForCollection(req SubscribeRequest, f *database.Filte
 }
 
 func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error) {
-	records, err := s.objectStore.QueryByID(req.Ids)
+	if req.SpaceId == "" {
+		return nil, fmt.Errorf("spaceId is required")
+	}
+	records, err := s.objectStore.SpaceStore(req.SpaceId).QueryByID(req.Ids)
 	if err != nil {
 		return
 	}
@@ -361,7 +369,7 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	sub := s.newSimpleSub(req.SubId, req.Keys, !req.NoDepSubscription)
+	sub := s.newSimpleSub(req.SubId, req.SpaceId, req.Keys, !req.NoDepSubscription)
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
 		entries = append(entries, &entry{
@@ -402,13 +410,13 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
-	flt, err := database.NewFilters(q, s.objectStore, arena, &collate.Buffer{})
+	flt, err := database.NewFilters(q, s.objectStore.SpaceStore(req.SpaceId), arena, &collate.Buffer{})
 	if err != nil {
 		return nil, err
 	}
 
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.Source)
+		sourceFilter, err := s.filtersFromSource(req.SpaceId, req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
@@ -417,7 +425,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 
 	var colObserver *collectionObserver
 	if req.CollectionId != "" {
-		colObserver, err = s.newCollectionObserver(req.CollectionId, req.SubId)
+		colObserver, err = s.newCollectionObserver(req.SpaceId, req.CollectionId, req.SubId)
 		if err != nil {
 			return nil, err
 		}
@@ -622,20 +630,21 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	return dur
 }
 
-func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
+func (s *service) filtersFromSource(spaceId string, sources []string) (database.Filter, error) {
 	var relTypeFilter database.FiltersOr
 	var (
 		relKeys        []string
 		typeUniqueKeys []string
 	)
 
+	store := s.objectStore.SpaceStore(spaceId)
 	var err error
 	for _, source := range sources {
 		var uk domain.UniqueKey
 		if uk, err = domain.UnmarshalUniqueKey(source); err != nil {
 			// todo: gradually escalate to return error
 			log.Info("Using object id instead of uniqueKey is deprecated in the Source")
-			uk, err = s.objectStore.GetUniqueKeyById(source)
+			uk, err = store.GetUniqueKeyById(source)
 			if err != nil {
 				return nil, err
 			}
@@ -653,7 +662,7 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 			RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value:       pbtypes.StringList(typeUniqueKeys),
-		}, s.objectStore)
+		}, store)
 		if err != nil {
 			return nil, fmt.Errorf("make nested filter: %w", err)
 		}
@@ -668,9 +677,9 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 	return relTypeFilter, nil
 }
 
-func (s *service) depIdsFromFilter(filters []*model.BlockContentDataviewFilter) (depIds []string) {
+func (s *service) depIdsFromFilter(spaceId string, filters []*model.BlockContentDataviewFilter) (depIds []string) {
 	for _, f := range filters {
-		if s.ds.isRelationObject(f.RelationKey) {
+		if s.ds.isRelationObject(spaceId, f.RelationKey) {
 			for _, id := range pbtypes.GetStringListValue(f.Value) {
 				if slice.FindPos(depIds, id) == -1 && id != "" {
 					depIds = append(depIds, id)

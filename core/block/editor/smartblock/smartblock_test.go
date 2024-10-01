@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -35,12 +35,6 @@ func TestSmartBlock_Init(t *testing.T) {
 	// given
 	id := "one"
 	fx := newFixture(id, t)
-
-	fx.store.EXPECT().GetDetails(mock.Anything).Return(&model.ObjectDetails{
-		Details: &types.Struct{Fields: map[string]*types.Value{}},
-	}, nil).Maybe()
-	fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
-	fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	// when
 	initCtx := fx.init(t, []*model.Block{{Id: id}})
@@ -60,11 +54,6 @@ func TestSmartBlock_Apply(t *testing.T) {
 		// given
 		fx := newFixture("", t)
 
-		fx.store.EXPECT().GetDetails(mock.Anything).Maybe().Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, nil)
-		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
-		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 
 		fx.init(t, []*model.Block{{Id: "1"}})
@@ -95,11 +84,6 @@ func TestBasic_SetAlign(t *testing.T) {
 		// given
 		fx := newFixture("", t)
 
-		fx.store.EXPECT().GetDetails(mock.Anything).Maybe().Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, nil)
-		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
-		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 		fx.init(t, []*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
@@ -120,11 +104,6 @@ func TestBasic_SetAlign(t *testing.T) {
 		// given
 		fx := newFixture("", t)
 
-		fx.store.EXPECT().GetDetails(mock.Anything).Maybe().Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, nil)
-		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
-		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 		fx.init(t, []*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
@@ -152,12 +131,19 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 
 		details := &types.Struct{
 			Fields: map[string]*types.Value{
-				"id":     pbtypes.String("1"),
+				"id":     pbtypes.String(id),
 				"number": pbtypes.Float64(2.18281828459045),
 				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
 			},
 		}
-		fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{Details: details}, nil)
+
+		fx.store.AddObjects(t, []spaceobjects.TestObject{
+			{
+				"id":     pbtypes.String(id),
+				"number": pbtypes.Float64(2.18281828459045),
+				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
+			},
+		})
 
 		// when
 		detailsFromStore, err := fx.getDetailsFromStore()
@@ -171,34 +157,12 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		fx.store.EXPECT().GetDetails(id).Return(nil, nil)
-
 		// when
 		details, err := fx.getDetailsFromStore()
 
 		// then
 		assert.NoError(t, err)
-		assert.Nil(t, details)
-	})
-
-	t.Run("failure on retrieving details from store", func(t *testing.T) {
-		// given
-		fx := newFixture(id, t)
-
-		details := &model.ObjectDetails{Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				"someKey": pbtypes.String("someValue"),
-			},
-		}}
-		someErr := errors.New("some error")
-		fx.store.EXPECT().GetDetails(id).Return(details, someErr)
-
-		// when
-		detailsFromStore, err := fx.getDetailsFromStore()
-
-		// then
-		assert.True(t, errors.Is(err, someErr))
-		assert.Nil(t, detailsFromStore)
+		assert.NotNil(t, details)
 	})
 }
 
@@ -211,7 +175,12 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		newBackLinks := []string{"4", "5"}
 		fx := newFixture(id, t)
 
-		fx.store.EXPECT().GetInboundLinksByID(id).Return(newBackLinks, nil)
+		ctx := context.Background()
+		err := fx.store.UpdateObjectLinks(ctx, "4", []string{id})
+		require.NoError(t, err)
+		err = fx.store.UpdateObjectLinks(ctx, "5", []string{id})
+		require.NoError(t, err)
+
 		st := state.NewDoc("", nil).NewState()
 		st.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, pbtypes.StringList(backLinks))
 
@@ -226,7 +195,15 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		fx.store.EXPECT().GetInboundLinksByID(id).Return(backLinks, nil)
+		ctx := context.Background()
+		err := fx.store.UpdateObjectLinks(ctx, "1", []string{id})
+		require.NoError(t, err)
+		err = fx.store.UpdateObjectLinks(ctx, "2", []string{id})
+		require.NoError(t, err)
+		err = fx.store.UpdateObjectLinks(ctx, "3", []string{id})
+		require.NoError(t, err)
+
+		// fx.store.EXPECT().GetInboundLinksByID(id).Return(backLinks, nil)
 		st := state.NewDoc("", nil).NewState()
 
 		// when
@@ -242,21 +219,6 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		fx.store.EXPECT().GetInboundLinksByID(id).Return(nil, nil)
-		st := state.NewDoc("", nil).NewState()
-
-		// when
-		fx.updateBackLinks(st)
-
-		// then
-		assert.Len(t, pbtypes.GetStringList(st.CombinedDetails(), bundle.RelationKeyBacklinks.String()), 0)
-	})
-
-	t.Run("failure on retrieving back links from the store", func(t *testing.T) {
-		// given
-		fx := newFixture(id, t)
-
-		fx.store.EXPECT().GetInboundLinksByID(id).Return(nil, errors.New("some error from store"))
 		st := state.NewDoc("", nil).NewState()
 
 		// when
@@ -276,9 +238,6 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 
 		var hasPendingDetails bool
 		details := &types.Struct{Fields: map[string]*types.Value{}}
-		fx.store.EXPECT().UpdatePendingLocalDetails(id, mock.Anything).
-			Run(func(id string, f func(*types.Struct) (*types.Struct, error)) { hasPendingDetails = false }).
-			Return(nil)
 
 		// when
 		_, result := fx.appendPendingDetails(details)
@@ -293,24 +252,30 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		fx := newFixture(id, t)
 
 		details := &types.Struct{Fields: map[string]*types.Value{}}
-		fx.store.EXPECT().UpdatePendingLocalDetails(id, mock.Anything).
-			Run(func(id string, f func(details *types.Struct) (*types.Struct, error)) {
-				details.Fields[bundle.RelationKeyIsDeleted.String()] = pbtypes.Bool(false)
-			}).
-			Return(nil)
+
+		err := fx.store.UpdatePendingLocalDetails(id, func(det *types.Struct) (*types.Struct, error) {
+			det.Fields[bundle.RelationKeyIsDeleted.String()] = pbtypes.Bool(false)
+			return det, nil
+		})
+		require.NoError(t, err)
 
 		// when
 		got, _ := fx.appendPendingDetails(details)
 
 		// then
-		assert.Len(t, got.Fields, 1)
+		want := &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():        pbtypes.String(id),
+				bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(false),
+			},
+		}
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("failure on retrieving pending details from the store", func(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		fx.store.EXPECT().UpdatePendingLocalDetails(id, mock.Anything).Return(errors.New("some error from store"))
 		details := &types.Struct{}
 
 		// when
@@ -451,12 +416,6 @@ func TestInjectLocalDetails(t *testing.T) {
 		fx.source.creator = domain.NewParticipantId("testSpace", "testIdentity")
 		fx.source.createdDate = time.Now().Unix()
 
-		fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{Details: &types.Struct{Fields: map[string]*types.Value{}}}, nil)
-		fx.store.EXPECT().UpdatePendingLocalDetails(id, mock.Anything).Run(func(id string, f func(details *types.Struct) (*types.Struct, error)) {
-			_, err := f(&types.Struct{Fields: map[string]*types.Value{}})
-			require.NoError(t, err)
-		}).Return(nil)
-
 		st := state.NewDoc("id", nil).NewState()
 
 		err := fx.injectLocalDetails(st)
@@ -478,7 +437,6 @@ func TestInjectDerivedDetails(t *testing.T) {
 	t.Run("links are updated on injection", func(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
-		fx.store.EXPECT().GetInboundLinksByID(id).Return(nil, nil)
 
 		st := state.NewDoc("id", map[string]simple.Block{
 			id:         simple.New(&model.Block{Id: id, ChildrenIds: []string{"dataview", "link"}}),
@@ -497,7 +455,7 @@ func TestInjectDerivedDetails(t *testing.T) {
 }
 
 type fixture struct {
-	store              *mock_objectstore.MockObjectStore
+	store              *spaceobjects.StoreFixture
 	restrictionService *mock_restriction.MockService
 	indexer            *MockIndexer
 	eventSender        *mock_event.MockSender
@@ -507,7 +465,7 @@ type fixture struct {
 }
 
 func newFixture(id string, t *testing.T) *fixture {
-	objectStore := mock_objectstore.NewMockObjectStore(t)
+	objectStore := spaceobjects.NewStoreFixture(t)
 
 	indexer := NewMockIndexer(t)
 

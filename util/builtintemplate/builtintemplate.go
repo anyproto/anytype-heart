@@ -114,7 +114,7 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 	st.SetLocalDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(addr.AnytypeMarketplaceWorkspace))
 	st.SetDetail(bundle.RelationKeyOrigin.String(), pbtypes.Int64(int64(model.ObjectOrigin_builtin)))
 
-	err = b.setObjectTypes(st)
+	err = b.setObjectTypes(st, "TODO")
 	if err != nil {
 		return fmt.Errorf("set object types: %w", err)
 	}
@@ -151,14 +151,14 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 	})
 }
 
-func (b *builtinTemplate) setObjectTypes(st *state.State) error {
+func (b *builtinTemplate) setObjectTypes(st *state.State, spaceId string) error {
 	targetObjectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
 	var targetObjectTypeKey domain.TypeKey
 	if strings.HasPrefix(targetObjectTypeID, addr.BundledObjectTypeURLPrefix) {
 		// todo: remove this hack after fixing bundled templates
 		targetObjectTypeKey = domain.TypeKey(strings.TrimPrefix(targetObjectTypeID, addr.BundledObjectTypeURLPrefix))
 	} else {
-		targetObjectType, err := b.objectStore.GetObjectType(targetObjectTypeID)
+		targetObjectType, err := b.objectStore.SpaceStore(spaceId).GetObjectType(targetObjectTypeID)
 		if err != nil {
 			return fmt.Errorf("get object type %s: %w", targetObjectTypeID, err)
 		}

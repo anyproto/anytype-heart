@@ -36,15 +36,16 @@ type Profile struct {
 	fileObjectService fileobject.Service
 }
 
-func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
+func (f *ObjectFactory) newProfile(spaceId string, sb smartblock.SmartBlock) *Profile {
+	store := f.objectStore.SpaceStore(spaceId)
 	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Profile{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
+		AllOperations: basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
-			f.objectStore,
+			store,
 			f.eventSender,
 		),
 		File: fileComponent,
@@ -52,7 +53,7 @@ func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
 			sb,
 			fileComponent,
 			f.tempDirProvider,
-			f.objectStore,
+			store,
 			f.fileService,
 			f.fileObjectService,
 		),

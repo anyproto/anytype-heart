@@ -43,7 +43,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 	case coresb.SmartBlockTypeSubObject:
 		return fmt.Errorf("subobjects deprecated")
 	case coresb.SmartBlockTypeFileObject:
-		err = s.fileObjectService.DeleteFileData(id.ObjectID)
+		err = s.fileObjectService.DeleteFileData(id.SpaceID, id.ObjectID)
 		if err != nil && !errors.Is(err, filemodels.ErrEmptyFileId) {
 			return fmt.Errorf("delete file data: %w", err)
 		}
@@ -84,7 +84,7 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 		return fmt.Errorf("on delete: %w", err)
 	}
 	if sbType == coresb.SmartBlockTypeRelation {
-		err := s.deleteRelationOptions(relationKey)
+		err := s.deleteRelationOptions(id.SpaceID, relationKey)
 		if err != nil {
 			return fmt.Errorf("failed to delete relation options of deleted relation: %w", err)
 		}
@@ -92,8 +92,8 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 	return nil
 }
 
-func (s *Service) deleteRelationOptions(relationKey string) error {
-	relationOptions, _, err := s.objectStore.QueryObjectIDs(database.Query{
+func (s *Service) deleteRelationOptions(spaceId string, relationKey string) error {
+	relationOptions, _, err := s.objectStore.SpaceStore(spaceId).QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -128,16 +128,12 @@ func (s *Service) DeleteObject(objectId string) (err error) {
 }
 
 func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error {
-	var (
-		isFavorite bool
-	)
-
 	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectCloseAllSessions()
 		st := b.NewState()
-		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
-		if isFavorite {
-			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id.ObjectID})
+		isFavorite := pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
+		if err := s.detailsService.SetIsFavorite(id.ObjectID, isFavorite); err != nil {
+			log.With("objectId", id).Errorf("failed to favorite object: %v", err)
 		}
 		b.SetIsDeleted()
 		if workspaceRemove != nil {
@@ -148,7 +144,7 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 	if err != nil {
 		log.With("error", err, "objectId", id.ObjectID).Error("failed to perform delete operation on object")
 	}
-	if err := s.objectStore.DeleteObject(id); err != nil {
+	if err := s.objectStore.SpaceStore(id.SpaceID).DeleteObject(id.ObjectID); err != nil {
 		return fmt.Errorf("delete object from local store: %w", err)
 	}
 

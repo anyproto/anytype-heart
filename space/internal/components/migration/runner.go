@@ -106,12 +106,14 @@ func (r *Runner) runMigrations() {
 func (r *Runner) run(migrations ...Migration) (err error) {
 	spaceId := r.spc.Id()
 
+	store := r.store.SpaceStore(spaceId)
+
 	for _, m := range migrations {
 		if e := r.ctx.Err(); e != nil {
 			err = errors.Join(err, e)
 			return
 		}
-		toMigrate, migrated, e := m.Run(r.ctx, log, r.store, r.spc)
+		toMigrate, migrated, e := m.Run(r.ctx, log, store, r.spc)
 		if e != nil {
 			err = errors.Join(err, wrapError(e, m.Name(), spaceId, migrated, toMigrate))
 			continue

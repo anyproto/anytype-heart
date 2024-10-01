@@ -37,6 +37,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -95,7 +96,7 @@ func New(
 	currentParticipantId string,
 	fileStore filestore.FileStore,
 	restrictionService restriction.Service,
-	objectStore objectstore.ObjectStore,
+	objectStore spaceobjects.Store,
 	indexer Indexer,
 	eventSender event.Sender,
 ) SmartBlock {
@@ -244,7 +245,7 @@ type smartBlock struct {
 	// Deps
 	fileStore          filestore.FileStore
 	restrictionService restriction.Service
-	objectStore        objectstore.ObjectStore
+	objectStore        spaceobjects.Store
 	indexer            Indexer
 	eventSender        event.Sender
 }
@@ -296,10 +297,6 @@ func (sb *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 		})
 	}
 	return
-}
-
-func (sb *smartBlock) ObjectStore() objectstore.ObjectStore {
-	return sb.objectStore
 }
 
 func (sb *smartBlock) Type() smartblock.SmartBlockType {
@@ -865,7 +862,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	}
 	// todo: filter-out existing relation links?
 	// in the most cases it should save as an objectstore query
-	relations, err := sb.objectStore.FetchRelationByKeys(sb.SpaceID(), relationKeys...)
+	relations, err := sb.objectStore.FetchRelationByKeys(relationKeys...)
 	if err != nil {
 		return
 	}
@@ -1241,7 +1238,7 @@ func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	} else {
 		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.objectStore.FetchRelationByLinks(sb.SpaceID(), links)
+	rels, _ := sb.objectStore.FetchRelationByLinks(links)
 	return rels
 }
 

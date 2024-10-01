@@ -46,6 +46,7 @@ func TestRunner(t *testing.T) {
 
 	t.Run("context exceeds + space operation in progress -> context.Canceled", func(t *testing.T) {
 		// given
+		store := objectstore.NewStoreFixture(t)
 		ctx, cancel := context.WithCancel(context.Background())
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Id().Times(1).Return("")
@@ -60,7 +61,7 @@ func TestRunner(t *testing.T) {
 				}
 			},
 		)
-		runner := Runner{ctx: ctx, spc: space}
+		runner := Runner{ctx: ctx, spc: space, store: store}
 
 		// when
 		go func() {
@@ -110,7 +111,7 @@ func TestRunner(t *testing.T) {
 	t.Run("no ctx exceed + migration failure -> error", func(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
-		store.AddObjects(t, []objectstore.TestObject{{
+		store.AddObjects(t, "space1", []objectstore.TestObject{{
 			bundle.RelationKeySpaceId:               pbtypes.String("space1"),
 			bundle.RelationKeyRelationFormat:        pbtypes.Int64(int64(model.RelationFormat_status)),
 			bundle.RelationKeyId:                    pbtypes.String("rel-tag"),

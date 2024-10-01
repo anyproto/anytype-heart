@@ -192,7 +192,7 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 
 	tmpls := []template.StateTransformer{}
 
-	blockContent := template.MakeCollectionDataviewContent()
+	blockContent := template.MakeDataviewContent(true, nil, nil)
 	tmpls = append(tmpls,
 		template.WithDataview(blockContent, false),
 	)
@@ -203,12 +203,13 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 
 func (s *Service) ObjectToCollection(id string) error {
 	return cache.DoState(s.picker, id, func(st *state.State, b basic.CommonOperations) error {
-		s.setDefaultObjectTypeToViews(st)
+		sb := b.(smartblock.SmartBlock)
+		s.setDefaultObjectTypeToViews(sb.SpaceID(), st)
 		return b.SetObjectTypesInState(st, []domain.TypeKey{bundle.TypeKeyCollection}, true)
 	})
 }
 
-func (s *Service) setDefaultObjectTypeToViews(st *state.State) {
+func (s *Service) setDefaultObjectTypeToViews(spaceId string, st *state.State) {
 	if !lo.Contains(st.ParentState().ObjectTypeKeys(), bundle.TypeKeySet) {
 		return
 	}
@@ -218,7 +219,7 @@ func (s *Service) setDefaultObjectTypeToViews(st *state.State) {
 		return
 	}
 
-	if s.isNotCreatableType(setOfValue[0]) {
+	if s.isNotCreatableType(spaceId, setOfValue[0]) {
 		return
 	}
 
@@ -236,8 +237,8 @@ func (s *Service) setDefaultObjectTypeToViews(st *state.State) {
 	}
 }
 
-func (s *Service) isNotCreatableType(id string) bool {
-	uk, err := s.objectStore.GetUniqueKeyById(id)
+func (s *Service) isNotCreatableType(spaceId string, id string) bool {
+	uk, err := s.objectStore.SpaceStore(spaceId).GetUniqueKeyById(id)
 	if err != nil {
 		return true
 	}

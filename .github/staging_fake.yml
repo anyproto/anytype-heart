@@ -1,0 +1,30 @@
+networkId: N9DU6hLkTAbvcpji3TCKPPd3UQWKGyzUxGmgJEyvhByqAjfD
+nodes:
+  - peerId: FAKE_PEER_ID1
+    addresses:
+      - lol1-any-sync-node1.somefakesite.com:6666
+      - lol1-any-sync-node1.somefakesite.com:6667
+      - quic://lol1.somefakesite.com:8888
+    types:
+      - tree
+  - peerId: FAKE_PEER_ID2
+    addresses:
+      - lol1-file13.somefakesite.com:6666
+      - lol1-file13.somefakesite.com:6667
+      - quic://lol1-file13.somefakesite.com:8888
+    types:
+      - file
+  - peerId: FAKE_PEER_ID3
+    addresses:
+      - lol1-coord1.somefakesite.com:6666
+      - lol1-coord1.somefakesite.com:6667
+      - quic://lol1-coord1.somefakesite.com:8888
+    types:
+      - coordinator
+  - peerId: FAKE_PEER_ID4
+    addresses:
+      - lol1-cons1.somefakesite.com:6666
+      - lol1-cons1.somefakesite.com:6667
+      - quic://lol1-cons1.somefakesite.com:8888
+    types:
+      - consensus

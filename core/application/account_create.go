@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -149,7 +150,8 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	if err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}
-	if err := bs.SetDetails(nil,
+	ds := app.MustComponent[detailservice.Service](s.app)
+	if err := ds.SetDetails(nil,
 		accId,
 		profileDetails,
 	); err != nil {

@@ -153,7 +153,7 @@ func (c *layoutConverter) fromAnyToSet(space smartblock.Space, st *state.State) 
 	}
 	addFeaturedRelationSetOf(st)
 
-	dvBlock, err := dataview.BlockBySource(c.objectStore, source)
+	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceStore(space.Id()), source)
 	if err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) 
 		return []string{}, nil
 	}
 
-	records, err := c.objectStore.Query(
+	records, err := c.objectStore.SpaceStore(spaceID).Query(
 		database.Query{
 			Filters: filters,
 		},
@@ -227,7 +227,7 @@ func (c *layoutConverter) fromNoteToCollection(st *state.State) error {
 }
 
 func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
-	blockContent := template.MakeCollectionDataviewContent()
+	blockContent := template.MakeDataviewContent(true, nil, nil)
 	template.InitTemplate(st, template.WithDataview(blockContent, false))
 	return nil
 }
@@ -296,25 +296,23 @@ func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []st
 		return nil, fmt.Errorf("partition ids by sb type: %w", err)
 	}
 	filters = c.appendTypesFilter(m[coresb.SmartBlockTypeObjectType], filters)
-	filters, err = c.appendRelationFilters(m[coresb.SmartBlockTypeRelation], filters)
+	filters, err = c.appendRelationFilters(spaceId, m[coresb.SmartBlockTypeRelation], filters)
 	if err != nil {
 		return nil, fmt.Errorf("append relation filters: %w", err)
 	}
 	return filters, nil
 }
 
-func (c *layoutConverter) appendRelationFilters(relationIDs []string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, error) {
-	if len(relationIDs) != 0 {
-		for _, relationID := range relationIDs {
-			relation, err := c.objectStore.GetRelationByID(relationID)
-			if err != nil {
-				return nil, fmt.Errorf("get relation by id %s: %w", relationID, err)
-			}
-			filters = append(filters, &model.BlockContentDataviewFilter{
-				RelationKey: relation.Key,
-				Condition:   model.BlockContentDataviewFilter_Exists,
-			})
+func (c *layoutConverter) appendRelationFilters(spaceId string, relationIDs []string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, error) {
+	for _, relationID := range relationIDs {
+		relation, err := c.objectStore.SpaceStore(spaceId).GetRelationByID(relationID)
+		if err != nil {
+			return nil, fmt.Errorf("get relation by id %s: %w", relationID, err)
 		}
+		filters = append(filters, &model.BlockContentDataviewFilter{
+			RelationKey: relation.Key,
+			Condition:   model.BlockContentDataviewFilter_Exists,
+		})
 	}
 	return filters, nil
 }

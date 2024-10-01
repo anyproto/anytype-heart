@@ -6,13 +6,14 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceobjects"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func TestSubscription_Add(t *testing.T) {
@@ -52,14 +53,13 @@ func TestSubscription_Add(t *testing.T) {
 
 func TestSubscription_Remove(t *testing.T) {
 	newSub := func() *sortedSub {
-		ctrl := gomock.NewController(t)
-		store := testMock.NewMockObjectStore(ctrl)
-		store.EXPECT().QueryByID([]string{"id7"}).Return([]database.Record{
-			{Details: &types.Struct{Fields: map[string]*types.Value{
-				"id":   pbtypes.String("id7"),
-				"name": pbtypes.String("id7"),
-			}}},
-		}, nil).AnyTimes()
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, "space1", []spaceobjects.TestObject{
+			{
+				bundle.RelationKeyId:   pbtypes.String("id7"),
+				bundle.RelationKeyName: pbtypes.String("id7"),
+			},
+		})
 		s := service{
 			cache:       newCache(),
 			objectStore: store,
