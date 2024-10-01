@@ -19,9 +19,9 @@ import (
 )
 
 type spaceIndexer struct {
-	runCtx      context.Context
-	spaceIndex  spaceindex.Store
-	objectStore objectstore.ObjectStore
+	runCtx         context.Context
+	spaceIndex     spaceindex.Store
+	objectStore    objectstore.ObjectStore
 	storageService storage.ClientStorage
 	batcher        *mb.MB[indexTask]
 }
@@ -110,8 +110,12 @@ func (i *spaceIndexer) Index(ctx context.Context, info smartblock.DocInfo, optio
 	}); err != nil {
 		return err
 	}
-	err, _ := <-done
-	return err
+	select {
+	case <-i.runCtx.Done():
+		return i.runCtx.Err()
+	case err := <-done:
+		return err
+	}
 }
 
 func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
