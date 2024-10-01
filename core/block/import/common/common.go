@@ -311,6 +311,10 @@ func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]strin
 				continue
 			}
 			newTarget = addr.MissingObject
+			_, err := cid.Decode(val) // this can be url, because for notion import we store url for following upload
+			if err != nil {
+				newTarget = val
+			}
 		}
 		objectsIDs[i] = newTarget
 	}

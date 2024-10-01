@@ -56,6 +56,7 @@ type ObjectStore interface {
 	QueryByID(ids []string) (records []database.Record, err error)
 	QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
 	QueryObjectIDs(q database.Query) (ids []string, total int, err error)
+	QueryIterate(q database.Query, proc func(details *types.Struct)) error
 
 	HasIDs(ids ...string) (exists []string, err error)
 	GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error)
@@ -126,10 +127,15 @@ type VirtualSpacesStore interface {
 	DeleteVirtualSpace(spaceID string) error
 }
 
+type configProvider interface {
+	GetAnyStoreConfig() *anystore.Config
+}
+
 type dsObjectStore struct {
 	oldStore oldstore.Service
 
 	repoPath         string
+	anyStoreConfig   *anystore.Config
 	sourceService    SourceDetailsFromID
 	anyStore         anystore.DB
 	objects          anystore.Collection
@@ -180,6 +186,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	}
 	s.arenaPool = &fastjson.ArenaPool{}
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
+	s.anyStoreConfig = app.MustComponent[configProvider](a).GetAnyStoreConfig()
 	s.oldStore = app.MustComponent[oldstore.Service](a)
 
 	return nil
@@ -202,7 +209,7 @@ func (s *dsObjectStore) Run(ctx context.Context) error {
 }
 
 func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
-	store, err := anystore.Open(ctx, path, nil)
+	store, err := anystore.Open(ctx, path, s.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -246,6 +253,14 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 
 	objectIndexes := []anystore.IndexInfo{
 		{
+			Name:   "uniqueKey",
+			Fields: []string{bundle.RelationKeyUniqueKey.String()},
+		},
+		{
+			Name:   "source",
+			Fields: []string{bundle.RelationKeySource.String()},
+		},
+		{
 			Name:   "layout",
 			Fields: []string{bundle.RelationKeyLayout.String()},
 		},
@@ -254,32 +269,22 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 			Fields: []string{bundle.RelationKeyType.String()},
 		},
 		{
-			Name:   "spaceId",
-			Fields: []string{bundle.RelationKeySpaceId.String()},
-		},
-		{
 			Name:   "relationKey",
 			Fields: []string{bundle.RelationKeyRelationKey.String()},
-		},
-		{
-			Name:   "uniqueKey",
-			Fields: []string{bundle.RelationKeyUniqueKey.String()},
 		},
 		{
 			Name:   "lastModifiedDate",
 			Fields: []string{bundle.RelationKeyLastModifiedDate.String()},
 		},
 		{
-			Name:   "syncStatus",
-			Fields: []string{bundle.RelationKeySyncStatus.String()},
+			Name:   "fileId",
+			Fields: []string{bundle.RelationKeyFileId.String()},
+			Sparse: true,
 		},
 		{
-			Name:   "isDeleted",
-			Fields: []string{bundle.RelationKeyIsDeleted.String()},
-		},
-		{
-			Name:   "isArchived",
-			Fields: []string{bundle.RelationKeyIsArchived.String()},
+			Name:   "oldAnytypeID",
+			Fields: []string{bundle.RelationKeyOldAnytypeID.String()},
+			Sparse: true,
 		},
 	}
 	err = s.addIndexes(ctx, objects, objectIndexes)
@@ -314,6 +319,7 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection, indexes []anystore.IndexInfo) error {
 	gotIndexes := coll.GetIndexes()
 	toCreate := indexes[:0]
+	var toDrop []string
 	for _, idx := range indexes {
 		if !slices.ContainsFunc(gotIndexes, func(i anystore.Index) bool {
 			return i.Info().Name == idx.Name
@@ -321,7 +327,25 @@ func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection
 			toCreate = append(toCreate, idx)
 		}
 	}
+	for _, idx := range gotIndexes {
+		if !slices.ContainsFunc(indexes, func(i anystore.IndexInfo) bool {
+			return i.Name == idx.Info().Name
+		}) {
+			toDrop = append(toDrop, idx.Info().Name)
+		}
+	}
+	if len(toDrop) > 0 {
+		for _, indexName := range toDrop {
+			if err := coll.DropIndex(ctx, indexName); err != nil {
+				return err
+			}
+		}
+	}
 	return coll.EnsureIndex(ctx, toCreate...)
+}
+
+func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
+	return s.anyStore.WriteTx(ctx)
 }
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {
@@ -329,6 +353,7 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	if s.objects != nil {
 		err = errors.Join(err, s.objects.Close())
 	}
+	// TODO Close collections
 	if s.anyStore != nil {
 		err = errors.Join(err, s.anyStore.Close())
 	}

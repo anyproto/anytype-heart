@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/globalsign/mgo/bson"
 	"golang.org/x/exp/slices"
@@ -202,7 +201,7 @@ func (c *ChildDatabase) GetBlock(importContext *api.NotionImportContext, pageID,
 
 	id := bson.NewObjectId().Hex()
 	if err != nil || targetBlockID == "" {
-		block := template.MakeCollectionDataviewContent()
+		block := template.MakeDataviewContent(true, nil, nil)
 		block.Dataview.TargetObjectId = targetBlockID
 		return &model.Block{
 			Id:          id,
@@ -345,7 +344,7 @@ func getTargetBlock(importContext *api.NotionImportContext, pageIDToName, notion
 	// fallback to just match by title
 	var idsWithGivenName []string
 	for id, name := range pageIDToName {
-		if strings.EqualFold(name, title) {
+		if name == title {
 			idsWithGivenName = append(idsWithGivenName, id)
 		}
 	}
