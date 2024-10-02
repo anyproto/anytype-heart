@@ -575,8 +575,6 @@ func (i *indexer) RemoveIndexes(spaceId string) error {
 }
 
 func (i *indexer) runReindexerQueue() {
-	log.Warn("reindexOutdatedObjects started")
-
 	go func() {
 		for {
 			select {
@@ -626,7 +624,7 @@ func (t *reindexTask) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		log.Warnf("reindexOutdatedObjects started for %s/%s", t.space.Id(), tid)
+		log.Debugf("reindexOutdatedObjects started for %s/%s", t.space.Id(), tid)
 		logErr := func(err error) {
 			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
 		}

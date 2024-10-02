@@ -51,7 +51,7 @@ func TestIndexer(t *testing.T) {
 
 			// then
 			assert.NoError(t, err)
-			count, _ := indexerFx.store.ListIDsFromFullTextQueue(0)
+			count, _ := indexerFx.store.ListIDsFromFullTextQueue("spaceId1", 0)
 			assert.Equal(t, 0, len(count))
 		})
 
@@ -78,7 +78,7 @@ func TestIndexer(t *testing.T) {
 
 			// then
 			assert.NoError(t, err)
-			count, _ := indexerFx.store.ListIDsFromFullTextQueue(0)
+			count, _ := indexerFx.store.ListIDsFromFullTextQueue("spaceId1", 0)
 			assert.Equal(t, 1, len(count))
 		})
 	}
@@ -106,7 +106,7 @@ func TestIndexer(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		count, _ := indexerFx.store.ListIDsFromFullTextQueue(0)
+		count, _ := indexerFx.store.ListIDsFromFullTextQueue("spaceId1", 0)
 		assert.Equal(t, 1, len(count))
 	})
 }

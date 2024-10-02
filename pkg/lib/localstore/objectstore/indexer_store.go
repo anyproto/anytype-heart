@@ -29,7 +29,6 @@ func (s *dsObjectStore) AddToIndexQueue(ids ...domain.FullID) error {
 		return errors.Join(txn.Rollback(), err)
 	}
 
-	log.Warnf("adding %d ids to fulltext queue", len(ids))
 	obj := arena.NewObject()
 	for _, id := range ids {
 		obj.Set("id", arena.NewString(id.ObjectID))
