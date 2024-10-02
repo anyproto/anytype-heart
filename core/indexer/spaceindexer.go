@@ -177,19 +177,16 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 		if err := i.spaceIndex.UpdateObjectDetails(ctx, info.Id, details); err != nil {
 			hasError = true
 			log.With("objectID", info.Id).Errorf("can't update object store: %v", err)
-		} else {
-			// todo: remove temp log
-			if lastIndexedHash == headHashToIndex {
-				l := log.With("objectID", info.Id).
-					With("hashesAreEqual", lastIndexedHash == headHashToIndex).
-					With("lastHashIsEmpty", lastIndexedHash == "").
-					With("skipFlagSet", opts.SkipIfHeadsNotChanged)
+		} else if lastIndexedHash == headHashToIndex {
+			l := log.With("objectID", info.Id).
+				With("hashesAreEqual", lastIndexedHash == headHashToIndex).
+				With("lastHashIsEmpty", lastIndexedHash == "").
+				With("skipFlagSet", opts.SkipIfHeadsNotChanged)
 
-				if opts.SkipIfHeadsNotChanged {
-					l.Warnf("details have changed, but heads are equal")
-				} else {
-					l.Debugf("details have changed, but heads are equal")
-				}
+			if opts.SkipIfHeadsNotChanged {
+				l.Warnf("details have changed, but heads are equal")
+			} else {
+				l.Debugf("details have changed, but heads are equal")
 			}
 		}
 

@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/readonlyfixer"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/systemobjectreviser"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
-	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const (
@@ -37,7 +36,6 @@ func New() *Runner {
 type Runner struct {
 	store       objectstore.ObjectStore
 	spaceLoader spaceloader.SpaceLoader
-	techSpace   techspace.TechSpace
 
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -56,7 +54,6 @@ func (r *Runner) Name() string {
 func (r *Runner) Init(a *app.App) error {
 	r.store = app.MustComponent[objectstore.ObjectStore](a)
 	r.spaceLoader = app.MustComponent[spaceloader.SpaceLoader](a)
-	r.techSpace = app.MustComponent[techspace.TechSpace](a)
 	r.waitLoad = make(chan struct{})
 	return nil
 }

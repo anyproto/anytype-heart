@@ -76,7 +76,6 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.subscription = newSubscription(s.Id(), s.eventSender)
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, ChatHandler{
-		chatId:       s.Id(),
 		subscription: s.subscription,
 	})
 	if err != nil {
