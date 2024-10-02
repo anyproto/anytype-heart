@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
@@ -98,6 +99,6 @@ func (mw *Middleware) RelationListWithValue(_ context.Context, req *pb.RpcRelati
 		return m
 	}
 
-	keys, counters, err := getService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, req.Value)
-	return response(keys, counters, err)
+	keys, counters, err := getService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, domain.ValueFromProto(req.Value))
+	return response(slice.IntoStrings(keys), counters, err)
 }

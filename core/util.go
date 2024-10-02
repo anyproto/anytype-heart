@@ -89,6 +89,17 @@ func sortsFromProto(sorts []*model.BlockContentDataviewSort) []database.SortRequ
 	return res
 }
 
+func requestDetailsListToDomain(list []*model.Detail) []domain.Detail {
+	details := make([]domain.Detail, 0, len(list))
+	for _, it := range list {
+		details = append(details, domain.Detail{
+			Key:   domain.RelationKey(it.Key),
+			Value: domain.ValueFromProto(it.Value),
+		})
+	}
+	return details
+}
+
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }

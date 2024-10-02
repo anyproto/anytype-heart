@@ -549,7 +549,7 @@ func (p *collatorBufferPool) put(b *collate.Buffer) {
 	p.pool.Put(b)
 }
 
-func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *types.Struct)) (err error) {
+func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *domain.Details)) (err error) {
 	arena := s.arenaPool.Get()
 	defer s.arenaPool.Put(arena)
 
@@ -583,8 +583,8 @@ func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *types.
 			return
 		}
 
-		var details *types.Struct
-		details, err = pbtypes.JsonToProto(doc.Value())
+		var details *domain.Details
+		details, err = domain.JsonToProto(doc.Value())
 		if err != nil {
 			err = fmt.Errorf("json to proto: %w", err)
 			return

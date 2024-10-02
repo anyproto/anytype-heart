@@ -1067,12 +1067,13 @@ func (s *State) FileRelationKeys() []domain.RelationKey {
 	for _, rel := range s.GetRelationLinks() {
 		// coverId can contain both hash or predefined cover id
 		if rel.Format == model.RelationFormat_file {
-			if slice.FindPos(keys, rel.Key) == -1 {
-				keys = append(keys, rel.Key)
+			key := domain.RelationKey(rel.Key)
+			if slice.FindPos(keys, key) == -1 {
+				keys = append(keys, key)
 			}
 		}
 		if rel.Key == bundle.RelationKeyCoverId.String() {
-			coverType := pbtypes.GetInt64(s.Details(), bundle.RelationKeyCoverType.String())
+			coverType := s.Details().GetInt64(bundle.RelationKeyCoverType)
 			if (coverType == 1 || coverType == 4) && slice.FindPos(keys, domain.RelationKey(rel.Key)) == -1 {
 				keys = append(keys, domain.RelationKey(rel.Key))
 			}

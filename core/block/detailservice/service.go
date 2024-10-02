@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -18,11 +17,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -35,18 +32,18 @@ var log = logger.NewNamed(CName)
 type Service interface {
 	cache.ObjectGetterComponent
 
-	SetDetails(ctx session.Context, objectId string, details []*model.Detail) error
-	SetDetailsAndUpdateLastUsed(ctx session.Context, objectId string, details []*model.Detail) error
-	SetDetailsList(ctx session.Context, objectIds []string, details []*model.Detail) error
-	ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) error
+	SetDetails(ctx session.Context, objectId string, details []domain.Detail) error
+	SetDetailsAndUpdateLastUsed(ctx session.Context, objectId string, details []domain.Detail) error
+	SetDetailsList(ctx session.Context, objectIds []string, details []domain.Detail) error
+	ModifyDetails(objectId string, modifier func(current *domain.Details) (*domain.Details, error)) error
 	ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesRequest) error
 
 	ObjectTypeAddRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error
 	ObjectTypeRemoveRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error
 
-	ListRelationsWithValue(spaceId string, value *types.Value) (keys []string, counters []int64, err error)
+	ListRelationsWithValue(spaceId string, value domain.Value) (keys []domain.RelationKey, counters []int64, err error)
 
-	SetSpaceInfo(spaceId string, details *types.Struct) error
+	SetSpaceInfo(spaceId string, details *domain.Details) error
 	SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error)
 
 	SetIsFavorite(objectId string, isFavorite bool) error

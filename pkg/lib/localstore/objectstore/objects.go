@@ -54,7 +54,7 @@ type ObjectStore interface {
 	QueryByID(ids []string) (records []database.Record, err error)
 	QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
 	QueryObjectIDs(q database.Query) (ids []string, total int, err error)
-	QueryIterate(q database.Query, proc func(details *types.Struct)) error
+	QueryIterate(q database.Query, proc func(details *domain.Details)) error
 
 	HasIDs(ids ...string) (exists []string, err error)
 	GetByIDs(spaceID string, ids []string) ([]*database.ObjectInfo, error)

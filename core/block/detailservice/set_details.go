@@ -5,23 +5,22 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var ErrUnexpectedBlockType = errors.New("unexpected block type")
 
-func (s *service) SetSpaceInfo(spaceId string, details *types.Struct) error {
+func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
 	ctx := context.TODO()
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
@@ -29,13 +28,14 @@ func (s *service) SetSpaceInfo(spaceId string, details *types.Struct) error {
 	}
 	workspaceId := spc.DerivedIDs().Workspace
 
-	setDetails := make([]*model.Detail, 0, len(details.GetFields()))
-	for k, v := range details.GetFields() {
-		setDetails = append(setDetails, &model.Detail{
+	setDetails := make([]domain.Detail, 0, details.Len())
+	details.Iterate(func(k domain.RelationKey, v domain.Value) bool {
+		setDetails = append(setDetails, domain.Detail{
 			Key:   k,
 			Value: v,
 		})
-	}
+		return true
+	})
 	return s.SetDetails(nil, workspaceId, setDetails)
 }
 
@@ -44,10 +44,10 @@ func (s *service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 		if ws.Type() != coresb.SmartBlockTypeWorkspace {
 			return ErrUnexpectedBlockType
 		}
-		if err = ws.SetDetails(ctx, []*model.Detail{
+		if err = ws.SetDetails(ctx, []domain.Detail{
 			{
-				Key:   bundle.RelationKeySpaceDashboardId.String(),
-				Value: pbtypes.String(id),
+				Key:   bundle.RelationKeySpaceDashboardId,
+				Value: domain.String(id),
 			},
 		}, false); err != nil {
 			return err

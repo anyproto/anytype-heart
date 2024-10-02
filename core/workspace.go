@@ -76,7 +76,7 @@ func (mw *Middleware) WorkspaceSetInfo(cctx context.Context, req *pb.RpcWorkspac
 		return m
 	}
 
-	err := getService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, req.Details)
+	err := getService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, domain.NewDetailsFromProto(req.Details))
 	if err != nil {
 		return response(pb.RpcWorkspaceSetInfoResponseError_UNKNOWN_ERROR, err)
 	}
