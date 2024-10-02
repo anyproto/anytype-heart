@@ -69,8 +69,8 @@ var _ AccountObject = (*accountObject)(nil)
 
 type accountObject struct {
 	smartblock.SmartBlock
-	spaceObjects spaceindex.Store
-	bs           basic.DetailsSettable
+	spaceObjects        spaceindex.Store
+	bs                  basic.DetailsSettable
 	profileSubscription ProfileSubscription
 	state               *storestate.StoreState
 	storeSource         source.Store
@@ -136,20 +136,19 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	}
 	a.ctx, a.cancel = context.WithCancel(context.Background())
 	_, err = coll.FindId(ctx.Ctx, accountDocument)
-	if err != nil {
-		if errors.Is(err, anystore.ErrDocNotFound) {
-			var docToInsert string
-			if a.cfg.IsNewAccount() {
-				docToInsert = fmt.Sprintf(`{"id":"%s","analyticsId":"%s","%s":"true"}`, accountDocument, a.cfg.AnalyticsId, iconMigration)
-			} else {
-				docToInsert = fmt.Sprintf(`{"id":"%s","%s":"true"}`, accountDocument, iconMigration)
-			}
-			err = coll.Insert(ctx.Ctx, docToInsert)
-			if err != nil {
-				return fmt.Errorf("insert account document: %w", err)
-			}
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+		return fmt.Errorf("find id: %w", err)
+	}
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		var docToInsert string
+		if a.cfg.IsNewAccount() {
+			docToInsert = fmt.Sprintf(`{"id":"%s","analyticsId":"%s","%s":"true"}`, accountDocument, a.cfg.AnalyticsId, iconMigration)
 		} else {
-			return fmt.Errorf("find id: %w", err)
+			docToInsert = fmt.Sprintf(`{"id":"%s"}`, accountDocument)
+		}
+		err = coll.Insert(ctx.Ctx, docToInsert)
+		if err != nil {
+			return fmt.Errorf("insert account document: %w", err)
 		}
 	}
 	st := a.NewState()
