@@ -31,9 +31,10 @@ type Loader interface {
 }
 
 type Params struct {
-	SpaceId       string
-	IsPersonal    bool
-	OwnerMetadata []byte
+	SpaceId         string
+	IsPersonal      bool
+	OwnerMetadata   []byte
+	AdditionalComps []app.Component
 }
 
 func New(app *app.App, params Params) Loader {
@@ -46,6 +47,9 @@ func New(app *app.App, params Params) Loader {
 		Register(invitemigrator.New()).
 		Register(participantwatcher.New()).
 		Register(migration.New())
+	for _, comp := range params.AdditionalComps {
+		child.Register(comp)
+	}
 	return &loader{
 		app: child,
 	}

@@ -1,4 +1,4 @@
-package objectstore
+package spaceindex
 
 import (
 	"context"
@@ -102,7 +102,7 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 		s := NewStoreFixture(t)
 		s.AddObjects(t, []TestObject{makeObjectWithName("id1", "foo")})
 
-		s.SubscribeForAll(func(rec database.Record) {
+		s.subManager.SubscribeForAll(func(rec database.Record) {
 			require.Fail(t, "unexpected call")
 		})
 
@@ -115,7 +115,7 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 		obj := makeObjectWithName("id1", "foo")
 
 		var called int
-		s.SubscribeForAll(func(rec database.Record) {
+		s.subManager.SubscribeForAll(func(rec database.Record) {
 			called++
 			assert.Equal(t, makeDetails(obj), rec.Details)
 		})
@@ -130,7 +130,7 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 
 		updatedObj := makeObjectWithNameAndDescription("id1", "foobar", "bar")
 		var called int
-		s.SubscribeForAll(func(rec database.Record) {
+		s.subManager.SubscribeForAll(func(rec database.Record) {
 			called++
 			assert.Equal(t, makeDetails(updatedObj), rec.Details)
 		})
@@ -280,7 +280,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 		err := s.UpdateObjectLinks(ctx, "id1", []string{})
 		require.NoError(t, err)
 
-		out, err := s.GetOutboundLinksByID("id1")
+		out, err := s.GetOutboundLinksById("id1")
 		require.NoError(t, err)
 		assert.Empty(t, out)
 	})
@@ -324,7 +324,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 }
 
 func (fx *StoreFixture) assertInboundLinks(t *testing.T, id string, links []string) {
-	in, err := fx.GetInboundLinksByID(id)
+	in, err := fx.GetInboundLinksById(id)
 	assert.NoError(t, err)
 	if len(links) == 0 {
 		assert.Empty(t, in)
@@ -334,7 +334,7 @@ func (fx *StoreFixture) assertInboundLinks(t *testing.T, id string, links []stri
 }
 
 func (fx *StoreFixture) assertOutboundLinks(t *testing.T, id string, links []string) {
-	out, err := fx.GetOutboundLinksByID(id)
+	out, err := fx.GetOutboundLinksById(id)
 	assert.NoError(t, err)
 	if len(links) == 0 {
 		assert.Empty(t, out)

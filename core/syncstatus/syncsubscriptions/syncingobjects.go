@@ -26,6 +26,7 @@ func newSyncingObjects(spaceId string, service subscription.Service) *syncingObj
 
 func (s *syncingObjects) Run() error {
 	objectReq := subscription.SubscribeRequest{
+		SpaceId:           s.spaceId,
 		SubId:             fmt.Sprintf("spacestatus.objects.%s", s.spaceId),
 		Internal:          true,
 		NoDepSubscription: true,

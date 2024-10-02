@@ -15593,6 +15593,7 @@ deprecated in favor of SearchWithMeta
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated |  |
 | fullText | [string](#string) |  |  |
@@ -15658,6 +15659,7 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated | filters |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated | sorts |
@@ -15667,7 +15669,6 @@ DEPRECATED, GO-1926 |
 | afterId | [string](#string) |  | (optional) pagination: middleware will return results after given id |
 | beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
 | source | [string](#string) | repeated |  |
-| ignoreWorkspace | [string](#string) |  |  |
 | noDepSubscription | [bool](#bool) |  | disable dependent subscription |
 | collectionId | [string](#string) |  |  |
 
@@ -15785,6 +15786,7 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated |  |
 | fullText | [string](#string) |  |  |
@@ -16434,10 +16436,10 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
 | ids | [string](#string) | repeated | ids for subscribe |
 | keys | [string](#string) | repeated | sorts (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
-| ignoreWorkspace | [string](#string) |  |  |
 | noDepSubscription | [bool](#bool) |  | disable dependent subscription |
 
 
@@ -29834,6 +29836,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | DevicesObject | 536 |  |
 | ChatObject | 537 | Container for any-store based chats |
 | ChatDerivedObject | 544 | Any-store based object for chat |
+| AccountObject | 545 | Container for account data in tech space |
 
 
 

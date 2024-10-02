@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func TestSpaceView_AccessType(t *testing.T) {
@@ -129,11 +128,8 @@ func (s *spaceServiceStub) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
 func (s *spaceServiceStub) OnWorkspaceChanged(spaceId string, details *types.Struct) {
 }
 
-func NewSpaceViewTest(t *testing.T, ctrl *gomock.Controller, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
+func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
 	sb := smarttest.NewWithTree("root", tree)
-	objectStore := testMock.NewMockObjectStore(ctrl)
-	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
-	objectStore.EXPECT().Query(gomock.Any()).AnyTimes()
 	a := &SpaceView{
 		SmartBlock:   sb,
 		spaceService: &spaceServiceStub{},
@@ -171,7 +167,7 @@ type spaceViewFixture struct {
 func newSpaceViewFixture(t *testing.T) *spaceViewFixture {
 	ctrl := gomock.NewController(t)
 	objectTree := mock_objecttree.NewMockObjectTree(ctrl)
-	a, err := NewSpaceViewTest(t, ctrl, "spaceId", objectTree)
+	a, err := NewSpaceViewTest(t, "spaceId", objectTree)
 	require.NoError(t, err)
 	return &spaceViewFixture{
 		SpaceView:  a,

@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/personalspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
@@ -63,13 +64,14 @@ type Service interface {
 	Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error)
 	Delete(ctx context.Context, id string) (err error)
 	TechSpaceId() string
+	PersonalSpaceId() string
 	TechSpace() *clientspace.TechSpace
 	GetPersonalSpace(ctx context.Context) (space clientspace.Space, err error)
 	GetTechSpace(ctx context.Context) (space clientspace.Space, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 	AccountMetadataSymKey() crypto.SymKey
 	AccountMetadataPayload() []byte
-
+	WaitPersonalSpaceMigration(ctx context.Context) (err error)
 	app.ComponentRunnable
 }
 
@@ -169,15 +171,59 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
+	defer s.updater.UpdateCoordinatorStatus()
+	if s.newAccount {
+		return s.createAccount(ctx)
+	}
+	return s.initAccount(ctx)
+}
+
+func (s *service) initAccount(ctx context.Context) (err error) {
 	err = s.initMarketplaceSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("init marketplace space: %w", err)
 	}
-	err = s.initTechSpace(ctx)
+	err = s.loadTechSpace(ctx)
+	if err != nil && !errors.Is(err, spacesyncproto.ErrSpaceMissing) {
+		return fmt.Errorf("init tech space: %w", err)
+	}
+	if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
+		// check if we have a personal space
+		_, persErr := s.spaceCore.Get(ctx, s.personalSpaceId)
+		if persErr != nil {
+			// then probably we just didn't have anything
+			return fmt.Errorf("init tech space: %w", err)
+		}
+		// this is an old account
+		err = s.createTechSpace(ctx)
+		if err != nil {
+			return fmt.Errorf("init tech space: %w", err)
+		}
+		// we don't wait for it here to be consistent
+		_, err := s.startPersonalSpace(ctx)
+		if err != nil {
+			return fmt.Errorf("start personal space: %w", err)
+		}
+	}
+	s.techSpace.WakeUpViews()
+	// only persist networkId after successful space init
+	err = s.config.PersistAccountNetworkId()
+	if err != nil {
+		log.Error("persist network id to config", zap.Error(err))
+	}
+	return nil
+}
+
+func (s *service) createAccount(ctx context.Context) (err error) {
+	err = s.initMarketplaceSpace(ctx)
+	if err != nil {
+		return fmt.Errorf("init marketplace space: %w", err)
+	}
+	err = s.createTechSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("init tech space: %w", err)
 	}
-	err = s.initPersonalSpace(ctx)
+	err = s.createPersonalSpace(ctx)
 	if err != nil {
 		if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
 			err = ErrSpaceNotExists
@@ -210,6 +256,18 @@ func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Spac
 	return waiter.waitSpace(ctx, spaceId)
 }
 
+func (s *service) WaitPersonalSpaceMigration(ctx context.Context) (err error) {
+	waiter := newSpaceWaiter(s, s.ctx, waitSpaceDelay)
+	_, err = waiter.waitSpace(ctx, s.personalSpaceId)
+	if err != nil {
+		return fmt.Errorf("wait personal space: %w", err)
+	}
+	s.mu.Lock()
+	ctrl := s.spaceControllers[s.personalSpaceId]
+	s.mu.Unlock()
+	return ctrl.(personalspace.Personal).WaitMigrations(ctx)
+}
+
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
 	if spaceId == s.techSpaceId {
 		return s.getTechSpace(ctx)
@@ -222,8 +280,8 @@ func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space
 }
 
 func (s *service) UpdateSharedLimits(ctx context.Context, limits int) error {
-	return s.techSpace.DoSpaceView(ctx, s.personalSpaceId, func(spaceView techspace.SpaceView) error {
-		return spaceView.SetSharedSpacesLimit(limits)
+	return s.techSpace.DoAccountObject(ctx, func(accObj techspace.AccountObject) error {
+		return accObj.SetSharedSpacesLimit(limits)
 	})
 }
 

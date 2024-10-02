@@ -37,6 +37,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -61,7 +62,8 @@ const (
 	DoSnapshot
 	SkipIfNoChanges
 	KeepInternalFlags
-	IgnoreNoPermissions // Used only for read-only actions like InitObject or OpenObject
+	IgnoreNoPermissions
+	NotPushChanges // Used only for read-only actions like InitObject or OpenObject
 )
 
 type Hook int
@@ -94,7 +96,7 @@ func New(
 	currentParticipantId string,
 	fileStore filestore.FileStore,
 	restrictionService restriction.Service,
-	objectStore objectstore.ObjectStore,
+	objectStore spaceindex.Store,
 	indexer Indexer,
 	eventSender event.Sender,
 ) SmartBlock {
@@ -243,7 +245,7 @@ type smartBlock struct {
 	// Deps
 	fileStore          filestore.FileStore
 	restrictionService restriction.Service
-	objectStore        objectstore.ObjectStore
+	objectStore        spaceindex.Store
 	indexer            Indexer
 	eventSender        event.Sender
 }
@@ -295,10 +297,6 @@ func (sb *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 		})
 	}
 	return
-}
-
-func (sb *smartBlock) ObjectStore() objectstore.ObjectStore {
-	return sb.objectStore
 }
 
 func (sb *smartBlock) Type() smartblock.SmartBlockType {
@@ -456,7 +454,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	sb.setDependentIDs(depIDs)
 
 	var records []database.Record
-	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIDAndSubscribeForChanges(sb.depIds, sb.recordsSub)
+	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdsAndSubscribeForChanges(sb.depIds, sb.recordsSub)
 	if err != nil {
 		// datastore unavailable, cancel the subscription
 		sb.recordsSub.Close()
@@ -592,6 +590,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		skipIfNoChanges     = false
 		keepInternalFlags   = false
 		ignoreNoPermissions = false
+		notPushChanges      = false
 	)
 	for _, f := range flags {
 		switch f {
@@ -611,6 +610,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			keepInternalFlags = true
 		case IgnoreNoPermissions:
 			ignoreNoPermissions = true
+		case NotPushChanges:
+			notPushChanges = true
 		}
 	}
 
@@ -680,6 +681,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return nil
 	}
 	pushChange := func() error {
+		if notPushChanges {
+			return nil
+		}
 		if !sb.source.ReadOnly() {
 			// We can set details directly in object's state, they'll be indexed correctly
 			st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentParticipantId))
@@ -804,7 +808,7 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 		return true
 	}
 	newIDs := sb.recordsSub.Subscribe(sb.depIds)
-	records, err := sb.objectStore.QueryByID(newIDs)
+	records, err := sb.objectStore.QueryByIds(newIDs)
 	if err != nil {
 		log.Errorf("queryById error: %v", err)
 	}
@@ -858,7 +862,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	}
 	// todo: filter-out existing relation links?
 	// in the most cases it should save as an objectstore query
-	relations, err := sb.objectStore.FetchRelationByKeys(sb.SpaceID(), relationKeys...)
+	relations, err := sb.objectStore.FetchRelationByKeys(relationKeys...)
 	if err != nil {
 		return
 	}
@@ -1234,7 +1238,7 @@ func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	} else {
 		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.objectStore.FetchRelationByLinks(sb.SpaceID(), links)
+	rels, _ := sb.objectStore.FetchRelationByLinks(links)
 	return rels
 }
 

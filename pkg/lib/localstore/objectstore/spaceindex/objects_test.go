@@ -1,4 +1,4 @@
-package objectstore
+package spaceindex
 
 import (
 	context2 "context"
@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -71,15 +70,15 @@ func Test_removeByPrefix(t *testing.T) {
 	}
 
 	// Test huge transaction
-	err := s.DeleteLinks(objectIds...)
+	err := s.DeleteLinks(objectIds)
 	require.NoError(t, err)
 
 	for _, id := range objectIds {
-		links, err := s.GetInboundLinksByID(id)
+		links, err := s.GetInboundLinksById(id)
 		require.NoError(t, err)
 		require.Empty(t, links)
 
-		links, err = s.GetOutboundLinksByID(id)
+		links, err = s.GetOutboundLinksById(id)
 		require.NoError(t, err)
 		require.Empty(t, links)
 	}
@@ -98,7 +97,7 @@ func TestList(t *testing.T) {
 
 	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-	got, err := s.List("space1", false)
+	got, err := s.List(false)
 	require.NoError(t, err)
 
 	want := []*model.ObjectInfo{
@@ -147,22 +146,22 @@ func TestHasIDs(t *testing.T) {
 	})
 
 	t.Run("none found", func(t *testing.T) {
-		got, err := s.HasIDs("id4", "id5")
+		got, err := s.HasIds([]string{"id4", "id5"})
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
 	t.Run("some found", func(t *testing.T) {
-		got, err := s.HasIDs("id2", "id3", "id4")
+		got, err := s.HasIds([]string{"id2", "id3", "id4"})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id2", "id3"}, got)
 	})
 	t.Run("all found", func(t *testing.T) {
-		got, err := s.HasIDs("id1", "id3")
+		got, err := s.HasIds([]string{"id1", "id3"})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id1", "id3"}, got)
 	})
 	t.Run("all found, check that input and output orders are equal by reversing arguments", func(t *testing.T) {
-		got, err := s.HasIDs("id3", "id1")
+		got, err := s.HasIds([]string{"id3", "id1"})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id3", "id1"}, got)
 	})
@@ -179,7 +178,7 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("links of first object", func(t *testing.T) {
-		got, err := s.GetWithLinksInfoByID("space1", "id1")
+		got, err := s.GetWithLinksInfoById("id1")
 		require.NoError(t, err)
 
 		assert.Equal(t, makeDetails(obj1), got.Info.Details)
@@ -189,7 +188,7 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 	})
 
 	t.Run("links of second object", func(t *testing.T) {
-		got, err := s.GetWithLinksInfoByID("space1", "id2")
+		got, err := s.GetWithLinksInfoById("id2")
 		require.NoError(t, err)
 
 		assert.Equal(t, makeDetails(obj2), got.Info.Details)
@@ -198,7 +197,7 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 	})
 
 	t.Run("links of third object", func(t *testing.T) {
-		got, err := s.GetWithLinksInfoByID("space1", "id3")
+		got, err := s.GetWithLinksInfoById("id3")
 		require.NoError(t, err)
 
 		assert.Equal(t, makeDetails(obj3), got.Info.Details)
@@ -211,7 +210,7 @@ func TestDeleteObject(t *testing.T) {
 	t.Run("on deleting object: details of deleted object are updated, but object is still in store", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.DeleteObject(domain.FullID{SpaceID: "space1", ObjectID: "id1"})
+		err := s.DeleteObject("id1")
 		require.NoError(t, err)
 
 		got, err := s.GetDetails("id1")
@@ -219,7 +218,7 @@ func TestDeleteObject(t *testing.T) {
 		assert.Equal(t, &model.ObjectDetails{
 			Details: makeDetails(TestObject{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
-				bundle.RelationKeySpaceId:   pbtypes.String("space1"),
+				bundle.RelationKeySpaceId:   pbtypes.String("test"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
 		}, got)
@@ -227,10 +226,10 @@ func TestDeleteObject(t *testing.T) {
 
 	t.Run("object is already deleted", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		err := s.DeleteObject(domain.FullID{SpaceID: "space1", ObjectID: "id1"})
+		err := s.DeleteObject("id1")
 		require.NoError(t, err)
 
-		err = s.DeleteObject(domain.FullID{SpaceID: "space1", ObjectID: "id1"})
+		err = s.DeleteObject("id1")
 		require.NoError(t, err)
 
 		got, err := s.GetDetails("id1")
@@ -238,7 +237,7 @@ func TestDeleteObject(t *testing.T) {
 		assert.Equal(t, &model.ObjectDetails{
 			Details: makeDetails(TestObject{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
-				bundle.RelationKeySpaceId:   pbtypes.String("space1"),
+				bundle.RelationKeySpaceId:   pbtypes.String("test"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
 		}, got)
@@ -256,11 +255,11 @@ func TestDeleteObject(t *testing.T) {
 		err = s.SaveLastIndexedHeadsHash(ctx, "id1", "hash1")
 		require.NoError(t, err)
 
-		err = s.AddToIndexQueue(ctx, "id1")
+		err = s.fulltextQueue.AddToIndexQueue(ctx, "id1")
 		require.NoError(t, err)
 
 		// Act
-		err = s.DeleteObject(domain.FullID{SpaceID: "space1", ObjectID: "id1"})
+		err = s.DeleteObject("id1")
 		require.NoError(t, err)
 
 		// Assert
@@ -269,20 +268,20 @@ func TestDeleteObject(t *testing.T) {
 		assert.Equal(t, &model.ObjectDetails{
 			Details: makeDetails(TestObject{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
-				bundle.RelationKeySpaceId:   pbtypes.String("space1"),
+				bundle.RelationKeySpaceId:   pbtypes.String("test"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
 		}, got)
 
-		objects, err := s.GetByIDs("space1", []string{"id1"})
+		objects, err := s.GetInfosByIds([]string{"id1"})
 		require.NoError(t, err)
 		assert.Empty(t, objects)
 
-		outbound, err := s.GetOutboundLinksByID("id1")
+		outbound, err := s.GetOutboundLinksById("id1")
 		require.NoError(t, err)
 		assert.Empty(t, outbound)
 
-		inbound, err := s.GetInboundLinksByID("id2")
+		inbound, err := s.GetInboundLinksById("id2")
 		require.NoError(t, err)
 		assert.Empty(t, inbound)
 
@@ -290,7 +289,7 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, hash)
 
-		ids, err := s.ListIDsFromFullTextQueue(0)
+		ids, err := s.fulltextQueue.ListIdsFromFullTextQueue(0)
 		require.NoError(t, err)
 		assert.Empty(t, ids)
 	})
@@ -300,7 +299,7 @@ func TestDeleteDetails(t *testing.T) {
 	s := NewStoreFixture(t)
 	s.AddObjects(t, []TestObject{makeObjectWithName("id1", "name1")})
 
-	err := s.DeleteDetails(ctx, "id1")
+	err := s.DeleteDetails(ctx, []string{"id1"})
 	require.NoError(t, err)
 
 	got, err := s.GetDetails("id1")

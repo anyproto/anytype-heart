@@ -115,6 +115,8 @@ github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c h1:GicoaTUyB2
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
 github.com/anyproto/tantivy-go v0.1.1 h1:IdeZca63wV7/C+wMpkntImdh/mkkEddQJTShGEVxGe0=
 github.com/anyproto/tantivy-go v0.1.1/go.mod h1:Pl0zaeEX7dkVDTDKROzlLlGCVjbZHjyPrZloFuVEASc=
+github.com/anyproto/tantivy-go v0.1.1 h1:IdeZca63wV7/C+wMpkntImdh/mkkEddQJTShGEVxGe0=
+github.com/anyproto/tantivy-go v0.1.1/go.mod h1:Pl0zaeEX7dkVDTDKROzlLlGCVjbZHjyPrZloFuVEASc=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d h1:5bj7nX/AS8sxGpTIrapE7PC4oPlhkHMwMqXlJbUHBlg=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d/go.mod h1:fuJqLnUwZTshS3U/bMRJ3+ow/v9oid1n0DmyYyNO1Xs=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=

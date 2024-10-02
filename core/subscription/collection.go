@@ -16,6 +16,7 @@ import (
 )
 
 type collectionObserver struct {
+	spaceId      string
 	collectionID string
 	subID        string
 	objectsCh    <-chan []string
@@ -32,13 +33,14 @@ type collectionObserver struct {
 	recBatch          *mb.MB
 }
 
-func (s *service) newCollectionObserver(collectionID string, subID string) (*collectionObserver, error) {
+func (s *service) newCollectionObserver(spaceId string, collectionID string, subID string) (*collectionObserver, error) {
 	initialObjectIDs, objectsCh, err := s.collectionService.SubscribeForCollection(collectionID, subID)
 	if err != nil {
 		return nil, fmt.Errorf("subscribe for collection: %w", err)
 	}
 
 	obs := &collectionObserver{
+		spaceId:      spaceId,
 		collectionID: collectionID,
 		subID:        subID,
 		objectsCh:    objectsCh,
@@ -86,7 +88,7 @@ func (c *collectionObserver) close() {
 func (c *collectionObserver) listEntries() []*entry {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	entries := fetchEntries(c.cache, c.objectStore, c.ids)
+	entries := c.fetchEntries(c.ids)
 	res := make([]*entry, len(entries))
 	copy(res, entries)
 	return res
@@ -105,7 +107,7 @@ func (c *collectionObserver) updateIDs(ids []string) {
 	}
 	c.ids = ids
 
-	entries := fetchEntries(c.cache, c.objectStore, append(removed, added...))
+	entries := c.fetchEntries(append(removed, added...))
 	for _, e := range entries {
 		err := c.recBatch.Add(database.Record{
 			Details: e.data,
@@ -178,10 +180,8 @@ func (c *collectionSub) close() {
 	c.sortedSub.close()
 }
 
-func (s *service) newCollectionSub(
-	id, collectionID string, keys, filterDepIds []string, flt database.Filter, order database.Order, limit, offset int, disableDepSub bool,
-) (*collectionSub, error) {
-	obs, err := s.newCollectionObserver(collectionID, id)
+func (s *service) newCollectionSub(id string, spaceId string, collectionID string, keys, filterDepIds []string, flt database.Filter, order database.Order, limit, offset int, disableDepSub bool) (*collectionSub, error) {
+	obs, err := s.newCollectionObserver(spaceId, collectionID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func (s *service) newCollectionSub(
 		flt = database.FiltersAnd{obs, flt}
 	}
 
-	ssub := s.newSortedSub(id, keys, flt, order, limit, offset)
+	ssub := s.newSortedSub(id, spaceId, keys, flt, order, limit, offset)
 	ssub.disableDep = disableDepSub
 	if !ssub.disableDep {
 		ssub.forceSubIds = filterDepIds
@@ -215,11 +215,11 @@ func (s *service) newCollectionSub(
 	return sub, nil
 }
 
-func fetchEntries(cache *cache, objectStore objectstore.ObjectStore, ids []string) []*entry {
+func (c *collectionObserver) fetchEntries(ids []string) []*entry {
 	res := make([]*entry, 0, len(ids))
 	missingIDs := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if e := cache.Get(id); e != nil {
+		if e := c.cache.Get(id); e != nil {
 			res = append(res, e)
 			continue
 		}
@@ -229,7 +229,7 @@ func fetchEntries(cache *cache, objectStore objectstore.ObjectStore, ids []strin
 	if len(missingIDs) == 0 {
 		return res
 	}
-	recs, err := objectStore.QueryByID(missingIDs)
+	recs, err := c.objectStore.SpaceIndex(c.spaceId).QueryByIds(missingIDs)
 	if err != nil {
 		log.Error("can't query by ids:", err)
 	}
