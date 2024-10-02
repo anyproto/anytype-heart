@@ -424,11 +424,10 @@ func (s *service) setupProgress() (process.Notificationable, error) {
 }
 
 func getArchiveReaderAndSize(ctx context.Context, url string) (reader io.ReadCloser, size int64, err error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, 0, err
 	}
-	req = req.WithContext(ctx)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, 0, err
