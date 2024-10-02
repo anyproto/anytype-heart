@@ -34,14 +34,9 @@ const (
 	defaultPort    = 47800
 	getFileTimeout = 1 * time.Minute
 	requestLimit   = 32
-	pngMedia       = "image/png"
-	svgMedia       = "image/svg+xml"
 )
 
-var (
-	log          = logging.Logger("anytype-gateway")
-	rasterizeSvg bool
-)
+var log = logging.Logger("anytype-gateway")
 
 func New() Gateway {
 	return new(gateway)
@@ -64,7 +59,6 @@ type gateway struct {
 	mu                sync.Mutex
 	isServerStarted   bool
 	limitCh           chan struct{}
-	rasterizeSvg      bool
 }
 
 func GatewayAddr() string {
@@ -85,7 +79,6 @@ func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
 	g.fileObjectService = app.MustComponent[fileobject.Service](a)
 	g.addr = GatewayAddr()
-	g.rasterizeSvg = rasterizeSvg
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
 }
@@ -409,20 +402,11 @@ func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req 
 }
 
 func (g *gateway) handleSVGFile(ctx context.Context, file files.File) (*getImageReaderResult, error) {
-	reader, err := file.Reader(ctx)
+	reader, err := svg.ProcessSvg(ctx, file)
 	if err != nil {
 		return nil, err
 	}
-	if !g.rasterizeSvg {
-		file.Info().Media = svgMedia
-		return &getImageReaderResult{file, reader}, nil
-	}
-	reader, err = svg.Rasterize(reader)
-	if err != nil {
-		return nil, err
-	}
-	file.Info().Media = pngMedia
-	return &getImageReaderResult{file, reader}, err
+	return &getImageReaderResult{file, reader}, nil
 }
 
 func cleanUpPathForLogging(input string) string {
