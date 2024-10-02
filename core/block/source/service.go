@@ -64,7 +64,7 @@ type service struct {
 	accountKeysService accountservice.Service
 	storageService     storage.ClientStorage
 	fileService        files.Service
-	objectStore        RelationGetter
+	objectStore        Store
 	fileObjectMigrator fileObjectMigrator
 
 	mu        sync.Mutex
@@ -80,7 +80,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 
 	s.fileService = app.MustComponent[files.Service](a)
-	s.objectStore = app.MustComponent[RelationGetter](a)
+	s.objectStore = app.MustComponent[Store](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
 	return
 }

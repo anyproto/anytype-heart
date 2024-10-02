@@ -3078,6 +3078,7 @@ message Rpc {
                 string lastVersionId = 2;
                 // desired count of versions
                 int32 limit = 3;
+                bool notIncludeVersion = 4;
             }
 
             message Response {
