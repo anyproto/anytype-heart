@@ -2839,7 +2839,7 @@ func TestState_FileRelationKeys(t *testing.T) {
 		keys := s.FileRelationKeys()
 
 		// then
-		expectedKeys := []string{"fileKey1", "fileKey2"}
+		expectedKeys := []domain.RelationKey{"fileKey1", "fileKey2"}
 		assert.ElementsMatch(t, keys, expectedKeys)
 	})
 	t.Run("duplicated file relations", func(t *testing.T) {
@@ -2855,7 +2855,7 @@ func TestState_FileRelationKeys(t *testing.T) {
 		keys := s.FileRelationKeys()
 
 		// then
-		expectedKeys := []string{"fileKey1"}
+		expectedKeys := []domain.RelationKey{"fileKey1"}
 		assert.ElementsMatch(t, keys, expectedKeys)
 	})
 	t.Run("coverId relation", func(t *testing.T) {
@@ -2873,7 +2873,7 @@ func TestState_FileRelationKeys(t *testing.T) {
 		keys := s.FileRelationKeys()
 
 		// then
-		expectedKeys := []string{bundle.RelationKeyCoverId.String()}
+		expectedKeys := []domain.RelationKey{bundle.RelationKeyCoverId}
 		assert.ElementsMatch(t, keys, expectedKeys)
 	})
 	t.Run("skip coverId relation", func(t *testing.T) {
@@ -2926,7 +2926,7 @@ func TestState_FileRelationKeys(t *testing.T) {
 		keys := s.FileRelationKeys()
 
 		// then
-		expectedKeys := []string{"fileKey1", bundle.RelationKeyCoverId.String()}
+		expectedKeys := []domain.RelationKey{"fileKey1", bundle.RelationKeyCoverId}
 		assert.ElementsMatch(t, keys, expectedKeys, "Expected both file keys and cover ID")
 	})
 	t.Run("coverType not in details", func(t *testing.T) {
