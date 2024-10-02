@@ -81,9 +81,10 @@ func Test_docsForExport(t *testing.T) {
 			docs:          map[string]*types.Struct{},
 			includeNested: true,
 			reqIds:        []string{"id"},
+			export:        e,
 		}
 		// when
-		err = e.docsForExport(expCtx)
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
@@ -118,10 +119,11 @@ func Test_docsForExport(t *testing.T) {
 			includeNested: true,
 			reqIds:        []string{"id"},
 			docs:          map[string]*types.Struct{},
+			export:        e,
 		}
 
 		// when
-		err = e.docsForExport(expCtx)
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
@@ -188,8 +190,9 @@ func Test_docsForExport(t *testing.T) {
 			docs:    map[string]*types.Struct{},
 			format:  model.Export_Protobuf,
 			reqIds:  []string{"id"},
+			export:  e,
 		}
-		err = e.docsForExport(expCtx)
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
@@ -265,10 +268,11 @@ func Test_docsForExport(t *testing.T) {
 			format:  model.Export_Protobuf,
 			reqIds:  []string{"id"},
 			docs:    map[string]*types.Struct{},
+			export:  e,
 		}
 
 		// when
-		err = e.docsForExport(expCtx)
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
@@ -343,10 +347,11 @@ func Test_docsForExport(t *testing.T) {
 			format:  model.Export_Protobuf,
 			reqIds:  []string{"id"},
 			docs:    map[string]*types.Struct{},
+			export:  e,
 		}
 
 		// when
-		err = e.docsForExport(expCtx)
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
@@ -432,10 +437,11 @@ func Test_docsForExport(t *testing.T) {
 			format:  model.Export_Protobuf,
 			reqIds:  []string{"id"},
 			docs:    map[string]*types.Struct{},
+			export:  e,
 		}
 
 		// when
-		err = e.docsForExport(expCtx)
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
@@ -608,10 +614,11 @@ func Test_docsForExport(t *testing.T) {
 			format:        model.Export_Protobuf,
 			reqIds:        []string{"id"},
 			docs:          map[string]*types.Struct{},
+			export:        e,
 		}
 
 		// when
-		err = e.docsForExport(expCtx)
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
@@ -684,10 +691,11 @@ func Test_docsForExport(t *testing.T) {
 			docs:    map[string]*types.Struct{},
 			format:  model.Export_Protobuf,
 			reqIds:  []string{"id"},
+			export:  e,
 		}
 
 		// when
-		err = e.docsForExport(expCtx)
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
@@ -766,10 +774,11 @@ func Test_docsForExport(t *testing.T) {
 			docs:    map[string]*types.Struct{},
 			format:  model.Export_Protobuf,
 			reqIds:  []string{"id"},
+			export:  e,
 		}
 
 		// when
-		err = e.docsForExport(expCtx)
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
@@ -890,10 +899,11 @@ func Test_docsForExport(t *testing.T) {
 			format:        model.Export_Protobuf,
 			reqIds:        []string{"id"},
 			includeNested: true,
+			export:        e,
 		}
 
 		// when
-		err = e.docsForExport(expCtx)
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
@@ -979,10 +989,11 @@ func Test_docsForExport(t *testing.T) {
 			reqIds:        []string{"id"},
 			includeNested: true,
 			includeFiles:  true,
+			export:        e,
 		}
 
 		// when
-		err = e.docsForExport(expCtx)
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
@@ -1028,10 +1039,11 @@ func Test_docsForExport(t *testing.T) {
 			reqIds:        []string{"id"},
 			includeNested: true,
 			includeFiles:  true,
+			export:        e,
 		}
 
 		// when
-		err = e.docsForExport(expCtx)
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
@@ -1170,10 +1182,11 @@ func Test_docsForExport(t *testing.T) {
 			docs:    map[string]*types.Struct{},
 			format:  model.Export_Protobuf,
 			reqIds:  []string{"id"},
+			export:  e,
 		}
 
 		// when
-		err = e.docsForExport(expCtx)
+		err = expCtx.docsForExport()
 		// then
 		assert.Nil(t, err)
 		assert.Equal(t, 5, len(expCtx.docs))
@@ -1182,63 +1195,47 @@ func Test_docsForExport(t *testing.T) {
 
 func Test_provideFileName(t *testing.T) {
 	t.Run("file dir for relation", func(t *testing.T) {
-		// given
-		e := &export{}
-
 		// when
-		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelation)
+		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelation)
 
 		// then
 		assert.Equal(t, relationsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for relation option", func(t *testing.T) {
-		// given
-		e := &export{}
-
 		// when
-		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelationOption)
+		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelationOption)
 
 		// then
 		assert.Equal(t, relationsOptionsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for types", func(t *testing.T) {
-		// given
-		e := &export{}
-
 		// when
-		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeObjectType)
+		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeObjectType)
 
 		// then
 		assert.Equal(t, typesDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for objects", func(t *testing.T) {
-		// given
-		e := &export{}
-
 		// when
-		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypePage)
+		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypePage)
 
 		// then
 		assert.Equal(t, objectsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for files objects", func(t *testing.T) {
-		// given
-		e := &export{}
-
 		// when
-		fileName := e.makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeFileObject)
+		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeFileObject)
 
 		// then
 		assert.Equal(t, filesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("space is not provided", func(t *testing.T) {
 		// given
-		e := &export{}
 		st := state.NewDoc("root", nil).(*state.State)
 		st.SetDetail(bundle.RelationKeySpaceId.String(), pbtypes.String("spaceId"))
 
 		// when
-		fileName := e.makeFileName("docId", "", pbjson.NewConverter(st), st, smartblock.SmartBlockTypeFileObject)
+		fileName := makeFileName("docId", "", pbjson.NewConverter(st), st, smartblock.SmartBlockTypeFileObject)
 
 		// then
 		assert.Equal(t, spaceDirectory+string(filepath.Separator)+"spaceId"+string(filepath.Separator)+filesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -1261,9 +1258,10 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 			ids = append(ids, id)
 		}
 		e := &export{objectStore: fixture}
+		expCtx := &exportContext{export: e}
 
 		// when
-		records, err := e.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
+		records, err := expCtx.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
 
 		// then
 		assert.Nil(t, err)
@@ -1284,9 +1282,10 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 			ids = append(ids, id)
 		}
 		e := &export{objectStore: fixture}
+		expCtx := &exportContext{export: e}
 
 		// when
-		records, err := e.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
+		records, err := expCtx.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
 
 		// then
 		assert.Nil(t, err)
