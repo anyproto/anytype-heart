@@ -1,7 +1,6 @@
 package spaceindex
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -133,30 +132,26 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 			}
 		}
 	}()
-	// TODO Some problem with parsing anystoreFilter.String()
-	// TODO It's because of empty And/Or filter
 	iter, err := query.Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("find: %w", err)
 	}
+	defer iter.Close()
+
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
-			return nil, errors.Join(fmt.Errorf("get doc: %w", err), iter.Close())
+			return nil, fmt.Errorf("get doc: %w", err)
 		}
 		details, err := pbtypes.JsonToProto(doc.Value())
 		if err != nil {
-			return nil, errors.Join(fmt.Errorf("json to proto: %w", err), iter.Close())
+			return nil, fmt.Errorf("json to proto: %w", err)
 		}
 		records = append(records, database.Record{Details: details})
 	}
 	err = iter.Err()
 	if err != nil {
-		return nil, errors.Join(fmt.Errorf("iterate: %w", err), iter.Close())
-	}
-	err = iter.Close()
-	if err != nil {
-		return nil, fmt.Errorf("close iterator: %w", err)
+		return nil, fmt.Errorf("iterate: %w", err)
 	}
 	return records, nil
 }
@@ -555,12 +550,7 @@ func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *types.
 	if err != nil {
 		return fmt.Errorf("find: %w", err)
 	}
-
-	defer func() {
-		if iterCloseErr := iter.Close(); iterCloseErr != nil {
-			err = errors.Join(iterCloseErr, err)
-		}
-	}()
+	defer iter.Close()
 
 	for iter.Next() {
 		var doc anystore.Doc
@@ -592,17 +582,19 @@ func (s *dsObjectStore) ListIds() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("find all: %w", err)
 	}
+	defer iter.Close()
+
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
-			return nil, errors.Join(fmt.Errorf("get doc: %w", err), iter.Close())
+			return nil, fmt.Errorf("get doc: %w", err)
 		}
 		id := doc.Value().GetStringBytes("id")
 		ids = append(ids, string(id))
 	}
 	err = iter.Err()
 	if err != nil {
-		return nil, errors.Join(fmt.Errorf("iterate: %w", err), iter.Close())
+		return nil, fmt.Errorf("iterate: %w", err)
 	}
-	return ids, iter.Close()
+	return ids, nil
 }

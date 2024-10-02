@@ -95,13 +95,15 @@ func (s *dsObjectStore) findInboundLinks(ctx context.Context, id string) ([]stri
 	if err != nil {
 		return nil, err
 	}
+	defer iter.Close()
+
 	var links []string
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
-			return nil, errors.Join(iter.Close(), fmt.Errorf("get doc: %w", err))
+			return nil, fmt.Errorf("get doc: %w", err)
 		}
 		links = append(links, string(doc.Value().GetStringBytes("id")))
 	}
-	return links, iter.Close()
+	return links, nil
 }

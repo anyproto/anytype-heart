@@ -3,7 +3,6 @@ package objectstore
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -47,16 +46,18 @@ func (s *dsObjectStore) ListIdsFromFullTextQueue(limit int) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create iterator: %w", err)
 	}
+	defer iter.Close()
+
 	var ids []string
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
-			return nil, errors.Join(iter.Close(), fmt.Errorf("read doc: %w", err))
+			return nil, fmt.Errorf("read doc: %w", err)
 		}
 		id := doc.Value().GetStringBytes("id")
 		ids = append(ids, string(id))
 	}
-	return ids, iter.Close()
+	return ids, nil
 }
 
 func (s *dsObjectStore) RemoveIdsFromFullTextQueue(ids []string) error {
