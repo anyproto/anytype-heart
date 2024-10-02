@@ -22,9 +22,11 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/taskmanager"
 )
 
 const (
@@ -139,7 +141,11 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	ctx := objectcache.CacheOptsWithRemoteLoadDisabled(context.Background())
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
+	log.Warnf("reindex flags: %v", flags.String())
+
 	if flags.objects {
+		log.Warn("reindex all objects because of flags")
+
 		types := []coresb.SmartBlockType{
 			// System types first
 			coresb.SmartBlockTypeObjectType,
@@ -159,15 +165,9 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		if err != nil {
 			return err
 		}
-		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, space, ids...)
-
-		i.logFinishedReindexStat(metrics.ReindexTypeThreads, len(ids), successfullyReindexed, time.Since(start))
-		l := log.With(zap.String("space", space.Id()), zap.Int("total", len(ids)), zap.Int("succeed", successfullyReindexed))
-		if successfullyReindexed != len(ids) {
-			l.Errorf("reindex partially failed")
-		} else {
-			l.Infof("reindex finished")
+		err = i.store.DeleteLastIndexedHeadHash(ids...)
+		if err != nil {
+			return fmt.Errorf("delete last indexed head hash: %w", err)
 		}
 	} else {
 
@@ -182,7 +182,9 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		// we can have objects which actual state is newer than the indexed one
 		// this may happen e.g. if the app got closed in the middle of object updates processing
 		// So here we reindexOutdatedObjects which compare the last indexed heads hash with the actual one
-		go func() {
+
+		i.addToReindexQueue(space)
+		/*go func() {
 			start := time.Now()
 			total, success, err := i.reindexOutdatedObjects(ctx, space)
 			if err != nil {
@@ -197,7 +199,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			if total > 0 {
 				i.logFinishedReindexStat(metrics.ReindexTypeOutdatedHeads, total, success, time.Since(start))
 			}
-		}()
+		}()*/
 	}
 
 	if flags.deletedObjects {
@@ -476,43 +478,6 @@ func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reinde
 	return nil
 }
 
-func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.Space) (toReindex, success int, err error) {
-	tids := space.StoredIds()
-	var idsToReindex []string
-	for _, tid := range tids {
-		logErr := func(err error) {
-			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
-		}
-
-		lastHash, err := i.store.GetLastIndexedHeadsHash(tid)
-		if err != nil {
-			logErr(err)
-			continue
-		}
-		info, err := space.Storage().TreeStorage(tid)
-		if err != nil {
-			logErr(err)
-			continue
-		}
-		heads, err := info.Heads()
-		if err != nil {
-			logErr(err)
-			continue
-		}
-
-		hh := headsHash(heads)
-		if lastHash != hh {
-			if lastHash != "" {
-				log.With("tree", tid).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
-			}
-			idsToReindex = append(idsToReindex, tid)
-		}
-	}
-
-	success = i.reindexIdsIgnoreErr(ctx, space, idsToReindex...)
-	return len(idsToReindex), success, nil
-}
-
 func (i *indexer) reindexDoc(ctx context.Context, space smartblock.Space, id string) error {
 	return space.Do(id, func(sb smartblock.SmartBlock) error {
 		return i.Index(ctx, sb.GetDocInfo())
@@ -607,4 +572,99 @@ func (i *indexer) RemoveIndexes(spaceId string) error {
 	var flags reindexFlags
 	flags.enableAll()
 	return i.removeCommonIndexes(spaceId, nil, flags)
+}
+
+func (i *indexer) runReindexerQueue() {
+	log.Warn("reindexOutdatedObjects started")
+
+	go func() {
+		for {
+			select {
+			case <-i.quit:
+			case priority := <-i.lastSpacesSubscriptionUpdateChan:
+				i.updateSpacesPriority(pbtypes.ExtractString(priority, bundle.RelationKeyTargetSpaceId.String(), true))
+			}
+		}
+	}()
+	go i.spaceReindexQueue.Run(context.Background())
+}
+
+func (i *indexer) closeReindexerQueue() {
+	i.spaceReindexQueue.WaitAndClose()
+}
+
+func (i *indexer) addToReindexQueue(space clientspace.Space) {
+	log.Debug("reindexOutdatedObjects space %s added to queue", space.Id())
+
+	task := i.newReIndexTask(space)
+	i.spaceReindexQueue.AddTask(task)
+}
+
+func (i *indexer) newReIndexTask(space clientspace.Space) taskmanager.Task {
+	return &reindexTask{
+		TaskBase: taskmanager.NewTaskBase(space.Id()),
+		space:    space,
+		store:    i.store,
+		indexer:  i,
+	}
+}
+
+type reindexTask struct {
+	taskmanager.TaskBase
+	space   clientspace.Space
+	store   objectstore.ObjectStore
+	indexer *indexer
+}
+
+func (t *reindexTask) Run(ctx context.Context) error {
+	start := time.Now()
+	tids := t.space.StoredIds()
+	var totalIndex, successIndex int
+	var err error
+	for _, tid := range tids {
+		err = t.WaitIfPaused(ctx)
+		if err != nil {
+			return err
+		}
+		log.Warnf("reindexOutdatedObjects started for %s/%s", t.space.Id(), tid)
+		logErr := func(err error) {
+			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
+		}
+
+		lastHash, err := t.store.GetLastIndexedHeadsHash(tid)
+		if err != nil {
+			logErr(err)
+			continue
+		}
+		info, err := t.space.Storage().TreeStorage(tid)
+		if err != nil {
+			logErr(err)
+			continue
+		}
+		heads, err := info.Heads()
+		if err != nil {
+			logErr(err)
+			continue
+		}
+
+		hh := headsHash(heads)
+		if lastHash == hh {
+			continue
+		}
+
+		if lastHash != "" {
+			log.With("tree", tid).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
+		}
+		totalIndex++
+
+		err = t.indexer.reindexDoc(ctx, t.space, tid)
+		if err != nil {
+			logErr(err)
+			continue
+		}
+		successIndex++
+	}
+
+	log.Warn("reindexOutdatedObjects finished", zap.Int("total", totalIndex), zap.Int("succeed", successIndex), zap.Int("spentMs", int(time.Since(start).Milliseconds())))
+	return nil
 }

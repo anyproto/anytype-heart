@@ -168,3 +168,19 @@ func (s *dsObjectStore) SaveLastIndexedHeadsHash(id string, headsHash string) er
 	}))
 	return err
 }
+
+func (s *dsObjectStore) DeleteLastIndexedHeadHash(ids ...string) error {
+	txn, err := s.headsState.WriteTx(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
+
+	for _, id := range ids {
+		err = s.headsState.DeleteId(txn.Context(), id)
+		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+			return errors.Join(txn.Rollback(), fmt.Errorf("delete id: %w", err))
+		}
+
+	}
+	return txn.Commit()
+}

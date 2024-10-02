@@ -10,6 +10,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/cheggaaa/mb/v3"
+	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -30,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/taskmanager"
 )
 
 const (
@@ -56,6 +60,10 @@ type Hasher interface {
 	Hash() string
 }
 
+type techSpaceIdGetter interface {
+	TechSpaceId() string
+}
+
 type indexer struct {
 	store               objectstore.ObjectStore
 	fileStore           filestore.FileStore
@@ -72,8 +80,14 @@ type indexer struct {
 	btHash  Hasher
 	forceFt chan struct{}
 
-	lock             sync.Mutex
-	reindexLogFields []zap.Field
+	mb                               *mb.MB[clientspace.Space]
+	lastSpacesSubscription           *syncsubscriptions.ObjectSubscription[*types.Struct]
+	lastSpacesSubscriptionUpdateChan chan []*types.Struct
+	lock                             sync.Mutex
+	reindexLogFields                 []zap.Field
+	techSpaceId                      techSpaceIdGetter
+
+	spaceReindexQueue *taskmanager.TasksManager
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -89,7 +103,10 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.forceFt = make(chan struct{})
 	i.config = app.MustComponent[*config.Config](a)
 	i.subscriptionService = app.MustComponent[subscription.Service](a)
-
+	i.mb = mb.New[clientspace.Space](0)
+	i.spaceReindexQueue = taskmanager.NewTasksManager(1)
+	i.techSpaceId = app.MustComponent[techSpaceIdGetter](a)
+	i.lastSpacesSubscriptionUpdateChan = make(chan []*types.Struct)
 	return
 }
 
@@ -98,6 +115,12 @@ func (i *indexer) Name() (name string) {
 }
 
 func (i *indexer) Run(context.Context) (err error) {
+	i.runReindexerQueue()
+
+	err = i.subscribeToSpaces()
+	if err != nil {
+		return
+	}
 	return i.StartFullTextIndex()
 }
 
@@ -111,6 +134,7 @@ func (i *indexer) StartFullTextIndex() (err error) {
 
 func (i *indexer) Close(ctx context.Context) (err error) {
 	close(i.quit)
+	i.closeReindexerQueue()
 	// we need to wait for the ftQueue processing to be finished gracefully. Because we may be in the middle of badger transaction
 	<-i.ftQueueFinished
 	return nil
@@ -143,6 +167,9 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 	opts := &smartblock.IndexOptions{}
 	for _, o := range options {
 		o(opts)
+	}
+	if info.Space.Id() == "bafyreicyizddzxw35hnnu2hg5zxhc3jvfifgkdqjqz62i4dz5mapyex7b4.lav62qbhdcf9" {
+
 	}
 	err := i.storageService.BindSpaceID(info.Space.Id(), info.Id)
 	if err != nil {

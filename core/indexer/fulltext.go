@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -38,20 +39,32 @@ func (i *indexer) ForceFTIndex() {
 	}
 }
 
-// ftLoop runs full-text indexer
-// MUST NOT be called more than once
-func (i *indexer) ftLoopRoutine() {
-	ticker := time.NewTicker(ftIndexInterval)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		select {
-		case <-i.quit:
-			cancel()
-		case <-ctx.Done():
+func (i *indexer) getSpaceIdsByPriority() []string {
+	var ids = make([]string, 0, i.lastSpacesSubscription.Len())
+	i.lastSpacesSubscription.Iterate(func(_ string, v *types.Struct) bool {
+		id := pbtypes.GetString(v, bundle.RelationKeyTargetSpaceId.String())
+		if id != "" {
+			ids = append(ids, id)
 		}
-	}()
+		return true
+	})
 
+	log.Warnf("ft space ids priority: %v", ids)
+	return ids
+}
+
+func (i *indexer) updateSpacesPriority(priority []string) {
+	techSpaceId := i.techSpaceId.TechSpaceId()
+
+	priority = append([]string{techSpaceId}, slices.DeleteFunc(priority, func(s string) bool {
+		return s == techSpaceId
+	})...)
+	log.Warnf("update spaces priority: %v", priority)
+
+	i.spaceReindexQueue.UpdatePriority(priority)
+}
+
+func (i *indexer) subscribeToSpaces() error {
 	objectReq := subscription.SubscribeRequest{
 		SubId:             fmt.Sprintf("lastOpenedSpaces"),
 		Internal:          true,
@@ -74,23 +87,34 @@ func (i *indexer) ftLoopRoutine() {
 			},
 		},
 	}
-	sub := syncsubscriptions.NewIdSubscription(i.subscriptionService, bundle.RelationKeyTargetSpaceId, objectReq)
-	err := sub.Run()
-	if err != nil {
-		log.Errorf("error running syncing objects: %v", err)
-		return
+	i.lastSpacesSubscription = syncsubscriptions.NewSubscription(i.subscriptionService, objectReq)
+	return i.lastSpacesSubscription.Run(i.lastSpacesSubscriptionUpdateChan)
+}
+
+func (i *indexer) getIterator() func(id string, data struct{}) bool {
+	var ids []string
+	return func(id string, _ struct{}) bool {
+		ids = append(ids, id)
+		return true
 	}
-	getIds := func() []string {
-		var ids = make([]string, 0, sub.Len())
-		sub.Iterate(func(id string, _ struct{}) bool {
-			ids = append(ids, id)
-			return true
-		})
-		log.Warnf("ft space ids priority: %v", ids)
-		return ids
-	}
+}
+
+// ftLoop runs full-text indexer
+// MUST NOT be called more than once
+func (i *indexer) ftLoopRoutine() {
+	ticker := time.NewTicker(ftIndexInterval)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		select {
+		case <-i.quit:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
 	log.Warnf("start ft queue processor")
-	i.runFullTextIndexer(ctx, getIds())
+	i.runFullTextIndexer(ctx, i.getSpaceIdsByPriority())
 	defer close(i.ftQueueFinished)
 	var lastForceIndex time.Time
 	for {
@@ -98,10 +122,10 @@ func (i *indexer) ftLoopRoutine() {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			i.runFullTextIndexer(ctx, getIds())
+			i.runFullTextIndexer(ctx, i.getSpaceIdsByPriority())
 		case <-i.forceFt:
 			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
-				i.runFullTextIndexer(ctx, getIds())
+				i.runFullTextIndexer(ctx, i.getSpaceIdsByPriority())
 				lastForceIndex = time.Now()
 			}
 		}

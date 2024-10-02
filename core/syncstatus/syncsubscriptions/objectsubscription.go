@@ -2,14 +2,16 @@ package syncsubscriptions
 
 import (
 	"context"
+	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/cheggaaa/mb/v3"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -38,14 +40,36 @@ type SubscriptionParams[T any] struct {
 	Unset   unset[T]
 }
 
-func NewIdSubscription(service subscription.Service, idField domain.RelationKey, request subscription.SubscribeRequest) *ObjectSubscription[struct{}] {
+func NewSubscription(service subscription.Service, request subscription.SubscribeRequest) *ObjectSubscription[*types.Struct] {
+	if request.Keys != nil && !slices.Contains(request.Keys, bundle.RelationKeyId.String()) {
+		request.Keys = append(request.Keys, bundle.RelationKeyId.String())
+	}
+	return &ObjectSubscription[*types.Struct]{
+		sorted:  len(request.Sorts) > 0,
+		request: request,
+		service: service,
+		ch:      make(chan struct{}),
+		extract: func(t *types.Struct) (string, *types.Struct) {
+			return pbtypes.GetString(t, bundle.RelationKeyId.String()), t
+		},
+		update: func(s string, value *types.Value, s2 *types.Struct) *types.Struct {
+			s2.Fields[s] = value
+			return s2
+		},
+		unset: func(strings []string, s *types.Struct) *types.Struct {
+			return pbtypes.StructFilterKeys(s, strings)
+		},
+	}
+}
+
+func NewIdSubscription(service subscription.Service, request subscription.SubscribeRequest) *ObjectSubscription[struct{}] {
 	return &ObjectSubscription[struct{}]{
 		sorted:  len(request.Sorts) > 0,
 		request: request,
 		service: service,
 		ch:      make(chan struct{}),
 		extract: func(t *types.Struct) (string, struct{}) {
-			return pbtypes.GetString(t, idField.String()), struct{}{}
+			return pbtypes.GetString(t, bundle.RelationKeyId.String()), struct{}{}
 		},
 		update: func(s string, value *types.Value, s2 struct{}) struct{} {
 			return struct{}{}
@@ -57,22 +81,25 @@ func NewIdSubscription(service subscription.Service, idField domain.RelationKey,
 }
 
 type ObjectSubscription[T any] struct {
-	sorted    bool
-	request   subscription.SubscribeRequest
-	service   subscription.Service
-	ch        chan struct{}
-	events    *mb.MB[*pb.EventMessage]
-	ctx       context.Context
-	cancel    context.CancelFunc
-	sub       map[string]*entry[T]
-	positions []string
-	extract   extract[T]
-	update    update[T]
-	unset     unset[T]
-	mx        sync.Mutex
+	sorted     bool
+	request    subscription.SubscribeRequest
+	service    subscription.Service
+	ch         chan struct{}
+	events     *mb.MB[*pb.EventMessage]
+	ctx        context.Context
+	cancel     context.CancelFunc
+	sub        map[string]*entry[T]
+	positions  []string
+	extract    extract[T]
+	update     update[T]
+	unset      unset[T]
+	updateChan chan []T
+	mx         sync.Mutex
 }
 
-func (o *ObjectSubscription[T]) Run() error {
+// Run starts the subscription
+// if updateChan is not nil, it will be used to notify about changes, including the first set of records
+func (o *ObjectSubscription[T]) Run(updateChan chan []T) error {
 	resp, err := o.service.Search(o.request)
 	if err != nil {
 		return err
@@ -87,6 +114,7 @@ func (o *ObjectSubscription[T]) Run() error {
 			o.positions = append(o.positions, id)
 		}
 	}
+	o.updateChan = updateChan
 	go o.read()
 	return nil
 }
@@ -109,6 +137,19 @@ func (o *ObjectSubscription[T]) iterateSorted(iter func(id string, data T) bool)
 			return
 		}
 	}
+}
+
+func (o *ObjectSubscription[T]) sendToChan() {
+	if o.updateChan == nil {
+		return
+	}
+
+	var vals = make([]T, 0, o.Len())
+	o.Iterate(func(_ string, v T) bool {
+		vals = append(vals, v)
+		return true
+	})
+	o.updateChan <- vals
 }
 
 func (o *ObjectSubscription[T]) Iterate(iter func(id string, data T) bool) {
@@ -159,17 +200,22 @@ func (o *ObjectSubscription[T]) read() {
 	readEvent := func(event *pb.EventMessage) {
 		o.mx.Lock()
 		defer o.mx.Unlock()
+		fmt.Printf("sub %s got event %t: %+v\n", o.request.SubId, event.Value, event.Value)
 		switch v := event.Value.(type) {
 		case *pb.EventMessageValueOfSubscriptionAdd:
 			if o.sorted {
 				o.positionInsertAfter(v.SubscriptionAdd.AfterId, v.SubscriptionAdd.Id)
 			}
-			o.sub[v.SubscriptionAdd.Id] = newEmptyEntry[T]()
+			if _, ok := o.sub[v.SubscriptionAdd.Id]; !ok {
+				o.sub[v.SubscriptionAdd.Id] = newEmptyEntry[T]()
+			}
 		case *pb.EventMessageValueOfSubscriptionPosition:
 			if o.sorted {
 				o.positionMoveIdAfter(v.SubscriptionPosition.AfterId, v.SubscriptionPosition.Id)
 			}
-			o.sub[v.SubscriptionPosition.Id] = newEmptyEntry[T]()
+			if _, ok := o.sub[v.SubscriptionPosition.Id]; !ok {
+				o.sub[v.SubscriptionPosition.Id] = newEmptyEntry[T]()
+			}
 		case *pb.EventMessageValueOfSubscriptionRemove:
 			if o.sorted {
 				o.positionRemove(v.SubscriptionRemove.Id)
@@ -203,5 +249,6 @@ func (o *ObjectSubscription[T]) read() {
 			return
 		}
 		readEvent(event)
+		o.sendToChan()
 	}
 }
