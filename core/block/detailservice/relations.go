@@ -67,25 +67,20 @@ func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) (ke
 	countersByKeys := make(map[domain.RelationKey]int64)
 	detailHandlesValue := generateFilter(value)
 
-	err = s.store.QueryIterate(database.Query{Filters: []database.FilterRequest{
-		{
-			RelationKey: bundle.RelationKeySpaceId,
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.String(spaceId),
-		},
-	},
-	}, func(details *domain.Details) {
-		details.Iterate(func(key domain.RelationKey, valueToCheck domain.Value) bool {
-			if detailHandlesValue(valueToCheck) {
-				if counter, ok := countersByKeys[key]; ok {
-					countersByKeys[key] = counter + 1
-				} else {
-					countersByKeys[key] = 1
+	err = s.store.SpaceIndex(spaceId).QueryIterate(
+		database.Query{Filters: nil},
+		func(details *domain.Details) {
+			details.Iterate(func(key domain.RelationKey, valueToCheck domain.Value) bool {
+				if detailHandlesValue(valueToCheck) {
+					if counter, ok := countersByKeys[key]; ok {
+						countersByKeys[key] = counter + 1
+					} else {
+						countersByKeys[key] = 1
+					}
 				}
-			}
-			return true
+				return true
+			})
 		})
-	})
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to query objects: %w", err)

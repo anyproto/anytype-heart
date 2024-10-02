@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
@@ -20,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var ctx = context.Background()
@@ -34,7 +32,7 @@ const spaceName = "space1"
 type detailsFromId struct {
 }
 
-func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*domain.Details, error) {
 	return nil, fmt.Errorf("not found")
 }
 
@@ -105,44 +103,40 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	}
 }
 
-type TestObject map[domain.RelationKey]*types.Value
+type TestObject map[domain.RelationKey]domain.Value
 
 func generateObjectWithRandomID() TestObject {
 	id := fmt.Sprintf("%d", rand.Int())
 	return TestObject{
-		bundle.RelationKeyId:   pbtypes.String(id),
-		bundle.RelationKeyName: pbtypes.String("name" + id),
+		bundle.RelationKeyId:   domain.String(id),
+		bundle.RelationKeyName: domain.String("name" + id),
 	}
 }
 
 func makeObjectWithName(id string, name string) TestObject {
 	return TestObject{
-		bundle.RelationKeyId:      pbtypes.String(id),
-		bundle.RelationKeyName:    pbtypes.String(name),
-		bundle.RelationKeySpaceId: pbtypes.String(spaceName),
+		bundle.RelationKeyId:      domain.String(id),
+		bundle.RelationKeyName:    domain.String(name),
+		bundle.RelationKeySpaceId: domain.String(spaceName),
 	}
 }
 
 func makeObjectWithNameAndDescription(id string, name string, description string) TestObject {
 	return TestObject{
-		bundle.RelationKeyId:          pbtypes.String(id),
-		bundle.RelationKeyName:        pbtypes.String(name),
-		bundle.RelationKeyDescription: pbtypes.String(description),
-		bundle.RelationKeySpaceId:     pbtypes.String(spaceName),
+		bundle.RelationKeyId:          domain.String(id),
+		bundle.RelationKeyName:        domain.String(name),
+		bundle.RelationKeyDescription: domain.String(description),
+		bundle.RelationKeySpaceId:     domain.String(spaceName),
 	}
 }
 
-func makeDetails(fields TestObject) *types.Struct {
-	f := map[string]*types.Value{}
-	for k, v := range fields {
-		f[string(k)] = v
-	}
-	return &types.Struct{Fields: f}
+func makeDetails(fields TestObject) *domain.Details {
+	return domain.NewDetailsFromMap(fields)
 }
 
 func (fx *StoreFixture) AddObjects(t testing.TB, objects []TestObject) {
 	for _, obj := range objects {
-		id := obj[bundle.RelationKeyId].GetStringValue()
+		id := obj[bundle.RelationKeyId].String()
 		require.NotEmpty(t, id)
 		err := fx.UpdateObjectDetails(context.Background(), id, makeDetails(obj))
 		require.NoError(t, err)

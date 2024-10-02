@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/valyala/fastjson"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -29,7 +30,7 @@ func (fx *StoreFixture) TechSpaceId() string {
 type detailsFromId struct {
 }
 
-func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*domain.Details, error) {
 	return nil, fmt.Errorf("not found")
 }
 
@@ -121,10 +122,6 @@ func (fx *StoreFixture) AddObjects(t testing.TB, spaceId string, objects []space
 	}
 }
 
-func makeDetails(fields spaceindex.TestObject) *types.Struct {
-	f := map[string]*types.Value{}
-	for k, v := range fields {
-		f[string(k)] = v
-	}
-	return &types.Struct{Fields: f}
+func makeDetails(fields spaceindex.TestObject) *domain.Details {
+	return domain.NewDetailsFromMap(fields)
 }

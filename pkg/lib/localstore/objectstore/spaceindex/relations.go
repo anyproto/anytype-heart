@@ -197,17 +197,17 @@ func (s *dsObjectStore) GetRelationFormatByKey(key domain.RelationKey) (model.Re
 }
 
 // ListRelationOptions returns options for specific relation
-func (s *dsObjectStore) ListRelationOptions(relationKey string) (options []*model.RelationOption, err error) {
-	filters := []*model.BlockContentDataviewFilter{
+func (s *dsObjectStore) ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error) {
+	filters := []database.FilterRequest{
 		{
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeyRelationKey.String(),
-			Value:       pbtypes.String(relationKey),
+			RelationKey: bundle.RelationKeyRelationKey,
+			Value:       domain.String(relationKey),
 		},
 		{
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeyLayout.String(),
-			Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			RelationKey: bundle.RelationKeyLayout,
+			Value:       domain.Int64(model.ObjectType_relationOption),
 		},
 	}
 	records, err := s.Query(database.Query{
@@ -215,7 +215,7 @@ func (s *dsObjectStore) ListRelationOptions(relationKey string) (options []*mode
 	})
 
 	for _, rec := range records {
-		options = append(options, relationutils.OptionFromStruct(rec.Details).RelationOption)
+		options = append(options, relationutils.OptionFromDetails(rec.Details).RelationOption)
 	}
 	return
 }

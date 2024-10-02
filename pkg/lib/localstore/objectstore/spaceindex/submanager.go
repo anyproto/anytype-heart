@@ -3,10 +3,9 @@ package spaceindex
 import (
 	"sync"
 
-	"github.com/gogo/protobuf/types"
-
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type SubscriptionManager struct {
@@ -65,9 +64,9 @@ func (s *SubscriptionManager) closeAndRemoveSubscription(subscription database.S
 	}
 }
 
-func (s *SubscriptionManager) sendUpdatesToSubscriptions(id string, details *types.Struct) {
-	detCopy := pbtypes.CopyStruct(details, false)
-	detCopy.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+func (s *SubscriptionManager) sendUpdatesToSubscriptions(id string, details *domain.Details) {
+	detCopy := details.Copy()
+	detCopy.SetString(bundle.RelationKeyId, id)
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	if s.onChangeCallback != nil {

@@ -140,8 +140,8 @@ func (ur UploadResult) ToBlock() file.Block {
 }
 
 type FileObjectService interface {
-	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
-	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *types.Struct, err error)
+	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error)
+	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error)
 }
 
 type uploader struct {

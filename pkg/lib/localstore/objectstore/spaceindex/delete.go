@@ -7,6 +7,7 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
@@ -40,12 +41,12 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	}
 
 	newDetails := domain.NewDetails()
-	newDetails.SetString(bundle.RelationKeyId, id.ObjectID)
-	newDetails.SetString(bundle.RelationKeySpaceId, id.SpaceID)
+	newDetails.SetString(bundle.RelationKeyId, id)
+	newDetails.SetString(bundle.RelationKeySpaceId, s.spaceId)
 	newDetails.SetBool(bundle.RelationKeyIsDeleted, true)
 
 	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
-	err = s.UpdateObjectDetails(txn.Context(), id.ObjectID, newDetails)
+	err = s.UpdateObjectDetails(txn.Context(), id, newDetails)
 	if err != nil {
 		return rollback(fmt.Errorf("failed to overwrite details and relations: %w", err))
 	}

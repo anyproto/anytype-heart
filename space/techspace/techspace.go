@@ -38,7 +38,7 @@ var (
 type AccountObject interface {
 	editorsb.SmartBlock
 	SetSharedSpacesLimit(limit int) (err error)
-	SetProfileDetails(details *types.Struct) (err error)
+	SetProfileDetails(details *domain.Details) (err error)
 	MigrateIconImage(image string) (err error)
 	IsIconMigrated() (bool, error)
 	SetAnalyticsId(analyticsId string) (err error)

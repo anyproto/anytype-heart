@@ -221,18 +221,3 @@ func jsonArrayToStrings(arr []*fastjson.Value) []string {
 	}
 	return res
 }
-
-func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.Details) {
-	detCopy := details.Copy()
-	detCopy.SetString(bundle.RelationKeyId, id)
-	s.RLock()
-	defer s.RUnlock()
-	if s.onChangeCallback != nil {
-		s.onChangeCallback(database.Record{
-			Details: detCopy,
-		})
-	}
-	for _, sub := range s.subscriptions {
-		_ = sub.PublishAsync(id, detCopy)
-	}
-}

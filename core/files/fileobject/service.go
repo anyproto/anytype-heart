@@ -192,7 +192,7 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 	if len(records) > 0 {
 		ids := make([]string, 0, len(records))
 		for _, record := range records {
-			ids = append(ids, pbtypes.GetString(record.Details, bundle.RelationKeyId.String()))
+			ids = append(ids, record.Details.GetString(bundle.RelationKeyId))
 		}
 		if err = s.objectArchiver.SetListIsArchived(ids, true); err != nil {
 			return err
@@ -412,9 +412,9 @@ func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uplo
 	return nil
 }
 
-func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error) {
+func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error) {
 	records, err := s.objectStore.SpaceIndex(fileId.SpaceId).Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -446,7 +446,7 @@ func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error
 	if err != nil {
 		return domain.FullFileId{}, fmt.Errorf("get object details: %w", err)
 	}
-	fileId := pbtypes.GetString(details.Details, bundle.RelationKeyFileId.String())
+	fileId := details.GetString(bundle.RelationKeyFileId)
 	if fileId == "" {
 		return domain.FullFileId{}, filemodels.ErrEmptyFileId
 	}

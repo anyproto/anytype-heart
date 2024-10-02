@@ -318,7 +318,7 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 	}
 	ids := make([]string, 0, len(records))
 	for _, rec := range records {
-		ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
+		ids = append(ids, rec.Details.GetString(bundle.RelationKeyId))
 	}
 	path, _, err = s.exporter.Export(ctx, pb.RpcObjectListExportRequest{
 		Path:      path,

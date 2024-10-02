@@ -26,7 +26,7 @@ type ObjectStore interface {
 	Query(q Query) (records []Record, err error)
 	QueryRaw(filters *Filters, limit int, offset int) ([]Record, error)
 	GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error)
-	ListRelationOptions(relationKey string) (options []*model.RelationOption, err error)
+	ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error)
 }
 
 type SetOrder []Order
