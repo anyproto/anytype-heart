@@ -184,26 +184,25 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 		return fmt.Errorf("init marketplace space: %w", err)
 	}
 	err = s.loadTechSpace(ctx)
-	if err != nil {
-		if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
-			// check if we have a personal space
-			_, persErr := s.spaceCore.Get(ctx, s.personalSpaceId)
-			if persErr != nil {
-				// then probably we just didn't have anything
-				return fmt.Errorf("init tech space: %w", err)
-			}
-			// this is an old account
-			err = s.createTechSpace(ctx)
-			if err != nil {
-				return fmt.Errorf("init tech space: %w", err)
-			}
-			// we don't wait for it here to be consistent
-			_, err := s.startPersonalSpace(ctx)
-			if err != nil {
-				return fmt.Errorf("start personal space: %w", err)
-			}
-		} else {
+	if err != nil && !errors.Is(err, spacesyncproto.ErrSpaceMissing) {
+		return fmt.Errorf("init tech space: %w", err)
+	}
+	if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
+		// check if we have a personal space
+		_, persErr := s.spaceCore.Get(ctx, s.personalSpaceId)
+		if persErr != nil {
+			// then probably we just didn't have anything
 			return fmt.Errorf("init tech space: %w", err)
+		}
+		// this is an old account
+		err = s.createTechSpace(ctx)
+		if err != nil {
+			return fmt.Errorf("init tech space: %w", err)
+		}
+		// we don't wait for it here to be consistent
+		_, err := s.startPersonalSpace(ctx)
+		if err != nil {
+			return fmt.Errorf("start personal space: %w", err)
 		}
 	}
 	s.techSpace.WakeUpViews()

@@ -121,7 +121,7 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 
 	analyticsId, err := s.getAnalyticsId(ctx, s.spaceService.TechSpace())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get analytics id: %s", err)
+		return nil, fmt.Errorf("failed to get analytics id: %w", err)
 	}
 
 	gwAddr := s.gateway.Addr()

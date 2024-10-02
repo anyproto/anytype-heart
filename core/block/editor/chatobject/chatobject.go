@@ -52,8 +52,8 @@ type storeObject struct {
 	storeSource    source.Store
 	store          *storestate.StoreState
 	eventSender    event.Sender
-	subscription *subscription
-	spaceObjects spaceindex.Store
+	subscription   *subscription
+	spaceObjects   spaceindex.Store
 
 	arenaPool *fastjson.ArenaPool
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
@@ -48,8 +47,6 @@ type ProfileDetails struct {
 	IconImage   string
 }
 
-type ProfileSubscription = func(ctx context.Context, profile ProfileDetails) error
-
 type AccountObject interface {
 	smartblock.SmartBlock
 	basic.DetailsSettable
@@ -69,16 +66,14 @@ var _ AccountObject = (*accountObject)(nil)
 
 type accountObject struct {
 	smartblock.SmartBlock
-	spaceObjects        spaceindex.Store
-	bs                  basic.DetailsSettable
-	profileSubscription ProfileSubscription
-	state               *storestate.StoreState
-	storeSource         source.Store
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	mx                  sync.Mutex
-	relMapper           *relationsMapper
-	cfg                 *config.Config
+	spaceObjects spaceindex.Store
+	bs           basic.DetailsSettable
+	state        *storestate.StoreState
+	storeSource  source.Store
+	ctx          context.Context
+	cancel       context.CancelFunc
+	relMapper    *relationsMapper
+	cfg          *config.Config
 }
 
 func (a *accountObject) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
@@ -273,6 +268,15 @@ func (a *accountObject) GetAnalyticsId() (id string, err error) {
 		return
 	}
 	return string(val.GetStringBytes(analyticsKey)), nil
+}
+
+func (a *accountObject) TryClose(objectTTL time.Duration) (res bool, err error) {
+	return false, nil
+}
+
+func (a *accountObject) Close() error {
+	a.cancel()
+	return a.SmartBlock.Close()
 }
 
 func (a *accountObject) SetSharedSpacesLimit(limit int) (err error) {
