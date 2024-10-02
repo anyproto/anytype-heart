@@ -684,7 +684,7 @@ func Test_docsForExport(t *testing.T) {
 		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
 				bundle.RelationKeyName:    pbtypes.String("name1"),
@@ -768,7 +768,7 @@ func Test_docsForExport(t *testing.T) {
 		relationKeyUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
 				bundle.RelationKeyName:    pbtypes.String("name1"),
@@ -886,7 +886,7 @@ func Test_docsForExport(t *testing.T) {
 		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
 				bundle.RelationKeyName:    pbtypes.String("name1"),
@@ -944,6 +944,7 @@ func Test_docsForExport(t *testing.T) {
 		service := mock_space.NewMockService(t)
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().Do("id", mock.Anything).Return(nil)
+		space.EXPECT().Id().Return("spaceId")
 
 		service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
 		e := &export{
@@ -972,7 +973,7 @@ func Test_docsForExport(t *testing.T) {
 		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
 				bundle.RelationKeyName:    pbtypes.String("name1"),
@@ -992,6 +993,7 @@ func Test_docsForExport(t *testing.T) {
 		service := mock_space.NewMockService(t)
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().Do("id", mock.Anything).Return(nil)
+		space.EXPECT().Id().Return("spaceId")
 		service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
 		e := &export{
 			objectStore:  storeFixture,
@@ -1031,7 +1033,7 @@ func Test_docsForExport(t *testing.T) {
 		relationObjectTypeUK, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, relationObjectTypeKey)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
 				bundle.RelationKeySetOf:   pbtypes.StringList([]string{relationKey}),
@@ -1221,11 +1223,11 @@ func Test_provideFileName(t *testing.T) {
 func Test_queryObjectsFromStoreByIds(t *testing.T) {
 	t.Run("query 10 objects", func(t *testing.T) {
 		// given
-		fixture := objectstore.NewStoreFixture(t)
+		store := objectstore.NewStoreFixture(t)
 		ids := make([]string, 0, 10)
 		for i := 0; i < 10; i++ {
 			id := fmt.Sprintf("%d", i)
-			fixture.AddObjects(t, []objectstore.TestObject{
+			store.AddObjects(t, "spaceId", []objectstore.TestObject{
 				{
 					bundle.RelationKeyId:      pbtypes.String(id),
 					bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
@@ -1233,7 +1235,7 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 			})
 			ids = append(ids, id)
 		}
-		e := &export{objectStore: fixture}
+		e := &export{objectStore: store}
 
 		// when
 		records, err := e.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
@@ -1248,7 +1250,7 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 		ids := make([]string, 0, 2000)
 		for i := 0; i < 2000; i++ {
 			id := fmt.Sprintf("%d", i)
-			fixture.AddObjects(t, []objectstore.TestObject{
+			fixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 				{
 					bundle.RelationKeyId:      pbtypes.String(id),
 					bundle.RelationKeySpaceId: pbtypes.String("spaceId"),

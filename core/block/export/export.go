@@ -299,17 +299,12 @@ func (e *export) queryAndFilterObjectsByRelation(spaceId string, reqIds []string
 }
 
 func (e *export) queryObjectsByIds(spaceId string, reqIds []string, relationFilter string) ([]database.Record, error) {
-	return e.objectStore.Query(database.Query{
+	return e.objectStore.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: relationFilter,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       pbtypes.StringList(reqIds),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
 			},
 		},
 	})
@@ -627,7 +622,7 @@ func (e *export) addRelationOptions(spaceId string, relationKey string, derivedO
 }
 
 func (e *export) getRelationOptions(spaceId, relationKey string) ([]database.Record, error) {
-	relationOptionsDetails, err := e.objectStore.Query(database.Query{
+	relationOptionsDetails, err := e.objectStore.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -638,11 +633,6 @@ func (e *export) getRelationOptions(spaceId, relationKey string) ([]database.Rec
 				RelationKey: bundle.RelationKeyRelationKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(relationKey),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
 			},
 		},
 	})
@@ -742,15 +732,15 @@ func (e *export) addNestedObjects(spaceId string, docs map[string]*types.Struct,
 	return nil
 }
 
-func (e *export) addNestedObject(spaceID string, id string, docs map[string]*types.Struct, nestedDocs map[string]*types.Struct) {
-	links, err := e.objectStore.GetOutboundLinksByID(id)
+func (e *export) addNestedObject(spaceId string, id string, docs map[string]*types.Struct, nestedDocs map[string]*types.Struct) {
+	links, err := e.objectStore.SpaceIndex(spaceId).GetOutboundLinksByID(id)
 	if err != nil {
 		log.Errorf("export failed to get outbound links for id: %s", err)
 		return
 	}
 	for _, link := range links {
 		if _, exists := docs[link]; !exists {
-			sbt, sbtErr := e.sbtProvider.Type(spaceID, link)
+			sbt, sbtErr := e.sbtProvider.Type(spaceId, link)
 			if sbtErr != nil {
 				log.Errorf("failed to get smartblocktype of id %s", link)
 				continue
@@ -758,7 +748,7 @@ func (e *export) addNestedObject(spaceID string, id string, docs map[string]*typ
 			if !validType(sbt) {
 				continue
 			}
-			rec, qErr := e.objectStore.QueryByID([]string{link})
+			rec, qErr := e.objectStore.SpaceIndex(spaceId).QueryByID([]string{link})
 			if qErr != nil {
 				log.Errorf("failed to query id %s, err: %s", qErr, err)
 				continue
@@ -766,17 +756,18 @@ func (e *export) addNestedObject(spaceID string, id string, docs map[string]*typ
 			if isLinkedObjectExist(rec) {
 				nestedDocs[link] = rec[0].Details
 				docs[link] = rec[0].Details
-				e.addNestedObject(spaceID, link, docs, nestedDocs)
+				e.addNestedObject(spaceId, link, docs, nestedDocs)
 			}
 		}
 	}
 }
 
 func (e *export) fillLinkedFiles(space clientspace.Space, id string, docs map[string]*types.Struct) ([]string, error) {
+	spaceIndex := e.objectStore.SpaceIndex(space.Id())
 	var fileObjectsIds []string
 	err := space.Do(id, func(b sb.SmartBlock) error {
 		b.NewState().IterateLinkedFiles(func(fileObjectId string) {
-			res, err := e.objectStore.Query(database.Query{
+			res, err := spaceIndex.Query(database.Query{
 				Filters: []*model.BlockContentDataviewFilter{
 					{
 						RelationKey: bundle.RelationKeyId.String(),
@@ -803,13 +794,14 @@ func (e *export) fillLinkedFiles(space clientspace.Space, id string, docs map[st
 	return fileObjectsIds, nil
 }
 
-func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProtobuf bool) (map[string]*types.Struct, error) {
-	res, err := e.objectStore.List(spaceID, false)
+func (e *export) getExistedObjects(spaceId string, includeArchived bool, isProtobuf bool) (map[string]*types.Struct, error) {
+	spaceIndex := e.objectStore.SpaceIndex(spaceId)
+	res, err := spaceIndex.List(false)
 	if err != nil {
 		return nil, err
 	}
 	if includeArchived {
-		archivedObjects, err := e.objectStore.List(spaceID, true)
+		archivedObjects, err := spaceIndex.List(true)
 		if err != nil {
 			return nil, err
 		}
@@ -817,8 +809,8 @@ func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProto
 	}
 	objectDetails := make(map[string]*types.Struct, len(res))
 	for _, info := range res {
-		objectSpaceID := spaceID
-		if spaceID == "" {
+		objectSpaceID := spaceId
+		if spaceId == "" {
 			objectSpaceID = pbtypes.GetString(info.Details, bundle.RelationKeySpaceId.String())
 		}
 		sbType, err := e.sbtProvider.Type(objectSpaceID, info.Id)
@@ -831,9 +823,6 @@ func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProto
 		}
 		objectDetails[info.Id] = info.Details
 
-	}
-	if err != nil {
-		return nil, err
 	}
 	return objectDetails, nil
 }
