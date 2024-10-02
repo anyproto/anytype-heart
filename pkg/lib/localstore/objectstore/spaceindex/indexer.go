@@ -17,6 +17,9 @@ func (s *dsObjectStore) GetLastIndexedHeadsHash(ctx context.Context, id string) 
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return "", nil
 	}
+	if err != nil {
+		return "", err
+	}
 	return string(doc.Value().GetStringBytes(headsStateField)), nil
 }
 
