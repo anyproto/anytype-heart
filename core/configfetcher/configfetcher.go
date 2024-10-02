@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	pbMiddle "github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -46,7 +45,6 @@ type techSpaceGetter interface {
 }
 
 type configFetcher struct {
-	store        objectstore.ObjectStore
 	eventSender  event.Sender
 	periodicSync periodicsync.PeriodicSync
 	client       coordinatorclient.CoordinatorClient
@@ -67,7 +65,6 @@ func (c *configFetcher) Run(context.Context) error {
 }
 
 func (c *configFetcher) Init(a *app.App) (err error) {
-	c.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
 	c.eventSender = a.MustComponent(event.CName).(event.Sender)
 	c.periodicSync = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, c.updateStatus, logger.CtxLogger{Logger: log.Desugar()})

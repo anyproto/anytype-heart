@@ -12,11 +12,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
-	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/techspace"
@@ -38,22 +35,15 @@ func New() Runner {
 	return &runner{}
 }
 
-type uploader interface {
-	UploadFile(ctx context.Context, spaceId string, fileId string, file files.File) (string, error)
-}
-
 type fileObjectGetter interface {
 	GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error)
 	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *types.Struct, err error)
 }
 
 type runner struct {
-	store            objectstore.ObjectStore
 	spaceLoader      spaceloader.SpaceLoader
 	techSpace        techspace.TechSpace
 	fileObjectGetter fileObjectGetter
-	fileGetter       files.Service
-	fileUploader     fileuploader.Service
 
 	ctx                context.Context
 	cancel             context.CancelFunc
@@ -63,7 +53,6 @@ type runner struct {
 	waitMigrateProfile chan struct{}
 	waitMigrate        chan struct{}
 	started            bool
-	isPersonal         bool
 
 	app.ComponentRunnable
 }
@@ -73,11 +62,9 @@ func (r *runner) Name() string {
 }
 
 func (r *runner) Init(a *app.App) error {
-	r.store = app.MustComponent[objectstore.ObjectStore](a)
 	r.spaceLoader = app.MustComponent[spaceloader.SpaceLoader](a)
 	r.techSpace = app.MustComponent[techspace.TechSpace](a)
 	r.fileObjectGetter = app.MustComponent[fileObjectGetter](a)
-	r.fileGetter = app.MustComponent[files.Service](a)
 
 	r.waitMigrateProfile = make(chan struct{})
 	r.waitMigrate = make(chan struct{})
@@ -180,6 +167,9 @@ func (r *runner) migrateIcon(oldIcon string) (err error) {
 		EncryptionKeys: fileInfo.EncryptionKeys,
 		ObjectOrigin:   objectorigin.None(),
 	})
+	if err != nil {
+		return
+	}
 	err = r.techSpace.DoAccountObject(r.ctx, func(accountObject techspace.AccountObject) error {
 		return accountObject.MigrateIconImage(id)
 	})
@@ -209,7 +199,6 @@ func (r *runner) runMigrations() {
 			log.Error("failed to migrate icon", zap.String("spaceId", r.spc.Id()))
 		}
 	}
-	return
 }
 
 func (r *runner) WaitProfile(ctx context.Context) error {
