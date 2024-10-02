@@ -3,6 +3,7 @@ package indexer
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/mock_spacestorage"
@@ -155,6 +156,8 @@ func TestReindexDeletedObjects(t *testing.T) {
 	)
 	fx := NewIndexerFixture(t)
 
+	go fx.spaceReindexQueue.Run(context.Background())
+	defer fx.spaceReindexQueue.WaitAndClose()
 	fx.objectStore.AddObjects(t, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:        pbtypes.String("1"),
@@ -212,8 +215,10 @@ func TestReindexDeletedObjects(t *testing.T) {
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil)
 
 		err = fx.ReindexSpace(space2)
+		fx.spaceReindexQueue.UpdatePriority([]string{spaceId2})
 		require.NoError(t, err)
 
+		time.Sleep(4 * time.Second)
 		sums, err := fx.objectStore.GetChecksums(spaceId2)
 		require.NoError(t, err)
 

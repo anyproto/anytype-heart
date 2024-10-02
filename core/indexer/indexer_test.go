@@ -16,7 +16,8 @@ import (
 
 func TestIndexer(t *testing.T) {
 	for _, testCase := range []struct {
-		name    string
+		name string
+
 		options smartblock.IndexOption
 	}{
 		{

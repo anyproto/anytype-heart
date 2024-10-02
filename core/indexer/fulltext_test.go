@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/indexer/mock_indexer"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
@@ -32,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/taskmanager"
 )
 
 type IndexerFixture struct {
@@ -63,7 +65,9 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 
 	testApp.Register(objectStore.FTSearch())
 
-	indxr := &indexer{}
+	indxr := &indexer{
+		spaceReindexQueue: taskmanager.NewTasksManager(1),
+	}
 
 	indexerFx := &IndexerFixture{
 		indexer:     indxr,
@@ -326,11 +330,14 @@ func TestRunFullTextIndexer(t *testing.T) {
 					blockbuilder.ID("blockId1"),
 				),
 			)))
-		indexerFx.store.AddToIndexQueue("objectId" + strconv.Itoa(i))
+		indexerFx.store.AddToIndexQueue(domain.FullID{
+			ObjectID: "objectId" + strconv.Itoa(i),
+			SpaceID:  "space1",
+		})
 		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, "objectId"+strconv.Itoa(i)).Return(smartTest, nil).Once()
 	}
 
-	indexerFx.runFullTextIndexer(context.Background())
+	indexerFx.runFullTextIndexer(context.Background(), []string{"space1"})
 
 	count, _ := indexerFx.ftsearch.DocCount()
 	assert.Equal(t, 10, int(count))
@@ -352,11 +359,14 @@ func TestRunFullTextIndexer(t *testing.T) {
 				),
 			)))
 		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, "objectId"+strconv.Itoa(i)).Return(smartTest, nil).Once()
-		indexerFx.store.AddToIndexQueue("objectId" + strconv.Itoa(i))
+		indexerFx.store.AddToIndexQueue(domain.FullID{
+			ObjectID: "objectId" + strconv.Itoa(i),
+			SpaceID:  "space1",
+		})
 
 	}
 
-	indexerFx.runFullTextIndexer(context.Background())
+	indexerFx.runFullTextIndexer(context.Background(), []string{"space1"})
 
 	count, _ = indexerFx.ftsearch.DocCount()
 	assert.Equal(t, 10, int(count))
@@ -381,9 +391,12 @@ func TestPrepareSearchDocument_Reindex_Removed(t *testing.T) {
 				blockbuilder.ID("blockId1"),
 			),
 		)))
-	indexerFx.store.AddToIndexQueue("objectId1")
+	indexerFx.store.AddToIndexQueue(domain.FullID{
+		ObjectID: "objectId1",
+		SpaceID:  "space1",
+	})
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
-	indexerFx.runFullTextIndexer(context.Background())
+	indexerFx.runFullTextIndexer(context.Background(), []string{"space1"})
 
 	count, _ = indexerFx.ftsearch.DocCount()
 	assert.Equal(t, uint64(1), count)

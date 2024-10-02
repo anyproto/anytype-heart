@@ -168,9 +168,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 	for _, o := range options {
 		o(opts)
 	}
-	if info.Space.Id() == "bafyreicyizddzxw35hnnu2hg5zxhc3jvfifgkdqjqz62i4dz5mapyex7b4.lav62qbhdcf9" {
 
-	}
 	err := i.storageService.BindSpaceID(info.Space.Id(), info.Id)
 	if err != nil {
 		log.Error("failed to bind space id", zap.Error(err), zap.String("id", info.Id))
