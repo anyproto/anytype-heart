@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "484213e7add27b39575e6713ab48172c4361061b1df02c99ba08b7395bb87d1f"
+const TypeChecksum = "a475473f827167d93b818920569ea0f2c758761ef24d6a6bcb8da6b009f01904"
 const (
 	TypePrefix = "_ot"
 )
@@ -41,7 +41,6 @@ const (
 	TypeKeyGoal           domain.TypeKey = "goal"
 	TypeKeyFile           domain.TypeKey = "file"
 	TypeKeyProject        domain.TypeKey = "project"
-	TypeKeyTag            domain.TypeKey = "tag"
 )
 
 var (
@@ -324,17 +323,6 @@ var (
 			Types:                  []model.SmartBlockType{model.SmartBlockType_SpaceView},
 			Url:                    TypePrefix + "spaceView",
 		},
-		TypeKeyTag: {
-
-			Description:   "",
-			IconEmoji:     "🏷 ",
-			Layout:        model.ObjectType_tag,
-			Name:          "Tag",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRelationOptionColor)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "tag",
-		},
 		TypeKeyTask: {
 
 			Description:   "A piece of work to be done or undertaken",
@@ -349,11 +337,12 @@ var (
 		TypeKeyTemplate: {
 
 			Description:   "Sample object that has already some details in place and used to create objects from",
-			Hidden:        true,
+			IconEmoji:     "🧩",
 			Layout:        model.ObjectType_basic,
 			Name:          "Template",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTargetObjectType), MustGetRelationLink(RelationKeyTemplateIsBundled)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Template},
 			Url:           TypePrefix + "template",
 		},
