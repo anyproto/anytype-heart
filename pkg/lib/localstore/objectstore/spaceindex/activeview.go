@@ -1,4 +1,4 @@
-package objectstore
+package spaceindex
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/valyala/fastjson"
 )
 
 // SetActiveViews accepts map of active views by blocks, as objects can handle multiple dataview blocks
@@ -50,4 +51,16 @@ func (s *dsObjectStore) GetActiveViews(objectId string) (map[string]string, erro
 	views := map[string]string{}
 	err = json.Unmarshal(val, &views)
 	return views, err
+}
+
+func keyValueItem(arena *fastjson.Arena, key string, value any) (*fastjson.Value, error) {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := arena.NewObject()
+	obj.Set("id", arena.NewString(key))
+	obj.Set("value", arena.NewStringBytes(raw))
+	return obj, nil
 }

@@ -21,7 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -296,7 +296,6 @@ func TestExtractObjects(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fixture := newFixture(t)
-			defer fixture.cleanUp()
 
 			creator := testCreator{objects: map[string]*smarttest.SmartTest{}}
 			sb := makeTestObject()
@@ -357,7 +356,7 @@ func TestExtractObjects(t *testing.T) {
 	})
 	t.Run("add custom link block", func(t *testing.T) {
 		fixture := newFixture(t)
-		defer fixture.cleanUp()
+
 		creator := testCreator{objects: map[string]*smarttest.SmartTest{}}
 		sb := makeTestObject()
 		creator.Add(sb)
@@ -390,7 +389,7 @@ func TestExtractObjects(t *testing.T) {
 	})
 	t.Run("add custom link block for multiple blocks", func(t *testing.T) {
 		fixture := newFixture(t)
-		defer fixture.cleanUp()
+
 		creator := testCreator{objects: map[string]*smarttest.SmartTest{}}
 		sb := makeTestObject()
 		creator.Add(sb)
@@ -614,31 +613,27 @@ func generateState(root string, blocks []simple.Block) *state.State {
 
 type fixture struct {
 	t     *testing.T
-	store *mock_objectstore.MockObjectStore
+	store *spaceindex.StoreFixture
 }
 
 func newFixture(t *testing.T) *fixture {
-	objectStore := mock_objectstore.NewMockObjectStore(t)
+	objectStore := spaceindex.NewStoreFixture(t)
 
-	objectStore.EXPECT().GetObjectByUniqueKey(mock.Anything, mock.Anything).RunAndReturn(
-		func(_ string, uk domain.UniqueKey) (*domain.Details, error) {
-			layout := domain.Int64(int64(model.ObjectType_basic))
-			switch uk.InternalKey() {
-			case "note":
-				layout = domain.Int64(int64(model.ObjectType_note))
-			case "task":
-				layout = domain.Int64(int64(model.ObjectType_todo))
-			}
-			return domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyRecommendedLayout: layout,
-			}), nil
-		}).Maybe()
+	objectStore.AddObjects(t, []spaceindex.TestObject{
+		{
+			bundle.RelationKeyId:                pbtypes.String("id1"),
+			bundle.RelationKeyUniqueKey:         pbtypes.String("ot-note"),
+			bundle.RelationKeyRecommendedLayout: pbtypes.Int64(int64(model.ObjectType_note)),
+		},
+		{
+			bundle.RelationKeyId:                pbtypes.String("id2"),
+			bundle.RelationKeyUniqueKey:         pbtypes.String("ot-task"),
+			bundle.RelationKeyRecommendedLayout: pbtypes.Int64(int64(model.ObjectType_todo)),
+		},
+	})
 
 	return &fixture{
 		t:     t,
 		store: objectStore,
 	}
-}
-
-func (fx *fixture) cleanUp() {
 }

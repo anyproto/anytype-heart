@@ -15,7 +15,6 @@ import (
 )
 
 type ChatHandler struct {
-	chatId       string
 	subscription *subscription
 }
 

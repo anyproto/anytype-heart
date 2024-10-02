@@ -60,7 +60,10 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Grouper(spaceID string, key string) (Grouper, error) {
-	rel, err := s.objectStore.FetchRelationByKey(spaceID, key)
+	if spaceID == "" {
+		return nil, fmt.Errorf("spaceId is required")
+	}
+	rel, err := s.objectStore.SpaceIndex(spaceID).FetchRelationByKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("can't get relation %s: %w", key, err)
 	}

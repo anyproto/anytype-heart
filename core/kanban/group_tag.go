@@ -20,12 +20,9 @@ type GroupTag struct {
 }
 
 func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
-	spaceFilter := database.FilterEq{
-		Key:   bundle.RelationKeySpaceId,
-		Cond:  model.BlockContentDataviewFilter_Equal,
-		Value: domain.String(spaceID),
+	if spaceID == "" {
+		return fmt.Errorf("spaceId is required")
 	}
-
 	filterTag := database.FiltersAnd{
 		database.FilterNot{Filter: database.FilterEmpty{Key: t.Key}},
 	}
@@ -48,12 +45,9 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 			Value: domain.Int64(model.ObjectType_relationOption),
 		},
 	}
-	if spaceID != "" {
-		relationOptionFilter = append(relationOptionFilter, spaceFilter)
-	}
 	f.FilterObj = database.FiltersOr{f.FilterObj, relationOptionFilter}
 
-	records, err := t.store.QueryRaw(f, 0, 0)
+	records, err := t.store.SpaceIndex(spaceID).QueryRaw(f, 0, 0)
 	if err != nil {
 		return fmt.Errorf("init kanban by tag, objectStore query error: %w", err)
 	}

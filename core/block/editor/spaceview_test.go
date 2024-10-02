@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestSpaceView_AccessType(t *testing.T) {
@@ -131,9 +132,6 @@ func (s *spaceServiceStub) OnWorkspaceChanged(spaceId string, details *domain.De
 
 func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
 	sb := smarttest.NewWithTree("root", tree)
-	objectStore := mock_objectstore.NewMockObjectStore(t)
-	objectStore.EXPECT().GetDetails(mock.Anything).Maybe()
-	objectStore.EXPECT().Query(mock.Anything).Maybe()
 	a := &SpaceView{
 		SmartBlock:   sb,
 		spaceService: &spaceServiceStub{},

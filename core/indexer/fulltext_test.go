@@ -61,7 +61,7 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	testApp.Register(ds)
 	testApp.Register(walletService)
 
-	testApp.Register(objectStore.FTSearch())
+	testApp.Register(objectStore.FullText)
 
 	indxr := &indexer{}
 
@@ -81,15 +81,15 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	indxr.btHash = hasher
 
 	indxr.fileStore = fileStore
-	indxr.ftsearch = objectStore.FTSearch()
+	indxr.ftsearch = objectStore.FullText
 	indexerFx.ftsearch = indxr.ftsearch
 	indexerFx.pickerFx = mock_cache.NewMockObjectGetter(t)
 	indxr.picker = indexerFx.pickerFx
-	indxr.batcher = mb.New[indexTask](100)
+	indxr.spaceIndexers = make(map[string]*spaceIndexer)
 	indxr.forceFt = make(chan struct{})
 	indxr.config = &config.Config{NetworkMode: pb.RpcAccount_LocalOnly}
 	indxr.runCtx, indxr.runCtxCancel = context.WithCancel(ctx)
-	go indxr.indexBatchLoop()
+	// go indxr.indexBatchLoop()
 	return indexerFx
 }
 

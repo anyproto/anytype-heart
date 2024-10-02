@@ -19,6 +19,7 @@ import (
 )
 
 func Test_GrouperTags(t *testing.T) {
+	const spaceId = "space1"
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
 
@@ -29,12 +30,12 @@ func Test_GrouperTags(t *testing.T) {
 
 	objectStore := objectstore.NewStoreFixture(t)
 
-	objectStore.AddObjects(t, []objectstore.TestObject{
+	objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:             domain.String("tag1"),
 			bundle.RelationKeyUniqueKey:      domain.String("rel-tag"),
 			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
-			bundle.RelationKeySpaceId:        domain.String(""),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
 		},
 	})
 
@@ -45,7 +46,9 @@ func Test_GrouperTags(t *testing.T) {
 		Start(context.Background())
 	require.NoError(t, err)
 
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), "rel-tag", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+	store := objectStore.SpaceIndex(spaceId)
+
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), "rel-tag", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		"id":             domain.String("rel-tag"),
 		"relationKey":    domain.String("tag"),
 		"relationFormat": domain.Int64(int64(model.RelationFormat_tag)),
@@ -57,20 +60,20 @@ func Test_GrouperTags(t *testing.T) {
 	idTag2 := bson.NewObjectId().Hex()
 	idTag3 := bson.NewObjectId().Hex()
 
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), idTag1, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), idTag1, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		"id":          domain.String(idTag1),
 		"relationKey": domain.String("tag"),
 		"type":        domain.String(bundle.TypeKeyRelationOption.URL()),
 		"layout":      domain.Int64(int64(model.ObjectType_relationOption)),
 	})))
 
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), idTag2, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), idTag2, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		"id":          domain.String(idTag2),
 		"relationKey": domain.String("tag"),
 		"type":        domain.String(bundle.TypeKeyRelationOption.URL()),
 		"layout":      domain.Int64(int64(model.ObjectType_relationOption)),
 	})))
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), idTag3, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), idTag3, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		"id":          domain.String(idTag3),
 		"relationKey": domain.String("tag"),
 		"type":        domain.String(bundle.TypeKeyRelationOption.URL()),
@@ -82,33 +85,33 @@ func Test_GrouperTags(t *testing.T) {
 	id3 := bson.NewObjectId().Hex()
 	id4 := bson.NewObjectId().Hex()
 
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), id1, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"name": domain.String("one")})))
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), id1, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"name": domain.String("one")})))
 
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), id2, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), id2, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		"name": domain.String("two"),
 		"tag":  domain.StringList([]string{idTag1}),
 	})))
 
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), id3, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), id3, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		"name": domain.String("three"),
 		"tag":  domain.StringList([]string{idTag1, idTag2, idTag3}),
 	})))
 
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), id4, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), id4, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		"name": domain.String("four"),
 		"tag":  domain.StringList([]string{idTag1, idTag3}),
 	})))
 
-	grouper, err := kanbanSrv.Grouper("", "tag")
+	grouper, err := kanbanSrv.Grouper(spaceId, "tag")
 	require.NoError(t, err)
-	err = grouper.InitGroups("", nil)
+	err = grouper.InitGroups(spaceId, nil)
 	require.NoError(t, err)
 	groups, err := grouper.MakeDataViewGroups()
 	require.NoError(t, err)
 	require.Len(t, groups, 6)
 
 	f := &database.Filters{FilterObj: database.FilterEq{Key: "name", Cond: 1, Value: domain.String("three")}}
-	err = grouper.InitGroups("", f)
+	err = grouper.InitGroups(spaceId, f)
 	require.NoError(t, err)
 	groups, err = grouper.MakeDataViewGroups()
 	require.NoError(t, err)

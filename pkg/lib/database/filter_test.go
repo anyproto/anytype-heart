@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/valyala/fastjson"
 
@@ -306,7 +305,7 @@ func TestAllIn_FilterObject(t *testing.T) {
 }
 
 func TestMakeAndFilter(t *testing.T) {
-	store := NewMockObjectStore(t)
+	store := &stubSpaceObjectStore{}
 	t.Run("valid", func(t *testing.T) {
 		filters := []FilterRequest{
 			{
@@ -444,9 +443,9 @@ func TestMakeAndFilter(t *testing.T) {
 
 func TestNestedFilters(t *testing.T) {
 	t.Run("equal", func(t *testing.T) {
-		store := NewMockObjectStore(t)
+		store := &stubSpaceObjectStore{}
 		// Query will occur while nested filter resolving
-		store.EXPECT().QueryRaw(mock.Anything, 0, 0).Return([]Record{
+		store.queryRawResult = []Record{
 			{
 				Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 					bundle.RelationKeyId: domain.String("id1"),
@@ -459,7 +458,7 @@ func TestNestedFilters(t *testing.T) {
 					"typeKey":            domain.String("note"),
 				}),
 			},
-		}, nil)
+		}
 
 		f, err := MakeFilter("spaceId", FilterRequest{
 			RelationKey: "type.typeKey",
@@ -475,22 +474,23 @@ func TestNestedFilters(t *testing.T) {
 	})
 
 	t.Run("not equal", func(t *testing.T) {
-		store := NewMockObjectStore(t)
-		// Query will occur while nested filter resolving
-		store.EXPECT().QueryRaw(mock.Anything, 0, 0).Return([]Record{
-			{
-				Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		store := &stubSpaceObjectStore{
+			queryRawResult: []Record{
+				{
+					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 					bundle.RelationKeyId:        domain.String("id1"),
 					bundle.RelationKeyUniqueKey: domain.String("ot-note"),
-				}),
-			},
-			{
-				Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					}),
+				},
+				{
+					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 					bundle.RelationKeyId:        domain.String("id2"),
 					bundle.RelationKeyUniqueKey: domain.String("ot-note"),
 				}),
+				},
 			},
-		}, nil)
+		}
+		// Query will occur while nested filter resolving
 
 		f, err := MakeFilter("spaceId", FilterRequest{
 			RelationKey: "type.uniqueKey",
@@ -564,7 +564,7 @@ func TestFilterOptionsEqual(t *testing.T) {
 func TestMakeFilters(t *testing.T) {
 	t.Run("no filters", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 
 		// when
 		filters, err := MakeFilters(nil, mockStore)
@@ -575,7 +575,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("or filter", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_Or,
@@ -614,7 +614,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("and filter", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_And,
@@ -653,7 +653,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("none filter", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []FilterRequest{
 			{
 				Operator:    model.BlockContentDataviewFilter_No,
@@ -677,7 +677,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("combined filter", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_And,
@@ -724,7 +724,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("linear and nested filters", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []FilterRequest{
 			{
 				RelationKey: "key1",
@@ -755,7 +755,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("linear and nested filters", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []FilterRequest{
 			{
 				Operator:    model.BlockContentDataviewFilter_And,
@@ -809,7 +809,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("transform quick options", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_Or,
@@ -841,7 +841,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("transform quick options", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_Or,

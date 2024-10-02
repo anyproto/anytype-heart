@@ -62,8 +62,8 @@ func TestService_Init(t *testing.T) {
 		ctx2, ctxCancel2 := context.WithTimeout(context.Background(), time.Millisecond)
 		defer ctxCancel2()
 
-		factory.EXPECT().CreateAndSetTechSpace(ctx2).Return(&clientspace.TechSpace{}, nil)
-		require.NoError(t, serv.initTechSpace(ctx2))
+		factory.EXPECT().LoadAndSetTechSpace(ctx2).Return(&clientspace.TechSpace{}, nil)
+		require.NoError(t, serv.loadTechSpace(ctx2))
 
 		s, err := serv.Get(ctx2, serv.techSpaceId)
 		require.NoError(t, err)
@@ -208,7 +208,7 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 		}).Return(nil)
 
 		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, []objectstore.TestObject{{
+		storeFixture.AddObjects(t, storeFixture.TechSpaceId(), []objectstore.TestObject{{
 			bundle.RelationKeyLayout:        domain.Int64(int64(model.ObjectType_spaceView)),
 			bundle.RelationKeyId:            domain.String("spaceViewId"),
 			bundle.RelationKeyTargetSpaceId: domain.String(spaceID),
@@ -238,12 +238,12 @@ func TestService_UpdateSharedLimits(t *testing.T) {
 			personalSpaceId: "spaceId",
 			techSpace:       &clientspace.TechSpace{TechSpace: mockTechSpace},
 		}
-		mockSpaceView := mock_techspace.NewMockSpaceView(t)
-		mockTechSpace.EXPECT().DoSpaceView(ctx, "spaceId", mock.Anything).RunAndReturn(
-			func(ctx context.Context, spaceId string, f func(view techspace.SpaceView) error) error {
-				return f(mockSpaceView)
+		mockAccountObject := mock_techspace.NewMockAccountObject(t)
+		mockTechSpace.EXPECT().DoAccountObject(ctx, mock.Anything).RunAndReturn(
+			func(ctx context.Context, f func(view techspace.AccountObject) error) error {
+				return f(mockAccountObject)
 			})
-		mockSpaceView.EXPECT().SetSharedSpacesLimit(10).Return(nil)
+		mockAccountObject.EXPECT().SetSharedSpacesLimit(10).Return(nil)
 
 		// when
 		err := s.UpdateSharedLimits(ctx, 10)

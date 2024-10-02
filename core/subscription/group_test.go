@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -62,7 +63,7 @@ func TestGroupTag(t *testing.T) {
 
 	q := database.Query{}
 
-	f, err := database.NewFilters(q, database.NewMockObjectStore(t), &fastjson.Arena{}, &collate.Buffer{})
+	f, err := database.NewFilters(q, spaceindex.NewStoreFixture(t), &fastjson.Arena{}, &collate.Buffer{})
 	require.NoError(t, err)
 	filterTag := database.FilterNot{Filter: database.FilterEmpty{Key: kanbanKey}}
 	f.FilterObj = database.FiltersAnd{f.FilterObj, filterTag}

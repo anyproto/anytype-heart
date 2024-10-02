@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
@@ -63,7 +64,7 @@ type service struct {
 	accountKeysService accountservice.Service
 	storageService     storage.ClientStorage
 	fileService        files.Service
-	objectStore        RelationGetter
+	objectStore        objectstore.ObjectStore
 	fileObjectMigrator fileObjectMigrator
 
 	mu        sync.Mutex
@@ -77,9 +78,9 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountService = app.MustComponent[accountService](a)
 	s.accountKeysService = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
-	s.objectStore = app.MustComponent[RelationGetter](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
 	return
 }
@@ -105,8 +106,7 @@ func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 			if err != nil {
 				return nil, err
 			}
-			if sbt == smartblock.SmartBlockTypeChatDerivedObject {
-				// here we have special
+			if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
 				ot.SetFlusher(objecttree.MarkNewChangeFlusher())
 			}
 			return ot, nil

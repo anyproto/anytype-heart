@@ -125,7 +125,7 @@ func (s *service) CreateBookmarkObject(
 	}
 	url := details.GetString(bundle.RelationKeySource)
 
-	records, err := s.store.Query(database.Query{
+	records, err := s.store.SpaceIndex(spaceID).Query(database.Query{
 		Sorts: []database.SortRequest{
 			{
 				RelationKey: bundle.RelationKeyLastModifiedDate,

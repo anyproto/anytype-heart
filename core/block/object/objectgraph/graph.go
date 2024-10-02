@@ -1,6 +1,8 @@
 package objectgraph
 
 import (
+	"fmt"
+
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -75,7 +77,10 @@ type ObjectGraphRequest struct {
 }
 
 func (gr *Builder) ObjectGraph(req ObjectGraphRequest) ([]*domain.Details, []*pb.RpcObjectGraphEdge, error) {
-	relations, err := gr.objectStore.ListAllRelations(req.SpaceId)
+	if req.SpaceId == "" {
+		return nil, nil, fmt.Errorf("spaceId is required")
+	}
+	relations, err := gr.objectStore.SpaceIndex(req.SpaceId).ListAllRelations()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -85,6 +90,7 @@ func (gr *Builder) ObjectGraph(req ObjectGraphRequest) ([]*domain.Details, []*pb
 	})...)
 
 	resp, err := gr.subscriptionService.Search(subscription.SubscribeRequest{
+		SpaceId:      req.SpaceId,
 		Source:       req.SetSource,
 		Filters:      req.Filters,
 		Keys:         lo.Map(relations.Models(), func(rel *model.Relation, _ int) string { return rel.Key }),

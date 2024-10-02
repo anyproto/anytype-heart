@@ -117,6 +117,7 @@ func newTestSubscription(t *testing.T, app *testApplication, keys []domain.Relat
 	subscriptionId := bson.NewObjectId().Hex()
 	subscriptionService := getService[subscription.Service](app)
 	_, err := subscriptionService.Search(subscription.SubscribeRequest{
+		SpaceId: app.account.Info.AccountSpaceId,
 		SubId:   subscriptionId,
 		Keys:    keysConverted,
 		Filters: filters,

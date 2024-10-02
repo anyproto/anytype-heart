@@ -1,4 +1,4 @@
-package objectstore
+package spaceindex
 
 import (
 	"context"
@@ -11,14 +11,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-type LinksUpdateInfo struct {
-	LinksFromId    string
-	Added, Removed []string
-}
-
 const linkOutboundField = "o"
 
-func (s *dsObjectStore) GetWithLinksInfoByID(spaceId string, id string) (*model.ObjectInfoWithLinks, error) {
+func (s *dsObjectStore) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error) {
 	txn, err := s.links.ReadTx(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("read txn: %w", err)
@@ -26,7 +21,7 @@ func (s *dsObjectStore) GetWithLinksInfoByID(spaceId string, id string) (*model.
 	commit := func(err error) error {
 		return errors.Join(txn.Commit(), err)
 	}
-	pages, err := s.getObjectsInfo(txn.Context(), spaceId, []string{id})
+	pages, err := s.getObjectsInfo(txn.Context(), []string{id})
 	if err != nil {
 		return nil, commit(err)
 	}
@@ -45,12 +40,12 @@ func (s *dsObjectStore) GetWithLinksInfoByID(spaceId string, id string) (*model.
 		return nil, commit(fmt.Errorf("find outbound links: %w", err))
 	}
 
-	inbound, err := s.getObjectsInfo(s.componentCtx, spaceId, inboundIds)
+	inbound, err := s.getObjectsInfo(s.componentCtx, inboundIds)
 	if err != nil {
 		return nil, commit(err)
 	}
 
-	outbound, err := s.getObjectsInfo(s.componentCtx, spaceId, outboundsIds)
+	outbound, err := s.getObjectsInfo(s.componentCtx, outboundsIds)
 	if err != nil {
 		return nil, commit(err)
 	}
@@ -78,18 +73,12 @@ func (s *dsObjectStore) GetWithLinksInfoByID(spaceId string, id string) (*model.
 	}, nil
 }
 
-func (s *dsObjectStore) GetOutboundLinksByID(id string) ([]string, error) {
+func (s *dsObjectStore) GetOutboundLinksById(id string) ([]string, error) {
 	return s.findOutboundLinks(s.componentCtx, id)
 }
 
-func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
+func (s *dsObjectStore) GetInboundLinksById(id string) ([]string, error) {
 	return s.findInboundLinks(s.componentCtx, id)
-}
-
-func (s *dsObjectStore) SubscribeLinksUpdate(callback func(info LinksUpdateInfo)) {
-	s.Lock()
-	s.onLinksUpdateCallback = callback
-	s.Unlock()
 }
 
 // Find to which IDs specified one has outbound links.
@@ -114,13 +103,15 @@ func (s *dsObjectStore) findInboundLinks(ctx context.Context, id string) ([]stri
 	if err != nil {
 		return nil, err
 	}
+	defer iter.Close()
+
 	var links []string
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
-			return nil, errors.Join(iter.Close(), fmt.Errorf("get doc: %w", err))
+			return nil, fmt.Errorf("get doc: %w", err)
 		}
 		links = append(links, string(doc.Value().GetStringBytes("id")))
 	}
-	return links, iter.Close()
+	return links, nil
 }

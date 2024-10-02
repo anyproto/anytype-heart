@@ -95,7 +95,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	}
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	records, err := ds.Query(database.Query{
+	records, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
 		Filters:  filtersFromProto(req.Filters),
 		Sorts:    sortsFromProto(req.Sorts),
 		Offset:   int(req.Offset),
@@ -148,7 +148,7 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	if req.ReturnHTMLHighlightsInsteadOfRanges {
 		highlighter = ftsearch.HtmlHighlightFormatter
 	}
-	results, err := ds.Query(database.Query{
+	results, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
 		Filters:     filtersFromProto(req.Filters),
 		Sorts:       sortsFromProto(req.Sorts),
 		Offset:      int(req.Offset),
@@ -222,7 +222,7 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 	if err != nil {
 		return nil, fmt.Errorf("make date record: %w", err)
 	}
-	f, _ := database.MakeFilters(filtersFromProto(req.Filters), store) //nolint:errcheck
+	f, _ := database.MakeFilters(filtersFromProto(req.Filters), store.SpaceIndex(spaceID)) //nolint:errcheck
 	if f.FilterObject(rec.Details) {
 		return append([]database.Record{rec}, records...), nil
 	}
@@ -332,6 +332,7 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 	subService := mw.applicationService.GetApp().MustComponent(subscription.CName).(subscription.Service)
 
 	resp, err := subService.Search(subscription.SubscribeRequest{
+		SpaceId:           req.SpaceId,
 		SubId:             req.SubId,
 		Filters:           filtersFromProto(req.Filters),
 		Sorts:             sortsFromProto(req.Sorts),
@@ -341,7 +342,6 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 		AfterId:           req.AfterId,
 		BeforeId:          req.BeforeId,
 		Source:            req.Source,
-		IgnoreWorkspace:   req.IgnoreWorkspace,
 		NoDepSubscription: req.NoDepSubscription,
 		CollectionId:      req.CollectionId,
 	})

@@ -32,6 +32,61 @@ func (_m *MockTechSpace) EXPECT() *MockTechSpace_Expecter {
 	return &MockTechSpace_Expecter{mock: &_m.Mock}
 }
 
+// AccountObjectId provides a mock function with given fields:
+func (_m *MockTechSpace) AccountObjectId() (string, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for AccountObjectId")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (string, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockTechSpace_AccountObjectId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AccountObjectId'
+type MockTechSpace_AccountObjectId_Call struct {
+	*mock.Call
+}
+
+// AccountObjectId is a helper method to define mock.On call
+func (_e *MockTechSpace_Expecter) AccountObjectId() *MockTechSpace_AccountObjectId_Call {
+	return &MockTechSpace_AccountObjectId_Call{Call: _e.mock.On("AccountObjectId")}
+}
+
+func (_c *MockTechSpace_AccountObjectId_Call) Run(run func()) *MockTechSpace_AccountObjectId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockTechSpace_AccountObjectId_Call) Return(_a0 string, _a1 error) *MockTechSpace_AccountObjectId_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockTechSpace_AccountObjectId_Call) RunAndReturn(run func() (string, error)) *MockTechSpace_AccountObjectId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Close provides a mock function with given fields: ctx
 func (_m *MockTechSpace) Close(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -74,6 +129,53 @@ func (_c *MockTechSpace_Close_Call) Return(err error) *MockTechSpace_Close_Call 
 }
 
 func (_c *MockTechSpace_Close_Call) RunAndReturn(run func(context.Context) error) *MockTechSpace_Close_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DoAccountObject provides a mock function with given fields: ctx, apply
+func (_m *MockTechSpace) DoAccountObject(ctx context.Context, apply func(techspace.AccountObject) error) error {
+	ret := _m.Called(ctx, apply)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DoAccountObject")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, func(techspace.AccountObject) error) error); ok {
+		r0 = rf(ctx, apply)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockTechSpace_DoAccountObject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DoAccountObject'
+type MockTechSpace_DoAccountObject_Call struct {
+	*mock.Call
+}
+
+// DoAccountObject is a helper method to define mock.On call
+//   - ctx context.Context
+//   - apply func(techspace.AccountObject) error
+func (_e *MockTechSpace_Expecter) DoAccountObject(ctx interface{}, apply interface{}) *MockTechSpace_DoAccountObject_Call {
+	return &MockTechSpace_DoAccountObject_Call{Call: _e.mock.On("DoAccountObject", ctx, apply)}
+}
+
+func (_c *MockTechSpace_DoAccountObject_Call) Run(run func(ctx context.Context, apply func(techspace.AccountObject) error)) *MockTechSpace_DoAccountObject_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(func(techspace.AccountObject) error))
+	})
+	return _c
+}
+
+func (_c *MockTechSpace_DoAccountObject_Call) Return(err error) *MockTechSpace_DoAccountObject_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockTechSpace_DoAccountObject_Call) RunAndReturn(run func(context.Context, func(techspace.AccountObject) error) error) *MockTechSpace_DoAccountObject_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -276,17 +378,17 @@ func (_c *MockTechSpace_Name_Call) RunAndReturn(run func() string) *MockTechSpac
 	return _c
 }
 
-// Run provides a mock function with given fields: techCoreSpace, objectCache
-func (_m *MockTechSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) error {
-	ret := _m.Called(techCoreSpace, objectCache)
+// Run provides a mock function with given fields: techCoreSpace, objectCache, create
+func (_m *MockTechSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool) error {
+	ret := _m.Called(techCoreSpace, objectCache, create)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Run")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(commonspace.Space, objectcache.Cache) error); ok {
-		r0 = rf(techCoreSpace, objectCache)
+	if rf, ok := ret.Get(0).(func(commonspace.Space, objectcache.Cache, bool) error); ok {
+		r0 = rf(techCoreSpace, objectCache, create)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -302,13 +404,14 @@ type MockTechSpace_Run_Call struct {
 // Run is a helper method to define mock.On call
 //   - techCoreSpace commonspace.Space
 //   - objectCache objectcache.Cache
-func (_e *MockTechSpace_Expecter) Run(techCoreSpace interface{}, objectCache interface{}) *MockTechSpace_Run_Call {
-	return &MockTechSpace_Run_Call{Call: _e.mock.On("Run", techCoreSpace, objectCache)}
+//   - create bool
+func (_e *MockTechSpace_Expecter) Run(techCoreSpace interface{}, objectCache interface{}, create interface{}) *MockTechSpace_Run_Call {
+	return &MockTechSpace_Run_Call{Call: _e.mock.On("Run", techCoreSpace, objectCache, create)}
 }
 
-func (_c *MockTechSpace_Run_Call) Run(run func(techCoreSpace commonspace.Space, objectCache objectcache.Cache)) *MockTechSpace_Run_Call {
+func (_c *MockTechSpace_Run_Call) Run(run func(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool)) *MockTechSpace_Run_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(commonspace.Space), args[1].(objectcache.Cache))
+		run(args[0].(commonspace.Space), args[1].(objectcache.Cache), args[2].(bool))
 	})
 	return _c
 }
@@ -318,7 +421,7 @@ func (_c *MockTechSpace_Run_Call) Return(err error) *MockTechSpace_Run_Call {
 	return _c
 }
 
-func (_c *MockTechSpace_Run_Call) RunAndReturn(run func(commonspace.Space, objectcache.Cache) error) *MockTechSpace_Run_Call {
+func (_c *MockTechSpace_Run_Call) RunAndReturn(run func(commonspace.Space, objectcache.Cache, bool) error) *MockTechSpace_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }

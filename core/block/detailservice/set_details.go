@@ -85,22 +85,32 @@ func (s *service) SetIsArchived(objectId string, isArchived bool) error {
 }
 
 func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
-	ids, err := s.store.HasIDs(objectIds...)
+	objectIdsPerSpace, err := s.partitionObjectIdsBySpaceId(objectIds)
 	if err != nil {
-		return err
+		return fmt.Errorf("partition object ids by spaces: %w", err)
 	}
+
 	var (
 		anySucceed  bool
 		resultError error
 	)
-	for _, id := range ids {
-		err := s.SetIsFavorite(id, isFavorite)
+	for spaceId, objectIds := range objectIdsPerSpace {
+		ids, err := s.store.SpaceIndex(spaceId).HasIds(objectIds)
 		if err != nil {
-			log.Error("failed to favorite object", zap.String("objectId", id), zap.Error(err))
-			resultError = errors.Join(resultError, err)
-		} else {
-			anySucceed = true
+			return err
 		}
+
+		for _, id := range ids {
+			// TODO Set list of ids at once
+			err := s.SetIsFavorite(id, isFavorite)
+			if err != nil {
+				log.Error("failed to favorite object", zap.String("objectId", id), zap.Error(err))
+				resultError = errors.Join(resultError, err)
+			} else {
+				anySucceed = true
+			}
+		}
+
 	}
 	if resultError != nil {
 		log.Warn("failed to set objects as favorite", zap.Error(resultError))
@@ -183,7 +193,7 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
-		ids, err := s.store.HasIDs(objectIds...)
+		ids, err := s.store.SpaceIndex(spaceId).HasIds(objectIds)
 		if err != nil {
 			return err
 		}

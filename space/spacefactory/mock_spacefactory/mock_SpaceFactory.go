@@ -368,6 +368,64 @@ func (_c *MockSpaceFactory_Init_Call) RunAndReturn(run func(*app.App) error) *Mo
 	return _c
 }
 
+// LoadAndSetTechSpace provides a mock function with given fields: ctx
+func (_m *MockSpaceFactory) LoadAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LoadAndSetTechSpace")
+	}
+
+	var r0 *clientspace.TechSpace
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (*clientspace.TechSpace, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) *clientspace.TechSpace); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*clientspace.TechSpace)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSpaceFactory_LoadAndSetTechSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadAndSetTechSpace'
+type MockSpaceFactory_LoadAndSetTechSpace_Call struct {
+	*mock.Call
+}
+
+// LoadAndSetTechSpace is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockSpaceFactory_Expecter) LoadAndSetTechSpace(ctx interface{}) *MockSpaceFactory_LoadAndSetTechSpace_Call {
+	return &MockSpaceFactory_LoadAndSetTechSpace_Call{Call: _e.mock.On("LoadAndSetTechSpace", ctx)}
+}
+
+func (_c *MockSpaceFactory_LoadAndSetTechSpace_Call) Run(run func(ctx context.Context)) *MockSpaceFactory_LoadAndSetTechSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockSpaceFactory_LoadAndSetTechSpace_Call) Return(_a0 *clientspace.TechSpace, _a1 error) *MockSpaceFactory_LoadAndSetTechSpace_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockSpaceFactory_LoadAndSetTechSpace_Call) RunAndReturn(run func(context.Context) (*clientspace.TechSpace, error)) *MockSpaceFactory_LoadAndSetTechSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Name provides a mock function with given fields:
 func (_m *MockSpaceFactory) Name() string {
 	ret := _m.Called()

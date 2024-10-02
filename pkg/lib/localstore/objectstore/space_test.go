@@ -31,7 +31,7 @@ func TestGetSpaceName(t *testing.T) {
 		// given
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails(context.Background(), spaceViewId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		err := s.SpaceIndex(s.techSpaceId).UpdateObjectDetails(context.Background(), spaceViewId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyId:            domain.String(spaceViewId),
 			bundle.RelationKeyLayout:        domain.Int64(int64(model.ObjectType_spaceView)),
 			bundle.RelationKeyTargetSpaceId: domain.String(spaceId),
@@ -50,7 +50,7 @@ func TestGetSpaceName(t *testing.T) {
 		// given
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails(context.Background(), spaceViewId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		err := s.SpaceIndex(s.techSpaceId).UpdateObjectDetails(context.Background(), spaceViewId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyId:            domain.String(spaceViewId),
 			bundle.RelationKeyLayout:        domain.Int64(int64(model.ObjectType_spaceView)),
 			bundle.RelationKeyTargetSpaceId: domain.String(spaceId),

@@ -8,9 +8,13 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestSubscription_Add(t *testing.T) {
@@ -50,15 +54,13 @@ func TestSubscription_Add(t *testing.T) {
 
 func TestSubscription_Remove(t *testing.T) {
 	newSub := func() *sortedSub {
-		store := mock_objectstore.NewMockObjectStore(t)
-		store.EXPECT().QueryByID([]string{"id7"}).Return([]database.Record{
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
-				Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					"id":   domain.String("id7"),
-					"name": domain.String("id7"),
-				}),
-			}}, nil).Maybe()
-
+				bundle.RelationKeyId:   pbtypes.String("id7"),
+				bundle.RelationKeyName: pbtypes.String("id7"),
+			},
+		})
 		s := service{
 			cache:       newCache(),
 			objectStore: store,

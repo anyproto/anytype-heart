@@ -94,7 +94,7 @@ func TestService_CreateBookmarkObject(t *testing.T) {
 		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeySource: domain.String(url),
 		})
-		fx.store.AddObjects(t, []objectstore.TestObject{{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{{
 			bundle.RelationKeyId:     domain.String("bk"),
 			bundle.RelationKeySource: domain.String(url),
 			bundle.RelationKeyType:   domain.String(bookmarkId),

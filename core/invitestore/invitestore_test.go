@@ -14,6 +14,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/filestorage"
@@ -49,6 +50,7 @@ func newFixture(t *testing.T) *fixture {
 	wallet := mock_wallet.NewMockWallet(t)
 	wallet.EXPECT().Name().Return(wallet2.CName)
 	wallet.EXPECT().RepoPath().Return("repo/path")
+	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
 	a := new(app.App)
 	a.Register(objectstore.NewStoreFixture(t))
@@ -64,6 +66,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
+	a.Register(testutil.PrepareMock(ctx, a, spaceIdResolver))
 
 	err = a.Start(ctx)
 	require.NoError(t, err)

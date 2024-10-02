@@ -82,12 +82,7 @@ func listReadonlyTagAndStatusRelations(store dependencies.QueryableStore, spaceI
 			Value:       domain.Int64List(model.RelationFormat_status, model.RelationFormat_tag),
 		},
 		{
-			RelationKey: bundle.RelationKeySpaceId,
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.String(spaceId),
-		},
-		{
-			RelationKey: bundle.RelationKeyRelationReadonlyValue,
+			RelationKey: bundle.RelationKeyRelationReadonlyValue.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.Bool(true),
 		},

@@ -88,7 +88,7 @@ func newFixture(t *testing.T) *fixture {
 
 func TestReconcileRemoteStorage(t *testing.T) {
 	fx := newFixture(t)
-	fx.objectStore.AddObjects(t, []objectstore.TestObject{
+	fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:               domain.String("objectId1"),
 			bundle.RelationKeyFileId:           domain.String(testFileId.String()),

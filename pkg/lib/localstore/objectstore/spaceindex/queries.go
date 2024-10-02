@@ -1,7 +1,6 @@
-package objectstore
+package spaceindex
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -139,30 +138,26 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 			}
 		}
 	}()
-	// TODO Some problem with parsing anystoreFilter.String()
-	// TODO It's because of empty And/Or filter
 	iter, err := query.Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("find: %w", err)
 	}
+	defer iter.Close()
+
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
-			return nil, errors.Join(fmt.Errorf("get doc: %w", err), iter.Close())
+			return nil, fmt.Errorf("get doc: %w", err)
 		}
 		details, err := domain.JsonToProto(doc.Value())
 		if err != nil {
-			return nil, errors.Join(fmt.Errorf("json to proto: %w", err), iter.Close())
+			return nil, fmt.Errorf("json to proto: %w", err)
 		}
 		records = append(records, database.Record{Details: details})
 	}
 	err = iter.Err()
 	if err != nil {
-		return nil, errors.Join(fmt.Errorf("iterate: %w", err), iter.Close())
-	}
-	err = iter.Close()
-	if err != nil {
-		return nil, fmt.Errorf("close iterator: %w", err)
+		return nil, fmt.Errorf("iterate: %w", err)
 	}
 	return records, nil
 }
@@ -457,7 +452,7 @@ func iterateOverAndFilters(fs []database.Filter) []string {
 }
 
 // TODO: objstore: no one uses total
-func (s *dsObjectStore) QueryObjectIDs(q database.Query) (ids []string, total int, err error) {
+func (s *dsObjectStore) QueryObjectIds(q database.Query) (ids []string, total int, err error) {
 	recs, err := s.performQuery(q)
 	if err != nil {
 		return nil, 0, fmt.Errorf("build query: %w", err)
@@ -472,7 +467,7 @@ func (s *dsObjectStore) QueryObjectIDs(q database.Query) (ids []string, total in
 	return ids, len(recs), nil
 }
 
-func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err error) {
+func (s *dsObjectStore) QueryByIds(ids []string) (records []database.Record, err error) {
 	for _, id := range ids {
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
@@ -502,27 +497,27 @@ func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err 
 	return
 }
 
-func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, closeFunc func(), err error) {
-	s.Lock()
-	defer s.Unlock()
+func (s *dsObjectStore) QueryByIdsAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, closeFunc func(), err error) {
+	s.subManager.lock.Lock()
+	defer s.subManager.lock.Unlock()
 
 	if sub == nil {
 		err = fmt.Errorf("subscription func is nil")
 		return
 	}
 	sub.Subscribe(ids)
-	records, err = s.QueryByID(ids)
+	records, err = s.QueryByIds(ids)
 	if err != nil {
 		// can mean only the datastore is already closed, so we can resign and return
-		log.Errorf("QueryByIDAndSubscribeForChanges failed to query ids: %v", err)
+		log.Errorf("QueryByIdsAndSubscribeForChanges failed to query ids: %v", err)
 		return nil, nil, err
 	}
 
 	closeFunc = func() {
-		s.closeAndRemoveSubscription(sub)
+		s.subManager.closeAndRemoveSubscription(sub)
 	}
 
-	s.addSubscriptionIfNotExists(sub)
+	s.subManager.addSubscriptionIfNotExists(sub)
 	return
 }
 
@@ -568,12 +563,7 @@ func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *domain
 	if err != nil {
 		return fmt.Errorf("find: %w", err)
 	}
-
-	defer func() {
-		if iterCloseErr := iter.Close(); iterCloseErr != nil {
-			err = errors.Join(iterCloseErr, err)
-		}
-	}()
+	defer iter.Close()
 
 	for iter.Next() {
 		var doc anystore.Doc
@@ -597,4 +587,27 @@ func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *domain
 		return
 	}
 	return
+}
+
+func (s *dsObjectStore) ListIds() ([]string, error) {
+	var ids []string
+	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
+	if err != nil {
+		return nil, fmt.Errorf("find all: %w", err)
+	}
+	defer iter.Close()
+
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get doc: %w", err)
+		}
+		id := doc.Value().GetStringBytes("id")
+		ids = append(ids, string(id))
+	}
+	err = iter.Err()
+	if err != nil {
+		return nil, fmt.Errorf("iterate: %w", err)
+	}
+	return ids, nil
 }

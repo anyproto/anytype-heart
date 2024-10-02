@@ -20,15 +20,15 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue(ctx, "one"))
 		require.NoError(t, s.AddToIndexQueue(ctx, "two"))
 
-		ids, err := s.ListIDsFromFullTextQueue(0)
+		ids, err := s.ListIdsFromFullTextQueue(0)
 		require.NoError(t, err)
 
 		assert.ElementsMatch(t, []string{"one", "two"}, ids)
 	})
 
 	t.Run("remove from queue", func(t *testing.T) {
-		s.RemoveIDsFromFullTextQueue([]string{"one"})
-		ids, err := s.ListIDsFromFullTextQueue(0)
+		s.RemoveIdsFromFullTextQueue([]string{"one"})
+		ids, err := s.ListIdsFromFullTextQueue(0)
 		require.NoError(t, err)
 
 		assert.ElementsMatch(t, []string{"two"}, ids)
@@ -83,30 +83,6 @@ func TestIndexerChecksums(t *testing.T) {
 		require.NoError(t, s.SaveChecksums("spaceX", want))
 
 		got, err := s.GetChecksums("spaceX")
-		require.NoError(t, err)
-		assert.Equal(t, want, got)
-	})
-}
-
-func TestHeadsHash(t *testing.T) {
-	t.Run("previous hash is not found", func(t *testing.T) {
-		s := NewStoreFixture(t)
-		ctx := context.Background()
-
-		got, err := s.GetLastIndexedHeadsHash(ctx, "id1")
-		require.NoError(t, err)
-		assert.Empty(t, got)
-	})
-
-	t.Run("save and load hash", func(t *testing.T) {
-		s := NewStoreFixture(t)
-		ctx := context.Background()
-
-		want := "hash1"
-
-		require.NoError(t, s.SaveLastIndexedHeadsHash(ctx, "id1", want))
-
-		got, err := s.GetLastIndexedHeadsHash(ctx, "id1")
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})

@@ -48,8 +48,7 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 		}
 		return m
 	}
-	// TODO: [MR] this should probably be related only to account
-	info, err := getService[account.Service](mw).GetInfo(cctx, req.SpaceId)
+	info, err := getService[account.Service](mw).GetSpaceInfo(cctx, req.SpaceId)
 	if err != nil {
 		return response(info, pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR, err)
 	}

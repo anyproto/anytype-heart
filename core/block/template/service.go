@@ -170,7 +170,7 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 		return nil, spacestorage.ErrTreeStorageAlreadyDeleted
 	}
 
-	err = s.updateTypeKey(st)
+	err = s.updateTypeKey(sb.SpaceID(), st)
 	if err != nil {
 		return
 	}
@@ -290,7 +290,7 @@ func (s *service) TemplateClone(spaceId string, id string) (templateId string, e
 }
 
 func (s *service) TemplateExportAll(ctx context.Context, path string) (string, error) {
-	docIds, _, err := s.store.QueryObjectIDs(database.Query{
+	records, err := s.store.QueryCrossSpace(database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyIsArchived,
@@ -313,12 +313,16 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 	if err != nil {
 		return "", err
 	}
-	if len(docIds) == 0 {
+	if len(records) == 0 {
 		return "", fmt.Errorf("no templates")
+	}
+	ids := make([]string, 0, len(records))
+	for _, rec := range records {
+		ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
 	}
 	path, _, err = s.exporter.Export(ctx, pb.RpcObjectListExportRequest{
 		Path:      path,
-		ObjectIds: docIds,
+		ObjectIds: ids,
 		Format:    model.Export_Protobuf,
 		Zip:       true,
 	})
@@ -338,11 +342,11 @@ func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *s
 	return
 }
 
-func (s *service) updateTypeKey(st *state.State) (err error) {
+func (s *service) updateTypeKey(spaceId string, st *state.State) (err error) {
 	objectTypeId := st.Details().GetString(bundle.RelationKeyTargetObjectType)
 	if objectTypeId != "" {
 		var uniqueKey domain.UniqueKey
-		uniqueKey, err = s.store.GetUniqueKeyById(objectTypeId)
+		uniqueKey, err = s.store.SpaceIndex(spaceId).GetUniqueKeyById(objectTypeId)
 		if err != nil {
 			err = fmt.Errorf("get target object type %s: %w", objectTypeId, err)
 		} else if uniqueKey.SmartblockType() != coresb.SmartBlockTypeObjectType {

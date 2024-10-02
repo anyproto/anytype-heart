@@ -20,9 +20,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func newTextBlock(id, contentText string, childrenIds ...string) simple.Block {
@@ -533,7 +534,7 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		defer ctrl.Finish()
 
 		sb := smarttest.New("test")
-		os := mock_objectstore.NewMockObjectStore(t)
+		os := spaceindex.NewStoreFixture(t)
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(link.NewLink(&model.Block{
@@ -547,13 +548,12 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		sender := mock_event.NewMockSender(t)
 		tb := NewText(sb, os, sender)
 
-		os.EXPECT().QueryByID([]string{"targetId"}).Return([]database.Record{
+		os.AddObjects(t, []spaceindex.TestObject{
 			{
-				Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					"name": domain.String("link name"),
-				}),
+				bundle.RelationKeyId:   pbtypes.String("targetId"),
+				bundle.RelationKeyName: pbtypes.String("link name"),
 			},
-		}, nil)
+		})
 
 		require.NoError(t, tb.TurnInto(nil, model.BlockContentText_Paragraph, "2"))
 		secondBlockId := sb.Doc.Pick("test").Model().ChildrenIds[1]

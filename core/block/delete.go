@@ -8,7 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -42,8 +42,8 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 	case coresb.SmartBlockTypeSubObject:
 		return fmt.Errorf("subobjects deprecated")
 	case coresb.SmartBlockTypeFileObject:
-		err = s.fileObjectService.DeleteFileData(id.ObjectID)
-		if err != nil && !errors.Is(err, fileobject.ErrEmptyFileId) {
+		err = s.fileObjectService.DeleteFileData(id.SpaceID, id.ObjectID)
+		if err != nil && !errors.Is(err, filemodels.ErrEmptyFileId) {
 			return fmt.Errorf("delete file data: %w", err)
 		}
 		err = spc.DeleteTree(context.Background(), id.ObjectID)
@@ -83,7 +83,7 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 		return fmt.Errorf("on delete: %w", err)
 	}
 	if sbType == coresb.SmartBlockTypeRelation {
-		err := s.deleteRelationOptions(relationKey)
+		err := s.deleteRelationOptions(id.SpaceID, relationKey)
 		if err != nil {
 			return fmt.Errorf("failed to delete relation options of deleted relation: %w", err)
 		}
@@ -91,8 +91,8 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 	return nil
 }
 
-func (s *Service) deleteRelationOptions(relationKey string) error {
-	relationOptions, _, err := s.objectStore.QueryObjectIDs(database.Query{
+func (s *Service) deleteRelationOptions(spaceId string, relationKey string) error {
+	relationOptions, _, err := s.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyLayout,
@@ -143,7 +143,7 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 	if err != nil {
 		log.With("error", err, "objectId", id.ObjectID).Error("failed to perform delete operation on object")
 	}
-	if err := s.objectStore.DeleteObject(id); err != nil {
+	if err := s.objectStore.SpaceIndex(id.SpaceID).DeleteObject(id.ObjectID); err != nil {
 		return fmt.Errorf("delete object from local store: %w", err)
 	}
 

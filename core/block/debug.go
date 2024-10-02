@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/util/debug"
 )
@@ -51,14 +50,8 @@ type debugObject struct {
 
 func (s *Service) debugListObjectsPerSpace(req *http.Request) ([]debugObject, error) {
 	spaceId := chi.URLParam(req, "spaceId")
-	ids, _, err := s.objectStore.QueryObjectIDs(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeySpaceId,
-				Value:       domain.String(spaceId),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-			},
-		},
+	ids, _, err := s.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
+		Filters: nil,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list ids: %w", err)
@@ -78,7 +71,7 @@ func (s *Service) debugListObjectsPerSpace(req *http.Request) ([]debugObject, er
 }
 
 func (s *Service) debugListObjects(req *http.Request) ([]debugObject, error) {
-	ids, err := s.objectStore.ListIds()
+	ids, err := s.objectStore.ListIdsCrossSpace()
 	if err != nil {
 		return nil, fmt.Errorf("list ids: %w", err)
 	}

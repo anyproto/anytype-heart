@@ -159,7 +159,7 @@ func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v 
 	if !v.Ok() {
 		return fmt.Errorf("invalid value")
 	}
-	r, err := bs.objectStore.FetchRelationByKey(spaceID, key.String())
+	r, err := bs.objectStore.FetchRelationByKey(key.String())
 	if err != nil {
 		return err
 	}
@@ -297,7 +297,7 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) er
 }
 
 func (bs *basic) addRelationLink(st *state.State, relationKey domain.RelationKey) error {
-	relLink, err := bs.objectStore.GetRelationLink(bs.SpaceID(), relationKey.String())
+	relLink, err := bs.objectStore.GetRelationLink(relationKey.String())
 	if err != nil || relLink == nil {
 		return fmt.Errorf("failed to get relation: %w", err)
 	}
@@ -309,7 +309,7 @@ func (bs *basic) addRelationLinks(st *state.State, relationKeys ...domain.Relati
 	if len(relationKeys) == 0 {
 		return nil
 	}
-	relations, err := bs.objectStore.FetchRelationByKeys(bs.SpaceID(), relationKeys...)
+	relations, err := bs.objectStore.FetchRelationByKeys(relationKeys...)
 	if err != nil || relations == nil {
 		return fmt.Errorf("failed to get relations: %w", err)
 	}
@@ -387,7 +387,7 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 	if err != nil {
 		return 0, fmt.Errorf("create unique key: %w", err)
 	}
-	typeDetails, err := bs.objectStore.GetObjectByUniqueKey(bs.SpaceID(), uk)
+	typeDetails, err := bs.objectStore.GetObjectByUniqueKey(uk)
 	if err != nil {
 		return 0, fmt.Errorf("get object by unique key: %w", err)
 	}

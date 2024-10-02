@@ -200,7 +200,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 	}
 	defer u.spaceSyncStatus.Refresh(syncStatusDetails.spaceId)
 	err = spc.DoLockedIfNotExists(objectId, func() error {
-		return u.objectStore.ModifyObjectDetails(objectId, func(details *domain.Details) (*domain.Details, bool, error) {
+		return u.objectStore.SpaceIndex(syncStatusDetails.spaceId).ModifyObjectDetails(objectId, func(details *domain.Details) (*domain.Details, bool, error) {
 			if details == nil {
 				details = domain.NewDetails()
 			}

@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/valyala/fastjson"
 	"golang.org/x/text/collate"
 
@@ -32,15 +31,36 @@ func TestDatabase(t *testing.T) {
 	})
 }
 
+type stubSpaceObjectStore struct {
+	queryRawResult []Record
+}
+
+func (s *stubSpaceObjectStore) SpaceId() string {
+	return "space1"
+}
+
+func (s *stubSpaceObjectStore) Query(q Query) (records []Record, err error) {
+	return nil, nil
+}
+
+func (s *stubSpaceObjectStore) QueryRaw(filters *Filters, limit int, offset int) ([]Record, error) {
+	return s.queryRawResult, nil
+}
+
+func (s *stubSpaceObjectStore) GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error) {
+	rel, err := bundle.GetRelation(key)
+	if err != nil {
+		return 0, nil
+	}
+	return rel.Format, nil
+}
+
+func (s *stubSpaceObjectStore) ListRelationOptions(relationKey string) (options []*model.RelationOption, err error) {
+	return nil, nil
+}
+
 func newTestQueryBuilder(t *testing.T) queryBuilder {
-	objectStore := NewMockObjectStore(t)
-	objectStore.EXPECT().GetRelationFormatByKey(mock.Anything).RunAndReturn(func(key domain.RelationKey) (model.RelationFormat, error) {
-		rel, err := bundle.GetRelation(key)
-		if err != nil {
-			return 0, nil
-		}
-		return rel.Format, nil
-	}).Maybe()
+	objectStore := &stubSpaceObjectStore{}
 	return queryBuilder{
 		objectStore: objectStore,
 		arena:       &fastjson.Arena{},
@@ -141,7 +161,7 @@ func givenSingleIncludeTime() []SortRequest {
 func Test_NewFilters(t *testing.T) {
 	t.Run("only default filters", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 
 		// when
 		filters, err := NewFilters(Query{}, mockStore, &fastjson.Arena{}, &collate.Buffer{})
@@ -152,7 +172,7 @@ func Test_NewFilters(t *testing.T) {
 	})
 	t.Run("and filter with 3 default", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_And,
@@ -186,7 +206,7 @@ func Test_NewFilters(t *testing.T) {
 	})
 	t.Run("deleted filter", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_And,
@@ -226,7 +246,7 @@ func Test_NewFilters(t *testing.T) {
 	})
 	t.Run("archived filter", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_And,
@@ -266,7 +286,7 @@ func Test_NewFilters(t *testing.T) {
 	})
 	t.Run("type filter", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_And,
@@ -306,7 +326,7 @@ func Test_NewFilters(t *testing.T) {
 	})
 	t.Run("or filter with 3 default", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_Or,

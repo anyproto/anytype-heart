@@ -395,7 +395,7 @@ func (s *Service) RemoveListOption(optionIds []string, checkInObjects bool) erro
 				st := b.NewState()
 				relKey := domain.RelationKey(st.Details().GetString(bundle.RelationKeyRelationKey))
 
-				records, err := s.objectStore.Query(database.Query{
+				records, err := s.objectStore.SpaceIndex(b.SpaceID()).Query(database.Query{
 					Filters: []database.FilterRequest{
 						{
 							Condition:   model.BlockContentDataviewFilter_Equal,
@@ -498,7 +498,7 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 		return
 	}
 
-	res, err := s.objectStore.GetWithLinksInfoByID(spaceID, id)
+	res, err := s.objectStore.SpaceIndex(spaceID).GetWithLinksInfoById(id)
 	if err != nil {
 		return
 	}

@@ -28,7 +28,7 @@ type fixture struct {
 	Service
 	a                 *app.App
 	ctrl              *gomock.Controller
-	store             *mock_objectstore.MockObjectStore
+	store             *objectstore.StoreFixture
 	sender            *mock_event.MockSender
 	events            []*pb.Event
 	collectionService *collectionServiceMock
@@ -36,17 +36,15 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
+	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	a := new(app.App)
-
-	ctx := context.Background()
-	objectStore := mock_objectstore.NewMockObjectStore(t)
+	store := objectstore.NewStoreFixture(t)
+	a.Register(store)
 	kanbanService := mock_kanban.NewMockService(t)
-
 	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	sbtProvider.EXPECT().Name().Return("smartBlockTypeProvider")
 	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
-	a.Register(testutil.PrepareMock(ctx, a, objectStore))
 	a.Register(sbtProvider)
 	a.Register(testutil.PrepareMock(ctx, a, kanbanService))
 
@@ -57,7 +55,7 @@ func newFixture(t *testing.T) *fixture {
 		Service:           New(),
 		a:                 a,
 		ctrl:              ctrl,
-		store:             objectStore,
+		store:             store,
 		collectionService: collectionService,
 		kanban:            kanbanService,
 	}
@@ -71,8 +69,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(fx.Service)
 	a.Register(fx.sender)
 
-	fx.store.EXPECT().SubscribeForAll(mock.Anything)
-	require.NoError(t, a.Start(ctx))
+	require.NoError(t, a.Start(context.Background()))
 	return fx
 }
 

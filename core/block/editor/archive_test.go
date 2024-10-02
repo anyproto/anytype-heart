@@ -10,13 +10,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
 func NewArchiveTest(t *testing.T) (*Archive, error) {
 	sb := smarttest.New("root")
-	objectStore := mock_objectstore.NewMockObjectStore(t)
-	objectStore.EXPECT().QueryRaw(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Maybe()
+	objectStore := spaceindex.NewStoreFixture(t)
 	a := &Archive{
 		SmartBlock:  sb,
 		Collection:  collection.NewCollection(sb, objectStore),

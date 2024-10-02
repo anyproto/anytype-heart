@@ -47,7 +47,7 @@ func TestDerivedObject_GetIDAndPayload(t *testing.T) {
 
 		uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypePage, "oldKey")
 		assert.Nil(t, err)
-		sf.AddObjects(t, []objectstore.TestObject{
+		sf.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyUniqueKey: domain.String(uniqueKey.Marshal()),
 				bundle.RelationKeyId:        domain.String("oldId"),
@@ -83,7 +83,7 @@ func TestDerivedObject_GetIDAndPayload(t *testing.T) {
 
 		uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, "oldKey")
 		assert.Nil(t, err)
-		sf.AddObjects(t, []objectstore.TestObject{
+		sf.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyUniqueKey:      domain.String(uniqueKey.Marshal()),
 				bundle.RelationKeyId:             domain.String("oldId"),

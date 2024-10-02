@@ -731,7 +731,7 @@ func (exIn *FilterOptionsEqual) String() string {
 
 func optionsToMap(spaceID string, key domain.RelationKey, store ObjectStore) map[string]string {
 	result := make(map[string]string)
-	options, err := ListRelationOptions(store, spaceID, key)
+	options, err := store.ListRelationOptions(key)
 	if err != nil {
 		log.Warn("nil objectStore for getting options")
 		return result

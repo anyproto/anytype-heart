@@ -10,12 +10,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type duFixture struct {
 	sb    *smarttest.SmartTest
-	store *objectstore.StoreFixture
+	store *spaceindex.StoreFixture
 	basic DetailsUpdatable
 }
 
@@ -29,7 +30,7 @@ func newDUFixture(t *testing.T) *duFixture {
 	sb.SetDetails(nil, nil, false)
 	sb.SetSpaceId(spaceId)
 
-	store := objectstore.NewStoreFixture(t)
+	store := spaceindex.NewStoreFixture(t)
 
 	b := NewBasic(sb, store, converter.NewLayoutConverter(), nil, nil)
 

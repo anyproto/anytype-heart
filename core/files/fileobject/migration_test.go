@@ -210,7 +210,7 @@ func TestMigrateIds(t *testing.T) {
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().IsPersonal().Return(true)
 
-		fx.objectStore.AddObjects(t, []objectstore.TestObject{
+		fx.objectStore.AddObjects(t, "spaceId2", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      domain.String(fileId.String()),
 				bundle.RelationKeyFileId:  domain.String("fileId"),

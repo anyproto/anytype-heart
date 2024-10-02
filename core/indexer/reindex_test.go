@@ -64,7 +64,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		err = indexerFx.ReindexMarketplaceSpace(virtualSpace)
 
 		// then
-		details, err := indexerFx.store.GetDetails(addr.MissingObject)
+		details, err := indexerFx.store.SpaceIndex("space1").GetDetails(addr.MissingObject)
 		assert.Nil(t, err)
 		assert.NotNil(t, details)
 	})
@@ -73,17 +73,19 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		// given
 		fx := NewIndexerFixture(t)
 
+		store := fx.store.SpaceIndex("space1")
+
 		favs := []string{"fav1", "fav2"}
 		trash := []string{"trash1", "trash2"}
-		err := fx.store.UpdateObjectLinks(ctx, "home", favs)
+		err := store.UpdateObjectLinks(ctx, "home", favs)
 		require.NoError(t, err)
-		err = fx.store.UpdateObjectLinks(ctx, "bin", trash)
+		err = store.UpdateObjectLinks(ctx, "bin", trash)
 		require.NoError(t, err)
 
-		homeLinks, err := fx.store.GetOutboundLinksByID("home")
+		homeLinks, err := store.GetOutboundLinksById("home")
 		require.Equal(t, favs, homeLinks)
 
-		archiveLinks, err := fx.store.GetOutboundLinksByID("bin")
+		archiveLinks, err := store.GetOutboundLinksById("bin")
 		require.Equal(t, trash, archiveLinks)
 
 		checksums := fx.getLatestChecksums(true)
@@ -101,11 +103,11 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		assert.NoError(t, err)
 
 		// then
-		homeLinks, err = fx.store.GetOutboundLinksByID("home")
+		homeLinks, err = store.GetOutboundLinksById("home")
 		assert.NoError(t, err)
 		assert.Equal(t, favs, homeLinks)
 
-		archiveLinks, err = fx.store.GetOutboundLinksByID("bin")
+		archiveLinks, err = store.GetOutboundLinksById("bin")
 		assert.NoError(t, err)
 		assert.Equal(t, trash, archiveLinks)
 
@@ -116,7 +118,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 	t.Run("full marketplace reindex on force flag update", func(t *testing.T) {
 		// given
 		fx := NewIndexerFixture(t)
-		fx.objectStore.AddObjects(t, []objectstore.TestObject{{
+		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{{
 			bundle.RelationKeyId:      domain.String("relationThatWillBeDeleted"),
 			bundle.RelationKeyName:    domain.String("Relation-That-Will-Be-Deleted"),
 			bundle.RelationKeySpaceId: domain.String(spaceId),
@@ -139,7 +141,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		assert.NoError(t, err)
 
 		// then
-		det, err := fx.store.GetDetails("relationThatWillBeDeleted")
+		det, err := fx.store.SpaceIndex("space1").GetDetails("relationThatWillBeDeleted")
 		assert.NoError(t, err)
 		assert.True(t, det.Len() == 0)
 	})
@@ -153,15 +155,19 @@ func TestReindexDeletedObjects(t *testing.T) {
 	)
 	fx := NewIndexerFixture(t)
 
-	fx.objectStore.AddObjects(t, []objectstore.TestObject{
+	fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:        domain.String("1"),
 			bundle.RelationKeyIsDeleted: domain.Bool(true),
 		},
+	})
+	fx.objectStore.AddObjects(t, spaceId2, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:        domain.String("2"),
 			bundle.RelationKeyIsDeleted: domain.Bool(true),
 		},
+	})
+	fx.objectStore.AddObjects(t, spaceId3, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:        domain.String("3"),
 			bundle.RelationKeyIsDeleted: domain.Bool(true),
@@ -183,7 +189,6 @@ func TestReindexDeletedObjects(t *testing.T) {
 	t.Run("reindex first space", func(t *testing.T) {
 		storage1 := mock_spacestorage.NewMockSpaceStorage(gomock.NewController(t))
 		storage1.EXPECT().TreeDeletedStatus("1").Return(spacestorage.TreeDeletedStatusDeleted, nil)
-		storage1.EXPECT().TreeDeletedStatus("2").Return("", nil)
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId1)
 		space1.EXPECT().Storage().Return(storage1)
@@ -248,7 +253,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		},
 	)
 
-	fx.objectStore.AddObjects(t, []objectstore.TestObject{
+	fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:      domain.String("fav1"),
 			bundle.RelationKeySpaceId: domain.String(spaceId1),
@@ -265,6 +270,8 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 			bundle.RelationKeyId:      domain.String("trash2"),
 			bundle.RelationKeySpaceId: domain.String(spaceId1),
 		},
+	})
+	fx.objectStore.AddObjects(t, spaceId2, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:      domain.String("obj1"),
 			bundle.RelationKeySpaceId: domain.String(spaceId2),
@@ -291,15 +298,16 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		// given
 		favs := []string{"fav1", "fav2"}
 		trash := []string{"trash1", "trash2"}
-		err = fx.store.UpdateObjectLinks(ctx, "home", favs)
+		store := fx.store.SpaceIndex("space1")
+		err = store.UpdateObjectLinks(ctx, "home", favs)
 		require.NoError(t, err)
-		err = fx.store.UpdateObjectLinks(ctx, "bin", trash)
+		err = store.UpdateObjectLinks(ctx, "bin", trash)
 		require.NoError(t, err)
 
-		homeLinks, err := fx.store.GetOutboundLinksByID("home")
+		homeLinks, err := store.GetOutboundLinksById("home")
 		require.Equal(t, favs, homeLinks)
 
-		archiveLinks, err := fx.store.GetOutboundLinksByID("bin")
+		archiveLinks, err := store.GetOutboundLinksById("bin")
 		require.Equal(t, trash, archiveLinks)
 
 		space1 := mock_space.NewMockSpace(t)
@@ -311,11 +319,11 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		assert.NoError(t, err)
 
 		// then
-		homeLinks, err = fx.store.GetOutboundLinksByID("home")
+		homeLinks, err = store.GetOutboundLinksById("home")
 		assert.NoError(t, err)
 		assert.Empty(t, homeLinks)
 
-		archiveLinks, err = fx.store.GetOutboundLinksByID("bin")
+		archiveLinks, err = store.GetOutboundLinksById("bin")
 		assert.NoError(t, err)
 		assert.Empty(t, archiveLinks)
 
@@ -328,18 +336,19 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		obj1links := []string{"obj2", "obj3"}
 		obj2links := []string{"obj1"}
 		obj3links := []string{"obj2"}
-		err = fx.store.UpdateObjectLinks(ctx, "obj1", obj1links)
+		store := fx.store.SpaceIndex(spaceId2)
+		err = store.UpdateObjectLinks(ctx, "obj1", obj1links)
 		require.NoError(t, err)
-		err = fx.store.UpdateObjectLinks(ctx, "obj2", obj2links)
+		err = store.UpdateObjectLinks(ctx, "obj2", obj2links)
 		require.NoError(t, err)
-		err = fx.store.UpdateObjectLinks(ctx, "obj3", obj3links)
+		err = store.UpdateObjectLinks(ctx, "obj3", obj3links)
 		require.NoError(t, err)
 
-		storedObj1links, err := fx.store.GetOutboundLinksByID("obj1")
+		storedObj1links, err := store.GetOutboundLinksById("obj1")
 		require.Equal(t, obj1links, storedObj1links)
-		storedObj2links, err := fx.store.GetOutboundLinksByID("obj2")
+		storedObj2links, err := store.GetOutboundLinksById("obj2")
 		require.Equal(t, obj2links, storedObj2links)
-		storedObj3links, err := fx.store.GetOutboundLinksByID("obj3")
+		storedObj3links, err := store.GetOutboundLinksById("obj3")
 		require.Equal(t, obj3links, storedObj3links)
 
 		space1 := mock_space.NewMockSpace(t)
@@ -351,13 +360,13 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		assert.NoError(t, err)
 
 		// then
-		storedObj1links, err = fx.store.GetOutboundLinksByID("obj1")
+		storedObj1links, err = store.GetOutboundLinksById("obj1")
 		assert.NoError(t, err)
 		assert.Empty(t, storedObj1links)
-		storedObj2links, err = fx.store.GetOutboundLinksByID("obj2")
+		storedObj2links, err = store.GetOutboundLinksById("obj2")
 		assert.NoError(t, err)
 		assert.Empty(t, storedObj2links)
-		storedObj3links, err = fx.store.GetOutboundLinksByID("obj3")
+		storedObj3links, err = store.GetOutboundLinksById("obj3")
 		assert.NoError(t, err)
 		assert.Empty(t, storedObj3links)
 
@@ -368,7 +377,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 }
 
 func (fx *IndexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
-	ids, _, err := fx.objectStore.QueryObjectIDs(database.Query{
+	ids, _, err := fx.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeySpaceId,
@@ -392,7 +401,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 		const spaceId1 = "spaceId1"
 		fx := NewIndexerFixture(t)
 
-		fx.objectStore.AddObjects(t, []objectstore.TestObject{
+		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:        domain.String("1"),
 				bundle.RelationKeyIsDeleted: domain.Bool(true),
@@ -430,7 +439,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 		const spaceId1 = "spaceId1"
 		fx := NewIndexerFixture(t)
 
-		fx.objectStore.AddObjects(t, []objectstore.TestObject{
+		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:        domain.String("1"),
 				bundle.RelationKeyIsDeleted: domain.Bool(true),

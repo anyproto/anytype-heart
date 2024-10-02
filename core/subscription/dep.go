@@ -22,18 +22,18 @@ type dependencyService struct {
 	isRelationObjMap map[domain.RelationKey]bool
 }
 
-func (ds *dependencyService) makeSubscriptionByEntries(subId string, allEntries, activeEntries []*entry, keys, depKeys []domain.RelationKey, filterDepIds []string) *simpleSub {
-	depSub := ds.s.newSimpleSub(subId, keys, true)
+func (ds *dependencyService) makeSubscriptionByEntries(subId string, spaceId string, allEntries, activeEntries []*entry, keys, depKeys []domain.RelationKey, filterDepIds []string) *simpleSub {
+	depSub := ds.s.newSimpleSub(subId, spaceId, keys, true)
 	depSub.forceIds = filterDepIds
-	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, ds.depIdsByEntries(activeEntries, depKeys, depSub.forceIds))
+	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, spaceId, ds.depIdsByEntries(activeEntries, depKeys, depSub.forceIds))
 	depSub.init(depEntries)
 	return depSub
 }
 
-func (ds *dependencyService) refillSubscription(ctx *opCtx, sub *simpleSub, entries []*entry, depKeys []domain.RelationKey) {
+func (ds *dependencyService) refillSubscription(spaceId string, ctx *opCtx, sub *simpleSub, entries []*entry, depKeys []domain.RelationKey) {
 	depIds := ds.depIdsByEntries(entries, depKeys, sub.forceIds)
 	if !sub.isEqualIds(depIds) {
-		depEntries := ds.depEntriesByEntries(ctx, depIds)
+		depEntries := ds.depEntriesByEntries(ctx, spaceId, depIds)
 		sub.refill(ctx, depEntries)
 	}
 	return
@@ -53,7 +53,7 @@ func (ds *dependencyService) depIdsByEntries(entries []*entry, depKeys []domain.
 	return
 }
 
-func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (depEntries []*entry) {
+func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, spaceId string, depIds []string) (depEntries []*entry) {
 	if len(depIds) == 0 {
 		return
 	}
@@ -89,7 +89,7 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (d
 		}
 	}
 	if len(missIds) > 0 {
-		records, err := ds.s.objectStore.QueryByID(missIds)
+		records, err := ds.s.objectStore.SpaceIndex(spaceId).QueryByIds(missIds)
 		if err != nil {
 			log.Errorf("can't query by id: %v", err)
 		}
@@ -111,7 +111,7 @@ var ignoredKeys = map[domain.RelationKey]struct{}{
 	bundle.RelationKeyFeaturedRelations: {}, // relation format for featuredRelations has mistakenly set to Object instead of shorttext
 }
 
-func (ds *dependencyService) isRelationObject(key domain.RelationKey) bool {
+func (ds *dependencyService) isRelationObject(spaceId string, key domain.RelationKey) bool {
 	if _, ok := ignoredKeys[key]; ok {
 		return false
 	}
@@ -122,7 +122,7 @@ func (ds *dependencyService) isRelationObject(key domain.RelationKey) bool {
 	if isObj, ok := ds.isRelationObjMap[key]; ok {
 		return isObj
 	}
-	relFormat, err := ds.s.objectStore.GetRelationFormatByKey(key)
+	relFormat, err := ds.s.objectStore.SpaceIndex(spaceId).GetRelationFormatByKey(key)
 	if err != nil {
 		log.Errorf("can't get relation %s: %v", key, err)
 		return false
@@ -132,9 +132,9 @@ func (ds *dependencyService) isRelationObject(key domain.RelationKey) bool {
 	return isObj
 }
 
-func (ds *dependencyService) depKeys(keys []domain.RelationKey) (depKeys []domain.RelationKey) {
+func (ds *dependencyService) depKeys(spaceId string, keys []domain.RelationKey) (depKeys []domain.RelationKey) {
 	for _, key := range keys {
-		if ds.isRelationObject(key) {
+		if ds.isRelationObject(spaceId, key) {
 			depKeys = append(depKeys, key)
 		}
 	}

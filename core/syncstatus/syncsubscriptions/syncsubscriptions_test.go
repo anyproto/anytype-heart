@@ -39,7 +39,7 @@ func TestSyncSubscriptions(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		objects = append(objects, genObject(domain.ObjectSyncStatusSynced, "spaceId"))
 	}
-	testSubs.AddObjects(t, objects)
+	testSubs.AddObjects(t, "spaceId", objects)
 	subs := New()
 	subs.(*syncSubscriptions).service = testSubs
 	err := subs.Run(context.Background())
@@ -57,7 +57,7 @@ func TestSyncSubscriptions(t *testing.T) {
 	require.Empty(t, objs)
 	for i := 0; i < 10; i++ {
 		objects[i][bundle.RelationKeySyncStatus] = domain.Int64(int64(domain.ObjectSyncStatusSynced))
-		testSubs.AddObjects(t, []objectstore.TestObject{objects[i]})
+		testSubs.AddObjects(t, "spaceId", []objectstore.TestObject{objects[i]})
 	}
 	time.Sleep(100 * time.Millisecond)
 	syncCnt = spaceSub.SyncingObjectsCount([]string{"1", "2"})

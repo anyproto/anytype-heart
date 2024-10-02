@@ -123,7 +123,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		fx := newUpdateDetailsFixture(t)
 		updTester := newUpdateTester(t, 1, 1)
 
-		fx.subscriptionService.StoreFixture.AddObjects(t, []objectstore.TestObject{
+		fx.subscriptionService.StoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      domain.String("id1"),
 				bundle.RelationKeySpaceId: domain.String("space1"),
@@ -137,7 +137,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			err := proc()
 			require.NoError(t, err)
 
-			details, err := fx.objectStore.GetDetails(objectId)
+			details, err := fx.objectStore.SpaceIndex("space1").GetDetails(objectId)
 			require.NoError(t, err)
 
 			assert.True(t, details.GetInt64(bundle.RelationKeySyncStatus) == int64(domain.ObjectSyncStatusError))
@@ -221,7 +221,7 @@ func TestSyncStatusUpdater_UpdateSpaceDetails(t *testing.T) {
 	fx := newUpdateDetailsFixture(t)
 	updTester := newUpdateTester(t, 3, 3)
 
-	fx.subscriptionService.StoreFixture.AddObjects(t, []objectstore.TestObject{
+	fx.subscriptionService.StoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:         domain.String("id1"),
 			bundle.RelationKeySpaceId:    domain.String("space1"),

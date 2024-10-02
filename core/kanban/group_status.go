@@ -1,6 +1,7 @@
 package kanban
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -16,7 +17,10 @@ type GroupStatus struct {
 }
 
 func (gs *GroupStatus) InitGroups(spaceID string, f *database.Filters) error {
-	options, err := database.ListRelationOptions(gs.store, spaceID, gs.key)
+	if spaceID == "" {
+		return fmt.Errorf("spaceId is required")
+	}
+	options, err := gs.store.SpaceIndex(spaceID).ListRelationOptions(gs.key)
 	if err != nil {
 		return err
 	}

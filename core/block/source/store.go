@@ -23,12 +23,15 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+type PushChangeHook func(params PushChangeParams) (id string, err error)
+
 var _ updatelistener.UpdateListener = (*store)(nil)
 
 type Store interface {
 	Source
 	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func()) (err error)
 	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
+	SetPushChangeHook(onPushChange PushChangeHook)
 }
 
 type PushStoreChangeParams struct {
@@ -46,10 +49,15 @@ type store struct {
 	*source
 	store        *storestate.StoreState
 	onUpdateHook func()
+	onPushChange PushChangeHook
 }
 
 func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
+}
+
+func (s *store) SetPushChangeHook(onPushChange PushChangeHook) {
+	s.onPushChange = onPushChange
 }
 
 func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
@@ -72,6 +80,9 @@ func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 }
 
 func (s *store) PushChange(params PushChangeParams) (id string, err error) {
+	if s.onPushChange != nil {
+		return s.onPushChange(params)
+	}
 	return "", nil
 }
 

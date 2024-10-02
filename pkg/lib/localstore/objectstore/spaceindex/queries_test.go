@@ -1,4 +1,4 @@
-package objectstore
+package spaceindex
 
 import (
 	"context"
@@ -862,7 +862,7 @@ func TestQueryObjectIds(t *testing.T) {
 		obj3 := makeObjectWithName("id3", "name3")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-		ids, _, err := s.QueryObjectIDs(database.Query{})
+		ids, _, err := s.QueryObjectIds(database.Query{})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id1", "id2", "id3"}, ids)
 	})
@@ -878,7 +878,7 @@ func TestQueryObjectIds(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		// When
-		ids, _, err := s.QueryObjectIDs(database.Query{
+		ids, _, err := s.QueryObjectIds(database.Query{
 			Filters: []database.FilterRequest{
 				{
 					RelationKey: bundle.RelationKeyDescription,
@@ -1044,7 +1044,7 @@ func TestQueryById(t *testing.T) {
 	t.Run("no ids", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		recs, err := s.QueryByID(nil)
+		recs, err := s.QueryByIds(nil)
 		require.NoError(t, err)
 		assert.Empty(t, recs)
 	})
@@ -1056,12 +1056,12 @@ func TestQueryById(t *testing.T) {
 		obj3 := makeObjectWithName("id3", "name3")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-		recs, err := s.QueryByID([]string{"id1", "id3"})
+		recs, err := s.QueryByIds([]string{"id1", "id3"})
 		require.NoError(t, err)
 		assertRecordsEqual(t, []TestObject{obj1, obj3}, recs)
 
 		t.Run("reverse order", func(t *testing.T) {
-			recs, err := s.QueryByID([]string{"id3", "id1"})
+			recs, err := s.QueryByIds([]string{"id3", "id1"})
 			require.NoError(t, err)
 			assertRecordsEqual(t, []TestObject{obj3, obj1}, recs)
 		})
@@ -1080,7 +1080,7 @@ func TestQueryById(t *testing.T) {
 
 		s.sourceService = dummySourceService{objectToReturn: obj2}
 
-		recs, err := s.QueryByID([]string{"id1", dateID})
+		recs, err := s.QueryByIds([]string{"id1", dateID})
 		require.NoError(t, err)
 		assertRecordsEqual(t, []TestObject{obj1, obj2}, recs)
 	})
@@ -1096,7 +1096,7 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 	recordsCh := make(chan *domain.Details)
 	sub := database.NewSubscription(nil, recordsCh)
 
-	recs, closeSub, err := s.QueryByIDAndSubscribeForChanges([]string{"id1", "id3"}, sub)
+	recs, closeSub, err := s.QueryByIdsAndSubscribeForChanges([]string{"id1", "id3"}, sub)
 	require.NoError(t, err)
 	defer closeSub()
 

@@ -22,7 +22,7 @@ type createSetRequest struct {
 func (s *service) createSet(ctx context.Context, space clientspace.Space, req createSetRequest) (setID string, newDetails *domain.Details, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
-	dvContent, err := dataview.BlockBySource(s.objectStore, req.Source)
+	dvContent, err := dataview.BlockBySource(s.objectStore.SpaceIndex(space.Id()), req.Source)
 	if err != nil {
 		return
 	}

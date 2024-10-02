@@ -1,4 +1,4 @@
-package objectstore
+package spaceindex
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -43,7 +42,7 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 		return jsonVal, true, nil
 	}))
 	if isModified {
-		s.sendUpdatesToSubscriptions(id, details)
+		s.subManager.sendUpdatesToSubscriptions(id, details)
 	}
 
 	if err != nil {
@@ -71,15 +70,9 @@ func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links 
 	if err != nil {
 		return err
 	}
-	s.RLock()
-	defer s.RUnlock()
-	if s.onLinksUpdateCallback != nil && len(added)+len(removed) > 0 {
-		s.onLinksUpdateCallback(LinksUpdateInfo{
-			LinksFromId: id,
-			Added:       added,
-			Removed:     removed,
-		})
-	}
+
+	s.subManager.updateObjectLinks(id, added, removed)
+
 	return nil
 }
 
@@ -185,7 +178,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 		if len(diff) == 0 {
 			return nil, false, nil
 		}
-		s.sendUpdatesToSubscriptions(id, newDetails)
+		s.subManager.sendUpdatesToSubscriptions(id, newDetails)
 		return jsonVal, true, nil
 	}))
 

@@ -12,6 +12,7 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/core/filestorage"
@@ -32,17 +33,19 @@ type Service interface {
 	app.Component
 
 	FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error)
+	FileOffloadFullId(ctx context.Context, id domain.FullID, includeNotPinned bool) (totalSize uint64, err error)
 	FilesOffload(ctx context.Context, objectIds []string, includeNotPinned bool) (err error)
 	FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error)
 	FileOffloadRaw(ctx context.Context, id domain.FullFileId) (totalSize uint64, err error)
 }
 
 type service struct {
-	objectStore objectstore.ObjectStore
-	fileStore   filestore.FileStore
-	dagService  ipld.DAGService
-	commonFile  fileservice.FileService
-	fileStorage filestorage.FileStorage
+	objectStore     objectstore.ObjectStore
+	fileStore       filestore.FileStore
+	dagService      ipld.DAGService
+	commonFile      fileservice.FileService
+	fileStorage     filestorage.FileStorage
+	spaceIdResolver idresolver.Resolver
 }
 
 func New() Service {
@@ -55,6 +58,7 @@ func (s *service) Init(a *app.App) error {
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
+	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	return nil
 }
 
@@ -63,7 +67,15 @@ func (s *service) Name() string {
 }
 
 func (s *service) FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error) {
-	details, err := s.objectStore.GetDetails(objectId)
+	spaceId, err := s.spaceIdResolver.ResolveSpaceID(objectId)
+	if err != nil {
+		return 0, fmt.Errorf("resolve space id: %w", err)
+	}
+	return s.FileOffloadFullId(ctx, domain.FullID{SpaceID: spaceId, ObjectID: objectId}, includeNotPinned)
+}
+
+func (s *service) FileOffloadFullId(ctx context.Context, id domain.FullID, includeNotPinned bool) (totalSize uint64, err error) {
+	details, err := s.objectStore.SpaceIndex(id.SpaceID).GetDetails(id.ObjectID)
 	if err != nil {
 		return 0, fmt.Errorf("get object details: %w", err)
 	}
@@ -107,7 +119,7 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 	gc := s.fileStorage.NewLocalStoreGarbageCollector()
 
 	if !includeNotPinned {
-		records, err := s.objectStore.Query(database.Query{
+		records, err := s.objectStore.QueryCrossSpace(database.Query{
 			Filters: []database.FilterRequest{
 				{
 					RelationKey: bundle.RelationKeyFileId,
@@ -142,13 +154,8 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 }
 
 func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
-	records, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeySpaceId,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(spaceId),
-			},
 			{
 				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
@@ -183,17 +190,12 @@ func (s *service) offloadFileSafe(ctx context.Context,
 	record database.Record,
 	includeNotPinned bool,
 ) (uint64, error) {
-	existingObjects, err := s.objectStore.Query(database.Query{
+	existingObjects, err := s.objectStore.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(fileId),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId,
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       domain.String(spaceId),
 			},
 		},
 	})

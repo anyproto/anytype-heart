@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -49,7 +49,7 @@ type Dataview interface {
 	GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error)
 }
 
-func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) Dataview {
+func NewDataview(sb smartblock.SmartBlock, objectStore spaceindex.Store) Dataview {
 	dv := &sdataview{
 		SmartBlock:  sb,
 		objectStore: objectStore,
@@ -61,7 +61,7 @@ func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) 
 
 type sdataview struct {
 	smartblock.SmartBlock
-	objectStore objectstore.ObjectStore
+	objectStore spaceindex.Store
 }
 
 func (d *sdataview) GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error) {
@@ -118,7 +118,7 @@ func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKe
 		return err
 	}
 	for _, key := range relationKeys {
-		relation, err2 := d.objectStore.FetchRelationByKey(d.SpaceID(), key)
+		relation, err2 := d.objectStore.FetchRelationByKey(key)
 		if err2 != nil {
 			return err2
 		}
@@ -431,7 +431,7 @@ func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 	return nil, fmt.Errorf("not a dataview block")
 }
 
-func BlockBySource(objectStore objectstore.ObjectStore, sources []string) (*model.BlockContentOfDataview, error) {
+func BlockBySource(objectStore spaceindex.Store, sources []string) (*model.BlockContentOfDataview, error) {
 	// Empty schema
 	if len(sources) == 0 {
 		return template.MakeDataviewContent(false, nil, nil), nil
@@ -446,7 +446,7 @@ func BlockBySource(objectStore objectstore.ObjectStore, sources []string) (*mode
 	// Finally, try relations
 	relations := make([]*model.RelationLink, 0, len(sources))
 	for _, relId := range sources {
-		rel, err := objectStore.GetRelationByID(relId)
+		rel, err := objectStore.GetRelationById(relId)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
 		}

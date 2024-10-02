@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -26,7 +26,7 @@ type WidgetObject struct {
 
 func NewWidgetObject(
 	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
+	objectStore spaceindex.Store,
 	layoutConverter converter.LayoutConverter,
 ) *WidgetObject {
 	bs := basic.NewBasic(sb, objectStore, layoutConverter, nil, nil)

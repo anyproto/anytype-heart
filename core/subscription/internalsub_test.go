@@ -28,7 +28,8 @@ func wrapToEventMessages(vals []pb.IsEventMessageValue) []*pb.EventMessage {
 func TestInternalSubscriptionSingle(t *testing.T) {
 	fx := NewInternalTestService(t)
 	resp, err := fx.Search(SubscribeRequest{
-		SubId: "test",
+		SpaceId: "space1",
+		SubId:   "test",
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyPriority,
@@ -44,7 +45,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 	require.Empty(t, resp.Records)
 
 	t.Run("amend details not related to filter", func(t *testing.T) {
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             domain.String("id1"),
 				bundle.RelationKeyName:           domain.String("task1"),
@@ -53,7 +54,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 			},
 		})
 		time.Sleep(batchTime)
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id1"),
 				bundle.RelationKeyName:     domain.String("task1 renamed"),
@@ -74,7 +75,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 	})
 
 	t.Run("amend details related to filter -- remove from subscription", func(t *testing.T) {
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id2"),
 				bundle.RelationKeyName:     domain.String("task2"),
@@ -83,7 +84,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 		})
 		time.Sleep(batchTime)
 
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id2"),
 				bundle.RelationKeyName:     domain.String("task2"),
@@ -112,7 +113,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 
 	t.Run("try to add after close", func(t *testing.T) {
 		time.Sleep(batchTime)
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id3"),
 				bundle.RelationKeyName:     domain.String("task2"),
@@ -125,7 +126,8 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 func TestInternalSubscriptionMultiple(t *testing.T) {
 	fx := newFixtureWithRealObjectStore(t)
 	resp1, err := fx.Search(SubscribeRequest{
-		SubId: "internal1",
+		SpaceId: "space1",
+		SubId:   "internal1",
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyPriority,
@@ -137,7 +139,8 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		Internal: true,
 	})
 	_, err = fx.Search(SubscribeRequest{
-		SubId: "client1",
+		SpaceId: "space1",
+		SubId:   "client1",
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyPriority,
@@ -148,7 +151,8 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
 	})
 	_, err = fx.Search(SubscribeRequest{
-		SubId: "client2",
+		SpaceId: "space1",
+		SubId:   "client2",
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyPriority,
@@ -159,7 +163,8 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
 	})
 	resp4, err := fx.Search(SubscribeRequest{
-		SubId: "internal2",
+		SpaceId: "space1",
+		SubId:   "internal2",
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyName,
@@ -175,7 +180,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 	require.Empty(t, resp1.Records)
 
 	t.Run("amend details not related to filter", func(t *testing.T) {
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             domain.String("id1"),
 				bundle.RelationKeyName:           domain.String("task1"),
@@ -184,7 +189,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 			},
 		})
 		time.Sleep(batchTime)
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id1"),
 				bundle.RelationKeyName:     domain.String("task1 renamed"),
@@ -208,7 +213,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 	})
 
 	t.Run("amend details related to filter -- remove from subscription", func(t *testing.T) {
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id2"),
 				bundle.RelationKeyName:     domain.String("task2"),
@@ -217,7 +222,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		})
 		time.Sleep(batchTime)
 
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id2"),
 				bundle.RelationKeyName:     domain.String("task2"),
@@ -240,7 +245,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 	})
 
 	t.Run("add item satisfying filters from all subscription", func(t *testing.T) {
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id3"),
 				bundle.RelationKeyName:     domain.String("Jane Doe"),

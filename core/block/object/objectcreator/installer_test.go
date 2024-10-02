@@ -42,7 +42,7 @@ func TestInstaller_queryDeletedObjects(t *testing.T) {
 		{false, true, "otherSpaceId", bundle.TypeKeyDiaryEntry},
 		{true, false, "otherSpaceId", bundle.RelationKeyAudioAlbum},
 	} {
-		store.AddObjects(t, []objectstore.TestObject{{
+		store.AddObjects(t, obj.spaceId, []objectstore.TestObject{{
 			bundle.RelationKeyId:           domain.String(obj.key.URL()),
 			bundle.RelationKeySpaceId:      domain.String(obj.spaceId),
 			bundle.RelationKeySourceObject: domain.String(obj.key.BundledURL()),

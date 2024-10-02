@@ -1,4 +1,4 @@
-package objectstore
+package spaceindex
 
 import (
 	context2 "context"
@@ -53,7 +53,7 @@ func TestGetRelationById(t *testing.T) {
 	t.Run("relation is not found", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		_, err := s.GetRelationByID("relationID")
+		_, err := s.GetRelationById("relationID")
 		require.Error(t, err)
 	})
 
@@ -67,7 +67,7 @@ func TestGetRelationById(t *testing.T) {
 		}
 		s.AddObjects(t, []TestObject{obj})
 
-		_, err := s.GetRelationByID("id1")
+		_, err := s.GetRelationById("id1")
 		require.Error(t, err)
 	})
 
@@ -81,7 +81,7 @@ func TestGetRelationById(t *testing.T) {
 		err := s.UpdateObjectDetails(context2.Background(), relation.Id, relObject)
 		require.NoError(t, err)
 
-		got, err := s.GetRelationByID(relationID)
+		got, err := s.GetRelationById(relationID)
 		require.NoError(t, err)
 		assert.Equal(t, relationutils.RelationFromDetails(relObject).Relation, got)
 	})

@@ -456,17 +456,12 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 
 func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string, err error) {
 	var ids []string
-	if ids, _, err = b.store.QueryObjectIDs(database.Query{
+	if ids, _, err = b.store.SpaceIndex(spaceID).QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyOldAnytypeID,
 				Value:       domain.String(oldID),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId,
-				Value:       domain.String(spaceID),
 			},
 		},
 	}); err != nil {

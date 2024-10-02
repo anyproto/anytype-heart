@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -21,12 +21,12 @@ var archiveRequiredRelations = []domain.RelationKey{}
 type Archive struct {
 	smartblock.SmartBlock
 	collection.Collection
-	objectStore objectstore.ObjectStore
+	objectStore spaceindex.Store
 }
 
 func NewArchive(
 	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
+	objectStore spaceindex.Store,
 ) *Archive {
 	return &Archive{
 		SmartBlock:  sb,
@@ -80,11 +80,6 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 			Key:   bundle.RelationKeyIsArchived,
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: domain.Bool(true),
-		},
-		database.FilterEq{
-			Key:   bundle.RelationKeySpaceId,
-			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: domain.String(p.SpaceID()),
 		},
 	}}, 0, 0)
 	if err != nil {

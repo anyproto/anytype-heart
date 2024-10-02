@@ -1,4 +1,4 @@
-package objectstore
+package spaceindex
 
 import (
 	"fmt"
@@ -56,7 +56,7 @@ func (s *dsObjectStore) getRelationLinksForRecommendedRelations(details *domain.
 	recommendedRelationIDs := details.GetStringList(bundle.RelationKeyRecommendedRelations)
 	relationLinks := make([]*model.RelationLink, 0, len(recommendedRelationIDs))
 	for _, relationID := range recommendedRelationIDs {
-		relation, err := s.GetRelationByID(relationID)
+		relation, err := s.GetRelationById(relationID)
 		if err != nil {
 			log.Errorf("failed to get relation %s: %s", relationID, err)
 		} else {

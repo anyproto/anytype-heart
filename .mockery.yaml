@@ -39,20 +39,10 @@ packages:
           inpackage: true
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
-      Converter:
+      Converter
   github.com/anyproto/anytype-heart/core/block/import/web/parsers:
     interfaces:
       Parser:
-  github.com/anyproto/anytype-heart/pkg/lib/database:
-    interfaces:
-      ObjectStore:
-        config:
-          dir: "{{.InterfaceDir}}"
-          outpkg: "{{.PackageName}}"
-          inpackage: true
-  github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore:
-    interfaces:
-      ObjectStore:
   github.com/anyproto/anytype-heart/core/block/restriction:
     interfaces:
       Service:
@@ -105,6 +95,7 @@ packages:
     interfaces:
       TechSpace:
       SpaceView:
+      AccountObject:
   github.com/anyproto/anytype-heart/space/spacefactory:
     interfaces:
       SpaceFactory:

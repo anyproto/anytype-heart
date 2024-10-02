@@ -5,7 +5,6 @@ import (
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -179,13 +178,12 @@ func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 
 func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena, collatorBuffer *collate.Buffer) (filters *Filters, err error) {
 	// spaceID could be empty
-	spaceID := getSpaceIDFromFilters(qry.Filters)
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	qry.Sorts = injectDefaultOrder(qry, qry.Sorts)
 	filters = new(Filters)
 
 	qb := queryBuilder{
-		spaceId:        spaceID,
+		spaceId:        store.SpaceId(),
 		arena:          arena,
 		objectStore:    store,
 		collatorBuffer: collatorBuffer,
@@ -297,35 +295,4 @@ func (r FulltextResult) Model() model.SearchMeta {
 type Filters struct {
 	FilterObj Filter
 	Order     Order
-}
-
-// ListRelationOptions returns options for specific relation
-func ListRelationOptions(store ObjectStore, spaceID string, relationKey domain.RelationKey) (options []*model.RelationOption, err error) {
-	filters := []FilterRequest{
-		{
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeyRelationKey,
-			Value:       domain.String(string(relationKey)),
-		},
-		{
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeyLayout,
-			Value:       domain.Int64(model.ObjectType_relationOption),
-		},
-	}
-	if spaceID != "" {
-		filters = append(filters, FilterRequest{
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeySpaceId,
-			Value:       domain.String(spaceID),
-		})
-	}
-	records, err := store.Query(Query{
-		Filters: filters,
-	})
-
-	for _, rec := range records {
-		options = append(options, relationutils.OptionFromDetails(rec.Details).RelationOption)
-	}
-	return
 }
