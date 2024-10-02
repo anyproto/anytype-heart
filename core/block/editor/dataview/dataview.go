@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -75,87 +76,42 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 	if blockId == "" {
 		blockId = template.DataviewBlockId
 	}
-	err = d.setSourceToBlock(s, blockId, source)
-	if err != nil {
-		if errors.Is(err, errSourceNotChanged) {
-			return nil
-		}
-		return err
+
+	block, e := getDataviewBlock(s, blockId)
+	if e != nil && blockId != template.DataviewBlockId {
+		return e
 	}
-	return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
-}
-
-// func setSourceToSet(s *state.State, blockId string, source []string) error {
-// 	setOf := pbtypes.GetStringList(s.Details(), bundle.RelationKeySetOf.String())
-// 	if slice.UnsortedEqual(setOf, source) {
-// 		return errSourceNotChanged
-// 	}
-// 	s.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(source))
-//
-// 	flags := internalflag.NewFromState(s)
-// 	// set with source is no longer empty
-// 	flags.Remove(model.InternalFlag_editorDeleteEmpty)
-// 	flags.AddToState(s)
-//
-// 	b := s.Get(blockId)
-// 	if b == nil {
-// 		return fmt.Errorf("block %s not found", blockId)
-// 	}
-//
-// 	dv := b.Model().GetDataview()
-// 	if dv == nil {
-// 		return fmt.Errorf("block %s is not dataview", blockId)
-// 	}
-// 	for _, view := range dv.Views {
-// 		view.DefaultTemplateId = ""
-// 		view.DefaultObjectTypeId = ""
-// 	}
-// 	s.Set(b)
-// 	return nil
-// }
-
-func (d *sdataview) setSourceToBlock(s *state.State, blockId string, source []string) error {
-	block, err := getDataviewBlock(s, blockId)
-	if err != nil && blockId != template.DataviewBlockId {
-		return err
-	}
-
 	if block != nil && slice.UnsortedEqual(block.GetSource(), source) {
-		return errSourceNotChanged
+		return
 	}
 
-	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+	flags := internalflag.NewFromState(s)
+	// set with source is no longer empty
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(s)
 
 	if len(source) == 0 {
 		s.Unlink(blockId)
-		return nil
+		s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+		return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	}
 
-	newBlock, err := d.buildDataviewBlock(blockId, source)
+	dvContent, err := BlockBySource(d.objectStore, source)
 	if err != nil {
-		return err
+		return
 	}
-	s.Set(newBlock)
 
+	if len(dvContent.Dataview.Views) > 0 {
+		dvContent.Dataview.ActiveView = dvContent.Dataview.Views[0].Id
+	}
+	blockNew := simple.New(&model.Block{Content: dvContent, Id: blockId}).(dataview.Block)
+	s.Set(blockNew)
 	if block == nil {
-		e := s.InsertTo("", 0, blockId)
-		if e != nil {
-			log.With("objectId", s.RootId()).Errorf("failed to insert dataview block '%s': %v", blockId, e)
-		}
-	}
-	return nil
-}
-
-func (d *sdataview) buildDataviewBlock(blockId string, source []string) (dataview.Block, error) {
-	content, err := BlockBySource(d.objectStore, source)
-	if err != nil {
-		return nil, err
+		s.InsertTo("", 0, blockId)
 	}
 
-	if len(content.Dataview.Views) > 0 {
-		content.Dataview.ActiveView = content.Dataview.Views[0].Id
-	}
-	return simple.New(&model.Block{Content: content, Id: blockId}).(dataview.Block), nil
+	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+	return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
 
 func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKeys []string, showEvent bool) error {

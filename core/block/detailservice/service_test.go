@@ -313,6 +313,56 @@ func TestService_SetWorkspaceDashboardId(t *testing.T) {
 	})
 }
 
+func TestService_SetSource(t *testing.T) {
+	objId := "object"
+	t.Run("no error", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		sb := smarttest.New(objId)
+		sb.AddBlock(simple.New(&model.Block{Id: objId, ChildrenIds: []string{"dv"}}))
+		sb.AddBlock(simple.New(&model.Block{Id: "dv", Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{
+			{DefaultObjectTypeId: "ot-note", DefaultTemplateId: "NoTe"},
+			{DefaultObjectTypeId: "ot-task", DefaultTemplateId: "tAsK"},
+		}}}}))
+		err := sb.SetDetails(nil, []*model.Detail{{
+			Key:   bundle.RelationKeySetOf.String(),
+			Value: pbtypes.StringList([]string{"rel-name", "rel-id"}),
+		}, {
+			Key:   bundle.RelationKeyInternalFlags.String(),
+			Value: pbtypes.IntList(int(model.InternalFlag_editorDeleteEmpty)),
+		}}, false)
+		require.NoError(t, err)
+
+		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+			assert.Equal(t, objId, objectId)
+			return sb, nil
+		})
+
+		// when
+		err = fx.SetSource(nil, objId, []string{"ot-page"})
+
+		// then
+		assert.NoError(t, err)
+		setOf := pbtypes.GetStringList(sb.NewState().Details(), bundle.RelationKeySetOf.String())
+		require.Len(t, setOf, 1)
+		assert.Equal(t, "ot-page", setOf[0])
+
+		b := sb.Pick("dv")
+		require.NotNil(t, b)
+		dv := b.Model().GetDataview()
+		require.NotNil(t, dv)
+		require.Len(t, dv.Views, 2)
+		assert.Empty(t, dv.Views[0].DefaultTemplateId)
+		assert.Empty(t, dv.Views[0].DefaultObjectTypeId)
+		assert.Empty(t, dv.Views[1].DefaultTemplateId)
+		assert.Empty(t, dv.Views[1].DefaultObjectTypeId)
+
+		assert.Empty(t, pbtypes.GetIntList(sb.NewState().Details(), bundle.RelationKeyInternalFlags.String()))
+	})
+
+	// TODO: GO-4189 Add more tests when more logic on SetSource will be added
+}
+
 func TestService_SetListIsFavorite(t *testing.T) {
 	var (
 		objects = []objectstore.TestObject{

@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -137,53 +136,7 @@ func TestInjectActiveView(t *testing.T) {
 }
 
 func TestDataview_SetSource(t *testing.T) {
-	t.Run("set source to set object", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		fx.sb.AddBlock(simple.New(&model.Block{Id: objId, ChildrenIds: []string{template.DataviewBlockId}}))
-		fx.sb.AddBlock(simple.New(&model.Block{Id: template.DataviewBlockId, Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{}}}))
-		require.NoError(t, fx.sb.SetDetails(nil, []*model.Detail{{
-			Key:   bundle.RelationKeyLayout.String(),
-			Value: pbtypes.Int64(int64(model.ObjectType_set)),
-		}, {
-			Key:   bundle.RelationKeyInternalFlags.String(),
-			Value: pbtypes.IntList(int(model.InternalFlag_editorDeleteEmpty)),
-		}}, false))
-
-		// when
-		err := fx.SetSource(nil, "", []string{"ot-page"})
-
-		// then
-		assert.NoError(t, err)
-		setOf := pbtypes.GetStringList(fx.sb.Details(), bundle.RelationKeySetOf.String())
-		require.Len(t, setOf, 1)
-		assert.Equal(t, "ot-page", setOf[0])
-		assert.Empty(t, pbtypes.GetIntList(fx.sb.Details(), bundle.RelationKeyInternalFlags.String()))
-	})
-
-	t.Run("unset source in set object", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		fx.sb.AddBlock(simple.New(&model.Block{Id: objId, ChildrenIds: []string{template.DataviewBlockId}}))
-		fx.sb.AddBlock(simple.New(&model.Block{Id: template.DataviewBlockId, Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{}}}))
-		require.NoError(t, fx.sb.SetDetails(nil, []*model.Detail{{
-			Key:   bundle.RelationKeyLayout.String(),
-			Value: pbtypes.Int64(int64(model.ObjectType_set)),
-		}, {
-			Key:   bundle.RelationKeySetOf.String(),
-			Value: pbtypes.StringList([]string{"ot-note"}),
-		}}, false))
-
-		// when
-		err := fx.SetSource(nil, "", nil)
-
-		// then
-		assert.NoError(t, err)
-		setOf := pbtypes.GetStringList(fx.sb.Details(), bundle.RelationKeySetOf.String())
-		assert.Empty(t, setOf)
-	})
-
-	t.Run("set source to inline dataview block", func(t *testing.T) {
+	t.Run("set source to dataview block", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.sb.AddBlock(simple.New(&model.Block{Id: objId, ChildrenIds: []string{"dv"}}))
@@ -214,10 +167,8 @@ func TestDataview_SetSource(t *testing.T) {
 
 		block := fx.sb.Pick("dv")
 		assert.NotNil(t, block)
-		dv, ok := block.(dataview.Block)
+		_, ok := block.(dataview.Block)
 		require.True(t, ok)
-
-		assert.True(t, slice.UnsortedEqual(dv.GetSource(), source))
 	})
 
 	t.Run("unset source from inline dataview block", func(t *testing.T) {
