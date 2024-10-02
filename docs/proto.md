@@ -12505,6 +12505,8 @@ can be called multiple times but with some timeout (N seconds) between calls
 | ----- | ---- | ----- | ----------- |
 | email | [string](#string) |  |  |
 | subscribeToNewsletter | [bool](#bool) |  |  |
+| insiderTipsAndTutorials | [bool](#bool) |  |  |
+| isOnboardingList | [bool](#bool) |  | if we are coming from the onboarding screen |
 
 
 
