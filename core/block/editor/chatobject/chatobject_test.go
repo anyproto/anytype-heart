@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"testing"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -19,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -43,7 +44,12 @@ const testCreator = "accountId1"
 
 func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
-	store := spaceindex.NewStoreFixture(t)
+	db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "crdt.db"), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := db.Close()
+		require.NoError(t, err)
+	})
 
 	accountService := &accountServiceStub{accountId: testCreator}
 
@@ -51,7 +57,7 @@ func newFixture(t *testing.T) *fixture {
 
 	sb := smarttest.New("chatId1")
 
-	object := New(sb, accountService, store, eventSender)
+	object := New(sb, accountService, eventSender, db)
 
 	fx := &fixture{
 		storeObject:        object.(*storeObject),
@@ -69,7 +75,7 @@ func newFixture(t *testing.T) *fixture {
 	source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(fx.applyToStore).Maybe()
 	fx.source = source
 
-	err := object.Init(&smartblock.InitContext{
+	err = object.Init(&smartblock.InitContext{
 		Ctx:    ctx,
 		Source: source,
 	})

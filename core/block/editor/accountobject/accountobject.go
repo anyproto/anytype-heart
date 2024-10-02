@@ -66,14 +66,14 @@ var _ AccountObject = (*accountObject)(nil)
 
 type accountObject struct {
 	smartblock.SmartBlock
-	spaceObjects spaceindex.Store
-	bs           basic.DetailsSettable
-	state        *storestate.StoreState
-	storeSource  source.Store
-	ctx          context.Context
-	cancel       context.CancelFunc
-	relMapper    *relationsMapper
-	cfg          *config.Config
+	bs          basic.DetailsSettable
+	state       *storestate.StoreState
+	storeSource source.Store
+	ctx         context.Context
+	cancel      context.CancelFunc
+	relMapper   *relationsMapper
+	cfg         *config.Config
+	crdtDb      anystore.DB
 }
 
 func (a *accountObject) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
@@ -90,12 +90,13 @@ func New(
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
 	lastUsedUpdater lastused.ObjectUsageUpdater,
+	crdtDb anystore.DB,
 	cfg *config.Config) AccountObject {
 	return &accountObject{
-		spaceObjects: spaceObjects,
-		bs:           basic.NewBasic(sb, spaceObjects, layoutConverter, fileObjectService, lastUsedUpdater),
-		SmartBlock:   sb,
-		cfg:          cfg,
+		crdtDb:     crdtDb,
+		bs:         basic.NewBasic(sb, spaceObjects, layoutConverter, fileObjectService, lastUsedUpdater),
+		SmartBlock: sb,
+		cfg:        cfg,
 		relMapper: newRelationsMapper(map[string]KeyType{
 			bundle.RelationKeyName.String():        KeyTypeString,
 			bundle.RelationKeyDescription.String(): KeyTypeString,
@@ -110,7 +111,7 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return err
 	}
-	stateStore, err := storestate.New(ctx.Ctx, a.Id(), a.spaceObjects.GetDb(), accountHandler{})
+	stateStore, err := storestate.New(ctx.Ctx, a.Id(), a.crdtDb, accountHandler{})
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
 	}

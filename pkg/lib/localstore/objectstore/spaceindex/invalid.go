@@ -27,10 +27,6 @@ func (s *invalidStore) SpaceId() string {
 	return ""
 }
 
-func (s *invalidStore) GetDb() anystore.DB {
-	return nil
-}
-
 func (s *invalidStore) Close() error {
 	return s.err
 }

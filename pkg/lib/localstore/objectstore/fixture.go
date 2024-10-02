@@ -75,7 +75,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		arenaPool:           &fastjson.ArenaPool{},
 		repoPath:            walletService.RepoPath(),
 		oldStore:            oldStore,
-		stores:              map[string]spaceindex.Store{},
+		spaceIndexes:        map[string]spaceindex.Store{},
 		techSpaceIdProvider: &stubTechSpaceIdProvider{},
 		subManager:          &spaceindex.SubscriptionManager{},
 	}

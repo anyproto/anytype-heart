@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -53,19 +52,19 @@ type storeObject struct {
 	store          *storestate.StoreState
 	eventSender    event.Sender
 	subscription   *subscription
-	spaceObjects   spaceindex.Store
+	crdtDb         anystore.DB
 
 	arenaPool *fastjson.ArenaPool
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService, spaceObjects spaceindex.Store, eventSender event.Sender) StoreObject {
+func New(sb smartblock.SmartBlock, accountService AccountService, eventSender event.Sender, crdtDb anystore.DB) StoreObject {
 	return &storeObject{
 		SmartBlock:     sb,
 		locker:         sb.(smartblock.Locker),
 		accountService: accountService,
-		spaceObjects:   spaceObjects,
 		arenaPool:      &fastjson.ArenaPool{},
 		eventSender:    eventSender,
+		crdtDb:         crdtDb,
 	}
 }
 
@@ -76,7 +75,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 	s.subscription = newSubscription(s.Id(), s.eventSender)
 
-	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.spaceObjects.GetDb(), ChatHandler{
+	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, ChatHandler{
 		chatId:       s.Id(),
 		subscription: s.subscription,
 	})

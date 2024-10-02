@@ -48,6 +48,7 @@ type ObjectStore interface {
 	app.ComponentRunnable
 
 	SpaceIndex(spaceId string) spaceindex.Store
+	GetCrdtDb(spaceId string) anystore.DB
 
 	SpaceNameGetter
 	CrossSpace
@@ -105,7 +106,10 @@ type dsObjectStore struct {
 	techSpaceIdProvider TechSpaceIdProvider
 
 	sync.Mutex
-	stores map[string]spaceindex.Store
+	spaceIndexes map[string]spaceindex.Store
+
+	crtdStoreLock sync.Mutex
+	crdtDbs       map[string]anystore.DB
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -117,7 +121,8 @@ func New() ObjectStore {
 		componentCtx:       ctx,
 		componentCtxCancel: cancel,
 		subManager:         &spaceindex.SubscriptionManager{},
-		stores:             map[string]spaceindex.Store{},
+		spaceIndexes:       map[string]spaceindex.Store{},
+		crdtDbs:            map[string]anystore.DB{},
 	}
 }
 
@@ -203,11 +208,18 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	}
 
 	s.Lock()
-	for spaceId, store := range s.stores {
+	for spaceId, store := range s.spaceIndexes {
 		err = errors.Join(err, store.Close())
-		delete(s.stores, spaceId)
+		delete(s.spaceIndexes, spaceId)
 	}
 	s.Unlock()
+
+	s.crtdStoreLock.Lock()
+	for spaceId, store := range s.crdtDbs {
+		err = errors.Join(err, store.Close())
+		delete(s.crdtDbs, spaceId)
+	}
+	s.crtdStoreLock.Unlock()
 
 	return err
 }
@@ -219,7 +231,7 @@ func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 	s.Lock()
 	defer s.Unlock()
 
-	store, ok := s.stores[spaceId]
+	store, ok := s.spaceIndexes[spaceId]
 	if !ok {
 		dir := filepath.Join(s.repoPath, "objectstore", spaceId)
 		err := ensureDirExists(dir)
@@ -235,9 +247,29 @@ func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 			DbPath:         filepath.Join(dir, "objects.db"),
 			FulltextQueue:  s,
 		})
-		s.stores[spaceId] = store
+		s.spaceIndexes[spaceId] = store
 	}
 	return store
+}
+
+func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
+	s.crtdStoreLock.Lock()
+	defer s.crtdStoreLock.Unlock()
+
+	db, ok := s.crdtDbs[spaceId]
+	if !ok {
+		dir := filepath.Join(s.repoPath, "objectstore", spaceId)
+		err := ensureDirExists(dir)
+		if err != nil {
+			return nil
+		}
+		db, err = anystore.Open(s.componentCtx, filepath.Join(dir, "crdt.db"), s.anyStoreConfig)
+		if err != nil {
+			return nil
+		}
+		s.crdtDbs[spaceId] = db
+	}
+	return db
 }
 
 func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
@@ -246,8 +278,8 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 
 func (s *dsObjectStore) listStores() []spaceindex.Store {
 	s.Lock()
-	stores := make([]spaceindex.Store, 0, len(s.stores))
-	for _, store := range s.stores {
+	stores := make([]spaceindex.Store, 0, len(s.spaceIndexes))
+	for _, store := range s.spaceIndexes {
 		stores = append(stores, store)
 	}
 	s.Unlock()
