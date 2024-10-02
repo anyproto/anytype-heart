@@ -12,10 +12,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -55,6 +57,33 @@ func (s *service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 		return nil
 	})
 	return id, err
+}
+
+func (s *service) SetSource(ctx session.Context, objectId string, source []string) error {
+	return cache.Do(s, objectId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewStateCtx(ctx)
+
+		// nolint:errcheck
+		_ = st.Iterate(func(b simple.Block) (isContinue bool) {
+			if dv := b.Model().GetDataview(); dv != nil {
+				for _, view := range dv.Views {
+					view.DefaultTemplateId = ""
+					view.DefaultObjectTypeId = ""
+				}
+				st.Set(b)
+				return false
+			}
+			return true
+		})
+		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(source))
+
+		flags := internalflag.NewFromState(st)
+		// set with source is no longer empty
+		flags.Remove(model.InternalFlag_editorDeleteEmpty)
+		flags.AddToState(st)
+
+		return sb.Apply(st, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
+	})
 }
 
 func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
