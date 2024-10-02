@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -23,7 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -43,37 +43,37 @@ type Service interface {
 	Create(dataObject *DataObject, sn *common.Snapshot) (*domain.Details, string, error)
 }
 
-type BlockService interface {
-	GetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
-	GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
-	SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err error)
-	SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err error)
+type ObjectDeleter interface {
+	cache.ObjectGetterComponent
 	DeleteObject(objectId string) (err error)
 }
 
 type ObjectCreator struct {
-	service        BlockService
+	detailsService detailservice.Service
 	spaceService   space.Service
 	objectStore    objectstore.ObjectStore
 	relationSyncer *syncer.FileRelationSyncer
 	syncFactory    *syncer.Factory
 	objectCreator  objectcreator.Service
+	objectDeleter  ObjectDeleter
 }
 
-func New(service BlockService,
+func New(detailsService detailservice.Service,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
 	relationSyncer *syncer.FileRelationSyncer,
 	spaceService space.Service,
 	objectCreator objectcreator.Service,
+	objectDeleter ObjectDeleter,
 ) Service {
 	return &ObjectCreator{
-		service:        service,
+		detailsService: detailsService,
 		syncFactory:    syncFactory,
 		objectStore:    objectStore,
 		relationSyncer: relationSyncer,
 		spaceService:   spaceService,
 		objectCreator:  objectCreator,
+		objectDeleter:  objectDeleter,
 	}
 }
 
@@ -313,7 +313,7 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err)
 	}
 	if len(inboundLinks) == 0 {
-		err = oc.service.DeleteObject(hash)
+		err = oc.objectDeleter.DeleteObject(hash)
 		if err != nil {
 			log.With("file", hash).Errorf("failed to delete file: %s", anyerror.CleanupError(err))
 		}
@@ -352,7 +352,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 			log.Errorf("failed to get space: %v", err)
 			return
 		}
-		err = cache.Do(oc.service, spc.DerivedIDs().Workspace, func(ws basic.CommonOperations) error {
+		err = cache.Do(oc.detailsService, spc.DerivedIDs().Workspace, func(ws basic.CommonOperations) error {
 			if err := ws.SetDetails(nil, details, false); err != nil {
 				return err
 			}
@@ -366,7 +366,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 
 func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Details {
 	var respDetails *domain.Details
-	err := cache.Do(oc.service, newID, func(b smartblock.SmartBlock) error {
+	err := cache.Do(oc.detailsService, newID, func(b smartblock.SmartBlock) error {
 		err := history.ResetToVersion(b, st)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err)
@@ -391,7 +391,7 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Detai
 func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID string) {
 	isFavorite := snapshot.Details.GetBool(bundle.RelationKeyIsFavorite)
 	if isFavorite {
-		err := oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
+		err := oc.detailsService.SetIsFavorite(newID, true)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err)
 		}
@@ -401,7 +401,7 @@ func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID strin
 func (oc *ObjectCreator) setArchived(snapshot *common.StateSnapshot, newID string) {
 	isArchive := snapshot.Details.GetBool(bundle.RelationKeyIsArchived)
 	if isArchive {
-		err := oc.service.SetPageIsArchived(pb.RpcObjectSetIsArchivedRequest{ContextId: newID, IsArchived: true})
+		err := oc.detailsService.SetIsArchived(newID, true)
 		if err != nil {
 			log.With(zap.String("object id", newID)).
 				Errorf("failed to set isFavorite when importing object %s: %s", newID, err)
@@ -412,7 +412,7 @@ func (oc *ObjectCreator) setArchived(snapshot *common.StateSnapshot, newID strin
 func (oc *ObjectCreator) syncFilesAndLinks(newIdsSet map[string]struct{}, id domain.FullID, origin objectorigin.ObjectOrigin) error {
 	tasks := make([]func() error, 0)
 	// todo: rewrite it in order not to create state with URLs inside links
-	err := cache.Do(oc.service, id.ObjectID, func(b smartblock.SmartBlock) error {
+	err := cache.Do(oc.detailsService, id.ObjectID, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 		return st.Iterate(func(bl simple.Block) (isContinue bool) {
 			s := oc.syncFactory.GetSyncer(bl)
@@ -446,7 +446,7 @@ func (oc *ObjectCreator) syncFilesAndLinks(newIdsSet map[string]struct{}, id dom
 }
 
 func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string, isNewCollection bool) {
-	err := cache.Do(oc.service, st.RootId(), func(b smartblock.SmartBlock) error {
+	err := cache.Do(oc.detailsService, st.RootId(), func(b smartblock.SmartBlock) error {
 		originalState := b.NewState()
 		var existedObjects []string
 		if !isNewCollection {
@@ -472,7 +472,7 @@ func (oc *ObjectCreator) mergeCollections(existedObjects []string, st *state.Sta
 }
 
 func (oc *ObjectCreator) updateWidgetObject(st *state.State) (*domain.Details, string, error) {
-	err := cache.DoState(oc.service, st.RootId(), func(oldState *state.State, sb smartblock.SmartBlock) error {
+	err := cache.DoState(oc.detailsService, st.RootId(), func(oldState *state.State, sb smartblock.SmartBlock) error {
 		blocks := st.Blocks()
 		blocksMap := make(map[string]*model.Block, len(blocks))
 		existingWidgetsTargetIDs, err := oc.getExistingWidgetsTargetIDs(oldState)

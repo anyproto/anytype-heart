@@ -69,10 +69,6 @@ packages:
   github.com/anyproto/anytype-heart/core/block/import/common/objectcreator:
     interfaces:
       Service:
-      BlockService:
-        config:
-          dir: "{{.InterfaceDir}}/mock_blockservice"
-          outpkg: "mock_blockservice"
   github.com/anyproto/anytype-heart/core/block/import/common/syncer:
     interfaces:
       BlockService:
@@ -188,6 +184,9 @@ packages:
   github.com/anyproto/anytype-heart/core/peerstatus:
     interfaces:
       LocalDiscoveryHook:
+  github.com/anyproto/anytype-heart/core/device:
+    interfaces:
+      NetworkState:
   github.com/anyproto/anytype-heart/space/spacecore/localdiscovery:
     interfaces:
       Notifier:
@@ -224,3 +223,6 @@ packages:
   github.com/anyproto/anytype-heart/core/block/import/notion/api/files:
     interfaces:
       Downloader:
+  github.com/anyproto/anytype-heart/core/block/detailservice:
+    interfaces:
+      Service:

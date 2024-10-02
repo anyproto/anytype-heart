@@ -2814,3 +2814,137 @@ func TestAddBundledRealtionLinks(t *testing.T) {
 		assert.Equal(t, want, st)
 	})
 }
+
+func TestState_FileRelationKeys(t *testing.T) {
+	t.Run("no file relations", func(t *testing.T) {
+		// given
+		s := &State{}
+
+		// when
+		keys := s.FileRelationKeys()
+
+		// then
+		assert.Empty(t, keys)
+	})
+	t.Run("there are file relations", func(t *testing.T) {
+		// given
+		s := &State{
+			relationLinks: pbtypes.RelationLinks{
+				{Format: model.RelationFormat_file, Key: "fileKey1"},
+				{Format: model.RelationFormat_file, Key: "fileKey2"},
+			},
+		}
+
+		// when
+		keys := s.FileRelationKeys()
+
+		// then
+		expectedKeys := []string{"fileKey1", "fileKey2"}
+		assert.ElementsMatch(t, keys, expectedKeys)
+	})
+	t.Run("duplicated file relations", func(t *testing.T) {
+		// given
+		s := &State{
+			relationLinks: pbtypes.RelationLinks{
+				{Format: model.RelationFormat_file, Key: "fileKey1"},
+				{Format: model.RelationFormat_file, Key: "fileKey1"},
+			},
+		}
+
+		// when
+		keys := s.FileRelationKeys()
+
+		// then
+		expectedKeys := []string{"fileKey1"}
+		assert.ElementsMatch(t, keys, expectedKeys)
+	})
+	t.Run("coverId relation", func(t *testing.T) {
+		// given
+		s := &State{
+			relationLinks: pbtypes.RelationLinks{
+				{Key: bundle.RelationKeyCoverId.String()},
+			},
+			details: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyCoverType.String(): pbtypes.Int64(1),
+			},
+			},
+		}
+
+		// when
+		keys := s.FileRelationKeys()
+
+		// then
+		expectedKeys := []string{bundle.RelationKeyCoverId.String()}
+		assert.ElementsMatch(t, keys, expectedKeys)
+	})
+	t.Run("skip coverId relation", func(t *testing.T) {
+		// given
+		s := &State{
+			relationLinks: pbtypes.RelationLinks{
+				{Key: bundle.RelationKeyCoverId.String()},
+			},
+			details: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyCoverType.String(): pbtypes.Int64(2),
+			},
+			},
+		}
+
+		// when
+		keys := s.FileRelationKeys()
+
+		// then
+		assert.Len(t, keys, 0)
+	})
+	t.Run("skip gradient coverId relation", func(t *testing.T) {
+		// given
+		s := &State{
+			relationLinks: pbtypes.RelationLinks{
+				{Key: bundle.RelationKeyCoverId.String()},
+			},
+			details: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyCoverType.String(): pbtypes.Int64(3),
+			},
+			},
+		}
+
+		// when
+		keys := s.FileRelationKeys()
+
+		// then
+		assert.Len(t, keys, 0)
+	})
+	t.Run("mixed relations", func(t *testing.T) {
+		// given
+		s := &State{
+			relationLinks: pbtypes.RelationLinks{
+				{Format: model.RelationFormat_file, Key: "fileKey1"},
+				{Key: bundle.RelationKeyCoverId.String()},
+			},
+			details: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyCoverType.String(): pbtypes.Int64(4),
+			},
+			},
+		}
+
+		// when
+		keys := s.FileRelationKeys()
+
+		// then
+		expectedKeys := []string{"fileKey1", bundle.RelationKeyCoverId.String()}
+		assert.ElementsMatch(t, keys, expectedKeys, "Expected both file keys and cover ID")
+	})
+	t.Run("coverType not in details", func(t *testing.T) {
+		// given
+		s := &State{
+			relationLinks: pbtypes.RelationLinks{
+				{Key: bundle.RelationKeyCoverId.String()},
+			},
+		}
+
+		// when
+		keys := s.FileRelationKeys()
+
+		// then
+		assert.Len(t, keys, 0)
+	})
+}

@@ -346,6 +346,9 @@ func (pt *Task) handlePagination(ctx context.Context, apiKey string, propObject 
 			properties []interface{}
 			err        error
 		)
+		if isEmpty(propObject) {
+			return nil
+		}
 		if properties, err =
 			pt.propertyService.GetPropertyObject(
 				ctx,
@@ -359,6 +362,14 @@ func (pt *Task) handlePagination(ctx context.Context, apiKey string, propObject 
 		pt.handlePaginatedProperties(propObject, properties)
 	}
 	return nil
+}
+
+func isEmpty(object property.Object) bool {
+	paginatedObject, ok := object.(property.PaginatedObject)
+	if !ok {
+		return false
+	}
+	return paginatedObject.IsEmpty()
 }
 
 func (pt *Task) handlePaginatedProperties(propObject property.Object, properties []interface{}) {

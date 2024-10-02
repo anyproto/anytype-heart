@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "752a5ff6d42b46a76dd9d389fd73e7310959bfab7ba5e2c372971bdadadc1f4f"
+const TypeChecksum = "f3ae9931142aa23ec9696ccb60fe1a68b4fdafcc345e307e0a26d4fb98a0686c"
 const (
 	TypePrefix = "_ot"
 )
@@ -101,6 +101,7 @@ var (
 			Name:          "Chat Derived Object",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_ChatDerivedObject},
 			Url:           TypePrefix + "chatDerived",
 		},
@@ -361,11 +362,12 @@ var (
 		TypeKeyTemplate: {
 
 			Description:   "Sample object that has already some details in place and used to create objects from",
-			Hidden:        true,
+			IconEmoji:     "🧩",
 			Layout:        model.ObjectType_basic,
 			Name:          "Template",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTargetObjectType), MustGetRelationLink(RelationKeyTemplateIsBundled)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Template},
 			Url:           TypePrefix + "template",
 		},

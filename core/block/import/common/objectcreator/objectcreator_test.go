@@ -6,10 +6,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
-	"github.com/anyproto/anytype-heart/core/block/import/common/objectcreator/mock_blockservice"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -24,12 +24,12 @@ func TestObjectCreator_Create(t *testing.T) {
 	t.Run("participant object - don't update it", func(t *testing.T) {
 		// given
 		spaceID := "spaceId"
-		blockService := mock_blockservice.NewMockBlockService(t)
+		detailsService := mock_detailservice.NewMockService(t)
 		mockService := mock_space.NewMockService(t)
 		mockSpace := mock_clientspace.NewMockSpace(t)
 		mockSpace.EXPECT().IsReadOnly().Return(true)
 		mockService.EXPECT().Get(context.Background(), spaceID).Return(mockSpace, nil)
-		service := New(blockService, nil, nil, nil, mockService, objectcreator.NewCreator())
+		service := New(detailsService, nil, nil, nil, mockService, objectcreator.NewCreator(), nil)
 
 		importedSpaceId := "importedSpaceID"
 		identity := "identity"
@@ -69,7 +69,7 @@ func TestObjectCreator_Create(t *testing.T) {
 		err := testParticipant.Apply(st)
 		assert.Nil(t, err)
 
-		blockService.EXPECT().GetObject(context.Background(), participantId).Return(testParticipant, nil)
+		detailsService.EXPECT().GetObject(context.Background(), participantId).Return(testParticipant, nil)
 
 		// when
 		create, id, err := service.Create(dataObject, sn)

@@ -1,4 +1,4 @@
-package block
+package detailservice
 
 import (
 	"testing"

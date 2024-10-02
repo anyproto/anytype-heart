@@ -51,7 +51,9 @@ var (
 
 func MarshalChange(change *pb.Change) (result []byte, dataType string, err error) {
 	data := bytesPool.Get().([]byte)[:0]
-	defer bytesPool.Put(data)
+	defer func() {
+		bytesPool.Put(data)
+	}()
 
 	data = slices.Grow(data, change.Size())
 	n, err := change.MarshalTo(data)
@@ -74,7 +76,9 @@ func UnmarshalChange(treeChange *objecttree.Change, data []byte) (result any, er
 	change := &pb.Change{}
 	if treeChange.DataType == dataTypeSnappy {
 		buf := bytesPool.Get().([]byte)[:0]
-		defer bytesPool.Put(buf)
+		defer func() {
+			bytesPool.Put(buf)
+		}()
 
 		var n int
 		if n, err = snappy.DecodedLen(data); err == nil {

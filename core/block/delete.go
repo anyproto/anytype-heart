@@ -127,16 +127,12 @@ func (s *Service) DeleteObject(objectId string) (err error) {
 }
 
 func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error {
-	var (
-		isFavorite bool
-	)
-
 	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectCloseAllSessions()
 		st := b.NewState()
-		isFavorite = st.LocalDetails().GetBool(bundle.RelationKeyIsFavorite)
-		if isFavorite {
-			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id.ObjectID})
+		isFavorite := st.LocalDetails().GetBool(bundle.RelationKeyIsFavorite)
+		if err := s.detailsService.SetIsFavorite(id.ObjectID, isFavorite); err != nil {
+			log.With("objectId", id).Errorf("failed to favorite object: %v", err)
 		}
 		b.SetIsDeleted()
 		if workspaceRemove != nil {

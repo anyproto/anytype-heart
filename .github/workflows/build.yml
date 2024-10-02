@@ -51,24 +51,15 @@ jobs:
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
-      - name: Install patched gox
-        run: |
-          mkdir -p "$GOPATH/src/github.com/mitchellh"
-          cd "$GOPATH/src/github.com/mitchellh"
-          git clone https://github.com/aslakhellesoy/gox
-          cd gox
-          git fetch
-          git checkout db6184738b77fbd5089e5fa1112177f391c91b24
-          go install github.com/mitchellh/gox
-        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Install brew and node deps
         run: |
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/d600b1f7119f6e6a4e97fb83233b313b0468b7e4/Formula/s/swift-protobuf.rb --output swift-protobuf.rb
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install ./protobuf.rb
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies ./swift-protobuf.rb
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install mingw-w64
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install grpcurl
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install mingw-w64
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install grpcurl
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew tap messense/macos-cross-toolchains && brew install x86_64-unknown-linux-musl
           npm i -g node-gyp
         if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Checkout
@@ -116,18 +107,18 @@ jobs:
           make setup-go
           make setup-gomobile
           which gomobile
-      - name: Cross-compile library mac/win
+      - name: Cross-compile library mac/win/linux
         run: |
           make download-tantivy-all
           echo $FLAGS
           mkdir -p .release
           echo $SDKROOT
-          gox -cgo -ldflags="$FLAGS" -osarch="darwin/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
+          GOOS="darwin" GOARCH="amd64" CGO_ENABLED="1" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -ldflags="$FLAGS" -o darwin-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
           export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
           echo $SDKROOT
-          gox -cgo -ldflags="$FLAGS" -osarch="darwin/arm64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
-          make protos-server
-          CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
+          GOOS="darwin" GOARCH="arm64" CGO_ENABLED="1" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -ldflags="$FLAGS" -o darwin-arm64 github.com/anyproto/anytype-heart/cmd/grpcserver
+          GOOS="windows" GOARCH="amd64" CGO_ENABLED="1" CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -ldflags="$FLAGS -linkmode external -extldflags=-static" -o windows-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
+          GOOS="linux" GOARCH="amd64" CGO_ENABLED="1" CC="x86_64-linux-musl-gcc" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -ldflags="$FLAGS -linkmode external -extldflags '-static -Wl,-z stack-size=1000000'" -o linux-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
           ls -lha .
       - name: run perf tests
         run: |
@@ -136,7 +127,7 @@ jobs:
           RUN_COUNT=${{ github.event.inputs.perf-test }}
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             RUN_COUNT=10
-          fi          
+          fi
           cd cmd/perftester/
           CGO_ENABLED="1" go run main.go $RUN_COUNT
         env:
@@ -177,15 +168,6 @@ jobs:
           cp pkg/lib/bundle/systemTypes.json ./json
           cp pkg/lib/bundle/internalRelations.json ./json
           cp pkg/lib/bundle/internalTypes.json ./json
-      - name: Upload protobuf artifact for linux build
-        uses: actions/upload-artifact@v4
-        with:
-          name: libs
-          path: |
-            protobuf
-          if-no-files-found: error
-          retention-days: 1
-        if: github.event_name == 'push'
       - name: Pack server win
         run: |
           declare -a arr=("windows-amd64")
@@ -200,6 +182,17 @@ jobs:
       - name: Pack server osx
         run: |
           declare -a arr=("darwin-amd64" "darwin-arm64")
+          for i in "${arr[@]}"
+          do
+          OSARCH=${i%.*}
+          cp ./${i}* ./grpc-server
+          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
+          mv js_${VERSION}_${OSARCH}.tar.gz .release/
+          done
+        if: github.event_name == 'push'
+      - name: Pack server unix
+        run: |
+          declare -a arr=("linux-amd64")
           for i in "${arr[@]}"
           do
           OSARCH=${i%.*}
@@ -272,130 +265,6 @@ jobs:
           GITHUB_USER: ${{ github.actor }}
           MAVEN_ARTIFACT_ID: 'anytype-heart-android'
           MAVEN_ARTIFACT_NAME: 'lib.aar'
-      - name: Release
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v1
-        with:
-          prerelease: ${{ contains(github.ref, '-rc') }}
-          fail_on_unmatched_files: true
-          files: '.release/*'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  build_linux:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Install Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.22
-      - name: Setup GO
-        run: |
-          echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
-          echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
-          echo $(go env GOPATH)/bin >> $GITHUB_PATH
-
-      - name: Setup license repositor
-        uses: actions/checkout@master
-        with:
-          repository: anyproto/open
-          ref: refs/heads/main
-          path: ./open
-
-      - name: Check licenses
-        run: |
-          cd open
-          python3 tools/generate.py --platform golang
-          cd ..
-          sudo gem install license_finder
-          license_finder inherited_decisions add open/decisions.yml
-          license_finder --enabled-package-managers gomodules
-
-      - name: Install patched gox
-        run: |
-          rm -rf $GOPATH/src/github.com/mitchellh
-          mkdir -p $GOPATH/src/github.com/mitchellh
-          cd $GOPATH/src/github.com/mitchellh
-          git clone https://github.com/aslakhellesoy/gox
-          cd gox
-          git fetch
-          git checkout db6184738b77fbd5089e5fa1112177f391c91b24
-          go install github.com/mitchellh/gox
-      - name: Apt install and node deps
-        run: |
-          sudo apt update
-          sudo apt install -y protobuf-compiler libprotoc-dev
-          curl -O https://pub-c60a000d68b544109df4fe5837762101.r2.dev/linux-compiler-musl-x86.zip
-          unzip linux-compiler-musl-x86.zip -d $HOME
-          npm i -g node-gyp
-      - name: Checkout
-        uses: actions/checkout@v3
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.go-version }}-
-      - name: Set env vars
-        env:
-          UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
-          INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
-        run: |
-          GIT_SUMMARY=$(git describe --tags --always)
-          echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
-          echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
-          echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
-          git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
-      - name: Go mod download
-        run: |
-          go mod download
-      - name: install protoc
-        run: |
-          HAS_SYSTEM_PROTOBUF=false make setup-protoc
-      - name: setup go
-        run: |
-          make setup-go
-      - name: Cross-compile library for linux amd64/arm64
-        run: |
-          make download-tantivy-all
-          echo $FLAGS
-          mkdir -p .release
-          CXX=$HOME/linux-compiler-musl-x86/bin/x86_64-linux-musl-g++ CC=$HOME/linux-compiler-musl-x86/bin/x86_64-linux-musl-gcc gox -cgo -osarch="linux/amd64" -ldflags="$FLAGS -linkmode external -extldflags=-static" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
-          make protos-server
-      - name: Make JS protos
-        run: |
-          make protos-js
-          mv dist/js/pb protobuf
-          mkdir -p protobuf/protos
-          cp pb/protos/*.proto ./protobuf/protos
-          cp pb/protos/service/*.proto ./protobuf/protos
-          cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
-      - name: Add system relations
-        run: |
-          mkdir -p json/
-          cp pkg/lib/bundle/systemRelations.json ./json
-          cp pkg/lib/bundle/systemTypes.json ./json
-          cp pkg/lib/bundle/internalRelations.json ./json
-          cp pkg/lib/bundle/internalTypes.json ./json
-      - name: Upload protobuf artifact for linux build
-        uses: actions/upload-artifact@v4
-        with:
-          name: libs
-          path: |
-            protobuf
-          if-no-files-found: error
-          retention-days: 1
-      - name: Pack server unix
-        run: |
-          declare -a arr=("linux-amd64")
-          for i in "${arr[@]}"
-          do
-          OSARCH=${i%.*}
-          cp ./${i}* ./grpc-server
-          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
-          mv js_${VERSION}_${OSARCH}.tar.gz .release/
-          done
       - name: Release
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v1

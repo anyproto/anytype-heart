@@ -531,6 +531,14 @@ func Test_handlePagePropertiesPeople(t *testing.T) {
 		Object: "",
 		ID:     "id",
 		Type:   string(property.PropertyConfigTypePeople),
+		People: []*api.User{
+			{
+				ID:     "1",
+				Name:   "Example",
+				Type:   "person",
+				Person: &api.Person{Email: "email"},
+			},
+		},
 	}
 	properties := property.Properties{"People": &peopleProperty}
 	pageTask := Task{

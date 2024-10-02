@@ -32,6 +32,11 @@ type Object interface {
 	FormatGetter
 }
 
+type PaginatedObject interface {
+	Object
+	IsEmpty() bool
+}
+
 const (
 	PropertyConfigTypeTitle       ConfigType = "title"
 	PropertyConfigTypeRichText    ConfigType = "rich_text"
@@ -100,6 +105,10 @@ type RichTextItem struct {
 	ID       string          `json:"id"`
 	Type     string          `json:"type"`
 	RichText []*api.RichText `json:"rich_text"`
+}
+
+func (rt *RichTextItem) IsEmpty() bool {
+	return len(rt.RichText) == 0
 }
 
 func (rt *RichTextItem) SetDetail(key string, details *domain.Details) {
@@ -319,6 +328,10 @@ type PeopleItem struct {
 	ID     string      `json:"id"`
 	Type   string      `json:"type"`
 	People []*api.User `json:"people"`
+}
+
+func (p *PeopleItem) IsEmpty() bool {
+	return len(p.People) == 0
 }
 
 func (p *PeopleItem) SetDetail(key string, details *domain.Details) {

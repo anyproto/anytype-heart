@@ -2401,6 +2401,53 @@ func (_c *MockObjectStore_QueryByIDAndSubscribeForChanges_Call) RunAndReturn(run
 	return _c
 }
 
+// QueryIterate provides a mock function with given fields: q, proc
+func (_m *MockObjectStore) QueryIterate(q database.Query, proc func(*types.Struct)) error {
+	ret := _m.Called(q, proc)
+
+	if len(ret) == 0 {
+		panic("no return value specified for QueryIterate")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(database.Query, func(*types.Struct)) error); ok {
+		r0 = rf(q, proc)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockObjectStore_QueryIterate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'QueryIterate'
+type MockObjectStore_QueryIterate_Call struct {
+	*mock.Call
+}
+
+// QueryIterate is a helper method to define mock.On call
+//   - q database.Query
+//   - proc func(*types.Struct)
+func (_e *MockObjectStore_Expecter) QueryIterate(q interface{}, proc interface{}) *MockObjectStore_QueryIterate_Call {
+	return &MockObjectStore_QueryIterate_Call{Call: _e.mock.On("QueryIterate", q, proc)}
+}
+
+func (_c *MockObjectStore_QueryIterate_Call) Run(run func(q database.Query, proc func(*types.Struct))) *MockObjectStore_QueryIterate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(database.Query), args[1].(func(*types.Struct)))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_QueryIterate_Call) Return(_a0 error) *MockObjectStore_QueryIterate_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_QueryIterate_Call) RunAndReturn(run func(database.Query, func(*types.Struct)) error) *MockObjectStore_QueryIterate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // QueryObjectIDs provides a mock function with given fields: q
 func (_m *MockObjectStore) QueryObjectIDs(q database.Query) ([]string, int, error) {
 	ret := _m.Called(q)

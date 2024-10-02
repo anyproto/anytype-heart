@@ -100,7 +100,7 @@ func (s *service) Init(a *app.App) (err error) {
 		ocache.WithGCPeriod(time.Minute),
 		ocache.WithTTL(time.Duration(s.conf.GCTTL)*time.Second),
 	)
-
+	s.streamPool = a.MustComponent(streampool.CName).(streampool.StreamPool)
 	err = spacesyncproto.DRPCRegisterSpaceSync(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
 	if err != nil {
 		return

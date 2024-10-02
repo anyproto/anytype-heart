@@ -192,7 +192,7 @@ func (s *Service) CreateCollection(details *domain.Details, flags []*model.Inter
 
 	tmpls := []template.StateTransformer{}
 
-	blockContent := template.MakeCollectionDataviewContent()
+	blockContent := template.MakeDataviewContent(true, nil, nil)
 	tmpls = append(tmpls,
 		template.WithDataview(blockContent, false),
 	)
