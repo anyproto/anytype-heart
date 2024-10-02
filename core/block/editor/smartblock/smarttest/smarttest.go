@@ -388,6 +388,15 @@ func (st *SmartTest) History() undo.History {
 	return st.hist
 }
 
+func (st *SmartTest) StateRebuild(d state.Doc) (err error) {
+	st.Doc = d
+	return nil
+}
+
+func (st *SmartTest) StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error {
+	return nil
+}
+
 func (st *SmartTest) AddBlock(b simple.Block) *SmartTest {
 	st.Doc.(*state.State).Add(b)
 	return st
