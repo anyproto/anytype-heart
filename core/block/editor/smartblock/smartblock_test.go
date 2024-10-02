@@ -203,7 +203,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		err = fx.store.UpdateObjectLinks(ctx, "3", []string{id})
 		require.NoError(t, err)
 
-		// fx.store.EXPECT().GetInboundLinksByID(id).Return(backLinks, nil)
+		// fx.store.EXPECT().GetInboundLinksById(id).Return(backLinks, nil)
 		st := state.NewDoc("", nil).NewState()
 
 		// when

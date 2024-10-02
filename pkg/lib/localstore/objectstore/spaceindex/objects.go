@@ -57,16 +57,16 @@ func (s *dsObjectStore) List(includeArchived bool) ([]*model.ObjectInfo, error) 
 			Value:       pbtypes.Bool(true),
 		})
 	}
-	ids, _, err := s.QueryObjectIDs(database.Query{
+	ids, _, err := s.QueryObjectIds(database.Query{
 		Filters: filters,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("query object ids: %w", err)
 	}
-	return s.GetByIDs(ids)
+	return s.GetInfosByIds(ids)
 }
 
-func (s *dsObjectStore) HasIDs(ids []string) (exists []string, err error) {
+func (s *dsObjectStore) HasIds(ids []string) (exists []string, err error) {
 	for _, id := range ids {
 		_, err := s.objects.FindId(s.componentCtx, id)
 		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
@@ -79,7 +79,7 @@ func (s *dsObjectStore) HasIDs(ids []string) (exists []string, err error) {
 	return exists, err
 }
 
-func (s *dsObjectStore) GetByIDs(ids []string) ([]*model.ObjectInfo, error) {
+func (s *dsObjectStore) GetInfosByIds(ids []string) ([]*model.ObjectInfo, error) {
 	return s.getObjectsInfo(s.componentCtx, ids)
 }
 

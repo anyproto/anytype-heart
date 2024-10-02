@@ -45,7 +45,7 @@ func (s *dsObjectStore) ListVirtualSpaces() ([]string, error) {
 }
 
 func (s *dsObjectStore) DeleteVirtualSpace(spaceID string) error {
-	ids, _, err := s.SpaceIndex(spaceID).QueryObjectIDs(database.Query{
+	ids, _, err := s.SpaceIndex(spaceID).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,

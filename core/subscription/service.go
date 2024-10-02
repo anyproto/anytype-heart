@@ -357,7 +357,7 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	if req.SpaceId == "" {
 		return nil, fmt.Errorf("spaceId is required")
 	}
-	records, err := s.objectStore.SpaceIndex(req.SpaceId).QueryByID(req.Ids)
+	records, err := s.objectStore.SpaceIndex(req.SpaceId).QueryByIds(req.Ids)
 	if err != nil {
 		return
 	}

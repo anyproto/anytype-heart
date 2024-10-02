@@ -59,7 +59,7 @@ func (s *dsObjectStore) getRelationLinksForRecommendedRelations(details *types.S
 	recommendedRelationIDs := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
 	relationLinks := make([]*model.RelationLink, 0, len(recommendedRelationIDs))
 	for _, relationID := range recommendedRelationIDs {
-		relation, err := s.GetRelationByID(relationID)
+		relation, err := s.GetRelationById(relationID)
 		if err != nil {
 			log.Errorf("failed to get relation %s: %s", relationID, err)
 		} else {

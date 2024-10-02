@@ -93,7 +93,7 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 }
 
 func (s *Service) deleteRelationOptions(spaceId string, relationKey string) error {
-	relationOptions, _, err := s.objectStore.SpaceIndex(spaceId).QueryObjectIDs(database.Query{
+	relationOptions, _, err := s.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),

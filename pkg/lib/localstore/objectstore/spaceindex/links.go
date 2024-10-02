@@ -14,7 +14,7 @@ import (
 
 const linkOutboundField = "o"
 
-func (s *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error) {
+func (s *dsObjectStore) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error) {
 	txn, err := s.links.ReadTx(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("read txn: %w", err)
@@ -65,11 +65,11 @@ func (s *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 	}, nil
 }
 
-func (s *dsObjectStore) GetOutboundLinksByID(id string) ([]string, error) {
+func (s *dsObjectStore) GetOutboundLinksById(id string) ([]string, error) {
 	return s.findOutboundLinks(s.componentCtx, id)
 }
 
-func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
+func (s *dsObjectStore) GetInboundLinksById(id string) ([]string, error) {
 	return s.findInboundLinks(s.componentCtx, id)
 }
 

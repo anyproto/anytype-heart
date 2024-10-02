@@ -24,7 +24,7 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, id string) error {
 
 func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(ids []string) error) error {
 	for {
-		ids, err := s.ListIDsFromFullTextQueue(limit)
+		ids, err := s.ListIdsFromFullTextQueue(limit)
 		if err != nil {
 			return fmt.Errorf("list ids from fulltext queue: %w", err)
 		}
@@ -35,14 +35,14 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int
 		if err != nil {
 			return fmt.Errorf("process ids: %w", err)
 		}
-		err = s.RemoveIDsFromFullTextQueue(ids)
+		err = s.RemoveIdsFromFullTextQueue(ids)
 		if err != nil {
 			return fmt.Errorf("remove ids from fulltext queue: %w", err)
 		}
 	}
 }
 
-func (s *dsObjectStore) ListIDsFromFullTextQueue(limit int) ([]string, error) {
+func (s *dsObjectStore) ListIdsFromFullTextQueue(limit int) ([]string, error) {
 	iter, err := s.fulltextQueue.Find(nil).Limit(uint(limit)).Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("create iterator: %w", err)
@@ -59,7 +59,7 @@ func (s *dsObjectStore) ListIDsFromFullTextQueue(limit int) ([]string, error) {
 	return ids, iter.Close()
 }
 
-func (s *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) error {
+func (s *dsObjectStore) RemoveIdsFromFullTextQueue(ids []string) error {
 	txn, err := s.fulltextQueue.WriteTx(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)

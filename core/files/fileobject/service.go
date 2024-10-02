@@ -363,7 +363,7 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 // CreateFromImport creates file object from imported raw IPFS file. Encryption keys for this file should exist in file store.
 func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error) {
 	// Check that fileId is not a file object id
-	recs, _, err := s.objectStore.SpaceIndex(fileId.SpaceId).QueryObjectIDs(database.Query{
+	recs, _, err := s.objectStore.SpaceIndex(fileId.SpaceId).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),

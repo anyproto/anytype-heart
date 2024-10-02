@@ -447,7 +447,7 @@ func BlockBySource(objectStore spaceindex.Store, sources []string) (*model.Block
 	// Finally, try relations
 	relations := make([]*model.RelationLink, 0, len(sources))
 	for _, relId := range sources {
-		rel, err := objectStore.GetRelationByID(relId)
+		rel, err := objectStore.GetRelationById(relId)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
 		}

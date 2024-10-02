@@ -36,13 +36,13 @@ type Store interface {
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(q database.Query) (records []database.Record, err error)
 	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
-	QueryByID(ids []string) (records []database.Record, err error)
-	QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
-	QueryObjectIDs(q database.Query) (ids []string, total int, err error)
+	QueryByIds(ids []string) (records []database.Record, err error)
+	QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
+	QueryObjectIds(q database.Query) (ids []string, total int, err error)
 	QueryIterate(q database.Query, proc func(details *types.Struct)) error
 
-	HasIDs(ids []string) (exists []string, err error)
-	GetByIDs(ids []string) ([]*model.ObjectInfo, error)
+	HasIds(ids []string) (exists []string, err error)
+	GetInfosByIds(ids []string) ([]*model.ObjectInfo, error)
 	List(includeArchived bool) ([]*model.ObjectInfo, error)
 
 	ListIds() ([]string, error)
@@ -62,9 +62,9 @@ type Store interface {
 	GetObjectByUniqueKey(uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
 	GetUniqueKeyById(id string) (key domain.UniqueKey, err error)
 
-	GetInboundLinksByID(id string) ([]string, error)
-	GetOutboundLinksByID(id string) ([]string, error)
-	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
+	GetInboundLinksById(id string) ([]string, error)
+	GetOutboundLinksById(id string) ([]string, error)
+	GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error)
 
 	SetActiveView(objectId, blockId, viewId string) error
 	SetActiveViews(objectId string, views map[string]string) error
@@ -75,7 +75,7 @@ type Store interface {
 	FetchRelationByKeys(keys ...string) (relations relationutils.Relations, err error)
 	FetchRelationByLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
 	ListAllRelations() (relations relationutils.Relations, err error)
-	GetRelationByID(id string) (relation *model.Relation, err error)
+	GetRelationById(id string) (relation *model.Relation, err error)
 	GetRelationByKey(key string) (*model.Relation, error)
 	GetRelationFormatByKey(key string) (model.RelationFormat, error)
 	ListRelationOptions(relationKey string) (options []*model.RelationOption, err error)
@@ -93,9 +93,9 @@ type SourceDetailsFromID interface {
 }
 
 type FulltextQueue interface {
-	RemoveIDsFromFullTextQueue(ids []string) error
+	RemoveIdsFromFullTextQueue(ids []string) error
 	AddToIndexQueue(ctx context.Context, id string) error
-	ListIDsFromFullTextQueue(limit int) ([]string, error)
+	ListIdsFromFullTextQueue(limit int) ([]string, error)
 }
 
 type dsObjectStore struct {

@@ -43,7 +43,7 @@ type dummyFulltextQueue struct {
 	ids  []string
 }
 
-func (q *dummyFulltextQueue) RemoveIDsFromFullTextQueue(ids []string) error {
+func (q *dummyFulltextQueue) RemoveIdsFromFullTextQueue(ids []string) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 	q.ids = lo.Without(q.ids, ids...)
@@ -59,7 +59,7 @@ func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, id string) err
 	return nil
 }
 
-func (q *dummyFulltextQueue) ListIDsFromFullTextQueue(limit int) ([]string, error) {
+func (q *dummyFulltextQueue) ListIdsFromFullTextQueue(limit int) ([]string, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 

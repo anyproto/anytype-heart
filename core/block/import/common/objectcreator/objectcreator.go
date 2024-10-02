@@ -309,7 +309,7 @@ func (oc *ObjectCreator) onFinish(err error, spaceId string, st *state.State, fi
 }
 
 func (oc *ObjectCreator) deleteFile(spaceId string, hash string) {
-	inboundLinks, err := oc.objectStore.SpaceIndex(spaceId).GetOutboundLinksByID(hash)
+	inboundLinks, err := oc.objectStore.SpaceIndex(spaceId).GetOutboundLinksById(hash)
 	if err != nil {
 		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err)
 	}

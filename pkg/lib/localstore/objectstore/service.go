@@ -55,8 +55,8 @@ type ObjectStore interface {
 
 type IndexerStore interface {
 	AddToIndexQueue(ctx context.Context, id string) error
-	ListIDsFromFullTextQueue(limit int) ([]string, error)
-	RemoveIDsFromFullTextQueue(ids []string) error
+	ListIdsFromFullTextQueue(limit int) ([]string, error)
+	RemoveIdsFromFullTextQueue(ids []string) error
 	GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error)
 
 	// GetChecksums Used to get information about localstore state and decide do we need to reindex some objects
@@ -276,7 +276,7 @@ func (s *dsObjectStore) ListIdsCrossSpace() ([]string, error) {
 
 func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) ([]database.Record, error) {
 	return collectCrossSpace(s, func(store spaceindex.Store) ([]database.Record, error) {
-		return store.QueryByID(ids)
+		return store.QueryByIds(ids)
 	})
 }
 

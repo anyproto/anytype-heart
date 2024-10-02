@@ -305,7 +305,7 @@ func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []st
 
 func (c *layoutConverter) appendRelationFilters(spaceId string, relationIDs []string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, error) {
 	for _, relationID := range relationIDs {
-		relation, err := c.objectStore.SpaceIndex(spaceId).GetRelationByID(relationID)
+		relation, err := c.objectStore.SpaceIndex(spaceId).GetRelationById(relationID)
 		if err != nil {
 			return nil, fmt.Errorf("get relation by id %s: %w", relationID, err)
 		}

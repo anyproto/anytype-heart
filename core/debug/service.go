@@ -253,7 +253,7 @@ func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []str
 	store := d.store.SpaceIndex(spaceID)
 
 	for _, objId := range objIds {
-		doc, err := store.GetWithLinksInfoByID(objId)
+		doc, err := store.GetWithLinksInfoById(objId)
 		if err != nil {
 			var err2 error
 			wr, err2 = zw.Create(fmt.Sprintf("%s.txt", objId))

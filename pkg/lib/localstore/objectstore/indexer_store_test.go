@@ -18,15 +18,15 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue(ctx, "one"))
 		require.NoError(t, s.AddToIndexQueue(ctx, "two"))
 
-		ids, err := s.ListIDsFromFullTextQueue(0)
+		ids, err := s.ListIdsFromFullTextQueue(0)
 		require.NoError(t, err)
 
 		assert.ElementsMatch(t, []string{"one", "two"}, ids)
 	})
 
 	t.Run("remove from queue", func(t *testing.T) {
-		s.RemoveIDsFromFullTextQueue([]string{"one"})
-		ids, err := s.ListIDsFromFullTextQueue(0)
+		s.RemoveIdsFromFullTextQueue([]string{"one"})
+		ids, err := s.ListIdsFromFullTextQueue(0)
 		require.NoError(t, err)
 
 		assert.ElementsMatch(t, []string{"two"}, ids)

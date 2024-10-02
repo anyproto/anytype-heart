@@ -111,7 +111,7 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 		closeSub func()
 	)
 
-	records, closeSub, err = s.objectStore.SpaceIndex(s.spaceService.TechSpaceId()).QueryByIDAndSubscribeForChanges([]string{id}, sub)
+	records, closeSub, err = s.objectStore.SpaceIndex(s.spaceService.TechSpaceId()).QueryByIdsAndSubscribeForChanges([]string{id}, sub)
 	if err != nil {
 		return err
 	}

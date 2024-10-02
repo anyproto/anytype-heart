@@ -89,7 +89,7 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, spaceId string, dep
 		}
 	}
 	if len(missIds) > 0 {
-		records, err := ds.s.objectStore.SpaceIndex(spaceId).QueryByID(missIds)
+		records, err := ds.s.objectStore.SpaceIndex(spaceId).QueryByIds(missIds)
 		if err != nil {
 			log.Errorf("can't query by id: %v", err)
 		}

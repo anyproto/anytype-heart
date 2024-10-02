@@ -502,7 +502,7 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 		return
 	}
 
-	res, err := s.objectStore.SpaceIndex(spaceID).GetWithLinksInfoByID(id)
+	res, err := s.objectStore.SpaceIndex(spaceID).GetWithLinksInfoById(id)
 	if err != nil {
 		return
 	}

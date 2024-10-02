@@ -84,10 +84,10 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		err = store.UpdateObjectLinks(ctx, "bin", trash)
 		require.NoError(t, err)
 
-		homeLinks, err := store.GetOutboundLinksByID("home")
+		homeLinks, err := store.GetOutboundLinksById("home")
 		require.Equal(t, favs, homeLinks)
 
-		archiveLinks, err := store.GetOutboundLinksByID("bin")
+		archiveLinks, err := store.GetOutboundLinksById("bin")
 		require.Equal(t, trash, archiveLinks)
 
 		checksums := fx.getLatestChecksums(true)
@@ -105,11 +105,11 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		assert.NoError(t, err)
 
 		// then
-		homeLinks, err = store.GetOutboundLinksByID("home")
+		homeLinks, err = store.GetOutboundLinksById("home")
 		assert.NoError(t, err)
 		assert.Equal(t, favs, homeLinks)
 
-		archiveLinks, err = store.GetOutboundLinksByID("bin")
+		archiveLinks, err = store.GetOutboundLinksById("bin")
 		assert.NoError(t, err)
 		assert.Equal(t, trash, archiveLinks)
 
@@ -306,10 +306,10 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		err = store.UpdateObjectLinks(ctx, "bin", trash)
 		require.NoError(t, err)
 
-		homeLinks, err := store.GetOutboundLinksByID("home")
+		homeLinks, err := store.GetOutboundLinksById("home")
 		require.Equal(t, favs, homeLinks)
 
-		archiveLinks, err := store.GetOutboundLinksByID("bin")
+		archiveLinks, err := store.GetOutboundLinksById("bin")
 		require.Equal(t, trash, archiveLinks)
 
 		space1 := mock_space.NewMockSpace(t)
@@ -321,11 +321,11 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		assert.NoError(t, err)
 
 		// then
-		homeLinks, err = store.GetOutboundLinksByID("home")
+		homeLinks, err = store.GetOutboundLinksById("home")
 		assert.NoError(t, err)
 		assert.Empty(t, homeLinks)
 
-		archiveLinks, err = store.GetOutboundLinksByID("bin")
+		archiveLinks, err = store.GetOutboundLinksById("bin")
 		assert.NoError(t, err)
 		assert.Empty(t, archiveLinks)
 
@@ -346,11 +346,11 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		err = store.UpdateObjectLinks(ctx, "obj3", obj3links)
 		require.NoError(t, err)
 
-		storedObj1links, err := store.GetOutboundLinksByID("obj1")
+		storedObj1links, err := store.GetOutboundLinksById("obj1")
 		require.Equal(t, obj1links, storedObj1links)
-		storedObj2links, err := store.GetOutboundLinksByID("obj2")
+		storedObj2links, err := store.GetOutboundLinksById("obj2")
 		require.Equal(t, obj2links, storedObj2links)
-		storedObj3links, err := store.GetOutboundLinksByID("obj3")
+		storedObj3links, err := store.GetOutboundLinksById("obj3")
 		require.Equal(t, obj3links, storedObj3links)
 
 		space1 := mock_space.NewMockSpace(t)
@@ -362,13 +362,13 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		assert.NoError(t, err)
 
 		// then
-		storedObj1links, err = store.GetOutboundLinksByID("obj1")
+		storedObj1links, err = store.GetOutboundLinksById("obj1")
 		assert.NoError(t, err)
 		assert.Empty(t, storedObj1links)
-		storedObj2links, err = store.GetOutboundLinksByID("obj2")
+		storedObj2links, err = store.GetOutboundLinksById("obj2")
 		assert.NoError(t, err)
 		assert.Empty(t, storedObj2links)
-		storedObj3links, err = store.GetOutboundLinksByID("obj3")
+		storedObj3links, err = store.GetOutboundLinksById("obj3")
 		assert.NoError(t, err)
 		assert.Empty(t, storedObj3links)
 
@@ -379,7 +379,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 }
 
 func (fx *IndexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
-	ids, _, err := fx.objectStore.SpaceIndex(spaceId).QueryObjectIDs(database.Query{
+	ids, _, err := fx.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),

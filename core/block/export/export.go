@@ -733,7 +733,7 @@ func (e *export) addNestedObjects(spaceId string, docs map[string]*types.Struct,
 }
 
 func (e *export) addNestedObject(spaceId string, id string, docs map[string]*types.Struct, nestedDocs map[string]*types.Struct) {
-	links, err := e.objectStore.SpaceIndex(spaceId).GetOutboundLinksByID(id)
+	links, err := e.objectStore.SpaceIndex(spaceId).GetOutboundLinksById(id)
 	if err != nil {
 		log.Errorf("export failed to get outbound links for id: %s", err)
 		return
@@ -748,7 +748,7 @@ func (e *export) addNestedObject(spaceId string, id string, docs map[string]*typ
 			if !validType(sbt) {
 				continue
 			}
-			rec, qErr := e.objectStore.SpaceIndex(spaceId).QueryByID([]string{link})
+			rec, qErr := e.objectStore.SpaceIndex(spaceId).QueryByIds([]string{link})
 			if qErr != nil {
 				log.Errorf("failed to query id %s, err: %s", qErr, err)
 				continue

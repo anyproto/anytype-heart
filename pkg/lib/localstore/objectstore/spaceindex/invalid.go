@@ -43,15 +43,15 @@ func (s *invalidStore) QueryRaw(f *database.Filters, limit int, offset int) (rec
 	return nil, s.err
 }
 
-func (s *invalidStore) QueryByID(ids []string) (records []database.Record, err error) {
+func (s *invalidStore) QueryByIds(ids []string) (records []database.Record, err error) {
 	return nil, s.err
 }
 
-func (s *invalidStore) QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error) {
+func (s *invalidStore) QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error) {
 	return nil, nil, s.err
 }
 
-func (s *invalidStore) QueryObjectIDs(q database.Query) (ids []string, total int, err error) {
+func (s *invalidStore) QueryObjectIds(q database.Query) (ids []string, total int, err error) {
 	return nil, 0, s.err
 }
 
@@ -59,11 +59,11 @@ func (s *invalidStore) QueryIterate(q database.Query, proc func(details *types.S
 	return s.err
 }
 
-func (s *invalidStore) HasIDs(ids []string) (exists []string, err error) {
+func (s *invalidStore) HasIds(ids []string) (exists []string, err error) {
 	return nil, s.err
 }
 
-func (s *invalidStore) GetByIDs(ids []string) ([]*model.ObjectInfo, error) {
+func (s *invalidStore) GetInfosByIds(ids []string) ([]*model.ObjectInfo, error) {
 	return nil, s.err
 }
 
@@ -115,15 +115,15 @@ func (s *invalidStore) GetUniqueKeyById(id string) (key domain.UniqueKey, err er
 	return nil, s.err
 }
 
-func (s *invalidStore) GetInboundLinksByID(id string) ([]string, error) {
+func (s *invalidStore) GetInboundLinksById(id string) ([]string, error) {
 	return nil, s.err
 }
 
-func (s *invalidStore) GetOutboundLinksByID(id string) ([]string, error) {
+func (s *invalidStore) GetOutboundLinksById(id string) ([]string, error) {
 	return nil, s.err
 }
 
-func (s *invalidStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error) {
+func (s *invalidStore) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error) {
 	return nil, s.err
 }
 
@@ -159,7 +159,7 @@ func (s *invalidStore) ListAllRelations() (relations relationutils.Relations, er
 	return nil, s.err
 }
 
-func (s *invalidStore) GetRelationByID(id string) (relation *model.Relation, err error) {
+func (s *invalidStore) GetRelationById(id string) (relation *model.Relation, err error) {
 	return nil, s.err
 }
 

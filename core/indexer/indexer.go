@@ -121,7 +121,7 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 }
 
 func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
-	ids, _, err := i.store.SpaceIndex(spaceId).QueryObjectIDs(database.Query{
+	ids, _, err := i.store.SpaceIndex(spaceId).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),

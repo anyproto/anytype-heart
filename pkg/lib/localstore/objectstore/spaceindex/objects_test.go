@@ -74,11 +74,11 @@ func Test_removeByPrefix(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, id := range objectIds {
-		links, err := s.GetInboundLinksByID(id)
+		links, err := s.GetInboundLinksById(id)
 		require.NoError(t, err)
 		require.Empty(t, links)
 
-		links, err = s.GetOutboundLinksByID(id)
+		links, err = s.GetOutboundLinksById(id)
 		require.NoError(t, err)
 		require.Empty(t, links)
 	}
@@ -146,22 +146,22 @@ func TestHasIDs(t *testing.T) {
 	})
 
 	t.Run("none found", func(t *testing.T) {
-		got, err := s.HasIDs([]string{"id4", "id5"})
+		got, err := s.HasIds([]string{"id4", "id5"})
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
 	t.Run("some found", func(t *testing.T) {
-		got, err := s.HasIDs([]string{"id2", "id3", "id4"})
+		got, err := s.HasIds([]string{"id2", "id3", "id4"})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id2", "id3"}, got)
 	})
 	t.Run("all found", func(t *testing.T) {
-		got, err := s.HasIDs([]string{"id1", "id3"})
+		got, err := s.HasIds([]string{"id1", "id3"})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id1", "id3"}, got)
 	})
 	t.Run("all found, check that input and output orders are equal by reversing arguments", func(t *testing.T) {
-		got, err := s.HasIDs([]string{"id3", "id1"})
+		got, err := s.HasIds([]string{"id3", "id1"})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id3", "id1"}, got)
 	})
@@ -178,7 +178,7 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("links of first object", func(t *testing.T) {
-		got, err := s.GetWithLinksInfoByID("id1")
+		got, err := s.GetWithLinksInfoById("id1")
 		require.NoError(t, err)
 
 		assert.Equal(t, makeDetails(obj1), got.Info.Details)
@@ -188,7 +188,7 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 	})
 
 	t.Run("links of second object", func(t *testing.T) {
-		got, err := s.GetWithLinksInfoByID("id2")
+		got, err := s.GetWithLinksInfoById("id2")
 		require.NoError(t, err)
 
 		assert.Equal(t, makeDetails(obj2), got.Info.Details)
@@ -197,7 +197,7 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 	})
 
 	t.Run("links of third object", func(t *testing.T) {
-		got, err := s.GetWithLinksInfoByID("id3")
+		got, err := s.GetWithLinksInfoById("id3")
 		require.NoError(t, err)
 
 		assert.Equal(t, makeDetails(obj3), got.Info.Details)
@@ -273,15 +273,15 @@ func TestDeleteObject(t *testing.T) {
 			}),
 		}, got)
 
-		objects, err := s.GetByIDs([]string{"id1"})
+		objects, err := s.GetInfosByIds([]string{"id1"})
 		require.NoError(t, err)
 		assert.Empty(t, objects)
 
-		outbound, err := s.GetOutboundLinksByID("id1")
+		outbound, err := s.GetOutboundLinksById("id1")
 		require.NoError(t, err)
 		assert.Empty(t, outbound)
 
-		inbound, err := s.GetInboundLinksByID("id2")
+		inbound, err := s.GetInboundLinksById("id2")
 		require.NoError(t, err)
 		assert.Empty(t, inbound)
 
@@ -289,7 +289,7 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, hash)
 
-		ids, err := s.fulltextQueue.ListIDsFromFullTextQueue(0)
+		ids, err := s.fulltextQueue.ListIdsFromFullTextQueue(0)
 		require.NoError(t, err)
 		assert.Empty(t, ids)
 	})

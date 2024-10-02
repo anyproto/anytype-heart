@@ -274,7 +274,7 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 		return nil
 	}
 	store := i.store.SpaceIndex(spaceId)
-	ids, _, err := store.QueryObjectIDs(database.Query{
+	ids, _, err := store.QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -336,7 +336,7 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 
 	if flags.bundledTemplates {
 		store := i.store.SpaceIndex(space.Id())
-		existing, _, err := store.QueryObjectIDs(database.Query{
+		existing, _, err := store.QueryObjectIds(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyType.String(),

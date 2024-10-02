@@ -447,7 +447,7 @@ func iterateOverAndFilters(fs []database.Filter) []string {
 }
 
 // TODO: objstore: no one uses total
-func (s *dsObjectStore) QueryObjectIDs(q database.Query) (ids []string, total int, err error) {
+func (s *dsObjectStore) QueryObjectIds(q database.Query) (ids []string, total int, err error) {
 	recs, err := s.performQuery(q)
 	if err != nil {
 		return nil, 0, fmt.Errorf("build query: %w", err)
@@ -459,7 +459,7 @@ func (s *dsObjectStore) QueryObjectIDs(q database.Query) (ids []string, total in
 	return ids, len(recs), nil
 }
 
-func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err error) {
+func (s *dsObjectStore) QueryByIds(ids []string) (records []database.Record, err error) {
 	for _, id := range ids {
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
@@ -489,7 +489,7 @@ func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err 
 	return
 }
 
-func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, closeFunc func(), err error) {
+func (s *dsObjectStore) QueryByIdsAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, closeFunc func(), err error) {
 	s.subManager.lock.Lock()
 	defer s.subManager.lock.Unlock()
 
@@ -498,10 +498,10 @@ func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub databa
 		return
 	}
 	sub.Subscribe(ids)
-	records, err = s.QueryByID(ids)
+	records, err = s.QueryByIds(ids)
 	if err != nil {
 		// can mean only the datastore is already closed, so we can resign and return
-		log.Errorf("QueryByIDAndSubscribeForChanges failed to query ids: %v", err)
+		log.Errorf("QueryByIdsAndSubscribeForChanges failed to query ids: %v", err)
 		return nil, nil, err
 	}
 
