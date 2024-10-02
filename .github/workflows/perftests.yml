@@ -26,6 +26,7 @@ permissions:
 name: Perf tests
 jobs:
   build:
+    timeout-minutes: 60
     runs-on: 'ARM64'
     steps:
       - name: Setup GO
