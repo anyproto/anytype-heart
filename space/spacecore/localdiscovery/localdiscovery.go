@@ -6,8 +6,6 @@ package localdiscovery
 import (
 	"context"
 	"fmt"
-	gonet "net"
-	"strings"
 	"sync"
 	"time"
 
@@ -84,7 +82,7 @@ func (l *localDiscovery) Run(ctx context.Context) (err error) {
 
 func (l *localDiscovery) Start() (err error) {
 	if !l.drpcServer.ServerStarted() {
-		l.notifyP2PPossibilityState(DiscoveryNoInterfaces)
+		l.discoveryPossibilitySetState(DiscoveryNoInterfaces)
 		return
 	}
 	l.m.Lock()
@@ -147,19 +145,29 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	l.m.Lock()
 	defer l.m.Unlock()
 	newAddrs, err := addrs.GetInterfacesAddrs()
-	if !addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) {
-		// only replace existing interface structs in case if we have a different set of addresses
-		// this optimization allows to save syscalls to get addrs for every iface, as we have a cache
-		newAddrs.Interfaces = filterMulticastInterfaces(newAddrs.Interfaces)
-		newAddrs.SortInterfacesWithPriority(interfacesSortPriority)
+	if addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) {
+		// this optimization allows to save syscalls to get addrs for every iface
+		// also we may receive a new ip address on the existing interface
+		l.discoveryPossibilitySwapState(func(currentState DiscoveryPossibility) DiscoveryPossibility {
+			if currentState != DiscoveryLocalNetworkRestricted {
+				return currentState
+			}
+			// do the check only if we are in restricted state, just in case it was disabled
+			return l.getDiscoveryPossibility(newAddrs)
+		})
+		return
 	}
 
-	l.notifyP2PPossibilityState(l.getP2PPossibility(newAddrs))
+	newAddrs.Interfaces = filterMulticastInterfaces(newAddrs.Interfaces)
+	newAddrs.SortInterfacesWithPriority(interfacesSortPriority)
+	l.discoveryPossibilitySetState(l.getDiscoveryPossibility(newAddrs))
+
 	if newAddrs.Equal(l.interfacesAddrs) && l.server != nil {
 		// we do additional check after we filter and sort multicast interfaces
 		// so this equal check is more precise
 		return
 	}
+	log.With(zap.Strings("ifaces", newAddrs.InterfaceNames())).Info("net interfaces configuration changed")
 	l.interfacesAddrs = newAddrs
 	if l.server != nil {
 		l.cancel()
@@ -167,39 +175,15 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 		l.closeWait.Wait()
 		l.closeWait = sync.WaitGroup{}
 	}
+	if len(l.interfacesAddrs.Interfaces) == 0 {
+		return nil
+	}
 	l.ctx, l.cancel = context.WithCancel(ctx)
 	if err = l.startServer(); err != nil {
 		return fmt.Errorf("starting mdns server: %w", err)
 	}
 	l.startQuerying(l.ctx)
-	return
-}
-
-func (l *localDiscovery) getAddresses() (ipv4, ipv6 []gonet.IP) {
-	for _, iface := range l.interfacesAddrs.Interfaces {
-		for _, addr := range iface.GetAddr() {
-			ip := addr.(*gonet.IPNet).IP
-			if ip.To4() != nil {
-				ipv4 = append(ipv4, ip)
-			} else {
-				ipv6 = append(ipv6, ip)
-			}
-		}
-	}
-
-	if len(ipv4) == 0 {
-		// fallback in case we have no ipv4 addresses from interfaces
-		for _, addr := range l.interfacesAddrs.Addrs {
-			ip := strings.Split(addr.String(), "/")[0]
-			ipVal := gonet.ParseIP(ip)
-			if ipVal.To4() != nil {
-				ipv4 = append(ipv4, ipVal)
-			} else {
-				ipv6 = append(ipv6, ipVal)
-			}
-		}
-		l.interfacesAddrs.SortIPsLikeInterfaces(ipv4)
-	}
+	log.Debug("mdns server started")
 	return
 }
 
@@ -249,7 +233,7 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 			Addrs:  portAddrs,
 			PeerId: entry.Instance,
 		}
-		log.Debug("discovered peer", zap.Strings("addrs", peer.Addrs), zap.String("peerId", peer.PeerId))
+		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId))
 		if l.notifier != nil {
 			l.notifier.PeerDiscovered(peer, OwnAddresses{
 				Addrs: l.ipv4,

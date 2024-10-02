@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
@@ -270,6 +271,49 @@ func (st *SmartTest) SetDetails(ctx session.Context, details []*model.Detail, sh
 	return
 }
 
+func (st *SmartTest) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+	for _, detail := range details {
+		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, detail.Key)
+	}
+	return st.SetDetails(ctx, details, showEvent)
+}
+
+func (st *SmartTest) UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+	details := st.Doc.(*state.State).CombinedDetails()
+	if details == nil || details.Fields == nil {
+		details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	newDetails, err := update(details)
+	if err != nil {
+		return err
+	}
+	st.Doc.(*state.State).SetDetails(newDetails)
+	return nil
+}
+
+func (st *SmartTest) UpdateDetailsAndLastUsed(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+	details := st.Doc.(*state.State).CombinedDetails()
+	if details == nil || details.Fields == nil {
+		details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	oldDetails := pbtypes.CopyStruct(details, true)
+
+	newDetails, err := update(details)
+	if err != nil {
+		return err
+	}
+
+	diff := pbtypes.StructDiff(oldDetails, newDetails)
+	if diff == nil || diff.Fields == nil {
+		return nil
+	}
+
+	for key := range diff.Fields {
+		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, key)
+	}
+	return nil
+}
+
 func (st *SmartTest) Init(ctx *smartblock.InitContext) (err error) {
 	if ctx.State == nil {
 		ctx.State = st.NewState()
@@ -410,4 +454,6 @@ func (st *SmartTest) Update(ctx session.Context, apply func(b simple.Block) erro
 type Results struct {
 	Events  [][]simple.EventMessage
 	Applies [][]*model.Block
+
+	LastUsedUpdates []string
 }
