@@ -2402,7 +2402,7 @@ func (_c *MockObjectStore_QueryByIDAndSubscribeForChanges_Call) RunAndReturn(run
 }
 
 // QueryIterate provides a mock function with given fields: q, proc
-func (_m *MockObjectStore) QueryIterate(q database.Query, proc func(*types.Struct)) error {
+func (_m *MockObjectStore) QueryIterate(q database.Query, proc func(*domain.GenericMap[domain.RelationKey])) error {
 	ret := _m.Called(q, proc)
 
 	if len(ret) == 0 {
@@ -2410,7 +2410,7 @@ func (_m *MockObjectStore) QueryIterate(q database.Query, proc func(*types.Struc
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(database.Query, func(*types.Struct)) error); ok {
+	if rf, ok := ret.Get(0).(func(database.Query, func(*domain.GenericMap[domain.RelationKey])) error); ok {
 		r0 = rf(q, proc)
 	} else {
 		r0 = ret.Error(0)
@@ -2426,14 +2426,14 @@ type MockObjectStore_QueryIterate_Call struct {
 
 // QueryIterate is a helper method to define mock.On call
 //   - q database.Query
-//   - proc func(*types.Struct)
+//   - proc func(*domain.GenericMap[domain.RelationKey])
 func (_e *MockObjectStore_Expecter) QueryIterate(q interface{}, proc interface{}) *MockObjectStore_QueryIterate_Call {
 	return &MockObjectStore_QueryIterate_Call{Call: _e.mock.On("QueryIterate", q, proc)}
 }
 
-func (_c *MockObjectStore_QueryIterate_Call) Run(run func(q database.Query, proc func(*types.Struct))) *MockObjectStore_QueryIterate_Call {
+func (_c *MockObjectStore_QueryIterate_Call) Run(run func(q database.Query, proc func(*domain.GenericMap[domain.RelationKey]))) *MockObjectStore_QueryIterate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(database.Query), args[1].(func(*types.Struct)))
+		run(args[0].(database.Query), args[1].(func(*domain.GenericMap[domain.RelationKey])))
 	})
 	return _c
 }
@@ -2443,7 +2443,7 @@ func (_c *MockObjectStore_QueryIterate_Call) Return(_a0 error) *MockObjectStore_
 	return _c
 }
 
-func (_c *MockObjectStore_QueryIterate_Call) RunAndReturn(run func(database.Query, func(*types.Struct)) error) *MockObjectStore_QueryIterate_Call {
+func (_c *MockObjectStore_QueryIterate_Call) RunAndReturn(run func(database.Query, func(*domain.GenericMap[domain.RelationKey])) error) *MockObjectStore_QueryIterate_Call {
 	_c.Call.Return(run)
 	return _c
 }

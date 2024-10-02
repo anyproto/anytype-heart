@@ -154,11 +154,10 @@ func Test_docsForExport(t *testing.T) {
 		smartBlockTest.Doc = doc
 
 		objectType := smarttest.New("objectType")
-		objectTypeDoc := objectType.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String("objectType"),
-				bundle.RelationKeyType.String(): pbtypes.String("objectType"),
-			}})
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String("objectType"),
+			bundle.RelationKeyType: domain.String("objectType"),
+		}))
 		objectTypeDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -199,13 +198,13 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:            domain.String("id"),
 				domain.RelationKey(relationKey): domain.String("value"),
 				bundle.RelationKeyType:          domain.String("objectType"),
-				bundle.RelationKeySpaceId:       pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:       domain.String("spaceId"),
 			},
 			{
 				bundle.RelationKeyId:          domain.String(relationKey),
 				bundle.RelationKeyRelationKey: domain.String(relationKey),
 				bundle.RelationKeyUniqueKey:   domain.String(uniqueKey.Marshal()),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:     domain.String("spaceId"),
 			},
 		})
 
@@ -230,11 +229,10 @@ func Test_docsForExport(t *testing.T) {
 		smartBlockTest.Doc = doc
 
 		objectType := smarttest.New("objectType")
-		objectTypeDoc := objectType.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String("objectType"),
-				bundle.RelationKeyType.String(): pbtypes.String("objectType"),
-			}})
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String("objectType"),
+			bundle.RelationKeyType: domain.String("objectType"),
+		}))
 		objectTypeDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -276,14 +274,14 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:            domain.String("id"),
 				domain.RelationKey(relationKey): domain.String("value"),
 				bundle.RelationKeyType:          domain.String("objectType"),
-				bundle.RelationKeySpaceId:       pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:       domain.String("spaceId"),
 			},
 			{
 				bundle.RelationKeyId:             domain.String(relationKey),
 				bundle.RelationKeyRelationKey:    domain.String(relationKey),
 				bundle.RelationKeyUniqueKey:      domain.String(uniqueKey.Marshal()),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
-				bundle.RelationKeySpaceId:        pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:        domain.String("spaceId"),
 			},
 		})
 
@@ -305,11 +303,10 @@ func Test_docsForExport(t *testing.T) {
 		smartBlockTest.Doc = doc
 
 		objectType := smarttest.New("objectType")
-		objectTypeDoc := objectType.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String("objectType"),
-				bundle.RelationKeyType.String(): pbtypes.String("objectType"),
-			}})
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String("objectType"),
+			bundle.RelationKeyType: domain.String("objectType"),
+		}))
 		objectTypeDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -353,7 +350,7 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:            domain.String("id"),
 				domain.RelationKey(relationKey): domain.String(optionId),
 				bundle.RelationKeyType:          domain.String("objectType"),
-				bundle.RelationKeySpaceId:       pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:       domain.String("spaceId"),
 			},
 			{
 				bundle.RelationKeyId:             domain.String(relationKey),
@@ -361,14 +358,14 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyUniqueKey:      domain.String(uniqueKey.Marshal()),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
 				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:        pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:        domain.String("spaceId"),
 			},
 			{
 				bundle.RelationKeyId:          domain.String(optionId),
 				bundle.RelationKeyRelationKey: domain.String(relationKey),
 				bundle.RelationKeyUniqueKey:   domain.String(optionUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:     domain.String("spaceId"),
 			},
 		})
 
@@ -390,11 +387,10 @@ func Test_docsForExport(t *testing.T) {
 		smartBlockTest.Doc = doc
 
 		objectType := smarttest.New("objectType")
-		objectTypeDoc := objectType.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String("objectType"),
-				bundle.RelationKeyType.String(): pbtypes.String("objectType"),
-			}})
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String("objectType"),
+			bundle.RelationKeyType: domain.String("objectType"),
+		}))
 		objectTypeDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -451,40 +447,40 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:            domain.String("id"),
 				domain.RelationKey(relationKey): domain.String("test"),
 				bundle.RelationKeyType:          domain.String(objectTypeKey),
-				bundle.RelationKeySpaceId:       pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:       domain.String("spaceId"),
 			},
 			{
 				bundle.RelationKeyId:          domain.String(relationKey),
 				bundle.RelationKeyRelationKey: domain.String(relationKey),
 				bundle.RelationKeyUniqueKey:   domain.String(uniqueKey.Marshal()),
 				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:     domain.String("spaceId"),
 			},
 			{
 				bundle.RelationKeyId:                   domain.String(objectTypeKey),
 				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{recommendedRelationKey}),
-				bundle.RelationKeySpaceId:              pbtypes.String("spaceId"),
-				bundle.RelationKeyType:                 pbtypes.String(objectTypeKey),
+				bundle.RelationKeySpaceId:              domain.String("spaceId"),
+				bundle.RelationKeyType:                 domain.String(objectTypeKey),
 			},
 			{
 				bundle.RelationKeyId:          domain.String(recommendedRelationKey),
 				bundle.RelationKeyRelationKey: domain.String(recommendedRelationKey),
 				bundle.RelationKeyUniqueKey:   domain.String(recommendedRelationUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:     domain.String("spaceId"),
 			},
 			{
 				bundle.RelationKeyId:               domain.String(templateId),
 				bundle.RelationKeyTargetObjectType: domain.String(objectTypeKey),
-				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
-				bundle.RelationKeyType:             pbtypes.String(templateObjectTypeId),
+				bundle.RelationKeySpaceId:          domain.String("spaceId"),
+				bundle.RelationKeyType:             domain.String(templateObjectTypeId),
 			},
 			{
 				bundle.RelationKeyId:      domain.String(linkedObjectId),
 				bundle.RelationKeyType:    domain.String(objectTypeKey),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId: domain.String("spaceId"),
 			},
 		})
 
@@ -494,11 +490,10 @@ func Test_docsForExport(t *testing.T) {
 		objectGetter := mock_cache.NewMockObjectGetter(t)
 
 		template := smarttest.New(templateId)
-		templateDoc := template.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String(templateId),
-				bundle.RelationKeyType.String(): pbtypes.String(templateObjectTypeId),
-			}})
+		templateDoc := template.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(templateId),
+			bundle.RelationKeyType: domain.String(templateObjectTypeId),
+		}))
 		templateDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -524,11 +519,10 @@ func Test_docsForExport(t *testing.T) {
 		smartBlockTest.Doc = doc
 
 		objectType := smarttest.New(objectTypeKey)
-		objectTypeDoc := objectType.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String(objectTypeKey),
-				bundle.RelationKeyType.String(): pbtypes.String(objectTypeKey),
-			}})
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeKey),
+			bundle.RelationKeyType: domain.String(objectTypeKey),
+		}))
 		objectTypeDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -539,11 +533,10 @@ func Test_docsForExport(t *testing.T) {
 		objectType.Doc = objectTypeDoc
 
 		templateObjectType := smarttest.New(objectTypeKey)
-		templateObjectTypeDoc := templateObjectType.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String(templateId),
-				bundle.RelationKeyType.String(): pbtypes.String(templateObjectTypeId),
-			}})
+		templateObjectTypeDoc := templateObjectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(templateId),
+			bundle.RelationKeyType: domain.String(templateObjectTypeId),
+		}))
 		templateObjectTypeDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -554,11 +547,10 @@ func Test_docsForExport(t *testing.T) {
 		templateObjectType.Doc = templateObjectTypeDoc
 
 		linkedObject := smarttest.New(objectTypeKey)
-		linkedObjectDoc := smartBlockTest.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String(linkedObjectId),
-				bundle.RelationKeyType.String(): pbtypes.String(objectTypeKey),
-			}})
+		linkedObjectDoc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(linkedObjectId),
+			bundle.RelationKeyType: domain.String(objectTypeKey),
+		}))
 		linkedObjectDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -604,27 +596,26 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String("id"),
-				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeyId:      domain.String("id"),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeySpaceId: domain.String("spaceId"),
 			},
 			{
-				bundle.RelationKeyId:                   pbtypes.String(objectTypeId),
-				bundle.RelationKeyUniqueKey:            pbtypes.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:               pbtypes.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeyRecommendedRelations: pbtypes.StringList([]string{addr.MissingObject}),
-				bundle.RelationKeySpaceId:              pbtypes.String("spaceId"),
+				bundle.RelationKeyId:                   domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
+				bundle.RelationKeySpaceId:              domain.String("spaceId"),
 			},
 		})
 
 		objectGetter := mock_cache.NewMockObjectGetter(t)
 
 		smartBlockTest := smarttest.New("id")
-		doc := smartBlockTest.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String("id"),
-				bundle.RelationKeyType.String(): pbtypes.String(objectTypeId),
-			}})
+		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String("id"),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
 		doc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -635,11 +626,10 @@ func Test_docsForExport(t *testing.T) {
 		smartBlockTest.Doc = doc
 
 		objectType := smarttest.New(objectTypeId)
-		objectTypeDoc := objectType.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String(objectTypeId),
-				bundle.RelationKeyType.String(): pbtypes.String(objectTypeId),
-			}})
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
 		objectTypeDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -677,32 +667,31 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String("id"),
-				bundle.RelationKeyName:    pbtypes.String("name1"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
-				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
+				bundle.RelationKeyId:      domain.String("id"),
+				bundle.RelationKeyName:    domain.String("name1"),
+				bundle.RelationKeySpaceId: domain.String("spaceId"),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
 			},
 			{
-				bundle.RelationKeyId:      pbtypes.String("id1"),
-				bundle.RelationKeyName:    pbtypes.String("name2"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
-				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
+				bundle.RelationKeyId:      domain.String("id1"),
+				bundle.RelationKeyName:    domain.String("name2"),
+				bundle.RelationKeySpaceId: domain.String("spaceId"),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
 			},
 			{
-				bundle.RelationKeyId:        pbtypes.String(objectTypeId),
-				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   pbtypes.String("spaceId"),
-				bundle.RelationKeyType:      pbtypes.String(objectTypeId),
+				bundle.RelationKeyId:        domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:   domain.String("spaceId"),
+				bundle.RelationKeyType:      domain.String(objectTypeId),
 			},
 		})
 
 		smartBlockTest := smarttest.New("id")
-		doc := smartBlockTest.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String("id"),
-				bundle.RelationKeyType.String(): pbtypes.String(objectTypeId),
-			}})
+		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String("id"),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
 		doc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -713,11 +702,10 @@ func Test_docsForExport(t *testing.T) {
 		smartBlockTest.Doc = doc
 
 		objectType := smarttest.New(objectTypeId)
-		objectTypeDoc := objectType.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String(objectTypeId),
-				bundle.RelationKeyType.String(): pbtypes.String(objectTypeId),
-			}})
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
 		objectTypeDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -761,44 +749,43 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String("id"),
-				bundle.RelationKeyName:    pbtypes.String("name1"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
-				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
-				bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_set)),
+				bundle.RelationKeyId:      domain.String("id"),
+				bundle.RelationKeyName:    domain.String("name1"),
+				bundle.RelationKeySpaceId: domain.String("spaceId"),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_set)),
 			},
 			{
-				bundle.RelationKeyId:        pbtypes.String(objectTypeId),
-				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   pbtypes.String("spaceId"),
-				bundle.RelationKeyType:      pbtypes.String(objectTypeId),
+				bundle.RelationKeyId:        domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:   domain.String("spaceId"),
+				bundle.RelationKeyType:      domain.String(objectTypeId),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String(bundle.RelationKeyTag.String()),
-				bundle.RelationKeyName:        pbtypes.String(bundle.RelationKeyTag.String()),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyTag.String()),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyUniqueKey:   pbtypes.String(bundle.RelationKeyTag.URL()),
+				bundle.RelationKeyId:          domain.String(bundle.RelationKeyTag.String()),
+				bundle.RelationKeyName:        domain.String(bundle.RelationKeyTag.String()),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyTag.String()),
+				bundle.RelationKeySpaceId:     domain.String("spaceId"),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyUniqueKey:   domain.String(bundle.RelationKeyTag.URL()),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String(relationKey),
-				bundle.RelationKeyName:        pbtypes.String(relationKey),
-				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyUniqueKey:   pbtypes.String(relationKeyUniqueKey.Marshal()),
+				bundle.RelationKeyId:          domain.String(relationKey),
+				bundle.RelationKeyName:        domain.String(relationKey),
+				bundle.RelationKeyRelationKey: domain.String(relationKey),
+				bundle.RelationKeySpaceId:     domain.String("spaceId"),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyUniqueKey:   domain.String(relationKeyUniqueKey.Marshal()),
 			},
 		})
 
 		smartBlockTest := smarttest.New("id")
-		doc := smartBlockTest.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():     pbtypes.String("id"),
-				bundle.RelationKeyType.String():   pbtypes.String(objectTypeId),
-				bundle.RelationKeyLayout.String(): pbtypes.Int64(int64(model.ObjectType_set)),
-			}})
+		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:     domain.String("id"),
+			bundle.RelationKeyType:   domain.String(objectTypeId),
+			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_set)),
+		}))
 		doc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -835,11 +822,10 @@ func Test_docsForExport(t *testing.T) {
 		smartBlockTest.Doc = doc
 
 		objectType := smarttest.New(objectTypeId)
-		objectTypeDoc := objectType.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String(objectTypeId),
-				bundle.RelationKeyType.String(): pbtypes.String(objectTypeId),
-			}})
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
 		objectTypeDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -879,28 +865,27 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String("id"),
-				bundle.RelationKeyName:    pbtypes.String("name1"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
-				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
-				bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_set)),
+				bundle.RelationKeyId:      domain.String("id"),
+				bundle.RelationKeyName:    domain.String("name1"),
+				bundle.RelationKeySpaceId: domain.String("spaceId"),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_set)),
 			},
 			{
-				bundle.RelationKeyId:        pbtypes.String(objectTypeId),
-				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   pbtypes.String("spaceId"),
-				bundle.RelationKeyType:      pbtypes.String(objectTypeId),
+				bundle.RelationKeyId:        domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:   domain.String("spaceId"),
+				bundle.RelationKeyType:      domain.String(objectTypeId),
 			},
 		})
 
 		smartBlockTest := smarttest.New("id")
-		doc := smartBlockTest.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():     pbtypes.String("id"),
-				bundle.RelationKeyType.String():   pbtypes.String(objectTypeId),
-				bundle.RelationKeyLayout.String(): pbtypes.Int64(int64(model.ObjectType_set)),
-			}})
+		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:     domain.String("id"),
+			bundle.RelationKeyType:   domain.String(objectTypeId),
+			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_set)),
+		}))
 		doc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -914,11 +899,10 @@ func Test_docsForExport(t *testing.T) {
 		smartBlockTest.Doc = doc
 
 		objectType := smarttest.New(objectTypeId)
-		objectTypeDoc := objectType.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String(objectTypeId),
-				bundle.RelationKeyType.String(): pbtypes.String(objectTypeId),
-			}})
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
 		objectTypeDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -965,18 +949,18 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String("id"),
-				bundle.RelationKeyName:    pbtypes.String("name1"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
-				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
-				bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_set)),
+				bundle.RelationKeyId:      domain.String("id"),
+				bundle.RelationKeyName:    domain.String("name1"),
+				bundle.RelationKeySpaceId: domain.String("spaceId"),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_set)),
 			},
 			{
-				bundle.RelationKeyId:        pbtypes.String(objectTypeId),
-				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   pbtypes.String("spaceId"),
-				bundle.RelationKeyType:      pbtypes.String(objectTypeId),
+				bundle.RelationKeyId:        domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:   domain.String("spaceId"),
+				bundle.RelationKeyType:      domain.String(objectTypeId),
 			},
 		})
 
@@ -1025,51 +1009,50 @@ func Test_docsForExport(t *testing.T) {
 		storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      domain.String("id"),
-				bundle.RelationKeySetOf:   pbtypes.StringList([]string{relationKey}),
+				bundle.RelationKeySetOf:   domain.StringList([]string{relationKey}),
 				bundle.RelationKeyType:    domain.String(objectTypeKey),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId: domain.String("spaceId"),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String(relationKey),
-				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
-				bundle.RelationKeyUniqueKey:   pbtypes.String(uniqueKey.Marshal()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
-				bundle.RelationKeyType:        pbtypes.String(relationObjectTypeKey),
+				bundle.RelationKeyId:          domain.String(relationKey),
+				bundle.RelationKeyRelationKey: domain.String(relationKey),
+				bundle.RelationKeyUniqueKey:   domain.String(uniqueKey.Marshal()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeySpaceId:     domain.String("spaceId"),
+				bundle.RelationKeyType:        domain.String(relationObjectTypeKey),
 			},
 			{
 				bundle.RelationKeyId:                   domain.String(objectTypeKey),
 				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{recommendedRelationKey}),
-				bundle.RelationKeySpaceId:              pbtypes.String("spaceId"),
-				bundle.RelationKeyType:                 pbtypes.String(objectTypeKey),
+				bundle.RelationKeySpaceId:              domain.String("spaceId"),
+				bundle.RelationKeyType:                 domain.String(objectTypeKey),
 			},
 			{
-				bundle.RelationKeyId:        pbtypes.String(relationObjectTypeKey),
-				bundle.RelationKeyUniqueKey: pbtypes.String(relationObjectTypeUK.Marshal()),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   pbtypes.String("spaceId"),
-				bundle.RelationKeyType:      pbtypes.String(objectTypeKey),
+				bundle.RelationKeyId:        domain.String(relationObjectTypeKey),
+				bundle.RelationKeyUniqueKey: domain.String(relationObjectTypeUK.Marshal()),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:   domain.String("spaceId"),
+				bundle.RelationKeyType:      domain.String(objectTypeKey),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String(recommendedRelationKey),
-				bundle.RelationKeyRelationKey: pbtypes.String(recommendedRelationKey),
-				bundle.RelationKeyUniqueKey:   pbtypes.String(recommendedRelationUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeyId:          domain.String(recommendedRelationKey),
+				bundle.RelationKeyRelationKey: domain.String(recommendedRelationKey),
+				bundle.RelationKeyUniqueKey:   domain.String(recommendedRelationUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeySpaceId:     domain.String("spaceId"),
 			},
 		})
 
 		objectGetter := mock_cache.NewMockObjectGetter(t)
 
 		smartBlockTest := smarttest.New("id")
-		doc := smartBlockTest.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():    pbtypes.String("id"),
-				bundle.RelationKeySetOf.String(): pbtypes.StringList([]string{relationKey}),
-				bundle.RelationKeyType.String():  pbtypes.String(objectTypeKey),
-			}})
+		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:    domain.String("id"),
+			bundle.RelationKeySetOf: domain.StringList([]string{relationKey}),
+			bundle.RelationKeyType:  domain.String(objectTypeKey),
+		}))
 		doc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -1077,11 +1060,10 @@ func Test_docsForExport(t *testing.T) {
 		smartBlockTest.Doc = doc
 
 		objectType := smarttest.New(objectTypeKey)
-		objectTypeDoc := objectType.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String(objectTypeKey),
-				bundle.RelationKeyType.String(): pbtypes.String(objectTypeKey),
-			}})
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeKey),
+			bundle.RelationKeyType: domain.String(objectTypeKey),
+		}))
 		objectTypeDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -1092,11 +1074,10 @@ func Test_docsForExport(t *testing.T) {
 		objectType.Doc = objectTypeDoc
 
 		relationObject := smarttest.New(relationKey)
-		relationObjectDoc := relationObject.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String(relationKey),
-				bundle.RelationKeyType.String(): pbtypes.String(relationObjectTypeKey),
-			}})
+		relationObjectDoc := relationObject.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(relationKey),
+			bundle.RelationKeyType: domain.String(relationObjectTypeKey),
+		}))
 		relationObjectDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -1107,11 +1088,10 @@ func Test_docsForExport(t *testing.T) {
 		relationObject.Doc = relationObjectDoc
 
 		relationObjectType := smarttest.New(relationObjectTypeKey)
-		relationObjectTypeDoc := relationObjectType.NewState().SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():   pbtypes.String(relationObjectTypeKey),
-				bundle.RelationKeyType.String(): pbtypes.String(objectTypeKey),
-			}})
+		relationObjectTypeDoc := relationObjectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(relationObjectTypeKey),
+			bundle.RelationKeyType: domain.String(objectTypeKey),
+		}))
 		relationObjectTypeDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_longtext,
@@ -1218,8 +1198,8 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 			id := fmt.Sprintf("%d", i)
 			fixture.AddObjects(t, []objectstore.TestObject{
 				{
-					bundle.RelationKeyId:      pbtypes.String(id),
-					bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+					bundle.RelationKeyId:      domain.String(id),
+					bundle.RelationKeySpaceId: domain.String("spaceId"),
 				},
 			})
 			ids = append(ids, id)
@@ -1227,7 +1207,7 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 		e := &export{objectStore: fixture}
 
 		// when
-		records, err := e.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
+		records, err := e.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId)
 
 		// then
 		assert.Nil(t, err)
@@ -1241,8 +1221,8 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 			id := fmt.Sprintf("%d", i)
 			fixture.AddObjects(t, []objectstore.TestObject{
 				{
-					bundle.RelationKeyId:      pbtypes.String(id),
-					bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+					bundle.RelationKeyId:      domain.String(id),
+					bundle.RelationKeySpaceId: domain.String("spaceId"),
 				},
 			})
 			ids = append(ids, id)
@@ -1250,7 +1230,7 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 		e := &export{objectStore: fixture}
 
 		// when
-		records, err := e.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
+		records, err := e.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId)
 
 		// then
 		assert.Nil(t, err)

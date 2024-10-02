@@ -1264,31 +1264,33 @@ func TestDsObjectStore_QueryAndProcess(t *testing.T) {
 	s := NewStoreFixture(t)
 	s.AddObjects(t, []TestObject{
 		{
-			bundle.RelationKeyId:      pbtypes.String("id1"),
-			bundle.RelationKeySpaceId: pbtypes.String(spaceId),
-			bundle.RelationKeyName:    pbtypes.String("first"),
+			bundle.RelationKeyId:      domain.String("id1"),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+			bundle.RelationKeyName:    domain.String("first"),
 		},
 		{
-			bundle.RelationKeyId:         pbtypes.String("id2"),
-			bundle.RelationKeySpaceId:    pbtypes.String(spaceId),
-			bundle.RelationKeyName:       pbtypes.String("favorite"),
-			bundle.RelationKeyIsFavorite: pbtypes.Bool(true),
+			bundle.RelationKeyId:         domain.String("id2"),
+			bundle.RelationKeySpaceId:    domain.String(spaceId),
+			bundle.RelationKeyName:       domain.String("favorite"),
+			bundle.RelationKeyIsFavorite: domain.Bool(true),
 		},
 		{
-			bundle.RelationKeyId:          pbtypes.String("id3"),
-			bundle.RelationKeySpaceId:     pbtypes.String(spaceId),
-			bundle.RelationKeyName:        pbtypes.String("hi!"),
-			bundle.RelationKeyDescription: pbtypes.String("hi!"),
+			bundle.RelationKeyId:          domain.String("id3"),
+			bundle.RelationKeySpaceId:     domain.String(spaceId),
+			bundle.RelationKeyName:        domain.String("hi!"),
+			bundle.RelationKeyDescription: domain.String("hi!"),
 		},
 	})
 
 	t.Run("counter", func(t *testing.T) {
 		var counter = 0
-		err := s.QueryIterate(database.Query{Filters: []*model.BlockContentDataviewFilter{{
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceId),
-		}}}, func(_ *types.Struct) {
+		err := s.QueryIterate(database.Query{Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeySpaceId,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(spaceId),
+			},
+		}}, func(_ *domain.Details) {
 			counter++
 		})
 
@@ -1298,13 +1300,15 @@ func TestDsObjectStore_QueryAndProcess(t *testing.T) {
 
 	t.Run("favorites collector", func(t *testing.T) {
 		favs := make([]string, 0)
-		err := s.QueryIterate(database.Query{Filters: []*model.BlockContentDataviewFilter{{
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceId),
-		}}}, func(s *types.Struct) {
-			if pbtypes.GetBool(s, bundle.RelationKeyIsFavorite.String()) {
-				favs = append(favs, pbtypes.GetString(s, bundle.RelationKeyId.String()))
+		err := s.QueryIterate(database.Query{Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeySpaceId,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(spaceId),
+			},
+		}}, func(s *domain.Details) {
+			if s.GetBool(bundle.RelationKeyIsFavorite) {
+				favs = append(favs, s.GetString(bundle.RelationKeyId))
 			}
 		})
 
@@ -1314,13 +1318,13 @@ func TestDsObjectStore_QueryAndProcess(t *testing.T) {
 
 	t.Run("name and description analyzer", func(t *testing.T) {
 		ids := make([]string, 0)
-		err := s.QueryIterate(database.Query{Filters: []*model.BlockContentDataviewFilter{{
-			RelationKey: bundle.RelationKeySpaceId.String(),
+		err := s.QueryIterate(database.Query{Filters: []database.FilterRequest{{
+			RelationKey: bundle.RelationKeySpaceId,
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceId),
-		}}}, func(s *types.Struct) {
-			if pbtypes.GetString(s, bundle.RelationKeyName.String()) == pbtypes.GetString(s, bundle.RelationKeyDescription.String()) {
-				ids = append(ids, pbtypes.GetString(s, bundle.RelationKeyId.String()))
+			Value:       domain.String(spaceId),
+		}}}, func(s *domain.Details) {
+			if s.GetString(bundle.RelationKeyName) == s.GetString(bundle.RelationKeyDescription) {
+				ids = append(ids, s.GetString(bundle.RelationKeyId))
 			}
 		})
 

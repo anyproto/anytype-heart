@@ -2864,10 +2864,9 @@ func TestState_FileRelationKeys(t *testing.T) {
 			relationLinks: pbtypes.RelationLinks{
 				{Key: bundle.RelationKeyCoverId.String()},
 			},
-			details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyCoverType.String(): pbtypes.Int64(1),
-			},
-			},
+			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyCoverType: domain.Int64(1),
+			}),
 		}
 
 		// when
@@ -2883,10 +2882,9 @@ func TestState_FileRelationKeys(t *testing.T) {
 			relationLinks: pbtypes.RelationLinks{
 				{Key: bundle.RelationKeyCoverId.String()},
 			},
-			details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyCoverType.String(): pbtypes.Int64(2),
-			},
-			},
+			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyCoverType: domain.Int64(2),
+			}),
 		}
 
 		// when
@@ -2901,10 +2899,9 @@ func TestState_FileRelationKeys(t *testing.T) {
 			relationLinks: pbtypes.RelationLinks{
 				{Key: bundle.RelationKeyCoverId.String()},
 			},
-			details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyCoverType.String(): pbtypes.Int64(3),
-			},
-			},
+			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyCoverType: domain.Int64(3),
+			}),
 		}
 
 		// when
@@ -2920,10 +2917,9 @@ func TestState_FileRelationKeys(t *testing.T) {
 				{Format: model.RelationFormat_file, Key: "fileKey1"},
 				{Key: bundle.RelationKeyCoverId.String()},
 			},
-			details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyCoverType.String(): pbtypes.Int64(4),
-			},
-			},
+			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyCoverType: domain.Int64(4),
+			}),
 		}
 
 		// when

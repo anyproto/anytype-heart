@@ -47,7 +47,7 @@ func (s *service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 		if err = ws.SetDetails(ctx, []domain.Detail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId,
-				Value: domain.String(id),
+				Value: domain.StringList([]string{id}),
 			},
 		}, false); err != nil {
 			return err
