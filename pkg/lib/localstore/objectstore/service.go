@@ -98,10 +98,10 @@ type dsObjectStore struct {
 
 	arenaPool *fastjson.ArenaPool
 
-	fts           ftsearch.FTSearch
-	subManager    *spaceindex.SubscriptionManager
-	sourceService spaceindex.SourceDetailsFromID
-	oldStore      oldstore.Service
+	fts                 ftsearch.FTSearch
+	subManager          *spaceindex.SubscriptionManager
+	sourceService       spaceindex.SourceDetailsFromID
+	oldStore            oldstore.Service
 	techSpaceIdProvider TechSpaceIdProvider
 
 	sync.Mutex
@@ -146,14 +146,22 @@ func (s *dsObjectStore) Run(ctx context.Context) error {
 	s.techSpaceId = s.techSpaceIdProvider.TechSpaceId()
 
 	dbDir := filepath.Join(s.repoPath, "objectstore")
-	_, err := os.Stat(dbDir)
+	err := ensureDirExists(dbDir)
+	if err != nil {
+		return err
+	}
+	return s.runDatabase(ctx, filepath.Join(dbDir, "objects.db"))
+}
+
+func ensureDirExists(dir string) error {
+	_, err := os.Stat(dir)
 	if errors.Is(err, os.ErrNotExist) {
-		err = os.MkdirAll(dbDir, 0700)
+		err = os.MkdirAll(dir, 0700)
 		if err != nil {
 			return fmt.Errorf("create db dir: %w", err)
 		}
 	}
-	return s.runDatabase(ctx, filepath.Join(dbDir, "objects.db"))
+	return nil
 }
 
 func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
@@ -205,22 +213,30 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 }
 
 func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
-	// TODO Check spaceId
+	if spaceId == "" {
+		return spaceindex.NewInvalidStore(errors.New("empty spaceId"))
+	}
 	s.Lock()
+	defer s.Unlock()
+
 	store, ok := s.stores[spaceId]
 	if !ok {
+		dir := filepath.Join(s.repoPath, "objectstore", spaceId)
+		err := ensureDirExists(dir)
+		if err != nil {
+			return spaceindex.NewInvalidStore(err)
+		}
 		store = spaceindex.New(s.componentCtx, spaceId, spaceindex.Deps{
 			AnyStoreConfig: s.anyStoreConfig,
 			SourceService:  s.sourceService,
 			OldStore:       s.oldStore,
 			Fts:            s.fts,
 			SubManager:     s.subManager,
-			DbPath:         filepath.Join(s.repoPath, "objectstore", fmt.Sprintf("%s.db", spaceId)),
+			DbPath:         filepath.Join(dir, "objects.db"),
 			FulltextQueue:  s,
 		})
 		s.stores[spaceId] = store
 	}
-	s.Unlock()
 	return store
 }
 

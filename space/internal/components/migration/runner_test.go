@@ -98,7 +98,7 @@ func TestRunner(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
 		space := mock_space.NewMockSpace(t)
-		space.EXPECT().Id().Return("").Maybe()
+		space.EXPECT().Id().Return("spaceId").Maybe()
 		runner := Runner{ctx: context.Background(), store: store, spc: space}
 
 		// when
