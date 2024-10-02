@@ -65,8 +65,6 @@ const (
 	filesObjects              = "filesObjects"
 )
 
-const objectIdsLimit = 900
-
 var log = logging.Logger("anytype-mw-export")
 
 type Export interface {
@@ -315,7 +313,7 @@ func (e *export) docsForExport(exportCtx *exportContext) (err error) {
 }
 
 func (e *export) getObjectsByIDs(exportCtx *exportContext, isProtobuf bool) error {
-	res, err := e.queryObjectsFromStoreByIds(exportCtx)
+	res, err := e.queryAndFilterObjectsByRelation(exportCtx, bundle.RelationKeyId.String())
 	if err != nil {
 		return err
 	}
@@ -329,40 +327,33 @@ func (e *export) getObjectsByIDs(exportCtx *exportContext, isProtobuf bool) erro
 	return e.processNotProtobuf(exportCtx)
 }
 
-func (e *export) queryObjectsFromStoreByIds(exportCtx *exportContext) ([]database.Record, error) {
-	if len(exportCtx.reqIds) > objectIdsLimit {
-		return e.queryAndFilterObjectsByIds(exportCtx)
-	}
-	return e.queryObjectsByIds(exportCtx.spaceId, exportCtx.reqIds)
-}
-
-func (e *export) queryAndFilterObjectsByIds(exportCtx *exportContext) ([]database.Record, error) {
+func (e *export) queryAndFilterObjectsByRelation(exportCtx *exportContext, relationFilter string) ([]database.Record, error) {
 	var allObjects []database.Record
 	const singleBatchCount = 50
 	for j := 0; j < len(exportCtx.reqIds); {
 		if j+singleBatchCount < len(exportCtx.reqIds) {
-			records, err := e.queryObjectsByIds(exportCtx.spaceId, exportCtx.reqIds[j:j+singleBatchCount])
+			records, err := e.queryObjectsByIds(exportCtx.spaceId, exportCtx.reqIds[j:j+singleBatchCount], relationFilter)
 			if err != nil {
 				return nil, err
 			}
 			allObjects = append(allObjects, records...)
 		} else {
-			records, err := e.queryObjectsByIds(exportCtx.spaceId, exportCtx.reqIds[j:])
+			records, err := e.queryObjectsByIds(exportCtx.spaceId, exportCtx.reqIds[j:], relationFilter)
 			if err != nil {
 				return nil, err
 			}
 			allObjects = append(allObjects, records...)
 		}
-		j = j + singleBatchCount
+		j += singleBatchCount
 	}
 	return allObjects, nil
 }
 
-func (e *export) queryObjectsByIds(spaceId string, reqIds []string) ([]database.Record, error) {
+func (e *export) queryObjectsByIds(spaceId string, reqIds []string, relationFilter string) ([]database.Record, error) {
 	return e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				RelationKey: bundle.RelationKeyId.String(),
+				RelationKey: relationFilter,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       pbtypes.StringList(reqIds),
 			},
@@ -577,20 +568,8 @@ func (e *export) getTemplatesRelationsAndTypes(
 	allTypes []string,
 	processedObjects map[string]struct{},
 ) ([]string, []string, []string, error) {
-	templates, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(allTypes),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(exportCtx.spaceId),
-			},
-		},
-	})
+
+	templates, err := e.queryAndFilterObjectsByRelation(exportCtx, bundle.RelationKeyTargetObjectType.String())
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -655,20 +634,7 @@ func (e *export) getRelationsFromStore(exportContext *exportContext, relations [
 		}
 		uniqueKeys = append(uniqueKeys, uniqueKey.Marshal())
 	}
-	storeRelations, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(uniqueKeys),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(exportContext.spaceId),
-			},
-		},
-	})
+	storeRelations, err := e.queryAndFilterObjectsByRelation(spaceId, uniqueKeys, bundle.RelationKeyUniqueKey.String())
 	if err != nil {
 		return nil, err
 	}
@@ -734,21 +700,8 @@ func (e *export) getRelationOptions(exportContext *exportContext, relationKey st
 	return relationOptionsDetails, nil
 }
 
-func (e *export) processObjectTypesAndSetOfList(exportCtx *exportContext, objectTypes, setOfList []string) error {
-	objectDetails, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyId.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(lo.Union(objectTypes, setOfList)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(exportCtx.spaceId),
-			},
-		},
-	})
+func (e *export) processObjectTypesAndSetOfList(spaceId string, objectTypes []string, allObjects map[string]*types.Struct, setOfList []string) error {
+	objectDetails, err := e.queryAndFilterObjectsByRelation(spaceId, lo.Union(objectTypes, setOfList), bundle.RelationKeyId.String())
 	if err != nil {
 		return err
 	}
@@ -793,21 +746,8 @@ func (e *export) addObjectsAndCollectRecommendedRelations(
 	return recommendedRelations, nil
 }
 
-func (e *export) addRecommendedRelations(exportCtx *exportContext, recommendedRelations []string) error {
-	relations, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyId.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(recommendedRelations),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(exportCtx.spaceId),
-			},
-		},
-	})
+func (e *export) addRecommendedRelations(spaceId string, recommendedRelations []string, allObjects map[string]*types.Struct) error {
+	relations, err := e.queryAndFilterObjectsByRelation(spaceId, recommendedRelations, bundle.RelationKeyId.String())
 	if err != nil {
 		return err
 	}

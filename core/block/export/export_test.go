@@ -1263,7 +1263,7 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 		e := &export{objectStore: fixture}
 
 		// when
-		records, err := e.queryObjectsFromStoreByIds(&exportContext{spaceId: "spaceId", reqIds: ids})
+		records, err := e.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
 
 		// then
 		assert.Nil(t, err)
@@ -1286,7 +1286,7 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 		e := &export{objectStore: fixture}
 
 		// when
-		records, err := e.queryObjectsFromStoreByIds(&exportContext{spaceId: "spaceId", reqIds: ids})
+		records, err := e.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
 
 		// then
 		assert.Nil(t, err)
