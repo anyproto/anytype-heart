@@ -28,8 +28,6 @@ import (
 
 var log = logging.Logger("anytype-mw-editor-dataview")
 
-var errSourceNotChanged = fmt.Errorf("source not changed")
-
 type Dataview interface {
 	SetSource(ctx session.Context, blockId string, source []string) (err error)
 
