@@ -24,14 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-type dbProviderStub struct {
-	db anystore.DB
-}
-
-func (d *dbProviderStub) GetStoreDb() anystore.DB {
-	return d.db
-}
-
 type accountServiceStub struct {
 	accountId string
 }
@@ -52,9 +44,12 @@ const testCreator = "accountId1"
 
 func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
-	db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "db"), nil)
+	db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "crdt.db"), nil)
 	require.NoError(t, err)
-	dbProvider := &dbProviderStub{db: db}
+	t.Cleanup(func() {
+		err := db.Close()
+		require.NoError(t, err)
+	})
 
 	accountService := &accountServiceStub{accountId: testCreator}
 
@@ -62,7 +57,7 @@ func newFixture(t *testing.T) *fixture {
 
 	sb := smarttest.New("chatId1")
 
-	object := New(sb, accountService, dbProvider, eventSender)
+	object := New(sb, accountService, eventSender, db)
 
 	fx := &fixture{
 		storeObject:        object.(*storeObject),

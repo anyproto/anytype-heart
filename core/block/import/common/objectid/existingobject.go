@@ -50,17 +50,12 @@ func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snap
 	oldAnytypeID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyOldAnytypeID.String())
 
 	// Check for imported objects
-	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
+	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
 				Value:       pbtypes.String(oldAnytypeID),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
 			},
 		},
 	})
@@ -69,17 +64,12 @@ func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snap
 	}
 
 	// Check for derived objects
-	ids, _, err = e.objectStore.QueryObjectIDs(database.Query{
+	ids, _, err = e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
 				Value:       pbtypes.String(oldAnytypeID), // Old id equals to unique key
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
 			},
 		},
 	})
@@ -92,17 +82,12 @@ func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snap
 
 func (e *existingObject) getExistingObject(spaceID string, sn *common.Snapshot) string {
 	source := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceFilePath.String())
-	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
+	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeySourceFilePath.String(),
 				Value:       pbtypes.String(source),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
 			},
 		},
 	})
@@ -115,7 +100,7 @@ func (e *existingObject) getExistingObject(spaceID string, sn *common.Snapshot) 
 func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot, spaceID string) string {
 	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
 	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
-	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
+	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -132,11 +117,6 @@ func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot, sp
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
 			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
-			},
 		},
 	})
 	if err == nil && len(ids) > 0 {
@@ -148,7 +128,7 @@ func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot, sp
 func (e *existingObject) getExistingRelation(snapshot *common.Snapshot, spaceID string) string {
 	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
 	format := pbtypes.GetFloat64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
-	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
+	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -164,11 +144,6 @@ func (e *existingObject) getExistingRelation(snapshot *common.Snapshot, spaceID 
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
 			},
 		},
 	})

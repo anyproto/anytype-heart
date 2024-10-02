@@ -16,9 +16,9 @@ type Template struct {
 	*Page
 }
 
-func (f *ObjectFactory) newTemplate(sb smartblock.SmartBlock) *Template {
+func (f *ObjectFactory) newTemplate(spaceId string, sb smartblock.SmartBlock) *Template {
 	return &Template{
-		Page: f.newPage(sb),
+		Page: f.newPage(spaceId, sb),
 	}
 }
 

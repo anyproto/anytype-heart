@@ -68,7 +68,7 @@ func SendResultsToHttp(apiKey string, events []Event) error {
 }
 
 func KillServer() error {
-	return ExecuteCommand("kill $(lsof -i :31007 -t) ; echo \"Server killed\"")
+	return ExecuteCommand("kill -9 $(lsof -i :31007 -t) ; echo \"Server killed\"")
 }
 
 func ExecuteCommand(command string) error {

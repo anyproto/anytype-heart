@@ -2,7 +2,6 @@ package spacecore
 
 import (
 	"errors"
-	"sync/atomic"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
@@ -19,8 +18,6 @@ var (
 	errUnexpectedMessage = errors.New("unexpected message")
 )
 
-var lastMsgId atomic.Uint64
-
 func NewStreamOpener() streamhandler.StreamHandler {
 	return &streamOpener{}
 }
@@ -32,7 +29,7 @@ type streamOpener struct {
 
 func (s *streamOpener) Init(a *app.App) (err error) {
 	s.spaceCore = app.MustComponent[SpaceCoreService](a).(*service)
-	s.streamPool = app.MustComponent[streampool.StreamPool](a).(streampool.StreamPool)
+	s.streamPool = app.MustComponent[streampool.StreamPool](a)
 	return nil
 }
 

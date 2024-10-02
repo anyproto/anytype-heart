@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -110,8 +111,8 @@ func TestParticipant_ModifyIdentityDetails(t *testing.T) {
 	}
 }
 
-func newStoreFixture(t *testing.T) *objectstore.StoreFixture {
-	store := objectstore.NewStoreFixture(t)
+func newStoreFixture(t *testing.T) *spaceindex.StoreFixture {
+	store := spaceindex.NewStoreFixture(t)
 
 	for _, rel := range []domain.RelationKey{
 		bundle.RelationKeyFeaturedRelations, bundle.RelationKeyIdentity, bundle.RelationKeyName,
@@ -122,7 +123,7 @@ func newStoreFixture(t *testing.T) *objectstore.StoreFixture {
 		bundle.RelationKeySpaceId, bundle.RelationKeyParticipantStatus, bundle.RelationKeyIsHiddenDiscovery,
 	} {
 		store.AddObjects(t, []objectstore.TestObject{{
-			bundle.RelationKeySpaceId:     pbtypes.String(""),
+			bundle.RelationKeySpaceId:     pbtypes.String("space1"),
 			bundle.RelationKeyUniqueKey:   pbtypes.String(rel.URL()),
 			bundle.RelationKeyId:          pbtypes.String(rel.String()),
 			bundle.RelationKeyRelationKey: pbtypes.String(rel.String()),

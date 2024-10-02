@@ -27,7 +27,7 @@ type fixture struct {
 	Service
 	a                 *app.App
 	ctrl              *gomock.Controller
-	store             *testMock.MockObjectStore
+	store             *objectstore.StoreFixture
 	sender            *mock_event.MockSender
 	events            []*pb.Event
 	collectionService *collectionServiceMock
@@ -37,7 +37,8 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	a := new(app.App)
-	testMock.RegisterMockObjectStore(ctrl, a)
+	store := objectstore.NewStoreFixture(t)
+	a.Register(store)
 	kanban := testMock.RegisterMockKanban(ctrl, a)
 	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	sbtProvider.EXPECT().Name().Return("smartBlockTypeProvider")
@@ -51,7 +52,7 @@ func newFixture(t *testing.T) *fixture {
 		Service:           New(),
 		a:                 a,
 		ctrl:              ctrl,
-		store:             a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
+		store:             store,
 		collectionService: collectionService,
 		kanban:            kanban,
 	}
@@ -65,7 +66,6 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(fx.Service)
 	a.Register(fx.sender)
 
-	fx.store.EXPECT().SubscribeForAll(gomock.Any())
 	require.NoError(t, a.Start(context.Background()))
 	return fx
 }

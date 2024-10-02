@@ -39,10 +39,6 @@ type StoreObject interface {
 	Unsubscribe() error
 }
 
-type StoreDbProvider interface {
-	GetStoreDb() anystore.DB
-}
-
 type AccountService interface {
 	AccountID() string
 }
@@ -52,23 +48,23 @@ type storeObject struct {
 	locker smartblock.Locker
 
 	accountService AccountService
-	dbProvider     StoreDbProvider
 	storeSource    source.Store
 	store          *storestate.StoreState
 	eventSender    event.Sender
 	subscription   *subscription
+	crdtDb         anystore.DB
 
 	arenaPool *fastjson.ArenaPool
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService, dbProvider StoreDbProvider, eventSender event.Sender) StoreObject {
+func New(sb smartblock.SmartBlock, accountService AccountService, eventSender event.Sender, crdtDb anystore.DB) StoreObject {
 	return &storeObject{
 		SmartBlock:     sb,
 		locker:         sb.(smartblock.Locker),
 		accountService: accountService,
-		dbProvider:     dbProvider,
 		arenaPool:      &fastjson.ArenaPool{},
 		eventSender:    eventSender,
+		crdtDb:         crdtDb,
 	}
 }
 
@@ -79,8 +75,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 	s.subscription = newSubscription(s.Id(), s.eventSender)
 
-	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.dbProvider.GetStoreDb(), ChatHandler{
-		chatId:       s.Id(),
+	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, ChatHandler{
 		subscription: s.subscription,
 	})
 	if err != nil {
@@ -165,17 +160,19 @@ func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) (
 	if err != nil {
 		return nil, fmt.Errorf("find iter: %w", err)
 	}
+	defer iter.Close()
+
 	var res []*model.ChatMessage
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
-			return nil, errors.Join(iter.Close(), err)
+			return nil, fmt.Errorf("get doc: %w", err)
 		}
 
 		message := newMessageWrapper(arena, doc.Value()).toModel()
 		res = append(res, message)
 	}
-	return res, errors.Join(iter.Close(), err)
+	return res, nil
 }
 
 func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error) {

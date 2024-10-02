@@ -1,7 +1,6 @@
 package account
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -20,11 +19,7 @@ func (s *service) MyParticipantId(spaceId string) string {
 }
 
 func (s *service) ProfileObjectId() (string, error) {
-	ids, err := s.getDerivedIds(context.Background(), s.personalSpaceId)
-	if err != nil {
-		return "", err
-	}
-	return ids.Profile, nil
+	return s.spaceService.TechSpace().AccountObjectId()
 }
 
 func (s *service) ProfileInfo() (Profile, error) {
@@ -37,7 +32,7 @@ func (s *service) ProfileInfo() (Profile, error) {
 		AccountId: s.AccountID(),
 	}
 
-	profileDetails, err := s.objectStore.GetDetails(profile.Id)
+	profileDetails, err := s.objectStore.SpaceIndex(s.personalSpaceId).GetDetails(profile.Id)
 	if err != nil {
 		return profile, err
 	}

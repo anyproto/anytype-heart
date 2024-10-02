@@ -6,11 +6,12 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) newSimpleSub(id string, keys []string, isDep bool) *simpleSub {
+func (s *service) newSimpleSub(id string, spaceId string, keys []string, isDep bool) *simpleSub {
 	sub := &simpleSub{
-		id:    id,
-		keys:  keys,
-		cache: s.cache,
+		id:      id,
+		spaceId: spaceId,
+		keys:    keys,
+		cache:   s.cache,
 	}
 	if !isDep {
 		sub.ds = s.ds
@@ -20,6 +21,7 @@ func (s *service) newSimpleSub(id string, keys []string, isDep bool) *simpleSub 
 
 type simpleSub struct {
 	id       string
+	spaceId  string
 	set      map[string]struct{}
 	keys     []string
 	forceIds []string
@@ -40,9 +42,9 @@ func (s *simpleSub) init(entries []*entry) (err error) {
 		e.SetSub(s.id, true, false)
 	}
 	if s.ds != nil {
-		s.depKeys = s.ds.depKeys(s.keys)
+		s.depKeys = s.ds.depKeys(s.spaceId, s.keys)
 		if len(s.depKeys) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, s.getActiveEntries(), s.keys, s.depKeys, nil)
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", s.spaceId, entries, s.getActiveEntries(), s.keys, s.depKeys, nil)
 		}
 	}
 	return
@@ -110,7 +112,7 @@ func (s *simpleSub) onChange(ctx *opCtx) {
 		}
 	}
 	if changed && s.depSub != nil {
-		s.ds.refillSubscription(ctx, s.depSub, s.getActiveEntries(), s.depKeys)
+		s.ds.refillSubscription(s.spaceId, ctx, s.depSub, s.getActiveEntries(), s.depKeys)
 	}
 }
 
