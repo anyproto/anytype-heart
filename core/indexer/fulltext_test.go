@@ -65,9 +65,8 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 
 	testApp.Register(objectStore.FTSearch())
 
-	indxr := &indexer{
-		spaceReindexQueue: taskmanager.NewTasksManager(1),
-	}
+	indxr := &indexer{}
+	indxr.spaceReindexQueue = taskmanager.NewTasksManager(1, indxr.taskPrioritySorter)
 
 	indexerFx := &IndexerFixture{
 		indexer:     indxr,
@@ -89,7 +88,7 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	indexerFx.ftsearch = indxr.ftsearch
 	indexerFx.pickerFx = mock_cache.NewMockObjectGetter(t)
 	indxr.picker = indexerFx.pickerFx
-	indxr.quit = make(chan struct{})
+	indxr.componentCtx, indxr.componentCancel = context.WithCancel(context.Background())
 	indxr.forceFt = make(chan struct{})
 	indxr.config = &config.Config{NetworkMode: pb.RpcAccount_LocalOnly}
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -52,6 +55,22 @@ const (
 	// ForceMarketplaceReindex forces to do reindex only for marketplace space
 	ForceMarketplaceReindex int32 = 1
 )
+
+const (
+	reindexTimeoutFirstAttempt = time.Second * 10 // next attempts will be increased by 2 times
+	taskRetrySeparator         = "#"
+)
+
+type reindexTaskId string
+
+func (t reindexTaskId) Parse() (spaceId string, try int) {
+	s := strings.Split(string(t), taskRetrySeparator)
+	if len(s) == 1 {
+		return s[0], 0
+	}
+	retry, _ := strconv.ParseInt(s[1], 10, 64)
+	return s[0], int(retry)
+}
 
 func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	checksums, err := i.store.GetChecksums(spaceID)
@@ -141,11 +160,8 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	ctx := objectcache.CacheOptsWithRemoteLoadDisabled(context.Background())
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
-	log.Warnf("reindex flags: %v", flags.String())
 
 	if flags.objects {
-		log.Warn("reindex all objects because of flags")
-
 		types := []coresb.SmartBlockType{
 			// System types first
 			coresb.SmartBlockTypeObjectType,
@@ -183,7 +199,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		// this may happen e.g. if the app got closed in the middle of object updates processing
 		// So here we reindexOutdatedObjects which compare the last indexed heads hash with the actual one
 
-		i.addToReindexQueue(space)
+		i.addToReindexQueue(i.componentCtx, space)
 	}
 
 	if flags.deletedObjects {
@@ -562,53 +578,84 @@ func (i *indexer) runReindexerQueue() {
 	go func() {
 		for {
 			select {
-			case <-i.quit:
+			case <-i.componentCtx.Done():
 			case priority := <-i.lastSpacesSubscriptionUpdateChan:
 				i.updateSpacesPriority(pbtypes.ExtractString(priority, bundle.RelationKeyTargetSpaceId.String(), true))
 			}
 		}
 	}()
-	go i.spaceReindexQueue.Run(context.Background())
+	go i.spaceReindexQueue.Run(i.componentCtx)
 }
 
-func (i *indexer) closeReindexerQueue() {
-	i.spaceReindexQueue.WaitAndClose()
-}
-
-func (i *indexer) addToReindexQueue(space clientspace.Space) {
-	log.Debug("reindexOutdatedObjects space %s added to queue", space.Id())
-
-	task := i.newReIndexTask(space)
+func (i *indexer) addToReindexQueue(ctx context.Context, space clientspace.Space) {
+	task := i.newReIndexTask(space, 0)
 	i.spaceReindexQueue.AddTask(task)
+	go func() {
+		for {
+			result, err := task.WaitResult(ctx)
+			l := log.With("hadTimeouts", task.hadTimeouts).With("spaceId", space.Id()).With("tryNumber", task.tryNumber).With("total", task.total).With("invalidated", task.invalidated).With("succeed", task.success)
+			if err != nil {
+				l.Error("reindex failed", zap.Error(err))
+				break
+			} else {
+				l = l.With("spentWorkMs", int(result.WorkTime.Milliseconds())).With("spentTotalMs", int(result.FinishTime.Sub(result.StartTime).Milliseconds()))
+				if task.invalidated-task.success > 0 {
+					l.Warn("reindex finished not fully")
+					if task.hadTimeouts {
+						// reschedule timeouted space task
+						// it will be executed after all tasks with previous tryNumber are finished
+						task = i.newReIndexTask(space, task.tryNumber+1)
+						i.spaceReindexQueue.AddTask(task)
+					} else {
+						break
+					}
+				} else {
+					if task.total > 0 {
+						l.Warn("reindex finished")
+					}
+					break
+				}
+			}
+		}
+	}()
 }
 
-func (i *indexer) newReIndexTask(space clientspace.Space) taskmanager.Task {
+func (i *indexer) newReIndexTask(space clientspace.Space, tryNumber int) *reindexTask {
+	taskId := fmt.Sprintf("%s%s%d", space.Id(), taskRetrySeparator, tryNumber)
 	return &reindexTask{
-		TaskBase: taskmanager.NewTaskBase(space.Id()),
-		space:    space,
-		store:    i.store,
-		indexer:  i,
+		TaskBase:  taskmanager.NewTaskBase(taskId),
+		space:     space,
+		store:     i.store,
+		indexer:   i,
+		tryNumber: tryNumber,
 	}
 }
 
 type reindexTask struct {
 	taskmanager.TaskBase
-	space   clientspace.Space
-	store   objectstore.ObjectStore
-	indexer *indexer
+	space       clientspace.Space
+	store       objectstore.ObjectStore
+	indexer     *indexer
+	total       int
+	invalidated int
+	success     int
+	tryNumber   int
+	hadTimeouts bool
+}
+
+func (t *reindexTask) Timeout() time.Duration {
+	return reindexTimeoutFirstAttempt * time.Duration(1<<t.tryNumber)
 }
 
 func (t *reindexTask) Run(ctx context.Context) error {
-	start := time.Now()
 	tids := t.space.StoredIds()
-	var totalIndex, successIndex int
 	var err error
+	t.total = len(tids)
 	for _, tid := range tids {
 		err = t.WaitIfPaused(ctx)
 		if err != nil {
 			return err
 		}
-		log.Debugf("reindexOutdatedObjects started for %s/%s", t.space.Id(), tid)
 		logErr := func(err error) {
 			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
 		}
@@ -637,16 +684,56 @@ func (t *reindexTask) Run(ctx context.Context) error {
 		if lastHash != "" {
 			log.With("tree", tid).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
 		}
-		totalIndex++
+		t.invalidated++
 
-		err = t.indexer.reindexDoc(ctx, t.space, tid)
+		indexTimeout, cancel := context.WithTimeout(ctx, t.Timeout())
+		err = t.indexer.reindexDoc(indexTimeout, t.space, tid)
+		cancel()
 		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				t.hadTimeouts = true
+			}
 			logErr(err)
 			continue
 		}
-		successIndex++
+		t.success++
 	}
-
-	log.Warn("reindexOutdatedObjects finished", zap.Int("total", totalIndex), zap.Int("succeed", successIndex), zap.Int("spentMs", int(time.Since(start).Milliseconds())))
 	return nil
+}
+
+// taskPrioritySorter sort taskIds
+// - first by the number of the try (0, 1, 2, ...)
+// - then by the space priority. if space priority is not set for the space, it put to the end
+func (i *indexer) taskPrioritySorter(taskIds []string) []string {
+	i.lock.Lock()
+	priority := i.spacesPriority
+	i.lock.Unlock()
+	// Sort the filtered task IDs based on retry attempts and space priority
+	sort.Slice(taskIds, func(a, b int) bool {
+		spaceA, tryA := reindexTaskId(taskIds[a]).Parse()
+		spaceB, tryB := reindexTaskId(taskIds[b]).Parse()
+
+		// First, sort by retry attempts (lower retries have higher priority)
+		if tryA != tryB {
+			return tryA < tryB
+		}
+
+		// Then, sort by the index in spacesPriority (earlier spaces have higher priority)
+		indexA := slices.Index(priority, spaceA)
+		indexB := slices.Index(priority, spaceB)
+
+		if indexA == -1 && indexB == -1 {
+			// to make it stable
+			return spaceA < spaceB
+		}
+		if indexA == -1 {
+			return false
+		}
+		if indexB == -1 {
+			return true
+		}
+
+		return indexA < indexB
+	})
+	return taskIds
 }

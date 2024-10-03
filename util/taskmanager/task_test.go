@@ -55,7 +55,11 @@ func TestTasksManager_AddTaskAndRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	qm := NewTasksManager(2) // Allow up to 2 concurrent tasks.
+	var sortedIds = []string{"task1", "task2", "task3"}
+	sorter := func(_ []string) []string {
+		return sortedIds
+	}
+	qm := NewTasksManager(2, sorter) // Allow up to 2 concurrent tasks.
 	go qm.Run(ctx)
 
 	// Create tasks.
@@ -69,7 +73,7 @@ func TestTasksManager_AddTaskAndRun(t *testing.T) {
 	qm.AddTask(task3)
 
 	// Set initial priority list.
-	qm.UpdatePriority([]string{"task1", "task2", "task3"})
+	qm.RefreshPriority()
 
 	// Wait for tasks to finish and close the manager.
 	qm.WaitAndClose()
@@ -91,7 +95,12 @@ func TestTasksManager_PriorityUpdate(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	qm := NewTasksManager(1) // Only one task can run at a time.
+	var sortedIds = []string{"task1", "task2"}
+	sorter := func(_ []string) []string {
+		return sortedIds
+	}
+
+	qm := NewTasksManager(1, sorter) // Only one task can run at a time.
 	go qm.Run(ctx)
 
 	// Create tasks.
@@ -103,11 +112,12 @@ func TestTasksManager_PriorityUpdate(t *testing.T) {
 	qm.AddTask(task2)
 
 	// Set initial priority list.
-	qm.UpdatePriority([]string{"task1", "task2"})
+	qm.RefreshPriority()
 
 	// After a short delay, update the priority to give task2 higher priority.
 	time.Sleep(30 * time.Millisecond)
-	qm.UpdatePriority([]string{"task2", "task1"})
+	sortedIds = []string{"task2", "task1"}
+	qm.RefreshPriority()
 
 	// Wait for tasks to finish and close the manager.
 	qm.WaitAndClose()
@@ -136,7 +146,11 @@ func TestTasksManager_MaxConcurrency(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	qm := NewTasksManager(2) // Allow up to 2 concurrent tasks.
+	sorter := func(_ []string) []string {
+		return []string{"task1", "task2", "task3"}
+	}
+
+	qm := NewTasksManager(2, sorter) // Allow up to 2 concurrent tasks.
 	go qm.Run(ctx)
 
 	// Create tasks.
@@ -150,7 +164,7 @@ func TestTasksManager_MaxConcurrency(t *testing.T) {
 	qm.AddTask(task3)
 
 	// Set priority list.
-	qm.UpdatePriority([]string{"task1", "task2", "task3"})
+	qm.RefreshPriority()
 
 	// Wait for tasks to finish and close the manager.
 	qm.WaitAndClose()
@@ -172,7 +186,10 @@ func TestTasksManager_AddTaskDuringExecution(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	qm := NewTasksManager(2)
+	priorityList := []string{"task1", "task2"}
+	qm := NewTasksManager(2, func(ids []string) []string {
+		return priorityList
+	})
 	go qm.Run(ctx)
 
 	// Create initial tasks.
@@ -184,14 +201,15 @@ func TestTasksManager_AddTaskDuringExecution(t *testing.T) {
 	qm.AddTask(task2)
 
 	// Set priority.
-	qm.UpdatePriority([]string{"task1", "task2"})
+	qm.RefreshPriority()
 
 	var task3 *TestTask
 	// After a short delay, add a new task with higher priority.
 	time.AfterFunc(20*time.Millisecond, func() {
 		task3 = NewTestTask("task3", 5)
 		qm.AddTask(task3)
-		qm.UpdatePriority([]string{"task3", "task1", "task2"})
+		priorityList = []string{"task3", "task1", "task2"}
+		qm.RefreshPriority()
 	})
 
 	// Wait for tasks to finish and close the manager.
@@ -223,7 +241,9 @@ func TestTasksManager_AddTaskDuringExecution(t *testing.T) {
 func TestTasksManager_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	qm := NewTasksManager(2)
+	qm := NewTasksManager(2, func(ids []string) []string {
+		return []string{"task1", "task2"}
+	})
 	go qm.Run(ctx)
 
 	// Create tasks with long iteration counts.
@@ -233,9 +253,6 @@ func TestTasksManager_ContextCancellation(t *testing.T) {
 	// Add tasks.
 	qm.AddTask(task1)
 	qm.AddTask(task2)
-
-	// Set priority.
-	qm.UpdatePriority([]string{"task1", "task2"})
 
 	// Cancel context after a short delay.
 	time.AfterFunc(50*time.Millisecond, func() {
@@ -272,7 +289,10 @@ func TestTasksManager_TaskCompletionOrder(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	qm := NewTasksManager(1)
+	priorityList := []string{"task1", "task2", "task3"}
+	qm := NewTasksManager(1, func(ids []string) []string {
+		return priorityList
+	})
 	go qm.Run(ctx)
 
 	// Create tasks with different iteration counts.
@@ -285,12 +305,10 @@ func TestTasksManager_TaskCompletionOrder(t *testing.T) {
 	qm.AddTask(task2)
 	qm.AddTask(task3)
 
-	// Set initial priority.
-	qm.UpdatePriority([]string{"task1", "task2", "task3"})
-
 	// Update priority to move task3 to the top.
 	time.AfterFunc(30*time.Millisecond, func() {
-		qm.UpdatePriority([]string{"task3", "task1", "task2"})
+		priorityList = []string{"task3", "task1", "task2"}
+		qm.RefreshPriority()
 	})
 
 	// Wait for tasks to finish and close the manager.
@@ -338,7 +356,9 @@ func TestTasksManager_AddTasksBeforeRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	qm := NewTasksManager(2) // Allow up to 2 concurrent tasks.
+	qm := NewTasksManager(2, func(ids []string) []string {
+		return []string{"task1", "task2"}
+	}) // Allow up to 2 concurrent tasks.
 
 	// Create tasks.
 	task1 := NewTestTask("task1", 5)
@@ -347,10 +367,6 @@ func TestTasksManager_AddTasksBeforeRun(t *testing.T) {
 	// Add tasks to the manager before calling Run.
 	qm.AddTask(task1)
 	qm.AddTask(task2)
-
-	// Set initial priority list before Run.
-	qm.UpdatePriority([]string{"task1", "task2"})
-
 	// Start the manager.
 	go qm.Run(ctx)
 
@@ -373,7 +389,10 @@ func TestTasksManager_PriorityChangeBeforeRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	qm := NewTasksManager(1) // Only one task can run at a time.
+	var priorityList = []string{"task1", "task2"}
+	qm := NewTasksManager(1, func(ids []string) []string {
+		return priorityList
+	}) // Only one task can run at a time.
 
 	// Create tasks.
 	task1 := NewTestTask("task1", 5)
@@ -383,8 +402,9 @@ func TestTasksManager_PriorityChangeBeforeRun(t *testing.T) {
 	qm.AddTask(task1)
 	qm.AddTask(task2)
 
+	priorityList = []string{"task2", "task1"}
 	// Set initial priority list before Run.
-	qm.UpdatePriority([]string{"task2", "task1"})
+	qm.RefreshPriority()
 
 	// Start the manager.
 	go qm.Run(ctx)
@@ -461,7 +481,9 @@ func TestTasksManager_MaxConcurrentTasks(t *testing.T) {
 	defer cancel()
 
 	maxConcurrentTasks := 2
-	qm := NewTasksManager(maxConcurrentTasks)
+	qm := NewTasksManager(maxConcurrentTasks, func(ids []string) []string {
+		return []string{"task1", "task2", "task3"}
+	})
 	maxObservedConcurrent := 0
 	runningTasks := 0
 	mu := sync.Mutex{}
@@ -484,9 +506,6 @@ func TestTasksManager_MaxConcurrentTasks(t *testing.T) {
 	qm.AddTask(task1)
 	qm.AddTask(task2)
 	qm.AddTask(task3)
-
-	// Set priority list.
-	qm.UpdatePriority([]string{"task1", "task2", "task3"})
 
 	// Start the manager.
 	go qm.Run(ctx)

@@ -73,7 +73,8 @@ type indexer struct {
 	storageService      storage.ClientStorage
 	subscriptionService subscription.Service
 
-	quit            chan struct{}
+	componentCtx    context.Context
+	componentCancel context.CancelFunc
 	ftQueueFinished chan struct{}
 	config          *config.Config
 
@@ -86,8 +87,8 @@ type indexer struct {
 	lock                             sync.Mutex
 	reindexLogFields                 []zap.Field
 	techSpaceId                      techSpaceIdGetter
-
-	spaceReindexQueue *taskmanager.TasksManager
+	spacesPriority                   []string
+	spaceReindexQueue                *taskmanager.TasksManager
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -98,15 +99,15 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.picker = app.MustComponent[cache.ObjectGetter](a)
-	i.quit = make(chan struct{})
 	i.ftQueueFinished = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	i.config = app.MustComponent[*config.Config](a)
 	i.subscriptionService = app.MustComponent[subscription.Service](a)
 	i.mb = mb.New[clientspace.Space](0)
-	i.spaceReindexQueue = taskmanager.NewTasksManager(1)
+	i.spaceReindexQueue = taskmanager.NewTasksManager(1, i.taskPrioritySorter)
 	i.techSpaceId = app.MustComponent[techSpaceIdGetter](a)
 	i.lastSpacesSubscriptionUpdateChan = make(chan []*types.Struct)
+	i.componentCtx, i.componentCancel = context.WithCancel(context.Background())
 	return
 }
 
@@ -133,8 +134,8 @@ func (i *indexer) StartFullTextIndex() (err error) {
 }
 
 func (i *indexer) Close(ctx context.Context) (err error) {
-	close(i.quit)
-	i.closeReindexerQueue()
+	i.componentCancel()
+	i.spaceReindexQueue.WaitAndClose()
 	// we need to wait for the ftQueue processing to be finished gracefully. Because we may be in the middle of badger transaction
 	<-i.ftQueueFinished
 	return nil

@@ -55,18 +55,18 @@ func (i *indexer) getSpaceIdsByPriority() []string {
 
 func (i *indexer) updateSpacesPriority(priority []string) {
 	techSpaceId := i.techSpaceId.TechSpaceId()
-
-	priority = append([]string{techSpaceId}, slices.DeleteFunc(priority, func(s string) bool {
+	i.lock.Lock()
+	i.spacesPriority = append([]string{techSpaceId}, slices.DeleteFunc(priority, func(s string) bool {
 		return s == techSpaceId
 	})...)
-	log.Warnf("update spaces priority: %v", priority)
+	i.lock.Unlock()
 
-	i.spaceReindexQueue.UpdatePriority(priority)
+	i.spaceReindexQueue.RefreshPriority()
 }
 
 func (i *indexer) subscribeToSpaces() error {
 	objectReq := subscription.SubscribeRequest{
-		SubId:             fmt.Sprintf("lastOpenedSpaces"),
+		SubId:             "lastOpenedSpaces",
 		Internal:          true,
 		NoDepSubscription: true,
 		Keys:              []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyLastOpenedDate.String(), bundle.RelationKeyLastModifiedDate.String()},
@@ -103,29 +103,19 @@ func (i *indexer) getIterator() func(id string, data struct{}) bool {
 // MUST NOT be called more than once
 func (i *indexer) ftLoopRoutine() {
 	ticker := time.NewTicker(ftIndexInterval)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		select {
-		case <-i.quit:
-			cancel()
-		case <-ctx.Done():
-		}
-	}()
 
-	log.Warnf("start ft queue processor")
-	i.runFullTextIndexer(ctx, i.getSpaceIdsByPriority())
+	i.runFullTextIndexer(i.componentCtx, i.getSpaceIdsByPriority())
 	defer close(i.ftQueueFinished)
 	var lastForceIndex time.Time
 	for {
 		select {
-		case <-ctx.Done():
+		case <-i.componentCtx.Done():
 			return
 		case <-ticker.C:
-			i.runFullTextIndexer(ctx, i.getSpaceIdsByPriority())
+			i.runFullTextIndexer(i.componentCtx, i.getSpaceIdsByPriority())
 		case <-i.forceFt:
 			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
-				i.runFullTextIndexer(ctx, i.getSpaceIdsByPriority())
+				i.runFullTextIndexer(i.componentCtx, i.getSpaceIdsByPriority())
 				lastForceIndex = time.Now()
 			}
 		}

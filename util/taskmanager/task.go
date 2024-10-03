@@ -14,16 +14,25 @@ type Task interface {
 
 type TaskBase interface {
 	ID() string
-	GetResult() (*TaskResult, bool)
+	WaitResult(ctx context.Context) (TaskResult, error)
+	GetResult() (TaskResult, bool)
 	WaitIfPaused(ctx context.Context) error
 
 	markDoneWithError(err error)
+	setStartTime(startTime time.Time)
 	resume()
 	pause()
 	isDone() bool
 }
+
+type TaskResultWithId struct {
+	Id string
+	TaskResult
+}
+
 type TaskResult struct {
 	Err        error
+	StartTime  time.Time
 	FinishTime time.Time
 	WorkTime   time.Duration
 }
@@ -32,17 +41,19 @@ type TaskResult struct {
 type taskBase struct {
 	id            string
 	pauseChan     chan struct{}
-	done          bool
+	done          chan struct{}
 	mu            sync.RWMutex
 	result        TaskResult
 	resultMu      sync.Mutex
 	totalWorkTime time.Duration
 	lastResumed   time.Time
+	startTime     time.Time
 }
 
 func NewTaskBase(id string) TaskBase {
 	return &taskBase{
 		id:        id,
+		done:      make(chan struct{}),
 		pauseChan: make(chan struct{}), // by default, the task is paused
 	}
 }
@@ -51,19 +62,35 @@ func (t *taskBase) ID() string {
 	return t.id
 }
 
-func (t *taskBase) GetResult() (*TaskResult, bool) {
-	t.resultMu.Lock()
-	defer t.resultMu.Unlock()
-	if t.done {
-		return &t.result, true
+func (t *taskBase) GetResult() (TaskResult, bool) {
+	select {
+	case <-t.done:
+		t.resultMu.Lock()
+		defer t.resultMu.Unlock()
+		return t.result, true
+	default:
+		return TaskResult{}, false
 	}
-	return &TaskResult{}, false
+}
+
+func (t *taskBase) WaitResult(ctx context.Context) (TaskResult, error) {
+	select {
+	case <-t.done:
+		t.resultMu.Lock()
+		defer t.resultMu.Unlock()
+		return t.result, nil
+	case <-ctx.Done():
+		return TaskResult{}, ctx.Err()
+	}
 }
 
 func (t *taskBase) isDone() bool {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	return t.done
+	select {
+	case <-t.done:
+		return true
+	default:
+		return false
+	}
 }
 
 func (t *taskBase) pause() {
@@ -106,21 +133,24 @@ func (t *taskBase) WaitIfPaused(ctx context.Context) error {
 }
 
 func (t *taskBase) markDoneWithError(err error) {
-	t.mu.Lock()
-	if !t.done {
-		t.done = true
-		t.mu.Unlock()
-		t.resultMu.Lock()
-		t.totalWorkTime += time.Since(t.lastResumed)
-		t.result = TaskResult{
-			Err:        err,
-			FinishTime: time.Now(),
-			WorkTime:   t.totalWorkTime,
-		}
-		t.resultMu.Unlock()
-	} else {
-		t.mu.Unlock()
+	t.resultMu.Lock()
+	defer t.resultMu.Unlock()
+	if !t.result.FinishTime.IsZero() {
+		return
 	}
+
+	close(t.done)
+	t.totalWorkTime += time.Since(t.lastResumed)
+	t.result = TaskResult{
+		Err:        err,
+		StartTime:  t.startTime,
+		FinishTime: time.Now(),
+		WorkTime:   t.totalWorkTime,
+	}
+}
+
+func (t *taskBase) setStartTime(startTime time.Time) {
+	t.startTime = startTime
 }
 
 type taskWrapper struct {
@@ -129,6 +159,7 @@ type taskWrapper struct {
 }
 
 func (t *taskWrapper) Run(ctx context.Context) {
+	t.setStartTime(time.Now())
 	err := t.Task.Run(ctx)
 	t.markDoneWithError(err)
 	t.taskFinishedCh <- t.ID()

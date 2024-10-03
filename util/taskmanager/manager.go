@@ -16,36 +16,43 @@ import (
 
 	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
+	"golang.org/x/exp/maps"
 )
 
 var log = logger.NewNamed("taskmanager")
 
-// TasksManager manages tasks based on a dynamic priority list and configurable concurrency.
-type TasksManager struct {
-	tasks            map[string]taskWrapper
-	priorityList     []string
-	priorityUpdateCh chan []string
-	taskAddCh        chan taskWrapper
-	mu               sync.Mutex
-	currentTasks     map[string]taskWrapper
-	maxConcurrent    int
-	wg               sync.WaitGroup
-	closed           chan struct{}
-	started          chan struct{}
-	taskFinishedCh   chan string
+func PrioritySorterAsIs(ids []string) []string {
+	return ids
 }
 
-func NewTasksManager(maxConcurrent int) *TasksManager {
+// TasksManager manages tasks based on a dynamic priority list and configurable concurrency.
+type TasksManager struct {
+	tasks                map[string]taskWrapper
+	prioritySorterFilter func(ids []string) []string
+	priorityList         []string
+	priorityRefreshed    chan struct{}
+	taskAddCh            chan taskWrapper
+	mu                   sync.Mutex
+	currentTasks         map[string]taskWrapper
+	maxConcurrent        int
+	wg                   sync.WaitGroup
+	closed               chan struct{}
+	started              chan struct{}
+	taskFinishedCh       chan string
+}
+
+func NewTasksManager(maxConcurrent int, prioritySorterFilter func(ids []string) []string) *TasksManager {
 	return &TasksManager{
-		tasks:            make(map[string]taskWrapper),
-		priorityList:     []string{},
-		priorityUpdateCh: make(chan []string),
-		taskAddCh:        make(chan taskWrapper),
-		currentTasks:     make(map[string]taskWrapper),
-		maxConcurrent:    maxConcurrent,
-		taskFinishedCh:   make(chan string),
-		closed:           make(chan struct{}),
-		started:          make(chan struct{}),
+		tasks:                make(map[string]taskWrapper),
+		prioritySorterFilter: prioritySorterFilter,
+		priorityList:         []string{},
+		priorityRefreshed:    make(chan struct{}),
+		taskAddCh:            make(chan taskWrapper),
+		currentTasks:         make(map[string]taskWrapper),
+		maxConcurrent:        maxConcurrent,
+		taskFinishedCh:       make(chan string),
+		closed:               make(chan struct{}),
+		started:              make(chan struct{}),
 	}
 }
 
@@ -70,6 +77,7 @@ managerStateSelect:
 		}
 		qm.wg.Add(1)
 		qm.tasks[task.ID()] = taskWrapped
+		qm.priorityList = qm.prioritySorterFilter(maps.Keys(qm.tasks))
 		qm.mu.Unlock()
 		return
 	}
@@ -78,10 +86,9 @@ managerStateSelect:
 	qm.taskAddCh <- taskWrapped
 }
 
-// UpdatePriority updates the priority list of the manager
-// as a result, some tasks may be paused or resumed
-// if existing task with specific ID not presented in the priorityList, it will be not started
-func (qm *TasksManager) UpdatePriority(priorityList []string) {
+// RefreshPriority updates the priority list of the manager
+// it should be used when prioritySorter should be re-run for the existing list, e.g. when the priority function is based on external data
+func (qm *TasksManager) RefreshPriority() {
 managerStateSelect:
 	select {
 	case <-qm.closed:
@@ -98,11 +105,12 @@ managerStateSelect:
 		default:
 
 		}
-		qm.priorityList = priorityList
+
+		qm.priorityList = qm.prioritySorterFilter(maps.Keys(qm.tasks))
 		qm.mu.Unlock()
 		return
 	}
-	qm.priorityUpdateCh <- priorityList
+	qm.priorityRefreshed <- struct{}{}
 }
 
 // WaitAndClose waits for all tasks to finish and then closes the manager.
@@ -133,14 +141,15 @@ func (qm *TasksManager) Run(ctx context.Context) {
 
 	for {
 		select {
-		case newPriorityList := <-qm.priorityUpdateCh:
+		case <-qm.priorityRefreshed:
 			qm.mu.Lock()
-			qm.priorityList = newPriorityList
+			qm.priorityList = qm.prioritySorterFilter(maps.Keys(qm.tasks))
 			qm.manageTasks()
 			qm.mu.Unlock()
 		case task := <-qm.taskAddCh:
 			qm.mu.Lock()
 			qm.tasks[task.ID()] = task
+			qm.priorityList = qm.prioritySorterFilter(maps.Keys(qm.tasks))
 			go task.Run(ctx)
 			qm.manageTasks()
 			qm.mu.Unlock()
