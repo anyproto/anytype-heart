@@ -17,7 +17,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -157,10 +156,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		return fmt.Errorf("remove old files: %w", err)
 	}
 
-	ctx := objectcache.CacheOptsWithRemoteLoadDisabled(context.Background())
 	// for all ids except home and archive setting cache timeout for reindexing
-	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
-
 	if flags.objects {
 		types := []coresb.SmartBlockType{
 			// System types first
@@ -168,13 +164,14 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			coresb.SmartBlockTypeRelation,
 			coresb.SmartBlockTypeRelationOption,
 			coresb.SmartBlockTypeFileObject,
-
+			// todo: fix participants and other static sources reindex logic
 			coresb.SmartBlockTypePage,
 			coresb.SmartBlockTypeTemplate,
 			coresb.SmartBlockTypeArchive,
 			coresb.SmartBlockTypeHome,
 			coresb.SmartBlockTypeWorkspace,
 			coresb.SmartBlockTypeSpaceView,
+			coresb.SmartBlockTypeWidget,
 			coresb.SmartBlockTypeProfilePage,
 		}
 		ids, err := i.getIdsForTypes(space, types...)
@@ -186,20 +183,16 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			return fmt.Errorf("delete last indexed head hash: %w", err)
 		}
 	} else {
-
 		if flags.fileObjects {
-			err := i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeFiles, coresb.SmartBlockTypeFileObject)
+			ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeFileObject)
 			if err != nil {
-				return fmt.Errorf("reindex file objects: %w", err)
+				return err
 			}
+			err = i.store.DeleteLastIndexedHeadHash(ids...)
 		}
 
-		// Index objects that updated, but not indexed yet
-		// we can have objects which actual state is newer than the indexed one
-		// this may happen e.g. if the app got closed in the middle of object updates processing
-		// So here we reindexOutdatedObjects which compare the last indexed heads hash with the actual one
-
-		i.addToReindexQueue(i.componentCtx, space)
+		// add the task to recheck all the stored objects indexed heads and reindex if outdated
+		i.addReindexOutdatedTask(i.componentCtx, space)
 	}
 
 	if flags.deletedObjects {
@@ -587,7 +580,8 @@ func (i *indexer) runReindexerQueue() {
 	go i.spaceReindexQueue.Run(i.componentCtx)
 }
 
-func (i *indexer) addToReindexQueue(ctx context.Context, space clientspace.Space) {
+// addReindexOutdatedTask reindex all objects in the space that have outdated head hashes
+func (i *indexer) addReindexOutdatedTask(ctx context.Context, space clientspace.Space) {
 	task := i.newReIndexTask(space, 0)
 	i.spaceReindexQueue.AddTask(task)
 	go func() {
@@ -651,6 +645,15 @@ func (t *reindexTask) Run(ctx context.Context) error {
 	tids := t.space.StoredIds()
 	var err error
 	t.total = len(tids)
+	// priorities indexing of system objects
+	priorityIds, err := t.indexer.getIdsForTypes(t.space, coresb.SmartBlockTypeObjectType, coresb.SmartBlockTypeRelation, coresb.SmartBlockTypeParticipant)
+	if err != nil {
+		log.Errorf("reindexOutdatedObjects failed to get priority ids: %s", err)
+	} else {
+		tids = append(priorityIds, slice.Difference(tids, priorityIds)...)
+	}
+
+	// todo: query lastIndexedHeadHashes for all tids
 	for _, tid := range tids {
 		err = t.WaitIfPaused(ctx)
 		if err != nil {
