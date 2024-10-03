@@ -31,13 +31,15 @@ type localDiscovery struct {
 	peerId string
 	port   int
 
-	ctx             context.Context
-	cancel          context.CancelFunc
-	closeWait       sync.WaitGroup
-	interfacesAddrs addrs.InterfacesAddrs
-	periodicCheck   periodicsync.PeriodicSync
-	drpcServer      clientserver.ClientServer
-	nodeConf        nodeconf.Configuration
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
+	queryCtx           context.Context
+	queryCtxCancel     context.CancelFunc
+	closeWait          sync.WaitGroup
+	interfacesAddrs    addrs.InterfacesAddrs
+	periodicCheck      periodicsync.PeriodicSync
+	drpcServer         clientserver.ClientServer
+	nodeConf           nodeconf.Configuration
 
 	ipv4        []string
 	ipv6        []string
@@ -67,7 +69,7 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.periodicCheck = periodicsync.NewPeriodicSync(5, 0, l.refreshInterfaces, log)
 	l.drpcServer = app.MustComponent[clientserver.ClientServer](a)
 	l.networkState = app.MustComponent[NetworkStateService](a)
-
+	l.componentCtx, l.componentCtxCancel = context.WithCancel(context.Background())
 	return
 }
 
@@ -92,7 +94,7 @@ func (l *localDiscovery) Start() (err error) {
 	}
 	l.started = true
 	l.networkState.RegisterHook(func(_ model.DeviceNetworkType) {
-		l.refreshInterfaces(l.ctx)
+		l.refreshInterfaces(l.componentCtx)
 	})
 
 	l.port = l.drpcServer.Port()
@@ -115,8 +117,8 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	}
 	l.m.Unlock()
 
+	l.componentCtxCancel()
 	l.periodicCheck.Close()
-	l.cancel()
 	if l.server != nil {
 		start := time.Now()
 		shutdownFinished := make(chan struct{})
@@ -170,7 +172,7 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	log.With(zap.Strings("ifaces", newAddrs.InterfaceNames())).Info("net interfaces configuration changed")
 	l.interfacesAddrs = newAddrs
 	if l.server != nil {
-		l.cancel()
+		l.queryCtxCancel()
 		l.server.Shutdown()
 		l.closeWait.Wait()
 		l.closeWait = sync.WaitGroup{}
@@ -178,11 +180,11 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	if len(l.interfacesAddrs.Interfaces) == 0 {
 		return nil
 	}
-	l.ctx, l.cancel = context.WithCancel(ctx)
+	l.queryCtx, l.queryCtxCancel = context.WithCancel(l.componentCtx)
 	if err = l.startServer(); err != nil {
 		return fmt.Errorf("starting mdns server: %w", err)
 	}
-	l.startQuerying(l.ctx)
+	l.startQuerying(l.queryCtx)
 	log.Debug("mdns server started")
 	return
 }
