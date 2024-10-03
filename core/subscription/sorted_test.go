@@ -12,9 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestSubscription_Add(t *testing.T) {
@@ -57,8 +55,8 @@ func TestSubscription_Remove(t *testing.T) {
 		store := objectstore.NewStoreFixture(t)
 		store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:   pbtypes.String("id7"),
-				bundle.RelationKeyName: pbtypes.String("id7"),
+				bundle.RelationKeyId:   domain.String("id7"),
+				bundle.RelationKeyName: domain.String("id7"),
 			},
 		})
 		s := service{

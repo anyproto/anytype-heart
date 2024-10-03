@@ -55,7 +55,7 @@ func (s *stubSpaceObjectStore) GetRelationFormatByKey(key domain.RelationKey) (m
 	return rel.Format, nil
 }
 
-func (s *stubSpaceObjectStore) ListRelationOptions(relationKey string) (options []*model.RelationOption, err error) {
+func (s *stubSpaceObjectStore) ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error) {
 	return nil, nil
 }
 

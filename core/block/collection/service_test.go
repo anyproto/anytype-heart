@@ -177,8 +177,8 @@ func TestSetObjectTypeToViews(t *testing.T) {
 			s := newFixture(t)
 			s.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 				{
-					bundle.RelationKeyId:        pbtypes.String(setOfValue),
-					bundle.RelationKeyUniqueKey: pbtypes.String(domain.MustUniqueKey(testCase.sbType, testCase.key).Marshal()),
+					bundle.RelationKeyId:        domain.String(setOfValue),
+					bundle.RelationKeyUniqueKey: domain.String(domain.MustUniqueKey(testCase.sbType, testCase.key).Marshal()),
 				},
 			})
 

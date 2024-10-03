@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type ownSubscriptionFixture struct {

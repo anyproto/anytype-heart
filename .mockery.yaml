@@ -39,7 +39,7 @@ packages:
           inpackage: true
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
-      Converter
+      Converter:
   github.com/anyproto/anytype-heart/core/block/import/web/parsers:
     interfaces:
       Parser:

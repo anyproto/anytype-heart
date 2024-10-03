@@ -127,21 +127,14 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		details := &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":     pbtypes.String(id),
-				"number": pbtypes.Float64(2.18281828459045),
-				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
-			},
-		}
-
-		fx.store.AddObjects(t, []spaceindex.TestObject{
-			{
-				"id":     pbtypes.String(id),
-				"number": pbtypes.Float64(2.18281828459045),
-				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
-			},
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"id":     domain.String(id),
+			"number": domain.Float64(2.18281828459045),
+			"🔥":      domain.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
 		})
+
+		err := fx.store.UpdateObjectDetails(context.Background(), id, details)
+		require.NoError(t, err)
 
 		// when
 		detailsFromStore, err := fx.getDetailsFromStore()
@@ -235,7 +228,7 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		fx := newFixture(id, t)
 
 		var hasPendingDetails bool
-		details := &types.Struct{Fields: map[string]*types.Value{}}
+		details := domain.NewDetails()
 
 		// when
 		_, result := fx.appendPendingDetails(details)
@@ -261,12 +254,10 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		got, _ := fx.appendPendingDetails(details)
 
 		// then
-		want := &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():        pbtypes.String(id),
-				bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(false),
-			},
-		}
+		want := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:        domain.String(id),
+			bundle.RelationKeyIsDeleted: domain.Bool(false),
+		})
 		assert.Equal(t, want, got)
 	})
 

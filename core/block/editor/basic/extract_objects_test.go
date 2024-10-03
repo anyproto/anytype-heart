@@ -6,7 +6,6 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -621,14 +620,14 @@ func newFixture(t *testing.T) *fixture {
 
 	objectStore.AddObjects(t, []spaceindex.TestObject{
 		{
-			bundle.RelationKeyId:                pbtypes.String("id1"),
-			bundle.RelationKeyUniqueKey:         pbtypes.String("ot-note"),
-			bundle.RelationKeyRecommendedLayout: pbtypes.Int64(int64(model.ObjectType_note)),
+			bundle.RelationKeyId:                domain.String("id1"),
+			bundle.RelationKeyUniqueKey:         domain.String("ot-note"),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(int64(model.ObjectType_note)),
 		},
 		{
-			bundle.RelationKeyId:                pbtypes.String("id2"),
-			bundle.RelationKeyUniqueKey:         pbtypes.String("ot-task"),
-			bundle.RelationKeyRecommendedLayout: pbtypes.Int64(int64(model.ObjectType_todo)),
+			bundle.RelationKeyId:                domain.String("id2"),
+			bundle.RelationKeyUniqueKey:         domain.String("ot-task"),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(int64(model.ObjectType_todo)),
 		},
 	})
 

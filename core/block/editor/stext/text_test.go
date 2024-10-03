@@ -21,9 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func newTextBlock(id, contentText string, childrenIds ...string) simple.Block {
@@ -550,8 +548,8 @@ func TestTextImpl_TurnInto(t *testing.T) {
 
 		os.AddObjects(t, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:   pbtypes.String("targetId"),
-				bundle.RelationKeyName: pbtypes.String("link name"),
+				bundle.RelationKeyId:   domain.String("targetId"),
+				bundle.RelationKeyName: domain.String("link name"),
 			},
 		})
 

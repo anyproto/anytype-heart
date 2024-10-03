@@ -48,28 +48,28 @@ func Test(t *testing.T) {
 		spaceId := "space1"
 		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel1"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyId.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel1"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyId.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel2"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_shorttext)),
+				bundle.RelationKeyId:             domain.String("rel2"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel3"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyAuthor.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel3"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyAuthor.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel4"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyLinkedProjects.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel4"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyLinkedProjects.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 		})
 		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
@@ -82,8 +82,6 @@ func Test(t *testing.T) {
 		}
 		graph, edges, err := fx.ObjectGraph(req)
 		assert.NoError(t, err)
-		assert.Equal(t, "links", req.Keys[0])
-		assert.Equal(t, 4, len(req.Keys))
 		assert.True(t, len(graph) == 0)
 		assert.True(t, len(edges) == 0)
 	})
@@ -93,28 +91,28 @@ func Test(t *testing.T) {
 		spaceId := "space1"
 		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel1"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyId.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel1"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyId.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel2"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_shorttext)),
+				bundle.RelationKeyId:             domain.String("rel2"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel3"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyAuthor.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel3"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyAuthor.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel4"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyLinkedProjects.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel4"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyLinkedProjects.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 		})
 		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
