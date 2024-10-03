@@ -107,24 +107,6 @@ func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.
 	return response(setId, err)
 }
 
-func (mw *Middleware) ObjectSetSource(cctx context.Context, req *pb.RpcObjectSetSourceRequest) *pb.RpcObjectSetSourceResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectSetSourceResponseErrorCode, err error) *pb.RpcObjectSetSourceResponse {
-		m := &pb.RpcObjectSetSourceResponse{Error: &pb.RpcObjectSetSourceResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
-	err := getService[detailservice.Service](mw).SetSource(ctx, req.ContextId, req.Source)
-	if err != nil {
-		return response(pb.RpcObjectSetSourceResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectSetSourceResponseError_NULL, nil)
-}
-
 func (mw *Middleware) ObjectSetIsFavorite(_ context.Context, req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
 	response := func(code pb.RpcObjectSetIsFavoriteResponseErrorCode, err error) *pb.RpcObjectSetIsFavoriteResponse {
 		m := &pb.RpcObjectSetIsFavoriteResponse{Error: &pb.RpcObjectSetIsFavoriteResponseError{Code: code}}

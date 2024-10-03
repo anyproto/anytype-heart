@@ -45,7 +45,6 @@ type Service interface {
 
 	SetSpaceInfo(spaceId string, details *types.Struct) error
 	SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error)
-	SetSource(ctx session.Context, objectId string, source []string) error
 
 	SetIsFavorite(objectId string, isFavorite bool) error
 	SetIsArchived(objectId string, isArchived bool) error
