@@ -3,7 +3,6 @@ package detailservice
 import (
 	"context"
 	"errors"
-	"fmt"
 	"slices"
 
 	"github.com/anyproto/any-sync/app"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -32,7 +30,7 @@ const CName = "details.service"
 var log = logger.NewNamed(CName)
 
 type Service interface {
-	cache.ObjectGetterComponent
+	app.Component
 
 	SetDetails(ctx session.Context, objectId string, details []*model.Detail) error
 	SetDetailsAndUpdateLastUsed(ctx session.Context, objectId string, details []*model.Detail) error
@@ -60,6 +58,7 @@ func New() Service {
 }
 
 type service struct {
+	objectGetter cache.ObjectGetter
 	resolver     idresolver.Resolver
 	spaceService space.Service
 	store        objectstore.ObjectStore
@@ -67,6 +66,7 @@ type service struct {
 }
 
 func (s *service) Init(a *app.App) error {
+	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	s.resolver = app.MustComponent[idresolver.Resolver](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
@@ -78,30 +78,14 @@ func (s *service) Name() string {
 	return CName
 }
 
-func (s *service) GetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
-	spaceID, err := s.resolver.ResolveSpaceID(objectID)
-	if err != nil {
-		return nil, err
-	}
-	return s.GetObjectByFullID(ctx, domain.FullID{SpaceID: spaceID, ObjectID: objectID})
-}
-
-func (s *service) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
-	spc, err := s.spaceService.Get(ctx, id.SpaceID)
-	if err != nil {
-		return nil, fmt.Errorf("get space: %w", err)
-	}
-	return spc.GetObject(ctx, id.ObjectID)
-}
-
 func (s *service) SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error) {
-	return cache.Do(s, objectId, func(b basic.DetailsSettable) error {
+	return cache.Do(s.objectGetter, objectId, func(b basic.DetailsSettable) error {
 		return b.SetDetails(ctx, details, true)
 	})
 }
 
 func (s *service) SetDetailsAndUpdateLastUsed(ctx session.Context, objectId string, details []*model.Detail) (err error) {
-	return cache.Do(s, objectId, func(b basic.DetailsSettable) error {
+	return cache.Do(s.objectGetter, objectId, func(b basic.DetailsSettable) error {
 		return b.SetDetailsAndUpdateLastUsed(ctx, details, true)
 	})
 }
@@ -134,13 +118,13 @@ func (s *service) SetDetailsList(ctx session.Context, objectIds []string, detail
 
 // ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
 func (s *service) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
-	return cache.Do(s, objectId, func(du basic.DetailsUpdatable) error {
+	return cache.Do(s.objectGetter, objectId, func(du basic.DetailsUpdatable) error {
 		return du.UpdateDetails(modifier)
 	})
 }
 
 func (s *service) ModifyDetailsAndUpdateLastUsed(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
-	return cache.Do(s, objectId, func(du basic.DetailsUpdatable) error {
+	return cache.Do(s.objectGetter, objectId, func(du basic.DetailsUpdatable) error {
 		return du.UpdateDetailsAndLastUsed(modifier)
 	})
 }

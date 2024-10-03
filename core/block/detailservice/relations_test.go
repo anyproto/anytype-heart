@@ -127,7 +127,7 @@ func TestService_ObjectTypeAddRelations(t *testing.T) {
 		fx := newFixture(t)
 		sb := smarttest.New(bundle.TypeKeyTask.URL())
 		sb.SetSpace(fx.space)
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
 			assert.Equal(t, bundle.TypeKeyTask.URL(), objectId)
 			return sb, nil
 		})
@@ -175,7 +175,7 @@ func TestService_ObjectTypeRemoveRelations(t *testing.T) {
 				bundle.RelationKeyLinkedProjects.URL(),
 			}),
 		}})
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
 			assert.Equal(t, bundle.TypeKeyTask.URL(), objectId)
 			return sb, nil
 		})
