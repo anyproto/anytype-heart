@@ -146,6 +146,7 @@ type BuiltinObjects interface {
 }
 
 type builtinObjects struct {
+	objectGetter   cache.ObjectGetter
 	detailsService detailservice.Service
 	importer       importer.Importer
 	store          objectstore.ObjectStore
@@ -160,6 +161,7 @@ func New() BuiltinObjects {
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
+	b.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	b.detailsService = app.MustComponent[detailservice.Service](a)
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
@@ -414,7 +416,7 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 
 	widgetObjectID := spc.DerivedIDs().Widgets
 
-	if err = cache.DoStateCtx(b.detailsService, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
+	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
 		for _, param := range widgetParams[useCase] {
 			objectID := param.objectID
 			if param.isObjectIDChanged {
