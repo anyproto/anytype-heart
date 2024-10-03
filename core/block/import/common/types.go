@@ -4,12 +4,14 @@ import (
 	"context"
 	"io"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -103,13 +105,31 @@ func NewStateSnapshotFromProto(sn *model.SmartBlockSnapshotBase) *StateSnapshot 
 	}
 }
 
+// Adds missing unique key for supported smartblock types
+func migrateAddMissingUniqueKey(snapshot *SnapshotModel) {
+	id := snapshot.Data.Details.GetString(bundle.RelationKeyId)
+	uk, err := domain.UnmarshalUniqueKey(id)
+	if err != nil {
+		// Maybe it's a relation option?
+		if bson.IsObjectIdHex(id) {
+			uk = domain.MustUniqueKey(coresb.SmartBlockTypeRelationOption, id)
+		} else {
+			// Means that smartblock type is not supported
+			return
+		}
+	}
+	snapshot.Data.Key = uk.InternalKey()
+}
+
 func NewSnapshotModelFromProto(sn *pb.SnapshotWithType) *SnapshotModel {
-	return &SnapshotModel{
+	res := &SnapshotModel{
 		SbType:   coresb.SmartBlockType(sn.SbType),
 		LogHeads: sn.Snapshot.LogHeads,
 		Data:     NewStateSnapshotFromProto(sn.Snapshot.Data),
 		FileKeys: sn.Snapshot.FileKeys,
 	}
+	migrateAddMissingUniqueKey(res)
+	return res
 }
 
 // Response expected response of each converter, incapsulate blocks snapshots and converting errors

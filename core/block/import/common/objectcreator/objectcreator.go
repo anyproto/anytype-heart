@@ -94,7 +94,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 	oc.setRootBlock(snapshot, newID)
 
 	oc.injectImportDetails(sn, origin)
-	st := state.NewDocFromSnapshot(newID, sn.Snapshot.ToProto(), state.WithUniqueKeyMigration(sn.Snapshot.SbType)).(*state.State)
+	st := state.NewDocFromSnapshot(newID, sn.Snapshot.ToProto()).(*state.State)
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, snapshot.Details.Get(bundle.RelationKeyLastModifiedDate))
 
 	var (

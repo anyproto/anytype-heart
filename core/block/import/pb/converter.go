@@ -465,7 +465,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot, allErrors *commo
 		oldToNewID[id] = snapshot.Id
 	}
 	for _, snapshot := range snapshots {
-		st := state.NewDocFromSnapshot("", snapshot.Snapshot.ToProto(), state.WithUniqueKeyMigration(snapshot.Snapshot.SbType))
+		st := state.NewDocFromSnapshot("", snapshot.Snapshot.ToProto())
 		err := common.UpdateLinksToObjects(st.(*state.State), oldToNewID)
 		if err != nil {
 			allErrors.Add(err)

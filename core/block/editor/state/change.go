@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
 	"golang.org/x/exp/slices"
@@ -15,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -23,13 +21,8 @@ import (
 )
 
 type snapshotOptions struct {
-	changeId           string
-	internalKey        string
-	uniqueKeyMigration *uniqueKeyMigration
-}
-
-type uniqueKeyMigration struct {
-	sbType smartblock.SmartBlockType
+	changeId    string
+	internalKey string
 }
 
 type SnapshotOption func(*snapshotOptions)
@@ -44,17 +37,6 @@ func WithChangeId(changeId string) func(*snapshotOptions) {
 func WithInternalKey(internalKey string) func(*snapshotOptions) {
 	return func(o *snapshotOptions) {
 		o.internalKey = internalKey
-	}
-}
-
-// WithUniqueKeyMigration tries to extract unique key from id of supported legacy objects.
-// For example, legacy object type has id "ot-page", so unique key will be "ot-page".
-// The full list of supported objects you can see in documentation near domain.UniqueKey
-func WithUniqueKeyMigration(sbType smartblock.SmartBlockType) func(*snapshotOptions) {
-	return func(o *snapshotOptions) {
-		o.uniqueKeyMigration = &uniqueKeyMigration{
-			sbType: sbType,
-		}
 	}
 }
 
@@ -84,9 +66,6 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 	if err := pbtypes.ValidateStruct(detailsFromSnapshot); err != nil {
 		log.Errorf("NewDocFromSnapshot details validation error: %v; details normalized", err)
 		pbtypes.NormalizeStruct(detailsFromSnapshot)
-	}
-	if sOpts.uniqueKeyMigration != nil {
-		migrateAddMissingUniqueKey(sOpts.uniqueKeyMigration.sbType, snapshot)
 	}
 
 	details := domain.NewDetailsFromProto(detailsFromSnapshot)
@@ -989,25 +968,4 @@ func migrateObjectTypeIDsToKeys(objectTypeIDs []string) []domain.TypeKey {
 		objectTypeKeys = append(objectTypeKeys, key)
 	}
 	return objectTypeKeys
-}
-
-// Adds missing unique key for supported smartblock types
-func migrateAddMissingUniqueKey(sbType smartblock.SmartBlockType, snapshot *pb.ChangeSnapshot) {
-	id := pbtypes.GetString(snapshot.Data.Details, bundle.RelationKeyId.String())
-	uk, err := domain.UnmarshalUniqueKey(id)
-	if err != nil {
-		// Maybe it's a relation option?
-		if bson.IsObjectIdHex(id) {
-			uk = domain.MustUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
-		} else {
-			// Means that smartblock type is not supported
-			return
-		}
-	}
-	if uk.SmartblockType() != sbType {
-		log.Errorf("missingKeyMigration: wrong sbtype %s != %s", uk.SmartblockType(), sbType)
-		return
-	}
-
-	snapshot.Data.Key = uk.InternalKey()
 }
