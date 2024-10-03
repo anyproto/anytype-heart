@@ -323,11 +323,11 @@ func (oc *ObjectCreator) deleteFile(spaceId string, hash string) {
 func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	// hand-pick relation because space is a special case
 	var details []domain.Detail
-	spaceDashBoardID := st.CombinedDetails().GetString(bundle.RelationKeySpaceDashboardId)
-	if spaceDashBoardID != "" {
+	ids := st.CombinedDetails().GetStringList(bundle.RelationKeySpaceDashboardId)
+	if len(ids) > 0 {
 		details = append(details, domain.Detail{
 			Key:   bundle.RelationKeySpaceDashboardId,
-			Value: domain.String(spaceDashBoardID),
+			Value: domain.StringList(ids),
 		})
 	}
 

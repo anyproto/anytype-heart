@@ -397,7 +397,7 @@ func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id stri
 		[]domain.Detail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId,
-				Value: domain.String(id),
+				Value: domain.StringList([]string{id}),
 			},
 		},
 	); err != nil {

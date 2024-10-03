@@ -1000,7 +1000,10 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 		return err
 	}
 	err = cache.Do(e.picker, spc.DerivedIDs().Workspace, func(b sb.SmartBlock) error {
-		spaceDashBoardID = b.CombinedDetails().GetString(bundle.RelationKeySpaceDashboardId)
+		ids := b.CombinedDetails().GetStringList(bundle.RelationKeySpaceDashboardId)
+		if len(ids) > 0 {
+			spaceDashBoardID = ids[0]
+		}
 		return nil
 	})
 	if err != nil {
