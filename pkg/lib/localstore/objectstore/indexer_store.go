@@ -47,7 +47,6 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, spaceIdsP
 	for _, spaceId := range spaceIdsPriority {
 		for {
 			if limit <= 0 {
-				log.Warnf("fulltext queue for space %s is not empty, but limit is reached", spaceId)
 				return nil
 			}
 			ids, err := s.ListIDsFromFullTextQueue(spaceId, limit)
@@ -68,7 +67,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, spaceIdsP
 				return fmt.Errorf("remove ids from fulltext queue: %w", err)
 			}
 			if len(ids) < limit {
-				log.Warnf("fulltext queue for space %s is fully proceed; less than limit(%d)", spaceId, len(ids))
+				log.Infof("fulltext queue for space %s is fully proceed; less than limit(%d)", spaceId, len(ids))
 				break
 			}
 			limit -= len(ids)

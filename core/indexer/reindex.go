@@ -184,22 +184,6 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		// So here we reindexOutdatedObjects which compare the last indexed heads hash with the actual one
 
 		i.addToReindexQueue(space)
-		/*go func() {
-			start := time.Now()
-			total, success, err := i.reindexOutdatedObjects(ctx, space)
-			if err != nil {
-				log.Errorf("reindex outdated failed: %s", err)
-			}
-			l := log.With(zap.String("space", space.Id()), zap.Int("total", total), zap.Int("succeed", success), zap.Int("spentMs", int(time.Since(start).Milliseconds())))
-			if success != total {
-				l.Errorf("reindex outdated partially failed")
-			} else {
-				l.Debugf("reindex outdated finished")
-			}
-			if total > 0 {
-				i.logFinishedReindexStat(metrics.ReindexTypeOutdatedHeads, total, success, time.Since(start))
-			}
-		}()*/
 	}
 
 	if flags.deletedObjects {
