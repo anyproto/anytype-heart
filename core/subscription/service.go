@@ -304,6 +304,11 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 		f.FilterObj = database.FiltersAnd{f.FilterObj, sourceFilter}
 	}
 
+	entries, err := queryEntries(s.objectStore, f)
+	if err != nil {
+		return nil, err
+	}
+
 	s.m.Lock()
 	defer s.m.Unlock()
 
@@ -322,10 +327,10 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 	if req.CollectionId != "" {
 		return s.subscribeForCollection(req, f, filterDepIds)
 	}
-	return s.subscribeForQuery(req, f, filterDepIds)
+	return s.subscribeForQuery(req, f, entries, filterDepIds)
 }
 
-func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database.Filters, filterDepIds []string) (*SubscribeResponse, error) {
+func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database.Filters, entries []*entry, filterDepIds []string) (*SubscribeResponse, error) {
 	sub := s.newSortedSub(req.SubId, req.SpaceId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if req.NoDepSubscription {
 		sub.disableDep = true
@@ -358,7 +363,7 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 		}
 	}
 
-	err := initSubEntries(s.objectStore, f, sub)
+	err := sub.init(entries)
 	if err != nil {
 		return nil, fmt.Errorf("init sub entries: %w", err)
 	}

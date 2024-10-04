@@ -303,7 +303,10 @@ func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection
 			}
 		}
 	}
-	return coll.EnsureIndex(ctx, toCreate...)
+	if len(toCreate) > 0 {
+		return coll.EnsureIndex(ctx, toCreate...)
+	}
+	return nil
 }
 
 func (s *dsObjectStore) SpaceId() string {
