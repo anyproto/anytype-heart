@@ -58,10 +58,6 @@ type Hasher interface {
 	Hash() string
 }
 
-type techSpaceIdGetter interface {
-	TechSpaceId() string
-}
-
 type indexer struct {
 	store               objectstore.ObjectStore
 	fileStore           filestore.FileStore
@@ -309,14 +305,7 @@ func (i *indexer) spacesPriorityGet() []string {
 }
 
 func (i *indexer) spacesPrioritySubscriptionWatcher(ch chan []*types.Struct) {
-	for {
-		select {
-		// subscription and chan will be closed on indexer close
-		case records := <-ch:
-			if records == nil {
-				return
-			}
-			i.spacesPriorityUpdate(pbtypes.ExtractString(records, bundle.RelationKeyTargetSpaceId.String(), true))
-		}
+	for records := range ch {
+		i.spacesPriorityUpdate(pbtypes.ExtractString(records, bundle.RelationKeyTargetSpaceId.String(), true))
 	}
 }

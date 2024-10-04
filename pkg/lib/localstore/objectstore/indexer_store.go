@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/query"
@@ -80,6 +81,9 @@ func (s *dsObjectStore) ListIDsFromFullTextQueue(spaceId string, limit int) ([]s
 	var filter any
 	if spaceId != "" {
 		filter = query.Key{Path: []string{"spaceId"}, Filter: query.NewComp(query.CompOpEq, spaceId)}
+	}
+	if limit > math.MaxUint32 {
+		limit = math.MaxUint32
 	}
 	iter, err := s.fulltextQueue.Find(filter).Limit(uint(limit)).Iter(s.componentCtx)
 	if err != nil {
