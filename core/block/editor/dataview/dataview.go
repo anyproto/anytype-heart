@@ -124,7 +124,7 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 		view.DefaultTemplateId = ""
 		view.DefaultObjectTypeId = ""
 		if err = dv.SetView(view.Id, *view); err != nil {
-			return fmt.Errorf("failed to update view '%s' of set '%s': %v", view.Id, s.RootId(), err)
+			return fmt.Errorf("failed to update view '%s' of set '%s': %w", view.Id, s.RootId(), err)
 		}
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(source))
