@@ -229,3 +229,23 @@ func File(targetObjectId string, opts ...Option) *Block {
 		},
 	}, opts...)
 }
+
+func Dataview(targetObjectId string, opts ...Option) *Block {
+	return mkBlock(&model.Block{
+		Content: &model.BlockContentOfDataview{
+			Dataview: &model.BlockContentDataview{
+				TargetObjectId: targetObjectId,
+			},
+		},
+	}, opts...)
+}
+
+func Link(targetObjectId string, opts ...Option) *Block {
+	return mkBlock(&model.Block{
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: targetObjectId,
+			},
+		},
+	}, opts...)
+}

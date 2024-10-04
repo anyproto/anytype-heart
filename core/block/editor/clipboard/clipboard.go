@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/converter/html"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/linkresolver"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -138,15 +139,11 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 
 		textSlot = cutBlock.GetText().Text
 		s.Set(simple.New(cutBlock))
-		htmlSlot = cb.newHTMLConverter(s).Convert()
-		textSlot = cutBlock.GetText().Text
-		anySlot = cb.stateToBlocks(s)
-		return textSlot, htmlSlot, anySlot, nil
 	}
 
 	// scenario: ordinary copy
 	htmlSlot = cb.newHTMLConverter(s).Convert()
-	anySlot = cb.stateToBlocks(s)
+	anySlot = cb.convertLinksInAnySlot(cb.stateToBlocks(s))
 	return textSlot, htmlSlot, anySlot, nil
 }
 
@@ -206,7 +203,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 
 		tryClearStyle(cutBlock, req.SelectedTextRange)
 		textSlot = cutBlock.GetText().Text
-		anySlot = []*model.Block{cutBlock}
+		anySlot = cb.convertLinksInAnySlot([]*model.Block{cutBlock})
 		cbs := cb.blocksToState(req.Blocks)
 		cbs.Set(simple.New(cutBlock))
 		htmlSlot = cb.newHTMLConverter(cbs).Convert()
@@ -223,9 +220,8 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 	textSlot = renderText(state, len(req.Blocks) == 1)
 
 	htmlSlot = cb.newHTMLConverter(state).Convert()
-	anySlot = req.Blocks
-
 	unlinkAndClearBlocks(s, stateBlocks, req.Blocks)
+	anySlot = cb.convertLinksInAnySlot(req.Blocks)
 	return textSlot, htmlSlot, anySlot, cb.Apply(s)
 }
 
@@ -390,6 +386,7 @@ func (cb *clipboard) pasteAny(
 		if f, ok := b.Content.(*model.BlockContentOfFile); ok {
 			cb.processFileBlock(f)
 		}
+		cb.optimizeLinks(b)
 	}
 	srcState := cb.blocksToState(req.AnySlot)
 	visited := map[string]struct{}{}
@@ -720,4 +717,45 @@ func splitStringIntoParagraphs(s string, lineBreakSoftLimit int) []string {
 	}
 
 	return blocks
+}
+
+func (cb *clipboard) convertLinksInAnySlot(anySlot []*model.Block) []*model.Block {
+	for i, block := range anySlot {
+		sb := simple.New(block)
+		if replacer, ok := sb.(simple.ObjectLinkReplacer); ok {
+			replacer.ReplaceLinkIds(func(oldId string) (newId string) {
+				if oldId == "" {
+					return
+				}
+				if !linkresolver.IsObjectLink(oldId) {
+					return linkresolver.GetObjectLink(domain.FullID{SpaceID: cb.SpaceID(), ObjectID: oldId})
+				}
+				return oldId
+			})
+			anySlot[i] = sb.Model()
+		}
+		// TODO: should we convert other ids in dataview block, e.g. defaultTemplateId in views
+		// TODO: should we convert other ids in file block, e.g. hash
+	}
+	return anySlot
+}
+
+func (cb *clipboard) optimizeLinks(block *model.Block) {
+	sb := simple.New(block)
+	if replacer, ok := sb.(simple.ObjectLinkReplacer); ok {
+		replacer.ReplaceLinkIds(func(oldId string) (newId string) {
+			newId = oldId
+			id, err := linkresolver.ParseObjectLink(oldId)
+			if err != nil {
+				return
+			}
+			if id.SpaceID == cb.SpaceID() {
+				newId = id.ObjectID
+			}
+			return
+		})
+
+		// TODO: should we check other ids in dataview block, e.g. defaultTemplateId in views
+		// TODO: should we check other ids in file block, e.g. hash
+	}
 }
