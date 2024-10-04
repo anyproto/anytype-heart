@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/taskmanager"
 )
 
 const (
@@ -82,7 +83,9 @@ type indexer struct {
 	spacesPrioritySubscription *syncsubscriptions.ObjectSubscription[*types.Struct]
 	lock                       sync.Mutex
 	reindexLogFields           []zap.Field
+	techSpaceId                techSpaceIdGetter
 	spacesPriority             []string
+	spaceReindexQueue          *taskmanager.TasksManager
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -97,6 +100,8 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.forceFt = make(chan struct{})
 	i.config = app.MustComponent[*config.Config](a)
 	i.subscriptionService = app.MustComponent[subscription.Service](a)
+	i.spaceReindexQueue = taskmanager.NewTasksManager(1, i.reindexTasksSorter)
+	i.techSpaceId = app.MustComponent[techSpaceIdGetter](a)
 	i.componentCtx, i.componentCancel = context.WithCancel(context.Background())
 	return
 }
@@ -110,6 +115,7 @@ func (i *indexer) Run(context.Context) (err error) {
 	if err != nil {
 		return
 	}
+	go i.spaceReindexQueue.Run(i.componentCtx)
 	return i.StartFullTextIndex()
 }
 
@@ -124,6 +130,7 @@ func (i *indexer) StartFullTextIndex() (err error) {
 func (i *indexer) Close(ctx context.Context) (err error) {
 	i.componentCancel()
 	i.spacesPrioritySubscription.Close()
+	i.spaceReindexQueue.WaitAndClose()
 	// we need to wait for the ftQueue processing to be finished gracefully. Because we may be in the middle of badger transaction
 	<-i.ftQueueFinished
 	return nil
@@ -297,9 +304,15 @@ func (i *indexer) subscribeToSpaces() error {
 }
 
 func (i *indexer) spacesPriorityUpdate(priority []string) {
+	techSpaceId := i.techSpaceId.TechSpaceId()
 	i.lock.Lock()
-	defer i.lock.Unlock()
-	i.spacesPriority = priority
+	i.spacesPriority = append([]string{techSpaceId}, slices.DeleteFunc(priority, func(s string) bool {
+		return s == techSpaceId
+	})...)
+	i.lock.Unlock()
+
+	// notify reindex queue to refresh priority
+	i.spaceReindexQueue.RefreshPriority()
 }
 
 func (i *indexer) spacesPriorityGet() []string {

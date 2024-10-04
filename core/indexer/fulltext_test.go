@@ -33,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/taskmanager"
 )
 
 type IndexerFixture struct {
@@ -65,6 +66,7 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	testApp.Register(objectStore.FTSearch())
 
 	indxr := &indexer{}
+	indxr.spaceReindexQueue = taskmanager.NewTasksManager(1, indxr.taskPrioritySorter)
 
 	indexerFx := &IndexerFixture{
 		indexer:     indxr,

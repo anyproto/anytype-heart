@@ -112,6 +112,24 @@ func (mr *MockObjectStoreMockRecorder) DeleteDetails(arg0 ...any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDetails", reflect.TypeOf((*MockObjectStore)(nil).DeleteDetails), arg0...)
 }
 
+// DeleteLastIndexedHeadHash mocks base method.
+func (m *MockObjectStore) DeleteLastIndexedHeadHash(arg0 ...string) error {
+	m.ctrl.T.Helper()
+	varargs := []any{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteLastIndexedHeadHash", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteLastIndexedHeadHash indicates an expected call of DeleteLastIndexedHeadHash.
+func (mr *MockObjectStoreMockRecorder) DeleteLastIndexedHeadHash(arg0 ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLastIndexedHeadHash", reflect.TypeOf((*MockObjectStore)(nil).DeleteLastIndexedHeadHash), arg0...)
+}
+
 // DeleteLinks mocks base method.
 func (m *MockObjectStore) DeleteLinks(arg0 ...string) error {
 	m.ctrl.T.Helper()

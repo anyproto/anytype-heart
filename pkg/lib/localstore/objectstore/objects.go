@@ -114,6 +114,7 @@ type IndexerStore interface {
 
 	GetLastIndexedHeadsHash(id string) (headsHash string, err error)
 	SaveLastIndexedHeadsHash(id string, headsHash string) (err error)
+	DeleteLastIndexedHeadHash(ids ...string) (err error)
 }
 
 type AccountStore interface {

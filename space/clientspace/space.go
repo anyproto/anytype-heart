@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type Space interface {
@@ -291,6 +292,12 @@ func (s *space) TryLoadBundledObjects(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	storedIds, err := s.Storage().StoredIds()
+	if err != nil {
+		return err
+	}
+	// only load objects that are not already stored
+	objectIds = slice.Difference(objectIds, storedIds)
 	s.LoadObjectsIgnoreErrs(ctx, objectIds)
 	return nil
 }
