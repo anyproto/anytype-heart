@@ -139,6 +139,36 @@ func TestService_SetDetailsList(t *testing.T) {
 		// then
 		assert.Error(t, err)
 	})
+
+	t.Run("update isFavorite", func(t *testing.T) {
+		// given
+		homeId := "home"
+		sb := smarttest.New(homeId)
+		sb.AddBlock(simple.New(&model.Block{Id: homeId, ChildrenIds: []string{}}))
+		fx := newFixture(t)
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{bundle.RelationKeyId: pbtypes.String("obj1"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
+			{bundle.RelationKeyId: pbtypes.String("obj2"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
+			{bundle.RelationKeyId: pbtypes.String("obj3"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
+		})
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
+		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+			if objectId == homeId {
+				return editor.NewDashboard(sb, fx.store, nil), nil
+			}
+			return smarttest.New(objectId), nil
+		})
+
+		// when
+		err := fx.SetDetailsList(nil, []string{"obj1", "obj2", "obj3"}, []*model.Detail{{
+			Key:   bundle.RelationKeyIsFavorite.String(),
+			Value: pbtypes.Bool(true),
+		}})
+
+		// then
+		assert.NoError(t, err)
+		assert.Len(t, sb.Blocks(), 4)
+	})
 }
 
 func TestService_ModifyDetailsList(t *testing.T) {
@@ -211,6 +241,38 @@ func TestService_ModifyDetailsList(t *testing.T) {
 
 		// then
 		assert.Error(t, err)
+	})
+
+	t.Run("update isFavorite", func(t *testing.T) {
+		// given
+		homeId := "home"
+		sb := smarttest.New(homeId)
+		sb.AddBlock(simple.New(&model.Block{Id: homeId, ChildrenIds: []string{}}))
+		fx := newFixture(t)
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{bundle.RelationKeyId: pbtypes.String("obj1"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
+			{bundle.RelationKeyId: pbtypes.String("obj2"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
+			{bundle.RelationKeyId: pbtypes.String("obj3"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
+		})
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
+		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+			if objectId == homeId {
+				return editor.NewDashboard(sb, fx.store, nil), nil
+			}
+			return smarttest.New(objectId), nil
+		})
+
+		// when
+		err := fx.ModifyDetailsList(&pb.RpcObjectListModifyDetailValuesRequest{
+			ObjectIds: []string{"obj1", "obj2", "obj3"},
+			Operations: []*pb.RpcObjectListModifyDetailValuesRequestOperation{
+				{RelationKey: bundle.RelationKeyIsFavorite.String(), Set: pbtypes.Bool(true)},
+			},
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.Len(t, sb.Blocks(), 4)
 	})
 }
 

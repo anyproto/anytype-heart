@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a8068f8bee7828cfa88a4cf262a8276bf2cbf1eadc9934dd52c5c06be2d02bbd"
+const RelationChecksum = "fa4f51c94dc2da85d50075c50117e84daf25e4f2fea3d8db0a67431f98055b5f"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -839,13 +839,13 @@ var (
 			DataSource:       model.Relation_account,
 			Description:      "Adds the object to the home dashboard",
 			Format:           model.RelationFormat_checkbox,
-			Hidden:           true,
 			Id:               "_brisFavorite",
 			Key:              "isFavorite",
 			MaxCount:         1,
 			Name:             "Favorited",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         2,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyIsHidden: {
