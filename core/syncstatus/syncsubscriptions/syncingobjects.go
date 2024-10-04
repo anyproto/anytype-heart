@@ -45,7 +45,7 @@ func (s *syncingObjects) Run() error {
 		},
 	}
 	s.objectSubscription = NewIdSubscription(s.service, objectReq)
-	errObjects := s.objectSubscription.Run()
+	errObjects := s.objectSubscription.Run(nil)
 	if errObjects != nil {
 		return fmt.Errorf("error running syncing objects: %w", errObjects)
 	}

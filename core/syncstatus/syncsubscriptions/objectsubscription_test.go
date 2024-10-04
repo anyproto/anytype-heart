@@ -116,7 +116,45 @@ func TestIdSubscription(t *testing.T) {
 	}
 	subService.EXPECT().Search(mock.Anything).Return(subscribeResponse, nil)
 	sub := NewIdSubscription(subService, subscription.SubscribeRequest{})
-	err := sub.Run()
+	err := sub.Run(nil)
+	require.NoError(t, err)
+	time.Sleep(100 * time.Millisecond)
+	ids := make(map[string]struct{})
+	sub.Iterate(func(id string, _ struct{}) bool {
+		ids[id] = struct{}{}
+		return true
+	})
+	require.Len(t, ids, 2)
+	require.Contains(t, ids, "3")
+	require.Contains(t, ids, "4")
+}
+
+func TestIdSubscriptionChan(t *testing.T) {
+	subService := mock_subscription.NewMockService(t)
+	events := mb.New[*pb.EventMessage](0)
+	records := makeStructs([]string{"1", "2", "3"})
+	// for details amend, set and unset we just check that we handle them correctly (i.e. do nothing)
+	messages := []*pb.EventMessage{
+		makeSubscriptionRemove("2"),
+		makeDetailsSet("1"),
+		makeDetailsUnset("2"),
+		makeDetailsAmend("3"),
+		makeSubscriptionAdd("4"),
+		makeSubscriptionRemove("1"),
+		makeSubscriptionAdd("3"),
+		makeSubscriptionRemove("5"),
+	}
+	for _, msg := range messages {
+		err := events.Add(context.Background(), msg)
+		require.NoError(t, err)
+	}
+	subscribeResponse := &subscription.SubscribeResponse{
+		Output:  events,
+		Records: records,
+	}
+	subService.EXPECT().Search(mock.Anything).Return(subscribeResponse, nil)
+	sub := NewIdSubscription(subService, subscription.SubscribeRequest{})
+	err := sub.Run(nil)
 	require.NoError(t, err)
 	time.Sleep(100 * time.Millisecond)
 	ids := make(map[string]struct{})

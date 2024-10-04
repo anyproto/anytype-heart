@@ -25,7 +25,7 @@ import (
 var (
 	ftIndexInterval         = 1 * time.Second
 	ftIndexForceMinInterval = time.Second * 10
-	ftBatchLimit            = 1000
+	ftBatchLimit            = 50
 	ftBlockMaxSize          = 1024 * 1024
 )
 
@@ -40,29 +40,28 @@ func (i *indexer) ForceFTIndex() {
 // MUST NOT be called more than once
 func (i *indexer) ftLoopRoutine() {
 	ticker := time.NewTicker(ftIndexInterval)
-	ctx := i.runCtx
 
-	i.runFullTextIndexer(ctx)
+	i.runFullTextIndexer(i.componentCtx, i.spacesPriorityGet())
 	defer close(i.ftQueueFinished)
 	var lastForceIndex time.Time
 	for {
 		select {
-		case <-ctx.Done():
+		case <-i.componentCtx.Done():
 			return
 		case <-ticker.C:
-			i.runFullTextIndexer(ctx)
+			i.runFullTextIndexer(i.componentCtx, i.spacesPriorityGet())
 		case <-i.forceFt:
 			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
-				i.runFullTextIndexer(ctx)
+				i.runFullTextIndexer(i.componentCtx, i.spacesPriorityGet())
 				lastForceIndex = time.Now()
 			}
 		}
 	}
 }
 
-func (i *indexer) runFullTextIndexer(ctx context.Context) {
+func (i *indexer) runFullTextIndexer(ctx context.Context, spaceIdsPriority []string) {
 	batcher := i.ftsearch.NewAutoBatcher(ftsearch.AutoBatcherRecommendedMaxDocs, ftsearch.AutoBatcherRecommendedMaxSize)
-	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(objectIds []string) error {
+	err := i.store.BatchProcessFullTextQueue(ctx, spaceIdsPriority, ftBatchLimit, func(objectIds []string) error {
 		for _, objectId := range objectIds {
 			objDocs, err := i.prepareSearchDocument(ctx, objectId)
 			if err != nil {
@@ -216,13 +215,13 @@ func (i *indexer) ftInit() error {
 			return err
 		}
 		if docCount == 0 {
-			// query objects that are existing in the store
-			// if they are not existing in the object store, they will be indexed and added via reindexOutdatedObjects or on receiving via any-sync
-			ids, err := i.store.ListIdsCrossSpace()
+			fullIds, err := i.store.ListIdsCrossSpace()
 			if err != nil {
 				return err
 			}
-			if err := i.store.AddToIndexQueue(i.runCtx, ids...); err != nil {
+
+			err = i.store.AddToIndexQueue(i.componentCtx, fullIds...)
+			if err != nil {
 				return err
 			}
 

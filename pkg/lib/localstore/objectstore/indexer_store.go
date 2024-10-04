@@ -6,53 +6,80 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/anyproto/any-store/query"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...string) error {
-	txn, err := s.fulltextQueue.WriteTx(ctx)
-	if err != nil {
-		return fmt.Errorf("start write tx: %w", err)
-	}
+func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
 
+	txn, err := s.fulltextQueue.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
+	rollback := func(err error) error {
+		return errors.Join(txn.Rollback(), err)
+	}
+
 	obj := arena.NewObject()
 	for _, id := range ids {
-		obj.Set("id", arena.NewString(id))
+		obj.Set("id", arena.NewString(id.ObjectID))
+		obj.Set("spaceId", arena.NewString(id.SpaceID))
 		_, err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
 		if err != nil {
-			return errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
+			return rollback(fmt.Errorf("upsert: %w", err))
 		}
 	}
+
 	return txn.Commit()
 }
 
-func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(ids []string) error) error {
-	for {
-		ids, err := s.ListIdsFromFullTextQueue(limit)
-		if err != nil {
-			return fmt.Errorf("list ids from fulltext queue: %w", err)
-		}
-		if len(ids) == 0 {
-			return nil
-		}
-		err = processIds(ids)
-		if err != nil {
-			return fmt.Errorf("process ids: %w", err)
-		}
-		err = s.RemoveIdsFromFullTextQueue(ids)
-		if err != nil {
-			return fmt.Errorf("remove ids from fulltext queue: %w", err)
+func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, spaceIdsPriority []string, limit int, processIds func(ids []string) error) error {
+	proceed := 0
+	for _, spaceId := range spaceIdsPriority {
+		for {
+			if limit <= 0 {
+				return nil
+			}
+			ids, err := s.ListIdsFromFullTextQueue(spaceId, limit)
+			if err != nil {
+				return fmt.Errorf("list ids from fulltext queue: %w", err)
+			}
+			if len(ids) == 0 {
+				break
+			}
+
+			err = processIds(ids)
+			if err != nil {
+				return fmt.Errorf("process ids: %w", err)
+			}
+			proceed += len(ids)
+			err = s.RemoveIdsFromFullTextQueue(ids)
+			if err != nil {
+				return fmt.Errorf("remove ids from fulltext queue: %w", err)
+			}
+			if len(ids) < limit {
+				log.Infof("fulltext queue for space %s is fully proceed; less than limit(%d)", spaceId, len(ids))
+				break
+			}
+			limit -= len(ids)
 		}
 	}
+	return nil
 }
 
-func (s *dsObjectStore) ListIdsFromFullTextQueue(limit int) ([]string, error) {
-	iter, err := s.fulltextQueue.Find(nil).Limit(uint(limit)).Iter(s.componentCtx)
+func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceId string, limit int) ([]string, error) {
+	var filter any
+	if spaceId != "" {
+		filter = query.Key{Path: []string{"spaceId"}, Filter: query.NewComp(query.CompOpEq, spaceId)}
+	}
+	iter, err := s.fulltextQueue.Find(filter).Limit(uint(limit)).Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("create iterator: %w", err)
 	}

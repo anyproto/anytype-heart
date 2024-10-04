@@ -39,36 +39,48 @@ func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*types.Struct, erro
 }
 
 type dummyFulltextQueue struct {
-	lock sync.Mutex
-	ids  []string
+	lock        sync.Mutex
+	idsPerSpace map[string][]string
 }
 
 func (q *dummyFulltextQueue) RemoveIdsFromFullTextQueue(ids []string) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
-	q.ids = lo.Without(q.ids, ids...)
+	for spaceId, spaceIds := range q.idsPerSpace {
+		q.idsPerSpace[spaceId] = lo.Filter(spaceIds, func(id string, _ int) bool {
+			return !lo.Contains(ids, id)
+		})
+	}
 	return nil
 }
 
-func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...string) error {
+func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 	for _, id := range ids {
-		if !lo.Contains(q.ids, id) {
-			q.ids = append(q.ids, id)
+		if idsForSpace, ok := q.idsPerSpace[id.SpaceID]; ok {
+			if !lo.Contains(idsForSpace, id.ObjectID) {
+				q.idsPerSpace[id.SpaceID] = append(idsForSpace, id.ObjectID)
+			}
+		} else {
+			q.idsPerSpace[id.SpaceID] = []string{id.ObjectID}
 		}
 	}
 	return nil
 }
 
-func (q *dummyFulltextQueue) ListIdsFromFullTextQueue(limit int) ([]string, error) {
+func (q *dummyFulltextQueue) ListIdsFromFullTextQueue(spaceId string, limit int) ([]string, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
-	if limit > len(q.ids) {
-		limit = len(q.ids)
+	if ids, ok := q.idsPerSpace[spaceId]; !ok {
+		return nil, nil
+	} else {
+		if limit > len(ids) {
+			limit = len(ids)
+		}
+		return ids[:limit], nil
 	}
-	return q.ids[:limit], nil
 }
 
 func NewStoreFixture(t testing.TB) *StoreFixture {
@@ -100,7 +112,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		SourceService:  &detailsFromId{},
 		SubManager:     &SubscriptionManager{},
 		AnyStoreConfig: nil,
-		FulltextQueue:  &dummyFulltextQueue{},
+		FulltextQueue:  &dummyFulltextQueue{idsPerSpace: map[string][]string{}},
 	})
 	return &StoreFixture{
 		dsObjectStore: s.(*dsObjectStore),

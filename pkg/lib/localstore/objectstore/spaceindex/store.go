@@ -93,8 +93,8 @@ type SourceDetailsFromID interface {
 
 type FulltextQueue interface {
 	RemoveIdsFromFullTextQueue(ids []string) error
-	AddToIndexQueue(ctx context.Context, ids ...string) error
-	ListIdsFromFullTextQueue(limit int) ([]string, error)
+	AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error
+	ListIdsFromFullTextQueue(spaceIds string, limit int) ([]string, error)
 }
 
 type dsObjectStore struct {
