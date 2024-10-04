@@ -11877,6 +11877,7 @@ returns list of versions (changes)
 | objectId | [string](#string) |  |  |
 | lastVersionId | [string](#string) |  | when indicated, results will include versions before given id |
 | limit | [int32](#int32) |  | desired count of versions |
+| notIncludeVersion | [bool](#bool) |  |  |
 
 
 
