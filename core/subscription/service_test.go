@@ -75,7 +75,7 @@ func TestService_Search(t *testing.T) {
 			},
 		})
 
-		fx.Service.(*service).onChange([]*entry{
+		fx.Service.(*spaceSubscriptions).onChange([]*entry{
 			{id: "1", data: &types.Struct{Fields: map[string]*types.Value{
 				"id":     pbtypes.String("1"),
 				"name":   pbtypes.String("one"),
@@ -83,13 +83,13 @@ func TestService_Search(t *testing.T) {
 			}}},
 		})
 
-		assert.Len(t, fx.Service.(*service).cache.entries["1"].SubIds(), 1)
-		assert.Len(t, fx.Service.(*service).cache.entries["author2"].SubIds(), 1)
-		assert.Len(t, fx.Service.(*service).cache.entries["author3"].SubIds(), 1)
+		assert.Len(t, fx.Service.(*spaceSubscriptions).cache.entries["1"].SubIds(), 1)
+		assert.Len(t, fx.Service.(*spaceSubscriptions).cache.entries["author2"].SubIds(), 1)
+		assert.Len(t, fx.Service.(*spaceSubscriptions).cache.entries["author3"].SubIds(), 1)
 
 		fx.events = fx.events[:0]
 
-		fx.Service.(*service).onChange([]*entry{
+		fx.Service.(*spaceSubscriptions).onChange([]*entry{
 			{id: "1", data: &types.Struct{Fields: map[string]*types.Value{
 				"id":   pbtypes.String("1"),
 				"name": pbtypes.String("one"),
@@ -97,7 +97,7 @@ func TestService_Search(t *testing.T) {
 		})
 
 		assert.NoError(t, fx.Unsubscribe("test"))
-		assert.Len(t, fx.Service.(*service).cache.entries, 0)
+		assert.Len(t, fx.Service.(*spaceSubscriptions).cache.entries, 0)
 	})
 	t.Run("search with filters: one filter None", func(t *testing.T) {
 		fx := newFixtureWithRealObjectStore(t)
@@ -315,13 +315,13 @@ func TestService_Search(t *testing.T) {
 
 		newSub(fx, "test")
 
-		assert.Equal(t, []string{"test"}, fx.Service.(*service).cache.entries["1"].SubIds())
-		assert.Equal(t, []string{"test", "test/dep"}, fx.Service.(*service).cache.entries["author1"].SubIds())
+		assert.Equal(t, []string{"test"}, fx.Service.(*spaceSubscriptions).cache.entries["1"].SubIds())
+		assert.Equal(t, []string{"test", "test/dep"}, fx.Service.(*spaceSubscriptions).cache.entries["author1"].SubIds())
 
 		newSub(fx, "test1")
 
-		assert.Equal(t, []string{"test", "test1"}, fx.Service.(*service).cache.entries["1"].SubIds())
-		assert.Equal(t, []string{"test", "test/dep", "test1", "test1/dep"}, fx.Service.(*service).cache.entries["author1"].SubIds())
+		assert.Equal(t, []string{"test", "test1"}, fx.Service.(*spaceSubscriptions).cache.entries["1"].SubIds())
+		assert.Equal(t, []string{"test", "test/dep", "test1", "test1/dep"}, fx.Service.(*spaceSubscriptions).cache.entries["author1"].SubIds())
 	})
 
 	t.Run("filter deps", func(t *testing.T) {
@@ -418,7 +418,7 @@ func TestService_Search(t *testing.T) {
 		assert.Equal(t, "3", pbtypes.GetString(resp.Records[0], "id"))
 		assert.Equal(t, "2", pbtypes.GetString(resp.Records[1], "id"))
 
-		fx.Service.(*service).onChange([]*entry{
+		fx.Service.(*spaceSubscriptions).onChange([]*entry{
 			{id: "1", data: &types.Struct{Fields: map[string]*types.Value{
 				"id":   pbtypes.String("1"),
 				"name": pbtypes.String("4"),
@@ -430,7 +430,7 @@ func TestService_Search(t *testing.T) {
 		assert.NotEmpty(t, fx.events[0].Messages[1].GetSubscriptionAdd())
 		assert.NotEmpty(t, fx.events[0].Messages[2].GetSubscriptionRemove())
 
-		fx.Service.(*service).onChange([]*entry{
+		fx.Service.(*spaceSubscriptions).onChange([]*entry{
 			{id: "2", data: &types.Struct{Fields: map[string]*types.Value{
 				"id":   pbtypes.String("2"),
 				"name": pbtypes.String("6"),
@@ -486,7 +486,7 @@ func TestService_Search(t *testing.T) {
 		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], "id"))
 		assert.Equal(t, "2", pbtypes.GetString(resp.Records[1], "id"))
 
-		fx.Service.(*service).onChange([]*entry{
+		fx.Service.(*spaceSubscriptions).onChange([]*entry{
 			{
 				id: "2",
 				data: &types.Struct{
@@ -732,7 +732,7 @@ func TestService_Search(t *testing.T) {
 			},
 		})
 
-		s := fx.Service.(*service)
+		s := fx.Service.(*spaceSubscriptions)
 		s.ds = newDependencyService(s)
 
 		var resp, err = fx.Search(SubscribeRequest{
@@ -787,7 +787,7 @@ func TestService_Search(t *testing.T) {
 			},
 		})
 
-		s := fx.Service.(*service)
+		s := fx.Service.(*spaceSubscriptions)
 		s.ds = newDependencyService(s)
 
 		resp, err := fx.Search(SubscribeRequest{

@@ -14,6 +14,7 @@ import (
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -48,7 +49,7 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 		return jsonVal, true, nil
 	}))
 	if isModified {
-		s.subManager.sendUpdatesToSubscriptions(id, details)
+		s.sendUpdatesToSubscriptions(id, details)
 	}
 
 	if err != nil {
@@ -56,6 +57,52 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 	}
 
 	return nil
+}
+
+func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
+	s.lock.Lock()
+	s.onChangeCallback = callback
+	s.lock.Unlock()
+}
+
+func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
+	detCopy := pbtypes.CopyStruct(details, false)
+	detCopy.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	if s.onChangeCallback != nil {
+		s.onChangeCallback(database.Record{
+			Details: detCopy,
+		})
+	}
+	for _, sub := range s.subscriptions {
+		_ = sub.PublishAsync(id, detCopy)
+	}
+}
+
+// unsafe, use under mutex
+func (s *dsObjectStore) addSubscriptionIfNotExists(sub database.Subscription) (existed bool) {
+	for _, s := range s.subscriptions {
+		if s == sub {
+			return true
+		}
+	}
+
+	s.subscriptions = append(s.subscriptions, sub)
+	return false
+}
+
+func (s *dsObjectStore) closeAndRemoveSubscription(subscription database.Subscription) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	subscription.Close()
+
+	for i, sub := range s.subscriptions {
+		if sub == subscription {
+			s.subscriptions = append(s.subscriptions[:i], s.subscriptions[i+1:]...)
+			break
+		}
+	}
 }
 
 func (s *dsObjectStore) migrateLocalDetails(objectId string, details *types.Struct) bool {
@@ -184,7 +231,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 		if len(diff) == 0 {
 			return nil, false, nil
 		}
-		s.subManager.sendUpdatesToSubscriptions(id, newDetails)
+		s.sendUpdatesToSubscriptions(id, newDetails)
 		return jsonVal, true, nil
 	}))
 

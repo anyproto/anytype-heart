@@ -60,7 +60,7 @@ func TestSubscription_Remove(t *testing.T) {
 				bundle.RelationKeyName: pbtypes.String("id7"),
 			},
 		})
-		s := service{
+		s := spaceSubscriptions{
 			cache:       newCache(),
 			objectStore: store,
 		}

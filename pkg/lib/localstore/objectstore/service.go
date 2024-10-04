@@ -35,7 +35,6 @@ type CrossSpace interface {
 	QueryRawCrossSpace(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
 
-	SubscribeForAll(callback func(rec database.Record))
 	ListIdsCrossSpace() ([]string, error)
 	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
 
@@ -270,10 +269,6 @@ func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
 		s.crdtDbs[spaceId] = db
 	}
 	return db
-}
-
-func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
-	s.subManager.SubscribeForAll(callback)
 }
 
 func (s *dsObjectStore) listStores() []spaceindex.Store {
