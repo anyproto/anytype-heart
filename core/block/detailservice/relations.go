@@ -30,7 +30,7 @@ func (s *service) ObjectTypeAddRelations(ctx context.Context, objectTypeId strin
 	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
 		return ErrBundledTypeIsReadonly
 	}
-	return cache.Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
+	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 		list := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String())
 		for _, relKey := range relationKeys {
@@ -51,7 +51,7 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
 		return ErrBundledTypeIsReadonly
 	}
-	return cache.Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
+	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 		list := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String())
 		for _, relKey := range relationKeys {
