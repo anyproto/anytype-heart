@@ -81,10 +81,11 @@ func (st *SmartTest) SetSpace(space smartblock.Space) {
 }
 
 type stubSpace struct {
+	id string
 }
 
 func (s *stubSpace) Id() string {
-	return ""
+	return s.id
 }
 
 func (s *stubSpace) TreeBuilder() objecttreebuilder.TreeBuilder {
@@ -127,7 +128,8 @@ func (st *SmartTest) Space() smartblock.Space {
 	if st.space != nil {
 		return st.space
 	}
-	return &stubSpace{}
+
+	return &stubSpace{id: st.spaceId}
 }
 
 func (st *SmartTest) EnabledRelationAsDependentObjects() {
