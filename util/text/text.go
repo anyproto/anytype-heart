@@ -12,7 +12,7 @@ func TruncateEllipsized(text string, length int) string {
 }
 
 func Truncate(text string, length int, ending string) string {
-	length = length - UTF16RuneCountString(ending)
+	length -= UTF16RuneCountString(ending)
 	if UTF16RuneCountString(text) <= length {
 		return text
 	}

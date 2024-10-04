@@ -181,12 +181,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 		return err
 	}
 
-	err = index.RegisterTextAnalyzerEdgeNgram(tantivy.TokenizerEdgeNgram, 1, 5, 100)
-	if err != nil {
-		return err
-	}
-
-	err = index.RegisterTextAnalyzerNgram(tantivy.TokenizerNgram, 1, 5, false)
+	err = index.RegisterTextAnalyzerNgram(tantivy.TokenizerNgram, 3, 5, false)
 	if err != nil {
 		return err
 	}
@@ -267,14 +262,12 @@ func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, dele
 
 func (f *ftSearchTantivy) Search(spaceIds []string, highlightFormatter HighlightFormatter, query string) (results search.DocumentMatchCollection, err error) {
 	spaceIdsQuery := getSpaceIdsQuery(spaceIds)
-	escapedQuery := prepareQuery(query)
-	if escapedQuery == "" {
-		return nil, fmt.Errorf("empty query")
+	query = prepareQuery(query)
+	if query == "" {
+		return nil, nil
 	}
-	if spaceIdsQuery == "" {
-		query = escapedQuery
-	} else {
-		query = fmt.Sprintf("%s AND %s", spaceIdsQuery, escapedQuery)
+	if spaceIdsQuery != "" {
+		query = fmt.Sprintf("%s AND %s", spaceIdsQuery, query)
 	}
 	result, err := f.index.Search(query, 100, true, fieldId, fieldSpace, fieldTitle, fieldText)
 	if err != nil {
