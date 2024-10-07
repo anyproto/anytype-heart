@@ -38,9 +38,6 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T, isNewAccount bool, prepareDb func(db anystore.DB)) *fixture {
-	// store -> read -> state
-	// object -> add -> state, store
-	// source update -> state
 	ctx := context.Background()
 	cfg := config.New(config.WithNewAccount(isNewAccount))
 	cfg.AnalyticsId = "analyticsId"
