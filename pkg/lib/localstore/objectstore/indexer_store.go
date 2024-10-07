@@ -8,17 +8,26 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, id string) error {
+func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...string) error {
+	txn, err := s.fulltextQueue.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
-	obj := arena.NewObject()
-	obj.Set("id", arena.NewString(id))
 
-	_, err := s.fulltextQueue.UpsertOne(ctx, obj)
-	return err
+	obj := arena.NewObject()
+	for _, id := range ids {
+		obj.Set("id", arena.NewString(id))
+		_, err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
+		if err != nil {
+			return fmt.Errorf("upsert: %w", err)
+		}
+	}
+	return txn.Commit()
 }
 
 func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(ids []string) error) error {

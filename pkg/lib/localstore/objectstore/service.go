@@ -55,7 +55,7 @@ type ObjectStore interface {
 }
 
 type IndexerStore interface {
-	AddToIndexQueue(ctx context.Context, id string) error
+	AddToIndexQueue(ctx context.Context, id ...string) error
 	ListIdsFromFullTextQueue(limit int) ([]string, error)
 	RemoveIdsFromFullTextQueue(ids []string) error
 	GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error)
