@@ -102,7 +102,7 @@ func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*Fil
 		if len(txt.Marks.Marks) == 1 && txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
 			m.handleSingleMark(block, files)
 		} else {
-			m.handleSeveralMarks(block, files)
+			m.handleMultipleMarks(block, files)
 		}
 	}
 }
@@ -130,28 +130,35 @@ func (m *mdConverter) handleSingleMark(block *model.Block, files map[string]*Fil
 	}
 }
 
-func (m *mdConverter) handleSeveralMarks(block *model.Block, files map[string]*FileInfo) {
+func (m *mdConverter) handleMultipleMarks(block *model.Block, files map[string]*FileInfo) {
 	txt := block.GetText()
 	for _, mark := range txt.Marks.Marks {
 		if mark.Type == model.BlockContentTextMark_Link {
-			link := mark.Param
-			ext := filepath.Ext(link)
-			if file := files[link]; file != nil {
-				file.HasInboundLinks = true
-				if strings.EqualFold(ext, ".md") || strings.EqualFold(ext, ".csv") {
-					mark.Type = model.BlockContentTextMark_Object
-					continue
-				}
-				if m.isWholeLineLink(txt.Text, mark) {
-					block.Content = anymark.ConvertTextToFile(mark.Param)
-					return
-				}
-			} else if m.isWholeLineLink(txt.Text, mark) {
-				block.Content = m.convertTextToBookmark(mark.Param)
+			if stop := m.handleSingleLinkMark(block, files, mark, txt); stop {
 				return
 			}
 		}
 	}
+}
+
+func (m *mdConverter) handleSingleLinkMark(block *model.Block, files map[string]*FileInfo, mark *model.BlockContentTextMark, txt *model.BlockContentText) bool {
+	link := mark.Param
+	ext := filepath.Ext(link)
+	if file := files[link]; file != nil {
+		file.HasInboundLinks = true
+		if strings.EqualFold(ext, ".md") || strings.EqualFold(ext, ".csv") {
+			mark.Type = model.BlockContentTextMark_Object
+			return false
+		}
+		if m.isWholeLineLink(txt.Text, mark) {
+			block.Content = anymark.ConvertTextToFile(mark.Param)
+			return true
+		}
+	} else if m.isWholeLineLink(txt.Text, mark) {
+		block.Content = m.convertTextToBookmark(mark.Param)
+		return true
+	}
+	return false
 }
 
 func (m *mdConverter) isWholeLineLink(text string, marks *model.BlockContentTextMark) bool {

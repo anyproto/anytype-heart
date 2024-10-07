@@ -140,8 +140,8 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.setNewID) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkToObjectBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.linkPagesWithRootFile) ||
-		m.processImportStep(pathsCount, files, progress, allErrors, details, m.fillEmptyBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkBlocks) ||
+		m.processImportStep(pathsCount, files, progress, allErrors, details, m.fillEmptyBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addChildBlocks) {
 		return nil, nil
 	}
