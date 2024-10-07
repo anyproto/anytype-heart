@@ -85,6 +85,7 @@ var (
 			model.Restrictions_Template,
 		},
 		model.ObjectType_participant: objRestrictAll,
+		model.ObjectType_tag:         objRestrictEdit,
 	}
 
 	objectRestrictionsBySBType = map[smartblock.SmartBlockType]ObjectRestrictions{
