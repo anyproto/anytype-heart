@@ -280,7 +280,6 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 		coordClient:        mock_coordinatorclient.NewMockCoordinatorClient(ctrl),
 		factory:            mock_spacefactory.NewMockSpaceFactory(t),
 		notificationSender: mock_space.NewMockNotificationSender(t),
-		isNewAccount:       NewMockisNewAccount(t),
 		objectStore:        objectstore.NewStoreFixture(t),
 		updater:            mock_space.NewMockcoordinatorStatusUpdater(t),
 		config:             config.New(config.WithNewAccount(expectOldAccount == nil)),
@@ -302,7 +301,6 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 		Register(testutil.PrepareMock(ctx, fx.a, fx.updater)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.spaceCore)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.coordClient)).
-		Register(testutil.PrepareMock(ctx, fx.a, fx.isNewAccount)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.factory)).
 		Register(testutil.PrepareMock(ctx, fx.a, mock_notifications.NewMockNotifications(t))).
 		Register(fx.objectStore).
@@ -328,7 +326,6 @@ type fixture struct {
 	ctrl               *gomock.Controller
 	techSpace          *mock_techspace.MockTechSpace
 	clientSpace        *mock_clientspace.MockSpace
-	isNewAccount       *MockisNewAccount
 	objectStore        *objectstore.StoreFixture
 }
 

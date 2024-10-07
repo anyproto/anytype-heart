@@ -50,11 +50,6 @@ func New() Service {
 	return &service{}
 }
 
-type isNewAccount interface {
-	IsNewAccount() bool
-	app.Component
-}
-
 type Service interface {
 	Create(ctx context.Context) (space clientspace.Space, err error)
 
@@ -138,7 +133,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.config = app.MustComponent[*config.Config](a)
-	s.newAccount = s.config.NewAccount
+	s.newAccount = s.config.IsNewAccount()
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
 	s.updater = app.MustComponent[coordinatorStatusUpdater](a)
 	s.notificationService = app.MustComponent[NotificationSender](a)
