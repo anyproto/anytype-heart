@@ -3,6 +3,7 @@ package objectstore
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -24,7 +25,7 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...string) erro
 		obj.Set("id", arena.NewString(id))
 		_, err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
 		if err != nil {
-			return fmt.Errorf("upsert: %w", err)
+			return errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
 		}
 	}
 	return txn.Commit()
