@@ -439,7 +439,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 
 	var addResult *files.AddResult
-	if !u.forceUploadingAsFile && u.fileType == model.BlockContentFile_Image && !(filepath.Ext(u.name) == constant.SvgExt) {
+	if !u.forceUploadingAsFile && u.fileType == model.BlockContentFile_Image && filepath.Ext(u.name) != constant.SvgExt {
 		addResult, err = u.fileService.ImageAdd(ctx, u.spaceId, opts...)
 		if errors.Is(err, image.ErrFormat) ||
 			errors.Is(err, mill.ErrFormatSupportNotEnabled) ||
