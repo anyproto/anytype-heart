@@ -6924,6 +6924,11 @@ message Rpc {
                 string email = 1;
 
                 bool subscribeToNewsletter = 2;
+
+                bool insiderTipsAndTutorials = 3;
+
+                // if we are coming from the onboarding list
+                bool isOnboardingList = 4;
             }
 
             message Response {
