@@ -36,6 +36,7 @@ func New() Runner {
 }
 
 type fileObjectGetter interface {
+	app.Component
 	GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error)
 	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *types.Struct, err error)
 }

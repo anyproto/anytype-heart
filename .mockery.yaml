@@ -106,6 +106,9 @@ packages:
   github.com/anyproto/anytype-heart/space/internal/components/spaceloader:
     interfaces:
       SpaceLoader:
+  github.com/anyproto/anytype-heart/space/internal/components/personalmigration:
+    interfaces:
+      fileObjectGetter:
   github.com/anyproto/anytype-heart/space/internal/components/participantwatcher:
     interfaces:
       ParticipantWatcher:
