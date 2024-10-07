@@ -252,6 +252,65 @@ func (_c *MockObjectStore_DeleteDetails_Call) RunAndReturn(run func(...string) e
 	return _c
 }
 
+// DeleteLastIndexedHeadHash provides a mock function with given fields: ids
+func (_m *MockObjectStore) DeleteLastIndexedHeadHash(ids ...string) error {
+	_va := make([]interface{}, len(ids))
+	for _i := range ids {
+		_va[_i] = ids[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteLastIndexedHeadHash")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(...string) error); ok {
+		r0 = rf(ids...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockObjectStore_DeleteLastIndexedHeadHash_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteLastIndexedHeadHash'
+type MockObjectStore_DeleteLastIndexedHeadHash_Call struct {
+	*mock.Call
+}
+
+// DeleteLastIndexedHeadHash is a helper method to define mock.On call
+//   - ids ...string
+func (_e *MockObjectStore_Expecter) DeleteLastIndexedHeadHash(ids ...interface{}) *MockObjectStore_DeleteLastIndexedHeadHash_Call {
+	return &MockObjectStore_DeleteLastIndexedHeadHash_Call{Call: _e.mock.On("DeleteLastIndexedHeadHash",
+		append([]interface{}{}, ids...)...)}
+}
+
+func (_c *MockObjectStore_DeleteLastIndexedHeadHash_Call) Run(run func(ids ...string)) *MockObjectStore_DeleteLastIndexedHeadHash_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_DeleteLastIndexedHeadHash_Call) Return(err error) *MockObjectStore_DeleteLastIndexedHeadHash_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockObjectStore_DeleteLastIndexedHeadHash_Call) RunAndReturn(run func(...string) error) *MockObjectStore_DeleteLastIndexedHeadHash_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteLinks provides a mock function with given fields: id
 func (_m *MockObjectStore) DeleteLinks(id ...string) error {
 	_va := make([]interface{}, len(id))

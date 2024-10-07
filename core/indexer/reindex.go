@@ -14,7 +14,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -136,9 +135,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		return fmt.Errorf("remove old files: %w", err)
 	}
 
-	ctx := objectcache.CacheOptsWithRemoteLoadDisabled(context.Background())
 	// for all ids except home and archive setting cache timeout for reindexing
-	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if flags.objects {
 		types := []coresb.SmartBlockType{
 			// System types first
@@ -146,59 +143,39 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			coresb.SmartBlockTypeRelation,
 			coresb.SmartBlockTypeRelationOption,
 			coresb.SmartBlockTypeFileObject,
-
+			// todo: fix participants and other static sources reindex logic
 			coresb.SmartBlockTypePage,
 			coresb.SmartBlockTypeTemplate,
 			coresb.SmartBlockTypeArchive,
 			coresb.SmartBlockTypeHome,
 			coresb.SmartBlockTypeWorkspace,
 			coresb.SmartBlockTypeSpaceView,
+			coresb.SmartBlockTypeWidget,
 			coresb.SmartBlockTypeProfilePage,
 		}
 		ids, err := i.getIdsForTypes(space, types...)
 		if err != nil {
 			return err
 		}
-		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, space, ids...)
-
-		i.logFinishedReindexStat(metrics.ReindexTypeThreads, len(ids), successfullyReindexed, time.Since(start))
-		l := log.With(zap.String("space", space.Id()), zap.Int("total", len(ids)), zap.Int("succeed", successfullyReindexed))
-		if successfullyReindexed != len(ids) {
-			l.Errorf("reindex partially failed")
-		} else {
-			l.Infof("reindex finished")
+		err = i.store.DeleteLastIndexedHeadHash(ids...)
+		if err != nil {
+			return fmt.Errorf("delete last indexed head hash: %w", err)
 		}
 	} else {
-
 		if flags.fileObjects {
-			err := i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeFiles, coresb.SmartBlockTypeFileObject)
+			ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeFileObject)
 			if err != nil {
-				return fmt.Errorf("reindex file objects: %w", err)
+				return err
+			}
+			err = i.store.DeleteLastIndexedHeadHash(ids...)
+			if err != nil {
+				return fmt.Errorf("delete last indexed head hash: %w", err)
 			}
 		}
-
-		// Index objects that updated, but not indexed yet
-		// we can have objects which actual state is newer than the indexed one
-		// this may happen e.g. if the app got closed in the middle of object updates processing
-		// So here we reindexOutdatedObjects which compare the last indexed heads hash with the actual one
-		go func() {
-			start := time.Now()
-			total, success, err := i.reindexOutdatedObjects(ctx, space)
-			if err != nil {
-				log.Errorf("reindex outdated failed: %s", err)
-			}
-			l := log.With(zap.String("space", space.Id()), zap.Int("total", total), zap.Int("succeed", success), zap.Int("spentMs", int(time.Since(start).Milliseconds())))
-			if success != total {
-				l.Errorf("reindex outdated partially failed")
-			} else {
-				l.Debugf("reindex outdated finished")
-			}
-			if total > 0 {
-				i.logFinishedReindexStat(metrics.ReindexTypeOutdatedHeads, total, success, time.Since(start))
-			}
-		}()
 	}
+
+	// add the task to recheck all the stored objects indexed heads and reindex if outdated
+	i.reindexAddSpaceTask(space)
 
 	if flags.deletedObjects {
 		err = i.reindexDeletedObjects(space)
@@ -474,43 +451,6 @@ func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reinde
 	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, space, ids...)
 	i.logFinishedReindexStat(reindexType, len(ids), successfullyReindexed, time.Since(start))
 	return nil
-}
-
-func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.Space) (toReindex, success int, err error) {
-	tids := space.StoredIds()
-	var idsToReindex []string
-	for _, tid := range tids {
-		logErr := func(err error) {
-			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
-		}
-
-		lastHash, err := i.store.GetLastIndexedHeadsHash(tid)
-		if err != nil {
-			logErr(err)
-			continue
-		}
-		info, err := space.Storage().TreeStorage(tid)
-		if err != nil {
-			logErr(err)
-			continue
-		}
-		heads, err := info.Heads()
-		if err != nil {
-			logErr(err)
-			continue
-		}
-
-		hh := headsHash(heads)
-		if lastHash != hh {
-			if lastHash != "" {
-				log.With("tree", tid).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
-			}
-			idsToReindex = append(idsToReindex, tid)
-		}
-	}
-
-	success = i.reindexIdsIgnoreErr(ctx, space, idsToReindex...)
-	return len(idsToReindex), success, nil
 }
 
 func (i *indexer) reindexDoc(ctx context.Context, space smartblock.Space, id string) error {
