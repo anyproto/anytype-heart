@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/anyerror"
+	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -438,7 +439,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 
 	var addResult *files.AddResult
-	if !u.forceUploadingAsFile && u.fileType == model.BlockContentFile_Image {
+	if !u.forceUploadingAsFile && u.fileType == model.BlockContentFile_Image && filepath.Ext(u.name) != constant.SvgExt {
 		addResult, err = u.fileService.ImageAdd(ctx, u.spaceId, opts...)
 		if errors.Is(err, image.ErrFormat) ||
 			errors.Is(err, mill.ErrFormatSupportNotEnabled) ||
@@ -518,7 +519,7 @@ func (u *uploader) detectType(buf *fileReader) model.BlockContentFileType {
 		return model.BlockContentFile_File
 	}
 	tp, _ := filetype.Match(b)
-	return file.DetectTypeByMIME(tp.MIME.Value)
+	return file.DetectTypeByMIME(u.name, tp.MIME.Value)
 }
 
 type FileComponent interface {

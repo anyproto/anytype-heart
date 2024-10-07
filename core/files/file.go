@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -110,6 +111,10 @@ func (f *file) Details(ctx context.Context) (*types.Struct, domain.TypeKey, erro
 			t = pbtypes.StructMerge(t, audioDetails, false)
 		}
 		typeKey = bundle.TypeKeyAudio
+	}
+	if filepath.Ext(meta.Name) == constant.SvgExt {
+		typeKey = bundle.TypeKeyImage
+		t.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_image))
 	}
 
 	return t, typeKey, nil
