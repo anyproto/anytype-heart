@@ -213,6 +213,9 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 			break
 		}
 	}
+	if spaceID == "" {
+		spaceID = req.SpaceId
+	}
 	rec, err := mw.makeSuggestedDateRecord(ctx, spaceID, dt)
 	if err != nil {
 		return nil, fmt.Errorf("make date record: %w", err)
