@@ -129,6 +129,8 @@ packages:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       Service:
+      coordinatorStatusUpdater:
+      NotificationSender:
   github.com/anyproto/anytype-heart/space/clientspace:
     interfaces:
       Space:

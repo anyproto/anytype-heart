@@ -76,10 +76,12 @@ type Service interface {
 }
 
 type coordinatorStatusUpdater interface {
+	app.Component
 	UpdateCoordinatorStatus()
 }
 
 type NotificationSender interface {
+	app.Component
 	CreateAndSend(notification *model.Notification) error
 }
 
@@ -132,13 +134,15 @@ func (s *service) TechSpace() *clientspace.TechSpace {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
 	s.factory = app.MustComponent[spacefactory.SpaceFactory](a)
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.config = app.MustComponent[*config.Config](a)
+	s.newAccount = s.config.NewAccount
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
 	s.updater = app.MustComponent[coordinatorStatusUpdater](a)
+	s.notificationService = app.MustComponent[NotificationSender](a)
+	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	s.waiting = make(map[string]controllerWaiter)
 	s.techSpaceReady = make(chan struct{})
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
@@ -161,8 +165,6 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.repKey, err = getRepKey(s.personalSpaceId)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-	s.notificationService = app.MustComponent[NotificationSender](a)
-	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	return err
 }
 
