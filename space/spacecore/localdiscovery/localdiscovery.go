@@ -94,7 +94,10 @@ func (l *localDiscovery) Start() (err error) {
 	}
 	l.started = true
 	l.networkState.RegisterHook(func(_ model.DeviceNetworkType) {
-		l.refreshInterfaces(l.componentCtx)
+		err = l.refreshInterfaces(l.componentCtx)
+		if err != nil {
+			log.Warn("refreshing interfaces on networkState failed", zap.Error(err))
+		}
 	})
 
 	l.port = l.drpcServer.Port()
