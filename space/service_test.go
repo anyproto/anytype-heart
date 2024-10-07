@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/testutil/accounttest"
 	"github.com/gogo/protobuf/types"
@@ -75,9 +76,23 @@ func TestService_Init(t *testing.T) {
 		fx := newFixture(t, nil)
 		defer fx.finish(t)
 	})
-	t.Run("new account", func(t *testing.T) {
-		t.Skip("@roman should revive this test")
-		fx := newFixture(t, nil)
+	t.Run("old account", func(t *testing.T) {
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().WakeUpViews()
+		})
+		defer fx.finish(t)
+	})
+	t.Run("very old account without tech space", func(t *testing.T) {
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(nil, spacesyncproto.ErrSpaceMissing)
+			fx.spaceCore.EXPECT().Get(mock.Anything, fx.spaceId).Return(nil, nil)
+			fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
+			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
+			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
+			fx.techSpace.EXPECT().WakeUpViews()
+		})
 		defer fx.finish(t)
 	})
 }
@@ -254,9 +269,10 @@ func TestService_UpdateSharedLimits(t *testing.T) {
 	})
 }
 
-func newFixture(t *testing.T, expectOldAccount func(t *testing.T)) *fixture {
+func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) *fixture {
 	ctrl := gomock.NewController(t)
 	fx := &fixture{
+		spaceId:            "bafyreifhyhdwrhwc23yi52w42osr4erqhiu2domqd3vwnngdee23kulpre.3aop5yrnf383q",
 		service:            New().(*service),
 		a:                  new(app.App),
 		ctrl:               ctrl,
@@ -300,6 +316,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T)) *fixture {
 
 type fixture struct {
 	*service
+	spaceId            string
 	a                  *app.App
 	config             *config.Config
 	factory            *mock_spacefactory.MockSpaceFactory
@@ -309,6 +326,8 @@ type fixture struct {
 	accountService     *accounttest.AccountTestService
 	coordClient        *mock_coordinatorclient.MockCoordinatorClient
 	ctrl               *gomock.Controller
+	techSpace          *mock_techspace.MockTechSpace
+	clientSpace        *mock_clientspace.MockSpace
 	isNewAccount       *MockisNewAccount
 	objectStore        *objectstore.StoreFixture
 }
@@ -321,8 +340,8 @@ func (l lwMock) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) 
 	return l.sp, nil
 }
 
-func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T)) {
-	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacecore.SpaceType).Return("bafyreifhyhdwrhwc23yi52w42osr4erqhiu2domqd3vwnngdee23kulpre.3aop5yrnf383q", nil).Times(1)
+func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) {
+	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacecore.SpaceType).Return(fx.spaceId, nil).Times(1)
 	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacecore.TechSpaceType).Return("techSpaceId", nil).Times(1)
 	fx.updater.EXPECT().UpdateCoordinatorStatus()
 	clientSpace := mock_clientspace.NewMockSpace(t)
@@ -331,7 +350,8 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T)) 
 	mpCtrl.EXPECT().Start(mock.Anything).Return(nil)
 	mpCtrl.EXPECT().Close(mock.Anything).Return(nil)
 	ts := mock_techspace.NewMockTechSpace(t)
-	// ts.EXPECT().Close(mock.Anything).Return(nil)
+	fx.techSpace = ts
+	fx.clientSpace = clientSpace
 	if expectOldAccount == nil {
 		fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: ts}, nil)
 		prCtrl := mock_spacecontroller.NewMockSpaceController(t)
@@ -341,7 +361,7 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T)) 
 		prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 		ts.EXPECT().WakeUpViews()
 	} else {
-		expectOldAccount(t)
+		expectOldAccount(t, fx)
 	}
 	return
 }
