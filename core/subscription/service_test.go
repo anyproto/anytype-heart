@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -80,6 +81,8 @@ func TestService_Search(t *testing.T) {
 		spaceSub, err := fx.getSpaceSubscriptions(testSpaceId)
 		require.NoError(t, err)
 
+		time.Sleep(batchTime)
+
 		spaceSub.onChange([]*entry{
 			{id: "1", data: &types.Struct{Fields: map[string]*types.Value{
 				"id":     pbtypes.String("1"),
@@ -88,9 +91,9 @@ func TestService_Search(t *testing.T) {
 			}}},
 		})
 
-		assert.Len(t, spaceSub.cache.entries["1"].SubIds(), 1)
-		assert.Len(t, spaceSub.cache.entries["author2"].SubIds(), 1)
-		assert.Len(t, spaceSub.cache.entries["author3"].SubIds(), 1)
+		assert.Equal(t, []string{"test"}, spaceSub.cache.entries["1"].SubIds())
+		assert.Equal(t, []string{"test", "test/dep"}, spaceSub.cache.entries["author2"].SubIds())
+		assert.Equal(t, []string{"test", "test/dep"}, spaceSub.cache.entries["author3"].SubIds())
 
 		fx.events = fx.events[:0]
 

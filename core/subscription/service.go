@@ -674,7 +674,7 @@ func (s *spaceSubscriptions) recordsHandler() {
 			})
 		}
 		// filter nil entries
-		var filtered = entries[:0]
+		filtered := entries[:0]
 		for _, e := range entries {
 			if e != nil {
 				filtered = append(filtered, e)
