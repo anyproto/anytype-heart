@@ -26,12 +26,13 @@ type Record struct {
 }
 
 type Query struct {
-	FullText    string
-	Highlighter ftsearch.HighlightFormatter         // default is json
-	Filters     []*model.BlockContentDataviewFilter // filters results. apply sequentially
-	Sorts       []*model.BlockContentDataviewSort   // order results. apply hierarchically
-	Limit       int                                 // maximum number of results
-	Offset      int                                 // skip given number of results
+	FullText      string
+	SpaceId       string
+	Highlighter   ftsearch.HighlightFormatter         // default is json
+	Filters       []*model.BlockContentDataviewFilter // filters results. apply sequentially
+	Sorts         []*model.BlockContentDataviewSort   // order results. apply hierarchically
+	Limit         int                                 // maximum number of results
+	Offset        int                                 // skip given number of results
 }
 
 func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
