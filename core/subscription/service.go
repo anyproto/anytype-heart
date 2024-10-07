@@ -171,17 +171,31 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 }
 
 func (s *service) Unsubscribe(subIds ...string) (err error) {
-	return fmt.Errorf("not implemented")
-	// spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId)
+	s.lock.Lock()
+	for _, spaceSub := range s.spaceSubs {
+		err = errors.Join(spaceSub.Unsubscribe(subIds...))
+	}
+	s.lock.Unlock()
+	return err
 }
 
 func (s *service) UnsubscribeAll() (err error) {
-	return fmt.Errorf("not implemented")
-	// spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId)
+	s.lock.Lock()
+	for _, spaceSub := range s.spaceSubs {
+		err = errors.Join(spaceSub.UnsubscribeAll())
+	}
+	s.lock.Unlock()
+	return err
 }
+
 func (s *service) SubscriptionIDs() []string {
-	panic("not implemented")
-	// spaceSubs, err := s.getSpaceSubscriptions()
+	var ids []string
+	s.lock.Lock()
+	for _, spaceSub := range s.spaceSubs {
+		ids = append(ids, spaceSub.SubscriptionIDs()...)
+	}
+	s.lock.Unlock()
+	return ids
 }
 
 func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, error) {

@@ -103,7 +103,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 		require.Equal(t, wrapToEventMessages(want), msgs)
 	})
 
-	t.Run("close", func(t *testing.T) {
+	t.Run("unsubscribe", func(t *testing.T) {
 		err = fx.Unsubscribe("test")
 		require.NoError(t, err)
 

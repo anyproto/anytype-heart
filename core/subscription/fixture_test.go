@@ -24,7 +24,7 @@ import (
 )
 
 type fixture struct {
-	Service
+	*service
 	a                 *app.App
 	ctrl              *gomock.Controller
 	store             *objectstore.StoreFixture
@@ -49,7 +49,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(collectionService)
 
 	fx := &fixture{
-		Service:           New(),
+		service:           New().(*service),
 		a:                 a,
 		ctrl:              ctrl,
 		store:             store,
@@ -63,7 +63,7 @@ func newFixture(t *testing.T) *fixture {
 		fx.events = append(fx.events, e)
 	}).Maybe()
 	fx.sender = sender
-	a.Register(fx.Service)
+	a.Register(fx.service)
 	a.Register(fx.sender)
 
 	require.NoError(t, a.Start(context.Background()))
