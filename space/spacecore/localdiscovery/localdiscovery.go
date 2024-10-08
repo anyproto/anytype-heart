@@ -110,23 +110,26 @@ func (l *localDiscovery) Name() (name string) {
 }
 
 func (l *localDiscovery) Close(ctx context.Context) (err error) {
+	l.componentCtxCancel()
+	l.periodicCheck.Close() // safe to close if not started
+
 	if !l.drpcServer.ServerStarted() {
 		return
 	}
+
 	l.m.Lock()
 	if !l.started {
 		l.m.Unlock()
 		return
 	}
+	server := l.server
 	l.m.Unlock()
 
-	l.componentCtxCancel()
-	l.periodicCheck.Close()
-	if l.server != nil {
+	if server != nil {
 		start := time.Now()
 		shutdownFinished := make(chan struct{})
 		go func() {
-			l.server.Shutdown()
+			server.Shutdown()
 			l.closeWait.Wait()
 			close(shutdownFinished)
 			spent := time.Since(start)
@@ -179,9 +182,16 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 		l.server.Shutdown()
 		l.closeWait.Wait()
 		l.closeWait = sync.WaitGroup{}
+		l.server = nil
 	}
 	if len(l.interfacesAddrs.Interfaces) == 0 {
 		return nil
+	}
+	// in case app close is called in between, exit fast, do not start server
+	select {
+	case <-l.componentCtx.Done():
+		return
+	default:
 	}
 	l.queryCtx, l.queryCtxCancel = context.WithCancel(l.componentCtx)
 	if err = l.startServer(); err != nil {
