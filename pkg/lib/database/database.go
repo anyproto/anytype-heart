@@ -66,12 +66,13 @@ type SortRequest struct {
 }
 
 type Query struct {
-	FullText    string
-	Highlighter ftsearch.HighlightFormatter // default is json
-	Filters     []FilterRequest             // filters results. apply sequentially
-	Sorts       []SortRequest               // order results. apply hierarchically
-	Limit       int                         // maximum number of results
-	Offset      int                         // skip given number of results
+	FullText      string
+	SpaceId       string
+	Highlighter   ftsearch.HighlightFormatter // default is json
+	Filters       []FilterRequest             // filters results. apply sequentially
+	Sorts         []SortRequest               // order results. apply hierarchically
+	Limit         int                         // maximum number of results
+	Offset        int                         // skip given number of results
 }
 
 func injectDefaultFilters(filters []FilterRequest) []FilterRequest {

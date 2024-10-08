@@ -676,9 +676,11 @@ func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcMembershi
 	// 1 - send request
 	bsr := proto.GetVerificationEmailRequest{
 		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyId:            s.wallet.Account().SignKey.GetPublic().Account(),
-		Email:                 req.Email,
-		SubscribeToNewsletter: req.SubscribeToNewsletter,
+		OwnerAnyId:              s.wallet.Account().SignKey.GetPublic().Account(),
+		Email:                   req.Email,
+		SubscribeToNewsletter:   req.SubscribeToNewsletter,
+		InsiderTipsAndTutorials: req.InsiderTipsAndTutorials,
+		IsOnboardingList:        req.IsOnboardingList,
 	}
 
 	payload, err := bsr.Marshal()

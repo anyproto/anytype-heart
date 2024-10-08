@@ -97,6 +97,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	records, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
 		Filters:  filtersFromProto(req.Filters),
+		SpaceId:  req.SpaceId,
 		Sorts:    sortsFromProto(req.Sorts),
 		Offset:   int(req.Offset),
 		Limit:    int(req.Limit),
@@ -154,6 +155,7 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 		Offset:      int(req.Offset),
 		Limit:       int(req.Limit),
 		FullText:    req.FullText,
+		SpaceId:     req.SpaceId,
 		Highlighter: highlighter,
 	})
 
@@ -203,26 +205,11 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 	}
 
 	var rec database.Record
-	var spaceID string
-	for _, f := range req.Filters {
-		if f.RelationKey == bundle.RelationKeySpaceId.String() {
-			if f.Condition == model.BlockContentDataviewFilter_Equal {
-				spaceID = f.Value.GetStringValue()
-			}
-			if f.Condition == model.BlockContentDataviewFilter_In {
-				spaces := f.Value.GetListValue().Values
-				if len(spaces) > 0 {
-					spaceID = spaces[0].GetStringValue()
-				}
-			}
-			break
-		}
-	}
-	rec, err := mw.makeSuggestedDateRecord(ctx, spaceID, dt)
+	rec, err := mw.makeSuggestedDateRecord(ctx, req.SpaceId, dt)
 	if err != nil {
 		return nil, fmt.Errorf("make date record: %w", err)
 	}
-	f, _ := database.MakeFilters(filtersFromProto(req.Filters), store.SpaceIndex(spaceID)) //nolint:errcheck
+	f, _ := database.MakeFilters(filtersFromProto(req.Filters), store.SpaceIndex(req.SpaceId)) //nolint:errcheck
 	if f.FilterObject(rec.Details) {
 		return append([]database.Record{rec}, records...), nil
 	}

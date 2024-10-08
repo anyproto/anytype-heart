@@ -2,15 +2,17 @@ package space
 
 import (
 	"context"
-	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
+	"github.com/anyproto/any-sync/testutil/accounttest"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -20,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -28,7 +29,8 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller/mock_spacecontroller"
-	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
+	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory/mock_spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -69,15 +71,25 @@ func TestService_Init(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, s)
 	})
-	t.Run("existing account", func(t *testing.T) {
-		t.Skip("@roman should revive this test")
-		fx := newFixture(t, false)
-		defer fx.finish(t)
-	})
 	t.Run("new account", func(t *testing.T) {
-		t.Skip("@roman should revive this test")
-		fx := newFixture(t, true)
-		defer fx.finish(t)
+		newFixture(t, nil)
+	})
+	t.Run("old account", func(t *testing.T) {
+		newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().WakeUpViews()
+		})
+	})
+	t.Run("very old account without tech space", func(t *testing.T) {
+		newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(nil, spacesyncproto.ErrSpaceMissing)
+			fx.spaceCore.EXPECT().Get(mock.Anything, fx.spaceId).Return(nil, nil)
+			fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
+			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
+			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
+			fx.techSpace.EXPECT().WakeUpViews()
+		})
 	})
 }
 
@@ -253,52 +265,66 @@ func TestService_UpdateSharedLimits(t *testing.T) {
 	})
 }
 
-func newFixture(t *testing.T, newAccount bool) *fixture {
+func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) *fixture {
 	ctrl := gomock.NewController(t)
 	fx := &fixture{
-		service:        New().(*service),
-		a:              new(app.App),
-		ctrl:           ctrl,
-		spaceCore:      mock_spacecore.NewMockSpaceCoreService(t),
-		accountService: mock_accountservice.NewMockService(ctrl),
-		coordClient:    mock_coordinatorclient.NewMockCoordinatorClient(ctrl),
-		factory:        mock_spacefactory.NewMockSpaceFactory(t),
-		isNewAccount:   NewMockisNewAccount(t),
-		objectStore:    objectstore.NewStoreFixture(t),
+		spaceId:            "bafyreifhyhdwrhwc23yi52w42osr4erqhiu2domqd3vwnngdee23kulpre.3aop5yrnf383q",
+		service:            New().(*service),
+		a:                  new(app.App),
+		ctrl:               ctrl,
+		spaceCore:          mock_spacecore.NewMockSpaceCoreService(t),
+		coordClient:        mock_coordinatorclient.NewMockCoordinatorClient(ctrl),
+		factory:            mock_spacefactory.NewMockSpaceFactory(t),
+		notificationSender: mock_space.NewMockNotificationSender(t),
+		objectStore:        objectstore.NewStoreFixture(t),
+		updater:            mock_space.NewMockcoordinatorStatusUpdater(t),
+		config:             config.New(config.WithNewAccount(expectOldAccount == nil)),
 	}
+	keys, err := accountdata.NewRandom()
+	require.NoError(t, err)
+	fx.config.PeferYamuxTransport = true
 	wallet := mock_wallet.NewMockWallet(t)
-	wallet.EXPECT().RepoPath().Return("repo/path")
+	path, err := os.MkdirTemp("", "repo")
+	require.NoError(t, err)
+	defer os.RemoveAll(path)
+	wallet.EXPECT().Account().Return(keys)
+	wallet.EXPECT().RepoPath().Return(path)
 
-	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.spaceCore)).
+	fx.a.
+		Register(testutil.PrepareMock(ctx, fx.a, wallet)).
+		Register(fx.config).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.notificationSender)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.updater)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.spaceCore)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.coordClient)).
-		Register(testutil.PrepareMock(ctx, fx.a, fx.accountService)).
-		Register(testutil.PrepareMock(ctx, fx.a, fx.isNewAccount)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.factory)).
 		Register(testutil.PrepareMock(ctx, fx.a, mock_notifications.NewMockNotifications(t))).
-		Register(testutil.PrepareMock(ctx, fx.a, wallet)).
-		Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_LocalOnly, PeferYamuxTransport: true}).
 		Register(fx.objectStore).
 		Register(fx.service)
-	fx.isNewAccount.EXPECT().IsNewAccount().Return(newAccount)
-	fx.spaceCore.EXPECT().DeriveID(mock.Anything, mock.Anything).Return(testPersonalSpaceID, nil)
-	fx.accountService.EXPECT().Account().Return(&accountdata.AccountKeys{})
-	fx.expectRun(t, newAccount)
+	fx.expectRun(t, expectOldAccount)
 
 	require.NoError(t, fx.a.Start(ctx))
-
+	t.Cleanup(func() {
+		require.NoError(t, fx.a.Close(ctx))
+	})
 	return fx
 }
 
 type fixture struct {
 	*service
-	a              *app.App
-	factory        *mock_spacefactory.MockSpaceFactory
-	spaceCore      *mock_spacecore.MockSpaceCoreService
-	accountService *mock_accountservice.MockService
-	coordClient    *mock_coordinatorclient.MockCoordinatorClient
-	ctrl           *gomock.Controller
-	isNewAccount   *MockisNewAccount
-	objectStore    *objectstore.StoreFixture
+	spaceId            string
+	a                  *app.App
+	config             *config.Config
+	factory            *mock_spacefactory.MockSpaceFactory
+	spaceCore          *mock_spacecore.MockSpaceCoreService
+	updater            *mock_space.MockcoordinatorStatusUpdater
+	notificationSender *mock_space.MockNotificationSender
+	accountService     *accounttest.AccountTestService
+	coordClient        *mock_coordinatorclient.MockCoordinatorClient
+	ctrl               *gomock.Controller
+	techSpace          *mock_techspace.MockTechSpace
+	clientSpace        *mock_clientspace.MockSpace
+	objectStore        *objectstore.StoreFixture
 }
 
 type lwMock struct {
@@ -309,28 +335,29 @@ func (l lwMock) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) 
 	return l.sp, nil
 }
 
-func (fx *fixture) expectRun(t *testing.T, newAccount bool) {
+func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) {
+	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacecore.SpaceType).Return(fx.spaceId, nil).Times(1)
+	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacecore.TechSpaceType).Return("techSpaceId", nil).Times(1)
+	fx.updater.EXPECT().UpdateCoordinatorStatus()
 	clientSpace := mock_clientspace.NewMockSpace(t)
 	mpCtrl := mock_spacecontroller.NewMockSpaceController(t)
 	fx.factory.EXPECT().CreateMarketplaceSpace(mock.Anything).Return(mpCtrl, nil)
 	mpCtrl.EXPECT().Start(mock.Anything).Return(nil)
+	mpCtrl.EXPECT().Close(mock.Anything).Return(nil)
 	ts := mock_techspace.NewMockTechSpace(t)
-	fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: ts}, nil)
-	prCtrl := mock_spacecontroller.NewMockSpaceController(t)
-	fx.coordClient.EXPECT().StatusCheckMany(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, fmt.Errorf("test not check statuses"))
-	if newAccount {
+	fx.techSpace = ts
+	fx.clientSpace = clientSpace
+	if expectOldAccount == nil {
+		fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: ts}, nil)
+		prCtrl := mock_spacecontroller.NewMockSpaceController(t)
 		fx.factory.EXPECT().CreatePersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
 		lw := lwMock{clientSpace}
 		prCtrl.EXPECT().Current().Return(lw)
+		prCtrl.EXPECT().Close(mock.Anything).Return(nil)
+		ts.EXPECT().WakeUpViews()
 	} else {
-		fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
-		lw := lwMock{clientSpace}
-		prCtrl.EXPECT().Current().Return(lw)
+		expectOldAccount(t, fx)
 	}
-	prCtrl.EXPECT().Mode().Return(mode.ModeLoading)
-	ts.EXPECT().Close(mock.Anything).Return(nil)
-	mpCtrl.EXPECT().Close(mock.Anything).Return(nil)
-	prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 	return
 }
 

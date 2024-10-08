@@ -34,6 +34,7 @@ func New() Runner {
 }
 
 type fileObjectGetter interface {
+	app.Component
 	GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error)
 	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error)
 }
@@ -47,7 +48,6 @@ type runner struct {
 	cancel             context.CancelFunc
 	spc                clientspace.Space
 	loadErr            error
-	waitLoad           chan struct{}
 	waitMigrateProfile chan struct{}
 	waitMigrate        chan struct{}
 	started            bool
@@ -66,14 +66,12 @@ func (r *runner) Init(a *app.App) error {
 
 	r.waitMigrateProfile = make(chan struct{})
 	r.waitMigrate = make(chan struct{})
-	r.waitLoad = make(chan struct{})
 	return nil
 }
 
 func (r *runner) Run(context.Context) error {
 	r.started = true
 	r.ctx, r.cancel = context.WithCancel(context.Background())
-	go r.waitSpace()
 	go r.runMigrations()
 	return nil
 }
@@ -84,11 +82,6 @@ func (r *runner) Close(context.Context) error {
 	}
 	<-r.waitMigrate
 	return nil
-}
-
-func (r *runner) waitSpace() {
-	r.spc, r.loadErr = r.spaceLoader.WaitLoad(r.ctx)
-	close(r.waitLoad)
 }
 
 func (r *runner) migrateProfile() (hasIcon bool, oldIcon string, err error) {
@@ -177,15 +170,10 @@ func (r *runner) migrateIcon(oldIcon string) (err error) {
 
 func (r *runner) runMigrations() {
 	defer close(r.waitMigrate)
-	select {
-	case <-r.ctx.Done():
+	r.spc, r.loadErr = r.spaceLoader.WaitLoad(r.ctx)
+	if r.loadErr != nil {
+		log.Error("failed to load space", zap.Error(r.loadErr))
 		return
-	case <-r.waitLoad:
-		if r.loadErr != nil {
-			log.Error("failed to load space", zap.Error(r.loadErr))
-			return
-		}
-		break
 	}
 	hasIcon, iconId, err := r.migrateProfile()
 	if err != nil {

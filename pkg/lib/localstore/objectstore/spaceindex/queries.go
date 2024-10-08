@@ -281,7 +281,7 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 			highlighter = ftsearch.DefaultHighlightFormatter
 		}
 
-		fulltextResults, err := s.performFulltextSearch(q.FullText, highlighter, filters)
+		fulltextResults, err := s.performFulltextSearch(q.FullText, highlighter, q.SpaceId)
 		if err != nil {
 			return nil, fmt.Errorf("perform fulltext search: %w", err)
 		}
@@ -341,9 +341,8 @@ func jsonHighlightToRanges(s string) (text string, ranges []*model.Range) {
 	return string(fragment.Text), ranges
 }
 
-func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ftsearch.HighlightFormatter, filters *database.Filters) ([]database.FulltextResult, error) {
-	spaceIds := getSpaceIdsFromFilter(filters.FilterObj)
-	bleveResults, err := s.fts.Search(spaceIds, highlightFormatter, text)
+func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ftsearch.HighlightFormatter, spaceId string) ([]database.FulltextResult, error) {
+	bleveResults, err := s.fts.Search([]string{spaceId}, highlightFormatter, text)
 	if err != nil {
 		return nil, fmt.Errorf("fullText search: %w", err)
 	}
@@ -421,34 +420,6 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 	}
 
 	return results, nil
-}
-
-func getSpaceIdsFromFilter(fltr database.Filter) []string {
-	switch f := fltr.(type) {
-	case database.FilterEq:
-		if f.Key == bundle.RelationKeySpaceId {
-			return []string{f.Value.String()}
-		}
-	case database.FilterIn:
-		if f.Key == bundle.RelationKeySpaceId {
-			spaceIds := make([]string, 0, len(f.Value))
-			for _, v := range f.Value {
-				spaceIds = append(spaceIds, v.String())
-			}
-			return spaceIds
-		}
-	case database.FiltersAnd:
-		return iterateOverAndFilters(f)
-	}
-	return nil
-}
-
-func iterateOverAndFilters(fs []database.Filter) []string {
-	var spaceIds []string
-	for _, f := range fs {
-		spaceIds = append(spaceIds, getSpaceIdsFromFilter(f)...)
-	}
-	return spaceIds
 }
 
 // TODO: objstore: no one uses total

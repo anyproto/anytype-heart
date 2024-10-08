@@ -387,6 +387,16 @@ func (st *SmartTest) History() undo.History {
 	return st.hist
 }
 
+func (st *SmartTest) StateRebuild(d state.Doc) (err error) {
+	d.(*state.State).SetParent(st.Doc.(*state.State))
+	_, _, err = state.ApplyState(d.(*state.State), false)
+	return err
+}
+
+func (st *SmartTest) StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error {
+	panic("not implemented")
+}
+
 func (st *SmartTest) AddBlock(b simple.Block) *SmartTest {
 	st.Doc.(*state.State).Add(b)
 	return st

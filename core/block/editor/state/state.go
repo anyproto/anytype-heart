@@ -1059,7 +1059,7 @@ func (s *State) Snippet() string {
 		}
 		return true
 	})
-	return textutil.Truncate(builder.String(), snippetMaxSize)
+	return textutil.TruncateEllipsized(builder.String(), snippetMaxSize)
 }
 
 func (s *State) FileRelationKeys() []domain.RelationKey {

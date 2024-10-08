@@ -48,11 +48,13 @@ func (q *dummyFulltextQueue) RemoveIdsFromFullTextQueue(ids []string) error {
 	return nil
 }
 
-func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, id string) error {
+func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...string) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
-	if !lo.Contains(q.ids, id) {
-		q.ids = append(q.ids, id)
+	for _, id := range ids {
+		if !lo.Contains(q.ids, id) {
+			q.ids = append(q.ids, id)
+		}
 	}
 	return nil
 }

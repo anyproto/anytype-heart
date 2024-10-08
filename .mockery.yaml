@@ -37,6 +37,9 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
+  github.com/anyproto/anytype-heart/core/block/editor/lastused:
+    interfaces:
+      ObjectUsageUpdater:
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
@@ -106,6 +109,9 @@ packages:
   github.com/anyproto/anytype-heart/space/internal/components/spaceloader:
     interfaces:
       SpaceLoader:
+  github.com/anyproto/anytype-heart/space/internal/components/personalmigration:
+    interfaces:
+      fileObjectGetter:
   github.com/anyproto/anytype-heart/space/internal/components/participantwatcher:
     interfaces:
       ParticipantWatcher:
@@ -126,6 +132,8 @@ packages:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       Service:
+      coordinatorStatusUpdater:
+      NotificationSender:
   github.com/anyproto/anytype-heart/space/clientspace:
     interfaces:
       Space:
