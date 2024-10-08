@@ -19,13 +19,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
-	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
-	"github.com/anyproto/anytype-heart/core/files/fileuploader/mock_fileuploader"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
@@ -33,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -164,10 +165,9 @@ func TestDropFiles(t *testing.T) {
 		fx.sb.Doc = st
 		fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil).Maybe()
 		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
-
-		service := mock_fileuploader.NewMockService(t)
-		service.EXPECT().NewUploader(mock.Anything, mock.Anything).Return(&stubUploader{}).Maybe()
-		fx.fileUploaderFactory = service
+		mockService := mock_fileobject.NewMockService(t)
+		mockService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return("fileObjectId", &types.Struct{Fields: map[string]*types.Value{}}, nil).Maybe()
+		fx.fileUploaderFactory = prepareFileService(t, fx.mockSender, mockService)
 
 		// when
 		err = fx.sfile.DropFiles(pb.RpcFileDropRequest{
@@ -190,10 +190,9 @@ func TestDropFiles(t *testing.T) {
 		fx.sb.Doc = st
 		fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil).Maybe()
 		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
-
-		service := mock_fileuploader.NewMockService(t)
-		service.EXPECT().NewUploader(mock.Anything, mock.Anything).Return(&stubUploader{}).Maybe()
-		fx.fileUploaderFactory = service
+		mockService := mock_fileobject.NewMockService(t)
+		mockService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return("fileObjectId", &types.Struct{Fields: map[string]*types.Value{}}, nil).Maybe()
+		fx.fileUploaderFactory = prepareFileService(t, fx.mockSender, mockService)
 
 		// when
 		err = fx.sfile.DropFiles(pb.RpcFileDropRequest{
@@ -214,9 +213,12 @@ func TestDropFiles(t *testing.T) {
 		st := fx.sb.Doc.NewState()
 		st.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(model.ObjectType_collection)))
 		fx.sb.Doc = st
-		fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil).Maybe()
-		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
-		fx.fileUploaderFactory = prepareFileService(t)
+		fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
+		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
+		mockService := mock_fileobject.NewMockService(t)
+		mockService.EXPECT().Create(context.Background(), "", mock.Anything).Return("fileObjectId", &types.Struct{Fields: map[string]*types.Value{}}, nil).Maybe()
+		fx.fileUploaderFactory = prepareFileService(t, fx.mockSender, mockService)
+
 		// when
 		proc := &dropFilesProcess{
 			spaceID:             fx.SpaceID(),
@@ -224,21 +226,58 @@ func TestDropFiles(t *testing.T) {
 			picker:              fx.picker,
 			fileUploaderFactory: fx.fileUploaderFactory,
 		}
-		if err = proc.Init([]string{file.Name()}); err != nil {
-			return
-		}
+		err = proc.Init([]string{file.Name()})
+		assert.Nil(t, err)
 		var ch = make(chan error)
-		go proc.Start(fx, "", model.Block_Bottom, ch)
+		proc.Start(fx, "", model.Block_Bottom, ch)
 		err = <-ch
 
 		// then
 		assert.Nil(t, err)
+		storeSlice := fx.NewState().GetStoreSlice(template.CollectionStoreKey)
+		assert.Len(t, storeSlice, 1)
+		assert.Equal(t, "fileObjectId", storeSlice[0])
+	})
+	t.Run("drop dir with file in collection - success", func(t *testing.T) {
+		// given
+		dir := t.TempDir()
+		_, err := os.Create(filepath.Join(dir, "test"))
+		assert.Nil(t, err)
+
+		fx := newFixture(t)
+		st := fx.sb.Doc.NewState()
+		st.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(model.ObjectType_collection)))
+		fx.sb.Doc = st
+		fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
+		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
+		mockService := mock_fileobject.NewMockService(t)
+		mockService.EXPECT().Create(context.Background(), "", mock.Anything).Return("fileObjectId", &types.Struct{Fields: map[string]*types.Value{}}, nil).Maybe()
+		fx.fileUploaderFactory = prepareFileService(t, fx.mockSender, mockService)
+
+		// when
+		proc := &dropFilesProcess{
+			spaceID:             fx.SpaceID(),
+			processService:      fx.processService,
+			picker:              fx.picker,
+			fileUploaderFactory: fx.fileUploaderFactory,
+		}
+		err = proc.Init([]string{dir})
+		assert.Nil(t, err)
+		var ch = make(chan error)
+		proc.Start(fx, "", model.Block_Bottom, ch)
+		err = <-ch
+
+		// then
+		assert.Nil(t, err)
+		storeSlice := fx.NewState().GetStoreSlice(template.CollectionStoreKey)
+		assert.Len(t, storeSlice, 1)
+		assert.Equal(t, "fileObjectId", storeSlice[0])
 	})
 }
 
-func prepareFileService(t *testing.T) fileuploader.Service {
+func prepareFileService(t *testing.T, sender *mock_event.MockSender, fileObjectService *mock_fileobject.MockService) fileuploader.Service {
 	dataStoreProvider, err := datastore.NewInMemory()
-	require.NoError(t, err)
+	assert.Nil(t, err)
 
 	blockStorage := filestorage.NewInMemory()
 
@@ -247,8 +286,6 @@ func prepareFileService(t *testing.T) fileuploader.Service {
 	commonFileService := fileservice.New()
 	fileSyncService := filesync.New()
 	objectStore := objectstore.NewStoreFixture(t)
-	eventSender := mock_event.NewMockSender(t)
-	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
@@ -261,84 +298,22 @@ func prepareFileService(t *testing.T) fileuploader.Service {
 	a.Register(filestore.New())
 	a.Register(commonFileService)
 	a.Register(fileSyncService)
-	a.Register(testutil.PrepareMock(ctx, a, eventSender))
+	a.Register(testutil.PrepareMock(ctx, a, sender))
 	a.Register(blockStorage)
 	a.Register(objectStore)
 	a.Register(rpcStoreService)
 	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
+	a.Register(testutil.PrepareMock(ctx, a, fileObjectService))
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
+	a.Register(core.NewTempDirService())
+	a.Register(testutil.PrepareMock(ctx, a, mock_cache.NewMockObjectGetterComponent(t)))
+	a.Register(files.New())
 	err = a.Start(ctx)
-	require.NoError(t, err)
+	assert.Nil(t, err)
 
 	service := fileuploader.New()
 	err = service.Init(a)
 	assert.Nil(t, err)
 	return service
-}
-
-type stubUploader struct {
-	name, path string
-}
-
-func (s *stubUploader) SetBlock(block file.Block) fileuploader.Uploader {
-	return s
-}
-
-func (s *stubUploader) SetName(name string) fileuploader.Uploader {
-	s.name = name
-	return s
-}
-
-func (s *stubUploader) SetType(tp model.BlockContentFileType) fileuploader.Uploader {
-	return s
-}
-
-func (s *stubUploader) SetStyle(tp model.BlockContentFileStyle) fileuploader.Uploader {
-	return s
-}
-
-func (s *stubUploader) SetAdditionalDetails(details *types.Struct) fileuploader.Uploader {
-	return s
-}
-
-func (s *stubUploader) SetBytes(b []byte) fileuploader.Uploader {
-	return s
-}
-
-func (s *stubUploader) SetUrl(url string) fileuploader.Uploader {
-	return s
-}
-
-func (s *stubUploader) SetFile(path string) fileuploader.Uploader {
-	s.path = path
-	return s
-}
-
-func (s *stubUploader) SetLastModifiedDate() fileuploader.Uploader {
-	return s
-}
-
-func (s *stubUploader) SetGroupId(groupId string) fileuploader.Uploader {
-	return s
-}
-
-func (s *stubUploader) SetCustomEncryptionKeys(keys map[string]string) fileuploader.Uploader {
-	return s
-}
-
-func (s *stubUploader) AddOptions(options ...files.AddOption) fileuploader.Uploader {
-	return s
-}
-
-func (s *stubUploader) AsyncUpdates(smartBlockId string) fileuploader.Uploader {
-	return s
-}
-
-func (s *stubUploader) Upload(ctx context.Context) (result fileuploader.UploadResult) {
-	return fileuploader.UploadResult{FileObjectId: "id"}
-}
-
-func (s *stubUploader) UploadAsync(ctx context.Context) (ch chan fileuploader.UploadResult) {
-	return nil
 }
