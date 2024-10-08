@@ -484,7 +484,6 @@ func (dp *dropFilesProcess) Start(file smartblock.SmartBlock, targetId string, p
 		dp.handleDragAndDropInDocument(file.RootId(), targetId, pos, rootDone, in)
 	}
 	wg.Wait()
-	return
 }
 
 func (dp *dropFilesProcess) handleDragAndDropInCollection(rootId string, droppedFiles []*dropFileEntry, rootDone chan error, in chan *dropFileInfo) {
