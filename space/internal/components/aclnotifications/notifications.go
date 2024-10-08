@@ -349,9 +349,9 @@ func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
 		return nil
 	}
 	var name, iconCid string
-	if details != nil && details.GetFields() != nil {
-		iconCid = details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue()
-		name = details.GetFields()[bundle.RelationKeyName.String()].GetStringValue()
+	if details != nil {
+		iconCid = details.GetString(bundle.RelationKeyIconImage)
+		name = details.GetString(bundle.RelationKeyName)
 	}
 	err = n.notificationService.CreateAndSend(&model.Notification{
 		Id:      notificationId,

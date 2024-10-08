@@ -5,14 +5,12 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -21,21 +19,20 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type (
 	collectionService interface {
-		CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error)
+		CreateCollection(details *domain.Details, flags []*model.InternalFlag) (coresb.SmartBlockType, *domain.Details, *state.State, error)
 	}
 
 	templateService interface {
-		CreateTemplateStateWithDetails(templateId string, details *types.Struct) (st *state.State, err error)
+		CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error)
 		TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
 	}
 
 	bookmarkService interface {
-		CreateObjectAndFetch(ctx context.Context, spaceId string, details *types.Struct) (objectID string, newDetails *types.Struct, err error)
+		CreateObjectAndFetch(ctx context.Context, spaceId string, details *domain.Details) (objectID string, newDetails *domain.Details, err error)
 	}
 )
 
@@ -44,13 +41,13 @@ const CName = "objectCreator"
 var log = logging.Logger("object-service")
 
 type Service interface {
-	CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *types.Struct, err error)
-	CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, objectUniqueTypeKey string, req CreateObjectRequest) (id string, details *types.Struct, err error)
+	CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *domain.Details, err error)
+	CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, objectUniqueTypeKey string, req CreateObjectRequest) (id string, details *domain.Details, err error)
 
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
+	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
 
-	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) (ids []string, objects []*types.Struct, err error)
+	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) (ids []string, objects []*domain.Details, err error)
 	app.Component
 }
 
@@ -83,14 +80,14 @@ func (s *service) Name() (name string) {
 
 // TODO Add validate method
 type CreateObjectRequest struct {
-	Details       *types.Struct
+	Details       *domain.Details
 	InternalFlags []*model.InternalFlag
 	TemplateId    string
 	ObjectTypeKey domain.TypeKey
 }
 
 // CreateObject is high-level method for creating new objects
-func (s *service) CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *types.Struct, err error) {
+func (s *service) CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *domain.Details, err error) {
 	space, err := s.spaceService.Get(ctx, spaceID)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
@@ -100,7 +97,7 @@ func (s *service) CreateObject(ctx context.Context, spaceID string, req CreateOb
 
 func (s *service) CreateObjectUsingObjectUniqueTypeKey(
 	ctx context.Context, spaceID string, objectUniqueTypeKey string, req CreateObjectRequest,
-) (id string, details *types.Struct, err error) {
+) (id string, details *domain.Details, err error) {
 	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(objectUniqueTypeKey)
 	if err != nil {
 		return "", nil, fmt.Errorf("get type key from raw unique key: %w", err)
@@ -113,10 +110,10 @@ func (s *service) CreateObjectUsingObjectUniqueTypeKey(
 // will return Restricted error in case called with types like File or Participant
 func (s *service) createObjectInSpace(
 	ctx context.Context, space clientspace.Space, req CreateObjectRequest,
-) (id string, details *types.Struct, err error) {
+) (id string, details *domain.Details, err error) {
 	details = req.Details
-	if details.GetFields() == nil {
-		details = &types.Struct{Fields: map[string]*types.Value{}}
+	if details == nil {
+		details = domain.NewDetails()
 	}
 	details = internalflag.PutToDetails(details, req.InternalFlags)
 
@@ -129,15 +126,15 @@ func (s *service) createObjectInSpace(
 	case bundle.TypeKeyBookmark:
 		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), details)
 	case bundle.TypeKeySet:
-		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_set))
-		return s.createSet(ctx, space, &pb.RpcObjectCreateSetRequest{
+		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_set))
+		return s.createSet(ctx, space, createSetRequest{
 			Details:       details,
 			InternalFlags: req.InternalFlags,
-			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
+			Source:        details.GetStringList(bundle.RelationKeySetOf),
 		})
 	case bundle.TypeKeyCollection:
 		var st *state.State
-		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
 		_, details, st, err = s.collectionService.CreateCollection(details, req.InternalFlags)
 		if err != nil {
 			return "", nil, err
@@ -164,9 +161,9 @@ func (s *service) createObjectFromTemplate(
 	ctx context.Context,
 	space clientspace.Space,
 	objectTypeKeys []domain.TypeKey,
-	details *types.Struct,
+	details *domain.Details,
 	templateId string,
-) (id string, newDetails *types.Struct, err error) {
+) (id string, newDetails *domain.Details, err error) {
 	createState, err := s.templateService.CreateTemplateStateWithDetails(templateId, details)
 	if err != nil {
 		return

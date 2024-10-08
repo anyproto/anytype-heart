@@ -16,11 +16,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/kanban"
+	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
-	"github.com/anyproto/anytype-heart/util/testMock"
-	"github.com/anyproto/anytype-heart/util/testMock/mockKanban"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 type fixture struct {
@@ -31,19 +31,21 @@ type fixture struct {
 	sender            *mock_event.MockSender
 	events            []*pb.Event
 	collectionService *collectionServiceMock
-	kanban            *mockKanban.MockService
+	kanban            *mock_kanban.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
+	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	a := new(app.App)
 	store := objectstore.NewStoreFixture(t)
 	a.Register(store)
-	kanban := testMock.RegisterMockKanban(ctrl, a)
+	kanbanService := mock_kanban.NewMockService(t)
 	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	sbtProvider.EXPECT().Name().Return("smartBlockTypeProvider")
 	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
 	a.Register(sbtProvider)
+	a.Register(testutil.PrepareMock(ctx, a, kanbanService))
 
 	collectionService := &collectionServiceMock{MockCollectionService: NewMockCollectionService(t)}
 	a.Register(collectionService)
@@ -54,7 +56,7 @@ func newFixture(t *testing.T) *fixture {
 		ctrl:              ctrl,
 		store:             store,
 		collectionService: collectionService,
-		kanban:            kanban,
+		kanban:            kanbanService,
 	}
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Init(mock.Anything).Return(nil)

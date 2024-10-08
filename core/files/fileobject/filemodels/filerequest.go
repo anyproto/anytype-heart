@@ -3,8 +3,6 @@ package filemodels
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 )
@@ -13,7 +11,7 @@ type CreateRequest struct {
 	FileId                domain.FileId
 	EncryptionKeys        map[string]string
 	ObjectOrigin          objectorigin.ObjectOrigin
-	AdditionalDetails     *types.Struct
+	AdditionalDetails     *domain.Details
 	AsyncMetadataIndexing bool
 }
 

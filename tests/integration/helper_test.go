@@ -4,29 +4,29 @@ import (
 	"golang.org/x/exp/constraints"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func filterEqualsToString(key domain.RelationKey, value string) *model.BlockContentDataviewFilter {
-	return &model.BlockContentDataviewFilter{
-		RelationKey: key.String(),
+func filterEqualsToString(key domain.RelationKey, value string) database.FilterRequest {
+	return database.FilterRequest{
+		RelationKey: key,
 		Condition:   model.BlockContentDataviewFilter_Equal,
-		Value:       pbtypes.String(value),
+		Value:       domain.String(value),
 	}
 }
 
-func filterNotEmpty(key domain.RelationKey) *model.BlockContentDataviewFilter {
-	return &model.BlockContentDataviewFilter{
-		RelationKey: key.String(),
+func filterNotEmpty(key domain.RelationKey) database.FilterRequest {
+	return database.FilterRequest{
+		RelationKey: key,
 		Condition:   model.BlockContentDataviewFilter_NotEmpty,
 	}
 }
 
-func filterEqualsToInteger[T constraints.Integer](key domain.RelationKey, value T) *model.BlockContentDataviewFilter {
-	return &model.BlockContentDataviewFilter{
-		RelationKey: key.String(),
+func filterEqualsToInteger[T constraints.Integer](key domain.RelationKey, value T) database.FilterRequest {
+	return database.FilterRequest{
+		RelationKey: key,
 		Condition:   model.BlockContentDataviewFilter_Equal,
-		Value:       pbtypes.Int64(int64(value)),
+		Value:       domain.Int64(value),
 	}
 }

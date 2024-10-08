@@ -5,17 +5,16 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestSpaceView_AccessType(t *testing.T) {
@@ -125,7 +124,7 @@ type spaceServiceStub struct {
 func (s *spaceServiceStub) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
 }
 
-func (s *spaceServiceStub) OnWorkspaceChanged(spaceId string, details *types.Struct) {
+func (s *spaceServiceStub) OnWorkspaceChanged(spaceId string, details *domain.Details) {
 }
 
 func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
@@ -177,7 +176,7 @@ func newSpaceViewFixture(t *testing.T) *spaceViewFixture {
 }
 
 func (f *spaceViewFixture) getAccessType() spaceinfo.AccessType {
-	return spaceinfo.AccessType(pbtypes.GetInt64(f.CombinedDetails(), bundle.RelationKeySpaceAccessType.String()))
+	return spaceinfo.AccessType(f.CombinedDetails().GetInt64(bundle.RelationKeySpaceAccessType))
 }
 
 func (f *spaceViewFixture) finish() {

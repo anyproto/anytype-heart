@@ -3,17 +3,16 @@ package subscription
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestSubscription_Add(t *testing.T) {
@@ -56,8 +55,8 @@ func TestSubscription_Remove(t *testing.T) {
 		store := objectstore.NewStoreFixture(t)
 		store.AddObjects(t, "space1", []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:   pbtypes.String("id7"),
-				bundle.RelationKeyName: pbtypes.String("id7"),
+				bundle.RelationKeyId:   domain.String("id7"),
+				bundle.RelationKeyName: domain.String("id7"),
 			},
 		})
 		s := service{
@@ -74,7 +73,7 @@ func TestSubscription_Remove(t *testing.T) {
 			filter: database.FilterNot{database.FilterEq{
 				Key:   "order",
 				Cond:  model.BlockContentDataviewFilter_Equal,
-				Value: pbtypes.Int64(100),
+				Value: domain.Int64(100),
 			}},
 		}
 	}
@@ -84,7 +83,7 @@ func TestSubscription_Remove(t *testing.T) {
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
 			id:   "id4",
-			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(100)}},
+			data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"id": domain.String("id4"), "order": domain.Int64(100)}),
 		})
 		sub.onChange(ctx)
 		assertCtxRemove(t, ctx, "id4")
@@ -97,7 +96,7 @@ func TestSubscription_Remove(t *testing.T) {
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
 			id:   "id1",
-			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(100)}},
+			data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"id": domain.String("id4"), "order": domain.Int64(100)}),
 		})
 		sub.onChange(ctx)
 		assertCtxCounters(t, ctx, opCounter{total: 8, prevCount: 2, nextCount: 3})
@@ -116,7 +115,7 @@ func TestSubscription_Change(t *testing.T) {
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
 			id:   "id4",
-			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(6)}},
+			data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"id": domain.String("id4"), "order": domain.Int64(6)}),
 		})
 		sub.onChange(ctx)
 		assertCtxPosition(t, ctx, "id5", "")

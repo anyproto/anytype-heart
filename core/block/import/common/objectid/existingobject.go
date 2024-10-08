@@ -7,12 +7,12 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type existingObject struct {
@@ -37,25 +37,25 @@ func (e *existingObject) GetIDAndPayload(_ context.Context, spaceID string, sn *
 			return id, treestorage.TreeStorageCreatePayload{}, nil
 		}
 	}
-	if sn.SbType == sb.SmartBlockTypeRelationOption {
+	if sn.Snapshot.SbType == sb.SmartBlockTypeRelationOption {
 		return e.getExistingRelationOption(sn, spaceID), treestorage.TreeStorageCreatePayload{}, nil
 	}
-	if sn.SbType == sb.SmartBlockTypeRelation {
+	if sn.Snapshot.SbType == sb.SmartBlockTypeRelation {
 		return e.getExistingRelation(sn, spaceID), treestorage.TreeStorageCreatePayload{}, nil
 	}
 	return "", treestorage.TreeStorageCreatePayload{}, nil
 }
 
 func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snapshot) (string, error) {
-	oldAnytypeID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyOldAnytypeID.String())
+	oldAnytypeID := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyOldAnytypeID)
 
 	// Check for imported objects
 	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
-				Value:       pbtypes.String(oldAnytypeID),
+				RelationKey: bundle.RelationKeyOldAnytypeID,
+				Value:       domain.String(oldAnytypeID),
 			},
 		},
 	})
@@ -65,11 +65,11 @@ func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snap
 
 	// Check for derived objects
 	ids, _, err = e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
-				Value:       pbtypes.String(oldAnytypeID), // Old id equals to unique key
+				RelationKey: bundle.RelationKeyUniqueKey,
+				Value:       domain.String(oldAnytypeID), // Old id equals to unique key
 			},
 		},
 	})
@@ -81,13 +81,13 @@ func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snap
 }
 
 func (e *existingObject) getExistingObject(spaceID string, sn *common.Snapshot) string {
-	source := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceFilePath.String())
+	source := sn.Snapshot.Data.Details.GetString(bundle.RelationKeySourceFilePath)
 	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySourceFilePath.String(),
-				Value:       pbtypes.String(source),
+				RelationKey: bundle.RelationKeySourceFilePath,
+				Value:       domain.String(source),
 			},
 		},
 	})
@@ -98,24 +98,24 @@ func (e *existingObject) getExistingObject(spaceID string, sn *common.Snapshot) 
 }
 
 func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot, spaceID string) string {
-	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
-	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
+	key := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey)
 	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyName.String(),
-				Value:       pbtypes.String(name),
+				RelationKey: bundle.RelationKeyName,
+				Value:       domain.String(name),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyRelationKey.String(),
-				Value:       pbtypes.String(key),
+				RelationKey: bundle.RelationKeyRelationKey,
+				Value:       domain.String(key),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyLayout.String(),
-				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				RelationKey: bundle.RelationKeyLayout,
+				Value:       domain.Int64(model.ObjectType_relationOption),
 			},
 		},
 	})
@@ -126,24 +126,24 @@ func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot, sp
 }
 
 func (e *existingObject) getExistingRelation(snapshot *common.Snapshot, spaceID string) string {
-	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
-	format := pbtypes.GetFloat64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
+	name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
+	format := snapshot.Snapshot.Data.Details.GetFloat64(bundle.RelationKeyRelationFormat)
 	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyName.String(),
-				Value:       pbtypes.String(name),
+				RelationKey: bundle.RelationKeyName,
+				Value:       domain.String(name),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyRelationFormat.String(),
-				Value:       pbtypes.Float64(format),
+				RelationKey: bundle.RelationKeyRelationFormat,
+				Value:       domain.Float64(format),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyLayout.String(),
-				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+				RelationKey: bundle.RelationKeyLayout,
+				Value:       domain.Int64(model.ObjectType_relation),
 			},
 		},
 	})

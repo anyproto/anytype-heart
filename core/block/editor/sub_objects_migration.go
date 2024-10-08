@@ -53,10 +53,10 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 				return
 			}
 
-			if pbtypes.GetBool(info.Details, migratedKey) {
+			if info.Details.GetBool(migratedKey) {
 				return
 			}
-			uniqueKeyRaw := pbtypes.GetString(info.Details, bundle.RelationKeyUniqueKey.String())
+			uniqueKeyRaw := info.Details.GetString(bundle.RelationKeyUniqueKey)
 			id, err := m.migrateSubObject(context.Background(), uniqueKeyRaw, info.Details, info.Type)
 			if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 				log.With("objectID", id).Errorf("failed to migrate subobject: %v", err)
@@ -68,7 +68,7 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 			needToAddRestrictions := false
 			switch info.Type {
 			case bundle.TypeKeyRelation:
-				format := pbtypes.GetInt64(info.Details, bundle.RelationKeyRelationFormat.String())
+				format := info.Details.GetInt64(bundle.RelationKeyRelationFormat)
 				if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
 					// tags and statuses relations values are become readonly
 					st.SetInStore(append(path, bundle.RelationKeyRelationReadonlyValue.String()), pbtypes.Bool(true))
@@ -95,7 +95,7 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 			if needToAddRestrictions {
 				// we can't add restrictions as it can lead to removing this field on the old client
 				// todo: revise this
-				// st.SetInStore(append(path, bundle.RelationKeyRestrictions.String()), pbtypes.IntList(1, 3, 4))
+				// st.SetInStore(append(path, bundle.RelationKeyRestrictions.TryString()), pbtypes.TryInt64List(1, 3, 4))
 			}
 
 			migratedSubObjects++
@@ -114,7 +114,7 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 func (m *subObjectsMigration) migrateSubObject(
 	ctx context.Context,
 	uniqueKeyRaw string,
-	details *types.Struct,
+	details *domain.Details,
 	typeKey domain.TypeKey,
 ) (id string, err error) {
 	uniqueKey, err := domain.UnmarshalUniqueKey(uniqueKeyRaw)
@@ -181,8 +181,8 @@ func (m *subObjectsMigration) iterateAllSubObjects(st *state.State, proc func(in
 					continue
 				}
 
-				details := v.StructValue
-				details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.Marshal())
+				details := domain.NewDetailsFromProto(v.StructValue)
+				details.SetString(bundle.RelationKeyUniqueKey, uk.Marshal())
 
 				proc(smartblock.DocInfo{
 					Links:   nil,

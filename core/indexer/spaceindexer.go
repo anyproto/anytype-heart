@@ -200,10 +200,7 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 		_ = i.spaceIndex.DeleteDetails(ctx, []string{info.Id})
 	}
 	indexDetailsTime := time.Now()
-	detailsCount := 0
-	if details.GetFields() != nil {
-		detailsCount = len(details.GetFields())
-	}
+	detailsCount := details.Len()
 
 	if !hasError {
 		saveIndexedHash()

@@ -3,18 +3,17 @@ package pb
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestSpaceImport_ProvideCollection(t *testing.T) {
@@ -29,7 +28,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, collection, 1)
-		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot).(*state.State)
+		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 0)
 	})
@@ -52,20 +51,28 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 
 		allSnapshot := []*common.Snapshot{
 			{
-				Id:     "id1",
-				SbType: smartblock2.SmartBlockTypePage,
+				Id: "id1",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypePage,
+				},
 			},
 			{
-				Id:     "id2",
-				SbType: smartblock2.SmartBlockTypeSubObject,
+				Id: "id2",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypeSubObject,
+				},
 			},
 			{
-				Id:     "id3",
-				SbType: smartblock2.SmartBlockTypeTemplate,
+				Id: "id3",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypeTemplate,
+				},
 			},
 			{
-				Id:     "id4",
-				SbType: smartblock2.SmartBlockTypePage,
+				Id: "id4",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypePage,
+				},
 			},
 		}
 
@@ -76,7 +83,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
 		assert.Len(t, collection, 1)
-		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot).(*state.State)
+		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 2)
 		assert.Equal(t, objectsInCollection[0], "id1")
@@ -90,42 +97,46 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		allSnapshot := []*common.Snapshot{
 			// skip objects
 			{
-				Id:     "id2",
-				SbType: smartblock2.SmartBlockTypeSubObject,
+				Id: "id2",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypeSubObject,
+				},
 			},
 			{
-				Id:     "id3",
-				SbType: smartblock2.SmartBlockTypeTemplate,
+				Id: "id3",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypeTemplate,
+				},
 			},
 			// page
 			{
-				Id:     "id1",
-				SbType: smartblock2.SmartBlockTypePage,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details:     &types.Struct{Fields: map[string]*types.Value{}},
+				Id: "id1",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypePage,
+					Data: &common.StateSnapshot{
+						Details:     domain.NewDetails(),
 						ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 					},
 				},
 			},
 			// collection
 			{
-				Id:     "id4",
-				SbType: smartblock2.SmartBlockTypePage,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details:     &types.Struct{Fields: map[string]*types.Value{}},
+				Id: "id4",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypePage,
+					Data: &common.StateSnapshot{
+						Details:     domain.NewDetails(),
 						ObjectTypes: []string{bundle.TypeKeyCollection.URL()},
 					},
 				},
 			},
 			// set
 			{
-				Id:     "id5",
-				SbType: smartblock2.SmartBlockTypePage,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details:     &types.Struct{Fields: map[string]*types.Value{}},
+				Id: "id5",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypePage,
+					Data: &common.StateSnapshot{
+						Details:     domain.NewDetails(),
 						ObjectTypes: []string{bundle.TypeKeySet.URL()},
 					},
 				},
@@ -133,10 +144,10 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 		// set widget
 		widgetSnapshot := &common.Snapshot{
-			Id:     "widgetID",
-			SbType: smartblock2.SmartBlockTypeWidget,
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
+			Id: "widgetID",
+			Snapshot: &common.SnapshotModel{
+				SbType: smartblock2.SmartBlockTypeWidget,
+				Data: &common.StateSnapshot{
 					Blocks: []*model.Block{
 						{
 							Id: "widgetID",
@@ -158,7 +169,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
 		assert.Len(t, collection, 1)
-		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot).(*state.State)
+		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
 		assert.Equal(t, objectsInCollection[0], "id5")
@@ -171,42 +182,46 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		allSnapshot := []*common.Snapshot{
 			// skip objects
 			{
-				Id:     "id2",
-				SbType: smartblock2.SmartBlockTypeSubObject,
+				Id: "id2",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypeSubObject,
+				},
 			},
 			{
-				Id:     "id3",
-				SbType: smartblock2.SmartBlockTypeTemplate,
+				Id: "id3",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypeTemplate,
+				},
 			},
 			// page
 			{
-				Id:     "id1",
-				SbType: smartblock2.SmartBlockTypePage,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details:     &types.Struct{Fields: map[string]*types.Value{}},
+				Id: "id1",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypePage,
+					Data: &common.StateSnapshot{
+						Details:     domain.NewDetails(),
 						ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 					},
 				},
 			},
 			// collection
 			{
-				Id:     "id4",
-				SbType: smartblock2.SmartBlockTypePage,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details:     &types.Struct{Fields: map[string]*types.Value{}},
+				Id: "id4",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypePage,
+					Data: &common.StateSnapshot{
+						Details:     domain.NewDetails(),
 						ObjectTypes: []string{bundle.TypeKeyCollection.URL()},
 					},
 				},
 			},
 			// set
 			{
-				Id:     "id5",
-				SbType: smartblock2.SmartBlockTypePage,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details:     &types.Struct{Fields: map[string]*types.Value{}},
+				Id: "id5",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypePage,
+					Data: &common.StateSnapshot{
+						Details:     domain.NewDetails(),
 						ObjectTypes: []string{bundle.TypeKeySet.URL()},
 					},
 				},
@@ -215,10 +230,10 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 
 		// collection widget
 		widgetSnapshot := &common.Snapshot{
-			Id:     "widgetID",
-			SbType: smartblock2.SmartBlockTypeWidget,
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
+			Id: "widgetID",
+			Snapshot: &common.SnapshotModel{
+				SbType: smartblock2.SmartBlockTypeWidget,
+				Data: &common.StateSnapshot{
 					Blocks: []*model.Block{
 						{
 							Id: "widgetID",
@@ -240,7 +255,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
 		assert.Len(t, collection, 1)
-		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot).(*state.State)
+		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
 		assert.Equal(t, objectsInCollection[0], "id4")
@@ -253,57 +268,61 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		allSnapshot := []*common.Snapshot{
 			// skip object
 			{
-				Id:     "id2",
-				SbType: smartblock2.SmartBlockTypeSubObject,
+				Id: "id2",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypeSubObject,
+				},
 			},
 			{
-				Id:     "id3",
-				SbType: smartblock2.SmartBlockTypeTemplate,
+				Id: "id3",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypeTemplate,
+				},
 			},
 			// favorite page
 			{
-				Id:     "id1",
-				SbType: smartblock2.SmartBlockTypePage,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details: &types.Struct{Fields: map[string]*types.Value{
-							bundle.RelationKeyIsFavorite.String(): pbtypes.Bool(true),
-						}},
+				Id: "id1",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypePage,
+					Data: &common.StateSnapshot{
+						Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+							bundle.RelationKeyIsFavorite: domain.Bool(true),
+						}),
 						ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 					},
 				},
 			},
 			// collection
 			{
-				Id:     "id4",
-				SbType: smartblock2.SmartBlockTypePage,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details:     &types.Struct{Fields: map[string]*types.Value{}},
+				Id: "id4",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypePage,
+					Data: &common.StateSnapshot{
+						Details:     domain.NewDetails(),
 						ObjectTypes: []string{bundle.TypeKeyCollection.URL()},
 					},
 				},
 			},
 			// set
 			{
-				Id:     "id5",
-				SbType: smartblock2.SmartBlockTypePage,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details:     &types.Struct{Fields: map[string]*types.Value{}},
+				Id: "id5",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypePage,
+					Data: &common.StateSnapshot{
+						Details:     domain.NewDetails(),
 						ObjectTypes: []string{bundle.TypeKeySet.URL()},
 					},
 				},
 			},
 			// dashboard
 			{
-				Id:     "id6",
-				SbType: smartblock2.SmartBlockTypeWorkspace,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details: &types.Struct{Fields: map[string]*types.Value{
-							bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("spaceDashboardId"),
-						}},
+				Id: "id6",
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock2.SmartBlockTypeWorkspace,
+					Data: &common.StateSnapshot{
+						Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+							bundle.RelationKeySpaceDashboardId: domain.StringList([]string{"spaceDashboardId"}),
+						}),
 						ObjectTypes: []string{bundle.TypeKeyDashboard.URL()},
 					},
 				},
@@ -312,10 +331,10 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 
 		// object with widget
 		widgetSnapshot := &common.Snapshot{
-			Id:     "widgetID",
-			SbType: smartblock2.SmartBlockTypeWidget,
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
+			Id: "widgetID",
+			Snapshot: &common.SnapshotModel{
+				SbType: smartblock2.SmartBlockTypeWidget,
+				Data: &common.StateSnapshot{
 					Blocks: []*model.Block{
 						{
 							Id: "widgetID",
@@ -337,11 +356,8 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
 		assert.Len(t, collection, 1)
-		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot).(*state.State)
+		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
-		assert.Len(t, objectsInCollection, 3)
-		assert.Equal(t, objectsInCollection[0], "newObjectInWidget")
-		assert.Equal(t, objectsInCollection[1], "id1")
-		assert.Equal(t, objectsInCollection[2], "spaceDashboardId")
+		assert.Equal(t, []string{"newObjectInWidget", "id1", "spaceDashboardId"}, objectsInCollection)
 	})
 }

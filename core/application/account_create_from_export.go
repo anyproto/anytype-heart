@@ -17,16 +17,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/constant"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -184,25 +183,25 @@ func (s *Service) setDetails(profile *pb.Profile, icon int64) error {
 	return nil
 }
 
-func buildDetails(profile *pb.Profile, icon int64) (profileDetails []*model.Detail, accountDetails []*model.Detail) {
-	profileDetails = []*model.Detail{{
-		Key:   bundle.RelationKeyName.String(),
-		Value: pbtypes.String(profile.Name),
+func buildDetails(profile *pb.Profile, icon int64) (profileDetails []domain.Detail, accountDetails []domain.Detail) {
+	profileDetails = []domain.Detail{{
+		Key:   bundle.RelationKeyName,
+		Value: domain.String(profile.Name),
 	}}
 	if profile.Avatar == "" {
-		profileDetails = append(profileDetails, &model.Detail{
-			Key:   bundle.RelationKeyIconOption.String(),
-			Value: pbtypes.Int64(icon),
+		profileDetails = append(profileDetails, domain.Detail{
+			Key:   bundle.RelationKeyIconOption,
+			Value: domain.Int64(icon),
 		})
 	} else {
-		profileDetails = append(profileDetails, &model.Detail{
-			Key:   bundle.RelationKeyIconImage.String(),
-			Value: pbtypes.String(profile.Avatar),
+		profileDetails = append(profileDetails, domain.Detail{
+			Key:   bundle.RelationKeyIconImage,
+			Value: domain.String(profile.Avatar),
 		})
 	}
-	accountDetails = []*model.Detail{{
-		Key:   bundle.RelationKeyIconOption.String(),
-		Value: pbtypes.Int64(icon),
+	accountDetails = []domain.Detail{{
+		Key:   bundle.RelationKeyIconOption,
+		Value: domain.Int64(icon),
 	}}
 	return
 }

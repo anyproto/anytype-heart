@@ -153,7 +153,7 @@ func TestMigration(t *testing.T) {
 	}
 }
 
-func assertDetails(t *testing.T, wantDetails *types.Struct, gotDetails *types.Struct) {
+func assertDetails(t *testing.T, wantdetails *domain.Details, gotdetails *domain.Details) {
 	for key, want := range wantDetails.Fields {
 		got := gotDetails.Fields[key]
 		assert.Equal(t, want, got, key)
