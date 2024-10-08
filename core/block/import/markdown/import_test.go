@@ -8,10 +8,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 )
 
 func TestMarkdown_GetSnapshots(t *testing.T) {
@@ -78,7 +78,8 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 	})
 	t.Run("import file with links", func(t *testing.T) {
 		// given
-		converter := newMDConverter(&MockTempDir{})
+		tempDirProvider := &MockTempDir{}
+		converter := newMDConverter(tempDirProvider)
 		h := &Markdown{blockConverter: converter}
 		p := process.NewProgress(pb.ModelProcess_Import)
 
@@ -96,69 +97,125 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		assert.NotNil(t, sn)
 		assert.Len(t, sn.Snapshots, 4)
 
-		var found bool
+		fileNameToObjectId := make(map[string]string, len(sn.Snapshots))
 		for _, snapshot := range sn.Snapshots {
-			if snapshot.FileName == "testdata/links.md" {
+			fileNameToObjectId[snapshot.FileName] = snapshot.Id
+		}
+		var found bool
+		expectedPath := "testdata" + string(filepath.Separator) + "links.md"
+		rootId := fileNameToObjectId[expectedPath]
+		want := buildExpectedTree(fileNameToObjectId, tempDirProvider, rootId)
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.FileName == expectedPath {
 				found = true
-				assert.Len(t, snapshot.Snapshot.Data.Blocks, 14)
-				assertLinkBlocks(t, snapshot)
+				blockbuilder.AssertTreesEqual(t, want.Build(), snapshot.Snapshot.Data.Blocks)
 			}
 		}
 		assert.True(t, found)
 	})
 }
 
-func assertLinkBlocks(t *testing.T, snapshot *common.Snapshot) {
-	assert.Equal(t, "File does not exist test1", snapshot.Snapshot.Data.Blocks[0].GetText().GetText())
-	assert.Len(t, snapshot.Snapshot.Data.Blocks[0].GetText().GetMarks().GetMarks(), 1)
-	assert.Equal(t, model.BlockContentTextMark_Link, snapshot.Snapshot.Data.Blocks[0].GetText().GetMarks().GetMarks()[0].GetType())
-
-	assert.Equal(t, snapshot.Snapshot.Data.Blocks[1].GetText().GetText(), "Test link to page test2")
-	assert.Len(t, snapshot.Snapshot.Data.Blocks[1].GetText().GetMarks().GetMarks(), 1)
-	assert.Equal(t, model.BlockContentTextMark_Mention, snapshot.Snapshot.Data.Blocks[1].GetText().GetMarks().GetMarks()[0].GetType())
-
-	assert.NotNil(t, snapshot.Snapshot.Data.Blocks[2].GetFile())
-	assert.Contains(t, snapshot.Snapshot.Data.Blocks[2].GetFile().GetName(), "test.txt")
-
-	assert.Equal(t, snapshot.Snapshot.Data.Blocks[3].GetText().GetText(), "Test link to csv test4")
-	assert.Len(t, snapshot.Snapshot.Data.Blocks[3].GetText().GetMarks().GetMarks(), 1)
-	assert.Equal(t, model.BlockContentTextMark_Mention, snapshot.Snapshot.Data.Blocks[3].GetText().GetMarks().GetMarks()[0].GetType())
-
-	assert.Equal(t, snapshot.Snapshot.Data.Blocks[4].GetText().GetText(), "File does not exist with bold mark test1")
-	assert.Len(t, snapshot.Snapshot.Data.Blocks[4].GetText().GetMarks().GetMarks(), 2)
-	assert.Equal(t, model.BlockContentTextMark_Link, snapshot.Snapshot.Data.Blocks[4].GetText().GetMarks().GetMarks()[0].GetType())
-	assert.Equal(t, model.BlockContentTextMark_Bold, snapshot.Snapshot.Data.Blocks[4].GetText().GetMarks().GetMarks()[1].GetType())
-
-	assert.Equal(t, snapshot.Snapshot.Data.Blocks[5].GetText().GetText(), "Test link to page with bold mark test2")
-	assert.Len(t, snapshot.Snapshot.Data.Blocks[5].GetText().GetMarks().GetMarks(), 2)
-	assert.Equal(t, model.BlockContentTextMark_Object, snapshot.Snapshot.Data.Blocks[5].GetText().GetMarks().GetMarks()[0].GetType())
-	assert.Equal(t, model.BlockContentTextMark_Bold, snapshot.Snapshot.Data.Blocks[5].GetText().GetMarks().GetMarks()[1].GetType())
-
-	assert.Equal(t, snapshot.Snapshot.Data.Blocks[6].GetText().GetText(), "Test file block with bold mark test3")
-	assert.Len(t, snapshot.Snapshot.Data.Blocks[6].GetText().GetMarks().GetMarks(), 2)
-	assert.Equal(t, model.BlockContentTextMark_Link, snapshot.Snapshot.Data.Blocks[6].GetText().GetMarks().GetMarks()[0].GetType())
-	assert.Equal(t, model.BlockContentTextMark_Bold, snapshot.Snapshot.Data.Blocks[6].GetText().GetMarks().GetMarks()[1].GetType())
-
-	assert.Equal(t, snapshot.Snapshot.Data.Blocks[7].GetText().GetText(), "Test link to csv with bold mark test4")
-	assert.Len(t, snapshot.Snapshot.Data.Blocks[7].GetText().GetMarks().GetMarks(), 2)
-	assert.Equal(t, model.BlockContentTextMark_Object, snapshot.Snapshot.Data.Blocks[7].GetText().GetMarks().GetMarks()[0].GetType())
-	assert.Equal(t, model.BlockContentTextMark_Bold, snapshot.Snapshot.Data.Blocks[7].GetText().GetMarks().GetMarks()[1].GetType())
-
-	assert.NotNil(t, snapshot.Snapshot.Data.Blocks[8].GetBookmark())
-	assert.Equal(t, "testdata/file.md", snapshot.Snapshot.Data.Blocks[8].GetBookmark().GetUrl())
-
-	assert.Equal(t, snapshot.Snapshot.Data.Blocks[9].GetText().GetText(), "test2")
-	assert.Len(t, snapshot.Snapshot.Data.Blocks[9].GetText().GetMarks().GetMarks(), 2)
-	assert.Equal(t, model.BlockContentTextMark_Object, snapshot.Snapshot.Data.Blocks[9].GetText().GetMarks().GetMarks()[0].GetType())
-	assert.Equal(t, model.BlockContentTextMark_Bold, snapshot.Snapshot.Data.Blocks[9].GetText().GetMarks().GetMarks()[1].GetType())
-
-	assert.NotNil(t, snapshot.Snapshot.Data.Blocks[10].GetFile())
-	assert.Contains(t, snapshot.Snapshot.Data.Blocks[10].GetFile().GetName(), "test.txt")
-
-	assert.Equal(t, snapshot.Snapshot.Data.Blocks[11].GetText().GetText(), "test4")
-	assert.Len(t, snapshot.Snapshot.Data.Blocks[11].GetText().GetMarks().GetMarks(), 2)
-	assert.Equal(t, model.BlockContentTextMark_Object, snapshot.Snapshot.Data.Blocks[11].GetText().GetMarks().GetMarks()[0].GetType())
-	assert.Equal(t, model.BlockContentTextMark_Bold, snapshot.Snapshot.Data.Blocks[11].GetText().GetMarks().GetMarks()[1].GetType())
+func buildExpectedTree(fileNameToObjectId map[string]string, provider *MockTempDir, rootId string) *blockbuilder.Block {
+	fileMdPath := "testdata" + string(filepath.Separator) + "file.md"
+	testMdPath := "testdata" + string(filepath.Separator) + "test.md"
+	testCsvPath := "testdata" + string(filepath.Separator) + "test.csv"
+	testTxtPath := "testdata" + string(filepath.Separator) + "test.txt"
+	want := blockbuilder.Root(
+		blockbuilder.ID(rootId),
+		blockbuilder.Children(
+			blockbuilder.Text("File does not exist test1", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 20, To: 25},
+					Type:  model.BlockContentTextMark_Link,
+					Param: fileMdPath,
+				},
+			}})),
+			blockbuilder.Text("Test link to page test2", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 18, To: 23},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: fileNameToObjectId[testMdPath],
+				},
+			}})),
+			blockbuilder.File("", blockbuilder.FileName(provider.TempDir()+testTxtPath), blockbuilder.FileType(model.BlockContentFile_File)),
+			blockbuilder.Text("Test link to csv test4", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 17, To: 22},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: fileNameToObjectId[testCsvPath],
+				},
+			}})),
+			blockbuilder.Text("File does not exist with bold mark test1", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 35, To: 40},
+					Type:  model.BlockContentTextMark_Link,
+					Param: fileMdPath,
+				},
+				{
+					Range: &model.Range{From: 35, To: 40},
+					Type:  model.BlockContentTextMark_Bold,
+				},
+			}})),
+			blockbuilder.Text("Test link to page with bold mark test2", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 33, To: 38},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: fileNameToObjectId[testMdPath],
+				},
+				{
+					Range: &model.Range{From: 33, To: 38},
+					Type:  model.BlockContentTextMark_Bold,
+				},
+			}})),
+			blockbuilder.Text("Test file block with bold mark test3", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 31, To: 36},
+					Type:  model.BlockContentTextMark_Link,
+					Param: testTxtPath,
+				},
+				{
+					Range: &model.Range{From: 31, To: 36},
+					Type:  model.BlockContentTextMark_Bold,
+				},
+			}})),
+			blockbuilder.Text("Test link to csv with bold mark test4", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 32, To: 37},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: fileNameToObjectId[testCsvPath],
+				},
+				{
+					Range: &model.Range{From: 32, To: 37},
+					Type:  model.BlockContentTextMark_Bold,
+				},
+			}})),
+			blockbuilder.Bookmark(fileMdPath),
+			blockbuilder.Text("test2", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 0, To: 5},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: fileNameToObjectId[testMdPath],
+				},
+				{
+					Range: &model.Range{From: 0, To: 5},
+					Type:  model.BlockContentTextMark_Bold,
+				},
+			}})),
+			blockbuilder.File("", blockbuilder.FileName(provider.TempDir()+testTxtPath), blockbuilder.FileType(model.BlockContentFile_File)),
+			blockbuilder.Text("test4", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 0, To: 5},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: fileNameToObjectId[testCsvPath],
+				},
+				{
+					Range: &model.Range{From: 0, To: 5},
+					Type:  model.BlockContentTextMark_Bold,
+				},
+			}})),
+			blockbuilder.Link(rootId),
+		))
+	return want
 }
 
 func setupTestDirectory(t *testing.T) string {

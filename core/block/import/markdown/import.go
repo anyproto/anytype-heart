@@ -448,7 +448,7 @@ func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress process.P
 			continue
 		}
 
-		var childrenIds = make([]string, len(file.ParsedBlocks))
+		childrenIds := make([]string, 0, len(file.ParsedBlocks))
 		for _, b := range file.ParsedBlocks {
 			if isChildBlock(childBlocks, b) {
 				continue

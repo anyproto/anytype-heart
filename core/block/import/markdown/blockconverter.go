@@ -112,7 +112,6 @@ func (m *mdConverter) handleSingleMark(block *model.Block, files map[string]*Fil
 	link := txt.Marks.Marks[0].Param
 	wholeLineLink := m.isWholeLineLink(txt.Text, txt.Marks.Marks[0])
 	ext := filepath.Ext(link)
-	// todo: bug with multiple markup links in arow when the first is external
 	if file := files[link]; file != nil {
 		if strings.EqualFold(ext, ".csv") {
 			m.processCSVFileLink(block, files, link, wholeLineLink)
@@ -147,7 +146,7 @@ func (m *mdConverter) handleSingleLinkMark(block *model.Block, files map[string]
 	if file := files[link]; file != nil {
 		file.HasInboundLinks = true
 		if strings.EqualFold(ext, ".md") || strings.EqualFold(ext, ".csv") {
-			mark.Type = model.BlockContentTextMark_Object
+			mark.Type = model.BlockContentTextMark_Mention
 			return false
 		}
 		if m.isWholeLineLink(txt.Text, mark) {
