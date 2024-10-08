@@ -321,7 +321,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 					SbType: smartblock2.SmartBlockTypeWorkspace,
 					Data: &common.StateSnapshot{
 						Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-							bundle.RelationKeySpaceDashboardId: domain.String("spaceDashboardId"),
+							bundle.RelationKeySpaceDashboardId: domain.StringList([]string{"spaceDashboardId"}),
 						}),
 						ObjectTypes: []string{bundle.TypeKeyDashboard.URL()},
 					},
@@ -358,9 +358,6 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		assert.Len(t, collection, 1)
 		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
-		assert.Len(t, objectsInCollection, 3)
-		assert.Equal(t, objectsInCollection[0], "newObjectInWidget")
-		assert.Equal(t, objectsInCollection[1], "id1")
-		assert.Equal(t, objectsInCollection[2], "spaceDashboardId")
+		assert.Equal(t, []string{"newObjectInWidget", "id1", "spaceDashboardId"}, objectsInCollection)
 	})
 }
