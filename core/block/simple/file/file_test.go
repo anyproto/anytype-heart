@@ -73,3 +73,56 @@ func TestFile_Diff(t *testing.T) {
 		}), diff)
 	})
 }
+
+func TestDetectTypeByMIME(t *testing.T) {
+	tests := []struct {
+		name     string
+		fileName string
+		mime     string
+		expected model.BlockContentFileType
+	}{
+		{
+			name:     "SVG file",
+			fileName: "example.svg",
+			mime:     "image/svg+xml",
+			expected: model.BlockContentFile_Image,
+		},
+		{
+			name:     "JPEG image",
+			fileName: "photo.jpg",
+			mime:     "image/jpeg",
+			expected: model.BlockContentFile_Image,
+		},
+		{
+			name:     "Video file",
+			fileName: "video.mp4",
+			mime:     "video/mp4",
+			expected: model.BlockContentFile_Video,
+		},
+		{
+			name:     "Audio file",
+			fileName: "song.mp3",
+			mime:     "audio/mpeg",
+			expected: model.BlockContentFile_Audio,
+		},
+		{
+			name:     "PDF document",
+			fileName: "document.pdf",
+			mime:     "application/pdf",
+			expected: model.BlockContentFile_PDF,
+		},
+		{
+			name:     "Generic file",
+			fileName: "archive.zip",
+			mime:     "application/zip",
+			expected: model.BlockContentFile_File,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := DetectTypeByMIME(tc.fileName, tc.mime)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}

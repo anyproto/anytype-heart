@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
@@ -180,8 +181,9 @@ type fileObjectMigrator interface {
 	MigrateFileIdsInDetails(st *state.State, spc Space)
 }
 
-type RelationGetter interface {
+type Store interface {
 	GetRelationByKey(key string) (*model.Relation, error)
+	QueryByID(ids []string) (records []database.Record, err error)
 }
 
 type source struct {
