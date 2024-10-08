@@ -68,6 +68,7 @@ type indexer struct {
 	btHash  Hasher
 	forceFt chan struct{}
 
+	techSpaceIdGetter          techSpaceIdGetter
 	spacesPrioritySubscription *syncsubscriptions.ObjectSubscription[*types.Struct]
 	lock                       sync.Mutex
 	reindexLogFields           []zap.Field
@@ -89,7 +90,12 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.subscriptionService = app.MustComponent[subscription.Service](a)
 	i.componentCtx, i.componentCtxCancel = context.WithCancel(context.Background())
 	i.spaceIndexers = map[string]*spaceIndexer{}
+	i.techSpaceIdGetter = app.MustComponent[techSpaceIdGetter](a)
 	return
+}
+
+type techSpaceIdGetter interface {
+	TechSpaceId() string
 }
 
 func (i *indexer) Name() (name string) {
@@ -165,6 +171,7 @@ func (i *indexer) subscribeToSpaces() error {
 	objectReq := subscription.SubscribeRequest{
 		SubId:             "lastOpenedSpaces",
 		Internal:          true,
+		SpaceId:           i.techSpaceIdGetter.TechSpaceId(),
 		NoDepSubscription: true,
 		Keys:              []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyLastOpenedDate.String(), bundle.RelationKeyLastModifiedDate.String()},
 		Filters: []*model.BlockContentDataviewFilter{

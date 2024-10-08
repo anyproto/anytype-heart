@@ -53,6 +53,10 @@ func NewSubscription(service subscription.Service, request subscription.Subscrib
 			return pbtypes.GetString(t, bundle.RelationKeyId.String()), t
 		},
 		update: func(s string, value *types.Value, s2 *types.Struct) *types.Struct {
+			if s2 == nil {
+				// todo: shouldn't happen because of changes sort, but happen, need to debug
+				return nil
+			}
 			s2.Fields[s] = value
 			return s2
 		},
