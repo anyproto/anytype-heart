@@ -73,18 +73,16 @@ func TestService_Init(t *testing.T) {
 		assert.NotNil(t, s)
 	})
 	t.Run("new account", func(t *testing.T) {
-		fx := newFixture(t, nil)
-		defer fx.finish(t)
+		newFixture(t, nil)
 	})
 	t.Run("old account", func(t *testing.T) {
-		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+		newFixture(t, func(t *testing.T, fx *fixture) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
 			fx.techSpace.EXPECT().WakeUpViews()
 		})
-		defer fx.finish(t)
 	})
 	t.Run("very old account without tech space", func(t *testing.T) {
-		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+		newFixture(t, func(t *testing.T, fx *fixture) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(nil, spacesyncproto.ErrSpaceMissing)
 			fx.spaceCore.EXPECT().Get(mock.Anything, fx.spaceId).Return(nil, nil)
 			fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
@@ -93,7 +91,6 @@ func TestService_Init(t *testing.T) {
 			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 			fx.techSpace.EXPECT().WakeUpViews()
 		})
-		defer fx.finish(t)
 	})
 }
 
@@ -308,7 +305,9 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 	fx.expectRun(t, expectOldAccount)
 
 	require.NoError(t, fx.a.Start(ctx))
-
+	t.Cleanup(func() {
+		require.NoError(t, fx.a.Close(ctx))
+	})
 	return fx
 }
 

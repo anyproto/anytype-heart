@@ -131,8 +131,8 @@ func (fx *fixture) assertStoreValue(t *testing.T, test any, extract func(val *fa
 	require.Equal(t, test, extract(val))
 }
 
-func (fx *fixture) assertStateValue(t *testing.T, val any, extract func(fields map[string]*types.Value) any) {
-	require.Equal(t, val, extract(fx.SmartBlock.NewState().CombinedDetails().GetFields()))
+func (fx *fixture) assertStateValue(t *testing.T, val any, extract func(str *types.Struct) any) {
+	require.Equal(t, val, extract(fx.SmartBlock.NewState().CombinedDetails()))
 }
 
 func TestAccountNew(t *testing.T) {
@@ -171,11 +171,11 @@ func TestAccountOldInitWithData(t *testing.T) {
 	id, err := fx.GetAnalyticsId()
 	require.NoError(t, err)
 	require.Equal(t, "analyticsId", id)
-	fx.assertStateValue(t, "Anna", func(fields map[string]*types.Value) any {
-		return fields["name"].GetStringValue()
+	fx.assertStateValue(t, "Anna", func(str *types.Struct) any {
+		return pbtypes.GetString(str, "name")
 	})
-	fx.assertStateValue(t, "Molly", func(fields map[string]*types.Value) any {
-		return fields["description"].GetStringValue()
+	fx.assertStateValue(t, "Molly", func(str *types.Struct) any {
+		return pbtypes.GetString(str, "description")
 	})
 	require.NotNil(t, fx)
 }
@@ -185,11 +185,11 @@ func TestPushNewChanges(t *testing.T) {
 	fx := newFixture(t, true, nil)
 	_, err := fx.OnPushChange(makeStoreContent(map[string]any{"name": "Anna", "description": "Molly"}))
 	require.NoError(t, err)
-	fx.assertStateValue(t, "Anna", func(fields map[string]*types.Value) any {
-		return fields["name"].GetStringValue()
+	fx.assertStateValue(t, "Anna", func(str *types.Struct) any {
+		return pbtypes.GetString(str, "name")
 	})
-	fx.assertStateValue(t, "Molly", func(fields map[string]*types.Value) any {
-		return fields["description"].GetStringValue()
+	fx.assertStateValue(t, "Molly", func(str *types.Struct) any {
+		return pbtypes.GetString(str, "description")
 	})
 	require.NotNil(t, fx)
 }

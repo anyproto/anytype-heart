@@ -3,7 +3,6 @@ package personalmigration
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/mock"
@@ -59,16 +58,15 @@ func newFixture(t *testing.T) *fixture {
 
 func (fx *fixture) run(t *testing.T) {
 	require.NoError(t, fx.a.Start(ctx))
-}
-
-func (fx *fixture) finish(t *testing.T) {
-	require.NoError(t, fx.a.Close(ctx))
+	t.Cleanup(func() {
+		require.NoError(t, fx.a.Close(ctx))
+	})
+	<-fx.waitMigrate
 }
 
 func TestRunner_Run(t *testing.T) {
 	t.Run("full migration", func(t *testing.T) {
 		fx := newFixture(t)
-		defer fx.finish(t)
 		st := fx.smartBlock.NewState()
 		st.SetSetting(state.SettingsAnalyticsId, pbtypes.String("analyticsId"))
 		fileInfo := state.FileInfo{
@@ -110,11 +108,9 @@ func TestRunner_Run(t *testing.T) {
 		fx.getter.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return("iconMigratedId", nil, nil)
 		fx.accountObject.EXPECT().MigrateIconImage("iconMigratedId").Return(nil)
 		fx.run(t)
-		time.Sleep(100 * time.Millisecond)
 	})
 	t.Run("migrate only profile without icon", func(t *testing.T) {
 		fx := newFixture(t)
-		defer fx.finish(t)
 		st := fx.smartBlock.NewState()
 		st.SetSetting(state.SettingsAnalyticsId, pbtypes.String("analyticsId"))
 		st.SetDetails(pbtypes.ToStruct(map[string]any{
@@ -142,11 +138,9 @@ func TestRunner_Run(t *testing.T) {
 		fx.accountObject.EXPECT().SetProfileDetails(mock.Anything).Return(nil)
 		fx.accountObject.EXPECT().MigrateIconImage("").Return(nil)
 		fx.run(t)
-		time.Sleep(100 * time.Millisecond)
 	})
 	t.Run("already migrated but not icon", func(t *testing.T) {
 		fx := newFixture(t)
-		defer fx.finish(t)
 		st := fx.smartBlock.NewState()
 		st.SetSetting(state.SettingsAnalyticsId, pbtypes.String("analyticsId"))
 		fileInfo := state.FileInfo{
@@ -186,11 +180,9 @@ func TestRunner_Run(t *testing.T) {
 		fx.getter.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return("iconMigratedId", nil, nil)
 		fx.accountObject.EXPECT().MigrateIconImage("iconMigratedId").Return(nil)
 		fx.run(t)
-		time.Sleep(100 * time.Millisecond)
 	})
 	t.Run("already migrated fully", func(t *testing.T) {
 		fx := newFixture(t)
-		defer fx.finish(t)
 		initDetails := pbtypes.ToStruct(map[string]any{
 			bundle.RelationKeyName.String(): "name",
 		})
@@ -200,6 +192,5 @@ func TestRunner_Run(t *testing.T) {
 			return f(fx.accountObject)
 		})
 		fx.run(t)
-		time.Sleep(100 * time.Millisecond)
 	})
 }
