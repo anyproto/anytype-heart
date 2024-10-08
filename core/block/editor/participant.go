@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -29,16 +29,15 @@ var participantRequiredRelations = []domain.RelationKey{
 type participant struct {
 	smartblock.SmartBlock
 	basic.DetailsUpdatable
-	objectStore objectstore.ObjectStore
+	objectStore spaceindex.Store
 }
 
-func (f *ObjectFactory) newParticipant(spaceId string, sb smartblock.SmartBlock) *participant {
-	store := f.objectStore.SpaceIndex(spaceId)
-	basicComponent := basic.NewBasic(sb, store, f.layoutConverter, nil, f.lastUsedUpdater)
+func (f *ObjectFactory) newParticipant(spaceId string, sb smartblock.SmartBlock, spaceIndex spaceindex.Store) *participant {
+	basicComponent := basic.NewBasic(sb, spaceIndex, f.layoutConverter, nil, f.lastUsedUpdater)
 	return &participant{
 		SmartBlock:       sb,
 		DetailsUpdatable: basicComponent,
-		objectStore:      f.objectStore,
+		objectStore:      spaceIndex,
 	}
 }
 
@@ -65,7 +64,7 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 	)
 
-	records, err := p.objectStore.QueryByID([]string{p.Id()})
+	records, err := p.objectStore.QueryByIds([]string{p.Id()})
 	if err != nil {
 		return err
 	}
