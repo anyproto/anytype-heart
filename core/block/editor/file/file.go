@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -222,7 +221,7 @@ func (sf *sfile) updateFile(ctx session.Context, id, groupId string, apply func(
 }
 
 func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
-	if layout, ok := sf.Layout(); !ok || layout != model.ObjectType_collection {
+	if !isCollection(sf) {
 		if err = sf.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
 			return err
 		}
@@ -237,7 +236,7 @@ func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 		return
 	}
 	var ch = make(chan error)
-	go proc.Start(sf.RootId(), req.DropTargetId, req.Position, ch)
+	go proc.Start(sf, req.DropTargetId, req.Position, ch)
 	err = <-ch
 	return
 }
@@ -306,11 +305,10 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 		s.Unlink(info.blockId)
 		return sf.Apply(s)
 	}
-	if layout, ok := sf.Layout(); ok && layout == model.ObjectType_collection {
+	if isCollection(sf) {
 		s := sf.NewState()
-		store := s.GetStoreSlice(template.CollectionStoreKey)
-		if !slices.Contains(store, info.file.TargetObjectId) {
-			s.UpdateStoreSlice(template.CollectionStoreKey, append(store, info.file.TargetObjectId))
+		if !s.HasInStore([]string{info.file.TargetObjectId}) {
+			s.UpdateStoreSlice(template.CollectionStoreKey, append(s.GetStoreSlice(template.CollectionStoreKey), info.file.TargetObjectId))
 		}
 		return sf.Apply(s)
 	}
@@ -461,7 +459,7 @@ func (dp *dropFilesProcess) readdir(entry *dropFileEntry, allowSymlinks bool) (o
 	return true, nil
 }
 
-func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPosition, rootDone chan error) {
+func (dp *dropFilesProcess) Start(file smartblock.SmartBlock, targetId string, pos model.BlockPosition, rootDone chan error) {
 	dp.id = uuid.New().String()
 	dp.doneCh = make(chan struct{})
 	dp.cancel = make(chan struct{})
@@ -480,6 +478,47 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 		go dp.addFilesWorker(wg, in)
 	}
 
+	if isCollection(file) {
+		dp.handleDragAndDropInCollection(file.RootId(), dp.root.child, rootDone, in)
+	} else {
+		dp.handleDragAndDropInDocument(file.RootId(), targetId, pos, rootDone, in)
+	}
+	wg.Wait()
+	return
+}
+
+func (dp *dropFilesProcess) handleDragAndDropInCollection(rootId string, droppedFiles []*dropFileEntry, rootDone chan error, in chan *dropFileInfo) {
+	close(rootDone)
+	filesToUpload := dp.getFilesToUploadFromDirs(droppedFiles)
+	for _, entry := range filesToUpload {
+		in <- &dropFileInfo{
+			pageId: rootId,
+			path:   entry.path,
+			name:   entry.name,
+		}
+	}
+	close(in)
+}
+
+func (dp *dropFilesProcess) getFilesToUploadFromDirs(droppedFiles []*dropFileEntry) []*dropFileEntry {
+	var (
+		stack      []*dropFileEntry
+		totalFiles []*dropFileEntry
+	)
+	stack = append(stack, droppedFiles...)
+	for len(stack) > 0 {
+		entry := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if entry.isDir {
+			stack = append(stack, entry.child...)
+		} else {
+			totalFiles = append(totalFiles, entry)
+		}
+	}
+	return totalFiles
+}
+
+func (dp *dropFilesProcess) handleDragAndDropInDocument(rootId, targetId string, pos model.BlockPosition, rootDone chan error, in chan *dropFileInfo) {
 	var flatEntries = [][]*dropFileEntry{dp.root.child}
 	var smartBlockIds = []string{rootId}
 	var handleLevel = func(idx int) (isContinue bool, err error) {
@@ -487,24 +526,6 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 			return
 		}
 		err = cache.Do(dp.picker, smartBlockIds[idx], func(sb File) error {
-			smartBlock, ok := sb.(smartblock.SmartBlock)
-			if ok {
-				if layout, ok := smartBlock.Layout(); ok && layout == model.ObjectType_collection {
-					for _, entry := range flatEntries[idx] {
-						if entry.isDir {
-							smartBlockIds = append(smartBlockIds, rootId)
-							flatEntries = append(flatEntries, entry.child)
-							continue
-						}
-						in <- &dropFileInfo{
-							pageId: smartBlockIds[idx],
-							path:   entry.path,
-							name:   entry.name,
-						}
-					}
-					return nil
-				}
-			}
 			sbHandler, ok := sb.(dropFilesHandler)
 			if !ok {
 				isContinue = idx != 0
@@ -562,8 +583,6 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 		idx++
 	}
 	close(in)
-	wg.Wait()
-	return
 }
 
 func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFileInfo) {
@@ -618,4 +637,9 @@ func (dp *dropFilesProcess) apply(f *dropFileInfo) (err error) {
 		}
 		return sbHandler.dropFilesSetInfo(*f)
 	})
+}
+
+func isCollection(smartBlock smartblock.SmartBlock) bool {
+	layout, ok := smartBlock.Layout()
+	return ok && layout == model.ObjectType_collection
 }
