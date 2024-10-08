@@ -30,6 +30,16 @@ var log = logger.NewNamed("common.space.personalspace")
 func NewSpaceController(spaceId string, metadata []byte, a *app.App) (spacecontroller.SpaceController, error) {
 	techSpace := a.MustComponent(techspace.CName).(techspace.TechSpace)
 	spaceCore := a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
+	exists, err := techSpace.SpaceViewExists(context.Background(), spaceId)
+	// This could happen for old accounts
+	if !exists || err != nil {
+		info := spaceinfo.NewSpacePersistentInfo(spaceId)
+		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
+		err = techSpace.SpaceViewCreate(context.Background(), spaceId, false, info)
+		if err != nil {
+			return nil, err
+		}
+	}
 	newApp, err := makeStatusApp(a, spaceId)
 	if err != nil {
 		return nil, err
@@ -96,9 +106,6 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 		return offloader.New(s.app)
 	default:
 		return &personalLoader{
-			spaceId:   s.spaceId,
-			spaceCore: s.spaceCore,
-			techSpace: s.techSpace,
 			newLoader: s.newLoader,
 		}
 	}

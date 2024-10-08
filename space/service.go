@@ -35,7 +35,10 @@ const CName = "client.space"
 
 var log = logger.NewNamed(CName)
 
-var waitSpaceDelay = 500 * time.Millisecond
+var (
+	waitSpaceDelay        = 500 * time.Millisecond
+	loadTechSpaceDeadline = 15 * time.Second
+)
 
 var (
 	ErrIncorrectSpaceID   = errors.New("incorrect space id")
@@ -175,31 +178,81 @@ func (s *service) Run(ctx context.Context) (err error) {
 	return s.initAccount(ctx)
 }
 
+func (s *service) createTechSpaceForOldAccounts(ctx context.Context) (err error) {
+	// check if we have a personal space
+	_, err = s.spaceCore.Get(ctx, s.personalSpaceId)
+	if err != nil {
+		// then probably we just didn't have anything
+		return fmt.Errorf("init tech space: %w", err)
+	}
+	// this is an old account
+	err = s.createTechSpace(ctx)
+	if err != nil {
+		return fmt.Errorf("init tech space: %w", err)
+	}
+	// we don't wait for it here to be consistent
+	_, err = s.startStatus(ctx, spaceinfo.NewSpacePersistentInfo(s.personalSpaceId))
+	if err != nil {
+		return fmt.Errorf("start personal space: %w", err)
+	}
+	return nil
+}
+
 func (s *service) initAccount(ctx context.Context) (err error) {
 	err = s.initMarketplaceSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("init marketplace space: %w", err)
 	}
-	err = s.loadTechSpace(ctx)
+	timeoutCtx, cancel := context.WithTimeout(ctx, loadTechSpaceDeadline)
+	err = s.loadTechSpace(timeoutCtx)
+	cancel()
+	// this crazy logic is need if the person is restoring the old account locally with no connection and no tech space
+	if errors.Is(err, context.DeadlineExceeded) {
+		var personalExists bool
+		// checking if personal space exists locally
+		personalExists, err = s.spaceCore.StorageExistsLocally(ctx, s.personalSpaceId)
+		if err != nil {
+			return fmt.Errorf("check personal space: %w", err)
+		}
+		// ok no space locally, then we have to get a reply from server to know if we have a tech space
+		if !personalExists {
+			// trying again to load space with normal ctx
+			err = s.loadTechSpace(ctx)
+		} else {
+			// personal exists, then we have to create tech space
+			err = s.createTechSpaceForOldAccounts(ctx)
+			if err != nil {
+				return fmt.Errorf("create tech space for old accounts: %w", err)
+			}
+		}
+	}
 	if err != nil && !errors.Is(err, spacesyncproto.ErrSpaceMissing) {
 		return fmt.Errorf("init tech space: %w", err)
 	}
 	if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
-		// check if we have a personal space
-		_, persErr := s.spaceCore.Get(ctx, s.personalSpaceId)
-		if persErr != nil {
-			// then probably we just didn't have anything
-			return fmt.Errorf("init tech space: %w", err)
-		}
-		// this is an old account
-		err = s.createTechSpace(ctx)
+		// no tech space on nodes, this is our only chance
+		err = s.createTechSpaceForOldAccounts(ctx)
 		if err != nil {
-			return fmt.Errorf("init tech space: %w", err)
+			return fmt.Errorf("create tech space for old accounts: %w", err)
 		}
-		// we don't wait for it here to be consistent
-		_, err := s.startPersonalSpace(ctx)
+	} else {
+		var id string
+		// have we migrated analytics id? we should have it in account object
+		err = s.techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
+			id, err = accountObject.GetAnalyticsId()
+			return err
+		})
+		// this error can arise only from database issues
 		if err != nil {
-			return fmt.Errorf("start personal space: %w", err)
+			return fmt.Errorf("get analytics id: %w", err)
+		}
+		// we still didn't migrate analytics id, then there is a chance that space view was not created for old accounts
+		if len(id) == 0 {
+			// creating a space view under the hood
+			_, err = s.startStatus(ctx, spaceinfo.NewSpacePersistentInfo(s.personalSpaceId))
+			if err != nil {
+				return fmt.Errorf("start personal space: %w", err)
+			}
 		}
 	}
 	s.techSpace.WakeUpViews()

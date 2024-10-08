@@ -2,6 +2,7 @@ package spacecore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -61,6 +62,7 @@ type SpaceCoreService interface {
 	Get(ctx context.Context, id string) (*AnySpace, error)
 	Pick(ctx context.Context, id string) (*AnySpace, error)
 	CloseSpace(ctx context.Context, id string) error
+	StorageExistsLocally(ctx context.Context, spaceID string) (exists bool, err error)
 
 	app.ComponentRunnable
 }
@@ -186,6 +188,21 @@ func (s *service) Pick(ctx context.Context, id string) (space *AnySpace, err err
 		return
 	}
 	return v.(*AnySpace), nil
+}
+
+func (s *service) StorageExistsLocally(ctx context.Context, spaceID string) (exists bool, err error) {
+	st, err := s.spaceStorageProvider.WaitSpaceStorage(ctx, spaceID)
+	if err != nil && !errors.Is(err, spacestorage.ErrSpaceStorageMissing) {
+		return false, err
+	}
+	if errors.Is(err, spacestorage.ErrSpaceStorageMissing) {
+		return false, nil
+	}
+	err = st.Close(ctx)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
