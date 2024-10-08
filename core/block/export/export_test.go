@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter/pbjson"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -76,13 +77,12 @@ func Test_docsForExport(t *testing.T) {
 			sbtProvider: provider,
 		}
 
-		expCtx := &exportContext{
-			spaceId:       "spaceId",
-			docs:          map[string]*types.Struct{},
-			includeNested: true,
-			reqIds:        []string{"id"},
-			export:        e,
-		}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+		})
+
 		// when
 		err = expCtx.docsForExport()
 
@@ -114,13 +114,11 @@ func Test_docsForExport(t *testing.T) {
 			objectStore: storeFixture,
 			sbtProvider: provider,
 		}
-		expCtx := &exportContext{
-			spaceId:       "spaceId",
-			includeNested: true,
-			reqIds:        []string{"id"},
-			docs:          map[string]*types.Struct{},
-			export:        e,
-		}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+		})
 
 		// when
 		err = expCtx.docsForExport()
@@ -184,14 +182,13 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:   "spaceId",
+			ObjectIds: []string{"id"},
+			Format:    model.Export_Protobuf,
+		})
+
 		// when
-		expCtx := &exportContext{
-			spaceId: "spaceId",
-			docs:    map[string]*types.Struct{},
-			format:  model.Export_Protobuf,
-			reqIds:  []string{"id"},
-			export:  e,
-		}
 		err = expCtx.docsForExport()
 
 		// then
@@ -263,13 +260,11 @@ func Test_docsForExport(t *testing.T) {
 			objectStore: storeFixture,
 			picker:      objectGetter,
 		}
-		expCtx := &exportContext{
-			spaceId: "spaceId",
-			format:  model.Export_Protobuf,
-			reqIds:  []string{"id"},
-			docs:    map[string]*types.Struct{},
-			export:  e,
-		}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:   "spaceId",
+			ObjectIds: []string{"id"},
+			Format:    model.Export_Protobuf,
+		})
 
 		// when
 		err = expCtx.docsForExport()
@@ -342,13 +337,13 @@ func Test_docsForExport(t *testing.T) {
 			objectStore: storeFixture,
 			picker:      objectGetter,
 		}
-		expCtx := &exportContext{
-			spaceId: "spaceId",
-			format:  model.Export_Protobuf,
-			reqIds:  []string{"id"},
-			docs:    map[string]*types.Struct{},
-			export:  e,
-		}
+
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+			Format:        model.Export_Protobuf,
+		})
 
 		// when
 		err = expCtx.docsForExport()
@@ -432,13 +427,12 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
-		expCtx := &exportContext{
-			spaceId: "spaceId",
-			format:  model.Export_Protobuf,
-			reqIds:  []string{"id"},
-			docs:    map[string]*types.Struct{},
-			export:  e,
-		}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+			Format:        model.Export_Protobuf,
+		})
 
 		// when
 		err = expCtx.docsForExport()
@@ -608,14 +602,12 @@ func Test_docsForExport(t *testing.T) {
 			sbtProvider: provider,
 		}
 
-		expCtx := &exportContext{
-			spaceId:       "spaceId",
-			includeNested: true,
-			format:        model.Export_Protobuf,
-			reqIds:        []string{"id"},
-			docs:          map[string]*types.Struct{},
-			export:        e,
-		}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+			Format:        model.Export_Protobuf,
+		})
 
 		// when
 		err = expCtx.docsForExport()
@@ -686,13 +678,12 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
-		expCtx := &exportContext{
-			spaceId: "spaceId",
-			docs:    map[string]*types.Struct{},
-			format:  model.Export_Protobuf,
-			reqIds:  []string{"id"},
-			export:  e,
-		}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+			Format:        model.Export_Protobuf,
+		})
 
 		// when
 		err = expCtx.docsForExport()
@@ -769,13 +760,12 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
-		expCtx := &exportContext{
-			spaceId: "spaceId",
-			docs:    map[string]*types.Struct{},
-			format:  model.Export_Protobuf,
-			reqIds:  []string{"id"},
-			export:  e,
-		}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+			Format:        model.Export_Protobuf,
+		})
 
 		// when
 		err = expCtx.docsForExport()
@@ -893,14 +883,13 @@ func Test_docsForExport(t *testing.T) {
 			objectStore: storeFixture,
 			picker:      objectGetter,
 		}
-		expCtx := &exportContext{
-			spaceId:       "spaceId",
-			docs:          map[string]*types.Struct{},
-			format:        model.Export_Protobuf,
-			reqIds:        []string{"id"},
-			includeNested: true,
-			export:        e,
-		}
+
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+			Format:        model.Export_Protobuf,
+		})
 
 		// when
 		err = expCtx.docsForExport()
@@ -982,15 +971,13 @@ func Test_docsForExport(t *testing.T) {
 			spaceService: service,
 		}
 
-		expCtx := &exportContext{
-			spaceId:       "spaceId",
-			docs:          map[string]*types.Struct{},
-			format:        model.Export_Protobuf,
-			reqIds:        []string{"id"},
-			includeNested: true,
-			includeFiles:  true,
-			export:        e,
-		}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+			IncludeFiles:  true,
+			Format:        model.Export_Protobuf,
+		})
 
 		// when
 		err = expCtx.docsForExport()
@@ -1032,15 +1019,13 @@ func Test_docsForExport(t *testing.T) {
 			spaceService: service,
 		}
 
-		expCtx := &exportContext{
-			spaceId:       "spaceId",
-			docs:          map[string]*types.Struct{},
-			format:        model.Export_Markdown,
-			reqIds:        []string{"id"},
-			includeNested: true,
-			includeFiles:  true,
-			export:        e,
-		}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+			IncludeFiles:  true,
+			Format:        model.Export_Markdown,
+		})
 
 		// when
 		err = expCtx.docsForExport()
@@ -1177,13 +1162,12 @@ func Test_docsForExport(t *testing.T) {
 			objectStore: storeFixture,
 			picker:      objectGetter,
 		}
-		expCtx := &exportContext{
-			spaceId: "spaceId",
-			docs:    map[string]*types.Struct{},
-			format:  model.Export_Protobuf,
-			reqIds:  []string{"id"},
-			export:  e,
-		}
+
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:   "spaceId",
+			ObjectIds: []string{"id"},
+			Format:    model.Export_Protobuf,
+		})
 
 		// when
 		err = expCtx.docsForExport()
@@ -1196,35 +1180,35 @@ func Test_docsForExport(t *testing.T) {
 func Test_provideFileName(t *testing.T) {
 	t.Run("file dir for relation", func(t *testing.T) {
 		// when
-		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelation)
+		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypeRelation)
 
 		// then
 		assert.Equal(t, relationsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for relation option", func(t *testing.T) {
 		// when
-		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelationOption)
+		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypeRelationOption)
 
 		// then
 		assert.Equal(t, relationsOptionsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for types", func(t *testing.T) {
 		// when
-		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeObjectType)
+		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypeObjectType)
 
 		// then
 		assert.Equal(t, typesDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for objects", func(t *testing.T) {
 		// when
-		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypePage)
+		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypePage)
 
 		// then
 		assert.Equal(t, objectsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for files objects", func(t *testing.T) {
 		// when
-		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeFileObject)
+		fileName := makeFileName("docId", "spaceId", pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypeFileObject)
 
 		// then
 		assert.Equal(t, filesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -1235,7 +1219,7 @@ func Test_provideFileName(t *testing.T) {
 		st.SetDetail(bundle.RelationKeySpaceId.String(), pbtypes.String("spaceId"))
 
 		// when
-		fileName := makeFileName("docId", "", pbjson.NewConverter(st), st, smartblock.SmartBlockTypeFileObject)
+		fileName := makeFileName("docId", "", pbjson.NewConverter(st).Ext(), st, smartblock.SmartBlockTypeFileObject)
 
 		// then
 		assert.Equal(t, spaceDirectory+string(filepath.Separator)+"spaceId"+string(filepath.Separator)+filesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -1258,7 +1242,7 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 			ids = append(ids, id)
 		}
 		e := &export{objectStore: fixture}
-		expCtx := &exportContext{export: e}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{})
 
 		// when
 		records, err := expCtx.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
@@ -1282,7 +1266,7 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 			ids = append(ids, id)
 		}
 		e := &export{objectStore: fixture}
-		expCtx := &exportContext{export: e}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{})
 
 		// when
 		records, err := expCtx.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())

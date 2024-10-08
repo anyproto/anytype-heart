@@ -83,6 +83,22 @@ type export struct {
 	notificationService notifications.Notifications
 }
 
+func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
+	return &exportContext{
+		path:           req.Path,
+		spaceId:        req.SpaceId,
+		docs:           map[string]*types.Struct{},
+		includeArchive: req.IncludeArchived,
+		includeNested:  req.IncludeNested,
+		includeFiles:   req.IncludeFiles,
+		format:         req.Format,
+		isJson:         req.IsJson,
+		reqIds:         req.ObjectIds,
+		zip:            req.Zip,
+		export:         e,
+	}
+}
+
 func New() Export {
 	return &export{}
 }
@@ -119,19 +135,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		e.sendNotification(err, req)
 	}()
 
-	exportCtx := &exportContext{
-		path:           req.Path,
-		spaceId:        req.SpaceId,
-		docs:           map[string]*types.Struct{},
-		includeArchive: req.IncludeArchived,
-		includeNested:  req.IncludeNested,
-		includeFiles:   req.IncludeFiles,
-		format:         req.Format,
-		isJson:         req.IsJson,
-		reqIds:         req.ObjectIds,
-		zip:            req.Zip,
-		export:         e,
-	}
+	exportCtx := newExportContext(e, req)
 	return exportCtx.exportObjects(ctx, queue)
 }
 
@@ -378,7 +382,7 @@ func (e *exportContext) queryObjectsByIds(spaceId string, reqIds []string, relat
 }
 
 func (e *exportContext) processNotProtobuf() error {
-	ids := fillObjectsIds(e.docs)
+	ids := listObjectIds(e.docs)
 	if e.includeFiles {
 		fileObjectsIds, err := e.processFiles(ids)
 		if err != nil {
@@ -395,7 +399,7 @@ func (e *exportContext) processNotProtobuf() error {
 }
 
 func (e *exportContext) processProtobuf() error {
-	ids := fillObjectsIds(e.docs)
+	ids := listObjectIds(e.docs)
 	if e.includeFiles {
 		err := e.addFileObjects(ids)
 		if err != nil {
@@ -406,7 +410,7 @@ func (e *exportContext) processProtobuf() error {
 	if err != nil {
 		return err
 	}
-	ids = e.fillTemplateIds(ids)
+	ids = e.listTargetTypesFromTemplates(ids)
 	if e.includeNested {
 		err = e.addNestedObjects(ids)
 		if err != nil {
@@ -869,7 +873,7 @@ func (e *exportContext) getExistedObjects(isProtobuf bool) error {
 	return nil
 }
 
-func (e *exportContext) fillTemplateIds(ids []string) []string {
+func (e *exportContext) listTargetTypesFromTemplates(ids []string) []string {
 	for id, object := range e.docs {
 		if pbtypes.Get(object, bundle.RelationKeyTargetObjectType.String()) != nil {
 			ids = append(ids, id)
@@ -950,7 +954,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string) (
 		} else if docId == b.Space().DerivedIDs().Home {
 			filename = "index" + conv.Ext()
 		} else {
-			filename = makeFileName(docId, e.spaceId, conv, st, b.Type())
+			filename = makeFileName(docId, e.spaceId, conv.Ext(), st, b.Type())
 		}
 		lastModifiedDate := pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
@@ -1043,9 +1047,9 @@ func makeMarkdownName(s *state.State, wr writer, docID string, conv converter.Co
 	return wr.Namer().Get(path, docID, name, conv.Ext())
 }
 
-func makeFileName(docId, spaceId string, conv converter.Converter, st *state.State, blockType smartblock.SmartBlockType) string {
+func makeFileName(docId, spaceId, ext string, st *state.State, blockType smartblock.SmartBlockType) string {
 	dir := provideFileDirectory(blockType)
-	filename := filepath.Join(dir, docId+conv.Ext())
+	filename := filepath.Join(dir, docId+ext)
 	// space can be empty in case user want to export all spaces
 	if spaceId == "" {
 		spaceId := pbtypes.GetString(st.LocalDetails(), bundle.RelationKeySpaceId.String())
@@ -1161,7 +1165,7 @@ func cleanupFile(wr writer) {
 	os.Remove(wr.Path())
 }
 
-func fillObjectsIds(docs map[string]*types.Struct) []string {
+func listObjectIds(docs map[string]*types.Struct) []string {
 	ids := make([]string, 0, len(docs))
 	for id := range docs {
 		ids = append(ids, id)
