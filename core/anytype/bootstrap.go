@@ -40,6 +40,7 @@ import (
 	decorator "github.com/anyproto/anytype-heart/core/block/bookmark/bookmarkimporter"
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/collection"
+	"github.com/anyproto/anytype-heart/core/block/dataviewservice"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -272,8 +273,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(core.New()).
 		Register(core.NewTempDirService()).
 		Register(treemanager.New()).
-		Register(detailservice.New()).
 		Register(block.New()).
+		Register(detailservice.New()).
+		Register(dataviewservice.New()).
 		Register(indexer.New()).
 		Register(detailsupdater.New()).
 		Register(session.NewHookRunner()).

@@ -26,10 +26,10 @@ type subObjectsAndProfileLinksMigration struct {
 	identityObjectID string
 	sbType           smartblock.SmartBlockType
 	space            Space
-	objectStore      RelationGetter
+	objectStore      Store
 }
 
-func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore RelationGetter) *subObjectsAndProfileLinksMigration {
+func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore Store) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,

@@ -10,14 +10,20 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const objId = "root"
+const (
+	objId = "root"
+	spcId = "spaceId"
+)
 
 type fixture struct {
 	store *spaceindex.StoreFixture
@@ -53,7 +59,6 @@ func TestDataviewCollectionImpl_SetViewPosition(t *testing.T) {
 				},
 			},
 		}}))
-
 		return fx.sdataview, fx.sb
 	}
 	assertViewPositions := func(viewId string, pos uint32, exp []string) {
@@ -129,4 +134,47 @@ func TestInjectActiveView(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 	})
+}
+
+func TestDataview_SetSourceInSet(t *testing.T) {
+	t.Run("no error", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.sb.AddBlock(simple.New(&model.Block{Id: objId, ChildrenIds: []string{template.DataviewBlockId}}))
+		fx.sb.AddBlock(simple.New(&model.Block{Id: template.DataviewBlockId, Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{
+			{DefaultObjectTypeId: "ot-note", DefaultTemplateId: "NoTe"},
+			{DefaultObjectTypeId: "ot-task", DefaultTemplateId: "tAsK"},
+		}}}}))
+		err := fx.sb.SetDetails(nil, []*model.Detail{{
+			Key:   bundle.RelationKeySetOf.String(),
+			Value: pbtypes.StringList([]string{"rel-name", "rel-id"}),
+		}, {
+			Key:   bundle.RelationKeyInternalFlags.String(),
+			Value: pbtypes.IntList(int(model.InternalFlag_editorDeleteEmpty)),
+		}}, false)
+		require.NoError(t, err)
+
+		// when
+		err = fx.SetSourceInSet(nil, []string{"ot-page"})
+
+		// then
+		assert.NoError(t, err)
+		setOf := pbtypes.GetStringList(fx.sb.NewState().Details(), bundle.RelationKeySetOf.String())
+		require.Len(t, setOf, 1)
+		assert.Equal(t, "ot-page", setOf[0])
+
+		b := fx.sb.Pick(template.DataviewBlockId)
+		require.NotNil(t, b)
+		dv := b.Model().GetDataview()
+		require.NotNil(t, dv)
+		require.Len(t, dv.Views, 2)
+		assert.Empty(t, dv.Views[0].DefaultTemplateId)
+		assert.Empty(t, dv.Views[0].DefaultObjectTypeId)
+		assert.Empty(t, dv.Views[1].DefaultTemplateId)
+		assert.Empty(t, dv.Views[1].DefaultObjectTypeId)
+
+		assert.Empty(t, pbtypes.GetIntList(fx.sb.NewState().Details(), bundle.RelationKeyInternalFlags.String()))
+	})
+
+	// TODO: GO-4189 Add more tests when more logic on SetSourceToSet will be added
 }
