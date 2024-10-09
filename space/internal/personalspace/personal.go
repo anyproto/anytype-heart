@@ -27,15 +27,30 @@ type Personal interface {
 
 var log = logger.NewNamed("common.space.personalspace")
 
-func NewSpaceController(spaceId string, metadata []byte, a *app.App) (spacecontroller.SpaceController, error) {
+type ctxKey int
+
+const SkipCheckSpaceViewKey ctxKey = iota
+
+func shouldCheckSpaceView(ctx context.Context) bool {
+	skip, ok := ctx.Value(SkipCheckSpaceViewKey).(bool)
+	return !ok || !skip
+}
+
+func NewSpaceController(ctx context.Context, spaceId string, metadata []byte, a *app.App) (spacecontroller.SpaceController, error) {
 	techSpace := a.MustComponent(techspace.CName).(techspace.TechSpace)
 	spaceCore := a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
-	exists, err := techSpace.SpaceViewExists(context.Background(), spaceId)
+	var (
+		exists bool
+		err    error
+	)
+	if shouldCheckSpaceView(ctx) {
+		exists, err = techSpace.SpaceViewExists(ctx, spaceId)
+	}
 	// This could happen for old accounts
 	if !exists || err != nil {
 		info := spaceinfo.NewSpacePersistentInfo(spaceId)
 		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
-		err = techSpace.SpaceViewCreate(context.Background(), spaceId, false, info)
+		err = techSpace.SpaceViewCreate(ctx, spaceId, false, info)
 		if err != nil {
 			return nil, err
 		}

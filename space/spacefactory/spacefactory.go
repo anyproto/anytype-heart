@@ -83,7 +83,7 @@ func (s *spaceFactory) CreatePersonalSpace(ctx context.Context, metadata []byte)
 		}
 		return nil, err
 	}
-	ctrl, err := personalspace.NewSpaceController(coreSpace.Id(), metadata, s.app)
+	ctrl, err := personalspace.NewSpaceController(ctx, coreSpace.Id(), metadata, s.app)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (s *spaceFactory) NewPersonalSpace(ctx context.Context, metadata []byte) (c
 	if err != nil {
 		return nil, err
 	}
-	ctrl, err = personalspace.NewSpaceController(id, metadata, s.app)
+	ctrl, err = personalspace.NewSpaceController(ctx, id, metadata, s.app)
 	if err != nil {
 		return nil, err
 	}

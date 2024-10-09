@@ -190,7 +190,8 @@ func (s *service) createTechSpaceForOldAccounts(ctx context.Context) (err error)
 	if err != nil {
 		return fmt.Errorf("init tech space: %w", err)
 	}
-	// we don't wait for it here to be consistent
+	// skipping check for space view because we don't have it
+	ctx = context.WithValue(ctx, personalspace.SkipCheckSpaceViewKey, true)
 	_, err = s.startStatus(ctx, spaceinfo.NewSpacePersistentInfo(s.personalSpaceId))
 	if err != nil {
 		return fmt.Errorf("start personal space: %w", err)
