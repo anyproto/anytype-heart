@@ -82,22 +82,6 @@ type export struct {
 	processService      process.Service
 }
 
-func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
-	return &exportContext{
-		path:           req.Path,
-		spaceId:        req.SpaceId,
-		docs:           map[string]*types.Struct{},
-		includeArchive: req.IncludeArchived,
-		includeNested:  req.IncludeNested,
-		includeFiles:   req.IncludeFiles,
-		format:         req.Format,
-		isJson:         req.IsJson,
-		reqIds:         req.ObjectIds,
-		zip:            req.Zip,
-		export:         e,
-	}
-}
-
 func New() Export {
 	return &export{}
 }
@@ -171,6 +155,22 @@ type exportContext struct {
 	path           string
 
 	*export
+}
+
+func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
+	return &exportContext{
+		path:           req.Path,
+		spaceId:        req.SpaceId,
+		docs:           map[string]*types.Struct{},
+		includeArchive: req.IncludeArchived,
+		includeNested:  req.IncludeNested,
+		includeFiles:   req.IncludeFiles,
+		format:         req.Format,
+		isJson:         req.IsJson,
+		reqIds:         req.ObjectIds,
+		zip:            req.Zip,
+		export:         e,
+	}
 }
 
 func (e *exportContext) copy() *exportContext {
