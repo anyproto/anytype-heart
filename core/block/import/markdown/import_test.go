@@ -102,7 +102,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 			fileNameToObjectId[snapshot.FileName] = snapshot.Id
 		}
 		var found bool
-		expectedPath := "testdata" + string(filepath.Separator) + "links.md"
+		expectedPath := filepath.Join("testdata", "links.md")
 		rootId := fileNameToObjectId[expectedPath]
 		want := buildExpectedTree(fileNameToObjectId, tempDirProvider, rootId)
 		for _, snapshot := range sn.Snapshots {
@@ -116,10 +116,10 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 }
 
 func buildExpectedTree(fileNameToObjectId map[string]string, provider *MockTempDir, rootId string) *blockbuilder.Block {
-	fileMdPath := "testdata" + string(filepath.Separator) + "file.md"
-	testMdPath := "testdata" + string(filepath.Separator) + "test.md"
-	testCsvPath := "testdata" + string(filepath.Separator) + "test.csv"
-	testTxtPath := "testdata" + string(filepath.Separator) + "test.txt"
+	fileMdPath := filepath.Join("testdata", "file.md")
+	testMdPath := filepath.Join("testdata", "test.md")
+	testCsvPath := filepath.Join("testdata", "test.csv")
+	testTxtPath := filepath.Join("testdata", "test.txt")
 	want := blockbuilder.Root(
 		blockbuilder.ID(rootId),
 		blockbuilder.Children(
