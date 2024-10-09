@@ -250,7 +250,7 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 			return fmt.Errorf("get analytics id: %w", err)
 		}
 		// we still didn't migrate analytics id, then there is a chance that space view was not created for old accounts
-		if len(id) == 0 {
+		if id == "" {
 			// creating a space view under the hood
 			_, err = s.startStatus(ctx, spaceinfo.NewSpacePersistentInfo(s.personalSpaceId))
 			if err != nil {
