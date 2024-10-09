@@ -182,7 +182,7 @@ func (s *service) createTechSpaceForOldAccounts(ctx context.Context) (err error)
 	// check if we have a personal space
 	_, err = s.spaceCore.Get(ctx, s.personalSpaceId)
 	if err != nil {
-		// then probably we just didn't have anything
+		// then we don't have a personal space, so we have nothing, sorry, there is no point in creating tech space
 		return fmt.Errorf("init tech space: %w", err)
 	}
 	// this is an old account
@@ -207,7 +207,8 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, loadTechSpaceDeadline)
 	err = s.loadTechSpace(timeoutCtx)
 	cancel()
-	// this crazy logic is need if the person is restoring the old account locally with no connection and no tech space
+	// this crazy logic is needed if the person is restoring the old account locally with no connection and no tech space
+	// nolint:nestif
 	if errors.Is(err, context.DeadlineExceeded) {
 		var personalExists bool
 		// checking if personal space exists locally
@@ -230,6 +231,7 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 	if err != nil && !errors.Is(err, spacesyncproto.ErrSpaceMissing) {
 		return fmt.Errorf("init tech space: %w", err)
 	}
+	// nolint:nestif
 	if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
 		// no tech space on nodes, this is our only chance
 		err = s.createTechSpaceForOldAccounts(ctx)
