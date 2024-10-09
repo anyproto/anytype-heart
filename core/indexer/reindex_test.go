@@ -175,7 +175,8 @@ func TestReindexDeletedObjects(t *testing.T) {
 			bundle.RelationKeySpaceId:   pbtypes.String(spaceId3),
 		},
 		{
-			bundle.RelationKeyId: pbtypes.String("4"),
+			bundle.RelationKeyId:   pbtypes.String("4"),
+			bundle.RelationKeyName: pbtypes.String("4"),
 		},
 	})
 

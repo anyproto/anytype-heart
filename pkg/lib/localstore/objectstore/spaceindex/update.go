@@ -34,6 +34,11 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 	// Ensure ID is set
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
+	// Only id is set
+	if len(details.Fields) == 1 {
+		return fmt.Errorf("should be more than just id")
+	}
+
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
