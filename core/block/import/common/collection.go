@@ -19,25 +19,46 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-type RootCollection struct {
-	service *collection.Service
+type ImportCollectionSetting struct {
+	collectionName                                      string
+	targetObjects                                       []string
+	icon                                                string
+	fileKeys                                            []*pb.ChangeFileKeys
+	needToAddDate, shouldBeFavorite, shouldAddRelations bool
 }
 
-func NewRootCollection(service *collection.Service) *RootCollection {
-	return &RootCollection{service: service}
-}
-
-func (r *RootCollection) MakeRootCollection(collectionName string,
+func MakeImportCollectionSetting(
+	collectionName string,
 	targetObjects []string,
 	icon string,
 	fileKeys []*pb.ChangeFileKeys,
-	needToAddDate, shouldBeFavorite bool,
-) (*Snapshot, error) {
-	if needToAddDate {
-		importDate := time.Now().Format(time.RFC3339)
-		collectionName = fmt.Sprintf("%s %s", collectionName, importDate)
+	needToAddDate, shouldBeFavorite, shouldAddRelations bool,
+) *ImportCollectionSetting {
+	return &ImportCollectionSetting{
+		collectionName:     collectionName,
+		targetObjects:      targetObjects,
+		icon:               icon,
+		fileKeys:           fileKeys,
+		needToAddDate:      needToAddDate,
+		shouldBeFavorite:   shouldBeFavorite,
+		shouldAddRelations: shouldAddRelations,
 	}
-	detailsStruct := r.getCreateCollectionRequest(collectionName, icon, shouldBeFavorite)
+}
+
+type ImportCollection struct {
+	service *collection.Service
+}
+
+func NewImportCollection(service *collection.Service) *ImportCollection {
+	return &ImportCollection{service: service}
+}
+
+func (r *ImportCollection) MakeImportCollection(req *ImportCollectionSetting) (*Snapshot, error) {
+	if req.needToAddDate {
+		importDate := time.Now().Format(time.RFC3339)
+		req.collectionName = fmt.Sprintf("%s %s", req.collectionName, importDate)
+	}
+	detailsStruct := r.getCreateCollectionRequest(req.collectionName, req.icon, req.shouldBeFavorite)
 	_, _, st, err := r.service.CreateCollection(detailsStruct, []*model.InternalFlag{{
 		Value: model.InternalFlag_collectionDontIndexLinks,
 	}})
@@ -45,18 +66,20 @@ func (r *RootCollection) MakeRootCollection(collectionName string,
 		return nil, err
 	}
 
-	err = r.addRelations(st)
-	if err != nil {
-		return nil, err
+	if req.shouldAddRelations {
+		err = r.addRelations(st)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
-	st.UpdateStoreSlice(template.CollectionStoreKey, targetObjects)
+	st.UpdateStoreSlice(template.CollectionStoreKey, req.targetObjects)
 
-	return r.getRootCollectionSnapshot(collectionName, st, detailsStruct, fileKeys), nil
+	return r.getRootCollectionSnapshot(req.collectionName, st, detailsStruct, req.fileKeys), nil
 }
 
-func (r *RootCollection) getRootCollectionSnapshot(
+func (r *ImportCollection) getRootCollectionSnapshot(
 	collectionName string,
 	st *state.State,
 	detailsStruct *types.Struct,
@@ -83,7 +106,7 @@ func (r *RootCollection) getRootCollectionSnapshot(
 	}
 }
 
-func (r *RootCollection) addRelations(st *state.State) error {
+func (r *ImportCollection) addRelations(st *state.State) error {
 	for _, relation := range []*model.RelationLink{
 		{
 			Key:    bundle.RelationKeyTag.String(),
@@ -102,7 +125,7 @@ func (r *RootCollection) addRelations(st *state.State) error {
 	return nil
 }
 
-func (r *RootCollection) getCreateCollectionRequest(collectionName string, icon string, shouldBeFavorite bool) *types.Struct {
+func (r *ImportCollection) getCreateCollectionRequest(collectionName string, icon string, shouldBeFavorite bool) *types.Struct {
 	details := make(map[string]*types.Value, 0)
 	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(collectionName)
 	details[bundle.RelationKeyName.String()] = pbtypes.String(collectionName)
