@@ -20,7 +20,6 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -73,7 +72,6 @@ type Export interface {
 }
 
 type export struct {
-	blockService        *block.Service
 	picker              cache.ObjectGetter
 	objectStore         objectstore.ObjectStore
 	sbtProvider         typeprovider.SmartBlockTypeProvider
@@ -81,6 +79,7 @@ type export struct {
 	spaceService        space.Service
 	accountService      account.Service
 	notificationService notifications.Notifications
+	processService      process.Service
 }
 
 func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
@@ -104,8 +103,8 @@ func New() Export {
 }
 
 func (e *export) Init(a *app.App) (err error) {
-	e.blockService = a.MustComponent(block.CName).(*block.Service)
-	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	e.processService = app.MustComponent[process.Service](a)
+	e.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	e.fileService = app.MustComponent[files.Service](a)
 	e.picker = app.MustComponent[cache.ObjectGetter](a)
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
@@ -120,7 +119,7 @@ func (e *export) Name() (name string) {
 }
 
 func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error) {
-	queue := e.blockService.Process().NewQueue(pb.ModelProcess{
+	queue := e.processService.NewQueue(pb.ModelProcess{
 		Id:    bson.NewObjectId().Hex(),
 		Type:  pb.ModelProcess_Export,
 		State: 0,
