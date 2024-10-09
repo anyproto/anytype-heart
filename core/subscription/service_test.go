@@ -840,7 +840,7 @@ func TestService_Search(t *testing.T) {
 		})
 
 		// when
-		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
+		groups, err := fx.SubscribeGroups(pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:      spaceID,
 			RelationKey:  relationKey,
 			Source:       []string{source},
@@ -903,7 +903,7 @@ func TestService_Search(t *testing.T) {
 		})
 
 		// when
-		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
+		groups, err := fx.SubscribeGroups(pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:      spaceID,
 			RelationKey:  relationKey,
 			Source:       []string{source},
@@ -967,7 +967,7 @@ func TestService_Search(t *testing.T) {
 		})
 
 		// when
-		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
+		groups, err := fx.SubscribeGroups(pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:     spaceID,
 			RelationKey: relationKey,
 			Source:      []string{source},
@@ -1021,7 +1021,7 @@ func TestService_Search(t *testing.T) {
 		})
 
 		// when
-		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
+		groups, err := fx.SubscribeGroups(pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:     spaceID,
 			RelationKey: relationKey,
 			Source:      []string{source},
@@ -1069,7 +1069,7 @@ func TestService_Search(t *testing.T) {
 		})
 
 		// when
-		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
+		groups, err := fx.SubscribeGroups(pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:     spaceID,
 			RelationKey: relationKey,
 			Source:      []string{source},

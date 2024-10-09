@@ -47,6 +47,16 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
+		database.FilterEq{
+			Key:   bundle.RelationKeyIsArchived.String(),
+			Cond:  model.BlockContentDataviewFilter_NotEqual,
+			Value: pbtypes.Bool(true),
+		},
+		database.FilterEq{
+			Key:   bundle.RelationKeyIsDeleted.String(),
+			Cond:  model.BlockContentDataviewFilter_NotEqual,
+			Value: pbtypes.Bool(true),
+		},
 	}
 	if spaceID != "" {
 		relationOptionFilter = append(relationOptionFilter, spaceFilter)

@@ -19,7 +19,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/kanban"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -77,7 +76,7 @@ type Service interface {
 	Search(req SubscribeRequest) (resp *SubscribeResponse, err error)
 	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
 	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
-	SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
+	SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
 	UnsubscribeAll() (err error)
 	SubscriptionIDs() []string
@@ -388,7 +387,7 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	}, nil
 }
 
-func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
+func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
 	subId := ""
 
 	s.m.Lock()
