@@ -43,7 +43,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/constant"
@@ -434,13 +433,9 @@ func (e *exportContext) addFileObjects(ids []string) error {
 }
 
 func (e *exportContext) processFiles(ids []string) ([]string, error) {
-	spc, err := e.spaceService.Get(context.Background(), e.spaceId)
-	if err != nil {
-		return nil, fmt.Errorf("get space: %w", err)
-	}
 	var fileObjectsIds []string
 	for _, id := range ids {
-		objectFiles, err := e.fillLinkedFiles(spc, id)
+		objectFiles, err := e.fillLinkedFiles(id)
 		if err != nil {
 			return nil, err
 		}
@@ -809,9 +804,9 @@ func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*types.
 	}
 }
 
-func (e *exportContext) fillLinkedFiles(space clientspace.Space, id string) ([]string, error) {
+func (e *exportContext) fillLinkedFiles(id string) ([]string, error) {
 	var fileObjectsIds []string
-	err := space.Do(id, func(b sb.SmartBlock) error {
+	err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
 		b.NewState().IterateLinkedFiles(func(fileObjectId string) {
 			res, err := e.objectStore.Query(database.Query{
 				Filters: []*model.BlockContentDataviewFilter{

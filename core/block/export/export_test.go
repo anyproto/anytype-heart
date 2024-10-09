@@ -27,8 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
-	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -124,11 +122,6 @@ func TestExport_Export(t *testing.T) {
 		err = service.Init(a)
 		assert.Nil(t, err)
 
-		spaceService := mock_space.NewMockService(t)
-		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do(objectID, mock.Anything).Return(nil)
-		spaceService.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
-
 		notifications := mock_notifications.NewMockNotifications(t)
 		notifications.EXPECT().CreateAndSend(mock.Anything).Return(nil)
 
@@ -136,7 +129,6 @@ func TestExport_Export(t *testing.T) {
 			objectStore:         storeFixture,
 			picker:              objectGetter,
 			processService:      service,
-			spaceService:        spaceService,
 			notificationService: notifications,
 		}
 
@@ -183,10 +175,6 @@ func TestExport_Export(t *testing.T) {
 		err := service.Init(a)
 		assert.Nil(t, err)
 
-		spaceService := mock_space.NewMockService(t)
-		space := mock_clientspace.NewMockSpace(t)
-		spaceService.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
-
 		notifications := mock_notifications.NewMockNotifications(t)
 		notifications.EXPECT().CreateAndSend(mock.Anything).Return(nil)
 
@@ -194,7 +182,6 @@ func TestExport_Export(t *testing.T) {
 			objectStore:         storeFixture,
 			picker:              objectGetter,
 			processService:      service,
-			spaceService:        spaceService,
 			notificationService: notifications,
 		}
 
@@ -221,10 +208,19 @@ func TestExport_Export(t *testing.T) {
 	t.Run("import finished with error", func(t *testing.T) {
 		// given
 		storeFixture := objectstore.NewStoreFixture(t)
+		objectTypeId := "customObjectType"
+
 		spaceId := "spaceId"
 		objectID := "id"
-
+		storeFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:      pbtypes.String(objectID),
+				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
+			},
+		})
 		objectGetter := mock_cache.NewMockObjectGetter(t)
+		objectGetter.EXPECT().GetObject(context.Background(), objectID).Return(nil, fmt.Errorf("error"))
 
 		a := &app.App{}
 		mockSender := mock_event.NewMockSender(t)
@@ -234,9 +230,6 @@ func TestExport_Export(t *testing.T) {
 		err := service.Init(a)
 		assert.Nil(t, err)
 
-		spaceService := mock_space.NewMockService(t)
-		spaceService.EXPECT().Get(context.Background(), "spaceId").Return(nil, fmt.Errorf("error"))
-
 		notifications := mock_notifications.NewMockNotifications(t)
 		notifications.EXPECT().CreateAndSend(mock.Anything).Return(nil)
 
@@ -244,7 +237,6 @@ func TestExport_Export(t *testing.T) {
 			objectStore:         storeFixture,
 			picker:              objectGetter,
 			processService:      service,
-			spaceService:        spaceService,
 			notificationService: notifications,
 		}
 
@@ -1174,15 +1166,9 @@ func Test_docsForExport(t *testing.T) {
 		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
 		objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
 
-		service := mock_space.NewMockService(t)
-		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do("id", mock.Anything).Return(nil)
-
-		service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
 		e := &export{
-			objectStore:  storeFixture,
-			picker:       objectGetter,
-			spaceService: service,
+			objectStore: storeFixture,
+			picker:      objectGetter,
 		}
 
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
@@ -1224,13 +1210,24 @@ func Test_docsForExport(t *testing.T) {
 			},
 		})
 
-		service := mock_space.NewMockService(t)
-		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do("id", mock.Anything).Return(nil)
-		service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
+		smartBlockTest := smarttest.New("id")
+		doc := smartBlockTest.NewState().SetDetails(&types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():   pbtypes.String("id"),
+				bundle.RelationKeyType.String(): pbtypes.String(objectTypeId),
+			}})
+		doc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		smartBlockTest.Doc = doc
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
+
 		e := &export{
-			objectStore:  storeFixture,
-			spaceService: service,
+			objectStore: storeFixture,
+			picker:      objectGetter,
 		}
 
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
