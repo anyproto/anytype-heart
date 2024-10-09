@@ -949,7 +949,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string) (
 		result := conv.Convert(b.Type().ToProto())
 		var filename string
 		if e.format == model.Export_Markdown {
-			filename = makeMarkdownName(st, wr, docId, conv, e.spaceId)
+			filename = makeMarkdownName(st, wr, docId, conv.Ext(), e.spaceId)
 		} else if docId == b.Space().DerivedIDs().Home {
 			filename = "index" + conv.Ext()
 		} else {
@@ -1032,7 +1032,7 @@ func (e *exportContext) createProfileFile(spaceID string, wr writer) error {
 	return nil
 }
 
-func makeMarkdownName(s *state.State, wr writer, docID string, conv converter.Converter, spaceId string) string {
+func makeMarkdownName(s *state.State, wr writer, docID, ext, spaceId string) string {
 	name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
 	if name == "" {
 		name = s.Snippet()
@@ -1043,7 +1043,7 @@ func makeMarkdownName(s *state.State, wr writer, docID string, conv converter.Co
 		spaceId := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String())
 		path = filepath.Join(spaceDirectory, spaceId)
 	}
-	return wr.Namer().Get(path, docID, name, conv.Ext())
+	return wr.Namer().Get(path, docID, name, ext)
 }
 
 func makeFileName(docId, spaceId, ext string, st *state.State, blockType smartblock.SmartBlockType) string {
