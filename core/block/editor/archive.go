@@ -59,13 +59,17 @@ func (p *Archive) CreationStateMigration(ctx *smartblock.InitContext) migration.
 				template.WithNoObjectTypes(),
 				template.WithDetailName("Archive"),
 				template.WithDetailIconEmoji("🗑"),
+				template.WithForcedDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
 			)
 		},
 	}
 }
 
 func (p *Archive) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations(nil)
+	return migration.MakeMigrations([]migration.Migration{{
+		Version: 2,
+		Proc:    template.WithForcedDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
+	}})
 }
 
 func (p *Archive) Relations(_ *state.State) relationutils.Relations {
