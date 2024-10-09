@@ -125,13 +125,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.eventSender = app.MustComponent[event.Sender](a)
 
 	s.spaceSubs = map[string]*spaceSubscriptions{}
-	s.cache = newCache()
-	s.ds = newDependencyService(s)
-	s.subscriptions = make(map[string]subscription)
-	s.customOutput = map[string]*mb2.MB[*pb.EventMessage]{}
-	s.recBatch = mb.New(0)
-	s.ctxBuf = &opCtx{c: s.cache}
-	s.initDebugger()
 	s.arenaPool = &fastjson.ArenaPool{}
 	return
 }
