@@ -216,15 +216,16 @@ func (i *indexer) ftInit() error {
 			return err
 		}
 		if docCount == 0 {
+			// query objects that are existing in the store
+			// if they are not existing in the object store, they will be indexed and added via reindexOutdatedObjects or on receiving via any-sync
 			ids, err := i.store.ListIdsCrossSpace()
 			if err != nil {
 				return err
 			}
-			for _, id := range ids {
-				if err := i.store.AddToIndexQueue(i.runCtx, id); err != nil {
-					return err
-				}
+			if err := i.store.AddToIndexQueue(i.runCtx, ids...); err != nil {
+				return err
 			}
+
 		}
 	}
 	return nil

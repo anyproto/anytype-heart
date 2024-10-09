@@ -53,7 +53,7 @@ func New() History {
 
 type History interface {
 	Show(id domain.FullID, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error)
-	Versions(id domain.FullID, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error)
+	Versions(id domain.FullID, lastVersionId string, limit int, notIncludeVersion bool) (resp []*pb.RpcHistoryVersion, err error)
 	SetVersion(id domain.FullID, versionId string) (err error)
 	DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.EventMessage, *model.ObjectView, error)
 	GetBlocksParticipants(id domain.FullID, versionId string, blocks []*model.Block) ([]*model.ObjectViewBlockParticipant, error)
@@ -131,13 +131,13 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	}, ver, nil
 }
 
-func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error) {
+func (h *history) Versions(id domain.FullID, lastVersionId string, limit int, notIncludeVersion bool) (resp []*pb.RpcHistoryVersion, err error) {
 	hasher := hashersPool.Get().(*blake3.Hasher)
 	defer hashersPool.Put(hasher)
 	if limit <= 0 {
 		limit = 100
 	}
-	var includeLastId = true
+	var includeLastId = !notIncludeVersion
 
 	reverse := func(vers []*pb.RpcHistoryVersion) []*pb.RpcHistoryVersion {
 		for i, j := 0, len(vers)-1; i < j; i, j = i+1, j-1 {

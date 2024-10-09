@@ -96,7 +96,7 @@ type SourceDetailsFromID interface {
 
 type FulltextQueue interface {
 	RemoveIdsFromFullTextQueue(ids []string) error
-	AddToIndexQueue(ctx context.Context, id string) error
+	AddToIndexQueue(ctx context.Context, ids ...string) error
 	ListIdsFromFullTextQueue(limit int) ([]string, error)
 }
 

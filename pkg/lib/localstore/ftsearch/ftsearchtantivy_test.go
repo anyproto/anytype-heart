@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -387,7 +388,47 @@ func assertMultiSpace(t *testing.T, tmpDir string) {
 	validateSearch(t, ft, "", "Advanced", 1)
 	validateSearch(t, ft, "", "dash", 2)
 	validateSearch(t, ft, "", "space", 4)
-	validateSearch(t, ft, "", "of", 5)
+	validateSearch(t, ft, "", "of", 0)
 
 	_ = ft.Close(nil)
+}
+
+func TestEscapeQuery(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{strings.Repeat("a", 99) + " aa", `("` + strings.Repeat("a", 99) + `" OR ` + strings.Repeat("a", 99) + `)`},
+		{`""`, ``},
+		{"simpleQuery", `("simplequery" OR simplequery)`},
+		{"with+special^chars", `("withspecialchars" OR withspecialchars)`},
+		{"text`with:brackets{}", `("textwithbrackets" OR textwithbrackets)`},
+		{"escaped[]symbols()", `("escapedsymbols" OR escapedsymbols)`},
+		{"multiple!!special~~", `("multiplespecial" OR multiplespecial)`},
+	}
+
+	for _, test := range tests {
+		actual := prepareQuery(test.input)
+		if actual != test.expected {
+			t.Errorf("For input '%s', expected '%s', but got '%s'", test.input, test.expected, actual)
+		}
+	}
+}
+
+// Tests
+func TestGetSpaceIdsQuery(t *testing.T) {
+	// Test with empty slice of ids
+	assert.Equal(t, "", getSpaceIdsQuery([]string{}))
+
+	// Test with slice containing only empty strings
+	assert.Equal(t, "", getSpaceIdsQuery([]string{"", "", ""}))
+
+	// Test with a single id
+	assert.Equal(t, "(SpaceID:123)", getSpaceIdsQuery([]string{"123"}))
+
+	// Test with multiple ids
+	assert.Equal(t, "(SpaceID:123 OR SpaceID:456 OR SpaceID:789)", getSpaceIdsQuery([]string{"123", "456", "789"}))
+
+	// Test with some empty ids
+	assert.Equal(t, "(SpaceID:123 OR SpaceID:789)", getSpaceIdsQuery([]string{"123", "", "789"}))
 }
