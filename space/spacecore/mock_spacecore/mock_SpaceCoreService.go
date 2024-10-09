@@ -596,6 +596,63 @@ func (_c *MockSpaceCoreService_Run_Call) RunAndReturn(run func(context.Context) 
 	return _c
 }
 
+// StorageExistsLocally provides a mock function with given fields: ctx, spaceID
+func (_m *MockSpaceCoreService) StorageExistsLocally(ctx context.Context, spaceID string) (bool, error) {
+	ret := _m.Called(ctx, spaceID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StorageExistsLocally")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (bool, error)); ok {
+		return rf(ctx, spaceID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) bool); ok {
+		r0 = rf(ctx, spaceID)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, spaceID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSpaceCoreService_StorageExistsLocally_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StorageExistsLocally'
+type MockSpaceCoreService_StorageExistsLocally_Call struct {
+	*mock.Call
+}
+
+// StorageExistsLocally is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceID string
+func (_e *MockSpaceCoreService_Expecter) StorageExistsLocally(ctx interface{}, spaceID interface{}) *MockSpaceCoreService_StorageExistsLocally_Call {
+	return &MockSpaceCoreService_StorageExistsLocally_Call{Call: _e.mock.On("StorageExistsLocally", ctx, spaceID)}
+}
+
+func (_c *MockSpaceCoreService_StorageExistsLocally_Call) Run(run func(ctx context.Context, spaceID string)) *MockSpaceCoreService_StorageExistsLocally_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockSpaceCoreService_StorageExistsLocally_Call) Return(exists bool, err error) *MockSpaceCoreService_StorageExistsLocally_Call {
+	_c.Call.Return(exists, err)
+	return _c
+}
+
+func (_c *MockSpaceCoreService_StorageExistsLocally_Call) RunAndReturn(run func(context.Context, string) (bool, error)) *MockSpaceCoreService_StorageExistsLocally_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockSpaceCoreService creates a new instance of MockSpaceCoreService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockSpaceCoreService(t interface {
