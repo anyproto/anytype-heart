@@ -63,6 +63,8 @@ type SubscribeRequest struct {
 
 	// Internal indicates that subscription will send events into message queue instead of global client's event system
 	Internal bool
+	// InternalQueue is used when Internal flag is set to true. If it's nil, new queue will be created
+	InternalQueue *mb2.MB[*pb.EventMessage]
 }
 
 type SubscribeResponse struct {
@@ -109,7 +111,7 @@ type service struct {
 	subscriptionKeys []string
 	subscriptions    map[string]subscription
 
-	customOutput map[string]*mb2.MB[*pb.EventMessage]
+	customOutput map[string]*internalSubOutput
 	recBatch     *mb.MB
 
 	objectStore       objectstore.ObjectStore
@@ -124,6 +126,34 @@ type service struct {
 	arenaPool   *fastjson.ArenaPool
 }
 
+type internalSubOutput struct {
+	externallyManaged bool
+	queue             *mb2.MB[*pb.EventMessage]
+}
+
+func newInternalSubOutput(queue *mb2.MB[*pb.EventMessage]) *internalSubOutput {
+	if queue == nil {
+		return &internalSubOutput{
+			queue: mb2.New[*pb.EventMessage](0),
+		}
+	}
+	return &internalSubOutput{
+		externallyManaged: true,
+		queue:             queue,
+	}
+}
+
+func (o *internalSubOutput) add(msgs ...*pb.EventMessage) error {
+	return o.queue.Add(context.TODO(), msgs...)
+}
+
+func (o *internalSubOutput) close() error {
+	if !o.externallyManaged {
+		return o.queue.Close()
+	}
+	return nil
+}
+
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.kanban = app.MustComponent[kanban.Service](a)
@@ -133,7 +163,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.cache = newCache()
 	s.ds = newDependencyService(s)
 	s.subscriptions = make(map[string]subscription)
-	s.customOutput = map[string]*mb2.MB[*pb.EventMessage]{}
+	s.customOutput = map[string]*internalSubOutput{}
 	s.recBatch = mb.New(0)
 	s.ctxBuf = &opCtx{c: s.cache}
 	s.initDebugger()
@@ -277,8 +307,11 @@ func (s *service) subscribeForQuery(req SubscribeRequest, f *database.Filters, f
 	if sub.depSub != nil {
 		depRecords = sub.depSub.getActiveRecords()
 	}
+	var outputQueue *mb2.MB[*pb.EventMessage]
 	if req.Internal {
-		s.customOutput[req.SubId] = mb2.New[*pb.EventMessage](0)
+		output := newInternalSubOutput(req.InternalQueue)
+		outputQueue = output.queue
+		s.customOutput[req.SubId] = output
 	}
 	return &SubscribeResponse{
 		Records:      subRecords,
@@ -289,7 +322,7 @@ func (s *service) subscribeForQuery(req SubscribeRequest, f *database.Filters, f
 			NextCount: int64(prev),
 			PrevCount: int64(next),
 		},
-		Output: s.customOutput[req.SubId],
+		Output: outputQueue,
 	}, nil
 }
 
@@ -337,8 +370,11 @@ func (s *service) subscribeForCollection(req SubscribeRequest, f *database.Filte
 		depRecords = sub.sortedSub.depSub.getActiveRecords()
 	}
 
+	var outputQueue *mb2.MB[*pb.EventMessage]
 	if req.Internal {
-		s.customOutput[req.SubId] = mb2.New[*pb.EventMessage](0)
+		output := newInternalSubOutput(req.InternalQueue)
+		outputQueue = output.queue
+		s.customOutput[req.SubId] = output
 	}
 
 	return &SubscribeResponse{
@@ -350,7 +386,7 @@ func (s *service) subscribeForCollection(req SubscribeRequest, f *database.Filte
 			NextCount: int64(prev),
 			PrevCount: int64(next),
 		},
-		Output: s.customOutput[req.SubId],
+		Output: outputQueue,
 	}, nil
 }
 
@@ -506,7 +542,7 @@ func (s *service) Unsubscribe(subIds ...string) error {
 		if sub, ok := s.getSubscription(subId); ok {
 			out := s.customOutput[subId]
 			if out != nil {
-				err := out.Close()
+				err := out.close()
 				if err != nil {
 					return fmt.Errorf("close subscription %s: %w", subId, err)
 				}
@@ -618,7 +654,7 @@ func (s *service) onChange(entries []*entry) time.Duration {
 			if id == defaultOutput {
 				s.eventSender.Broadcast(&pb.Event{Messages: msgs})
 			} else {
-				err := s.customOutput[id].Add(context.TODO(), msgs...)
+				err := s.customOutput[id].add(msgs...)
 				if err != nil && !errors.Is(err, mb2.ErrClosed) {
 					log.With("subId", id, "error", err).Errorf("push to output")
 				}
