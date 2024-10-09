@@ -27,9 +27,34 @@ type Personal interface {
 
 var log = logger.NewNamed("common.space.personalspace")
 
-func NewSpaceController(spaceId string, metadata []byte, a *app.App) (spacecontroller.SpaceController, error) {
+type ctxKey int
+
+const SkipCheckSpaceViewKey ctxKey = iota
+
+func shouldCheckSpaceView(ctx context.Context) bool {
+	skip, ok := ctx.Value(SkipCheckSpaceViewKey).(bool)
+	return !ok || !skip
+}
+
+func NewSpaceController(ctx context.Context, spaceId string, metadata []byte, a *app.App) (spacecontroller.SpaceController, error) {
 	techSpace := a.MustComponent(techspace.CName).(techspace.TechSpace)
 	spaceCore := a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
+	var (
+		exists bool
+		err    error
+	)
+	if shouldCheckSpaceView(ctx) {
+		exists, err = techSpace.SpaceViewExists(ctx, spaceId)
+	}
+	// This could happen for old accounts
+	if !exists || err != nil {
+		info := spaceinfo.NewSpacePersistentInfo(spaceId)
+		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
+		err = techSpace.SpaceViewCreate(ctx, spaceId, false, info)
+		if err != nil {
+			return nil, err
+		}
+	}
 	newApp, err := makeStatusApp(a, spaceId)
 	if err != nil {
 		return nil, err
@@ -96,9 +121,6 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 		return offloader.New(s.app)
 	default:
 		return &personalLoader{
-			spaceId:   s.spaceId,
-			spaceCore: s.spaceCore,
-			techSpace: s.techSpace,
 			newLoader: s.newLoader,
 		}
 	}

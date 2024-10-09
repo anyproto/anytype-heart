@@ -2,6 +2,7 @@ package spacecore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -57,10 +58,11 @@ type SpaceCoreService interface {
 	Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
 	Derive(ctx context.Context, spaceType string) (space *AnySpace, err error)
 	DeriveID(ctx context.Context, spaceType string) (id string, err error)
-	Delete(ctx context.Context, spaceID string) (err error)
+	Delete(ctx context.Context, spaceId string) (err error)
 	Get(ctx context.Context, id string) (*AnySpace, error)
 	Pick(ctx context.Context, id string) (*AnySpace, error)
 	CloseSpace(ctx context.Context, id string) error
+	StorageExistsLocally(ctx context.Context, spaceId string) (exists bool, err error)
 
 	app.ComponentRunnable
 }
@@ -188,13 +190,28 @@ func (s *service) Pick(ctx context.Context, id string) (space *AnySpace, err err
 	return v.(*AnySpace), nil
 }
 
-func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
+func (s *service) StorageExistsLocally(ctx context.Context, spaceId string) (exists bool, err error) {
+	st, err := s.spaceStorageProvider.WaitSpaceStorage(ctx, spaceId)
+	if err != nil && !errors.Is(err, spacestorage.ErrSpaceStorageMissing) {
+		return false, err
+	}
+	if errors.Is(err, spacestorage.ErrSpaceStorageMissing) {
+		return false, nil
+	}
+	err = st.Close(ctx)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *service) Delete(ctx context.Context, spaceId string) (err error) {
 	networkID := s.nodeConf.Configuration().NetworkId
-	delConf, err := coordinatorproto.PrepareDeleteConfirmation(s.accountKeys.SignKey, spaceID, s.accountKeys.PeerId, networkID)
+	delConf, err := coordinatorproto.PrepareDeleteConfirmation(s.accountKeys.SignKey, spaceId, s.accountKeys.PeerId, networkID)
 	if err != nil {
 		return
 	}
-	err = s.coordinator.SpaceDelete(ctx, spaceID, delConf)
+	err = s.coordinator.SpaceDelete(ctx, spaceId, delConf)
 	if err != nil {
 		err = convertCoordError(err)
 		return
