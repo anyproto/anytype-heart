@@ -125,15 +125,16 @@ type service struct {
 }
 
 func (s *service) Init(a *app.App) (err error) {
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.kanban = app.MustComponent[kanban.Service](a)
+	s.collectionService = app.MustComponent[CollectionService](a)
+	s.eventSender = app.MustComponent[event.Sender](a)
+
 	s.cache = newCache()
 	s.ds = newDependencyService(s)
 	s.subscriptions = make(map[string]subscription)
 	s.customOutput = map[string]*mb2.MB[*pb.EventMessage]{}
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.kanban = app.MustComponent[kanban.Service](a)
 	s.recBatch = mb.New(0)
-	s.collectionService = app.MustComponent[CollectionService](a)
-	s.eventSender = app.MustComponent[event.Sender](a)
 	s.ctxBuf = &opCtx{c: s.cache}
 	s.initDebugger()
 	s.arenaPool = &fastjson.ArenaPool{}
