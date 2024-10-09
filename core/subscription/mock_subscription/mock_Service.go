@@ -11,8 +11,6 @@ import (
 
 	pb "github.com/anyproto/anytype-heart/pb"
 
-	session "github.com/anyproto/anytype-heart/core/session"
-
 	subscription "github.com/anyproto/anytype-heart/core/subscription"
 
 	types "github.com/gogo/protobuf/types"
@@ -272,9 +270,9 @@ func (_c *MockService_Search_Call) RunAndReturn(run func(subscription.SubscribeR
 	return _c
 }
 
-// SubscribeGroups provides a mock function with given fields: ctx, req
-func (_m *MockService) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
-	ret := _m.Called(ctx, req)
+// SubscribeGroups provides a mock function with given fields: req
+func (_m *MockService) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
+	ret := _m.Called(req)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SubscribeGroups")
@@ -282,19 +280,19 @@ func (_m *MockService) SubscribeGroups(ctx session.Context, req pb.RpcObjectGrou
 
 	var r0 *pb.RpcObjectGroupsSubscribeResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(session.Context, pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)); ok {
-		return rf(ctx, req)
+	if rf, ok := ret.Get(0).(func(pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)); ok {
+		return rf(req)
 	}
-	if rf, ok := ret.Get(0).(func(session.Context, pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse); ok {
-		r0 = rf(ctx, req)
+	if rf, ok := ret.Get(0).(func(pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse); ok {
+		r0 = rf(req)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*pb.RpcObjectGroupsSubscribeResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(session.Context, pb.RpcObjectGroupsSubscribeRequest) error); ok {
-		r1 = rf(ctx, req)
+	if rf, ok := ret.Get(1).(func(pb.RpcObjectGroupsSubscribeRequest) error); ok {
+		r1 = rf(req)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -308,15 +306,14 @@ type MockService_SubscribeGroups_Call struct {
 }
 
 // SubscribeGroups is a helper method to define mock.On call
-//   - ctx session.Context
 //   - req pb.RpcObjectGroupsSubscribeRequest
-func (_e *MockService_Expecter) SubscribeGroups(ctx interface{}, req interface{}) *MockService_SubscribeGroups_Call {
-	return &MockService_SubscribeGroups_Call{Call: _e.mock.On("SubscribeGroups", ctx, req)}
+func (_e *MockService_Expecter) SubscribeGroups(req interface{}) *MockService_SubscribeGroups_Call {
+	return &MockService_SubscribeGroups_Call{Call: _e.mock.On("SubscribeGroups", req)}
 }
 
-func (_c *MockService_SubscribeGroups_Call) Run(run func(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest)) *MockService_SubscribeGroups_Call {
+func (_c *MockService_SubscribeGroups_Call) Run(run func(req pb.RpcObjectGroupsSubscribeRequest)) *MockService_SubscribeGroups_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].(pb.RpcObjectGroupsSubscribeRequest))
+		run(args[0].(pb.RpcObjectGroupsSubscribeRequest))
 	})
 	return _c
 }
@@ -326,7 +323,7 @@ func (_c *MockService_SubscribeGroups_Call) Return(_a0 *pb.RpcObjectGroupsSubscr
 	return _c
 }
 
-func (_c *MockService_SubscribeGroups_Call) RunAndReturn(run func(session.Context, pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)) *MockService_SubscribeGroups_Call {
+func (_c *MockService_SubscribeGroups_Call) RunAndReturn(run func(pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)) *MockService_SubscribeGroups_Call {
 	_c.Call.Return(run)
 	return _c
 }
