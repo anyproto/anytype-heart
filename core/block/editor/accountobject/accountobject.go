@@ -35,10 +35,10 @@ import (
 var log = logger.NewNamedSugared("common.editor.accountobject")
 
 const (
-	collectionName  = "account"
-	accountDocument = "accountObject"
-	analyticsKey    = "analyticsId"
-	iconMigration   = "iconMigration"
+	collectionName   = "account"
+	accountDocument  = "accountObject"
+	analyticsKey     = "analyticsId"
+	iconMigrationKey = "iconMigration"
 )
 
 type ProfileDetails struct {
@@ -138,7 +138,7 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		var docToInsert string
 		if a.cfg.IsNewAccount() {
-			docToInsert = fmt.Sprintf(`{"id":"%s","analyticsId":"%s","%s":"true"}`, accountDocument, a.cfg.AnalyticsId, iconMigration)
+			docToInsert = fmt.Sprintf(`{"id":"%s","analyticsId":"%s","%s":"true"}`, accountDocument, a.cfg.AnalyticsId, iconMigrationKey)
 		} else {
 			docToInsert = fmt.Sprintf(`{"id":"%s"}`, accountDocument)
 		}
@@ -308,7 +308,7 @@ func (a *accountObject) MigrateIconImage(image string) (err error) {
 			return fmt.Errorf("set icon image: %w", err)
 		}
 	}
-	return a.setValue(iconMigration, `"true"`)
+	return a.setValue(iconMigrationKey, `"true"`)
 }
 
 func (a *accountObject) IsIconMigrated() (res bool, err error) {
@@ -316,7 +316,7 @@ func (a *accountObject) IsIconMigrated() (res bool, err error) {
 	if err != nil {
 		return
 	}
-	return string(val.GetStringBytes(iconMigration)) != "", nil
+	return string(val.GetStringBytes(iconMigrationKey)) != "", nil
 }
 
 func (a *accountObject) update(ctx context.Context, st *state.State) (err error) {

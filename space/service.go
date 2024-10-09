@@ -35,7 +35,10 @@ const CName = "client.space"
 
 var log = logger.NewNamed(CName)
 
-var waitSpaceDelay = 500 * time.Millisecond
+var (
+	waitSpaceDelay        = 500 * time.Millisecond
+	loadTechSpaceDeadline = 15 * time.Second
+)
 
 var (
 	ErrIncorrectSpaceID   = errors.New("incorrect space id")
@@ -48,11 +51,6 @@ var (
 
 func New() Service {
 	return &service{}
-}
-
-type isNewAccount interface {
-	IsNewAccount() bool
-	app.Component
 }
 
 type Service interface {
@@ -76,10 +74,12 @@ type Service interface {
 }
 
 type coordinatorStatusUpdater interface {
+	app.Component
 	UpdateCoordinatorStatus()
 }
 
 type NotificationSender interface {
+	app.Component
 	CreateAndSend(notification *model.Notification) error
 }
 
@@ -132,13 +132,15 @@ func (s *service) TechSpace() *clientspace.TechSpace {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
 	s.factory = app.MustComponent[spacefactory.SpaceFactory](a)
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.config = app.MustComponent[*config.Config](a)
+	s.newAccount = s.config.IsNewAccount()
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
 	s.updater = app.MustComponent[coordinatorStatusUpdater](a)
+	s.notificationService = app.MustComponent[NotificationSender](a)
+	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	s.waiting = make(map[string]controllerWaiter)
 	s.techSpaceReady = make(chan struct{})
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
@@ -161,8 +163,6 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.repKey, err = getRepKey(s.personalSpaceId)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-	s.notificationService = app.MustComponent[NotificationSender](a)
-	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	return err
 }
 
@@ -178,31 +178,84 @@ func (s *service) Run(ctx context.Context) (err error) {
 	return s.initAccount(ctx)
 }
 
+func (s *service) createTechSpaceForOldAccounts(ctx context.Context) (err error) {
+	// check if we have a personal space
+	_, err = s.spaceCore.Get(ctx, s.personalSpaceId)
+	if err != nil {
+		// then we don't have a personal space, so we have nothing, sorry, there is no point in creating tech space
+		return fmt.Errorf("init tech space: %w", err)
+	}
+	// this is an old account
+	err = s.createTechSpace(ctx)
+	if err != nil {
+		return fmt.Errorf("init tech space: %w", err)
+	}
+	// skipping check for space view because we don't have it
+	ctx = context.WithValue(ctx, personalspace.SkipCheckSpaceViewKey, true)
+	_, err = s.startStatus(ctx, spaceinfo.NewSpacePersistentInfo(s.personalSpaceId))
+	if err != nil {
+		return fmt.Errorf("start personal space: %w", err)
+	}
+	return nil
+}
+
 func (s *service) initAccount(ctx context.Context) (err error) {
 	err = s.initMarketplaceSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("init marketplace space: %w", err)
 	}
-	err = s.loadTechSpace(ctx)
+	timeoutCtx, cancel := context.WithTimeout(ctx, loadTechSpaceDeadline)
+	err = s.loadTechSpace(timeoutCtx)
+	cancel()
+	// this crazy logic is needed if the person is restoring the old account locally with no connection and no tech space
+	// nolint:nestif
+	if errors.Is(err, context.DeadlineExceeded) {
+		var personalExists bool
+		// checking if personal space exists locally
+		personalExists, err = s.spaceCore.StorageExistsLocally(ctx, s.personalSpaceId)
+		if err != nil {
+			return fmt.Errorf("check personal space: %w", err)
+		}
+		// ok no space locally, then we have to get a reply from server to know if we have a tech space
+		if !personalExists {
+			// trying again to load space with normal ctx
+			err = s.loadTechSpace(ctx)
+		} else {
+			// personal exists, then we have to create tech space
+			err = s.createTechSpaceForOldAccounts(ctx)
+			if err != nil {
+				return fmt.Errorf("create tech space for old accounts: %w", err)
+			}
+		}
+	}
 	if err != nil && !errors.Is(err, spacesyncproto.ErrSpaceMissing) {
 		return fmt.Errorf("init tech space: %w", err)
 	}
+	// nolint:nestif
 	if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
-		// check if we have a personal space
-		_, persErr := s.spaceCore.Get(ctx, s.personalSpaceId)
-		if persErr != nil {
-			// then probably we just didn't have anything
-			return fmt.Errorf("init tech space: %w", err)
-		}
-		// this is an old account
-		err = s.createTechSpace(ctx)
+		// no tech space on nodes, this is our only chance
+		err = s.createTechSpaceForOldAccounts(ctx)
 		if err != nil {
-			return fmt.Errorf("init tech space: %w", err)
+			return fmt.Errorf("create tech space for old accounts: %w", err)
 		}
-		// we don't wait for it here to be consistent
-		_, err := s.startPersonalSpace(ctx)
+	} else {
+		var id string
+		// have we migrated analytics id? we should have it in account object
+		err = s.techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
+			id, err = accountObject.GetAnalyticsId()
+			return err
+		})
+		// this error can arise only from database issues
 		if err != nil {
-			return fmt.Errorf("start personal space: %w", err)
+			return fmt.Errorf("get analytics id: %w", err)
+		}
+		// we still didn't migrate analytics id, then there is a chance that space view was not created for old accounts
+		if id == "" {
+			// creating a space view under the hood
+			_, err = s.startStatus(ctx, spaceinfo.NewSpacePersistentInfo(s.personalSpaceId))
+			if err != nil {
+				return fmt.Errorf("start personal space: %w", err)
+			}
 		}
 	}
 	s.techSpace.WakeUpViews()

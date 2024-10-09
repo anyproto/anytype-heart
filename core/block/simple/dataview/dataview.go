@@ -40,6 +40,7 @@ func NewDataview(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
+	ListViews() []*model.BlockContentDataviewView
 	GetView(viewID string) (*model.BlockContentDataviewView, error)
 	SetView(viewID string, view model.BlockContentDataviewView) error
 	SetViewFields(viewID string, view *model.BlockContentDataviewView) error
@@ -110,6 +111,10 @@ func (d *Dataview) Validate() error {
 	}
 
 	return nil
+}
+
+func (d *Dataview) ListViews() []*model.BlockContentDataviewView {
+	return d.GetDataview().Views
 }
 
 // AddView adds a view to the dataview. It doesn't fill any missing field except id

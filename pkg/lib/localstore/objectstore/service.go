@@ -35,7 +35,6 @@ type CrossSpace interface {
 	QueryRawCrossSpace(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
 
-	SubscribeForAll(callback func(rec database.Record))
 	ListIdsCrossSpace() ([]string, error)
 	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
 
@@ -55,7 +54,7 @@ type ObjectStore interface {
 }
 
 type IndexerStore interface {
-	AddToIndexQueue(ctx context.Context, id string) error
+	AddToIndexQueue(ctx context.Context, id ...string) error
 	ListIdsFromFullTextQueue(limit int) ([]string, error)
 	RemoveIdsFromFullTextQueue(ids []string) error
 	GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error)
@@ -150,12 +149,16 @@ func (s *dsObjectStore) Name() (name string) {
 func (s *dsObjectStore) Run(ctx context.Context) error {
 	s.techSpaceId = s.techSpaceIdProvider.TechSpaceId()
 
-	dbDir := filepath.Join(s.repoPath, "objectstore")
+	dbDir := s.storeRootDir()
 	err := ensureDirExists(dbDir)
 	if err != nil {
 		return err
 	}
 	return s.runDatabase(ctx, filepath.Join(dbDir, "objects.db"))
+}
+
+func (s *dsObjectStore) storeRootDir() string {
+	return filepath.Join(s.repoPath, "objectstore")
 }
 
 func ensureDirExists(dir string) error {
@@ -198,6 +201,19 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	s.indexerChecksums = indexerChecksums
 	s.virtualSpaces = virtualSpaces
 
+	entries, err := os.ReadDir(s.storeRootDir())
+	if err != nil {
+		return fmt.Errorf("read spaceindexes dir: %w", err)
+	}
+	s.Lock()
+	defer s.Unlock()
+	for _, entry := range entries {
+		if entry.IsDir() {
+			spaceId := entry.Name()
+			s.getOrInitSpaceIndex(spaceId)
+		}
+	}
+
 	return nil
 }
 
@@ -231,9 +247,13 @@ func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 	s.Lock()
 	defer s.Unlock()
 
+	return s.getOrInitSpaceIndex(spaceId)
+}
+
+func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 	store, ok := s.spaceIndexes[spaceId]
 	if !ok {
-		dir := filepath.Join(s.repoPath, "objectstore", spaceId)
+		dir := filepath.Join(s.storeRootDir(), spaceId)
 		err := ensureDirExists(dir)
 		if err != nil {
 			return spaceindex.NewInvalidStore(err)
@@ -258,7 +278,7 @@ func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
 
 	db, ok := s.crdtDbs[spaceId]
 	if !ok {
-		dir := filepath.Join(s.repoPath, "objectstore", spaceId)
+		dir := filepath.Join(s.storeRootDir(), spaceId)
 		err := ensureDirExists(dir)
 		if err != nil {
 			return nil
@@ -270,10 +290,6 @@ func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
 		s.crdtDbs[spaceId] = db
 	}
 	return db
-}
-
-func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
-	s.subManager.SubscribeForAll(callback)
 }
 
 func (s *dsObjectStore) listStores() []spaceindex.Store {

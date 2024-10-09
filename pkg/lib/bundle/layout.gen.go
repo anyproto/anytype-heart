@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
-const LayoutChecksum = "e725b47a91613b1e2fe962dcd35826142dec975c2603d66ffbac80d7332c1fa9"
+const LayoutChecksum = "14f867af62d4e7e5a33400f9eded0f27230467402c61cadd363518ff8f2bfb29"
 
 var (
 	Layouts = map[model.ObjectTypeLayout]model.Layout{
@@ -91,6 +91,12 @@ var (
 
 			Id:   model.ObjectType_spaceView,
 			Name: "Space View",
+		},
+		model.ObjectType_tag: {
+
+			Id:                model.ObjectType_tag,
+			Name:              "Tag",
+			RequiredRelations: []*model.Relation{relations[RelationKeyName], relations[RelationKeyRelationOptionColor]},
 		},
 		model.ObjectType_todo: {
 

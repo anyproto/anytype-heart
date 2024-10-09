@@ -11,7 +11,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
-	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/components/aclindexcleaner"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
@@ -34,7 +33,6 @@ func New(app *app.App, params Params) Joiner {
 	child := app.ChildApp()
 	joinHeadId := params.Status.GetLatestAclHeadId()
 	child.Register(newStatusChanger()).
-		Register(aclindexcleaner.New()).
 		Register(aclnotifications.NewAclNotificationSender()).
 		Register(aclwaiter.New(params.SpaceId,
 			joinHeadId,

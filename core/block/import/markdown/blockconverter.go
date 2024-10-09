@@ -22,11 +22,12 @@ type mdConverter struct {
 
 type FileInfo struct {
 	os.FileInfo
-	HasInboundLinks bool
-	PageID          string
-	IsRootFile      bool
-	Title           string
-	ParsedBlocks    []*model.Block
+	HasInboundLinks       bool
+	PageID                string
+	IsRootFile            bool
+	Title                 string
+	ParsedBlocks          []*model.Block
+	CollectionsObjectsIds []string
 }
 
 func newMDConverter(tempDirProvider core.TempDirProvider) *mdConverter {
@@ -66,7 +67,7 @@ func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertE
 func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *common.ConvertError) map[string]*FileInfo {
 	fileInfo := make(map[string]*FileInfo, 0)
 	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
-		if err := m.fillFilesInfo(fileInfo, fileName, fileReader); err != nil {
+		if err := m.fillFilesInfo(importSource, fileInfo, fileName, fileReader); err != nil {
 			allErrors.Add(err)
 			if allErrors.ShouldAbortImport(0, model.Import_Markdown) {
 				return false
@@ -79,9 +80,9 @@ func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *common.
 	return fileInfo
 }
 
-func (m *mdConverter) fillFilesInfo(fileInfo map[string]*FileInfo, path string, rc io.ReadCloser) error {
+func (m *mdConverter) fillFilesInfo(importSource source.Source, fileInfo map[string]*FileInfo, path string, rc io.ReadCloser) error {
 	fileInfo[path] = &FileInfo{}
-	if err := m.createBlocksFromFile(path, rc, fileInfo); err != nil {
+	if err := m.createBlocksFromFile(importSource, path, rc, fileInfo); err != nil {
 		log.Errorf("failed to create blocks from file: %s", err)
 		return err
 	}
@@ -221,16 +222,16 @@ func (m *mdConverter) convertTextToPageMention(block *model.Block) {
 	}
 }
 
-func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, files map[string]*FileInfo) error {
-	if filepath.Base(shortPath) == shortPath {
-		files[shortPath].IsRootFile = true
+func (m *mdConverter) createBlocksFromFile(importSource source.Source, filePath string, f io.ReadCloser, files map[string]*FileInfo) error {
+	if importSource.IsRootFile(filePath) {
+		files[filePath].IsRootFile = true
 	}
-	if filepath.Ext(shortPath) == ".md" {
+	if filepath.Ext(filePath) == ".md" {
 		b, err := io.ReadAll(f)
 		if err != nil {
 			return err
 		}
-		files[shortPath].ParsedBlocks, _, err = anymark.MarkdownToBlocks(b, filepath.Dir(shortPath), nil)
+		files[filePath].ParsedBlocks, _, err = anymark.MarkdownToBlocks(b, filepath.Dir(filePath), nil)
 		if err != nil {
 			log.Errorf("failed to read blocks: %s", err)
 		}

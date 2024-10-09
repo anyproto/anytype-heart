@@ -1066,7 +1066,7 @@ func (fn *namer) Get(path, hash, title, ext string) (name string) {
 		return name
 	}
 	title = slug.Make(strings.TrimSuffix(title, ext))
-	name = text.Truncate(title, fileLenLimit)
+	name = text.TruncateEllipsized(title, fileLenLimit)
 	name = strings.TrimSuffix(name, text.TruncateEllipsis)
 	var (
 		i = 0

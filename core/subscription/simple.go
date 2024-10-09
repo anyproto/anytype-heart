@@ -6,7 +6,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) newSimpleSub(id string, spaceId string, keys []string, isDep bool) *simpleSub {
+func (s *spaceSubscriptions) newSimpleSub(id string, spaceId string, keys []string, isDep bool) *simpleSub {
 	sub := &simpleSub{
 		id:      id,
 		spaceId: spaceId,

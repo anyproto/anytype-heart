@@ -7,13 +7,11 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -204,34 +202,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}
 	}
 
-	i.addSyncDetails(space)
 	return i.saveLatestChecksums(space.Id())
-}
-
-func (i *indexer) addSyncDetails(space clientspace.Space) {
-	typesForSyncRelations := helper.SyncRelationsSmartblockTypes()
-	syncStatus := domain.ObjectSyncStatusSynced
-	syncError := domain.SyncErrorNull
-	if i.config.IsLocalOnlyMode() {
-		syncStatus = domain.ObjectSyncStatusError
-		syncError = domain.SyncErrorNetworkError
-	}
-	ids, err := i.getIdsForTypes(space, typesForSyncRelations...)
-	if err != nil {
-		log.Debug("failed to add sync status relations", zap.Error(err))
-	}
-	store := i.store.SpaceIndex(space.Id())
-	for _, id := range ids {
-		err := space.DoLockedIfNotExists(id, func() error {
-			return store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
-				details = helper.InjectsSyncDetails(details, syncStatus, syncError)
-				return details, true, nil
-			})
-		})
-		if err != nil {
-			log.Debug("failed to add sync status relations", zap.Error(err))
-		}
-	}
 }
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {

@@ -276,9 +276,9 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (det
 }
 
 func (ind *indexer) addBlocks(st *state.State, details *types.Struct, objectId string) error {
-	fileType := fileblock.DetectTypeByMIME(pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()))
-
 	fname := pbtypes.GetString(details, bundle.RelationKeyName.String())
+	fileType := fileblock.DetectTypeByMIME(fname, pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()))
+
 	ext := pbtypes.GetString(details, bundle.RelationKeyFileExt.String())
 
 	if ext != "" && !strings.HasSuffix(fname, "."+ext) {

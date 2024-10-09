@@ -279,10 +279,6 @@
     - [Rpc.BlockDataview.Relation.Delete.Request](#anytype-Rpc-BlockDataview-Relation-Delete-Request)
     - [Rpc.BlockDataview.Relation.Delete.Response](#anytype-Rpc-BlockDataview-Relation-Delete-Response)
     - [Rpc.BlockDataview.Relation.Delete.Response.Error](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error)
-    - [Rpc.BlockDataview.Relation.ListAvailable](#anytype-Rpc-BlockDataview-Relation-ListAvailable)
-    - [Rpc.BlockDataview.Relation.ListAvailable.Request](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Request)
-    - [Rpc.BlockDataview.Relation.ListAvailable.Response](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response)
-    - [Rpc.BlockDataview.Relation.ListAvailable.Response.Error](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error)
     - [Rpc.BlockDataview.SetSource](#anytype-Rpc-BlockDataview-SetSource)
     - [Rpc.BlockDataview.SetSource.Request](#anytype-Rpc-BlockDataview-SetSource-Request)
     - [Rpc.BlockDataview.SetSource.Response](#anytype-Rpc-BlockDataview-SetSource-Response)
@@ -1270,7 +1266,6 @@
     - [Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code)
-    - [Rpc.BlockDataview.Relation.ListAvailable.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error-Code)
     - [Rpc.BlockDataview.SetSource.Response.Error.Code](#anytype-Rpc-BlockDataview-SetSource-Response-Error-Code)
     - [Rpc.BlockDataview.Sort.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Sort.Remove.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Remove-Response-Error-Code)
@@ -2082,7 +2077,6 @@
 | BlockDataviewSetSource | [Rpc.BlockDataview.SetSource.Request](#anytype-Rpc-BlockDataview-SetSource-Request) | [Rpc.BlockDataview.SetSource.Response](#anytype-Rpc-BlockDataview-SetSource-Response) |  |
 | BlockDataviewRelationAdd | [Rpc.BlockDataview.Relation.Add.Request](#anytype-Rpc-BlockDataview-Relation-Add-Request) | [Rpc.BlockDataview.Relation.Add.Response](#anytype-Rpc-BlockDataview-Relation-Add-Response) |  |
 | BlockDataviewRelationDelete | [Rpc.BlockDataview.Relation.Delete.Request](#anytype-Rpc-BlockDataview-Relation-Delete-Request) | [Rpc.BlockDataview.Relation.Delete.Response](#anytype-Rpc-BlockDataview-Relation-Delete-Response) |  |
-| BlockDataviewRelationListAvailable | [Rpc.BlockDataview.Relation.ListAvailable.Request](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Request) | [Rpc.BlockDataview.Relation.ListAvailable.Response](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response) |  |
 | BlockDataviewGroupOrderUpdate | [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype-Rpc-BlockDataview-GroupOrder-Update-Request) | [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response) |  |
 | BlockDataviewObjectOrderUpdate | [Rpc.BlockDataview.ObjectOrder.Update.Request](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Request) | [Rpc.BlockDataview.ObjectOrder.Update.Response](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response) |  |
 | BlockDataviewObjectOrderMove | [Rpc.BlockDataview.ObjectOrder.Move.Request](#anytype-Rpc-BlockDataview-ObjectOrder-Move-Request) | [Rpc.BlockDataview.ObjectOrder.Move.Response](#anytype-Rpc-BlockDataview-ObjectOrder-Move-Response) |  |
@@ -6182,64 +6176,6 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-Relation-ListAvailable"></a>
-
-### Rpc.BlockDataview.Relation.ListAvailable
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-Relation-ListAvailable-Request"></a>
-
-### Rpc.BlockDataview.Relation.ListAvailable.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-Relation-ListAvailable-Response"></a>
-
-### Rpc.BlockDataview.Relation.ListAvailable.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataview.Relation.ListAvailable.Response.Error](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error) |  |  |
-| relations | [model.Relation](#anytype-model-Relation) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error"></a>
-
-### Rpc.BlockDataview.Relation.ListAvailable.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataview.Relation.ListAvailable.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12063,6 +11999,7 @@ returns list of versions (changes)
 | objectId | [string](#string) |  |  |
 | lastVersionId | [string](#string) |  | when indicated, results will include versions before given id |
 | limit | [int32](#int32) |  | desired count of versions |
+| notIncludeVersion | [bool](#bool) |  |  |
 
 
 
@@ -12626,6 +12563,8 @@ can be called multiple times but with some timeout (N seconds) between calls
 | ----- | ---- | ----- | ----------- |
 | email | [string](#string) |  |  |
 | subscribeToNewsletter | [bool](#bool) |  |  |
+| insiderTipsAndTutorials | [bool](#bool) |  |  |
+| isOnboardingList | [bool](#bool) |  | if we are coming from the onboarding list |
 
 
 
@@ -20510,19 +20449,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error-Code"></a>
-
-### Rpc.BlockDataview.Relation.ListAvailable.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
 
 
 
@@ -29682,6 +29608,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | pdf | 20 |  |
 | chat | 21 |  |
 | chatDerived | 22 |  |
+| tag | 23 |  |
 
 
 

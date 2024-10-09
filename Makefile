@@ -124,7 +124,7 @@ build-ios: setup-go setup-gomobile
 	@rm -rf ./dist/ios/Lib.xcframework
 	@echo 'Building library for iOS...'
 	@$(eval FLAGS += $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
-	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar timetzdata)
+	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar timetzdata rasterizesvg)
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
@@ -155,7 +155,7 @@ build-android: setup-go setup-gomobile
 	$(DEPS_PATH)/gomobile init
 	@echo 'Building library for Android...'
 	@$(eval FLAGS += $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
-	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar timetzdata)
+	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar timetzdata rasterizesvg)
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif

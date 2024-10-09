@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -60,6 +61,8 @@ func TestGetImage(t *testing.T) {
 			Media: "image/jpeg",
 			Name:  "test image",
 		})
+		file.EXPECT().Info().Return(&storage.FileInfo{Name: "test image"})
+
 		image := mock_files.NewMockImage(t)
 		image.EXPECT().GetOriginalFile().Return(file, nil)
 		fx.fileService.EXPECT().ImageByHash(mock.Anything, fullFileId).Return(image, nil)

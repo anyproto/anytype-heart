@@ -12,6 +12,7 @@ import (
 
 type Directory struct {
 	fileReaders map[string]struct{}
+	importPath  string
 }
 
 func NewDirectory() *Directory {
@@ -29,6 +30,7 @@ func (d *Directory) Initialize(importPath string) error {
 		},
 	)
 	d.fileReaders = files
+	d.importPath = importPath
 	if err != nil {
 		return err
 	}
@@ -75,6 +77,10 @@ func (d *Directory) CountFilesWithGivenExtensions(extension []string) int {
 		}
 	}
 	return numberOfFiles
+}
+
+func (d *Directory) IsRootFile(fileName string) bool {
+	return filepath.Dir(fileName) == d.importPath
 }
 
 func (d *Directory) Close() {}

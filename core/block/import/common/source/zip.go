@@ -90,3 +90,7 @@ func (z *Zip) Close() {
 		z.archiveReader.Close()
 	}
 }
+
+func (z *Zip) IsRootFile(fileName string) bool {
+	return filepath.Dir(fileName) == "."
+}

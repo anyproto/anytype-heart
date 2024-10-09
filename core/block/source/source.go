@@ -180,10 +180,6 @@ type fileObjectMigrator interface {
 	MigrateFileIdsInDetails(st *state.State, spc Space)
 }
 
-type RelationGetter interface {
-	GetRelationByKey(key string) (*model.Relation, error)
-}
-
 type source struct {
 	objecttree.ObjectTree
 	id                   string

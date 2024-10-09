@@ -20,6 +20,7 @@ type Source interface {
 	ProcessFile(fileName string, callback func(fileReader io.ReadCloser) error) error
 	CountFilesWithGivenExtensions(extensions []string) int
 	Close()
+	IsRootFile(fileName string) bool
 }
 
 func GetSource(importPath string) Source {

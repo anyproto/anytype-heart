@@ -1,4 +1,4 @@
-package syncsubscriptions
+package objectsubscription
 
 import (
 	"context"

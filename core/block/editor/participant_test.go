@@ -140,6 +140,7 @@ func newParticipantTest(t *testing.T) (*participant, error) {
 	p := &participant{
 		SmartBlock:       sb,
 		DetailsUpdatable: basicComponent,
+		objectStore:      store,
 	}
 
 	initCtx := &smartblock.InitContext{

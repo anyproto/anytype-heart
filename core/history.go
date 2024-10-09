@@ -85,7 +85,7 @@ func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistor
 		vers, err = hs.Versions(domain.FullID{
 			SpaceID:  spaceID,
 			ObjectID: req.ObjectId,
-		}, req.LastVersionId, int(req.Limit))
+		}, req.LastVersionId, int(req.Limit), req.NotIncludeVersion)
 		return
 	}); err != nil {
 		return response(nil, err)

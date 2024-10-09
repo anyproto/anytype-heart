@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,7 +23,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/netutil"
+	"github.com/anyproto/anytype-heart/util/svg"
 )
 
 const (
@@ -375,6 +378,9 @@ func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req 
 		if err != nil {
 			return nil, fmt.Errorf("get image file: %w", err)
 		}
+		if filepath.Ext(file.Info().Name) == constant.SvgExt {
+			return g.handleSVGFile(ctx, file)
+		}
 	} else {
 		wantWidth, err := strconv.Atoi(wantWidthStr)
 		if err != nil {
@@ -384,12 +390,23 @@ func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req 
 		if err != nil {
 			return nil, fmt.Errorf("get image file: %w", err)
 		}
+		if filepath.Ext(file.Info().Name) == constant.SvgExt {
+			return g.handleSVGFile(ctx, file)
+		}
 	}
 	reader, err := file.Reader(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get image reader: %w", err)
 	}
 	return &getImageReaderResult{file: file, reader: reader}, nil
+}
+
+func (g *gateway) handleSVGFile(ctx context.Context, file files.File) (*getImageReaderResult, error) {
+	reader, err := svg.ProcessSvg(ctx, file)
+	if err != nil {
+		return nil, err
+	}
+	return &getImageReaderResult{file, reader}, nil
 }
 
 func cleanUpPathForLogging(input string) string {

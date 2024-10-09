@@ -141,6 +141,21 @@ func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds 
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       pbtypes.StringList(sourceObjectIds),
 			},
+			{
+				Operator: model.BlockContentDataviewFilter_Or,
+				NestedFilters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyLayout.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
+					},
+					{
+						RelationKey: bundle.RelationKeyLayout.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+					},
+				},
+			},
 		},
 	})
 	if err != nil {
@@ -270,6 +285,16 @@ func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs [
 		return nil, err
 	}
 	return s.objectStore.SpaceIndex(space.Id()).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FiltersOr{
+			database.FilterEq{
+				Key:   bundle.RelationKeyLayout.String(),
+				Value: pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+			database.FilterEq{
+				Key:   bundle.RelationKeyLayout.String(),
+				Value: pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+		},
 		database.FilterIn{
 			Key:   bundle.RelationKeySourceObject.String(),
 			Value: sourceList,

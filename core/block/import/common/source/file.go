@@ -53,3 +53,7 @@ func (f *File) CountFilesWithGivenExtensions(extension []string) int {
 }
 
 func (f *File) Close() {}
+
+func (f *File) IsRootFile(_ string) bool {
+	return true
+}

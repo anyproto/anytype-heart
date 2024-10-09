@@ -1,4 +1,4 @@
-package syncsubscriptions
+package objectsubscription
 
 import (
 	"context"
@@ -13,6 +13,12 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+type (
+	extract[T any] func(*types.Struct) (string, T)
+	update[T any]  func(string, *types.Value, T) T
+	unset[T any]   func([]string, T) T
+)
+
 type entry[T any] struct {
 	data T
 }
@@ -25,34 +31,11 @@ func newEntry[T any](data T) *entry[T] {
 	return &entry[T]{data: data}
 }
 
-type (
-	extract[T any] func(*types.Struct) (string, T)
-	update[T any]  func(string, *types.Value, T) T
-	unset[T any]   func([]string, T) T
-)
-
 type SubscriptionParams[T any] struct {
 	Request subscription.SubscribeRequest
 	Extract extract[T]
 	Update  update[T]
 	Unset   unset[T]
-}
-
-func NewIdSubscription(service subscription.Service, request subscription.SubscribeRequest) *ObjectSubscription[struct{}] {
-	return &ObjectSubscription[struct{}]{
-		request: request,
-		service: service,
-		ch:      make(chan struct{}),
-		extract: func(t *types.Struct) (string, struct{}) {
-			return pbtypes.GetString(t, bundle.RelationKeyId.String()), struct{}{}
-		},
-		update: func(s string, value *types.Value, s2 struct{}) struct{} {
-			return struct{}{}
-		},
-		unset: func(strings []string, s struct{}) struct{} {
-			return struct{}{}
-		},
-	}
 }
 
 type ObjectSubscription[T any] struct {
@@ -69,7 +52,34 @@ type ObjectSubscription[T any] struct {
 	mx      sync.Mutex
 }
 
+func NewIdSubscription(service subscription.Service, request subscription.SubscribeRequest) *ObjectSubscription[struct{}] {
+	return New(service, SubscriptionParams[struct{}]{
+		Request: request,
+		Extract: func(t *types.Struct) (string, struct{}) {
+			return pbtypes.GetString(t, bundle.RelationKeyId.String()), struct{}{}
+		},
+		Update: func(s string, value *types.Value, s2 struct{}) struct{} {
+			return struct{}{}
+		},
+		Unset: func(strings []string, s struct{}) struct{} {
+			return struct{}{}
+		},
+	})
+}
+
+func New[T any](service subscription.Service, params SubscriptionParams[T]) *ObjectSubscription[T] {
+	return &ObjectSubscription[T]{
+		request: params.Request,
+		service: service,
+		ch:      make(chan struct{}),
+		extract: params.Extract,
+		update:  params.Update,
+		unset:   params.Unset,
+	}
+}
+
 func (o *ObjectSubscription[T]) Run() error {
+	o.request.Internal = true
 	resp, err := o.service.Search(o.request)
 	if err != nil {
 		return err

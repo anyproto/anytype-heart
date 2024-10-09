@@ -87,6 +87,7 @@ var (
 		model.ObjectType_participant: objRestrictAll,
 		model.ObjectType_chat:        objRestrictEdit,
 		model.ObjectType_chatDerived: objRestrictEdit,
+		model.ObjectType_tag:         objRestrictEdit,
 	}
 
 	objectRestrictionsBySBType = map[smartblock.SmartBlockType]ObjectRestrictions{
