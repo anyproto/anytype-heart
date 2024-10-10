@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -85,7 +86,7 @@ func TestSubscribe(t *testing.T) {
 		defer cancel()
 
 		resp, err := fx.Subscribe(subscriptionservice.SubscribeRequest{
-			Keys: []string{bundle.RelationKeyId.String()},
+			Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyLayout.String()},
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyLayout.String(),
@@ -109,28 +110,79 @@ func TestSubscribe(t *testing.T) {
 			},
 		})
 
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:     pbtypes.String("participant1"),
+			bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+		}
 		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:     pbtypes.String("participant1"),
-				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
-			},
+			obj1,
 		})
 		msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
 		require.NoError(t, err)
-		_ = msgs
 
+		want := []*pb.EventMessage{
+			makeDetailsSetEvent(resp.SubId, obj1.Details()),
+			makeAddEvent(resp.SubId, "", obj1.Id()),
+			makeCountersEvent(resp.SubId, 1),
+		}
+		assert.Equal(t, want, msgs)
+
+		obj2 := objectstore.TestObject{
+			bundle.RelationKeyId:     pbtypes.String("participant2"),
+			bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+		}
 		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:     pbtypes.String("participant3"),
-				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
-			},
+			obj2,
 		})
 
 		msgs, err = fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
 		require.NoError(t, err)
-		_ = msgs
+
+		want = []*pb.EventMessage{
+			makeDetailsSetEvent(resp.SubId, obj2.Details()),
+			makeAddEvent(resp.SubId, obj1.Id(), obj2.Id()),
+			makeCountersEvent(resp.SubId, 2),
+		}
+		assert.Equal(t, want, msgs)
 	})
 
+}
+
+func makeDetailsSetEvent(subId string, details *types.Struct) *pb.EventMessage {
+	return &pb.EventMessage{
+		Value: &pb.EventMessageValueOfObjectDetailsSet{
+			ObjectDetailsSet: &pb.EventObjectDetailsSet{
+				Id: pbtypes.GetString(details, bundle.RelationKeyId.String()),
+				SubIds: []string{
+					subId,
+				},
+				Details: details,
+			},
+		},
+	}
+}
+
+func makeAddEvent(subId string, afterId string, id string) *pb.EventMessage {
+	return &pb.EventMessage{
+		Value: &pb.EventMessageValueOfSubscriptionAdd{
+			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+				SubId:   subId,
+				Id:      id,
+				AfterId: afterId,
+			},
+		},
+	}
+}
+
+func makeCountersEvent(subId string, total int) *pb.EventMessage {
+	return &pb.EventMessage{
+		Value: &pb.EventMessageValueOfSubscriptionCounters{
+			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+				SubId: subId,
+				Total: int64(total),
+			},
+		},
+	}
 }
 
 type dummyCollectionService struct{}

@@ -65,6 +65,7 @@ type SubscribeRequest struct {
 	Internal bool
 	// InternalQueue is used when Internal flag is set to true. If it's nil, new queue will be created
 	InternalQueue *mb2.MB[*pb.EventMessage]
+	AsyncInit     bool
 }
 
 type SubscribeResponse struct {
@@ -412,25 +413,42 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 		}
 	}
 
-	err := sub.init(entries)
-	if err != nil {
-		return nil, fmt.Errorf("init sub entries: %w", err)
-	}
-	s.setSubscription(sub.id, sub)
-	prev, next := sub.counters()
-
-	var depRecords, subRecords []*types.Struct
-	subRecords = sub.getActiveRecords()
-
-	if sub.depSub != nil {
-		depRecords = sub.depSub.getActiveRecords()
-	}
 	var outputQueue *mb2.MB[*pb.EventMessage]
 	if req.Internal {
 		output := newInternalSubOutput(req.InternalQueue)
 		outputQueue = output.queue
 		s.customOutput[req.SubId] = output
 	}
+
+	if req.AsyncInit {
+		err := sub.init(nil)
+		if err != nil {
+			return nil, fmt.Errorf("async: init sub entries: %w", err)
+		}
+		s.onChangeWithinContext(entries, func(ctxBuf *opCtx) {
+			sub.onChange(ctxBuf)
+		})
+
+	} else {
+		err := sub.init(entries)
+		if err != nil {
+			return nil, fmt.Errorf("init sub entries: %w", err)
+		}
+	}
+
+	s.setSubscription(sub.id, sub)
+	prev, next := sub.counters()
+
+	var depRecords, subRecords []*types.Struct
+
+	if !req.AsyncInit {
+		subRecords = sub.getActiveRecords()
+
+		if sub.depSub != nil {
+			depRecords = sub.depSub.getActiveRecords()
+		}
+	}
+
 	return &SubscribeResponse{
 		Records:      subRecords,
 		Dependencies: depRecords,
@@ -732,19 +750,23 @@ func (s *spaceSubscriptions) recordsHandler() {
 func (s *spaceSubscriptions) onChange(entries []*entry) time.Duration {
 	s.m.Lock()
 	defer s.m.Unlock()
-	var subCount, depCount int
+
+	return s.onChangeWithinContext(entries, func(ctxBuf *opCtx) {
+		s.iterateSubscriptions(func(sub subscription) {
+			sub.onChange(s.ctxBuf)
+			if sub.hasDep() {
+				sub.getDep().onChange(s.ctxBuf)
+			}
+		})
+	})
+}
+
+func (s *spaceSubscriptions) onChangeWithinContext(entries []*entry, proc func(ctxBuf *opCtx)) time.Duration {
 	st := time.Now()
 	s.ctxBuf.reset()
 	s.ctxBuf.entries = entries
-	s.iterateSubscriptions(func(sub subscription) {
-		sub.onChange(s.ctxBuf)
-		subCount++
-		if sub.hasDep() {
-			sub.getDep().onChange(s.ctxBuf)
-			depCount++
-		}
-	})
-	handleTime := time.Since(st)
+
+	proc(s.ctxBuf)
 
 	// Reset output buffer
 	for subId := range s.ctxBuf.outputs {
@@ -779,8 +801,6 @@ func (s *spaceSubscriptions) onChange(entries []*entry) time.Duration {
 			}
 		}
 	}
-
-	log.Debugf("handle %d entries; %v(handle:%v;genEvents:%v); cacheSize: %d; subCount:%d; subDepCount:%d", len(entries), dur, handleTime, dur-handleTime, len(s.cache.entries), subCount, depCount)
 
 	return dur
 }
