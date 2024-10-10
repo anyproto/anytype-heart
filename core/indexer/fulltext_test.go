@@ -51,6 +51,7 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	clientStorage := mock_storage.NewMockClientStorage(t)
 
 	sourceService := mock_source.NewMockService(t)
+	sourceService.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 
 	fileStore := filestore.New()
 
