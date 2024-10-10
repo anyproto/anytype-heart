@@ -110,7 +110,7 @@ func (r *ImportCollection) addRelations(st *state.State) error {
 	for _, relation := range []*model.RelationLink{
 		{
 			Key:    bundle.RelationKeyTag.String(),
-			Format: model.RelationFormat_tag,
+			Format: model.RelationFormat_object,
 		},
 		{
 			Key:    bundle.RelationKeyCreatedDate.String(),

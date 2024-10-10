@@ -249,6 +249,9 @@ func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 		Key:    key,
 		Format: propObject.GetFormat(),
 	}
+	if key == bundle.RelationKeyTag.String() {
+		relationLink.Format = model.RelationFormat_object
+	}
 	return relationsAndOptionsSnapshots, relationLink, nil
 }
 
@@ -293,12 +296,12 @@ func (pt *Task) getRelationSnapshot(name string, propObject property.Object, has
 	return rel, key
 }
 
-func (pt *Task) provideRelationOptionsSnapshots(id string, propObject property.Object, relation *property.PropertiesStore) []*model.SmartBlockSnapshotBase {
+func (pt *Task) provideRelationOptionsSnapshots(key string, propObject property.Object, relation *property.PropertiesStore) []*model.SmartBlockSnapshotBase {
 	pt.relationOptCreateMutex.Lock()
 	defer pt.relationOptCreateMutex.Unlock()
 	relationsAndOptionsSnapshots := make([]*model.SmartBlockSnapshotBase, 0)
-	if isPropertyTag(propObject) {
-		relationsAndOptionsSnapshots = append(relationsAndOptionsSnapshots, getRelationOptions(propObject, id, relation)...)
+	if isPropertyWithOptions(propObject) {
+		relationsAndOptionsSnapshots = append(relationsAndOptionsSnapshots, getRelationOptions(propObject, key, relation)...)
 	}
 	return relationsAndOptionsSnapshots
 }
@@ -397,6 +400,9 @@ func (pt *Task) getSmartBlockTypeAndID(objectSnapshot *model.SmartBlockSnapshotB
 	if lo.Contains(objectSnapshot.ObjectTypes, bundle.TypeKeyRelationOption.String()) {
 		return smartblock.SmartBlockTypeRelationOption
 	}
+	if lo.Contains(objectSnapshot.ObjectTypes, bundle.TypeKeyTag.String()) {
+		return smartblock.SmartBlockTypePage
+	}
 	return smartblock.SmartBlockTypeRelation
 }
 
@@ -432,7 +438,7 @@ func isPropertyPaginated(pr property.Object) bool {
 		pr.GetPropertyType() == property.PropertyConfigTypePeople
 }
 
-func isPropertyTag(pr property.Object) bool {
+func isPropertyWithOptions(pr property.Object) bool {
 	return pr.GetPropertyType() == property.PropertyConfigTypeMultiSelect ||
 		pr.GetPropertyType() == property.PropertyConfigTypeSelect ||
 		pr.GetPropertyType() == property.PropertyConfigStatus ||
@@ -552,6 +558,10 @@ func provideRelationOptionSnapshot(name, color, rel string) (*types.Struct, *mod
 		ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
 		Key:         id,
 	}
+	if rel == bundle.RelationKeyTag.String() {
+		optSnapshot.ObjectTypes = []string{bundle.TypeKeyTag.String()}
+		optSnapshot.Key = ""
+	}
 	return details, optSnapshot
 }
 
@@ -559,15 +569,19 @@ func getDetailsForRelationOption(name, rel string) (string, *types.Struct) {
 	id := bson.NewObjectId().Hex()
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(rel)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
-	if err != nil {
-		log.Warnf("failed to create unique key for Notion relation: %v", err)
-		return id, details
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_tag))
+	if rel != bundle.RelationKeyTag.String() {
+		details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(rel)
+		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
+		uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
+		if err != nil {
+			log.Warnf("failed to create unique key for Notion relation: %v", err)
+			return id, details
+		}
+		details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
 	}
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
 	return id, details
 }
 

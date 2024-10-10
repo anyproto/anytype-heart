@@ -315,68 +315,102 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
 	id, profileID, path string,
 	isMigration bool,
 	pbFiles source.Source) (string, error) {
+	p.normalizeRelationLinks(snapshot)
+	if snapshot.SbType == model.SmartBlockType_STRelationOption {
+		p.normalizeRelationOption(snapshot)
+	}
 	if _, ok := model.SmartBlockType_name[int32(snapshot.SbType)]; !ok {
-		newSbType := model.SmartBlockType_Page
-		if int32(snapshot.SbType) == 96 { // fallback for objectType smartblocktype
-			newSbType = model.SmartBlockType_SubObject
-		}
-		snapshot.SbType = newSbType
+		p.normalizeNormalizeOldType(snapshot)
 	}
-
 	if snapshot.SbType == model.SmartBlockType_SubObject {
-		details := snapshot.Snapshot.Data.Details
-		originalId := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
-		var sourceObjectId string
-		// migrate old sub objects into real objects
-		if snapshot.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyObjectType.URL() {
-			snapshot.SbType = model.SmartBlockType_STType
-			typeKey, err := bundle.TypeKeyFromUrl(originalId)
-			if err == nil {
-				sourceObjectId = typeKey.BundledURL()
-			}
-		} else if snapshot.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyRelation.URL() {
-			snapshot.SbType = model.SmartBlockType_STRelation
-			relationKey, err := bundle.RelationKeyFromID(originalId)
-			if err == nil {
-				sourceObjectId = relationKey.BundledURL()
-			}
-		} else if snapshot.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyRelationOption.URL() {
-			snapshot.SbType = model.SmartBlockType_STRelationOption
-		} else {
-			return "", fmt.Errorf("unknown sub object type %s", snapshot.Snapshot.Data.ObjectTypes[0])
-		}
-		if sourceObjectId != "" {
-			if pbtypes.GetString(details, bundle.RelationKeySourceObject.String()) == "" {
-				details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceObjectId)
-			}
-		}
-		id = originalId
+		return p.normalizeSubObject(snapshot, id)
 	}
-
 	if snapshot.SbType == model.SmartBlockType_ProfilePage {
-		var err error
-		id, err = p.getIDForUserProfile(snapshot, profileID, id, isMigration)
-		if err != nil {
-			return "", fmt.Errorf("get user profile id: %w", err)
-		}
-		p.setProfileIconOption(snapshot, profileID)
+		return p.normalizeProfile(snapshot, id, profileID, isMigration)
 	}
 	if snapshot.SbType == model.SmartBlockType_Page {
 		p.cleanupEmptyBlock(snapshot)
 	}
-	if snapshot.SbType == model.SmartBlockType_File {
-		err := p.normalizeFilePath(snapshot, pbFiles, path)
-		if err != nil {
-			return "", fmt.Errorf("failed to update file path in file snapshot %w", err)
-		}
-	}
-	if snapshot.SbType == model.SmartBlockType_FileObject {
+	if snapshot.SbType == model.SmartBlockType_File || snapshot.SbType == model.SmartBlockType_FileObject {
 		err := p.normalizeFilePath(snapshot, pbFiles, path)
 		if err != nil {
 			return "", fmt.Errorf("failed to update file path in file snapshot %w", err)
 		}
 	}
 	return id, nil
+}
+
+func (p *Pb) normalizeRelationLinks(snapshot *pb.SnapshotWithType) {
+	for _, link := range snapshot.Snapshot.Data.RelationLinks {
+		if link.Key == bundle.RelationKeyTag.String() {
+			link.Format = model.RelationFormat_object
+			break
+		}
+	}
+}
+
+func (p *Pb) normalizeRelationOption(snapshot *pb.SnapshotWithType) {
+	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	if key != bundle.RelationKeyTag.String() {
+		return
+	}
+	snapshot.SbType = model.SmartBlockType_Page
+	snapshot.Snapshot.Data.Key = ""
+	snapshot.Snapshot.Data.ObjectTypes = []string{bundle.TypeKeyTag.URL()}
+	if snapshot.Snapshot.Data.Details == nil || snapshot.Snapshot.Data.Details.Fields == nil {
+		snapshot.Snapshot.Data.Details.Fields = map[string]*types.Value{}
+	}
+	snapshot.Snapshot.Data.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_tag))
+	delete(snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyRelationKey.String())
+	delete(snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyUniqueKey.String())
+}
+
+func (p *Pb) normalizeProfile(snapshot *pb.SnapshotWithType, id string, profileID string, isMigration bool) (string, error) {
+	id, err := p.getIDForUserProfile(snapshot, profileID, id, isMigration)
+	if err != nil {
+		return "", fmt.Errorf("get user profile id: %w", err)
+	}
+	p.setProfileIconOption(snapshot, profileID)
+	return id, nil
+}
+
+func (p *Pb) normalizeSubObject(snapshot *pb.SnapshotWithType, id string) (string, error) {
+	details := snapshot.Snapshot.Data.Details
+	originalId := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	var sourceObjectId string
+	// migrate old sub objects into real objects
+	if snapshot.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyObjectType.URL() {
+		snapshot.SbType = model.SmartBlockType_STType
+		typeKey, err := bundle.TypeKeyFromUrl(originalId)
+		if err == nil {
+			sourceObjectId = typeKey.BundledURL()
+		}
+	} else if snapshot.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyRelation.URL() {
+		snapshot.SbType = model.SmartBlockType_STRelation
+		relationKey, err := bundle.RelationKeyFromID(originalId)
+		if err == nil {
+			sourceObjectId = relationKey.BundledURL()
+		}
+	} else if snapshot.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyRelationOption.URL() {
+		snapshot.SbType = model.SmartBlockType_STRelationOption
+	} else {
+		return "", fmt.Errorf("unknown sub object type %s", snapshot.Snapshot.Data.ObjectTypes[0])
+	}
+	if sourceObjectId != "" {
+		if pbtypes.GetString(details, bundle.RelationKeySourceObject.String()) == "" {
+			details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceObjectId)
+		}
+	}
+	id = originalId
+	return id, nil
+}
+
+func (p *Pb) normalizeNormalizeOldType(snapshot *pb.SnapshotWithType) {
+	newSbType := model.SmartBlockType_Page
+	if int32(snapshot.SbType) == 96 { // fallback for objectType smartblocktype
+		newSbType = model.SmartBlockType_SubObject
+	}
+	snapshot.SbType = newSbType
 }
 
 func (p *Pb) normalizeFilePath(snapshot *pb.SnapshotWithType, pbFiles source.Source, path string) error {
