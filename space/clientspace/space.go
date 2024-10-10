@@ -2,6 +2,7 @@ package clientspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -144,9 +145,11 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 
 func (s *space) tryLoadBundledAndInstallIfMissing() {
 	ctxWithPeerTimeout := context.WithValue(s.loadMissingBundledObjectsCtx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(BundledObjectsPeerFindTimeout))
-
 	missingSourceIds, err := s.TryLoadBundledObjects(ctxWithPeerTimeout)
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return // we are closing, skip installation, we will try again on next load
+		}
 		log.Error("failed to load bundled objects", zap.Error(err))
 	}
 	_, _, err = s.installer.InstallBundledObjects(s.loadMissingBundledObjectsCtx, s, missingSourceIds, true)
@@ -261,6 +264,7 @@ func (s *space) Close(ctx context.Context) error {
 	if s == nil {
 		return nil
 	}
+	s.loadMissingBundledObjectsCtxCancel()
 	err := s.Cache.Close(ctx)
 	if err != nil {
 		return err
