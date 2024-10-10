@@ -90,6 +90,10 @@ func (c *layoutConverter) Convert(space smartblock.Space, st *state.State, fromL
 
 	// TODO We need more granular cases (not catch-all)
 
+	if toLayout == model.ObjectType_tag {
+		return c.fromAnyToTag(st)
+	}
+
 	return c.fromAnyToAny(st)
 }
 
@@ -321,4 +325,13 @@ func (c *layoutConverter) appendTypesFilter(types []string, filters []*model.Blo
 		})
 	}
 	return filters
+}
+
+func (c *layoutConverter) fromAnyToTag(st *state.State) error {
+	template.InitTemplate(st,
+		template.WithTitle,
+		template.WithNoDescription,
+		template.WithRelations([]domain.RelationKey{bundle.RelationKeyRelationOptionColor}),
+	)
+	return nil
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "a475473f827167d93b818920569ea0f2c758761ef24d6a6bcb8da6b009f01904"
+const TypeChecksum = "5e3ccfb73140e263358e27c4809e51ad219d9b19fc978a719a37460e58e7d4fa"
 const (
 	TypePrefix = "_ot"
 )
@@ -41,6 +41,7 @@ const (
 	TypeKeyGoal           domain.TypeKey = "goal"
 	TypeKeyFile           domain.TypeKey = "file"
 	TypeKeyProject        domain.TypeKey = "project"
+	TypeKeyTag            domain.TypeKey = "tag"
 )
 
 var (
@@ -322,6 +323,17 @@ var (
 			RestrictObjectCreation: true,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_SpaceView},
 			Url:                    TypePrefix + "spaceView",
+		},
+		TypeKeyTag: {
+
+			Description:   "",
+			IconEmoji:     "🏷 ",
+			Layout:        model.ObjectType_tag,
+			Name:          "Tag",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRelationOptionColor)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:           TypePrefix + "tag",
 		},
 		TypeKeyTask: {
 
