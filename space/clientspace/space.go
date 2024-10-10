@@ -23,11 +23,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/internal/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type Space interface {
@@ -100,6 +104,7 @@ type SpaceDeps struct {
 	PersonalSpaceId   string
 	LoadCtx           context.Context
 	DisableRemoteLoad bool
+	ObjectStore       objectstore.ObjectStore
 }
 
 func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
@@ -132,11 +137,11 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 			return nil, fmt.Errorf("install bundled objects: %w", err)
 		}
 	}
-	go sp.mandatoryObjectsLoad(deps.LoadCtx, deps.DisableRemoteLoad)
+	go sp.mandatoryObjectsLoad(deps.LoadCtx, deps.DisableRemoteLoad, deps.ObjectStore)
 	return sp, nil
 }
 
-func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool) {
+func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool, objectStore objectstore.ObjectStore) {
 	defer close(s.loadMandatoryObjectsCh)
 	s.loadMandatoryObjectsErr = s.indexer.ReindexSpace(s)
 	if s.loadMandatoryObjectsErr != nil {
@@ -162,9 +167,87 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	if err != nil {
 		log.Error("failed to migrate profile object", zap.Error(err))
 	}
+	err = s.migrateRelationOptions(objectStore)
+	if err != nil {
+		log.Error("failed to migrate relation options", zap.Error(err))
+	}
+	err = s.migrateTag(objectStore)
+	if err != nil {
+		log.Error("failed to migrate relation options", zap.Error(err))
+	}
 	if !disableRemoteLoad {
 		s.common.TreeSyncer().StartSync()
 	}
+}
+
+func (s *space) migrateRelationOptions(objectStore objectstore.ObjectStore) error {
+	relationOptions, _, err := objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			},
+			{
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.RelationKeyTag.String()),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(s.Id()),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	for _, optionId := range relationOptions {
+		err = s.Do(optionId, func(sb smartblock.SmartBlock) error {
+			return nil
+		})
+		if err != nil {
+			log.Debug("failed to migrate relation option", zap.Error(err))
+		}
+	}
+	return nil
+}
+
+func (s *space) migrateTag(objectStore objectstore.ObjectStore) error {
+	relation, _, err := objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.RelationKeyTag.URL()),
+			},
+			{
+				RelationKey: bundle.RelationKeyRelationFormat.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.RelationFormat_tag)),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(s.Id()),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if len(relation) == 0 {
+		return nil
+	}
+	return s.Do(relation[0], func(sb smartblock.SmartBlock) error {
+		return nil
+	})
 }
 
 func (s *space) Id() string {
