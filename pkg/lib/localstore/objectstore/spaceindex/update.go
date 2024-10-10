@@ -6,12 +6,12 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/jsonutil"
+	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/anyenc/anyencutil"
 	"github.com/anyproto/any-store/query"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -44,10 +44,10 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
-	jsonVal := pbtypes.ProtoToJson(arena, details)
+	jsonVal := pbtypes.ProtoToAnyEnc(arena, details)
 	var isModified bool
-	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
-		if jsonutil.Equal(val, jsonVal) {
+	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		if anyencutil.Equal(val, jsonVal) {
 			return nil, false, nil
 		}
 		isModified = true
@@ -159,7 +159,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 	} else if err != nil {
 		return rollback(fmt.Errorf("find details: %w", err))
 	} else {
-		inputDetails, err = pbtypes.JsonToProto(doc.Value())
+		inputDetails, err = pbtypes.AnyEncToProto(doc.Value())
 		if err != nil {
 			return rollback(fmt.Errorf("json to proto: %w", err))
 		}
@@ -180,8 +180,8 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		return txn.Commit()
 	}
 	newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-	jsonVal := pbtypes.ProtoToJson(arena, newDetails)
-	_, err = s.pendingDetails.UpsertOne(txn.Context(), jsonVal)
+	jsonVal := pbtypes.ProtoToAnyEnc(arena, newDetails)
+	err = s.pendingDetails.UpsertOne(txn.Context(), jsonVal)
 	if err != nil {
 		return rollback(fmt.Errorf("upsert details: %w", err))
 	}
@@ -211,8 +211,8 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
-	_, err := s.objects.UpsertId(s.componentCtx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
-		inputDetails, err := pbtypes.JsonToProto(val)
+	_, err := s.objects.UpsertId(s.componentCtx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		inputDetails, err := pbtypes.AnyEncToProto(val)
 		if err != nil {
 			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
 		}
@@ -228,8 +228,8 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 		// Ensure ID is set
 		newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
-		jsonVal := pbtypes.ProtoToJson(arena, newDetails)
-		diff, err := pbtypes.DiffJson(val, jsonVal)
+		jsonVal := pbtypes.ProtoToAnyEnc(arena, newDetails)
+		diff, err := pbtypes.AnyEncJson(val, jsonVal)
 		if err != nil {
 			return nil, false, fmt.Errorf("diff json: %w", err)
 		}
@@ -255,10 +255,10 @@ func (s *dsObjectStore) getPendingLocalDetails(txn *badger.Txn, key []byte) (*mo
 }
 
 func (s *dsObjectStore) updateObjectLinks(ctx context.Context, id string, links []string) (added []string, removed []string, err error) {
-	_, err = s.links.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
-		prev := pbtypes.JsonArrayToStrings(val.GetArray(linkOutboundField))
+	_, err = s.links.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		prev := pbtypes.AnyEncArrayToStrings(val.GetArray(linkOutboundField))
 		added, removed = slice.DifferenceRemovedAdded(prev, links)
-		val.Set(linkOutboundField, pbtypes.StringsToJsonArray(arena, links))
+		val.Set(linkOutboundField, pbtypes.StringsToAnyEnc(arena, links))
 		return val, len(added)+len(removed) > 0, nil
 	}))
 	return

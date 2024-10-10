@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb"
 	mb2 "github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
 	"golang.org/x/text/collate"
 
@@ -111,7 +111,7 @@ type service struct {
 	kanban            kanban.Service
 	collectionService CollectionService
 	eventSender       event.Sender
-	arenaPool         *fastjson.ArenaPool
+	arenaPool         *anyenc.ArenaPool
 }
 
 func (s *service) Name() string {
@@ -125,7 +125,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.eventSender = app.MustComponent[event.Sender](a)
 
 	s.spaceSubs = map[string]*spaceSubscriptions{}
-	s.arenaPool = &fastjson.ArenaPool{}
+	s.arenaPool = &anyenc.ArenaPool{}
 	return
 }
 
@@ -252,7 +252,7 @@ type spaceSubscriptions struct {
 	ctxBuf *opCtx
 
 	subDebugger *subDebugger
-	arenaPool   *fastjson.ArenaPool
+	arenaPool   *anyenc.ArenaPool
 }
 
 func (s *spaceSubscriptions) Run(context.Context) (err error) {

@@ -9,9 +9,9 @@ import (
 	"sync"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -96,7 +96,7 @@ type dsObjectStore struct {
 	system           anystore.Collection
 	fulltextQueue    anystore.Collection
 
-	arenaPool *fastjson.ArenaPool
+	arenaPool *anyenc.ArenaPool
 
 	fts                 ftsearch.FTSearch
 	subManager          *spaceindex.SubscriptionManager
@@ -133,7 +133,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	} else {
 		s.fts = fts.(ftsearch.FTSearch)
 	}
-	s.arenaPool = &fastjson.ArenaPool{}
+	s.arenaPool = &anyenc.ArenaPool{}
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
 	s.anyStoreConfig = app.MustComponent[configProvider](a).GetAnyStoreConfig()
 	s.oldStore = app.MustComponent[oldstore.Service](a)

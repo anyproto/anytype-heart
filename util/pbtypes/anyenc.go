@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
-	"github.com/valyala/fastjson"
 )
 
-func JsonToProto(v *fastjson.Value) (*types.Struct, error) {
+func AnyEncToProto(v *anyenc.Value) (*types.Struct, error) {
 	obj, err := v.Object()
 	if err != nil {
 		return nil, fmt.Errorf("is object: %w", err)
@@ -17,46 +17,46 @@ func JsonToProto(v *fastjson.Value) (*types.Struct, error) {
 		Fields: make(map[string]*types.Value, obj.Len()),
 	}
 	var visitErr error
-	obj.Visit(func(k []byte, v *fastjson.Value) {
+	obj.Visit(func(k string, v *anyenc.Value) {
 		if visitErr != nil {
 			return
 		}
 		// key is copied
-		val, err := JsonValueToProto(v)
+		val, err := AnyEncValueToProto(v)
 		if err != nil {
 			visitErr = err
 		}
-		res.Fields[string(k)] = val
+		res.Fields[k] = val
 	})
 	return res, visitErr
 }
 
-func JsonValueToProto(val *fastjson.Value) (*types.Value, error) {
+func AnyEncValueToProto(val *anyenc.Value) (*types.Value, error) {
 	switch val.Type() {
-	case fastjson.TypeNumber:
+	case anyenc.TypeNumber:
 		v, err := val.Float64()
 		if err != nil {
 			return nil, fmt.Errorf("float64: %w", err)
 		}
 		return Float64(v), nil
-	case fastjson.TypeString:
+	case anyenc.TypeString:
 		v, err := val.StringBytes()
 		if err != nil {
 			return nil, fmt.Errorf("string: %w", err)
 		}
 		return String(string(v)), nil
-	case fastjson.TypeTrue:
+	case anyenc.TypeTrue:
 		return Bool(true), nil
-	case fastjson.TypeFalse:
+	case anyenc.TypeFalse:
 		return Bool(false), nil
-	case fastjson.TypeArray:
+	case anyenc.TypeArray:
 		vals, err := val.Array()
 		if err != nil {
 			return nil, fmt.Errorf("array: %w", err)
 		}
 		lst := make([]*types.Value, 0, len(vals))
 		for i, v := range vals {
-			val, err := JsonValueToProto(v)
+			val, err := AnyEncValueToProto(v)
 			if err != nil {
 				return nil, fmt.Errorf("array item %d: %w", i, err)
 			}
@@ -73,15 +73,15 @@ func JsonValueToProto(val *fastjson.Value) (*types.Value, error) {
 	return Null(), nil
 }
 
-func ProtoToJson(arena *fastjson.Arena, details *types.Struct) *fastjson.Value {
+func ProtoToAnyEnc(arena *anyenc.Arena, details *types.Struct) *anyenc.Value {
 	obj := arena.NewObject()
 	for k, v := range details.Fields {
-		obj.Set(k, ProtoValueToJson(arena, v))
+		obj.Set(k, ProtoValueToAnyEnc(arena, v))
 	}
 	return obj
 }
 
-func ProtoValueToJson(arena *fastjson.Arena, v *types.Value) *fastjson.Value {
+func ProtoValueToAnyEnc(arena *anyenc.Arena, v *types.Value) *anyenc.Value {
 	if v == nil {
 		return arena.NewNull()
 	}
@@ -99,7 +99,7 @@ func ProtoValueToJson(arena *fastjson.Arena, v *types.Value) *fastjson.Value {
 	case *types.Value_ListValue:
 		lst := arena.NewArray()
 		for i, v := range v.GetListValue().Values {
-			lst.SetArrayItem(i, ProtoValueToJson(arena, v))
+			lst.SetArrayItem(i, ProtoValueToAnyEnc(arena, v))
 		}
 		return lst
 	default:
@@ -107,21 +107,21 @@ func ProtoValueToJson(arena *fastjson.Arena, v *types.Value) *fastjson.Value {
 	}
 }
 
-type JsonDiffType int
+type AnyEncDiffType int
 
 const (
-	JsonDiffTypeAdd JsonDiffType = iota
-	JsonDiffTypeRemove
-	JsonDiffTypeUpdate
+	AnyEncDiffTypeAdd AnyEncDiffType = iota
+	AnyEncDiffTypeRemove
+	AnyEncDiffTypeUpdate
 )
 
-type JsonDiff struct {
-	Type  JsonDiffType
+type AnyEncDiff struct {
+	Type  AnyEncDiffType
 	Key   string
-	Value *fastjson.Value
+	Value *anyenc.Value
 }
 
-func DiffJson(a *fastjson.Value, b *fastjson.Value) ([]JsonDiff, error) {
+func AnyEncJson(a *anyenc.Value, b *anyenc.Value) ([]AnyEncDiff, error) {
 	objA, err := a.Object()
 	if err != nil {
 		return nil, fmt.Errorf("param a is not an object: %w", err)
@@ -131,40 +131,39 @@ func DiffJson(a *fastjson.Value, b *fastjson.Value) ([]JsonDiff, error) {
 		return nil, fmt.Errorf("param b is not an object: %w", err)
 	}
 
-	var diffs []JsonDiff
+	var diffs []AnyEncDiff
 	existsA := make(map[string]struct{}, objA.Len())
 
-	objA.Visit(func(key []byte, v *fastjson.Value) {
-		existsA[string(key)] = struct{}{}
+	objA.Visit(func(key string, v *anyenc.Value) {
+		existsA[key] = struct{}{}
 	})
 
 	var (
 		stop     bool
 		visitErr error
 	)
-	objB.Visit(func(key []byte, v *fastjson.Value) {
+	objB.Visit(func(key string, v *anyenc.Value) {
 		if stop {
 			return
 		}
-		strKey := string(key)
-		if _, ok := existsA[strKey]; ok {
-			eq, err := compareValue(a.Get(strKey), v)
+		if _, ok := existsA[key]; ok {
+			eq, err := compareValue(a.Get(key), v)
 			if err != nil {
 				visitErr = err
 				stop = true
 			}
 			if !eq {
-				diffs = append(diffs, JsonDiff{
-					Type:  JsonDiffTypeUpdate,
-					Key:   strKey,
+				diffs = append(diffs, AnyEncDiff{
+					Type:  AnyEncDiffTypeUpdate,
+					Key:   key,
 					Value: v, // Holden value, be cautious
 				})
 			}
-			delete(existsA, strKey)
+			delete(existsA, key)
 		} else {
-			diffs = append(diffs, JsonDiff{
-				Type:  JsonDiffTypeAdd,
-				Key:   strKey,
+			diffs = append(diffs, AnyEncDiff{
+				Type:  AnyEncDiffTypeAdd,
+				Key:   key,
 				Value: v, // Holden value, be cautious
 			})
 		}
@@ -174,23 +173,23 @@ func DiffJson(a *fastjson.Value, b *fastjson.Value) ([]JsonDiff, error) {
 	}
 
 	for key := range existsA {
-		diffs = append(diffs, JsonDiff{
-			Type: JsonDiffTypeRemove,
+		diffs = append(diffs, AnyEncDiff{
+			Type: AnyEncDiffTypeRemove,
 			Key:  key,
 		})
 	}
 	return diffs, nil
 }
 
-func compareValue(a *fastjson.Value, b *fastjson.Value) (bool, error) {
+func compareValue(a *anyenc.Value, b *anyenc.Value) (bool, error) {
 	if a.Type() != b.Type() {
 		// Return true, as we have checked that types are equal
 		return false, nil
 	}
 	switch a.Type() {
-	case fastjson.TypeNull:
+	case anyenc.TypeNull:
 		return true, nil
-	case fastjson.TypeNumber:
+	case anyenc.TypeNumber:
 		af, err := a.Float64()
 		if err != nil {
 			return false, fmt.Errorf("a: get float64: %w", err)
@@ -200,7 +199,7 @@ func compareValue(a *fastjson.Value, b *fastjson.Value) (bool, error) {
 			return false, fmt.Errorf("b: get float64: %w", err)
 		}
 		return af == bf, nil
-	case fastjson.TypeString:
+	case anyenc.TypeString:
 		as, err := a.StringBytes()
 		if err != nil {
 			return false, fmt.Errorf("a: get string: %w", err)
@@ -210,10 +209,10 @@ func compareValue(a *fastjson.Value, b *fastjson.Value) (bool, error) {
 			return false, fmt.Errorf("b: get string: %w", err)
 		}
 		return bytes.Compare(as, bs) == 0, nil
-	case fastjson.TypeTrue, fastjson.TypeFalse:
+	case anyenc.TypeTrue, anyenc.TypeFalse:
 		// Return true, as we have checked that types are equal
 		return true, nil
-	case fastjson.TypeArray:
+	case anyenc.TypeArray:
 		aa, err := a.Array()
 		if err != nil {
 			return false, fmt.Errorf("a: get array: %w", err)
@@ -235,7 +234,7 @@ func compareValue(a *fastjson.Value, b *fastjson.Value) (bool, error) {
 			}
 		}
 		return true, nil
-	case fastjson.TypeObject:
+	case anyenc.TypeObject:
 		ao, err := a.Object()
 		if err != nil {
 			return false, fmt.Errorf("a: get object: %w", err)
@@ -252,11 +251,11 @@ func compareValue(a *fastjson.Value, b *fastjson.Value) (bool, error) {
 			stop     bool
 			visitErr error
 		)
-		ao.Visit(func(k []byte, va *fastjson.Value) {
+		ao.Visit(func(k string, va *anyenc.Value) {
 			if stop {
 				return
 			}
-			vb := bo.Get(string(k))
+			vb := bo.Get(k)
 			// TODO Test nil values
 			if vb == nil {
 				eq = false
@@ -280,7 +279,7 @@ func compareValue(a *fastjson.Value, b *fastjson.Value) (bool, error) {
 	return false, nil
 }
 
-func JsonArrayToStrings(arr []*fastjson.Value) []string {
+func AnyEncArrayToStrings(arr []*anyenc.Value) []string {
 	res := make([]string, 0, len(arr))
 	for _, v := range arr {
 		res = append(res, string(v.GetStringBytes()))
@@ -288,7 +287,7 @@ func JsonArrayToStrings(arr []*fastjson.Value) []string {
 	return res
 }
 
-func StringsToJsonArray(arena *fastjson.Arena, arr []string) *fastjson.Value {
+func StringsToAnyEnc(arena *anyenc.Arena, arr []string) *anyenc.Value {
 	res := arena.NewArray()
 	for i, v := range arr {
 		res.SetArrayItem(i, arena.NewString(v))
