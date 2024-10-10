@@ -83,6 +83,7 @@ type Service interface {
 	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
 	SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
+	// TODO UnsubscribeInSpace(spaceId string, subId string) error
 	UnsubscribeAll() (err error)
 	SubscriptionIDs() []string
 
