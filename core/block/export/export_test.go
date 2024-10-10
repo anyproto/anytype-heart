@@ -156,8 +156,11 @@ func TestExport_Export(t *testing.T) {
 		for _, file := range reader.File {
 			fileNames[file.Name] = true
 		}
-		assert.True(t, fileNames[objectsDirectory+string(filepath.Separator)+objectID+".pb.json"])
-		assert.True(t, fileNames[typesDirectory+string(filepath.Separator)+objectTypeId+".pb.json"])
+
+		objectPath := filepath.Join(objectsDirectory, objectID+".pb.json")
+		assert.True(t, fileNames[objectPath])
+		typePath := filepath.Join(typesDirectory, objectTypeId+".pb.json")
+		assert.True(t, fileNames[typePath])
 	})
 	t.Run("empty import", func(t *testing.T) {
 		// given
