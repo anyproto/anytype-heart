@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
@@ -72,7 +72,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		componentCtxCancel:  cancel,
 		fts:                 fullText,
 		sourceService:       &detailsFromId{},
-		arenaPool:           &fastjson.ArenaPool{},
+		arenaPool:           &anyenc.ArenaPool{},
 		repoPath:            walletService.RepoPath(),
 		oldStore:            oldStore,
 		spaceIndexes:        map[string]spaceindex.Store{},

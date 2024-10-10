@@ -3,6 +3,7 @@ package storestate
 import (
 	"encoding/json"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -89,6 +90,9 @@ func (b *Builder) toJSONString(doc any) (res string, err error) {
 	}
 	if fj, ok := doc.(*fastjson.Value); ok {
 		return fj.String(), nil
+	}
+	if anyEnc, ok := doc.(*anyenc.Value); ok {
+		return anyEnc.String(), nil
 	}
 	resBytes, err := json.Marshal(doc)
 	if err != nil {

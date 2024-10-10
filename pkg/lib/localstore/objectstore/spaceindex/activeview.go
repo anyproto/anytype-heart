@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/valyala/fastjson"
+	"github.com/anyproto/any-store/anyenc"
 )
 
 // SetActiveViews accepts map of active views by blocks, as objects can handle multiple dataview blocks
@@ -21,7 +21,7 @@ func (s *dsObjectStore) SetActiveViews(objectId string, views map[string]string)
 	if err != nil {
 		return err
 	}
-	_, err = s.activeViews.UpsertOne(s.componentCtx, it)
+	err = s.activeViews.UpsertOne(s.componentCtx, it)
 	return err
 }
 
@@ -53,7 +53,7 @@ func (s *dsObjectStore) GetActiveViews(objectId string) (map[string]string, erro
 	return views, err
 }
 
-func keyValueItem(arena *fastjson.Arena, key string, value any) (*fastjson.Value, error) {
+func keyValueItem(arena *anyenc.Arena, key string, value any) (*anyenc.Value, error) {
 	raw, err := json.Marshal(value)
 	if err != nil {
 		return nil, err

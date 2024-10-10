@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/valyala/fastjson"
 )
 
 const (
 	accountStatusKey = "account_status"
 )
 
-func keyValueItem(arena *fastjson.Arena, key string, value any) (*fastjson.Value, error) {
+func keyValueItem(arena *anyenc.Arena, key string, value any) (*anyenc.Value, error) {
 	raw, err := json.Marshal(value)
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func (s *dsObjectStore) SaveAccountStatus(status *coordinatorproto.SpaceStatusPa
 	if err != nil {
 		return fmt.Errorf("create item: %w", err)
 	}
-	_, err = s.system.UpsertOne(s.componentCtx, it)
+	err = s.system.UpsertOne(s.componentCtx, it)
 	return err
 }
 

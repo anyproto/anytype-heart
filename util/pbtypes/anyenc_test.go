@@ -3,19 +3,19 @@ package pbtypes
 import (
 	"testing"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/valyala/fastjson"
 )
 
 func TestJsonToProto(t *testing.T) {
-	arena := &fastjson.Arena{}
+	arena := &anyenc.Arena{}
 
 	t.Run("empty", func(t *testing.T) {
-		val := fastjson.MustParse(`{}`)
+		val := anyenc.MustParseJson(`{}`)
 
-		got, err := JsonToProto(val)
+		got, err := AnyEncToProto(val)
 		require.NoError(t, err)
 
 		want := &types.Struct{
@@ -23,14 +23,14 @@ func TestJsonToProto(t *testing.T) {
 		}
 		assert.Equal(t, want, got)
 
-		gotJson := ProtoToJson(arena, got)
-		diff, err := DiffJson(val, gotJson)
+		gotJson := ProtoToAnyEnc(arena, got)
+		diff, err := AnyEncJson(val, gotJson)
 		require.NoError(t, err)
 		assert.Empty(t, diff)
 	})
 
 	t.Run("all types", func(t *testing.T) {
-		val := fastjson.MustParse(`
+		val := anyenc.MustParseJson(`
 			{
 				"key1": "value1",
 				"key2": 123,
@@ -43,7 +43,7 @@ func TestJsonToProto(t *testing.T) {
 				"key9": {"nestedKey1": "value1", "nestedKey2": 123}
 		}`)
 
-		got, err := JsonToProto(val)
+		got, err := AnyEncToProto(val)
 		require.NoError(t, err)
 
 		want := &types.Struct{
@@ -61,14 +61,14 @@ func TestJsonToProto(t *testing.T) {
 		}
 		assert.Equal(t, want, got)
 
-		gotJson := ProtoToJson(arena, got)
-		diff, err := DiffJson(val, gotJson)
+		gotJson := ProtoToAnyEnc(arena, got)
+		diff, err := AnyEncJson(val, gotJson)
 		require.NoError(t, err)
 
 		// We don't yet support converting nested objects from JSON to proto
-		assert.Equal(t, []JsonDiff{
+		assert.Equal(t, []AnyEncDiff{
 			{
-				Type:  JsonDiffTypeUpdate,
+				Type:  AnyEncDiffTypeUpdate,
 				Key:   "key9",
 				Value: arena.NewNull(),
 			},
@@ -78,14 +78,14 @@ func TestJsonToProto(t *testing.T) {
 }
 
 func TestDiffJson(t *testing.T) {
-	arena := &fastjson.Arena{}
+	arena := &anyenc.Arena{}
 	t.Run("empty objects -- no changes", func(t *testing.T) {
-		diff, err := DiffJson(arena.NewObject(), arena.NewObject())
+		diff, err := AnyEncJson(arena.NewObject(), arena.NewObject())
 		require.NoError(t, err)
 		assert.Empty(t, diff)
 	})
 	t.Run("equal objects", func(t *testing.T) {
-		fillObject := func(obj *fastjson.Value) {
+		fillObject := func(obj *anyenc.Value) {
 			obj.Set("key1", arena.NewString("value1"))
 			obj.Set("key2", arena.NewNumberFloat64(42))
 			obj.Set("key3", arena.NewTrue())
@@ -106,7 +106,7 @@ func TestDiffJson(t *testing.T) {
 		b := arena.NewObject()
 		fillObject(b)
 
-		diff, err := DiffJson(a, b)
+		diff, err := AnyEncJson(a, b)
 		require.NoError(t, err)
 		assert.Empty(t, diff)
 	})
@@ -143,42 +143,42 @@ func TestDiffJson(t *testing.T) {
 		objB.Set("nestedKey2", arena.NewNumberFloat64(123))
 		b.Set("key7", objB)
 
-		diff, err := DiffJson(a, b)
+		diff, err := AnyEncJson(a, b)
 		require.NoError(t, err)
 
-		want := []JsonDiff{
+		want := []AnyEncDiff{
 			{
-				Type:  JsonDiffTypeUpdate,
+				Type:  AnyEncDiffTypeUpdate,
 				Key:   "key1",
 				Value: arena.NewString("value2"),
 			},
 			{
-				Type:  JsonDiffTypeUpdate,
+				Type:  AnyEncDiffTypeUpdate,
 				Key:   "key2",
 				Value: arena.NewNumberFloat64(43),
 			},
 			{
-				Type:  JsonDiffTypeUpdate,
+				Type:  AnyEncDiffTypeUpdate,
 				Key:   "key3",
 				Value: arena.NewFalse(),
 			},
 			{
-				Type:  JsonDiffTypeUpdate,
+				Type:  AnyEncDiffTypeUpdate,
 				Key:   "key4",
 				Value: arena.NewTrue(),
 			},
 			{
-				Type:  JsonDiffTypeUpdate,
+				Type:  AnyEncDiffTypeUpdate,
 				Key:   "key5",
 				Value: arena.NewFalse(),
 			},
 			{
-				Type:  JsonDiffTypeUpdate,
+				Type:  AnyEncDiffTypeUpdate,
 				Key:   "key6",
 				Value: arrB,
 			},
 			{
-				Type:  JsonDiffTypeUpdate,
+				Type:  AnyEncDiffTypeUpdate,
 				Key:   "key7",
 				Value: objB,
 			},
@@ -195,11 +195,11 @@ func TestDiffJson(t *testing.T) {
 		b := arena.NewObject()
 		b.Set("key1", arena.NewString("value1"))
 
-		diff, err := DiffJson(a, b)
+		diff, err := AnyEncJson(a, b)
 		require.NoError(t, err)
-		assert.Equal(t, []JsonDiff{
+		assert.Equal(t, []AnyEncDiff{
 			{
-				Type:  JsonDiffTypeAdd,
+				Type:  AnyEncDiffTypeAdd,
 				Key:   "key1",
 				Value: arena.NewString("value1"),
 			},
@@ -210,11 +210,11 @@ func TestDiffJson(t *testing.T) {
 		a.Set("key1", arena.NewString("value1"))
 		b := arena.NewObject()
 
-		diff, err := DiffJson(a, b)
+		diff, err := AnyEncJson(a, b)
 		require.NoError(t, err)
-		assert.Equal(t, []JsonDiff{
+		assert.Equal(t, []AnyEncDiff{
 			{
-				Type: JsonDiffTypeRemove,
+				Type: AnyEncDiffTypeRemove,
 				Key:  "key1",
 			},
 		}, diff)
