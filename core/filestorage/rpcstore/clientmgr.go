@@ -178,7 +178,7 @@ func (m *clientManager) checkPeers(ctx context.Context, needClient bool) (err er
 	}
 
 	// try to add new nodePeerIds
-	nodePeerIds := m.peerStore.ResponsibleFilePeers()
+	nodePeerIds := slices.Clone(m.peerStore.ResponsibleFilePeers())
 	rand.Shuffle(len(nodePeerIds), func(i, j int) {
 		nodePeerIds[i], nodePeerIds[j] = nodePeerIds[j], nodePeerIds[i]
 	})

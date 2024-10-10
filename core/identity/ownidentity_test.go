@@ -22,8 +22,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -34,6 +35,7 @@ type ownSubscriptionFixture struct {
 	objectStoreFixture *objectstore.StoreFixture
 	spaceService       *mock_space.MockService
 	fileAclService     *mock_fileacl.MockService
+	techSpace          *mock_techspace.MockTechSpace
 	coordinatorClient  *inMemoryIdentityRepo
 	testObserver       *testObserver
 }
@@ -64,6 +66,7 @@ func newOwnSubscriptionFixture(t *testing.T) *ownSubscriptionFixture {
 	accountService := mock_account.NewMockService(t)
 	spaceService := mock_space.NewMockService(t)
 	objectStore := objectstore.NewStoreFixture(t)
+	techSpace := mock_techspace.NewMockTechSpace(t)
 	coordinatorClient := newInMemoryIdentityRepo()
 	fileAclService := mock_fileacl.NewMockService(t)
 	dataStoreProvider, err := datastore.NewInMemory()
@@ -93,6 +96,7 @@ func newOwnSubscriptionFixture(t *testing.T) *ownSubscriptionFixture {
 		coordinatorClient:      coordinatorClient,
 		testObserver:           testObserver,
 		objectStoreFixture:     objectStore,
+		techSpace:              techSpace,
 		fileAclService:         fileAclService,
 		accountService:         accountService,
 	}
@@ -112,9 +116,10 @@ func TestOwnProfileSubscription(t *testing.T) {
 	newName := "foobar"
 	t.Run("do not take global name from profile details", func(t *testing.T) {
 		fx := newOwnSubscriptionFixture(t)
-		personalSpace := mock_clientspace.NewMockSpace(t)
-		personalSpace.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(testProfileObjectId, nil)
-		fx.spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(personalSpace, nil)
+		fx.accountService.EXPECT().AccountID().Return("identity1")
+		fx.spaceService.EXPECT().GetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+		fx.techSpace.EXPECT().AccountObjectId().Return(testProfileObjectId, nil)
+		fx.spaceService.EXPECT().TechSpaceId().Return("space1")
 		accountSymKey := crypto.NewAES()
 		fx.spaceService.EXPECT().AccountMetadataSymKey().Return(accountSymKey)
 		fx.accountService.EXPECT().SignData(mock.Anything).RunAndReturn(func(data []byte) ([]byte, error) {
@@ -137,7 +142,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 		time.Sleep(testBatchTimeout / 4)
 
-		fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
+		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
 				bundle.RelationKeySpaceId:     pbtypes.String("space1"),
@@ -187,9 +192,10 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 	t.Run("rewrite global name from channel signal", func(t *testing.T) {
 		fx := newOwnSubscriptionFixture(t)
-		personalSpace := mock_clientspace.NewMockSpace(t)
-		personalSpace.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(testProfileObjectId, nil)
-		fx.spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(personalSpace, nil)
+		fx.accountService.EXPECT().AccountID().Return("identity1")
+		fx.spaceService.EXPECT().GetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+		fx.techSpace.EXPECT().AccountObjectId().Return(testProfileObjectId, nil)
+		fx.spaceService.EXPECT().TechSpaceId().Return("space1")
 		accountSymKey := crypto.NewAES()
 		fx.spaceService.EXPECT().AccountMetadataSymKey().Return(accountSymKey)
 		fx.accountService.EXPECT().SignData(mock.Anything).RunAndReturn(func(data []byte) ([]byte, error) {
@@ -235,9 +241,10 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 	t.Run("push profile to identity repo in batches", func(t *testing.T) {
 		fx := newOwnSubscriptionFixture(t)
-		personalSpace := mock_clientspace.NewMockSpace(t)
-		personalSpace.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(testProfileObjectId, nil)
-		fx.spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(personalSpace, nil)
+		fx.accountService.EXPECT().AccountID().Return("identity1")
+		fx.spaceService.EXPECT().GetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+		fx.techSpace.EXPECT().AccountObjectId().Return(testProfileObjectId, nil)
+		fx.spaceService.EXPECT().TechSpaceId().Return("space1")
 		accountSymKey := crypto.NewAES()
 		fx.spaceService.EXPECT().AccountMetadataSymKey().Return(accountSymKey)
 		fx.accountService.EXPECT().SignData(mock.Anything).RunAndReturn(func(data []byte) ([]byte, error) {
@@ -260,7 +267,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 		time.Sleep(testBatchTimeout / 4)
 
-		fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
+		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
 				bundle.RelationKeySpaceId:     pbtypes.String("space1"),
@@ -274,7 +281,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 		fx.updateGlobalName(newName)
 		time.Sleep(testBatchTimeout / 4)
 
-		fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
+		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
 				bundle.RelationKeySpaceId:     pbtypes.String("space1"),
@@ -337,9 +344,10 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 func TestWaitForDetails(t *testing.T) {
 	fx := newOwnSubscriptionFixture(t)
-	personalSpace := mock_clientspace.NewMockSpace(t)
-	personalSpace.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(testProfileObjectId, nil)
-	fx.spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(personalSpace, nil)
+	fx.accountService.EXPECT().AccountID().Return("identity1")
+	fx.spaceService.EXPECT().GetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+	fx.techSpace.EXPECT().AccountObjectId().Return(testProfileObjectId, nil)
+	fx.spaceService.EXPECT().TechSpaceId().Return("space1")
 	accountSymKey := crypto.NewAES()
 	fx.spaceService.EXPECT().AccountMetadataSymKey().Return(accountSymKey)
 	fx.accountService.EXPECT().SignData(mock.Anything).RunAndReturn(func(data []byte) ([]byte, error) {
@@ -372,7 +380,7 @@ func TestWaitForDetails(t *testing.T) {
 			Key:  "key1",
 		},
 	}, nil)
-	fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
+	fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
 			bundle.RelationKeySpaceId:     pbtypes.String("space1"),
@@ -407,7 +415,7 @@ func TestWaitForDetails(t *testing.T) {
 
 func TestStartWithError(t *testing.T) {
 	fx := newOwnSubscriptionFixture(t)
-	fx.spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(nil, fmt.Errorf("space error"))
+	fx.spaceService.EXPECT().GetTechSpace(mock.Anything).Return(nil, fmt.Errorf("space error"))
 
 	t.Run("GetMyProfileDetails before run with cancelled input context", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())

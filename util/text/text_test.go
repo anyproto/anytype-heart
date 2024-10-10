@@ -65,7 +65,7 @@ func TestTruncate(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			actual := Truncate(test.text, test.length)
+			actual := TruncateEllipsized(test.text, test.length)
 			assert.Equal(t, test.expected, actual)
 		})
 	}

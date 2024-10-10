@@ -10,13 +10,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var ErrObjectNotFound = fmt.Errorf("object not found")
 
-func NewCollection(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) Collection {
+func NewCollection(sb smartblock.SmartBlock, objectStore spaceindex.Store) Collection {
 	return &objectLinksCollection{SmartBlock: sb, objectStore: objectStore}
 }
 
@@ -33,7 +33,7 @@ type Collection interface {
 
 type objectLinksCollection struct {
 	smartblock.SmartBlock
-	objectStore objectstore.ObjectStore
+	objectStore spaceindex.Store
 }
 
 func (p *objectLinksCollection) AddObject(id string) (err error) {

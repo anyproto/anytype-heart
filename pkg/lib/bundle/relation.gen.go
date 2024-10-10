@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a8068f8bee7828cfa88a4cf262a8276bf2cbf1eadc9934dd52c5c06be2d02bbd"
+const RelationChecksum = "b7871343d3d54c95f5f258631ad14f1157ac9c5c4740e35c06af7ef7136307bf"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -141,6 +141,8 @@ const (
 	RelationKeySyncStatus                domain.RelationKey = "syncStatus"
 	RelationKeySyncDate                  domain.RelationKey = "syncDate"
 	RelationKeySyncError                 domain.RelationKey = "syncError"
+	RelationKeyHasChat                   domain.RelationKey = "hasChat"
+	RelationKeyChatId                    domain.RelationKey = "chatId"
 	RelationKeyMentions                  domain.RelationKey = "mentions"
 )
 
@@ -301,6 +303,20 @@ var (
 			MaxCount:         1,
 			Name:             "ISO",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyChatId: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Chat id",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brchatId",
+			Key:              "chatId",
+			MaxCount:         1,
+			Name:             "Chat id",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -637,6 +653,20 @@ var (
 			Key:              "globalName",
 			MaxCount:         1,
 			Name:             "Global name",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyHasChat: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Object has a chat",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brhasChat",
+			Key:              "hasChat",
+			MaxCount:         1,
+			Name:             "Has a chat",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

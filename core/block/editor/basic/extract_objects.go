@@ -95,7 +95,7 @@ func (bs *basic) prepareTargetObjectDetails(
 	typeUniqueKey domain.UniqueKey,
 	rootBlock simple.Block,
 ) (*types.Struct, error) {
-	objType, err := bs.objectStore.GetObjectByUniqueKey(spaceID, typeUniqueKey)
+	objType, err := bs.objectStore.GetObjectByUniqueKey(typeUniqueKey)
 	if err != nil {
 		return nil, err
 	}

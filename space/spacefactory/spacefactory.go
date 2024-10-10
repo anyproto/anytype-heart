@@ -29,6 +29,7 @@ type SpaceFactory interface {
 	NewShareableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error)
 	CreateMarketplaceSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error)
 	CreateAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
+	LoadAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	CreateInvitingSpace(ctx context.Context, id, aclHeadId string) (sp spacecontroller.SpaceController, err error)
 }
 
@@ -82,17 +83,23 @@ func (s *spaceFactory) CreatePersonalSpace(ctx context.Context, metadata []byte)
 		}
 		return nil, err
 	}
-	ctrl := personalspace.NewSpaceController(coreSpace.Id(), metadata, s.app)
+	ctrl, err := personalspace.NewSpaceController(ctx, coreSpace.Id(), metadata, s.app)
+	if err != nil {
+		return nil, err
+	}
 	err = ctrl.Start(ctx)
 	return ctrl, err
 }
 
 func (s *spaceFactory) NewPersonalSpace(ctx context.Context, metadata []byte) (ctrl spacecontroller.SpaceController, err error) {
-	coreSpace, err := s.spaceCore.Derive(ctx, spacecore.SpaceType)
+	id, err := s.spaceCore.DeriveID(ctx, spacecore.SpaceType)
 	if err != nil {
 		return nil, err
 	}
-	ctrl = personalspace.NewSpaceController(coreSpace.Id(), metadata, s.app)
+	ctrl, err = personalspace.NewSpaceController(ctx, id, metadata, s.app)
+	if err != nil {
+		return nil, err
+	}
 	err = ctrl.Start(ctx)
 	return ctrl, err
 }
@@ -116,7 +123,38 @@ func (s *spaceFactory) CreateAndSetTechSpace(ctx context.Context) (*clientspace.
 	s.techSpace = ts
 	s.app = s.app.ChildApp()
 	s.app.Register(s.techSpace)
-	err = ts.Run(techCoreSpace, ts.Cache)
+	err = ts.Run(techCoreSpace, ts.Cache, true)
+	if err != nil {
+		return nil, fmt.Errorf("run tech space: %w", err)
+	}
+
+	return ts, nil
+}
+
+func (s *spaceFactory) LoadAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error) {
+	techSpace := techspace.New()
+	id, err := s.spaceCore.DeriveID(ctx, spacecore.TechSpaceType)
+	if err != nil {
+		return nil, fmt.Errorf("derive tech space id: %w", err)
+	}
+	techCoreSpace, err := s.spaceCore.Get(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("derive tech space: %w", err)
+	}
+	deps := clientspace.TechSpaceDeps{
+		CommonSpace:     techCoreSpace,
+		ObjectFactory:   s.objectFactory,
+		AccountService:  s.accountService,
+		PersonalSpaceId: s.personalSpaceId,
+		Indexer:         s.indexer,
+		Installer:       s.installer,
+		TechSpace:       techSpace,
+	}
+	ts := clientspace.NewTechSpace(deps)
+	s.techSpace = ts
+	s.app = s.app.ChildApp()
+	s.app.Register(s.techSpace)
+	err = ts.Run(techCoreSpace, ts.Cache, false)
 	if err != nil {
 		return nil, fmt.Errorf("run tech space: %w", err)
 	}

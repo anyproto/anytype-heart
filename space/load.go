@@ -74,7 +74,11 @@ func (s *service) startStatus(ctx context.Context, info spaceinfo.SpacePersisten
 		wait: wait,
 	}
 	s.mu.Unlock()
-	ctrl, err = s.factory.NewShareableSpace(ctx, info.SpaceID, info)
+	if info.SpaceID == s.personalSpaceId {
+		ctrl, err = s.factory.NewPersonalSpace(ctx, s.accountMetadataPayload)
+	} else {
+		ctrl, err = s.factory.NewShareableSpace(ctx, info.SpaceID, info)
+	}
 	s.mu.Lock()
 	close(wait)
 	if err != nil {
@@ -99,28 +103,6 @@ func (s *service) waitLoad(ctx context.Context, ctrl spacecontroller.SpaceContro
 		return
 	}
 	return nil, fmt.Errorf("failed to load space, mode is %d: %w", ctrl.Mode(), ErrFailedToLoad)
-}
-
-func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
-	s.mu.Lock()
-	wait := make(chan struct{})
-	s.waiting[s.personalSpaceId] = controllerWaiter{
-		wait: wait,
-	}
-	s.mu.Unlock()
-	ctrl, err := s.factory.NewPersonalSpace(ctx, s.accountMetadataPayload)
-	if err != nil {
-		return
-	}
-	_, err = ctrl.Current().(loader.LoadWaiter).WaitLoad(ctx)
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if err != nil {
-		return err
-	}
-	close(wait)
-	s.spaceControllers[s.personalSpaceId] = ctrl
-	return
 }
 
 func convertSpaceError(err error) error {

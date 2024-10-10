@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -41,13 +41,13 @@ func (t *testPicker) Name() string { return "" }
 type fixture struct {
 	picker *testPicker
 	*Service
+	objectStore *objectstore.StoreFixture
 }
 
 func newFixture(t *testing.T) *fixture {
 	picker := &testPicker{}
 	a := &app.App{}
-	objectStore := mock_objectstore.NewMockObjectStore(t)
-	objectStore.EXPECT().Name().Return("objectStore")
+	objectStore := objectstore.NewStoreFixture(t)
 
 	a.Register(picker)
 	a.Register(objectStore)
@@ -55,7 +55,7 @@ func newFixture(t *testing.T) *fixture {
 
 	err := s.Init(a)
 	require.NoError(t, err)
-	return &fixture{picker: picker, Service: s}
+	return &fixture{picker: picker, Service: s, objectStore: objectStore}
 }
 
 func TestBroadcast(t *testing.T) {
@@ -157,7 +157,7 @@ func TestSetObjectTypeToViews(t *testing.T) {
 		st := generateState(bundle.TypeKeyPage, setOfValue)
 
 		// when
-		s.setDefaultObjectTypeToViews(st)
+		s.setDefaultObjectTypeToViews("space1", st)
 
 		// then
 		assertViews(st, "")
@@ -175,13 +175,18 @@ func TestSetObjectTypeToViews(t *testing.T) {
 	} {
 		t.Run("object is a set by "+testCase.name, func(t *testing.T) {
 			// given
-			store := mock_objectstore.NewMockObjectStore(t)
-			store.EXPECT().GetUniqueKeyById(setOfValue).Return(domain.NewUniqueKey(testCase.sbType, testCase.key))
-			s := Service{objectStore: store}
+			s := newFixture(t)
+			s.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
+				{
+					bundle.RelationKeyId:        pbtypes.String(setOfValue),
+					bundle.RelationKeyUniqueKey: pbtypes.String(domain.MustUniqueKey(testCase.sbType, testCase.key).Marshal()),
+				},
+			})
+
 			st := generateState(bundle.TypeKeySet, setOfValue)
 
 			// when
-			s.setDefaultObjectTypeToViews(st)
+			s.setDefaultObjectTypeToViews("space1", st)
 
 			// then
 			assertViews(st, testCase.expected)

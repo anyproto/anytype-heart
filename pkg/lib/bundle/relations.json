@@ -1331,6 +1331,26 @@
     "source": "local"
   },
   {
+    "description": "Object has a chat",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "hasChat",
+    "maxCount": 1,
+    "name": "Has a chat",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Chat id",
+    "format": "object",
+    "hidden": true,
+    "key": "chatId",
+    "maxCount": 1,
+    "name": "Chat id",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Objects that are mentioned in blocks of this object",
     "format": "object",
     "hidden": true,

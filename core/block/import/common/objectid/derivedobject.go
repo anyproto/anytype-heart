@@ -79,13 +79,8 @@ func (d *derivedObject) GetInternalKey(sbType sb.SmartBlockType) string {
 }
 
 func (d *derivedObject) isDeletedObject(spaceId string, uniqueKey string) bool {
-	ids, _, err := d.objectStore.QueryObjectIDs(database.Query{
+	ids, _, err := d.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceId),
-			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
@@ -102,17 +97,12 @@ func (d *derivedObject) isDeletedObject(spaceId string, uniqueKey string) bool {
 }
 
 func (d *derivedObject) getInternalKey(spaceID, objectId string) (string, error) {
-	ids, err := d.objectStore.Query(database.Query{
+	ids, err := d.objectStore.SpaceIndex(spaceID).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyId.String(),
 				Value:       pbtypes.String(objectId),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
 			},
 		},
 	})

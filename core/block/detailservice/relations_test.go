@@ -33,7 +33,7 @@ func relationObject(key domain.RelationKey, format model.RelationFormat) objects
 func TestService_ListRelationsWithValue(t *testing.T) {
 	now := time.Now()
 	store := objectstore.NewStoreFixture(t)
-	store.AddObjects(t, []objectstore.TestObject{
+	store.AddObjects(t, spaceId, []objectstore.TestObject{
 		// relations
 		relationObject(bundle.RelationKeyLastModifiedDate, model.RelationFormat_date),
 		relationObject(bundle.RelationKeyAddedDate, model.RelationFormat_date),

@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -105,12 +104,16 @@ func (s *Service) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, a
 }
 
 func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAccountCreateRequest, newAcc *model.Account) error {
-	personalSpaceId := app.MustComponent[account.Service](s.app).PersonalSpaceID()
+	spaceService := app.MustComponent[space.Service](s.app)
+	techSpaceId := spaceService.TechSpaceId()
+	personalSpaceId := spaceService.PersonalSpaceId()
 	var err error
-	newAcc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, personalSpaceId)
+	newAcc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx)
 	if err != nil {
 		return err
 	}
+	// TODO: remove it release 8, this is need for client to set "My First Space" as space name
+	newAcc.Info.AccountSpaceId = personalSpaceId
 
 	bs := s.app.MustComponent(block.CName).(*block.Service)
 	commonDetails := []*model.Detail{
@@ -127,7 +130,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	profileDetails = append(profileDetails, commonDetails...)
 
 	if req.GetAvatarLocalPath() != "" {
-		hash, _, err := bs.UploadFile(context.Background(), personalSpaceId, block.FileUploadRequest{
+		hash, _, err := bs.UploadFile(context.Background(), techSpaceId, block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: req.GetAvatarLocalPath(),
 				Type:      model.BlockContentFile_Image,
@@ -143,25 +146,14 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 			})
 		}
 	}
-
-	spaceService := app.MustComponent[space.Service](s.app)
-	spc, err := spaceService.Get(ctx, personalSpaceId)
+	accId, err := spaceService.TechSpace().AccountObjectId()
 	if err != nil {
-		return fmt.Errorf("get personal space: %w", err)
-	}
-	accountObjects := spc.DerivedIDs()
-
-	ds := app.MustComponent[detailservice.Service](s.app)
-	if err := ds.SetDetails(nil,
-		accountObjects.Profile,
-		profileDetails,
-	); err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}
-
+	ds := app.MustComponent[detailservice.Service](s.app)
 	if err := ds.SetDetails(nil,
-		accountObjects.Workspace,
-		commonDetails,
+		accId,
+		profileDetails,
 	); err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}

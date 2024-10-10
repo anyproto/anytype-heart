@@ -1021,6 +1021,8 @@ func TestGetVerificationEmail(t *testing.T) {
 		req := &pb.RpcMembershipGetVerificationEmailRequest{}
 		req.Email = "some@mail.com"
 		req.SubscribeToNewsletter = true
+		req.InsiderTipsAndTutorials = false
+		req.IsOnboardingList = false
 
 		// Call the function being tested
 		_, err := fx.GetVerificationEmail(ctx, req)

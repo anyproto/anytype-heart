@@ -129,9 +129,9 @@ func (_c *MockService_Delete_Call) RunAndReturn(run func(context.Context) (int64
 	return _c
 }
 
-// GetInfo provides a mock function with given fields: ctx, spaceID
-func (_m *MockService) GetInfo(ctx context.Context, spaceID string) (*model.AccountInfo, error) {
-	ret := _m.Called(ctx, spaceID)
+// GetInfo provides a mock function with given fields: ctx
+func (_m *MockService) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetInfo")
@@ -139,19 +139,19 @@ func (_m *MockService) GetInfo(ctx context.Context, spaceID string) (*model.Acco
 
 	var r0 *model.AccountInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.AccountInfo, error)); ok {
-		return rf(ctx, spaceID)
+	if rf, ok := ret.Get(0).(func(context.Context) (*model.AccountInfo, error)); ok {
+		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *model.AccountInfo); ok {
-		r0 = rf(ctx, spaceID)
+	if rf, ok := ret.Get(0).(func(context.Context) *model.AccountInfo); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.AccountInfo)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, spaceID)
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -166,14 +166,13 @@ type MockService_GetInfo_Call struct {
 
 // GetInfo is a helper method to define mock.On call
 //   - ctx context.Context
-//   - spaceID string
-func (_e *MockService_Expecter) GetInfo(ctx interface{}, spaceID interface{}) *MockService_GetInfo_Call {
-	return &MockService_GetInfo_Call{Call: _e.mock.On("GetInfo", ctx, spaceID)}
+func (_e *MockService_Expecter) GetInfo(ctx interface{}) *MockService_GetInfo_Call {
+	return &MockService_GetInfo_Call{Call: _e.mock.On("GetInfo", ctx)}
 }
 
-func (_c *MockService_GetInfo_Call) Run(run func(ctx context.Context, spaceID string)) *MockService_GetInfo_Call {
+func (_c *MockService_GetInfo_Call) Run(run func(ctx context.Context)) *MockService_GetInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -183,7 +182,66 @@ func (_c *MockService_GetInfo_Call) Return(_a0 *model.AccountInfo, _a1 error) *M
 	return _c
 }
 
-func (_c *MockService_GetInfo_Call) RunAndReturn(run func(context.Context, string) (*model.AccountInfo, error)) *MockService_GetInfo_Call {
+func (_c *MockService_GetInfo_Call) RunAndReturn(run func(context.Context) (*model.AccountInfo, error)) *MockService_GetInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetSpaceInfo provides a mock function with given fields: ctx, spaceId
+func (_m *MockService) GetSpaceInfo(ctx context.Context, spaceId string) (*model.AccountInfo, error) {
+	ret := _m.Called(ctx, spaceId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSpaceInfo")
+	}
+
+	var r0 *model.AccountInfo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.AccountInfo, error)); ok {
+		return rf(ctx, spaceId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *model.AccountInfo); ok {
+		r0 = rf(ctx, spaceId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.AccountInfo)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, spaceId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetSpaceInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSpaceInfo'
+type MockService_GetSpaceInfo_Call struct {
+	*mock.Call
+}
+
+// GetSpaceInfo is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+func (_e *MockService_Expecter) GetSpaceInfo(ctx interface{}, spaceId interface{}) *MockService_GetSpaceInfo_Call {
+	return &MockService_GetSpaceInfo_Call{Call: _e.mock.On("GetSpaceInfo", ctx, spaceId)}
+}
+
+func (_c *MockService_GetSpaceInfo_Call) Run(run func(ctx context.Context, spaceId string)) *MockService_GetSpaceInfo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_GetSpaceInfo_Call) Return(_a0 *model.AccountInfo, _a1 error) *MockService_GetSpaceInfo_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_GetSpaceInfo_Call) RunAndReturn(run func(context.Context, string) (*model.AccountInfo, error)) *MockService_GetSpaceInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

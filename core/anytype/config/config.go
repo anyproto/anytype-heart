@@ -11,10 +11,11 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/net/streampool"
+
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/metric"
-	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/rpc"
 	"github.com/anyproto/any-sync/net/rpc/debugserver"
 	"github.com/anyproto/any-sync/net/transport/quic"
@@ -154,13 +155,13 @@ func New(options ...func(*Config)) *Config {
 }
 
 func (c *Config) Init(a *app.App) (err error) {
-	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
+	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
 	if err = c.initFromFileAndEnv(repoPath); err != nil {
 		return
 	}
 	if !c.PeferYamuxTransport {
 		// PeferYamuxTransport is false by default and used only in case client has some problems with QUIC
-		a.MustComponent(peerservice.CName).(quicPreferenceSetter).PreferQuic(true)
+		app.MustComponent[quicPreferenceSetter](a).PreferQuic(true)
 	}
 	// check if sqlite db exists
 	if _, err2 := os.Stat(filepath.Join(repoPath, SpaceStoreSqlitePath)); err2 == nil {
@@ -409,6 +410,14 @@ func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
 
 func (c *Config) GetNodeConfStorePath() string {
 	return filepath.Join(c.RepoPath, "nodeconf")
+}
+
+func (c *Config) GetStreamConfig() streampool.StreamConfig {
+	return streampool.StreamConfig{
+		SendQueueSize:    300,
+		DialQueueWorkers: 4,
+		DialQueueSize:    300,
+	}
 }
 
 func (c *Config) GetYamux() yamux.Config {

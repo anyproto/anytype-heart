@@ -18,5 +18,7 @@
   "collection",
   "set",
   "profile",
-  "bookmark"
+  "bookmark",
+  "chat",
+  "chatDerived"
 ]
