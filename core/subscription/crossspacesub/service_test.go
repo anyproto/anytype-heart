@@ -115,8 +115,18 @@ func TestSubscribe(t *testing.T) {
 				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
 			},
 		})
+		msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+		require.NoError(t, err)
+		_ = msgs
 
-		msgs, err := fx.eventQueue.NewCond().WithMin(1).Wait(ctx)
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:     pbtypes.String("participant3"),
+				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+			},
+		})
+
+		msgs, err = fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
 		require.NoError(t, err)
 		_ = msgs
 	})

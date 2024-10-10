@@ -13,8 +13,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger(CName).Desugar()
@@ -197,13 +199,58 @@ func (s *crossSpaceSubscription) close() error {
 	return s.queue.Close()
 }
 
-func (s *crossSpaceSubscription) AddSpace(spaceId string) {
+func (s *crossSpaceSubscription) AddSpace(spaceId string) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	_, err := s.addSpace(spaceId)
+	resp, err := s.addSpace(spaceId)
 	if err != nil {
-		log.Error("add space", zap.Error(err), zap.String("subId", s.subId), zap.String("spaceId", spaceId))
+		return fmt.Errorf("add space: %w", err)
 	}
+
+	for _, rec := range resp.Records {
+		id := pbtypes.GetString(rec, bundle.RelationKeyId.String())
+		err = s.queue.Add(s.ctx, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectDetailsSet{
+				ObjectDetailsSet: &pb.EventObjectDetailsSet{
+					Id:      id,
+					Details: rec,
+				},
+			},
+		})
+		return fmt.Errorf("add set event: %w", err)
+	}
+
+	var afterId string
+	for _, rec := range resp.Records {
+		id := pbtypes.GetString(rec, bundle.RelationKeyId.String())
+		err = s.queue.Add(s.ctx, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfSubscriptionAdd{
+				SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+					Id:      id,
+					SubId:   s.subId,
+					AfterId: afterId,
+				},
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("add subscription add event: %w", err)
+		}
+		afterId = id
+	}
+
+	err = s.queue.Add(s.ctx, &pb.EventMessage{
+		Value: &pb.EventMessageValueOfSubscriptionCounters{
+			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+				SubId: s.subId,
+				Total: int64(len(resp.Records)),
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("add counters event: %w", err)
+	}
+
+	return nil
 }
 
 func (s *crossSpaceSubscription) addSpace(spaceId string) (*subscriptionservice.SubscribeResponse, error) {
