@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -332,6 +333,41 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 	}
 
 	return &pb.RpcObjectSearchSubscribeResponse{
+		SubId:        resp.SubId,
+		Records:      resp.Records,
+		Dependencies: resp.Dependencies,
+		Counters:     resp.Counters,
+	}
+}
+
+func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req *pb.RpcObjectCrossSpaceSearchSubscribeRequest) *pb.RpcObjectCrossSpaceSearchSubscribeResponse {
+	errResponse := func(err error) *pb.RpcObjectCrossSpaceSearchSubscribeResponse {
+		r := &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
+			Error: &pb.RpcObjectCrossSpaceSearchSubscribeResponseError{
+				Code: pb.RpcObjectCrossSpaceSearchSubscribeResponseError_UNKNOWN_ERROR,
+			},
+		}
+		if err != nil {
+			r.Error.Description = getErrorDescription(err)
+		}
+		return r
+	}
+
+	subService := getService[crossspacesub.Service](mw)
+	resp, err := subService.Subscribe(subscription.SubscribeRequest{
+		SubId:             req.SubId,
+		Filters:           req.Filters,
+		Sorts:             req.Sorts,
+		Keys:              req.Keys,
+		Source:            req.Source,
+		NoDepSubscription: req.NoDepSubscription,
+		CollectionId:      req.CollectionId,
+	})
+	if err != nil {
+		return errResponse(err)
+	}
+
+	return &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
 		SubId:        resp.SubId,
 		Records:      resp.Records,
 		Dependencies: resp.Dependencies,

@@ -63,6 +63,9 @@ type SubscribeRequest struct {
 
 	// Internal indicates that subscription will send events into message queue instead of global client's event system
 	Internal bool
+	// InternalQueue is used when Internal flag is set to true. If it's nil, new queue will be created
+	InternalQueue *mb2.MB[*pb.EventMessage]
+	AsyncInit     bool
 }
 
 type SubscribeResponse struct {
@@ -81,6 +84,7 @@ type Service interface {
 	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
 	SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
+	// TODO UnsubscribeInSpace(spaceId string, subId string) error
 	UnsubscribeAll() (err error)
 	SubscriptionIDs() []string
 
@@ -106,12 +110,43 @@ type service struct {
 	lock      sync.Mutex
 	spaceSubs map[string]*spaceSubscriptions
 
+	customOutput map[string]*internalSubOutput
+	recBatch     *mb.MB
+
 	// Deps
 	objectStore       objectstore.ObjectStore
 	kanban            kanban.Service
 	collectionService CollectionService
 	eventSender       event.Sender
 	arenaPool         *fastjson.ArenaPool
+}
+
+type internalSubOutput struct {
+	externallyManaged bool
+	queue             *mb2.MB[*pb.EventMessage]
+}
+
+func newInternalSubOutput(queue *mb2.MB[*pb.EventMessage]) *internalSubOutput {
+	if queue == nil {
+		return &internalSubOutput{
+			queue: mb2.New[*pb.EventMessage](0),
+		}
+	}
+	return &internalSubOutput{
+		externallyManaged: true,
+		queue:             queue,
+	}
+}
+
+func (o *internalSubOutput) add(msgs ...*pb.EventMessage) error {
+	return o.queue.Add(context.TODO(), msgs...)
+}
+
+func (o *internalSubOutput) close() error {
+	if !o.externallyManaged {
+		return o.queue.Close()
+	}
+	return nil
 }
 
 func (s *service) Name() string {
@@ -213,7 +248,7 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 			cache:             cache,
 			subscriptionKeys:  make([]string, 0, 20),
 			subscriptions:     make(map[string]subscription, 20),
-			customOutput:      map[string]*mb2.MB[*pb.EventMessage]{},
+			customOutput:      map[string]*internalSubOutput{},
 			recBatch:          mb.New(0),
 			objectStore:       s.objectStore.SpaceIndex(spaceId),
 			kanban:            s.kanban,
@@ -237,7 +272,7 @@ type spaceSubscriptions struct {
 	subscriptionKeys []string
 	subscriptions    map[string]subscription
 
-	customOutput map[string]*mb2.MB[*pb.EventMessage]
+	customOutput map[string]*internalSubOutput
 	recBatch     *mb.MB
 
 	// Deps
@@ -378,22 +413,42 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 		}
 	}
 
-	err := sub.init(entries)
-	if err != nil {
-		return nil, fmt.Errorf("init sub entries: %w", err)
+	var outputQueue *mb2.MB[*pb.EventMessage]
+	if req.Internal {
+		output := newInternalSubOutput(req.InternalQueue)
+		outputQueue = output.queue
+		s.customOutput[req.SubId] = output
 	}
+
+	if req.AsyncInit {
+		err := sub.init(nil)
+		if err != nil {
+			return nil, fmt.Errorf("async: init sub entries: %w", err)
+		}
+		s.onChangeWithinContext(entries, func(ctxBuf *opCtx) {
+			sub.onChange(ctxBuf)
+		})
+
+	} else {
+		err := sub.init(entries)
+		if err != nil {
+			return nil, fmt.Errorf("init sub entries: %w", err)
+		}
+	}
+
 	s.setSubscription(sub.id, sub)
 	prev, next := sub.counters()
 
 	var depRecords, subRecords []*types.Struct
-	subRecords = sub.getActiveRecords()
 
-	if sub.depSub != nil {
-		depRecords = sub.depSub.getActiveRecords()
+	if !req.AsyncInit {
+		subRecords = sub.getActiveRecords()
+
+		if sub.depSub != nil {
+			depRecords = sub.depSub.getActiveRecords()
+		}
 	}
-	if req.Internal {
-		s.customOutput[req.SubId] = mb2.New[*pb.EventMessage](0)
-	}
+
 	return &SubscribeResponse{
 		Records:      subRecords,
 		Dependencies: depRecords,
@@ -403,7 +458,7 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 			NextCount: int64(prev),
 			PrevCount: int64(next),
 		},
-		Output: s.customOutput[req.SubId],
+		Output: outputQueue,
 	}, nil
 }
 
@@ -451,8 +506,11 @@ func (s *spaceSubscriptions) subscribeForCollection(req SubscribeRequest, f *dat
 		depRecords = sub.sortedSub.depSub.getActiveRecords()
 	}
 
+	var outputQueue *mb2.MB[*pb.EventMessage]
 	if req.Internal {
-		s.customOutput[req.SubId] = mb2.New[*pb.EventMessage](0)
+		output := newInternalSubOutput(req.InternalQueue)
+		outputQueue = output.queue
+		s.customOutput[req.SubId] = output
 	}
 
 	return &SubscribeResponse{
@@ -464,7 +522,7 @@ func (s *spaceSubscriptions) subscribeForCollection(req SubscribeRequest, f *dat
 			NextCount: int64(prev),
 			PrevCount: int64(next),
 		},
-		Output: s.customOutput[req.SubId],
+		Output: outputQueue,
 	}, nil
 }
 
@@ -620,7 +678,7 @@ func (s *spaceSubscriptions) Unsubscribe(subIds ...string) error {
 		if sub, ok := s.getSubscription(subId); ok {
 			out := s.customOutput[subId]
 			if out != nil {
-				err := out.Close()
+				err := out.close()
 				if err != nil {
 					return fmt.Errorf("close subscription %s: %w", subId, err)
 				}
@@ -692,19 +750,23 @@ func (s *spaceSubscriptions) recordsHandler() {
 func (s *spaceSubscriptions) onChange(entries []*entry) time.Duration {
 	s.m.Lock()
 	defer s.m.Unlock()
-	var subCount, depCount int
+
+	return s.onChangeWithinContext(entries, func(ctxBuf *opCtx) {
+		s.iterateSubscriptions(func(sub subscription) {
+			sub.onChange(s.ctxBuf)
+			if sub.hasDep() {
+				sub.getDep().onChange(s.ctxBuf)
+			}
+		})
+	})
+}
+
+func (s *spaceSubscriptions) onChangeWithinContext(entries []*entry, proc func(ctxBuf *opCtx)) time.Duration {
 	st := time.Now()
 	s.ctxBuf.reset()
 	s.ctxBuf.entries = entries
-	s.iterateSubscriptions(func(sub subscription) {
-		sub.onChange(s.ctxBuf)
-		subCount++
-		if sub.hasDep() {
-			sub.getDep().onChange(s.ctxBuf)
-			depCount++
-		}
-	})
-	handleTime := time.Since(st)
+
+	proc(s.ctxBuf)
 
 	// Reset output buffer
 	for subId := range s.ctxBuf.outputs {
@@ -732,15 +794,13 @@ func (s *spaceSubscriptions) onChange(entries []*entry) time.Duration {
 			if id == defaultOutput {
 				s.eventSender.Broadcast(&pb.Event{Messages: msgs})
 			} else {
-				err := s.customOutput[id].Add(context.TODO(), msgs...)
+				err := s.customOutput[id].add(msgs...)
 				if err != nil && !errors.Is(err, mb2.ErrClosed) {
 					log.With("subId", id, "error", err).Errorf("push to output")
 				}
 			}
 		}
 	}
-
-	log.Debugf("handle %d entries; %v(handle:%v;genEvents:%v); cacheSize: %d; subCount:%d; subDepCount:%d", len(entries), dur, handleTime, dur-handleTime, len(s.cache.entries), subCount, depCount)
 
 	return dur
 }
