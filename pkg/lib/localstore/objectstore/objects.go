@@ -97,12 +97,12 @@ type ObjectStore interface {
 	GetRelationFormatByKey(key string) (model.RelationFormat, error)
 
 	GetObjectType(url string) (*model.ObjectType, error)
-	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
+	BatchProcessFullTextQueue(ctx context.Context, spaceIdsPriority []string, limit int, processIds func(processIds []string) error) error
 }
 
 type IndexerStore interface {
-	AddToIndexQueue(id string) error
-	ListIDsFromFullTextQueue(limit int) ([]string, error)
+	AddToIndexQueue(id ...domain.FullID) error
+	ListIDsFromFullTextQueue(spaceId string, limit int) ([]string, error)
 	RemoveIDsFromFullTextQueue(ids []string) error
 	FTSearch() ftsearch.FTSearch
 	GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error)

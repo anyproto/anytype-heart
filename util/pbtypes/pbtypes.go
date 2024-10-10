@@ -108,6 +108,21 @@ func GetString(s *types.Struct, name string) string {
 	return ""
 }
 
+func ExtractString(s []*types.Struct, key string, omitIfFieldNotSet bool) []string {
+	var res = make([]string, 0, len(s))
+	for _, v := range s {
+		if v == nil || v.Fields == nil {
+			continue
+		}
+		if val, ok := v.Fields[key]; ok {
+			res = append(res, val.GetStringValue())
+		} else if !omitIfFieldNotSet {
+			res = append(res, "")
+		}
+	}
+	return res
+}
+
 func IsEmptyValueOrAbsent(s *types.Struct, name string) bool {
 	if s == nil || s.Fields == nil {
 		return true

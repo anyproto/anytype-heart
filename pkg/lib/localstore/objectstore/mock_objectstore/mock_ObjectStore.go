@@ -40,16 +40,22 @@ func (_m *MockObjectStore) EXPECT() *MockObjectStore_Expecter {
 }
 
 // AddToIndexQueue provides a mock function with given fields: id
-func (_m *MockObjectStore) AddToIndexQueue(id string) error {
-	ret := _m.Called(id)
+func (_m *MockObjectStore) AddToIndexQueue(id ...domain.FullID) error {
+	_va := make([]interface{}, len(id))
+	for _i := range id {
+		_va[_i] = id[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddToIndexQueue")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(...domain.FullID) error); ok {
+		r0 = rf(id...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -63,14 +69,21 @@ type MockObjectStore_AddToIndexQueue_Call struct {
 }
 
 // AddToIndexQueue is a helper method to define mock.On call
-//   - id string
-func (_e *MockObjectStore_Expecter) AddToIndexQueue(id interface{}) *MockObjectStore_AddToIndexQueue_Call {
-	return &MockObjectStore_AddToIndexQueue_Call{Call: _e.mock.On("AddToIndexQueue", id)}
+//   - id ...domain.FullID
+func (_e *MockObjectStore_Expecter) AddToIndexQueue(id ...interface{}) *MockObjectStore_AddToIndexQueue_Call {
+	return &MockObjectStore_AddToIndexQueue_Call{Call: _e.mock.On("AddToIndexQueue",
+		append([]interface{}{}, id...)...)}
 }
 
-func (_c *MockObjectStore_AddToIndexQueue_Call) Run(run func(id string)) *MockObjectStore_AddToIndexQueue_Call {
+func (_c *MockObjectStore_AddToIndexQueue_Call) Run(run func(id ...domain.FullID)) *MockObjectStore_AddToIndexQueue_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		variadicArgs := make([]domain.FullID, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(domain.FullID)
+			}
+		}
+		run(variadicArgs...)
 	})
 	return _c
 }
@@ -80,22 +93,22 @@ func (_c *MockObjectStore_AddToIndexQueue_Call) Return(_a0 error) *MockObjectSto
 	return _c
 }
 
-func (_c *MockObjectStore_AddToIndexQueue_Call) RunAndReturn(run func(string) error) *MockObjectStore_AddToIndexQueue_Call {
+func (_c *MockObjectStore_AddToIndexQueue_Call) RunAndReturn(run func(...domain.FullID) error) *MockObjectStore_AddToIndexQueue_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// BatchProcessFullTextQueue provides a mock function with given fields: ctx, limit, processIds
-func (_m *MockObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func([]string) error) error {
-	ret := _m.Called(ctx, limit, processIds)
+// BatchProcessFullTextQueue provides a mock function with given fields: ctx, spaceIdsPriority, limit, processIds
+func (_m *MockObjectStore) BatchProcessFullTextQueue(ctx context.Context, spaceIdsPriority []string, limit int, processIds func([]string) error) error {
+	ret := _m.Called(ctx, spaceIdsPriority, limit, processIds)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BatchProcessFullTextQueue")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, int, func([]string) error) error); ok {
-		r0 = rf(ctx, limit, processIds)
+	if rf, ok := ret.Get(0).(func(context.Context, []string, int, func([]string) error) error); ok {
+		r0 = rf(ctx, spaceIdsPriority, limit, processIds)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -110,15 +123,16 @@ type MockObjectStore_BatchProcessFullTextQueue_Call struct {
 
 // BatchProcessFullTextQueue is a helper method to define mock.On call
 //   - ctx context.Context
+//   - spaceIdsPriority []string
 //   - limit int
 //   - processIds func([]string) error
-func (_e *MockObjectStore_Expecter) BatchProcessFullTextQueue(ctx interface{}, limit interface{}, processIds interface{}) *MockObjectStore_BatchProcessFullTextQueue_Call {
-	return &MockObjectStore_BatchProcessFullTextQueue_Call{Call: _e.mock.On("BatchProcessFullTextQueue", ctx, limit, processIds)}
+func (_e *MockObjectStore_Expecter) BatchProcessFullTextQueue(ctx interface{}, spaceIdsPriority interface{}, limit interface{}, processIds interface{}) *MockObjectStore_BatchProcessFullTextQueue_Call {
+	return &MockObjectStore_BatchProcessFullTextQueue_Call{Call: _e.mock.On("BatchProcessFullTextQueue", ctx, spaceIdsPriority, limit, processIds)}
 }
 
-func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) Run(run func(ctx context.Context, limit int, processIds func([]string) error)) *MockObjectStore_BatchProcessFullTextQueue_Call {
+func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) Run(run func(ctx context.Context, spaceIdsPriority []string, limit int, processIds func([]string) error)) *MockObjectStore_BatchProcessFullTextQueue_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int), args[2].(func([]string) error))
+		run(args[0].(context.Context), args[1].([]string), args[2].(int), args[3].(func([]string) error))
 	})
 	return _c
 }
@@ -128,7 +142,7 @@ func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) Return(_a0 error) *Moc
 	return _c
 }
 
-func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) RunAndReturn(run func(context.Context, int, func([]string) error) error) *MockObjectStore_BatchProcessFullTextQueue_Call {
+func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) RunAndReturn(run func(context.Context, []string, int, func([]string) error) error) *MockObjectStore_BatchProcessFullTextQueue_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1892,9 +1906,9 @@ func (_c *MockObjectStore_ListAllRelations_Call) RunAndReturn(run func(string) (
 	return _c
 }
 
-// ListIDsFromFullTextQueue provides a mock function with given fields: limit
-func (_m *MockObjectStore) ListIDsFromFullTextQueue(limit int) ([]string, error) {
-	ret := _m.Called(limit)
+// ListIDsFromFullTextQueue provides a mock function with given fields: spaceId, limit
+func (_m *MockObjectStore) ListIDsFromFullTextQueue(spaceId string, limit int) ([]string, error) {
+	ret := _m.Called(spaceId, limit)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListIDsFromFullTextQueue")
@@ -1902,19 +1916,19 @@ func (_m *MockObjectStore) ListIDsFromFullTextQueue(limit int) ([]string, error)
 
 	var r0 []string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int) ([]string, error)); ok {
-		return rf(limit)
+	if rf, ok := ret.Get(0).(func(string, int) ([]string, error)); ok {
+		return rf(spaceId, limit)
 	}
-	if rf, ok := ret.Get(0).(func(int) []string); ok {
-		r0 = rf(limit)
+	if rf, ok := ret.Get(0).(func(string, int) []string); ok {
+		r0 = rf(spaceId, limit)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(int) error); ok {
-		r1 = rf(limit)
+	if rf, ok := ret.Get(1).(func(string, int) error); ok {
+		r1 = rf(spaceId, limit)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1928,14 +1942,15 @@ type MockObjectStore_ListIDsFromFullTextQueue_Call struct {
 }
 
 // ListIDsFromFullTextQueue is a helper method to define mock.On call
+//   - spaceId string
 //   - limit int
-func (_e *MockObjectStore_Expecter) ListIDsFromFullTextQueue(limit interface{}) *MockObjectStore_ListIDsFromFullTextQueue_Call {
-	return &MockObjectStore_ListIDsFromFullTextQueue_Call{Call: _e.mock.On("ListIDsFromFullTextQueue", limit)}
+func (_e *MockObjectStore_Expecter) ListIDsFromFullTextQueue(spaceId interface{}, limit interface{}) *MockObjectStore_ListIDsFromFullTextQueue_Call {
+	return &MockObjectStore_ListIDsFromFullTextQueue_Call{Call: _e.mock.On("ListIDsFromFullTextQueue", spaceId, limit)}
 }
 
-func (_c *MockObjectStore_ListIDsFromFullTextQueue_Call) Run(run func(limit int)) *MockObjectStore_ListIDsFromFullTextQueue_Call {
+func (_c *MockObjectStore_ListIDsFromFullTextQueue_Call) Run(run func(spaceId string, limit int)) *MockObjectStore_ListIDsFromFullTextQueue_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int))
+		run(args[0].(string), args[1].(int))
 	})
 	return _c
 }
@@ -1945,7 +1960,7 @@ func (_c *MockObjectStore_ListIDsFromFullTextQueue_Call) Return(_a0 []string, _a
 	return _c
 }
 
-func (_c *MockObjectStore_ListIDsFromFullTextQueue_Call) RunAndReturn(run func(int) ([]string, error)) *MockObjectStore_ListIDsFromFullTextQueue_Call {
+func (_c *MockObjectStore_ListIDsFromFullTextQueue_Call) RunAndReturn(run func(string, int) ([]string, error)) *MockObjectStore_ListIDsFromFullTextQueue_Call {
 	_c.Call.Return(run)
 	return _c
 }

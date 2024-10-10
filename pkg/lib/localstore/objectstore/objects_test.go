@@ -256,7 +256,7 @@ func TestDeleteObject(t *testing.T) {
 		err = s.SaveLastIndexedHeadsHash("id1", "hash1")
 		require.NoError(t, err)
 
-		err = s.AddToIndexQueue("id1")
+		err = s.AddToIndexQueue(domain.FullID{ObjectID: "id1", SpaceID: "space1"})
 		require.NoError(t, err)
 
 		// Act
@@ -290,7 +290,7 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, hash)
 
-		ids, err := s.ListIDsFromFullTextQueue(0)
+		ids, err := s.ListIDsFromFullTextQueue("space1", 0)
 		require.NoError(t, err)
 		assert.Empty(t, ids)
 	})
