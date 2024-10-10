@@ -247,7 +247,7 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 			cache:             cache,
 			subscriptionKeys:  make([]string, 0, 20),
 			subscriptions:     make(map[string]subscription, 20),
-			customOutput:      map[string]*mb2.MB[*pb.EventMessage]{},
+			customOutput:      map[string]*internalSubOutput{},
 			recBatch:          mb.New(0),
 			objectStore:       s.objectStore.SpaceIndex(spaceId),
 			kanban:            s.kanban,
@@ -271,7 +271,7 @@ type spaceSubscriptions struct {
 	subscriptionKeys []string
 	subscriptions    map[string]subscription
 
-	customOutput map[string]*mb2.MB[*pb.EventMessage]
+	customOutput map[string]*internalSubOutput
 	recBatch     *mb.MB
 
 	// Deps
