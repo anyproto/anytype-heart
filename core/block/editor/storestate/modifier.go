@@ -153,8 +153,8 @@ func setFieldOrder(a *anyenc.Arena, v *anyenc.Value, order string, fieldPath ...
 
 func iterateKeysByPath(v *anyenc.Value, f func(k string), fieldPath ...string) {
 	if obj := v.GetObject(fieldPath...); obj != nil {
-		obj.Visit(func(key string, v *anyenc.Value) {
-			f(key)
+		obj.Visit(func(key []byte, v *anyenc.Value) {
+			f(string(key))
 		})
 	}
 }

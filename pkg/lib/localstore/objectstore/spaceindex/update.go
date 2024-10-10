@@ -41,17 +41,16 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 
 	arena := s.arenaPool.Get()
 	defer func() {
-		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
-	jsonVal := pbtypes.ProtoToAnyEnc(arena, details)
+	newVal := pbtypes.ProtoToAnyEnc(arena, details)
 	var isModified bool
 	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
-		if anyencutil.Equal(val, jsonVal) {
+		if anyencutil.Equal(val, newVal) {
 			return nil, false, nil
 		}
 		isModified = true
-		return jsonVal, true, nil
+		return newVal, true, nil
 	}))
 	if isModified {
 		s.sendUpdatesToSubscriptions(id, details)

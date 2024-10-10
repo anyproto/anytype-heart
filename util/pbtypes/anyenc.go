@@ -17,7 +17,7 @@ func AnyEncToProto(v *anyenc.Value) (*types.Struct, error) {
 		Fields: make(map[string]*types.Value, obj.Len()),
 	}
 	var visitErr error
-	obj.Visit(func(k string, v *anyenc.Value) {
+	obj.Visit(func(k []byte, v *anyenc.Value) {
 		if visitErr != nil {
 			return
 		}
@@ -26,7 +26,7 @@ func AnyEncToProto(v *anyenc.Value) (*types.Struct, error) {
 		if err != nil {
 			visitErr = err
 		}
-		res.Fields[k] = val
+		res.Fields[string(k)] = val
 	})
 	return res, visitErr
 }
@@ -44,7 +44,9 @@ func AnyEncValueToProto(val *anyenc.Value) (*types.Value, error) {
 		if err != nil {
 			return nil, fmt.Errorf("string: %w", err)
 		}
-		return String(string(v)), nil
+		var cpy = make([]byte, len(v))
+		copy(cpy, v)
+		return String(string(cpy)), nil
 	case anyenc.TypeTrue:
 		return Bool(true), nil
 	case anyenc.TypeFalse:
@@ -134,20 +136,21 @@ func AnyEncJson(a *anyenc.Value, b *anyenc.Value) ([]AnyEncDiff, error) {
 	var diffs []AnyEncDiff
 	existsA := make(map[string]struct{}, objA.Len())
 
-	objA.Visit(func(key string, v *anyenc.Value) {
-		existsA[key] = struct{}{}
+	objA.Visit(func(key []byte, v *anyenc.Value) {
+		existsA[string(key)] = struct{}{}
 	})
 
 	var (
 		stop     bool
 		visitErr error
 	)
-	objB.Visit(func(key string, v *anyenc.Value) {
+	objB.Visit(func(key []byte, v *anyenc.Value) {
 		if stop {
 			return
 		}
-		if _, ok := existsA[key]; ok {
-			eq, err := compareValue(a.Get(key), v)
+		sKey := string(key)
+		if _, ok := existsA[sKey]; ok {
+			eq, err := compareValue(a.Get(sKey), v)
 			if err != nil {
 				visitErr = err
 				stop = true
@@ -155,15 +158,15 @@ func AnyEncJson(a *anyenc.Value, b *anyenc.Value) ([]AnyEncDiff, error) {
 			if !eq {
 				diffs = append(diffs, AnyEncDiff{
 					Type:  AnyEncDiffTypeUpdate,
-					Key:   key,
+					Key:   sKey,
 					Value: v, // Holden value, be cautious
 				})
 			}
-			delete(existsA, key)
+			delete(existsA, sKey)
 		} else {
 			diffs = append(diffs, AnyEncDiff{
 				Type:  AnyEncDiffTypeAdd,
-				Key:   key,
+				Key:   sKey,
 				Value: v, // Holden value, be cautious
 			})
 		}
@@ -251,11 +254,11 @@ func compareValue(a *anyenc.Value, b *anyenc.Value) (bool, error) {
 			stop     bool
 			visitErr error
 		)
-		ao.Visit(func(k string, va *anyenc.Value) {
+		ao.Visit(func(k []byte, va *anyenc.Value) {
 			if stop {
 				return
 			}
-			vb := bo.Get(k)
+			vb := bo.Get(string(k))
 			// TODO Test nil values
 			if vb == nil {
 				eq = false

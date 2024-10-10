@@ -158,9 +158,9 @@ func (m *messageWrapper) attachmentsToModel() []*model.ChatMessageAttachment {
 	var attachments []*model.ChatMessageAttachment
 	if inAttachments != nil {
 		attachments = make([]*model.ChatMessageAttachment, 0, inAttachments.Len())
-		inAttachments.Visit(func(targetObjectId string, inAttachment *anyenc.Value) {
+		inAttachments.Visit(func(targetObjectId []byte, inAttachment *anyenc.Value) {
 			attachments = append(attachments, &model.ChatMessageAttachment{
-				Target: targetObjectId,
+				Target: string(targetObjectId),
 				Type:   model.ChatMessageAttachmentAttachmentType(inAttachment.GetInt("type")),
 			})
 		})
@@ -174,14 +174,14 @@ func (m *messageWrapper) reactionsToModel() *model.ChatMessageReactions {
 		Reactions: map[string]*model.ChatMessageReactionsIdentityList{},
 	}
 	if inReactions != nil {
-		inReactions.Visit(func(emoji string, inReaction *anyenc.Value) {
+		inReactions.Visit(func(emoji []byte, inReaction *anyenc.Value) {
 			inReactionArr := inReaction.GetArray()
 			identities := make([]string, 0, len(inReactionArr))
 			for _, identity := range inReactionArr {
 				identities = append(identities, string(identity.GetStringBytes()))
 			}
 			if len(identities) > 0 {
-				reactions.Reactions[emoji] = &model.ChatMessageReactionsIdentityList{
+				reactions.Reactions[string(emoji)] = &model.ChatMessageReactionsIdentityList{
 					Ids: identities,
 				}
 			}

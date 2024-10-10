@@ -95,6 +95,10 @@ github.com/anyproto/any-store v0.0.7-0.20241010115348-3c67917fe3f6 h1:IRqSKeyXrW
 github.com/anyproto/any-store v0.0.7-0.20241010115348-3c67917fe3f6/go.mod h1:MA3sSqRXIp0h9bC2LnMuDGVEFGB3BkI/UuWNCleGHMs=
 github.com/anyproto/any-store v0.0.7-0.20241010175156-9d8ef48e3527 h1:f4bRDzNVkfpH2TsWAyHM1aDD9o9ccrkBkT6N4Llf5w8=
 github.com/anyproto/any-store v0.0.7-0.20241010175156-9d8ef48e3527/go.mod h1:MA3sSqRXIp0h9bC2LnMuDGVEFGB3BkI/UuWNCleGHMs=
+github.com/anyproto/any-store v0.0.7-0.20241010192925-dc2b83a10fa7 h1:Qxbs/pKOOBYjE3GqwRRkBTY9yfIX62Y8LsVhPrUujB8=
+github.com/anyproto/any-store v0.0.7-0.20241010192925-dc2b83a10fa7/go.mod h1:MA3sSqRXIp0h9bC2LnMuDGVEFGB3BkI/UuWNCleGHMs=
+github.com/anyproto/any-store v0.0.7-0.20241010195402-08a735ccadea h1:4LFV2ywtaLjEmvTgGKeKyY4L31GS/HD968GRTjTJTOA=
+github.com/anyproto/any-store v0.0.7-0.20241010195402-08a735ccadea/go.mod h1:MA3sSqRXIp0h9bC2LnMuDGVEFGB3BkI/UuWNCleGHMs=
 github.com/anyproto/any-sync v0.5.4 h1:WHr1k9MQewIJRHUZDYehUx4qPWLjPDez+BSrEsnfHyg=
 github.com/anyproto/any-sync v0.5.4/go.mod h1:Q1xH9VZ/V0GaiebMTn9HKR9wSkS4nuyAnECCOuGGwpI=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
