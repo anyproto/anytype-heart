@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anyproto/any-sync/app"
-
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -42,12 +40,14 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(_ context.Context, req *p
 	}
 
 	resolver := getService[idresolver.Resolver](mw)
-	store := app.MustComponent[spaceindex.Store](mw.applicationService.GetApp())
 	spaceId, err := resolver.ResolveSpaceID(req.ObjectId)
 	if err != nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, fmt.Errorf("resolve spaceId: %w", err))
 	}
-	page, err := store.GetWithLinksInfoById(req.ObjectId)
+
+	store := getService[objectstore.ObjectStore](mw)
+	index := store.SpaceIndex(spaceId)
+	page, err := index.GetWithLinksInfoById(req.ObjectId)
 	if err != nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, err)
 	}
