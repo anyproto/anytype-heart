@@ -230,13 +230,6 @@ func (d *debug) DumpTree(ctx context.Context, objectID string, path string, anon
 }
 
 func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []string, path string) (filename string, err error) {
-	if len(objIds) == 0 {
-		objIds, err = d.store.ListIdsCrossSpace()
-		if err != nil {
-			return "", err
-		}
-	}
-
 	filename = filepath.Join(path, fmt.Sprintf("at.store.dbg.%s.zip", time.Now().Format("20060102.150405.99")))
 	f, err := os.Create(filename)
 	if err != nil {
@@ -251,7 +244,12 @@ func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []str
 	m := jsonpb.Marshaler{Indent: " "}
 
 	store := d.store.SpaceIndex(spaceID)
-
+	if len(objIds) == 0 {
+		objIds, err = store.ListIds()
+		if err != nil {
+			return "", err
+		}
+	}
 	for _, objId := range objIds {
 		doc, err := store.GetWithLinksInfoById(objId)
 		if err != nil {
