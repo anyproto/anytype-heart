@@ -70,7 +70,10 @@ func (f cliFlags) isUpdateNeeded() bool {
 	return f.analytics || f.creator || f.removeRelations || f.exclude || f.rules != ""
 }
 
-const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
+const (
+	anytypeProfileFilename     = addr.AnytypeProfileId + ".pb"
+	lastOpenedSpaceDashboardId = "lastOpened"
+)
 
 var (
 	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
@@ -492,7 +495,7 @@ func processProfile(data []byte, info *useCaseInfo, spaceDashboardId string) ([]
 	}
 
 	fmt.Println("spaceDashboardId = " + profile.SpaceDashboardId)
-	if _, found := info.objects[profile.SpaceDashboardId]; !found {
+	if _, found := info.objects[profile.SpaceDashboardId]; !found && profile.SpaceDashboardId != lastOpenedSpaceDashboardId {
 		err := fmt.Errorf("failed to find Space Dashboard object '%s' among provided", profile.SpaceDashboardId)
 		fmt.Println(err)
 		return nil, err
