@@ -156,6 +156,7 @@ func TestReindexDeletedObjects(t *testing.T) {
 		spaceId3 = "spaceId3"
 	)
 	fx := NewIndexerFixture(t)
+	fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 
 	fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 		{
