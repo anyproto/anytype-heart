@@ -189,7 +189,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			case model.ObjectType_todo:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithRelations([]domain.RelationKey{bundle.RelationKeyDone}),
+					template.WithDetail(bundle.RelationKeyDone, pbtypes.Bool(false)),
 				)
 			case model.ObjectType_bookmark:
 				templates = append(templates,
