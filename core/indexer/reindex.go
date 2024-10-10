@@ -204,7 +204,8 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}
 	}
 
-	i.addSyncDetails(space)
+	go i.addSyncDetails(space)
+
 	return i.saveLatestChecksums(space.Id())
 }
 

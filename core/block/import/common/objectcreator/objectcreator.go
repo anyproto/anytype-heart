@@ -44,19 +44,19 @@ type Service interface {
 	Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error)
 }
 
-type ObjectDeleter interface {
+type ObjectGetterDeleter interface {
 	cache.ObjectGetterComponent
 	DeleteObject(objectId string) (err error)
 }
 
 type ObjectCreator struct {
-	detailsService detailservice.Service
-	spaceService   space.Service
-	objectStore    objectstore.ObjectStore
-	relationSyncer *syncer.FileRelationSyncer
-	syncFactory    *syncer.Factory
-	objectCreator  objectcreator.Service
-	objectDeleter  ObjectDeleter
+	detailsService      detailservice.Service
+	spaceService        space.Service
+	objectStore         objectstore.ObjectStore
+	relationSyncer      *syncer.FileRelationSyncer
+	syncFactory         *syncer.Factory
+	objectCreator       objectcreator.Service
+	objectGetterDeleter ObjectGetterDeleter
 }
 
 func New(detailsService detailservice.Service,
@@ -65,16 +65,16 @@ func New(detailsService detailservice.Service,
 	relationSyncer *syncer.FileRelationSyncer,
 	spaceService space.Service,
 	objectCreator objectcreator.Service,
-	objectDeleter ObjectDeleter,
+	objectGetterDeleter ObjectGetterDeleter,
 ) Service {
 	return &ObjectCreator{
-		detailsService: detailsService,
-		syncFactory:    syncFactory,
-		objectStore:    objectStore,
-		relationSyncer: relationSyncer,
-		spaceService:   spaceService,
-		objectCreator:  objectCreator,
-		objectDeleter:  objectDeleter,
+		detailsService:      detailsService,
+		syncFactory:         syncFactory,
+		objectStore:         objectStore,
+		relationSyncer:      relationSyncer,
+		spaceService:        spaceService,
+		objectCreator:       objectCreator,
+		objectGetterDeleter: objectGetterDeleter,
 	}
 }
 
@@ -314,7 +314,7 @@ func (oc *ObjectCreator) deleteFile(spaceId string, hash string) {
 		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err)
 	}
 	if len(inboundLinks) == 0 {
-		err = oc.objectDeleter.DeleteObject(hash)
+		err = oc.objectGetterDeleter.DeleteObject(hash)
 		if err != nil {
 			log.With("file", hash).Errorf("failed to delete file: %s", anyerror.CleanupError(err))
 		}
@@ -353,7 +353,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 			log.Errorf("failed to get space: %v", err)
 			return
 		}
-		err = cache.Do(oc.detailsService, spc.DerivedIDs().Workspace, func(ws basic.CommonOperations) error {
+		err = cache.Do(oc.objectGetterDeleter, spc.DerivedIDs().Workspace, func(ws basic.CommonOperations) error {
 			if err := ws.SetDetails(nil, details, false); err != nil {
 				return err
 			}
@@ -367,7 +367,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 
 func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct {
 	var respDetails *types.Struct
-	err := cache.Do(oc.detailsService, newID, func(b smartblock.SmartBlock) error {
+	err := cache.Do(oc.objectGetterDeleter, newID, func(b smartblock.SmartBlock) error {
 		err := history.ResetToVersion(b, st)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err)
@@ -413,7 +413,7 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 func (oc *ObjectCreator) syncFilesAndLinks(newIdsSet map[string]struct{}, id domain.FullID, origin objectorigin.ObjectOrigin) error {
 	tasks := make([]func() error, 0)
 	// todo: rewrite it in order not to create state with URLs inside links
-	err := cache.Do(oc.detailsService, id.ObjectID, func(b smartblock.SmartBlock) error {
+	err := cache.Do(oc.objectGetterDeleter, id.ObjectID, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 		return st.Iterate(func(bl simple.Block) (isContinue bool) {
 			s := oc.syncFactory.GetSyncer(bl)
@@ -447,7 +447,7 @@ func (oc *ObjectCreator) syncFilesAndLinks(newIdsSet map[string]struct{}, id dom
 }
 
 func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string, isNewCollection bool) {
-	err := cache.Do(oc.detailsService, st.RootId(), func(b smartblock.SmartBlock) error {
+	err := cache.Do(oc.objectGetterDeleter, st.RootId(), func(b smartblock.SmartBlock) error {
 		originalState := b.NewState()
 		var existedObjects []string
 		if !isNewCollection {
@@ -473,7 +473,7 @@ func (oc *ObjectCreator) mergeCollections(existedObjects []string, st *state.Sta
 }
 
 func (oc *ObjectCreator) updateWidgetObject(st *state.State) (*types.Struct, string, error) {
-	err := cache.DoState(oc.detailsService, st.RootId(), func(oldState *state.State, sb smartblock.SmartBlock) error {
+	err := cache.DoState(oc.objectGetterDeleter, st.RootId(), func(oldState *state.State, sb smartblock.SmartBlock) error {
 		blocks := st.Blocks()
 		blocksMap := make(map[string]*model.Block, len(blocks))
 		existingWidgetsTargetIDs, err := oc.getExistingWidgetsTargetIDs(oldState)

@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/subscription"
-	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
+	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -69,7 +69,7 @@ type indexer struct {
 	forceFt chan struct{}
 
 	techSpaceIdGetter          techSpaceIdGetter
-	spacesPrioritySubscription *syncsubscriptions.ObjectSubscription[*types.Struct]
+	spacesPrioritySubscription *objectsubscription.ObjectSubscription[*types.Struct]
 	lock                       sync.Mutex
 	reindexLogFields           []zap.Field
 	spacesPriority             []string
@@ -193,8 +193,25 @@ func (i *indexer) subscribeToSpaces() error {
 	}
 	spacePriorityUpdateChan := make(chan []*types.Struct)
 	go i.spacesPrioritySubscriptionWatcher(spacePriorityUpdateChan)
-	i.spacesPrioritySubscription = syncsubscriptions.NewSubscription(i.subscriptionService, objectReq)
-	return i.spacesPrioritySubscription.Run(spacePriorityUpdateChan)
+	i.spacesPrioritySubscription = objectsubscription.New[*types.Struct](i.subscriptionService, objectsubscription.SubscriptionParams[*types.Struct]{
+		Request: objectReq,
+		Extract: func(t *types.Struct) (string, *types.Struct) {
+			return pbtypes.GetString(t, bundle.RelationKeyId.String()), t
+		},
+		Update: func(key string, value *types.Value, s2 *types.Struct) *types.Struct {
+			if s2 == nil {
+				// todo: shouldn't happen because of changes sort, but happen, need to debug
+				return nil
+			}
+			s2.Fields[key] = value
+			return s2
+		},
+		Unset: func(keys []string, s *types.Struct) *types.Struct {
+			return pbtypes.StructFilterKeys(s, keys)
+		},
+		UpdateChan: spacePriorityUpdateChan,
+	})
+	return i.spacesPrioritySubscription.Run()
 }
 
 func (i *indexer) spacesPriorityUpdate(priority []string) {

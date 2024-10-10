@@ -75,6 +75,16 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 		return
 	}
 
+	go func() {
+		uErr := p.updateInStore(favoritedIds)
+		if uErr != nil {
+			log.Errorf("favorite: can't update in store: %v", uErr)
+		}
+	}()
+	return nil
+}
+
+func (p *Dashboard) updateInStore(favoritedIds []string) error {
 	records, err := p.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -85,7 +95,7 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 		},
 	})
 	if err != nil {
-		return
+		return err
 	}
 	var storeFavoritedIds = make([]string, 0, len(records))
 	for _, rec := range records {
@@ -123,5 +133,5 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 			}
 		}(addedId)
 	}
-	return
+	return nil
 }

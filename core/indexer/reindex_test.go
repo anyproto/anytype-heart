@@ -156,6 +156,7 @@ func TestReindexDeletedObjects(t *testing.T) {
 		spaceId3 = "spaceId3"
 	)
 	fx := NewIndexerFixture(t)
+	fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 
 	fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 		{
@@ -176,7 +177,8 @@ func TestReindexDeletedObjects(t *testing.T) {
 			bundle.RelationKeySpaceId:   pbtypes.String(spaceId3),
 		},
 		{
-			bundle.RelationKeyId: pbtypes.String("4"),
+			bundle.RelationKeyId:   pbtypes.String("4"),
+			bundle.RelationKeyName: pbtypes.String("4"),
 		},
 	})
 
@@ -196,8 +198,6 @@ func TestReindexDeletedObjects(t *testing.T) {
 		space1.EXPECT().Storage().Return(storage1)
 		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
 
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil)
-
 		err = fx.ReindexSpace(space1)
 		require.NoError(t, err)
 
@@ -214,7 +214,6 @@ func TestReindexDeletedObjects(t *testing.T) {
 		space2.EXPECT().Id().Return(spaceId2)
 		space2.EXPECT().Storage().Return(storage2)
 		space2.EXPECT().StoredIds().Return([]string{}).Maybe()
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil)
 
 		err = fx.ReindexSpace(space2)
 		require.NoError(t, err)
@@ -378,25 +377,6 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 	})
 }
 
-func (fx *IndexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
-	ids, _, err := fx.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
-			},
-		},
-	})
-	require.NoError(t, err)
-	return ids
-}
-
 func TestReindex_addSyncRelations(t *testing.T) {
 	t.Run("addSyncRelations local only", func(t *testing.T) {
 		// given
@@ -430,10 +410,9 @@ func TestReindex_addSyncRelations(t *testing.T) {
 		space1.EXPECT().DoLockedIfNotExists("2", mock.AnythingOfType("func() error")).Return(nil)
 
 		// when
-		err := fx.ReindexSpace(space1)
+		fx.addSyncDetails(space1)
 
 		// then
-		require.NoError(t, err)
 	})
 
 	t.Run("addSyncRelations", func(t *testing.T) {
@@ -470,11 +449,27 @@ func TestReindex_addSyncRelations(t *testing.T) {
 		fx.config.NetworkMode = pb.RpcAccount_DefaultConfig
 
 		// when
-		err := fx.ReindexSpace(space1)
-
-		// then
-		require.NoError(t, err)
+		fx.addSyncDetails(space1)
 	})
+}
+
+func (fx *IndexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
+	ids, _, err := fx.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(true),
+			},
+		},
+	})
+	require.NoError(t, err)
+	return ids
 }
 
 type idsLister struct {

@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/valyala/fastjson"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -36,7 +37,6 @@ type CrossSpace interface {
 	QueryRawCrossSpace(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
 
-	SubscribeForAll(callback func(rec database.Record))
 	ListIdsCrossSpace() ([]domain.FullID, error)
 	BatchProcessFullTextQueue(ctx context.Context, spaceIdsPriority []string, limit int, processIds func(processIds []string) error) error
 
@@ -294,10 +294,6 @@ func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
 	return db
 }
 
-func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
-	s.subManager.SubscribeForAll(callback)
-}
-
 func (s *dsObjectStore) listStores() []spaceindex.Store {
 	s.Lock()
 	stores := make([]spaceindex.Store, 0, len(s.spaceIndexes))
@@ -323,12 +319,13 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 }
 
 func (s *dsObjectStore) ListIdsCrossSpace() ([]domain.FullID, error) {
+	var fullIds []domain.FullID
 	return collectCrossSpace(s, func(store spaceindex.Store) ([]domain.FullID, error) {
 		ids, err := store.ListIds()
 		if err != nil {
 			return nil, err
 		}
-		fullIds := make([]domain.FullID, 0, len(ids))
+		fullIds = slices.Grow(fullIds, len(ids))
 		for _, id := range ids {
 			fullIds = append(fullIds, domain.FullID{
 				ObjectID: id,

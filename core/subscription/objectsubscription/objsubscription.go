@@ -1,9 +1,8 @@
-package syncsubscriptions
+package objectsubscription
 
 import (
 	"context"
 	"fmt"
-	"slices"
 	"sync"
 
 	"github.com/cheggaaa/mb/v3"
@@ -13,6 +12,12 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+)
+
+type (
+	extract[T any] func(*types.Struct) (string, T)
+	update[T any]  func(string, *types.Value, T) T
+	unset[T any]   func([]string, T) T
 )
 
 type entry[T any] struct {
@@ -27,61 +32,12 @@ func newEntry[T any](data T) *entry[T] {
 	return &entry[T]{data: data}
 }
 
-type (
-	extract[T any] func(*types.Struct) (string, T)
-	update[T any]  func(string, *types.Value, T) T
-	unset[T any]   func([]string, T) T
-)
-
 type SubscriptionParams[T any] struct {
-	Request subscription.SubscribeRequest
-	Extract extract[T]
-	Update  update[T]
-	Unset   unset[T]
-}
-
-func NewSubscription(service subscription.Service, request subscription.SubscribeRequest) *ObjectSubscription[*types.Struct] {
-	if request.Keys != nil && !slices.Contains(request.Keys, bundle.RelationKeyId.String()) {
-		request.Keys = append(request.Keys, bundle.RelationKeyId.String())
-	}
-	return &ObjectSubscription[*types.Struct]{
-		sorted:  len(request.Sorts) > 0,
-		request: request,
-		service: service,
-		ch:      make(chan struct{}),
-		extract: func(t *types.Struct) (string, *types.Struct) {
-			return pbtypes.GetString(t, bundle.RelationKeyId.String()), t
-		},
-		update: func(s string, value *types.Value, s2 *types.Struct) *types.Struct {
-			if s2 == nil {
-				// todo: shouldn't happen because of changes sort, but happen, need to debug
-				return nil
-			}
-			s2.Fields[s] = value
-			return s2
-		},
-		unset: func(strings []string, s *types.Struct) *types.Struct {
-			return pbtypes.StructFilterKeys(s, strings)
-		},
-	}
-}
-
-func NewIdSubscription(service subscription.Service, request subscription.SubscribeRequest) *ObjectSubscription[struct{}] {
-	return &ObjectSubscription[struct{}]{
-		sorted:  len(request.Sorts) > 0,
-		request: request,
-		service: service,
-		ch:      make(chan struct{}),
-		extract: func(t *types.Struct) (string, struct{}) {
-			return pbtypes.GetString(t, bundle.RelationKeyId.String()), struct{}{}
-		},
-		update: func(s string, value *types.Value, s2 struct{}) struct{} {
-			return struct{}{}
-		},
-		unset: func(strings []string, s struct{}) struct{} {
-			return struct{}{}
-		},
-	}
+	Request    subscription.SubscribeRequest
+	Extract    extract[T]
+	Update     update[T]
+	Unset      unset[T]
+	UpdateChan chan []T
 }
 
 type ObjectSubscription[T any] struct {
@@ -101,9 +57,36 @@ type ObjectSubscription[T any] struct {
 	mx         sync.Mutex
 }
 
-// Run starts the subscription
-// if updateChan is not nil, it will be used to notify about changes, including the first set of records
-func (o *ObjectSubscription[T]) Run(updateChan chan []T) error {
+func NewIdSubscription(service subscription.Service, request subscription.SubscribeRequest) *ObjectSubscription[struct{}] {
+	return New(service, SubscriptionParams[struct{}]{
+		Request: request,
+		Extract: func(t *types.Struct) (string, struct{}) {
+			return pbtypes.GetString(t, bundle.RelationKeyId.String()), struct{}{}
+		},
+		Update: func(s string, value *types.Value, s2 struct{}) struct{} {
+			return struct{}{}
+		},
+		Unset: func(strings []string, s struct{}) struct{} {
+			return struct{}{}
+		},
+	})
+}
+
+func New[T any](service subscription.Service, params SubscriptionParams[T]) *ObjectSubscription[T] {
+	return &ObjectSubscription[T]{
+		sorted:     len(params.Request.Sorts) > 0,
+		request:    params.Request,
+		service:    service,
+		ch:         make(chan struct{}),
+		extract:    params.Extract,
+		update:     params.Update,
+		unset:      params.Unset,
+		updateChan: params.UpdateChan,
+	}
+}
+
+func (o *ObjectSubscription[T]) Run() error {
+	o.request.Internal = true
 	resp, err := o.service.Search(o.request)
 	if err != nil {
 		return err
@@ -118,7 +101,6 @@ func (o *ObjectSubscription[T]) Run(updateChan chan []T) error {
 			o.positions = append(o.positions, id)
 		}
 	}
-	o.updateChan = updateChan
 	go o.read()
 	return nil
 }

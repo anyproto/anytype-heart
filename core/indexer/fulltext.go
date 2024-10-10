@@ -220,6 +220,7 @@ func (i *indexer) ftInit() error {
 				return err
 			}
 
+			log.Infof("adding %d objects to full-text index", len(fullIds))
 			err = i.store.AddToIndexQueue(i.componentCtx, fullIds...)
 			if err != nil {
 				return err

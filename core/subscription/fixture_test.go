@@ -16,30 +16,32 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/kanban"
+	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
-	"github.com/anyproto/anytype-heart/util/testMock"
-	"github.com/anyproto/anytype-heart/util/testMock/mockKanban"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 type fixture struct {
-	Service
+	*service
 	a                 *app.App
 	ctrl              *gomock.Controller
 	store             *objectstore.StoreFixture
 	sender            *mock_event.MockSender
 	events            []*pb.Event
 	collectionService *collectionServiceMock
-	kanban            *mockKanban.MockService
+	kanban            *mock_kanban.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
+	ctx := context.Background()
+
 	ctrl := gomock.NewController(t)
 	a := new(app.App)
 	store := objectstore.NewStoreFixture(t)
 	a.Register(store)
-	kanban := testMock.RegisterMockKanban(ctrl, a)
+	kanbanService := mock_kanban.NewMockService(t)
 	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	sbtProvider.EXPECT().Name().Return("smartBlockTypeProvider")
 	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
@@ -47,14 +49,15 @@ func newFixture(t *testing.T) *fixture {
 
 	collectionService := &collectionServiceMock{MockCollectionService: NewMockCollectionService(t)}
 	a.Register(collectionService)
+	a.Register(testutil.PrepareMock(ctx, a, kanbanService))
 
 	fx := &fixture{
-		Service:           New(),
+		service:           New().(*service),
 		a:                 a,
 		ctrl:              ctrl,
 		store:             store,
 		collectionService: collectionService,
-		kanban:            kanban,
+		kanban:            kanbanService,
 	}
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Init(mock.Anything).Return(nil)
@@ -63,10 +66,10 @@ func newFixture(t *testing.T) *fixture {
 		fx.events = append(fx.events, e)
 	}).Maybe()
 	fx.sender = sender
-	a.Register(fx.Service)
+	a.Register(fx.service)
 	a.Register(fx.sender)
 
-	require.NoError(t, a.Start(context.Background()))
+	require.NoError(t, a.Start(ctx))
 	return fx
 }
 

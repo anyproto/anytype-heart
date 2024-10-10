@@ -90,7 +90,7 @@ func (i *spaceIndexer) indexBatch(tasks []indexTask) (err error) {
 			} else {
 				closeTasks(nil)
 			}
-			log.Infof("indexBatch: indexed %d docs for a %v: err: %v", len(tasks), time.Since(st), err)
+			log.Infof("indexBatch: %v indexed %d docs for a %v: err: %v", len(tasks), time.Since(st), err)
 		}
 	}()
 
