@@ -12,7 +12,7 @@ func (b BundledObjectIds) Len() int {
 }
 
 func (b BundledObjectIds) SourceIds() []string {
-	var ids = make([]string, 0, len(b))
+	ids := make([]string, 0, len(b))
 	for _, bo := range b {
 		ids = append(ids, bo.SourceId)
 	}
@@ -20,7 +20,7 @@ func (b BundledObjectIds) SourceIds() []string {
 }
 
 func (b BundledObjectIds) DerivedObjectIds() []string {
-	var ids = make([]string, 0, len(b))
+	ids := make([]string, 0, len(b))
 	for _, bo := range b {
 		ids = append(ids, bo.DerivedObjectId)
 	}
