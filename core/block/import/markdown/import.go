@@ -140,8 +140,8 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.setNewID) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkToObjectBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.linkPagesWithRootFile) ||
-		m.processImportStep(pathsCount, files, progress, allErrors, details, m.fillEmptyBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkBlocks) ||
+		m.processImportStep(pathsCount, files, progress, allErrors, details, m.fillEmptyBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addChildBlocks) {
 		return nil, nil
 	}
@@ -448,7 +448,7 @@ func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress process.P
 			continue
 		}
 
-		var childrenIds = make([]string, len(file.ParsedBlocks))
+		childrenIds := make([]string, 0, len(file.ParsedBlocks))
 		for _, b := range file.ParsedBlocks {
 			if isChildBlock(childBlocks, b) {
 				continue

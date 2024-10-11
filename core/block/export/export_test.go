@@ -1,11 +1,13 @@
 package export
 
 import (
+	"archive/zip"
 	"context"
 	"fmt"
 	"path/filepath"
 	"testing"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -13,18 +15,20 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter/pbjson"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
-	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -53,6 +57,213 @@ func TestFileNamer_Get(t *testing.T) {
 
 const spaceId = "space1"
 
+func TestExport_Export(t *testing.T) {
+	t.Run("export success", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		objectTypeId := "customObjectType"
+		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
+		assert.Nil(t, err)
+
+		spaceId := "spaceId"
+		objectID := "id"
+		storeFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:      pbtypes.String(objectID),
+				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
+			},
+			{
+				bundle.RelationKeyId:                   pbtypes.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:            pbtypes.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:               pbtypes.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyRecommendedRelations: pbtypes.StringList([]string{addr.MissingObject}),
+				bundle.RelationKeySpaceId:              pbtypes.String(spaceId),
+			},
+		})
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+
+		smartBlockTest := smarttest.New(objectID)
+		doc := smartBlockTest.NewState().SetDetails(&types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():   pbtypes.String(objectID),
+				bundle.RelationKeyType.String(): pbtypes.String(objectTypeId),
+			}})
+		doc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		smartBlockTest.Doc = doc
+
+		objectType := smarttest.New(objectTypeId)
+		objectTypeDoc := objectType.NewState().SetDetails(&types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():   pbtypes.String(objectTypeId),
+				bundle.RelationKeyType.String(): pbtypes.String(objectTypeId),
+			}})
+		objectTypeDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		objectType.Doc = objectTypeDoc
+		objectType.SetType(smartblock.SmartBlockTypeObjectType)
+		objectGetter.EXPECT().GetObject(context.Background(), objectID).Return(smartBlockTest, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
+
+		a := &app.App{}
+		mockSender := mock_event.NewMockSender(t)
+		mockSender.EXPECT().Broadcast(mock.Anything).Return()
+		a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
+		service := process.New()
+		err = service.Init(a)
+		assert.Nil(t, err)
+
+		notifications := mock_notifications.NewMockNotifications(t)
+		notifications.EXPECT().CreateAndSend(mock.Anything).Return(nil)
+
+		e := &export{
+			objectStore:         storeFixture,
+			picker:              objectGetter,
+			processService:      service,
+			notificationService: notifications,
+		}
+
+		// when
+		path, success, err := e.Export(context.Background(), pb.RpcObjectListExportRequest{
+			SpaceId:       spaceId,
+			Path:          t.TempDir(),
+			ObjectIds:     []string{objectID},
+			Format:        model.Export_Protobuf,
+			Zip:           true,
+			IncludeNested: true,
+			IncludeFiles:  true,
+			IsJson:        true,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, 2, success)
+
+		reader, err := zip.OpenReader(path)
+		assert.Nil(t, err)
+
+		assert.Len(t, reader.File, 2)
+		fileNames := make(map[string]bool, 2)
+		for _, file := range reader.File {
+			fileNames[file.Name] = true
+		}
+
+		objectPath := filepath.Join(objectsDirectory, objectID+".pb.json")
+		assert.True(t, fileNames[objectPath])
+		typePath := filepath.Join(typesDirectory, objectTypeId+".pb.json")
+		assert.True(t, fileNames[typePath])
+	})
+	t.Run("empty import", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		spaceId := "spaceId"
+		objectID := "id"
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+
+		a := &app.App{}
+		mockSender := mock_event.NewMockSender(t)
+		mockSender.EXPECT().Broadcast(mock.Anything).Return()
+		a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
+		service := process.New()
+		err := service.Init(a)
+		assert.Nil(t, err)
+
+		notifications := mock_notifications.NewMockNotifications(t)
+		notifications.EXPECT().CreateAndSend(mock.Anything).Return(nil)
+
+		e := &export{
+			objectStore:         storeFixture,
+			picker:              objectGetter,
+			processService:      service,
+			notificationService: notifications,
+		}
+
+		// when
+		path, success, err := e.Export(context.Background(), pb.RpcObjectListExportRequest{
+			SpaceId:       spaceId,
+			Path:          t.TempDir(),
+			ObjectIds:     []string{objectID},
+			Format:        model.Export_Protobuf,
+			Zip:           true,
+			IncludeNested: true,
+			IncludeFiles:  true,
+			IsJson:        true,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, 0, success)
+
+		reader, err := zip.OpenReader(path)
+		assert.Nil(t, err)
+		assert.Len(t, reader.File, 0)
+	})
+	t.Run("import finished with error", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		objectTypeId := "customObjectType"
+
+		spaceId := "spaceId"
+		objectID := "id"
+		storeFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:      pbtypes.String(objectID),
+				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
+			},
+		})
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+		objectGetter.EXPECT().GetObject(context.Background(), objectID).Return(nil, fmt.Errorf("error"))
+
+		a := &app.App{}
+		mockSender := mock_event.NewMockSender(t)
+		mockSender.EXPECT().Broadcast(mock.Anything).Return()
+		a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
+		service := process.New()
+		err := service.Init(a)
+		assert.Nil(t, err)
+
+		notifications := mock_notifications.NewMockNotifications(t)
+		notifications.EXPECT().CreateAndSend(mock.Anything).Return(nil)
+
+		e := &export{
+			objectStore:         storeFixture,
+			picker:              objectGetter,
+			processService:      service,
+			notificationService: notifications,
+		}
+
+		// when
+		_, success, err := e.Export(context.Background(), pb.RpcObjectListExportRequest{
+			SpaceId:       spaceId,
+			Path:          t.TempDir(),
+			ObjectIds:     []string{objectID},
+			Format:        model.Export_Protobuf,
+			Zip:           true,
+			IncludeNested: true,
+			IncludeFiles:  true,
+			IsJson:        true,
+		})
+
+		// then
+		assert.NotNil(t, err)
+		assert.Equal(t, 0, success)
+	})
+}
+
 func Test_docsForExport(t *testing.T) {
 	t.Run("get object with existing links", func(t *testing.T) {
 		// given
@@ -79,16 +290,18 @@ func Test_docsForExport(t *testing.T) {
 			sbtProvider: provider,
 		}
 
-		// when
-		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
-			SpaceId:       spaceId,
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 		})
 
+		// when
+		err = expCtx.docsForExport()
+
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(docsForExport))
+		assert.Equal(t, 2, len(expCtx.docs))
 	})
 	t.Run("get object with non existing links", func(t *testing.T) {
 		// given
@@ -114,17 +327,18 @@ func Test_docsForExport(t *testing.T) {
 			objectStore: storeFixture,
 			sbtProvider: provider,
 		}
-
-		// when
-		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
-			SpaceId:       spaceId,
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 		})
 
+		// when
+		err = expCtx.docsForExport()
+
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 1, len(docsForExport))
+		assert.Equal(t, 1, len(expCtx.docs))
 	})
 	t.Run("get object with non existing relation", func(t *testing.T) {
 		// given
@@ -181,16 +395,18 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
-		// when
-		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
-			SpaceId:   spaceId,
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:   "spaceId",
 			ObjectIds: []string{"id"},
 			Format:    model.Export_Protobuf,
 		})
 
+		// when
+		err = expCtx.docsForExport()
+
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 1, len(docsForExport))
+		assert.Equal(t, 1, len(expCtx.docs))
 	})
 	t.Run("get object with existing relation", func(t *testing.T) {
 		// given
@@ -257,17 +473,18 @@ func Test_docsForExport(t *testing.T) {
 			objectStore: storeFixture,
 			picker:      objectGetter,
 		}
-
-		// when
-		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
-			SpaceId:   spaceId,
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:   "spaceId",
 			ObjectIds: []string{"id"},
 			Format:    model.Export_Protobuf,
 		})
 
+		// when
+		err = expCtx.docsForExport()
+
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(docsForExport))
+		assert.Equal(t, 2, len(expCtx.docs))
 	})
 
 	t.Run("get relation options - no relation options", func(t *testing.T) {
@@ -334,16 +551,19 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
-		// when
-		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
-			SpaceId:   spaceId,
-			ObjectIds: []string{"id"},
-			Format:    model.Export_Protobuf,
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+			Format:        model.Export_Protobuf,
 		})
+
+		// when
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(docsForExport))
+		assert.Equal(t, 2, len(expCtx.docs))
 	})
 	t.Run("get relation options - 1 relation option", func(t *testing.T) {
 		// given
@@ -420,18 +640,21 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
-		// when
-		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
-			SpaceId:   spaceId,
-			ObjectIds: []string{"id"},
-			Format:    model.Export_Protobuf,
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+			Format:        model.Export_Protobuf,
 		})
+
+		// when
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 3, len(docsForExport))
+		assert.Equal(t, 3, len(expCtx.docs))
 		var objectIds []string
-		for objectId := range docsForExport {
+		for objectId := range expCtx.docs {
 			objectIds = append(objectIds, objectId)
 		}
 		assert.Contains(t, objectIds, optionId)
@@ -592,17 +815,19 @@ func Test_docsForExport(t *testing.T) {
 			sbtProvider: provider,
 		}
 
-		// when
-		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
-			SpaceId:       spaceId,
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
 			ObjectIds:     []string{"id"},
-			Format:        model.Export_Protobuf,
 			IncludeNested: true,
+			Format:        model.Export_Protobuf,
 		})
+
+		// when
+		err = expCtx.docsForExport()
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 6, len(docsForExport))
+		assert.Equal(t, 6, len(expCtx.docs))
 	})
 	t.Run("get derived objects, object type have missing relations - return only object and its type", func(t *testing.T) {
 		// given
@@ -666,6 +891,11 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       "spaceId",
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+			Format:        model.Export_Protobuf,
 		// when
 		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
 			SpaceId:   spaceId,
@@ -673,9 +903,12 @@ func Test_docsForExport(t *testing.T) {
 			Format:    model.Export_Protobuf,
 		})
 
+		// when
+		err = expCtx.docsForExport()
+
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(docsForExport))
+		assert.Equal(t, 2, len(expCtx.docs))
 	})
 	t.Run("objects without links", func(t *testing.T) {
 		// given
@@ -745,17 +978,19 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
-		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
 			SpaceId:       "spaceId",
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 			Format:        model.Export_Protobuf,
 		})
 
+		// when
+		err = expCtx.docsForExport()
+
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(docsForExport))
+		assert.Equal(t, 2, len(expCtx.docs))
 	})
 	t.Run("objects with dataview", func(t *testing.T) {
 		// given
@@ -867,17 +1102,19 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
-		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
 			SpaceId:       "spaceId",
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 			Format:        model.Export_Protobuf,
 		})
 
+		// when
+		err = expCtx.docsForExport()
+
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 3, len(docsForExport))
+		assert.Equal(t, 3, len(expCtx.docs))
 	})
 	t.Run("objects without file", func(t *testing.T) {
 		// given
@@ -941,30 +1178,25 @@ func Test_docsForExport(t *testing.T) {
 		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
 		objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
 
-		service := mock_space.NewMockService(t)
-		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do("id", mock.Anything).Return(nil)
-		space.EXPECT().Id().Return("spaceId")
-
-		service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
 		e := &export{
-			objectStore:  storeFixture,
-			picker:       objectGetter,
-			spaceService: service,
+			objectStore: storeFixture,
+			picker:      objectGetter,
 		}
 
-		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
 			SpaceId:       "spaceId",
 			ObjectIds:     []string{"id"},
-			IncludeFiles:  true,
 			IncludeNested: true,
+			IncludeFiles:  true,
 			Format:        model.Export_Protobuf,
 		})
 
+		// when
+		err = expCtx.docsForExport()
+
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(docsForExport))
+		assert.Equal(t, 2, len(expCtx.docs))
 	})
 	t.Run("objects without file, not protobuf export", func(t *testing.T) {
 		// given
@@ -990,28 +1222,40 @@ func Test_docsForExport(t *testing.T) {
 			},
 		})
 
-		service := mock_space.NewMockService(t)
-		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do("id", mock.Anything).Return(nil)
-		space.EXPECT().Id().Return("spaceId")
-		service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
+		smartBlockTest := smarttest.New("id")
+		doc := smartBlockTest.NewState().SetDetails(&types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():   pbtypes.String("id"),
+				bundle.RelationKeyType.String(): pbtypes.String(objectTypeId),
+			}})
+		doc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		smartBlockTest.Doc = doc
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
+
 		e := &export{
-			objectStore:  storeFixture,
-			spaceService: service,
+			objectStore: storeFixture,
+			picker:      objectGetter,
 		}
 
-		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
 			SpaceId:       "spaceId",
 			ObjectIds:     []string{"id"},
-			IncludeFiles:  true,
 			IncludeNested: true,
+			IncludeFiles:  true,
 			Format:        model.Export_Markdown,
 		})
 
+		// when
+		err = expCtx.docsForExport()
+
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 1, len(docsForExport))
+		assert.Equal(t, 1, len(expCtx.docs))
 	})
 
 	t.Run("get derived objects - relation, object type with recommended relations, template with link", func(t *testing.T) {
@@ -1142,78 +1386,63 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 
-		// when
-		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
 			SpaceId:   "spaceId",
 			ObjectIds: []string{"id"},
 			Format:    model.Export_Protobuf,
 		})
 
+		// when
+		err = expCtx.docsForExport()
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 5, len(docsForExport))
+		assert.Equal(t, 5, len(expCtx.docs))
 	})
 }
 
 func Test_provideFileName(t *testing.T) {
 	t.Run("file dir for relation", func(t *testing.T) {
-		// given
-		e := &export{}
-
 		// when
-		fileName := e.makeFileName("docId", spaceId, pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelation)
+		fileName := makeFileName("docId", spaceId, pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypeRelation)
 
 		// then
 		assert.Equal(t, relationsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for relation option", func(t *testing.T) {
-		// given
-		e := &export{}
-
 		// when
-		fileName := e.makeFileName("docId", spaceId, pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeRelationOption)
+		fileName := makeFileName("docId", spaceId, pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypeRelationOption)
 
 		// then
 		assert.Equal(t, relationsOptionsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for types", func(t *testing.T) {
-		// given
-		e := &export{}
-
 		// when
-		fileName := e.makeFileName("docId", spaceId, pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeObjectType)
+		fileName := makeFileName("docId", spaceId, pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypeObjectType)
 
 		// then
 		assert.Equal(t, typesDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for objects", func(t *testing.T) {
-		// given
-		e := &export{}
-
 		// when
-		fileName := e.makeFileName("docId", spaceId, pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypePage)
+		fileName := makeFileName("docId", spaceId, pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypePage)
 
 		// then
 		assert.Equal(t, objectsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for files objects", func(t *testing.T) {
-		// given
-		e := &export{}
-
 		// when
-		fileName := e.makeFileName("docId", spaceId, pbjson.NewConverter(nil), nil, smartblock.SmartBlockTypeFileObject)
+		fileName := makeFileName("docId", spaceId, pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypeFileObject)
 
 		// then
 		assert.Equal(t, filesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("space is not provided", func(t *testing.T) {
 		// given
-		e := &export{}
 		st := state.NewDoc("root", nil).(*state.State)
 		st.SetDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(spaceId))
 
 		// when
-		fileName := e.makeFileName("docId", "", pbjson.NewConverter(st), st, smartblock.SmartBlockTypeFileObject)
+		fileName := makeFileName("docId", "", pbjson.NewConverter(st).Ext(), st, smartblock.SmartBlockTypeFileObject)
 
 		// then
 		assert.Equal(t, spaceDirectory+string(filepath.Separator)+spaceId+string(filepath.Separator)+filesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
@@ -1236,9 +1465,10 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 			ids = append(ids, id)
 		}
 		e := &export{objectStore: store}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{})
 
 		// when
-		records, err := e.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
+		records, err := expCtx.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
 
 		// then
 		assert.Nil(t, err)
@@ -1259,9 +1489,10 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 			ids = append(ids, id)
 		}
 		e := &export{objectStore: fixture}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{})
 
 		// when
-		records, err := e.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
+		records, err := expCtx.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
 
 		// then
 		assert.Nil(t, err)
