@@ -60,7 +60,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) Publish(ctx context.Context, spaceId, pageObjId string) (res PublishResult, err error) {
+func (s *service) publishById(ctx context.Context, spaceId, pageObjId string) (res PublishResult, err error) {
 	id := domain.FullID{
 		SpaceID:  spaceId,
 		ObjectID: pageObjId,
@@ -105,4 +105,42 @@ func (s *service) Publish(ctx context.Context, spaceId, pageObjId string) (res P
 	res.Cid = cidStr
 	res.Key = keyStr
 	return
+}
+
+func (s *service) publishData(ctx context.Context, spaceId, input string) (res PublishResult, err error) {
+	key, err := crypto.NewRandomAES()
+	if err != nil {
+		return
+	}
+	data, err := key.Encrypt([]byte(input))
+	if err != nil {
+		return
+	}
+
+	rd := bytes.NewReader(data)
+	node, err := s.commonFile.AddFile(ctx, rd)
+	if err != nil {
+		return
+	}
+
+	cidStr := node.Cid().String()
+	err = s.fileSyncService.UploadSynchronously(ctx, s.techSpaceId, domain.FileId(cidStr))
+	if err != nil {
+		return
+	}
+
+	keyStr, err := encode.EncodeKeyToBase58(key)
+	if err != nil {
+		return
+	}
+
+	res.Cid = cidStr
+	res.Key = keyStr
+	return
+}
+
+func (s *service) Publish(ctx context.Context, spaceId, input string) (res PublishResult, err error) {
+	// shortcut, because anytype-ts uses custom mapping to make json object
+	// so I just pass the whole object for now instead of id.
+	return s.publishData(ctx, spaceId, input)
 }
