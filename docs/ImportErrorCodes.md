@@ -15,7 +15,6 @@
 ### Files import specific codes
 1. FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE - user imported empty archive or archive without targeted import type (for example user chose to import HTML file, but archive contains only MD files)
 2. FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY - user imported empty directory or directory without targeted import type
-3. FILE_IMPORT_SOURCE_FILE_OPEN_ERROR - there was error with opening file for reading on user local machine
 
 ### HTML import specific codes
 1. HTML_WRONG_HTML_STRUCTURE - there was error with rendering HTML file
