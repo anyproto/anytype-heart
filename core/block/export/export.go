@@ -666,11 +666,6 @@ func (e *exportContext) getRelationOptions(relationKey string) ([]database.Recor
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(relationKey),
 			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(e.spaceId),
-			},
 		},
 	})
 	if err != nil {
