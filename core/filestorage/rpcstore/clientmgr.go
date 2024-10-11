@@ -69,17 +69,16 @@ type clientManager struct {
 func (m *clientManager) add(ctx context.Context, ts ...*task) (err error) {
 	select {
 	case m.addLimiter <- struct{}{}:
-		defer func() {
-			<-m.addLimiter
-		}()
 	case <-ctx.Done():
 		return ctx.Err()
 	}
 	if m.ocache.Len() == 0 {
 		if err = m.checkPeers(ctx, true); err != nil {
+			<-m.addLimiter
 			return
 		}
 	}
+	<-m.addLimiter
 	return m.mb.Add(ctx, ts...)
 }
 
