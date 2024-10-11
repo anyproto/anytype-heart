@@ -44,9 +44,7 @@ func AnyEncValueToProto(val *anyenc.Value) (*types.Value, error) {
 		if err != nil {
 			return nil, fmt.Errorf("string: %w", err)
 		}
-		var cpy = make([]byte, len(v))
-		copy(cpy, v)
-		return String(string(cpy)), nil
+		return String(string(v)), nil
 	case anyenc.TypeTrue:
 		return Bool(true), nil
 	case anyenc.TypeFalse:
