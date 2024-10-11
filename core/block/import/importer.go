@@ -266,7 +266,7 @@ func (i *Import) provideNotification(returnedErr error, progress process.Progres
 		Space:   req.SpaceId,
 		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
 			ProcessId:  progress.Id(),
-			ErrorCode:  common.GetImportErrorCode(returnedErr),
+			ErrorCode:  common.GetImportNotificationErrorCode(returnedErr),
 			ImportType: req.Type,
 			SpaceId:    req.SpaceId,
 		}},

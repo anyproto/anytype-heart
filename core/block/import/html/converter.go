@@ -159,7 +159,7 @@ func (h *HTML) getBlocksForSnapshot(rc io.ReadCloser, filesSource source.Source,
 	if err != nil {
 		return nil, err
 	}
-	blocks, _, err := anymark.HTMLToBlocks(b)
+	blocks, _, err := anymark.HTMLToBlocks(b, "")
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", common.ErrWrongHTMLFormat, err.Error())
 	}

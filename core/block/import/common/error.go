@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+
+	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -134,20 +135,14 @@ func GetImportNotificationErrorCode(err error) model.ImportErrorCode {
 		return model.Import_FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY
 	case errors.Is(err, ErrFileImportNoObjectsInZipArchive):
 		return model.Import_FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE
-	case errors.Is(err, ErrFileImportSourceFileOpenError):
-		return model.Import_FILE_IMPORT_SOURCE_FILE_OPEN_ERROR
 	case errors.Is(err, ErrPbNotAnyBlockFormat):
 		return model.Import_PB_NOT_ANYBLOCK_FORMAT
-	case errors.Is(e, ErrCancel):
-		return fmt.Errorf("import type: %s: %w", importType.String(), ErrCancel)
-	case errors.Is(e, ErrLimitExceeded):
-		return fmt.Errorf("import type: %s: %w", importType.String(), ErrLimitExceeded)
-	case errors.Is(e, ErrFailedToReceiveListOfObjects):
-		return ErrFailedToReceiveListOfObjects
-	case errors.Is(e, ErrFileLoad):
-		return fmt.Errorf("import type: %s: %w", importType.String(), e)
-	case errors.Is(e, list.ErrInsufficientPermissions):
-		return e
+	case errors.Is(err, ErrCancel):
+		return model.Import_IMPORT_IS_CANCELED
+	case errors.Is(err, ErrCsvLimitExceeded):
+		return model.Import_CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED
+	case errors.Is(err, ErrFileLoad):
+		return model.Import_FILE_LOAD_ERROR
 	case errors.Is(err, ErrWrongHTMLFormat):
 		return model.Import_HTML_WRONG_HTML_STRUCTURE
 	case errors.Is(err, ErrCSVFileFormat):
@@ -156,40 +151,6 @@ func GetImportNotificationErrorCode(err error) model.ImportErrorCode {
 		return model.Import_INSUFFICIENT_PERMISSIONS
 	default:
 		return model.Import_INTERNAL_ERROR
-	}
-}
-
-func GetImportPbCode(err error) pb.RpcObjectImportResponseErrorCode {
-	if err == nil {
-		return pb.RpcObjectImportResponseError_NULL
-	}
-	switch {
-	case errors.Is(err, ErrNoObjectInIntegration):
-		return pb.RpcObjectImportResponseError_NOTION_NO_OBJECTS_IN_INTEGRATION
-	case errors.Is(err, ErrNotionServerIsUnavailable):
-		return pb.RpcObjectImportResponseError_NOTION_SERVER_IS_UNAVAILABLE
-	case errors.Is(err, ErrNotionServerExceedRateLimit):
-		return pb.RpcObjectImportResponseError_NOTION_RATE_LIMIT_EXCEEDED
-	case errors.Is(err, ErrFileImportNoObjectsInDirectory):
-		return pb.RpcObjectImportResponseError_FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY
-	case errors.Is(err, ErrFileImportNoObjectsInZipArchive):
-		return pb.RpcObjectImportResponseError_FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE
-	case errors.Is(err, ErrFileImportSourceFileOpenError):
-		return pb.RpcObjectImportResponseError_FILE_IMPORT_SOURCE_FILE_OPEN_ERROR
-	case errors.Is(err, ErrPbNotAnyBlockFormat):
-		return pb.RpcObjectImportResponseError_PB_NOT_ANYBLOCK_FORMAT
-	case errors.Is(err, ErrCancel):
-		return pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED
-	case errors.Is(err, ErrCsvLimitExceeded):
-		return pb.RpcObjectImportResponseError_CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED
-	case errors.Is(err, ErrFileLoad):
-		return pb.RpcObjectImportResponseError_FILE_LOAD_ERROR
-	case errors.Is(err, ErrWrongHTMLFormat):
-		return pb.RpcObjectImportResponseError_HTML_WRONG_HTML_STRUCTURE
-	case errors.Is(err, ErrCSVFileFormat):
-		return pb.RpcObjectImportResponseError_CSV_WRONG_CSV_STRUCTURE
-	default:
-		return pb.RpcObjectImportResponseError_INTERNAL_ERROR
 	}
 }
 

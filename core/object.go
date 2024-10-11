@@ -721,18 +721,6 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 }
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
-	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
-		m := &pb.RpcObjectImportResponse{
-			Error: &pb.RpcObjectImportResponseError{
-				Code: code,
-			},
-		}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		}
-		return m
-	}
-
 	importRequest := &importer.ImportRequest{
 		RpcObjectImportRequest: req,
 		Origin:                 objectorigin.Import(req.Type),
@@ -740,9 +728,9 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		SendNotification:       true,
 		IsSync:                 false,
 	}
-	res := getService[importer.Importer](mw).Import(cctx, importRequest)
 
-	return response(common.GetImportPbCode(err), rootCollectionId, err)
+	getService[importer.Importer](mw).Import(cctx, importRequest)
+	return &pb.RpcObjectImportResponse{}
 }
 
 func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {
