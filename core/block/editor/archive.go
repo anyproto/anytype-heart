@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -24,12 +24,12 @@ var archiveRequiredRelations = []domain.RelationKey{}
 type Archive struct {
 	smartblock.SmartBlock
 	collection.Collection
-	objectStore objectstore.ObjectStore
+	objectStore spaceindex.Store
 }
 
 func NewArchive(
 	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
+	objectStore spaceindex.Store,
 ) *Archive {
 	return &Archive{
 		SmartBlock:  sb,
@@ -77,21 +77,25 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 	if err != nil {
 		return
 	}
+	go func() {
+		uErr := p.updateInStore(archivedIds)
+		if uErr != nil {
+			log.Errorf("archive: can't update in store: %v", uErr)
+		}
+	}()
+	return nil
+}
 
+func (p *Archive) updateInStore(archivedIds []string) error {
 	records, err := p.objectStore.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
 		database.FilterEq{
 			Key:   bundle.RelationKeyIsArchived.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.Bool(true),
 		},
-		database.FilterEq{
-			Key:   bundle.RelationKeySpaceId.String(),
-			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.String(p.SpaceID()),
-		},
 	}}, 0, 0)
 	if err != nil {
-		return
+		return err
 	}
 
 	var storeArchivedIds = make([]string, 0, len(records))
@@ -130,5 +134,5 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 			}
 		}(addedId)
 	}
-	return
+	return nil
 }

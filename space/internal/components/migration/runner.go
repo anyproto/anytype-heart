@@ -54,7 +54,6 @@ func (r *Runner) Name() string {
 func (r *Runner) Init(a *app.App) error {
 	r.store = app.MustComponent[objectstore.ObjectStore](a)
 	r.spaceLoader = app.MustComponent[spaceloader.SpaceLoader](a)
-
 	r.waitLoad = make(chan struct{})
 	return nil
 }
@@ -91,7 +90,12 @@ func (r *Runner) runMigrations() {
 		break
 	}
 
-	if err := r.run(systemobjectreviser.Migration{}, readonlyfixer.Migration{}); err != nil {
+	migrations := []Migration{
+		systemobjectreviser.Migration{},
+		readonlyfixer.Migration{},
+	}
+
+	if err := r.run(migrations...); err != nil {
 		log.Error("failed to run default migrations", zap.String("spaceId", r.spc.Id()), zap.Error(err))
 	}
 }
@@ -99,12 +103,14 @@ func (r *Runner) runMigrations() {
 func (r *Runner) run(migrations ...Migration) (err error) {
 	spaceId := r.spc.Id()
 
+	store := r.store.SpaceIndex(spaceId)
+
 	for _, m := range migrations {
 		if e := r.ctx.Err(); e != nil {
 			err = errors.Join(err, e)
 			return
 		}
-		toMigrate, migrated, e := m.Run(r.ctx, log, r.store, r.spc)
+		toMigrate, migrated, e := m.Run(r.ctx, log, store, r.spc)
 		if e != nil {
 			err = errors.Join(err, wrapError(e, m.Name(), spaceId, migrated, toMigrate))
 			continue

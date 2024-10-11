@@ -40,15 +40,7 @@ func (i *indexer) ForceFTIndex() {
 // MUST NOT be called more than once
 func (i *indexer) ftLoopRoutine() {
 	ticker := time.NewTicker(ftIndexInterval)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		select {
-		case <-i.quit:
-			cancel()
-		case <-ctx.Done():
-		}
-	}()
+	ctx := i.runCtx
 
 	i.runFullTextIndexer(ctx)
 	defer close(i.ftQueueFinished)
@@ -218,21 +210,22 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 }
 
 func (i *indexer) ftInit() error {
-	if ft := i.store.FTSearch(); ft != nil {
+	if ft := i.ftsearch; ft != nil {
 		docCount, err := ft.DocCount()
 		if err != nil {
 			return err
 		}
 		if docCount == 0 {
-			ids, err := i.store.ListIds()
+			// query objects that are existing in the store
+			// if they are not existing in the object store, they will be indexed and added via reindexOutdatedObjects or on receiving via any-sync
+			ids, err := i.store.ListIdsCrossSpace()
 			if err != nil {
 				return err
 			}
-			for _, id := range ids {
-				if err := i.store.AddToIndexQueue(id); err != nil {
-					return err
-				}
+			if err := i.store.AddToIndexQueue(i.runCtx, ids...); err != nil {
+				return err
 			}
+
 		}
 	}
 	return nil

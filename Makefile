@@ -283,7 +283,7 @@ protos-java:
 build-server: setup-network-config
 	@echo 'Building anytype-heart server...'
 	@$(eval FLAGS += $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
-	@$(eval TAGS := nosigar nowatchdog)
+	@$(eval TAGS := $(TAGS) nosigar nowatchdog)
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif

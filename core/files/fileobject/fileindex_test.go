@@ -160,7 +160,7 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 		ctx := context.Background()
 
 		//  Use same testFileId everywhere to pass domain.IsFileId check. It doesn't matter that files are same here
-		fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
+		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:                 pbtypes.String("id1"),
 				bundle.RelationKeyFileId:             pbtypes.String(testFileId.String()),
@@ -168,6 +168,8 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_NotIndexed)),
 				bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_file)),
 			},
+		})
+		fx.objectStoreFixture.AddObjects(t, "space2", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:                 pbtypes.String("id2"),
 				bundle.RelationKeyFileId:             pbtypes.String(testFileId.String()),
@@ -175,6 +177,8 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)),
 				bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_image)),
 			},
+		})
+		fx.objectStoreFixture.AddObjects(t, "space3", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:                 pbtypes.String("id3"),
 				bundle.RelationKeyFileId:             pbtypes.String(testFileId.String()),
@@ -182,12 +186,16 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_NotFound)),
 				bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_video)),
 			},
+		})
+		fx.objectStoreFixture.AddObjects(t, "space4", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id4"),
 				bundle.RelationKeyFileId:  pbtypes.String(testFileId.String()),
 				bundle.RelationKeySpaceId: pbtypes.String("space4"),
 				bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_audio)),
 			},
+		})
+		fx.objectStoreFixture.AddObjects(t, "space5", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id5"),
 				bundle.RelationKeySpaceId: pbtypes.String("space5"),
@@ -213,7 +221,7 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 		fx := newIndexerFixture(t)
 		ctx := context.Background()
 
-		fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
+		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:                 pbtypes.String("id1"),
 				bundle.RelationKeyFileId:             pbtypes.String(testFileId.String()),

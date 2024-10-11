@@ -26,7 +26,7 @@ func (s *service) initMarketplaceSpace(ctx context.Context) error {
 	return nil
 }
 
-func (s *service) initTechSpace(ctx context.Context) (err error) {
+func (s *service) createTechSpace(ctx context.Context) (err error) {
 	if s.techSpace, err = s.factory.CreateAndSetTechSpace(ctx); err != nil {
 		return err
 	}
@@ -34,9 +34,10 @@ func (s *service) initTechSpace(ctx context.Context) (err error) {
 	return
 }
 
-func (s *service) initPersonalSpace(ctx context.Context) (err error) {
-	if s.newAccount {
-		return s.createPersonalSpace(ctx)
+func (s *service) loadTechSpace(ctx context.Context) (err error) {
+	if s.techSpace, err = s.factory.LoadAndSetTechSpace(ctx); err != nil {
+		return err
 	}
-	return s.loadPersonalSpace(ctx)
+	close(s.techSpaceReady)
+	return
 }

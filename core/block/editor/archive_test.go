@@ -4,20 +4,17 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/util/testMock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
-func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {
+func NewArchiveTest(t *testing.T) (*Archive, error) {
 	sb := smarttest.New("root")
-	objectStore := testMock.NewMockObjectStore(ctrl)
-	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
-	objectStore.EXPECT().QueryRaw(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	objectStore := spaceindex.NewStoreFixture(t)
 	a := &Archive{
 		SmartBlock:  sb,
 		Collection:  collection.NewCollection(sb, objectStore),
@@ -38,11 +35,8 @@ func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {
 }
 
 func TestArchive_Archive(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
 	t.Run("archive", func(t *testing.T) {
-		a, err := NewArchiveTest(ctrl)
+		a, err := NewArchiveTest(t)
 		require.NoError(t, err)
 
 		require.NoError(t, a.AddObject("1"))
@@ -56,7 +50,7 @@ func TestArchive_Archive(t *testing.T) {
 
 	})
 	t.Run("archive archived", func(t *testing.T) {
-		a, err := NewArchiveTest(ctrl)
+		a, err := NewArchiveTest(t)
 		require.NoError(t, err)
 
 		require.NoError(t, a.AddObject("1"))
@@ -69,11 +63,8 @@ func TestArchive_Archive(t *testing.T) {
 }
 
 func TestArchive_UnArchive(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
 	t.Run("unarchive", func(t *testing.T) {
-		a, err := NewArchiveTest(ctrl)
+		a, err := NewArchiveTest(t)
 		require.NoError(t, err)
 
 		require.NoError(t, a.AddObject("1"))
@@ -85,7 +76,7 @@ func TestArchive_UnArchive(t *testing.T) {
 		require.Len(t, chIds, 1)
 	})
 	t.Run("unarchived", func(t *testing.T) {
-		a, err := NewArchiveTest(ctrl)
+		a, err := NewArchiveTest(t)
 		require.NoError(t, err)
 
 		require.NoError(t, a.AddObject("1"))

@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -39,7 +39,7 @@ type Text interface {
 
 func NewText(
 	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
+	objectStore spaceindex.Store,
 	eventSender event.Sender,
 ) Text {
 	t := &textImpl{
@@ -57,7 +57,7 @@ var log = logging.Logger("anytype-mw-smartblock")
 
 type textImpl struct {
 	smartblock.SmartBlock
-	objectStore objectstore.ObjectStore
+	objectStore spaceindex.Store
 	eventSender event.Sender
 
 	lastSetTextId    string
@@ -451,7 +451,7 @@ func (t *textImpl) TurnInto(ctx session.Context, style model.BlockContentTextSty
 				var targetDetails *types.Struct
 				if targetId := linkBlock.Model().GetLink().TargetBlockId; targetId != "" {
 					// nolint:errcheck
-					result, _ := t.objectStore.QueryByID([]string{targetId})
+					result, _ := t.objectStore.QueryByIds([]string{targetId})
 					if len(result) > 0 {
 						targetDetails = result[0].Details
 					}

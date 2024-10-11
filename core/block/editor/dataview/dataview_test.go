@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -27,14 +28,14 @@ const (
 )
 
 type fixture struct {
-	store *objectstore.StoreFixture
+	store *spaceindex.StoreFixture
 	sb    *smarttest.SmartTest
 
 	*sdataview
 }
 
 func newFixture(t *testing.T) *fixture {
-	store := objectstore.NewStoreFixture(t)
+	store := spaceindex.NewStoreFixture(t)
 	sb := smarttest.New(objId)
 
 	dv := NewDataview(sb, store).(*sdataview)
@@ -109,11 +110,12 @@ func TestInjectActiveView(t *testing.T) {
 		// given
 		blocksToView := map[string]string{dv1: "view1", dv2: "view2"}
 		fx := newFixture(t)
-		require.NoError(t, fx.store.SetActiveViews(objId, blocksToView))
+		err := fx.store.SetActiveViews(objId, blocksToView)
+		require.NoError(t, err)
 		info := getInfo()
 
 		// when
-		err := fx.injectActiveViews(info)
+		err = fx.injectActiveViews(info)
 		st := info.State
 
 		// then

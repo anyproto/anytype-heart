@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -12,7 +13,7 @@ import (
 )
 
 type syncingObjects struct {
-	objectSubscription *ObjectSubscription[struct{}]
+	objectSubscription *objectsubscription.ObjectSubscription[struct{}]
 	service            subscription.Service
 	spaceId            string
 }
@@ -26,6 +27,7 @@ func newSyncingObjects(spaceId string, service subscription.Service) *syncingObj
 
 func (s *syncingObjects) Run() error {
 	objectReq := subscription.SubscribeRequest{
+		SpaceId:           s.spaceId,
 		SubId:             fmt.Sprintf("spacestatus.objects.%s", s.spaceId),
 		Internal:          true,
 		NoDepSubscription: true,
@@ -43,7 +45,7 @@ func (s *syncingObjects) Run() error {
 			},
 		},
 	}
-	s.objectSubscription = NewIdSubscription(s.service, objectReq)
+	s.objectSubscription = objectsubscription.NewIdSubscription(s.service, objectReq)
 	errObjects := s.objectSubscription.Run()
 	if errObjects != nil {
 		return fmt.Errorf("error running syncing objects: %w", errObjects)
@@ -55,7 +57,7 @@ func (s *syncingObjects) Close() {
 	s.objectSubscription.Close()
 }
 
-func (s *syncingObjects) GetObjectSubscription() *ObjectSubscription[struct{}] {
+func (s *syncingObjects) GetObjectSubscription() *objectsubscription.ObjectSubscription[struct{}] {
 	return s.objectSubscription
 }
 

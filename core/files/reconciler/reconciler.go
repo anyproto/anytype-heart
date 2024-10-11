@@ -178,7 +178,7 @@ func (r *reconciler) markAsReconciled(fileObjectId string, fileId domain.FullFil
 }
 
 func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
-	records, err := r.objectStore.Query(database.Query{
+	records, err := r.objectStore.QueryCrossSpace(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),

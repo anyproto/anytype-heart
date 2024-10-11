@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -48,21 +48,22 @@ type Page struct {
 	dataview.Dataview
 	table.TableEditor
 
-	objectStore       objectstore.ObjectStore
+	objectStore       spaceindex.Store
 	fileObjectService fileobject.Service
 	objectDeleter     ObjectDeleter
 }
 
-func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
+func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page {
+	store := f.objectStore.SpaceIndex(spaceId)
 	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Page{
 		SmartBlock:     sb,
 		ChangeReceiver: sb.(source.ChangeReceiver),
-		AllOperations:  basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
+		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
 		IHistory:       basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
-			f.objectStore,
+			store,
 			f.eventSender,
 		),
 		File: fileComponent,
@@ -70,14 +71,14 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 			sb,
 			fileComponent,
 			f.tempDirProvider,
-			f.objectStore,
+			store,
 			f.fileService,
 			f.fileObjectService,
 		),
 		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService),
-		Dataview:          dataview.NewDataview(sb, f.objectStore),
+		Dataview:          dataview.NewDataview(sb, store),
 		TableEditor:       table.NewEditor(sb),
-		objectStore:       f.objectStore,
+		objectStore:       store,
 		fileObjectService: f.fileObjectService,
 		objectDeleter:     f.objectDeleter,
 	}
@@ -115,7 +116,7 @@ func (p *Page) isRelationDeleted(ctx *smartblock.InitContext) bool {
 }
 
 func (p *Page) deleteRelationOptions(spaceID string, relationKey string) error {
-	relationOptions, _, err := p.objectStore.QueryObjectIDs(database.Query{
+	relationOptions, _, err := p.objectStore.QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyRelationKey.String(),
@@ -155,7 +156,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					if err != nil {
 						log.Errorf("failed to create unique key: %v", err)
 					} else {
-						otype, err := p.objectStore.GetObjectByUniqueKey(p.SpaceID(), uk)
+						otype, err := p.objectStore.GetObjectByUniqueKey(uk)
 						if err != nil {
 							log.Errorf("failed to get object by unique key: %v", err)
 						} else {
@@ -208,6 +209,16 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				templates = append(templates,
 					template.WithTitle,
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+				)
+			case model.ObjectType_chat:
+				templates = append(templates,
+					template.WithTitle,
+					template.WithBlockChat,
+				)
+			case model.ObjectType_chatDerived:
+				templates = append(templates,
+					template.WithTitle,
+					template.WithBlockChat,
 				)
 				// TODO case for relationOption?
 			case model.ObjectType_tag:

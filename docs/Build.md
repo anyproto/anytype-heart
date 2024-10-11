@@ -5,6 +5,11 @@
 
 ### Install local deps
 
+#### Install tantivy
+```
+make download-tantivy-all
+```
+
 #### Mac
 As of 16.01.23 last protobuf version (21.12) broke the JS plugin support, so you can use the v3 branch:
 ```

@@ -19,7 +19,7 @@ import (
 
 func TestFixReadonlyInRelations(t *testing.T) {
 	store := objectstore.NewStoreFixture(t)
-	store.AddObjects(t, []objectstore.TestObject{
+	store.AddObjects(t, "space1", []objectstore.TestObject{
 		// space1
 		{
 			bundle.RelationKeySpaceId:               pbtypes.String("space1"),
@@ -33,7 +33,8 @@ func TestFixReadonlyInRelations(t *testing.T) {
 			bundle.RelationKeyId:                    pbtypes.String("rel-customTag"),
 			bundle.RelationKeyRelationReadonlyValue: pbtypes.Bool(true),
 		},
-
+	})
+	store.AddObjects(t, "space2", []objectstore.TestObject{
 		// space2
 		{
 			bundle.RelationKeySpaceId:               pbtypes.String("space2"),
@@ -47,7 +48,8 @@ func TestFixReadonlyInRelations(t *testing.T) {
 			bundle.RelationKeyId:                    pbtypes.String("rel-relationFormat"),
 			bundle.RelationKeyRelationReadonlyValue: pbtypes.Bool(true),
 		},
-
+	})
+	store.AddObjects(t, "space3", []objectstore.TestObject{
 		// space3
 		{
 			bundle.RelationKeySpaceId:               pbtypes.String("space3"),
@@ -80,7 +82,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 		).Times(2)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, log, store, spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space1"), spc)
 
 		// then
 		assert.NoError(t, err)
@@ -97,7 +99,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 		// sp.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, log, store, spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space2"), spc)
 
 		// then
 		assert.NoError(t, err)
@@ -114,7 +116,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 		// sp.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, log, store, spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space3"), spc)
 
 		// then
 		assert.NoError(t, err)

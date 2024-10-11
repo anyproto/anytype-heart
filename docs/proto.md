@@ -36,6 +36,14 @@
     - [Change.StoreSliceUpdate.Add](#anytype-Change-StoreSliceUpdate-Add)
     - [Change.StoreSliceUpdate.Move](#anytype-Change-StoreSliceUpdate-Move)
     - [Change.StoreSliceUpdate.Remove](#anytype-Change-StoreSliceUpdate-Remove)
+    - [DocumentCreate](#anytype-DocumentCreate)
+    - [DocumentDelete](#anytype-DocumentDelete)
+    - [DocumentModify](#anytype-DocumentModify)
+    - [KeyModify](#anytype-KeyModify)
+    - [StoreChange](#anytype-StoreChange)
+    - [StoreChangeContent](#anytype-StoreChangeContent)
+  
+    - [ModifyOp](#anytype-ModifyOp)
   
 - [pb/protos/commands.proto](#pb_protos_commands-proto)
     - [Empty](#anytype-Empty)
@@ -1947,7 +1955,6 @@
 | ObjectCreate | [Rpc.Object.Create.Request](#anytype-Rpc-Object-Create-Request) | [Rpc.Object.Create.Response](#anytype-Rpc-Object-Create-Response) | ObjectCreate just creates the new page, without adding the link to it from some other page |
 | ObjectCreateBookmark | [Rpc.Object.CreateBookmark.Request](#anytype-Rpc-Object-CreateBookmark-Request) | [Rpc.Object.CreateBookmark.Response](#anytype-Rpc-Object-CreateBookmark-Response) |  |
 | ObjectCreateFromUrl | [Rpc.Object.CreateFromUrl.Request](#anytype-Rpc-Object-CreateFromUrl-Request) | [Rpc.Object.CreateFromUrl.Response](#anytype-Rpc-Object-CreateFromUrl-Response) |  |
-| ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 | ObjectCreateSet | [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request) | [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response) | ObjectCreateSet just creates the new set, without adding the link to it from some other page |
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request) | [Rpc.Object.Graph.Response](#anytype-Rpc-Object-Graph-Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request) | [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response) |  |
@@ -2148,7 +2155,7 @@
 | DeviceSetName | [Rpc.Device.SetName.Request](#anytype-Rpc-Device-SetName-Request) | [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response) |  |
 | DeviceList | [Rpc.Device.List.Request](#anytype-Rpc-Device-List-Request) | [Rpc.Device.List.Response](#anytype-Rpc-Device-List-Response) |  |
 | DeviceNetworkStateSet | [Rpc.Device.NetworkState.Set.Request](#anytype-Rpc-Device-NetworkState-Set-Request) | [Rpc.Device.NetworkState.Set.Response](#anytype-Rpc-Device-NetworkState-Set-Response) |  |
-| ChatAddMessage | [Rpc.Chat.AddMessage.Request](#anytype-Rpc-Chat-AddMessage-Request) | [Rpc.Chat.AddMessage.Response](#anytype-Rpc-Chat-AddMessage-Response) | Chats dummy impl |
+| ChatAddMessage | [Rpc.Chat.AddMessage.Request](#anytype-Rpc-Chat-AddMessage-Request) | [Rpc.Chat.AddMessage.Response](#anytype-Rpc-Chat-AddMessage-Response) | Chats |
 | ChatEditMessageContent | [Rpc.Chat.EditMessageContent.Request](#anytype-Rpc-Chat-EditMessageContent-Request) | [Rpc.Chat.EditMessageContent.Response](#anytype-Rpc-Chat-EditMessageContent-Response) |  |
 | ChatToggleMessageReaction | [Rpc.Chat.ToggleMessageReaction.Request](#anytype-Rpc-Chat-ToggleMessageReaction-Request) | [Rpc.Chat.ToggleMessageReaction.Response](#anytype-Rpc-Chat-ToggleMessageReaction-Response) |  |
 | ChatDeleteMessage | [Rpc.Chat.DeleteMessage.Request](#anytype-Rpc-Chat-DeleteMessage-Request) | [Rpc.Chat.DeleteMessage.Response](#anytype-Rpc-Chat-DeleteMessage-Response) |  |
@@ -2156,6 +2163,7 @@
 | ChatGetMessagesByIds | [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request) | [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response) |  |
 | ChatSubscribeLastMessages | [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request) | [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response) |  |
 | ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
+| ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 
  
 
@@ -2650,7 +2658,121 @@ the element of change tree used to store and internal apply smartBlock history
 
 
 
+
+<a name="anytype-DocumentCreate"></a>
+
+### DocumentCreate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collection | [string](#string) |  |  |
+| documentId | [string](#string) |  |  |
+| value | [string](#string) |  | json |
+
+
+
+
+
+
+<a name="anytype-DocumentDelete"></a>
+
+### DocumentDelete
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collection | [string](#string) |  |  |
+| documentId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-DocumentModify"></a>
+
+### DocumentModify
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collection | [string](#string) |  |  |
+| documentId | [string](#string) |  |  |
+| keys | [KeyModify](#anytype-KeyModify) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-KeyModify"></a>
+
+### KeyModify
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| keyPath | [string](#string) | repeated | key path; example: [user, email] |
+| modifyOp | [ModifyOp](#anytype-ModifyOp) |  | modify op: set, unset, inc, etc. |
+| modifyValue | [string](#string) |  | json value; example: &#39;&#34;new@email.com&#34;&#39; |
+
+
+
+
+
+
+<a name="anytype-StoreChange"></a>
+
+### StoreChange
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| changeSet | [StoreChangeContent](#anytype-StoreChangeContent) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-StoreChangeContent"></a>
+
+### StoreChangeContent
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| create | [DocumentCreate](#anytype-DocumentCreate) |  |  |
+| modify | [DocumentModify](#anytype-DocumentModify) |  |  |
+| delete | [DocumentDelete](#anytype-DocumentDelete) |  |  |
+
+
+
+
+
  
+
+
+<a name="anytype-ModifyOp"></a>
+
+### ModifyOp
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Set | 0 |  |
+| Unset | 1 |  |
+| Inc | 2 |  |
+| AddToSet | 3 |  |
+| Pull | 4 |  |
+
 
  
 
@@ -12441,6 +12563,8 @@ can be called multiple times but with some timeout (N seconds) between calls
 | ----- | ---- | ----- | ----------- |
 | email | [string](#string) |  |  |
 | subscribeToNewsletter | [bool](#bool) |  |  |
+| insiderTipsAndTutorials | [bool](#bool) |  |  |
+| isOnboardingList | [bool](#bool) |  | if we are coming from the onboarding list |
 
 
 
@@ -13656,6 +13780,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | templateId | [string](#string) |  |  |
 | spaceId | [string](#string) |  |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
+| withChat | [bool](#bool) |  |  |
 
 
 
@@ -13716,6 +13841,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | spaceId | [string](#string) |  |  |
+| withChat | [bool](#bool) |  |  |
 
 
 
@@ -13778,6 +13904,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | url | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | addPageContent | [bool](#bool) |  |  |
+| withChat | [bool](#bool) |  |  |
 
 
 
@@ -13795,6 +13922,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | error | [Rpc.Object.CreateFromUrl.Response.Error](#anytype-Rpc-Object-CreateFromUrl-Response-Error) |  |  |
 | objectId | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| chatId | [string](#string) |  |  |
 
 
 
@@ -14019,6 +14147,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | templateId | [string](#string) |  | optional template id for creating from template |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 | spaceId | [string](#string) |  |  |
+| withChat | [bool](#bool) |  |  |
 
 
 
@@ -15403,6 +15532,7 @@ deprecated in favor of SearchWithMeta
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated |  |
 | fullText | [string](#string) |  |  |
@@ -15468,6 +15598,7 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated | filters |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated | sorts |
@@ -15477,7 +15608,6 @@ DEPRECATED, GO-1926 |
 | afterId | [string](#string) |  | (optional) pagination: middleware will return results after given id |
 | beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
 | source | [string](#string) | repeated |  |
-| ignoreWorkspace | [string](#string) |  |  |
 | noDepSubscription | [bool](#bool) |  | disable dependent subscription |
 | collectionId | [string](#string) |  |  |
 
@@ -15595,6 +15725,7 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated |  |
 | fullText | [string](#string) |  |  |
@@ -16244,10 +16375,10 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
 | ids | [string](#string) | repeated | ids for subscribe |
 | keys | [string](#string) | repeated | sorts (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
-| ignoreWorkspace | [string](#string) |  |  |
 | noDepSubscription | [bool](#bool) |  | disable dependent subscription |
 
 
@@ -29632,6 +29763,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | DevicesObject | 536 |  |
 | ChatObject | 537 | Container for any-store based chats |
 | ChatDerivedObject | 544 | Any-store based object for chat |
+| AccountObject | 545 | Container for account data in tech space |
 
 
 

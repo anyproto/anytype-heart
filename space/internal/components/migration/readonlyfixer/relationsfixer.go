@@ -81,11 +81,6 @@ func listReadonlyTagAndStatusRelations(store dependencies.QueryableStore, spaceI
 			Value:       pbtypes.IntList(int(model.RelationFormat_status), int(model.RelationFormat_tag)),
 		},
 		{
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceId),
-		},
-		{
 			RelationKey: bundle.RelationKeyRelationReadonlyValue.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.Bool(true),

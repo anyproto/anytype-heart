@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -35,15 +36,26 @@ var (
 	ErrNotStarted         = errors.New("techspace not started")
 )
 
+type AccountObject interface {
+	editorsb.SmartBlock
+	SetSharedSpacesLimit(limit int) (err error)
+	SetProfileDetails(details *types.Struct) (err error)
+	MigrateIconImage(image string) (err error)
+	IsIconMigrated() (bool, error)
+	SetAnalyticsId(analyticsId string) (err error)
+	GetAnalyticsId() (string, error)
+}
+
 type TechSpace interface {
 	app.Component
-	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error)
+	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool) (err error)
 	Close(ctx context.Context) (err error)
 
 	WakeUpViews()
 	WaitViews() error
 	TechSpaceId() string
 	DoSpaceView(ctx context.Context, spaceID string, apply func(spaceView SpaceView) error) (err error)
+	DoAccountObject(ctx context.Context, apply func(accountObject AccountObject) error) (err error)
 	SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) (err error)
 	GetSpaceView(ctx context.Context, spaceId string) (SpaceView, error)
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
@@ -51,6 +63,7 @@ type TechSpace interface {
 	SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error)
 	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
 	SpaceViewId(id string) (string, error)
+	AccountObjectId() (string, error)
 }
 
 type SpaceView interface {
@@ -79,8 +92,9 @@ func New() TechSpace {
 }
 
 type techSpace struct {
-	techCore    commonspace.Space
-	objectCache objectcache.Cache
+	techCore        commonspace.Space
+	objectCache     objectcache.Cache
+	accountObjectId string
 
 	mu sync.Mutex
 
@@ -99,10 +113,16 @@ func (s *techSpace) Name() (name string) {
 	return CName
 }
 
-func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error) {
+func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool) (err error) {
 	s.techCore = techCoreSpace
 	s.objectCache = objectCache
-	return
+	if !create {
+		exists, err := s.accountObjectExists(s.ctx)
+		if err != nil || exists {
+			return err
+		}
+	}
+	return s.accountObjectCreate(s.ctx)
 }
 
 func (s *techSpace) WakeUpViews() {
@@ -194,6 +214,18 @@ func (s *techSpace) SpaceViewExists(ctx context.Context, spaceId string) (exists
 	return getErr == nil, nil
 }
 
+func (s *techSpace) accountObjectExists(ctx context.Context) (exists bool, err error) {
+	objId, err := s.AccountObjectId()
+	if err != nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, spaceViewCheckTimeout)
+	defer cancel()
+	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
+	_, getErr := s.objectCache.GetObject(ctx, objId)
+	return getErr == nil, nil
+}
+
 func (s *techSpace) GetSpaceView(ctx context.Context, spaceId string) (SpaceView, error) {
 	viewId, err := s.getViewIdLocked(ctx, spaceId)
 	if err != nil {
@@ -240,6 +272,50 @@ func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string, info sp
 	return
 }
 
+func (s *techSpace) accountObjectCreate(ctx context.Context) (err error) {
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeAccountObject, s.techCore.Id())
+	if err != nil {
+		return
+	}
+	initFunc := func(id string) *editorsb.InitContext {
+		st := state.NewDoc(id, nil).(*state.State)
+		return &editorsb.InitContext{Ctx: ctx, SpaceID: s.techCore.Id(), State: st}
+	}
+	_, err = s.objectCache.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+		Key:      uniqueKey,
+		InitFunc: initFunc,
+	})
+	if errors.Is(err, treestorage.ErrTreeExists) {
+		accId, err := s.AccountObjectId()
+		if err != nil {
+			return err
+		}
+		_, err = s.objectCache.GetObject(ctx, accId)
+		return err
+	}
+	return
+}
+
+func (s *techSpace) AccountObjectId() (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.accountObjectId != "" {
+		return s.accountObjectId, nil
+	}
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeAccountObject, s.techCore.Id())
+	if err != nil {
+		return "", err
+	}
+	payload, err := s.objectCache.DeriveTreePayload(context.Background(), payloadcreator.PayloadDerivationParams{
+		Key: uniqueKey,
+	})
+	if err != nil {
+		return "", err
+	}
+	s.accountObjectId = payload.RootRawChange.Id
+	return payload.RootRawChange.Id, nil
+}
+
 func (s *techSpace) deriveSpaceViewID(ctx context.Context, spaceID string) (string, error) {
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, spaceID)
 	if err != nil {
@@ -271,6 +347,26 @@ func (s *techSpace) DoSpaceView(ctx context.Context, spaceID string, apply func(
 	spaceView.Lock()
 	defer spaceView.Unlock()
 	return apply(spaceView)
+}
+
+func (s *techSpace) DoAccountObject(ctx context.Context, apply func(accountObject AccountObject) error) (err error) {
+	id, err := s.AccountObjectId()
+	if err != nil {
+		return err
+	}
+	obj, err := s.objectCache.GetObject(ctx, id)
+	if err != nil {
+		// TODO: [PS] check specific error
+		return ErrSpaceViewNotExists
+	}
+	accountObject, ok := obj.(AccountObject)
+	if !ok {
+		return ErrNotASpaceView
+	}
+
+	accountObject.Lock()
+	defer accountObject.Unlock()
+	return apply(accountObject)
 }
 
 func (s *techSpace) getViewIdLocked(ctx context.Context, spaceId string) (viewId string, err error) {

@@ -77,11 +77,6 @@ func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string)
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       pbtypes.IntList(int(model.ObjectType_objectType), int(model.ObjectType_relation)),
 			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
 		},
 	})
 	if err != nil {

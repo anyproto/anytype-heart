@@ -85,6 +85,8 @@ var (
 			model.Restrictions_Template,
 		},
 		model.ObjectType_participant: objRestrictAll,
+		model.ObjectType_chat:        objRestrictEdit,
+		model.ObjectType_chatDerived: objRestrictEdit,
 		model.ObjectType_tag:         objRestrictEdit,
 	}
 

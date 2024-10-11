@@ -22,11 +22,10 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func New(id string) *SmartTest {
@@ -62,7 +61,7 @@ type SmartTest struct {
 	App              *app.App
 	objectTree       objecttree.ObjectTree
 	isDeleted        bool
-	os               *testMock.MockObjectStore
+	os               *spaceindex.StoreFixture
 	space            smartblock.Space
 
 	// Rudimentary hooks
@@ -140,10 +139,6 @@ func (st *SmartTest) IsLocked() bool {
 
 func (st *SmartTest) Locked() bool {
 	return false
-}
-
-func (st *SmartTest) ObjectStore() objectstore.ObjectStore {
-	return st.os
 }
 
 func (st *SmartTest) SetIsDeleted() {
@@ -393,6 +388,16 @@ func (st *SmartTest) History() undo.History {
 	return st.hist
 }
 
+func (st *SmartTest) StateRebuild(d state.Doc) (err error) {
+	d.(*state.State).SetParent(st.Doc.(*state.State))
+	_, _, err = state.ApplyState(d.(*state.State), false)
+	return err
+}
+
+func (st *SmartTest) StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error {
+	panic("not implemented")
+}
+
 func (st *SmartTest) AddBlock(b simple.Block) *SmartTest {
 	st.Doc.(*state.State).Add(b)
 	return st
@@ -416,10 +421,6 @@ func (st *SmartTest) Close() (err error) {
 
 func (st *SmartTest) TryClose(objectTTL time.Duration) (res bool, err error) {
 	return
-}
-
-func (st *SmartTest) SetObjectStore(os *testMock.MockObjectStore) {
-	st.os = os
 }
 
 func (st *SmartTest) Inner() smartblock.SmartBlock {
