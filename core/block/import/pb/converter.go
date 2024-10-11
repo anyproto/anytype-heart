@@ -12,7 +12,6 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -24,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
@@ -35,20 +35,24 @@ const (
 	Name               = "Pb"
 	rootCollectionName = "Protobuf Import"
 	configFile         = "config.json"
+	fileDir            = "files"
 )
 
 var ErrNotAnyBlockExtension = errors.New("not JSON or PB extension")
+var ErrWrongFormat = errors.New("wrong PB or JSON format")
 
 type Pb struct {
-	service        *collection.Service
-	accountService account.Service
-	iconOption     int64
+	service         *collection.Service
+	accountService  account.Service
+	tempDirProvider core.TempDirProvider
+	iconOption      int64
 }
 
-func New(service *collection.Service, accountService account.Service) common.Converter {
+func New(service *collection.Service, accountService account.Service, tempDirProvider core.TempDirProvider) common.Converter {
 	return &Pb{
-		service:        service,
-		accountService: accountService,
+		service:         service,
+		accountService:  accountService,
+		tempDirProvider: tempDirProvider,
 	}
 }
 
@@ -149,14 +153,14 @@ func (p *Pb) handleImportPath(
 		}
 	}
 	if profile != nil {
-		pr, e := p.accountService.LocalProfile()
+		pr, e := p.accountService.ProfileInfo()
 		if e != nil {
 			allErrors.Add(e)
 			if allErrors.ShouldAbortImport(pathCount, model.Import_Pb) {
 				return nil, nil, nil
 			}
 		}
-		needToImportWidgets = p.needToImportWidgets(profile.Address, pr.AccountAddr)
+		needToImportWidgets = p.needToImportWidgets(profile.Address, pr.AccountId)
 		profileID = profile.ProfileId
 	}
 	return p.getSnapshotsFromProvidedFiles(pathCount, importSource, allErrors, path, profileID, needToImportWidgets, isMigration, importType)
@@ -221,7 +225,11 @@ func (p *Pb) getSnapshotsFromProvidedFiles(
 	workspaceSnapshot *common.Snapshot,
 ) {
 	if iterateErr := pbFiles.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
-		snapshot, err := p.makeSnapshot(fileName, profileID, path, fileReader, isMigration)
+		// skip files from "files" directory
+		if filepath.Dir(fileName) == fileDir {
+			return true
+		}
+		snapshot, err := p.makeSnapshot(fileName, profileID, path, fileReader, isMigration, pbFiles)
 		if err != nil {
 			allErrors.Add(err)
 			if allErrors.ShouldAbortImport(pathCount, model.Import_Pb) {
@@ -246,7 +254,11 @@ func (p *Pb) getSnapshotsFromProvidedFiles(
 	return allSnapshots, widgetSnapshot, workspaceSnapshot
 }
 
-func (p *Pb) makeSnapshot(name, profileID, path string, file io.ReadCloser, isMigration bool) (*common.Snapshot, error) {
+func (p *Pb) makeSnapshot(name, profileID, path string,
+	file io.ReadCloser,
+	isMigration bool,
+	pbFiles source.Source,
+) (*common.Snapshot, error) {
 	if name == constant.ProfileFile || name == configFile {
 		return nil, nil
 	}
@@ -262,11 +274,11 @@ func (p *Pb) makeSnapshot(name, profileID, path string, file io.ReadCloser, isMi
 		return nil, fmt.Errorf("%w: snapshot is not valid", common.ErrPbNotAnyBlockFormat)
 	}
 	id := uuid.New().String()
-	id, err := p.normalizeSnapshot(snapshot, id, profileID, isMigration)
+	id, err := p.normalizeSnapshot(snapshot, id, profileID, path, isMigration, pbFiles)
 	if err != nil {
 		return nil, fmt.Errorf("normalize snapshot: %w", err)
 	}
-	p.injectImportDetails(name, path, snapshot)
+	p.injectImportDetails(snapshot)
 	return &common.Snapshot{
 		Id:       id,
 		SbType:   smartblock.SmartBlockType(snapshot.SbType),
@@ -281,7 +293,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		snapshot := &pb.SnapshotWithType{}
 		um := jsonpb.Unmarshaler{}
 		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %w: %s", common.ErrPbNotAnyBlockFormat, uErr.Error())
+			return nil, ErrWrongFormat
 		}
 		return snapshot, nil
 	}
@@ -289,17 +301,20 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		snapshot := &pb.SnapshotWithType{}
 		data, err := io.ReadAll(rd)
 		if err != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
+			return nil, err
 		}
 		if err = snapshot.Unmarshal(data); err != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %w: %s", common.ErrPbNotAnyBlockFormat, err.Error())
+			return nil, ErrWrongFormat
 		}
 		return snapshot, nil
 	}
 	return nil, ErrNotAnyBlockExtension
 }
 
-func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType, id string, profileID string, isMigration bool) (string, error) {
+func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
+	id, profileID, path string,
+	isMigration bool,
+	pbFiles source.Source) (string, error) {
 	if _, ok := model.SmartBlockType_name[int32(snapshot.SbType)]; !ok {
 		newSbType := model.SmartBlockType_Page
 		if int32(snapshot.SbType) == 96 { // fallback for objectType smartblocktype
@@ -339,21 +354,50 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType, id string, profile
 	}
 
 	if snapshot.SbType == model.SmartBlockType_ProfilePage {
-		id = p.getIDForUserProfile(snapshot, profileID, id, isMigration)
+		var err error
+		id, err = p.getIDForUserProfile(snapshot, profileID, id, isMigration)
+		if err != nil {
+			return "", fmt.Errorf("get user profile id: %w", err)
+		}
 		p.setProfileIconOption(snapshot, profileID)
 	}
 	if snapshot.SbType == model.SmartBlockType_Page {
 		p.cleanupEmptyBlock(snapshot)
 	}
+	if snapshot.SbType == model.SmartBlockType_File {
+		err := p.normalizeFilePath(snapshot, pbFiles, path)
+		if err != nil {
+			return "", fmt.Errorf("failed to update file path in file snapshot %w", err)
+		}
+	}
+	if snapshot.SbType == model.SmartBlockType_FileObject {
+		err := p.normalizeFilePath(snapshot, pbFiles, path)
+		if err != nil {
+			return "", fmt.Errorf("failed to update file path in file snapshot %w", err)
+		}
+	}
 	return id, nil
 }
 
-func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) string {
+func (p *Pb) normalizeFilePath(snapshot *pb.SnapshotWithType, pbFiles source.Source, path string) error {
+	filePath := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeySource.String())
+	fileName, _, err := common.ProvideFileName(filePath, pbFiles, path, p.tempDirProvider)
+	if err != nil {
+		return err
+	}
+	if snapshot.Snapshot.Data.Details == nil || snapshot.Snapshot.Data.Details.Fields == nil {
+		snapshot.Snapshot.Data.Details.Fields = map[string]*types.Value{}
+	}
+	snapshot.Snapshot.Data.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(fileName)
+	return nil
+}
+
+func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) (string, error) {
 	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	if objectID == profileID && isMigration {
-		return p.accountService.IdentityObjectId()
+		return p.accountService.ProfileObjectId()
 	}
-	return id
+	return id, nil
 }
 
 func (p *Pb) setProfileIconOption(mo *pb.SnapshotWithType, profileID string) {
@@ -389,20 +433,25 @@ func (p *Pb) cleanupEmptyBlock(snapshot *pb.SnapshotWithType) {
 	}
 }
 
-func (p *Pb) injectImportDetails(name string, path string, mo *pb.SnapshotWithType) {
-	if mo.Snapshot.Data.Details == nil || mo.Snapshot.Data.Details.Fields == nil {
-		mo.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
+func (p *Pb) injectImportDetails(sn *pb.SnapshotWithType) {
+	if sn.Snapshot.Data.Details == nil || sn.Snapshot.Data.Details.Fields == nil {
+		sn.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	if id := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String()); id != "" {
-		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
+	if id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String()); id != "" {
+		sn.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
 	}
-	sourceDetail := common.GetSourceDetail(name, path)
-	mo.Snapshot.Data.Details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(sourceDetail)
-
-	createdDate := pbtypes.GetInt64(mo.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
+	p.setSourceFilePath(sn)
+	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
 	if createdDate == 0 {
-		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
+		sn.Snapshot.Data.Details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
 	}
+}
+
+func (p *Pb) setSourceFilePath(sn *pb.SnapshotWithType) {
+	spaceId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySpaceId.String())
+	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	sourceFilePath := filepath.Join(spaceId, id)
+	sn.Snapshot.Data.Details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(sourceFilePath)
 }
 
 func (p *Pb) shouldImportSnapshot(snapshot *common.Snapshot, needToImportWidgets bool, importType pb.RpcObjectImportRequestPbParamsType) bool {
@@ -413,17 +462,13 @@ func (p *Pb) shouldImportSnapshot(snapshot *common.Snapshot, needToImportWidgets
 
 func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot, allErrors *common.ConvertError, pathCount int) map[string]string {
 	oldToNewID := make(map[string]string, len(snapshots))
-	fileIDs := make([]string, 0)
 	for _, snapshot := range snapshots {
 		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 		oldToNewID[id] = snapshot.Id
-		fileIDs = append(fileIDs, lo.Map(snapshot.Snapshot.GetFileKeys(), func(item *pb.ChangeFileKeys, index int) string {
-			return item.Hash
-		})...)
 	}
 	for _, snapshot := range snapshots {
 		st := state.NewDocFromSnapshot("", snapshot.Snapshot, state.WithUniqueKeyMigration(snapshot.SbType))
-		err := common.UpdateLinksToObjects(st.(*state.State), oldToNewID, fileIDs)
+		err := common.UpdateLinksToObjects(st.(*state.State), oldToNewID)
 		if err != nil {
 			allErrors.Add(err)
 			if allErrors.ShouldAbortImport(pathCount, model.Import_Pb) {
@@ -431,7 +476,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot, allErrors *commo
 			}
 			continue
 		}
-		common.UpdateObjectIDsInRelations(st.(*state.State), oldToNewID, fileIDs)
+		common.UpdateObjectIDsInRelations(st.(*state.State), oldToNewID)
 		// TODO Fix
 		// converter.UpdateObjectType(oldToNewID, st.(*state.State))
 		p.updateObjectsIDsInCollection(st.(*state.State), oldToNewID)

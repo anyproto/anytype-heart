@@ -88,7 +88,7 @@ func TestRelations_New_Account(t *testing.T) {
 
 	respObjectSetDetails := mw.ObjectSetDetails(context.Background(), &pb.RpcObjectSetDetailsRequest{
 		ContextId: setId,
-		Details: []*pb.RpcObjectSetDetailsDetail{
+		Details: []*model.Detail{
 			{
 				Key:   respRelationCreate.Key,
 				Value: nil,
@@ -187,7 +187,7 @@ func TestRelations_New_Account(t *testing.T) {
 	// add option to relation
 	relationSetOptionResponse := mw.ObjectSetDetails(context.Background(), &pb.RpcObjectSetDetailsRequest{
 		ContextId: setId,
-		Details: []*pb.RpcObjectSetDetailsDetail{
+		Details: []*model.Detail{
 			{
 				Key:   respRelationCreate.Key,
 				Value: pbtypes.StringList([]string{respRelationCreateOption.ObjectId}),

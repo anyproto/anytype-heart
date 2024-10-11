@@ -10,6 +10,8 @@ import (
 	textUtil "github.com/anyproto/anytype-heart/util/text"
 )
 
+const mermaidLang = "mermaid"
+
 type ParagraphBlock struct {
 	Block
 	Paragraph TextObjectWithChildren `json:"paragraph"`
@@ -376,13 +378,6 @@ type CodeObject struct {
 }
 
 func (c *CodeBlock) GetBlocks(*api.NotionImportContext, string) *MapResponse {
-	id := bson.NewObjectId().Hex()
-	bl := &model.Block{
-		Id: id,
-		Fields: &types.Struct{
-			Fields: map[string]*types.Value{"lang": pbtypes.String(c.Code.Language)},
-		},
-	}
 	var marks []*model.BlockContentTextMark
 	var code string
 	for _, rt := range c.Code.RichText {
@@ -391,12 +386,39 @@ func (c *CodeBlock) GetBlocks(*api.NotionImportContext, string) *MapResponse {
 		to := textUtil.UTF16RuneCountString(code)
 		marks = append(marks, rt.BuildMarkdownFromAnnotations(int32(from), int32(to))...)
 	}
+	id := bson.NewObjectId().Hex()
+	if c.Code.Language == mermaidLang {
+		return c.handleMermaidBlock(id, code)
+	}
+	bl := &model.Block{
+		Id: id,
+		Fields: &types.Struct{
+			Fields: map[string]*types.Value{"lang": pbtypes.String(c.Code.Language)},
+		},
+	}
 	bl.Content = &model.BlockContentOfText{
 		Text: &model.BlockContentText{
 			Text:  code,
 			Style: model.BlockContentText_Code,
 			Marks: &model.BlockContentTextMarks{
 				Marks: marks,
+			},
+		},
+	}
+	return &MapResponse{
+		Blocks:   []*model.Block{bl},
+		BlockIDs: []string{id},
+	}
+}
+
+func (c *CodeBlock) handleMermaidBlock(id string, code string) *MapResponse {
+	bl := &model.Block{
+		Id:          id,
+		ChildrenIds: []string{},
+		Content: &model.BlockContentOfLatex{
+			Latex: &model.BlockContentLatex{
+				Text:      code,
+				Processor: model.BlockContentLatex_Mermaid,
 			},
 		},
 	}

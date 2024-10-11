@@ -15,14 +15,24 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
-const timeout = time.Second * 30
+const (
+	timeout = time.Second * 30
+
+	indexURI = "https://tools.gallery.any.coop/app-index.json"
+)
 
 type schemaResponse struct {
 	Schema string `json:"$schema"`
 }
+
+var (
+	ErrUnmarshalJson = fmt.Errorf("failed to unmarshall json")
+	ErrDownloadIndex = fmt.Errorf("failed to download gallery index")
+)
 
 // whitelist maps allowed hosts to regular expressions of URL paths
 var whitelist = map[string]*regexp.Regexp{
@@ -31,16 +41,18 @@ var whitelist = map[string]*regexp.Regexp{
 	"community.anytype.io":      regexp.MustCompile(`.*`),
 	"anytype.io":                regexp.MustCompile(`.*`),
 	"gallery.any.coop":          regexp.MustCompile(`.*`),
+	"tools.gallery.any.coop":    regexp.MustCompile(`.*`),
+	"storage.gallery.any.coop":  regexp.MustCompile(`.*`),
 }
 
-func DownloadManifest(url string, checkWhitelist bool) (info *pb.RpcDownloadManifestResponseManifestInfo, err error) {
+func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo, err error) {
 	if err = uri.ValidateURI(url); err != nil {
 		return nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
 	if checkWhitelist && !IsInWhitelist(url) {
 		return nil, fmt.Errorf("URL '%s' is not in whitelist", url)
 	}
-	raw, err := getRawManifest(url)
+	raw, err := getRawJson(url)
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +82,21 @@ func DownloadManifest(url string, checkWhitelist bool) (info *pb.RpcDownloadMani
 	return info, nil
 }
 
+func DownloadGalleryIndex() (*pb.RpcGalleryDownloadIndexResponse, error) {
+	raw, err := getRawJson(indexURI)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrDownloadIndex, err)
+	}
+
+	response := &pb.RpcGalleryDownloadIndexResponse{}
+	err = json.Unmarshal(raw, &response)
+	if err != nil {
+		return nil, fmt.Errorf("%w to get lists of categories and experiences from gallery index: %w", ErrUnmarshalJson, err)
+	}
+
+	return response, nil
+}
+
 func IsInWhitelist(url string) bool {
 	if len(whitelist) == 0 {
 		return true
@@ -86,7 +113,7 @@ func IsInWhitelist(url string) bool {
 	return false
 }
 
-func getRawManifest(url string) ([]byte, error) {
+func getRawJson(url string) ([]byte, error) {
 	client := http.Client{Timeout: timeout}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -96,6 +123,10 @@ func getRawManifest(url string) ([]byte, error) {
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get json file. Status: %s", res.Status)
 	}
 
 	if res.Body != nil {
@@ -109,7 +140,7 @@ func getRawManifest(url string) ([]byte, error) {
 	return body, nil
 }
 
-func validateSchema(schemaResp schemaResponse, info *pb.RpcDownloadManifestResponseManifestInfo) (err error) {
+func validateSchema(schemaResp schemaResponse, info *model.ManifestInfo) (err error) {
 	if schemaResp.Schema == "" {
 		return
 	}

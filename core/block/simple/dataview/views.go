@@ -2,10 +2,13 @@ package dataview
 
 import (
 	"github.com/globalsign/mgo/bson"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
+
+const DefaultViewRelationWidth = 192
 
 func (l *Dataview) AddFilter(viewID string, filter *model.BlockContentDataviewFilter) error {
 	l.resetObjectOrderForView(viewID)
@@ -18,6 +21,7 @@ func (l *Dataview) AddFilter(viewID string, filter *model.BlockContentDataviewFi
 	if filter.Id == "" {
 		filter.Id = bson.NewObjectId().Hex()
 	}
+	l.setRelationFormat(filter)
 	view.Filters = append(view.Filters, filter)
 	return nil
 }
@@ -52,6 +56,7 @@ func (l *Dataview) ReplaceFilter(viewID string, filterID string, filter *model.B
 	}
 
 	filter.Id = filterID
+	l.setRelationFormat(filter)
 	view.Filters[idx] = filter
 
 	return nil
@@ -149,13 +154,7 @@ func (l *Dataview) ReorderSorts(viewID string, ids []string) error {
 }
 
 func (l *Dataview) AddViewRelation(viewID string, relation *model.BlockContentDataviewRelation) error {
-	view, err := l.GetView(viewID)
-	if err != nil {
-		return err
-	}
-
-	view.Relations = append(view.Relations, relation)
-	return nil
+	return l.ReplaceViewRelation(viewID, relation.Key, relation)
 }
 
 func (l *Dataview) RemoveViewRelations(viewID string, relationKeys []string) error {
@@ -163,6 +162,7 @@ func (l *Dataview) RemoveViewRelations(viewID string, relationKeys []string) err
 	if err != nil {
 		return err
 	}
+	l.syncViewRelationWithRelationLinks(view)
 
 	view.Relations = slice.Filter(view.Relations, func(f *model.BlockContentDataviewRelation) bool {
 		return slice.FindPos(relationKeys, f.Key) == -1
@@ -175,12 +175,14 @@ func (l *Dataview) ReplaceViewRelation(viewID string, relationKey string, relati
 	if err != nil {
 		return err
 	}
+	l.syncViewRelationWithRelationLinks(view)
 
 	idx := slice.Find(view.Relations, func(f *model.BlockContentDataviewRelation) bool {
 		return f.Key == relationKey
 	})
 	if idx < 0 {
-		return l.AddViewRelation(viewID, relation)
+		view.Relations = append(view.Relations, relation)
+		return nil
 	}
 
 	view.Relations[idx] = relation
@@ -193,17 +195,62 @@ func (l *Dataview) ReorderViewRelations(viewID string, relationKeys []string) er
 	if err != nil {
 		return err
 	}
+	l.syncViewRelationWithRelationLinks(view)
 
 	relationsMap := make(map[string]*model.BlockContentDataviewRelation)
 	for _, r := range view.Relations {
 		relationsMap[r.Key] = r
-	}
 
-	view.Relations = view.Relations[:0]
-	for _, key := range relationKeys {
-		if r, ok := relationsMap[key]; ok {
-			view.Relations = append(view.Relations, r)
+		// Add missing relation keys to requested order
+		if !slices.Contains(relationKeys, r.Key) {
+			relationKeys = append(relationKeys, r.Key)
 		}
 	}
+
+	newRelations := make([]*model.BlockContentDataviewRelation, 0, len(view.Relations))
+	for _, key := range relationKeys {
+		// Ignore relations that don't present in view's relations
+		if r, ok := relationsMap[key]; ok {
+			newRelations = append(newRelations, r)
+		}
+	}
+	view.Relations = newRelations
 	return nil
+}
+
+func (l *Dataview) syncViewRelationWithRelationLinks(view *model.BlockContentDataviewView) {
+	relationLinksKeys := map[string]struct{}{}
+	for _, relLink := range l.content.RelationLinks {
+		relationLinksKeys[relLink.Key] = struct{}{}
+	}
+
+	currentViewKeys := map[string]struct{}{}
+	newViewRelations := view.Relations[:0]
+	for _, rel := range view.Relations {
+		// Don't add relations that are not in relation links
+		if _, ok := relationLinksKeys[rel.Key]; ok {
+			newViewRelations = append(newViewRelations, rel)
+			currentViewKeys[rel.Key] = struct{}{}
+		}
+	}
+
+	for _, relLink := range l.content.RelationLinks {
+		_, ok := currentViewKeys[relLink.Key]
+		if !ok {
+			newViewRelations = append(newViewRelations, &model.BlockContentDataviewRelation{
+				Key:       relLink.Key,
+				Width:     DefaultViewRelationWidth,
+				IsVisible: false,
+			})
+		}
+	}
+	view.Relations = newViewRelations
+}
+
+func (l *Dataview) setRelationFormat(filter *model.BlockContentDataviewFilter) {
+	for _, relLink := range l.content.RelationLinks {
+		if relLink.Key == filter.RelationKey {
+			filter.Format = relLink.Format
+		}
+	}
 }

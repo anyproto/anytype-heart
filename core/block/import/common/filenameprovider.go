@@ -10,7 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 func ProvideFileName(fileName string, filesSource source.Source, path string, tempDirProvider core.TempDirProvider) (string, bool, error) {
@@ -47,8 +47,8 @@ func extractFileFromArchiveToTempDirectory(fileName string, rc io.ReadCloser, te
 	directoryWithFile := filepath.Dir(fileName)
 	if directoryWithFile != "" {
 		directoryWithFile = filepath.Join(tempDir, directoryWithFile)
-		if err := os.Mkdir(directoryWithFile, 0777); err != nil && !os.IsExist(err) {
-			return "", oserror.TransformError(err)
+		if err := os.MkdirAll(directoryWithFile, 0777); err != nil && !os.IsExist(err) {
+			return "", anyerror.CleanupError(err)
 		}
 	}
 	pathToTmpFile := filepath.Join(tempDir, fileName)
@@ -57,7 +57,7 @@ func extractFileFromArchiveToTempDirectory(fileName string, rc io.ReadCloser, te
 		return pathToTmpFile, nil
 	}
 	if err != nil {
-		return "", oserror.TransformError(err)
+		return "", anyerror.CleanupError(err)
 	}
 	defer tmpFile.Close()
 	w := bufio.NewWriter(tmpFile)

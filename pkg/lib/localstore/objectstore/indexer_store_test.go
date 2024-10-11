@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue("one"))
 		require.NoError(t, s.AddToIndexQueue("two"))
 
-		ids, err := s.ListIDsFromFullTextQueue()
+		ids, err := s.ListIDsFromFullTextQueue(0)
 		require.NoError(t, err)
 
 		assert.ElementsMatch(t, []string{"one", "two"}, ids)
@@ -25,10 +26,31 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 
 	t.Run("remove from queue", func(t *testing.T) {
 		s.RemoveIDsFromFullTextQueue([]string{"one"})
-		ids, err := s.ListIDsFromFullTextQueue()
+		ids, err := s.ListIDsFromFullTextQueue(0)
 		require.NoError(t, err)
 
 		assert.ElementsMatch(t, []string{"two"}, ids)
+	})
+}
+
+func TestIndexerBatch(t *testing.T) {
+	s := NewStoreFixture(t)
+
+	t.Run("batch - no more than limit", func(t *testing.T) {
+		require.NoError(t, s.AddToIndexQueue("one"))
+		require.NoError(t, s.AddToIndexQueue("two"))
+		require.NoError(t, s.AddToIndexQueue("three"))
+
+		var batches [][]string
+		err := s.BatchProcessFullTextQueue(context.Background(), 2, func(ids []string) error {
+			batches = append(batches, ids)
+			return nil
+		})
+		require.NoError(t, err)
+		require.Len(t, batches, 2)
+
+		assert.ElementsMatch(t, []string{"one", "two"}, batches[0])
+		assert.ElementsMatch(t, []string{"three"}, batches[1])
 	})
 }
 
@@ -50,7 +72,6 @@ func TestIndexerChecksums(t *testing.T) {
 			ObjectsForceReindexCounter:       1,
 			FilesForceReindexCounter:         2,
 			IdxRebuildCounter:                3,
-			FulltextRebuild:                  4,
 			BundledTemplates:                 "hash4",
 			BundledObjects:                   5,
 			FilestoreKeysForceReindexCounter: 6,

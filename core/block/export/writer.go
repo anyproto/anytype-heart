@@ -2,18 +2,21 @@ package export
 
 import (
 	"archive/zip"
+	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 type writer interface {
 	Path() string
 	Namer() *namer
-	WriteFile(filename string, r io.Reader) (err error)
+	WriteFile(filename string, r io.Reader, lastModifiedDate int64) (err error)
 	Close() (err error)
 }
 
@@ -54,7 +57,12 @@ func (d *dirWriter) Path() string {
 	return d.path
 }
 
-func (d *dirWriter) WriteFile(filename string, r io.Reader) (err error) {
+func (d *dirWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int64) (err error) {
+	dir := filepath.Dir(filename)
+	err = os.MkdirAll(filepath.Join(d.path, dir), 0700)
+	if err != nil {
+		return err
+	}
 	filename = path.Join(d.path, filename)
 	f, err := os.Create(filename)
 	if err != nil {
@@ -63,6 +71,14 @@ func (d *dirWriter) WriteFile(filename string, r io.Reader) (err error) {
 	defer f.Close()
 	if _, err = io.Copy(f, r); err != nil {
 		return
+	}
+	if lastModifiedDate == 0 {
+		lastModifiedDate = time.Now().Unix()
+	}
+	lastModifiedDateUnix := time.Unix(lastModifiedDate, 0)
+	err = os.Chtimes(filename, time.Now(), lastModifiedDateUnix)
+	if err != nil {
+		return fmt.Errorf("failed to set date modified of export file: %w", anyerror.CleanupError(err))
 	}
 	return
 }
@@ -105,10 +121,17 @@ func (d *zipWriter) Path() string {
 	return d.path
 }
 
-func (d *zipWriter) WriteFile(filename string, r io.Reader) (err error) {
+func (d *zipWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int64) (err error) {
 	d.m.Lock()
 	defer d.m.Unlock()
-	zf, err := d.zw.Create(filename)
+	if lastModifiedDate == 0 {
+		lastModifiedDate = time.Now().Unix()
+	}
+	zf, err := d.zw.CreateHeader(&zip.FileHeader{
+		Name:     filename,
+		Method:   zip.Deflate,
+		Modified: time.Unix(lastModifiedDate, 0),
+	})
 	if err != nil {
 		return
 	}

@@ -15,10 +15,6 @@
     ]
   },
   {
-    "id": "database",
-    "name": "Database"
-  },
-  {
     "id": "note",
     "name": "Note"
   },
@@ -55,6 +51,10 @@
     "name": "Space View"
   },
   {
+    "id": "participant",
+    "name": "Participant"
+  },
+  {
     "id": "image",
     "name": "Image",
     "requiredRelations": [
@@ -89,6 +89,14 @@
     "name": "Collection",
     "requiredRelations": [
       "name"
+    ]
+  },
+  {
+    "id": "tag",
+    "name": "Tag",
+    "requiredRelations": [
+      "name",
+      "relationOptionColor"
     ]
   }
 ]

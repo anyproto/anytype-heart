@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -137,16 +138,22 @@ func GetImportNotificationErrorCode(err error) model.ImportErrorCode {
 		return model.Import_FILE_IMPORT_SOURCE_FILE_OPEN_ERROR
 	case errors.Is(err, ErrPbNotAnyBlockFormat):
 		return model.Import_PB_NOT_ANYBLOCK_FORMAT
-	case errors.Is(err, ErrCancel):
-		return model.Import_IMPORT_IS_CANCELED
-	case errors.Is(err, ErrCsvLimitExceeded):
-		return model.Import_CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED
-	case errors.Is(err, ErrFileLoad):
-		return model.Import_FILE_LOAD_ERROR
+	case errors.Is(e, ErrCancel):
+		return fmt.Errorf("import type: %s: %w", importType.String(), ErrCancel)
+	case errors.Is(e, ErrLimitExceeded):
+		return fmt.Errorf("import type: %s: %w", importType.String(), ErrLimitExceeded)
+	case errors.Is(e, ErrFailedToReceiveListOfObjects):
+		return ErrFailedToReceiveListOfObjects
+	case errors.Is(e, ErrFileLoad):
+		return fmt.Errorf("import type: %s: %w", importType.String(), e)
+	case errors.Is(e, list.ErrInsufficientPermissions):
+		return e
 	case errors.Is(err, ErrWrongHTMLFormat):
 		return model.Import_HTML_WRONG_HTML_STRUCTURE
 	case errors.Is(err, ErrCSVFileFormat):
 		return model.Import_CSV_WRONG_CSV_STRUCTURE
+	case errors.Is(err, list.ErrInsufficientPermissions):
+		return model.Import_INSUFFICIENT_PERMISSIONS
 	default:
 		return model.Import_INTERNAL_ERROR
 	}
@@ -206,4 +213,16 @@ func isDefinedError(err error) bool {
 	return errors.Is(err, ErrCancel) || errors.Is(err, ErrCsvLimitExceeded) || errors.Is(err, ErrNotionServerExceedRateLimit) ||
 		errors.Is(err, ErrNotionServerIsUnavailable) || errors.Is(err, ErrFileLoad) || errors.Is(err, ErrPbNotAnyBlockFormat) ||
 		errors.Is(err, ErrWrongHTMLFormat) || errors.Is(err, ErrFileImportSourceFileOpenError) || errors.Is(err, ErrCSVFileFormat)
+}
+
+func GetGalleryResponseCode(err error) pb.RpcObjectImportExperienceResponseErrorCode {
+	if err == nil {
+		return pb.RpcObjectImportExperienceResponseError_NULL
+	}
+	switch {
+	case errors.Is(err, list.ErrInsufficientPermissions):
+		return pb.RpcObjectImportExperienceResponseError_INSUFFICIENT_PERMISSION
+	default:
+		return pb.RpcObjectImportExperienceResponseError_UNKNOWN_ERROR
+	}
 }

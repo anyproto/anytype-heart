@@ -137,7 +137,7 @@ func (c *layoutConverter) fromNoteToSet(space smartblock.Space, st *state.State)
 
 func (c *layoutConverter) fromAnyToSet(space smartblock.Space, st *state.State) error {
 	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
-	if len(source) == 0 {
+	if len(source) == 0 && space != nil {
 		defaultTypeID, err := space.GetTypeIdByKey(context.Background(), DefaultSetSource)
 		if err != nil {
 			return fmt.Errorf("get default type id: %w", err)
@@ -192,7 +192,7 @@ func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) 
 		return []string{}, nil
 	}
 
-	records, _, err := c.objectStore.Query(
+	records, err := c.objectStore.Query(
 		database.Query{
 			Filters: filters,
 		},
@@ -220,7 +220,7 @@ func (c *layoutConverter) fromNoteToCollection(st *state.State) error {
 }
 
 func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
-	blockContent := template.MakeCollectionDataviewContent()
+	blockContent := template.MakeDataviewContent(true, nil, nil)
 	template.InitTemplate(st, template.WithDataview(blockContent, false))
 	return nil
 }

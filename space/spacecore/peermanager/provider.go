@@ -45,7 +45,6 @@ func (p *provider) NewPeerManager(ctx context.Context, spaceId string) (peermana
 		spaceId:   spaceId,
 		peerStore: p.peerStore,
 	}
-	_ = pm.Init(nil)
 	return pm, nil
 }
 

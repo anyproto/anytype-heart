@@ -1,7 +1,6 @@
 package recordsbatcher
 
 import (
-	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -13,7 +12,6 @@ const CName = "recordsbatcher"
 type recordsBatcher struct {
 	batcher   *mb.MB
 	packDelay time.Duration // delay for better packing of msgs
-	m         sync.Mutex
 }
 
 func (r *recordsBatcher) Init(a *app.App) (err error) {

@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -26,8 +25,12 @@ type WidgetObject struct {
 	widget.Widget
 }
 
-func NewWidgetObject(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, layoutConverter converter.LayoutConverter) *WidgetObject {
-	bs := basic.NewBasic(sb, objectStore, layoutConverter)
+func NewWidgetObject(
+	sb smartblock.SmartBlock,
+	objectStore objectstore.ObjectStore,
+	layoutConverter converter.LayoutConverter,
+) *WidgetObject {
+	bs := basic.NewBasic(sb, objectStore, layoutConverter, nil, nil)
 	return &WidgetObject{
 		SmartBlock: sb,
 		Movable:    bs,
@@ -55,35 +58,6 @@ func (w *WidgetObject) CreationStateMigration(ctx *smartblock.InitContext) migra
 				template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
 			)
 		},
-	}
-}
-
-func (w *WidgetObject) withDefaultWidgets(st *state.State) {
-	for _, id := range []string{
-		widget.DefaultWidgetFavorite,
-		widget.DefaultWidgetSet,
-		widget.DefaultWidgetRecent,
-	} {
-		if _, err := w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
-			TargetId:     "",
-			Position:     model.Block_Bottom,
-			WidgetLayout: model.BlockContentWidget_CompactList,
-			Block: &model.Block{
-				Id:          "",
-				ChildrenIds: nil,
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: id,
-						Style:         model.BlockContentLink_Page,
-						IconSize:      model.BlockContentLink_SizeNone,
-						CardStyle:     model.BlockContentLink_Text,
-						Description:   model.BlockContentLink_None,
-					},
-				},
-			},
-		}); err != nil {
-			log.Errorf("failed to add widget '%s': %v", id, err)
-		}
 	}
 }
 

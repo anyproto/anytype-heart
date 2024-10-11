@@ -67,10 +67,7 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 		return "", fmt.Errorf("block has no content")
 	}
 
-	switch req.Block.Content.(type) {
-	case *model.BlockContentOfLink:
-		// Add block<->widget layout validation when new cases are added
-	default:
+	if req.Block.GetLink() == nil {
 		return "", fmt.Errorf("unsupported widget content: %T", req.Block.Content)
 	}
 

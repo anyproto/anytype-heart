@@ -265,6 +265,11 @@ type ChangeContent struct {
 	//	*ChangeContentValueOfStoreKeyUnset
 	//	*ChangeContentValueOfStoreSliceUpdate
 	//	*ChangeContentValueOfOriginalCreatedTimestampSet
+	//	*ChangeContentValueOfSetFileInfo
+	//	*ChangeContentValueOfNotificationCreate
+	//	*ChangeContentValueOfNotificationUpdate
+	//	*ChangeContentValueOfDeviceAdd
+	//	*ChangeContentValueOfDeviceUpdate
 	Value IsChangeContentValue `protobuf_oneof:"value"`
 }
 
@@ -352,6 +357,21 @@ type ChangeContentValueOfStoreSliceUpdate struct {
 type ChangeContentValueOfOriginalCreatedTimestampSet struct {
 	OriginalCreatedTimestampSet *ChangeOriginalCreatedTimestampSet `protobuf:"bytes,110,opt,name=originalCreatedTimestampSet,proto3,oneof" json:"originalCreatedTimestampSet,omitempty"`
 }
+type ChangeContentValueOfSetFileInfo struct {
+	SetFileInfo *ChangeSetFileInfo `protobuf:"bytes,111,opt,name=setFileInfo,proto3,oneof" json:"setFileInfo,omitempty"`
+}
+type ChangeContentValueOfNotificationCreate struct {
+	NotificationCreate *ChangeNotificationCreate `protobuf:"bytes,112,opt,name=notificationCreate,proto3,oneof" json:"notificationCreate,omitempty"`
+}
+type ChangeContentValueOfNotificationUpdate struct {
+	NotificationUpdate *ChangeNotificationUpdate `protobuf:"bytes,113,opt,name=notificationUpdate,proto3,oneof" json:"notificationUpdate,omitempty"`
+}
+type ChangeContentValueOfDeviceAdd struct {
+	DeviceAdd *ChangeDeviceAdd `protobuf:"bytes,114,opt,name=deviceAdd,proto3,oneof" json:"deviceAdd,omitempty"`
+}
+type ChangeContentValueOfDeviceUpdate struct {
+	DeviceUpdate *ChangeDeviceUpdate `protobuf:"bytes,115,opt,name=deviceUpdate,proto3,oneof" json:"deviceUpdate,omitempty"`
+}
 
 func (*ChangeContentValueOfBlockCreate) IsChangeContentValue()                 {}
 func (*ChangeContentValueOfBlockUpdate) IsChangeContentValue()                 {}
@@ -368,6 +388,11 @@ func (*ChangeContentValueOfStoreKeySet) IsChangeContentValue()                 {
 func (*ChangeContentValueOfStoreKeyUnset) IsChangeContentValue()               {}
 func (*ChangeContentValueOfStoreSliceUpdate) IsChangeContentValue()            {}
 func (*ChangeContentValueOfOriginalCreatedTimestampSet) IsChangeContentValue() {}
+func (*ChangeContentValueOfSetFileInfo) IsChangeContentValue()                 {}
+func (*ChangeContentValueOfNotificationCreate) IsChangeContentValue()          {}
+func (*ChangeContentValueOfNotificationUpdate) IsChangeContentValue()          {}
+func (*ChangeContentValueOfDeviceAdd) IsChangeContentValue()                   {}
+func (*ChangeContentValueOfDeviceUpdate) IsChangeContentValue()                {}
 
 func (m *ChangeContent) GetValue() IsChangeContentValue {
 	if m != nil {
@@ -481,6 +506,41 @@ func (m *ChangeContent) GetOriginalCreatedTimestampSet() *ChangeOriginalCreatedT
 	return nil
 }
 
+func (m *ChangeContent) GetSetFileInfo() *ChangeSetFileInfo {
+	if x, ok := m.GetValue().(*ChangeContentValueOfSetFileInfo); ok {
+		return x.SetFileInfo
+	}
+	return nil
+}
+
+func (m *ChangeContent) GetNotificationCreate() *ChangeNotificationCreate {
+	if x, ok := m.GetValue().(*ChangeContentValueOfNotificationCreate); ok {
+		return x.NotificationCreate
+	}
+	return nil
+}
+
+func (m *ChangeContent) GetNotificationUpdate() *ChangeNotificationUpdate {
+	if x, ok := m.GetValue().(*ChangeContentValueOfNotificationUpdate); ok {
+		return x.NotificationUpdate
+	}
+	return nil
+}
+
+func (m *ChangeContent) GetDeviceAdd() *ChangeDeviceAdd {
+	if x, ok := m.GetValue().(*ChangeContentValueOfDeviceAdd); ok {
+		return x.DeviceAdd
+	}
+	return nil
+}
+
+func (m *ChangeContent) GetDeviceUpdate() *ChangeDeviceUpdate {
+	if x, ok := m.GetValue().(*ChangeContentValueOfDeviceUpdate); ok {
+		return x.DeviceUpdate
+	}
+	return nil
+}
+
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*ChangeContent) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
@@ -499,6 +559,11 @@ func (*ChangeContent) XXX_OneofWrappers() []interface{} {
 		(*ChangeContentValueOfStoreKeyUnset)(nil),
 		(*ChangeContentValueOfStoreSliceUpdate)(nil),
 		(*ChangeContentValueOfOriginalCreatedTimestampSet)(nil),
+		(*ChangeContentValueOfSetFileInfo)(nil),
+		(*ChangeContentValueOfNotificationCreate)(nil),
+		(*ChangeContentValueOfNotificationUpdate)(nil),
+		(*ChangeContentValueOfDeviceAdd)(nil),
+		(*ChangeContentValueOfDeviceUpdate)(nil),
 	}
 }
 
@@ -1452,6 +1517,242 @@ func (m *ChangeOriginalCreatedTimestampSet) GetTs() int64 {
 	return 0
 }
 
+type ChangeSetFileInfo struct {
+	FileInfo *model.FileInfo `protobuf:"bytes,1,opt,name=fileInfo,proto3" json:"fileInfo,omitempty"`
+}
+
+func (m *ChangeSetFileInfo) Reset()         { *m = ChangeSetFileInfo{} }
+func (m *ChangeSetFileInfo) String() string { return proto.CompactTextString(m) }
+func (*ChangeSetFileInfo) ProtoMessage()    {}
+func (*ChangeSetFileInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2b02bba284ea1e46, []int{0, 18}
+}
+func (m *ChangeSetFileInfo) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeSetFileInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeSetFileInfo.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeSetFileInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeSetFileInfo.Merge(m, src)
+}
+func (m *ChangeSetFileInfo) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeSetFileInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeSetFileInfo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeSetFileInfo proto.InternalMessageInfo
+
+func (m *ChangeSetFileInfo) GetFileInfo() *model.FileInfo {
+	if m != nil {
+		return m.FileInfo
+	}
+	return nil
+}
+
+type ChangeNotificationCreate struct {
+	Notification *model.Notification `protobuf:"bytes,1,opt,name=notification,proto3" json:"notification,omitempty"`
+}
+
+func (m *ChangeNotificationCreate) Reset()         { *m = ChangeNotificationCreate{} }
+func (m *ChangeNotificationCreate) String() string { return proto.CompactTextString(m) }
+func (*ChangeNotificationCreate) ProtoMessage()    {}
+func (*ChangeNotificationCreate) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2b02bba284ea1e46, []int{0, 19}
+}
+func (m *ChangeNotificationCreate) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeNotificationCreate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeNotificationCreate.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeNotificationCreate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeNotificationCreate.Merge(m, src)
+}
+func (m *ChangeNotificationCreate) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeNotificationCreate) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeNotificationCreate.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeNotificationCreate proto.InternalMessageInfo
+
+func (m *ChangeNotificationCreate) GetNotification() *model.Notification {
+	if m != nil {
+		return m.Notification
+	}
+	return nil
+}
+
+type ChangeNotificationUpdate struct {
+	Id     string                   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Status model.NotificationStatus `protobuf:"varint,2,opt,name=status,proto3,enum=anytype.model.NotificationStatus" json:"status,omitempty"`
+}
+
+func (m *ChangeNotificationUpdate) Reset()         { *m = ChangeNotificationUpdate{} }
+func (m *ChangeNotificationUpdate) String() string { return proto.CompactTextString(m) }
+func (*ChangeNotificationUpdate) ProtoMessage()    {}
+func (*ChangeNotificationUpdate) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2b02bba284ea1e46, []int{0, 20}
+}
+func (m *ChangeNotificationUpdate) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeNotificationUpdate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeNotificationUpdate.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeNotificationUpdate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeNotificationUpdate.Merge(m, src)
+}
+func (m *ChangeNotificationUpdate) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeNotificationUpdate) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeNotificationUpdate.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeNotificationUpdate proto.InternalMessageInfo
+
+func (m *ChangeNotificationUpdate) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *ChangeNotificationUpdate) GetStatus() model.NotificationStatus {
+	if m != nil {
+		return m.Status
+	}
+	return model.Notification_Created
+}
+
+type ChangeDeviceAdd struct {
+	Device *model.DeviceInfo `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
+}
+
+func (m *ChangeDeviceAdd) Reset()         { *m = ChangeDeviceAdd{} }
+func (m *ChangeDeviceAdd) String() string { return proto.CompactTextString(m) }
+func (*ChangeDeviceAdd) ProtoMessage()    {}
+func (*ChangeDeviceAdd) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2b02bba284ea1e46, []int{0, 21}
+}
+func (m *ChangeDeviceAdd) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeDeviceAdd) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeDeviceAdd.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeDeviceAdd) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeDeviceAdd.Merge(m, src)
+}
+func (m *ChangeDeviceAdd) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeDeviceAdd) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeDeviceAdd.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeDeviceAdd proto.InternalMessageInfo
+
+func (m *ChangeDeviceAdd) GetDevice() *model.DeviceInfo {
+	if m != nil {
+		return m.Device
+	}
+	return nil
+}
+
+type ChangeDeviceUpdate struct {
+	Id   string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+}
+
+func (m *ChangeDeviceUpdate) Reset()         { *m = ChangeDeviceUpdate{} }
+func (m *ChangeDeviceUpdate) String() string { return proto.CompactTextString(m) }
+func (*ChangeDeviceUpdate) ProtoMessage()    {}
+func (*ChangeDeviceUpdate) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2b02bba284ea1e46, []int{0, 22}
+}
+func (m *ChangeDeviceUpdate) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeDeviceUpdate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeDeviceUpdate.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeDeviceUpdate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeDeviceUpdate.Merge(m, src)
+}
+func (m *ChangeDeviceUpdate) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeDeviceUpdate) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeDeviceUpdate.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeDeviceUpdate proto.InternalMessageInfo
+
+func (m *ChangeDeviceUpdate) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *ChangeDeviceUpdate) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*Change)(nil), "anytype.Change")
 	proto.RegisterType((*ChangeSnapshot)(nil), "anytype.Change.Snapshot")
@@ -1477,87 +1778,105 @@ func init() {
 	proto.RegisterType((*ChangeStoreSliceUpdateRemove)(nil), "anytype.Change.StoreSliceUpdate.Remove")
 	proto.RegisterType((*ChangeStoreSliceUpdateMove)(nil), "anytype.Change.StoreSliceUpdate.Move")
 	proto.RegisterType((*ChangeOriginalCreatedTimestampSet)(nil), "anytype.Change.OriginalCreatedTimestampSet")
+	proto.RegisterType((*ChangeSetFileInfo)(nil), "anytype.Change.SetFileInfo")
+	proto.RegisterType((*ChangeNotificationCreate)(nil), "anytype.Change.NotificationCreate")
+	proto.RegisterType((*ChangeNotificationUpdate)(nil), "anytype.Change.NotificationUpdate")
+	proto.RegisterType((*ChangeDeviceAdd)(nil), "anytype.Change.DeviceAdd")
+	proto.RegisterType((*ChangeDeviceUpdate)(nil), "anytype.Change.DeviceUpdate")
 }
 
 func init() { proto.RegisterFile("pb/protos/changes.proto", fileDescriptor_2b02bba284ea1e46) }
 
 var fileDescriptor_2b02bba284ea1e46 = []byte{
-	// 1192 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x56, 0x4d, 0x6f, 0x1b, 0x45,
-	0x18, 0xf6, 0x7a, 0x5d, 0x7f, 0xbc, 0xae, 0x8d, 0x19, 0x55, 0xed, 0x76, 0x13, 0x8c, 0x29, 0x2d,
-	0x58, 0x50, 0xd6, 0xaa, 0x83, 0x4a, 0x43, 0x41, 0x28, 0x4e, 0x83, 0x9c, 0x34, 0xa1, 0xd5, 0xb8,
-	0xe5, 0xc0, 0x25, 0x1a, 0x7b, 0x27, 0xf6, 0xd6, 0xeb, 0xdd, 0xd5, 0xee, 0x38, 0x92, 0x7f, 0x05,
-	0x88, 0xdf, 0xc0, 0x8f, 0xe1, 0xd8, 0x23, 0xdc, 0x50, 0x72, 0xe7, 0x17, 0x70, 0x40, 0x33, 0x3b,
-	0xfb, 0xe5, 0xd8, 0x49, 0x73, 0x80, 0x8b, 0xe5, 0x77, 0xf6, 0x79, 0x9e, 0x79, 0xdf, 0x77, 0x66,
-	0x9e, 0x19, 0xb8, 0xe3, 0x0d, 0x3b, 0x9e, 0xef, 0x32, 0x37, 0xe8, 0x8c, 0x26, 0xc4, 0x19, 0xd3,
-	0xc0, 0x10, 0x21, 0x2a, 0x11, 0x67, 0xc1, 0x16, 0x1e, 0xd5, 0xef, 0x7b, 0xd3, 0x71, 0xc7, 0xb6,
-	0x86, 0x1d, 0x6f, 0xd8, 0x99, 0xb9, 0x26, 0xb5, 0x23, 0xbc, 0x08, 0x24, 0x5c, 0xbf, 0x9d, 0xe8,
-	0xd0, 0x53, 0xea, 0xb0, 0x68, 0x7c, 0x73, 0xec, 0xba, 0x63, 0x9b, 0x86, 0xdf, 0x86, 0xf3, 0x93,
-	0x4e, 0xc0, 0xfc, 0xf9, 0x88, 0x85, 0x5f, 0xef, 0xfd, 0x76, 0x17, 0x8a, 0xbb, 0x62, 0x5a, 0xf4,
-	0x11, 0xdc, 0xf4, 0x7c, 0x7a, 0x6a, 0xb9, 0xf3, 0xe0, 0xd8, 0x32, 0x03, 0x4d, 0x69, 0xa9, 0xed,
-	0x0a, 0xae, 0x46, 0x63, 0xfb, 0x66, 0x80, 0xda, 0xd0, 0xb0, 0x49, 0xc0, 0x8e, 0x03, 0x87, 0x78,
-	0xc1, 0xc4, 0x65, 0xc7, 0x96, 0xa9, 0xe5, 0x5b, 0x4a, 0xbb, 0x82, 0xeb, 0x7c, 0x7c, 0x20, 0x87,
-	0xf7, 0x4d, 0xf4, 0x19, 0xbc, 0x1f, 0x8b, 0xcd, 0x28, 0x23, 0x42, 0xf1, 0x86, 0x50, 0x7c, 0x2f,
-	0xfa, 0x70, 0x44, 0x19, 0xe1, 0xaa, 0x8f, 0xa0, 0x34, 0x72, 0x1d, 0x46, 0x1d, 0xa6, 0xa9, 0x2d,
-	0xb5, 0x5d, 0xed, 0xde, 0x31, 0x64, 0xe9, 0x46, 0x98, 0x9a, 0xb1, 0x1b, 0x7e, 0xc6, 0x11, 0x0e,
-	0x7d, 0x09, 0xe5, 0x28, 0x07, 0xad, 0xd0, 0x52, 0xda, 0xd5, 0xae, 0xb6, 0xcc, 0x89, 0x92, 0xc1,
-	0x31, 0x92, 0xb3, 0x4e, 0x2c, 0x9b, 0x3e, 0xa7, 0x8b, 0x40, 0x2b, 0x8a, 0x99, 0x2e, 0xb0, 0xbe,
-	0x97, 0xdf, 0x71, 0x8c, 0x44, 0x9b, 0x50, 0x61, 0xd6, 0x8c, 0x06, 0x8c, 0xcc, 0x3c, 0xad, 0xd4,
-	0x52, 0xda, 0x2a, 0x4e, 0x06, 0x90, 0x06, 0xa5, 0x53, 0xea, 0x07, 0x96, 0xeb, 0x68, 0xe5, 0x96,
-	0xd2, 0xae, 0xe1, 0x28, 0xd4, 0xff, 0x51, 0xa0, 0x1c, 0x25, 0x81, 0x7a, 0x50, 0xb6, 0xdd, 0x71,
-	0x9f, 0x12, 0xd9, 0xd8, 0x6a, 0xf7, 0x93, 0x75, 0x09, 0x1b, 0x87, 0x12, 0xb8, 0xe7, 0x30, 0x7f,
-	0x81, 0x63, 0x1e, 0xda, 0x86, 0x82, 0x49, 0x18, 0x11, 0x1d, 0xaf, 0x76, 0x1f, 0xc4, 0x7c, 0xb1,
-	0x0d, 0x8c, 0xc1, 0x8c, 0xf8, 0xac, 0x67, 0xbb, 0xa3, 0x69, 0x24, 0xd4, 0x23, 0x01, 0xc5, 0x82,
-	0x92, 0xa9, 0x5c, 0x7d, 0xd7, 0xca, 0xf5, 0xa7, 0x50, 0xcb, 0xe4, 0x82, 0x1a, 0xa0, 0x4e, 0xe9,
-	0x42, 0x53, 0xc4, 0x92, 0xf3, 0xbf, 0xe8, 0x16, 0xdc, 0x38, 0x25, 0xf6, 0x9c, 0xca, 0x6d, 0x10,
-	0x06, 0x5f, 0xe7, 0x9f, 0x28, 0xfa, 0xcf, 0x0a, 0x94, 0x23, 0x4d, 0x84, 0xa0, 0x30, 0x21, 0xc1,
-	0x44, 0x32, 0xc5, 0x7f, 0xf4, 0x18, 0x0a, 0x53, 0x9e, 0x4f, 0x5e, 0xe4, 0x73, 0x6f, 0x5d, 0x3e,
-	0x06, 0xff, 0x09, 0x5b, 0x21, 0xf0, 0xfa, 0x57, 0x50, 0x89, 0x87, 0xae, 0x95, 0xd1, 0x9f, 0x65,
-	0x28, 0xc9, 0x9d, 0x84, 0xbe, 0x83, 0xea, 0x90, 0xf7, 0x6a, 0xd7, 0xa7, 0x84, 0x51, 0xc1, 0xaf,
-	0x76, 0x37, 0x96, 0x73, 0xe8, 0x25, 0x90, 0x7e, 0x0e, 0xa7, 0x19, 0xb1, 0xc0, 0x6b, 0xcf, 0xe4,
-	0x02, 0xf9, 0x4b, 0x04, 0x42, 0x48, 0x2c, 0x10, 0x86, 0xb1, 0x00, 0xa6, 0x33, 0xf7, 0x94, 0x6a,
-	0xea, 0x25, 0x02, 0x21, 0x24, 0x16, 0x08, 0x43, 0xb4, 0x0d, 0x15, 0x11, 0x1e, 0x71, 0x7a, 0x78,
-	0x08, 0xee, 0xae, 0xa4, 0x1f, 0x85, 0xe4, 0x04, 0x8d, 0xfa, 0x50, 0x17, 0xc1, 0xb3, 0xb9, 0x67,
-	0x5b, 0x23, 0x9e, 0xff, 0x0d, 0xc1, 0x6f, 0xae, 0xe4, 0xc7, 0xa8, 0x7e, 0x0e, 0x2f, 0xf1, 0x78,
-	0x15, 0x3e, 0xb5, 0x09, 0xb3, 0x5c, 0x67, 0xc7, 0x34, 0xb5, 0xee, 0xea, 0x2a, 0x70, 0x02, 0xe1,
-	0x55, 0xa4, 0x18, 0x3c, 0x95, 0x28, 0x94, 0x9d, 0xd8, 0x5a, 0x9d, 0x0a, 0xce, 0xa0, 0x78, 0x2a,
-	0x59, 0x1e, 0xfa, 0x06, 0xc0, 0xa4, 0x8c, 0x58, 0x76, 0x30, 0xa0, 0x4c, 0x33, 0x85, 0x8a, 0xbe,
-	0xac, 0xf2, 0x2c, 0x46, 0xf4, 0x73, 0x38, 0x85, 0x47, 0x3d, 0xb8, 0x29, 0xa3, 0xd7, 0x4e, 0x40,
-	0x99, 0x46, 0x05, 0x7f, 0x73, 0x0d, 0x5f, 0x60, 0xfa, 0x39, 0x9c, 0xe1, 0xa0, 0x3d, 0xa8, 0xb9,
-	0xc3, 0x37, 0x74, 0xc4, 0x5e, 0x2d, 0x3c, 0xca, 0xdb, 0x61, 0x09, 0x91, 0x0f, 0x96, 0x45, 0x5e,
-	0xa4, 0x41, 0xfd, 0x1c, 0xce, 0xb2, 0xd0, 0x0f, 0xd0, 0x48, 0x06, 0x64, 0x53, 0xde, 0x08, 0xa5,
-	0xd6, 0x7a, 0xa5, 0xb8, 0x2d, 0x17, 0xb8, 0x7c, 0x8d, 0x02, 0xe6, 0xfa, 0xfc, 0x34, 0xf1, 0xce,
-	0x4c, 0x57, 0xaf, 0xd1, 0x20, 0x81, 0xf0, 0x35, 0x4a, 0x31, 0x78, 0x5d, 0x51, 0x18, 0x36, 0xc7,
-	0x5e, 0x5d, 0xd7, 0x20, 0x0d, 0xe2, 0x75, 0x65, 0x58, 0xbc, 0x2e, 0x31, 0x30, 0xb0, 0xad, 0x11,
-	0x95, 0xe7, 0x66, 0xb6, 0xba, 0xae, 0xc1, 0x12, 0x8e, 0xd7, 0xb5, 0xcc, 0x45, 0x2e, 0x6c, 0xb8,
-	0xbe, 0x35, 0xb6, 0x1c, 0x62, 0x87, 0x87, 0xd2, 0x7c, 0x15, 0xd9, 0x32, 0xaf, 0xd3, 0x11, 0xd2,
-	0x9f, 0x5f, 0x68, 0xd9, 0x7a, 0x4a, 0x3f, 0x87, 0x2f, 0x53, 0xec, 0x95, 0xa4, 0xb5, 0x1c, 0x14,
-	0xca, 0x27, 0x8d, 0xf1, 0x41, 0xa1, 0x3c, 0x6e, 0x4c, 0x0e, 0x0a, 0xe5, 0x49, 0xc3, 0xd2, 0x7f,
-	0x55, 0xa0, 0x9a, 0x72, 0x0b, 0xa4, 0x43, 0x99, 0x11, 0x7f, 0x4c, 0xd9, 0xbe, 0x29, 0xcd, 0x29,
-	0x8e, 0xd1, 0x36, 0x94, 0x3d, 0x37, 0xb0, 0xf8, 0xd6, 0x15, 0xbe, 0x51, 0x4f, 0x75, 0x32, 0xf4,
-	0x72, 0xa1, 0x64, 0xbc, 0x94, 0x20, 0x1c, 0xc3, 0xd1, 0x43, 0x28, 0x8a, 0x03, 0x18, 0xb9, 0xf8,
-	0xad, 0x55, 0x44, 0x2c, 0x31, 0xfa, 0xb7, 0x32, 0x27, 0xd9, 0x2f, 0x03, 0x8a, 0xe1, 0xcb, 0x40,
-	0x5a, 0xee, 0xed, 0x98, 0xbc, 0xc7, 0x87, 0x8d, 0x23, 0x1a, 0x04, 0x64, 0x4c, 0xb1, 0x44, 0xe9,
-	0x1f, 0x4a, 0xba, 0xdc, 0x46, 0x0d, 0x50, 0x93, 0x67, 0x01, 0xff, 0xab, 0x33, 0xa8, 0xc4, 0x06,
-	0xf3, 0x5f, 0x55, 0x2c, 0x67, 0x55, 0x93, 0x59, 0x17, 0x50, 0xcf, 0xda, 0xd2, 0xff, 0x37, 0xf5,
-	0x21, 0x40, 0x62, 0x20, 0x2b, 0xee, 0x9e, 0x87, 0xe9, 0xbb, 0x87, 0x37, 0x38, 0x7c, 0x7b, 0x19,
-	0xd1, 0xdb, 0xcb, 0xf8, 0x91, 0x7f, 0x95, 0x77, 0x92, 0xde, 0x82, 0x9b, 0x69, 0x3b, 0xb9, 0xa8,
-	0xa7, 0xbf, 0x84, 0x6a, 0xca, 0x3a, 0xd1, 0x0e, 0xd4, 0x22, 0xcf, 0x3b, 0xb4, 0x9c, 0x69, 0xf4,
-	0x92, 0xd8, 0x58, 0x2a, 0x08, 0xa7, 0x30, 0x38, 0xcb, 0xd0, 0xbb, 0x50, 0xcf, 0x1a, 0x29, 0x6a,
-	0x25, 0x0e, 0xfe, 0x5c, 0xcc, 0x2e, 0x5e, 0x7d, 0xa9, 0x21, 0x7d, 0x0b, 0x6a, 0x19, 0xc7, 0xe2,
-	0x89, 0xce, 0x7d, 0x3b, 0x4a, 0x74, 0xee, 0xdb, 0x51, 0xea, 0xf9, 0x24, 0xf5, 0xc7, 0xd0, 0x58,
-	0x36, 0xa7, 0x77, 0xe2, 0xbd, 0x80, 0x6a, 0xca, 0x89, 0xf8, 0xc3, 0xc1, 0x23, 0x6c, 0x22, 0xd3,
-	0x12, 0xff, 0xaf, 0xd9, 0xe5, 0x8f, 0xa1, 0x96, 0xf1, 0xa5, 0x55, 0x92, 0xfa, 0xdf, 0x79, 0x68,
-	0x2c, 0x7b, 0xce, 0x8a, 0xf5, 0x7d, 0x02, 0x2a, 0x31, 0x4d, 0x39, 0xef, 0xfd, 0xab, 0x4c, 0xcb,
-	0x08, 0xdd, 0x9d, 0x53, 0xd0, 0x0e, 0x14, 0xfd, 0xf4, 0x45, 0xff, 0xe9, 0x95, 0xe4, 0xd8, 0xd0,
-	0x25, 0x11, 0x3d, 0x85, 0xc2, 0x2c, 0xb9, 0xea, 0x1f, 0x5c, 0x29, 0x20, 0xaf, 0x7d, 0x41, 0xd2,
-	0x1f, 0x81, 0xca, 0x57, 0x4e, 0x83, 0x12, 0x39, 0x61, 0xd4, 0x8f, 0x0f, 0x4a, 0x14, 0x46, 0x9b,
-	0x3d, 0x9f, 0x6c, 0x76, 0x1d, 0x8a, 0x6b, 0x4f, 0x7e, 0x17, 0x0a, 0xe2, 0xd0, 0x5f, 0x43, 0xaf,
-	0x57, 0x85, 0x8a, 0xeb, 0x51, 0x5f, 0x6c, 0x2b, 0xfd, 0x0b, 0xd8, 0xb8, 0xc4, 0x88, 0x51, 0x1d,
-	0xf2, 0x2c, 0x10, 0x92, 0x2a, 0xce, 0xb3, 0xa0, 0xb7, 0xf9, 0xfb, 0x59, 0x53, 0x79, 0x7b, 0xd6,
-	0x54, 0xfe, 0x3a, 0x6b, 0x2a, 0xbf, 0x9c, 0x37, 0x73, 0x6f, 0xcf, 0x9b, 0xb9, 0x3f, 0xce, 0x9b,
-	0xb9, 0x9f, 0xf2, 0xde, 0x70, 0x58, 0x14, 0x2b, 0xbf, 0xf5, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff,
-	0xdd, 0xbe, 0xb1, 0x07, 0x4b, 0x0d, 0x00, 0x00,
+	// 1397 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x57, 0x4d, 0x93, 0xd3, 0x46,
+	0x13, 0xb6, 0x6c, 0xe3, 0x8f, 0xd6, 0xae, 0x5f, 0xbf, 0x53, 0x14, 0x08, 0xed, 0xc6, 0x38, 0x04,
+	0x12, 0x57, 0x42, 0xb4, 0x85, 0x37, 0x45, 0xf8, 0x48, 0x42, 0x61, 0x20, 0xe5, 0x05, 0x16, 0xa8,
+	0x31, 0xe4, 0x90, 0x0b, 0x91, 0xad, 0x59, 0x5b, 0xac, 0x2c, 0x29, 0xd2, 0xd8, 0x55, 0x3e, 0xe6,
+	0x17, 0x24, 0x95, 0xff, 0x94, 0xaa, 0x1c, 0x39, 0xe6, 0x98, 0x82, 0x7b, 0x7e, 0x41, 0x0e, 0xa9,
+	0x19, 0xcd, 0xe8, 0xcb, 0xf2, 0x2e, 0x1c, 0x92, 0x8b, 0x4b, 0x3d, 0xf3, 0x3c, 0xcf, 0x74, 0xf7,
+	0xcc, 0x74, 0x8f, 0xe1, 0xbc, 0x3f, 0xde, 0xf3, 0x03, 0x8f, 0x7a, 0xe1, 0xde, 0x64, 0x66, 0xba,
+	0x53, 0x12, 0x1a, 0xdc, 0x44, 0x75, 0xd3, 0x5d, 0xd1, 0x95, 0x4f, 0xf4, 0xcb, 0xfe, 0xf1, 0x74,
+	0xcf, 0xb1, 0xc7, 0x7b, 0xfe, 0x78, 0x6f, 0xee, 0x59, 0xc4, 0x91, 0x78, 0x6e, 0x08, 0xb8, 0x7e,
+	0x2e, 0xd1, 0x21, 0x4b, 0xe2, 0x52, 0x39, 0xbe, 0x3b, 0xf5, 0xbc, 0xa9, 0x43, 0xa2, 0xb9, 0xf1,
+	0xe2, 0x68, 0x2f, 0xa4, 0xc1, 0x62, 0x42, 0xa3, 0xd9, 0x4b, 0x3f, 0x5d, 0x84, 0xda, 0x3d, 0xbe,
+	0x2c, 0xfa, 0x10, 0xb6, 0xfc, 0x80, 0x2c, 0x6d, 0x6f, 0x11, 0xbe, 0xb4, 0xad, 0x50, 0x53, 0xba,
+	0x95, 0x5e, 0x13, 0xab, 0x72, 0xec, 0xc0, 0x0a, 0x51, 0x0f, 0xda, 0x8e, 0x19, 0xd2, 0x97, 0xa1,
+	0x6b, 0xfa, 0xe1, 0xcc, 0xa3, 0x2f, 0x6d, 0x4b, 0x2b, 0x77, 0x95, 0x5e, 0x13, 0xb7, 0xd8, 0xf8,
+	0x48, 0x0c, 0x1f, 0x58, 0xe8, 0x53, 0xf8, 0x7f, 0x2c, 0x36, 0x27, 0xd4, 0xe4, 0x8a, 0x67, 0xb8,
+	0xe2, 0xff, 0xe4, 0xc4, 0x21, 0xa1, 0x26, 0x53, 0xbd, 0x06, 0xf5, 0x89, 0xe7, 0x52, 0xe2, 0x52,
+	0xad, 0xd2, 0xad, 0xf4, 0xd4, 0xfe, 0x79, 0x43, 0x84, 0x6e, 0x44, 0xae, 0x19, 0xf7, 0xa2, 0x69,
+	0x2c, 0x71, 0xe8, 0x0b, 0x68, 0x48, 0x1f, 0xb4, 0x6a, 0x57, 0xe9, 0xa9, 0x7d, 0x2d, 0xcf, 0x91,
+	0xce, 0xe0, 0x18, 0xc9, 0x58, 0x47, 0xb6, 0x43, 0x1e, 0x91, 0x55, 0xa8, 0xd5, 0xf8, 0x4a, 0x6b,
+	0xac, 0x6f, 0xc5, 0x3c, 0x8e, 0x91, 0x68, 0x17, 0x9a, 0xd4, 0x9e, 0x93, 0x90, 0x9a, 0x73, 0x5f,
+	0xab, 0x77, 0x95, 0x5e, 0x05, 0x27, 0x03, 0x48, 0x83, 0xfa, 0x92, 0x04, 0xa1, 0xed, 0xb9, 0x5a,
+	0xa3, 0xab, 0xf4, 0xb6, 0xb1, 0x34, 0xf5, 0xbf, 0x15, 0x68, 0x48, 0x27, 0xd0, 0x00, 0x1a, 0x8e,
+	0x37, 0x1d, 0x12, 0x53, 0x24, 0x56, 0xed, 0x7f, 0xbc, 0xc9, 0x61, 0xe3, 0xb1, 0x00, 0x3e, 0x70,
+	0x69, 0xb0, 0xc2, 0x31, 0x0f, 0xdd, 0x84, 0xaa, 0x65, 0x52, 0x93, 0x67, 0x5c, 0xed, 0x5f, 0x89,
+	0xf9, 0xfc, 0x18, 0x18, 0xa3, 0xb9, 0x19, 0xd0, 0x81, 0xe3, 0x4d, 0x8e, 0xa5, 0xd0, 0xc0, 0x0c,
+	0x09, 0xe6, 0x94, 0x4c, 0xe4, 0x95, 0x77, 0x8d, 0x5c, 0xbf, 0x0d, 0xdb, 0x19, 0x5f, 0x50, 0x1b,
+	0x2a, 0xc7, 0x64, 0xa5, 0x29, 0x7c, 0xcb, 0xd9, 0x27, 0x3a, 0x0b, 0x67, 0x96, 0xa6, 0xb3, 0x20,
+	0xe2, 0x18, 0x44, 0xc6, 0xad, 0xf2, 0x0d, 0x45, 0xff, 0x59, 0x81, 0x86, 0xd4, 0x44, 0x08, 0xaa,
+	0x33, 0x33, 0x9c, 0x09, 0x26, 0xff, 0x46, 0xd7, 0xa1, 0x7a, 0xcc, 0xfc, 0x29, 0x73, 0x7f, 0x2e,
+	0x6d, 0xf2, 0xc7, 0x60, 0x3f, 0x51, 0x2a, 0x38, 0x5e, 0xff, 0x12, 0x9a, 0xf1, 0xd0, 0x7b, 0x79,
+	0xf4, 0x9b, 0x0a, 0x75, 0x71, 0x92, 0xd0, 0x1d, 0x50, 0xc7, 0x2c, 0x57, 0xf7, 0x02, 0x62, 0x52,
+	0xc2, 0xf9, 0x6a, 0x7f, 0x27, 0xef, 0xc3, 0x20, 0x81, 0x0c, 0x4b, 0x38, 0xcd, 0x88, 0x05, 0x5e,
+	0xf8, 0x16, 0x13, 0x28, 0x9f, 0x20, 0x10, 0x41, 0x62, 0x81, 0xc8, 0x8c, 0x05, 0x30, 0x99, 0x7b,
+	0x4b, 0xa2, 0x55, 0x4e, 0x10, 0x88, 0x20, 0xb1, 0x40, 0x64, 0xa2, 0x9b, 0xd0, 0xe4, 0xe6, 0x21,
+	0xa3, 0x47, 0x97, 0xe0, 0x42, 0x21, 0xfd, 0x30, 0x22, 0x27, 0x68, 0x34, 0x84, 0x16, 0x37, 0xee,
+	0x2f, 0x7c, 0xc7, 0x9e, 0x30, 0xff, 0xcf, 0x70, 0x7e, 0xa7, 0x90, 0x1f, 0xa3, 0x86, 0x25, 0x9c,
+	0xe3, 0xb1, 0x28, 0x02, 0xe2, 0x98, 0xd4, 0xf6, 0xdc, 0xbb, 0x96, 0xa5, 0xf5, 0x8b, 0xa3, 0xc0,
+	0x09, 0x84, 0x45, 0x91, 0x62, 0x30, 0x57, 0xa4, 0x29, 0x32, 0xb1, 0x5f, 0xec, 0x0a, 0xce, 0xa0,
+	0x98, 0x2b, 0x59, 0x1e, 0xfa, 0x0a, 0xc0, 0x22, 0xd4, 0xb4, 0x9d, 0x70, 0x44, 0xa8, 0x66, 0x71,
+	0x15, 0x3d, 0xaf, 0x72, 0x3f, 0x46, 0x0c, 0x4b, 0x38, 0x85, 0x47, 0x03, 0xd8, 0x12, 0xd6, 0x0b,
+	0x37, 0x24, 0x54, 0x23, 0x9c, 0xbf, 0xbb, 0x81, 0xcf, 0x31, 0xc3, 0x12, 0xce, 0x70, 0xd0, 0x03,
+	0xd8, 0xf6, 0xc6, 0xaf, 0xc8, 0x84, 0x3e, 0x5f, 0xf9, 0x84, 0xa5, 0xc3, 0xe6, 0x22, 0x1f, 0xe4,
+	0x45, 0x9e, 0xa6, 0x41, 0xc3, 0x12, 0xce, 0xb2, 0xd0, 0x13, 0x68, 0x27, 0x03, 0x22, 0x29, 0xaf,
+	0xb8, 0x52, 0x77, 0xb3, 0x52, 0x9c, 0x96, 0x35, 0x2e, 0xdb, 0xa3, 0x90, 0x7a, 0x01, 0xbb, 0x4d,
+	0x2c, 0x33, 0xc7, 0xc5, 0x7b, 0x34, 0x4a, 0x20, 0x6c, 0x8f, 0x52, 0x0c, 0x16, 0x97, 0x34, 0xa3,
+	0xe4, 0x38, 0xc5, 0x71, 0x8d, 0xd2, 0x20, 0x16, 0x57, 0x86, 0xc5, 0xe2, 0xe2, 0x03, 0x23, 0xc7,
+	0x9e, 0x10, 0x71, 0x6f, 0xe6, 0xc5, 0x71, 0x8d, 0x72, 0x38, 0x16, 0x57, 0x9e, 0x8b, 0x3c, 0xd8,
+	0xf1, 0x02, 0x7b, 0x6a, 0xbb, 0xa6, 0x13, 0x5d, 0x4a, 0xeb, 0xb9, 0x2c, 0xcb, 0x2c, 0x4e, 0x97,
+	0x4b, 0x7f, 0xb6, 0x96, 0xb2, 0xcd, 0x94, 0x61, 0x09, 0x9f, 0xa4, 0xc8, 0x13, 0x49, 0x28, 0x2b,
+	0x4c, 0x07, 0xee, 0x91, 0xa7, 0x79, 0x1b, 0x12, 0x99, 0x40, 0x78, 0x22, 0x13, 0x13, 0x3d, 0x07,
+	0xe4, 0x7a, 0xd4, 0x3e, 0x62, 0x77, 0xc7, 0xf6, 0x5c, 0x51, 0x7c, 0x7c, 0xae, 0xb3, 0x56, 0x00,
+	0x9f, 0xac, 0x21, 0x87, 0x25, 0x5c, 0xc0, 0xcf, 0xab, 0x8a, 0xcc, 0xfe, 0x78, 0xba, 0x6a, 0x9c,
+	0xdb, 0x02, 0x3e, 0x2b, 0x2f, 0x16, 0x59, 0xda, 0x13, 0x7e, 0x90, 0x83, 0xe2, 0xf2, 0x72, 0x5f,
+	0x02, 0x58, 0x79, 0x89, 0xd1, 0xd1, 0x5d, 0x5a, 0x26, 0x9b, 0x1c, 0x6e, 0xba, 0x4b, 0xcb, 0xf4,
+	0x06, 0x67, 0x38, 0x83, 0xba, 0x28, 0xe3, 0x0f, 0xab, 0x8d, 0xa3, 0xf6, 0xf4, 0x61, 0xb5, 0x31,
+	0x6d, 0xcf, 0x1e, 0x56, 0x1b, 0xb3, 0xb6, 0xad, 0xff, 0xaa, 0x80, 0x9a, 0xaa, 0xcc, 0x48, 0x87,
+	0x06, 0x35, 0x83, 0x29, 0xa1, 0x07, 0x96, 0x68, 0x04, 0xb1, 0x8d, 0x6e, 0x42, 0xc3, 0xf7, 0x42,
+	0x9b, 0xc5, 0xc5, 0x6b, 0x74, 0x2b, 0x75, 0x6a, 0xa3, 0xbe, 0xc9, 0x95, 0x8c, 0x67, 0x02, 0x84,
+	0x63, 0x38, 0xba, 0x0a, 0x35, 0x5e, 0xec, 0x64, 0xc7, 0x3c, 0x5b, 0x44, 0xc4, 0x02, 0xa3, 0x7f,
+	0x2d, 0x7c, 0x12, 0xd9, 0x33, 0xa0, 0x16, 0xbd, 0xc2, 0x44, 0x7b, 0x3b, 0x17, 0x93, 0x1f, 0xb0,
+	0x61, 0xe3, 0x90, 0x84, 0xa1, 0x39, 0x25, 0x58, 0xa0, 0xf4, 0x8b, 0x82, 0x2e, 0xae, 0x6c, 0x1b,
+	0x2a, 0xc9, 0x13, 0x8c, 0x7d, 0xea, 0x14, 0x9a, 0x71, 0x31, 0xff, 0xb7, 0x22, 0x16, 0xab, 0x56,
+	0x92, 0x55, 0x57, 0xd0, 0xca, 0xb6, 0x80, 0xff, 0x6e, 0xe9, 0xc7, 0x00, 0x49, 0xb1, 0x2e, 0xe8,
+	0xf3, 0x57, 0xd3, 0x7d, 0x9e, 0x25, 0x38, 0x7a, 0xe7, 0x1a, 0xf2, 0x9d, 0x6b, 0x7c, 0xc7, 0x66,
+	0x45, 0xff, 0xd7, 0xbb, 0xb0, 0x95, 0x2e, 0xdd, 0xeb, 0x7a, 0xfa, 0x33, 0x50, 0x53, 0x6d, 0x0a,
+	0xdd, 0x85, 0x6d, 0xd9, 0x5f, 0x1e, 0xdb, 0xee, 0xb1, 0x7c, 0xb5, 0xed, 0xe4, 0x02, 0xc2, 0x29,
+	0x0c, 0xce, 0x32, 0xf4, 0x3e, 0xb4, 0xb2, 0x4d, 0x0b, 0x75, 0x93, 0x6e, 0xf9, 0x88, 0xaf, 0xce,
+	0x5f, 0xd8, 0xa9, 0x21, 0x7d, 0x1f, 0xb6, 0x33, 0xdd, 0x81, 0x39, 0xba, 0x08, 0x1c, 0xe9, 0xe8,
+	0x22, 0x70, 0xa4, 0xeb, 0xe5, 0xc4, 0xf5, 0xeb, 0xd0, 0xce, 0x37, 0x82, 0x77, 0xe2, 0x3d, 0x05,
+	0x35, 0x55, 0xf5, 0xd9, 0x23, 0xcd, 0x37, 0xe9, 0x4c, 0xb8, 0xc5, 0xbf, 0xdf, 0x33, 0xcb, 0x1f,
+	0xc1, 0x76, 0xa6, 0x07, 0x14, 0x49, 0xea, 0x7f, 0x95, 0xa1, 0x9d, 0xaf, 0xef, 0x05, 0xfb, 0x7b,
+	0x03, 0x2a, 0xa6, 0x65, 0x89, 0x75, 0x2f, 0x9f, 0xd6, 0x20, 0x8c, 0xa8, 0x08, 0x31, 0x0a, 0xba,
+	0x0b, 0xb5, 0x20, 0xfd, 0xa8, 0xfa, 0xe4, 0x54, 0x72, 0xdc, 0x3c, 0x05, 0x11, 0xdd, 0x86, 0xea,
+	0x3c, 0x79, 0x56, 0x5d, 0x39, 0x55, 0x40, 0x3c, 0xb1, 0x38, 0x49, 0xbf, 0x06, 0x15, 0xb6, 0x73,
+	0x1a, 0xd4, 0xcd, 0x23, 0x4a, 0x82, 0xf8, 0xa2, 0x48, 0x53, 0x1e, 0xf6, 0x72, 0x72, 0xd8, 0x75,
+	0xa8, 0x6d, 0xbc, 0xf9, 0x7d, 0xa8, 0xf2, 0x4b, 0xff, 0x1e, 0x7a, 0x03, 0x15, 0x9a, 0x9e, 0x4f,
+	0x02, 0x7e, 0xac, 0xf4, 0xcf, 0x61, 0xe7, 0x84, 0xa6, 0x87, 0x5a, 0x50, 0xa6, 0x21, 0x97, 0xac,
+	0xe0, 0x32, 0x0d, 0xf5, 0x01, 0xa8, 0xa9, 0x16, 0x86, 0xf6, 0xa3, 0xbf, 0x0e, 0xbc, 0xe3, 0x45,
+	0xcf, 0xe4, 0xf3, 0xb9, 0x3b, 0x20, 0xa1, 0x38, 0x06, 0xea, 0x2f, 0x00, 0xad, 0xb7, 0x2f, 0x74,
+	0x07, 0xb6, 0xd2, 0x8d, 0x66, 0xed, 0xd5, 0x1d, 0xc9, 0xa5, 0x89, 0x38, 0x43, 0xd0, 0x7f, 0xc8,
+	0xca, 0x8a, 0xb3, 0xd3, 0x82, 0xb2, 0x2d, 0x73, 0x52, 0xb6, 0x2d, 0x74, 0x0b, 0x6a, 0x21, 0x35,
+	0xe9, 0x22, 0x14, 0x45, 0xe8, 0xd2, 0x09, 0x0b, 0x18, 0x23, 0x8e, 0xc4, 0x82, 0xa1, 0x7f, 0x03,
+	0xcd, 0xb8, 0xa9, 0xa1, 0x6b, 0x50, 0x8b, 0x7a, 0x92, 0xf0, 0xf4, 0x42, 0x4e, 0x28, 0x42, 0xf2,
+	0xd0, 0x05, 0x50, 0xef, 0xb3, 0x3a, 0x93, 0xb4, 0xb1, 0x35, 0xdf, 0x10, 0x54, 0x5d, 0x73, 0x2e,
+	0xff, 0x9c, 0xf0, 0xef, 0xc1, 0xee, 0xef, 0x6f, 0x3a, 0xca, 0xeb, 0x37, 0x1d, 0xe5, 0xcf, 0x37,
+	0x1d, 0xe5, 0x97, 0xb7, 0x9d, 0xd2, 0xeb, 0xb7, 0x9d, 0xd2, 0x1f, 0x6f, 0x3b, 0xa5, 0xef, 0xcb,
+	0xfe, 0x78, 0x5c, 0xe3, 0x57, 0x6d, 0xff, 0x9f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x63, 0xdb, 0x9a,
+	0x94, 0x28, 0x10, 0x00, 0x00,
 }
 
 func (m *Change) Marshal() (dAtA []byte, err error) {
@@ -2139,6 +2458,121 @@ func (m *ChangeContentValueOfOriginalCreatedTimestampSet) MarshalToSizedBuffer(d
 		dAtA[i] = 0x6
 		i--
 		dAtA[i] = 0xf2
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeContentValueOfSetFileInfo) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeContentValueOfSetFileInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.SetFileInfo != nil {
+		{
+			size, err := m.SetFileInfo.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x6
+		i--
+		dAtA[i] = 0xfa
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeContentValueOfNotificationCreate) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeContentValueOfNotificationCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.NotificationCreate != nil {
+		{
+			size, err := m.NotificationCreate.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x7
+		i--
+		dAtA[i] = 0x82
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeContentValueOfNotificationUpdate) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeContentValueOfNotificationUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.NotificationUpdate != nil {
+		{
+			size, err := m.NotificationUpdate.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x7
+		i--
+		dAtA[i] = 0x8a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeContentValueOfDeviceAdd) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeContentValueOfDeviceAdd) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.DeviceAdd != nil {
+		{
+			size, err := m.DeviceAdd.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x7
+		i--
+		dAtA[i] = 0x92
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeContentValueOfDeviceUpdate) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeContentValueOfDeviceUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.DeviceUpdate != nil {
+		{
+			size, err := m.DeviceUpdate.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x7
+		i--
+		dAtA[i] = 0x9a
 	}
 	return len(dAtA) - i, nil
 }
@@ -2879,6 +3313,183 @@ func (m *ChangeOriginalCreatedTimestampSet) MarshalToSizedBuffer(dAtA []byte) (i
 	return len(dAtA) - i, nil
 }
 
+func (m *ChangeSetFileInfo) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeSetFileInfo) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeSetFileInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.FileInfo != nil {
+		{
+			size, err := m.FileInfo.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeNotificationCreate) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeNotificationCreate) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeNotificationCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Notification != nil {
+		{
+			size, err := m.Notification.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeNotificationUpdate) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeNotificationUpdate) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeNotificationUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Status != 0 {
+		i = encodeVarintChanges(dAtA, i, uint64(m.Status))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintChanges(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeDeviceAdd) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeDeviceAdd) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeDeviceAdd) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Device != nil {
+		{
+			size, err := m.Device.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeDeviceUpdate) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeDeviceUpdate) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeDeviceUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
+		i = encodeVarintChanges(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintChanges(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintChanges(dAtA []byte, offset int, v uint64) int {
 	offset -= sovChanges(v)
 	base := offset
@@ -3173,6 +3784,66 @@ func (m *ChangeContentValueOfOriginalCreatedTimestampSet) Size() (n int) {
 	_ = l
 	if m.OriginalCreatedTimestampSet != nil {
 		l = m.OriginalCreatedTimestampSet.Size()
+		n += 2 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeContentValueOfSetFileInfo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.SetFileInfo != nil {
+		l = m.SetFileInfo.Size()
+		n += 2 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeContentValueOfNotificationCreate) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.NotificationCreate != nil {
+		l = m.NotificationCreate.Size()
+		n += 2 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeContentValueOfNotificationUpdate) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.NotificationUpdate != nil {
+		l = m.NotificationUpdate.Size()
+		n += 2 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeContentValueOfDeviceAdd) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.DeviceAdd != nil {
+		l = m.DeviceAdd.Size()
+		n += 2 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeContentValueOfDeviceUpdate) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.DeviceUpdate != nil {
+		l = m.DeviceUpdate.Size()
 		n += 2 + l + sovChanges(uint64(l))
 	}
 	return n
@@ -3514,6 +4185,78 @@ func (m *ChangeOriginalCreatedTimestampSet) Size() (n int) {
 	_ = l
 	if m.Ts != 0 {
 		n += 1 + sovChanges(uint64(m.Ts))
+	}
+	return n
+}
+
+func (m *ChangeSetFileInfo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.FileInfo != nil {
+		l = m.FileInfo.Size()
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+
+func (m *ChangeNotificationCreate) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Notification != nil {
+		l = m.Notification.Size()
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+
+func (m *ChangeNotificationUpdate) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	if m.Status != 0 {
+		n += 1 + sovChanges(uint64(m.Status))
+	}
+	return n
+}
+
+func (m *ChangeDeviceAdd) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Device != nil {
+		l = m.Device.Size()
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+
+func (m *ChangeDeviceUpdate) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovChanges(uint64(l))
 	}
 	return n
 }
@@ -4821,6 +5564,181 @@ func (m *ChangeContent) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			m.Value = &ChangeContentValueOfOriginalCreatedTimestampSet{v}
+			iNdEx = postIndex
+		case 111:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SetFileInfo", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeSetFileInfo{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &ChangeContentValueOfSetFileInfo{v}
+			iNdEx = postIndex
+		case 112:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NotificationCreate", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeNotificationCreate{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &ChangeContentValueOfNotificationCreate{v}
+			iNdEx = postIndex
+		case 113:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NotificationUpdate", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeNotificationUpdate{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &ChangeContentValueOfNotificationUpdate{v}
+			iNdEx = postIndex
+		case 114:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeviceAdd", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeDeviceAdd{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &ChangeContentValueOfDeviceAdd{v}
+			iNdEx = postIndex
+		case 115:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeviceUpdate", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeDeviceUpdate{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &ChangeContentValueOfDeviceUpdate{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -6749,6 +7667,479 @@ func (m *ChangeOriginalCreatedTimestampSet) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeSetFileInfo) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SetFileInfo: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SetFileInfo: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FileInfo", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.FileInfo == nil {
+				m.FileInfo = &model.FileInfo{}
+			}
+			if err := m.FileInfo.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeNotificationCreate) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: NotificationCreate: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: NotificationCreate: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Notification", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Notification == nil {
+				m.Notification = &model.Notification{}
+			}
+			if err := m.Notification.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeNotificationUpdate) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: NotificationUpdate: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: NotificationUpdate: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			m.Status = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Status |= model.NotificationStatus(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeDeviceAdd) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DeviceAdd: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DeviceAdd: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Device", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Device == nil {
+				m.Device = &model.DeviceInfo{}
+			}
+			if err := m.Device.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeDeviceUpdate) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DeviceUpdate: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DeviceUpdate: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipChanges(dAtA[iNdEx:])

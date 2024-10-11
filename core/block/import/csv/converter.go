@@ -66,8 +66,9 @@ func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	if allErrors.ShouldAbortImport(len(params.Path), req.Type) {
 		return nil, allErrors
 	}
-	rootCollection := common.NewRootCollection(c.collectionService)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, result.objectIDs, "", nil, true)
+	rootCollection := common.NewImportCollection(c.collectionService)
+	settings := common.MakeImportCollectionSetting(rootCollectionName, result.objectIDs, "", nil, true, true, true)
+	rootCol, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		allErrors.Add(err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {

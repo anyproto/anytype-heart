@@ -14,8 +14,8 @@ import (
 
 var (
 	maxChildrenThreshold = 40
-	blockSizeLimit       = 1 * 1024 * 1024
-	detailSizeLimit      = 65 * 1024
+
+	detailSizeLimit = 65 * 1024
 )
 
 func (s *State) Normalize(withLayouts bool) (err error) {
@@ -81,10 +81,6 @@ func (s *State) doCustomBlockNormalizations() (err error) {
 
 func (s *State) normalizeLayout() {
 	s.removeEmptyLayoutBlocks(s.blocks)
-	if s.parent != nil {
-		s.removeEmptyLayoutBlocks(s.parent.blocks)
-	}
-
 	for _, b := range s.blocks {
 		if layout := b.Model().GetLayout(); layout != nil {
 			s.normalizeLayoutRow(b)
@@ -93,35 +89,38 @@ func (s *State) normalizeLayout() {
 }
 
 func (s *State) removeEmptyLayoutBlocks(blocks map[string]simple.Block) {
+	// TODO: rewrite to use DFS routine: If layout block has no children, remove it, then check its parent
 	for _, b := range blocks {
 		if layout := b.Model().GetLayout(); layout != nil {
-			if len(b.Model().ChildrenIds) == 0 {
-				s.Unlink(b.Model().Id)
+			if layout.Style == model.BlockContentLayout_Row || layout.Style == model.BlockContentLayout_Column || layout.Style == model.BlockContentLayout_Div {
+				if len(b.Model().ChildrenIds) == 0 {
+					s.Unlink(b.Model().Id)
+				}
+				// load parent for checking
+				s.GetParentOf(b.Model().Id)
 			}
-			// load parent for checking
-			s.GetParentOf(b.Model().Id)
 		}
 	}
 }
 
-func (s *State) normalizeChildren(b simple.Block) {
-	m := b.Model()
-	for _, cid := range m.ChildrenIds {
-		if !s.Exists(cid) {
-			m.ChildrenIds = slice.RemoveMut(m.ChildrenIds, cid)
-			s.normalizeChildren(b)
+func (s *State) normalizeChildren(block simple.Block) {
+	model := block.Model()
+	for _, childrenId := range model.ChildrenIds {
+		if !s.Exists(childrenId) {
+			s.removeChildren(model, childrenId)
+			s.normalizeChildren(block)
 			return
 		}
 	}
 }
 
 func (s *State) normalizeLayoutRow(b simple.Block) {
+	if b.Model().GetLayout().Style != model.BlockContentLayout_Row {
+		return
+	}
 	// remove empty layout
 	if len(b.Model().ChildrenIds) == 0 {
 		s.Unlink(b.Model().Id)
-		return
-	}
-	if b.Model().GetLayout().Style != model.BlockContentLayout_Row {
 		return
 	}
 	// one column - remove row
@@ -170,7 +169,7 @@ func (s *State) normalizeTree() (err error) {
 	if s.Pick(headerId) != nil && slice.FindPos(s.Pick(s.RootId()).Model().ChildrenIds, headerId) != 0 {
 		s.Unlink(headerId)
 		root := s.Get(s.RootId()).Model()
-		root.ChildrenIds = append([]string{headerId}, root.ChildrenIds...)
+		s.setChildrenIds(root, append([]string{headerId}, root.ChildrenIds...))
 	}
 	return nil
 }
@@ -233,9 +232,9 @@ func (s *State) wrapChildrenToDiv(id string) (nextId string) {
 	}
 
 	div := s.newDiv()
-	div.Model().ChildrenIds = parent.ChildrenIds
+	s.setChildrenIds(div.Model(), parent.ChildrenIds)
 	s.Add(div)
-	parent.ChildrenIds = []string{div.Model().Id}
+	s.setChildrenIds(parent, []string{div.Model().Id})
 	return parent.Id
 }
 
@@ -247,9 +246,10 @@ func (s *State) divBalance(d1, d2 *model.Block) (overflow bool) {
 		div = maxChildrenThreshold / 2
 	}
 
-	d2.ChildrenIds = make([]string, len(d1.ChildrenIds[div:]))
-	copy(d2.ChildrenIds, d1.ChildrenIds[div:])
-	d1.ChildrenIds = d1.ChildrenIds[:div]
+	d1ChildrenIds := make([]string, div)
+	copy(d1ChildrenIds, d1.ChildrenIds[:div])
+	s.setChildrenIds(d2, d1.ChildrenIds[div:])
+	s.setChildrenIds(d1, d1ChildrenIds)
 	return len(d2.ChildrenIds) > maxChildrenThreshold
 }
 
@@ -307,7 +307,7 @@ func (s *State) removeDuplicates() {
 				idx = idx - i
 				chIds = append(chIds[:idx], chIds[idx+1:]...)
 			}
-			b.Model().ChildrenIds = chIds
+			s.setChildrenIds(b.Model(), chIds)
 		}
 		handledBlocks[b.Model().Id] = struct{}{}
 		return true
@@ -386,7 +386,7 @@ func CleanupLayouts(s *State) (removedCount int) {
 				}
 			}
 		}
-		b.Model().ChildrenIds = result
+		s.setChildrenIds(b.Model(), result)
 		return
 	}
 	cleanup(s.RootId())

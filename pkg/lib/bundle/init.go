@@ -28,6 +28,21 @@ func IsSystemRelation(relationKey domain.RelationKey) bool {
 	return ok
 }
 
+func makeInternalTypesTypesMap() map[domain.TypeKey]struct{} {
+	res := make(map[domain.TypeKey]struct{}, len(SystemTypes))
+	for _, k := range InternalTypes {
+		res[k] = struct{}{}
+	}
+	return res
+}
+
+var internalTypesTypesMap = makeInternalTypesTypesMap()
+
+func IsInternalType(typeKey domain.TypeKey) bool {
+	_, ok := internalTypesTypesMap[typeKey]
+	return ok
+}
+
 var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]domain.TypeKey{
 	coresb.SmartBlockTypePage:        TypeKeyPage,
 	coresb.SmartBlockTypeProfilePage: TypeKeyProfile,
@@ -67,11 +82,22 @@ func HasObjectTypeID(id string) bool {
 	return exists
 }
 
+// GetTypeByUrl is deprecated, use GetType instead
 func GetTypeByUrl(u string) (*model.ObjectType, error) {
 	if !strings.HasPrefix(u, TypePrefix) {
 		return nil, fmt.Errorf("invalid url with no bundled type prefix")
 	}
 	tk := domain.TypeKey(strings.TrimPrefix(u, TypePrefix))
+	if v, exists := types[tk]; exists {
+		t := pbtypes.CopyObjectType(v)
+		t.Key = tk.String()
+		return t, nil
+	}
+
+	return nil, ErrNotFound
+}
+
+func GetType(tk domain.TypeKey) (*model.ObjectType, error) {
 	if v, exists := types[tk]; exists {
 		t := pbtypes.CopyObjectType(v)
 		t.Key = tk.String()
@@ -122,6 +148,16 @@ func GetRelation(rk domain.RelationKey) (*model.Relation, error) {
 	if v, exists := relations[rk]; exists {
 		v := pbtypes.CopyRelation(v)
 		v.Id = addr.BundledRelationURLPrefix + v.Key
+		return v, nil
+	}
+
+	return nil, ErrNotFound
+}
+
+// PickRelation returns relation without copy by key, or nil if not found
+// you must NEVER modify it without copying
+func PickRelation(rk domain.RelationKey) (*model.Relation, error) {
+	if v, exists := relations[rk]; exists {
 		return v, nil
 	}
 

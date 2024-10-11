@@ -13,11 +13,11 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) createObjectType(ctx context.Context, space space.Space, details *types.Struct) (id string, newDetails *types.Struct, err error) {
+func (s *service) createObjectType(ctx context.Context, space clientspace.Space, details *types.Struct) (id string, newDetails *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create object type: no data")
 	}
@@ -26,7 +26,7 @@ func (s *service) createObjectType(ctx context.Context, space space.Space, detai
 	if err != nil {
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
-	object := pbtypes.CopyStruct(details)
+	object := pbtypes.CopyStruct(details, false)
 
 	if _, ok := object.Fields[bundle.RelationKeyRecommendedLayout.String()]; !ok {
 		object.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(model.ObjectType_basic))
@@ -56,7 +56,7 @@ func (s *service) createObjectType(ctx context.Context, space space.Space, detai
 	return id, newDetails, nil
 }
 
-func (s *service) fillRecommendedRelationsFromLayout(ctx context.Context, space space.Space, details *types.Struct) error {
+func (s *service) fillRecommendedRelationsFromLayout(ctx context.Context, space clientspace.Space, details *types.Struct) error {
 	rawRecommendedLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())
 	recommendedLayout, err := bundle.GetLayout(model.ObjectTypeLayout(int32(rawRecommendedLayout)))
 	if err != nil {
@@ -74,7 +74,7 @@ func (s *service) fillRecommendedRelationsFromLayout(ctx context.Context, space 
 	return nil
 }
 
-func (s *service) prepareRecommendedRelationIds(ctx context.Context, space space.Space, recommendedRelationKeys []string) ([]string, error) {
+func (s *service) prepareRecommendedRelationIds(ctx context.Context, space clientspace.Space, recommendedRelationKeys []string) ([]string, error) {
 	descriptionRelationKey := bundle.RelationKeyDescription.String()
 	if !slices.Contains(recommendedRelationKeys, descriptionRelationKey) {
 		recommendedRelationKeys = append(recommendedRelationKeys, descriptionRelationKey)
@@ -93,15 +93,15 @@ func (s *service) prepareRecommendedRelationIds(ctx context.Context, space space
 		}
 		recommendedRelationIDs = append(recommendedRelationIDs, id)
 	}
-	_, _, err := s.InstallBundledObjects(ctx, space, relationsToInstall)
+	_, _, err := s.InstallBundledObjects(ctx, space, relationsToInstall, false)
 	if err != nil {
 		return nil, fmt.Errorf("install recommended relations: %w", err)
 	}
 	return recommendedRelationIDs, nil
 }
 
-func (s *service) installTemplatesForObjectType(spc space.Space, typeKey domain.TypeKey) error {
-	bundledTemplates, _, err := s.objectStore.Query(database.Query{
+func (s *service) installTemplatesForObjectType(spc clientspace.Space, typeKey domain.TypeKey) error {
+	bundledTemplates, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
@@ -138,7 +138,7 @@ func (s *service) installTemplatesForObjectType(spc space.Space, typeKey domain.
 	return nil
 }
 
-func (s *service) listInstalledTemplatesForType(spc space.Space, typeKey domain.TypeKey) (map[string]struct{}, error) {
+func (s *service) listInstalledTemplatesForType(spc clientspace.Space, typeKey domain.TypeKey) (map[string]struct{}, error) {
 	templateTypeID, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("get template type id by key: %w", err)
@@ -147,7 +147,7 @@ func (s *service) listInstalledTemplatesForType(spc space.Space, typeKey domain.
 	if err != nil {
 		return nil, fmt.Errorf("get type id by key: %w", err)
 	}
-	alreadyInstalledTemplates, _, err := s.objectStore.Query(database.Query{
+	alreadyInstalledTemplates, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),

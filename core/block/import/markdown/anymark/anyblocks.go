@@ -92,10 +92,10 @@ func provideCodeBlock(textArr []string, language string, id string) *model.Block
 	}
 }
 
-func ConvertTextToFile(block *model.Block) {
+func ConvertTextToFile(filePath string) *model.BlockContentOfFile {
 	// "svg" excluded
-	if block.GetText().GetMarks().Marks[0].Param == "" {
-		return
+	if filePath == "" {
+		return nil
 	}
 
 	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
@@ -104,7 +104,7 @@ func ConvertTextToFile(block *model.Block) {
 	pdfFormat := "pdf"
 
 	fileType := model.BlockContentFile_File
-	fileExt := filepath.Ext(block.GetText().GetMarks().Marks[0].Param)
+	fileExt := filepath.Ext(filePath)
 	if fileExt != "" {
 		fileExt = fileExt[1:]
 		for _, ext := range imageFormats {
@@ -131,13 +131,41 @@ func ConvertTextToFile(block *model.Block) {
 		if strings.EqualFold(fileExt, pdfFormat) {
 			fileType = model.BlockContentFile_PDF
 		}
+	}
+	return &model.BlockContentOfFile{
+		File: &model.BlockContentFile{
+			Name:  filePath,
+			State: model.BlockContentFile_Empty,
+			Type:  fileType,
+		},
+	}
+}
 
-		block.Content = &model.BlockContentOfFile{
-			File: &model.BlockContentFile{
-				Name:  block.GetText().GetMarks().Marks[0].Param,
-				State: model.BlockContentFile_Empty,
-				Type:  fileType,
-			},
+func AddRootBlock(blocks []*model.Block, rootBlockID string) []*model.Block {
+	for i, b := range blocks {
+		if _, ok := b.Content.(*model.BlockContentOfSmartblock); ok {
+			blocks[i].Id = rootBlockID
+			return blocks
 		}
 	}
+	notRootBlockChild := make(map[string]bool, 0)
+	for _, b := range blocks {
+		for _, id := range b.ChildrenIds {
+			notRootBlockChild[id] = true
+		}
+	}
+	childrenIds := make([]string, 0)
+	for _, b := range blocks {
+		if _, ok := notRootBlockChild[b.Id]; !ok {
+			childrenIds = append(childrenIds, b.Id)
+		}
+	}
+	blocks = append(blocks, &model.Block{
+		Id: rootBlockID,
+		Content: &model.BlockContentOfSmartblock{
+			Smartblock: &model.BlockContentSmartblock{},
+		},
+		ChildrenIds: childrenIds,
+	})
+	return blocks
 }

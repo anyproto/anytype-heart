@@ -48,7 +48,7 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (d *dot) Convert(_ model.SmartBlockType) []byte {
+func (d *dot) Convert(sbType model.SmartBlockType) []byte {
 	panic("not supported on windows")
 	return nil
 }

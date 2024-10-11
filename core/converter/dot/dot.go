@@ -117,7 +117,12 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 
 	// TODO: add relations
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, true, true, false, false, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, objectlink.Flags{
+		Blocks:    true,
+		Details:   true,
+		Relations: false,
+		Types:     false,
+	})
 	for _, depID := range dependentObjectIDs {
 		t, err := d.sbtProvider.Type(st.SpaceID(), depID)
 		if err != nil {
@@ -140,7 +145,7 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (d *dot) Convert(model.SmartBlockType) []byte {
+func (d *dot) Convert(sbType model.SmartBlockType) []byte {
 	var err error
 	for id, links := range d.linksByNode {
 		source, exists := d.nodes[id]

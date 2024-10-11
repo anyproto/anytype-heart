@@ -5,6 +5,7 @@
 //
 //	mockgen -package mockSource -destination source_mock.go github.com/anyproto/anytype-heart/core/block/source Service,Source
 //
+
 // Package mockSource is a generated GoMock package.
 package mockSource
 
@@ -15,7 +16,6 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	state "github.com/anyproto/anytype-heart/core/block/editor/state"
 	source "github.com/anyproto/anytype-heart/core/block/source"
-	domain "github.com/anyproto/anytype-heart/core/domain"
 	pb "github.com/anyproto/anytype-heart/pb"
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	types "github.com/gogo/protobuf/types"
@@ -61,7 +61,7 @@ func (mr *MockServiceMockRecorder) DetailsFromIdBasedSource(arg0 any) *gomock.Ca
 }
 
 // IDsListerBySmartblockType mocks base method.
-func (m *MockService) IDsListerBySmartblockType(arg0 string, arg1 smartblock.SmartBlockType) (source.IDsLister, error) {
+func (m *MockService) IDsListerBySmartblockType(arg0 source.Space, arg1 smartblock.SmartBlockType) (source.IDsLister, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IDsListerBySmartblockType", arg0, arg1)
 	ret0, _ := ret[0].(source.IDsLister)
@@ -119,17 +119,17 @@ func (mr *MockServiceMockRecorder) NewSource(arg0, arg1, arg2, arg3 any) *gomock
 }
 
 // NewStaticSource mocks base method.
-func (m *MockService) NewStaticSource(arg0 domain.FullID, arg1 smartblock.SmartBlockType, arg2 *state.State, arg3 func(source.PushChangeParams) (string, error)) source.SourceWithType {
+func (m *MockService) NewStaticSource(arg0 source.StaticSourceParams) source.SourceWithType {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NewStaticSource", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "NewStaticSource", arg0)
 	ret0, _ := ret[0].(source.SourceWithType)
 	return ret0
 }
 
 // NewStaticSource indicates an expected call of NewStaticSource.
-func (mr *MockServiceMockRecorder) NewStaticSource(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockServiceMockRecorder) NewStaticSource(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewStaticSource", reflect.TypeOf((*MockService)(nil).NewStaticSource), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewStaticSource", reflect.TypeOf((*MockService)(nil).NewStaticSource), arg0)
 }
 
 // RegisterStaticSource mocks base method.
@@ -144,18 +144,6 @@ func (m *MockService) RegisterStaticSource(arg0 source.Source) error {
 func (mr *MockServiceMockRecorder) RegisterStaticSource(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterStaticSource", reflect.TypeOf((*MockService)(nil).RegisterStaticSource), arg0)
-}
-
-// RemoveStaticSource mocks base method.
-func (m *MockService) RemoveStaticSource(arg0 string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RemoveStaticSource", arg0)
-}
-
-// RemoveStaticSource indicates an expected call of RemoveStaticSource.
-func (mr *MockServiceMockRecorder) RemoveStaticSource(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveStaticSource", reflect.TypeOf((*MockService)(nil).RemoveStaticSource), arg0)
 }
 
 // MockSource is a mock of Source interface.

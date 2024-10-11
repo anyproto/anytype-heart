@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	context2 "context"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -21,22 +23,22 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	s := NewStoreFixture(t)
 	id := bson.NewObjectId()
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
-	err := s.UpdateObjectDetails(id.String(), &types.Struct{
+	err := s.UpdateObjectDetails(context2.Background(), id.String(), &types.Struct{
 		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(4), "type": pbtypes.String("_otp1")},
 	})
 	require.NoError(t, err)
 
-	recs, _, err := s.Query(database.Query{})
+	recs, err := s.Query(database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
 
-	err = s.UpdateObjectDetails(id.String(), &types.Struct{
+	err = s.UpdateObjectDetails(context2.Background(), id.String(), &types.Struct{
 		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("_otp1")},
 	})
 	require.NoError(t, err)
 
-	recs, _, err = s.Query(database.Query{})
+	recs, err = s.Query(database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
@@ -64,12 +66,12 @@ func Test_removeByPrefix(t *testing.T) {
 			bundle.RelationKeyId:      pbtypes.String(objId),
 			bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 		})
-		require.NoError(t, s.UpdateObjectDetails(objId, details))
+		require.NoError(t, s.UpdateObjectDetails(context2.Background(), objId, details))
 		require.NoError(t, s.UpdateObjectLinks(objId, links))
 	}
 
 	// Test huge transaction
-	err := s.EraseIndexes(spaceId)
+	err := s.DeleteLinks(objectIds...)
 	require.NoError(t, err)
 
 	for _, id := range objectIds {
@@ -87,8 +89,7 @@ func TestList(t *testing.T) {
 	s := NewStoreFixture(t)
 
 	obj1 := makeObjectWithName("id1", "name1")
-	err := s.UpdateObjectSnippet("id1", "snippet1")
-	require.NoError(t, err)
+	obj1[bundle.RelationKeySnippet] = pbtypes.String("snippet1")
 
 	obj2 := makeObjectWithName("id2", "name2")
 
@@ -207,10 +208,10 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 }
 
 func TestDeleteObject(t *testing.T) {
-	t.Run("object is not found", func(t *testing.T) {
+	t.Run("on deleting object: details of deleted object are updated, but object is still in store", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.DeleteObject("id1")
+		err := s.DeleteObject(domain.FullID{SpaceID: "space1", ObjectID: "id1"})
 		require.NoError(t, err)
 
 		got, err := s.GetDetails("id1")
@@ -218,6 +219,7 @@ func TestDeleteObject(t *testing.T) {
 		assert.Equal(t, &model.ObjectDetails{
 			Details: makeDetails(TestObject{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
+				bundle.RelationKeySpaceId:   pbtypes.String("space1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
 		}, got)
@@ -225,10 +227,10 @@ func TestDeleteObject(t *testing.T) {
 
 	t.Run("object is already deleted", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		err := s.DeleteObject("id1")
+		err := s.DeleteObject(domain.FullID{SpaceID: "space1", ObjectID: "id1"})
 		require.NoError(t, err)
 
-		err = s.DeleteObject("id1")
+		err = s.DeleteObject(domain.FullID{SpaceID: "space1", ObjectID: "id1"})
 		require.NoError(t, err)
 
 		got, err := s.GetDetails("id1")
@@ -236,6 +238,7 @@ func TestDeleteObject(t *testing.T) {
 		assert.Equal(t, &model.ObjectDetails{
 			Details: makeDetails(TestObject{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
+				bundle.RelationKeySpaceId:   pbtypes.String("space1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
 		}, got)
@@ -247,10 +250,7 @@ func TestDeleteObject(t *testing.T) {
 		obj := makeObjectWithName("id1", "name1")
 		s.AddObjects(t, []TestObject{obj})
 
-		err := s.UpdateObjectSnippet("id1", "snippet1")
-		require.NoError(t, err)
-
-		err = s.UpdateObjectLinks("id2", []string{"id1"})
+		err := s.UpdateObjectLinks("id2", []string{"id1"})
 		require.NoError(t, err)
 
 		err = s.SaveLastIndexedHeadsHash("id1", "hash1")
@@ -260,7 +260,7 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 
 		// Act
-		err = s.DeleteObject("id1")
+		err = s.DeleteObject(domain.FullID{SpaceID: "space1", ObjectID: "id1"})
 		require.NoError(t, err)
 
 		// Assert
@@ -269,6 +269,7 @@ func TestDeleteObject(t *testing.T) {
 		assert.Equal(t, &model.ObjectDetails{
 			Details: makeDetails(TestObject{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
+				bundle.RelationKeySpaceId:   pbtypes.String("space1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
 		}, got)
@@ -289,7 +290,7 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, hash)
 
-		ids, err := s.ListIDsFromFullTextQueue()
+		ids, err := s.ListIDsFromFullTextQueue(0)
 		require.NoError(t, err)
 		assert.Empty(t, ids)
 	})

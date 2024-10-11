@@ -11,9 +11,9 @@ import (
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
-const DefaultLogLevels = "common.commonspace.headsync=INFO;*=WARN"
+const DefaultLogLevels = "common.commonspace.headsync=INFO;core.block.editor.spaceview=INFO;*=WARN"
 
-var defaultCfg = logger.Config{
+var DefaultCfg = logger.Config{
 	Production:   false,
 	DefaultLevel: "WARN",
 	Format:       logger.JSONOutput,
@@ -62,22 +62,25 @@ func LevelsFromStr(s string) (levels []logger.NamedLevel) {
 	}
 	return levels
 }
+func SetLogLevels(levels string) {
+	cfg := DefaultCfg
+
+	cfg.Levels = LevelsFromStr(levels)
+	cfg.ApplyGlobal()
+}
 
 func init() {
-	cfg := defaultCfg
-	info := vcs.GetVCSInfo()
-
-	SetVersion(info.Version())
-
 	if os.Getenv("ANYTYPE_LOG_NOGELF") == "1" {
-		cfg.Format = logger.ColorizedOutput
+		DefaultCfg.Format = logger.ColorizedOutput
 	} else {
-		registerGelfSink(&cfg)
+		registerGelfSink(&DefaultCfg)
+		info := vcs.GetVCSInfo()
+		SetVersion(info.Version())
 	}
 	logLevels := os.Getenv("ANYTYPE_LOG_LEVEL")
 	if logLevels == "" {
 		logLevels = DefaultLogLevels
 	}
-	cfg.Levels = LevelsFromStr(logLevels)
-	cfg.ApplyGlobal()
+
+	SetLogLevels(logLevels)
 }

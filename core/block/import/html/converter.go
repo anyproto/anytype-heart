@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 const numberOfStages = 2 // 1 cycle to get snapshots and 1 cycle to create objects
@@ -65,8 +65,9 @@ func (h *HTML) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest,
 	if allErrors.ShouldAbortImport(len(path), req.Type) {
 		return nil, allErrors
 	}
-	rootCollection := common.NewRootCollection(h.collectionService)
-	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil, true)
+	rootCollection := common.NewImportCollection(h.collectionService)
+	settings := common.MakeImportCollectionSetting(rootCollectionName, targetObjects, "", nil, true, true, true)
+	rootCollectionSnapshot, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(len(path), req.Type) {
@@ -167,7 +168,7 @@ func (h *HTML) getBlocksForSnapshot(rc io.ReadCloser, filesSource source.Source,
 			if newFileName, _, err := common.ProvideFileName(block.GetFile().GetName(), filesSource, path, h.tempDirProvider); err == nil {
 				block.GetFile().Name = newFileName
 			} else {
-				log.Errorf("failed to update file block with new file name: %v", oserror.TransformError(err))
+				log.Errorf("failed to update file block with new file name: %v", anyerror.CleanupError(err))
 			}
 		}
 		if block.GetText() != nil && block.GetText().Marks != nil && len(block.GetText().Marks.Marks) > 0 {
@@ -189,12 +190,12 @@ func (h *HTML) updateFilesInLinks(block *model.Block, filesSource source.Source,
 			if newFileName, createFileBlock, err = common.ProvideFileName(mark.Param, filesSource, path, h.tempDirProvider); err == nil {
 				mark.Param = newFileName
 				if createFileBlock {
-					anymark.ConvertTextToFile(block)
+					block.Content = anymark.ConvertTextToFile(mark.Param)
 					break
 				}
 				continue
 			}
-			log.Errorf("failed to update link block with new file name: %v", oserror.TransformError(err))
+			log.Errorf("failed to update link block with new file name: %v", anyerror.CleanupError(err))
 		}
 	}
 }

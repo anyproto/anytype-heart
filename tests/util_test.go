@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/anyproto/anytype-heart/util/reflection"
+
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -43,30 +45,6 @@ func cachedString(key string, rewriteCache bool, proc func() (string, error)) (s
 	}
 
 	return result, true, nil
-}
-
-func getError(i interface{}) error {
-	v := reflect.ValueOf(i).Elem()
-
-	for i := 0; i < v.NumField(); i++ {
-		f := v.Field(i)
-		if f.Kind() != reflect.Pointer {
-			continue
-		}
-		el := f.Elem()
-		if !el.IsValid() {
-			continue
-		}
-		if strings.Contains(el.Type().Name(), "ResponseError") {
-			code := el.FieldByName("Code").Int()
-			desc := el.FieldByName("Description").String()
-			if code > 0 {
-				return fmt.Errorf("error code %d: %s", code, desc)
-			}
-			return nil
-		}
-	}
-	return nil
 }
 
 type callCtx struct {
@@ -112,7 +90,7 @@ func callReturnError[reqT any, respT any](
 	if err != nil {
 		return nilResp, err
 	}
-	err = getError(resp)
+	_, _, err = reflection.GetError(resp)
 	if err != nil {
 		return nilResp, err
 	}

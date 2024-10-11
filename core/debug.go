@@ -16,7 +16,7 @@ func (mw *Middleware) DebugTree(cctx context.Context, req *pb.RpcDebugTreeReques
 		}
 		if err != nil {
 			rpcErr.Code = pb.RpcDebugTreeResponseError_UNKNOWN_ERROR
-			rpcErr.Description = err.Error()
+			rpcErr.Description = getErrorDescription(err)
 		}
 		return &pb.RpcDebugTreeResponse{
 			Error:    rpcErr,
@@ -41,7 +41,7 @@ func (mw *Middleware) DebugTreeHeads(cctx context.Context, req *pb.RpcDebugTreeH
 		}
 		if err != nil {
 			rpcErr.Code = pb.RpcDebugTreeHeadsResponseError_UNKNOWN_ERROR
-			rpcErr.Description = err.Error()
+			rpcErr.Description = getErrorDescription(err)
 		}
 		return &pb.RpcDebugTreeHeadsResponse{
 			Error:   rpcErr,
@@ -73,7 +73,7 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 		}
 		if err != nil {
 			rpcErr.Code = pb.RpcDebugSpaceSummaryResponseError_UNKNOWN_ERROR
-			rpcErr.Description = err.Error()
+			rpcErr.Description = getErrorDescription(err)
 		}
 		infos := make([]*pb.RpcDebugTreeInfo, 0, len(spaceSummary.TreeInfos))
 		for _, i := range spaceSummary.TreeInfos {
@@ -101,6 +101,21 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 	return response(nil, spaceSummary)
 }
 
+func (mw *Middleware) DebugStat(ctx context.Context, request *pb.RpcDebugStatRequest) *pb.RpcDebugStatResponse {
+	debugService := mw.applicationService.GetApp().MustComponent(debug.CName).(debug.Debug)
+	debugStat, err := debugService.DebugStat()
+	code := mapErrorCode(err,
+		errToCode(err, pb.RpcDebugStatResponseError_UNKNOWN_ERROR),
+	)
+	return &pb.RpcDebugStatResponse{
+		JsonStat: debugStat,
+		Error: &pb.RpcDebugStatResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) DebugStackGoroutines(_ context.Context, req *pb.RpcDebugStackGoroutinesRequest) *pb.RpcDebugStackGoroutinesResponse {
 	response := func(err error) (res *pb.RpcDebugStackGoroutinesResponse) {
 		res = &pb.RpcDebugStackGoroutinesResponse{
@@ -110,7 +125,7 @@ func (mw *Middleware) DebugStackGoroutines(_ context.Context, req *pb.RpcDebugSt
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcDebugStackGoroutinesResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 		}
 		return res
 	}
@@ -128,7 +143,7 @@ func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDeb
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcDebugExportLocalstoreResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 			return
 		} else {
 			res.Path = path
@@ -156,7 +171,7 @@ func (mw *Middleware) DebugSubscriptions(_ context.Context, _ *pb.RpcDebugSubscr
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcDebugSubscriptionsResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 			return
 		}
 		res.Subscriptions = subscriptions
@@ -179,7 +194,7 @@ func (mw *Middleware) DebugOpenedObjects(_ context.Context, _ *pb.RpcDebugOpened
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcDebugOpenedObjectsResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 			return
 		}
 		res.ObjectIDs = objectIDs
@@ -191,4 +206,34 @@ func (mw *Middleware) DebugOpenedObjects(_ context.Context, _ *pb.RpcDebugOpened
 		return nil
 	})
 	return response(objectIDs, err)
+}
+
+func (mw *Middleware) DebugRunProfiler(cctx context.Context, req *pb.RpcDebugRunProfilerRequest) *pb.RpcDebugRunProfilerResponse {
+	path, err := mw.applicationService.RunProfiler(cctx, int(req.DurationInSeconds))
+	if err != nil {
+		return &pb.RpcDebugRunProfilerResponse{
+			Error: &pb.RpcDebugRunProfilerResponseError{
+				Code:        pb.RpcDebugRunProfilerResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcDebugRunProfilerResponse{
+		Path: path,
+	}
+}
+
+func (mw *Middleware) DebugAccountSelectTrace(cctx context.Context, req *pb.RpcDebugAccountSelectTraceRequest) *pb.RpcDebugAccountSelectTraceResponse {
+	path, err := mw.applicationService.SaveLoginTrace(req.Dir)
+	if err != nil {
+		return &pb.RpcDebugAccountSelectTraceResponse{
+			Error: &pb.RpcDebugAccountSelectTraceResponseError{
+				Code:        pb.RpcDebugAccountSelectTraceResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcDebugAccountSelectTraceResponse{
+		Path: path,
+	}
 }

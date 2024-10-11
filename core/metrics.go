@@ -12,7 +12,7 @@ func (mw *Middleware) MetricsSetParameters(cctx context.Context, req *pb.RpcMetr
 	response := func(code pb.RpcMetricsSetParametersResponseErrorCode, err error) *pb.RpcMetricsSetParametersResponse {
 		m := &pb.RpcMetricsSetParametersResponse{Error: &pb.RpcMetricsSetParametersResponseError{Code: code}}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 
 		return m
@@ -23,7 +23,8 @@ func (mw *Middleware) MetricsSetParameters(cctx context.Context, req *pb.RpcMetr
 	}
 	mw.applicationService.SetClientVersion(req.Platform, req.Version)
 
-	metrics.SharedClient.SetPlatform(req.Platform)
+	metrics.Service.SetPlatform(req.Platform)
+	metrics.Service.SetStartVersion(req.Version)
 
 	return response(pb.RpcMetricsSetParametersResponseError_NULL, nil)
 }

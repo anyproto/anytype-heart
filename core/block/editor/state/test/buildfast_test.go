@@ -56,7 +56,7 @@ func testBuildFast(b *testing.T, filepath string) {
 	}
 
 	start := time.Now()
-	s, err := importer.State(false)
+	_, err = importer.State()
 	if err != nil {
 		log.Fatal("can't build state:", err)
 	}
@@ -68,13 +68,5 @@ func testBuildFast(b *testing.T, filepath string) {
 	if err != nil {
 		log.Fatal("can't import the tree", err)
 	}
-
-	s2, err := importer2.State(true)
-	if err != nil {
-		log.Fatal("can't build state:", err)
-	}
-	b.Logf("slow build took %s", time.Since(start))
-
-	require.Equal(b, s.StringDebug(), s2.StringDebug())
 
 }

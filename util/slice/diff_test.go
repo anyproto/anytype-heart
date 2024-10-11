@@ -8,18 +8,248 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_Diff(t *testing.T) {
-	origin := []string{"000", "001", "002", "003", "004", "005", "006", "007", "008", "009"}
-	changed := []string{"000", "008", "001", "002", "003", "005", "006", "007", "009", "004"}
+	t.Run("change order", func(t *testing.T) {
+		origin := []string{"000", "001", "002", "003", "004", "005", "006", "007", "008", "009"}
+		changed := []string{"000", "008", "001", "002", "003", "005", "006", "007", "009", "004"}
 
-	chs := Diff(origin, changed, StringIdentity[string], Equal[string])
+		chs := Diff(origin, changed, StringIdentity[string], Equal[string])
 
-	assert.Equal(t, chs, []Change[string]{
-		MakeChangeMove[string]([]string{"008"}, "000"),
-		MakeChangeMove[string]([]string{"004"}, "009"),
+		assert.Equal(t, chs, []Change[string]{
+			MakeChangeMove[string]([]string{"008"}, "000"),
+			MakeChangeMove[string]([]string{"004"}, "009"),
+		})
+	})
+	for _, tc := range []struct {
+		name              string
+		original, changed []string
+		expected          []Change[string]
+	}{
+		{
+			name:     "add item to empty list",
+			original: []string{},
+			changed:  []string{"1"},
+			expected: []Change[string]{MakeChangeAdd([]string{"1"}, "")},
+		},
+		{
+			name:     "add item to the beginning",
+			original: []string{"1"},
+			changed:  []string{"2", "1"},
+			expected: []Change[string]{MakeChangeAdd([]string{"2"}, "")},
+		},
+		{
+			name:     "add item to the end",
+			original: []string{"1"},
+			changed:  []string{"1", "2"},
+			expected: []Change[string]{MakeChangeAdd([]string{"2"}, "1")},
+		},
+		{
+			name:     "add item in between",
+			original: []string{"1", "2"},
+			changed:  []string{"1", "3", "2"},
+			expected: []Change[string]{MakeChangeAdd([]string{"3"}, "1")},
+		},
+		{
+			name:     "add multiple items to the beginning",
+			original: []string{"1"},
+			changed:  []string{"a", "b", "1"},
+			expected: []Change[string]{
+				MakeChangeAdd([]string{"a", "b"}, ""),
+			},
+		},
+		{
+			name:     "add multiple items to the end",
+			original: []string{"1"},
+			changed:  []string{"1", "a", "b"},
+			expected: []Change[string]{
+				MakeChangeAdd([]string{"a", "b"}, "1"),
+			},
+		},
+		{
+			name:     "add multiple items in between",
+			original: []string{"1", "2"},
+			changed:  []string{"1", "a", "b", "2"},
+			expected: []Change[string]{
+				MakeChangeAdd([]string{"a", "b"}, "1"),
+			},
+		},
+		{
+			name:     "add multiple items to various positions",
+			original: []string{"1", "2", "3"},
+			changed:  []string{"a", "1", "b", "2", "c", "3", "d"},
+			expected: []Change[string]{
+				MakeChangeAdd([]string{"a"}, ""),
+				MakeChangeAdd([]string{"b"}, "1"),
+				MakeChangeAdd([]string{"c"}, "2"),
+				MakeChangeAdd([]string{"d"}, "3"),
+			},
+		},
+		{
+			name:     "remove a single item",
+			original: []string{"1"},
+			changed:  []string{},
+			expected: []Change[string]{MakeChangeRemove[string]([]string{"1"})},
+		},
+		{
+			name:     "remove a single repeated item",
+			original: []string{"1", "1", "1"},
+			changed:  []string{},
+			expected: []Change[string]{MakeChangeRemove[string]([]string{"1"})},
+		},
+		{
+			name:     "remove item from the beginning",
+			original: []string{"1", "2", "3"},
+			changed:  []string{"2", "3"},
+			expected: []Change[string]{MakeChangeRemove[string]([]string{"1"})},
+		},
+		{
+			name:     "remove item from the end",
+			original: []string{"1", "2", "3"},
+			changed:  []string{"1", "2"},
+			expected: []Change[string]{MakeChangeRemove[string]([]string{"3"})},
+		},
+		{
+			name:     "remove item in between",
+			original: []string{"1", "2", "3"},
+			changed:  []string{"1", "3"},
+			expected: []Change[string]{MakeChangeRemove[string]([]string{"2"})},
+		},
+		{
+			name:     "remove multiple items from various positions",
+			original: []string{"a", "1", "b", "2", "c", "3", "d"},
+			changed:  []string{"1", "2", "3"},
+			expected: []Change[string]{
+				MakeChangeRemove[string]([]string{"a", "b", "c", "d"}),
+			},
+		},
+		{
+			name:     "reorder items #1",
+			original: []string{"1", "2", "3"},
+			changed:  []string{"1", "3", "2"},
+			expected: []Change[string]{MakeChangeMove[string]([]string{"3"}, "1")},
+		},
+		{
+			name:     "reorder items #2",
+			original: []string{"1", "2", "3"},
+			changed:  []string{"2", "1", "3"},
+			expected: []Change[string]{MakeChangeMove[string]([]string{"2"}, "")},
+		},
+		{
+			name:     "reorder items #3",
+			original: []string{"1", "2", "3"},
+			changed:  []string{"2", "3", "1"},
+			expected: []Change[string]{MakeChangeMove[string]([]string{"1"}, "3")},
+		},
+		{
+			name:     "reorder items #4",
+			original: []string{"1", "2", "3"},
+			changed:  []string{"3", "1", "2"},
+			expected: []Change[string]{MakeChangeMove[string]([]string{"3"}, "")},
+		},
+		{
+			name:     "reorder items #5",
+			original: []string{"1", "2", "3"},
+			changed:  []string{"3", "2", "1"},
+			expected: []Change[string]{MakeChangeMove[string]([]string{"3", "2"}, "")},
+		},
+		{
+			name:     "move: two separate operations",
+			original: []string{"1", "2", "3", "4"},
+			changed:  []string{"2", "1", "4", "3"},
+			expected: []Change[string]{
+				MakeChangeMove[string]([]string{"2"}, ""),
+				MakeChangeMove[string]([]string{"4"}, "1"),
+			},
+		},
+		{
+			name:     "combined: two additions and two separate moves",
+			original: []string{"1", "2", "3", "4"},
+			changed:  []string{"a", "2", "1", "b", "4", "3"},
+			expected: []Change[string]{
+				MakeChangeAdd[string]([]string{"a"}, ""),
+				MakeChangeMove[string]([]string{"2"}, "a"),
+				MakeChangeAdd[string]([]string{"b"}, "1"),
+				MakeChangeMove[string]([]string{"4"}, "b"),
+			},
+		},
+		{
+			name:     "combined: add, delete, move",
+			original: []string{"1", "2", "3", "4", "5"},
+			changed:  []string{"2", "3", "1", "6", "7"},
+			expected: []Change[string]{
+				MakeChangeMove[string]([]string{"1"}, "3"),
+				MakeChangeAdd([]string{"6", "7"}, "1"),
+				MakeChangeRemove[string]([]string{"4", "5"}),
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			chs := Diff(tc.original, tc.changed, StringIdentity[string], Equal[string])
+
+			assert.Equal(t, tc.expected, chs)
+
+			got := ApplyChanges(tc.original, chs, StringIdentity[string])
+			want := lo.UniqBy(tc.changed, StringIdentity[string])
+			assert.Equal(t, want, got)
+		})
+	}
+}
+
+func TestDiffRepeatedItem(t *testing.T) {
+	t.Run("no changes, but ApplyChanges should return deduplicated slice", func(t *testing.T) {
+		origin := []string{"0", "1", "2", "1"}
+		changed := []string{"0", "1", "2"}
+
+		chs := Diff(origin, changed, StringIdentity[string], Equal[string])
+
+		got := ApplyChanges(origin, chs, StringIdentity[string])
+		assert.Equal(t, changed, got)
+	})
+	t.Run("add", func(t *testing.T) {
+		origin := []string{"0", "0", "1", "2", "1", "2"} // 1, 2 in the tail will be removed by deduplication
+		changed := []string{"a", "0", "b", "1", "c", "2", "d"}
+
+		chs := Diff(origin, changed, StringIdentity[string], Equal[string])
+
+		assert.Equal(t, []Change[string]{
+			MakeChangeAdd[string]([]string{"a"}, ""),
+			MakeChangeAdd[string]([]string{"b"}, "0"),
+			MakeChangeAdd[string]([]string{"c"}, "1"),
+			MakeChangeAdd[string]([]string{"d"}, "2"),
+		}, chs)
+
+		got := ApplyChanges(origin, chs, StringIdentity[string])
+		assert.Equal(t, changed, got)
+	})
+	t.Run("reorder", func(t *testing.T) {
+		origin := []string{"0", "1", "2", "1", "2"} // 1, 2 in the tail will be removed by deduplication
+		changed := []string{"0", "2", "1"}
+
+		chs := Diff(origin, changed, StringIdentity[string], Equal[string])
+
+		assert.Equal(t, []Change[string]{
+			MakeChangeMove[string]([]string{"2"}, "0"),
+		}, chs)
+
+		got := ApplyChanges(origin, chs, StringIdentity[string])
+		assert.Equal(t, changed, got)
+	})
+	t.Run("delete", func(t *testing.T) {
+		origin := []string{"0", "1", "2", "1", "2"} // 1, 2 in the tail will be removed by deduplication
+		changed := []string{"0", "2"}
+
+		chs := Diff(origin, changed, StringIdentity[string], Equal[string])
+
+		assert.Equal(t, []Change[string]{
+			MakeChangeRemove[string]([]string{"1"}),
+		}, chs)
+
+		got := ApplyChanges(origin, chs, StringIdentity[string])
+		assert.Equal(t, changed, got)
 	})
 }
 

@@ -21,6 +21,10 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+type subObjectsMigrator interface {
+	migrateSubObjects(st *state.State)
+}
+
 type objectDeriver interface {
 	DeriveTreeObject(ctx context.Context, params objectcache.TreeDerivationParams) (sb smartblock.SmartBlock, err error)
 }
@@ -181,11 +185,10 @@ func (m *subObjectsMigration) iterateAllSubObjects(st *state.State, proc func(in
 				details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.Marshal())
 
 				proc(smartblock.DocInfo{
-					Links:      nil,
-					FileHashes: nil,
-					Heads:      nil,
-					Type:       typeKey,
-					Details:    details,
+					Links:   nil,
+					Heads:   nil,
+					Type:    typeKey,
+					Details: details,
 				}, []string{coll, subObjectId})
 
 			} else {

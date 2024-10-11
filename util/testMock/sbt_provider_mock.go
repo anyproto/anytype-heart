@@ -5,6 +5,7 @@
 //
 //	mockgen -package testMock -destination sbt_provider_mock.go github.com/anyproto/anytype-heart/space/spacecore/typeprovider SmartBlockTypeProvider
 //
+
 // Package testMock is a generated GoMock package.
 package testMock
 

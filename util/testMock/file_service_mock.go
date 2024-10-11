@@ -5,6 +5,7 @@
 //
 //	mockgen -package testMock -destination file_service_mock.go -mock_names Service=MockFileService github.com/anyproto/anytype-heart/core/files Service,Image,File
 //
+
 // Package testMock is a generated GoMock package.
 package testMock
 
@@ -17,7 +18,6 @@ import (
 	domain "github.com/anyproto/anytype-heart/core/domain"
 	files "github.com/anyproto/anytype-heart/core/files"
 	pb "github.com/anyproto/anytype-heart/pb"
-	mill "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	storage "github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	types "github.com/gogo/protobuf/types"
 	gomock "go.uber.org/mock/gomock"
@@ -47,14 +47,14 @@ func (m *MockFileService) EXPECT() *MockFileServiceMockRecorder {
 }
 
 // FileAdd mocks base method.
-func (m *MockFileService) FileAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (files.File, error) {
+func (m *MockFileService) FileAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (*files.AddResult, error) {
 	m.ctrl.T.Helper()
 	varargs := []any{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "FileAdd", varargs...)
-	ret0, _ := ret[0].(files.File)
+	ret0, _ := ret[0].(*files.AddResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -67,7 +67,7 @@ func (mr *MockFileServiceMockRecorder) FileAdd(arg0, arg1 any, arg2 ...any) *gom
 }
 
 // FileByHash mocks base method.
-func (m *MockFileService) FileByHash(arg0 context.Context, arg1 domain.FullID) (files.File, error) {
+func (m *MockFileService) FileByHash(arg0 context.Context, arg1 domain.FullFileId) (files.File, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FileByHash", arg0, arg1)
 	ret0, _ := ret[0].(files.File)
@@ -82,10 +82,10 @@ func (mr *MockFileServiceMockRecorder) FileByHash(arg0, arg1 any) *gomock.Call {
 }
 
 // FileGetKeys mocks base method.
-func (m *MockFileService) FileGetKeys(arg0 domain.FullID) (*files.FileKeys, error) {
+func (m *MockFileService) FileGetKeys(arg0 domain.FileId) (*domain.FileEncryptionKeys, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FileGetKeys", arg0)
-	ret0, _ := ret[0].(*files.FileKeys)
+	ret0, _ := ret[0].(*domain.FileEncryptionKeys)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -94,51 +94,6 @@ func (m *MockFileService) FileGetKeys(arg0 domain.FullID) (*files.FileKeys, erro
 func (mr *MockFileServiceMockRecorder) FileGetKeys(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileGetKeys", reflect.TypeOf((*MockFileService)(nil).FileGetKeys), arg0)
-}
-
-// FileListOffload mocks base method.
-func (m *MockFileService) FileListOffload(arg0 context.Context, arg1 []string, arg2 bool) (uint64, uint64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FileListOffload", arg0, arg1, arg2)
-	ret0, _ := ret[0].(uint64)
-	ret1, _ := ret[1].(uint64)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// FileListOffload indicates an expected call of FileListOffload.
-func (mr *MockFileServiceMockRecorder) FileListOffload(arg0, arg1, arg2 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileListOffload", reflect.TypeOf((*MockFileService)(nil).FileListOffload), arg0, arg1, arg2)
-}
-
-// FileOffload mocks base method.
-func (m *MockFileService) FileOffload(arg0 context.Context, arg1 string, arg2 bool) (uint64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FileOffload", arg0, arg1, arg2)
-	ret0, _ := ret[0].(uint64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FileOffload indicates an expected call of FileOffload.
-func (mr *MockFileServiceMockRecorder) FileOffload(arg0, arg1, arg2 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileOffload", reflect.TypeOf((*MockFileService)(nil).FileOffload), arg0, arg1, arg2)
-}
-
-// FilesSpaceOffload mocks base method.
-func (m *MockFileService) FilesSpaceOffload(arg0 context.Context, arg1 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FilesSpaceOffload", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// FilesSpaceOffload indicates an expected call of FilesSpaceOffload.
-func (mr *MockFileServiceMockRecorder) FilesSpaceOffload(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilesSpaceOffload", reflect.TypeOf((*MockFileService)(nil).FilesSpaceOffload), arg0, arg1)
 }
 
 // GetNodeUsage mocks base method.
@@ -172,14 +127,14 @@ func (mr *MockFileServiceMockRecorder) GetSpaceUsage(arg0, arg1 any) *gomock.Cal
 }
 
 // ImageAdd mocks base method.
-func (m *MockFileService) ImageAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (files.Image, error) {
+func (m *MockFileService) ImageAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (*files.AddResult, error) {
 	m.ctrl.T.Helper()
 	varargs := []any{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "ImageAdd", varargs...)
-	ret0, _ := ret[0].(files.Image)
+	ret0, _ := ret[0].(*files.AddResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -192,7 +147,7 @@ func (mr *MockFileServiceMockRecorder) ImageAdd(arg0, arg1 any, arg2 ...any) *go
 }
 
 // ImageByHash mocks base method.
-func (m *MockFileService) ImageByHash(arg0 context.Context, arg1 domain.FullID) (files.Image, error) {
+func (m *MockFileService) ImageByHash(arg0 context.Context, arg1 domain.FullFileId) (files.Image, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImageByHash", arg0, arg1)
 	ret0, _ := ret[0].(files.Image)
@@ -234,24 +189,6 @@ func (mr *MockFileServiceMockRecorder) Name() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockFileService)(nil).Name))
 }
 
-// StoreFileKeys mocks base method.
-func (m *MockFileService) StoreFileKeys(arg0 ...files.FileKeys) error {
-	m.ctrl.T.Helper()
-	varargs := []any{}
-	for _, a := range arg0 {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "StoreFileKeys", varargs...)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// StoreFileKeys indicates an expected call of StoreFileKeys.
-func (mr *MockFileServiceMockRecorder) StoreFileKeys(arg0 ...any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreFileKeys", reflect.TypeOf((*MockFileService)(nil).StoreFileKeys), arg0...)
-}
-
 // MockImage is a mock of Image interface.
 type MockImage struct {
 	ctrl     *gomock.Controller
@@ -290,78 +227,48 @@ func (mr *MockImageMockRecorder) Details(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Details", reflect.TypeOf((*MockImage)(nil).Details), arg0)
 }
 
-// Exif mocks base method.
-func (m *MockImage) Exif(arg0 context.Context) (*mill.ImageExifSchema, error) {
+// FileId mocks base method.
+func (m *MockImage) FileId() domain.FileId {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Exif", arg0)
-	ret0, _ := ret[0].(*mill.ImageExifSchema)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "FileId")
+	ret0, _ := ret[0].(domain.FileId)
+	return ret0
 }
 
-// Exif indicates an expected call of Exif.
-func (mr *MockImageMockRecorder) Exif(arg0 any) *gomock.Call {
+// FileId indicates an expected call of FileId.
+func (mr *MockImageMockRecorder) FileId() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exif", reflect.TypeOf((*MockImage)(nil).Exif), arg0)
-}
-
-// GetFileForLargestWidth mocks base method.
-func (m *MockImage) GetFileForLargestWidth(arg0 context.Context) (files.File, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetFileForLargestWidth", arg0)
-	ret0, _ := ret[0].(files.File)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetFileForLargestWidth indicates an expected call of GetFileForLargestWidth.
-func (mr *MockImageMockRecorder) GetFileForLargestWidth(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileForLargestWidth", reflect.TypeOf((*MockImage)(nil).GetFileForLargestWidth), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileId", reflect.TypeOf((*MockImage)(nil).FileId))
 }
 
 // GetFileForWidth mocks base method.
-func (m *MockImage) GetFileForWidth(arg0 context.Context, arg1 int) (files.File, error) {
+func (m *MockImage) GetFileForWidth(arg0 int) (files.File, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetFileForWidth", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetFileForWidth", arg0)
 	ret0, _ := ret[0].(files.File)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetFileForWidth indicates an expected call of GetFileForWidth.
-func (mr *MockImageMockRecorder) GetFileForWidth(arg0, arg1 any) *gomock.Call {
+func (mr *MockImageMockRecorder) GetFileForWidth(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileForWidth", reflect.TypeOf((*MockImage)(nil).GetFileForWidth), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileForWidth", reflect.TypeOf((*MockImage)(nil).GetFileForWidth), arg0)
 }
 
 // GetOriginalFile mocks base method.
-func (m *MockImage) GetOriginalFile(arg0 context.Context) (files.File, error) {
+func (m *MockImage) GetOriginalFile() (files.File, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetOriginalFile", arg0)
+	ret := m.ctrl.Call(m, "GetOriginalFile")
 	ret0, _ := ret[0].(files.File)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetOriginalFile indicates an expected call of GetOriginalFile.
-func (mr *MockImageMockRecorder) GetOriginalFile(arg0 any) *gomock.Call {
+func (mr *MockImageMockRecorder) GetOriginalFile() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOriginalFile", reflect.TypeOf((*MockImage)(nil).GetOriginalFile), arg0)
-}
-
-// Hash mocks base method.
-func (m *MockImage) Hash() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Hash")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// Hash indicates an expected call of Hash.
-func (mr *MockImageMockRecorder) Hash() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Hash", reflect.TypeOf((*MockImage)(nil).Hash))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOriginalFile", reflect.TypeOf((*MockImage)(nil).GetOriginalFile))
 }
 
 // MockFile is a mock of File interface.
@@ -403,18 +310,18 @@ func (mr *MockFileMockRecorder) Details(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Details", reflect.TypeOf((*MockFile)(nil).Details), arg0)
 }
 
-// Hash mocks base method.
-func (m *MockFile) Hash() string {
+// FileId mocks base method.
+func (m *MockFile) FileId() domain.FileId {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Hash")
-	ret0, _ := ret[0].(string)
+	ret := m.ctrl.Call(m, "FileId")
+	ret0, _ := ret[0].(domain.FileId)
 	return ret0
 }
 
-// Hash indicates an expected call of Hash.
-func (mr *MockFileMockRecorder) Hash() *gomock.Call {
+// FileId indicates an expected call of FileId.
+func (mr *MockFileMockRecorder) FileId() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Hash", reflect.TypeOf((*MockFile)(nil).Hash))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileId", reflect.TypeOf((*MockFile)(nil).FileId))
 }
 
 // Info mocks base method.

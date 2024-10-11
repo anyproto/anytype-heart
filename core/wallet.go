@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/anyproto/anytype-heart/core/application"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -51,12 +52,15 @@ func (mw *Middleware) WalletConvert(cctx context.Context, req *pb.RpcWalletConve
 }
 
 func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse {
-	token, err := mw.applicationService.CreateSession(req)
+	token, accountId, err := mw.applicationService.CreateSession(req)
 	code := mapErrorCode(err,
 		errToCode(application.ErrBadInput, pb.RpcWalletCreateSessionResponseError_BAD_INPUT),
+		errToCode(wallet.ErrAppLinkNotFound, pb.RpcWalletCreateSessionResponseError_APP_TOKEN_NOT_FOUND_IN_THE_CURRENT_ACCOUNT),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR),
 	)
 	return &pb.RpcWalletCreateSessionResponse{
-		Token: token,
+		Token:     token,
+		AccountId: accountId,
 		Error: &pb.RpcWalletCreateSessionResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),

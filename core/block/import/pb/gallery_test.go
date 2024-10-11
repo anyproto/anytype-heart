@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -207,6 +208,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
 		assert.Equal(t, objectsInCollection[0], "oldObjectInWidget")
+		assert.False(t, pbtypes.GetBool(rootCollectionState.Details(), bundle.RelationKeyIsFavorite.String()))
 
 		rootCollectionState = state.NewDocFromSnapshot("", collection[1].Snapshot).(*state.State)
 		objectsInCollection = rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
@@ -312,5 +314,39 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Nil(t, collection)
+	})
+
+	t.Run("widget has only deleted objects - not create widget collection", func(t *testing.T) {
+		// given
+		p := GalleryImport{}
+		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
+
+		// object with widget
+		widgetSnapshot := &common.Snapshot{
+			Id:     "widgetID",
+			SbType: smartblock.SmartBlockTypeWidget,
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Blocks: []*model.Block{
+						{
+							Id: "widgetID",
+							Content: &model.BlockContentOfLink{
+								Link: &model.BlockContentLink{
+									TargetBlockId: addr.MissingObject,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		// when
+		collection, err := p.ProvideCollection(nil, widgetSnapshot, nil, params, nil, false)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, collection, 1)
+		assert.NotContains(t, widgetCollectionPattern, collection[0].FileName)
 	})
 }

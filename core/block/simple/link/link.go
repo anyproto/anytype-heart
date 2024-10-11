@@ -121,6 +121,10 @@ func (l *Link) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
 	return
 }
 
+func (l *Link) MigrateFile(replacer func(oldId string) (newId string)) {
+	l.ReplaceLinkIds(replacer)
+}
+
 func (l *Link) FillSmartIds(ids []string) []string {
 	if l.content.TargetBlockId != "" {
 		ids = append(ids, l.content.TargetBlockId)
@@ -183,4 +187,8 @@ func (l *Link) ToText(targetDetails *types.Struct) simple.Block {
 		Text: tb,
 	}
 	return simple.New(m)
+}
+
+func (l *Link) IsEmpty() bool {
+	return l.content.TargetBlockId == ""
 }

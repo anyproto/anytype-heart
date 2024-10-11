@@ -1,19 +1,51 @@
 package objectstore
 
 import (
-	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/gogo/protobuf/proto"
+	"encoding/json"
+	"fmt"
 
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/valyala/fastjson"
 )
 
-func (s *dsObjectStore) SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error) {
-	return badgerhelper.SetValue(s.db, accountStatus.Bytes(), status)
+const (
+	accountStatusKey = "account_status"
+)
+
+func keyValueItem(arena *fastjson.Arena, key string, value any) (*fastjson.Value, error) {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := arena.NewObject()
+	obj.Set("id", arena.NewString(key))
+	obj.Set("value", arena.NewStringBytes(raw))
+	return obj, nil
+}
+
+func (s *dsObjectStore) SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) error {
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	it, err := keyValueItem(arena, accountStatusKey, status)
+	if err != nil {
+		return fmt.Errorf("create item: %w", err)
+	}
+	_, err = s.system.UpsertOne(s.componentCtx, it)
+	return err
 }
 
 func (s *dsObjectStore) GetAccountStatus() (*coordinatorproto.SpaceStatusPayload, error) {
-	return badgerhelper.GetValue(s.db, accountStatus.Bytes(), func(raw []byte) (*coordinatorproto.SpaceStatusPayload, error) {
-		status := &coordinatorproto.SpaceStatusPayload{}
-		return status, proto.Unmarshal(raw, status)
-	})
+	doc, err := s.system.FindId(s.componentCtx, accountStatusKey)
+	if err != nil {
+		return nil, fmt.Errorf("find account status: %w", err)
+	}
+	val := doc.Value().GetStringBytes("value")
+	var status coordinatorproto.SpaceStatusPayload
+	err = json.Unmarshal(val, &status)
+	return &status, err
 }

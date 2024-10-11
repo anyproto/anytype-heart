@@ -24,7 +24,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -39,7 +40,7 @@ func New() BuiltinTemplate {
 
 type BuiltinTemplate interface {
 	Hash() string
-	RegisterBuiltinTemplates(space space.Space) error
+	RegisterBuiltinTemplates(space clientspace.Space) error
 	app.Component
 }
 
@@ -68,7 +69,7 @@ func (b *builtinTemplate) Name() (name string) {
 	return CName
 }
 
-func (b *builtinTemplate) RegisterBuiltinTemplates(space space.Space) error {
+func (b *builtinTemplate) RegisterBuiltinTemplates(space clientspace.Space) error {
 	zr, err := zip.NewReader(bytes.NewReader(templatesZip), int64(len(templatesZip)))
 	if err != nil {
 		return fmt.Errorf("new reader: %w", err)
@@ -89,7 +90,7 @@ func (b *builtinTemplate) Hash() string {
 	return b.generatedHash
 }
 
-func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (err error) {
+func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadCloser) (err error) {
 	defer rd.Close()
 	data, err := io.ReadAll(rd)
 	snapshot := &pb.ChangeSnapshot{}
@@ -111,6 +112,7 @@ func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(addr.AnytypeMarketplaceWorkspace))
+	st.SetDetail(bundle.RelationKeyOrigin.String(), pbtypes.Int64(int64(model.ObjectOrigin_builtin)))
 
 	err = b.setObjectTypes(st)
 	if err != nil {
@@ -122,7 +124,7 @@ func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (
 		if _, ok := b.(relation.Block); ok {
 			relKey := b.Model().GetRelation().Key
 			if !st.HasRelation(relKey) {
-				st.AddBundledRelations(domain.RelationKey(relKey))
+				st.AddBundledRelationLinks(domain.RelationKey(relKey))
 			}
 		}
 		return true
@@ -133,7 +135,13 @@ func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (
 	}
 
 	fullID := domain.FullID{SpaceID: space.Id(), ObjectID: id}
-	err = b.source.RegisterStaticSource(b.source.NewStaticSource(fullID, smartblock.SmartBlockTypeBundledTemplate, st.Copy(), nil))
+	params := source.StaticSourceParams{
+		Id:        fullID,
+		SbType:    smartblock.SmartBlockTypeBundledTemplate,
+		State:     st.Copy(),
+		CreatorId: addr.AnytypeProfileId,
+	}
+	err = b.source.RegisterStaticSource(b.source.NewStaticSource(params))
 	if err != nil {
 		return fmt.Errorf("register static source: %w", err)
 	}

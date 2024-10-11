@@ -3,21 +3,25 @@ package basic
 import (
 	"fmt"
 
-	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
-	"github.com/anyproto/anytype-heart/core/block/simple/latex"
+	"github.com/anyproto/anytype-heart/core/block/simple/embed"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	relationblock "github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -40,6 +44,7 @@ type AllOperations interface {
 
 type CommonOperations interface {
 	DetailsSettable
+	DetailsUpdatable
 
 	SetFields(ctx session.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	SetDivStyle(ctx session.Context, style model.BlockContentDivStyle, ids ...string) (err error)
@@ -50,9 +55,8 @@ type CommonOperations interface {
 	FeaturedRelationAdd(ctx session.Context, relations ...string) error
 	FeaturedRelationRemove(ctx session.Context, relations ...string) error
 
-	PasteBlocks(s *state.State, targetBlockId string, position model.BlockPosition, blocks []simple.Block) (err error)
 	ReplaceLink(oldId, newId string) error
-	ExtractBlocksToObjects(ctx session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+	ExtractBlocksToObjects(ctx session.Context, oc ObjectCreator, tsc TemplateStateCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
 	SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
 	SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
@@ -61,7 +65,13 @@ type CommonOperations interface {
 }
 
 type DetailsSettable interface {
-	SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
+	SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
+	SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
+}
+
+type DetailsUpdatable interface {
+	UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error)
+	UpdateDetailsAndLastUsed(update func(current *types.Struct) (*types.Struct, error)) (err error)
 }
 
 type Restrictionable interface {
@@ -92,21 +102,29 @@ type Updatable interface {
 	Update(ctx session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 }
 
-var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
-
-func NewBasic(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, layoutConverter converter.LayoutConverter) AllOperations {
+func NewBasic(
+	sb smartblock.SmartBlock,
+	objectStore objectstore.ObjectStore,
+	layoutConverter converter.LayoutConverter,
+	fileObjectService fileobject.Service,
+	lastUsedUpdater lastused.ObjectUsageUpdater,
+) AllOperations {
 	return &basic{
-		SmartBlock:      sb,
-		objectStore:     objectStore,
-		layoutConverter: layoutConverter,
+		SmartBlock:        sb,
+		objectStore:       objectStore,
+		layoutConverter:   layoutConverter,
+		fileObjectService: fileObjectService,
+		lastUsedUpdater:   lastUsedUpdater,
 	}
 }
 
 type basic struct {
 	smartblock.SmartBlock
 
-	objectStore     objectstore.ObjectStore
-	layoutConverter converter.LayoutConverter
+	objectStore       objectstore.ObjectStore
+	layoutConverter   converter.LayoutConverter
+	fileObjectService fileobject.Service
+	lastUsedUpdater   lastused.ObjectUsageUpdater
 }
 
 func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -140,7 +158,7 @@ func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id s
 func (bs *basic) Duplicate(srcState, destState *state.State, targetBlockId string, position model.BlockPosition, blockIds []string) (newIds []string, err error) {
 	blockIds = srcState.SelectRoots(blockIds)
 	for _, id := range blockIds {
-		copyId, e := copyBlocks(srcState, destState, id)
+		copyId, e := bs.copyBlocks(srcState, destState, id)
 		if e != nil {
 			return nil, e
 		}
@@ -160,7 +178,7 @@ type duplicatable interface {
 	Duplicate(s *state.State) (newId string, visitedIds []string, blocks []simple.Block, err error)
 }
 
-func copyBlocks(srcState, destState *state.State, sourceId string) (id string, err error) {
+func (bs *basic) copyBlocks(srcState, destState *state.State, sourceId string) (id string, err error) {
 	b := srcState.Pick(sourceId)
 	if b == nil {
 		return "", smartblock.ErrSimpleBlockNotFound
@@ -181,11 +199,35 @@ func copyBlocks(srcState, destState *state.State, sourceId string) (id string, e
 	result := simple.New(m)
 	destState.Add(result)
 	for i, childrenId := range result.Model().ChildrenIds {
-		if result.Model().ChildrenIds[i], err = copyBlocks(srcState, destState, childrenId); err != nil {
+		if result.Model().ChildrenIds[i], err = bs.copyBlocks(srcState, destState, childrenId); err != nil {
 			return
 		}
 	}
+
+	if f, ok := result.Model().Content.(*model.BlockContentOfFile); ok && srcState.SpaceID() != destState.SpaceID() {
+		bs.processFileBlock(f, destState.SpaceID())
+	}
+
 	return result.Model().Id, nil
+}
+
+func (bs *basic) processFileBlock(f *model.BlockContentOfFile, spaceId string) {
+	fileId, err := bs.fileObjectService.GetFileIdFromObject(f.File.TargetObjectId)
+	if err != nil {
+		log.Errorf("failed to get fileId: %v", err)
+		return
+	}
+
+	objectId, err := bs.fileObjectService.CreateFromImport(
+		domain.FullFileId{SpaceId: spaceId, FileId: fileId.FileId},
+		objectorigin.ObjectOrigin{Origin: model.ObjectOrigin_clipboard},
+	)
+	if err != nil {
+		log.Errorf("failed to create file object: %v", err)
+		return
+	}
+
+	f.File.TargetObjectId = objectId
 }
 
 func (bs *basic) Unlink(ctx session.Context, ids ...string) (err error) {
@@ -226,6 +268,11 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 			position = model.Block_Bottom
 			targetBlockId = template.HeaderLayoutId
 		}
+	}
+
+	targetBlockId, position, err = table.CheckTableBlocksMove(srcState, targetBlockId, position, blockIds)
+	if err != nil {
+		return err
 	}
 
 	var replacementCandidate simple.Block
@@ -357,10 +404,10 @@ func (bs *basic) SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextRe
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	if rel, ok := b.(latex.Block); ok {
+	if rel, ok := b.(embed.Block); ok {
 		rel.SetText(req.Text)
 	} else {
-		return fmt.Errorf("unexpected block type: %T (want latex)", b)
+		return fmt.Errorf("unexpected block type: %T (want embed)", b)
 	}
 	return bs.Apply(s, smartblock.NoEvent)
 }
@@ -400,7 +447,7 @@ func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (
 			}
 			frc = append(frc, r)
 			if !bs.HasRelation(s, r) {
-				err = bs.addRelationLink(r, s)
+				err = bs.addRelationLink(s, r)
 				if err != nil {
 					return fmt.Errorf("failed to add relation link on adding featured relation '%s': %w", r, err)
 				}
@@ -463,32 +510,4 @@ func (bs *basic) ReplaceLink(oldId, newId string) error {
 		}
 	}
 	return bs.Apply(s)
-}
-
-func (bs *basic) PasteBlocks(s *state.State, targetBlockID string, position model.BlockPosition, blocks []simple.Block) (err error) {
-	childIdsRewrite := make(map[string]string)
-	for _, b := range blocks {
-		for i, cID := range b.Model().ChildrenIds {
-			newID := bson.NewObjectId().Hex()
-			childIdsRewrite[cID] = newID
-			b.Model().ChildrenIds[i] = newID
-		}
-	}
-	for _, b := range blocks {
-		var child bool
-		if newID, ok := childIdsRewrite[b.Model().Id]; ok {
-			b.Model().Id = newID
-			child = true
-		} else {
-			b.Model().Id = bson.NewObjectId().Hex()
-		}
-		s.Add(b)
-		if !child {
-			err := s.InsertTo(targetBlockID, position, b.Model().Id)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }

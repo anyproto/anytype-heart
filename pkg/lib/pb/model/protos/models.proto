@@ -7,15 +7,15 @@ import "google/protobuf/struct.proto";
 message SmartBlockSnapshotBase {
     repeated Block blocks = 1;
     google.protobuf.Struct details = 2;
-    google.protobuf.Struct fileKeys = 3;
-    // deprecated
-    repeated Relation extraRelations = 4;
+    google.protobuf.Struct fileKeys = 3 [deprecated=true];
+    repeated Relation extraRelations = 4 [deprecated=true];
     repeated string objectTypes = 5;
     google.protobuf.Struct collections = 6;
     repeated string removedCollectionKeys = 8;
     repeated RelationLink relationLinks = 7;
     string key = 9; // only used for pb backup purposes, ignored in other cases
     int64 originalCreatedTimestamp = 10; // ignored in import/export in favor of createdDate relation. Used to store original user-side object creation timestamp
+    FileInfo fileInfo = 11;
 }
 
 enum SmartBlockType {
@@ -44,7 +44,32 @@ enum SmartBlockType {
     SpaceView = 0x212;
 
     Identity = 0x214;
+    Participant = 0x216;
     MissingObject = 0x207;
+
+    FileObject = 0x215;
+
+    NotificationObject = 0x217;
+    DevicesObject = 0x218;
+
+    ChatObject = 0x219; // Container for any-store based chats
+    ChatDerivedObject = 0x220; // Any-store based object for chat
+}
+
+message Search {
+    message Result {
+        string objectId = 1;
+        google.protobuf.Struct details = 2; //
+        repeated Meta meta = 3; // meta information about the search result
+    }
+
+    message Meta {
+        string highlight = 1; // truncated text with highlights
+        repeated Range highlightRanges = 2; // ranges of the highlight in the text (using utf-16 runes)
+        string blockId = 3; // block id where the highlight has been found
+        string relationKey = 4; // relation key of the block where the highlight has been found
+        google.protobuf.Struct relationDetails = 5; // contains details for dependent object. E.g. relation option or type. todo: rename to dependantDetails
+    }
 }
 
 message Block {
@@ -75,6 +100,7 @@ message Block {
         Content.TableColumn tableColumn = 27;
         Content.TableRow tableRow = 28;
         Content.Widget widget = 29;
+        Content.Chat chat = 30;
     }
 
     message Restrictions {
@@ -107,6 +133,7 @@ message Block {
         AlignLeft = 0;
         AlignCenter = 1;
         AlignRight = 2;
+        AlignJustify = 3;
     }
 
     enum VerticalAlign {
@@ -277,6 +304,7 @@ message Block {
             string mime = 4;
             int64 size = 5;
             int64 addedAt = 6;
+            string targetObjectId = 9;
 
             State state = 7;
             Style style = 8;
@@ -310,9 +338,9 @@ message Block {
         message Dataview {
             repeated string source = 1;
             repeated View views = 2;
+            string activeView = 3; // do not generate changes for this field
             // deprecated
             repeated model.Relation relations = 4;
-            string activeView = 3; // saved within a session
             repeated GroupOrder groupOrders = 12;
             repeated ObjectOrder objectOrders = 13;
             repeated anytype.model.RelationLink relationLinks = 5;
@@ -342,6 +370,7 @@ message Block {
                     Gallery = 2;
                     Kanban = 3;
                     Calendar = 4;
+                    Graph = 5;
                 }
 
                 enum Size {
@@ -376,17 +405,24 @@ message Block {
             }
 
             message Sort {
-                string id = 6;
                 string RelationKey = 1;
                 Type type = 2;
                 repeated google.protobuf.Value customOrder = 3;
                 RelationFormat format = 4;
                 bool includeTime = 5;
+                string id = 6;
+                EmptyType emptyPlacement = 7;
 
                 enum Type {
                     Asc = 0;
                     Desc = 1;
                     Custom = 2;
+                }
+
+                enum EmptyType {
+                    NotSpecified = 0;
+                    Start = 1;
+                    End = 2;
                 }
             }
 
@@ -400,10 +436,12 @@ message Block {
                 QuickOption quickOption = 6;
                 RelationFormat format = 7;
                 bool includeTime = 8;
+                repeated Filter nestedFilters = 10;
 
                 enum Operator {
-                    And = 0;
+                    No = 0;
                     Or = 1;
+                    And = 2;
                 }
 
                 enum Condition {
@@ -493,6 +531,33 @@ message Block {
 
         message Latex {
             string text = 1;
+            Processor processor = 2;
+
+            enum Processor {
+                Latex = 0;
+                Mermaid = 1;
+                Chart = 2;
+                Youtube = 3;
+                Vimeo = 4;
+                Soundcloud = 5;
+                GoogleMaps = 6;
+                Miro = 7;
+                Figma = 8;
+                Twitter = 9;
+                OpenStreetMap = 10;
+                Reddit = 11;
+                Facebook = 12;
+                Instagram = 13;
+                Telegram = 14;
+                GithubGist = 15;
+                Codepen = 16;
+                Bilibili = 17;
+                Excalidraw = 18;
+                Kroki = 19;
+                Graphviz = 20;
+                Sketchfab = 21;
+                Image = 22;
+            }
         }
 
         message TableOfContents {
@@ -514,7 +579,11 @@ message Block {
                 Tree = 1;
                 List = 2;
                 CompactList = 3;
+                View = 4;
             }
+        }
+        message Chat {
+
         }
     }
 }
@@ -540,21 +609,10 @@ message Range {
 */
 message Account {
     string id = 1; // User's thread id
-    string name = 2; // User name, that associated with this account
-    Avatar avatar = 3; // Avatar of a user's account
     Config config = 4;
     Status status = 5;
     Info info = 6;
 
-    /**
-    * Avatar of a user's account. It could be an image or color
-    */
-    message Avatar {
-        oneof avatar {
-            Block.Content.File image = 1; // Image of the avatar. Contains the hash to retrieve the image.
-            string color = 2; // Color of the avatar, used if image not set.
-        }
-    }
     message Config {
         bool enableDataview = 1;
         bool enableDebug = 2;
@@ -635,6 +693,8 @@ message Restrictions {
         Template = 7;
         // restricts duplicate object
         Duplicate = 8;
+        // can be set only for types. Restricts creating objects of this type
+        CreateObjectOfThisType = 9;
     }
 
 
@@ -676,6 +736,8 @@ message ObjectType {
     bool isArchived = 9; // sets locally to hide object type from set and some other places
     bool installedByDefault = 11;
     string key = 12; // name of objectType (can be localized for bundled types)
+    int64 revision = 13; // revision of system objectType. Used to check if we should change type content or not
+    bool restrictObjectCreation = 14; // restricts creating objects of this type for users
 
     enum Layout {
         basic = 0;
@@ -697,8 +759,12 @@ message ObjectType {
         video = 16;
         date = 17;
         spaceView = 18;
+        participant = 19;
 
-        database = 20; // to be released later
+        pdf = 20;
+        chat = 21;
+        chatDerived = 22;
+        tag = 23;
     }
 }
 
@@ -741,6 +807,7 @@ message Relation {
     // on-store fields, injected only locally
     Scope scope = 20; // scope from which this relation have been aggregated
     string creator = 21; // creator profile id
+    int64 revision = 22; // revision of system relation. Used to check if we should change relation content or not
 
     message Option {
         string id = 1; // id generated automatically if omitted
@@ -787,14 +854,15 @@ enum RelationFormat {
 }
 
 enum ObjectOrigin {
-    none = 0;
-    clipboard = 1;
-    dragAndDrop = 2;
-    import = 3;
-    webclipper = 4;
-    sharingExtension = 5;
-    usecase = 6;
-    builtin = 7;
+  none = 0;
+  clipboard = 1;
+  dragAndDrop = 2;
+  import = 3;
+  webclipper = 4;
+  sharingExtension = 5;
+  usecase = 6;
+  builtin = 7;
+  bookmark = 8;
 }
 
 message RelationLink {
@@ -855,6 +923,12 @@ message ObjectView {
         int32 undo = 1;
         int32 redo = 2;
     }
+
+    repeated BlockParticipant blockParticipants = 11;
+    message BlockParticipant {
+        string blockId = 1;
+        string participantId = 2;
+    }
 }
 
 enum SpaceStatus {
@@ -875,6 +949,39 @@ enum SpaceStatus {
     RemoteDeleted = 6;
     // SpaceDeleted - the space should be deleted in the network
     SpaceDeleted = 7;
+    // SpaceActive - the space is active in the network
+    SpaceActive = 8;
+    // SpaceJoining - the account is joining the space
+    SpaceJoining = 9;
+    // SpaceRemoving - the account is removing from space or the space is removed from network
+    SpaceRemoving = 10;
+}
+
+message ParticipantPermissionChange {
+    string identity = 1;
+    ParticipantPermissions perms = 2;
+}
+
+enum ParticipantPermissions {
+    Reader = 0;
+    Writer = 1;
+    Owner = 2;
+    NoPermissions = 3;
+}
+
+enum ParticipantStatus {
+    Joining = 0;
+    Active = 1;
+    Removed = 2;
+    Declined = 3;
+    Removing = 4;
+    Canceled = 5;
+}
+
+enum SpaceAccessType {
+    Private = 0;
+    Personal = 1;
+    Shared = 2;
 }
 
 message Metadata {
@@ -898,8 +1005,16 @@ message Notification {
         Import import = 6;
         Export export = 8;
         GalleryImport galleryImport = 9;
+        RequestToJoin requestToJoin = 10;
+        Test test = 11;
+        ParticipantRequestApproved participantRequestApproved = 13;
+        RequestToLeave requestToLeave = 15;
+        ParticipantRemove participantRemove = 16;
+        ParticipantRequestDecline participantRequestDecline = 17;
+        ParticipantPermissionsChange participantPermissionsChange = 18;
     }
     string space = 7;
+    string aclHeadId = 14;
 
     message Import {
         string processId = 1;
@@ -907,6 +1022,7 @@ message Notification {
         model.Import.Type importType = 3;
         string spaceId = 4;
         string name = 5;
+        string spaceName = 6;
     }
 
     message Export {
@@ -924,6 +1040,50 @@ message Notification {
         model.Import.ErrorCode errorCode = 2;
         string spaceId = 3;
         string name = 4;
+        string spaceName = 5;
+    }
+
+    message RequestToJoin {
+        string spaceId = 1;
+        string identity = 2;
+        string identityName = 3;
+        string identityIcon = 4;
+        string spaceName = 5;
+    }
+
+    message Test {}
+
+    message ParticipantRequestApproved {
+        string spaceId = 1;
+        ParticipantPermissions permissions = 2;
+        string spaceName = 5;
+    }
+
+    message RequestToLeave {
+        string spaceId = 1;
+        string identity = 2;
+        string identityName = 3;
+        string identityIcon = 4;
+        string spaceName = 5;
+    }
+
+    message ParticipantRemove {
+        string identity = 1;
+        string identityName = 2;
+        string identityIcon = 3;
+        string spaceId = 4;
+        string spaceName = 5;
+    }
+
+    message ParticipantRequestDecline {
+        string spaceId = 1;
+        string spaceName = 3;
+    }
+
+    message ParticipantPermissionsChange {
+        string spaceId = 1;
+        ParticipantPermissions permissions = 2;
+        string spaceName = 3;
     }
 
     enum Status {
@@ -982,5 +1142,234 @@ message Import {
 
       CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
       CSV_WRONG_CSV_STRUCTURE = 16;
+        INSUFFICIENT_PERMISSIONS = 9;
+    }
+}
+
+message Invite {
+    bytes payload = 1;
+    bytes signature = 2;
+}
+
+message InvitePayload {
+    string creatorIdentity = 1;
+    string creatorName = 2;
+    bytes inviteKey = 3;
+    string spaceId = 4;
+    string spaceName = 5;
+    string spaceIconCid = 6;
+    repeated FileEncryptionKey spaceIconEncryptionKeys = 7;
+}
+
+message IdentityProfile {
+    string identity = 1;
+    string name = 2;
+    string iconCid = 3;
+    repeated FileEncryptionKey iconEncryptionKeys = 4;
+    string description = 5;
+    string globalName = 6;
+}
+
+message FileInfo {
+    string fileId = 1;
+    repeated FileEncryptionKey encryptionKeys = 2;
+}
+
+message FileEncryptionKey {
+  string path = 1;
+  string key = 2;
+}
+
+enum ImageKind {
+    Basic = 0;
+    Cover = 1;
+    Icon = 2;
+}
+
+enum FileIndexingStatus {
+    NotIndexed = 0;
+    Indexed = 1;
+    NotFound = 2;
+}
+
+enum SpaceShareableStatus {
+    StatusUnknown = 0;
+    StatusShareable = 1;
+    StatusNotShareable = 2;
+}
+
+message ManifestInfo {
+    string schema = 1;
+    string id = 2;
+    string name = 3;
+    string author = 4;
+    string license = 5;
+    string title = 6;
+    string description = 7;
+    repeated string screenshots = 8;
+    string downloadLink = 9;
+    int32 fileSize = 10;
+    repeated string categories = 11;
+    string language = 12;
+}
+
+enum NameserviceNameType {
+    // .any suffix
+    AnyName = 0;
+}
+
+
+message Membership {
+    enum Status {
+        StatusUnknown = 0;
+        // please wait a bit more, we are still processing your request
+        // the payment is confirmed, but we need more time to do some side-effects:
+        // - increase limits
+        // - send emails
+        // - allocate names
+        StatusPending = 1;
+        // the membership is active, ready to use!
+        StatusActive = 2;
+        // in some cases we need to finalize the process:
+        // - if user has bought membership directly without first calling
+        // the BuySubscription method
+        // in this case please call Finalize to finish the process
+        StatusPendingRequiresFinalization = 3;
+    }
+
+    enum PaymentMethod {
+        MethodNone = 0;
+        MethodStripe = 1;
+        MethodCrypto = 2;
+        MethodInappApple = 3;
+        MethodInappGoogle = 4;
+    }
+
+    enum EmailVerificationStatus {
+        // user NEVER comleted the verification of the email
+        StatusNotVerified = 0;
+        // user has asked for new code, but did not enter it yet
+        // (even if email was verified before, you can ask to UPDATE your e-mail)
+        // please wait, you can not ask for more codes yet
+        StatusCodeSent = 1;
+        // the e-mail is finally verified
+        StatusVerified = 2;
+    }
+
+    // it was Tier before, changed to int32 to allow dynamic values
+    uint32 tier = 1;
+    Status status = 2;
+    uint64 dateStarted = 3;
+    uint64 dateEnds = 4;
+    bool isAutoRenew = 5;
+    PaymentMethod paymentMethod = 6;
+    // can be empty if user did not ask for any name
+    string nsName = 7;
+    anytype.model.NameserviceNameType nsNameType = 8;
+    // if the email was verified by the user or set during the checkout - it will be here
+    string userEmail = 9;
+    bool subscribeToNewsletter = 10;
+}
+
+message MembershipTierData {
+    enum PeriodType {
+        PeriodTypeUnknown = 0;
+        PeriodTypeUnlimited = 1;
+        PeriodTypeDays = 2;
+        PeriodTypeWeeks = 3;
+        PeriodTypeMonths = 4;
+        PeriodTypeYears = 5;
+    }
+
+    // this is a unique Payment Node ID of the tier
+    // WARNING: tiers can be sorted differently, not according to their IDs!
+    uint32 id = 1;
+    // localazied name of the tier
+    string name = 2;
+    // just a short technical description
+    string description = 3;
+    // is this tier for testing and debugging only?
+    bool isTest = 4;
+    // how long is the period of the subscription
+    PeriodType periodType = 5;
+    // i.e. "5 days" or "3 years"
+    uint32 periodValue = 6;
+    // this one is a price we use ONLY on Stripe platform
+    uint32 priceStripeUsdCents = 7;
+    // number of ANY NS names that this tier includes
+    // also in the "features" list (see below)
+    uint32 anyNamesCountIncluded = 8;
+    // somename.any - is of len 8
+    uint32 anyNameMinLength = 9;
+    // localized strings for the features
+    repeated string features = 10;
+    // green, blue, red, purple, custom
+    string colorStr = 11;
+
+    // Stripe platform-specific data:
+    string stripeProductId = 12;
+    string stripeManageUrl = 13;
+
+    // iOS platform-specific data:
+    string iosProductId = 15;
+    string iosManageUrl = 16;
+
+    // Android platform-specific data:
+    string androidProductId = 17;
+    string androidManageUrl = 18;
+}
+enum DeviceNetworkType {
+    WIFI = 0;
+    CELLULAR = 1;
+    NOT_CONNECTED = 2;
+}
+
+message Detail {
+    string key = 1;
+    google.protobuf.Value value = 2; // NUll - removes key
+}
+
+message DeviceInfo {
+    string id = 1;
+    string name = 2;
+    int64 addDate = 3;
+    bool archived = 4;
+    bool isConnected = 5;
+}
+
+message ChatMessage {
+    string id = 1;        // Unique message identifier
+    string orderId = 2;   // Used for subscriptions
+    string creator = 3;       // Identifier for the message creator
+    int64 createdAt = 4;
+    int64 modifiedAt = 9;
+    string replyToMessageId = 5;   // Identifier for the message being replied to
+    MessageContent message = 6;  // Message content
+    repeated Attachment attachments = 7;  // Attachments slice
+    Reactions reactions = 8;  // Reactions to the message
+
+    message MessageContent {
+        string text = 1;      // The text content of the message part
+        Block.Content.Text.Style style = 2;    // The style/type of the message part
+        repeated Block.Content.Text.Mark marks = 3; // List of marks applied to the text
+    }
+
+    message Attachment {
+        string target = 1;       // Identifier for the attachment object
+        AttachmentType type = 2; // Type of attachment
+
+        enum AttachmentType {
+            FILE = 0;   // File attachment
+            IMAGE = 1;  // Image attachment
+            LINK = 2;   // Link attachment
+        }
+    }
+
+    message Reactions {
+        map<string, IdentityList> reactions = 1; // Map of emoji to list of user IDs
+
+        message IdentityList {
+            repeated string ids = 1; // List of user IDs
+        }
     }
 }

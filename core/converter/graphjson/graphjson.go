@@ -93,7 +93,12 @@ func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 	g.nodes[st.RootId()] = &n
 	// TODO: add relations
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, true, true, false, false, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, objectlink.Flags{
+		Blocks:    true,
+		Details:   true,
+		Relations: false,
+		Types:     false,
+	})
 	for _, depID := range dependentObjectIDs {
 		t, err := g.sbtProvider.Type(st.SpaceID(), depID)
 		if err != nil {
@@ -116,7 +121,7 @@ func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (g *graphjson) Convert(model.SmartBlockType) []byte {
+func (g *graphjson) Convert(sbType model.SmartBlockType) []byte {
 	d := &Graph{
 		Nodes: make([]*Node, 0, len(g.nodes)),
 		Edges: make([]*Edge, 0, len(g.linksByNode)),

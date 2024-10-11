@@ -10,14 +10,14 @@ import (
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
-func (m *dsFileStore) updateTxn(f func(txn *badger.Txn) error) error {
+func (s *dsFileStore) updateTxn(f func(txn *badger.Txn) error) error {
 	return badgerhelper.RetryOnConflict(func() error {
-		return m.db.Update(f)
+		return s.db.Update(f)
 	})
 }
 
-func (m *dsFileStore) getInt(key dsCtx.Key) (int, error) {
-	val, err := badgerhelper.GetValue(m.db, key.Bytes(), badgerhelper.UnmarshalInt)
+func (s *dsFileStore) getInt(key dsCtx.Key) (int, error) {
+	val, err := badgerhelper.GetValue(s.db, key.Bytes(), badgerhelper.UnmarshalInt)
 	if badgerhelper.IsNotFound(err) {
 		return 0, localstore.ErrNotFound
 	}
@@ -27,8 +27,8 @@ func (m *dsFileStore) getInt(key dsCtx.Key) (int, error) {
 	return val, nil
 }
 
-func (m *dsFileStore) setInt(key dsCtx.Key, val int) error {
-	return m.updateTxn(func(txn *badger.Txn) error {
+func (s *dsFileStore) setInt(key dsCtx.Key, val int) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		return badgerhelper.SetValueTxn(txn, key.Bytes(), val)
 	})
 }

@@ -77,10 +77,14 @@ type options struct {
 	color           string
 	restrictions    *model.BlockRestrictions
 	textStyle       model.BlockContentTextStyle
+	textIconImage   string
 	marks           *model.BlockContentTextMarks
 	fields          *types.Struct
 	id              string
 	backgroundColor string
+	fileHash        string
+	fileName        string
+	fileType        model.BlockContentFileType
 }
 
 type Option func(*options)
@@ -124,6 +128,12 @@ func Color(v string) Option {
 func TextStyle(s model.BlockContentTextStyle) Option {
 	return func(o *options) {
 		o.textStyle = s
+	}
+}
+
+func TextIconImage(id string) Option {
+	return func(o *options) {
+		o.textIconImage = id
 	}
 }
 
@@ -182,10 +192,11 @@ func Text(s string, opts ...Option) *Block {
 	return mkBlock(&model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  s,
-				Style: o.textStyle,
-				Color: o.color,
-				Marks: o.marks,
+				Text:      s,
+				Style:     o.textStyle,
+				Color:     o.color,
+				Marks:     o.marks,
+				IconImage: o.textIconImage,
 			},
 		},
 	}, opts...)
@@ -197,4 +208,60 @@ func Row(opts ...Option) *Block {
 
 func Column(opts ...Option) *Block {
 	return Layout(model.BlockContentLayout_Column, opts...)
+}
+
+func FileHash(hash string) Option {
+	return func(o *options) {
+		o.fileHash = hash
+	}
+}
+
+func FileName(fileName string) Option {
+	return func(o *options) {
+		o.fileName = fileName
+	}
+}
+
+func FileType(fileType model.BlockContentFileType) Option {
+	return func(o *options) {
+		o.fileType = fileType
+	}
+}
+
+func File(targetObjectId string, opts ...Option) *Block {
+	var o options
+	for _, apply := range opts {
+		apply(&o)
+	}
+
+	return mkBlock(&model.Block{
+		Content: &model.BlockContentOfFile{
+			File: &model.BlockContentFile{
+				Hash:           o.fileHash,
+				TargetObjectId: targetObjectId,
+				Name:           o.fileName,
+				Type:           o.fileType,
+			},
+		},
+	}, opts...)
+}
+
+func Bookmark(url string) *Block {
+	return mkBlock(&model.Block{
+		Content: &model.BlockContentOfBookmark{
+			Bookmark: &model.BlockContentBookmark{
+				Url: url,
+			},
+		},
+	})
+}
+
+func Link(targetBlockId string) *Block {
+	return mkBlock(&model.Block{
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: targetBlockId,
+			},
+		},
+	})
 }

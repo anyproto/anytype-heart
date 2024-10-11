@@ -8,25 +8,60 @@ import (
 )
 
 func TestCopyStruct(t *testing.T) {
-	original := &types.Struct{
-		Fields: map[string]*types.Value{
-			"field1": {
-				Kind: &types.Value_StringValue{
-					StringValue: "test string",
+
+	t.Run("nil input struct", func(t *testing.T) {
+		got := CopyStruct(nil, false)
+		if got != nil {
+			t.Errorf("CopyStruct(nil, false) = %v, want %v", got, nil)
+		}
+	})
+
+	t.Run("struct with copyvals true", func(t *testing.T) {
+		original := &types.Struct{
+			Fields: map[string]*types.Value{
+				"field1": {
+					Kind: &types.Value_StringValue{
+						StringValue: "test string",
+					},
+				},
+				"field2": {
+					Kind: &types.Value_NumberValue{
+						NumberValue: 123.456,
+					},
 				},
 			},
-			"field2": {
-				Kind: &types.Value_NumberValue{
-					NumberValue: 123.456,
+		}
+
+		copy := CopyStruct(original, true)
+
+		assert.NotSame(t, original, copy)
+		assert.Equal(t, original, copy)
+	})
+
+	t.Run("struct with copyvals false", func(t *testing.T) {
+		original := &types.Struct{
+			Fields: map[string]*types.Value{
+				"field1": {
+					Kind: &types.Value_StringValue{
+						StringValue: "test string",
+					},
+				},
+				"field2": {
+					Kind: &types.Value_NumberValue{
+						NumberValue: 123.456,
+					},
 				},
 			},
-		},
-	}
+		}
 
-	copy := CopyStruct(original)
+		copy := CopyStruct(original, false)
 
-	assert.NotSame(t, original, copy)
-	assert.Equal(t, original, copy)
+		assert.NotSame(t, original, copy)
+		for key, value := range original.Fields {
+			assert.Same(t, value, copy.Fields[key])
+		}
+		assert.Equal(t, original, copy)
+	})
 }
 
 func TestCopyValue(t *testing.T) {

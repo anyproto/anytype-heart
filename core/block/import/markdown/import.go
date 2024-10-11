@@ -9,7 +9,6 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -67,11 +66,11 @@ func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequ
 		return nil, nil
 	}
 	allErrors := common.NewError(req.Mode)
-	allSnapshots := m.processFiles(req, progress, paths, allErrors)
+	allSnapshots, allRootObjectsIds := m.processFiles(req, progress, paths, allErrors)
 	if allErrors.ShouldAbortImport(len(paths), req.Type) {
 		return nil, allErrors
 	}
-	allSnapshots, rootCollectionID, err := m.createRootCollection(allSnapshots)
+	allSnapshots, rootCollectionID, err := m.createRootCollection(allSnapshots, allRootObjectsIds)
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(len(paths), req.Type) {
@@ -85,22 +84,26 @@ func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequ
 	return &common.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, allErrors
 }
 
-func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process.Progress, paths []string, allErrors *common.ConvertError) []*common.Snapshot {
-	var allSnapshots []*common.Snapshot
+func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process.Progress, paths []string, allErrors *common.ConvertError) ([]*common.Snapshot, []string) {
+	var (
+		allSnapshots      []*common.Snapshot
+		allRootObjectsIds []string
+	)
 	for _, path := range paths {
-		snapshots := m.getSnapshots(req, progress, path, allErrors)
+		snapshots, rootObjectsIds := m.getSnapshotsAndRootObjectsIds(req, progress, path, allErrors)
 		if allErrors.ShouldAbortImport(len(paths), req.Type) {
-			return nil
+			return nil, nil
 		}
 		allSnapshots = append(allSnapshots, snapshots...)
+		allRootObjectsIds = append(allRootObjectsIds, rootObjectsIds...)
 	}
-	return allSnapshots
+	return allSnapshots, allRootObjectsIds
 }
 
-func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot) ([]*common.Snapshot, string, error) {
-	targetObjects := m.getObjectIDs(allSnapshots)
-	rootCollection := common.NewRootCollection(m.service)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil, true)
+func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot, allRootObjectsIds []string) ([]*common.Snapshot, string, error) {
+	rootCollection := common.NewImportCollection(m.service)
+	settings := common.MakeImportCollectionSetting(rootCollectionName, allRootObjectsIds, "", nil, true, true, true)
+	rootCol, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, "", err
 	}
@@ -113,19 +116,21 @@ func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot) ([]*com
 	return allSnapshots, rootCollectionID, nil
 }
 
-func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest,
+func (m *Markdown) getSnapshotsAndRootObjectsIds(
+	req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	path string,
-	allErrors *common.ConvertError) []*common.Snapshot {
+	allErrors *common.ConvertError,
+) ([]*common.Snapshot, []string) {
 	importSource := source.GetSource(path)
 	if importSource == nil {
-		return nil
+		return nil, nil
 	}
 	defer importSource.Close()
 	files := m.blockConverter.markdownToBlocks(path, importSource, allErrors)
 	pathsCount := len(req.GetMarkdownParams().Path)
 	if allErrors.ShouldAbortImport(pathsCount, req.Type) {
-		return nil
+		return nil, nil
 	}
 
 	progress.SetTotal(int64(numberOfStages * len(files)))
@@ -135,13 +140,13 @@ func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest,
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.setNewID) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkToObjectBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.linkPagesWithRootFile) ||
-		m.processImportStep(pathsCount, files, progress, allErrors, details, m.fillEmptyBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkBlocks) ||
+		m.processImportStep(pathsCount, files, progress, allErrors, details, m.fillEmptyBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addChildBlocks) {
-		return nil
+		return nil, nil
 	}
 
-	return m.createSnapshots(files, progress, details, allErrors)
+	return m.createSnapshots(pathsCount, files, progress, details, allErrors), m.retrieveRootObjectsIds(files)
 }
 
 func (m *Markdown) processImportStep(pathCount int,
@@ -155,35 +160,19 @@ func (m *Markdown) processImportStep(pathCount int,
 	return allErrors.ShouldAbortImport(pathCount, model.Import_Markdown)
 }
 
-func (m *Markdown) convertCsvToLinks(csvFileName string, files map[string]*FileInfo) (blocks []*model.Block) {
+func (m *Markdown) retrieveCollectionObjectsIds(csvFileName string, files map[string]*FileInfo) []string {
 	ext := filepath.Ext(csvFileName)
 	csvDir := strings.TrimSuffix(csvFileName, ext)
-
+	var collectionsObjectsIds []string
 	for name, file := range files {
 		fileExt := filepath.Ext(name)
 		if filepath.Dir(name) == csvDir && strings.EqualFold(fileExt, ".md") {
 			file.HasInboundLinks = true
-			fields := make(map[string]*types.Value)
-			fields[bundle.RelationKeyName.String()] = &types.Value{
-				Kind: &types.Value_StringValue{StringValue: file.Title},
-			}
-
-			blocks = append(blocks, &model.Block{
-				Id: bson.NewObjectId().Hex(),
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: file.PageID,
-						Style:         model.BlockContentLink_Page,
-						Fields: &types.Struct{
-							Fields: fields,
-						},
-					},
-				},
-			})
+			collectionsObjectsIds = append(collectionsObjectsIds, file.PageID)
 		}
 	}
 
-	return blocks
+	return collectionsObjectsIds
 }
 
 func (m *Markdown) processFieldBlockIfItIs(blocks []*model.Block, files map[string]*FileInfo) (blocksOut []*model.Block) {
@@ -279,13 +268,13 @@ func (m *Markdown) getIdFromPath(path string) (id string) {
 
 func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start linking database file with pages")
-	for name, file := range files {
+	for name := range files {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
 			return
 		}
 
-		if !file.IsRootFile || !strings.EqualFold(filepath.Ext(name), ".csv") {
+		if !strings.EqualFold(filepath.Ext(name), ".csv") {
 			continue
 		}
 
@@ -309,35 +298,54 @@ func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo, progress pr
 			return
 		}
 
-		if file.IsRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
-			file.ParsedBlocks = m.convertCsvToLinks(name, files)
-		}
-
 		if file.PageID == "" {
 			// file is not a page
 			continue
 		}
 
-		var blocks = make([]*model.Block, 0, len(file.ParsedBlocks))
+		if strings.EqualFold(filepath.Ext(name), ".csv") {
+			file.CollectionsObjectsIds = m.retrieveCollectionObjectsIds(name, files)
+		}
+
+		blocks := make([]*model.Block, 0, len(file.ParsedBlocks))
 
 		for i, b := range file.ParsedBlocks {
 			if f := b.GetFile(); f != nil && strings.EqualFold(filepath.Ext(f.Name), ".csv") {
-				if csvFile, exists := files[f.Name]; exists {
-					csvFile.HasInboundLinks = true
-				} else {
+				csvFile, exists := files[f.Name]
+				if !exists {
 					continue
 				}
+				csvFile.HasInboundLinks = true
+				csvFile.CollectionsObjectsIds = m.retrieveCollectionObjectsIds(f.Name, files)
 
-				csvInlineBlocks := m.convertCsvToLinks(f.Name, files)
-				blocks = append(blocks, csvInlineBlocks...)
+				blocks = append(blocks, m.getLinkBlock(file))
 			} else {
 				blocks = append(blocks, file.ParsedBlocks[i])
 			}
 		}
-
 		file.ParsedBlocks = blocks
 	}
 }
+
+func (m *Markdown) getLinkBlock(file *FileInfo) *model.Block {
+	fields := make(map[string]*types.Value)
+	fields[bundle.RelationKeyName.String()] = &types.Value{
+		Kind: &types.Value_StringValue{StringValue: file.Title},
+	}
+	return &model.Block{
+		Id: bson.NewObjectId().Hex(),
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: file.PageID,
+				Style:         model.BlockContentLink_Page,
+				Fields: &types.Struct{
+					Fields: fields,
+				},
+			},
+		},
+	}
+}
+
 func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start creating link blocks")
 	for _, file := range files {
@@ -367,7 +375,9 @@ func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.Pr
 	}
 }
 
-func (m *Markdown) createSnapshots(files map[string]*FileInfo,
+func (m *Markdown) createSnapshots(
+	pathsCount int,
+	files map[string]*FileInfo,
 	progress process.Progress,
 	details map[string]*types.Struct,
 	allErrors *common.ConvertError,
@@ -385,6 +395,17 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 			continue
 		}
 
+		if filepath.Ext(name) == ".csv" {
+			var err error
+			snapshots, err = m.addCollectionSnapshot(name, file, snapshots)
+			if err != nil {
+				allErrors.Add(err)
+				if allErrors.ShouldAbortImport(pathsCount, model.Import_Markdown) {
+					return nil
+				}
+			}
+			continue
+		}
 		snapshots = append(snapshots, &common.Snapshot{
 			Id:       file.PageID,
 			FileName: name,
@@ -398,6 +419,19 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 	}
 
 	return snapshots
+}
+
+func (m *Markdown) addCollectionSnapshot(fileName string, file *FileInfo, snapshots []*common.Snapshot) ([]*common.Snapshot, error) {
+	c := common.NewImportCollection(m.service)
+	settings := common.MakeImportCollectionSetting(file.Title, file.CollectionsObjectsIds, "", nil, false, false, false)
+	csvCollection, err := c.MakeImportCollection(settings)
+	if err != nil {
+		return nil, err
+	}
+	csvCollection.Id = file.PageID
+	csvCollection.FileName = fileName
+	snapshots = append(snapshots, csvCollection)
+	return snapshots, nil
 }
 
 func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *common.ConvertError) {
@@ -414,7 +448,7 @@ func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress process.P
 			continue
 		}
 
-		var childrenIds = make([]string, len(file.ParsedBlocks))
+		childrenIds := make([]string, 0, len(file.ParsedBlocks))
 		for _, b := range file.ParsedBlocks {
 			if isChildBlock(childBlocks, b) {
 				continue
@@ -524,7 +558,7 @@ func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progres
 		}
 
 		if strings.EqualFold(filepath.Ext(name), ".md") || strings.EqualFold(filepath.Ext(name), ".csv") {
-			file.PageID = uuid.New().String()
+			file.PageID = bson.NewObjectId().Hex()
 
 			m.setDetails(file, name, details)
 		}
@@ -559,12 +593,17 @@ func (m *Markdown) extractTitleAndEmojiFromBlock(file *FileInfo) (string, string
 	return title, emoji
 }
 
-func (m *Markdown) getObjectIDs(snapshots []*common.Snapshot) []string {
-	targetObject := make([]string, 0, len(snapshots))
-	for _, snapshot := range snapshots {
-		targetObject = append(targetObject, snapshot.Id)
+func (m *Markdown) retrieveRootObjectsIds(files map[string]*FileInfo) []string {
+	var rootObjectsIds []string
+	for _, file := range files {
+		if file.PageID == "" {
+			continue
+		}
+		if file.IsRootFile {
+			rootObjectsIds = append(rootObjectsIds, file.PageID)
+		}
 	}
-	return targetObject
+	return rootObjectsIds
 }
 
 func isChildBlock(blocks []string, b *model.Block) bool {

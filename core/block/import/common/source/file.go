@@ -7,7 +7,7 @@ import (
 
 	"github.com/samber/lo"
 
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 type File struct {
@@ -26,7 +26,7 @@ func (f *File) Initialize(importPath string) error {
 func (f *File) Iterate(callback func(fileName string, fileReader io.ReadCloser) bool) error {
 	fileReader, err := os.Open(f.fileName)
 	if err != nil {
-		return oserror.TransformError(err)
+		return anyerror.CleanupError(err)
 	}
 	defer fileReader.Close()
 	callback(f.fileName, fileReader)
@@ -39,7 +39,7 @@ func (f *File) ProcessFile(fileName string, callback func(fileReader io.ReadClos
 		if os.IsNotExist(err) {
 			return nil
 		}
-		return oserror.TransformError(err)
+		return anyerror.CleanupError(err)
 	}
 	defer fileReader.Close()
 	return callback(fileReader)
@@ -53,3 +53,7 @@ func (f *File) CountFilesWithGivenExtensions(extension []string) int {
 }
 
 func (f *File) Close() {}
+
+func (f *File) IsRootFile(_ string) bool {
+	return true
+}

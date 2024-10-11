@@ -5,6 +5,7 @@
 //
 //	mockgen -package testMock -destination history_mock.go github.com/anyproto/anytype-heart/core/block/undo History
 //
+
 // Package testMock is a generated GoMock package.
 package testMock
 

@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -27,10 +26,10 @@ type subObjectsAndProfileLinksMigration struct {
 	identityObjectID string
 	sbType           smartblock.SmartBlockType
 	space            Space
-	objectStore      objectstore.ObjectStore
+	objectStore      Store
 }
 
-func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore objectstore.ObjectStore) *subObjectsAndProfileLinksMigration {
+func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore Store) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,
@@ -92,7 +91,12 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 	}
 }
 
+// Migrate works only in personal space
 func (m *subObjectsAndProfileLinksMigration) Migrate(s *state.State) {
+	if !m.space.IsPersonal() {
+		return
+	}
+
 	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeProfilePage, "")
 	if err != nil {
 		log.Errorf("migration: failed to create unique key for profile: %s", err)
@@ -127,8 +131,12 @@ func (m *subObjectsAndProfileLinksMigration) Migrate(s *state.State) {
 }
 
 func (m *subObjectsAndProfileLinksMigration) migrateId(oldId string) (newId string) {
-	if m.profileID != "" && m.identityObjectID != "" && oldId == m.profileID {
-		return m.identityObjectID
+	if m.profileID != "" && m.identityObjectID != "" {
+		// we substitute all links to profile object with space member object
+		if oldId == m.profileID ||
+			strings.HasPrefix(oldId, "_id_") { // we don't need to check the exact accountID here, because we only have links to our own identity
+			return m.identityObjectID
+		}
 	}
 	uniqueKey, valid := subObjectIdToUniqueKey(oldId)
 	if !valid {
@@ -184,7 +192,7 @@ func (m *subObjectsAndProfileLinksMigration) migrateFilter(filter *model.BlockCo
 		log.With("relationKey", filter.RelationKey).Warnf("empty filter value")
 		return nil
 	}
-	relation, err := m.objectStore.GetRelationByKey(filter.RelationKey)
+	relation, err := m.objectStore.GetRelationByKey(m.space.Id(), filter.RelationKey)
 	if err != nil {
 		log.Warnf("migration: failed to get relation by key %s: %s", filter.RelationKey, err)
 	}

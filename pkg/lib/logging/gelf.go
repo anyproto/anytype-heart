@@ -1,6 +1,8 @@
 package logging
 
 import (
+	"errors"
+	"expvar"
 	"fmt"
 	"net/url"
 	"os"
@@ -21,6 +23,10 @@ const (
 )
 
 var gelfSinkWrapper gelfSink
+
+var (
+	loggerGraylogMBSkipped = expvar.NewInt("logger_graylog_mb_skipped")
+)
 
 func registerGelfSink(config *logger.Config) {
 	gelfSinkWrapper.batch = mb.New(1000)
@@ -100,7 +106,12 @@ func (gs *gelfSink) Write(b []byte) (int, error) {
 	}
 
 	err := gs.batch.TryAdd(msg)
-	if err != nil {
+	if errors.Is(err, mb.ErrOverflowed) {
+		// batch is overflowed, probably machine has some internet problems
+		// we don't want to spam with mb overflowed errors, so let's just ignore it and return as success
+		loggerGraylogMBSkipped.Add(1)
+		return len(b), nil
+	} else if err != nil {
 		return 0, err
 	}
 
@@ -113,6 +124,9 @@ func (gs *gelfSink) Close() error {
 	err := gs.batch.Close()
 	if err != nil {
 		return err
+	}
+	if skipped := loggerGraylogMBSkipped.Value(); skipped > 0 {
+		fmt.Fprintf(os.Stderr, "gelf: skipped %d messages\n", skipped)
 	}
 	return gs.gelfWriter.Close()
 }

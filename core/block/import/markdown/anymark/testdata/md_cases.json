@@ -201,5 +201,69 @@
         }
       }
     ]
+  },
+  {
+    "desc": "Table inner blocks",
+    "md": "|  - bullet |\n| --- |",
+    "blocks": [
+      {
+        "id": "1",
+        "childrenIds": [
+          "2",
+          "3"
+        ],
+        "Content": {
+          "table": {}
+        }
+      },
+      {
+        "id": "2",
+        "childrenIds": [
+          "4"
+        ],
+        "Content": {
+          "layout": {
+            "style": 5
+          }
+        }
+      },
+      {
+        "id": "3",
+        "childrenIds": [
+          "5"
+        ],
+        "Content": {
+          "layout": {
+            "style": 4
+          }
+        }
+      },
+      {
+        "id": "4",
+        "Content": {
+          "tableColumn": {}
+        }
+      },
+      {
+        "id": "5",
+        "childrenIds": [
+          "6"
+        ],
+        "Content": {
+          "tableRow": {
+            "isHeader": true
+          }
+        }
+      },
+      {
+        "id": "6",
+        "Content": {
+          "text": {
+            "text": "bullet",
+            "marks": {}
+          }
+        }
+      }
+    ]
   }
 ]

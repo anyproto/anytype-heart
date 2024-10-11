@@ -1,13 +1,9 @@
 package logging
 
 import (
-	"errors"
-	"net"
-	"net/url"
-	"os"
-	"strings"
-
 	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 type Sugared struct {
@@ -67,41 +63,8 @@ func (s *Sugared) Infow(msg string, keysAndValues ...interface{}) {
 func cleanupArgs(args []interface{}) {
 	for i, arg := range args {
 		if err, ok := arg.(error); ok {
-			err = cleanupError(err)
+			err = anyerror.CleanupError(err)
 			args[i] = err
 		}
 	}
-}
-
-func cleanUpCase[T error](result string, originalErr error, proc func(T)) string {
-	var wrappedErr T
-	if errors.As(originalErr, &wrappedErr) {
-		prevWrappedString := wrappedErr.Error()
-		proc(wrappedErr)
-		result = strings.Replace(result, prevWrappedString, wrappedErr.Error(), 1)
-	}
-	return result
-}
-
-func cleanupError(err error) error {
-	if err == nil {
-		return nil
-	}
-	result := err.Error()
-
-	result = cleanUpCase(result, err, func(pathErr *os.PathError) {
-		pathErr.Path = "<masked file path>"
-	})
-	result = cleanUpCase(result, err, func(urlErr *url.Error) {
-		urlErr.URL = "<masked url>"
-	})
-	result = cleanUpCase(result, err, func(dnsErr *net.DNSError) {
-		if dnsErr.Name != "" {
-			dnsErr.Name = "<masked host name>"
-		}
-		if dnsErr.Server != "" {
-			dnsErr.Server = "<masked dns server>"
-		}
-	})
-	return errors.New(result)
 }

@@ -215,3 +215,163 @@ func Test_GetLinkToObjectBlockTwoPageHaveBlockParent(t *testing.T) {
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId1")
 	assert.Equal(t, content.Link.IconSize, model.BlockContentLink_SizeSmall)
 }
+
+func Test_EmbedBlockGetBlocks(t *testing.T) {
+	t.Run("random url - we create link block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://example.com/1",
+			},
+		}
+
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetText())
+	})
+	t.Run("miro url - we create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://miro.com/app/board/a=/",
+			},
+		}
+
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+	})
+	t.Run("soundcloud url - we create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://soundcloud.com/1",
+			},
+		}
+
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+	})
+	t.Run("google maps url google.com/maps - we create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://www.google.com/maps",
+			},
+		}
+
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+	})
+	t.Run("google maps url google.com/maps/Place - we create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://www.google.com/maps/place/Berliner+Fernsehturm/@52.5225829,13.4098161,16.79z",
+			},
+		}
+
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+	})
+	t.Run("google maps url google.com/maps/coordinates - we create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://www.google.com/maps/@52.5225829,13.4098161,16.79z?entry=ttu",
+			},
+		}
+
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+	})
+
+	t.Run("github gist url like github.gist.com/user/gist - we create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://gist.github.com/username/123456789abcdef",
+			},
+		}
+
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+		assert.Equal(t, model.BlockContentLatex_GithubGist, bl.Blocks[0].GetLatex().GetProcessor())
+	})
+	t.Run("github gist url like github.gist.com - not create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://gist.github.com/",
+			},
+		}
+
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.Nil(t, bl.Blocks[0].GetLatex())
+	})
+	t.Run("github gist url like github.gist.com/user - not create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://gist.github.com/",
+			},
+		}
+
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.Nil(t, bl.Blocks[0].GetLatex())
+	})
+	t.Run("codepen url like codepen.io - not create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://codepen.io/",
+			},
+		}
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.Nil(t, bl.Blocks[0].GetLatex())
+	})
+	t.Run("codepen url like codepen.io/user/pen/id - we create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://codepen.io/user/pen/id",
+			},
+		}
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+		assert.Equal(t, model.BlockContentLatex_Codepen, bl.Blocks[0].GetLatex().GetProcessor())
+	})
+	t.Run("codepen url like codepen.io/user/details/id - we create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://codepen.io/user/details/id",
+			},
+		}
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+		assert.Equal(t, model.BlockContentLatex_Codepen, bl.Blocks[0].GetLatex().GetProcessor())
+	})
+	t.Run("codepen url like codepen.io/user/details/id/edit - we create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://codepen.io/user/details/id/edit",
+			},
+		}
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+		assert.Equal(t, model.BlockContentLatex_Codepen, bl.Blocks[0].GetLatex().GetProcessor())
+	})
+}

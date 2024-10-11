@@ -19,9 +19,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 )
 
-var ctx = context.Background()
-
 func TestCacheStore_Add(t *testing.T) {
+	ctx := context.Background()
 	t.Run("success", func(t *testing.T) {
 		cs := newPSFixture(t)
 		defer cs.Finish(t)
@@ -37,6 +36,7 @@ func TestCacheStore_Add(t *testing.T) {
 
 func TestCacheStore_Get(t *testing.T) {
 	t.Run("exists local", func(t *testing.T) {
+		ctx := context.Background()
 		testBlocks := newTestBocks("1", "2", "3")
 		cs := newPSFixture(t)
 		defer cs.Finish(t)
@@ -49,6 +49,7 @@ func TestCacheStore_Get(t *testing.T) {
 		}
 	})
 	t.Run("exists remote", func(t *testing.T) {
+		ctx := context.Background()
 		testBlocks := newTestBocks("1", "2", "3")
 		cs := newPSFixture(t)
 		defer cs.Finish(t)
@@ -65,10 +66,28 @@ func TestCacheStore_Get(t *testing.T) {
 			assert.NotNil(t, lb)
 		}
 	})
+	t.Run("exists remote, no cache flag", func(t *testing.T) {
+		ctx := ContextWithDoNotCache(context.Background())
+		testBlocks := newTestBocks("1", "2", "3")
+		cs := newPSFixture(t)
+		defer cs.Finish(t)
+		require.NoError(t, cs.origin.Add(ctx, testBlocks))
+		for _, b := range testBlocks {
+			gb, err := cs.Get(ctx, b.Cid())
+			assert.NoError(t, err)
+			assert.NotNil(t, gb)
+		}
+		for _, b := range testBlocks {
+			lb, err := cs.localStore.Get(ctx, b.Cid())
+			assert.Error(t, err)
+			assert.Nil(t, lb)
+		}
+	})
 }
 
 func TestCacheStore_GetMany(t *testing.T) {
 	t.Run("all local", func(t *testing.T) {
+		ctx := context.Background()
 		testBlocks := newTestBocks("1", "2", "3")
 		cs := newPSFixture(t)
 		defer cs.Finish(t)
@@ -98,6 +117,7 @@ func TestCacheStore_GetMany(t *testing.T) {
 		assert.ElementsMatch(t, cids, resCids)
 	})
 	t.Run("partial local", func(t *testing.T) {
+		ctx := context.Background()
 		testBlocks := newTestBocks("1", "2", "3")
 		cs := newPSFixture(t)
 		defer cs.Finish(t)
@@ -134,6 +154,7 @@ func TestCacheStore_GetMany(t *testing.T) {
 }
 
 func TestCacheStore_Delete(t *testing.T) {
+	ctx := context.Background()
 	testBlocks := newTestBocks("1", "2", "3")
 	cs := newPSFixture(t)
 	defer cs.Finish(t)
@@ -151,6 +172,8 @@ type psFixture struct {
 	tmpDir    string
 	flatfsDir string
 	db        *badger.DB
+
+	proxyCancel func()
 }
 
 func newPSFixture(t *testing.T) *psFixture {
@@ -167,9 +190,13 @@ func newPSFixture(t *testing.T) *psFixture {
 	cache, err := newFlatStore(fx.flatfsDir, sender, time.Second)
 	require.NoError(t, err)
 
+	proxyCtx, proxyCancel := context.WithCancel(context.Background())
+	fx.proxyCancel = proxyCancel
 	fx.proxyStore = &proxyStore{
-		localStore: cache,
-		origin:     rpcstore.NewInMemoryStore(1024 * 1024),
+		backgroundCtx:    proxyCtx,
+		backgroundCancel: proxyCancel,
+		localStore:       cache,
+		origin:           rpcstore.NewInMemoryStore(1024 * 1024),
 	}
 	return fx
 }
@@ -177,6 +204,7 @@ func newPSFixture(t *testing.T) *psFixture {
 func (fx *psFixture) Finish(t *testing.T) {
 	assert.NoError(t, fx.db.Close())
 	_ = os.RemoveAll(fx.tmpDir)
+	fx.proxyCancel()
 }
 
 func newTestBocks(ids ...string) (bs []blocks.Block) {

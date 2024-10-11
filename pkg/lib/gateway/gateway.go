@@ -8,21 +8,24 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/avast/retry-go/v4"
 	"github.com/ipfs/go-cid"
 
-	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/netutil"
+	"github.com/anyproto/anytype-heart/util/svg"
 )
 
 const (
@@ -46,36 +49,16 @@ type Gateway interface {
 	app.ComponentStatable
 }
 
-type spaceIDResolver interface {
-	ResolveSpaceID(objectID string) (spaceID string, err error)
-}
-
 type gateway struct {
-	fileService     files.Service
-	resolver        idresolver.Resolver
-	objectStore     objectstore.ObjectStore
-	server          *http.Server
-	listener        net.Listener
-	handler         *http.ServeMux
-	addr            string
-	mu              sync.Mutex
-	isServerStarted bool
-	limitCh         chan struct{}
-}
-
-func getRandomPort() (int, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
-	if err != nil {
-		return 0, err
-	}
-
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return 0, err
-	}
-
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port, nil
+	fileService       files.Service
+	fileObjectService fileobject.Service
+	server            *http.Server
+	listener          net.Listener
+	handler           *http.ServeMux
+	addr              string
+	mu                sync.Mutex
+	isServerStarted   bool
+	limitCh           chan struct{}
 }
 
 func GatewayAddr() string {
@@ -94,8 +77,7 @@ func GatewayAddr() string {
 
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
-	g.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
-	g.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	g.fileObjectService = app.MustComponent[fileobject.Service](a)
 	g.addr = GatewayAddr()
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
@@ -236,10 +218,6 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	file, reader, err := g.getFile(ctx, r)
 	if err != nil {
 		log.With("path", cleanUpPathForLogging(r.URL.Path)).Errorf("error getting file: %s", err)
-		if errors.Is(err, domain.ErrFileNotFound) {
-			http.NotFound(w, r)
-			return
-		}
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -253,18 +231,24 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
-	fileHashAndPath := strings.TrimPrefix(r.URL.Path, "/file/")
-	parts := strings.Split(fileHashAndPath, "/")
-	fileHash := parts[0]
+	fileIdAndPath := strings.TrimPrefix(r.URL.Path, "/file/")
+	parts := strings.Split(fileIdAndPath, "/")
+	fileId := parts[0]
 
-	spaceID, err := g.resolver.ResolveSpaceID(fileHash)
-	if err != nil {
-		return nil, nil, fmt.Errorf("resolve spaceID: %w", err)
+	var id domain.FullFileId
+	// Treat id as fileId to allow download file directly
+	if domain.IsFileId(fileId) {
+		id = domain.FullFileId{
+			FileId: domain.FileId(fileId),
+		}
+	} else {
+		var err error
+		id, err = g.fileObjectService.GetFileIdFromObjectWaitLoad(ctx, fileId)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
+		}
 	}
-	id := domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: fileHash,
-	}
+
 	file, err := g.fileService.FileByHash(ctx, id)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get file by hash: %w", err)
@@ -291,10 +275,6 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	file, reader, err := g.getImage(ctx, r)
 	if err != nil {
 		log.With("path", cleanUpPathForLogging(r.URL.Path)).Errorf("error getting image: %s", err)
-		if errors.Is(err, domain.ErrFileNotFound) {
-			http.NotFound(w, r)
-			return
-		}
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -310,41 +290,123 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 
 func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
 	urlParts := strings.Split(r.URL.Path, "/")
-	imageHash := urlParts[2]
-	query := r.URL.Query()
+	imageId := urlParts[2]
 
-	spaceID, err := g.resolver.ResolveSpaceID(imageHash)
+	var id domain.FullFileId
+	// Treat id as fileId. We need to handle raw fileIds for backward compatibility in case of spaceview. See editor.SpaceView for details.
+	if domain.IsFileId(imageId) {
+		id = domain.FullFileId{
+			FileId: domain.FileId(imageId),
+		}
+	} else {
+		var err error
+		id, err = g.fileObjectService.GetFileIdFromObjectWaitLoad(ctx, imageId)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
+		}
+	}
+
+	retryOptions := []retry.Option{
+		retry.Context(ctx),
+		retry.Attempts(0),
+		retry.Delay(200 * time.Millisecond),
+		retry.MaxDelay(2 * time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.LastErrorOnly(true),
+	}
+
+	result, err := retry.DoWithData(func() (*getImageReaderResult, error) {
+		res, err := g.getImageReader(ctx, id, r)
+		if err != nil {
+			return nil, err
+		}
+		return res, nil
+	}, retryOptions...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("resolve spaceID: %w", err)
+		return nil, nil, fmt.Errorf("get image reader: %w", err)
 	}
-	id := domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: imageHash,
+
+	retryReader := newRetryReadSeeker(result.reader, retryOptions...)
+	return result.file, retryReader, nil
+}
+
+type getImageReaderResult struct {
+	file   files.File
+	reader io.ReadSeeker
+}
+
+type retryReadSeeker struct {
+	reader  io.ReadSeeker
+	options []retry.Option
+}
+
+func newRetryReadSeeker(reader io.ReadSeeker, options ...retry.Option) *retryReadSeeker {
+	// EOF has special meaning, do not retry on it
+	options = append(options, retry.RetryIf(func(err error) bool {
+		return !errors.Is(err, io.EOF)
+	}))
+	return &retryReadSeeker{
+		reader:  reader,
+		options: options,
 	}
+}
+
+var _ io.ReadSeeker = (*retryReadSeeker)(nil)
+
+func (r *retryReadSeeker) Read(p []byte) (int, error) {
+	return retry.DoWithData(func() (int, error) {
+		return r.reader.Read(p)
+	}, r.options...)
+}
+
+func (r *retryReadSeeker) Seek(offset int64, whence int) (int64, error) {
+	return retry.DoWithData(func() (int64, error) {
+		return r.reader.Seek(offset, whence)
+	}, r.options...)
+}
+
+func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req *http.Request) (*getImageReaderResult, error) {
 	image, err := g.fileService.ImageByHash(ctx, id)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get image by hash: %w", err)
+		return nil, fmt.Errorf("get image by hash: %w", err)
 	}
 	var file files.File
+	query := req.URL.Query()
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
-		file, err = image.GetOriginalFile(ctx)
+		file, err = image.GetOriginalFile()
 		if err != nil {
-			return nil, nil, fmt.Errorf("get image file: %w", err)
+			return nil, fmt.Errorf("get image file: %w", err)
+		}
+		if filepath.Ext(file.Info().Name) == constant.SvgExt {
+			return g.handleSVGFile(ctx, file)
 		}
 	} else {
 		wantWidth, err := strconv.Atoi(wantWidthStr)
 		if err != nil {
-			return nil, nil, fmt.Errorf("parse width: %w", err)
+			return nil, fmt.Errorf("parse width: %w", err)
 		}
-		file, err = image.GetFileForWidth(ctx, wantWidth)
+		file, err = image.GetFileForWidth(wantWidth)
 		if err != nil {
-			return nil, nil, fmt.Errorf("get image file: %w", err)
+			return nil, fmt.Errorf("get image file: %w", err)
+		}
+		if filepath.Ext(file.Info().Name) == constant.SvgExt {
+			return g.handleSVGFile(ctx, file)
 		}
 	}
-
 	reader, err := file.Reader(ctx)
-	return file, reader, err
+	if err != nil {
+		return nil, fmt.Errorf("get image reader: %w", err)
+	}
+	return &getImageReaderResult{file: file, reader: reader}, nil
+}
+
+func (g *gateway) handleSVGFile(ctx context.Context, file files.File) (*getImageReaderResult, error) {
+	reader, err := svg.ProcessSvg(ctx, file)
+	if err != nil {
+		return nil, err
+	}
+	return &getImageReaderResult{file, reader}, nil
 }
 
 func cleanUpPathForLogging(input string) string {

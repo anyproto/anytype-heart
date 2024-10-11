@@ -14,12 +14,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type File interface {
 	Meta() *FileMeta
-	Hash() string
+	FileId() domain.FileId
 	Reader(ctx context.Context) (io.ReadSeeker, error)
 	Details(ctx context.Context) (*types.Struct, domain.TypeKey, error)
 	Info() *storage.FileInfo
@@ -29,10 +30,9 @@ var _ File = (*file)(nil)
 
 type file struct {
 	spaceID string
-	hash    string
+	fileId  domain.FileId
 	info    *storage.FileInfo
 	node    *service
-	origin  model.ObjectOrigin
 }
 
 type FileMeta struct {
@@ -62,7 +62,7 @@ func (f *file) audioDetails(ctx context.Context) (*types.Struct, error) {
 		d.Fields[bundle.RelationKeyAudioAlbum.String()] = pbtypes.String(t.Album())
 	}
 	if t.Artist() != "" {
-		d.Fields[bundle.RelationKeyAudioArtist.String()] = pbtypes.String(t.Artist())
+		d.Fields[bundle.RelationKeyArtist.String()] = pbtypes.String(t.Artist())
 	}
 	if t.Genre() != "" {
 		d.Fields[bundle.RelationKeyAudioGenre.String()] = pbtypes.String(t.Genre())
@@ -76,8 +76,6 @@ func (f *file) audioDetails(ctx context.Context) (*types.Struct, error) {
 	if t.Year() != 0 {
 		d.Fields[bundle.RelationKeyReleasedYear.String()] = pbtypes.Int64(int64(t.Year()))
 	}
-	d.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_audio))
-
 	return d, nil
 }
 
@@ -85,7 +83,7 @@ func (f *file) Details(ctx context.Context) (*types.Struct, domain.TypeKey, erro
 	meta := f.Meta()
 
 	typeKey := bundle.TypeKeyFile
-	commonDetails := calculateCommonDetails(f.hash, model.ObjectType_file, f.info.LastModifiedDate)
+	commonDetails := calculateCommonDetails(f.fileId, model.ObjectType_file, f.info.LastModifiedDate)
 	commonDetails[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(meta.Media)
 
 	commonDetails[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name)))
@@ -93,24 +91,29 @@ func (f *file) Details(ctx context.Context) (*types.Struct, domain.TypeKey, erro
 	commonDetails[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(meta.Size))
 	commonDetails[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(meta.Added.Unix()))
 
-	if f.origin != 0 {
-		commonDetails[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(f.origin))
-	}
-
 	t := &types.Struct{
 		Fields: commonDetails,
 	}
 
+	if meta.Media == "application/pdf" {
+		typeKey = bundle.TypeKeyFile
+		t.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_pdf))
+	}
 	if strings.HasPrefix(meta.Media, "video") {
 		typeKey = bundle.TypeKeyVideo
 		t.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_video))
 	}
 
 	if strings.HasPrefix(meta.Media, "audio") {
+		t.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_audio))
 		if audioDetails, err := f.audioDetails(ctx); err == nil {
 			t = pbtypes.StructMerge(t, audioDetails, false)
 		}
 		typeKey = bundle.TypeKeyAudio
+	}
+	if filepath.Ext(meta.Name) == constant.SvgExt {
+		typeKey = bundle.TypeKeyImage
+		t.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_image))
 	}
 
 	return t, typeKey, nil
@@ -130,8 +133,8 @@ func (f *file) Meta() *FileMeta {
 	}
 }
 
-func (f *file) Hash() string {
-	return f.hash
+func (f *file) FileId() domain.FileId {
+	return f.fileId
 }
 
 func (f *file) Reader(ctx context.Context) (io.ReadSeeker, error) {
@@ -139,13 +142,13 @@ func (f *file) Reader(ctx context.Context) (io.ReadSeeker, error) {
 }
 
 func calculateCommonDetails(
-	hash string,
+	fileId domain.FileId,
 	layout model.ObjectTypeLayout,
 	lastModifiedDate int64,
 ) map[string]*types.Value {
 	return map[string]*types.Value{
-		bundle.RelationKeyId.String():               pbtypes.String(hash),
-		bundle.RelationKeyIsReadonly.String():       pbtypes.Bool(true),
+		bundle.RelationKeyFileId.String():           pbtypes.String(fileId.String()),
+		bundle.RelationKeyIsReadonly.String():       pbtypes.Bool(false),
 		bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(layout)),
 		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(lastModifiedDate),
 	}

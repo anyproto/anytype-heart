@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
@@ -698,6 +699,69 @@ func TestRelationChanges(t *testing.T) {
 	require.Equal(t, a.relationLinks, ac.relationLinks)
 }
 
+func TestLocalRelationChanges(t *testing.T) {
+	t.Run("local relation added", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		a.relationLinks = []*model.RelationLink{}
+		b := a.NewState()
+		b.relationLinks = []*model.RelationLink{{Key: bundle.RelationKeySyncStatus.String(), Format: model.RelationFormat_number}}
+
+		// when
+		_, _, err := ApplyState(b, false)
+		require.NoError(t, err)
+		chs := a.GetChanges()
+
+		// then
+		require.Len(t, chs, 0)
+	})
+	t.Run("local relation removed", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		a.relationLinks = []*model.RelationLink{{Key: bundle.RelationKeySyncStatus.String(), Format: model.RelationFormat_number}}
+		b := a.NewState()
+		b.relationLinks = []*model.RelationLink{}
+
+		// when
+		_, _, err := ApplyState(b, false)
+		require.NoError(t, err)
+		chs := a.GetChanges()
+
+		// then
+		require.Len(t, chs, 0)
+	})
+	t.Run("derived relation added", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		a.relationLinks = []*model.RelationLink{}
+		b := a.NewState()
+		b.relationLinks = []*model.RelationLink{{Key: bundle.RelationKeySpaceId.String(), Format: model.RelationFormat_longtext}}
+
+		// when
+		_, _, err := ApplyState(b, false)
+		require.NoError(t, err)
+		chs := a.GetChanges()
+
+		// then
+		require.Len(t, chs, 0)
+	})
+	t.Run("derived relation removed", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		a.relationLinks = []*model.RelationLink{{Key: bundle.RelationKeySpaceId.String(), Format: model.RelationFormat_longtext}}
+		b := a.NewState()
+		b.relationLinks = []*model.RelationLink{}
+
+		// when
+		_, _, err := ApplyState(b, false)
+		require.NoError(t, err)
+		chs := a.GetChanges()
+
+		// then
+		require.Len(t, chs, 0)
+	})
+}
+
 func TestRootBlockChanges(t *testing.T) {
 	a := NewDoc("root", nil).(*State)
 	s := a.NewState()
@@ -806,4 +870,127 @@ func Test_migrateObjectTypeIDToKey(t *testing.T) {
 			assert.Equalf(t, tt.wantNew, gotNew, "migrateObjectTypeIDToKey(%v)", tt.args.old)
 		})
 	}
+}
+
+func TestRootDeviceChanges(t *testing.T) {
+	t.Run("no changes", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		s := a.NewState()
+
+		// when
+		_, _, err := ApplyState(s, true)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, s.GetChanges(), 0)
+	})
+	t.Run("add new device", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		s := a.NewState()
+
+		device := &model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		}
+		s.AddDevice(device)
+
+		// when
+		_, _, err := ApplyState(s, true)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, s.GetChanges(), 1)
+		assert.Equal(t, device, s.GetChanges()[0].GetDeviceAdd().GetDevice())
+	})
+	t.Run("update device", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		device := &model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		}
+		a.AddDevice(device)
+
+		s := a.NewState()
+		s.SetDeviceName("id", "test1")
+		// when
+		_, _, err := ApplyState(s, true)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, s.GetChanges(), 1)
+		assert.Equal(t, "test1", s.GetChanges()[0].GetDeviceUpdate().GetName())
+	})
+	t.Run("add device - parent nil", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		s := a.NewState()
+
+		device := &model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		}
+		s.AddDevice(device)
+		s.parent = nil
+		// when
+		_, _, err := ApplyState(s, true)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, s.GetChanges(), 1)
+		assert.Equal(t, device, s.GetChanges()[0].GetDeviceAdd().GetDevice())
+	})
+}
+
+func TestTableChanges(t *testing.T) {
+	t.Run("change row header", func(t *testing.T) {
+		contRow := &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Row,
+			},
+		}
+		contColumn := &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Column,
+			},
+		}
+
+		r := NewDoc("root", nil).(*State)
+		s := r.NewState()
+		s.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"r1", "t1"}}))
+		s.Add(simple.New(&model.Block{Id: "r1", ChildrenIds: []string{"c1", "c2"}, Content: contRow}))
+		s.Add(simple.New(&model.Block{Id: "c1", Content: contColumn}))
+		s.Add(simple.New(&model.Block{Id: "c2", Content: contColumn}))
+
+		s.Add(simple.New(&model.Block{Id: "t1", ChildrenIds: []string{"tableRows", "tableColumns"}, Content: &model.BlockContentOfTable{
+			Table: &model.BlockContentTable{},
+		}}))
+		s.Add(simple.New(&model.Block{Id: "tableRows", ChildrenIds: []string{"tableRow1"}, Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_TableRows,
+			},
+		}}))
+		s.Add(simple.New(&model.Block{Id: "tableRow1", Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: false}}}))
+
+		s.Add(simple.New(&model.Block{Id: "tableColumns", Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_TableColumns,
+			},
+		}}))
+
+		msgs, _, err := ApplyState(s, true)
+		require.NoError(t, err)
+		assert.Len(t, msgs, 1)
+
+		s = s.NewState()
+		rows := s.Get("tableRow1")
+		require.NotNil(t, rows)
+		rows.Model().GetTableRow().IsHeader = true
+		msgs, _, err = ApplyState(s, true)
+		require.NoError(t, err)
+		assert.Len(t, msgs, 1)
+
+	})
 }

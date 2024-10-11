@@ -10,7 +10,6 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/text"
@@ -39,13 +38,17 @@ type blocksRenderer struct {
 	rootBlockIDs     []string
 	curStyledBlock   model.BlockContentTextStyle
 
+	inTable       bool
 	listParentID  string
 	listNestIsNum []bool
-	listNestLevel uint
 }
 
-func newBlocksRenderer(baseFilepath string, allFileShortPaths []string) *blocksRenderer {
-	return &blocksRenderer{baseFilepath: baseFilepath, allFileShortPaths: allFileShortPaths, listNestLevel: 0}
+func newBlocksRenderer(baseFilepath string, allFileShortPaths []string, inTable bool) *blocksRenderer {
+	return &blocksRenderer{
+		baseFilepath:      baseFilepath,
+		allFileShortPaths: allFileShortPaths,
+		inTable:           inTable,
+	}
 }
 
 func (r *blocksRenderer) GetAllFileShortPaths() []string {
@@ -119,7 +122,7 @@ func (r *blocksRenderer) OpenNewTextBlock(style model.BlockContentTextStyle, fie
 		r.curStyledBlock = style
 	}
 
-	id := uuid.New().String()
+	id := bson.NewObjectId().Hex()
 
 	newBlock := model.Block{
 		Id:     id,
@@ -154,10 +157,8 @@ func (r *blocksRenderer) addChildID(cID string) {
 func (r *blocksRenderer) SetListState(entering bool, isNumbered bool) {
 	if entering {
 		r.listNestIsNum = append(r.listNestIsNum, isNumbered)
-		r.listNestLevel++
 	} else if len(r.listNestIsNum) > 0 {
 		r.listNestIsNum = r.listNestIsNum[:len(r.listNestIsNum)-1]
-		r.listNestLevel--
 	}
 
 	if len(r.listNestIsNum) > 1 {
@@ -191,6 +192,15 @@ func (r *blocksRenderer) AddTextToBuffer(text string) {
 	}
 
 	r.textBuffer += text
+}
+
+func (r *blocksRenderer) TextBufferLen() int {
+	if len(r.openedTextBlocks) > 0 {
+		return len(r.openedTextBlocks[len(r.openedTextBlocks)-1].textBuffer)
+
+	}
+
+	return len(r.textBuffer)
 }
 
 func (r *blocksRenderer) AddImageBlock(source string) {
@@ -246,12 +256,23 @@ func isBlockCanHaveChild(block model.Block) bool {
 	return false
 }
 
+func (r *blocksRenderer) openTextBlockWithStyle(entering bool, style model.BlockContentTextStyle, fields *types.Struct) {
+	if r.inTable {
+		style = model.BlockContentText_Paragraph
+	}
+	if entering {
+		r.OpenNewTextBlock(style, fields)
+	} else {
+		r.CloseTextBlock(style)
+	}
+}
+
 func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 	var style = content
 	var closingBlock *textBlock
 	var parentBlock *textBlock
 
-	id := uuid.New().String()
+	id := bson.NewObjectId().Hex()
 
 	if len(r.openedTextBlocks) > 0 {
 		closingBlock = r.openedTextBlocks[len(r.openedTextBlocks)-1]
@@ -400,8 +421,7 @@ func (r *blocksRenderer) ForceCloseTextBlock() {
 	if len(r.openedTextBlocks) > 0 {
 		style, r.openedTextBlocks = s[len(s)-1].GetText().Style, s[:len(s)-1]
 	}
-
-	r.CloseTextBlock(style)
+	r.openTextBlockWithStyle(false, style, nil)
 }
 
 func (r *blocksRenderer) ProcessMarkdownArtifacts() {

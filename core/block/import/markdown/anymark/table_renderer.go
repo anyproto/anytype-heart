@@ -158,7 +158,7 @@ func (r *TableRenderer) renderTableCell(_ util.BufWriter,
 	}
 	if node != nil {
 		// recursive handler of markdown inside table cell
-		ren := NewRenderer(newBlocksRenderer("", nil))
+		ren := NewRenderer(newBlocksRenderer("", nil, true))
 		gm := goldmark.New(goldmark.WithRenderer(
 			renderer.NewRenderer(renderer.WithNodeRenderers(util.Prioritized(ren, 100))),
 		))

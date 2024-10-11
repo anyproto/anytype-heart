@@ -48,17 +48,20 @@ type Relation struct {
 	Readonly    bool     `json:"readonly"`
 	Source      string   `json:"source"`
 	Description string   `json:"description"`
+	Revision    int      `json:"revision"`
 }
 
 type ObjectType struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Types       []string `json:"types"`
-	Emoji       string   `json:"emoji"`
-	Hidden      bool     `json:"hidden"`
-	Layout      string   `json:"layout"`
-	Relations   []string `json:"relations"`
-	Description string   `json:"description"`
+	ID                     string   `json:"id"`
+	Name                   string   `json:"name"`
+	Types                  []string `json:"types"`
+	Emoji                  string   `json:"emoji"`
+	Hidden                 bool     `json:"hidden"`
+	Layout                 string   `json:"layout"`
+	Relations              []string `json:"relations"`
+	Description            string   `json:"description"`
+	Revision               int      `json:"revision"`
+	RestrictObjectCreation bool     `json:"restrictObjectCreation"`
 }
 
 type Layout struct {
@@ -213,6 +216,9 @@ func generateRelations() error {
 				}
 				map[Code]Code(dictS)[Id("ObjectTypes")] = Index().String().Values(t...)
 			}
+			if relation.Revision != 0 {
+				dictS[Id("Revision")] = Lit(relation.Revision)
+			}
 
 			dict[Id(relConst(relation.Key))] = Block(dictS)
 		}
@@ -295,6 +301,13 @@ func generateTypes() error {
 					t = append(t, Qual(relPbPkg, sbTypeConst(sbt)))
 				}
 				dictS[Id("Types")] = Index().Qual(relPbPkg, "SmartBlockType").Values(t...)
+			}
+			if ot.Revision != 0 {
+				dictS[Id("Revision")] = Lit(ot.Revision)
+			}
+
+			if ot.RestrictObjectCreation {
+				dictS[Id("RestrictObjectCreation")] = Lit(ot.RestrictObjectCreation)
 			}
 
 			dict[Id(typeConst(ot.ID))] = Block(dictS)
@@ -493,7 +506,7 @@ func assertTypesIncluded(
 		lo.Map(whereIncluded, typeToString()),
 	)
 	if err != nil {
-		exitOnError(fmt.Errorf(relationAssertionError))
+		exitOnError(fmt.Errorf("%s: %w", relationAssertionError, err))
 	}
 }
 
@@ -507,7 +520,7 @@ func assertRelationsIncluded(
 		lo.Map(whereIncluded, relationToString()),
 	)
 	if err != nil {
-		exitOnError(fmt.Errorf(relationAssertionError))
+		exitOnError(fmt.Errorf("%s: %w", relationAssertionError, err))
 	}
 }
 

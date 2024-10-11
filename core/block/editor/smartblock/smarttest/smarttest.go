@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
@@ -34,28 +35,50 @@ func New(id string) *SmartTest {
 		Doc:       state.NewDoc(id, nil),
 		hist:      undo.NewHistory(0),
 		hooksOnce: map[string]struct{}{},
+		sbType:    coresb.SmartBlockTypePage,
+	}
+}
+
+func NewWithTree(id string, tree objecttree.ObjectTree) *SmartTest {
+	return &SmartTest{
+		id:         id,
+		Doc:        state.NewDoc(id, nil),
+		hist:       undo.NewHistory(0),
+		hooksOnce:  map[string]struct{}{},
+		sbType:     coresb.SmartBlockTypePage,
+		objectTree: tree,
 	}
 }
 
 var _ smartblock.SmartBlock = &SmartTest{}
 
 type SmartTest struct {
+	sync.Mutex
+	state.Doc
 	Results          Results
 	id               string
 	hist             undo.History
 	TestRestrictions restriction.Restrictions
 	App              *app.App
-	sync.Mutex
-	state.Doc
-	isDeleted bool
-	os        *testMock.MockObjectStore
+	objectTree       objecttree.ObjectTree
+	isDeleted        bool
+	os               *testMock.MockObjectStore
+	space            smartblock.Space
 
 	// Rudimentary hooks
 	hooks     []smartblock.HookCallback
 	hooksOnce map[string]struct{}
+	sbType    coresb.SmartBlockType
+	spaceId   string
 }
 
-func (st *SmartTest) SpaceID() string { return "" }
+func (st *SmartTest) SpaceID() string { return st.spaceId }
+func (st *SmartTest) SetSpaceId(spaceId string) {
+	st.spaceId = spaceId
+}
+func (st *SmartTest) SetSpace(space smartblock.Space) {
+	st.space = space
+}
 
 type stubSpace struct {
 }
@@ -92,7 +115,18 @@ func (s *stubSpace) DoLockedIfNotExists(objectID string, proc func() error) erro
 	return nil
 }
 
+func (s *stubSpace) IsPersonal() bool {
+	return false
+}
+
+func (s *stubSpace) StoredIds() []string {
+	return nil
+}
+
 func (st *SmartTest) Space() smartblock.Space {
+	if st.space != nil {
+		return st.space
+	}
 	return &stubSpace{}
 }
 
@@ -139,11 +173,7 @@ func (st *SmartTest) SetLayout(ctx session.Context, layout model.ObjectTypeLayou
 func (st *SmartTest) SetLocker(locker smartblock.Locker) {}
 
 func (st *SmartTest) Tree() objecttree.ObjectTree {
-	return nil
-}
-
-func (st *SmartTest) SetRestrictions(r restriction.Restrictions) {
-	st.TestRestrictions = r
+	return st.objectTree
 }
 
 func (st *SmartTest) Restrictions() restriction.Restrictions {
@@ -152,7 +182,10 @@ func (st *SmartTest) Restrictions() restriction.Restrictions {
 
 func (st *SmartTest) GetDocInfo() smartblock.DocInfo {
 	return smartblock.DocInfo{
-		Id: st.Id(),
+		Id:             st.Id(),
+		Space:          st.Space(),
+		SmartblockType: st.sbType,
+		Heads:          []string{st.Id()},
 	}
 }
 
@@ -215,8 +248,8 @@ func (st *SmartTest) RemoveExtraRelations(ctx session.Context, relationKeys []st
 	return nil
 }
 
-func (st *SmartTest) SetObjectTypes(ctx session.Context, objectTypes []string) (err error) {
-	return nil
+func (st *SmartTest) SetObjectTypes(objectTypes []domain.TypeKey) {
+	st.Doc.(*state.State).SetObjectTypeKeys(objectTypes)
 }
 
 func (st *SmartTest) DisableLayouts() {
@@ -227,13 +260,56 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 	return
 }
 
-func (st *SmartTest) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (st *SmartTest) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
 	dets := &types.Struct{Fields: map[string]*types.Value{}}
 	for _, d := range details {
 		dets.Fields[d.Key] = d.Value
 	}
 	st.Doc.(*state.State).SetDetails(dets)
 	return
+}
+
+func (st *SmartTest) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+	for _, detail := range details {
+		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, detail.Key)
+	}
+	return st.SetDetails(ctx, details, showEvent)
+}
+
+func (st *SmartTest) UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+	details := st.Doc.(*state.State).CombinedDetails()
+	if details == nil || details.Fields == nil {
+		details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	newDetails, err := update(details)
+	if err != nil {
+		return err
+	}
+	st.Doc.(*state.State).SetDetails(newDetails)
+	return nil
+}
+
+func (st *SmartTest) UpdateDetailsAndLastUsed(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+	details := st.Doc.(*state.State).CombinedDetails()
+	if details == nil || details.Fields == nil {
+		details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	oldDetails := pbtypes.CopyStruct(details, true)
+
+	newDetails, err := update(details)
+	if err != nil {
+		return err
+	}
+
+	diff := pbtypes.StructDiff(oldDetails, newDetails)
+	if diff == nil || diff.Fields == nil {
+		return nil
+	}
+
+	for key := range diff.Fields {
+		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, key)
+	}
+	return nil
 }
 
 func (st *SmartTest) Init(ctx *smartblock.InitContext) (err error) {
@@ -248,7 +324,11 @@ func (st *SmartTest) Id() string {
 }
 
 func (st *SmartTest) Type() coresb.SmartBlockType {
-	return coresb.SmartBlockTypePage
+	return st.sbType
+}
+
+func (st *SmartTest) SetType(sbType coresb.SmartBlockType) {
+	st.sbType = sbType
 }
 
 func (st *SmartTest) Show() (obj *model.ObjectView, err error) {
@@ -357,7 +437,21 @@ func (st *SmartTest) UniqueKey() domain.UniqueKey {
 	return nil
 }
 
+func (st *SmartTest) Update(ctx session.Context, apply func(b simple.Block) error, blockIds ...string) (err error) {
+	newState := st.NewState()
+	for _, id := range blockIds {
+		if bl := newState.Get(id); bl != nil {
+			if err = apply(bl); err != nil {
+				return err
+			}
+		}
+	}
+	return st.Apply(newState)
+}
+
 type Results struct {
 	Events  [][]simple.EventMessage
 	Applies [][]*model.Block
+
+	LastUsedUpdates []string
 }

@@ -1,6 +1,13 @@
-export GOLANGCI_LINT_VERSION=v1.54.2
-export custom_network_file=./core/anytype/config/nodes/custom.yml
-export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow
+CUSTOM_NETWORK_FILE ?= ./core/anytype/config/nodes/custom.yml
+CLIENT_DESKTOP_PATH ?= ../anytype-ts
+CLIENT_ANDROID_PATH ?= ../anytype-kotlin
+CLIENT_IOS_PATH ?= ../anytype-swift
+TANTIVY_GO_PATH ?= ../tantivy-go
+BUILD_FLAGS ?=
+
+export GOLANGCI_LINT_VERSION=1.58.1
+export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion
+
 ifndef $(GOPATH)
     GOPATH=$(shell go env GOPATH)
     export GOPATH
@@ -36,7 +43,7 @@ endif
         exit 1; \
     else \
         echo "Using Any Sync Network configuration at $$ANY_SYNC_NETWORK"; \
-        cp $$ANY_SYNC_NETWORK $(custom_network_file); \
+        cp $$ANY_SYNC_NETWORK $(CUSTOM_NETWORK_FILE); \
     fi
 
 setup-go: setup-network-config
@@ -60,20 +67,25 @@ test:
 	@echo 'Running tests...'
 	@ANYTYPE_LOG_NOGELF=1 go test -cover github.com/anyproto/anytype-heart/...
 
+test-no-cache:
+	@echo 'Running tests...'
+	@ANYTYPE_LOG_NOGELF=1 go test -count=1 github.com/anyproto/anytype-heart/...
+
 test-integration:
 	@echo 'Running integration tests...'
 	@go test -run=TestBasic -tags=integration -v -count 1 ./tests
 
 test-race:
 	@echo 'Running tests with race-detector...'
-	@ANYTYPE_LOG_NOGELF=1 go test -race github.com/anyproto/anytype-heart/...
+	@ANYTYPE_LOG_NOGELF=1 go test -count=1 -race github.com/anyproto/anytype-heart/...
 
 test-deps:
 	@echo 'Generating test mocks...'
 	@go build -o deps go.uber.org/mock/mockgen
 	@go build -o deps github.com/vektra/mockery/v2
 	@go generate ./...
-	@$(DEPS_PATH)/mockery --all
+	@$(DEPS_PATH)/mockery --disable-version-string
+	@go run ./cmd/testcase generate-json-helpers
 
 clear-test-deps:
 	@echo 'Removing test mocks...'
@@ -81,7 +93,7 @@ clear-test-deps:
 
 build-lib:
 	@echo 'Building library...'
-	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
+	@$(eval FLAGS += $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
 	@GO111MODULE=on go build -v -o dist/lib.a -tags nogrpcserver -ldflags "$(FLAGS)" -buildmode=c-archive -v ./clientlibrary/clib
 
 build-js-addon:
@@ -111,30 +123,66 @@ build-ios: setup-go setup-gomobile
 	@echo 'Clear xcframework'
 	@rm -rf ./dist/ios/Lib.xcframework
 	@echo 'Building library for iOS...'
-	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
-	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar)
+	@$(eval FLAGS += $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
+	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar timetzdata rasterizesvg)
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
-	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
+	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" $(BUILD_FLAGS) -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
 	@mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
 	@mkdir -p dist/ios/json/
 	@cp pkg/lib/bundle/system*.json dist/ios/json/
 	@cp pkg/lib/bundle/relations.json dist/ios/json/
 	@cp pkg/lib/bundle/internal*.json dist/ios/json/
 	@go mod tidy
+	@echo 'Repacking iOS framework...'
+	@go run cmd/iosrepack/main.go
+
+install-dev-ios: setup-go build-ios protos-swift
+	@echo 'Installing iOS framework locally at $(CLIENT_IOS_PATH)...'
+	@rm -rf $(CLIENT_IOS_PATH)/Dependencies/Middleware/*
+	@cp -r dist/ios/Lib.xcframework $(CLIENT_IOS_PATH)/Dependencies/Middleware
+	@rm -rf $(CLIENT_IOS_PATH)/Modules/ProtobufMessages/Sources/Protocol/*
+	@cp -r dist/ios/protobuf/*.swift $(CLIENT_IOS_PATH)/Modules/ProtobufMessages/Sources/Protocol
+	@mkdir -p $(CLIENT_IOS_PATH)/Dependencies/Middleware/protobuf/protos
+	@cp -r pb/protos/*.proto $(CLIENT_IOS_PATH)/Dependencies/Middleware/protobuf/protos
+	@cp -r pb/protos/service/*.proto $(CLIENT_IOS_PATH)/Dependencies/Middleware/protobuf/protos
+	@cp -r pkg/lib/pb/model/protos/*.proto $(CLIENT_IOS_PATH)/Dependencies/Middleware/protobuf/protos
+	@mkdir -p $(CLIENT_IOS_PATH)/Dependencies/Middleware/json
+	@cp -r pkg/lib/bundle/*.json $(CLIENT_IOS_PATH)/Dependencies/Middleware/json
 
 build-android: setup-go setup-gomobile
 	$(DEPS_PATH)/gomobile init
 	@echo 'Building library for Android...'
-	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
-	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar)
+	@$(eval FLAGS += $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
+	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar timetzdata rasterizesvg)
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
-	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" -v -target=android -androidapi 19 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
+	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" $(BUILD_FLAGS) -target=android -androidapi 19 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
 	@mkdir -p dist/android/ && mv lib.aar dist/android/
 	@go mod tidy
+
+install-dev-android: setup-go build-android
+	@echo 'Installing android lib locally in $(CLIENT_ANDROID_PATH)...'
+	@rm -f $(CLIENT_ANDROID_PATH)/libs/lib.aar
+	@cp -r dist/android/lib.aar $(CLIENT_ANDROID_PATH)/libs/lib.aar
+	@cp -r pb/protos/*.proto $(CLIENT_ANDROID_PATH)/protocol/src/main/proto
+	@cp -r pkg/lib/pb/model/protos/*.proto $(CLIENT_ANDROID_PATH)/protocol/src/main/proto
+	# Compute the SHA hash of lib.aar
+	@$(eval hash := $$(shell shasum -b dist/android/lib.aar | cut -d' ' -f1))
+	@echo "Version hash: ${hash}"
+	# Update the gradle file with the new version
+	@sed -i '' "s/version = '.*'/version = '${hash}'/g" $(CLIENT_ANDROID_PATH)/libs/build.gradle
+	@cat $(CLIENT_ANDROID_PATH)/libs/build.gradle
+
+	@sed -i '' "s/middlewareVersion = \".*\"/middlewareVersion = \"${hash}\"/" $(CLIENT_ANDROID_PATH)/gradle/libs.versions.toml
+	@cat $(CLIENT_ANDROID_PATH)/gradle/libs.versions.toml
+
+	# Print the updated gradle file (for verification)
+	@cd $(CLIENT_ANDROID_PATH) && make setup_local_mw
+	@cd $(CLIENT_ANDROID_PATH) && make normalize_mw_imports
+	@cd $(CLIENT_ANDROID_PATH) && make clean_protos
 
 setup-gomobile:
 	go build -o deps golang.org/x/mobile/cmd/gomobile
@@ -212,7 +260,7 @@ protos-swift:
 	@echo 'Generating swift protobuf files'
 	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Public --swift_out=./dist/ios/protobuf pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 		@echo 'Generated swift protobuf files at ./dist/ios/pb'
-	
+
 protos-swift-local: protos-swift
 	@echo 'Clear proto files'
 	@rm -rf ./dist/ios/protobuf/protos
@@ -234,41 +282,41 @@ protos-java:
 
 build-server: setup-network-config
 	@echo 'Building anytype-heart server...'
-	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
+	@$(eval FLAGS += $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
 	@$(eval TAGS := nosigar nowatchdog)
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
-	go build -v -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" github.com/anyproto/anytype-heart/cmd/grpcserver
+	go build -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" $(BUILD_FLAGS) github.com/anyproto/anytype-heart/cmd/grpcserver
 
 run-server: build-server
 	@echo 'Running server...'
 	@./dist/server
 
 install-dev-js-addon: setup build-lib build-js-addon protos-js
-	@echo 'Installing JS-addon (dev-mode)...'
-	@rm -rf ../anytype-ts/build
-	@cp -r clientlibrary/jsaddon/build ../anytype-ts/
-	@cp -r dist/js/pb/* ../anytype-ts/dist/lib
+	@echo 'Installing JS-addon (dev-mode) in ${CLIENT_DESKTOP_PATH}...'
+	@rm -rf $(CLIENT_DESKTOP_PATH)/build
+	@cp -r clientlibrary/jsaddon/build $(CLIENT_DESKTOP_PATH)/
+	@cp -r dist/js/pb/* $(CLIENT_DESKTOP_PATH)/dist/lib
 
 install-dev-js: setup-go build-server protos-js
-	@echo 'Installing JS-server (dev-mode)...'
-	@rm -f ../anytype-ts/dist/anytypeHelper
+	@echo 'Installing JS-server (dev-mode) in $(CLIENT_DESKTOP_PATH)...'
+	@rm -f $(CLIENT_DESKTOP_PATH)/dist/anytypeHelper
 
 ifeq ($(OS),Windows_NT)
-	@cp -r dist/server ../anytype-ts/dist/anytypeHelper.exe
+	@cp -r dist/server $(CLIENT_DESKTOP_PATH)/dist/anytypeHelper.exe
 else
-	@cp -r dist/server ../anytype-ts/dist/anytypeHelper
+	@cp -r dist/server $(CLIENT_DESKTOP_PATH)/dist/anytypeHelper
 endif
 
-	@cp -r dist/js/pb/* ../anytype-ts/dist/lib
-	@cp -r dist/js/pb/* ../anytype-ts/dist/lib
-	@mkdir -p ../anytype-ts/dist/lib/json/generated
-	@cp pkg/lib/bundle/system*.json ../anytype-ts/dist/lib/json/generated
-	@cp pkg/lib/bundle/internal*.json ../anytype-ts/dist/lib/json/generated
+	@cp -r dist/js/pb/* $(CLIENT_DESKTOP_PATH)/dist/lib
+	@cp -r dist/js/pb/* $(CLIENT_DESKTOP_PATH)/dist/lib
+	@mkdir -p $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
+	@cp pkg/lib/bundle/system*.json $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
+	@cp pkg/lib/bundle/internal*.json $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
 
 build-js: setup-go build-server protos-js
-	@echo "Run 'make install-dev-js' instead if you want to build & install into ../anytype-ts"
+	@echo "Run 'make install-dev-js' instead if you want to build & install into $(CLIENT_DESKTOP_PATH)"
 
 install-linter:
 	@go install github.com/daixiang0/gci@latest
@@ -276,14 +324,70 @@ install-linter:
 
 run-linter:
 ifdef GOLANGCI_LINT_BRANCH
-	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --verbose
-else 
-	@golangci-lint run -v ./... --new-from-rev=origin/main --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --verbose
+	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --timeout 15m --verbose
+else
+	@golangci-lint run -v ./... --new-from-rev=origin/main --timeout 15m --verbose
 endif
 
 run-linter-fix:
 ifdef GOLANGCI_LINT_BRANCH
-	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --fix
-else 
-	@golangci-lint run -v ./... --new-from-rev=origin/main --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --fix
+	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --timeout 15m --fix
+else
+	@golangci-lint run -v ./... --new-from-rev=origin/main --timeout 15m --fix
 endif
+
+### Tantivy Section
+
+REPO := anyproto/tantivy-go
+VERSION := v0.1.0
+OUTPUT_DIR := deps/libs
+SHA_FILE = tantivity_sha256.txt
+
+TANTIVY_LIBS := android-386.tar.gz \
+         android-amd64.tar.gz \
+         android-arm.tar.gz \
+         android-arm64.tar.gz \
+         darwin-amd64.tar.gz \
+         darwin-arm64.tar.gz \
+         ios-amd64.tar.gz \
+         ios-arm64.tar.gz \
+         ios-arm64-sim.tar.gz \
+         linux-amd64-musl.tar.gz \
+         windows-amd64.tar.gz
+
+define download_tantivy_lib
+	curl -L -o $(OUTPUT_DIR)/$(1) https://github.com/$(REPO)/releases/download/$(VERSION)/$(1)
+endef
+
+define remove_arch
+	rm -f $(OUTPUT_DIR)/$(1)
+endef
+
+remove-libs:
+	@rm -rf deps/libs/*
+
+download-tantivy: remove-libs $(TANTIVY_LIBS)
+
+$(TANTIVY_LIBS):
+	@mkdir -p $(OUTPUT_DIR)/$(shell echo $@ | cut -d'.' -f1)
+	$(call download_tantivy_lib,$@)
+	@tar -C $(OUTPUT_DIR)/$(shell echo $@ | cut -d'.' -f1) -xvzf $(OUTPUT_DIR)/$@
+
+download-tantivy-all-force: download-tantivy
+	rm -f $(SHA_FILE)
+	@for file in $(TANTIVY_LIBS); do \
+		echo "SHA256 $(OUTPUT_DIR)/$$file" ; \
+		shasum -a 256 $(OUTPUT_DIR)/$$file | awk '{print $$1 "  " "'$(OUTPUT_DIR)/$$file'" }' >> $(SHA_FILE); \
+	done
+	@rm -rf deps/libs/*.tar.gz
+	@echo "SHA256 checksums generated."
+
+download-tantivy-all: download-tantivy
+	@echo "Validating SHA256 checksums..."
+	@shasum -a 256 -c $(SHA_FILE) --status || { echo "Hash mismatch detected."; exit 1; }
+	@echo "All files are valid."
+	@rm -rf deps/libs/*.tar.gz
+
+download-tantivy-local: remove-libs
+	@mkdir -p $(OUTPUT_DIR)
+	@cp -r $(TANTIVY_GO_PATH)/libs/* $(OUTPUT_DIR)

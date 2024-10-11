@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/gogo/protobuf/proto"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/debug"
 )
@@ -17,12 +18,12 @@ func (s *dsFileStore) DebugRouter(r chi.Router) {
 }
 
 func (s *dsFileStore) debugList(_ *http.Request) ([]*storage.FileInfo, error) {
-	return sanitizeFileInfos(s.List())
+	return sanitizeFileInfos(s.ListAllFileVariants())
 }
 
 func (s *dsFileStore) debugListByTarget(req *http.Request) ([]*storage.FileInfo, error) {
 	id := chi.URLParam(req, "targetID")
-	return sanitizeFileInfos(s.ListByTarget(id))
+	return sanitizeFileInfos(s.ListFileVariants(domain.FileId(id)))
 }
 
 func sanitizeFileInfos(infos []*storage.FileInfo, err error) ([]*storage.FileInfo, error) {

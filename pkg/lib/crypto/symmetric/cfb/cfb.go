@@ -20,7 +20,6 @@ type CFBEncryptDecryptor struct {
 }
 
 type CFBDecryptor struct {
-	k          symmetric.Key
 	block      cipher.Block
 	sr         *cipher.StreamReader
 	iv         [aes.BlockSize]byte
@@ -49,7 +48,7 @@ func (e *CFBEncryptDecryptor) DecryptReader(r io.ReadSeeker) (symmetric.ReadSeek
 		return nil, err
 	}
 
-	d := &CFBDecryptor{k: e.k, iv: e.iv}
+	d := &CFBDecryptor{iv: e.iv}
 	stream := cipher.NewCFBDecrypter(block, d.iv[:])
 	d.sr = &cipher.StreamReader{S: stream, R: r}
 	d.block = block

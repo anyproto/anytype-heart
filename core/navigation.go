@@ -18,7 +18,7 @@ func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNav
 	response := func(code pb.RpcNavigationListObjectsResponseErrorCode, Objects []*model.ObjectInfo, err error) *pb.RpcNavigationListObjectsResponse {
 		m := &pb.RpcNavigationListObjectsResponse{Error: &pb.RpcNavigationListObjectsResponseError{Code: code}, Objects: Objects}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -29,7 +29,7 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 	response := func(code pb.RpcNavigationGetObjectInfoWithLinksResponseErrorCode, object *model.ObjectInfoWithLinks, err error) *pb.RpcNavigationGetObjectInfoWithLinksResponse {
 		m := &pb.RpcNavigationGetObjectInfoWithLinksResponse{Error: &pb.RpcNavigationGetObjectInfoWithLinksResponseError{Code: code}, Object: object}
 		if err != nil {
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 
 		return m
@@ -58,7 +58,7 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 			if err != nil {
 				log.Error("get smartblock type: %v", err)
 			}
-			if sbType == smartblock.SmartBlockTypeArchive || sbType == smartblock.SmartBlockTypeFile || sbType == smartblock.SmartBlockTypeWidget {
+			if sbType == smartblock.SmartBlockTypeArchive || sbType == smartblock.SmartBlockTypeFileObject || sbType == smartblock.SmartBlockTypeWidget {
 				continue
 			}
 

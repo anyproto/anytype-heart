@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -18,34 +19,41 @@ func TestNormalize(t *testing.T) {
 		want   *state.State
 	}{
 		{
-			name:   "empty",
+			name:   "empty table should remain empty",
 			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{}),
 			want:   mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{}),
 		},
 		{
-			name: "invalid ids",
+			name: "cells with invalid ids are moved under the table",
 			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
 				{"row1-c11", "row1-col2"},
-				{"row2-col3"},
+				{"row2-col3", "cell"},
 			}),
 			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
-				{"row1-col2"},
-				{},
-			}),
+				{"row1-c11", "row1-col2"},
+				{"row2-col3", "cell"},
+			}, withChangedChildren(map[string][]string{
+				"root": {"table", "row2-col3", "cell", "row1-c11"},
+				"row1": {"row1-col2"},
+				"row2": {},
+			})),
 		},
 		{
-			name: "wrong column order",
+			name: "wrong cells order -> do sorting and move invalid cells under the table",
 			source: mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, [][]string{
 				{"row1-col3", "row1-col1", "row1-col2"},
 				{"row2-col3", "row2-c1", "row2-col1"},
 			}),
 			want: mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, [][]string{
 				{"row1-col1", "row1-col2", "row1-col3"},
-				{"row2-col1", "row2-col3"},
-			}),
+				{"row2-col3", "row2-c1", "row2-col1"},
+			}, withChangedChildren(map[string][]string{
+				"root": {"table", "row2-c1"},
+				"row2": {"row2-col1", "row2-col3"},
+			})),
 		},
 		{
-			name: "wrong place for header rows",
+			name: "wrong place for header rows -> do sorting",
 			source: mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2", "row3"}, nil,
 				withRowBlockContents(map[string]*model.BlockContentTableRow{
 					"row3": {IsHeader: true},
@@ -55,43 +63,72 @@ func TestNormalize(t *testing.T) {
 					"row3": {IsHeader: true},
 				})),
 		},
+		{
+			name: "cell is a child of rows, not row -> move under the table",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"},
+			}, withChangedChildren(map[string][]string{
+				"rows": {"row1", "row1-col2", "row2"},
+				"row1": {"row1-col1"},
+			})),
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"},
+			}, withChangedChildren(map[string][]string{
+				"root": {"table", "row1-col2"},
+				"row1": {"row1-col1"},
+			})),
+		},
+		{
+			name: "columns contain invalid children -> move under the table",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"},
+			}, withChangedChildren(map[string][]string{
+				"columns": {"col1", "col2", "row1-col2"},
+				"row1":    {"row1-col1"},
+			})),
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"},
+			}, withChangedChildren(map[string][]string{
+				"root": {"table", "row1-col2"},
+				"row1": {"row1-col1"},
+			})),
+		},
+		{
+			name: "table block contains invalid children -> table is dropped",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{}, withChangedChildren(map[string][]string{
+				"table": {"columns"},
+			})),
+			want: state.NewDoc("root", map[string]simple.Block{"root": simple.New(&model.Block{Id: "root"})}).NewState(),
+		},
+		{
+			name: "missed column is recreated",
+			source: mkTestTable([]string{"col1"}, []string{"row1", "row2"}, [][]string{}, withChangedChildren(map[string][]string{
+				"columns": {"col1", "col2"},
+			})),
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{}),
+		},
+		{
+			name: "missed row is recreated",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1"}, [][]string{}, withChangedChildren(map[string][]string{
+				"rows": {"row1", "row2"},
+			})),
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{}),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb, err := NewTable(tc.source, "table")
-
-			require.NoError(t, err)
-
+			// given
 			st := tc.source.Copy()
-			err = tb.block.(Block).Normalize(st)
-			require.NoError(t, err)
+			tb := st.Pick("table")
+			require.NotNil(t, tb)
 
+			// when
+			err := tb.(Block).Normalize(st)
+
+			// then
+			require.NoError(t, err)
 			assert.Equal(t, tc.want.Blocks(), st.Blocks())
 		})
 	}
-}
-
-func TestNormalizeAbsentRow(t *testing.T) {
-	source := mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"}, [][]string{
-		{"row1-c11", "row1-col2"},
-		{"row2-col3"},
-	})
-	source.CleanupBlock("row3")
-
-	want := mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"}, [][]string{
-		{"row1-col2"},
-		{},
-		{},
-	})
-
-	tb, err := NewTable(source, "table")
-
-	require.NoError(t, err)
-
-	st := source.Copy()
-	err = tb.block.(Block).Normalize(st)
-	require.NoError(t, err)
-
-	assert.Equal(t, want.Blocks(), st.Blocks())
 }
 
 func TestDuplicate(t *testing.T) {

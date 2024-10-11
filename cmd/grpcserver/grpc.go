@@ -34,12 +34,12 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/util/debug"
+	"github.com/anyproto/anytype-heart/util/conc"
+	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
 const defaultAddr = "127.0.0.1:31007"
 const defaultWebAddr = "127.0.0.1:31008"
-const defaultUnaryWarningAfter = time.Second * 3
 
 // do not change this, js client relies on this msg to ensure that server is up
 const grpcWebStartedMessagePrefix = "gRPC Web proxy started at: "
@@ -51,7 +51,7 @@ func main() {
 	var addr string
 	var webaddr string
 	app.StartWarningAfter = time.Second * 5
-	fmt.Printf("mw grpc: %s\n", app.VersionDescription())
+	fmt.Printf("mw grpc: %s\n", vcs.GetVCSInfo().Description())
 	if len(os.Args) > 1 {
 		addr = os.Args[1]
 		if len(os.Args) > 2 {
@@ -76,11 +76,12 @@ func main() {
 	}
 
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
+		fmt.Printf("Running GO debug HTTP server at: %s\n", debug)
 		go func() {
 			http.ListenAndServe(debug, nil)
 		}()
 	}
-	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
+	metrics.Service.InitWithKeys(metrics.DefaultInHouseKey)
 
 	var signalChan = make(chan os.Signal, 2)
 	signal.Notify(signalChan, signals...)
@@ -107,6 +108,7 @@ func main() {
 	if metrics.Enabled {
 		unaryInterceptors = append(unaryInterceptors, grpc_prometheus.UnaryServerInterceptor)
 	}
+	unaryInterceptors = append(unaryInterceptors, metrics.UnaryTraceInterceptor)
 	unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 		resp, err = mw.Authorize(ctx, req, info, handler)
 		if err != nil {
@@ -117,27 +119,7 @@ func main() {
 
 	// todo: we may want to change it to the opposite check with a public release
 	if os.Getenv("ANYTYPE_GRPC_NO_DEBUG_TIMEOUT") != "1" {
-		unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-			doneCh := make(chan struct{})
-			start := time.Now()
-
-			l := log.With("method", info.FullMethod)
-
-			go func() {
-				select {
-				case <-doneCh:
-				case <-time.After(defaultUnaryWarningAfter):
-					l.With("in_progress", true).With("goroutines", debug.StackCompact(true)).With("total", defaultUnaryWarningAfter.Milliseconds()).Warnf("grpc unary request is taking too long")
-				}
-			}()
-			ctx = context.WithValue(ctx, metrics.CtxKeyRPC, info.FullMethod)
-			resp, err = handler(ctx, req)
-			close(doneCh)
-			if time.Since(start) > defaultUnaryWarningAfter {
-				l.With("error", err).With("in_progress", false).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request took too long")
-			}
-			return
-		})
+		unaryInterceptors = append(unaryInterceptors, metrics.LongMethodsInterceptor)
 	}
 
 	grpcDebug, _ := strconv.Atoi(os.Getenv("ANYTYPE_GRPC_LOG"))
@@ -240,6 +222,8 @@ func main() {
 		}
 	}()
 
+	startReportMemory(mw)
+
 	// do not change this, js client relies on this msg to ensure that server is up and parse address
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
 
@@ -284,7 +268,7 @@ func appendInterceptor(
 }
 
 func onDefaultError(mw *core.Middleware, r any, resp interface{}) interface{} {
-	mw.OnPanic(r)
+	conc.OnPanic(r)
 	resp = &pb.RpcGenericErrorResponse{
 		Error: &pb.RpcGenericErrorResponseError{
 			Code:        pb.RpcGenericErrorResponseError_UNKNOWN_ERROR,

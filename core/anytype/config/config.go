@@ -1,12 +1,15 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/config"
@@ -23,14 +26,27 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
 var log = logging.Logger("anytype-config")
 
 const (
 	CName = "config"
+)
+
+const (
+	SpaceStoreBadgerPath = "spacestore"
+	SpaceStoreSqlitePath = "spaceStore.db"
+)
+
+var (
+	ErrNetworkIdMismatch       = fmt.Errorf("network id mismatch")
+	ErrNetworkFileNotFound     = fmt.Errorf("network configuration file not found")
+	ErrNetworkFileFailedToRead = fmt.Errorf("failed to read network configuration")
 )
 
 type FileConfig interface {
@@ -41,8 +57,8 @@ type FileConfig interface {
 type ConfigRequired struct {
 	HostAddr            string `json:",omitempty"`
 	CustomFileStorePath string `json:",omitempty"`
-	TimeZone            string `json:",omitempty"`
 	LegacyFileStorePath string `json:",omitempty"`
+	NetworkId           string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
 }
 
 type Config struct {
@@ -50,6 +66,12 @@ type Config struct {
 	NewAccount                             bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	DisableThreadsSyncEvents               bool
 	DontStartLocalNetworkSyncAutomatically bool
+	PeferYamuxTransport                    bool
+	SpaceStorageMode                       storage.SpaceStorageMode
+	NetworkMode                            pb.RpcAccountNetworkMode
+	NetworkCustomConfigFilePath            string           `json:",omitempty"` // not saved to config
+	SqliteTempPath                         string           `json:",omitempty"` // not saved to config
+	AnyStoreConfig                         *anystore.Config `json:",omitempty"` // not saved to config
 
 	RepoPath    string
 	AnalyticsId string
@@ -60,6 +82,12 @@ type Config struct {
 	DS                clientds.Config
 	FS                FSConfig
 	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
+
+	nodeConf nodeconf.Configuration
+}
+
+func (c *Config) IsLocalOnlyMode() bool {
+	return c.NetworkMode == pb.RpcAccount_LocalOnly
 }
 
 type FSConfig struct {
@@ -130,7 +158,23 @@ func (c *Config) Init(a *app.App) (err error) {
 	if err = c.initFromFileAndEnv(repoPath); err != nil {
 		return
 	}
-	a.MustComponent(peerservice.CName).(quicPreferenceSetter).PreferQuic(true)
+	if !c.PeferYamuxTransport {
+		// PeferYamuxTransport is false by default and used only in case client has some problems with QUIC
+		a.MustComponent(peerservice.CName).(quicPreferenceSetter).PreferQuic(true)
+	}
+	// check if sqlite db exists
+	if _, err2 := os.Stat(filepath.Join(repoPath, SpaceStoreSqlitePath)); err2 == nil {
+		// already have sqlite db
+		c.SpaceStorageMode = storage.SpaceStorageModeSqlite
+	} else if _, err2 = os.Stat(filepath.Join(repoPath, SpaceStoreBadgerPath)); err2 == nil {
+		// old account repos
+		c.SpaceStorageMode = storage.SpaceStorageModeBadger
+	} else {
+		// new account repos
+		// todo: remove temporary log
+		log.Warn("using sqlite storage")
+		c.SpaceStorageMode = storage.SpaceStorageModeSqlite
+	}
 	return
 }
 
@@ -139,6 +183,16 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		return fmt.Errorf("repo is missing")
 	}
 	c.RepoPath = repoPath
+	c.AnyStoreConfig = &anystore.Config{}
+	if runtime.GOOS == "android" {
+		split := strings.Split(repoPath, "/files/")
+		if len(split) == 1 {
+			return fmt.Errorf("failed to split repo path: %s", repoPath)
+		}
+		c.SqliteTempPath = filepath.Join(split[0], "cache")
+		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
+		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + c.SqliteTempPath + "'"
+	}
 
 	if !c.DisableFileConfig {
 		var confRequired ConfigRequired
@@ -211,6 +265,10 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		log.Errorf("failed to read config from env: %v", err)
 	}
 
+	c.nodeConf, err = c.GetNodeConfWithError()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -234,6 +292,18 @@ func (c *Config) FSConfig() (FSConfig, error) {
 
 func (c *Config) GetConfigPath() string {
 	return filepath.Join(c.RepoPath, ConfigFileName)
+}
+
+func (c *Config) GetSpaceStorePath() string {
+	return filepath.Join(c.RepoPath, "spaceStore.db")
+}
+
+func (c *Config) GetTempDirPath() string {
+	return c.SqliteTempPath
+}
+
+func (c *Config) GetAnyStoreConfig() *anystore.Config {
+	return c.AnyStoreConfig
 }
 
 func (c *Config) IsNewAccount() bool {
@@ -285,18 +355,56 @@ func (c *Config) GetDebugServer() debugserver.Config {
 	return debugserver.Config{ListenAddr: c.DebugAddr}
 }
 
-func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
-	if networkConfigPath := loadenv.Get("ANY_SYNC_NETWORK"); networkConfigPath != "" {
-		log.Warnf("any sync network nodes configuration is overridden by the env var ANY_SYNC_NETWORK")
+func (c *Config) GetNodeConfWithError() (conf nodeconf.Configuration, err error) {
+	// todo: remvoe set via os env
+	networkConfigPath := loadenv.Get("ANY_SYNC_NETWORK")
+	confBytes := nodesConfYmlBytes
+
+	if networkConfigPath != "" {
+		if c.NetworkMode != pb.RpcAccount_CustomConfig && c.NetworkCustomConfigFilePath != "" {
+			return nodeconf.Configuration{}, fmt.Errorf("network config path is set in both env ANY_SYNC_NETWORK(%s) and in RPC request(%s)", networkConfigPath, c.NetworkCustomConfigFilePath)
+		}
+		log.Warnf("Network config set via os env ANY_SYNC_NETWORK is deprecated")
+	} else if c.NetworkMode == pb.RpcAccount_CustomConfig {
+		if c.NetworkCustomConfigFilePath == "" {
+			return nodeconf.Configuration{}, errors.Join(ErrNetworkFileFailedToRead, fmt.Errorf("CustomConfig network mode is set but NetworkCustomConfigFilePath is empty"))
+		}
+		networkConfigPath = c.NetworkCustomConfigFilePath
+	}
+
+	// save the reference to no override the original pointer to the slice
+	if networkConfigPath != "" {
 		var err error
-		if nodesConfYmlBytes, err = os.ReadFile(networkConfigPath); err != nil {
-			panic(fmt.Errorf("load network configuration failed: %w", err))
+		if confBytes, err = os.ReadFile(networkConfigPath); err != nil {
+			if os.IsNotExist(err) {
+				return nodeconf.Configuration{}, errors.Join(ErrNetworkFileNotFound, err)
+			}
+			return nodeconf.Configuration{}, errors.Join(ErrNetworkFileFailedToRead, err)
 		}
 	}
-	if err := yaml.Unmarshal(nodesConfYmlBytes, &conf); err != nil {
-		panic(fmt.Errorf("unable to parse node config: %w", err))
+
+	switch c.NetworkMode {
+	case pb.RpcAccount_CustomConfig, pb.RpcAccount_DefaultConfig:
+		if err := yaml.Unmarshal(confBytes, &conf); err != nil {
+			return nodeconf.Configuration{}, errors.Join(ErrNetworkFileFailedToRead, err)
+		}
+		if c.NetworkId != "" && c.NetworkId != conf.NetworkId {
+			log.Warnf("Network id mismatch: %s != %s", c.NetworkId, conf.NetworkId)
+			return nodeconf.Configuration{}, errors.Join(ErrNetworkIdMismatch, fmt.Errorf("network id mismatch: %s != %s", c.NetworkId, conf.NetworkId))
+		}
+	case pb.RpcAccount_LocalOnly:
+		confBytes = []byte{}
+	}
+
+	if conf.NetworkId != "" && c.NetworkId == "" {
+		log.Infof("Network id is not set in config; set to %s", conf.NetworkId)
+		c.NetworkId = conf.NetworkId
 	}
 	return
+}
+
+func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
+	return c.nodeConf
 }
 
 func (c *Config) GetNodeConfStorePath() string {
@@ -317,4 +425,24 @@ func (c *Config) GetQuic() quic.Config {
 		WriteTimeoutSec: 10,
 		DialTimeoutSec:  10,
 	}
+}
+
+func (c *Config) ResetStoredNetworkId() error {
+	configCopy := c.ConfigRequired
+	configCopy.NetworkId = ""
+	return WriteJsonConfig(c.GetConfigPath(), configCopy)
+}
+
+func (c *Config) PersistAccountNetworkId() error {
+	configCopy := c.ConfigRequired
+	configCopy.NetworkId = c.NetworkId
+	return WriteJsonConfig(c.GetConfigPath(), configCopy)
+}
+
+func (c *Config) GetSpaceStorageMode() storage.SpaceStorageMode {
+	return c.SpaceStorageMode
+}
+
+func (c *Config) GetNetworkMode() pb.RpcAccountNetworkMode {
+	return c.NetworkMode
 }

@@ -10,12 +10,12 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/export"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -38,14 +39,23 @@ const (
 	BlankTemplateId = "blank"
 )
 
-var log = logging.Logger("template")
+var (
+	log = logging.Logger("template")
+
+	templateIsPreferableRelationKeys = []domain.RelationKey{
+		bundle.RelationKeyFeaturedRelations, bundle.RelationKeyLayout,
+		bundle.RelationKeyIconEmoji, bundle.RelationKeyCoverId,
+		bundle.RelationKeySourceObject,
+	}
+)
 
 type Service interface {
 	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (st *state.State, err error)
+	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *types.Struct) *state.State
 	ObjectApplyTemplate(contextId string, templateId string) error
 	TemplateCreateFromObject(ctx context.Context, id string) (templateId string, err error)
 
-	TemplateCloneInSpace(space space.Space, id string) (templateId string, err error)
+	TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
 	TemplateClone(spaceId string, id string) (templateId string, err error)
 
 	TemplateExportAll(ctx context.Context, path string) (string, error)
@@ -54,7 +64,7 @@ type Service interface {
 }
 
 type service struct {
-	picker       getblock.ObjectGetter
+	picker       cache.ObjectGetter
 	store        objectstore.ObjectStore
 	spaceService space.Service
 	creator      objectcreator.Service
@@ -72,7 +82,7 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Init(a *app.App) error {
-	s.picker = app.MustComponent[getblock.ObjectGetter](a)
+	s.picker = app.MustComponent[cache.ObjectGetter](a)
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.creator = app.MustComponent[objectcreator.Service](a)
@@ -97,26 +107,39 @@ func (s *service) CreateTemplateStateWithDetails(
 			return
 		}
 	}
-	targetDetails := extractTargetDetails(details, targetState.Details())
-	targetState.AddDetails(targetDetails)
-	targetState.BlocksInit(targetState)
 
+	addDetailsToState(targetState, details)
 	return targetState, nil
 }
 
-func extractTargetDetails(addedDetails *types.Struct, templateDetails *types.Struct) *types.Struct {
-	templateIsPreferableRelationKeys := []domain.RelationKey{bundle.RelationKeyFeaturedRelations, bundle.RelationKeyLayout}
-	targetDetails := pbtypes.CopyStruct(addedDetails)
+// CreateTemplateStateFromSmartBlock duplicates the logic of CreateTemplateStateWithDetails but does not take the lock on smartBlock.
+// if building of state fails, state of blank template is returned
+func (s *service) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *types.Struct) *state.State {
+	st, err := s.buildState(sb)
+	if err != nil {
+		layout := pbtypes.GetInt64(details, bundle.RelationKeyLayout.String())
+		st = s.createBlankTemplateState(model.ObjectTypeLayout(layout))
+	}
+	addDetailsToState(st, details)
+	return st
+}
+
+func extractTargetDetails(originDetails *types.Struct, templateDetails *types.Struct) *types.Struct {
+	targetDetails := pbtypes.CopyStruct(originDetails, true)
 	if templateDetails == nil {
 		return targetDetails
 	}
-	for key := range addedDetails.GetFields() {
+	for key := range originDetails.GetFields() {
 		_, exists := templateDetails.Fields[key]
 		if exists {
 			inTemplateEmpty := pbtypes.IsEmptyValueOrAbsent(templateDetails, key)
-			inAddedEmpty := pbtypes.IsEmptyValueOrAbsent(addedDetails, key)
+			if key == bundle.RelationKeyLayout.String() {
+				// layout = 0 is actually basic layout, so it counts
+				inTemplateEmpty = false
+			}
+			inOriginEmpty := pbtypes.IsEmptyValueOrAbsent(originDetails, key)
 			templateValueShouldBePreferred := lo.Contains(templateIsPreferableRelationKeys, domain.RelationKey(key))
-			if !inTemplateEmpty && (inAddedEmpty || templateValueShouldBePreferred) {
+			if !inTemplateEmpty && (inOriginEmpty || templateValueShouldBePreferred) {
 				delete(targetDetails.Fields, key)
 			}
 		}
@@ -125,39 +148,49 @@ func extractTargetDetails(addedDetails *types.Struct, templateDetails *types.Str
 }
 
 func (s *service) createCustomTemplateState(templateId string) (targetState *state.State, err error) {
-	err = getblock.Do(s.picker, templateId, func(sb smartblock.SmartBlock) (innerErr error) {
-		if !lo.Contains(sb.ObjectTypeKeys(), bundle.TypeKeyTemplate) {
-			return fmt.Errorf("object '%s' is not a template", templateId)
-		}
-		targetState = sb.NewState().Copy()
-
-		if pbtypes.GetBool(targetState.LocalDetails(), bundle.RelationKeyIsArchived.String()) {
-			return spacestorage.ErrTreeStorageAlreadyDeleted
-		}
-
-		innerErr = s.updateTypeKey(targetState)
-		if innerErr != nil {
-			return
-		}
-
-		targetState.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String())
-		targetState.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(sb.Id()))
-		targetState.SetLocalDetails(nil)
+	err = cache.Do(s.picker, templateId, func(sb smartblock.SmartBlock) (innerErr error) {
+		targetState, innerErr = s.buildState(sb)
 		return
 	})
-	if err != nil {
-		if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-			targetState = s.createBlankTemplateState(model.ObjectType_basic)
-			err = nil
-		} else {
-			err = fmt.Errorf("can't apply template: %w", err)
-		}
+	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		return s.createBlankTemplateState(model.ObjectType_basic), nil
 	}
 	return
 }
 
+func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err error) {
+	if sb == nil {
+		return nil, fmt.Errorf("smartblock is nil")
+	}
+	if !lo.Contains(sb.ObjectTypeKeys(), bundle.TypeKeyTemplate) {
+		return nil, fmt.Errorf("object '%s' is not a template", sb.Id())
+	}
+	st = sb.NewState().Copy()
+
+	if pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsArchived.String()) {
+		return nil, spacestorage.ErrTreeStorageAlreadyDeleted
+	}
+
+	err = s.updateTypeKey(st)
+	if err != nil {
+		return
+	}
+
+	st.RemoveDetail(
+		bundle.RelationKeyTargetObjectType.String(),
+		bundle.RelationKeyTemplateIsBundled.String(),
+		bundle.RelationKeyOrigin.String(),
+		bundle.RelationKeyAddedDate.String(),
+	)
+	st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(sb.Id()))
+	// original created timestamp is used to set creationDate for imported objects, not for template-based objects
+	st.SetOriginalCreatedTimestamp(0)
+	st.SetLocalDetails(nil)
+	return
+}
+
 func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
-	return getblock.Do(s.picker, contextId, func(b smartblock.SmartBlock) error {
+	return cache.Do(s.picker, contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
 		ts, err := s.CreateTemplateStateWithDetails(templateId, orig.Details())
 		if err != nil {
@@ -185,11 +218,11 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		objectTypeKeys []domain.TypeKey
 	)
 
-	if err = getblock.Do(s.picker, id, func(b smartblock.SmartBlock) error {
+	if err = cache.Do(s.picker, id, func(b smartblock.SmartBlock) error {
 		if b.Type() != coresb.SmartBlockTypePage {
-			return fmt.Errorf("can't make template from this obect type")
+			return fmt.Errorf("can't make template from this object type: %s", model.SmartBlockType_name[int32(b.Type())])
 		}
-		st, err = s.templateCreateFromObjectState(b)
+		st, err = buildTemplateStateFromObject(b)
 		objectTypeKeys = st.ObjectTypeKeys()
 		return err
 	}); err != nil {
@@ -208,7 +241,7 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 	return
 }
 
-func (s *service) TemplateCloneInSpace(space space.Space, id string) (templateId string, err error) {
+func (s *service) TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error) {
 	var (
 		st             *state.State
 		objectTypeKeys []domain.TypeKey
@@ -249,7 +282,7 @@ func (s *service) TemplateCloneInSpace(space space.Space, id string) (templateId
 }
 
 func (s *service) TemplateClone(spaceId string, id string) (templateId string, err error) {
-	var spaceObject space.Space
+	var spaceObject clientspace.Space
 	spaceObject, err = s.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		return "", fmt.Errorf("get space: %w", err)
@@ -298,7 +331,8 @@ func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *s
 	template.InitTemplate(st, template.WithEmpty,
 		template.WithDefaultFeaturedRelations,
 		template.WithFeaturedRelations,
-		template.WithRequiredRelations(),
+		template.WithAddedFeaturedRelation(bundle.RelationKeyTag),
+		template.WithDetail(bundle.RelationKeyTag, pbtypes.StringList(nil)),
 		template.WithTitle,
 	)
 	_ = s.converter.Convert(nil, st, model.ObjectType_basic, layout)
@@ -329,7 +363,7 @@ func (s *service) updateTypeKey(st *state.State) (err error) {
 	return nil
 }
 
-func (s *service) templateCreateFromObjectState(sb smartblock.SmartBlock) (*state.State, error) {
+func buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
 	targetObjectTypeId, err := sb.Space().GetTypeIdByKey(context.Background(), st.ObjectTypeKey())
@@ -343,5 +377,14 @@ func (s *service) templateCreateFromObjectState(sb smartblock.SmartBlock) (*stat
 			st.RemoveDetail(rel.Key)
 		}
 	}
+	flags := internalflag.NewFromState(st)
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(st)
 	return st, nil
+}
+
+func addDetailsToState(s *state.State, details *types.Struct) {
+	targetDetails := extractTargetDetails(details, s.Details())
+	s.AddDetails(targetDetails)
+	s.BlocksInit(s)
 }

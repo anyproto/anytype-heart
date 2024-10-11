@@ -11,10 +11,7 @@
     "relations": [
       "tag",
       "time",
-      "servings",
-      "ingredients",
-      "instructions",
-      "difficulty"
+      "ingredients"
     ],
     "description": "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food"
   },
@@ -45,16 +42,7 @@
       "tag",
       "phone",
       "email",
-      "dateOfBirth",
-      "placeOfBirth",
-      "company",
-      "socialProfile",
-      "job",
-      "linkedContacts",
-      "occupation",
-      "instagram",
-      "gender",
-      "facebook"
+      "company"
     ],
     "description": "Information to make action of communicating or meeting with Human or Company"
   },
@@ -75,22 +63,6 @@
     "description": "URL that is stored as Object and may be categorised and linked with objects"
   },
   {
-    "id": "weeklyPlan",
-    "name": "Weekly Plan",
-    "types": [
-      "Page"
-    ],
-    "emoji": "🗓️",
-    "hidden": false,
-    "layout": "todo",
-    "relations": [
-      "tag",
-      "events",
-      "tasks"
-    ],
-    "description": "The act of organizing your activities and tasks for the week"
-  },
-  {
     "id": "date",
     "name": "Date",
     "types": [
@@ -105,23 +77,6 @@
     "description": "Gregorian calendar date"
   },
   {
-    "id": "idea",
-    "name": "Idea",
-    "types": [
-      "Page"
-    ],
-    "emoji": "💡",
-    "hidden": false,
-    "layout": "basic",
-    "relations": [
-      "tag",
-      "problem",
-      "solution",
-      "alternative"
-    ],
-    "description": "A thought or suggestion as to a possible course of action"
-  },
-  {
     "id": "task",
     "name": "Task",
     "types": [
@@ -134,7 +89,6 @@
       "tag",
       "assignee",
       "dueDate",
-      "attachments",
       "status",
       "done",
       "priority",
@@ -173,8 +127,6 @@
     "relations": [
       "tag",
       "author",
-      "category",
-      "rating",
       "status",
       "starred",
       "url"
@@ -194,16 +146,18 @@
       "sizeInBytes",
       "fileMimeType",
       "camera",
-      "thumbnailImage",
       "heightInPixels",
       "widthInPixels",
       "cameraIso",
       "aperture",
       "exposure",
       "addedDate",
-      "fileExt"
+      "fileExt",
+      "origin"
     ],
-    "description": "Auto-generated object from .mpeg-4 files added to Anytype. The recording of moving visual images"
+    "description": "The recording of moving visual images",
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "dashboard",
@@ -215,23 +169,8 @@
     "hidden": true,
     "layout": "dashboard",
     "relations": [],
-    "description": "Internal home dashboard with favourite objects"
-  },
-  {
-    "id": "dailyPlan",
-    "name": "Daily Plan",
-    "types": [
-      "Page"
-    ],
-    "emoji": "📆",
-    "hidden": false,
-    "layout": "todo",
-    "relations": [
-      "tag",
-      "tasks",
-      "events"
-    ],
-    "description": "A detailed proposal for doing or achieving something for the day\n"
+    "description": "Internal home dashboard with favourite objects",
+    "restrictObjectCreation": true
   },
   {
     "id": "movie",
@@ -244,13 +183,7 @@
     "layout": "basic",
     "relations": [
       "tag",
-      "director",
-      "stars",
       "genre",
-      "trailer",
-      "rating",
-      "imdbRating",
-      "rottenTomatoesRating",
       "status"
     ],
     "description": "Motion picture or Moving picture, is a work of visual art used to simulate experiences that communicate ideas, stories, perceptions, feelings, beauty, or atmosphere through the use of moving images"
@@ -295,7 +228,8 @@
     "relations": [
       "tag"
     ],
-    "description": "Workspace"
+    "description": "Workspace",
+    "restrictObjectCreation": true
   },
   {
     "id": "spaceView",
@@ -309,7 +243,24 @@
     "relations": [
       "tag"
     ],
-    "description": "Space"
+    "description": "Space",
+    "restrictObjectCreation": true
+  },
+  {
+    "id": "participant",
+    "name": "Space member",
+    "types": [
+      "Participant"
+    ],
+    "emoji": "\uD83E\uDDD1",
+    "hidden": false,
+    "layout": "participant",
+    "relations": [
+      "tag"
+    ],
+    "description": "Anytype identity as a space participant",
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "template",
@@ -317,14 +268,15 @@
     "types": [
       "Template"
     ],
-    "emoji": "",
-    "hidden": true,
+    "emoji": "\uD83E\uDDE9",
+    "hidden": false,
     "layout": "basic",
     "relations": [
       "targetObjectType",
       "templateIsBundled"
     ],
-    "description": "Sample object that has already some details in place and used to create objects from"
+    "description": "Sample object that has already some details in place and used to create objects from",
+    "revision": 1
   },
   {
     "id": "set",
@@ -354,27 +306,6 @@
       "tag"
     ],
     "description": "Collect objects in one place, use different views to organize them"
-  },
-  {
-    "id": "classNote",
-    "name": "Class Note",
-    "types": [
-      "Page"
-    ],
-    "emoji": "👨🏻‍🏫",
-    "hidden": false,
-    "layout": "basic",
-    "relations": [
-      "tag",
-      "class",
-      "classType",
-      "records",
-      "questions",
-      "materials",
-      "tasks",
-      "reflection"
-    ],
-    "description": "Note for recording lectures or seminars"
   },
   {
     "id": "diaryEntry",
@@ -425,30 +356,12 @@
       "exposure",
       "addedDate",
       "focalRatio",
-      "fileExt"
+      "fileExt",
+      "origin"
     ],
-    "description": "Auto-generated object from .jpg \u0026 .png files added to Anytype. A representation of the external form of a person or thing in art"
-  },
-  {
-    "id": "bug",
-    "name": "Bug (Software)",
-    "types": [
-      "Page"
-    ],
-    "emoji": "🐞",
-    "hidden": false,
-    "layout": "todo",
-    "relations": [
-      "tag",
-      "howToReproduce",
-      "result",
-      "additional",
-      "attachments",
-      "assignee",
-      "dueDate",
-      "priority"
-    ],
-    "description": "An error, fault or flaw in any computer program or a hardware system. A bug produces unexpected results or causes a system to behave unexpectedly"
+    "description": "A representation of the external form of a person or thing in art",
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "profile",
@@ -479,17 +392,17 @@
       "audioAlbum",
       "audioAlbumTrackNumber",
       "audioGenre",
+      "audioLyrics",
       "releasedYear",
-      "thumbnailImage",
-      "composer",
       "sizeInBytes",
       "fileMimeType",
       "addedDate",
       "fileExt",
-      "audioArtist",
-      "audioLyrics"
+      "origin"
     ],
-    "description": "Auto-generated object from .wav, .mp3, .ogg files added to Anytype. Sound when recorded, with ability to reproduce"
+    "description": "Sound when recorded, with ability to reproduce",
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "goal",
@@ -510,43 +423,6 @@
     "description": "The object of a person's ambition or effort; an aim or desired result"
   },
   {
-    "id": "feature",
-    "name": "Feature",
-    "types": [
-      "Page"
-    ],
-    "emoji": "🪁",
-    "hidden": false,
-    "layout": "todo",
-    "relations": [
-      "tag",
-      "hypothesisAssumptions",
-      "problem",
-      "userStories",
-      "logic",
-      "measureOfSuccess",
-      "attachments",
-      "assignee",
-      "dueDate",
-      "priority"
-    ],
-    "description": "A distinguishing characteristic of a software item (e.g., performance, portability, or functionality)"
-  },
-  {
-    "id": "document",
-    "name": "Document",
-    "types": [
-      "Page"
-    ],
-    "emoji": "📃",
-    "hidden": false,
-    "layout": "basic",
-    "relations": [
-      "tag"
-    ],
-    "description": "A piece of matter that provides information or evidence or that serves as an official record"
-  },
-  {
     "id": "file",
     "name": "File",
     "types": [
@@ -559,9 +435,12 @@
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
-      "fileExt"
+      "fileExt",
+      "origin"
     ],
-    "description": "Auto-generated object from files added to Anytype. Computer resource for recording data in a computer storage device"
+    "description": "Computer resource for recording data in a computer storage device",
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "project",
@@ -574,11 +453,6 @@
     "layout": "basic",
     "relations": [
       "tag",
-      "objectives",
-      "scope",
-      "timeframe",
-      "budget",
-      "stakeholders",
       "tasks"
     ],
     "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim"

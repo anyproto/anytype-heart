@@ -1,14 +1,18 @@
 package wallet
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -19,6 +23,9 @@ const (
 	keyFileDevice = "device.key"
 )
 
+type EthPrivateKey = *ecdsa.PrivateKey
+type EthAddress = common.Address
+
 type wallet struct {
 	rootPath      string
 	repoPath      string // other components will init their files/dirs inside
@@ -28,6 +35,11 @@ type wallet struct {
 	deviceKey     crypto.PrivKey
 	masterKey     crypto.PrivKey
 	oldAccountKey crypto.PrivKey
+
+	// this key is used to sign ethereum transactions
+	// and use Any Naming Service
+	ethereumKey ecdsa.PrivateKey
+
 	// this is needed for any-sync
 	accountData *accountdata.AccountKeys
 }
@@ -46,6 +58,20 @@ func (r *wallet) GetOldAccountKey() crypto.PrivKey {
 
 func (r *wallet) GetMasterKey() crypto.PrivKey {
 	return r.masterKey
+}
+
+func (r *wallet) GetAccountEthPrivkey() *ecdsa.PrivateKey {
+	return &r.ethereumKey
+}
+
+func (r *wallet) GetAccountEthAddress() EthAddress {
+	publicKey := r.ethereumKey.Public()
+
+	// eat the error, we know it's an ecdsa.PublicKey
+	publicKeyECDSA, _ := publicKey.(*ecdsa.PublicKey)
+	ethAddress := ethcrypto.PubkeyToAddress(*publicKeyECDSA)
+
+	return common.HexToAddress(ethAddress.String())
 }
 
 func (r *wallet) Init(a *app.App) (err error) {
@@ -70,12 +96,18 @@ func (r *wallet) Init(a *app.App) (err error) {
 			return fmt.Errorf("failed to unmarshall device keyfile: %w", err)
 		}
 	}
+
+	err = os.MkdirAll(filepath.Join(r.repoPath, appLinkKeysDirectory), 0700)
+	if err != nil {
+		return fmt.Errorf("failed to create app link directory: %w", err)
+	}
+
 	peerId := r.deviceKey.GetPublic().PeerId()
 	accountId := r.accountKey.GetPublic().Account()
 	logging.SetHost(peerId)
-	metrics.SharedClient.SetDeviceId(peerId)
+	metrics.Service.SetDeviceId(peerId)
 	logging.SetAccount(accountId)
-	metrics.SharedClient.SetUserId(accountId)
+	metrics.Service.SetUserId(accountId)
 
 	r.accountData = accountdata.New(r.deviceKey, r.accountKey)
 	return nil
@@ -107,6 +139,7 @@ func NewWithAccountRepo(rootPath string, derivationResult crypto.DerivationResul
 		oldAccountKey: derivationResult.OldAccountKey,
 		accountKey:    derivationResult.Identity,
 		deviceKeyPath: filepath.Join(repoPath, keyFileDevice),
+		ethereumKey:   derivationResult.EthereumIdentity,
 	}
 }
 
@@ -131,6 +164,13 @@ type Wallet interface {
 	GetDevicePrivkey() crypto.PrivKey
 	GetOldAccountKey() crypto.PrivKey
 	GetMasterKey() crypto.PrivKey
+
+	GetAccountEthPrivkey() EthPrivateKey
+	GetAccountEthAddress() EthAddress
+
+	ReadAppLink(appKey string) (*AppLinkPayload, error)
+	PersistAppLink(payload *AppLinkPayload) (appKey string, err error)
+
 	accountservice.Service
 	app.Component
 }

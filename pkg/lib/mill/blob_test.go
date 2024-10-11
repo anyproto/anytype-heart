@@ -12,7 +12,9 @@ func TestBlob_Mill(t *testing.T) {
 	input := make([]byte, 512)
 	rand.Read(input)
 
-	if _, err := m.Mill(bytes.NewReader(input), "test"); err != nil {
+	if r, err := m.Mill(bytes.NewReader(input), "test"); err != nil {
 		t.Fatal(err)
+	} else {
+		_ = r.File.Close()
 	}
 }

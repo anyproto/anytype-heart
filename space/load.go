@@ -5,121 +5,131 @@ import (
 	"errors"
 	"fmt"
 
-	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+
+	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
-func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	persistentStatus := s.getPersistentStatus(spaceID)
-	if persistentStatus.AccountStatus == spaceinfo.AccountStatusDeleted {
-		return ErrSpaceDeleted
-	}
-	localStatus := s.getLocalStatus(spaceID)
-	// Do nothing if space is already loading
-	if localStatus.LocalStatus != spaceinfo.LocalStatusUnknown {
-		return nil
-	}
+type controllerWaiter struct {
+	wait chan struct{}
+	err  error
+}
 
-	exists, err := s.techSpace.SpaceViewExists(ctx, spaceID)
+func (s *service) getCtrl(ctx context.Context, spaceId string) (ctrl spacecontroller.SpaceController, err error) {
+	s.mu.Lock()
+	if ctrl, ok := s.spaceControllers[spaceId]; ok {
+		s.mu.Unlock()
+		return ctrl, nil
+	}
+	if w, ok := s.waiting[spaceId]; ok {
+		s.mu.Unlock()
+		select {
+		case <-w.wait:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+		s.mu.Lock()
+		err := s.waiting[spaceId].err
+		if err != nil {
+			s.mu.Unlock()
+			return nil, err
+		}
+		ctrl := s.spaceControllers[spaceId]
+		s.mu.Unlock()
+		return ctrl, nil
+	}
+	s.mu.Unlock()
+	return nil, ErrSpaceNotExists
+}
+
+func (s *service) startStatus(ctx context.Context, info spaceinfo.SpacePersistentInfo) (ctrl spacecontroller.SpaceController, err error) {
+	s.mu.Lock()
+	if ctrl, ok := s.spaceControllers[info.SpaceID]; ok {
+		s.mu.Unlock()
+		return ctrl, nil
+	}
+	if w, ok := s.waiting[info.SpaceID]; ok {
+		s.mu.Unlock()
+		select {
+		case <-w.wait:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+		s.mu.Lock()
+		err := s.waiting[info.SpaceID].err
+		if err != nil {
+			s.mu.Unlock()
+			return nil, err
+		}
+		ctrl := s.spaceControllers[info.SpaceID]
+		s.mu.Unlock()
+		return ctrl, nil
+	}
+	wait := make(chan struct{})
+	s.waiting[info.SpaceID] = controllerWaiter{
+		wait: wait,
+	}
+	s.mu.Unlock()
+	ctrl, err = s.factory.NewShareableSpace(ctx, info.SpaceID, info)
+	s.mu.Lock()
+	close(wait)
+	if err != nil {
+		s.waiting[info.SpaceID] = controllerWaiter{
+			wait: wait,
+			err:  err,
+		}
+		s.mu.Unlock()
+		return nil, err
+	}
+	s.spaceControllers[info.SpaceID] = ctrl
+	s.mu.Unlock()
+	return ctrl, nil
+}
+
+func (s *service) waitLoad(ctx context.Context, ctrl spacecontroller.SpaceController) (sp clientspace.Space, err error) {
+	if ld, ok := ctrl.Current().(loader.LoadWaiter); ok {
+		sp, err = ld.WaitLoad(ctx)
+		if err != nil {
+			err = convertSpaceError(err)
+		}
+		return
+	}
+	return nil, fmt.Errorf("failed to load space, mode is %d: %w", ctrl.Mode(), ErrFailedToLoad)
+}
+
+func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
+	s.mu.Lock()
+	wait := make(chan struct{})
+	s.waiting[s.personalSpaceId] = controllerWaiter{
+		wait: wait,
+	}
+	s.mu.Unlock()
+	ctrl, err := s.factory.NewPersonalSpace(ctx, s.accountMetadataPayload)
 	if err != nil {
 		return
 	}
-	if !exists {
-		return ErrSpaceNotExists
+	_, err = ctrl.Current().(loader.LoadWaiter).WaitLoad(ctx)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err != nil {
+		return err
 	}
-
-	info := spaceinfo.SpaceLocalInfo{
-		SpaceID:     spaceID,
-		LocalStatus: spaceinfo.LocalStatusLoading,
-	}
-	if err = s.setLocalStatus(ctx, info); err != nil {
-		return
-	}
-	_, justCreated := s.createdSpaces[spaceID]
-	s.loading[spaceID] = s.newLoadingSpace(s.ctx, spaceID, justCreated)
+	close(wait)
+	s.spaceControllers[s.personalSpaceId] = ctrl
 	return
 }
 
-func (s *service) onLoad(spaceID string, sp Space, loadErr error) (err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
+func convertSpaceError(err error) error {
 	switch {
-	case loadErr == nil:
-	case errors.Is(loadErr, spaceservice.ErrSpaceDeletionPending):
-		return s.setLocalStatus(s.ctx, spaceinfo.SpaceLocalInfo{
-			SpaceID:      spaceID,
-			LocalStatus:  spaceinfo.LocalStatusMissing,
-			RemoteStatus: spaceinfo.RemoteStatusWaitingDeletion,
-		})
-	case errors.Is(loadErr, spaceservice.ErrSpaceIsDeleted):
-		return s.setLocalStatus(s.ctx, spaceinfo.SpaceLocalInfo{
-			SpaceID:      spaceID,
-			LocalStatus:  spaceinfo.LocalStatusMissing,
-			RemoteStatus: spaceinfo.RemoteStatusDeleted,
-		})
+	case errors.Is(err, spacesyncproto.ErrSpaceIsDeleted):
+		return ErrSpaceDeleted
+	case errors.Is(err, spacestorage.ErrSpaceStorageMissing):
+		return ErrSpaceStorageMissig
 	default:
-		return s.setLocalStatus(s.ctx, spaceinfo.SpaceLocalInfo{
-			SpaceID:      spaceID,
-			LocalStatus:  spaceinfo.LocalStatusMissing,
-			RemoteStatus: spaceinfo.RemoteStatusError,
-		})
+		return err
 	}
-
-	s.loaded[spaceID] = sp
-	delete(s.loading, spaceID)
-
-	// TODO: check remote status
-	return s.setLocalStatus(s.ctx, spaceinfo.SpaceLocalInfo{
-		SpaceID:      spaceID,
-		LocalStatus:  spaceinfo.LocalStatusOk,
-		RemoteStatus: spaceinfo.RemoteStatusUnknown,
-	})
-}
-
-func (s *service) preLoad(spc Space) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.loaded[spc.Id()] = spc
-	s.localStatuses[spc.Id()] = spaceinfo.SpaceLocalInfo{
-		SpaceID:      spc.Id(),
-		LocalStatus:  spaceinfo.LocalStatusOk,
-		RemoteStatus: spaceinfo.RemoteStatusUnknown,
-	}
-	s.persistentStatuses[spc.Id()] = spaceinfo.SpacePersistentInfo{
-		SpaceID:       spc.Id(),
-		AccountStatus: spaceinfo.AccountStatusUnknown,
-	}
-}
-
-func (s *service) waitLoad(ctx context.Context, spaceID string) (sp Space, err error) {
-	s.mu.Lock()
-	status := s.getLocalStatus(spaceID)
-
-	switch status.LocalStatus {
-	case spaceinfo.LocalStatusUnknown:
-		return nil, fmt.Errorf("waitLoad for an unknown space")
-	case spaceinfo.LocalStatusLoading:
-		// loading in progress, wait channel and retry
-		waitCh := s.loading[spaceID].loadCh
-		s.mu.Unlock()
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-waitCh:
-		}
-		return s.waitLoad(ctx, spaceID)
-	case spaceinfo.LocalStatusMissing:
-		// local missing status means the loader ended with an error
-		err = s.loading[spaceID].loadErr
-	case spaceinfo.LocalStatusOk:
-		sp = s.loaded[spaceID]
-	default:
-		err = fmt.Errorf("undefined space status: %v", status.LocalStatus)
-	}
-	s.mu.Unlock()
-	return
 }

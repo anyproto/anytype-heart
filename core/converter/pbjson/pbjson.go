@@ -15,7 +15,7 @@ import (
 var log = logging.Logger("json-converter")
 
 func NewConverter(s state.Doc) converter.Converter {
-	return &pbj{s}
+	return &pbj{s: s}
 }
 
 type pbj struct {
@@ -32,10 +32,8 @@ func (p *pbj) Convert(sbType model.SmartBlockType) []byte {
 			Collections:   st.Store(),
 			RelationLinks: st.PickRelationLinks(),
 			Key:           p.s.UniqueKeyInternal(),
+			FileInfo:      st.GetFileInfo().ToModel(),
 		},
-	}
-	for _, fk := range p.s.GetAndUnsetFileKeys() {
-		snapshot.FileKeys = append(snapshot.FileKeys, &pb.ChangeFileKeys{Hash: fk.Hash, Keys: fk.Keys})
 	}
 	mo := &pb.SnapshotWithType{
 		SbType:   sbType,

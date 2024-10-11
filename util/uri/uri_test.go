@@ -83,21 +83,21 @@ func TestURI_ValidateURI(t *testing.T) {
 		uri := "D://folder//file.txt"
 		err := ValidateURI(uri)
 		assert.Error(t, err)
-		assert.Equal(t, err, errFilepathNotSupported)
+		assert.Equal(t, err, ErrFilepathNotSupported)
 	})
 
 	t.Run("should return error on unix abs filepath", func(t *testing.T) {
 		uri := "/folder/file.txt"
 		err := ValidateURI(uri)
 		assert.Error(t, err)
-		assert.Equal(t, err, errFilepathNotSupported)
+		assert.Equal(t, err, ErrFilepathNotSupported)
 	})
 
 	t.Run("should return error on unix rel filepath", func(t *testing.T) {
 		uri := "../folder/file.txt"
 		err := ValidateURI(uri)
 		assert.Error(t, err)
-		assert.Equal(t, err, errFilepathNotSupported)
+		assert.Equal(t, err, ErrFilepathNotSupported)
 	})
 
 	t.Run("should not return error if url is surrounded by whitespaces", func(t *testing.T) {

@@ -7,11 +7,12 @@ import (
 
 	"github.com/samber/lo"
 
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 type Directory struct {
 	fileReaders map[string]struct{}
+	importPath  string
 }
 
 func NewDirectory() *Directory {
@@ -29,6 +30,7 @@ func (d *Directory) Initialize(importPath string) error {
 		},
 	)
 	d.fileReaders = files
+	d.importPath = importPath
 	if err != nil {
 		return err
 	}
@@ -39,7 +41,7 @@ func (d *Directory) Iterate(callback func(fileName string, fileReader io.ReadClo
 	for file := range d.fileReaders {
 		fileReader, err := os.Open(file)
 		if err != nil {
-			return oserror.TransformError(err)
+			return anyerror.CleanupError(err)
 		}
 		isContinue := callback(file, fileReader)
 		fileReader.Close()
@@ -57,7 +59,7 @@ func (d *Directory) ProcessFile(fileName string, callback func(fileReader io.Rea
 			if os.IsNotExist(err) {
 				return nil
 			}
-			return oserror.TransformError(err)
+			return anyerror.CleanupError(err)
 		}
 		defer fileReader.Close()
 		if err = callback(fileReader); err != nil {
@@ -75,6 +77,10 @@ func (d *Directory) CountFilesWithGivenExtensions(extension []string) int {
 		}
 	}
 	return numberOfFiles
+}
+
+func (d *Directory) IsRootFile(fileName string) bool {
+	return filepath.Dir(fileName) == d.importPath
 }
 
 func (d *Directory) Close() {}

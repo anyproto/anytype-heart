@@ -64,6 +64,9 @@ func (es *GrpcSender) SendToSession(token string, event *pb.Event) {
 }
 
 func (es *GrpcSender) sendEvent(server SessionServer, event *pb.Event) {
+	if len(event.Messages) == 0 {
+		return
+	}
 	go func() {
 		err := server.Server.Send(event)
 		if err != nil {
@@ -78,7 +81,9 @@ func (es *GrpcSender) sendEvent(server SessionServer, event *pb.Event) {
 func (es *GrpcSender) Broadcast(event *pb.Event) {
 	es.ServerMutex.RLock()
 	defer es.ServerMutex.RUnlock()
-
+	if len(es.Servers) == 0 {
+		log.Warnf("no servers to broadcast event")
+	}
 	for _, s := range es.Servers {
 		es.sendEvent(s, event)
 	}

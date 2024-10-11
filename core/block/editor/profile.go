@@ -4,24 +4,20 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
-	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -36,31 +32,34 @@ type Profile struct {
 	bookmark.Bookmark
 	table.TableEditor
 
-	eventSender event.Sender
+	eventSender       event.Sender
+	fileObjectService fileobject.Service
 }
 
-func NewProfile(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, fileBlockService file.BlockService, picker getblock.ObjectGetter, bookmarkService bookmark.BookmarkService, tempDirProvider core.TempDirProvider, layoutConverter converter.LayoutConverter, fileService files.Service, eventSender event.Sender) *Profile {
-	f := file.NewFile(sb, fileBlockService, tempDirProvider, fileService, picker)
+func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
+	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Profile{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
+		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
-			objectStore,
-			eventSender,
+			f.objectStore,
+			f.eventSender,
 		),
-		File: f,
+		File: fileComponent,
 		Clipboard: clipboard.NewClipboard(
 			sb,
-			f,
-			tempDirProvider,
-			objectStore,
-			fileService,
+			fileComponent,
+			f.tempDirProvider,
+			f.objectStore,
+			f.fileService,
+			f.fileObjectService,
 		),
-		Bookmark:    bookmark.NewBookmark(sb, bookmarkService, objectStore),
-		TableEditor: table.NewEditor(sb),
-		eventSender: eventSender,
+		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService),
+		TableEditor:       table.NewEditor(sb),
+		eventSender:       f.eventSender,
+		fileObjectService: f.fileObjectService,
 	}
 }
 
@@ -69,20 +68,20 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
+	if !ctx.IsNewObject {
+		migrateFilesToObjects(p, p.fileObjectService)(ctx.State)
+	}
+
 	return nil
 }
 
 func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 3,
+		Version: 4,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
 				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
-				template.WithTitle,
-				template.WithFeaturedRelations,
-				template.WithRequiredRelations(),
-				migrationWithIdentityBlock,
 				migrationSetHidden,
 			)
 		},
@@ -123,10 +122,15 @@ func (p *Profile) StateMigrations() migration.Migrations {
 			Version: 3,
 			Proc:    migrationSetHidden,
 		},
+		{
+			Version: 4,
+			Proc: func(s *state.State) {
+			},
+		},
 	})
 }
 
-func (p *Profile) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (p *Profile) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
 	if err = p.AllOperations.SetDetails(ctx, details, showEvent); err != nil {
 		return
 	}

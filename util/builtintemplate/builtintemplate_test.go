@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
-	"github.com/anyproto/anytype-heart/space/mock_space"
+	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
 )
@@ -22,7 +22,7 @@ func Test_registerBuiltin(t *testing.T) {
 	defer ctrl.Finish()
 
 	sourceService := mockSource.NewMockService(ctrl)
-	sourceService.EXPECT().NewStaticSource(gomock.Any(), gomock.Any(), gomock.Any(), nil).AnyTimes()
+	sourceService.EXPECT().NewStaticSource(gomock.Any()).AnyTimes()
 	sourceService.EXPECT().RegisterStaticSource(gomock.Any()).AnyTimes()
 
 	marketplaceSpace := mock_space.NewMockSpace(t)

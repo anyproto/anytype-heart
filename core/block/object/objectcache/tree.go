@@ -75,8 +75,11 @@ func (c *objectCache) DeriveTreePayload(ctx context.Context, params payloadcreat
 	}
 	accountKeys := c.accountService.Account()
 	// we have to derive ids differently for personal space
-	if c.personalSpaceId == c.space.Id() {
+	if c.personalSpaceId == c.space.Id() || params.UseAccountSignature {
 		treePayload := derivePersonalPayload(c.space.Id(), accountKeys.SignKey, changePayload)
+		if c.space.TreeBuilder() == nil {
+			return treestorage.TreeStorageCreatePayload{}, fmt.Errorf("can't derive in virtual space")
+		}
 		create, err := c.space.TreeBuilder().CreateTree(context.Background(), treePayload)
 		if err != nil {
 			return storagePayload, err
@@ -103,9 +106,33 @@ func (c *objectCache) DeriveTreeObject(ctx context.Context, params TreeDerivatio
 	return c.CreateTreeObjectWithPayload(ctx, payload, params.InitFunc)
 }
 
+// DeriveTreeObjectWithAccountSignature derives a tree object for a given space and smart block type using account signature
+func (c *objectCache) DeriveTreeObjectWithAccountSignature(ctx context.Context, params TreeDerivationParams) (sb smartblock.SmartBlock, err error) {
+	payload, err := c.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{
+		Key:                 params.Key,
+		UseAccountSignature: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// TODO: [MR] rewrite to use any-sync derivation
+	return c.CreateTreeObjectWithPayload(ctx, payload, params.InitFunc)
+}
+
 func (c *objectCache) DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error) {
 	payload, err := c.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{
 		Key: uniqueKey,
+	})
+	if err != nil {
+		return "", err
+	}
+	return payload.RootRawChange.Id, nil
+}
+
+func (c *objectCache) DeriveObjectIdWithAccountSignature(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error) {
+	payload, err := c.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{
+		Key:                 uniqueKey,
+		UseAccountSignature: true,
 	})
 	if err != nil {
 		return "", err

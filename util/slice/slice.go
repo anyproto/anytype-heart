@@ -194,10 +194,10 @@ func HasPrefix(value, prefix []string) bool {
 	return true
 }
 
-func Copy(s []string) []string {
-	res := make([]string, len(s))
-	copy(res, s)
-	return res
+func Copy[T any](list []T) []T {
+	newList := make([]T, len(list))
+	copy(newList, list)
+	return newList
 }
 
 func Intersection(a, b []string) (res []string) {
@@ -236,4 +236,20 @@ func FilterCID(cids []string) []string {
 		_, err := cid.Parse(item)
 		return err == nil
 	})
+}
+
+// MergeUniqBy merges two slices with comparator. Resulting slice saves values' order and uniqueness.
+// Input slices MUST contain only unique values
+func MergeUniqBy[T comparable](s1, s2 []T, equal func(v1, v2 T) bool) (result []T) {
+	result = make([]T, len(s1))
+	copy(result, s1)
+	for _, v2 := range s2 {
+		if !slices.ContainsFunc(s1, func(v1 T) bool {
+			return equal(v1, v2)
+		}) {
+			result = append(result, v2)
+		}
+	}
+
+	return result
 }

@@ -1,6 +1,7 @@
 package table
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -20,8 +21,7 @@ func init() {
 func NewBlock(b *model.Block) simple.Block {
 	if c := b.GetTable(); c != nil {
 		return &block{
-			Base:    base.NewBase(b).(*base.Base),
-			content: c,
+			Base: base.NewBase(b).(*base.Base),
 		}
 	}
 	return nil
@@ -29,48 +29,16 @@ func NewBlock(b *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
-	Normalize(s *state.State) error
 	Duplicate(s *state.State) (newID string, visitedIds []string, blocks []simple.Block, err error)
+	Normalize(s *state.State) error
 }
 
 type block struct {
 	*base.Base
-	content *model.BlockContentTable
 }
 
 func (b *block) Copy() simple.Block {
 	return NewBlock(pbtypes.CopyBlock(b.Model()))
-}
-
-func (b *block) Normalize(s *state.State) error {
-	tb, err := NewTable(s, b.Id)
-	if err != nil {
-		log.Errorf("normalize table %s: broken table state: %s", b.Model().Id, err)
-		return nil
-	}
-
-	colIdx := map[string]int{}
-	for i, c := range tb.ColumnIDs() {
-		colIdx[c] = i
-	}
-
-	for _, rowID := range tb.RowIDs() {
-		row := s.Get(rowID)
-		// Fix data integrity by adding missing row
-		if row == nil {
-			row = makeRow(rowID)
-			if !s.Add(row) {
-				return fmt.Errorf("add missing row block %s", rowID)
-			}
-			continue
-		}
-		normalizeRow(colIdx, row)
-	}
-
-	if err := normalizeRows(s, tb); err != nil {
-		return fmt.Errorf("normalize rows: %w", err)
-	}
-	return nil
 }
 
 func (b *block) Duplicate(s *state.State) (newID string, visitedIds []string, blocks []simple.Block, err error) {
@@ -146,6 +114,25 @@ func (b *block) Duplicate(s *state.State) (newID string, visitedIds []string, bl
 	return block.Model().Id, visitedIds, blocks, nil
 }
 
+func (b *block) Normalize(s *state.State) error {
+	tb, err := NewTable(s, b.Id)
+	if err != nil {
+		log.Errorf("normalize table %s: broken table state: %s", b.Id, err)
+		if !s.Unlink(b.Id) {
+			log.Errorf("failed to unlink table block: %s", b.Id)
+		}
+		return nil
+	}
+
+	tb.normalizeColumns()
+	tb.normalizeRows()
+	if err = tb.normalizeHeaderRows(); err != nil {
+		// actually we cannot get error here, as all rows are checked in normalizeRows
+		log.Errorf("normalize header rows: %v", err)
+	}
+	return nil
+}
+
 type rowSort struct {
 	indices []int
 	cells   []string
@@ -166,14 +153,13 @@ func (r *rowSort) Swap(i, j int) {
 	r.cells[i], r.cells[j] = r.cells[j], r.cells[i]
 }
 
-func normalizeRows(s *state.State, tb *Table) error {
-	rows := s.Get(tb.Rows().Id)
+func (tb Table) normalizeHeaderRows() error {
+	rows := tb.s.Get(tb.Rows().Id)
 
 	var headers []string
 	regular := make([]string, 0, len(rows.Model().ChildrenIds))
-
 	for _, rowID := range rows.Model().ChildrenIds {
-		row, err := pickRow(s, rowID)
+		row, err := pickRow(tb.s, rowID)
 		if err != nil {
 			return fmt.Errorf("pick row %s: %w", rowID, err)
 		}
@@ -185,30 +171,37 @@ func normalizeRows(s *state.State, tb *Table) error {
 		}
 	}
 
-	// nolint:gocritic
-	rows.Model().ChildrenIds = append(headers, regular...)
+	tb.s.SetChildrenIds(rows.Model(), append(headers, regular...))
 	return nil
 }
 
-func normalizeRow(colIdx map[string]int, row simple.Block) {
+func (tb Table) normalizeRow(colIdx map[string]int, row simple.Block) {
 	if row == nil || row.Model() == nil {
 		return
 	}
+
+	if colIdx == nil {
+		colIdx = tb.MakeColumnIndex()
+	}
+
 	rs := &rowSort{
 		cells:   make([]string, 0, len(row.Model().ChildrenIds)),
 		indices: make([]int, 0, len(row.Model().ChildrenIds)),
 	}
+	toRemove := []string{}
 	for _, id := range row.Model().ChildrenIds {
 		_, colID, err := ParseCellID(id)
 		if err != nil {
-			log.Warnf("normalize row %s: discard cell %s: invalid id", row.Model().Id, id)
+			log.Warnf("normalize row %s: move cell %s under the table: invalid id", row.Model().Id, id)
+			toRemove = append(toRemove, id)
 			rs.touched = true
 			continue
 		}
 
 		v, ok := colIdx[colID]
 		if !ok {
-			log.Warnf("normalize row %s: discard cell %s: column %s not found", row.Model().Id, id, colID)
+			log.Warnf("normalize row %s: move cell %s under the table: column %s not found", row.Model().Id, id, colID)
+			toRemove = append(toRemove, id)
 			rs.touched = true
 			continue
 		}
@@ -218,6 +211,86 @@ func normalizeRow(colIdx map[string]int, row simple.Block) {
 	sort.Sort(rs)
 
 	if rs.touched {
-		row.Model().ChildrenIds = rs.cells
+		tb.MoveBlocksUnderTheTable(toRemove...)
+		tb.s.SetChildrenIds(row.Model(), rs.cells)
+	}
+}
+
+func (tb Table) normalizeColumns() {
+	var (
+		invalidFound bool
+		colIds       = make([]string, 0)
+		toRemove     = make([]string, 0)
+	)
+
+	for _, colId := range tb.ColumnIDs() {
+		if _, err := pickColumn(tb.s, colId); err != nil {
+			invalidFound = true
+			switch {
+			case errors.Is(err, errColumnNotFound):
+				// Fix data integrity by adding missing column
+				log.Warnf("normalize columns '%s': column '%s' is not found: recreating it", tb.Columns().Id, colId)
+				col := makeColumn(colId)
+				if !tb.s.Add(col) {
+					log.Errorf("add missing column block %s", colId)
+					toRemove = append(toRemove, colId)
+					continue
+				}
+				colIds = append(colIds, colId)
+			case errors.Is(err, errNotAColumn):
+				log.Warnf("normalize columns '%s': block '%s' is not a column: move it under the table", tb.Columns().Id, colId)
+				tb.MoveBlocksUnderTheTable(colId)
+			default:
+				log.Errorf("pick column %s: %v", colId, err)
+				toRemove = append(toRemove, colId)
+			}
+			continue
+		}
+		colIds = append(colIds, colId)
+	}
+
+	if invalidFound {
+		tb.s.SetChildrenIds(tb.Columns(), colIds)
+	}
+}
+
+func (tb Table) normalizeRows() {
+	var (
+		invalidFound bool
+		rowIds       = make([]string, 0)
+		toRemove     = make([]string, 0)
+		colIdx       = tb.MakeColumnIndex()
+	)
+
+	for _, rowId := range tb.RowIDs() {
+		row, err := getRow(tb.s, rowId)
+		if err != nil {
+			invalidFound = true
+			switch {
+			case errors.Is(err, errRowNotFound):
+				// Fix data integrity by adding missing row
+				log.Warnf("normalize rows '%s': row '%s' is not found: recreating it", tb.Rows().Id, rowId)
+				row = makeRow(rowId)
+				if !tb.s.Add(row) {
+					log.Errorf("add missing row block %s", rowId)
+					toRemove = append(toRemove, rowId)
+					continue
+				}
+				rowIds = append(rowIds, rowId)
+			case errors.Is(err, errNotARow):
+				log.Warnf("normalize rows '%s': block '%s' is not a row: move it under the table", tb.Rows().Id, rowId)
+				tb.MoveBlocksUnderTheTable(rowId)
+			default:
+				log.Errorf("get row %s: %v", rowId, err)
+				toRemove = append(toRemove, rowId)
+			}
+			continue
+		}
+		tb.normalizeRow(colIdx, row)
+		rowIds = append(rowIds, rowId)
+	}
+
+	if invalidFound {
+		tb.s.SetChildrenIds(tb.Rows(), rowIds)
 	}
 }

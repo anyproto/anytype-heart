@@ -1,15 +1,21 @@
 package notifications
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
+	"github.com/anyproto/anytype-heart/core/block/editor"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -18,11 +24,12 @@ const notCloseActionType = 1
 
 func TestNotificationService_List(t *testing.T) {
 	t.Run("no notification in store - empty result", func(t *testing.T) {
-		//given
+		// given
 		sender := mock_event.NewMockSender(t)
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: NewTestStore(t),
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -33,7 +40,7 @@ func TestNotificationService_List(t *testing.T) {
 		assert.Len(t, list, 0)
 	})
 	t.Run("limit = 0 - empty result", func(t *testing.T) {
-		//given
+		// given
 		storeFixture := NewTestStore(t)
 		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created})
 		assert.Nil(t, err)
@@ -43,6 +50,7 @@ func TestNotificationService_List(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -53,7 +61,7 @@ func TestNotificationService_List(t *testing.T) {
 		assert.Len(t, list, 0)
 	})
 	t.Run("all notification in store are read and option includeRead=false - empty result", func(t *testing.T) {
-		//given
+		// given
 		storeFixture := NewTestStore(t)
 		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Read})
 		assert.Nil(t, err)
@@ -63,6 +71,7 @@ func TestNotificationService_List(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -73,7 +82,7 @@ func TestNotificationService_List(t *testing.T) {
 		assert.Len(t, list, 0)
 	})
 	t.Run("all notification in store are read and option includeRead=true - return all notification", func(t *testing.T) {
-		//given
+		// given
 		storeFixture := NewTestStore(t)
 		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Read})
 		assert.Nil(t, err)
@@ -83,6 +92,7 @@ func TestNotificationService_List(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -93,7 +103,7 @@ func TestNotificationService_List(t *testing.T) {
 		assert.Len(t, list, 2)
 	})
 	t.Run("1 notification in store read and 1 not read, includeRead=false - 1 notification in result", func(t *testing.T) {
-		//given
+		// given
 		storeFixture := NewTestStore(t)
 		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Replied})
 		assert.Nil(t, err)
@@ -103,6 +113,7 @@ func TestNotificationService_List(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -116,17 +127,19 @@ func TestNotificationService_List(t *testing.T) {
 
 func TestNotificationService_Reply(t *testing.T) {
 	t.Run("action = close - status == read", func(t *testing.T) {
-		//given
+		// given
 		storeFixture := NewTestStore(t)
-		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created})
+		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created, IsLocal: true})
 		assert.Nil(t, err)
 
 		sender := mock_event.NewMockSender(t)
 		sender.EXPECT().Broadcast(mock.Anything).Return().Times(1)
 
 		notifications := notificationService{
-			eventSender:       sender,
-			notificationStore: storeFixture,
+			eventSender:             sender,
+			notificationStore:       storeFixture,
+			lastNotificationIdToAcl: map[string]string{},
+			loadTimeout:             10 * time.Millisecond,
 		}
 
 		// when
@@ -139,9 +152,9 @@ func TestNotificationService_Reply(t *testing.T) {
 		assert.Equal(t, model.Notification_Read, notification.Status)
 	})
 	t.Run("action != close - status == replied", func(t *testing.T) {
-		//given
+		// given
 		storeFixture := NewTestStore(t)
-		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created})
+		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created, IsLocal: true})
 		assert.Nil(t, err)
 
 		sender := mock_event.NewMockSender(t)
@@ -150,6 +163,7 @@ func TestNotificationService_Reply(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -163,11 +177,11 @@ func TestNotificationService_Reply(t *testing.T) {
 	})
 
 	t.Run("close multiple notifications", func(t *testing.T) {
-		//given
+		// given
 		storeFixture := NewTestStore(t)
-		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created})
+		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created, IsLocal: true})
 		assert.Nil(t, err)
-		err = storeFixture.SaveNotification(&model.Notification{Id: "id1", Status: model.Notification_Created})
+		err = storeFixture.SaveNotification(&model.Notification{Id: "id1", Status: model.Notification_Created, IsLocal: true})
 		assert.Nil(t, err)
 
 		sender := mock_event.NewMockSender(t)
@@ -176,6 +190,7 @@ func TestNotificationService_Reply(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -193,6 +208,120 @@ func TestNotificationService_Reply(t *testing.T) {
 	})
 }
 
+func TestNotificationService_CreateAndSend(t *testing.T) {
+	t.Run("notification exist in store - don't send it again", func(t *testing.T) {
+		// given
+		storeFixture := NewTestStore(t)
+		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created, IsLocal: true})
+		assert.Nil(t, err)
+
+		testNotification := &model.Notification{
+			Id:         "id",
+			CreateTime: time.Now().Unix(),
+			Status:     model.Notification_Created,
+			IsLocal:    false,
+			Payload:    &model.NotificationPayloadOfTest{Test: &model.NotificationTest{}},
+		}
+
+		sender := mock_event.NewMockSender(t)
+		notifications := notificationService{
+			eventSender:       sender,
+			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
+		}
+
+		// when
+		err = notifications.CreateAndSend(testNotification)
+		assert.Nil(t, err)
+
+		// then
+		sender.AssertNotCalled(t, "Broadcast", testNotification)
+	})
+	t.Run("notification not exist in store, but exit in NotificationObject - don't send it again", func(t *testing.T) {
+		// given
+		storeFixture := NewTestStore(t)
+
+		notificationObjectId := "notificationId"
+		notificationObject := editor.NewNotificationObject(smarttest.New(notificationObjectId))
+		state := notificationObject.NewState()
+		testNotification := &model.Notification{
+			Id:         "id",
+			CreateTime: time.Now().Unix(),
+			Status:     model.Notification_Created,
+			IsLocal:    false,
+			Payload:    &model.NotificationPayloadOfTest{Test: &model.NotificationTest{}},
+		}
+		state.AddNotification(testNotification)
+		err := notificationObject.Apply(state)
+		assert.Nil(t, err)
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+		objectGetter.EXPECT().GetObject(context.Background(), notificationObjectId).Return(notificationObject, nil)
+
+		sender := mock_event.NewMockSender(t)
+		notifications := notificationService{
+			eventSender:       sender,
+			notificationStore: storeFixture,
+			picker:            objectGetter,
+			notificationId:    notificationObjectId,
+			loadTimeout:       10 * time.Millisecond,
+		}
+
+		// when
+		err = notifications.CreateAndSend(testNotification)
+		assert.Nil(t, err)
+
+		// then
+		sender.AssertNotCalled(t, "Broadcast", testNotification)
+	})
+	t.Run("notification not exist in store and not exit in NotificationObject - send it", func(t *testing.T) {
+		// given
+		storeFixture := NewTestStore(t)
+
+		notificationObjectId := "notificationId"
+		notificationObject := editor.NewNotificationObject(smarttest.New(notificationObjectId))
+		testNotification := &model.Notification{
+			Id:         "id",
+			CreateTime: time.Now().Unix(),
+			Status:     model.Notification_Created,
+			IsLocal:    false,
+			Payload:    &model.NotificationPayloadOfTest{Test: &model.NotificationTest{}},
+		}
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+		objectGetter.EXPECT().GetObject(context.Background(), notificationObjectId).Return(notificationObject, nil)
+
+		sender := mock_event.NewMockSender(t)
+		event := &pb.Event{
+			Messages: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfNotificationSend{
+						NotificationSend: &pb.EventNotificationSend{
+							Notification: testNotification,
+						},
+					},
+				},
+			},
+		}
+		sender.EXPECT().Broadcast(event).Return().Times(1)
+
+		notifications := notificationService{
+			eventSender:             sender,
+			notificationStore:       storeFixture,
+			picker:                  objectGetter,
+			notificationId:          notificationObjectId,
+			lastNotificationIdToAcl: map[string]string{},
+			loadTimeout:             10 * time.Millisecond,
+		}
+
+		// when
+		err := notifications.CreateAndSend(testNotification)
+		assert.Nil(t, err)
+
+		// then
+		sender.AssertCalled(t, "Broadcast", event)
+	})
+}
 func NewTestStore(t *testing.T) NotificationStore {
 	db, err := badger.Open(badger.DefaultOptions(filepath.Join(t.TempDir(), "badger")))
 	require.NoError(t, err)

@@ -2,127 +2,209 @@ networkId: N83gJpVd9MuNRZAuJLZ7LiMntTThhPc6DtzWWVjb1M3PouVU
 nodes:
   - peerId: 12D3KooWCywWYgfDZmamJxvWKAvMT5AYDdRG8MMhCpYLHjW8aX7K
     addresses:
-      - prod-any-sync-node1.toolpad.org:443
-      - prod-any-sync-node1.toolpad.org:1443
+      - prod-any-sync-node1.anyclub.org:443
+      - prod-any-sync-node1.anyclub.org:1443
+      - quic://prod-any-sync-node1.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWKtaDnWNAb6DHHZBCEyB3tEQjLTcRFUSpRsjeSRq34Sgp
     addresses:
-      - prod-any-sync-node2.toolpad.org:443
-      - prod-any-sync-node2.toolpad.org:1443
+      - prod-any-sync-node2.anyclub.org:443
+      - prod-any-sync-node2.anyclub.org:1443
+      - quic://prod-any-sync-node2.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWHBN58eZ9RAt3qhoSECtScJtwwugtQhumPC2KqfuuHFx2
     addresses:
-      - prod-any-sync-node3.toolpad.org:443
-      - prod-any-sync-node3.toolpad.org:1443
+      - prod-any-sync-node3.anyclub.org:443
+      - prod-any-sync-node3.anyclub.org:1443
+      - quic://prod-any-sync-node3.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWAxCweKe8aZV6UGXYYXo9Q6W1gF7h7zhpD4FVpEqYXxts
     addresses:
-      - prod-any-sync-node4.toolpad.org:443
-      - prod-any-sync-node4.toolpad.org:1443
+      - prod-any-sync-node4.anyclub.org:443
+      - prod-any-sync-node4.anyclub.org:1443
+      - quic://prod-any-sync-node4.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWSrpbLQcX9teCjc29FEZByFVgMufY3UetwEfLLGyZk9ta
     addresses:
-      - prod-any-sync-node5.toolpad.org:443
-      - prod-any-sync-node5.toolpad.org:1443
+      - prod-any-sync-node5.anyclub.org:443
+      - prod-any-sync-node5.anyclub.org:1443
+      - quic://prod-any-sync-node5.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWMs2Vom8ukyAU7NBMm49UVXQnA7oVwo9kUFhgqdCdwSYe
     addresses:
-      - prod-any-sync-node6.toolpad.org:443
-      - prod-any-sync-node6.toolpad.org:1443
+      - prod-any-sync-node6.anyclub.org:443
+      - prod-any-sync-node6.anyclub.org:1443
+      - quic://prod-any-sync-node6.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWNgyZ4yDBZfpoiT7ijbSQfsYHBVq3cZ6hKC1na4Ybq7QE
     addresses:
-      - prod-any-sync-node7.toolpad.org:443
-      - prod-any-sync-node7.toolpad.org:1443
+      - prod-any-sync-node7.anyclub.org:443
+      - prod-any-sync-node7.anyclub.org:1443
+      - quic://prod-any-sync-node7.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWQi2Avyc8NmZJBJXK62Ux9ZeTyXy86nxF5S25jfXfmfEo
     addresses:
-      - prod-any-sync-node8.toolpad.org:443
-      - prod-any-sync-node8.toolpad.org:1443
+      - prod-any-sync-node8.anyclub.org:443
+      - prod-any-sync-node8.anyclub.org:1443
+      - quic://prod-any-sync-node8.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWLNJbA9gUwccuhxyWvn2uyrNUt7AHYCaQV5FWTq6Ss7AR
     addresses:
-      - prod-any-sync-node9.toolpad.org:443
-      - prod-any-sync-node9.toolpad.org:1443
+      - prod-any-sync-node9.anyclub.org:443
+      - prod-any-sync-node9.anyclub.org:1443
+      - quic://prod-any-sync-node9.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWMdKkq7SjrBMAqHXprtrbg86JudGUyf1Nk9WQQzKsWonJ
     addresses:
-      - prod-any-sync-node10.toolpad.org:443
-      - prod-any-sync-node10.toolpad.org:1443
+      - prod-any-sync-node10.anyclub.org:443
+      - prod-any-sync-node10.anyclub.org:1443
+      - quic://prod-any-sync-node10.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWMRghjHoSh3biVythJuChAQ6PddYvXjd1dR2H46jUXMtU
     addresses:
-      - prod-any-sync-node11.toolpad.org:443
-      - prod-any-sync-node11.toolpad.org:1443
+      - prod-any-sync-node11.anyclub.org:443
+      - prod-any-sync-node11.anyclub.org:1443
+      - quic://prod-any-sync-node11.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWC69WV4sU31YesYLuFovP92PS8LZkqLbJAmxCEb28UyCo
     addresses:
-      - prod-any-sync-node12.toolpad.org:443
-      - prod-any-sync-node12.toolpad.org:1443
+      - prod-any-sync-node12.anyclub.org:443
+      - prod-any-sync-node12.anyclub.org:1443
+      - quic://prod-any-sync-node12.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWG7R2VEmeUoyh8vtHUNp6cmKdih7K31a6vDT8BHezgQ1b
     addresses:
-      - prod-any-sync-node13.toolpad.org:443
-      - prod-any-sync-node13.toolpad.org:1443
+      - prod-any-sync-node13.anyclub.org:443
+      - prod-any-sync-node13.anyclub.org:1443
+      - quic://prod-any-sync-node13.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWD27VZCngpb5QeGyHJFUCDoQpgePTbvnmEsZYZxknmrpK
     addresses:
-      - prod-any-sync-node14.toolpad.org:443
-      - prod-any-sync-node14.toolpad.org:1443
+      - prod-any-sync-node14.anyclub.org:443
+      - prod-any-sync-node14.anyclub.org:1443
+      - quic://prod-any-sync-node14.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWEGtP8w6CtqGFi597i5HToSm8XFTBiK51NJrjLAUAfdZx
     addresses:
-      - prod-any-sync-node15.toolpad.org:443
-      - prod-any-sync-node15.toolpad.org:1443
+      - prod-any-sync-node15.anyclub.org:443
+      - prod-any-sync-node15.anyclub.org:1443
+      - quic://prod-any-sync-node15.anyclub.org:5430
     types:
       - tree
   - peerId: 12D3KooWBk6PrHAVFLV4zbWFVUjX9MGomVhvcQdGg3UFWz24pBPY
     addresses:
-      - prod-any-sync-filenode1.toolpad.org:443
-      - prod-any-sync-filenode1.toolpad.org:1443
+      - prod-any-sync-filenode1.anyclub.org:443
+      - prod-any-sync-filenode1.anyclub.org:1443
+      - quic://prod-any-sync-filenode1.anyclub.org:5430
     types:
       - file
   - peerId: 12D3KooWLfWd1B7XmEGThYVMtBi3Vcy1Qsa6YckAivbdHSiwnV6b
     addresses:
-      - prod-any-sync-filenode2.toolpad.org:443
-      - prod-any-sync-filenode2.toolpad.org:1443
+      - prod-any-sync-filenode2.anyclub.org:443
+      - prod-any-sync-filenode2.anyclub.org:1443
+      - quic://prod-any-sync-filenode2.anyclub.org:5430
     types:
       - file
   - peerId: 12D3KooW9wrLnc3SeBt33LZDKsPeWRy82a5VqM23LxLqtrc4so45
     addresses:
-      - prod-any-sync-filenode3.toolpad.org:443
-      - prod-any-sync-filenode3.toolpad.org:1443
+      - prod-any-sync-filenode3.anyclub.org:443
+      - prod-any-sync-filenode3.anyclub.org:1443
+      - quic://prod-any-sync-filenode3.anyclub.org:5430
     types:
       - file
   - peerId: 12D3KooWKStBu7tNGumsNp2AnRWsm1XmcnWjZpcc6pKVrhG17sGc
     addresses:
+      - prod-any-sync-coordinator1.anyclub.org:443
+      - prod-any-sync-coordinator1.anyclub.org:1443
+      - quic://prod-any-sync-coordinator1.anyclub.org:5430
       - prod-any-sync-coordinator1.toolpad.org:443
       - prod-any-sync-coordinator1.toolpad.org:1443
+      - prod-any-sync-coordinator1.anytype.io:443
+      - prod-any-sync-coordinator1.anytype.io:1443
     types:
       - coordinator
   - peerId: 12D3KooWDWktnygiEzZHqWhjQXoaKqR2KVqJJwrn6AfXHy2BHJqd
     addresses:
+      - prod-any-sync-coordinator2.anyclub.org:443
+      - prod-any-sync-coordinator2.anyclub.org:1443
+      - quic://prod-any-sync-coordinator2.anyclub.org:5430
       - prod-any-sync-coordinator2.toolpad.org:443
       - prod-any-sync-coordinator2.toolpad.org:1443
+      - prod-any-sync-coordinator2.anytype.io:443
+      - prod-any-sync-coordinator2.anytype.io:1443
     types:
       - coordinator
   - peerId: 12D3KooWK6YnMBfMCQ442pTsW5WvFJDaEv4AzF2UTFWWUNEbENfL
     addresses:
+      - prod-any-sync-coordinator3.anyclub.org:443
+      - prod-any-sync-coordinator3.anyclub.org:1443
+      - quic://prod-any-sync-coordinator3.anyclub.org:5430
       - prod-any-sync-coordinator3.toolpad.org:443
       - prod-any-sync-coordinator3.toolpad.org:1443
+      - prod-any-sync-coordinator3.anytype.io:443
+      - prod-any-sync-coordinator3.anytype.io:1443
     types:
       - coordinator
+  - peerId: 12D3KooWAwesiM8z7XxkFCHWWVyHftX8nuM3jTZGJzcpbAcNcd3p
+    addresses:
+      - prod-any-sync-consensusnode1.anyclub.org:443
+      - prod-any-sync-consensusnode1.anyclub.org:1443
+      - quic://prod-any-sync-consensusnode1.anyclub.org:5430
+    types:
+      - consensus
+  - peerId: 12D3KooWJcTe9hk9adMkEBUJVRtSKxs7QYaVEfV3JSsqHMKUekNo
+    addresses:
+      - prod-any-sync-consensusnode2.anyclub.org:443
+      - prod-any-sync-consensusnode2.anyclub.org:1443
+      - quic://prod-any-sync-consensusnode2.anyclub.org:5430
+    types:
+      - consensus
+  - peerId: 12D3KooWEbFZ3xfrRDHfwfGHHbmDxE4AqyzqZDCD551e7S31tCjM
+    addresses:
+      - prod-any-sync-consensusnode3.anyclub.org:443
+      - prod-any-sync-consensusnode3.anyclub.org:1443
+      - quic://prod-any-sync-consensusnode3.anyclub.org:5430
+    types:
+      - consensus
+  - peerId: 12D3KooWEja7WjymFFfwzUnuYtGy8SJQw1bUBjYoiZvxzxkfuTzY
+    addresses:
+      - prod-any-sync-ppnode1.anyclub.org:443
+      - prod-any-sync-ppnode1.anyclub.org:1443
+      - quic://prod-any-sync-ppnode1.anyclub.org:5430
+    types:
+      - paymentProcessingNode
+  - peerId: 12D3KooWPThj9uJmh8sc5kexe1J5JUpg9taWbCZUq3bQaZqx6Rih
+    addresses:
+      - prod-any-sync-ppnode2.anyclub.org:443
+      - prod-any-sync-ppnode2.anyclub.org:1443
+      - quic://prod-any-sync-ppnode2.anyclub.org:5430
+    types:
+      - paymentProcessingNode
+  - peerId: 12D3KooWCy5Ng34BB1psTVd6p86aXhgpxivDSc4jy14NKqax681X
+    addresses:
+      - prod-any-sync-nsnode1.anyclub.org:443
+      - prod-any-sync-nsnode1.anyclub.org:1443
+      - quic://prod-any-sync-nsnode1.anyclub.org:5430
+    types:
+      - namingNode
+  - peerId: 12D3KooWAZSPR6AbBzNiCdgxUyfdpWR2ET25SKAVTWhujyTSjuDe
+    addresses:
+      - prod-any-sync-nsnode2.anyclub.org:443
+      - prod-any-sync-nsnode2.anyclub.org:1443
+      - quic://prod-any-sync-nsnode2.anyclub.org:5430
+    types:
+      - namingNode

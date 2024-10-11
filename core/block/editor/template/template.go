@@ -81,20 +81,12 @@ var WithNoDuplicateLinks = func() StateTransformer {
 
 var WithRelations = func(rels []domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
-		var links []*model.RelationLink
-		for _, relKey := range rels {
-			if s.HasRelation(relKey.String()) {
-				continue
-			}
-			rel := bundle.MustGetRelation(relKey)
-			links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
-		}
-		s.AddRelationLinks(links...)
+		s.AddBundledRelationLinks(rels...)
 	}
 }
 
-var WithRequiredRelations = func() StateTransformer {
-	return WithRelations(bundle.RequiredInternalRelations)
+var WithRequiredRelations = func(s *state.State) {
+	WithRelations(bundle.RequiredInternalRelations)(s)
 }
 
 var WithObjectTypesAndLayout = func(otypes []domain.TypeKey, layout model.ObjectTypeLayout) StateTransformer {
@@ -234,11 +226,11 @@ var WithDefaultFeaturedRelations = func(s *state.State) {
 		layout, _ := s.Layout()
 		switch layout {
 		case model.ObjectType_basic, model.ObjectType_note:
-			fr = []string{bundle.RelationKeyType.String()}
+			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyBacklinks.String()}
 		case model.ObjectType_set:
-			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String()}
+			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String(), bundle.RelationKeyBacklinks.String()}
 		case model.ObjectType_collection:
-			fr = []string{bundle.RelationKeyType.String()}
+			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyBacklinks.String()}
 		}
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
 	}
@@ -333,7 +325,6 @@ var WithDescription = func(s *state.State) {
 }
 
 var WithNoTitle = StateTransformer(func(s *state.State) {
-	WithFirstTextBlock(s)
 	s.Unlink(TitleBlockId)
 })
 
@@ -437,23 +428,6 @@ var WithAllBlocksEditsRestricted = StateTransformer(func(s *state.State) {
 		return true
 	})
 })
-
-var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
-	return func(s *state.State) {
-		WithEmpty(s)
-
-		for _, block := range blocks {
-			if block.Id == "" {
-				panic("WithRootBlocks arg must contains exact ids for blocks")
-			}
-			s.Add(simple.New(block))
-			err := s.InsertTo(s.RootId(), model.Block_Inner, block.Id)
-			if err != nil {
-				log.Errorf("template WithDataview failed to insert: %v", err)
-			}
-		}
-	}
-}
 
 var WithDataviewID = func(id string, dataview *model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return func(s *state.State) {
@@ -639,7 +613,7 @@ var WithBookmarkBlocks = func(s *state.State) {
 
 	for _, k := range bookmarkRelationKeys {
 		if !s.HasRelation(k) {
-			s.AddBundledRelations(domain.RelationKey(k))
+			s.AddBundledRelationLinks(domain.RelationKey(k))
 		}
 	}
 

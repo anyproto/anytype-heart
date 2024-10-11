@@ -6,11 +6,20 @@ package bundle
 
 import domain "github.com/anyproto/anytype-heart/core/domain"
 
-const SystemRelationsChecksum = "6e36c1d42a1151139dd763eb09be5c30d4c1d4a59b5efa81e2edd2dbdcf9f002"
+const SystemRelationsChecksum = "86abb054e3ab3db5feb72fee757ed9e3aaa012e3137c5f99e1baba8cfcf3c3f2"
 
 // SystemRelations contains relations that have some special biz logic depends on them in some objects
 // in case EVERY object depend on the relation please add it to RequiredInternalRelations
 var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
+	RelationKeySnippet,
+	RelationKeyLayoutAlign,
+	RelationKeyCoverId,
+	RelationKeyCoverScale,
+	RelationKeyCoverType,
+	RelationKeyCoverX,
+	RelationKeyCoverY,
+	RelationKeyFeaturedRelations,
+	RelationKeyLinks,
 	RelationKeyAddedDate,
 	RelationKeySource,
 	RelationKeySourceObject,
@@ -25,10 +34,11 @@ var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
 	RelationKeyIsReadonly,
 	RelationKeyIsDeleted,
 	RelationKeyIsHidden,
+	RelationKeySpaceShareableStatus,
+	RelationKeyIsAclShared,
+	RelationKeyIsHiddenDiscovery,
 	RelationKeyDone,
-	RelationKeyIsArchived,
 	RelationKeyTemplateIsBundled,
-	RelationKeyTag,
 	RelationKeySmartblockTypes,
 	RelationKeyTargetObjectType,
 	RelationKeyRecommendedLayout,
@@ -39,7 +49,6 @@ var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
 	RelationKeySpaceDashboardId,
 	RelationKeyRecommendedRelations,
 	RelationKeyIconOption,
-	RelationKeySpaceAccessibility,
 	RelationKeyWidthInPixels,
 	RelationKeyHeightInPixels,
 	RelationKeyFileExt,
@@ -50,5 +59,25 @@ var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
 	RelationKeyUniqueKey,
 	RelationKeyBacklinks,
 	RelationKeyProfileOwnerIdentity,
+	RelationKeyFileBackupStatus,
+	RelationKeyFileId,
+	RelationKeyFileIndexingStatus,
 	RelationKeyOrigin,
+	RelationKeyRevision,
+	RelationKeyImageKind,
+	RelationKeyImportType,
+	RelationKeySpaceAccessType,
+	RelationKeySpaceInviteFileCid,
+	RelationKeySpaceInviteFileKey,
+	RelationKeyReadersLimit,
+	RelationKeyWritersLimit,
+	RelationKeySharedSpacesLimit,
+	RelationKeyParticipantPermissions,
+	RelationKeyParticipantStatus,
+	RelationKeyLatestAclHeadId,
+	RelationKeyIdentity,
+	RelationKeyGlobalName,
+	RelationKeyScope,
+	RelationKeyLastUsedDate,
+	RelationKeyMentions,
 }...)

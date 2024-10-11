@@ -13,11 +13,11 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) createRelation(ctx context.Context, space space.Space, details *types.Struct) (id string, object *types.Struct, err error) {
+func (s *service) createRelation(ctx context.Context, space clientspace.Space, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create relation: no data")
 	}
@@ -34,7 +34,7 @@ func (s *service) createRelation(ctx context.Context, space space.Space, details
 		return "", nil, fmt.Errorf("missing relation name")
 	}
 
-	object = pbtypes.CopyStruct(details)
+	object = pbtypes.CopyStruct(details, false)
 	key := pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
 	if key == "" {
 		key = bson.NewObjectId().Hex()

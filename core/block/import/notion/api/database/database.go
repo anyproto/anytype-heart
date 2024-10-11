@@ -8,12 +8,14 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/files"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -67,26 +69,26 @@ func (p *Database) GetObjectType() string {
 }
 
 // GetDatabase makes snapshots from notion Database objects
-func (ds *Service) GetDatabase(_ context.Context,
+func (ds *Service) GetDatabase(
+	_ context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	databases []Database,
 	progress process.Progress,
-	req *api.NotionImportContext) (*common.Response, *property.PropertiesStore, *common.ConvertError) {
+	req *api.NotionImportContext,
+	fileDownloader files.Downloader,
+) (*common.Response, *property.PropertiesStore, *common.ConvertError) {
 	var (
 		allSnapshots = make([]*common.Snapshot, 0)
 		convertError = common.NewError(mode)
 	)
 	progress.SetProgressMessage("Start creating pages from notion databases")
-	relations := &property.PropertiesStore{
-		PropertyIdsToSnapshots: make(map[string]*model.SmartBlockSnapshotBase, 0),
-		RelationsIdsToOptions:  make(map[string][]*model.SmartBlockSnapshotBase, 0),
-	}
+	relations := property.NewPropertiesStore()
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
 			convertError.Add(common.ErrCancel)
 			return nil, nil, convertError
 		}
-		snapshot, err := ds.makeDatabaseSnapshot(d, req, relations)
+		snapshot, err := ds.makeDatabaseSnapshot(d, req, relations, fileDownloader)
 		if err != nil {
 			convertError.Add(err)
 			if convertError.ShouldAbortImport(0, model.Import_Notion) {
@@ -102,18 +104,22 @@ func (ds *Service) GetDatabase(_ context.Context,
 	return &common.Response{Snapshots: allSnapshots}, relations, convertError
 }
 
-func (ds *Service) makeDatabaseSnapshot(d Database,
+func (ds *Service) makeDatabaseSnapshot(
+	d Database,
 	importContext *api.NotionImportContext,
-	relations *property.PropertiesStore) ([]*common.Snapshot, error) {
-	details := ds.getCollectionDetails(d)
+	relations *property.PropertiesStore,
+	fileDownloader files.Downloader,
+) ([]*common.Snapshot, error) {
+	details, relationLinks := ds.getCollectionDetails(d)
 	detailsStruct := &types.Struct{Fields: details}
 	_, _, st, err := ds.collectionService.CreateCollection(detailsStruct, nil)
 	if err != nil {
 		return nil, err
 	}
+	api.UploadFileRelationLocally(fileDownloader, details, relationLinks)
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	snapshots := ds.makeRelationsSnapshots(d, st, relations)
-	id, databaseSnapshot := ds.provideDatabaseSnapshot(d, st, detailsStruct)
+	id, databaseSnapshot := ds.provideDatabaseSnapshot(d, st, detailsStruct, relationLinks)
 	ds.fillImportContext(d, importContext, id, databaseSnapshot)
 	snapshots = append(snapshots, databaseSnapshot)
 	return snapshots, nil
@@ -188,14 +194,7 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 	databaseProperty property.DatabasePropertyHandler,
 	name, relationKey string,
 	st *state.State) *common.Snapshot {
-	var (
-		rel *model.SmartBlockSnapshotBase
-		sn  *common.Snapshot
-	)
-	if rel = relations.ReadRelationsMap(databaseProperty.GetID()); rel == nil {
-		rel, sn = ds.getRelationSnapshot(relationKey, databaseProperty, name)
-		relations.WriteToRelationsMap(databaseProperty.GetID(), rel)
-	}
+	rel, sn := ds.provideRelationSnapshot(relations, databaseProperty, name, relationKey)
 	relKey := pbtypes.GetString(rel.GetDetails(), bundle.RelationKeyRelationKey.String())
 	databaseProperty.SetDetail(relKey, st.Details().GetFields())
 	relationLinks := &model.RelationLink{
@@ -217,6 +216,23 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 	return sn
 }
 
+func (ds *Service) provideRelationSnapshot(
+	relations *property.PropertiesStore,
+	databaseProperty property.DatabasePropertyHandler,
+	name, relationKey string,
+) (*model.SmartBlockSnapshotBase, *common.Snapshot) {
+	var sn *common.Snapshot
+	rel := relations.GetSnapshotByNameAndFormat(name, int64(databaseProperty.GetFormat()))
+	if rel == nil {
+		if rel = relations.ReadRelationsMap(databaseProperty.GetID()); rel == nil {
+			rel, sn = ds.getRelationSnapshot(relationKey, databaseProperty, name)
+			relations.WriteToRelationsMap(databaseProperty.GetID(), rel)
+			relations.AddSnapshotByNameAndFormat(name, int64(databaseProperty.GetFormat()), rel)
+		}
+	}
+	return rel, sn
+}
+
 func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty property.DatabasePropertyHandler, name string) (*model.SmartBlockSnapshotBase, *common.Snapshot) {
 	relationDetails := ds.getRelationDetails(databaseProperty, name, relationKey)
 	relationSnapshot := &model.SmartBlockSnapshotBase{
@@ -225,7 +241,7 @@ func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty prop
 		Key:         relationKey,
 	}
 	snapshot := &common.Snapshot{
-		Id: relationKey,
+		Id: pbtypes.GetString(relationDetails, bundle.RelationKeyId.String()),
 		Snapshot: &pb.ChangeSnapshot{
 			Data: relationSnapshot,
 		},
@@ -254,29 +270,25 @@ func (ds *Service) getRelationDetails(databaseProperty property.DatabaseProperty
 	return details
 }
 
-func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
+func (ds *Service) getCollectionDetails(d Database) (map[string]*types.Value, []*model.RelationLink) {
 	details := make(map[string]*types.Value, 0)
-	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(d.URL)
+	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(d.ID)
 	if len(d.Title) > 0 {
 		details[bundle.RelationKeyName.String()] = pbtypes.String(d.Title[0].PlainText)
 	}
-	if d.Icon != nil && d.Icon.Emoji != nil {
-		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*d.Icon.Emoji)
-	}
-
+	var relationLinks []*model.RelationLink
 	if d.Cover != nil {
-		if d.Cover.Type == api.External {
-			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.External.URL)
-			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
-		}
-
-		if d.Cover.Type == api.File {
-			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.File.URL)
-			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
-		}
+		api.SetCover(details, d.Cover)
+		relationLinks = append(relationLinks, &model.RelationLink{
+			Key:    bundle.RelationKeyCoverId.String(),
+			Format: model.RelationFormat_file,
+		})
 	}
 	if d.Icon != nil {
-		api.SetIcon(details, d.Icon)
+		relationLink := api.SetIcon(details, d.Icon)
+		if relationLink != nil {
+			relationLinks = append(relationLinks, relationLink)
+		}
 	}
 	details[bundle.RelationKeyCreator.String()] = pbtypes.String(d.CreatedBy.Name)
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(d.Archived)
@@ -287,16 +299,16 @@ func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
 
 	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(d.LastEditedTime.Unix()))
 	details[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(d.CreatedTime.Unix()))
-	return details
+	return details, relationLinks
 }
 
-func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, detailsStruct *types.Struct) (string, *common.Snapshot) {
+func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, detailsStruct *types.Struct, links []*model.RelationLink) (string, *common.Snapshot) {
 	snapshot := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       detailsStruct,
 		ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
 		Collections:   st.Store(),
-		RelationLinks: st.GetRelationLinks(),
+		RelationLinks: lo.Union(st.GetRelationLinks(), links),
 	}
 
 	id := uuid.New().String()
@@ -337,8 +349,9 @@ func (ds *Service) AddObjectsToNotionCollection(notionContext *api.NotionImportC
 	notionPages []page.Page) (*common.Snapshot, error) {
 	allObjects := ds.filterObjects(notionContext, notionDB, notionPages)
 
-	rootCollection := common.NewRootCollection(ds.collectionService)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects, "", nil, true)
+	rootCollection := common.NewImportCollection(ds.collectionService)
+	settings := common.MakeImportCollectionSetting(rootCollectionName, allObjects, "", nil, true, true, true)
+	rootCol, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, err
 	}

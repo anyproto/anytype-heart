@@ -5,13 +5,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/files"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
@@ -28,7 +29,6 @@ const (
 
 type Service struct {
 	blockService    *block.Service
-	client          *client.Client
 	propertyService *property.Service
 }
 
@@ -36,7 +36,6 @@ type Service struct {
 func New(client *client.Client) *Service {
 	return &Service{
 		blockService:    block.New(client),
-		client:          client,
 		propertyService: property.New(client),
 	}
 }
@@ -62,25 +61,29 @@ func (p *Page) GetObjectType() string {
 }
 
 // GetPages transform Page objects from Notion to snaphots
-func (ds *Service) GetPages(ctx context.Context,
+func (ds *Service) GetPages(
+	ctx context.Context,
 	apiKey string,
 	mode pb.RpcObjectImportRequestMode,
 	pages []Page,
 	notionImportContext *api.NotionImportContext,
 	relations *property.PropertiesStore,
-	progress process.Progress) (*common.Response, *common.ConvertError) {
+	progress process.Progress,
+	fileDownloader files.Downloader,
+) (*common.Response, *common.ConvertError) {
 	progress.SetProgressMessage("Start creating pages from notion")
 	convertError := ds.fillNotionImportContext(pages, progress, notionImportContext)
 	if convertError != nil {
 		return nil, convertError
 	}
+
 	numWorkers := workerPoolSize
 	if len(pages) < workerPoolSize {
 		numWorkers = 1
 	}
 	pool := workerpool.NewPool(numWorkers)
 
-	go ds.addWorkToPool(pages, pool)
+	go ds.addWorkToPool(pages, pool, fileDownloader)
 
 	do := NewDataObject(ctx, apiKey, mode, notionImportContext, relations)
 	go pool.Start(do)
@@ -115,7 +118,7 @@ func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcOb
 	return allSnapshots, ce
 }
 
-func (ds *Service) addWorkToPool(pages []Page, pool *workerpool.WorkerPool) {
+func (ds *Service) addWorkToPool(pages []Page, pool *workerpool.WorkerPool, fileDownloader files.Downloader) {
 	var (
 		relMutex    = &sync.Mutex{}
 		relOptMutex = &sync.Mutex{}
@@ -127,6 +130,7 @@ func (ds *Service) addWorkToPool(pages []Page, pool *workerpool.WorkerPool) {
 			propertyService:        ds.propertyService,
 			blockService:           ds.blockService,
 			p:                      p,
+			fileDownloader:         fileDownloader,
 		})
 		if stop {
 			break
@@ -152,7 +156,7 @@ func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progre
 		if err := progress.TryStep(1); err != nil {
 			return common.NewCancelError(err)
 		}
-		importContext.NotionPageIdsToAnytype[p.ID] = uuid.New().String()
+		importContext.NotionPageIdsToAnytype[p.ID] = bson.NewObjectId().Hex()
 		if p.Parent.PageID != "" {
 			importContext.PageTree.ParentPageToChildIDs[p.Parent.PageID] = append(importContext.PageTree.ParentPageToChildIDs[p.Parent.PageID], p.ID)
 		}

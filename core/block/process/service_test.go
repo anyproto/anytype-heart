@@ -97,9 +97,7 @@ func NewTest(t *testing.T, broadcast func(e *pb.Event)) Service {
 	sender.EXPECT().Name().Return("")
 	sender.EXPECT().Init(mock.Anything).Return(nil)
 	if broadcast == nil {
-		broadcast = func(e *pb.Event) {
-			t.Log(e)
-		}
+		broadcast = func(e *pb.Event) {}
 	}
 	sender.EXPECT().Broadcast(mock.Anything).Run(broadcast).Maybe()
 	a.Register(sender).Register(s)

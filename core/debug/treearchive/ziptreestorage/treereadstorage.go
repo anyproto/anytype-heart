@@ -16,7 +16,6 @@ type zipTreeReadStorage struct {
 	id    string
 	heads []string
 	files map[string]*zip.File
-	zr    *zip.ReadCloser
 }
 
 func NewZipTreeReadStorage(id string, zr *zip.ReadCloser) (st treestorage.TreeStorage, err error) {
@@ -24,7 +23,6 @@ func NewZipTreeReadStorage(id string, zr *zip.ReadCloser) (st treestorage.TreeSt
 		id:    id,
 		heads: nil,
 		files: map[string]*zip.File{},
-		zr:    zr,
 	}
 	for _, f := range zr.Reader.File {
 		if len(f.Name) > len(id) && strings.Contains(f.Name, id) {

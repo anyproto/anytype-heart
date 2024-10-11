@@ -7,16 +7,17 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 )
 
 type DataObject struct {
 	oldIDtoNew     map[string]string
 	createPayloads map[string]treestorage.TreeStorageCreatePayload
-	fileIDs        []string
 	ctx            context.Context
-	origin         model.ObjectOrigin
+	origin         objectorigin.ObjectOrigin
 	spaceID        string
+
+	newIdsSet map[string]struct{}
 }
 
 type Result struct {
@@ -25,31 +26,28 @@ type Result struct {
 	Err     error
 }
 
-func NewDataObject(ctx context.Context,
-	oldIDtoNew map[string]string,
-	createPayloads map[string]treestorage.TreeStorageCreatePayload,
-	filesIDs []string,
-	origin model.ObjectOrigin,
-	spaceID string,
-) *DataObject {
+func NewDataObject(ctx context.Context, oldIDtoNew map[string]string, createPayloads map[string]treestorage.TreeStorageCreatePayload, origin objectorigin.ObjectOrigin, spaceID string) *DataObject {
+	newIdsSet := make(map[string]struct{}, len(oldIDtoNew))
+	for _, newId := range oldIDtoNew {
+		newIdsSet[newId] = struct{}{}
+	}
 	return &DataObject{
 		oldIDtoNew:     oldIDtoNew,
 		createPayloads: createPayloads,
-		fileIDs:        filesIDs,
 		ctx:            ctx,
 		origin:         origin,
 		spaceID:        spaceID,
+		newIdsSet:      newIdsSet,
 	}
 }
 
 type Task struct {
-	spaceID string
-	sn      *common.Snapshot
-	oc      Service
+	sn *common.Snapshot
+	oc Service
 }
 
-func NewTask(spaceID string, sn *common.Snapshot, oc Service) *Task {
-	return &Task{sn: sn, oc: oc, spaceID: spaceID}
+func NewTask(sn *common.Snapshot, oc Service) *Task {
+	return &Task{sn: sn, oc: oc}
 }
 
 func (t *Task) Execute(data interface{}) interface{} {

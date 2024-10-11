@@ -11,6 +11,10 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
+type childrenInheritableOnReplace interface {
+	CanInheritChildrenOnReplace()
+}
+
 func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...string) (err error) {
 	var (
 		target        simple.Block
@@ -25,6 +29,9 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	if targetId == "" {
 		reqPos = model.Block_Inner
 		target = s.Get(s.RootId())
+		if target == nil {
+			return fmt.Errorf("target (root) block not found")
+		}
 	} else {
 		target = s.Get(targetId)
 		if target == nil {
@@ -55,36 +62,20 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	switch reqPos {
 	case model.Block_Bottom:
 		pos = targetPos + 1
-		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
+		s.insertChildrenIds(targetParentM, pos, ids...)
 	case model.Block_Top:
 		pos = targetPos
-		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
+		s.insertChildrenIds(targetParentM, pos, ids...)
 	case model.Block_Left, model.Block_Right:
 		if err = s.moveFromSide(target, s.Get(targetParentM.Id), reqPos, ids...); err != nil {
 			return
 		}
 	case model.Block_Inner:
-		target.Model().ChildrenIds = append(target.Model().ChildrenIds, ids...)
+		s.prependChildrenIds(target.Model(), ids...)
 	case model.Block_Replace:
-		pos = targetPos + 1
-		if len(ids) > 0 && len(s.Get(ids[0]).Model().ChildrenIds) == 0 {
-			var idsIsChild bool
-			if targetChild := target.Model().ChildrenIds; len(targetChild) > 0 {
-				for _, id := range ids {
-					if slice.FindPos(targetChild, id) != -1 {
-						idsIsChild = true
-						break
-					}
-				}
-			}
-			if !idsIsChild {
-				s.Get(ids[0]).Model().ChildrenIds = target.Model().ChildrenIds
-			}
-		}
-		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
-		s.Unlink(target.Model().Id)
+		s.insertReplace(target, targetParentM, targetPos, ids...)
 	case model.Block_InnerFirst:
-		target.Model().ChildrenIds = append(ids, target.Model().ChildrenIds...)
+		s.appendChildrenIds(target.Model(), ids...)
 	default:
 		return fmt.Errorf("unexpected position")
 	}
@@ -132,7 +123,7 @@ func (s *State) addChangesForSideMoving(targetID string, pos model.BlockPosition
 				targetID = lastTargetID
 				pos = model.Block_Bottom
 			}
-			cb.Add(targetID, pos, blockToAdd.Model())
+			cb.Add(targetID, pos, blockToAdd.Copy().Model())
 			lastOperation = operationAdd
 			lastTargetID = id
 		} else {
@@ -160,16 +151,7 @@ func (s *State) moveFromSide(target, parent simple.Block, pos model.BlockPositio
 		}
 		target = s.Get(row.Model().ChildrenIds[0])
 	}
-	column := simple.New(&model.Block{
-		Id:          "cd-" + opId,
-		ChildrenIds: ids,
-		Content: &model.BlockContentOfLayout{
-			Layout: &model.BlockContentLayout{
-				Style: model.BlockContentLayout_Column,
-			},
-		},
-	})
-	s.Add(column)
+	column := s.addNewColumn(opId, ids)
 
 	targetPos := slice.FindPos(row.Model().ChildrenIds, target.Model().Id)
 	if targetPos == -1 {
@@ -180,12 +162,77 @@ func (s *State) moveFromSide(target, parent simple.Block, pos model.BlockPositio
 	if pos == model.Block_Right {
 		columnPos += 1
 	}
-	row.Model().ChildrenIds = slice.Insert(row.Model().ChildrenIds, columnPos, column.Model().Id)
+	s.insertChildrenIds(row.Model(), columnPos, column.Model().Id)
 	s.changesStructureIgnoreIds = append(s.changesStructureIgnoreIds, "cd-"+opId, "ct-"+opId, "r-"+opId, row.Model().Id)
 	return
 }
 
 func (s *State) wrapToRow(opId string, parent, b simple.Block) (row simple.Block, err error) {
+	column := s.addNewBlockAndWrapToColumn(opId, b)
+	row = s.addNewColumnToRow(opId, column)
+	pos := slice.FindPos(parent.Model().ChildrenIds, b.Model().Id)
+	if pos == -1 {
+		return nil, fmt.Errorf("creating row: can't find child[%s] in given parent[%s]", b.Model().Id, parent.Model().Id)
+	}
+	// do not need to remove from cache
+	parent.Model().ChildrenIds[pos] = row.Model().Id
+	return
+}
+
+func (s *State) setChildrenIds(parent *model.Block, childrenIds []string) {
+	parent.ChildrenIds = childrenIds
+}
+
+// do not use this method outside of normalization
+func (s *State) SetChildrenIds(parent *model.Block, childrenIds []string) {
+	s.setChildrenIds(parent, childrenIds)
+}
+
+func (s *State) removeChildren(parent *model.Block, childrenId string) {
+	parent.ChildrenIds = slice.RemoveMut(parent.ChildrenIds, childrenId)
+}
+
+func (s *State) prependChildrenIds(block *model.Block, ids ...string) {
+	s.setChildrenIds(block, append(block.ChildrenIds, ids...))
+}
+
+func (s *State) appendChildrenIds(block *model.Block, ids ...string) {
+	s.setChildrenIds(block, append(ids, block.ChildrenIds...))
+}
+
+func (s *State) insertChildrenIds(block *model.Block, pos int, ids ...string) {
+	s.setChildrenIds(block, slice.Insert(block.ChildrenIds, pos, ids...))
+}
+
+func (s *State) addNewColumn(opId string, ids []string) simple.Block {
+	column := simple.New(&model.Block{
+		Id:          "cd-" + opId,
+		ChildrenIds: ids,
+		Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Column,
+			},
+		},
+	})
+	s.Add(column)
+	return column
+}
+
+func (s *State) addNewColumnToRow(opId string, column simple.Block) simple.Block {
+	row := simple.New(&model.Block{
+		Id:          "r-" + opId,
+		ChildrenIds: []string{column.Model().Id},
+		Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Row,
+			},
+		},
+	})
+	s.Add(row)
+	return row
+}
+
+func (s *State) addNewBlockAndWrapToColumn(opId string, b simple.Block) simple.Block {
 	column := simple.New(&model.Block{
 		Id:          "ct-" + opId,
 		ChildrenIds: []string{b.Model().Id},
@@ -196,20 +243,37 @@ func (s *State) wrapToRow(opId string, parent, b simple.Block) (row simple.Block
 		},
 	})
 	s.Add(column)
-	row = simple.New(&model.Block{
-		Id:          "r-" + opId,
-		ChildrenIds: []string{column.Model().Id},
-		Content: &model.BlockContentOfLayout{
-			Layout: &model.BlockContentLayout{
-				Style: model.BlockContentLayout_Row,
-			},
-		},
-	})
-	s.Add(row)
-	pos := slice.FindPos(parent.Model().ChildrenIds, b.Model().Id)
-	if pos == -1 {
-		return nil, fmt.Errorf("creating row: can't find child[%s] in given parent[%s]", b.Model().Id, parent.Model().Id)
+	return column
+}
+
+func (s *State) insertReplace(target simple.Block, targetParentM *model.Block, targetPos int, ids ...string) {
+	if len(ids) == 0 {
+		return
 	}
-	parent.Model().ChildrenIds[pos] = row.Model().Id
-	return
+	id0Block := s.Get(ids[0])
+	_, canInheritChildren := id0Block.(childrenInheritableOnReplace)
+	targetHasChildren := false
+	pos := targetPos + 1
+	if !canInheritChildren {
+		pos = targetPos
+	}
+	if len(id0Block.Model().ChildrenIds) == 0 {
+		var idsIsChild bool
+		if targetChild := target.Model().ChildrenIds; len(targetChild) > 0 {
+			targetHasChildren = true
+			for _, id := range ids {
+				if slice.FindPos(targetChild, id) != -1 {
+					idsIsChild = true
+					break
+				}
+			}
+		}
+		if !idsIsChild && canInheritChildren {
+			s.setChildrenIds(id0Block.Model(), target.Model().ChildrenIds)
+		}
+	}
+	s.insertChildrenIds(targetParentM, pos, ids...)
+	if canInheritChildren || !targetHasChildren {
+		s.Unlink(target.Model().Id)
+	}
 }

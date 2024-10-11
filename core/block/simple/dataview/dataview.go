@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -39,6 +40,7 @@ func NewDataview(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
+	ListViews() []*model.BlockContentDataviewView
 	GetView(viewID string) (*model.BlockContentDataviewView, error)
 	SetView(viewID string, view model.BlockContentDataviewView) error
 	SetViewFields(viewID string, view *model.BlockContentDataviewView) error
@@ -109,6 +111,10 @@ func (d *Dataview) Validate() error {
 	}
 
 	return nil
+}
+
+func (d *Dataview) ListViews() []*model.BlockContentDataviewView {
+	return d.GetDataview().Views
 }
 
 // AddView adds a view to the dataview. It doesn't fill any missing field except id
@@ -220,6 +226,67 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 		}
 		if view.DefaultTemplateId != "" {
 			ids = append(ids, view.DefaultTemplateId)
+		}
+		ids = append(ids, getIdsFromFilters(view.Filters)...)
+	}
+
+	return ids
+}
+
+func (l *Dataview) MigrateFile(migrateFunc func(oldHash string) (newHash string)) {
+	for _, view := range l.content.Views {
+		for _, filter := range view.Filters {
+			l.migrateFilesInFilter(filter, migrateFunc)
+		}
+	}
+}
+
+func (l *Dataview) migrateFilesInFilter(filter *model.BlockContentDataviewFilter, migrateFunc func(oldHash string) (newHash string)) {
+	if filter.Format != model.RelationFormat_object && filter.Format != model.RelationFormat_file {
+		return
+	}
+	if filter.Value == nil {
+		return
+	}
+	switch v := filter.Value.Kind.(type) {
+	case *types.Value_StringValue:
+		filter.Value = pbtypes.String(migrateFunc(v.StringValue))
+	case *types.Value_ListValue:
+		var changed bool
+		ids := pbtypes.ListValueToStrings(v.ListValue)
+		for i, id := range ids {
+			newId := migrateFunc(id)
+			if newId != id {
+				ids[i] = newId
+				changed = true
+			}
+		}
+		if changed {
+			filter.Value = pbtypes.StringList(ids)
+		}
+	}
+}
+
+func getIdsFromFilters(filters []*model.BlockContentDataviewFilter) (ids []string) {
+	for _, filter := range filters {
+		if filter.Format != model.RelationFormat_object &&
+			filter.Format != model.RelationFormat_status &&
+			filter.Format != model.RelationFormat_tag {
+			continue
+		}
+
+		id := filter.Value.GetStringValue()
+		if id != "" {
+			ids = append(ids, id)
+			continue
+		}
+
+		list := filter.Value.GetListValue()
+		if list == nil {
+			continue
+		}
+		for _, value := range list.Values {
+			ids = append(ids, value.GetStringValue())
 		}
 	}
 
@@ -453,4 +520,8 @@ func (s *Dataview) UpdateRelationOld(relationKey string, rel model.Relation) err
 	}
 
 	return nil
+}
+
+func (d *Dataview) IsEmpty() bool {
+	return d.content.TargetObjectId == "" && len(d.content.Views) == 0
 }

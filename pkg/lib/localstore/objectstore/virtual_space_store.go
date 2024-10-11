@@ -1,24 +1,47 @@
 package objectstore
 
 import (
+	"errors"
+
+	anystore "github.com/anyproto/any-store"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *dsObjectStore) SaveVirtualSpace(id string) (err error) {
-	return badgerhelper.SetValue(s.db, virtualSpaces.ChildString(id).Bytes(), nil)
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	it, err := keyValueItem(arena, id, nil)
+	if err != nil {
+		return err
+	}
+	_, err = s.virtualSpaces.UpsertOne(s.componentCtx, it)
+	return err
 }
 
 func (s *dsObjectStore) ListVirtualSpaces() ([]string, error) {
-	var ids []string
-	err := iterateKeysByPrefix(s.db, virtualSpaces.Bytes(), func(key []byte) {
-		ids = append(ids, extractIDFromKey(string(key)))
-	})
-	return ids, err
+	iter, err := s.virtualSpaces.Find(nil).Iter(s.componentCtx)
+	if err != nil {
+		return nil, err
+	}
+	var spaceIds []string
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, errors.Join(iter.Close(), err)
+		}
+		id := doc.Value().GetStringBytes("id")
+		spaceIds = append(spaceIds, string(id))
+	}
+	return spaceIds, iter.Close()
 }
 
 func (s *dsObjectStore) DeleteVirtualSpace(spaceID string) error {
@@ -63,5 +86,9 @@ func (s *dsObjectStore) DeleteVirtualSpace(spaceID string) error {
 }
 
 func (s *dsObjectStore) deleteSpace(spaceID string) error {
-	return badgerhelper.DeleteValue(s.db, virtualSpaces.ChildString(spaceID).Bytes())
+	err := s.virtualSpaces.DeleteId(s.componentCtx, spaceID)
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+		return err
+	}
+	return nil
 }

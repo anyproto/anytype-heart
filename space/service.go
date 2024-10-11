@@ -4,21 +4,28 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
@@ -27,25 +34,19 @@ const CName = "client.space"
 
 var log = logger.NewNamed(CName)
 
+var waitSpaceDelay = 500 * time.Millisecond
+
 var (
-	ErrIncorrectSpaceID = errors.New("incorrect space id")
-	ErrSpaceNotExists   = errors.New("space not exists")
-	ErrSpaceDeleted     = errors.New("space is deleted")
-	ErrStatusUnkown     = errors.New("space status is unknown")
+	ErrIncorrectSpaceID   = errors.New("incorrect space id")
+	ErrSpaceNotExists     = errors.New("space not exists")
+	ErrSpaceStorageMissig = errors.New("space storage missing")
+	ErrSpaceDeleted       = errors.New("space is deleted")
+	ErrSpaceIsClosing     = errors.New("space is closing")
+	ErrFailedToLoad       = errors.New("failed to load space")
 )
 
 func New() Service {
 	return &service{}
-}
-
-type spaceIndexer interface {
-	ReindexMarketplaceSpace(space Space) error
-	ReindexSpace(space Space) error
-	RemoveIndexes(spaceID string) (err error)
-}
-
-type fileOffloader interface {
-	FilesSpaceOffload(ctx context.Context, spaceID string) (err error)
 }
 
 type isNewAccount interface {
@@ -54,74 +55,112 @@ type isNewAccount interface {
 }
 
 type Service interface {
-	Create(ctx context.Context) (space Space, err error)
+	Create(ctx context.Context) (space clientspace.Space, err error)
 
-	Get(ctx context.Context, id string) (space Space, err error)
+	Join(ctx context.Context, id, aclHeadId string) error
+	CancelLeave(ctx context.Context, id string) (err error)
+	Get(ctx context.Context, id string) (space clientspace.Space, err error)
+	Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error)
 	Delete(ctx context.Context, id string) (err error)
-	GetPersonalSpace(ctx context.Context) (space Space, err error)
+	TechSpaceId() string
+	TechSpace() *clientspace.TechSpace
+	GetPersonalSpace(ctx context.Context) (space clientspace.Space, err error)
+	GetTechSpace(ctx context.Context) (space clientspace.Space, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
+	AccountMetadataSymKey() crypto.SymKey
+	AccountMetadataPayload() []byte
 
 	app.ComponentRunnable
 }
 
+type coordinatorStatusUpdater interface {
+	UpdateCoordinatorStatus()
+}
+
+type NotificationSender interface {
+	CreateAndSend(notification *model.Notification) error
+}
+
 type service struct {
-	indexer          spaceIndexer
-	spaceCore        spacecore.SpaceCoreService
-	techSpace        techspace.TechSpace
-	marketplaceSpace Space
-	delController    *deletionController
+	techSpace           *clientspace.TechSpace
+	techSpaceReady      chan struct{}
+	factory             spacefactory.SpaceFactory
+	spaceCore           spacecore.SpaceCoreService
+	accountService      accountservice.Service
+	config              *config.Config
+	notificationService NotificationSender
+	updater             coordinatorStatusUpdater
+	spaceNameGetter     objectstore.SpaceNameGetter
 
-	builtinTemplateService  builtinTemplateService
-	bundledObjectsInstaller bundledObjectsInstaller
-	accountService          accountservice.Service
-	objectFactory           objectcache.ObjectFactory
-	sourceService           source.Service
-	storageService          storage.ClientStorage
-	offloader               fileOffloader
+	personalSpaceId        string
+	techSpaceId            string
+	newAccount             bool
+	spaceControllers       map[string]spacecontroller.SpaceController
+	waiting                map[string]controllerWaiter
+	accountMetadataSymKey  crypto.SymKey
+	accountMetadataPayload []byte
+	repKey                 uint64
 
-	personalSpaceID string
-	metadataPayload []byte
-
-	newAccount bool
-
-	createdSpaces      map[string]struct{}
-	localStatuses      map[string]spaceinfo.SpaceLocalInfo
-	persistentStatuses map[string]spaceinfo.SpacePersistentInfo
-	loading            map[string]*loadingSpace
-	offloading         map[string]*offloadingSpace
-	offloaded          map[string]struct{}
-	loaded             map[string]Space
-
-	virtualSpaceService VirtualSpaceService
-	mu                  sync.Mutex
-
-	ctx       context.Context
+	mu        sync.Mutex
+	ctx       context.Context // use ctx for the long operations within the lifecycle of the service, excluding Run
 	ctxCancel context.CancelFunc
+	isClosing atomic.Bool
+}
 
-	repKey uint64
+func (s *service) Delete(ctx context.Context, id string) (err error) {
+	if s.isClosing.Load() {
+		return ErrSpaceIsClosing
+	}
+	s.mu.Lock()
+	ctrl := s.spaceControllers[id]
+	s.mu.Unlock()
+	del, ok := ctrl.(spacecontroller.DeleteController)
+	if !ok {
+		return ErrSpaceNotExists
+	}
+	err = del.Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("delete space: %w", err)
+	}
+	return nil
+}
+
+func (s *service) TechSpace() *clientspace.TechSpace {
+	return s.techSpace
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.indexer = app.MustComponent[spaceIndexer](a)
-	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
-	s.objectFactory = app.MustComponent[objectcache.ObjectFactory](a)
-	s.accountService = app.MustComponent[accountservice.Service](a)
-	s.bundledObjectsInstaller = app.MustComponent[bundledObjectsInstaller](a)
-	s.sourceService = app.MustComponent[source.Service](a)
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
-	s.storageService = app.MustComponent[storage.ClientStorage](a)
-	coordClient := app.MustComponent[coordinatorclient.CoordinatorClient](a)
-	s.delController = newDeletionController(s, coordClient)
-	s.offloader = app.MustComponent[fileOffloader](a)
-	s.builtinTemplateService = app.MustComponent[builtinTemplateService](a)
-	s.createdSpaces = map[string]struct{}{}
-	s.localStatuses = map[string]spaceinfo.SpaceLocalInfo{}
-	s.persistentStatuses = map[string]spaceinfo.SpacePersistentInfo{}
-	s.loading = map[string]*loadingSpace{}
-	s.offloading = map[string]*offloadingSpace{}
-	s.loaded = map[string]Space{}
-	s.offloaded = map[string]struct{}{}
-	s.virtualSpaceService = app.MustComponent[VirtualSpaceService](a)
+	s.factory = app.MustComponent[spacefactory.SpaceFactory](a)
+	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
+	s.accountService = app.MustComponent[accountservice.Service](a)
+	s.config = app.MustComponent[*config.Config](a)
+	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
+	s.updater = app.MustComponent[coordinatorStatusUpdater](a)
+	s.waiting = make(map[string]controllerWaiter)
+	s.techSpaceReady = make(chan struct{})
+	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
+	if err != nil {
+		return
+	}
+	s.techSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.TechSpaceType)
+	if err != nil {
+		return
+	}
+	accountMetadata, metadataSymKey, err := deriveMetadata(s.accountService.Account().SignKey)
+	if err != nil {
+		return
+	}
+	s.accountMetadataSymKey = metadataSymKey
+	s.accountMetadataPayload, err = accountMetadata.Marshal()
+	if err != nil {
+		return fmt.Errorf("marshal account metadata: %w", err)
+	}
+
+	s.repKey, err = getRepKey(s.personalSpaceId)
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+	s.notificationService = app.MustComponent[NotificationSender](a)
+	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	return err
 }
 
@@ -130,71 +169,87 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-	s.metadataPayload, err = deriveAccountMetadata(s.accountService.Account().SignKey)
-	if err != nil {
-		return
-	}
-	err = s.initMarketplaceSpace()
+	err = s.initMarketplaceSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("init marketplace space: %w", err)
 	}
-	err = s.initTechSpace()
+	err = s.initTechSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("init tech space: %w", err)
 	}
-	err = s.initPersonalSpace()
+	err = s.initPersonalSpace(ctx)
 	if err != nil {
+		if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
+			err = ErrSpaceNotExists
+		}
+		// fix for the users that have wrong network id stored in the folder
+		err2 := s.config.ResetStoredNetworkId()
+		if err2 != nil {
+			log.Error("reset network id", zap.Error(err2))
+		}
 		return fmt.Errorf("init personal space: %w", err)
 	}
-	s.delController.Run()
+	s.techSpace.WakeUpViews()
+	// only persist networkId after successful space init
+	err = s.config.PersistAccountNetworkId()
+	if err != nil {
+		log.Error("persist network id to config", zap.Error(err))
+	}
 	return nil
 }
 
-func (s *service) Create(ctx context.Context) (Space, error) {
-	coreSpace, err := s.spaceCore.Create(ctx, s.repKey, s.metadataPayload)
+func (s *service) Create(ctx context.Context) (clientspace.Space, error) {
+	if s.isClosing.Load() {
+		return nil, ErrSpaceIsClosing
+	}
+	return s.create(ctx)
+}
+
+func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
+	waiter := newSpaceWaiter(s, s.ctx, waitSpaceDelay)
+	return waiter.waitSpace(ctx, spaceId)
+}
+
+func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
+	if spaceId == s.techSpaceId {
+		return s.getTechSpace(ctx)
+	}
+	ctrl, err := s.getCtrl(ctx, spaceId)
 	if err != nil {
 		return nil, err
 	}
-	return s.create(ctx, coreSpace)
+	return s.waitLoad(ctx, ctrl)
 }
 
-func (s *service) Get(ctx context.Context, spaceID string) (sp Space, err error) {
-	if err = s.startLoad(ctx, spaceID); err != nil {
-		return nil, err
-	}
-	return s.waitLoad(ctx, spaceID)
+func (s *service) UpdateSharedLimits(ctx context.Context, limits int) error {
+	return s.techSpace.DoSpaceView(ctx, s.personalSpaceId, func(spaceView techspace.SpaceView) error {
+		return spaceView.SetSharedSpacesLimit(limits)
+	})
 }
 
-func (s *service) GetPersonalSpace(ctx context.Context) (sp Space, err error) {
-	return s.Get(ctx, s.personalSpaceID)
+func (s *service) GetPersonalSpace(ctx context.Context) (sp clientspace.Space, err error) {
+	return s.Get(ctx, s.personalSpaceId)
 }
 
-func (s *service) open(ctx context.Context, spaceID string, justCreated bool) (sp Space, err error) {
-	coreSpace, err := s.spaceCore.Get(ctx, spaceID)
-	if err != nil {
-		return nil, err
-	}
-	return s.newSpace(ctx, coreSpace, justCreated)
+func (s *service) GetTechSpace(ctx context.Context) (sp clientspace.Space, err error) {
+	return s.Get(ctx, s.techSpaceId)
 }
 
 func (s *service) IsPersonal(id string) bool {
-	return s.personalSpaceID == id
+	return s.personalSpaceId == id
 }
 
 func (s *service) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
 	go func() {
-		s.updatePersistentStatusLocked(info)
-		err := s.startLoad(s.ctx, info.SpaceID)
+		ctrl, err := s.startStatus(s.ctx, info)
 		if err != nil && !errors.Is(err, ErrSpaceDeleted) {
-			log.Warn("OnViewCreated.startLoad error", zap.Error(err))
-		}
-		if info.AccountStatus != spaceinfo.AccountStatusDeleted {
+			log.Warn("OnViewUpdated.startStatus error", zap.Error(err))
 			return
 		}
-		err = s.startDelete(s.ctx, info.SpaceID)
+		err = ctrl.Update()
 		if err != nil {
-			log.Warn("OnViewCreated.startDelete error", zap.Error(err))
+			log.Warn("OnViewCreated.UpdateStatus error", zap.Error(err))
+			return
 		}
 	}()
 }
@@ -207,32 +262,113 @@ func (s *service) OnWorkspaceChanged(spaceId string, details *types.Struct) {
 	}()
 }
 
+func (s *service) AccountMetadataSymKey() crypto.SymKey {
+	return s.accountMetadataSymKey
+}
+
+func (s *service) AccountMetadataPayload() []byte {
+	return s.accountMetadataPayload
+}
+
+func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
+	spaceId := status.LocalInfo.SpaceId
+	s.mu.Lock()
+	ctrl := s.spaceControllers[spaceId]
+	s.mu.Unlock()
+	if ctrl == nil {
+		return fmt.Errorf("no such space: %s", spaceId)
+	}
+	err := ctrl.SetLocalInfo(ctx, status.LocalInfo)
+	if err != nil {
+		return fmt.Errorf("updateRemoteStatus: %w", err)
+	}
+	if !status.IsOwned && status.LocalInfo.GetRemoteStatus() == spaceinfo.RemoteStatusDeleted {
+		accountStatus := ctrl.GetStatus()
+		if accountStatus != spaceinfo.AccountStatusDeleted && accountStatus != spaceinfo.AccountStatusRemoving {
+			if ctrl.GetLocalStatus() == spaceinfo.LocalStatusOk {
+				s.sendNotification(spaceId)
+			}
+			info := spaceinfo.NewSpacePersistentInfo(spaceId)
+			info.SetAccountStatus(spaceinfo.AccountStatusRemoving)
+			return ctrl.SetPersistentInfo(ctx, info)
+		}
+	}
+	return nil
+}
+
+func (s *service) sendNotification(spaceId string) {
+	identity := s.accountService.Account().SignKey.GetPublic().Account()
+	notificationId := strings.Join([]string{spaceId, identity}, "_")
+	spaceName := s.spaceNameGetter.GetSpaceName(spaceId)
+	err := s.notificationService.CreateAndSend(&model.Notification{
+		Id: notificationId,
+		Payload: &model.NotificationPayloadOfParticipantRemove{
+			ParticipantRemove: &model.NotificationParticipantRemove{
+				SpaceId:   spaceId,
+				SpaceName: spaceName,
+			},
+		},
+		Space: spaceId,
+	})
+	if err != nil {
+		log.Error("failed to send notification", zap.Error(err), zap.String("spaceId", spaceId))
+	}
+}
+
 func (s *service) SpaceViewId(spaceId string) (spaceViewId string, err error) {
 	return s.techSpace.SpaceViewId(spaceId)
 }
 
-func (s *service) Close(ctx context.Context) (err error) {
+func (s *service) Close(ctx context.Context) error {
 	if s.ctxCancel != nil {
 		s.ctxCancel()
 	}
-
+	s.isClosing.Store(true)
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	ctrls := make([]spacecontroller.SpaceController, 0, len(s.spaceControllers))
+	for _, ctrl := range s.spaceControllers {
+		ctrls = append(ctrls, ctrl)
+	}
+	s.mu.Unlock()
 
-	for _, sp := range s.loaded {
-		err = sp.Close(ctx)
+	for _, ctrl := range ctrls {
+		err := ctrl.Close(ctx)
 		if err != nil {
-			log.Error("close space", zap.String("spaceId", sp.Id()), zap.Error(err))
+			log.Error("close space", zap.String("spaceId", ctrl.SpaceId()), zap.Error(err))
 		}
 	}
-	s.delController.Close()
+	err := s.techSpace.Close(ctx)
+	if err != nil {
+		log.Error("close tech space", zap.Error(err))
+	}
+	return nil
+}
+
+func (s *service) AllSpaceIds() (ids []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id := range s.spaceControllers {
+		if id == addr.AnytypeMarketplaceWorkspace {
+			continue
+		}
+		ids = append(ids, id)
+	}
 	return
 }
 
-func getRepKey(spaceID string) (uint64, error) {
-	sepIdx := strings.Index(spaceID, ".")
-	if sepIdx == -1 {
-		return 0, ErrIncorrectSpaceID
+func (s *service) TechSpaceId() string {
+	return s.techSpaceId
+}
+
+func (s *service) PersonalSpaceId() string {
+	return s.personalSpaceId
+}
+
+func (s *service) getTechSpace(ctx context.Context) (*clientspace.TechSpace, error) {
+	select {
+	case <-s.techSpaceReady:
+		return s.techSpace, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
-	return strconv.ParseUint(spaceID[sepIdx+1:], 36, 64)
 }

@@ -220,21 +220,41 @@ func Test_GetTextBlocksEquation(t *testing.T) {
 }
 
 func Test_GetCodeBlocksSuccess(t *testing.T) {
-	co := &CodeBlock{
-		Code: CodeObject{
-			RichText: []api.RichText{
-				{
-					Type:      api.Text,
-					PlainText: "Code",
+	t.Run("create text block based on provided CodeBlock from notion", func(t *testing.T) {
+		co := &CodeBlock{
+			Code: CodeObject{
+				RichText: []api.RichText{
+					{
+						Type:      api.Text,
+						PlainText: "Code",
+					},
 				},
+				Language: "Go",
 			},
-			Language: "Go",
-		},
-	}
-	bl := co.GetBlocks(&api.NotionImportContext{}, "")
-	assert.NotNil(t, bl)
-	assert.Len(t, bl.Blocks, 1)
-	assert.Equal(t, bl.Blocks[0].GetText().Text, "Code")
+		}
+		bl := co.GetBlocks(&api.NotionImportContext{}, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.Equal(t, bl.Blocks[0].GetText().Text, "Code")
+	})
+	t.Run("create embed block, if language is mermaid", func(t *testing.T) {
+		co := &CodeBlock{
+			Code: CodeObject{
+				RichText: []api.RichText{
+					{
+						Type:      api.Text,
+						PlainText: "Code",
+					},
+				},
+				Language: "mermaid",
+			},
+		}
+		bl := co.GetBlocks(&api.NotionImportContext{}, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+		assert.Equal(t, bl.Blocks[0].GetLatex().Text, "Code")
+	})
 }
 
 func Test_GetTextBlocks(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -24,7 +25,7 @@ func (mw *Middleware) UnsplashSearch(cctx context.Context, req *pb.RpcUnsplashSe
 			if strings.Contains(err.Error(), "Rate limit exhausted") {
 				m.Error.Code = pb.RpcUnsplashSearchResponseError_RATE_LIMIT_EXCEEDED
 			}
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -47,22 +48,22 @@ func (mw *Middleware) UnsplashSearch(cctx context.Context, req *pb.RpcUnsplashSe
 }
 
 func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse {
-	response := func(hash string, err error) *pb.RpcUnsplashDownloadResponse {
+	response := func(objectId string, err error) *pb.RpcUnsplashDownloadResponse {
 		m := &pb.RpcUnsplashDownloadResponse{
-			Error: &pb.RpcUnsplashDownloadResponseError{Code: pb.RpcUnsplashDownloadResponseError_NULL},
-			Hash:  hash,
+			Error:    &pb.RpcUnsplashDownloadResponseError{Code: pb.RpcUnsplashDownloadResponseError_NULL},
+			ObjectId: objectId,
 		}
 		if err != nil {
 			m.Error.Code = pb.RpcUnsplashDownloadResponseError_UNKNOWN_ERROR
 			if strings.Contains(err.Error(), "Rate limit exhausted") {
 				m.Error.Code = pb.RpcUnsplashDownloadResponseError_RATE_LIMIT_EXCEEDED
 			}
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
 
-	var hash string
+	var objectId string
 	un := mw.applicationService.GetApp().Component(unsplash.CName).(unsplash.Unsplash)
 	if un == nil {
 		return response("", fmt.Errorf("node not started"))
@@ -74,12 +75,13 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 	defer os.Remove(imagePath)
 
 	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		hash, err = bs.UploadFile(cctx, req.SpaceId, block.FileUploadRequest{
+		objectId, _, err = bs.UploadFile(cctx, req.SpaceId, block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: imagePath,
 				Type:      model.BlockContentFile_Image,
 				Style:     model.BlockContentFile_Embed,
 			},
+			ObjectOrigin: objectorigin.None(),
 		})
 		if err != nil {
 			return err
@@ -87,21 +89,36 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 		return
 	})
 
-	return response(hash, err)
+	return response(objectId, err)
 }
 
-func (mw *Middleware) DownloadManifest(_ context.Context, req *pb.RpcDownloadManifestRequest) *pb.RpcDownloadManifestResponse {
-	response := func(info *pb.RpcDownloadManifestResponseManifestInfo, err error) *pb.RpcDownloadManifestResponse {
-		m := &pb.RpcDownloadManifestResponse{
-			Error: &pb.RpcDownloadManifestResponseError{Code: pb.RpcDownloadManifestResponseError_NULL},
+func (mw *Middleware) GalleryDownloadManifest(_ context.Context, req *pb.RpcGalleryDownloadManifestRequest) *pb.RpcGalleryDownloadManifestResponse {
+	response := func(info *model.ManifestInfo, err error) *pb.RpcGalleryDownloadManifestResponse {
+		m := &pb.RpcGalleryDownloadManifestResponse{
+			Error: &pb.RpcGalleryDownloadManifestResponseError{Code: pb.RpcGalleryDownloadManifestResponseError_NULL},
 			Info:  info,
 		}
 		if err != nil {
-			m.Error.Code = pb.RpcDownloadManifestResponseError_UNKNOWN_ERROR
-			m.Error.Description = err.Error()
+			m.Error.Code = pb.RpcGalleryDownloadManifestResponseError_UNKNOWN_ERROR
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
 	info, err := gallery.DownloadManifest(req.Url, true)
 	return response(info, err)
+}
+
+func (mw *Middleware) GalleryDownloadIndex(_ context.Context, _ *pb.RpcGalleryDownloadIndexRequest) *pb.RpcGalleryDownloadIndexResponse {
+	response, err := gallery.DownloadGalleryIndex()
+	if response == nil {
+		response = &pb.RpcGalleryDownloadIndexResponse{}
+	}
+	response.Error = &pb.RpcGalleryDownloadIndexResponseError{
+		Code: mapErrorCode(err,
+			errToCode(gallery.ErrUnmarshalJson, pb.RpcGalleryDownloadIndexResponseError_UNMARSHALLING_ERROR),
+			errToCode(gallery.ErrDownloadIndex, pb.RpcGalleryDownloadIndexResponseError_DOWNLOAD_ERROR),
+		),
+		Description: getErrorDescription(err),
+	}
+	return response
 }

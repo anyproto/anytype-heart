@@ -15,15 +15,36 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 )
 
-const CtxKeyRemoteLoadDisabled = "object_remote_load_disabled"
+type ctxKey string
+
+const CtxKeyRemoteLoadDisabled = ctxKey("object_remote_load_disabled")
+const CtxDoNotCache = ctxKey("do_not_cache")
 
 var ErrRemoteLoadDisabled = fmt.Errorf("remote load disabled")
+
+func ContextWithDoNotCache(ctx context.Context) context.Context {
+	return context.WithValue(ctx, CtxDoNotCache, true)
+}
 
 type proxyStore struct {
 	localStore *flatStore
 	origin     rpcstore.RpcStore
 
+	backgroundCtx    context.Context
+	backgroundCancel context.CancelFunc
+
 	oldStore *badger.DB
+}
+
+func newProxyStore(localStore *flatStore, origin rpcstore.RpcStore, oldStore *badger.DB) *proxyStore {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &proxyStore{
+		localStore:       localStore,
+		origin:           origin,
+		oldStore:         oldStore,
+		backgroundCtx:    ctx,
+		backgroundCancel: cancel,
+	}
 }
 
 func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) {
@@ -51,8 +72,11 @@ func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err er
 		log.Debug("proxyStore remote cid error", zap.String("cid", k.String()), zap.Error(err))
 		return
 	}
-	if addErr := c.localStore.Add(ctx, []blocks.Block{b}); addErr != nil {
-		log.Error("block fetched from origin but got error for add to localStore", zap.Error(addErr))
+
+	if dontCache, ok := ctx.Value(CtxDoNotCache).(bool); !ok || !dontCache {
+		if addErr := c.localStore.Add(ctx, []blocks.Block{b}); addErr != nil {
+			log.Error("block fetched from origin but got error for add to localStore", zap.Error(addErr))
+		}
 	}
 	return
 }
@@ -129,6 +153,8 @@ func (c *proxyStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Bl
 					results <- ob
 				}
 			case <-ctx.Done():
+				return
+			case <-c.backgroundCtx.Done():
 				return
 			}
 			if !oOk && !cOk && !oldOk {
@@ -216,6 +242,9 @@ func (c *proxyStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (no
 }
 
 func (c *proxyStore) Close() error {
+	if c.backgroundCancel != nil {
+		c.backgroundCancel()
+	}
 	if c.oldStore != nil {
 		if err := c.oldStore.Close(); err != nil {
 			log.Error("error while closing old store", zap.Error(err))

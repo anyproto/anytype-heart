@@ -2,7 +2,6 @@ package files
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,55 +10,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/ipfs/go-cid"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/util/debug"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *service) DebugRouter(r chi.Router) {
-	r.Get("/status", debug.JSONHandler(s.debugFiles))
 	r.Get("/queue", debug.JSONHandler(s.fileSync.DebugQueue))
 	r.Get("/tree/{rootID}", debug.PlaintextHandler(s.printTree))
-}
-
-type fileDebugInfo struct {
-	Hash       string
-	SyncStatus int
-	IsIndexed  bool
-}
-
-func (s *service) debugFiles(_ *http.Request) ([]*fileDebugInfo, error) {
-	hashes, err := s.fileStore.ListTargets()
-	if err != nil {
-		return nil, fmt.Errorf("list targets: %w", err)
-	}
-	result := make([]*fileDebugInfo, 0, len(hashes))
-	for _, hash := range hashes {
-		status, err := s.fileStore.GetSyncStatus(hash)
-		if err == localstore.ErrNotFound {
-			status = -1
-			err = nil
-		}
-		if err != nil {
-			return nil, fmt.Errorf("get status for %s: %w", hash, err)
-		}
-
-		var isIndexed bool
-		details, err := s.objectStore.GetDetails(hash)
-		if err != nil && !errors.Is(err, localstore.ErrNotFound) {
-			return nil, fmt.Errorf("get status for %s: %w", hash, err)
-		}
-		if details != nil && !pbtypes.IsStructEmpty(details.Details) {
-			isIndexed = true
-		}
-
-		result = append(result, &fileDebugInfo{
-			Hash:       hash,
-			SyncStatus: status,
-			IsIndexed:  isIndexed,
-		})
-	}
-	return result, nil
 }
 
 func (s *service) printTree(w io.Writer, req *http.Request) error {

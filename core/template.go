@@ -15,7 +15,7 @@ func (mw *Middleware) TemplateCreateFromObject(ctx context.Context, req *pb.RpcT
 		}
 		if err != nil {
 			m.Error.Code = pb.RpcTemplateCreateFromObjectResponseError_UNKNOWN_ERROR
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -31,7 +31,7 @@ func (mw *Middleware) TemplateClone(_ context.Context, req *pb.RpcTemplateCloneR
 		}
 		if err != nil {
 			m.Error.Code = pb.RpcTemplateCloneResponseError_UNKNOWN_ERROR
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -46,7 +46,7 @@ func (mw *Middleware) ObjectApplyTemplate(_ context.Context, req *pb.RpcObjectAp
 		}
 		if err != nil {
 			m.Error.Code = pb.RpcObjectApplyTemplateResponseError_UNKNOWN_ERROR
-			m.Error.Description = err.Error()
+			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
@@ -63,7 +63,7 @@ func (mw *Middleware) TemplateExportAll(ctx context.Context, req *pb.RpcTemplate
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcTemplateExportAllResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
+			res.Error.Description = getErrorDescription(err)
 			return
 		} else {
 			res.Path = path

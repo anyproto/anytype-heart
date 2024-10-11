@@ -21,7 +21,7 @@ func RelationFromStruct(st *types.Struct) *Relation {
 			DefaultValue:     pbtypes.Get(st, bundle.RelationKeyRelationDefaultValue.String()),
 			DataSource:       model.Relation_details,
 			Hidden:           pbtypes.GetBool(st, bundle.RelationKeyIsHidden.String()),
-			ReadOnly:         pbtypes.GetBool(st, bundle.RelationKeyIsReadonly.String()),
+			ReadOnly:         pbtypes.GetBool(st, bundle.RelationKeyRelationReadonlyValue.String()),
 			ReadOnlyRelation: false,
 			Multi:            maxCount > 1,
 			ObjectTypes:      pbtypes.GetStringList(st, bundle.RelationKeyRelationFormatObjectTypes.String()),
@@ -29,6 +29,7 @@ func RelationFromStruct(st *types.Struct) *Relation {
 			Description:      pbtypes.GetString(st, bundle.RelationKeyDescription.String()),
 			Scope:            model.RelationScope(pbtypes.GetFloat64(st, bundle.RelationKeyScope.String())),
 			Creator:          pbtypes.GetString(st, bundle.RelationKeyCreator.String()),
+			Revision:         pbtypes.GetInt64(st, bundle.RelationKeyRevision.String()),
 		},
 	}
 }
@@ -64,6 +65,7 @@ func (r *Relation) ToStruct() *types.Struct {
 			bundle.RelationKeyType.String():                      pbtypes.String(bundle.TypeKeyRelation.BundledURL()),
 			// TODO Is it ok?
 			bundle.RelationKeyUniqueKey.String(): pbtypes.String(domain.RelationKey(r.GetKey()).URL()),
+			bundle.RelationKeyRevision.String():  pbtypes.Int64(r.GetRevision()),
 		},
 	}
 }

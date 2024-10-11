@@ -2,10 +2,10 @@ package dataview
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
+	anystore "github.com/anyproto/any-store"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -18,28 +18,25 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-const DefaultDetailsFieldName = "_defaultRecordFields"
-
 var log = logging.Logger("anytype-mw-editor-dataview")
-var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
 
 type Dataview interface {
 	SetSource(ctx session.Context, blockId string, source []string) (err error)
+	SetSourceInSet(ctx session.Context, source []string) (err error)
 
-	// GetAggregatedRelations(blockId string) ([]*model.Relation, error)
 	GetDataviewRelations(blockId string) ([]*model.Relation, error)
 	GetDataview(blockID string) (*model.BlockContentDataview, error)
 
 	DeleteView(ctx session.Context, blockId string, viewId string, showEvent bool) error
-	SetActiveView(ctx session.Context, blockId string, activeViewId string, limit int, offset int) error
+	SetActiveView(ctx session.Context, blockId string, activeViewId string) error
 	CreateView(ctx session.Context, blockID string,
 		view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error)
 	SetViewPosition(ctx session.Context, blockId string, viewId string, position uint32) error
@@ -59,6 +56,7 @@ func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) 
 		objectStore: objectStore,
 	}
 	sb.AddHook(dv.checkDVBlocks, smartblock.HookBeforeApply)
+	sb.AddHook(dv.injectActiveViews, smartblock.HookBeforeApply)
 	return dv
 }
 
@@ -85,10 +83,15 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return
 	}
 
+	flags := internalflag.NewFromState(s)
+	// set with source is no longer empty
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(s)
+
 	if len(source) == 0 {
 		s.Unlink(blockId)
 		s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-		return d.Apply(s, smartblock.NoRestrictions)
+		return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	}
 
 	dvContent, err := BlockBySource(d.objectStore, source)
@@ -106,7 +109,32 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 	}
 
 	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-	return d.Apply(s, smartblock.NoRestrictions)
+	return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
+}
+
+func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err error) {
+	s := d.NewStateCtx(ctx)
+	dv, err := getDataviewBlock(s, template.DataviewBlockId)
+	if err != nil {
+		return err
+	}
+
+	for _, view := range dv.ListViews() {
+		// TODO: GO-4189 Need to review relation lists modification in each view on source change
+		view.DefaultTemplateId = ""
+		view.DefaultObjectTypeId = ""
+		if err = dv.SetView(view.Id, *view); err != nil {
+			return fmt.Errorf("failed to update view '%s' of set '%s': %w", view.Id, s.RootId(), err)
+		}
+	}
+	s.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(source))
+
+	flags := internalflag.NewFromState(s)
+	// set with source is no longer empty
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(s)
+
+	return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
 
 func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKeys []string, showEvent bool) error {
@@ -205,7 +233,7 @@ func (d *sdataview) UpdateView(ctx session.Context, blockID string, viewID strin
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId string, limit int, offset int) error {
+func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId string) error {
 	s := d.NewStateCtx(ctx)
 
 	dvBlock, err := getDataviewBlock(s, id)
@@ -218,8 +246,12 @@ func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId s
 	}
 	dvBlock.SetActiveView(activeViewId)
 
+	if err = d.objectStore.SetActiveView(d.Id(), id, activeViewId); err != nil {
+		return err
+	}
+
 	d.SmartBlock.CheckSubscriptions()
-	return d.Apply(s)
+	return d.Apply(s, smartblock.NoHooks)
 }
 
 func (d *sdataview) SetViewPosition(ctx session.Context, blockId string, viewId string, position uint32) (err error) {
@@ -284,20 +316,10 @@ func (d *sdataview) CreateView(ctx session.Context, id string,
 
 	if len(view.Sorts) == 0 {
 		// todo: set depends on the view type
-		view.Sorts = defaultLastModifiedDateSort()
+		view.Sorts = template.DefaultLastModifiedDateSort()
 	}
 	tb.AddView(view)
 	return &view, d.Apply(s)
-}
-
-func defaultLastModifiedDateSort() []*model.BlockContentDataviewSort {
-	return []*model.BlockContentDataviewSort{
-		{
-			Id:          bson.NewObjectId().Hex(),
-			RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-			Type:        model.BlockContentDataviewSort_Desc,
-		},
-	}
 }
 
 func (d *sdataview) UpdateViewGroupOrder(ctx session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error {
@@ -336,33 +358,6 @@ func (d *sdataview) DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBl
 	}
 
 	return d.Apply(st)
-}
-
-func SchemaBySources(sources []string, objectStore objectstore.ObjectStore) (database.Schema, error) {
-	// Empty schema
-	if len(sources) == 0 {
-		return database.NewEmptySchema(), nil
-	}
-
-	// Try object type
-	objectType, err := objectStore.GetObjectType(sources[0])
-	if err == nil {
-		sch := database.NewByType(objectType)
-		return sch, nil
-	}
-
-	// Finally, try relations
-	relations := make([]*model.RelationLink, 0, len(sources))
-	for _, relId := range sources {
-		rel, err := objectStore.GetRelationByID(relId)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
-		}
-
-		relations = append(relations, (&relationutils.Relation{Relation: rel}).RelationLink())
-	}
-	sch := database.NewByRelations(relations)
-	return sch, nil
 }
 
 func (d *sdataview) listRestrictedSources(ctx context.Context) ([]string, error) {
@@ -423,6 +418,34 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 	return
 }
 
+func (d *sdataview) injectActiveViews(info smartblock.ApplyInfo) (err error) {
+	s := info.State
+	views, err := d.objectStore.GetActiveViews(d.Id())
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil
+	}
+	if err != nil {
+		log.With("objectId", s.RootId()).Warnf("failed to get list of active views from store: %v", err)
+		return
+	}
+
+	for blockId, viewId := range views {
+		b := s.Pick(blockId)
+		if b == nil {
+			log.With("objectId", s.RootId()).Warnf("failed to get block '%s' to inject active view", blockId)
+			continue
+		}
+		dv := b.Model().GetDataview()
+		if dv == nil {
+			log.With("objectId", s.RootId()).Warnf("block '%s' is not dataview, so cannot inject active view", blockId)
+			continue
+		}
+		dv.ActiveView = viewId
+	}
+
+	return nil
+}
+
 func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 	b := s.Get(id)
 	if b == nil {
@@ -434,148 +457,27 @@ func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 	return nil, fmt.Errorf("not a dataview block")
 }
 
-func getEntryID(entry database.Record) string {
-	if entry.Details == nil {
-		return ""
+func BlockBySource(objectStore objectstore.ObjectStore, sources []string) (*model.BlockContentOfDataview, error) {
+	// Empty schema
+	if len(sources) == 0 {
+		return template.MakeDataviewContent(false, nil, nil), nil
 	}
 
-	return pbtypes.GetString(entry.Details, bundle.RelationKeyId.String())
-}
-
-type recordInsertedAtPosition struct {
-	position int
-	entry    *types.Struct
-}
-
-type recordsInsertedAtPosition struct {
-	position int
-	entries  []*types.Struct
-}
-
-func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, removed []string, insertedGroupedByPosition []recordsInsertedAtPosition) {
-	var inserted []recordInsertedAtPosition
-
-	var existing = make(map[string]*types.Struct, len(a))
-	for _, record := range a {
-		existing[getEntryID(record)] = record.Details
+	// Try object type
+	objectType, err := objectStore.GetObjectType(sources[0])
+	if err == nil {
+		return template.MakeDataviewContent(false, objectType, nil), nil
 	}
 
-	var existingInNew = make(map[string]struct{}, len(b))
-	for i, entry := range b {
-		id := getEntryID(entry)
-		if prev, exists := existing[id]; exists {
-			if len(a) <= i || getEntryID(a[i]) != id {
-				// todo: return as moved?
-				removed = append(removed, id)
-				inserted = append(inserted, recordInsertedAtPosition{i, entry.Details})
-			} else {
-				if !prev.Equal(entry.Details) {
-					updated = append(updated, entry.Details)
-				}
-			}
-		} else {
-			inserted = append(inserted, recordInsertedAtPosition{i, entry.Details})
+	// Finally, try relations
+	relations := make([]*model.RelationLink, 0, len(sources))
+	for _, relId := range sources {
+		rel, err := objectStore.GetRelationByID(relId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
 		}
 
-		existingInNew[id] = struct{}{}
+		relations = append(relations, (&relationutils.Relation{Relation: rel}).RelationLink())
 	}
-
-	for id := range existing {
-		if _, exists := existingInNew[id]; !exists {
-			removed = append(removed, id)
-		}
-	}
-
-	var insertedToTheLastPosition = recordsInsertedAtPosition{position: -1}
-	var lastPos = -1
-
-	if len(inserted) > 0 {
-		insertedToTheLastPosition.position = inserted[0].position
-		lastPos = inserted[0].position - 1
-	}
-
-	for _, entry := range inserted {
-		if entry.position > lastPos+1 {
-			// split the insert portion
-			insertedGroupedByPosition = append(insertedGroupedByPosition, insertedToTheLastPosition)
-			insertedToTheLastPosition = recordsInsertedAtPosition{position: entry.position}
-		}
-
-		lastPos = entry.position
-		insertedToTheLastPosition.entries = append(insertedToTheLastPosition.entries, entry.entry)
-	}
-	if len(insertedToTheLastPosition.entries) > 0 {
-		insertedGroupedByPosition = append(insertedGroupedByPosition, insertedToTheLastPosition)
-	}
-
-	return
-}
-
-func BlockBySource(objectStore objectstore.ObjectStore, source []string) (*model.BlockContentOfDataview, error) {
-	schema, err := SchemaBySources(source, objectStore)
-	if err != nil {
-		return nil, fmt.Errorf("get schema by sources: %w", err)
-	}
-
-	var (
-		relations     []*model.RelationLink
-		viewRelations []*model.BlockContentDataviewRelation
-	)
-
-	for _, rel := range schema.RequiredRelations() {
-		relations = append(relations, &model.RelationLink{
-			Format: rel.Format,
-			Key:    rel.Key,
-		})
-		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: true})
-	}
-
-	for _, rel := range schema.ListRelations() {
-		// other relations should be added with
-		if pbtypes.HasRelationLink(relations, rel.Key) {
-			continue
-		}
-
-		relations = append(relations, &model.RelationLink{
-			Format: rel.Format,
-			Key:    rel.Key,
-		})
-		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
-	}
-
-	schemaRelations := schema.ListRelations()
-	if !pbtypes.HasRelationLink(schemaRelations, bundle.RelationKeyName.String()) {
-		schemaRelations = append([]*model.RelationLink{bundle.MustGetRelationLink(bundle.RelationKeyName)}, schemaRelations...)
-	}
-
-	for _, relKey := range template.DefaultDataviewRelations {
-		if pbtypes.HasRelationLink(relations, relKey.String()) {
-			continue
-		}
-		rel := bundle.MustGetRelation(relKey)
-		if rel.Hidden {
-			continue
-		}
-		relations = append(relations, &model.RelationLink{
-			Format: rel.Format,
-			Key:    rel.Key,
-		})
-		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
-	}
-
-	return &model.BlockContentOfDataview{
-		Dataview: &model.BlockContentDataview{
-			RelationLinks: relations,
-			Views: []*model.BlockContentDataviewView{
-				{
-					Id:        bson.NewObjectId().Hex(),
-					Type:      model.BlockContentDataviewView_Table,
-					Name:      "All",
-					Sorts:     defaultLastModifiedDateSort(),
-					Filters:   nil,
-					Relations: viewRelations,
-				},
-			},
-		},
-	}, nil
+	return template.MakeDataviewContent(false, objectType, relations), nil
 }

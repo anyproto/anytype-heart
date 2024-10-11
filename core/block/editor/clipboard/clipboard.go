@@ -1,6 +1,7 @@
 package clipboard
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -18,7 +19,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/converter/html"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -26,7 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
-	"github.com/anyproto/anytype-heart/util/strutil"
 	textutil "github.com/anyproto/anytype-heart/util/text"
 )
 
@@ -44,26 +47,34 @@ type Clipboard interface {
 	Export(req pb.RpcBlockExportRequest) (path string, err error)
 }
 
-func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core.TempDirProvider, objectStore objectstore.ObjectStore, fileService files.Service) Clipboard {
+func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core.TempDirProvider, objectStore objectstore.ObjectStore, fileService files.Service, fileObjectService fileobject.Service) Clipboard {
 	return &clipboard{
-		SmartBlock:      sb,
-		file:            file,
-		tempDirProvider: tempDirProvider,
-		objectStore:     objectStore,
-		fileService:     fileService,
+		SmartBlock:        sb,
+		file:              file,
+		tempDirProvider:   tempDirProvider,
+		objectStore:       objectStore,
+		fileService:       fileService,
+		fileObjectService: fileObjectService,
 	}
 }
 
 type clipboard struct {
 	smartblock.SmartBlock
-	file            file.File
-	tempDirProvider core.TempDirProvider
-	objectStore     objectstore.ObjectStore
-	fileService     files.Service
+	file              file.File
+	tempDirProvider   core.TempDirProvider
+	objectStore       objectstore.ObjectStore
+	fileService       files.Service
+	fileObjectService fileobject.Service
 }
 
-func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (
+	blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error,
+) {
 	caretPosition = -1
+	if err = cb.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+		return nil, nil, caretPosition, false, err
+	}
+
 	if len(req.FileSlot) > 0 {
 		blockIds, err = cb.pasteFiles(ctx, req)
 		return
@@ -97,7 +108,7 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 
 	s := cb.blocksToState(req.Blocks)
 
-	textSlot = renderText(s)
+	textSlot = renderText(s, len(req.Blocks) == 1)
 
 	var firstTextBlock, lastTextBlock *model.Block
 	for _, b := range req.Blocks {
@@ -127,14 +138,14 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 
 		textSlot = cutBlock.GetText().Text
 		s.Set(simple.New(cutBlock))
-		htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Convert()
+		htmlSlot = cb.newHTMLConverter(s).Convert()
 		textSlot = cutBlock.GetText().Text
 		anySlot = cb.stateToBlocks(s)
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
 	// scenario: ordinary copy
-	htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Convert()
+	htmlSlot = cb.newHTMLConverter(s).Convert()
 	anySlot = cb.stateToBlocks(s)
 	return textSlot, htmlSlot, anySlot, nil
 }
@@ -198,7 +209,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 		anySlot = []*model.Block{cutBlock}
 		cbs := cb.blocksToState(req.Blocks)
 		cbs.Set(simple.New(cutBlock))
-		htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, cbs).Convert()
+		htmlSlot = cb.newHTMLConverter(cbs).Convert()
 
 		return textSlot, htmlSlot, anySlot, cb.Apply(s)
 	}
@@ -209,9 +220,9 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 	for _, b := range req.Blocks {
 		ids = append(ids, b.Id)
 	}
-	textSlot = renderText(state)
+	textSlot = renderText(state, len(req.Blocks) == 1)
 
-	htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, state).Convert()
+	htmlSlot = cb.newHTMLConverter(state).Convert()
 	anySlot = req.Blocks
 
 	unlinkAndClearBlocks(s, stateBlocks, req.Blocks)
@@ -222,7 +233,8 @@ func isRangeSelect(firstTextBlock *model.Block, lastTextBlock *model.Block, rang
 	return firstTextBlock != nil &&
 		lastTextBlock == nil &&
 		rang != nil &&
-		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))
+		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text)) &&
+		rang.To > 0
 }
 
 func unlinkAndClearBlocks(
@@ -246,21 +258,22 @@ func unlinkAndClearBlocks(
 }
 
 func assertBlocks(stateBlocks []*model.Block, requestBlocks []*model.Block) (map[string]*model.Block, error) {
-	if len(requestBlocks) == 0 || requestBlocks[0].Id == "" {
+	if len(requestBlocks) == 0 || requestBlocks[0].GetId() == "" {
 		return nil, errors.New("nothing to cut")
 	}
 
 	idToBlockMap := make(map[string]*model.Block)
 	for _, stateBlock := range stateBlocks {
-		idToBlockMap[stateBlock.Id] = stateBlock
+		idToBlockMap[stateBlock.GetId()] = stateBlock
 	}
 
 	for _, requestBlock := range requestBlocks {
-		if requestBlock.Id == "" {
+		reqId := requestBlock.GetId()
+		if reqId == "" {
 			return nil, errors.New("empty requestBlock id")
 		}
-		if stateBlock, ok := idToBlockMap[requestBlock.Id]; !ok {
-			return nil, fmt.Errorf("requestBlock with id %s not found", stateBlock.Id)
+		if _, ok := idToBlockMap[reqId]; !ok {
+			return nil, fmt.Errorf("requestBlock with id %s not found", reqId)
 		}
 	}
 	return idToBlockMap, nil
@@ -268,7 +281,7 @@ func assertBlocks(stateBlocks []*model.Block, requestBlocks []*model.Block) (map
 
 func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err error) {
 	s := cb.blocksToState(req.Blocks)
-	htmlData := html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Export()
+	htmlData := cb.newHTMLConverter(s).Export()
 
 	dir := cb.tempDirProvider.TempDir()
 	fileName := "export-" + cb.Id() + ".html"
@@ -283,7 +296,7 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err erro
 }
 
 func (cb *clipboard) pasteHtml(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
-	blocks, _, err := anymark.HTMLToBlocks([]byte(req.HtmlSlot))
+	blocks, _, err := anymark.HTMLToBlocks([]byte(req.HtmlSlot), req.Url)
 
 	if err != nil {
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
@@ -312,8 +325,6 @@ func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, nil
 	}
 
-	textArr := strings.Split(req.TextSlot, "\n")
-
 	if len(req.FocusedBlockId) > 0 {
 		block := cb.Pick(req.FocusedBlockId)
 		if block != nil {
@@ -324,10 +335,12 @@ func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest
 	}
 
 	mdText := whitespace.WhitespaceNormalizeString(req.TextSlot)
-
 	blocks, _, err := anymark.MarkdownToBlocks([]byte(mdText), "", []string{})
 	if err != nil {
-		return cb.pasteRawText(ctx, req, textArr, groupId)
+		// in case we've failed to parse the text as a valid markdown,
+		// split it into text paragraphs with the same logic like in anymark and paste it as a plain text
+		paragraphs := splitStringIntoParagraphs(req.TextSlot, anymark.TextBlockLengthSoftLimit)
+		return cb.pasteRawText(ctx, req, paragraphs, groupId)
 	}
 	req.AnySlot = append(req.AnySlot, blocks...)
 
@@ -373,6 +386,9 @@ func (cb *clipboard) pasteAny(
 			if err = cb.addRelationLinksToDataview(d.Dataview); err != nil {
 				return
 			}
+		}
+		if f, ok := b.Content.(*model.BlockContentOfFile); ok {
+			cb.processFileBlock(f)
 		}
 	}
 	srcState := cb.blocksToState(req.AnySlot)
@@ -449,6 +465,7 @@ func (cb *clipboard) pasteAny(
 	}
 	caretPosition = ctrl.caretPos
 	uploadArr = ctrl.uploadArr
+	blockIds = ctrl.blockIds
 
 	if len(missingRelationKeys) > 0 {
 		if err = cb.AddRelationLinksToState(s, missingRelationKeys...); err != nil {
@@ -493,6 +510,9 @@ func (cb *clipboard) stateToBlocks(s *state.State) []*model.Block {
 }
 
 func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteRequest) (blockIds []string, err error) {
+	if req.FocusedBlockId == template.TitleBlockId || req.FocusedBlockId == template.DescriptionBlockId {
+		req.FocusedBlockId = ""
+	}
 	s := cb.NewStateCtx(ctx)
 	for _, fs := range req.FileSlot {
 		b := simple.New(&model.Block{
@@ -508,7 +528,7 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 			Bytes:  fs.Data,
 			Path:   fs.LocalPath,
 			Name:   fs.Name,
-			Origin: model.ObjectOrigin_clipboard,
+			Origin: objectorigin.Clipboard(),
 		}, false); err != nil {
 			return
 		}
@@ -565,30 +585,57 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 	return
 }
 
-func renderText(s *state.State) string {
+func (cb *clipboard) newHTMLConverter(s *state.State) *html.HTML {
+	return html.NewHTMLConverter(cb.fileService, s, cb.fileObjectService)
+}
+
+func (cb *clipboard) processFileBlock(f *model.BlockContentOfFile) {
+	fileId, err := cb.fileObjectService.GetFileIdFromObject(f.File.TargetObjectId)
+	if err != nil {
+		log.Errorf("failed to get fileId: %v", err)
+		return
+	}
+
+	if cb.SpaceID() == fileId.SpaceId {
+		return
+	}
+
+	objectId, err := cb.fileObjectService.CreateFromImport(
+		domain.FullFileId{SpaceId: cb.SpaceID(), FileId: fileId.FileId},
+		objectorigin.ObjectOrigin{Origin: model.ObjectOrigin_clipboard},
+	)
+	if err != nil {
+		log.Errorf("failed to create file object: %v", err)
+		return
+	}
+
+	f.File.TargetObjectId = objectId
+}
+
+func renderText(s *state.State, ignoreStyle bool) string {
 	texts := make([]string, 0)
-	texts, _ = renderBlock(s, texts, s.RootId(), -1, 0)
+	texts, _ = renderBlock(s, texts, s.RootId(), -1, 0, ignoreStyle)
 
 	if len(texts) > 0 {
-		return strutil.JoinWithTrailingEnd(texts, "\n")
+		return strings.Join(texts, "\n")
 	}
 
 	return ""
 }
 
-func renderBlock(s *state.State, texts []string, id string, level int, numberedCount int) ([]string, int) {
+func renderBlock(s *state.State, texts []string, id string, level int, numberedCount int, ignoreStyle bool) ([]string, int) {
 	block := s.Pick(id).Model()
-	texts, numberedCount = extractTextWithStyleAndTabs(block, texts, level, numberedCount)
+	texts, numberedCount = extractTextWithStyleAndTabs(block, texts, level, numberedCount, ignoreStyle)
 	childrenIds := s.Pick(id).Model().ChildrenIds
-	texts = renderChildren(s, texts, childrenIds, level, 0)
+	texts = renderChildren(s, texts, childrenIds, level, 0, ignoreStyle)
 	return texts, numberedCount
 }
 
-func renderChildren(s *state.State, texts []string, childrenIds []string, level int, numberedCount int) []string {
+func renderChildren(s *state.State, texts []string, childrenIds []string, level int, numberedCount int, ignoreStyle bool) []string {
 	var oldNumberedCount int
 	for _, id := range childrenIds {
 		oldNumberedCount = numberedCount
-		texts, numberedCount = renderBlock(s, texts, id, level+1, numberedCount)
+		texts, numberedCount = renderBlock(s, texts, id, level+1, numberedCount, ignoreStyle)
 		if oldNumberedCount == numberedCount {
 			numberedCount = 0
 		}
@@ -596,25 +643,81 @@ func renderChildren(s *state.State, texts []string, childrenIds []string, level 
 	return texts
 }
 
-func extractTextWithStyleAndTabs(block *model.Block, texts []string, level int, numberedCount int) ([]string, int) {
-	if text := block.GetText(); text != nil {
-		switch text.Style {
-		case model.BlockContentText_Quote:
-			texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "> ", text.Text))
-		case model.BlockContentText_Code:
-			texts = append(texts, fmt.Sprintf("%s%s%s%s", strings.Repeat("\t", level), "```", text.Text, "```"))
-		case model.BlockContentText_Checkbox:
-			texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "- [ ] ", text.Text))
-		case model.BlockContentText_Marked:
-			texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "- ", text.Text))
-		case model.BlockContentText_Numbered:
-			numberedCount++
-			texts = append(texts, fmt.Sprintf("%s%d%s%s", strings.Repeat("\t", level), numberedCount, ". ", text.Text))
-		case model.BlockContentText_Callout:
-			texts = append(texts, fmt.Sprintf("%s%s%s%s", strings.Repeat("\t", level), text.IconEmoji, " ", text.Text))
-		default:
-			texts = append(texts, fmt.Sprintf("%s%s", strings.Repeat("\t", level), text.Text))
+func extractTextWithStyleAndTabs(block *model.Block, texts []string, level int, numberedCount int, ignoreStyle bool) ([]string, int) {
+	if blockText := block.GetText(); blockText != nil {
+		if ignoreStyle {
+			texts = append(texts, blockText.Text)
+		} else {
+			switch blockText.Style {
+			case model.BlockContentText_Title:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "# ", blockText.Text))
+			case model.BlockContentText_Header1:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "## ", blockText.Text))
+			case model.BlockContentText_Header2:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "### ", blockText.Text))
+			case model.BlockContentText_Header3:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "#### ", blockText.Text))
+			case model.BlockContentText_Header4:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "##### ", blockText.Text))
+			case model.BlockContentText_Quote:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "> ", blockText.Text))
+			case model.BlockContentText_Code:
+				texts = append(texts, fmt.Sprintf("%s%s%s%s", strings.Repeat("\t", level), "```", blockText.Text, "```"))
+			case model.BlockContentText_Checkbox:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "- [ ] ", blockText.Text))
+			case model.BlockContentText_Marked:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "- ", blockText.Text))
+			case model.BlockContentText_Numbered:
+				numberedCount++
+				texts = append(texts, fmt.Sprintf("%s%d%s%s", strings.Repeat("\t", level), numberedCount, ". ", blockText.Text))
+			case model.BlockContentText_Callout:
+				texts = append(texts, fmt.Sprintf("%s%s%s%s", strings.Repeat("\t", level), blockText.IconEmoji, " ", blockText.Text))
+			default:
+				texts = append(texts, fmt.Sprintf("%s%s", strings.Repeat("\t", level), blockText.Text))
+			}
 		}
 	}
 	return texts, numberedCount
+}
+
+// splitStringIntoParagraphs splits text into pararagraphs
+// - when text has a double line break, it is considered as a paragraph separator
+// - when text has a single line break, it is considered as a soft line break, not a paragraph separator
+// - when text has a single line break and the current block is longer than the soft limit, it is considered as a paragraph separator
+// - func consider line with whitespaces as a paragraph separator (e.g. "\n   \n")
+func splitStringIntoParagraphs(s string, lineBreakSoftLimit int) []string {
+	var blocks []string
+	var currentBlock strings.Builder
+
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.TrimSpace(line) == "" { // This is a simple proxy for a double line break.
+			if currentBlock.Len() > 0 {
+				blocks = append(blocks, currentBlock.String())
+				currentBlock.Reset()
+			}
+			continue
+		}
+
+		// Add line to current block with space handling for the soft limit.
+		if lineBreakSoftLimit > 0 && currentBlock.Len()+len(line) > lineBreakSoftLimit && currentBlock.Len() > 0 {
+			// Append the current block and start a new one
+			blocks = append(blocks, currentBlock.String())
+			currentBlock.Reset()
+		}
+
+		if currentBlock.Len() > 0 {
+			currentBlock.WriteString("\n")
+		}
+		currentBlock.WriteString(line)
+	}
+
+	// Don't forget to add the last block if it exists.
+	if currentBlock.Len() > 0 {
+		blocks = append(blocks, currentBlock.String())
+	}
+
+	return blocks
 }

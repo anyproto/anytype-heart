@@ -9,10 +9,9 @@ import (
 	"github.com/miolini/datacounter"
 
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 // TODO Move residual file methods here
@@ -25,7 +24,7 @@ func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadReque
 
 	err := os.MkdirAll(req.Path, 0755)
 	if err != nil {
-		return "", fmt.Errorf("mkdir -p: %w", oserror.TransformError(err))
+		return "", fmt.Errorf("mkdir -p: %w", anyerror.CleanupError(err))
 	}
 	progress := process.NewProgress(pb.ModelProcess_SaveFile)
 	defer progress.Finish(nil)
@@ -54,7 +53,7 @@ func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadReque
 		}
 	}()
 
-	f, err := s.getFileOrLargestImage(ctx, req.Hash)
+	f, err := s.getFileOrLargestImage(ctx, req.ObjectId)
 	if err != nil {
 		return "", fmt.Errorf("get file by hash: %w", err)
 	}
@@ -80,21 +79,17 @@ func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadReque
 	return path, nil
 }
 
-func (s *Service) getFileOrLargestImage(ctx context.Context, hash string) (files.File, error) {
-	spaceID, err := s.resolver.ResolveSpaceID(hash)
+func (s *Service) getFileOrLargestImage(ctx context.Context, objectId string) (files.File, error) {
+	id, err := s.fileObjectService.GetFileIdFromObject(objectId)
 	if err != nil {
-		return nil, fmt.Errorf("resolve spaceID: %w", err)
-	}
-	id := domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: hash,
+		return nil, fmt.Errorf("get file hash from object: %w", err)
 	}
 	image, err := s.fileService.ImageByHash(ctx, id)
 	if err != nil {
 		return s.fileService.FileByHash(ctx, id)
 	}
 
-	f, err := image.GetOriginalFile(ctx)
+	f, err := image.GetOriginalFile()
 	if err != nil {
 		return s.fileService.FileByHash(ctx, id)
 	}

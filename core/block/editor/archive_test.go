@@ -17,7 +17,7 @@ func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {
 	sb := smarttest.New("root")
 	objectStore := testMock.NewMockObjectStore(ctrl)
 	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
-	objectStore.EXPECT().Query(gomock.Any()).AnyTimes()
+	objectStore.EXPECT().QueryRaw(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	a := &Archive{
 		SmartBlock:  sb,
 		Collection:  collection.NewCollection(sb, objectStore),

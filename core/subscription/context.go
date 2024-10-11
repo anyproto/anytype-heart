@@ -43,6 +43,8 @@ type opGroup struct {
 }
 
 type opCtx struct {
+	outputs map[string][]*pb.EventMessage
+
 	// subIds for remove
 	remove   []opRemove
 	change   []opChange
@@ -60,14 +62,31 @@ type opCtx struct {
 	c *cache
 }
 
-func (ctx *opCtx) apply() (event *pb.Event) {
-	var subMsgs = make([]*pb.EventMessage, 0, 10)
+const defaultOutput = "_default"
+
+func (ctx *opCtx) apply() {
+	addEvent := func(subId string, ev *pb.EventMessage) {
+		_, ok := ctx.outputs[subId]
+		if ok {
+			ctx.outputs[subId] = append(ctx.outputs[subId], ev)
+		} else {
+			ctx.outputs[defaultOutput] = append(ctx.outputs[defaultOutput], ev)
+		}
+	}
+
+	// changes
+	for _, ch := range ctx.change {
+		ctx.collectKeys(ch.id, ch.subId, ch.keys)
+	}
+
+	// details events
+	ctx.detailsEvents()
 
 	// adds, positions
 	for _, pos := range ctx.position {
 		if pos.isAdd {
 			ctx.collectKeys(pos.id, pos.subId, pos.keys)
-			subMsgs = append(subMsgs, &pb.EventMessage{
+			addEvent(pos.subId, &pb.EventMessage{
 				Value: &pb.EventMessageValueOfSubscriptionAdd{
 					SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
 						Id:      pos.id,
@@ -77,7 +96,7 @@ func (ctx *opCtx) apply() (event *pb.Event) {
 				},
 			})
 		} else {
-			subMsgs = append(subMsgs, &pb.EventMessage{
+			addEvent(pos.subId, &pb.EventMessage{
 				Value: &pb.EventMessageValueOfSubscriptionPosition{
 					SubscriptionPosition: &pb.EventObjectSubscriptionPosition{
 						Id:      pos.id,
@@ -89,17 +108,9 @@ func (ctx *opCtx) apply() (event *pb.Event) {
 		}
 	}
 
-	// changes
-	for _, ch := range ctx.change {
-		ctx.collectKeys(ch.id, ch.subId, ch.keys)
-	}
-
-	// details events
-	eventMsgs := ctx.detailsEvents()
-
 	// removes
 	for _, rem := range ctx.remove {
-		subMsgs = append(subMsgs, &pb.EventMessage{
+		addEvent(rem.subId, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfSubscriptionRemove{
 				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
 					Id:    rem.id,
@@ -111,7 +122,7 @@ func (ctx *opCtx) apply() (event *pb.Event) {
 
 	// counters
 	for _, count := range ctx.counters {
-		subMsgs = append(subMsgs, &pb.EventMessage{
+		addEvent(count.subId, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfSubscriptionCounters{
 				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
 					Total:     int64(count.total),
@@ -133,7 +144,7 @@ func (ctx *opCtx) apply() (event *pb.Event) {
 	}
 
 	for _, opGroup := range ctx.groups {
-		subMsgs = append(subMsgs, &pb.EventMessage{
+		addEvent(opGroup.subId, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfSubscriptionGroups{
 				SubscriptionGroups: &pb.EventObjectSubscriptionGroups{
 					SubId:  opGroup.subId,
@@ -143,13 +154,14 @@ func (ctx *opCtx) apply() (event *pb.Event) {
 			},
 		})
 	}
-
-	return &pb.Event{
-		Messages: append(eventMsgs, subMsgs...),
-	}
 }
 
-func (ctx *opCtx) detailsEvents() (msgs []*pb.EventMessage) {
+// detailsEvents produces following types of events:
+// EventObjectDetailsAmend
+// EventObjectDetailsUnset
+// EventMessageValueOfObjectDetailsSet
+func (ctx *opCtx) detailsEvents() {
+	var msgs []*pb.EventMessage
 	var getEntry = func(id string) *entry {
 		for _, e := range ctx.entries {
 			if e.id == id {
@@ -171,11 +183,6 @@ func (ctx *opCtx) detailsEvents() (msgs []*pb.EventMessage) {
 			diff := pbtypes.StructDiff(prevData, curr.data)
 			msgs = append(msgs, state.StructDiffIntoEventsWithSubIds(info.id, diff, info.keys, info.subIds)...)
 		} else {
-			// save info for every sub because we don't want to send the details events again
-			for _, sub := range info.subIds {
-				curr.SetSub(sub, true, true)
-			}
-
 			msgs = append(msgs, &pb.EventMessage{
 				Value: &pb.EventMessageValueOfObjectDetailsSet{
 					ObjectDetailsSet: &pb.EventObjectDetailsSet{
@@ -186,9 +193,115 @@ func (ctx *opCtx) detailsEvents() (msgs []*pb.EventMessage) {
 				},
 			})
 		}
-
+		// save info for every sub because we don't want to send the details events again
+		for _, sub := range info.subIds {
+			curr.SetSub(sub, true, true)
+		}
 	}
-	return
+
+	ctx.groupDetailsEvents(msgs)
+}
+
+func (ctx *opCtx) groupDetailsEvents(msgs []*pb.EventMessage) {
+	for _, msg := range msgs {
+		if v := msg.GetObjectDetailsAmend(); v != nil {
+			ctx.groupEventsDetailsAmend(v)
+		} else if v := msg.GetObjectDetailsUnset(); v != nil {
+			ctx.groupEventsDetailsUnset(v)
+		} else if v := msg.GetObjectDetailsSet(); v != nil {
+			ctx.groupEventsDetailsSet(v)
+		}
+	}
+}
+
+func (ctx *opCtx) groupEventsDetailsSet(v *pb.EventObjectDetailsSet) {
+	defaultSubIds := v.SubIds[:0]
+	for _, subId := range v.SubIds {
+		if _, ok := ctx.outputs[subId]; ok {
+			ctx.outputs[subId] = append(ctx.outputs[subId], &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectDetailsSet{
+					ObjectDetailsSet: &pb.EventObjectDetailsSet{
+						Id:      v.Id,
+						Details: v.Details,
+						SubIds:  []string{subId},
+					},
+				},
+			})
+		} else {
+			defaultSubIds = append(defaultSubIds, subId)
+		}
+	}
+	if len(defaultSubIds) > 0 {
+		ctx.outputs[defaultOutput] = append(ctx.outputs[defaultOutput], &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectDetailsSet{
+				ObjectDetailsSet: &pb.EventObjectDetailsSet{
+					Id:      v.Id,
+					Details: v.Details,
+					SubIds:  defaultSubIds,
+				},
+			},
+		})
+	}
+}
+
+func (ctx *opCtx) groupEventsDetailsUnset(v *pb.EventObjectDetailsUnset) {
+	defaultSubIds := v.SubIds[:0]
+	for _, subId := range v.SubIds {
+		if _, ok := ctx.outputs[subId]; ok {
+			ctx.outputs[subId] = append(ctx.outputs[subId], &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectDetailsUnset{
+					ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
+						Id:     v.Id,
+						Keys:   v.Keys,
+						SubIds: []string{subId},
+					},
+				},
+			})
+		} else {
+			defaultSubIds = append(defaultSubIds, subId)
+		}
+	}
+	if len(defaultSubIds) > 0 {
+		ctx.outputs[defaultOutput] = append(ctx.outputs[defaultOutput], &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectDetailsUnset{
+				ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
+					Id:     v.Id,
+					Keys:   v.Keys,
+					SubIds: defaultSubIds,
+				},
+			},
+		})
+	}
+}
+
+func (ctx *opCtx) groupEventsDetailsAmend(v *pb.EventObjectDetailsAmend) {
+	defaultSubIds := v.SubIds[:0]
+	for _, subId := range v.SubIds {
+		if _, ok := ctx.outputs[subId]; ok {
+			ctx.outputs[subId] = append(ctx.outputs[subId], &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectDetailsAmend{
+					ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+						Id:      v.Id,
+						Details: v.Details,
+						SubIds:  []string{subId},
+					},
+				},
+			})
+		} else {
+			defaultSubIds = append(defaultSubIds, subId)
+		}
+	}
+	if len(defaultSubIds) > 0 {
+		ctx.outputs[defaultOutput] = append(ctx.outputs[defaultOutput], &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectDetailsAmend{
+				ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+					Id:      v.Id,
+					Details: v.Details,
+					SubIds:  defaultSubIds,
+				},
+			},
+		})
+	}
 }
 
 func (ctx *opCtx) collectKeys(id string, subId string, keys []string) {
@@ -235,4 +348,9 @@ func (ctx *opCtx) reset() {
 	ctx.keysBuf = ctx.keysBuf[:0]
 	ctx.entries = ctx.entries[:0]
 	ctx.groups = ctx.groups[:0]
+	if ctx.outputs == nil {
+		ctx.outputs = map[string][]*pb.EventMessage{
+			defaultOutput: nil,
+		}
+	}
 }
