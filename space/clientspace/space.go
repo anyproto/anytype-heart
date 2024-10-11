@@ -148,7 +148,7 @@ func (s *space) tryLoadBundledAndInstallIfMissing() {
 	missingSourceIds, err := s.TryLoadBundledObjects(ctxWithPeerTimeout)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			return // we are closing, skip installation, we will try again on next load
+			return // we are closing, skip installation,
 		}
 		log.Error("failed to load bundled objects", zap.Error(err))
 	}
@@ -264,7 +264,10 @@ func (s *space) Close(ctx context.Context) error {
 	if s == nil {
 		return nil
 	}
-	s.loadMissingBundledObjectsCtxCancel()
+	if s.loadMissingBundledObjectsCtxCancel != nil {
+		s.loadMissingBundledObjectsCtxCancel()
+	}
+
 	err := s.Cache.Close(ctx)
 	if err != nil {
 		return err
