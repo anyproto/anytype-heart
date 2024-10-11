@@ -480,15 +480,20 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	return len(idsToReindex), success, nil
 }
 
-func (i *indexer) reindexDoc(ctx context.Context, space smartblock.Space, id string) error {
+func (i *indexer) reindexDoc(space smartblock.Space, id string) error {
 	return space.Do(id, func(sb smartblock.SmartBlock) error {
-		return i.Index(ctx, sb.GetDocInfo())
+		return i.Index(sb.GetDocInfo())
 	})
 }
 
 func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space smartblock.Space, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
-		err := i.reindexDoc(ctx, space, id)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		err := i.reindexDoc(space, id)
 		if err != nil {
 			log.With("objectID", id).Errorf("failed to reindex: %v", err)
 		} else {

@@ -101,9 +101,9 @@ func (i *spaceIndexer) indexBatch(tasks []indexTask) (err error) {
 	return
 }
 
-func (i *spaceIndexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
+func (i *spaceIndexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
 	done := make(chan error)
-	if err := i.batcher.Add(ctx, indexTask{
+	if err := i.batcher.Add(i.runCtx, indexTask{
 		info:    info,
 		options: options,
 		done:    done,
