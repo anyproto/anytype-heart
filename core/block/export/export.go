@@ -654,7 +654,7 @@ func (e *exportContext) addRelationOptions(relationKey string) error {
 }
 
 func (e *exportContext) getRelationOptions(relationKey string) ([]database.Record, error) {
-	relationOptionsDetails, err := e.objectStore.SpaceIndex(spaceId).Query(database.Query{
+	relationOptionsDetails, err := e.objectStore.SpaceIndex(e.spaceId).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -800,7 +800,7 @@ func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*types.
 }
 
 func (e *exportContext) fillLinkedFiles(id string) ([]string, error) {
-	spaceIndex := e.objectStore.SpaceIndex(space.Id())
+	spaceIndex := e.objectStore.SpaceIndex(e.spaceId)
 	var fileObjectsIds []string
 	err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
 		b.NewState().IterateLinkedFiles(func(fileObjectId string) {

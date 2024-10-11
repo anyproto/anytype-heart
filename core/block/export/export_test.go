@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -65,9 +66,8 @@ func TestExport_Export(t *testing.T) {
 		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
 		assert.Nil(t, err)
 
-		spaceId := "spaceId"
 		objectID := "id"
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String(objectID),
 				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
@@ -168,7 +168,6 @@ func TestExport_Export(t *testing.T) {
 	t.Run("empty import", func(t *testing.T) {
 		// given
 		storeFixture := objectstore.NewStoreFixture(t)
-		spaceId := "spaceId"
 		objectID := "id"
 
 		objectGetter := mock_cache.NewMockObjectGetter(t)
@@ -216,9 +215,8 @@ func TestExport_Export(t *testing.T) {
 		storeFixture := objectstore.NewStoreFixture(t)
 		objectTypeId := "customObjectType"
 
-		spaceId := "spaceId"
 		objectID := "id"
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String(objectID),
 				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
@@ -272,12 +270,12 @@ func Test_docsForExport(t *testing.T) {
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
 				bundle.RelationKeyName:    pbtypes.String("name1"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:      pbtypes.String("id1"),
 				bundle.RelationKeyName:    pbtypes.String("name2"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 			},
 		})
 		err := storeFixture.SpaceIndex(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
@@ -291,7 +289,7 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
+			SpaceId:       spaceId,
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 		})
@@ -310,12 +308,12 @@ func Test_docsForExport(t *testing.T) {
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
 				bundle.RelationKeyName:    pbtypes.String("name"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
-				bundle.RelationKeySpaceId:   pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
 			},
 		})
 		err := storeFixture.SpaceIndex(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
@@ -328,7 +326,7 @@ func Test_docsForExport(t *testing.T) {
 			sbtProvider: provider,
 		}
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
+			SpaceId:       spaceId,
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 		})
@@ -349,7 +347,7 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:            pbtypes.String("id"),
 				domain.RelationKey(relationKey): pbtypes.String("value"),
 				bundle.RelationKeyType:          pbtypes.String("objectType"),
-				bundle.RelationKeySpaceId:       pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:       pbtypes.String(spaceId),
 			},
 		})
 		err := storeFixture.SpaceIndex(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
@@ -396,7 +394,7 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
+			SpaceId:   spaceId,
 			ObjectIds: []string{"id"},
 			Format:    model.Export_Protobuf,
 		})
@@ -420,13 +418,13 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:            pbtypes.String("id"),
 				domain.RelationKey(relationKey): pbtypes.String("value"),
 				bundle.RelationKeyType:          pbtypes.String("objectType"),
-				bundle.RelationKeySpaceId:       pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:       pbtypes.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:          pbtypes.String(relationKey),
 				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:   pbtypes.String(uniqueKey.Marshal()),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceId),
 			},
 		})
 
@@ -474,7 +472,7 @@ func Test_docsForExport(t *testing.T) {
 			picker:      objectGetter,
 		}
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
+			SpaceId:   spaceId,
 			ObjectIds: []string{"id"},
 			Format:    model.Export_Protobuf,
 		})
@@ -499,14 +497,14 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:            pbtypes.String("id"),
 				domain.RelationKey(relationKey): pbtypes.String("value"),
 				bundle.RelationKeyType:          pbtypes.String("objectType"),
-				bundle.RelationKeySpaceId:       pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:       pbtypes.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:             pbtypes.String(relationKey),
 				bundle.RelationKeyRelationKey:    pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:      pbtypes.String(uniqueKey.Marshal()),
 				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_status)),
-				bundle.RelationKeySpaceId:        pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
 			},
 		})
 
@@ -552,7 +550,7 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
+			SpaceId:       spaceId,
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 			Format:        model.Export_Protobuf,
@@ -580,7 +578,7 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:            pbtypes.String("id"),
 				domain.RelationKey(relationKey): pbtypes.String(optionId),
 				bundle.RelationKeyType:          pbtypes.String("objectType"),
-				bundle.RelationKeySpaceId:       pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:       pbtypes.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:             pbtypes.String(relationKey),
@@ -588,14 +586,14 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyUniqueKey:      pbtypes.String(uniqueKey.Marshal()),
 				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
 				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:        pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:          pbtypes.String(optionId),
 				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:   pbtypes.String(optionUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceId),
 			},
 		})
 
@@ -641,7 +639,7 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
+			SpaceId:       spaceId,
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 			Format:        model.Export_Protobuf,
@@ -682,21 +680,21 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:            pbtypes.String("id"),
 				domain.RelationKey(relationKey): pbtypes.String("test"),
 				bundle.RelationKeyType:          pbtypes.String(objectTypeKey),
-				bundle.RelationKeySpaceId:       pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:       pbtypes.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:          pbtypes.String(relationKey),
 				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:   pbtypes.String(uniqueKey.Marshal()),
 				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:                   pbtypes.String(objectTypeKey),
 				bundle.RelationKeyUniqueKey:            pbtypes.String(objectTypeUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:               pbtypes.Int64(int64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedRelations: pbtypes.StringList([]string{recommendedRelationKey}),
-				bundle.RelationKeySpaceId:              pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:              pbtypes.String(spaceId),
 				bundle.RelationKeyType:                 pbtypes.String(objectTypeKey),
 			},
 			{
@@ -704,18 +702,18 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyRelationKey: pbtypes.String(recommendedRelationKey),
 				bundle.RelationKeyUniqueKey:   pbtypes.String(recommendedRelationUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:               pbtypes.String(templateId),
 				bundle.RelationKeyTargetObjectType: pbtypes.String(objectTypeKey),
-				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:          pbtypes.String(spaceId),
 				bundle.RelationKeyType:             pbtypes.String(templateObjectTypeId),
 			},
 			{
 				bundle.RelationKeyId:      pbtypes.String(linkedObjectId),
 				bundle.RelationKeyType:    pbtypes.String(objectTypeKey),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 			},
 		})
 
@@ -816,7 +814,7 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
+			SpaceId:       spaceId,
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 			Format:        model.Export_Protobuf,
@@ -840,14 +838,14 @@ func Test_docsForExport(t *testing.T) {
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
 				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:                   pbtypes.String(objectTypeId),
 				bundle.RelationKeyUniqueKey:            pbtypes.String(objectTypeUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:               pbtypes.Int64(int64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedRelations: pbtypes.StringList([]string{addr.MissingObject}),
-				bundle.RelationKeySpaceId:              pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:              pbtypes.String(spaceId),
 			},
 		})
 
@@ -892,15 +890,10 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
+			SpaceId:       spaceId,
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 			Format:        model.Export_Protobuf,
-		// when
-		docsForExport, err := e.docsForExport(spaceId, pb.RpcObjectListExportRequest{
-			SpaceId:   spaceId,
-			ObjectIds: []string{"id"},
-			Format:    model.Export_Protobuf,
 		})
 
 		// when
@@ -917,24 +910,24 @@ func Test_docsForExport(t *testing.T) {
 		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
 				bundle.RelationKeyName:    pbtypes.String("name1"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
 			},
 			{
 				bundle.RelationKeyId:      pbtypes.String("id1"),
 				bundle.RelationKeyName:    pbtypes.String("name2"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
 			},
 			{
 				bundle.RelationKeyId:        pbtypes.String(objectTypeId),
 				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
 				bundle.RelationKeyType:      pbtypes.String(objectTypeId),
 			},
 		})
@@ -979,7 +972,7 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
+			SpaceId:       spaceId,
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 			Format:        model.Export_Protobuf,
@@ -1003,11 +996,11 @@ func Test_docsForExport(t *testing.T) {
 		relationKeyUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
 				bundle.RelationKeyName:    pbtypes.String("name1"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
 				bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_set)),
 			},
@@ -1015,14 +1008,14 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:        pbtypes.String(objectTypeId),
 				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
 				bundle.RelationKeyType:      pbtypes.String(objectTypeId),
 			},
 			{
 				bundle.RelationKeyId:          pbtypes.String(bundle.RelationKeyTag.String()),
 				bundle.RelationKeyName:        pbtypes.String(bundle.RelationKeyTag.String()),
 				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyTag.String()),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceId),
 				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeyUniqueKey:   pbtypes.String(bundle.RelationKeyTag.URL()),
 			},
@@ -1030,7 +1023,7 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:          pbtypes.String(relationKey),
 				bundle.RelationKeyName:        pbtypes.String(relationKey),
 				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceId),
 				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeyUniqueKey:   pbtypes.String(relationKeyUniqueKey.Marshal()),
 			},
@@ -1103,7 +1096,7 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
+			SpaceId:       spaceId,
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 			Format:        model.Export_Protobuf,
@@ -1123,11 +1116,11 @@ func Test_docsForExport(t *testing.T) {
 		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
 				bundle.RelationKeyName:    pbtypes.String("name1"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
 				bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_set)),
 			},
@@ -1135,7 +1128,7 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:        pbtypes.String(objectTypeId),
 				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
 				bundle.RelationKeyType:      pbtypes.String(objectTypeId),
 			},
 		})
@@ -1184,7 +1177,7 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
+			SpaceId:       spaceId,
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 			IncludeFiles:  true,
@@ -1205,11 +1198,11 @@ func Test_docsForExport(t *testing.T) {
 		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
 				bundle.RelationKeyName:    pbtypes.String("name1"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 				bundle.RelationKeyType:    pbtypes.String(objectTypeId),
 				bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_set)),
 			},
@@ -1217,7 +1210,7 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:        pbtypes.String(objectTypeId),
 				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
 				bundle.RelationKeyType:      pbtypes.String(objectTypeId),
 			},
 		})
@@ -1243,7 +1236,7 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
-			SpaceId:       "spaceId",
+			SpaceId:       spaceId,
 			ObjectIds:     []string{"id"},
 			IncludeNested: true,
 			IncludeFiles:  true,
@@ -1277,19 +1270,19 @@ func Test_docsForExport(t *testing.T) {
 		relationObjectTypeUK, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, relationObjectTypeKey)
 		assert.Nil(t, err)
 
-		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
 				bundle.RelationKeySetOf:   pbtypes.StringList([]string{relationKey}),
 				bundle.RelationKeyType:    pbtypes.String(objectTypeKey),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:          pbtypes.String(relationKey),
 				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:   pbtypes.String(uniqueKey.Marshal()),
 				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceId),
 				bundle.RelationKeyType:        pbtypes.String(relationObjectTypeKey),
 			},
 			{
@@ -1297,14 +1290,14 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyUniqueKey:            pbtypes.String(objectTypeUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:               pbtypes.Int64(int64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedRelations: pbtypes.StringList([]string{recommendedRelationKey}),
-				bundle.RelationKeySpaceId:              pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:              pbtypes.String(spaceId),
 				bundle.RelationKeyType:                 pbtypes.String(objectTypeKey),
 			},
 			{
 				bundle.RelationKeyId:        pbtypes.String(relationObjectTypeKey),
 				bundle.RelationKeyUniqueKey: pbtypes.String(relationObjectTypeUK.Marshal()),
 				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
 				bundle.RelationKeyType:      pbtypes.String(objectTypeKey),
 			},
 			{
@@ -1312,7 +1305,7 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyRelationKey: pbtypes.String(recommendedRelationKey),
 				bundle.RelationKeyUniqueKey:   pbtypes.String(recommendedRelationUniqueKey.Marshal()),
 				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:     pbtypes.String("spaceId"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceId),
 			},
 		})
 
@@ -1387,7 +1380,7 @@ func Test_docsForExport(t *testing.T) {
 		}
 
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
-			SpaceId:   "spaceId",
+			SpaceId:   spaceId,
 			ObjectIds: []string{"id"},
 			Format:    model.Export_Protobuf,
 		})
@@ -1456,10 +1449,10 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 		ids := make([]string, 0, 10)
 		for i := 0; i < 10; i++ {
 			id := fmt.Sprintf("%d", i)
-			store.AddObjects(t, "spaceId", []objectstore.TestObject{
+			store.AddObjects(t, spaceId, []objectstore.TestObject{
 				{
 					bundle.RelationKeyId:      pbtypes.String(id),
-					bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+					bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 				},
 			})
 			ids = append(ids, id)
@@ -1468,7 +1461,7 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{})
 
 		// when
-		records, err := expCtx.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
+		records, err := expCtx.queryAndFilterObjectsByRelation(spaceId, ids, bundle.RelationKeyId.String())
 
 		// then
 		assert.Nil(t, err)
@@ -1480,10 +1473,10 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 		ids := make([]string, 0, 2000)
 		for i := 0; i < 2000; i++ {
 			id := fmt.Sprintf("%d", i)
-			fixture.AddObjects(t, "spaceId", []objectstore.TestObject{
+			fixture.AddObjects(t, spaceId, []objectstore.TestObject{
 				{
 					bundle.RelationKeyId:      pbtypes.String(id),
-					bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+					bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 				},
 			})
 			ids = append(ids, id)
@@ -1492,7 +1485,7 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{})
 
 		// when
-		records, err := expCtx.queryAndFilterObjectsByRelation("spaceId", ids, bundle.RelationKeyId.String())
+		records, err := expCtx.queryAndFilterObjectsByRelation(spaceId, ids, bundle.RelationKeyId.String())
 
 		// then
 		assert.Nil(t, err)
