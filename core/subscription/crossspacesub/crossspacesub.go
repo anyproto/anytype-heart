@@ -29,6 +29,8 @@ type crossSpaceSubscription struct {
 	lock sync.Mutex
 	// spaceId => subId
 	perSpaceSubscriptions map[string]string
+	// internal sub id (bson id) => total count
+	totalCounts map[string]int64
 }
 
 func newCrossSpaceSubscription(subId string, request subscriptionservice.SubscribeRequest, eventSender event.Sender, subscriptionService subscriptionservice.Service, initialSpaceIds []string) (*crossSpaceSubscription, *subscriptionservice.SubscribeResponse, error) {
@@ -41,6 +43,7 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 		eventSender:           eventSender,
 		subscriptionService:   subscriptionService,
 		perSpaceSubscriptions: make(map[string]string),
+		totalCounts:           map[string]int64{},
 		queue:                 mb.New[*pb.EventMessage](0),
 	}
 	aggregatedResp := &subscriptionservice.SubscribeResponse{
@@ -55,6 +58,8 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 		aggregatedResp.Records = append(aggregatedResp.Records, resp.Records...)
 		aggregatedResp.Dependencies = append(aggregatedResp.Dependencies, resp.Dependencies...)
 		aggregatedResp.Counters.Total += resp.Counters.Total
+
+		s.updateTotalCount(resp.SubId, resp.Counters.Total)
 	}
 	return s, aggregatedResp, nil
 }
@@ -101,7 +106,8 @@ func (s *crossSpaceSubscription) patchEvent(msg *pb.EventMessage) {
 			amend.SubIds = []string{s.subId}
 		},
 		OnCounters: func(counters *pb.EventObjectSubscriptionCounters) {
-			// TODO Fix this: use shared Total
+			total := s.updateTotalCount(counters.SubId, counters.Total)
+			counters.Total = total
 			counters.SubId = s.subId
 		},
 		OnGroups: func(groups *pb.EventObjectSubscriptionGroups) {
@@ -174,10 +180,48 @@ func (s *crossSpaceSubscription) removeSpace(spaceId string) error {
 				},
 			})
 			if err != nil {
-				return fmt.Errorf("send event to queue: %w", err)
+				return fmt.Errorf("send remove event to queue: %w", err)
 			}
+		}
+
+		total := s.removeTotalCount(subId)
+		err = s.queue.Add(s.ctx, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfSubscriptionCounters{
+				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+					SubId: subId,
+					Total: total,
+				},
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("send counters event to queue: %w", err)
 		}
 		delete(s.perSpaceSubscriptions, spaceId)
 	}
 	return nil
+}
+
+func (s *crossSpaceSubscription) updateTotalCount(internalSubId string, perSpaceTotal int64) int64 {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.totalCounts[internalSubId] = perSpaceTotal
+
+	return s.getTotalCount()
+}
+
+// removeTotalCount should be only called under s.lock
+func (s *crossSpaceSubscription) removeTotalCount(internalSubId string) int64 {
+	delete(s.totalCounts, internalSubId)
+
+	return s.getTotalCount()
+}
+
+// getTotalCount should be only called under s.lock
+func (s *crossSpaceSubscription) getTotalCount() int64 {
+	var total int64
+	for _, t := range s.totalCounts {
+		total += t
+	}
+	return total
 }

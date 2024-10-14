@@ -68,7 +68,10 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		_ = a.Close(context.Background())
+		closeCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		err = a.Close(closeCtx)
+		require.NoError(t, err)
 	})
 
 	return &fixture{
@@ -226,7 +229,7 @@ func TestSubscribe(t *testing.T) {
 			want := []*pb.EventMessage{
 				makeDetailsSetEvent(resp.SubId, obj1.Details()),
 				makeAddEvent(resp.SubId, obj1.Id()),
-				makeCountersEvent(resp.SubId, 1),
+				makeCountersEvent(resp.SubId, 3),
 			}
 			assert.Equal(t, want, msgs)
 		})
@@ -268,12 +271,13 @@ func TestSubscribe(t *testing.T) {
 		})
 
 		// Wait events
-		msgs, err := fx.eventQueue.NewCond().WithMin(2).Wait(ctx)
+		msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
 		require.NoError(t, err)
 
 		want := []*pb.EventMessage{
 			makeRemoveEvent(resp.SubId, obj1.Id()),
 			makeRemoveEvent(resp.SubId, obj2.Id()),
+			makeCountersEvent(resp.SubId, 0),
 		}
 		assert.Equal(t, want, msgs)
 	})
