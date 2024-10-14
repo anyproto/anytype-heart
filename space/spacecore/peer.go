@@ -10,9 +10,8 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
 
-func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer, own localdiscovery.OwnAddresses) {
+func (s *service) PeerDiscovered(ctx context.Context, peer localdiscovery.DiscoveredPeer, own localdiscovery.OwnAddresses) {
 	s.peerService.SetPeerAddrs(peer.PeerId, s.addSchema(peer.Addrs))
-	ctx := context.Background()
 	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, peer.PeerId)
 	if err != nil {
 		return
