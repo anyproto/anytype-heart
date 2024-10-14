@@ -117,6 +117,31 @@ func TestSubscribe(t *testing.T) {
 			makeCountersEvent(resp.SubId, 1),
 		}
 		assert.Equal(t, want, msgs)
+
+		t.Run("update object", func(t *testing.T) {
+			obj1 = objectstore.TestObject{
+				bundle.RelationKeyId:     pbtypes.String("participant1"),
+				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+				bundle.RelationKeyName:   pbtypes.String("John Doe"),
+			}
+			fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
+				obj1,
+			})
+
+			// Wait events
+			msgs, err = fx.eventQueue.NewCond().WithMin(1).Wait(ctx)
+			require.NoError(t, err)
+
+			want = []*pb.EventMessage{
+				makeDetailsAmendEvent(resp.SubId, obj1.Id(), []*pb.EventObjectDetailsAmendKeyValue{
+					{
+						Key:   bundle.RelationKeyName.String(),
+						Value: pbtypes.String("John Doe"),
+					},
+				}),
+			}
+			assert.Equal(t, want, msgs)
+		})
 	})
 
 	t.Run("without existing space", func(t *testing.T) {
@@ -313,6 +338,20 @@ func makeDetailsSetEvent(subId string, details *types.Struct) *pb.EventMessage {
 	}
 }
 
+func makeDetailsAmendEvent(subId string, id string, details []*pb.EventObjectDetailsAmendKeyValue) *pb.EventMessage {
+	return &pb.EventMessage{
+		Value: &pb.EventMessageValueOfObjectDetailsAmend{
+			ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+				Id: id,
+				SubIds: []string{
+					subId,
+				},
+				Details: details,
+			},
+		},
+	}
+}
+
 func makeAddEvent(subId string, id string) *pb.EventMessage {
 	return &pb.EventMessage{
 		Value: &pb.EventMessageValueOfSubscriptionAdd{
@@ -367,7 +406,7 @@ func (d *dummyCollectionService) UnsubscribeFromCollection(collectionID string, 
 func givenRequest() subscriptionservice.SubscribeRequest {
 	return subscriptionservice.SubscribeRequest{
 		NoDepSubscription: true,
-		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeyLayout.String()},
+		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeyLayout.String(), bundle.RelationKeyName.String()},
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
