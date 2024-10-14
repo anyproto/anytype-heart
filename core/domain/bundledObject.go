@@ -28,7 +28,7 @@ func (b BundledObjectIds) DerivedObjectIds() []string {
 }
 
 func (b BundledObjectIds) Filter(f func(bo BundledObjectId) bool) BundledObjectIds {
-	var res = make([]BundledObjectId, 0, len(b))
+	res := make([]BundledObjectId, 0, len(b))
 	for _, bo := range b {
 		if f(bo) {
 			res = append(res, bo)
