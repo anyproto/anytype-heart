@@ -2,9 +2,9 @@ package accountobject
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/rand"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
