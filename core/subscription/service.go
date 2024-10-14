@@ -109,9 +109,6 @@ type service struct {
 	lock      sync.Mutex
 	spaceSubs map[string]*spaceSubscriptions
 
-	customOutput map[string]*internalSubOutput
-	recBatch     *mb.MB
-
 	// Deps
 	objectStore       objectstore.ObjectStore
 	kanban            kanban.Service
