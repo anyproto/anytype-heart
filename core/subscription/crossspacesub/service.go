@@ -82,6 +82,9 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest) (*subscrip
 	if req.SubId == "" {
 		req.SubId = bson.NewObjectId().Hex()
 	}
+	if len(req.Sorts) > 0 {
+		return nil, fmt.Errorf("sorting is not supported")
+	}
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	spaceSub, resp, err := newCrossSpaceSubscription(req.SubId, req, s.eventSender, s.subscriptionService, s.spaceIds)

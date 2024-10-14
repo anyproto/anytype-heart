@@ -78,12 +78,14 @@ func (s *crossSpaceSubscription) patchEvent(msg *pb.EventMessage) {
 	matcher := subscriptionservice.EventMatcher{
 		OnAdd: func(add *pb.EventObjectSubscriptionAdd) {
 			add.SubId = s.subId
+			add.AfterId = ""
 		},
 		OnRemove: func(remove *pb.EventObjectSubscriptionRemove) {
 			remove.SubId = s.subId
 		},
 		OnPosition: func(position *pb.EventObjectSubscriptionPosition) {
 			position.SubId = s.subId
+			position.AfterId = ""
 		},
 		OnSet: func(set *pb.EventObjectDetailsSet) {
 			set.SubIds = []string{s.subId}

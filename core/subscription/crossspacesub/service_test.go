@@ -113,7 +113,7 @@ func TestSubscribe(t *testing.T) {
 
 		want := []*pb.EventMessage{
 			makeDetailsSetEvent(resp.SubId, obj1.Details()),
-			makeAddEvent(resp.SubId, "", obj1.Id()),
+			makeAddEvent(resp.SubId, obj1.Id()),
 			makeCountersEvent(resp.SubId, 1),
 		}
 		assert.Equal(t, want, msgs)
@@ -153,7 +153,7 @@ func TestSubscribe(t *testing.T) {
 
 			want := []*pb.EventMessage{
 				makeDetailsSetEvent(resp.SubId, obj1.Details()),
-				makeAddEvent(resp.SubId, "", obj1.Id()),
+				makeAddEvent(resp.SubId, obj1.Id()),
 				makeCountersEvent(resp.SubId, 1),
 			}
 			assert.Equal(t, want, msgs)
@@ -173,7 +173,7 @@ func TestSubscribe(t *testing.T) {
 
 			want = []*pb.EventMessage{
 				makeDetailsSetEvent(resp.SubId, obj2.Details()),
-				makeAddEvent(resp.SubId, obj1.Id(), obj2.Id()),
+				makeAddEvent(resp.SubId, obj2.Id()),
 				makeCountersEvent(resp.SubId, 2),
 			}
 			assert.Equal(t, want, msgs)
@@ -200,7 +200,7 @@ func TestSubscribe(t *testing.T) {
 
 			want := []*pb.EventMessage{
 				makeDetailsSetEvent(resp.SubId, obj1.Details()),
-				makeAddEvent(resp.SubId, "participant2", obj1.Id()),
+				makeAddEvent(resp.SubId, obj1.Id()),
 				makeCountersEvent(resp.SubId, 1),
 			}
 			assert.Equal(t, want, msgs)
@@ -269,13 +269,13 @@ func makeDetailsSetEvent(subId string, details *types.Struct) *pb.EventMessage {
 	}
 }
 
-func makeAddEvent(subId string, afterId string, id string) *pb.EventMessage {
+func makeAddEvent(subId string, id string) *pb.EventMessage {
 	return &pb.EventMessage{
 		Value: &pb.EventMessageValueOfSubscriptionAdd{
 			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
 				SubId:   subId,
 				Id:      id,
-				AfterId: afterId,
+				AfterId: "",
 			},
 		},
 	}
@@ -328,12 +328,6 @@ func givenRequest() subscriptionservice.SubscribeRequest {
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
-			},
-		},
-		Sorts: []*model.BlockContentDataviewSort{
-			{
-				RelationKey: bundle.RelationKeyName.String(),
-				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
 	}
