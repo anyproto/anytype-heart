@@ -3,7 +3,9 @@ package payments
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -132,6 +134,7 @@ type service struct {
 	profileUpdater    globalNamesUpdater
 	ns                nameservice.Service
 	cancel            context.CancelFunc
+	closed            atomic.Bool
 
 	multiplayerLimitsUpdater deletioncontroller.DeletionController
 	fileLimitsUpdater        filesync.FileSync
@@ -167,6 +170,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 }
 
 func (s *service) Close(_ context.Context) (err error) {
+	s.closed.Store(true)
 	s.cancel()
 	s.periodicGetStatus.Close()
 	return nil
@@ -208,6 +212,9 @@ func (s *service) sendMembershipUpdateEvent(status *pb.RpcMembershipGetStatusRes
 func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
+	if s.closed.Load() {
+		return nil, fmt.Errorf("service is closed")
+	}
 	ctx, s.cancel = context.WithCancel(ctx)
 	// 1 - check in cache first
 	var (
