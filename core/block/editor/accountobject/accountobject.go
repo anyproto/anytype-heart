@@ -164,8 +164,7 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 }
 
 // GetPrivateAnalyticsId returns the private analytics id of the account object, should not be used directly
-//
-//	only when hashing it with other data, e.g. hash(privateAnalyticsId + someData)
+// only when hashing it with other data, e.g. hash(privateAnalyticsId + someData)
 func (a *accountObject) GetPrivateAnalyticsId() string {
 	val, err := a.getValue()
 	if err != nil {
