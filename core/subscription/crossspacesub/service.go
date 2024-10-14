@@ -70,6 +70,9 @@ func (s *service) Close(ctx context.Context) error {
 }
 
 func (s *service) Subscribe(req subscriptionservice.SubscribeRequest) (*subscriptionservice.SubscribeResponse, error) {
+	if !req.NoDepSubscription {
+		return nil, fmt.Errorf("dependency subscription is not yet supported")
+	}
 	if req.Limit != 0 {
 		return nil, fmt.Errorf("limit is not supported")
 	}
@@ -85,6 +88,7 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest) (*subscrip
 	if len(req.Sorts) > 0 {
 		return nil, fmt.Errorf("sorting is not supported")
 	}
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	spaceSub, resp, err := newCrossSpaceSubscription(req.SubId, req, s.eventSender, s.subscriptionService, s.spaceIds)

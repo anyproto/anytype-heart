@@ -322,7 +322,8 @@ func (d *dummyCollectionService) UnsubscribeFromCollection(collectionID string, 
 
 func givenRequest() subscriptionservice.SubscribeRequest {
 	return subscriptionservice.SubscribeRequest{
-		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyLayout.String()},
+		NoDepSubscription: true,
+		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeyLayout.String()},
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
