@@ -31,13 +31,15 @@ type localDiscovery struct {
 	peerId string
 	port   int
 
-	ctx             context.Context
-	cancel          context.CancelFunc
-	closeWait       sync.WaitGroup
-	interfacesAddrs addrs.InterfacesAddrs
-	periodicCheck   periodicsync.PeriodicSync
-	drpcServer      clientserver.ClientServer
-	nodeConf        nodeconf.Configuration
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
+	queryCtx           context.Context
+	queryCtxCancel     context.CancelFunc
+	closeWait          sync.WaitGroup
+	interfacesAddrs    addrs.InterfacesAddrs
+	periodicCheck      periodicsync.PeriodicSync
+	drpcServer         clientserver.ClientServer
+	nodeConf           nodeconf.Configuration
 
 	ipv4        []string
 	ipv6        []string
@@ -67,7 +69,7 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.periodicCheck = periodicsync.NewPeriodicSync(5, 0, l.refreshInterfaces, log)
 	l.drpcServer = app.MustComponent[clientserver.ClientServer](a)
 	l.networkState = app.MustComponent[NetworkStateService](a)
-
+	l.componentCtx, l.componentCtxCancel = context.WithCancel(context.Background())
 	return
 }
 
@@ -92,7 +94,10 @@ func (l *localDiscovery) Start() (err error) {
 	}
 	l.started = true
 	l.networkState.RegisterHook(func(_ model.DeviceNetworkType) {
-		l.refreshInterfaces(l.ctx)
+		err = l.refreshInterfaces(l.componentCtx)
+		if err != nil {
+			log.Warn("refreshing interfaces on networkState failed", zap.Error(err))
+		}
 	})
 
 	l.port = l.drpcServer.Port()
@@ -105,23 +110,26 @@ func (l *localDiscovery) Name() (name string) {
 }
 
 func (l *localDiscovery) Close(ctx context.Context) (err error) {
+	l.componentCtxCancel()
+	l.periodicCheck.Close() // safe to close if not started
+
 	if !l.drpcServer.ServerStarted() {
 		return
 	}
+
 	l.m.Lock()
 	if !l.started {
 		l.m.Unlock()
 		return
 	}
+	server := l.server
 	l.m.Unlock()
 
-	l.periodicCheck.Close()
-	l.cancel()
-	if l.server != nil {
+	if server != nil {
 		start := time.Now()
 		shutdownFinished := make(chan struct{})
 		go func() {
-			l.server.Shutdown()
+			server.Shutdown()
 			l.closeWait.Wait()
 			close(shutdownFinished)
 			spent := time.Since(start)
@@ -170,19 +178,26 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	log.With(zap.Strings("ifaces", newAddrs.InterfaceNames())).Info("net interfaces configuration changed")
 	l.interfacesAddrs = newAddrs
 	if l.server != nil {
-		l.cancel()
+		l.queryCtxCancel()
 		l.server.Shutdown()
 		l.closeWait.Wait()
 		l.closeWait = sync.WaitGroup{}
+		l.server = nil
 	}
 	if len(l.interfacesAddrs.Interfaces) == 0 {
 		return nil
 	}
-	l.ctx, l.cancel = context.WithCancel(ctx)
+	// in case app close is called in between, exit fast, do not start server
+	select {
+	case <-l.componentCtx.Done():
+		return
+	default:
+	}
+	l.queryCtx, l.queryCtxCancel = context.WithCancel(l.componentCtx)
 	if err = l.startServer(); err != nil {
 		return fmt.Errorf("starting mdns server: %w", err)
 	}
-	l.startQuerying(l.ctx)
+	l.startQuerying(l.queryCtx)
 	log.Debug("mdns server started")
 	return
 }
@@ -213,6 +228,7 @@ func (l *localDiscovery) startServer() (err error) {
 func (l *localDiscovery) startQuerying(ctx context.Context) {
 	l.closeWait.Add(2)
 	listenCh := make(chan *zeroconf.ServiceEntry, 10)
+
 	go l.readAnswers(listenCh)
 	go l.browse(ctx, listenCh)
 }
@@ -235,7 +251,9 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 		}
 		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId))
 		if l.notifier != nil {
-			l.notifier.PeerDiscovered(peer, OwnAddresses{
+			// explicitly use componentCtx, instead of queryCtx here, because we don't want to interrupt the peer connection if we refreshed interfaces and restarted service
+			// todo: consider to do in goroutine, so we can try to connect multiple peers at once
+			l.notifier.PeerDiscovered(l.componentCtx, peer, OwnAddresses{
 				Addrs: l.ipv4,
 				Port:  l.port,
 			})

@@ -375,8 +375,7 @@ func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req 
 	}
 }
 
-func (mw *Middleware) ObjectGroupsSubscribe(cctx context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
-	ctx := mw.newContext(cctx)
+func (mw *Middleware) ObjectGroupsSubscribe(_ context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
 	errResponse := func(err error) *pb.RpcObjectGroupsSubscribeResponse {
 		r := &pb.RpcObjectGroupsSubscribeResponse{
 			Error: &pb.RpcObjectGroupsSubscribeResponseError{
@@ -395,7 +394,7 @@ func (mw *Middleware) ObjectGroupsSubscribe(cctx context.Context, req *pb.RpcObj
 
 	subService := mw.applicationService.GetApp().MustComponent(subscription.CName).(subscription.Service)
 
-	resp, err := subService.SubscribeGroups(ctx, *req)
+	resp, err := subService.SubscribeGroups(*req)
 	if err != nil {
 		return errResponse(err)
 	}

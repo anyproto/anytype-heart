@@ -56,7 +56,7 @@ type localDiscovery struct {
 	interfacesAddrs addrs.InterfacesAddrs
 }
 
-func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
+func (l *localDiscovery) PeerDiscovered(ctx context.Context, peer DiscoveredPeer, own OwnAddresses) {
 	log.Debug("discovered peer", zap.String("peerId", peer.PeerId), zap.Strings("addrs", peer.Addrs))
 	if peer.PeerId == l.peerId {
 		return
@@ -71,7 +71,7 @@ func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
 		}
 	}
 	if l.notifier != nil {
-		l.notifier.PeerDiscovered(peer, OwnAddresses{
+		l.notifier.PeerDiscovered(ctx, peer, OwnAddresses{
 			Addrs: ips,
 			Port:  l.port,
 		})
