@@ -92,7 +92,10 @@ func (s *service) onSpaceViewSet(msg *pb.EventObjectDetailsSet) {
 		s.spaceIds = append(s.spaceIds, targetId)
 
 		for _, sub := range s.subscriptions {
-			sub.AddSpace(targetId)
+			err := sub.AddSpace(targetId)
+			if err != nil {
+				log.Error("onSpaceViewSet: add space", zap.Error(err), zap.String("spaceId", targetId))
+			}
 		}
 	}
 }
