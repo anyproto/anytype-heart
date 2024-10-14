@@ -211,6 +211,19 @@ func TestSetSharedSpacesLimit(t *testing.T) {
 	require.Equal(t, 10, res)
 }
 
+func TestAccountObject_GetPrivateAnalyticsId(t *testing.T) {
+	t.Run("new account", func(t *testing.T) {
+		fx := newFixture(t, true, nil)
+		res := fx.GetPrivateAnalyticsId()
+		require.NotEmpty(t, res)
+	})
+	t.Run("old account", func(t *testing.T) {
+		fx := newFixture(t, false, nil)
+		res := fx.GetPrivateAnalyticsId()
+		require.NotEmpty(t, res)
+	})
+}
+
 func TestAnalyticsId(t *testing.T) {
 	fx := newFixture(t, true, nil)
 	err := fx.SetAnalyticsId("analyticsId")
