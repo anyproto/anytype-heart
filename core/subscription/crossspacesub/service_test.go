@@ -252,7 +252,51 @@ func TestSubscribe(t *testing.T) {
 		}
 		assert.Equal(t, want, msgs)
 	})
+}
 
+func TestUnsubscribe(t *testing.T) {
+	t.Run("subscription not found", func(t *testing.T) {
+		fx := newFixture(t)
+
+		err := fx.Unsubscribe("subId")
+		require.Error(t, err)
+	})
+
+	t.Run("with existing subscription", func(t *testing.T) {
+		fx := newFixture(t)
+
+		// Add space view
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.Account_Active, model.SpaceStatus_Ok),
+		})
+
+		// Subscribe
+		resp, err := fx.Subscribe(givenRequest())
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+
+		// Unsubscribe
+		err = fx.Unsubscribe(resp.SubId)
+		require.NoError(t, err)
+
+		// Add objects
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:     pbtypes.String("participant1"),
+			bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
+			obj1,
+		})
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+		defer cancel()
+
+		// Wait events
+		msgs, err := fx.eventQueue.NewCond().WithMin(1).Wait(ctx)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+		assert.Empty(t, msgs)
+	})
 }
 
 func makeDetailsSetEvent(subId string, details *types.Struct) *pb.EventMessage {

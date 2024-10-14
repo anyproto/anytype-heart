@@ -101,5 +101,19 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest) (*subscrip
 }
 
 func (s *service) Unsubscribe(subId string) error {
-	return fmt.Errorf("not implemented")
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	sub, ok := s.subscriptions[subId]
+	if !ok {
+		return fmt.Errorf("subscription not found")
+	}
+
+	err := sub.close()
+	if err != nil {
+		return fmt.Errorf("close subscription: %w", err)
+	}
+	delete(s.subscriptions, subId)
+
+	return nil
 }

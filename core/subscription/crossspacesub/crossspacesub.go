@@ -2,6 +2,7 @@ package crossspacesub
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -61,6 +62,9 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 func (s *crossSpaceSubscription) run() {
 	for {
 		msgs, err := s.queue.Wait(s.ctx)
+		if errors.Is(err, context.Canceled) {
+			return
+		}
 		if err != nil {
 			log.Error("wait messages", zap.Error(err), zap.String("subId", s.subId))
 		}
