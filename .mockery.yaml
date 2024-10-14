@@ -37,6 +37,9 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
+  github.com/anyproto/anytype-heart/core/block/import:
+    interfaces:
+      Importer:
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:

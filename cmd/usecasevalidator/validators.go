@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -38,6 +39,13 @@ var validators = []validator{
 	validateBlockLinks,
 	validateDeleted,
 	validateRelationOption,
+}
+
+var linksRelations = []string{
+	bundle.RelationKeyLinks.String(),
+	bundle.RelationKeySourceObject.String(),
+	bundle.RelationKeyBacklinks.String(),
+	bundle.RelationKeyMentions.String(),
 }
 
 func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
@@ -144,6 +152,11 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 					// TODO: remove this fix as most of users should obtain version with fixed export of derived objects in GO-2821
 					delete(s.Snapshot.Data.Details.Fields, bundle.RelationKeyRecommendedRelations.String())
 					return nil
+				}
+				if k == bundle.RelationKeySpaceDashboardId.String() {
+					if val == lastOpenedSpaceDashboardId {
+						continue
+					}
 				}
 				err = multierror.Append(err, fmt.Errorf("failed to find target id for detail '%s: %s' of object %s", k, val, id))
 			}
@@ -261,7 +274,7 @@ func getRelationLinkByKey(links []*model.RelationLink, key string) *model.Relati
 }
 
 func isLinkRelation(k string) bool {
-	return k == bundle.RelationKeyLinks.String() || k == bundle.RelationKeySourceObject.String() || k == bundle.RelationKeyBacklinks.String()
+	return slices.Contains(linksRelations, k)
 }
 
 func canRelationContainObjectValues(format model.RelationFormat) bool {
