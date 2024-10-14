@@ -4,6 +4,7 @@ CLIENT_ANDROID_PATH ?= ../anytype-kotlin
 CLIENT_IOS_PATH ?= ../anytype-swift
 TANTIVY_GO_PATH ?= ../tantivy-go
 BUILD_FLAGS ?=
+TANTIVY_VERSION := $(shell cat go.mod | grep github.com/anyproto/tantivy-go | cut -d' ' -f2)
 
 export GOLANGCI_LINT_VERSION=1.58.1
 export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion
@@ -46,7 +47,7 @@ endif
         cp $$ANY_SYNC_NETWORK $(CUSTOM_NETWORK_FILE); \
     fi
 
-setup-go: setup-network-config
+setup-go: setup-network-config check-tantivy-version
 	@echo 'Setting up go modules...'
 	@go mod download
 	@go install github.com/ahmetb/govvv@v0.2.0
@@ -280,7 +281,7 @@ protos-java:
 	@echo 'Generating protobuf packages (Java)...'
 	@protoc -I ./ --java_out=./dist/android/pb pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 
-build-server: setup-network-config
+build-server: setup-network-config check-tantivy-version
 	@echo 'Building anytype-heart server...'
 	@$(eval FLAGS += $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
 	@$(eval TAGS := $(TAGS) nosigar nowatchdog)
@@ -339,7 +340,6 @@ endif
 ### Tantivy Section
 
 REPO := anyproto/tantivy-go
-VERSION := v0.1.0
 OUTPUT_DIR := deps/libs
 SHA_FILE = tantivity_sha256.txt
 
@@ -356,7 +356,7 @@ TANTIVY_LIBS := android-386.tar.gz \
          windows-amd64.tar.gz
 
 define download_tantivy_lib
-	curl -L -o $(OUTPUT_DIR)/$(1) https://github.com/$(REPO)/releases/download/$(VERSION)/$(1)
+	curl -L -o $(OUTPUT_DIR)/$(1) https://github.com/$(REPO)/releases/download/$(TANTIVY_VERSION)/$(1)
 endef
 
 define remove_arch
@@ -365,6 +365,9 @@ endef
 
 remove-libs:
 	@rm -rf deps/libs/*
+
+write-tantivy-version:
+	@echo "$(TANTIVY_VERSION)" > $(OUTPUT_DIR)/.verified
 
 download-tantivy: remove-libs $(TANTIVY_LIBS)
 
@@ -381,13 +384,21 @@ download-tantivy-all-force: download-tantivy
 	done
 	@rm -rf deps/libs/*.tar.gz
 	@echo "SHA256 checksums generated."
+	$(MAKE) write-tantivy-version
 
 download-tantivy-all: download-tantivy
 	@echo "Validating SHA256 checksums..."
 	@shasum -a 256 -c $(SHA_FILE) --status || { echo "Hash mismatch detected."; exit 1; }
 	@echo "All files are valid."
 	@rm -rf deps/libs/*.tar.gz
+	$(MAKE) write-tantivy-version
 
 download-tantivy-local: remove-libs
 	@mkdir -p $(OUTPUT_DIR)
 	@cp -r $(TANTIVY_GO_PATH)/libs/* $(OUTPUT_DIR)
+
+check-tantivy-version:
+	$(eval OLD_VERSION := $(shell [ -f $(OUTPUT_DIR)/.verified ] && cat $(OUTPUT_DIR)/.verified || echo ""))
+	@if [ "$(TANTIVY_VERSION)" != "$(OLD_VERSION)" ]; then \
+		$(MAKE) download-tantivy-all; \
+	fi

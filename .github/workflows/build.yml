@@ -109,7 +109,6 @@ jobs:
           which gomobile
       - name: Cross-compile library mac/win/linux
         run: |
-          make download-tantivy-all
           echo $FLAGS
           mkdir -p .release
           echo $SDKROOT
@@ -123,7 +122,6 @@ jobs:
       - name: run perf tests
         run: |
           echo "Running perf tests"
-          make download-tantivy-all
           RUN_COUNT=${{ github.event.inputs.perf-test }}
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             RUN_COUNT=10
