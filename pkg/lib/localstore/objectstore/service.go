@@ -174,6 +174,12 @@ func ensureDirExists(dir string) error {
 
 func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	store, err := anystore.Open(ctx, path, s.anyStoreConfig)
+	if errors.Is(err, anystore.ErrIncompatibleVersion) {
+		if err = os.RemoveAll(path); err != nil {
+			return err
+		}
+		store, err = anystore.Open(ctx, path, s.anyStoreConfig)
+	}
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -283,7 +289,12 @@ func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
 		if err != nil {
 			return nil
 		}
-		db, err = anystore.Open(s.componentCtx, filepath.Join(dir, "crdt.db"), s.anyStoreConfig)
+		path := filepath.Join(dir, "crdt.db")
+		db, err = anystore.Open(s.componentCtx, path, s.anyStoreConfig)
+		if errors.Is(err, anystore.ErrIncompatibleVersion) {
+			_ = os.RemoveAll(path)
+			db, err = anystore.Open(s.componentCtx, path, s.anyStoreConfig)
+		}
 		if err != nil {
 			return nil
 		}

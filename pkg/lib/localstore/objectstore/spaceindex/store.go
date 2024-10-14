@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 
 	anystore "github.com/anyproto/any-store"
@@ -173,6 +174,12 @@ func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 
 func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	store, err := anystore.Open(ctx, path, s.anyStoreConfig)
+	if errors.Is(err, anystore.ErrIncompatibleVersion) {
+		if err = os.RemoveAll(path); err != nil {
+			return err
+		}
+		store, err = anystore.Open(ctx, path, s.anyStoreConfig)
+	}
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
