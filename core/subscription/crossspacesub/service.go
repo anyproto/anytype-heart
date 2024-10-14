@@ -21,6 +21,7 @@ const CName = "core.subscription.crossspacesub"
 type Service interface {
 	app.ComponentRunnable
 	Subscribe(req subscriptionservice.SubscribeRequest) (resp *subscriptionservice.SubscribeResponse, err error)
+	Unsubscribe(subId string) error
 }
 
 type service struct {

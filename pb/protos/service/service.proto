@@ -81,6 +81,7 @@ service ClientCommands {
     rpc ObjectSearchWithMeta (anytype.Rpc.Object.SearchWithMeta.Request) returns (anytype.Rpc.Object.SearchWithMeta.Response);
     rpc ObjectSearchSubscribe (anytype.Rpc.Object.SearchSubscribe.Request) returns (anytype.Rpc.Object.SearchSubscribe.Response);
     rpc ObjectCrossSpaceSearchSubscribe (anytype.Rpc.Object.CrossSpaceSearchSubscribe.Request) returns (anytype.Rpc.Object.CrossSpaceSearchSubscribe.Response);
+    rpc ObjectCrossSpaceSearchUnsubscribe (anytype.Rpc.Object.CrossSpaceSearchUnsubscribe.Request) returns (anytype.Rpc.Object.CrossSpaceSearchUnsubscribe.Response);
     rpc ObjectSubscribeIds (anytype.Rpc.Object.SubscribeIds.Request) returns (anytype.Rpc.Object.SubscribeIds.Response);
     rpc ObjectGroupsSubscribe (anytype.Rpc.Object.GroupsSubscribe.Request) returns (anytype.Rpc.Object.GroupsSubscribe.Response);
     rpc ObjectSearchUnsubscribe (anytype.Rpc.Object.SearchUnsubscribe.Request) returns (anytype.Rpc.Object.SearchUnsubscribe.Response);

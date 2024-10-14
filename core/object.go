@@ -341,18 +341,6 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 }
 
 func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req *pb.RpcObjectCrossSpaceSearchSubscribeRequest) *pb.RpcObjectCrossSpaceSearchSubscribeResponse {
-	errResponse := func(err error) *pb.RpcObjectCrossSpaceSearchSubscribeResponse {
-		r := &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
-			Error: &pb.RpcObjectCrossSpaceSearchSubscribeResponseError{
-				Code: pb.RpcObjectCrossSpaceSearchSubscribeResponseError_UNKNOWN_ERROR,
-			},
-		}
-		if err != nil {
-			r.Error.Description = getErrorDescription(err)
-		}
-		return r
-	}
-
 	subService := getService[crossspacesub.Service](mw)
 	resp, err := subService.Subscribe(subscription.SubscribeRequest{
 		SubId:             req.SubId,
@@ -364,7 +352,12 @@ func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req 
 		CollectionId:      req.CollectionId,
 	})
 	if err != nil {
-		return errResponse(err)
+		return &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
+			Error: &pb.RpcObjectCrossSpaceSearchSubscribeResponseError{
+				Code:        pb.RpcObjectCrossSpaceSearchSubscribeResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
 	}
 
 	return &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
@@ -373,6 +366,20 @@ func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req 
 		Dependencies: resp.Dependencies,
 		Counters:     resp.Counters,
 	}
+}
+
+func (mw *Middleware) ObjectCrossSpaceSearchUnsubscribe(cctx context.Context, req *pb.RpcObjectCrossSpaceSearchUnsubscribeRequest) *pb.RpcObjectCrossSpaceSearchUnsubscribeResponse {
+	subService := getService[crossspacesub.Service](mw)
+	err := subService.Unsubscribe(req.SubId)
+	if err != nil {
+		return &pb.RpcObjectCrossSpaceSearchUnsubscribeResponse{
+			Error: &pb.RpcObjectCrossSpaceSearchUnsubscribeResponseError{
+				Code:        pb.RpcObjectCrossSpaceSearchUnsubscribeResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcObjectCrossSpaceSearchUnsubscribeResponse{}
 }
 
 func (mw *Middleware) ObjectGroupsSubscribe(_ context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
