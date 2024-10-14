@@ -219,6 +219,8 @@ func TestAccountObject_GetPrivateAnalyticsId(t *testing.T) {
 	})
 	t.Run("old account", func(t *testing.T) {
 		fx := newFixture(t, false, nil)
+		err := fx.SetAnalyticsId("analyticsId")
+		require.NoError(t, err)
 		res := fx.GetPrivateAnalyticsId()
 		require.NotEmpty(t, res)
 	})

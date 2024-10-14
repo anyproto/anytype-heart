@@ -186,9 +186,7 @@ func (a *accountObject) genInitialDoc(isNewAccount bool) (docToInsert string, er
 			iconMigrationKey,
 			privateAnalyticsIdKey, privateAnalytics)
 	} else {
-		docToInsert = fmt.Sprintf(`{"%s":"%s","%s":"%s"}`,
-			idKey, accountDocument,
-			privateAnalyticsIdKey, privateAnalytics)
+		docToInsert = fmt.Sprintf(`{"%s":"%s"}`, idKey, accountDocument)
 	}
 	return
 }
@@ -252,7 +250,25 @@ func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string,
 }
 
 func (a *accountObject) SetAnalyticsId(id string) error {
-	return a.setValue(analyticsKey, fmt.Sprintf(`"%s"`, id))
+	builder := &storestate.Builder{}
+	err := builder.Modify(collectionName, accountDocument, []string{analyticsKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, id))
+	if err != nil {
+		return nil
+	}
+	privateAnalyticsId, err := generatePrivateAnalyticsId()
+	if err != nil {
+		return fmt.Errorf("generate private analytics id: %w", err)
+	}
+	err = builder.Modify(collectionName, accountDocument, []string{privateAnalyticsIdKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, privateAnalyticsId))
+	if err != nil {
+		return nil
+	}
+	_, err = a.storeSource.PushStoreChange(a.ctx, source.PushStoreChangeParams{
+		Changes: builder.ChangeSet,
+		State:   a.state,
+		Time:    time.Now(),
+	})
+	return err
 }
 
 func (a *accountObject) onUpdate() {
