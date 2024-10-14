@@ -10,16 +10,17 @@ import (
 func (mw *Middleware) ObjectPublish(ctx context.Context, req *pb.RpcObjectPublishRequest) *pb.RpcObjectPublishResponse {
 	publishService := getService[publish.Service](mw)
 
-	res, _ := publishService.Publish(ctx, req.SpaceId, req.ObjectId)
+	res, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId)
 
-	// code := mapErrorCode(err,
-	// 	errToCode(nil, pb.RpcObjectPublishResponseError_NULL))
-	// 		Error: &pb.RpcObjectPublishResponseError{
-	// 		Code:        code,
-	// 		Description: getErrorDescription(nil),
-	// 	},
+	code := mapErrorCode(err,
+		errToCode(nil, pb.RpcObjectPublishResponseError_NULL))
 
 	r := &pb.RpcObjectPublishResponse{
+		Error: &pb.RpcObjectPublishResponseError{
+			Code:        code,
+			Description: getErrorDescription(nil),
+		},
+
 		PublishCid:     res.Cid,
 		PublishFileKey: res.Key,
 	}
