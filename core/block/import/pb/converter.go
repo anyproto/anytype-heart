@@ -268,7 +268,7 @@ func (p *Pb) makeSnapshot(name, profileID, path string,
 		if errors.Is(errGS, ErrNotAnyBlockExtension) {
 			return nil, nil
 		}
-		return nil, errGS
+		return nil, fmt.Errorf("%w: %s", common.ErrPbNotAnyBlockFormat, errGS.Error())
 	}
 	if valid := p.isSnapshotValid(snapshot); !valid {
 		return nil, fmt.Errorf("%w: snapshot is not valid", common.ErrPbNotAnyBlockFormat)
@@ -293,7 +293,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		snapshot := &pb.SnapshotWithType{}
 		um := jsonpb.Unmarshaler{}
 		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
-			return nil, ErrWrongFormat
+			return nil, fmt.Errorf("PB:GetSnapshot %w", uErr)
 		}
 		return snapshot, nil
 	}
@@ -304,7 +304,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 			return nil, err
 		}
 		if err = snapshot.Unmarshal(data); err != nil {
-			return nil, ErrWrongFormat
+			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
 		}
 		return snapshot, nil
 	}

@@ -118,9 +118,7 @@ func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	err := importSource.Initialize(importPath)
 	if err != nil {
 		allErrors.Add(fmt.Errorf("failed to extract files: %w", err))
-		if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {
-			return nil
-		}
+		return nil
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".csv"}); numberOfFiles == 0 {

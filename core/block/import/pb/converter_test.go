@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -15,9 +16,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func Test_GetSnapshotsSuccess(t *testing.T) {
@@ -94,6 +97,36 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 
 	assert.NotNil(t, ce)
 	assert.False(t, ce.IsEmpty())
+	assert.True(t, errors.Is(ce.GetResultError(model.Import_Pb), common.ErrPbNotAnyBlockFormat))
+}
+
+func Test_GetSnapshotsEmptySnapshot(t *testing.T) {
+	path, err := ioutil.TempDir("", "")
+	assert.NoError(t, err)
+	defer os.RemoveAll(path)
+	wr, err := newZipWriter(path)
+	assert.NoError(t, err)
+	f, err := os.Open("testdata/emptysnapshot.pb.json")
+	reader := bufio.NewReader(f)
+
+	assert.NoError(t, err)
+	assert.NoError(t, wr.WriteFile("emptysnapshot.pb.json", reader))
+	assert.NoError(t, wr.Close())
+
+	p := &Pb{}
+
+	_, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
+			Path: []string{wr.Path()},
+		}},
+		UpdateExistingObjects: false,
+		Type:                  0,
+		Mode:                  0,
+	}, process.NewProgress(pb.ModelProcess_Import))
+
+	assert.NotNil(t, ce)
+	assert.False(t, ce.IsEmpty())
+	assert.True(t, errors.Is(ce.GetResultError(model.Import_Pb), common.ErrPbNotAnyBlockFormat))
 }
 
 func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {

@@ -3,12 +3,16 @@ package csv
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/mod/module"
+	"golang.org/x/mod/zip"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -747,6 +751,67 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 	})
 }
 
+func TestCSV_GetSnapshots(t *testing.T) {
+	t.Run("file not exist", func(t *testing.T) {
+		// given
+		dir := t.TempDir()
+		file := "archive.zip"
+		filePath := filepath.Join(dir, file)
+
+		csv := CSV{}
+		p := process.NewProgress(pb.ModelProcess_Import)
+
+		// when
+		_, ce := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+				CsvParams: &pb.RpcObjectImportRequestCsvParams{
+					Path:                    []string{filePath},
+					Delimiter:               ",",
+					UseFirstRowForRelations: true,
+					Mode:                    pb.RpcObjectImportRequestCsvParams_TABLE,
+				},
+			},
+			Type: model.Import_Csv,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.NotNil(t, ce)
+		assert.False(t, ce.IsEmpty())
+	})
+	t.Run("no object in archive", func(t *testing.T) {
+		// given
+		dir := t.TempDir()
+		file := "archive.zip"
+		filePath := filepath.Join(dir, file)
+		tmpZip, err := os.Create(filePath)
+		f, err := os.CreateTemp(dir, filepath.Join("test", "test"))
+		assert.Nil(t, err)
+		err = zip.Create(tmpZip, module.Version{Path: dir}, []zip.File{*f})
+		assert.Nil(t, err)
+
+		csv := CSV{}
+		p := process.NewProgress(pb.ModelProcess_Import)
+
+		// when
+		_, ce := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+				CsvParams: &pb.RpcObjectImportRequestCsvParams{
+					Path:                    []string{filePath},
+					Delimiter:               ",",
+					UseFirstRowForRelations: true,
+					Mode:                    pb.RpcObjectImportRequestCsvParams_TABLE,
+				},
+			},
+			Type: model.Import_Csv,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.NotNil(t, ce)
+		assert.NotNil(t, errors.Is(ce.GetResultError(model.Import_Csv), common.ErrFileImportNoObjectsInZipArchive))
+	})
+}
 func getRelationsNumber(keys []string) int {
 	return lo.CountBy(keys, func(item string) bool {
 		return item != bundle.RelationKeySourceFilePath.String() && item != bundle.RelationKeyLayout.String()
