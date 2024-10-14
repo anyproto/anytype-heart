@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/util/crypto"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/space"
@@ -30,7 +29,6 @@ type service struct {
 	commonFile      fileservice.FileService
 	fileSyncService filesync.FileSync
 	spaceService    space.Service
-	blockService    *block.Service
 	techSpaceId     string
 }
 
@@ -42,7 +40,6 @@ func (s *service) Init(a *app.App) error {
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.blockService = a.MustComponent(block.CName).(*block.Service)
 	return nil
 }
 
