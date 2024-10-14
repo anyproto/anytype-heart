@@ -154,14 +154,24 @@ func (s *crossSpaceSubscription) RemoveSpace(spaceId string) {
 func (s *crossSpaceSubscription) removeSpace(spaceId string) error {
 	subId, ok := s.perSpaceSubscriptions[spaceId]
 	if ok {
-		// TODO Use UnsubscribeInSpace
-		err := s.subscriptionService.Unsubscribe(subId)
+		ids, err := s.subscriptionService.UnsubscribeAndReturnIds(spaceId, subId)
 		if err != nil {
 			return err
 		}
+		for _, id := range ids {
+			err = s.queue.Add(s.ctx, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfSubscriptionRemove{
+					SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+						SubId: s.subId,
+						Id:    id,
+					},
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("send event to queue: %w", err)
+			}
+		}
 		delete(s.perSpaceSubscriptions, spaceId)
 	}
-
-	// TODO Delete records from subscription?
 	return nil
 }

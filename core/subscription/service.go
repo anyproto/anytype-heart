@@ -84,7 +84,7 @@ type Service interface {
 	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
 	SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
-	// TODO UnsubscribeInSpace(spaceId string, subId string) error
+	UnsubscribeAndReturnIds(spaceId string, subId string) ([]string, error)
 	UnsubscribeAll() (err error)
 	SubscriptionIDs() []string
 
@@ -213,6 +213,15 @@ func (s *service) Unsubscribe(subIds ...string) (err error) {
 	}
 	s.lock.Unlock()
 	return err
+}
+
+func (s *service) UnsubscribeAndReturnIds(spaceId string, subId string) ([]string, error) {
+	spaceSub, err := s.getSpaceSubscriptions(spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("get space subs: %w", err)
+	}
+
+	return spaceSub.UnsubscribeAndReturnIds(subId)
 }
 
 func (s *service) UnsubscribeAll() (err error) {
@@ -676,19 +685,46 @@ func (s *spaceSubscriptions) Unsubscribe(subIds ...string) error {
 	defer s.m.Unlock()
 	for _, subId := range subIds {
 		if sub, ok := s.getSubscription(subId); ok {
-			out := s.customOutput[subId]
-			if out != nil {
-				err := out.close()
-				if err != nil {
-					return fmt.Errorf("close subscription %s: %w", subId, err)
-				}
-				s.customOutput[subId] = nil
+			err := s.unsubscribe(subId, sub)
+			if err != nil {
+				return err
 			}
-			sub.close()
-			s.deleteSubscription(subId)
 		}
 	}
 	return nil
+}
+
+func (s *spaceSubscriptions) unsubscribe(subId string, sub subscription) error {
+	out := s.customOutput[subId]
+	if out != nil {
+		err := out.close()
+		if err != nil {
+			return fmt.Errorf("close subscription %s: %w", subId, err)
+		}
+		s.customOutput[subId] = nil
+	}
+	sub.close()
+	s.deleteSubscription(subId)
+	return nil
+}
+
+func (s *spaceSubscriptions) UnsubscribeAndReturnIds(subId string) ([]string, error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	if sub, ok := s.getSubscription(subId); ok {
+		recs := sub.getActiveRecords()
+		ids := make([]string, 0, len(recs))
+		for _, rec := range recs {
+			ids = append(ids, pbtypes.GetString(rec, bundle.RelationKeyId.String()))
+		}
+		err := s.unsubscribe(subId, sub)
+		if err != nil {
+			return nil, err
+		}
+		return ids, nil
+	}
+	return nil, fmt.Errorf("subscription not found")
 }
 
 func (s *spaceSubscriptions) UnsubscribeAll() (err error) {

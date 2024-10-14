@@ -26,7 +26,16 @@ func (s *service) runSpaceViewSub() error {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 			},
-			// TODO Add proper filters
+			{
+				RelationKey: bundle.RelationKeySpaceAccountStatus.String(),
+				Condition:   model.BlockContentDataviewFilter_NotIn,
+				Value:       pbtypes.IntList(int(model.Account_Deleted)),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.IntList(int(model.SpaceStatus_Ok), int(model.SpaceStatus_Unknown)),
+			},
 		},
 		Internal: true,
 	})

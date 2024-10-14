@@ -80,36 +80,25 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func TestSubscribe(t *testing.T) {
-	t.Run("no initial spaces", func(t *testing.T) {
+	t.Run("with existing space", func(t *testing.T) {
 		fx := newFixture(t)
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		resp, err := fx.Subscribe(subscriptionservice.SubscribeRequest{
-			Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyLayout.String()},
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyLayout.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
-				},
-			},
+		// Add space view and objects
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.Account_Active, model.SpaceStatus_Ok),
 		})
+
+		// Subscribe
+		resp, err := fx.Subscribe(givenRequest())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
-
 		assert.NotEmpty(t, resp.SubId)
 		assert.Empty(t, resp.Records)
 		assert.Empty(t, resp.Dependencies)
 
-		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:            pbtypes.String("spaceView1"),
-				bundle.RelationKeyTargetSpaceId: pbtypes.String("space1"),
-				bundle.RelationKeyLayout:        pbtypes.Int64(int64(model.ObjectType_spaceView)),
-			},
-		})
-
+		// Add objects
 		obj1 := objectstore.TestObject{
 			bundle.RelationKeyId:     pbtypes.String("participant1"),
 			bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
@@ -117,6 +106,8 @@ func TestSubscribe(t *testing.T) {
 		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 			obj1,
 		})
+
+		// Wait events
 		msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
 		require.NoError(t, err)
 
@@ -126,22 +117,138 @@ func TestSubscribe(t *testing.T) {
 			makeCountersEvent(resp.SubId, 1),
 		}
 		assert.Equal(t, want, msgs)
+	})
 
+	t.Run("without existing space", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		// Subscribe
+		resp, err := fx.Subscribe(givenRequest())
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+		assert.Empty(t, resp.Records)
+		assert.Empty(t, resp.Dependencies)
+
+		t.Run("add first space", func(t *testing.T) {
+			// Add space view
+			fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+				givenSpaceViewObject("spaceView1", "space1", model.Account_Active, model.SpaceStatus_Ok),
+			})
+
+			// Add objects
+			obj1 := objectstore.TestObject{
+				bundle.RelationKeyId:     pbtypes.String("participant1"),
+				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+			}
+			fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
+				obj1,
+			})
+
+			// Wait events
+			msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+			require.NoError(t, err)
+
+			want := []*pb.EventMessage{
+				makeDetailsSetEvent(resp.SubId, obj1.Details()),
+				makeAddEvent(resp.SubId, "", obj1.Id()),
+				makeCountersEvent(resp.SubId, 1),
+			}
+			assert.Equal(t, want, msgs)
+
+			// Add another objects
+			obj2 := objectstore.TestObject{
+				bundle.RelationKeyId:     pbtypes.String("participant2"),
+				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+			}
+			fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
+				obj2,
+			})
+
+			// Wait events
+			msgs, err = fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+			require.NoError(t, err)
+
+			want = []*pb.EventMessage{
+				makeDetailsSetEvent(resp.SubId, obj2.Details()),
+				makeAddEvent(resp.SubId, obj1.Id(), obj2.Id()),
+				makeCountersEvent(resp.SubId, 2),
+			}
+			assert.Equal(t, want, msgs)
+		})
+
+		t.Run("add second space", func(t *testing.T) {
+			// Add space view
+			fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+				givenSpaceViewObject("spaceView2", "space2", model.Account_Active, model.SpaceStatus_Ok),
+			})
+
+			// Add objects
+			obj1 := objectstore.TestObject{
+				bundle.RelationKeyId:     pbtypes.String("participant3"),
+				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+			}
+			fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{
+				obj1,
+			})
+
+			// Wait events
+			msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+			require.NoError(t, err)
+
+			want := []*pb.EventMessage{
+				makeDetailsSetEvent(resp.SubId, obj1.Details()),
+				makeAddEvent(resp.SubId, "participant2", obj1.Id()),
+				makeCountersEvent(resp.SubId, 1),
+			}
+			assert.Equal(t, want, msgs)
+		})
+
+	})
+
+	t.Run("remove space view", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		// Add space view and objects
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.Account_Active, model.SpaceStatus_Ok),
+		})
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:     pbtypes.String("participant1"),
+			bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+		}
 		obj2 := objectstore.TestObject{
 			bundle.RelationKeyId:     pbtypes.String("participant2"),
 			bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
 		}
 		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
+			obj1,
 			obj2,
 		})
 
-		msgs, err = fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+		// Subscribe
+		resp, err := fx.Subscribe(givenRequest())
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+		assert.Equal(t, []*types.Struct{obj1.Details(), obj2.Details()}, resp.Records)
+
+		// Remove space view by changing its status
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.Account_Deleted, model.SpaceStatus_Unknown),
+		})
+
+		// Wait events
+		msgs, err := fx.eventQueue.NewCond().WithMin(2).Wait(ctx)
 		require.NoError(t, err)
 
-		want = []*pb.EventMessage{
-			makeDetailsSetEvent(resp.SubId, obj2.Details()),
-			makeAddEvent(resp.SubId, obj1.Id(), obj2.Id()),
-			makeCountersEvent(resp.SubId, 2),
+		want := []*pb.EventMessage{
+			makeRemoveEvent(resp.SubId, obj1.Id()),
+			makeRemoveEvent(resp.SubId, obj2.Id()),
 		}
 		assert.Equal(t, want, msgs)
 	})
@@ -185,6 +292,17 @@ func makeCountersEvent(subId string, total int) *pb.EventMessage {
 	}
 }
 
+func makeRemoveEvent(subId string, id string) *pb.EventMessage {
+	return &pb.EventMessage{
+		Value: &pb.EventMessageValueOfSubscriptionRemove{
+			SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+				SubId: subId,
+				Id:    id,
+			},
+		},
+	}
+}
+
 type dummyCollectionService struct{}
 
 func (d *dummyCollectionService) Init(a *app.App) (err error) {
@@ -200,4 +318,33 @@ func (d *dummyCollectionService) SubscribeForCollection(collectionID string, sub
 }
 
 func (d *dummyCollectionService) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
+}
+
+func givenRequest() subscriptionservice.SubscribeRequest {
+	return subscriptionservice.SubscribeRequest{
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyLayout.String()},
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
+			},
+		},
+		Sorts: []*model.BlockContentDataviewSort{
+			{
+				RelationKey: bundle.RelationKeyName.String(),
+				Type:        model.BlockContentDataviewSort_Asc,
+			},
+		},
+	}
+}
+
+func givenSpaceViewObject(id string, targetSpaceId string, accountStatus model.AccountStatusType, localStatus model.SpaceStatus) objectstore.TestObject {
+	return objectstore.TestObject{
+		bundle.RelationKeyId:                 pbtypes.String(id),
+		bundle.RelationKeyTargetSpaceId:      pbtypes.String(targetSpaceId),
+		bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_spaceView)),
+		bundle.RelationKeySpaceAccountStatus: pbtypes.Int64(int64(accountStatus)),
+		bundle.RelationKeySpaceLocalStatus:   pbtypes.Int64(int64(localStatus)),
+	}
 }
