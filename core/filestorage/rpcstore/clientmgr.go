@@ -71,6 +71,8 @@ func (m *clientManager) add(ctx context.Context, ts ...*task) (err error) {
 	case m.addLimiter <- struct{}{}:
 	case <-ctx.Done():
 		return ctx.Err()
+	case <-m.ctx.Done():
+		return fmt.Errorf("client manager is closed")
 	}
 	if m.ocache.Len() == 0 {
 		if err = m.checkPeers(ctx, true); err != nil {
