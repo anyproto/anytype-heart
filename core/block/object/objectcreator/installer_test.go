@@ -49,7 +49,7 @@ func TestInstaller_queryDeletedObjects(t *testing.T) {
 			bundle.RelationKeySourceObject: domain.String(obj.key.BundledURL()),
 			bundle.RelationKeyIsDeleted:    domain.Bool(obj.isDeleted),
 			bundle.RelationKeyIsArchived:   domain.Bool(obj.isArchived),
-			bundle.RelationKeyLayout:       pbtypes.Int64(int64(model.ObjectType_relation)),
+			bundle.RelationKeyLayout:       domain.Int64(model.ObjectType_relation),
 		}})
 		sourceObjectIds = append(sourceObjectIds, obj.key.BundledURL())
 		if obj.spaceId == spaceId && (obj.isDeleted || obj.isArchived) {

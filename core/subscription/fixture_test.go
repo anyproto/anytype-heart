@@ -46,7 +46,6 @@ func newFixture(t *testing.T) *fixture {
 	sbtProvider.EXPECT().Name().Return("smartBlockTypeProvider")
 	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
 	a.Register(sbtProvider)
-	a.Register(testutil.PrepareMock(ctx, a, kanbanService))
 
 	collectionService := &collectionServiceMock{MockCollectionService: NewMockCollectionService(t)}
 	a.Register(collectionService)

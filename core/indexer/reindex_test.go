@@ -176,7 +176,7 @@ func TestReindexDeletedObjects(t *testing.T) {
 		},
 		{
 			bundle.RelationKeyId:   domain.String("4"),
-			bundle.RelationKeyName: pbtypes.String("4"),
+			bundle.RelationKeyName: domain.String("4"),
 		},
 	})
 
@@ -453,16 +453,16 @@ func TestReindex_addSyncRelations(t *testing.T) {
 
 func (fx *IndexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
 	ids, _, err := fx.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 			},
 			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				RelationKey: bundle.RelationKeyIsDeleted,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
+				Value:       domain.Bool(true),
 			},
 		},
 	})

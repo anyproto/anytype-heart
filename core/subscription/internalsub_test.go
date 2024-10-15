@@ -284,11 +284,11 @@ func TestInternalSubCustomQueue(t *testing.T) {
 	resp, err := fx.Search(SubscribeRequest{
 		SpaceId: testSpaceId,
 		SubId:   subId,
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyPriority.String(),
+				RelationKey: bundle.RelationKeyPriority,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(10),
+				Value:       domain.Int64(10),
 			},
 		},
 		Keys:          []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
@@ -299,9 +299,9 @@ func TestInternalSubCustomQueue(t *testing.T) {
 	require.Same(t, resp.Output, queue)
 
 	obj := objectstore.TestObject{
-		bundle.RelationKeyId:       pbtypes.String("id1"),
-		bundle.RelationKeyName:     pbtypes.String("Jane Doe"),
-		bundle.RelationKeyPriority: pbtypes.Int64(10),
+		bundle.RelationKeyId:       domain.String("id1"),
+		bundle.RelationKeyName:     domain.String("Jane Doe"),
+		bundle.RelationKeyPriority: domain.Int64(10),
 	}
 	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{obj})
 
@@ -310,7 +310,7 @@ func TestInternalSubCustomQueue(t *testing.T) {
 			ObjectDetailsSet: &pb.EventObjectDetailsSet{
 				Id:      "id1",
 				SubIds:  []string{subId},
-				Details: obj.Details(),
+				Details: obj.Details().ToProto(),
 			},
 		},
 		&pb.EventMessageValueOfSubscriptionAdd{
@@ -337,9 +337,9 @@ func TestInternalSubAsyncInit(t *testing.T) {
 	subId := "test"
 	fx := newFixtureWithRealObjectStore(t)
 	obj := objectstore.TestObject{
-		bundle.RelationKeyId:       pbtypes.String("id1"),
-		bundle.RelationKeyName:     pbtypes.String("Jane Doe"),
-		bundle.RelationKeyPriority: pbtypes.Int64(10),
+		bundle.RelationKeyId:       domain.String("id1"),
+		bundle.RelationKeyName:     domain.String("Jane Doe"),
+		bundle.RelationKeyPriority: domain.Int64(10),
 	}
 
 	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
@@ -349,11 +349,11 @@ func TestInternalSubAsyncInit(t *testing.T) {
 	resp, err := fx.Search(SubscribeRequest{
 		SpaceId: testSpaceId,
 		SubId:   subId,
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyPriority.String(),
+				RelationKey: bundle.RelationKeyPriority,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(10),
+				Value:       domain.Int64(10),
 			},
 		},
 		Keys:      []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
@@ -369,7 +369,7 @@ func TestInternalSubAsyncInit(t *testing.T) {
 			ObjectDetailsSet: &pb.EventObjectDetailsSet{
 				Id:      "id1",
 				SubIds:  []string{subId},
-				Details: obj.Details(),
+				Details: obj.Details().ToProto(),
 			},
 		},
 		&pb.EventMessageValueOfSubscriptionAdd{
