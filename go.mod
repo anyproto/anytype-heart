@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.9.2
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-store v0.0.6
+	github.com/anyproto/any-store v0.1.0
 	github.com/anyproto/any-sync v0.4.30
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/tantivy-go v0.1.0
@@ -278,9 +278,9 @@ require (
 	modernc.org/libc v1.60.1 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.8.0 // indirect
-	modernc.org/sqlite v1.32.0 // indirect
+	modernc.org/sqlite v1.33.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
-	zombiezen.com/go/sqlite v1.3.0 // indirect
+	zombiezen.com/go/sqlite v1.4.0 // indirect
 )
 
 replace github.com/dgraph-io/badger/v4 => github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580
