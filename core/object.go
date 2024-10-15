@@ -349,8 +349,8 @@ func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req 
 	subService := getService[crossspacesub.Service](mw)
 	resp, err := subService.Subscribe(subscription.SubscribeRequest{
 		SubId:             req.SubId,
-		Filters:           req.Filters,
-		Sorts:             req.Sorts,
+		Filters:           filtersFromProto(req.Filters),
+		Sorts:             sortsFromProto(req.Sorts),
 		Keys:              req.Keys,
 		Source:            req.Source,
 		NoDepSubscription: req.NoDepSubscription,
@@ -367,8 +367,8 @@ func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req 
 
 	return &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
 		SubId:        resp.SubId,
-		Records:      resp.Records,
-		Dependencies: resp.Dependencies,
+		Records:      domain.DetailsListToProtos(resp.Records),
+		Dependencies: domain.DetailsListToProtos(resp.Dependencies),
 		Counters:     resp.Counters,
 	}
 }
