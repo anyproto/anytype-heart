@@ -2,7 +2,6 @@ package common
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -37,7 +36,7 @@ func ProvideFileName(fileName string, filesSource source.Source, path string, te
 		fileName = tempFile
 		return nil
 	}); err != nil {
-		return "", false, fmt.Errorf("%w: %s", ErrFileImportSourceFileOpenError, err.Error())
+		return "", false, err
 	}
 	return fileName, createFileBlock, nil
 }

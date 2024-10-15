@@ -3,7 +3,6 @@ package csv
 import (
 	"context"
 	"errors"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,11 +10,10 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/mod/module"
-	"golang.org/x/mod/zip"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/test"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -29,7 +27,7 @@ func TestCsv_GetSnapshotsEmptyFile(t *testing.T) {
 	p := process.NewProgress(pb.ModelProcess_Import)
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
-			CsvParams: &pb.RpcObjectImportRequestCsvParams{Path: []string{"testdata/test.csv"}},
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{Path: []string{filepath.Join("testdata", "test.csv")}},
 		},
 		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
@@ -55,7 +53,7 @@ func TestCsv_GetSnapshots(t *testing.T) {
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/Journal.csv"},
+				Path:                    []string{filepath.Join("testdata", "Journal.csv")},
 				UseFirstRowForRelations: true},
 		},
 		Type: model.Import_Csv,
@@ -88,7 +86,7 @@ func TestCsv_GetSnapshotsTable(t *testing.T) {
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path: []string{"testdata/Journal.csv"},
+				Path: []string{filepath.Join("testdata", "Journal.csv")},
 				Mode: pb.RpcObjectImportRequestCsvParams_TABLE,
 			},
 		},
@@ -117,7 +115,7 @@ func TestCsv_GetSnapshotsTableUseFirstColumnForRelationsOn(t *testing.T) {
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/Journal.csv"},
+				Path:                    []string{filepath.Join("testdata", "Journal.csv")},
 				Mode:                    pb.RpcObjectImportRequestCsvParams_TABLE,
 				UseFirstRowForRelations: true,
 			},
@@ -157,7 +155,11 @@ func TestCsv_GetSnapshotsSemiColon(t *testing.T) {
 	p := process.NewProgress(pb.ModelProcess_Import)
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
-			CsvParams: &pb.RpcObjectImportRequestCsvParams{Path: []string{"testdata/semicolon.csv"}, Delimiter: ";", UseFirstRowForRelations: true},
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{
+				Path:                    []string{filepath.Join("testdata", "semicolon.csv")},
+				Delimiter:               ";",
+				UseFirstRowForRelations: true,
+			},
 		},
 		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
@@ -177,7 +179,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/transpose.csv"},
+				Path:                    []string{filepath.Join("testdata", "transpose.csv")},
 				Delimiter:               ";",
 				TransposeRowsAndColumns: true,
 				UseFirstRowForRelations: true,
@@ -217,7 +219,7 @@ func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/transpose.csv"},
+				Path:                    []string{filepath.Join("testdata", "transpose.csv")},
 				Delimiter:               ";",
 				TransposeRowsAndColumns: true,
 				UseFirstRowForRelations: false,
@@ -245,7 +247,7 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOn(t *testing.T) {
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/Journal.csv"},
+				Path:                    []string{filepath.Join("testdata", "Journal.csv")},
 				Delimiter:               ",",
 				UseFirstRowForRelations: true,
 			},
@@ -292,7 +294,7 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:      []string{"testdata/Journal.csv"},
+				Path:      []string{filepath.Join("testdata", "Journal.csv")},
 				Delimiter: ",",
 			},
 		},
@@ -347,7 +349,7 @@ func TestCsv_GetSnapshotsQuotedStrings(t *testing.T) {
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/quotedstrings.csv"},
+				Path:                    []string{filepath.Join("testdata", "quotedstrings.csv")},
 				Delimiter:               ",",
 				TransposeRowsAndColumns: true,
 				UseFirstRowForRelations: true,
@@ -368,7 +370,7 @@ func TestCsv_GetSnapshotsBigFile(t *testing.T) {
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/bigfile.csv", "testdata/transpose.csv"},
+				Path:                    []string{filepath.Join("testdata", "bigfile.csv"), filepath.Join("testdata", "transpose.csv")},
 				Delimiter:               ";",
 				UseFirstRowForRelations: true,
 			},
@@ -389,7 +391,7 @@ func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOn(t *testing.T
 	sn, err := csv.GetSnapshots(ctx, &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/emptyfirstline.csv"},
+				Path:                    []string{filepath.Join("testdata", "emptyfirstline.csv")},
 				Delimiter:               ";",
 				UseFirstRowForRelations: true,
 			},
@@ -417,7 +419,7 @@ func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOff(t *testing.
 	sn, err := csv.GetSnapshots(ctx, &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/emptyfirstline.csv"},
+				Path:                    []string{filepath.Join("testdata", "emptyfirstline.csv")},
 				Delimiter:               ";",
 				UseFirstRowForRelations: false,
 			},
@@ -464,7 +466,7 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 	sn, _ := csv.GetSnapshots(ctx, &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/1000_rows.csv"},
+				Path:                    []string{filepath.Join("testdata", "1000_rows.csv")},
 				Delimiter:               ";",
 				UseFirstRowForRelations: false,
 			},
@@ -490,7 +492,7 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 	sn, _ = csv.GetSnapshots(ctx, &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/1000_rows.csv"},
+				Path:                    []string{filepath.Join("testdata", "1000_rows.csv")},
 				Delimiter:               ";",
 				UseFirstRowForRelations: true,
 			},
@@ -569,7 +571,7 @@ func Test_findUniqueRelationWithSpaces(t *testing.T) {
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/relationswithspaces.csv"},
+				Path:                    []string{filepath.Join("testdata", "relationswithspaces.csv")},
 				Delimiter:               ";",
 				UseFirstRowForRelations: true,
 			},
@@ -612,7 +614,7 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/10_relations.csv"},
+				Path:                    []string{filepath.Join("testdata", "10_relations.csv")},
 				Delimiter:               ";",
 				UseFirstRowForRelations: false,
 			},
@@ -643,7 +645,7 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 	sn, err = csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/10_relations.csv"},
+				Path:                    []string{filepath.Join("testdata", "10_relations.csv")},
 				Delimiter:               ";",
 				UseFirstRowForRelations: true,
 			},
@@ -681,7 +683,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 		sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 			Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 				CsvParams: &pb.RpcObjectImportRequestCsvParams{
-					Path:                    []string{"testdata/differentcolumnnumber.csv"},
+					Path:                    []string{filepath.Join("testdata", "differentcolumnnumber.csv")},
 					Delimiter:               ",",
 					UseFirstRowForRelations: true,
 					Mode:                    pb.RpcObjectImportRequestCsvParams_TABLE,
@@ -719,7 +721,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 		sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 			Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 				CsvParams: &pb.RpcObjectImportRequestCsvParams{
-					Path:                    []string{"testdata/differentcolumnnumber.csv"},
+					Path:                    []string{filepath.Join("testdata", "differentcolumnnumber.csv")},
 					Delimiter:               ",",
 					UseFirstRowForRelations: true,
 					Mode:                    pb.RpcObjectImportRequestCsvParams_COLLECTION,
@@ -782,14 +784,9 @@ func TestCSV_GetSnapshots(t *testing.T) {
 	t.Run("no object in archive", func(t *testing.T) {
 		// given
 		dir := t.TempDir()
-		file := "archive.zip"
-		filePath := filepath.Join(dir, file)
-		tmpZip, err := os.Create(filePath)
-		f, err := os.CreateTemp(dir, filepath.Join("test", "test"))
+		zipPath := filepath.Join(dir, "empty.zip")
+		err := test.CreateEmptyZip(t, zipPath)
 		assert.Nil(t, err)
-		err = zip.Create(tmpZip, module.Version{Path: dir}, []zip.File{*f})
-		assert.Nil(t, err)
-
 		csv := CSV{}
 		p := process.NewProgress(pb.ModelProcess_Import)
 
@@ -797,7 +794,7 @@ func TestCSV_GetSnapshots(t *testing.T) {
 		_, ce := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 			Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 				CsvParams: &pb.RpcObjectImportRequestCsvParams{
-					Path:                    []string{filePath},
+					Path:                    []string{zipPath},
 					Delimiter:               ",",
 					UseFirstRowForRelations: true,
 					Mode:                    pb.RpcObjectImportRequestCsvParams_TABLE,
@@ -809,7 +806,31 @@ func TestCSV_GetSnapshots(t *testing.T) {
 
 		// then
 		assert.NotNil(t, ce)
-		assert.NotNil(t, errors.Is(ce.GetResultError(model.Import_Csv), common.ErrFileImportNoObjectsInZipArchive))
+		assert.True(t, errors.Is(ce.GetResultError(model.Import_Csv), common.ErrFileImportNoObjectsInZipArchive))
+	})
+	t.Run("no object in dir", func(t *testing.T) {
+		// given
+		dir := t.TempDir()
+		csv := CSV{}
+		p := process.NewProgress(pb.ModelProcess_Import)
+
+		// when
+		_, ce := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+				CsvParams: &pb.RpcObjectImportRequestCsvParams{
+					Path:                    []string{dir},
+					Delimiter:               ",",
+					UseFirstRowForRelations: true,
+					Mode:                    pb.RpcObjectImportRequestCsvParams_TABLE,
+				},
+			},
+			Type: model.Import_Csv,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.NotNil(t, ce)
+		assert.True(t, errors.Is(ce.GetResultError(model.Import_Csv), common.ErrFileImportNoObjectsInDirectory))
 	})
 }
 func getRelationsNumber(keys []string) int {

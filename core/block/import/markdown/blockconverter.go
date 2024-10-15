@@ -1,7 +1,6 @@
 package markdown
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -76,7 +75,7 @@ func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *common.
 		}
 		return true
 	}); iterateErr != nil {
-		allErrors.Add(fmt.Errorf("%w: %s", common.ErrFileImportSourceFileOpenError, iterateErr.Error()))
+		allErrors.Add(iterateErr)
 	}
 	return fileInfo
 }

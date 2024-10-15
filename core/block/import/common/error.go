@@ -23,14 +23,12 @@ var (
 
 	ErrFileImportNoObjectsInZipArchive = fmt.Errorf("no objects in zip archive")
 	ErrFileImportNoObjectsInDirectory  = fmt.Errorf("no objects in directory")
-	ErrFileImportSourceFileOpenError   = fmt.Errorf("failed to open imported file")
 
 	ErrPbNotAnyBlockFormat = fmt.Errorf("file doesn't match Anyblock format ")
 
 	ErrWrongHTMLFormat = fmt.Errorf("html file has wrong structure")
 
 	ErrNoSnapshotToImport = fmt.Errorf("no snapshot to import") // for external import
-	ErrCSVFileFormat      = fmt.Errorf("csv file has wrong structure")
 )
 
 type ConvertError struct {
@@ -145,8 +143,6 @@ func GetImportNotificationErrorCode(err error) model.ImportErrorCode {
 		return model.Import_FILE_LOAD_ERROR
 	case errors.Is(err, ErrWrongHTMLFormat):
 		return model.Import_HTML_WRONG_HTML_STRUCTURE
-	case errors.Is(err, ErrCSVFileFormat):
-		return model.Import_CSV_WRONG_CSV_STRUCTURE
 	case errors.Is(err, list.ErrInsufficientPermissions):
 		return model.Import_INSUFFICIENT_PERMISSIONS
 	default:
@@ -173,7 +169,7 @@ func IsNoObjectError(err error) bool {
 func isDefinedError(err error) bool {
 	return errors.Is(err, ErrCancel) || errors.Is(err, ErrCsvLimitExceeded) || errors.Is(err, ErrNotionServerExceedRateLimit) ||
 		errors.Is(err, ErrNotionServerIsUnavailable) || errors.Is(err, ErrFileLoad) || errors.Is(err, ErrPbNotAnyBlockFormat) ||
-		errors.Is(err, ErrWrongHTMLFormat) || errors.Is(err, ErrFileImportSourceFileOpenError) || errors.Is(err, ErrCSVFileFormat)
+		errors.Is(err, ErrWrongHTMLFormat)
 }
 
 func GetGalleryResponseCode(err error) pb.RpcObjectImportExperienceResponseErrorCode {

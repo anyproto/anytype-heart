@@ -39,7 +39,6 @@ const (
 )
 
 var ErrNotAnyBlockExtension = errors.New("not JSON or PB extension")
-var ErrWrongFormat = errors.New("wrong PB or JSON format")
 
 type Pb struct {
 	service         *collection.Service
@@ -190,7 +189,7 @@ func (p *Pb) getProfileFromFiles(importSource source.Source) (*pb.Profile, error
 		return true
 	})
 	if iterateError != nil {
-		return nil, fmt.Errorf("%w: %s", common.ErrFileImportSourceFileOpenError, iterateError.Error())
+		return nil, iterateError
 	}
 	return profile, err
 }
@@ -249,7 +248,7 @@ func (p *Pb) getSnapshotsFromProvidedFiles(
 		}
 		return true
 	}); iterateErr != nil {
-		allErrors.Add(fmt.Errorf("%w: %s", common.ErrFileImportSourceFileOpenError, iterateErr.Error()))
+		allErrors.Add(iterateErr)
 	}
 	return allSnapshots, widgetSnapshot, workspaceSnapshot
 }

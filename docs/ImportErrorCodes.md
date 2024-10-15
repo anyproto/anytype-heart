@@ -24,4 +24,3 @@
 
 ### CSV import specific codes
 1. CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED - user tried to import CSV file, where amount of rows or columns exceeded 1000
-2. CSV_WRONG_CSV_STRUCTURE - there was error with parsing CSV file

@@ -149,7 +149,7 @@ func (h *HTML) getSnapshotsAndRootObjects(path string,
 		rootObjects = append(rootObjects, id)
 		return true
 	}); iterateErr != nil {
-		allErrors.Add(fmt.Errorf("%w: %s", common.ErrFileImportSourceFileOpenError, iterateErr.Error()))
+		allErrors.Add(iterateErr)
 	}
 	return snapshots, rootObjects
 }

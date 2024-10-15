@@ -2,7 +2,6 @@ package txt
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"path/filepath"
 
@@ -137,7 +136,7 @@ func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *common.Conve
 		return true
 	})
 	if iterateErr != nil {
-		allErrors.Add(fmt.Errorf("%w: %s", common.ErrFileImportSourceFileOpenError, iterateErr.Error()))
+		allErrors.Add(iterateErr)
 	}
 	return snapshots, targetObjects
 }

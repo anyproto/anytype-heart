@@ -145,7 +145,7 @@ func (c *CSV) getSnapshotsAndObjectsIds(importSource source.Source,
 		}
 		csvTable, err := c.getCSVTable(fileReader, params.GetDelimiter())
 		if err != nil {
-			allErrors.Add(fmt.Errorf("%w, %s", common.ErrCSVFileFormat, err.Error()))
+			allErrors.Add(err)
 			return !allErrors.ShouldAbortImport(len(params.GetPath()), model.Import_Csv)
 		}
 		if params.TransposeRowsAndColumns && len(csvTable) != 0 {
@@ -160,7 +160,7 @@ func (c *CSV) getSnapshotsAndObjectsIds(importSource source.Source,
 		allSnapshots = append(allSnapshots, snapshots...)
 		return true
 	}); iterateErr != nil {
-		allErrors.Add(fmt.Errorf("%w: %s", common.ErrFileImportSourceFileOpenError, iterateErr.Error()))
+		allErrors.Add(iterateErr)
 	}
 	return &Result{allObjectsIds, allSnapshots}
 }
