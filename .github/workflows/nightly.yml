@@ -116,7 +116,7 @@ jobs:
 
       - name: Cross-compile library mac/win/linux
         run: |
-          make download-tantivy-all
+          make download-tantivy-all-force
           echo $FLAGS
           mkdir -p .release
           echo $SDKROOT
