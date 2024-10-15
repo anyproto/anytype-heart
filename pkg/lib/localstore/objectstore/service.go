@@ -12,7 +12,9 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/valyala/fastjson"
+	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -35,8 +37,8 @@ type CrossSpace interface {
 	QueryRawCrossSpace(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
 
-	ListIdsCrossSpace() ([]string, error)
-	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
+	ListIdsCrossSpace() ([]domain.FullID, error)
+	BatchProcessFullTextQueue(ctx context.Context, spaceIdsPriority []string, limit int, processIds func(processIds []string) error) error
 
 	AccountStore
 	VirtualSpacesStore
@@ -54,8 +56,8 @@ type ObjectStore interface {
 }
 
 type IndexerStore interface {
-	AddToIndexQueue(ctx context.Context, id ...string) error
-	ListIdsFromFullTextQueue(limit int) ([]string, error)
+	AddToIndexQueue(ctx context.Context, id ...domain.FullID) error
+	ListIdsFromFullTextQueue(spaceId string, limit int) ([]string, error)
 	RemoveIdsFromFullTextQueue(ids []string) error
 	GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error)
 
@@ -316,9 +318,21 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 	return result, nil
 }
 
-func (s *dsObjectStore) ListIdsCrossSpace() ([]string, error) {
-	return collectCrossSpace(s, func(store spaceindex.Store) ([]string, error) {
-		return store.ListIds()
+func (s *dsObjectStore) ListIdsCrossSpace() ([]domain.FullID, error) {
+	var fullIds []domain.FullID
+	return collectCrossSpace(s, func(store spaceindex.Store) ([]domain.FullID, error) {
+		ids, err := store.ListIds()
+		if err != nil {
+			return nil, err
+		}
+		fullIds = slices.Grow(fullIds, len(ids))
+		for _, id := range ids {
+			fullIds = append(fullIds, domain.FullID{
+				ObjectID: id,
+				SpaceID:  store.SpaceId(),
+			})
+		}
+		return fullIds, nil
 	})
 }
 

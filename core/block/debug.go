@@ -75,10 +75,10 @@ func (s *Service) debugListObjects(req *http.Request) ([]debugObject, error) {
 	}
 	result := make([]debugObject, 0, len(ids))
 	for _, id := range ids {
-		obj, err := s.getDebugObject(id)
+		obj, err := s.getDebugObject(id.ObjectID)
 		if err != nil {
 			obj = debugObject{
-				ID:    id,
+				ID:    id.ObjectID,
 				Error: err.Error(),
 			}
 		}

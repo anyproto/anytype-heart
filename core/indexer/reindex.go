@@ -298,7 +298,7 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 	}
 	for _, id := range ids {
 		if domain.IsFileId(id) {
-			err = store.DeleteDetails(i.runCtx, []string{id})
+			err = store.DeleteDetails(i.componentCtx, []string{id})
 			if err != nil {
 				log.Errorf("delete old file %s: %s", id, err)
 			}
@@ -375,7 +375,7 @@ func (i *indexer) removeDetails(spaceId string) error {
 		log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
 	}
 	for _, id := range ids {
-		if err = store.DeleteDetails(i.runCtx, []string{id}); err != nil {
+		if err = store.DeleteDetails(i.componentCtx, []string{id}); err != nil {
 			log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
 		}
 	}

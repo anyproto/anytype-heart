@@ -2,6 +2,7 @@ package objectsubscription
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/cheggaaa/mb/v3"
@@ -32,24 +33,28 @@ func newEntry[T any](data T) *entry[T] {
 }
 
 type SubscriptionParams[T any] struct {
-	Request subscription.SubscribeRequest
-	Extract extract[T]
-	Update  update[T]
-	Unset   unset[T]
+	Request    subscription.SubscribeRequest
+	Extract    extract[T]
+	Update     update[T]
+	Unset      unset[T]
+	UpdateChan chan []T
 }
 
 type ObjectSubscription[T any] struct {
-	request subscription.SubscribeRequest
-	service subscription.Service
-	ch      chan struct{}
-	events  *mb.MB[*pb.EventMessage]
-	ctx     context.Context
-	cancel  context.CancelFunc
-	sub     map[string]*entry[T]
-	extract extract[T]
-	update  update[T]
-	unset   unset[T]
-	mx      sync.Mutex
+	sorted     bool
+	request    subscription.SubscribeRequest
+	service    subscription.Service
+	ch         chan struct{}
+	events     *mb.MB[*pb.EventMessage]
+	ctx        context.Context
+	cancel     context.CancelFunc
+	sub        map[string]*entry[T]
+	positions  []string
+	extract    extract[T]
+	update     update[T]
+	unset      unset[T]
+	updateChan chan []T
+	mx         sync.Mutex
 }
 
 func NewIdSubscription(service subscription.Service, request subscription.SubscribeRequest) *ObjectSubscription[struct{}] {
@@ -69,12 +74,14 @@ func NewIdSubscription(service subscription.Service, request subscription.Subscr
 
 func New[T any](service subscription.Service, params SubscriptionParams[T]) *ObjectSubscription[T] {
 	return &ObjectSubscription[T]{
-		request: params.Request,
-		service: service,
-		ch:      make(chan struct{}),
-		extract: params.Extract,
-		update:  params.Update,
-		unset:   params.Unset,
+		sorted:     len(params.Request.Sorts) > 0,
+		request:    params.Request,
+		service:    service,
+		ch:         make(chan struct{}),
+		extract:    params.Extract,
+		update:     params.Update,
+		unset:      params.Unset,
+		updateChan: params.UpdateChan,
 	}
 }
 
@@ -90,6 +97,9 @@ func (o *ObjectSubscription[T]) Run() error {
 	for _, rec := range resp.Records {
 		id, data := o.extract(rec)
 		o.sub[id] = newEntry(data)
+		if o.sorted {
+			o.positions = append(o.positions, id)
+		}
 	}
 	go o.read()
 	return nil
@@ -106,14 +116,69 @@ func (o *ObjectSubscription[T]) Len() int {
 	return len(o.sub)
 }
 
-func (o *ObjectSubscription[T]) Iterate(iter func(id string, data T) bool) {
-	o.mx.Lock()
-	defer o.mx.Unlock()
-	for id, ent := range o.sub {
-		if !iter(id, ent.data) {
+func (o *ObjectSubscription[T]) iterateSorted(iter func(id string, data T) bool) {
+	for _, id := range o.positions {
+		val := o.sub[id]
+		if !iter(id, val.data) {
 			return
 		}
 	}
+}
+
+func (o *ObjectSubscription[T]) sendToChan() {
+	if o.updateChan == nil {
+		return
+	}
+
+	var vals = make([]T, 0, o.Len())
+	o.Iterate(func(_ string, v T) bool {
+		vals = append(vals, v)
+		return true
+	})
+	o.updateChan <- vals
+}
+
+func (o *ObjectSubscription[T]) Iterate(iter func(id string, data T) bool) {
+	o.mx.Lock()
+	defer o.mx.Unlock()
+	if o.sorted {
+		o.iterateSorted(iter)
+		return
+	}
+
+	for id, val := range o.sub {
+		if !iter(id, val.data) {
+			return
+		}
+	}
+}
+
+func (o *ObjectSubscription[T]) positionInsertAfter(after, newId string) {
+	if after == "" {
+		o.positions = append([]string{newId}, o.positions...)
+		return
+	}
+
+	for i, id := range o.positions {
+		if id == after {
+			o.positions = append(o.positions[:i+1], append([]string{newId}, o.positions[i+1:]...)...)
+			return
+		}
+
+	}
+}
+func (o *ObjectSubscription[T]) positionRemove(id string) {
+	for i, pos := range o.positions {
+		if pos == id {
+			o.positions = append(o.positions[:i], o.positions[i+1:]...)
+			return
+		}
+	}
+}
+
+func (o *ObjectSubscription[T]) positionMoveIdAfter(after, id string) {
+	o.positionRemove(id)
+	o.positionInsertAfter(after, id)
 }
 
 func (o *ObjectSubscription[T]) read() {
@@ -121,10 +186,26 @@ func (o *ObjectSubscription[T]) read() {
 	readEvent := func(event *pb.EventMessage) {
 		o.mx.Lock()
 		defer o.mx.Unlock()
+		fmt.Printf("sub %s got event %t: %+v\n", o.request.SubId, event.Value, event.Value)
 		switch v := event.Value.(type) {
 		case *pb.EventMessageValueOfSubscriptionAdd:
-			o.sub[v.SubscriptionAdd.Id] = newEmptyEntry[T]()
+			if o.sorted {
+				o.positionInsertAfter(v.SubscriptionAdd.AfterId, v.SubscriptionAdd.Id)
+			}
+			if _, ok := o.sub[v.SubscriptionAdd.Id]; !ok {
+				o.sub[v.SubscriptionAdd.Id] = newEmptyEntry[T]()
+			}
+		case *pb.EventMessageValueOfSubscriptionPosition:
+			if o.sorted {
+				o.positionMoveIdAfter(v.SubscriptionPosition.AfterId, v.SubscriptionPosition.Id)
+			}
+			if _, ok := o.sub[v.SubscriptionPosition.Id]; !ok {
+				o.sub[v.SubscriptionPosition.Id] = newEmptyEntry[T]()
+			}
 		case *pb.EventMessageValueOfSubscriptionRemove:
+			if o.sorted {
+				o.positionRemove(v.SubscriptionRemove.Id)
+			}
 			delete(o.sub, v.SubscriptionRemove.Id)
 		case *pb.EventMessageValueOfObjectDetailsAmend:
 			curEntry := o.sub[v.ObjectDetailsAmend.Id]
@@ -154,5 +235,6 @@ func (o *ObjectSubscription[T]) read() {
 			return
 		}
 		readEvent(event)
+		o.sendToChan()
 	}
 }
