@@ -1,6 +1,8 @@
 package subscription
 
 import (
+	"sync"
+
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -86,13 +88,18 @@ func (e *entry) Get(key string) *types.Value {
 
 type cache struct {
 	entries map[string]*entry
+	sync.Mutex
 }
 
 func (c *cache) Get(id string) *entry {
+	c.Lock()
+	defer c.Unlock()
 	return c.entries[id]
 }
 
 func (c *cache) GetOrSet(e *entry) *entry {
+	c.Lock()
+	defer c.Unlock()
 	if res, ok := c.entries[e.id]; ok {
 		return res
 	}
@@ -101,10 +108,14 @@ func (c *cache) GetOrSet(e *entry) *entry {
 }
 
 func (c *cache) Set(e *entry) {
+	c.Lock()
+	defer c.Unlock()
 	c.entries[e.id] = e
 }
 
 func (c *cache) Remove(id string) {
+	c.Lock()
+	defer c.Unlock()
 	delete(c.entries, id)
 }
 
