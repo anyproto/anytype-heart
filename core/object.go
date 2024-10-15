@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -342,6 +343,48 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 		Dependencies: domain.DetailsListToProtos(resp.Dependencies),
 		Counters:     resp.Counters,
 	}
+}
+
+func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req *pb.RpcObjectCrossSpaceSearchSubscribeRequest) *pb.RpcObjectCrossSpaceSearchSubscribeResponse {
+	subService := getService[crossspacesub.Service](mw)
+	resp, err := subService.Subscribe(subscription.SubscribeRequest{
+		SubId:             req.SubId,
+		Filters:           req.Filters,
+		Sorts:             req.Sorts,
+		Keys:              req.Keys,
+		Source:            req.Source,
+		NoDepSubscription: req.NoDepSubscription,
+		CollectionId:      req.CollectionId,
+	})
+	if err != nil {
+		return &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
+			Error: &pb.RpcObjectCrossSpaceSearchSubscribeResponseError{
+				Code:        pb.RpcObjectCrossSpaceSearchSubscribeResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
+		SubId:        resp.SubId,
+		Records:      resp.Records,
+		Dependencies: resp.Dependencies,
+		Counters:     resp.Counters,
+	}
+}
+
+func (mw *Middleware) ObjectCrossSpaceSearchUnsubscribe(cctx context.Context, req *pb.RpcObjectCrossSpaceSearchUnsubscribeRequest) *pb.RpcObjectCrossSpaceSearchUnsubscribeResponse {
+	subService := getService[crossspacesub.Service](mw)
+	err := subService.Unsubscribe(req.SubId)
+	if err != nil {
+		return &pb.RpcObjectCrossSpaceSearchUnsubscribeResponse{
+			Error: &pb.RpcObjectCrossSpaceSearchUnsubscribeResponseError{
+				Code:        pb.RpcObjectCrossSpaceSearchUnsubscribeResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcObjectCrossSpaceSearchUnsubscribeResponse{}
 }
 
 func (mw *Middleware) ObjectGroupsSubscribe(_ context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
