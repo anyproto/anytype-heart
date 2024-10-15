@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -27,12 +27,12 @@ type collectionObserver struct {
 	closeCh chan struct{}
 
 	cache             *cache
-	objectStore       objectstore.ObjectStore
+	objectStore       spaceindex.Store
 	collectionService CollectionService
 	recBatch          *mb.MB
 }
 
-func (s *service) newCollectionObserver(spaceId string, collectionID string, subID string) (*collectionObserver, error) {
+func (s *spaceSubscriptions) newCollectionObserver(spaceId string, collectionID string, subID string) (*collectionObserver, error) {
 	initialObjectIDs, objectsCh, err := s.collectionService.SubscribeForCollection(collectionID, subID)
 	if err != nil {
 		return nil, fmt.Errorf("subscribe for collection: %w", err)
@@ -179,7 +179,7 @@ func (c *collectionSub) close() {
 	c.sortedSub.close()
 }
 
-func (s *service) newCollectionSub(id string, spaceId string, collectionID string, keys []domain.RelationKey, filterDepIds []string, flt database.Filter, order database.Order, limit, offset int, disableDepSub bool) (*collectionSub, error) {
+func (s *spaceSubscriptions) newCollectionSub(id string, spaceId string, collectionID string, keys []domain.RelationKey, filterDepIds []string, flt database.Filter, order database.Order, limit, offset int, disableDepSub bool) (*collectionSub, error) {
 	obs, err := s.newCollectionObserver(spaceId, collectionID, id)
 	if err != nil {
 		return nil, err
@@ -228,7 +228,7 @@ func (c *collectionObserver) fetchEntries(ids []string) []*entry {
 	if len(missingIDs) == 0 {
 		return res
 	}
-	recs, err := c.objectStore.SpaceIndex(c.spaceId).QueryByIds(missingIDs)
+	recs, err := c.objectStore.QueryByIds(missingIDs)
 	if err != nil {
 		log.Error("can't query by ids:", err)
 	}

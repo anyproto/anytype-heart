@@ -138,6 +138,8 @@ func (o *objectProvider) loadObjectsAsync(ctx context.Context, objIDs []string) 
 		for _, id := range objIDs {
 			select {
 			case <-ctx.Done():
+				log.WarnCtx(ctx, "loadObjectsAsync context done", zap.Error(ctx.Err()), zap.String("spaceId", o.spaceId), zap.String("objectId", id))
+
 				results <- ctx.Err()
 				continue
 			case limiter <- struct{}{}:
@@ -148,6 +150,8 @@ func (o *objectProvider) loadObjectsAsync(ctx context.Context, objIDs []string) 
 				}()
 				_, err := o.cache.GetObject(ctx, id)
 				if err != nil {
+					log.WarnCtx(ctx, "loadObjectsAsync failed", zap.Error(err), zap.String("spaceId", o.spaceId), zap.String("objectId", id))
+
 					// we had a bug that allowed some users to remove their profile
 					// this workaround is to allow these users to load their accounts without errors and export their anytype data
 					if id == o.derivedObjectIds.Profile {

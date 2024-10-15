@@ -14,6 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -26,6 +27,11 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 	}
 	// Ensure ID is set
 	details.SetString(bundle.RelationKeyId, id)
+
+	// Only id is set
+	if details.Len() == 1 {
+		return fmt.Errorf("should be more than just id")
+	}
 
 	arena := s.arenaPool.Get()
 	defer func() {
@@ -42,7 +48,7 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 		return jsonVal, true, nil
 	}))
 	if isModified {
-		s.subManager.sendUpdatesToSubscriptions(id, details)
+		s.sendUpdatesToSubscriptions(id, details)
 	}
 
 	if err != nil {
@@ -50,6 +56,52 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 	}
 
 	return nil
+}
+
+func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
+	s.lock.Lock()
+	s.onChangeCallback = callback
+	s.lock.Unlock()
+}
+
+func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.Details) {
+	detCopy := details.Copy()
+	detCopy.SetString(bundle.RelationKeyId, id)
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	if s.onChangeCallback != nil {
+		s.onChangeCallback(database.Record{
+			Details: detCopy,
+		})
+	}
+	for _, sub := range s.subscriptions {
+		_ = sub.PublishAsync(id, detCopy)
+	}
+}
+
+// unsafe, use under mutex
+func (s *dsObjectStore) addSubscriptionIfNotExists(sub database.Subscription) (existed bool) {
+	for _, s := range s.subscriptions {
+		if s == sub {
+			return true
+		}
+	}
+
+	s.subscriptions = append(s.subscriptions, sub)
+	return false
+}
+
+func (s *dsObjectStore) closeAndRemoveSubscription(subscription database.Subscription) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	subscription.Close()
+
+	for i, sub := range s.subscriptions {
+		if sub == subscription {
+			s.subscriptions = append(s.subscriptions[:i], s.subscriptions[i+1:]...)
+			break
+		}
+	}
 }
 
 func (s *dsObjectStore) migrateLocalDetails(objectId string, details *domain.Details) bool {
@@ -178,7 +230,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 		if len(diff) == 0 {
 			return nil, false, nil
 		}
-		s.subManager.sendUpdatesToSubscriptions(id, newDetails)
+		s.sendUpdatesToSubscriptions(id, newDetails)
 		return jsonVal, true, nil
 	}))
 

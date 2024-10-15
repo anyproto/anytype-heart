@@ -189,6 +189,19 @@ func TestUploader_Upload(t *testing.T) {
 
 		assert.Equal(t, inputContent, string(gotContent))
 	})
+	t.Run("upload svg image", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.tearDown()
+
+		fileObjectId := fx.expectCreateObject()
+
+		b := newBlock(model.BlockContentFile_Image)
+		res := fx.Uploader.SetBlock(b).SetFile("./testdata/test.svg").Upload(ctx)
+		require.NoError(t, res.Err)
+		assert.Equal(t, res.FileObjectId, fileObjectId)
+		assert.Equal(t, res.Name, "test.svg")
+		assert.Equal(t, b.Model().GetFile().Name, "test.svg")
+	})
 }
 
 func newFileServiceFixture(t *testing.T) files.Service {

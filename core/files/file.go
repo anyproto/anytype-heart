@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/util/constant"
 )
 
 type File interface {
@@ -71,8 +72,6 @@ func (f *file) audioDetails(ctx context.Context) (*domain.Details, error) {
 	if t.Year() != 0 {
 		d.SetInt64(bundle.RelationKeyReleasedYear, int64(t.Year()))
 	}
-	d.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_audio))
-
 	return d, nil
 }
 
@@ -97,10 +96,15 @@ func (f *file) Details(ctx context.Context) (*domain.Details, domain.TypeKey, er
 	}
 
 	if strings.HasPrefix(meta.Media, "audio") {
+		details.Set(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_audio))
 		if audioDetails, err := f.audioDetails(ctx); err == nil {
 			details = details.Merge(audioDetails)
 		}
 		typeKey = bundle.TypeKeyAudio
+	}
+	if filepath.Ext(meta.Name) == constant.SvgExt {
+		typeKey = bundle.TypeKeyImage
+		details.Set(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_image))
 	}
 
 	return details, typeKey, nil

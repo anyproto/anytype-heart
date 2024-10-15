@@ -28,7 +28,7 @@ func wrapToEventMessages(vals []pb.IsEventMessageValue) []*pb.EventMessage {
 func TestInternalSubscriptionSingle(t *testing.T) {
 	fx := NewInternalTestService(t)
 	resp, err := fx.Search(SubscribeRequest{
-		SpaceId: "space1",
+		SpaceId: testSpaceId,
 		SubId:   "test",
 		Filters: []database.FilterRequest{
 			{
@@ -45,7 +45,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 	require.Empty(t, resp.Records)
 
 	t.Run("amend details not related to filter", func(t *testing.T) {
-		fx.AddObjects(t, "space1", []objectstore.TestObject{
+		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             domain.String("id1"),
 				bundle.RelationKeyName:           domain.String("task1"),
@@ -54,7 +54,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 			},
 		})
 		time.Sleep(batchTime)
-		fx.AddObjects(t, "space1", []objectstore.TestObject{
+		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id1"),
 				bundle.RelationKeyName:     domain.String("task1 renamed"),
@@ -75,7 +75,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 	})
 
 	t.Run("amend details related to filter -- remove from subscription", func(t *testing.T) {
-		fx.AddObjects(t, "space1", []objectstore.TestObject{
+		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id2"),
 				bundle.RelationKeyName:     domain.String("task2"),
@@ -84,7 +84,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 		})
 		time.Sleep(batchTime)
 
-		fx.AddObjects(t, "space1", []objectstore.TestObject{
+		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id2"),
 				bundle.RelationKeyName:     domain.String("task2"),
@@ -103,7 +103,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 		require.Equal(t, wrapToEventMessages(want), msgs)
 	})
 
-	t.Run("close", func(t *testing.T) {
+	t.Run("unsubscribe", func(t *testing.T) {
 		err = fx.Unsubscribe("test")
 		require.NoError(t, err)
 
@@ -113,7 +113,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 
 	t.Run("try to add after close", func(t *testing.T) {
 		time.Sleep(batchTime)
-		fx.AddObjects(t, "space1", []objectstore.TestObject{
+		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id3"),
 				bundle.RelationKeyName:     domain.String("task2"),
@@ -126,7 +126,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 func TestInternalSubscriptionMultiple(t *testing.T) {
 	fx := newFixtureWithRealObjectStore(t)
 	resp1, err := fx.Search(SubscribeRequest{
-		SpaceId: "space1",
+		SpaceId: testSpaceId,
 		SubId:   "internal1",
 		Filters: []database.FilterRequest{
 			{
@@ -139,7 +139,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		Internal: true,
 	})
 	_, err = fx.Search(SubscribeRequest{
-		SpaceId: "space1",
+		SpaceId: testSpaceId,
 		SubId:   "client1",
 		Filters: []database.FilterRequest{
 			{
@@ -151,7 +151,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
 	})
 	_, err = fx.Search(SubscribeRequest{
-		SpaceId: "space1",
+		SpaceId: testSpaceId,
 		SubId:   "client2",
 		Filters: []database.FilterRequest{
 			{
@@ -163,7 +163,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
 	})
 	resp4, err := fx.Search(SubscribeRequest{
-		SpaceId: "space1",
+		SpaceId: testSpaceId,
 		SubId:   "internal2",
 		Filters: []database.FilterRequest{
 			{
@@ -180,7 +180,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 	require.Empty(t, resp1.Records)
 
 	t.Run("amend details not related to filter", func(t *testing.T) {
-		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
+		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             domain.String("id1"),
 				bundle.RelationKeyName:           domain.String("task1"),
@@ -189,7 +189,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 			},
 		})
 		time.Sleep(batchTime)
-		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
+		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id1"),
 				bundle.RelationKeyName:     domain.String("task1 renamed"),
@@ -213,7 +213,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 	})
 
 	t.Run("amend details related to filter -- remove from subscription", func(t *testing.T) {
-		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
+		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id2"),
 				bundle.RelationKeyName:     domain.String("task2"),
@@ -222,7 +222,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		})
 		time.Sleep(batchTime)
 
-		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
+		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id2"),
 				bundle.RelationKeyName:     domain.String("task2"),
@@ -245,7 +245,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 	})
 
 	t.Run("add item satisfying filters from all subscription", func(t *testing.T) {
-		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
+		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:       domain.String("id3"),
 				bundle.RelationKeyName:     domain.String("Jane Doe"),
@@ -270,6 +270,125 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		want = givenMessagesForThirdObject(2, "id1", "client1", "client2")
 		fx.waitEvents(t, want...)
 	})
+}
+
+func TestInternalSubCustomQueue(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	subId := "test"
+	fx := newFixtureWithRealObjectStore(t)
+
+	queue := mb2.New[*pb.EventMessage](0)
+
+	resp, err := fx.Search(SubscribeRequest{
+		SpaceId: testSpaceId,
+		SubId:   subId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyPriority.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(10),
+			},
+		},
+		Keys:          []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
+		Internal:      true,
+		InternalQueue: queue,
+	})
+	require.NoError(t, err)
+	require.Same(t, resp.Output, queue)
+
+	obj := objectstore.TestObject{
+		bundle.RelationKeyId:       pbtypes.String("id1"),
+		bundle.RelationKeyName:     pbtypes.String("Jane Doe"),
+		bundle.RelationKeyPriority: pbtypes.Int64(10),
+	}
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{obj})
+
+	want := []pb.IsEventMessageValue{
+		&pb.EventMessageValueOfObjectDetailsSet{
+			ObjectDetailsSet: &pb.EventObjectDetailsSet{
+				Id:      "id1",
+				SubIds:  []string{subId},
+				Details: obj.Details(),
+			},
+		},
+		&pb.EventMessageValueOfSubscriptionAdd{
+			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+				SubId: subId,
+				Id:    "id1",
+			},
+		},
+		&pb.EventMessageValueOfSubscriptionCounters{
+			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+				SubId: subId,
+				Total: 1,
+			},
+		},
+	}
+
+	msgs, err := queue.NewCond().WithMin(len(want)).Wait(ctx)
+	require.NoError(t, err)
+	require.Equal(t, wrapToEventMessages(want), msgs)
+}
+
+func TestInternalSubAsyncInit(t *testing.T) {
+	ctx := context.Background()
+	subId := "test"
+	fx := newFixtureWithRealObjectStore(t)
+	obj := objectstore.TestObject{
+		bundle.RelationKeyId:       pbtypes.String("id1"),
+		bundle.RelationKeyName:     pbtypes.String("Jane Doe"),
+		bundle.RelationKeyPriority: pbtypes.Int64(10),
+	}
+
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		obj,
+	})
+
+	resp, err := fx.Search(SubscribeRequest{
+		SpaceId: testSpaceId,
+		SubId:   subId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyPriority.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(10),
+			},
+		},
+		Keys:      []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
+		Internal:  true,
+		AsyncInit: true,
+	})
+
+	require.NoError(t, err)
+	require.Empty(t, resp.Records)
+
+	want := []pb.IsEventMessageValue{
+		&pb.EventMessageValueOfObjectDetailsSet{
+			ObjectDetailsSet: &pb.EventObjectDetailsSet{
+				Id:      "id1",
+				SubIds:  []string{subId},
+				Details: obj.Details(),
+			},
+		},
+		&pb.EventMessageValueOfSubscriptionAdd{
+			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+				SubId: subId,
+				Id:    "id1",
+			},
+		},
+		&pb.EventMessageValueOfSubscriptionCounters{
+			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+				SubId: subId,
+				Total: 1,
+			},
+		},
+	}
+
+	msgs, err := resp.Output.NewCond().WithMin(len(want)).Wait(ctx)
+	require.NoError(t, err)
+	require.Equal(t, wrapToEventMessages(want), msgs)
 }
 
 func givenMessagesForFirstObject(subIds ...string) []pb.IsEventMessageValue {

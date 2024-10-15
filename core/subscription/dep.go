@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func newDependencyService(s *service) *dependencyService {
+func newDependencyService(s *spaceSubscriptions) *dependencyService {
 	return &dependencyService{
 		s:                s,
 		isRelationObjMap: map[domain.RelationKey]bool{},
@@ -17,7 +17,7 @@ func newDependencyService(s *service) *dependencyService {
 }
 
 type dependencyService struct {
-	s *service
+	s *spaceSubscriptions
 
 	isRelationObjMap map[domain.RelationKey]bool
 }
@@ -89,7 +89,7 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, spaceId string, dep
 		}
 	}
 	if len(missIds) > 0 {
-		records, err := ds.s.objectStore.SpaceIndex(spaceId).QueryByIds(missIds)
+		records, err := ds.s.objectStore.QueryByIds(missIds)
 		if err != nil {
 			log.Errorf("can't query by id: %v", err)
 		}
@@ -122,7 +122,7 @@ func (ds *dependencyService) isRelationObject(spaceId string, key domain.Relatio
 	if isObj, ok := ds.isRelationObjMap[key]; ok {
 		return isObj
 	}
-	relFormat, err := ds.s.objectStore.SpaceIndex(spaceId).GetRelationFormatByKey(key)
+	relFormat, err := ds.s.objectStore.GetRelationFormatByKey(key)
 	if err != nil {
 		log.Errorf("can't get relation %s: %v", key, err)
 		return false

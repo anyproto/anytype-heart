@@ -107,6 +107,14 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 
 type TestObject map[domain.RelationKey]domain.Value
 
+func (o TestObject) Id() string {
+	return o[bundle.RelationKeyId].String()
+}
+
+func (o TestObject) Details() *domain.Details {
+	return makeDetails(o)
+}
+
 func generateObjectWithRandomID() TestObject {
 	id := fmt.Sprintf("%d", rand.Int())
 	return TestObject{

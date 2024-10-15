@@ -4,7 +4,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-func (s *service) newSimpleSub(id string, spaceId string, keys []domain.RelationKey, isDep bool) *simpleSub {
+func (s *spaceSubscriptions) newSimpleSub(id string, spaceId string, keys []domain.RelationKey, isDep bool) *simpleSub {
 	sub := &simpleSub{
 		id:      id,
 		spaceId: spaceId,

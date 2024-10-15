@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/valyala/fastjson"
@@ -48,6 +49,7 @@ type Store interface {
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
 	UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error
+	SubscribeForAll(callback func(rec database.Record))
 	UpdateObjectLinks(ctx context.Context, id string, links []string) error
 	UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error
 	ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error
@@ -119,6 +121,11 @@ type dsObjectStore struct {
 	componentCtx       context.Context
 	arenaPool          *fastjson.ArenaPool
 	collatorBufferPool *collatorBufferPool
+
+	// State
+	lock             sync.RWMutex
+	subscriptions    []database.Subscription
+	onChangeCallback func(rec database.Record)
 }
 
 type Deps struct {
@@ -294,7 +301,10 @@ func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection
 			}
 		}
 	}
-	return coll.EnsureIndex(ctx, toCreate...)
+	if len(toCreate) > 0 {
+		return coll.EnsureIndex(ctx, toCreate...)
+	}
+	return nil
 }
 
 func (s *dsObjectStore) SpaceId() string {

@@ -33,7 +33,7 @@ func TestHTML_GetSnapshots(t *testing.T) {
 		Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
 			HtmlParams: &pb.RpcObjectImportRequestHtmlParams{Path: []string{"testdata/test.html", "testdata/test"}},
 		},
-		Type: model.Import_Txt,
+		Type: model.Import_Html,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 

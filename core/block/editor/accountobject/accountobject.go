@@ -2,12 +2,15 @@ package accountobject
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/gogo/protobuf/types"
 	"github.com/valyala/fastjson"
 	"go.uber.org/zap"
 
@@ -33,10 +36,12 @@ import (
 var log = logger.NewNamedSugared("common.editor.accountobject")
 
 const (
-	collectionName   = "account"
-	accountDocument  = "accountObject"
-	analyticsKey     = "analyticsId"
-	iconMigrationKey = "iconMigration"
+	collectionName        = "account"
+	accountDocument       = "accountObject"
+	idKey                 = "id"
+	analyticsKey          = "analyticsId"
+	iconMigrationKey      = "iconMigration"
+	privateAnalyticsIdKey = "privateAnalyticsId"
 )
 
 type ProfileDetails struct {
@@ -54,6 +59,7 @@ type AccountObject interface {
 	IsIconMigrated() (bool, error)
 	SetAnalyticsId(analyticsId string) (err error)
 	GetAnalyticsId() (string, error)
+	GetPrivateAnalyticsId() string
 }
 
 type StoreDbProvider interface {
@@ -135,10 +141,9 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	}
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		var docToInsert string
-		if a.cfg.IsNewAccount() {
-			docToInsert = fmt.Sprintf(`{"id":"%s","analyticsId":"%s","%s":"true"}`, accountDocument, a.cfg.AnalyticsId, iconMigrationKey)
-		} else {
-			docToInsert = fmt.Sprintf(`{"id":"%s"}`, accountDocument)
+		docToInsert, err = a.genInitialDoc(true)
+		if err != nil {
+			return fmt.Errorf("generate initial doc: %w", err)
 		}
 		err = coll.Insert(ctx.Ctx, docToInsert)
 		if err != nil {
@@ -155,6 +160,34 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("init state: %w", err)
 	}
 	return a.SmartBlock.Apply(st, smartblock.NotPushChanges, smartblock.NoHistory, smartblock.SkipIfNoChanges)
+}
+
+// GetPrivateAnalyticsId returns the private analytics id of the account object, should not be used directly
+// only when hashing it with other data, e.g. hash(privateAnalyticsId + someData)
+func (a *accountObject) GetPrivateAnalyticsId() string {
+	val, err := a.getValue()
+	if err != nil {
+		return ""
+	}
+	return string(val.GetStringBytes(privateAnalyticsIdKey))
+}
+
+func (a *accountObject) genInitialDoc(isNewAccount bool) (docToInsert string, err error) {
+	privateAnalytics, err := generatePrivateAnalyticsId()
+	if err != nil {
+		err = fmt.Errorf("generate private analytics id: %w", err)
+	}
+	if isNewAccount {
+		docToInsert = fmt.Sprintf(
+			`{"%s":"%s","%s":"%s","%s":"true","%s":"%s"}`,
+			idKey, accountDocument,
+			analyticsKey, a.cfg.AnalyticsId,
+			iconMigrationKey,
+			privateAnalyticsIdKey, privateAnalytics)
+	} else {
+		docToInsert = fmt.Sprintf(`{"%s":"%s"}`, idKey, accountDocument)
+	}
+	return
 }
 
 func (a *accountObject) initState(st *state.State) error {
@@ -216,7 +249,25 @@ func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string,
 }
 
 func (a *accountObject) SetAnalyticsId(id string) error {
-	return a.setValue(analyticsKey, fmt.Sprintf(`"%s"`, id))
+	builder := &storestate.Builder{}
+	err := builder.Modify(collectionName, accountDocument, []string{analyticsKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, id))
+	if err != nil {
+		return nil
+	}
+	privateAnalyticsId, err := generatePrivateAnalyticsId()
+	if err != nil {
+		return fmt.Errorf("generate private analytics id: %w", err)
+	}
+	err = builder.Modify(collectionName, accountDocument, []string{privateAnalyticsIdKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, privateAnalyticsId))
+	if err != nil {
+		return nil
+	}
+	_, err = a.storeSource.PushStoreChange(a.ctx, source.PushStoreChangeParams{
+		Changes: builder.ChangeSet,
+		State:   a.state,
+		Time:    time.Now(),
+	})
+	return err
 }
 
 func (a *accountObject) onUpdate() {
@@ -335,4 +386,12 @@ func (a *accountObject) update(ctx context.Context, st *state.State) (err error)
 		st.SetDetailAndBundledRelation(domain.RelationKey(key), pbVal)
 	}
 	return
+}
+
+func generatePrivateAnalyticsId() (string, error) {
+	raw := make([]byte, 64)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	return crypto.EncodeBytesToString(raw), nil
 }

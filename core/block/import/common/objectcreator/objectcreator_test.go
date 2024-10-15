@@ -2,11 +2,15 @@ package objectcreator
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
+	"github.com/anyproto/any-sync/app"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -29,7 +33,6 @@ func TestObjectCreator_Create(t *testing.T) {
 		mockSpace := mock_clientspace.NewMockSpace(t)
 		mockSpace.EXPECT().IsReadOnly().Return(true)
 		mockService.EXPECT().Get(context.Background(), spaceID).Return(mockSpace, nil)
-		service := New(detailsService, nil, nil, nil, mockService, objectcreator.NewCreator(), nil)
 
 		importedSpaceId := "importedSpaceID"
 		identity := "identity"
@@ -69,7 +72,11 @@ func TestObjectCreator_Create(t *testing.T) {
 		err := testParticipant.Apply(st)
 		assert.Nil(t, err)
 
-		detailsService.EXPECT().GetObject(context.Background(), participantId).Return(testParticipant, nil)
+		getter := newDumbObjectGetter(map[string]smartblock.SmartBlock{
+			participantId: testParticipant,
+		})
+
+		service := New(detailsService, nil, nil, nil, mockService, objectcreator.NewCreator(), getter)
 
 		// when
 		create, id, err := service.Create(dataObject, sn)
@@ -146,4 +153,38 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		assert.Equal(t, "test", doc.Details().GetString("key"))
 		assert.True(t, doc.HasRelation("key"))
 	})
+}
+
+type dumbObjectGetter struct {
+	objects map[string]smartblock.SmartBlock
+}
+
+func newDumbObjectGetter(objects map[string]smartblock.SmartBlock) *dumbObjectGetter {
+	return &dumbObjectGetter{
+		objects: objects,
+	}
+}
+
+func (g *dumbObjectGetter) Init(_ *app.App) error {
+	return nil
+}
+
+func (g *dumbObjectGetter) Name() string {
+	return "dumbObjectGetter"
+}
+
+func (g *dumbObjectGetter) GetObject(_ context.Context, id string) (smartblock.SmartBlock, error) {
+	if b, ok := g.objects[id]; ok {
+		return b, nil
+	}
+	return nil, fmt.Errorf("object not found")
+}
+
+func (g *dumbObjectGetter) GetObjectByFullID(ctx context.Context, id domain.FullID) (smartblock.SmartBlock, error) {
+	return g.GetObject(ctx, id.ObjectID)
+}
+
+func (g *dumbObjectGetter) DeleteObject(id string) error {
+	delete(g.objects, id)
+	return nil
 }

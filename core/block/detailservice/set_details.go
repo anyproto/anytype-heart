@@ -40,7 +40,7 @@ func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
 }
 
 func (s *service) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error) {
-	err = cache.Do(s, workspaceId, func(ws *editor.Workspaces) error {
+	err = cache.Do(s.objectGetter, workspaceId, func(ws *editor.Workspaces) error {
 		if ws.Type() != coresb.SmartBlockTypeWorkspace {
 			return ErrUnexpectedBlockType
 		}
@@ -151,13 +151,13 @@ func (s *service) checkArchivedRestriction(isArchived bool, objectId string) err
 	if !isArchived {
 		return nil
 	}
-	return cache.Do(s, objectId, func(sb smartblock.SmartBlock) error {
+	return cache.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
 		return s.restriction.CheckRestrictions(sb, model.Restrictions_Delete)
 	})
 }
 
 func (s *service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
-	return cache.Do(s, collectionId, func(b smartblock.SmartBlock) error {
+	return cache.Do(s.objectGetter, collectionId, func(b smartblock.SmartBlock) error {
 		coll, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unsupported sb block type: %T", b)
@@ -187,7 +187,7 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
+	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)

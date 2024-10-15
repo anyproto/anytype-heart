@@ -54,7 +54,7 @@ func TestIndexer(t *testing.T) {
 			indexerFx.store.SpaceIndex("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "7f40bc2814f5297818461f889780a870ea033fe64c5a261117f2b662515a3dba")
 
 			// when
-			err := indexerFx.Index(context.Background(), smartTest.GetDocInfo(), testCase.options)
+			err := indexerFx.Index(smartTest.GetDocInfo(), testCase.options)
 
 			// then
 			assert.NoError(t, err)
@@ -82,7 +82,7 @@ func TestIndexer(t *testing.T) {
 			indexerFx.store.SpaceIndex("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "randomHash")
 
 			// when
-			err := indexerFx.Index(context.Background(), smartTest.GetDocInfo(), testCase.options)
+			err := indexerFx.Index(smartTest.GetDocInfo(), testCase.options)
 
 			// then
 			assert.NoError(t, err)
@@ -111,7 +111,7 @@ func TestIndexer(t *testing.T) {
 		indexerFx.store.SpaceIndex("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "7f40bc2814f5297818461f889780a870ea033fe64c5a261117f2b662515a3dba")
 
 		// when
-		err := indexerFx.Index(context.Background(), smartTest.GetDocInfo())
+		err := indexerFx.Index(smartTest.GetDocInfo())
 
 		// then
 		assert.NoError(t, err)

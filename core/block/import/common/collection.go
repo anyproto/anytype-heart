@@ -18,25 +18,46 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-type RootCollection struct {
-	service *collection.Service
+type ImportCollectionSetting struct {
+	collectionName                                      string
+	targetObjects                                       []string
+	icon                                                string
+	fileKeys                                            []*pb.ChangeFileKeys
+	needToAddDate, shouldBeFavorite, shouldAddRelations bool
 }
 
-func NewRootCollection(service *collection.Service) *RootCollection {
-	return &RootCollection{service: service}
-}
-
-func (r *RootCollection) MakeRootCollection(collectionName string,
+func MakeImportCollectionSetting(
+	collectionName string,
 	targetObjects []string,
 	icon string,
 	fileKeys []*pb.ChangeFileKeys,
-	needToAddDate, shouldBeFavorite bool,
-) (*Snapshot, error) {
-	if needToAddDate {
-		importDate := time.Now().Format(time.RFC3339)
-		collectionName = fmt.Sprintf("%s %s", collectionName, importDate)
+	needToAddDate, shouldBeFavorite, shouldAddRelations bool,
+) *ImportCollectionSetting {
+	return &ImportCollectionSetting{
+		collectionName:     collectionName,
+		targetObjects:      targetObjects,
+		icon:               icon,
+		fileKeys:           fileKeys,
+		needToAddDate:      needToAddDate,
+		shouldBeFavorite:   shouldBeFavorite,
+		shouldAddRelations: shouldAddRelations,
 	}
-	detailsStruct := r.getCreateCollectionRequest(collectionName, icon, shouldBeFavorite)
+}
+
+type ImportCollection struct {
+	service *collection.Service
+}
+
+func NewImportCollection(service *collection.Service) *ImportCollection {
+	return &ImportCollection{service: service}
+}
+
+func (r *ImportCollection) MakeImportCollection(req *ImportCollectionSetting) (*Snapshot, error) {
+	if req.needToAddDate {
+		importDate := time.Now().Format(time.RFC3339)
+		req.collectionName = fmt.Sprintf("%s %s", req.collectionName, importDate)
+	}
+	detailsStruct := r.getCreateCollectionRequest(req.collectionName, req.icon, req.shouldBeFavorite)
 	_, _, st, err := r.service.CreateCollection(detailsStruct, []*model.InternalFlag{{
 		Value: model.InternalFlag_collectionDontIndexLinks,
 	}})
@@ -44,18 +65,20 @@ func (r *RootCollection) MakeRootCollection(collectionName string,
 		return nil, err
 	}
 
-	err = r.addRelations(st)
-	if err != nil {
-		return nil, err
+	if req.shouldAddRelations {
+		err = r.addRelations(st)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	detailsStruct = st.CombinedDetails().Merge(detailsStruct)
-	st.UpdateStoreSlice(template.CollectionStoreKey, targetObjects)
+	st.UpdateStoreSlice(template.CollectionStoreKey, req.targetObjects)
 
-	return r.getRootCollectionSnapshot(collectionName, st, detailsStruct, fileKeys), nil
+	return r.getRootCollectionSnapshot(req.collectionName, st, detailsStruct, req.fileKeys), nil
 }
 
-func (r *RootCollection) getRootCollectionSnapshot(
+func (r *ImportCollection) getRootCollectionSnapshot(
 	collectionName string,
 	st *state.State,
 	detailsStruct *domain.Details,
@@ -82,7 +105,7 @@ func (r *RootCollection) getRootCollectionSnapshot(
 	}
 }
 
-func (r *RootCollection) addRelations(st *state.State) error {
+func (r *ImportCollection) addRelations(st *state.State) error {
 	for _, relation := range []*model.RelationLink{
 		{
 			Key:    bundle.RelationKeyTag.String(),
@@ -101,14 +124,16 @@ func (r *RootCollection) addRelations(st *state.State) error {
 	return nil
 }
 
-func (r *RootCollection) getCreateCollectionRequest(collectionName string, icon string, shouldBeFavorite bool) *domain.Details {
-	details := domain.NewDetails()
-	details.SetString(bundle.RelationKeySourceFilePath, collectionName)
-	details.SetString(bundle.RelationKeyName, collectionName)
-	details.SetBool(bundle.RelationKeyIsFavorite, shouldBeFavorite)
-	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
-	details.SetString(bundle.RelationKeyIconImage, icon)
-	return details
+func (r *ImportCollection) getCreateCollectionRequest(collectionName string, icon string, shouldBeFavorite bool) *domain.Details {
+	details := make(map[string]*types.Value, 0)
+	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(collectionName)
+	details[bundle.RelationKeyName.String()] = pbtypes.String(collectionName)
+	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(shouldBeFavorite)
+	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+	details[bundle.RelationKeyIconImage.String()] = pbtypes.String(icon)
+
+	detailsStruct := &types.Struct{Fields: details}
+	return detailsStruct
 }
 
 func ReplaceRelationsInDataView(st *state.State, rel *model.RelationLink) error {

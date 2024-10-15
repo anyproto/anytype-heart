@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -32,6 +33,7 @@ const spaceId = "spaceId"
 
 type fixture struct {
 	Service
+	getter       *mock_cache.MockObjectGetter
 	resolver     *mock_idresolver.MockResolver
 	spaceService *mock_space.MockService
 	store        *objectstore.StoreFixture
@@ -40,6 +42,7 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
+	getter := mock_cache.NewMockObjectGetter(t)
 	resolver := mock_idresolver.NewMockResolver(t)
 	spaceService := mock_space.NewMockService(t)
 	store := objectstore.NewStoreFixture(t)
@@ -50,6 +53,7 @@ func newFixture(t *testing.T) *fixture {
 	spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(spc, nil).Maybe()
 
 	s := &service{
+		objectGetter: getter,
 		resolver:     resolver,
 		spaceService: spaceService,
 		store:        store,
@@ -58,6 +62,7 @@ func newFixture(t *testing.T) *fixture {
 
 	return &fixture{
 		s,
+		getter,
 		resolver,
 		spaceService,
 		store,
@@ -81,7 +86,7 @@ func TestService_SetDetailsList(t *testing.T) {
 			"obj2": smarttest.New("obj2"),
 			"obj3": smarttest.New("obj3"),
 		}
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			object, ok := objects[objectId]
 			require.True(t, ok)
 			return object, nil
@@ -111,7 +116,7 @@ func TestService_SetDetailsList(t *testing.T) {
 	t.Run("some updates failed", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId != "obj2" {
 				return nil, fmt.Errorf("failed to find object")
 			}
@@ -128,7 +133,7 @@ func TestService_SetDetailsList(t *testing.T) {
 	t.Run("all updates failed", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, _ string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, _ string) (smartblock.SmartBlock, error) {
 			return nil, fmt.Errorf("failed to find object")
 		})
 
@@ -154,7 +159,7 @@ func TestService_ModifyDetailsList(t *testing.T) {
 			"obj2": smarttest.New("obj2"),
 			"obj3": smarttest.New("obj3"),
 		}
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			object, ok := objects[objectId]
 			require.True(t, ok)
 			return object, nil
@@ -178,7 +183,7 @@ func TestService_ModifyDetailsList(t *testing.T) {
 	t.Run("some updates failed", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId != "obj2" {
 				return nil, fmt.Errorf("failed to find object")
 			}
@@ -198,7 +203,7 @@ func TestService_ModifyDetailsList(t *testing.T) {
 	t.Run("all updates failed", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, _ string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, _ string) (smartblock.SmartBlock, error) {
 			return nil, fmt.Errorf("failed to find object")
 		})
 
@@ -228,7 +233,7 @@ func TestService_SetSpaceInfo(t *testing.T) {
 		fx := newFixture(t)
 		ws := smarttest.New(wsObjectId)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: wsObjectId})
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			assert.Equal(t, wsObjectId, objectId)
 			return ws, nil
 		})
@@ -247,7 +252,7 @@ func TestService_SetSpaceInfo(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: wsObjectId})
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			assert.Equal(t, wsObjectId, objectId)
 			return nil, fmt.Errorf("failed to get object")
 		})
@@ -271,7 +276,7 @@ func TestService_SetWorkspaceDashboardId(t *testing.T) {
 		fx := newFixture(t)
 		sb := smarttest.New(wsObjectId)
 		sb.SetType(coresb.SmartBlockTypeWorkspace)
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			assert.Equal(t, wsObjectId, objectId)
 			ws := &editor.Workspaces{
 				SmartBlock:    sb,
@@ -294,7 +299,7 @@ func TestService_SetWorkspaceDashboardId(t *testing.T) {
 		fx := newFixture(t)
 		sb := smarttest.New(wsObjectId)
 		sb.SetType(coresb.SmartBlockTypePage)
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			assert.Equal(t, wsObjectId, objectId)
 			ws := &editor.Workspaces{
 				SmartBlock:    sb,
@@ -329,7 +334,7 @@ func TestService_SetListIsFavorite(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: homeId, ChildrenIds: []string{}}))
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			require.Equal(t, homeId, objectId)
 			return editor.NewDashboard(sb, fx.store.SpaceIndex(spaceId), nil), nil
 		})
@@ -352,7 +357,7 @@ func TestService_SetListIsFavorite(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: "obj3", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj3"}}}))
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			require.Equal(t, homeId, objectId)
 			return editor.NewDashboard(sb, fx.store.SpaceIndex(spaceId), nil), nil
 		})
@@ -373,7 +378,7 @@ func TestService_SetListIsFavorite(t *testing.T) {
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
 		flag := false
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			require.Equal(t, homeId, objectId)
 			if flag {
 				return nil, fmt.Errorf("unexpected error")
@@ -395,7 +400,7 @@ func TestService_SetListIsFavorite(t *testing.T) {
 		fx := newFixture(t)
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			require.Equal(t, homeId, objectId)
 			return nil, fmt.Errorf("unexpected error")
 		})
@@ -423,7 +428,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
 				return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
 			}
@@ -445,7 +450,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		sb := smarttest.New(binId)
 		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
 		fx.store.AddObjects(t, spaceId, objects)
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
 				return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
 			}
@@ -479,7 +484,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
 				return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
 			}
@@ -507,7 +512,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
 				return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
 			}
@@ -529,7 +534,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
 				return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
 			}
@@ -553,7 +558,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		fx := newFixture(t)
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			return nil, fmt.Errorf("failed to get object")
 		})
 

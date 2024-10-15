@@ -55,8 +55,9 @@ func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 			return item.Id, false
 		})
 	}
-	rootCollection := common.NewRootCollection(s.service)
-	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, rootObjects, "", nil, true, true)
+	rootCollection := common.NewImportCollection(s.service)
+	settings := common.MakeImportCollectionSetting(rootCollectionName, rootObjects, "", nil, true, true, true)
+	rootCollectionSnapshot, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, err
 	}

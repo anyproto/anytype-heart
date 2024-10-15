@@ -178,9 +178,9 @@ func (_c *MockSpaceCoreService_Create_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// Delete provides a mock function with given fields: ctx, spaceID
-func (_m *MockSpaceCoreService) Delete(ctx context.Context, spaceID string) error {
-	ret := _m.Called(ctx, spaceID)
+// Delete provides a mock function with given fields: ctx, spaceId
+func (_m *MockSpaceCoreService) Delete(ctx context.Context, spaceId string) error {
+	ret := _m.Called(ctx, spaceId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Delete")
@@ -188,7 +188,7 @@ func (_m *MockSpaceCoreService) Delete(ctx context.Context, spaceID string) erro
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = rf(ctx, spaceID)
+		r0 = rf(ctx, spaceId)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -203,12 +203,12 @@ type MockSpaceCoreService_Delete_Call struct {
 
 // Delete is a helper method to define mock.On call
 //   - ctx context.Context
-//   - spaceID string
-func (_e *MockSpaceCoreService_Expecter) Delete(ctx interface{}, spaceID interface{}) *MockSpaceCoreService_Delete_Call {
-	return &MockSpaceCoreService_Delete_Call{Call: _e.mock.On("Delete", ctx, spaceID)}
+//   - spaceId string
+func (_e *MockSpaceCoreService_Expecter) Delete(ctx interface{}, spaceId interface{}) *MockSpaceCoreService_Delete_Call {
+	return &MockSpaceCoreService_Delete_Call{Call: _e.mock.On("Delete", ctx, spaceId)}
 }
 
-func (_c *MockSpaceCoreService_Delete_Call) Run(run func(ctx context.Context, spaceID string)) *MockSpaceCoreService_Delete_Call {
+func (_c *MockSpaceCoreService_Delete_Call) Run(run func(ctx context.Context, spaceId string)) *MockSpaceCoreService_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
@@ -592,6 +592,63 @@ func (_c *MockSpaceCoreService_Run_Call) Return(err error) *MockSpaceCoreService
 }
 
 func (_c *MockSpaceCoreService_Run_Call) RunAndReturn(run func(context.Context) error) *MockSpaceCoreService_Run_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StorageExistsLocally provides a mock function with given fields: ctx, spaceId
+func (_m *MockSpaceCoreService) StorageExistsLocally(ctx context.Context, spaceId string) (bool, error) {
+	ret := _m.Called(ctx, spaceId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StorageExistsLocally")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (bool, error)); ok {
+		return rf(ctx, spaceId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) bool); ok {
+		r0 = rf(ctx, spaceId)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, spaceId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSpaceCoreService_StorageExistsLocally_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StorageExistsLocally'
+type MockSpaceCoreService_StorageExistsLocally_Call struct {
+	*mock.Call
+}
+
+// StorageExistsLocally is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+func (_e *MockSpaceCoreService_Expecter) StorageExistsLocally(ctx interface{}, spaceId interface{}) *MockSpaceCoreService_StorageExistsLocally_Call {
+	return &MockSpaceCoreService_StorageExistsLocally_Call{Call: _e.mock.On("StorageExistsLocally", ctx, spaceId)}
+}
+
+func (_c *MockSpaceCoreService_StorageExistsLocally_Call) Run(run func(ctx context.Context, spaceId string)) *MockSpaceCoreService_StorageExistsLocally_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockSpaceCoreService_StorageExistsLocally_Call) Return(exists bool, err error) *MockSpaceCoreService_StorageExistsLocally_Call {
+	_c.Call.Return(exists, err)
+	return _c
+}
+
+func (_c *MockSpaceCoreService_StorageExistsLocally_Call) RunAndReturn(run func(context.Context, string) (bool, error)) *MockSpaceCoreService_StorageExistsLocally_Call {
 	_c.Call.Return(run)
 	return _c
 }

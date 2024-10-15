@@ -185,3 +185,7 @@ func (s *invalidStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, 
 func (s *invalidStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	return nil, s.err
 }
+
+func (s *invalidStore) SubscribeForAll(callback func(rec database.Record)) {
+
+}

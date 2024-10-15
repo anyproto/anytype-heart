@@ -24,7 +24,7 @@ import (
 )
 
 type fixture struct {
-	Service
+	*service
 	a                 *app.App
 	ctrl              *gomock.Controller
 	store             *objectstore.StoreFixture
@@ -36,6 +36,7 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
+
 	ctrl := gomock.NewController(t)
 	a := new(app.App)
 	store := objectstore.NewStoreFixture(t)
@@ -49,9 +50,10 @@ func newFixture(t *testing.T) *fixture {
 
 	collectionService := &collectionServiceMock{MockCollectionService: NewMockCollectionService(t)}
 	a.Register(collectionService)
+	a.Register(testutil.PrepareMock(ctx, a, kanbanService))
 
 	fx := &fixture{
-		Service:           New(),
+		service:           New().(*service),
 		a:                 a,
 		ctrl:              ctrl,
 		store:             store,
@@ -65,10 +67,10 @@ func newFixture(t *testing.T) *fixture {
 		fx.events = append(fx.events, e)
 	}).Maybe()
 	fx.sender = sender
-	a.Register(fx.Service)
+	a.Register(fx.service)
 	a.Register(fx.sender)
 
-	require.NoError(t, a.Start(context.Background()))
+	require.NoError(t, a.Start(ctx))
 	return fx
 }
 

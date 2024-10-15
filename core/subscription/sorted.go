@@ -7,7 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
 var (
@@ -16,7 +16,7 @@ var (
 	ErrNoRecords = errors.New("no records with given offset")
 )
 
-func (s *service) newSortedSub(id string, spaceId string, keys []domain.RelationKey, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
+func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []domain.RelationKey, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
 	sub := &sortedSub{
 		id:          id,
 		spaceId:     spaceId,
@@ -60,7 +60,7 @@ type sortedSub struct {
 	ds    *dependencyService
 
 	// for nested subscriptions
-	objectStore objectstore.ObjectStore
+	objectStore spaceindex.Store
 	// parent is used to run onChange callback when any child subscriptions receive changes
 	parent       *sortedSub
 	parentFilter *database.FilterNestedIn
@@ -193,7 +193,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	}
 
 	if s.parent != nil {
-		parentEntries, err := queryEntries(s.objectStore.SpaceIndex(s.spaceId), &database.Filters{FilterObj: s.parent.filter})
+		parentEntries, err := queryEntries(s.objectStore, &database.Filters{FilterObj: s.parent.filter})
 		if err != nil {
 			panic(err)
 		}

@@ -29,6 +29,7 @@ func relationObject(key domain.RelationKey, format model.RelationFormat) objects
 }
 
 func TestService_ListRelationsWithValue(t *testing.T) {
+	now := time.Now()
 	store := objectstore.NewStoreFixture(t)
 	store.AddObjects(t, spaceId, []objectstore.TestObject{
 		// relations
@@ -44,9 +45,9 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		{
 			bundle.RelationKeyId:               domain.String("obj1"),
 			bundle.RelationKeySpaceId:          domain.String(spaceId),
-			bundle.RelationKeyCreatedDate:      domain.Int64(time.Now().Add(-5 * time.Minute).Unix()),
-			bundle.RelationKeyAddedDate:        domain.Int64(time.Now().Add(-3 * time.Minute).Unix()),
-			bundle.RelationKeyLastModifiedDate: domain.Int64(time.Now().Add(-1 * time.Minute).Unix()),
+			bundle.RelationKeyCreatedDate:      domain.Int64(now.Add(-5 * time.Minute).Unix()),
+			bundle.RelationKeyAddedDate:        domain.Int64(now.Add(-3 * time.Minute).Unix()),
+			bundle.RelationKeyLastModifiedDate: domain.Int64(now.Add(-1 * time.Minute).Unix()),
 			bundle.RelationKeyIsFavorite:       domain.Bool(true),
 			"daysTillSummer":                   domain.Int64(300),
 			bundle.RelationKeyLinks:            domain.StringList([]string{"obj2", "obj3"}),
@@ -54,18 +55,18 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		{
 			bundle.RelationKeyId:               domain.String("obj2"),
 			bundle.RelationKeySpaceId:          domain.String(spaceId),
-			bundle.RelationKeyName:             domain.String(addr.TimeToID(time.Now())),
-			bundle.RelationKeyCreatedDate:      domain.Int64(time.Now().Add(-24*time.Hour - 5*time.Minute).Unix()),
-			bundle.RelationKeyAddedDate:        domain.Int64(time.Now().Add(-24*time.Hour - 3*time.Minute).Unix()),
-			bundle.RelationKeyLastModifiedDate: domain.Int64(time.Now().Add(-1 * time.Minute).Unix()),
+			bundle.RelationKeyName:             domain.String(addr.TimeToID(now)),
+			bundle.RelationKeyCreatedDate:      domain.Int64(now.Add(-24*time.Hour - 5*time.Minute).Unix()),
+			bundle.RelationKeyAddedDate:        domain.Int64(now.Add(-24*time.Hour - 3*time.Minute).Unix()),
+			bundle.RelationKeyLastModifiedDate: domain.Int64(now.Add(-1 * time.Minute).Unix()),
 			bundle.RelationKeyCoverX:           domain.Int64(300),
 		},
 		{
 			bundle.RelationKeyId:               domain.String("obj3"),
 			bundle.RelationKeySpaceId:          domain.String(spaceId),
 			bundle.RelationKeyIsHidden:         domain.Bool(true),
-			bundle.RelationKeyCreatedDate:      domain.Int64(time.Now().Add(-3 * time.Minute).Unix()),
-			bundle.RelationKeyLastModifiedDate: domain.Int64(time.Now().Unix()),
+			bundle.RelationKeyCreatedDate:      domain.Int64(now.Add(-3 * time.Minute).Unix()),
+			bundle.RelationKeyLastModifiedDate: domain.Int64(now.Unix()),
 			bundle.RelationKeyIsFavorite:       domain.Bool(true),
 			bundle.RelationKeyCoverX:           domain.Int64(300),
 		},
@@ -81,13 +82,13 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 	}{
 		{
 			"date object - today",
-			domain.String(addr.TimeToID(time.Now())),
+			domain.String(addr.TimeToID(now)),
 			[]domain.RelationKey{bundle.RelationKeyAddedDate, bundle.RelationKeyCreatedDate, bundle.RelationKeyLastModifiedDate, bundle.RelationKeyName},
 			[]int64{1, 2, 3, 1},
 		},
 		{
 			"date object - yesterday",
-			domain.String(addr.TimeToID(time.Now().Add(-24 * time.Hour))),
+			domain.String(addr.TimeToID(now.Add(-24 * time.Hour))),
 			[]domain.RelationKey{bundle.RelationKeyAddedDate, bundle.RelationKeyCreatedDate},
 			[]int64{1, 1},
 		},
@@ -125,7 +126,7 @@ func TestService_ObjectTypeAddRelations(t *testing.T) {
 		fx := newFixture(t)
 		sb := smarttest.New(bundle.TypeKeyTask.URL())
 		sb.SetSpace(fx.space)
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
 			assert.Equal(t, bundle.TypeKeyTask.URL(), objectId)
 			return sb, nil
 		})
@@ -173,7 +174,7 @@ func TestService_ObjectTypeRemoveRelations(t *testing.T) {
 				bundle.RelationKeyLinkedProjects.URL(),
 			}),
 		}))
-		fx.space.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
 			assert.Equal(t, bundle.TypeKeyTask.URL(), objectId)
 			return sb, nil
 		})

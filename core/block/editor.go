@@ -8,13 +8,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
-	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -133,102 +131,6 @@ func (s *Service) SetFields(ctx session.Context, req pb.RpcBlockSetFieldsRequest
 func (s *Service) SetFieldsList(ctx session.Context, req pb.RpcBlockListSetFieldsRequest) (err error) {
 	return cache.Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return b.SetFields(ctx, req.BlockFields...)
-	})
-}
-
-func (s *Service) GetAggregatedRelations(
-	ctx session.Context,
-	req pb.RpcBlockDataviewRelationListAvailableRequest,
-) (relations []*model.Relation, err error) {
-	err = cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		// todo: remove or replace
-		// relations, err = b.GetAggregatedRelations(req.BlockId)
-		return err
-	})
-
-	return
-}
-
-func (s *Service) UpdateDataviewView(ctx session.Context, req pb.RpcBlockDataviewViewUpdateRequest) error {
-	return cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		return b.UpdateView(ctx, req.BlockId, req.ViewId, req.View, true)
-	})
-}
-
-func (s *Service) UpdateDataviewGroupOrder(ctx session.Context, req pb.RpcBlockDataviewGroupOrderUpdateRequest) error {
-	return cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		return b.UpdateViewGroupOrder(ctx, req.BlockId, req.GroupOrder)
-	})
-}
-
-func (s *Service) UpdateDataviewObjectOrder(
-	ctx session.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest,
-) error {
-	return cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		return b.UpdateViewObjectOrder(ctx, req.BlockId, req.ObjectOrders)
-	})
-}
-
-func (s *Service) DataviewMoveObjectsInView(
-	ctx session.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest,
-) error {
-	return cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		return b.DataviewMoveObjectsInView(ctx, req)
-	})
-}
-
-func (s *Service) DeleteDataviewView(ctx session.Context, req pb.RpcBlockDataviewViewDeleteRequest) error {
-	return cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		return b.DeleteView(ctx, req.BlockId, req.ViewId, true)
-	})
-}
-
-func (s *Service) SetDataviewActiveView(ctx session.Context, req pb.RpcBlockDataviewViewSetActiveRequest) error {
-	return cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		return b.SetActiveView(ctx, req.BlockId, req.ViewId)
-	})
-}
-
-func (s *Service) SetDataviewViewPosition(ctx session.Context, req pb.RpcBlockDataviewViewSetPositionRequest) error {
-	return cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		return b.SetViewPosition(ctx, req.BlockId, req.ViewId, req.Position)
-	})
-}
-
-func (s *Service) CreateDataviewView(
-	ctx session.Context, req pb.RpcBlockDataviewViewCreateRequest,
-) (id string, err error) {
-	err = cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		if req.View == nil {
-			req.View = &model.BlockContentDataviewView{CardSize: model.BlockContentDataviewView_Medium}
-		}
-		view, e := b.CreateView(ctx, req.BlockId, *req.View, req.Source)
-		if e != nil {
-			return e
-		}
-		id = view.Id
-		return nil
-	})
-	return
-}
-
-func (s *Service) AddDataviewRelation(ctx session.Context, req pb.RpcBlockDataviewRelationAddRequest) (err error) {
-	err = cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		return b.AddRelations(ctx, req.BlockId, req.RelationKeys, true)
-	})
-
-	return
-}
-
-func (s *Service) DeleteDataviewRelation(ctx session.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error {
-	return cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		return b.DeleteRelations(ctx, req.BlockId, req.RelationKeys, true)
-	})
-}
-
-func (s *Service) SetDataviewSource(ctx session.Context, contextId, blockId string, source []string) (err error) {
-	return cache.Do(s, contextId, func(b dataview.Dataview) error {
-		return b.SetSource(ctx, blockId, source)
 	})
 }
 
@@ -794,48 +696,4 @@ func (s *Service) CreateWidgetBlock(ctx session.Context, req *pb.RpcBlockCreateW
 		return err
 	})
 	return id, err
-}
-
-func (s *Service) CopyDataviewToBlock(
-	ctx session.Context,
-	req *pb.RpcBlockDataviewCreateFromExistingObjectRequest,
-) ([]*model.BlockContentDataviewView, error) {
-
-	var targetDvContent *model.BlockContentDataview
-
-	err := cache.Do(s, req.TargetObjectId, func(d dataview.Dataview) error {
-		var err error
-		targetDvContent, err = d.GetDataview(template.DataviewBlockId)
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	err = cache.Do(s, req.ContextId, func(b smartblock.SmartBlock) error {
-		st := b.NewStateCtx(ctx)
-		block := st.Get(req.BlockId)
-		if block == nil {
-			return fmt.Errorf("block is not found")
-		}
-
-		dvContent, ok := block.Model().Content.(*model.BlockContentOfDataview)
-		if !ok {
-			return fmt.Errorf("block must contain dataView content")
-		}
-
-		dvContent.Dataview.Views = targetDvContent.Views
-		dvContent.Dataview.RelationLinks = targetDvContent.RelationLinks
-		dvContent.Dataview.GroupOrders = targetDvContent.GroupOrders
-		dvContent.Dataview.ObjectOrders = targetDvContent.ObjectOrders
-		dvContent.Dataview.TargetObjectId = req.TargetObjectId
-		dvContent.Dataview.IsCollection = targetDvContent.IsCollection
-
-		return b.Apply(st)
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return targetDvContent.Views, err
 }

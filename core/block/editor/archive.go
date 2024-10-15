@@ -74,7 +74,16 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 	if err != nil {
 		return
 	}
+	go func() {
+		uErr := p.updateInStore(archivedIds)
+		if uErr != nil {
+			log.Errorf("archive: can't update in store: %v", uErr)
+		}
+	}()
+	return nil
+}
 
+func (p *Archive) updateInStore(archivedIds []string) error {
 	records, err := p.objectStore.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
 		database.FilterEq{
 			Key:   bundle.RelationKeyIsArchived,
@@ -83,7 +92,7 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 		},
 	}}, 0, 0)
 	if err != nil {
-		return
+		return err
 	}
 
 	var storeArchivedIds = make([]string, 0, len(records))
@@ -118,5 +127,5 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 			}
 		}(addedId)
 	}
-	return
+	return nil
 }

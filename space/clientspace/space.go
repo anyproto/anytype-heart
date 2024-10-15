@@ -2,6 +2,7 @@ package clientspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/profilemigration"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -65,7 +67,7 @@ type spaceIndexer interface {
 type bundledObjectsInstaller interface {
 	InstallBundledObjects(ctx context.Context, spc Space, ids []string, isNewSpace bool) ([]string, []*domain.Details, error)
 
-	BundledObjectsIdsToInstall(ctx context.Context, spc Space, sourceObjectIds []string) (objectIds []string, err error)
+	BundledObjectsIdsToInstall(ctx context.Context, spc Space, sourceObjectIds []string) (ids domain.BundledObjectIds, err error)
 }
 
 var log = logger.NewNamed("client.space")
@@ -86,6 +88,9 @@ type space struct {
 
 	loadMandatoryObjectsCh  chan struct{}
 	loadMandatoryObjectsErr error
+
+	loadMissingBundledObjectsCtx       context.Context
+	loadMissingBundledObjectsCtxCancel context.CancelFunc
 }
 
 type SpaceDeps struct {
@@ -111,6 +116,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		myIdentity:             deps.AccountService.Account().SignKey.GetPublic(),
 		loadMandatoryObjectsCh: make(chan struct{}),
 	}
+	sp.loadMissingBundledObjectsCtx, sp.loadMissingBundledObjectsCtxCancel = context.WithCancel(context.Background())
 	sp.Cache = objectcache.New(deps.AccountService, deps.ObjectFactory, deps.PersonalSpaceId, sp)
 	sp.ObjectProvider = objectprovider.NewObjectProvider(deps.CommonSpace.Id(), deps.PersonalSpaceId, sp.Cache)
 	var err error
@@ -127,12 +133,28 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unmark space created: %w", err)
 		}
-		if err = sp.InstallBundledObjects(ctx); err != nil {
+		ids := getBundledObjectsToInstall()
+		if _, _, err = sp.installer.InstallBundledObjects(ctx, sp, ids, true); err != nil {
 			return nil, fmt.Errorf("install bundled objects: %w", err)
 		}
 	}
 	go sp.mandatoryObjectsLoad(deps.LoadCtx, deps.DisableRemoteLoad)
 	return sp, nil
+}
+
+func (s *space) tryLoadBundledAndInstallIfMissing() {
+	ctxWithPeerTimeout := context.WithValue(s.loadMissingBundledObjectsCtx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(BundledObjectsPeerFindTimeout))
+	missingSourceIds, err := s.TryLoadBundledObjects(ctxWithPeerTimeout)
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return // we are closing, skip installation,
+		}
+		log.Error("failed to load bundled objects", zap.Error(err))
+	}
+	_, _, err = s.installer.InstallBundledObjects(s.loadMissingBundledObjectsCtx, s, missingSourceIds, true)
+	if err != nil {
+		log.Error("failed to install bundled objects", zap.Error(err))
+	}
 }
 
 func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool) {
@@ -149,11 +171,7 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
-	ctxWithPeerTimeout := context.WithValue(loadCtx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(BundledObjectsPeerFindTimeout))
-	if err := s.TryLoadBundledObjects(ctxWithPeerTimeout); err != nil {
-		log.Error("failed to load bundled objects", zap.Error(err))
-	}
-	s.loadMandatoryObjectsErr = s.InstallBundledObjects(ctx)
+	go s.tryLoadBundledAndInstallIfMissing()
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
@@ -245,6 +263,10 @@ func (s *space) Close(ctx context.Context) error {
 	if s == nil {
 		return nil
 	}
+	if s.loadMissingBundledObjectsCtxCancel != nil {
+		s.loadMissingBundledObjectsCtxCancel()
+	}
+
 	err := s.Cache.Close(ctx)
 	if err != nil {
 		return err
@@ -256,7 +278,7 @@ func (s *space) Close(ctx context.Context) error {
 	return s.common.Close()
 }
 
-func (s *space) InstallBundledObjects(ctx context.Context) error {
+func getBundledObjectsToInstall() []string {
 	ids := make([]string, 0, len(bundle.SystemTypes)+len(bundle.SystemRelations))
 	for _, ot := range bundle.SystemTypes {
 		ids = append(ids, ot.BundledURL())
@@ -264,14 +286,10 @@ func (s *space) InstallBundledObjects(ctx context.Context) error {
 	for _, rk := range bundle.SystemRelations {
 		ids = append(ids, rk.BundledURL())
 	}
-	_, _, err := s.installer.InstallBundledObjects(ctx, s, ids, true)
-	if err != nil {
-		return err
-	}
-	return nil
+	return ids
 }
 
-func (s *space) TryLoadBundledObjects(ctx context.Context) error {
+func (s *space) TryLoadBundledObjects(ctx context.Context) (missingSourceIds []string, err error) {
 	st := time.Now()
 	defer func() {
 		if dur := time.Since(st); dur > time.Millisecond*200 {
@@ -279,19 +297,34 @@ func (s *space) TryLoadBundledObjects(ctx context.Context) error {
 		}
 	}()
 
-	ids := make([]string, 0, len(bundle.SystemTypes)+len(bundle.SystemRelations))
-	for _, ot := range bundle.SystemTypes {
-		ids = append(ids, ot.BundledURL())
-	}
-	for _, rk := range bundle.SystemRelations {
-		ids = append(ids, rk.BundledURL())
-	}
-	objectIds, err := s.installer.BundledObjectsIdsToInstall(ctx, s, ids)
+	ids := getBundledObjectsToInstall()
+	bundledObjectIds, err := s.installer.BundledObjectsIdsToInstall(ctx, s, ids)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	s.LoadObjectsIgnoreErrs(ctx, objectIds)
-	return nil
+	storedIds, err := s.Storage().StoredIds()
+	if err != nil {
+		return nil, err
+	}
+
+	missingIds := bundledObjectIds.Filter(func(bo domain.BundledObjectId) bool {
+		return !slices.Contains(storedIds, bo.DerivedObjectId)
+	})
+
+	// only load objects that are not already stored
+	s.LoadObjectsIgnoreErrs(ctx, missingIds.DerivedObjectIds())
+	// todo: make LoadObjectsIgnoreErrs return list of loaded ids
+
+	storedIds, err = s.Storage().StoredIds()
+	if err != nil {
+		return nil, err
+	}
+
+	missingIds = bundledObjectIds.Filter(func(bo domain.BundledObjectId) bool {
+		return !slices.Contains(storedIds, bo.DerivedObjectId)
+	})
+
+	return missingIds.SourceIds(), nil
 }
 
 func (s *space) migrationProfileObject(ctx context.Context) error {
