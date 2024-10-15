@@ -432,3 +432,14 @@ func TestGetSpaceIdsQuery(t *testing.T) {
 	// Test with some empty ids
 	assert.Equal(t, "(SpaceID:123 OR SpaceID:789)", getSpaceIdsQuery([]string{"123", "", "789"}))
 }
+
+func TestFtSearch_Close(t *testing.T) {
+	// given
+	fts := new(ftSearchTantivy)
+
+	// when
+	err := fts.Close(nil)
+
+	// then
+	assert.NoError(t, err)
+}
