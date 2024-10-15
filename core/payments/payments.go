@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/deletioncontroller"
+	"github.com/anyproto/anytype-heart/util/contexthelper"
 )
 
 const CName = "payments"
@@ -205,11 +206,9 @@ func (s *service) sendMembershipUpdateEvent(status *pb.RpcMembershipGetStatusRes
 // 9. Enable cache again if status is active
 func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error) {
 	// wrap context to stop in-flight request in case of component close
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := contexthelper.ContextWithCloseChan(ctx, s.closing)
 	defer cancel()
 	select {
-	case <-s.closing:
-		return nil, errors.New("service is closing or closed")
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case s.getSubscriptionLimiter <- struct{}{}:
