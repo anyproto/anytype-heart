@@ -363,7 +363,7 @@ func (mw *Middleware) ObjectGroupsSubscribe(_ context.Context, req *pb.RpcObject
 
 	subService := mw.applicationService.GetApp().MustComponent(subscription.CName).(subscription.Service)
 
-	resp, err := subService.SubscribeGroups(ctx, subscription.SubscribeGroupsRequest{
+	resp, err := subService.SubscribeGroups(subscription.SubscribeGroupsRequest{
 		SpaceId:      req.SpaceId,
 		SubId:        req.SubId,
 		RelationKey:  req.RelationKey,

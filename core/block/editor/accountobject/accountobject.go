@@ -10,7 +10,6 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/types"
 	"github.com/valyala/fastjson"
 	"go.uber.org/zap"
 

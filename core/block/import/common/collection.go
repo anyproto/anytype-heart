@@ -125,15 +125,13 @@ func (r *ImportCollection) addRelations(st *state.State) error {
 }
 
 func (r *ImportCollection) getCreateCollectionRequest(collectionName string, icon string, shouldBeFavorite bool) *domain.Details {
-	details := make(map[string]*types.Value, 0)
-	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(collectionName)
-	details[bundle.RelationKeyName.String()] = pbtypes.String(collectionName)
-	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(shouldBeFavorite)
-	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
-	details[bundle.RelationKeyIconImage.String()] = pbtypes.String(icon)
-
-	detailsStruct := &types.Struct{Fields: details}
-	return detailsStruct
+	return domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeySourceFilePath: domain.String(collectionName),
+		bundle.RelationKeyName:           domain.String(collectionName),
+		bundle.RelationKeyIsFavorite:     domain.Bool(shouldBeFavorite),
+		bundle.RelationKeyLayout:         domain.Int64(model.ObjectType_collection),
+		bundle.RelationKeyIconImage:      domain.String(icon),
+	})
 }
 
 func ReplaceRelationsInDataView(st *state.State, rel *model.RelationLink) error {

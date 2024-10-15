@@ -14,7 +14,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	"github.com/gosimple/slug"
 	"github.com/samber/lo"
@@ -46,7 +45,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/constant"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/text"
 )
 
@@ -143,7 +141,7 @@ func (e *export) sendNotification(err error, req pb.RpcObjectListExportRequest) 
 
 type exportContext struct {
 	spaceId        string
-	docs           map[string]*types.Struct
+	docs           map[string]*domain.Details
 	includeArchive bool
 	includeNested  bool
 	includeFiles   bool
@@ -160,7 +158,7 @@ func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportConte
 	return &exportContext{
 		path:           req.Path,
 		spaceId:        req.SpaceId,
-		docs:           map[string]*types.Struct{},
+		docs:           map[string]*domain.Details{},
 		includeArchive: req.IncludeArchived,
 		includeNested:  req.IncludeNested,
 		includeFiles:   req.IncludeFiles,
@@ -326,12 +324,12 @@ func (e *exportContext) docsForExport() (err error) {
 }
 
 func (e *exportContext) getObjectsByIDs(isProtobuf bool) error {
-	res, err := e.queryAndFilterObjectsByRelation(e.spaceId, e.reqIds, bundle.RelationKeyId.String())
+	res, err := e.queryAndFilterObjectsByRelation(e.spaceId, e.reqIds, bundle.RelationKeyId)
 	if err != nil {
 		return err
 	}
 	for _, object := range res {
-		id := pbtypes.GetString(object.Details, bundle.RelationKeyId.String())
+		id := object.Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = object.Details
 	}
 	if isProtobuf {
@@ -340,18 +338,18 @@ func (e *exportContext) getObjectsByIDs(isProtobuf bool) error {
 	return e.processNotProtobuf()
 }
 
-func (e *exportContext) queryAndFilterObjectsByRelation(spaceId string, reqIds []string, relationFilter string) ([]database.Record, error) {
+func (e *exportContext) queryAndFilterObjectsByRelation(spaceId string, reqIds []string, relationKey domain.RelationKey) ([]database.Record, error) {
 	var allObjects []database.Record
 	const singleBatchCount = 50
 	for j := 0; j < len(reqIds); {
 		if j+singleBatchCount < len(reqIds) {
-			records, err := e.queryObjectsByIds(spaceId, reqIds[j:j+singleBatchCount], relationFilter)
+			records, err := e.queryObjectsByIds(spaceId, reqIds[j:j+singleBatchCount], relationKey)
 			if err != nil {
 				return nil, err
 			}
 			allObjects = append(allObjects, records...)
 		} else {
-			records, err := e.queryObjectsByIds(spaceId, reqIds[j:], relationFilter)
+			records, err := e.queryObjectsByIds(spaceId, reqIds[j:], relationKey)
 			if err != nil {
 				return nil, err
 			}
@@ -362,13 +360,13 @@ func (e *exportContext) queryAndFilterObjectsByRelation(spaceId string, reqIds [
 	return allObjects, nil
 }
 
-func (e *exportContext) queryObjectsByIds(spaceId string, reqIds []string, relationFilter string) ([]database.Record, error) {
+func (e *exportContext) queryObjectsByIds(spaceId string, reqIds []string, relationKey domain.RelationKey) ([]database.Record, error) {
 	return e.objectStore.SpaceIndex(spaceId).Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: relationFilter,
+				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(reqIds),
+				Value:       domain.StringList(reqIds),
 			},
 		},
 	})
@@ -385,7 +383,7 @@ func (e *exportContext) processNotProtobuf() error {
 	}
 	if e.includeNested {
 		for _, id := range ids {
-			e.addNestedObject(id, map[string]*types.Struct{})
+			e.addNestedObject(id, map[string]*domain.Details{})
 		}
 	}
 	return nil
@@ -459,7 +457,7 @@ func (e *exportContext) addDerivedObjects() error {
 	return nil
 }
 
-func (e *exportContext) getRelationsAndTypes(notProcessedObjects map[string]*types.Struct, processedObjects map[string]struct{}) ([]string, []string, []string, error) {
+func (e *exportContext) getRelationsAndTypes(notProcessedObjects map[string]*domain.Details, processedObjects map[string]struct{}) ([]string, []string, []string, error) {
 	allRelations, allTypes, allSetOfList, err := e.collectDerivedObjects(notProcessedObjects)
 	if err != nil {
 		return nil, nil, nil, err
@@ -478,7 +476,7 @@ func (e *exportContext) getRelationsAndTypes(notProcessedObjects map[string]*typ
 	return allRelations, allTypes, allSetOfList, nil
 }
 
-func (e *exportContext) collectDerivedObjects(objects map[string]*types.Struct) ([]string, []string, []string, error) {
+func (e *exportContext) collectDerivedObjects(objects map[string]*domain.Details) ([]string, []string, []string, error) {
 	var relations, objectsTypes, setOf []string
 	for id := range objects {
 		err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
@@ -492,9 +490,9 @@ func (e *exportContext) collectDerivedObjects(objects map[string]*types.Struct) 
 				}
 				relations = lo.Union(relations, dataviewRelations)
 			}
-			objectTypeId := pbtypes.GetString(details, bundle.RelationKeyType.String())
+			objectTypeId := details.GetString(bundle.RelationKeyType)
 			objectsTypes = lo.Union(objectsTypes, []string{objectTypeId})
-			setOfList := pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
+			setOfList := details.GetStringList(bundle.RelationKeySetOf)
 			setOf = lo.Union(setOf, setOfList)
 			return nil
 		})
@@ -514,9 +512,9 @@ func getObjectRelations(state *state.State) []string {
 	return relations
 }
 
-func isObjectWithDataview(details *types.Struct) bool {
-	return pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) == float64(model.ObjectType_collection) ||
-		pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) == float64(model.ObjectType_set)
+func isObjectWithDataview(details *domain.Details) bool {
+	return details.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_collection) ||
+		details.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_set)
 }
 
 func getDataviewRelations(state *state.State) ([]string, error) {
@@ -535,7 +533,7 @@ func getDataviewRelations(state *state.State) ([]string, error) {
 }
 
 func (e *exportContext) getDerivedObjectsForTypes(allTypes []string, processedObjects map[string]struct{}) ([]string, []string, []string, error) {
-	notProceedTypes := make(map[string]*types.Struct)
+	notProceedTypes := make(map[string]*domain.Details)
 	var relations, objectTypes []string
 	for _, object := range allTypes {
 		if _, ok := processedObjects[object]; ok {
@@ -555,16 +553,16 @@ func (e *exportContext) getDerivedObjectsForTypes(allTypes []string, processedOb
 }
 
 func (e *exportContext) getTemplatesRelationsAndTypes(allTypes []string, processedObjects map[string]struct{}) ([]string, []string, []string, error) {
-	templates, err := e.queryAndFilterObjectsByRelation(e.spaceId, allTypes, bundle.RelationKeyTargetObjectType.String())
+	templates, err := e.queryAndFilterObjectsByRelation(e.spaceId, allTypes, bundle.RelationKeyTargetObjectType)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	if len(templates) == 0 {
 		return nil, nil, nil, nil
 	}
-	templatesToProcess := make(map[string]*types.Struct, len(templates))
+	templatesToProcess := make(map[string]*domain.Details, len(templates))
 	for _, template := range templates {
-		id := pbtypes.GetString(template.Details, bundle.RelationKeyId.String())
+		id := template.Details.GetString(bundle.RelationKeyId)
 		if _, ok := e.docs[id]; !ok {
 			e.docs[id] = template.Details
 			templatesToProcess[id] = template.Details
@@ -613,7 +611,7 @@ func (e *exportContext) getRelationsFromStore(relations []string) ([]database.Re
 		}
 		uniqueKeys = append(uniqueKeys, uniqueKey.Marshal())
 	}
-	storeRelations, err := e.queryAndFilterObjectsByRelation(e.spaceId, uniqueKeys, bundle.RelationKeyUniqueKey.String())
+	storeRelations, err := e.queryAndFilterObjectsByRelation(e.spaceId, uniqueKeys, bundle.RelationKeyUniqueKey)
 	if err != nil {
 		return nil, err
 	}
@@ -621,17 +619,16 @@ func (e *exportContext) getRelationsFromStore(relations []string) ([]database.Re
 }
 
 func (e *exportContext) addRelation(relation database.Record) {
-	if relationKey := pbtypes.GetString(relation.Details, bundle.RelationKeyRelationKey.String()); relationKey != "" {
-		if !bundle.HasRelation(relationKey) {
-			id := pbtypes.GetString(relation.Details, bundle.RelationKeyId.String())
-			e.docs[id] = relation.Details
-		}
+	relationKey := domain.RelationKey(relation.Details.GetString(bundle.RelationKeyRelationKey))
+	if relationKey != "" && !bundle.HasRelation(relationKey) {
+		id := relation.Details.GetString(bundle.RelationKeyId)
+		e.docs[id] = relation.Details
 	}
 }
 
 func (e *exportContext) addOptionIfTag(relation database.Record) error {
-	format := pbtypes.GetInt64(relation.Details, bundle.RelationKeyRelationFormat.String())
-	relationKey := pbtypes.GetString(relation.Details, bundle.RelationKeyRelationKey.String())
+	format := relation.Details.GetInt64(bundle.RelationKeyRelationFormat)
+	relationKey := relation.Details.GetString(bundle.RelationKeyRelationKey)
 	if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
 		err := e.addRelationOptions(relationKey)
 		if err != nil {
@@ -647,7 +644,7 @@ func (e *exportContext) addRelationOptions(relationKey string) error {
 		return err
 	}
 	for _, option := range relationOptions {
-		id := pbtypes.GetString(option.Details, bundle.RelationKeyId.String())
+		id := option.Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = option.Details
 	}
 	return nil
@@ -655,16 +652,16 @@ func (e *exportContext) addRelationOptions(relationKey string) error {
 
 func (e *exportContext) getRelationOptions(relationKey string) ([]database.Record, error) {
 	relationOptionsDetails, err := e.objectStore.SpaceIndex(e.spaceId).Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				Value:       domain.Int64(model.ObjectType_relationOption),
 			},
 			{
-				RelationKey: bundle.RelationKeyRelationKey.String(),
+				RelationKey: bundle.RelationKeyRelationKey,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(relationKey),
+				Value:       domain.String(relationKey),
 			},
 		},
 	})
@@ -675,7 +672,7 @@ func (e *exportContext) getRelationOptions(relationKey string) ([]database.Recor
 }
 
 func (e *exportContext) processObjectTypesAndSetOfList(objectTypes, setOfList []string) error {
-	objectDetails, err := e.queryAndFilterObjectsByRelation(e.spaceId, lo.Union(objectTypes, setOfList), bundle.RelationKeyId.String())
+	objectDetails, err := e.queryAndFilterObjectsByRelation(e.spaceId, lo.Union(objectTypes, setOfList), bundle.RelationKeyId)
 	if err != nil {
 		return err
 	}
@@ -696,12 +693,12 @@ func (e *exportContext) processObjectTypesAndSetOfList(objectTypes, setOfList []
 func (e *exportContext) addObjectsAndCollectRecommendedRelations(objectTypes []database.Record) ([]string, error) {
 	recommendedRelations := make([]string, 0, len(objectTypes))
 	for i := 0; i < len(objectTypes); i++ {
-		rawUniqueKey := pbtypes.GetString(objectTypes[i].Details, bundle.RelationKeyUniqueKey.String())
+		rawUniqueKey := objectTypes[i].Details.GetString(bundle.RelationKeyUniqueKey)
 		uniqueKey, err := domain.UnmarshalUniqueKey(rawUniqueKey)
 		if err != nil {
 			return nil, err
 		}
-		id := pbtypes.GetString(objectTypes[i].Details, bundle.RelationKeyId.String())
+		id := objectTypes[i].Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = objectTypes[i].Details
 		if uniqueKey.SmartblockType() == smartblock.SmartBlockTypeObjectType {
 			key, err := domain.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
@@ -711,24 +708,24 @@ func (e *exportContext) addObjectsAndCollectRecommendedRelations(objectTypes []d
 			if bundle.IsInternalType(key) {
 				continue
 			}
-			recommendedRelations = append(recommendedRelations, pbtypes.GetStringList(objectTypes[i].Details, bundle.RelationKeyRecommendedRelations.String())...)
+			recommendedRelations = append(recommendedRelations, objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedRelations)...)
 		}
 	}
 	return recommendedRelations, nil
 }
 
 func (e *exportContext) addRecommendedRelations(recommendedRelations []string) error {
-	relations, err := e.queryAndFilterObjectsByRelation(e.spaceId, recommendedRelations, bundle.RelationKeyId.String())
+	relations, err := e.queryAndFilterObjectsByRelation(e.spaceId, recommendedRelations, bundle.RelationKeyId)
 	if err != nil {
 		return err
 	}
 	for _, relation := range relations {
-		id := pbtypes.GetString(relation.Details, bundle.RelationKeyId.String())
+		id := relation.Details.GetString(bundle.RelationKeyId)
 		if id == addr.MissingObject {
 			continue
 		}
 
-		relationKey := pbtypes.GetString(relation.Details, bundle.RelationKeyUniqueKey.String())
+		relationKey := relation.Details.GetString(bundle.RelationKeyUniqueKey)
 		uniqueKey, err := domain.UnmarshalUniqueKey(relationKey)
 		if err != nil {
 			return err
@@ -742,7 +739,7 @@ func (e *exportContext) addRecommendedRelations(recommendedRelations []string) e
 }
 
 func (e *exportContext) addNestedObjects(ids []string) error {
-	nestedDocs := make(map[string]*types.Struct, 0)
+	nestedDocs := make(map[string]*domain.Details, 0)
 	for _, id := range ids {
 		e.addNestedObject(id, nestedDocs)
 	}
@@ -764,7 +761,7 @@ func (e *exportContext) addNestedObjects(ids []string) error {
 	return nil
 }
 
-func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*types.Struct) {
+func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*domain.Details) {
 	links, err := e.objectStore.SpaceIndex(e.spaceId).GetOutboundLinksById(id)
 	if err != nil {
 		log.Errorf("export failed to get outbound links for id: %s", err)
@@ -800,11 +797,11 @@ func (e *exportContext) fillLinkedFiles(id string) ([]string, error) {
 	err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
 		b.NewState().IterateLinkedFiles(func(fileObjectId string) {
 			res, err := spaceIndex.Query(database.Query{
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
-						RelationKey: bundle.RelationKeyId.String(),
+						RelationKey: bundle.RelationKeyId,
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String(fileObjectId),
+						Value:       domain.String(fileObjectId),
 					},
 				},
 			})
@@ -839,11 +836,11 @@ func (e *exportContext) getExistedObjects(isProtobuf bool) error {
 		}
 		res = append(res, archivedObjects...)
 	}
-	e.docs = make(map[string]*types.Struct, len(res))
+	e.docs = make(map[string]*domain.Details, len(res))
 	for _, info := range res {
 		objectSpaceID := e.spaceId
 		if objectSpaceID == "" {
-			objectSpaceID = pbtypes.GetString(info.Details, bundle.RelationKeySpaceId.String())
+			objectSpaceID = info.Details.GetString(bundle.RelationKeySpaceId)
 		}
 		sbType, err := e.sbtProvider.Type(objectSpaceID, info.Id)
 		if err != nil {
@@ -861,7 +858,7 @@ func (e *exportContext) getExistedObjects(isProtobuf bool) error {
 
 func (e *exportContext) listTargetTypesFromTemplates(ids []string) []string {
 	for id, object := range e.docs {
-		if pbtypes.Get(object, bundle.RelationKeyTargetObjectType.String()) != nil {
+		if object.Has(bundle.RelationKeyTargetObjectType) {
 			ids = append(ids, id)
 		}
 	}
@@ -879,7 +876,7 @@ func (e *exportContext) writeMultiDoc(ctx context.Context, mw converter.MultiCon
 					if err != nil {
 						return fmt.Errorf("save file: %w", err)
 					}
-					st.SetDetailAndBundledRelation(bundle.RelationKeySource, pbtypes.String(fileName))
+					st.SetDetailAndBundledRelation(bundle.RelationKeySource, domain.String(fileName))
 				}
 				if err = mw.Add(b.Space(), st); err != nil {
 					return err
@@ -907,7 +904,7 @@ func (e *exportContext) writeMultiDoc(ctx context.Context, mw converter.MultiCon
 func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string) (err error) {
 	return cache.Do(e.picker, docId, func(b sb.SmartBlock) error {
 		st := b.NewState()
-		if pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
+		if st.CombinedDetails().GetBool(bundle.RelationKeyIsDeleted) {
 			return nil
 		}
 
@@ -916,7 +913,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string) (
 			if err != nil {
 				return fmt.Errorf("save file: %w", err)
 			}
-			st.SetDetailAndBundledRelation(bundle.RelationKeySource, pbtypes.String(fileName))
+			st.SetDetailAndBundledRelation(bundle.RelationKeySource, domain.String(fileName))
 			// Don't save file objects in markdown
 			if e.format == model.Export_Markdown {
 				return nil
@@ -942,7 +939,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string) (
 		} else {
 			filename = makeFileName(docId, e.spaceId, conv.Ext(), st, b.Type())
 		}
-		lastModifiedDate := pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
+		lastModifiedDate := st.LocalDetails().GetInt64(bundle.RelationKeyLastModifiedDate)
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
 			return err
 		}
@@ -953,7 +950,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string) (
 func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlock, exportAllSpaces bool) (fileName string, err error) {
 	fullId := domain.FullFileId{
 		SpaceId: fileObject.Space().Id(),
-		FileId:  domain.FileId(pbtypes.GetString(fileObject.Details(), bundle.RelationKeyFileId.String())),
+		FileId:  domain.FileId(fileObject.Details().GetString(bundle.RelationKeyFileId)),
 	}
 
 	file, err := e.fileService.FileByHash(ctx, fullId)
@@ -995,7 +992,7 @@ func (e *exportContext) createProfileFile(spaceID string, wr writer) error {
 		return err
 	}
 	err = cache.Do(e.picker, spc.DerivedIDs().Workspace, func(b sb.SmartBlock) error {
-		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
+		spaceDashBoardID = b.CombinedDetails().GetString(bundle.RelationKeySpaceDashboardId)
 		return nil
 	})
 	if err != nil {
@@ -1020,14 +1017,14 @@ func (e *exportContext) createProfileFile(spaceID string, wr writer) error {
 }
 
 func makeMarkdownName(s *state.State, wr writer, docID, ext, spaceId string) string {
-	name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
+	name := s.Details().GetString(bundle.RelationKeyName)
 	if name == "" {
 		name = s.Snippet()
 	}
 	path := ""
 	// space can be empty in case user want to export all spaces
 	if spaceId == "" {
-		spaceId := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String())
+		spaceId := s.LocalDetails().GetString(bundle.RelationKeySpaceId)
 		path = filepath.Join(spaceDirectory, spaceId)
 	}
 	return wr.Namer().Get(path, docID, name, ext)
@@ -1038,7 +1035,7 @@ func makeFileName(docId, spaceId, ext string, st *state.State, blockType smartbl
 	filename := filepath.Join(dir, docId+ext)
 	// space can be empty in case user want to export all spaces
 	if spaceId == "" {
-		spaceId := pbtypes.GetString(st.LocalDetails(), bundle.RelationKeySpaceId.String())
+		spaceId := st.LocalDetails().GetString(bundle.RelationKeySpaceId)
 		filename = filepath.Join(spaceDirectory, spaceId, filename)
 	}
 	return filename
@@ -1061,7 +1058,7 @@ func provideFileDirectory(blockType smartblock.SmartBlockType) string {
 	}
 }
 
-func objectValid(sbType smartblock.SmartBlockType, info *model.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
+func objectValid(sbType smartblock.SmartBlockType, info *database.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
 	if info.Id == addr.AnytypeProfileId {
 		return false
 	}
@@ -1074,7 +1071,7 @@ func objectValid(sbType smartblock.SmartBlockType, info *model.ObjectInfo, inclu
 	if strings.HasPrefix(info.Id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(info.Id, addr.BundledRelationURLPrefix) {
 		return false
 	}
-	if pbtypes.GetBool(info.Details, bundle.RelationKeyIsArchived.String()) && !includeArchived {
+	if info.Details.GetBool(bundle.RelationKeyIsArchived) && !includeArchived {
 		return false
 	}
 	return true
@@ -1141,9 +1138,9 @@ func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeFileObject
 }
 
-func validLayoutForNonProtobuf(details *types.Struct) bool {
-	return pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) != float64(model.ObjectType_collection) &&
-		pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) != float64(model.ObjectType_set)
+func validLayoutForNonProtobuf(details *domain.Details) bool {
+	return details.GetInt64(bundle.RelationKeyLayout) != int64(model.ObjectType_collection) &&
+		details.GetInt64(bundle.RelationKeyLayout) != int64(model.ObjectType_set)
 }
 
 func cleanupFile(wr writer) {
@@ -1151,7 +1148,7 @@ func cleanupFile(wr writer) {
 	os.Remove(wr.Path())
 }
 
-func listObjectIds(docs map[string]*types.Struct) []string {
+func listObjectIds(docs map[string]*domain.Details) []string {
 	ids := make([]string, 0, len(docs))
 	for id := range docs {
 		ids = append(ids, id)
@@ -1160,5 +1157,5 @@ func listObjectIds(docs map[string]*types.Struct) []string {
 }
 
 func isLinkedObjectExist(rec []database.Record) bool {
-	return len(rec) > 0 && !pbtypes.GetBool(rec[0].Details, bundle.RelationKeyIsDeleted.String())
+	return len(rec) > 0 && !rec[0].Details.GetBool(bundle.RelationKeyIsDeleted)
 }
