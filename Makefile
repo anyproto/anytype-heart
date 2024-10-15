@@ -399,5 +399,5 @@ download-tantivy-local: remove-libs
 check-tantivy-version:
 	$(eval OLD_VERSION := $(shell [ -f $(OUTPUT_DIR)/.verified ] && cat $(OUTPUT_DIR)/.verified || echo ""))
 	@if [ "$(TANTIVY_VERSION)" != "$(OLD_VERSION)" ]; then \
-		$(MAKE) download-tantivy-all-force; \
+		$(MAKE) download-tantivy-all; \
 	fi
