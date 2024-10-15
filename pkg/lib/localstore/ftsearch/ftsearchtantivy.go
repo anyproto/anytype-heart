@@ -49,6 +49,7 @@ type ftSearchTantivy struct {
 	index      *tantivy.TantivyContext
 	schema     *tantivy.Schema
 	parserPool *fastjson.ParserPool
+	isRunning  bool
 }
 
 func (f *ftSearchTantivy) BatchDeleteObjects(ids []string) error {
@@ -166,6 +167,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	}
 	f.schema = schema
 	f.index = index
+	f.isRunning = true
 	f.parserPool = &fastjson.ParserPool{}
 
 	f.cleanupBleve()
@@ -345,7 +347,10 @@ func (f *ftSearchTantivy) DocCount() (uint64, error) {
 
 func (f *ftSearchTantivy) Close(ctx context.Context) error {
 	f.schema = nil
-	f.index.Free()
+	if !f.isRunning {
+		f.index.Free()
+		f.isRunning = false
+	}
 	return nil
 }
 
