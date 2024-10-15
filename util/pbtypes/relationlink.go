@@ -2,6 +2,7 @@ package pbtypes
 
 import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
+// TODO Add domaain model for link
 type RelationLinks []*model.RelationLink
 
 func (rl RelationLinks) Get(key string) *model.RelationLink {

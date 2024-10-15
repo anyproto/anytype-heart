@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
@@ -17,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/table"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/simple/widget"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -314,13 +313,13 @@ func WrapEventMessages(virtual bool, msgs []*pb.EventMessage) []simple.EventMess
 	return wmsgs
 }
 
-func StructDiffIntoEvents(contextId string, diff *types.Struct) (msgs []*pb.EventMessage) {
+func StructDiffIntoEvents(contextId string, diff *domain.Details) (msgs []*pb.EventMessage) {
 	return StructDiffIntoEventsWithSubIds(contextId, diff, nil, nil)
 }
 
 // StructDiffIntoEvents converts map into events. nil map value converts to Remove event
-func StructDiffIntoEventsWithSubIds(contextId string, diff *types.Struct, keys []string, subIds []string) (msgs []*pb.EventMessage) {
-	if diff == nil || len(diff.Fields) == 0 {
+func StructDiffIntoEventsWithSubIds(contextId string, diff *domain.Details, keys []domain.RelationKey, subIds []string) (msgs []*pb.EventMessage) {
+	if diff.Len() == 0 {
 		return nil
 	}
 	var (
@@ -328,16 +327,20 @@ func StructDiffIntoEventsWithSubIds(contextId string, diff *types.Struct, keys [
 		details []*pb.EventObjectDetailsAmendKeyValue
 	)
 
-	for k, v := range diff.Fields {
+	diff.Iterate(func(k domain.RelationKey, v domain.Value) bool {
+		key := string(k)
 		if len(keys) > 0 && slice.FindPos(keys, k) == -1 {
-			continue
+			return true
 		}
-		if v == nil {
-			removed = append(removed, k)
-			continue
+		// TODO This is not correct! Rewrite this code to use separate diff structures
+		if v.IsNull() {
+			removed = append(removed, key)
+			return true
 		}
-		details = append(details, &pb.EventObjectDetailsAmendKeyValue{Key: k, Value: v})
-	}
+		details = append(details, &pb.EventObjectDetailsAmendKeyValue{Key: key, Value: v.ToProto()})
+		return true
+	})
+
 	if len(details) > 0 {
 		msgs = append(msgs, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfObjectDetailsAmend{

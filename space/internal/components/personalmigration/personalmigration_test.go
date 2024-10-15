@@ -76,14 +76,14 @@ func TestRunner_Run(t *testing.T) {
 			},
 		}
 		st.SetFileInfo(fileInfo)
-		st.SetDetails(pbtypes.ToStruct(map[string]any{
-			bundle.RelationKeyName.String():        "name",
-			bundle.RelationKeyDescription.String(): "description",
-			bundle.RelationKeyIconImage.String():   "iconImage",
+		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:        domain.String("name"),
+			bundle.RelationKeyDescription: domain.String("description"),
+			bundle.RelationKeyIconImage:   domain.String("iconImage"),
 		}))
 		err := fx.smartBlock.Apply(st)
 		require.NoError(t, err)
-		initDetails := pbtypes.ToStruct(map[string]any{})
+		initDetails := domain.NewDetails()
 		fx.accountObject.EXPECT().CombinedDetails().Return(initDetails)
 		fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
 			return f(fx.accountObject)
@@ -113,13 +113,13 @@ func TestRunner_Run(t *testing.T) {
 		fx := newFixture(t)
 		st := fx.smartBlock.NewState()
 		st.SetSetting(state.SettingsAnalyticsId, pbtypes.String("analyticsId"))
-		st.SetDetails(pbtypes.ToStruct(map[string]any{
-			bundle.RelationKeyName.String():        "name",
-			bundle.RelationKeyDescription.String(): "description",
+		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:        domain.String("name"),
+			bundle.RelationKeyDescription: domain.String("description"),
 		}))
 		err := fx.smartBlock.Apply(st)
 		require.NoError(t, err)
-		initDetails := pbtypes.ToStruct(map[string]any{})
+		initDetails := domain.NewDetails()
 		fx.accountObject.EXPECT().CombinedDetails().Return(initDetails)
 		fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
 			return f(fx.accountObject)
@@ -150,15 +150,15 @@ func TestRunner_Run(t *testing.T) {
 			},
 		}
 		st.SetFileInfo(fileInfo)
-		st.SetDetails(pbtypes.ToStruct(map[string]any{
-			bundle.RelationKeyName.String():        "name",
-			bundle.RelationKeyDescription.String(): "description",
-			bundle.RelationKeyIconImage.String():   "iconImage",
+		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:        domain.String("name"),
+			bundle.RelationKeyDescription: domain.String("description"),
+			bundle.RelationKeyIconImage:   domain.String("iconImage"),
 		}))
 		err := fx.smartBlock.Apply(st)
 		require.NoError(t, err)
-		initDetails := pbtypes.ToStruct(map[string]any{
-			bundle.RelationKeyName.String(): "name",
+		initDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String("name"),
 		})
 		fx.accountObject.EXPECT().CombinedDetails().Return(initDetails)
 		fx.accountObject.EXPECT().IsIconMigrated().Return(false, nil)
@@ -183,8 +183,8 @@ func TestRunner_Run(t *testing.T) {
 	})
 	t.Run("already migrated fully", func(t *testing.T) {
 		fx := newFixture(t)
-		initDetails := pbtypes.ToStruct(map[string]any{
-			bundle.RelationKeyName.String(): "name",
+		initDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String("name"),
 		})
 		fx.accountObject.EXPECT().CombinedDetails().Return(initDetails)
 		fx.accountObject.EXPECT().IsIconMigrated().Return(true, nil)

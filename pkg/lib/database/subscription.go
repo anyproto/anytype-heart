@@ -6,32 +6,33 @@ import (
 	"sync"
 
 	"github.com/cheggaaa/mb/v3"
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 type subscription struct {
 	ids              []string
 	quit             chan struct{}
 	closed           bool
-	ch               chan *types.Struct
+	ch               chan *domain.Details
 	wg               sync.WaitGroup
-	publishQueue     mb.MB[*types.Struct]
+	publishQueue     mb.MB[*domain.Details]
 	processQueueOnce sync.Once
 	sync.RWMutex
 }
 
 type Subscription interface {
 	Close()
-	RecordChan() chan *types.Struct
+	RecordChan() chan *domain.Details
 	Subscribe(ids []string) (added []string)
 	Subscriptions() []string
 	// PublishAsync is non-blocking and guarantees the order of messages
 	// returns false if the subscription is closed or the id is not subscribed
-	PublishAsync(id string, msg *types.Struct) bool
+	PublishAsync(id string, msg *domain.Details) bool
 }
 
-func (sub *subscription) RecordChan() chan *types.Struct {
+func (sub *subscription) RecordChan() chan *domain.Details {
 	return sub.ch
 }
 
@@ -81,7 +82,7 @@ func (sub *subscription) processQueue() {
 	}()
 	defer sub.wg.Done()
 	var (
-		msg *types.Struct
+		msg *domain.Details
 		err error
 	)
 	for {
@@ -103,7 +104,7 @@ func (sub *subscription) processQueue() {
 
 // PublishAsync is non-blocking and guarantees the order of messages
 // returns false if the subscription is closed or the id is not subscribed
-func (sub *subscription) PublishAsync(id string, msg *types.Struct) bool {
+func (sub *subscription) PublishAsync(id string, msg *domain.Details) bool {
 	sub.RLock()
 	if sub.closed {
 		sub.RUnlock()
@@ -141,6 +142,6 @@ func (sub *subscription) Subscriptions() []string {
 	return sub.ids
 }
 
-func NewSubscription(ids []string, ch chan *types.Struct) Subscription {
+func NewSubscription(ids []string, ch chan *domain.Details) Subscription {
 	return &subscription{ids: ids, ch: ch, quit: make(chan struct{})}
 }

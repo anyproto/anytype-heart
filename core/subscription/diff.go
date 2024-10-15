@@ -2,6 +2,8 @@ package subscription
 
 import (
 	"github.com/mb0/diff"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 func newListDiff(ids []string) *listDiff {
@@ -40,7 +42,7 @@ func (ld *listDiff) reset() {
 	ld.afterIdsM = make(map[string]struct{})
 }
 
-func (ld *listDiff) diff(ctx *opCtx, subId string, keys []string) (wasAddOrRemove bool, ids []string) {
+func (ld *listDiff) diff(ctx *opCtx, subId string, keys []domain.RelationKey) (wasAddOrRemove bool, ids []string) {
 	for _, id := range ld.afterIds {
 		ld.afterIdsM[id] = struct{}{}
 	}

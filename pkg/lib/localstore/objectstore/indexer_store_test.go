@@ -13,6 +13,8 @@ import (
 func TestDsObjectStore_IndexQueue(t *testing.T) {
 	s := NewStoreFixture(t)
 
+	ctx := context.Background()
+
 	t.Run("add to queue", func(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue(ctx, "one"))
 		require.NoError(t, s.AddToIndexQueue(ctx, "one"))
@@ -35,6 +37,7 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 
 func TestIndexerBatch(t *testing.T) {
 	s := NewStoreFixture(t)
+	ctx := context.Background()
 
 	t.Run("batch - no more than limit", func(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue(ctx, "one"))

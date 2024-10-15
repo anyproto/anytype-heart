@@ -3,12 +3,10 @@ package core
 import (
 	"context"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
@@ -22,7 +20,8 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 		}
 		return m
 	}
-	err := getService[detailservice.Service](mw).SetDetailsAndUpdateLastUsed(ctx, req.ContextId, req.GetDetails())
+
+	err := getService[detailservice.Service](mw).SetDetailsAndUpdateLastUsed(ctx, req.ContextId, requestDetailsListToDomain(req.GetDetails()))
 	if err != nil {
 		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)
 	}
@@ -41,7 +40,7 @@ func (mw *Middleware) ObjectListSetDetails(cctx context.Context, req *pb.RpcObje
 		return m
 	}
 
-	err := getService[detailservice.Service](mw).SetDetailsList(ctx, req.ObjectIds, req.Details)
+	err := getService[detailservice.Service](mw).SetDetailsList(ctx, req.ObjectIds, requestDetailsListToDomain(req.Details))
 	if err != nil {
 		return response(pb.RpcObjectListSetDetailsResponseError_UNKNOWN_ERROR, err)
 	}
@@ -61,8 +60,8 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 		return m
 	}
 	ds := getService[detailservice.Service](mw)
-	err := ds.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
-		d := pbtypes.CopyStruct(current, false)
+	err := ds.ModifyDetails(req.ContextId, func(current *domain.Details) (*domain.Details, error) {
+		d := current.Copy()
 		return internalflag.PutToDetails(d, req.InternalFlags), nil
 	})
 	if err != nil {

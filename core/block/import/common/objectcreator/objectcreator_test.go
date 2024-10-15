@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
@@ -17,13 +16,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestObjectCreator_Create(t *testing.T) {
@@ -44,33 +41,32 @@ func TestObjectCreator_Create(t *testing.T) {
 		oldToNew := map[string]string{importedSpaceIdParticipantId: participantId}
 		dataObject := NewDataObject(context.Background(), oldToNew, nil, objectorigin.Import(model.Import_Pb), spaceID)
 		sn := &common.Snapshot{
-			Id:     importedSpaceIdParticipantId,
-			SbType: coresb.SmartBlockTypeParticipant,
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
-					Details: &types.Struct{Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():                     pbtypes.String(importedSpaceIdParticipantId),
-						bundle.RelationKeyIdentity.String():               pbtypes.String(identity),
-						bundle.RelationKeySpaceId.String():                pbtypes.String(importedSpaceId),
-						bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(identity),
-						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
-						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
-					},
-					},
+			Id: importedSpaceIdParticipantId,
+			Snapshot: &common.SnapshotModel{
+				SbType: coresb.SmartBlockTypeParticipant,
+				Data: &common.StateSnapshot{
+					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+						bundle.RelationKeyId:                     domain.String(importedSpaceIdParticipantId),
+						bundle.RelationKeyIdentity:               domain.String(identity),
+						bundle.RelationKeySpaceId:                domain.String(importedSpaceId),
+						bundle.RelationKeyLastModifiedBy:         domain.String(identity),
+						bundle.RelationKeyParticipantPermissions: domain.Int64(int64(model.ParticipantPermissions_Reader)),
+						bundle.RelationKeyParticipantStatus:      domain.Int64(int64(model.ParticipantStatus_Active)),
+					}),
 				},
 			},
 		}
 
 		testParticipant := smarttest.New(participantId)
 		st := testParticipant.NewState()
-		testDetails := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():                     pbtypes.String(participantId),
-			bundle.RelationKeyIdentity.String():               pbtypes.String(identity),
-			bundle.RelationKeySpaceId.String():                pbtypes.String(spaceID),
-			bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(identity),
-			bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Owner)),
-			bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
-		}}
+		testDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:                     domain.String(participantId),
+			bundle.RelationKeyIdentity:               domain.String(identity),
+			bundle.RelationKeySpaceId:                domain.String(spaceID),
+			bundle.RelationKeyLastModifiedBy:         domain.String(identity),
+			bundle.RelationKeyParticipantPermissions: domain.Int64(int64(model.ParticipantPermissions_Owner)),
+			bundle.RelationKeyParticipantStatus:      domain.Int64(int64(model.ParticipantStatus_Active)),
+		})
 		st.SetDetails(testDetails)
 		err := testParticipant.Apply(st)
 		assert.Nil(t, err)
@@ -98,9 +94,9 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		oc := ObjectCreator{}
 		oldToNew := map[string]string{"oldId": "newId", "oldKey": "newKey"}
 		doc := state.NewDoc("oldId", nil).(*state.State)
-		doc.SetDetails(&types.Struct{Fields: map[string]*types.Value{
-			"oldKey": pbtypes.String("test"),
-		}})
+		doc.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"oldKey": domain.String("test"),
+		}))
 		doc.AddRelationLinks(&model.RelationLink{
 			Key: "oldKey",
 		})
@@ -108,8 +104,8 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		oc.updateKeys(doc, oldToNew)
 
 		// then
-		assert.Nil(t, doc.Details().GetFields()["oldKey"])
-		assert.Equal(t, pbtypes.String("test"), doc.Details().GetFields()["newKey"])
+		assert.False(t, doc.Details().Has("oldKey"))
+		assert.Equal(t, domain.String("test"), doc.Details().Get("newKey"))
 		assert.True(t, doc.HasRelation("newKey"))
 	})
 	t.Run("updateKeys - update object type key", func(t *testing.T) {
@@ -135,7 +131,7 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		oc.updateKeys(doc, oldToNew)
 
 		// then
-		assert.Nil(t, doc.Details().GetFields()["newKey"])
+		assert.False(t, doc.Details().Has("newKey"))
 		assert.Equal(t, domain.TypeKey(""), doc.ObjectTypeKey())
 	})
 	t.Run("keys are the same", func(t *testing.T) {
@@ -143,9 +139,9 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		oc := ObjectCreator{}
 		oldToNew := map[string]string{"oldId": "newId", "key": "key"}
 		doc := state.NewDoc("oldId", nil).(*state.State)
-		doc.SetDetails(&types.Struct{Fields: map[string]*types.Value{
-			"key": pbtypes.String("test"),
-		}})
+		doc.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"key": domain.String("test"),
+		}))
 		doc.AddRelationLinks(&model.RelationLink{
 			Key: "key",
 		})
@@ -153,7 +149,7 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		oc.updateKeys(doc, oldToNew)
 
 		// then
-		assert.Equal(t, pbtypes.String("test"), doc.Details().GetFields()["key"])
+		assert.Equal(t, "test", doc.Details().GetString("key"))
 		assert.True(t, doc.HasRelation("key"))
 	})
 }

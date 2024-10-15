@@ -3,21 +3,19 @@ package objectgraph
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fixture struct {
@@ -50,42 +48,40 @@ func Test(t *testing.T) {
 		spaceId := "space1"
 		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel1"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyId.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel1"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyId.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel2"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_shorttext)),
+				bundle.RelationKeyId:             domain.String("rel2"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel3"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyAuthor.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel3"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyAuthor.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel4"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyLinkedProjects.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel4"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyLinkedProjects.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 		})
 		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
-			Records: []*types.Struct{},
+			Records: []*domain.Details{},
 		}, nil)
 		fx.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
 
-		req := &pb.RpcObjectGraphRequest{
+		req := ObjectGraphRequest{
 			SpaceId: spaceId,
 		}
 		graph, edges, err := fx.ObjectGraph(req)
 		assert.NoError(t, err)
-		assert.Equal(t, "links", req.Keys[0])
-		assert.Equal(t, 4, len(req.Keys))
 		assert.True(t, len(graph) == 0)
 		assert.True(t, len(edges) == 0)
 	})
@@ -95,49 +91,49 @@ func Test(t *testing.T) {
 		spaceId := "space1"
 		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel1"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyId.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel1"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyId.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel2"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_shorttext)),
+				bundle.RelationKeyId:             domain.String("rel2"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel3"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyAuthor.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel3"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyAuthor.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel4"),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationKey:    pbtypes.String(bundle.RelationKeyLinkedProjects.String()),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel4"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyLinkedProjects.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 		})
 		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
-			Records: []*types.Struct{
-				{Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String():       pbtypes.String("id1"),
-					bundle.RelationKeyAssignee.String(): pbtypes.String("id2"),
-					bundle.RelationKeyLinks.String():    pbtypes.StringList([]string{"id2", "id3"}),
-				}},
-				{Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String(): pbtypes.String("id2"),
-				}},
-				{Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String(): pbtypes.String("id3"),
-				}},
+			Records: []*domain.Details{
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId:       domain.String("id1"),
+					bundle.RelationKeyAssignee: domain.String("id2"),
+					bundle.RelationKeyLinks:    domain.StringList([]string{"id2", "id3"}),
+				}),
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId: domain.String("id2"),
+				}),
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId: domain.String("id3"),
+				}),
 			},
 		}, nil)
 		fx.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
 		fx.sbtProviderMock.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil)
 
-		req := &pb.RpcObjectGraphRequest{
+		req := ObjectGraphRequest{
 			SpaceId: spaceId,
 		}
 		graph, edges, err := fx.ObjectGraph(req)

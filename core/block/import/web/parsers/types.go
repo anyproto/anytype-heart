@@ -1,6 +1,8 @@
 package parsers
 
-import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+import (
+	"github.com/anyproto/anytype-heart/core/block/import/common"
+)
 
 type RegisterParser func() Parser
 
@@ -11,6 +13,6 @@ func RegisterFunc(p RegisterParser) {
 }
 
 type Parser interface {
-	ParseUrl(url string) (*model.SmartBlockSnapshotBase, error)
+	ParseUrl(url string) (*common.StateSnapshot, error)
 	MatchUrl(url string) bool
 }

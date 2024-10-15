@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -14,10 +12,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) createChat(ctx context.Context, space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
+func (s *service) createChat(ctx context.Context, space clientspace.Space, details *domain.Details) (string, *domain.Details, error) {
 	payload, err := space.CreateTreePayload(ctx, payloadcreator.PayloadCreationParams{
 		Time:           time.Now(),
 		SmartblockType: smartblock.SmartBlockTypeChatObject,
@@ -27,7 +24,7 @@ func (s *service) createChat(ctx context.Context, space clientspace.Space, detai
 	}
 
 	createState := state.NewDoc(payload.RootRawChange.Id, nil).(*state.State)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_chat))
+	details.Set(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chat)))
 	createState.SetDetails(details)
 	err = s.addChatDerivedObject(ctx, space, createState, payload.RootRawChange.Id)
 	if err != nil {
@@ -43,12 +40,12 @@ func (s *service) createChat(ctx context.Context, space clientspace.Space, detai
 }
 
 func (s *service) addChatDerivedObject(ctx context.Context, space clientspace.Space, st *state.State, chatObjectId string) error {
-	chatDetails := &types.Struct{Fields: map[string]*types.Value{}}
+	chatDetails := domain.NewDetails()
 	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatDerivedObject, chatObjectId)
 	if err != nil {
 		return fmt.Errorf("create payload: %w", err)
 	}
-	chatDetails.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(chatUniqueKey.Marshal())
+	chatDetails.SetString(bundle.RelationKeyUniqueKey, chatUniqueKey.Marshal())
 
 	chatReq := CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyChatDerived,
@@ -60,20 +57,20 @@ func (s *service) addChatDerivedObject(ctx context.Context, space clientspace.Sp
 		return fmt.Errorf("create object: %w", err)
 	}
 
-	st.SetDetailAndBundledRelation(bundle.RelationKeyChatId, pbtypes.String(chatId))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyHasChat, pbtypes.Bool(true))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyChatId, domain.String(chatId))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyHasChat, domain.Bool(true))
 	return nil
 }
 
-func (s *service) createChatDerived(ctx context.Context, space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
-	uniqueKey := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
+func (s *service) createChatDerived(ctx context.Context, space clientspace.Space, details *domain.Details) (string, *domain.Details, error) {
+	uniqueKey := details.GetString(bundle.RelationKeyUniqueKey)
 	key, err := domain.UnmarshalUniqueKey(uniqueKey)
 	if err != nil {
 		return "", nil, fmt.Errorf("unmarshal unique key: %w", err)
 	}
 
 	createState := state.NewDocWithUniqueKey("", nil, key).(*state.State)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_chatDerived))
+	details.Set(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
 	createState.SetDetails(details)
 
 	id, newDetails, err := s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyChatDerived}, createState)

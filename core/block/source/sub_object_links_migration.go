@@ -54,12 +54,12 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 			internalKey := s.UniqueKeyInternal()
 			switch m.sbType {
 			case smartblock.SmartBlockTypeRelation:
-				if bundle.HasRelation(internalKey) {
-					s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.RelationKey(internalKey).BundledURL()))
+				if bundle.HasRelation(domain.RelationKey(internalKey)) {
+					s.SetDetail(bundle.RelationKeySourceObject, domain.String(domain.RelationKey(internalKey).BundledURL()))
 				}
 			case smartblock.SmartBlockTypeObjectType:
 				if bundle.HasObjectTypeByKey(domain.TypeKey(internalKey)) {
-					s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.TypeKey(internalKey).BundledURL()))
+					s.SetDetail(bundle.RelationKeySourceObject, domain.String(domain.TypeKey(internalKey).BundledURL()))
 				}
 
 			}
@@ -67,15 +67,14 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 			continue
 		}
 		if m.canRelationContainObjectValues(rel.Format) {
-			rawValue := s.Details().GetFields()[rel.Key]
+			rawValue := s.Details().Get(domain.RelationKey(rel.Key))
 
-			if oldId := rawValue.GetStringValue(); oldId != "" {
+			if oldId := rawValue.String(); oldId != "" {
 				newId := m.migrateId(oldId)
 				if oldId != newId {
-					s.SetDetail(rel.Key, pbtypes.String(newId))
+					s.SetDetail(domain.RelationKey(rel.Key), domain.String(newId))
 				}
-			} else if rawIds := rawValue.GetListValue(); rawIds != nil {
-				ids := pbtypes.ListValueToStrings(rawIds)
+			} else if ids := rawValue.StringList(); len(ids) > 0 {
 				changed := false
 				for i, oldId := range ids {
 					newId := m.migrateId(oldId)
@@ -85,7 +84,7 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 					}
 				}
 				if changed {
-					s.SetDetail(rel.Key, pbtypes.StringList(ids))
+					s.SetDetail(domain.RelationKey(rel.Key), domain.StringList(ids))
 				}
 			}
 		}

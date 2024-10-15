@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/util/debug"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *spaceSubscriptions) initDebugger() {
@@ -320,7 +319,7 @@ func newSubDebugger() *subDebugger {
 func (d *subDebugger) addEvent(msg *pb.EventMessage) {
 	var name string
 	if v := msg.GetObjectDetailsSet(); v != nil {
-		name = pbtypes.GetString(v.Details, bundle.RelationKeyName.String())
+		name = v.Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
 	}
 
 	ent := newDebugEntry(msg)

@@ -5,13 +5,13 @@ import (
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -41,7 +41,7 @@ type Bookmark interface {
 }
 
 type BookmarkService interface {
-	CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *types.Struct, err error)
+	CreateBookmarkObject(ctx context.Context, spaceID string, details *domain.Details, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *domain.Details, err error)
 	FetchAsync(spaceID string, blockID string, params bookmark.FetchParams)
 }
 
