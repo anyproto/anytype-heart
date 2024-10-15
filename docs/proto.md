@@ -917,6 +917,10 @@
     - [Rpc.Object.OpenBreadcrumbs.Request](#anytype-Rpc-Object-OpenBreadcrumbs-Request)
     - [Rpc.Object.OpenBreadcrumbs.Response](#anytype-Rpc-Object-OpenBreadcrumbs-Response)
     - [Rpc.Object.OpenBreadcrumbs.Response.Error](#anytype-Rpc-Object-OpenBreadcrumbs-Response-Error)
+    - [Rpc.Object.Publish](#anytype-Rpc-Object-Publish)
+    - [Rpc.Object.Publish.Request](#anytype-Rpc-Object-Publish-Request)
+    - [Rpc.Object.Publish.Response](#anytype-Rpc-Object-Publish-Response)
+    - [Rpc.Object.Publish.Response.Error](#anytype-Rpc-Object-Publish-Response-Error)
     - [Rpc.Object.Redo](#anytype-Rpc-Object-Redo)
     - [Rpc.Object.Redo.Request](#anytype-Rpc-Object-Redo-Request)
     - [Rpc.Object.Redo.Response](#anytype-Rpc-Object-Redo-Response)
@@ -1422,6 +1426,7 @@
     - [Rpc.Object.ListSetObjectType.Response.Error.Code](#anytype-Rpc-Object-ListSetObjectType-Response-Error-Code)
     - [Rpc.Object.Open.Response.Error.Code](#anytype-Rpc-Object-Open-Response-Error-Code)
     - [Rpc.Object.OpenBreadcrumbs.Response.Error.Code](#anytype-Rpc-Object-OpenBreadcrumbs-Response-Error-Code)
+    - [Rpc.Object.Publish.Response.Error.Code](#anytype-Rpc-Object-Publish-Response-Error-Code)
     - [Rpc.Object.Redo.Response.Error.Code](#anytype-Rpc-Object-Redo-Response-Error-Code)
     - [Rpc.Object.Search.Response.Error.Code](#anytype-Rpc-Object-Search-Response-Error-Code)
     - [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchSubscribe-Response-Error-Code)
@@ -1952,6 +1957,7 @@
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
+| ObjectPublish | [Rpc.Object.Publish.Request](#anytype-Rpc-Object-Publish-Request) | [Rpc.Object.Publish.Response](#anytype-Rpc-Object-Publish-Response) |  |
 | ObjectCreate | [Rpc.Object.Create.Request](#anytype-Rpc-Object-Create-Request) | [Rpc.Object.Create.Response](#anytype-Rpc-Object-Create-Response) | ObjectCreate just creates the new page, without adding the link to it from some other page |
 | ObjectCreateBookmark | [Rpc.Object.CreateBookmark.Request](#anytype-Rpc-Object-CreateBookmark-Request) | [Rpc.Object.CreateBookmark.Response](#anytype-Rpc-Object-CreateBookmark-Response) |  |
 | ObjectCreateFromUrl | [Rpc.Object.CreateFromUrl.Request](#anytype-Rpc-Object-CreateFromUrl-Request) | [Rpc.Object.CreateFromUrl.Response](#anytype-Rpc-Object-CreateFromUrl-Response) |  |
@@ -15454,6 +15460,65 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 
 
+<a name="anytype-Rpc-Object-Publish"></a>
+
+### Rpc.Object.Publish
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Publish-Request"></a>
+
+### Rpc.Object.Publish.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Publish-Response"></a>
+
+### Rpc.Object.Publish.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.Publish.Response.Error](#anytype-Rpc-Object-Publish-Response-Error) |  |  |
+| publishCid | [string](#string) |  |  |
+| publishFileKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Publish-Response-Error"></a>
+
+### Rpc.Object.Publish.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.Publish.Response.Error.Code](#anytype-Rpc-Object-Publish-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Redo"></a>
 
 ### Rpc.Object.Redo
@@ -22583,6 +22648,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-Publish-Response-Error-Code"></a>
+
+### Rpc.Object.Publish.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_OBJECT | 101 |  |
+| NO_SUCH_SPACE | 102 |  |
 
 
 
