@@ -388,7 +388,7 @@ download-tantivy-all-force: download-tantivy
 
 download-tantivy-all: download-tantivy
 	@echo "Validating SHA256 checksums..."
-	@shasum -a 256 -c $(SHA_FILE) --status || { echo "Hash mismatch detected."; exit 1; }
+	@shasum -a 256 -c $(SHA_FILE) --status || { echo "Hash mismatch detected. Call make download-tantivy-all-force"; exit 1; }
 	@echo "All files are valid."
 	@rm -rf deps/libs/*.tar.gz
 	$(MAKE) write-tantivy-version
