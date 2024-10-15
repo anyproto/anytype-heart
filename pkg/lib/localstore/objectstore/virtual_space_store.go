@@ -24,7 +24,7 @@ func (s *dsObjectStore) SaveVirtualSpace(id string) (err error) {
 	if err != nil {
 		return err
 	}
-	_, err = s.virtualSpaces.UpsertOne(s.componentCtx, it)
+	err = s.virtualSpaces.UpsertOne(s.componentCtx, it)
 	return err
 }
 

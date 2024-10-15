@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
-	"github.com/valyala/fastjson"
 )
 
 const headsStateField = "h"
@@ -24,7 +24,7 @@ func (s *dsObjectStore) GetLastIndexedHeadsHash(ctx context.Context, id string) 
 }
 
 func (s *dsObjectStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) error {
-	_, err := s.headsState.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
+	_, err := s.headsState.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
 		val.Set(headsStateField, arena.NewString(headsHash))
 		return val, true, nil
 	}))

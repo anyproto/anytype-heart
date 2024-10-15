@@ -189,7 +189,7 @@ func (h *HTML) updateFilesInLinks(block *model.Block, filesSource source.Source,
 			if newFileName, createFileBlock, err = common.ProvideFileName(mark.Param, filesSource, path, h.tempDirProvider); err == nil {
 				mark.Param = newFileName
 				if createFileBlock {
-					anymark.ConvertTextToFile(block)
+					block.Content = anymark.ConvertTextToFile(mark.Param)
 					break
 				}
 				continue

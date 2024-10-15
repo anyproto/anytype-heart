@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app/ocache"
@@ -45,6 +44,7 @@ func newClientManager(pool pool.Pool, peerStore peerstore.PeerStore, peerUpdateC
 		checkPeersCh: peerUpdateCh,
 		pool:         pool,
 		peerStore:    peerStore,
+		addLimiter:   make(chan struct{}, 1),
 	}
 	cm.ctx, cm.ctxCancel = context.WithCancel(context.Background())
 	cm.ctx = context.WithValue(cm.ctx, operationNameKey, "checkPeerLoop")
@@ -63,18 +63,22 @@ type clientManager struct {
 	pool      pool.Pool
 	peerStore peerstore.PeerStore
 
-	mu sync.RWMutex
+	addLimiter chan struct{}
 }
 
 func (m *clientManager) add(ctx context.Context, ts ...*task) (err error) {
-	m.mu.Lock()
+	select {
+	case m.addLimiter <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 	if m.ocache.Len() == 0 {
 		if err = m.checkPeers(ctx, true); err != nil {
-			m.mu.Unlock()
+			<-m.addLimiter
 			return
 		}
 	}
-	m.mu.Unlock()
+	<-m.addLimiter
 	return m.mb.Add(ctx, ts...)
 }
 

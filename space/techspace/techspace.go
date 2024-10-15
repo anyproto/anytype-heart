@@ -44,6 +44,7 @@ type AccountObject interface {
 	IsIconMigrated() (bool, error)
 	SetAnalyticsId(analyticsId string) (err error)
 	GetAnalyticsId() (string, error)
+	GetPrivateAnalyticsId() string
 }
 
 type TechSpace interface {

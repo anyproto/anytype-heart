@@ -1,10 +1,9 @@
 package database
 
 import (
-	"github.com/anyproto/any-store/encoding"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
 	"github.com/gogo/protobuf/types"
-	"github.com/valyala/fastjson"
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 
@@ -59,7 +58,7 @@ type KeyOrder struct {
 	IncludeTime    bool
 	Store          ObjectStore
 	Options        map[string]string
-	arena          *fastjson.Arena
+	arena          *anyenc.Arena
 	collatorBuffer *collate.Buffer
 	collator       *collate.Collator
 }
@@ -95,25 +94,25 @@ func (ko *KeyOrder) AnystoreSort() query.Sort {
 	case model.RelationFormat_shorttext, model.RelationFormat_longtext:
 		return ko.textSort()
 	case model.RelationFormat_number:
-		return ko.basicSort(fastjson.TypeNumber)
+		return ko.basicSort(anyenc.TypeNumber)
 	case model.RelationFormat_date:
 		if ko.IncludeTime {
-			return ko.basicSort(fastjson.TypeNumber)
+			return ko.basicSort(anyenc.TypeNumber)
 		} else {
 			return ko.dateOnlySort()
 		}
 	case model.RelationFormat_object, model.RelationFormat_file:
-		return ko.basicSort(fastjson.TypeString)
+		return ko.basicSort(anyenc.TypeString)
 	case model.RelationFormat_url, model.RelationFormat_email, model.RelationFormat_phone, model.RelationFormat_emoji:
-		return ko.basicSort(fastjson.TypeString)
+		return ko.basicSort(anyenc.TypeString)
 	case model.RelationFormat_tag, model.RelationFormat_status:
 		return ko.tagStatusSort()
 	default:
-		return ko.basicSort(fastjson.TypeString)
+		return ko.basicSort(anyenc.TypeString)
 	}
 }
 
-func (ko *KeyOrder) basicSort(valType fastjson.Type) query.Sort {
+func (ko *KeyOrder) basicSort(valType anyenc.Type) query.Sort {
 	if ko.EmptyPlacement == model.BlockContentDataviewSort_Start && ko.Type == model.BlockContentDataviewSort_Desc {
 		return ko.emptyPlacementSort(valType)
 	} else if ko.EmptyPlacement == model.BlockContentDataviewSort_End && ko.Type == model.BlockContentDataviewSort_Asc {
@@ -143,7 +142,7 @@ func (ko *KeyOrder) tagStatusSort() query.Sort {
 	}
 }
 
-func (ko *KeyOrder) emptyPlacementSort(valType fastjson.Type) query.Sort {
+func (ko *KeyOrder) emptyPlacementSort(valType anyenc.Type) query.Sort {
 	return emptyPlacementSort{
 		arena:       ko.arena,
 		relationKey: ko.Key,
@@ -288,7 +287,7 @@ func (ko *KeyOrder) GetOptionValue(value *types.Value) *types.Value {
 	return pbtypes.String(res)
 }
 
-func newCustomOrder(arena *fastjson.Arena, key string, idsIndices map[string]int, keyOrd *KeyOrder) customOrder {
+func newCustomOrder(arena *anyenc.Arena, key string, idsIndices map[string]int, keyOrd *KeyOrder) customOrder {
 	return customOrder{
 		arena:        arena,
 		Key:          key,
@@ -298,7 +297,7 @@ func newCustomOrder(arena *fastjson.Arena, key string, idsIndices map[string]int
 }
 
 type customOrder struct {
-	arena        *fastjson.Arena
+	arena        *anyenc.Arena
 	Key          string
 	NeedOrderMap map[string]int
 	KeyOrd       *KeyOrder
@@ -306,7 +305,7 @@ type customOrder struct {
 	buf []byte
 }
 
-func (co customOrder) AppendKey(k []byte, v *fastjson.Value) []byte {
+func (co customOrder) AppendKey(k anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	defer func() {
 		co.arena.Reset()
 		co.buf = co.buf[:0]
@@ -320,11 +319,11 @@ func (co customOrder) AppendKey(k []byte, v *fastjson.Value) []byte {
 	if !ok {
 		anystoreSort := co.KeyOrd.AnystoreSort()
 		// Push to the end
-		k = encoding.AppendJSONValue(k, co.arena.NewNumberInt(len(co.NeedOrderMap)))
+		k = co.arena.NewNumberInt(len(co.NeedOrderMap)).MarshalTo(k)
 		// and add sorting
 		return anystoreSort.AppendKey(k, v)
 	}
-	return encoding.AppendJSONValue(k, co.arena.NewNumberInt(idx))
+	return co.arena.NewNumberInt(idx).MarshalTo(k)
 }
 
 func (co customOrder) Fields() []query.SortField {
@@ -346,7 +345,7 @@ func (co customOrder) getStringVal(val *types.Value) string {
 		co.buf = co.buf[:0]
 	}()
 
-	jsonVal := pbtypes.ProtoValueToJson(co.arena, val)
+	jsonVal := pbtypes.ProtoValueToAnyEnc(co.arena, val)
 	if jsonVal == nil {
 		return ""
 	}

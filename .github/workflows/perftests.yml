@@ -73,7 +73,6 @@ jobs:
       - name: run perf tests
         run: |
           echo "Running perf tests"
-          make download-tantivy-all
           RUN_COUNT=${{ github.event.inputs.perf-test }}
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             RUN_COUNT=100

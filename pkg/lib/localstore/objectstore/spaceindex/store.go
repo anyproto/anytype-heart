@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
-	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -121,7 +122,7 @@ type dsObjectStore struct {
 	fulltextQueue  FulltextQueue
 
 	componentCtx       context.Context
-	arenaPool          *fastjson.ArenaPool
+	arenaPool          *anyenc.ArenaPool
 	collatorBufferPool *collatorBufferPool
 
 	// State
@@ -144,7 +145,7 @@ func New(componentCtx context.Context, spaceId string, deps Deps) Store {
 	s := &dsObjectStore{
 		spaceId:            spaceId,
 		componentCtx:       componentCtx,
-		arenaPool:          &fastjson.ArenaPool{},
+		arenaPool:          &anyenc.ArenaPool{},
 		collatorBufferPool: newCollatorBufferPool(),
 		anyStoreConfig:     deps.AnyStoreConfig,
 		sourceService:      deps.SourceService,
@@ -173,6 +174,12 @@ func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 
 func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	store, err := anystore.Open(ctx, path, s.anyStoreConfig)
+	if errors.Is(err, anystore.ErrIncompatibleVersion) {
+		if err = os.RemoveAll(path); err != nil {
+			return err
+		}
+		store, err = anystore.Open(ctx, path, s.anyStoreConfig)
+	}
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}

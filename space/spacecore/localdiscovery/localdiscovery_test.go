@@ -152,7 +152,7 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		notifier := NewMockNotifier(t)
 		accountKeys, err := accountdata.NewRandom()
 		assert.Nil(t, err)
-		notifier.EXPECT().PeerDiscovered(DiscoveredPeer{
+		notifier.EXPECT().PeerDiscovered(mock.Anything, DiscoveredPeer{
 			PeerId: accountKeys.PeerId,
 		}, mock.Anything).Return()
 		ld.SetNotifier(notifier)
@@ -169,7 +169,7 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		ld.readAnswers(peerUpdate)
 
 		// then
-		notifier.AssertCalled(t, "PeerDiscovered", DiscoveredPeer{
+		notifier.AssertCalled(t, "PeerDiscovered", mock.Anything, DiscoveredPeer{
 			PeerId: accountKeys.PeerId,
 		}, mock.Anything)
 	})

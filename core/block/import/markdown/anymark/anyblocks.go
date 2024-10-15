@@ -92,10 +92,10 @@ func provideCodeBlock(textArr []string, language string, id string) *model.Block
 	}
 }
 
-func ConvertTextToFile(block *model.Block) {
+func ConvertTextToFile(filePath string) *model.BlockContentOfFile {
 	// "svg" excluded
-	if block.GetText().GetMarks().Marks[0].Param == "" {
-		return
+	if filePath == "" {
+		return nil
 	}
 
 	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
@@ -104,7 +104,7 @@ func ConvertTextToFile(block *model.Block) {
 	pdfFormat := "pdf"
 
 	fileType := model.BlockContentFile_File
-	fileExt := filepath.Ext(block.GetText().GetMarks().Marks[0].Param)
+	fileExt := filepath.Ext(filePath)
 	if fileExt != "" {
 		fileExt = fileExt[1:]
 		for _, ext := range imageFormats {
@@ -131,14 +131,13 @@ func ConvertTextToFile(block *model.Block) {
 		if strings.EqualFold(fileExt, pdfFormat) {
 			fileType = model.BlockContentFile_PDF
 		}
-
-		block.Content = &model.BlockContentOfFile{
-			File: &model.BlockContentFile{
-				Name:  block.GetText().GetMarks().Marks[0].Param,
-				State: model.BlockContentFile_Empty,
-				Type:  fileType,
-			},
-		}
+	}
+	return &model.BlockContentOfFile{
+		File: &model.BlockContentFile{
+			Name:  filePath,
+			State: model.BlockContentFile_Empty,
+			Type:  fileType,
+		},
 	}
 }
 

@@ -5,9 +5,10 @@
 
 ### Install local deps
 
-#### Install tantivy
+#### Update tantivy
+Update the tantivy version in go.mod and run:
 ```
-make download-tantivy-all
+make download-tantivy-all-force
 ```
 
 #### Mac

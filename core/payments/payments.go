@@ -3,7 +3,9 @@ package payments
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -131,6 +133,8 @@ type service struct {
 	eventSender       event.Sender
 	profileUpdater    globalNamesUpdater
 	ns                nameservice.Service
+	cancel            context.CancelFunc
+	closed            atomic.Bool
 
 	multiplayerLimitsUpdater deletioncontroller.DeletionController
 	fileLimitsUpdater        filesync.FileSync
@@ -150,6 +154,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.profileUpdater = app.MustComponent[globalNamesUpdater](a)
 	s.multiplayerLimitsUpdater = app.MustComponent[deletioncontroller.DeletionController](a)
 	s.fileLimitsUpdater = app.MustComponent[filesync.FileSync](a)
+	// setting empty cancel function, to not have nil function here
+	_, s.cancel = context.WithCancel(context.Background())
 	return nil
 }
 
@@ -159,12 +165,13 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if val != nil && val.(bool) {
 		return nil
 	}
-
 	s.periodicGetStatus.Run()
 	return nil
 }
 
 func (s *service) Close(_ context.Context) (err error) {
+	s.closed.Store(true)
+	s.cancel()
 	s.periodicGetStatus.Close()
 	return nil
 }
@@ -205,7 +212,10 @@ func (s *service) sendMembershipUpdateEvent(status *pb.RpcMembershipGetStatusRes
 func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
-
+	if s.closed.Load() {
+		return nil, fmt.Errorf("service is closed")
+	}
+	ctx, s.cancel = context.WithCancel(ctx)
 	// 1 - check in cache first
 	var (
 		cachedStatus    *pb.RpcMembershipGetStatusResponse

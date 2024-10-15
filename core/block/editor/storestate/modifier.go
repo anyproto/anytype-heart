@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -16,7 +16,7 @@ const ordersKey = "_o"
 func makeModifier(ch ChangeOp, h Handler) (modifier query.Modifier, err error) {
 	m := ch.Change.Change.GetModify()
 	chain := make(query.ModifierChain, 0, len(m.Keys))
-	newModifier := func(mKey *pb.KeyModify, modOp string, val *fastjson.Value) (query.Modifier, error) {
+	newModifier := func(mKey *pb.KeyModify, modOp string, val *anyenc.Value) (query.Modifier, error) {
 		modJSON := ch.Arena.NewObject()
 		valJSON := ch.Arena.NewObject()
 		valJSON.Set(strings.Join(mKey.KeyPath, "."), val)
@@ -25,7 +25,7 @@ func makeModifier(ch ChangeOp, h Handler) (modifier query.Modifier, err error) {
 		if mErr != nil {
 			return nil, mErr
 		}
-		mod := query.ModifyFunc(func(a *fastjson.Arena, v *fastjson.Value) (result *fastjson.Value, modified bool, err error) {
+		mod := query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
 			if curOrder := getFieldOrder(val, mKey.KeyPath...); curOrder != "" && curOrder >= ch.Change.Order {
 				return v, false, nil
 			}
@@ -41,7 +41,7 @@ func makeModifier(ch ChangeOp, h Handler) (modifier query.Modifier, err error) {
 
 	for _, mKey := range m.Keys {
 		var (
-			val   *fastjson.Value
+			val   *anyenc.Value
 			mod   query.Modifier
 			modOp string
 		)
@@ -49,7 +49,7 @@ func makeModifier(ch ChangeOp, h Handler) (modifier query.Modifier, err error) {
 			return nil, errors.Join()
 		}
 		if mKey.ModifyValue != "" {
-			if val, err = fastjson.Parse(mKey.ModifyValue); err != nil {
+			if val, err = anyenc.ParseJson(mKey.ModifyValue); err != nil {
 				return nil, err
 			}
 		}
@@ -60,7 +60,7 @@ func makeModifier(ch ChangeOp, h Handler) (modifier query.Modifier, err error) {
 			val = ch.Arena.NewTrue()
 			modOp = "$unset"
 		case pb.ModifyOp_Inc:
-			if val == nil || val.Type() != fastjson.TypeNumber {
+			if val == nil || val.Type() != anyenc.TypeNumber {
 				return nil, fmt.Errorf("unexpected value for $inc %v: '%s'", mKey.KeyPath, mKey.ModifyValue)
 			}
 			modOp = "$inc"
@@ -83,7 +83,7 @@ func makeModifier(ch ChangeOp, h Handler) (modifier query.Modifier, err error) {
 	return chain, nil
 }
 
-func fillRootOrder(a *fastjson.Arena, v *fastjson.Value, order string) {
+func fillRootOrder(a *anyenc.Arena, v *anyenc.Value, order string) {
 	val := a.NewObject()
 	v.Set(ordersKey, val)
 	iterateKeysByPath(v, func(k string) {
@@ -93,7 +93,7 @@ func fillRootOrder(a *fastjson.Arena, v *fastjson.Value, order string) {
 	})
 }
 
-func getFieldOrder(v *fastjson.Value, fieldPath ...string) (order string) {
+func getFieldOrder(v *anyenc.Value, fieldPath ...string) (order string) {
 	obj := v.GetObject(ordersKey)
 	if obj == nil {
 		return
@@ -104,10 +104,10 @@ func getFieldOrder(v *fastjson.Value, fieldPath ...string) (order string) {
 			return
 		}
 		switch val.Type() {
-		case fastjson.TypeObject:
+		case anyenc.TypeObject:
 			obj, _ = val.Object()
 			continue
-		case fastjson.TypeString:
+		case anyenc.TypeString:
 			return string(val.GetStringBytes())
 		default:
 			return
@@ -116,9 +116,9 @@ func getFieldOrder(v *fastjson.Value, fieldPath ...string) (order string) {
 	return
 }
 
-func setFieldOrder(a *fastjson.Arena, v *fastjson.Value, order string, fieldPath ...string) {
+func setFieldOrder(a *anyenc.Arena, v *anyenc.Value, order string, fieldPath ...string) {
 	val := v.Get(ordersKey)
-	if val == nil || val.Type() != fastjson.TypeObject {
+	if val == nil || val.Type() != anyenc.TypeObject {
 		val = a.NewObject()
 		v.Set(ordersKey, val)
 	}
@@ -129,15 +129,15 @@ func setFieldOrder(a *fastjson.Arena, v *fastjson.Value, order string, fieldPath
 			return
 		}
 		fieldVal := val.Get(field)
-		if fieldVal == nil || (fieldVal.Type() != fastjson.TypeObject && fieldVal.Type() != fastjson.TypeString) {
+		if fieldVal == nil || (fieldVal.Type() != anyenc.TypeObject && fieldVal.Type() != anyenc.TypeString) {
 			fieldVal = a.NewObject()
 		}
 		switch fieldVal.Type() {
-		case fastjson.TypeObject:
+		case anyenc.TypeObject:
 			val.Set(field, fieldVal)
 			val = fieldVal
 			continue
-		case fastjson.TypeString:
+		case anyenc.TypeString:
 			prevOrder := string(fieldVal.GetStringBytes())
 			fieldVal = a.NewObject()
 			val.Set(field, fieldVal)
@@ -151,9 +151,9 @@ func setFieldOrder(a *fastjson.Arena, v *fastjson.Value, order string, fieldPath
 	}
 }
 
-func iterateKeysByPath(v *fastjson.Value, f func(k string), fieldPath ...string) {
+func iterateKeysByPath(v *anyenc.Value, f func(k string), fieldPath ...string) {
 	if obj := v.GetObject(fieldPath...); obj != nil {
-		obj.Visit(func(key []byte, v *fastjson.Value) {
+		obj.Visit(func(key []byte, v *anyenc.Value) {
 			f(string(key))
 		})
 	}

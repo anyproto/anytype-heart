@@ -40,7 +40,7 @@ type Indexer interface {
 	ReindexMarketplaceSpace(space clientspace.Space) error
 	ReindexSpace(space clientspace.Space) error
 	RemoveIndexes(spaceId string) (err error)
-	Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error
+	Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -136,7 +136,7 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	return i.store.SpaceIndex(spaceId).DeleteDetails(i.runCtx, ids)
 }
 
-func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
+func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
 	i.lock.Lock()
 	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
 	if !ok {
@@ -145,5 +145,5 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 	}
 	i.lock.Unlock()
 
-	return spaceInd.Index(ctx, info, options...)
+	return spaceInd.Index(info, options...)
 }

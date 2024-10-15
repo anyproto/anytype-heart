@@ -442,12 +442,18 @@ func (s *service) Close(ctx context.Context) error {
 	}
 	s.mu.Unlock()
 
+	wg := sync.WaitGroup{}
 	for _, ctrl := range ctrls {
-		err := ctrl.Close(ctx)
-		if err != nil {
-			log.Error("close space", zap.String("spaceId", ctrl.SpaceId()), zap.Error(err))
-		}
+		wg.Add(1)
+		go func(ctrl spacecontroller.SpaceController) {
+			defer wg.Done()
+			err := ctrl.Close(ctx)
+			if err != nil {
+				log.Error("close space", zap.String("spaceId", ctrl.SpaceId()), zap.Error(err))
+			}
+		}(ctrl)
 	}
+	wg.Wait()
 	err := s.techSpace.Close(ctx)
 	if err != nil {
 		log.Error("close tech space", zap.Error(err))

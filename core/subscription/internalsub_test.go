@@ -272,6 +272,125 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 	})
 }
 
+func TestInternalSubCustomQueue(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	subId := "test"
+	fx := newFixtureWithRealObjectStore(t)
+
+	queue := mb2.New[*pb.EventMessage](0)
+
+	resp, err := fx.Search(SubscribeRequest{
+		SpaceId: testSpaceId,
+		SubId:   subId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyPriority.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(10),
+			},
+		},
+		Keys:          []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
+		Internal:      true,
+		InternalQueue: queue,
+	})
+	require.NoError(t, err)
+	require.Same(t, resp.Output, queue)
+
+	obj := objectstore.TestObject{
+		bundle.RelationKeyId:       pbtypes.String("id1"),
+		bundle.RelationKeyName:     pbtypes.String("Jane Doe"),
+		bundle.RelationKeyPriority: pbtypes.Int64(10),
+	}
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{obj})
+
+	want := []pb.IsEventMessageValue{
+		&pb.EventMessageValueOfObjectDetailsSet{
+			ObjectDetailsSet: &pb.EventObjectDetailsSet{
+				Id:      "id1",
+				SubIds:  []string{subId},
+				Details: obj.Details(),
+			},
+		},
+		&pb.EventMessageValueOfSubscriptionAdd{
+			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+				SubId: subId,
+				Id:    "id1",
+			},
+		},
+		&pb.EventMessageValueOfSubscriptionCounters{
+			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+				SubId: subId,
+				Total: 1,
+			},
+		},
+	}
+
+	msgs, err := queue.NewCond().WithMin(len(want)).Wait(ctx)
+	require.NoError(t, err)
+	require.Equal(t, wrapToEventMessages(want), msgs)
+}
+
+func TestInternalSubAsyncInit(t *testing.T) {
+	ctx := context.Background()
+	subId := "test"
+	fx := newFixtureWithRealObjectStore(t)
+	obj := objectstore.TestObject{
+		bundle.RelationKeyId:       pbtypes.String("id1"),
+		bundle.RelationKeyName:     pbtypes.String("Jane Doe"),
+		bundle.RelationKeyPriority: pbtypes.Int64(10),
+	}
+
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		obj,
+	})
+
+	resp, err := fx.Search(SubscribeRequest{
+		SpaceId: testSpaceId,
+		SubId:   subId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyPriority.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(10),
+			},
+		},
+		Keys:      []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
+		Internal:  true,
+		AsyncInit: true,
+	})
+
+	require.NoError(t, err)
+	require.Empty(t, resp.Records)
+
+	want := []pb.IsEventMessageValue{
+		&pb.EventMessageValueOfObjectDetailsSet{
+			ObjectDetailsSet: &pb.EventObjectDetailsSet{
+				Id:      "id1",
+				SubIds:  []string{subId},
+				Details: obj.Details(),
+			},
+		},
+		&pb.EventMessageValueOfSubscriptionAdd{
+			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+				SubId: subId,
+				Id:    "id1",
+			},
+		},
+		&pb.EventMessageValueOfSubscriptionCounters{
+			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+				SubId: subId,
+				Total: 1,
+			},
+		},
+	}
+
+	msgs, err := resp.Output.NewCond().WithMin(len(want)).Wait(ctx)
+	require.NoError(t, err)
+	require.Equal(t, wrapToEventMessages(want), msgs)
+}
+
 func givenMessagesForFirstObject(subIds ...string) []pb.IsEventMessageValue {
 	var msgs []pb.IsEventMessageValue
 	msgs = append(msgs, &pb.EventMessageValueOfObjectDetailsSet{

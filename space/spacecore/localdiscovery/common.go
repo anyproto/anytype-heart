@@ -1,6 +1,7 @@
 package localdiscovery
 
 import (
+	"context"
 	"fmt"
 	gonet "net"
 	"runtime"
@@ -45,7 +46,7 @@ type OwnAddresses struct {
 }
 
 type Notifier interface {
-	PeerDiscovered(peer DiscoveredPeer, own OwnAddresses)
+	PeerDiscovered(ctx context.Context, peer DiscoveredPeer, own OwnAddresses)
 }
 
 type LocalDiscovery interface {

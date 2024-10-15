@@ -104,14 +104,14 @@ func (_c *MockIndexer_ForceFTIndex_Call) RunAndReturn(run func()) *MockIndexer_F
 	return _c
 }
 
-// Index provides a mock function with given fields: ctx, info, options
-func (_m *MockIndexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
+// Index provides a mock function with given fields: info, options
+func (_m *MockIndexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
 	_va := make([]interface{}, len(options))
 	for _i := range options {
 		_va[_i] = options[_i]
 	}
 	var _ca []interface{}
-	_ca = append(_ca, ctx, info)
+	_ca = append(_ca, info)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
@@ -120,8 +120,8 @@ func (_m *MockIndexer) Index(ctx context.Context, info smartblock.DocInfo, optio
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, smartblock.DocInfo, ...smartblock.IndexOption) error); ok {
-		r0 = rf(ctx, info, options...)
+	if rf, ok := ret.Get(0).(func(smartblock.DocInfo, ...smartblock.IndexOption) error); ok {
+		r0 = rf(info, options...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -135,23 +135,22 @@ type MockIndexer_Index_Call struct {
 }
 
 // Index is a helper method to define mock.On call
-//   - ctx context.Context
 //   - info smartblock.DocInfo
 //   - options ...smartblock.IndexOption
-func (_e *MockIndexer_Expecter) Index(ctx interface{}, info interface{}, options ...interface{}) *MockIndexer_Index_Call {
+func (_e *MockIndexer_Expecter) Index(info interface{}, options ...interface{}) *MockIndexer_Index_Call {
 	return &MockIndexer_Index_Call{Call: _e.mock.On("Index",
-		append([]interface{}{ctx, info}, options...)...)}
+		append([]interface{}{info}, options...)...)}
 }
 
-func (_c *MockIndexer_Index_Call) Run(run func(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption)) *MockIndexer_Index_Call {
+func (_c *MockIndexer_Index_Call) Run(run func(info smartblock.DocInfo, options ...smartblock.IndexOption)) *MockIndexer_Index_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]smartblock.IndexOption, len(args)-2)
-		for i, a := range args[2:] {
+		variadicArgs := make([]smartblock.IndexOption, len(args)-1)
+		for i, a := range args[1:] {
 			if a != nil {
 				variadicArgs[i] = a.(smartblock.IndexOption)
 			}
 		}
-		run(args[0].(context.Context), args[1].(smartblock.DocInfo), variadicArgs...)
+		run(args[0].(smartblock.DocInfo), variadicArgs...)
 	})
 	return _c
 }
@@ -161,7 +160,7 @@ func (_c *MockIndexer_Index_Call) Return(_a0 error) *MockIndexer_Index_Call {
 	return _c
 }
 
-func (_c *MockIndexer_Index_Call) RunAndReturn(run func(context.Context, smartblock.DocInfo, ...smartblock.IndexOption) error) *MockIndexer_Index_Call {
+func (_c *MockIndexer_Index_Call) RunAndReturn(run func(smartblock.DocInfo, ...smartblock.IndexOption) error) *MockIndexer_Index_Call {
 	_c.Call.Return(run)
 	return _c
 }

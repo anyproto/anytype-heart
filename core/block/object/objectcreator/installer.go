@@ -26,7 +26,7 @@ func (s *service) BundledObjectsIdsToInstall(
 	ctx context.Context,
 	space clientspace.Space,
 	sourceObjectIds []string,
-) (objectIds []string, err error) {
+) (ids domain.BundledObjectIds, err error) {
 	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
 		return nil, fmt.Errorf("get marketplace space: %w", err)
@@ -51,7 +51,10 @@ func (s *service) BundledObjectsIdsToInstall(
 			if err != nil {
 				return err
 			}
-			objectIds = append(objectIds, objectId)
+			ids = append(ids, domain.BundledObjectId{
+				SourceId:        sourceObjectId,
+				DerivedObjectId: objectId,
+			})
 			return nil
 		})
 		if err != nil {

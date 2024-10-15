@@ -6,7 +6,7 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/valyala/fastjson"
+	"github.com/anyproto/any-store/anyenc"
 )
 
 const maxOrderId = "_max"
@@ -15,7 +15,7 @@ type StoreStateTx struct {
 	tx              anystore.WriteTx
 	ctx             context.Context
 	state           *StoreState
-	arena           *fastjson.Arena
+	arena           *anyenc.Arena
 	maxOrder        string
 	maxOrderChanged bool
 }
@@ -57,7 +57,7 @@ func (stx *StoreStateTx) SetOrder(changeId, order string) (err error) {
 	obj.Set("id", stx.arena.NewString(changeId))
 	obj.Set("o", stx.arena.NewString(order))
 	obj.Set("t", stx.arena.NewNumberInt(int(time.Now().UnixMilli())))
-	if _, err = stx.state.collChangeOrders.UpsertOne(stx.ctx, obj); err != nil {
+	if err = stx.state.collChangeOrders.UpsertOne(stx.ctx, obj); err != nil {
 		return
 	}
 	stx.checkMaxOrder(order)

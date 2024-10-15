@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -125,7 +125,7 @@ func makeStoreContent(m map[string]any) source.PushChangeParams {
 	return source.PushChangeParams{Changes: changes}
 }
 
-func (fx *fixture) assertStoreValue(t *testing.T, test any, extract func(val *fastjson.Value) any) {
+func (fx *fixture) assertStoreValue(t *testing.T, test any, extract func(val *anyenc.Value) any) {
 	val, err := fx.getValue()
 	require.NoError(t, err)
 	require.Equal(t, test, extract(val))
@@ -156,7 +156,7 @@ func TestAccountOldInitWithData(t *testing.T) {
 		collName := "accountId1" + collectionName
 		coll, err := db.CreateCollection(tx.Context(), collName)
 		require.NoError(t, err)
-		err = coll.Insert(tx.Context(), fmt.Sprintf(`{"id":"%s","analyticsId":"%s","%s":"true","name":"Anna","description":"Molly"}`, accountDocument, "analyticsId", iconMigrationKey))
+		err = coll.Insert(tx.Context(), anyenc.MustParseJson(fmt.Sprintf(`{"id":"%s","analyticsId":"%s","%s":"true","name":"Anna","description":"Molly"}`, accountDocumentId, "analyticsId", iconMigrationKey)))
 		require.NoError(t, err)
 		require.NoError(t, tx.Commit())
 	})
@@ -209,6 +209,21 @@ func TestSetSharedSpacesLimit(t *testing.T) {
 	require.NoError(t, err)
 	res := fx.GetSharedSpacesLimit()
 	require.Equal(t, 10, res)
+}
+
+func TestAccountObject_GetPrivateAnalyticsId(t *testing.T) {
+	t.Run("new account", func(t *testing.T) {
+		fx := newFixture(t, true, nil)
+		res := fx.GetPrivateAnalyticsId()
+		require.NotEmpty(t, res)
+	})
+	t.Run("old account", func(t *testing.T) {
+		fx := newFixture(t, false, nil)
+		err := fx.SetAnalyticsId("analyticsId")
+		require.NoError(t, err)
+		res := fx.GetPrivateAnalyticsId()
+		require.NotEmpty(t, res)
+	})
 }
 
 func TestAnalyticsId(t *testing.T) {

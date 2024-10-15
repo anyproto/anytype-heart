@@ -214,7 +214,7 @@ type Locker interface {
 }
 
 type Indexer interface {
-	Index(ctx context.Context, info DocInfo, options ...IndexOption) error
+	Index(info DocInfo, options ...IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -1296,7 +1296,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 
 func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	docInfo := sb.getDocInfo(s)
-	if err := sb.indexer.Index(context.Background(), docInfo, opts...); err != nil {
+	if err := sb.indexer.Index(docInfo, opts...); err != nil {
 		log.Errorf("index object %s error: %s", sb.Id(), err)
 	}
 }
