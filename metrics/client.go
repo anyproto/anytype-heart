@@ -132,9 +132,6 @@ func (c *client) sendNextBatch(info anymetry.AppInfoProvider, batcher *mb.MB[any
 
 	err = c.telemetry.SendEvents(msgs, info)
 	if err != nil {
-		clientMetricsLog.
-			With("unsent messages", len(msgs)+clientBatcher.Len()).
-			Error("failed to send messages")
 		if batcher != nil {
 			_ = batcher.TryAdd(msgs...) //nolint:errcheck
 		}

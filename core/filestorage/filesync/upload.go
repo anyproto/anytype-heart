@@ -163,7 +163,7 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 			}
 		}
 		if limitErr == nil || !limitErrorIsLogged {
-			log.Error("retry uploading file error",
+			log.Debug("retry uploading file error",
 				zap.String("fileId", fileId.String()), zap.Error(err),
 				zap.String("objectId", it.ObjectId),
 			)
