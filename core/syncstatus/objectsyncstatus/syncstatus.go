@@ -120,9 +120,7 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 	s.addTreeHead(treeId, heads, StatusNotSynced)
 	s.Unlock()
 
-	if treeId != s.spaceSettingsId {
-		s.updateDetails(treeId, domain.ObjectSyncStatusSyncing)
-	}
+	s.updateDetails(treeId, domain.ObjectSyncStatusSyncing)
 }
 
 func (s *syncStatusService) ObjectReceive(senderId, treeId string, heads []string) {
@@ -231,5 +229,7 @@ func (s *syncStatusService) isSenderResponsible(senderId string) bool {
 }
 
 func (s *syncStatusService) updateDetails(treeId string, status domain.ObjectSyncStatus) {
-	s.syncDetailsUpdater.UpdateDetails(treeId, status, s.spaceId)
+	if treeId != s.spaceSettingsId {
+		s.syncDetailsUpdater.UpdateDetails(treeId, status, s.spaceId)
+	}
 }
