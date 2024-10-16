@@ -3637,6 +3637,70 @@ message Rpc {
         }
     }
 
+    message AI {
+        message WritingTools {
+            message Request {
+                Mode mode = 1;
+                Language language = 2;
+                string text = 3;
+                string endpoint = 4;
+                string token = 5;
+
+                enum Mode {
+                    NULL = 0;
+                    DEFAULT = 1;
+                    SUMMARIZE = 2;
+                    GRAMMAR = 3;
+                    SHORTEN = 4;
+                    EXPAND = 5;
+                    BULLET = 6;
+                    TABLE = 7;
+                    TRANSLATE = 8;
+                    CASUAL = 9;
+                    FUNNY = 10;
+                    CONFIDENT = 11;
+                    STRAIGHTFORWARD = 12;
+                    PROFESSIONAL = 13;
+                    // ...
+                }
+
+                enum Language {
+                    UNKNOWN = 0;
+                    EN = 1;
+                    ES = 2;
+                    FR = 3;
+                    DE = 4;
+                    IT = 5;
+                    PT = 6;
+                    HI = 7;
+                    TH = 8;
+                    // ...
+                }
+            }
+
+            message Response {
+                Error error = 1;
+                string text = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        ENDPOINT_NOT_FOUND = 3;
+                        INVALID_TOKEN = 4;
+
+                        RATE_LIMIT_EXCEEDED = 100;
+                        // ...
+                    }
+                }
+            }
+        }
+    }
+
     message Gallery {
         message DownloadManifest {
             message Request {

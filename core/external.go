@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/ai"
 	"github.com/anyproto/anytype-heart/util/unsplash"
 )
 
@@ -90,6 +91,28 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 	})
 
 	return response(objectId, err)
+}
+
+func (mw *Middleware) AIWritingTools(_ context.Context, req *pb.RpcAIWritingToolsRequest) *pb.RpcAIWritingToolsResponse {
+	response := func(resp string, err error) *pb.RpcAIWritingToolsResponse {
+		m := &pb.RpcAIWritingToolsResponse{
+			Error: &pb.RpcAIWritingToolsResponseError{Code: pb.RpcAIWritingToolsResponseError_NULL},
+			Text:  resp,
+		}
+		if err != nil {
+			m.Error.Code = pb.RpcAIWritingToolsResponseError_INVALID_TOKEN
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+
+	ai := mw.applicationService.GetApp().Component(ai.CName).(ai.AI)
+	if ai == nil {
+		return response("", fmt.Errorf("node not started"))
+	}
+
+	result, err := ai.WritingTools(context.TODO(), req.Mode, req.Text, req.Endpoint, req.Language)
+	return response(result.Text, err)
 }
 
 func (mw *Middleware) GalleryDownloadManifest(_ context.Context, req *pb.RpcGalleryDownloadManifestRequest) *pb.RpcGalleryDownloadManifestResponse {
