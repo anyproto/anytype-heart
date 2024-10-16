@@ -345,7 +345,11 @@ func (f *ftSearchTantivy) DocCount() (uint64, error) {
 
 func (f *ftSearchTantivy) Close(ctx context.Context) error {
 	f.schema = nil
-	f.index.Free()
+	if f.index != nil {
+		f.index.Free()
+		f.index = nil
+		f.schema = nil
+	}
 	return nil
 }
 

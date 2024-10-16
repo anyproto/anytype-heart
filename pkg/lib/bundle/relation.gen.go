@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "5f8066b115b5ddb63753b02a8f136fe6c261a99efec064f4931b7c5cbd35df50"
+const RelationChecksum = "414402e104d3b92fa6045649ffa60f6988979f427cf91ef678c53257a0d83fc4"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -97,7 +97,6 @@ const (
 	RelationKeySetOf                     domain.RelationKey = "setOf"
 	RelationKeyIsArchived                domain.RelationKey = "isArchived"
 	RelationKeyFileExt                   domain.RelationKey = "fileExt"
-	RelationKeyScope                     domain.RelationKey = "scope"
 	RelationKeyFeaturedRelations         domain.RelationKey = "featuredRelations"
 	RelationKeyPhone                     domain.RelationKey = "phone"
 	RelationKeySmartblockTypes           domain.RelationKey = "smartblockTypes"
@@ -1449,19 +1448,6 @@ var (
 			MaxCount:         1,
 			Name:             "Revision",
 			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyScope: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brscope",
-			Key:              "scope",
-			MaxCount:         1,
-			Name:             "Scope",
-			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

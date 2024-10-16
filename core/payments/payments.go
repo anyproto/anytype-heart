@@ -152,6 +152,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.multiplayerLimitsUpdater = app.MustComponent[deletioncontroller.DeletionController](a)
 	s.fileLimitsUpdater = app.MustComponent[filesync.FileSync](a)
 	s.getSubscriptionLimiter = make(chan struct{}, 1)
+	s.closing = make(chan struct{})
 	return nil
 }
 

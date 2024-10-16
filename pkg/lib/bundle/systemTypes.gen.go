@@ -6,7 +6,7 @@ package bundle
 
 import domain "github.com/anyproto/anytype-heart/core/domain"
 
-const SystemTypesChecksum = "c547e63d525d4bf2267e46bb99a0175031c75c02ae77158da0d94f29d9c9becd"
+const SystemTypesChecksum = "e68b37f73baf858d7101257403a3a0605e09090dbe11432919e1e7a6d4668b67"
 
 // SystemTypes contains types that have some special biz logic depends on them in some objects
 // they shouldn't be removed or edited in any way
@@ -16,7 +16,6 @@ var SystemTypes = append(InternalTypes, []domain.TypeKey{
 	TypeKeyTask,
 	TypeKeyCollection,
 	TypeKeySet,
-	TypeKeyProfile,
 	TypeKeyBookmark,
 	TypeKeyChat,
 	TypeKeyChatDerived,

@@ -19,6 +19,10 @@ import (
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
+const (
+	testSpaceSettingsId = "testSpaceSettingsId"
+)
+
 func Test_UseCases(t *testing.T) {
 	t.Run("HeadsChange: new object", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
@@ -85,6 +89,14 @@ func Test_UseCases(t *testing.T) {
 		s.RemoveAllExcept("peerId1", []string{})
 
 		assert.Equal(t, s.synced, []string{"id"})
+	})
+	t.Run("HeadsChange: settings object is changed", func(t *testing.T) {
+		s := newFixture(t, "spaceId")
+
+		s.HeadsChange(testSpaceSettingsId, []string{"head1", "head2"})
+
+		assert.NotNil(t, s.treeHeads[testSpaceSettingsId])
+		assert.Equal(t, []string{"head1", "head2"}, s.treeHeads[testSpaceSettingsId].heads)
 	})
 }
 
@@ -162,6 +174,8 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 	ctrl := gomock.NewController(t)
 	service := mock_nodeconf.NewMockService(ctrl)
 	storage := mock_spacestorage.NewMockSpaceStorage(ctrl)
+	storage.EXPECT().SpaceSettingsId().Return(testSpaceSettingsId)
+
 	spaceState := &spacestate.SpaceState{SpaceId: spaceId}
 	config := &config.Config{}
 	detailsUpdater := mock_objectsyncstatus.NewMockUpdater(t)
