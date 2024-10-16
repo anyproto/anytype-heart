@@ -64,7 +64,6 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 
 		// always add this error because it's mean that we need to return error to user, even in case IGNORE_ERRORS is turned on
 		// see shouldReturnError
-		ce.Add(common.ErrFailedToReceiveListOfObjects)
 		log.With("error", ce.Error()).With("pages", len(pages)).With("dbs", len(db)).Error("import from notion failed")
 		return nil, ce
 	}
@@ -76,7 +75,7 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 		return nil, common.NewFromError(common.ErrCancel, req.Mode)
 	}
 	if len(db) == 0 && len(pages) == 0 {
-		return nil, common.NewFromError(common.ErrNoObjectsToImport, req.Mode)
+		return nil, common.NewFromError(common.ErrNoObjectInIntegration, req.Mode)
 	}
 
 	fileDownloader := files.NewFileDownloader(progress)
