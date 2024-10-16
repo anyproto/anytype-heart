@@ -156,6 +156,11 @@ func (a *aclObjectManager) processAcl() (err error) {
 		aclState = acl.AclState()
 		upToDate bool
 	)
+	firstRec, err := acl.GetIndex(0)
+	if err != nil {
+		return
+	}
+	createdDate := firstRec.Timestamp
 	defer func() {
 		if err == nil {
 			permissions := aclState.Permissions(aclState.AccountKey().GetPublic())
@@ -183,6 +188,11 @@ func (a *aclObjectManager) processAcl() (err error) {
 	states, err = decryptAll(states, decrypt)
 	if err != nil {
 		return
+	}
+	for _, st := range states {
+		if st.Permissions.IsOwner() {
+			err = a.status.SetOwner(st.PubKey.Account(), createdDate)
+		}
 	}
 
 	statusAclHeadId := a.status.GetLatestAclHeadId()
