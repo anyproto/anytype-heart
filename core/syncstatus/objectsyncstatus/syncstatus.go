@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/spacestate"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 
 	"github.com/anyproto/any-sync/nodeconf"
@@ -66,10 +67,11 @@ type syncStatusService struct {
 	sync.Mutex
 	periodicSync periodicsync.PeriodicSync
 
-	spaceId    string
-	synced     []string
-	tempSynced map[string]struct{}
-	treeHeads  map[string]treeHeadsEntry
+	spaceId         string
+	spaceSettingsId string
+	synced          []string
+	tempSynced      map[string]struct{}
+	treeHeads       map[string]treeHeadsEntry
 
 	updateIntervalSecs int
 	updateTimeout      time.Duration
@@ -87,10 +89,12 @@ func NewSyncStatusService() StatusService {
 }
 
 func (s *syncStatusService) Init(a *app.App) (err error) {
-	sharedState := a.MustComponent(spacestate.CName).(*spacestate.SpaceState)
+	sharedState := app.MustComponent[*spacestate.SpaceState](a)
+	spaceStorage := app.MustComponent[spacestorage.SpaceStorage](a)
 	s.updateIntervalSecs = syncUpdateInterval
 	s.updateTimeout = syncTimeout
 	s.spaceId = sharedState.SpaceId
+	s.spaceSettingsId = spaceStorage.SpaceSettingsId()
 	s.periodicSync = periodicsync.NewPeriodicSync(
 		s.updateIntervalSecs,
 		s.updateTimeout,
@@ -115,7 +119,10 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 	s.Lock()
 	s.addTreeHead(treeId, heads, StatusNotSynced)
 	s.Unlock()
-	s.updateDetails(treeId, domain.ObjectSyncStatusSyncing)
+
+	if treeId != s.spaceSettingsId {
+		s.updateDetails(treeId, domain.ObjectSyncStatusSyncing)
+	}
 }
 
 func (s *syncStatusService) ObjectReceive(senderId, treeId string, heads []string) {
