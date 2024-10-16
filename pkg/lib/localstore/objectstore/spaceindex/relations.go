@@ -62,8 +62,14 @@ func (s *dsObjectStore) FetchRelationByKey(key string) (relation *relationutils.
 
 func (s *dsObjectStore) FetchRelationByKeys(keys ...string) (relations relationutils.Relations, err error) {
 	uks := make([]string, 0, len(keys))
-
 	for _, key := range keys {
+		// we should be able to get system relations even when not indexed
+		bundledRel, err := bundle.GetRelation(domain.RelationKey(key))
+		if err == nil {
+			relations = append(relations, &relationutils.Relation{Relation: bundledRel})
+			continue
+		}
+
 		uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 		if err != nil {
 			return nil, err
