@@ -3,9 +3,6 @@ package payments
 import (
 	"context"
 	"errors"
-	"fmt"
-	"sync"
-	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -26,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/deletioncontroller"
+	"github.com/anyproto/anytype-heart/util/contexthelper"
 )
 
 const CName = "payments"
@@ -125,16 +123,15 @@ func New() Service {
 }
 
 type service struct {
-	cache             cache.CacheService
-	ppclient          ppclient.AnyPpClientService
-	wallet            wallet.Wallet
-	mx                sync.Mutex
-	periodicGetStatus periodicsync.PeriodicSync
-	eventSender       event.Sender
-	profileUpdater    globalNamesUpdater
-	ns                nameservice.Service
-	cancel            context.CancelFunc
-	closed            atomic.Bool
+	cache                  cache.CacheService
+	ppclient               ppclient.AnyPpClientService
+	wallet                 wallet.Wallet
+	getSubscriptionLimiter chan struct{}
+	periodicGetStatus      periodicsync.PeriodicSync
+	eventSender            event.Sender
+	profileUpdater         globalNamesUpdater
+	ns                     nameservice.Service
+	closing                chan struct{}
 
 	multiplayerLimitsUpdater deletioncontroller.DeletionController
 	fileLimitsUpdater        filesync.FileSync
@@ -154,8 +151,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.profileUpdater = app.MustComponent[globalNamesUpdater](a)
 	s.multiplayerLimitsUpdater = app.MustComponent[deletioncontroller.DeletionController](a)
 	s.fileLimitsUpdater = app.MustComponent[filesync.FileSync](a)
-	// setting empty cancel function, to not have nil function here
-	_, s.cancel = context.WithCancel(context.Background())
+	s.getSubscriptionLimiter = make(chan struct{}, 1)
 	return nil
 }
 
@@ -170,8 +166,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 }
 
 func (s *service) Close(_ context.Context) (err error) {
-	s.closed.Store(true)
-	s.cancel()
+	close(s.closing)
 	s.periodicGetStatus.Close()
 	return nil
 }
@@ -197,7 +192,7 @@ func (s *service) sendMembershipUpdateEvent(status *pb.RpcMembershipGetStatusRes
 	})
 }
 
-// Logic:
+// GetSubscriptionStatus Logic:
 //
 // 1. Check in cache. if req.NoCache -> do not check in cache.
 // 2. If found in cache -> return it
@@ -210,12 +205,17 @@ func (s *service) sendMembershipUpdateEvent(status *pb.RpcMembershipGetStatusRes
 // 8. UpdateLimits
 // 9. Enable cache again if status is active
 func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error) {
-	s.mx.Lock()
-	defer s.mx.Unlock()
-	if s.closed.Load() {
-		return nil, fmt.Errorf("service is closed")
+	// wrap context to stop in-flight request in case of component close
+	ctx, cancel := contexthelper.ContextWithCloseChan(ctx, s.closing)
+	defer cancel()
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case s.getSubscriptionLimiter <- struct{}{}:
+		defer func() {
+			<-s.getSubscriptionLimiter
+		}()
 	}
-	ctx, s.cancel = context.WithCancel(ctx)
 	// 1 - check in cache first
 	var (
 		cachedStatus    *pb.RpcMembershipGetStatusResponse

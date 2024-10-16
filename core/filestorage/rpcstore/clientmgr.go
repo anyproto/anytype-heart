@@ -15,6 +15,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
+	"github.com/anyproto/anytype-heart/util/contexthelper"
 )
 
 const (
@@ -67,6 +68,8 @@ type clientManager struct {
 }
 
 func (m *clientManager) add(ctx context.Context, ts ...*task) (err error) {
+	ctx, cancel := contexthelper.ContextWithCloseChan(ctx, m.ctx.Done())
+	defer cancel()
 	select {
 	case m.addLimiter <- struct{}{}:
 	case <-ctx.Done():
