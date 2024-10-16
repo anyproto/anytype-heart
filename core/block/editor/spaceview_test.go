@@ -119,7 +119,7 @@ func TestSpaceView_SharedSpacesLimit(t *testing.T) {
 	require.Equal(t, 10, fx.GetSharedSpacesLimit())
 }
 
-func TestSpaceView_SharedOwner(t *testing.T) {
+func TestSpaceView_SetOwner(t *testing.T) {
 	fx := newSpaceViewFixture(t)
 	defer fx.finish()
 	err := fx.SetOwner("ownerId", 125)
