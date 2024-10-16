@@ -27,7 +27,7 @@ func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 	if err != nil {
 		return nil, fmt.Errorf("find by id: %w", err)
 	}
-	details, err := pbtypes.JsonToProto(doc.Value())
+	details, err := pbtypes.AnyEncToProto(doc.Value())
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal details: %w", err)
 	}
@@ -97,7 +97,7 @@ func (s *dsObjectStore) getObjectInfo(ctx context.Context, id string) (*model.Ob
 	if err != nil {
 		return nil, fmt.Errorf("find by id: %w", err)
 	}
-	details, err = pbtypes.JsonToProto(doc.Value())
+	details, err = pbtypes.AnyEncToProto(doc.Value())
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal details: %w", err)
 	}

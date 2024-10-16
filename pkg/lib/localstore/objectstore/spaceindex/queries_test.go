@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
 	"golang.org/x/text/collate"
 
@@ -897,7 +897,7 @@ func TestQueryObjectIds(t *testing.T) {
 }
 
 func TestQueryRaw(t *testing.T) {
-	arena := &fastjson.Arena{}
+	arena := &anyenc.Arena{}
 
 	t.Run("with nil filter expect error", func(t *testing.T) {
 		s := NewStoreFixture(t)

@@ -1,8 +1,8 @@
 package database
 
 import (
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
-	"github.com/valyala/fastjson"
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -26,13 +26,13 @@ type Record struct {
 }
 
 type Query struct {
-	FullText      string
-	SpaceId       string
-	Highlighter   ftsearch.HighlightFormatter         // default is json
-	Filters       []*model.BlockContentDataviewFilter // filters results. apply sequentially
-	Sorts         []*model.BlockContentDataviewSort   // order results. apply hierarchically
-	Limit         int                                 // maximum number of results
-	Offset        int                                 // skip given number of results
+	FullText    string
+	SpaceId     string
+	Highlighter ftsearch.HighlightFormatter         // default is json
+	Filters     []*model.BlockContentDataviewFilter // filters results. apply sequentially
+	Sorts       []*model.BlockContentDataviewSort   // order results. apply hierarchically
+	Limit       int                                 // maximum number of results
+	Offset      int                                 // skip given number of results
 }
 
 func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
@@ -125,7 +125,7 @@ func injectDefaultOrder(qry Query, sorts []*model.BlockContentDataviewSort) []*m
 	return sorts
 }
 
-func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena, collatorBuffer *collate.Buffer) (filters *Filters, err error) {
+func NewFilters(qry Query, store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate.Buffer) (filters *Filters, err error) {
 	// spaceID could be empty
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	qry.Sorts = injectDefaultOrder(qry, qry.Sorts)
@@ -150,7 +150,7 @@ func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena, collatorBuf
 
 type queryBuilder struct {
 	spaceId        string
-	arena          *fastjson.Arena
+	arena          *anyenc.Arena
 	objectStore    ObjectStore
 	collatorBuffer *collate.Buffer
 }
@@ -198,9 +198,9 @@ func (b *queryBuilder) appendCustomOrder(sort *model.BlockContentDataviewSort, o
 		idsIndices := make(map[string]int, len(sort.CustomOrder))
 		var idx int
 		for _, it := range sort.CustomOrder {
-			jsonVal := pbtypes.ProtoValueToJson(b.arena, it)
+			val := pbtypes.ProtoValueToAnyEnc(b.arena, it)
 
-			raw := jsonVal.String()
+			raw := string(val.MarshalTo(nil))
 			if raw != "" {
 				idsIndices[raw] = idx
 				idx++
