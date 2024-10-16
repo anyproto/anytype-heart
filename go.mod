@@ -2,8 +2,6 @@ module github.com/anyproto/anytype-heart
 
 go 1.22.0
 
-toolchain go1.22.2
-
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
 	github.com/PuerkitoBio/goquery v1.9.2
