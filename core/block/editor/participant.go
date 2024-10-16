@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -106,9 +105,6 @@ func (p *participant) TryClose(objectTTL time.Duration) (bool, error) {
 }
 
 func (p *participant) modifyDetails(newDetails *types.Struct) (err error) {
-	if newDetails.Fields[bundle.RelationKeyParticipantPermissions.String()].GetNumberValue() == 2 {
-		fmt.Println("founder")
-	}
 	return p.DetailsUpdatable.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
 		return pbtypes.StructMerge(current, newDetails, false), nil
 	})
