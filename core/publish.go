@@ -11,7 +11,6 @@ func (mw *Middleware) ObjectPublish(ctx context.Context, req *pb.RpcObjectPublis
 	publishService := getService[publish.Service](mw)
 
 	res, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId)
-
 	code := mapErrorCode(err,
 		errToCode(nil, pb.RpcObjectPublishResponseError_NULL))
 
