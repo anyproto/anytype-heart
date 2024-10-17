@@ -31,6 +31,8 @@ type collectionObserver struct {
 	objectStore       spaceindex.Store
 	collectionService CollectionService
 	recBatch          *mb.MB
+
+	spaceSubscription *spaceSubscriptions
 }
 
 func (s *spaceSubscriptions) newCollectionObserver(spaceId string, collectionID string, subID string) (*collectionObserver, error) {
@@ -53,6 +55,8 @@ func (s *spaceSubscriptions) newCollectionObserver(spaceId string, collectionID 
 		collectionService: s.collectionService,
 
 		idsSet: map[string]struct{}{},
+
+		spaceSubscription: s,
 	}
 	obs.ids = initialObjectIDs
 	for _, id := range initialObjectIDs {
@@ -63,7 +67,7 @@ func (s *spaceSubscriptions) newCollectionObserver(spaceId string, collectionID 
 		for {
 			select {
 			case objectIDs := <-objectsCh:
-				obs.updateIDs(objectIDs, s)
+				obs.updateIDs(objectIDs)
 			case <-obs.closeCh:
 				return
 			}
@@ -85,16 +89,16 @@ func (c *collectionObserver) close() {
 	c.collectionService.UnsubscribeFromCollection(c.collectionID, c.subID)
 }
 
-func (c *collectionObserver) listEntries(spaceSub *spaceSubscriptions) []*entry {
+func (c *collectionObserver) listEntries() []*entry {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	entries := spaceSub.fetchEntries(c.ids)
+	entries := c.spaceSubscription.fetchEntries(c.ids)
 	res := make([]*entry, len(entries))
 	copy(res, entries)
 	return res
 }
 
-func (c *collectionObserver) updateIDs(ids []string, spaceSub *spaceSubscriptions) {
+func (c *collectionObserver) updateIDs(ids []string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -107,7 +111,7 @@ func (c *collectionObserver) updateIDs(ids []string, spaceSub *spaceSubscription
 	}
 	c.ids = ids
 
-	entries := spaceSub.fetchEntriesLocked(append(removed, added...))
+	entries := c.spaceSubscription.fetchEntriesLocked(append(removed, added...))
 	for _, e := range entries {
 		err := c.recBatch.Add(database.Record{
 			Details: e.data,
@@ -202,7 +206,7 @@ func (s *spaceSubscriptions) newCollectionSub(id string, spaceId string, collect
 		observer:  obs,
 	}
 
-	entries := obs.listEntries(s)
+	entries := obs.listEntries()
 	filtered := entries[:0]
 	for _, e := range entries {
 		if flt.FilterObject(e.data) {
