@@ -192,6 +192,9 @@ func (a *aclObjectManager) processAcl() (err error) {
 	for _, st := range states {
 		if st.Permissions.IsOwner() {
 			err = a.status.SetOwner(st.PubKey.Account(), createdDate)
+			if err != nil {
+				return
+			}
 		}
 	}
 
