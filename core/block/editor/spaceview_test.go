@@ -119,6 +119,15 @@ func TestSpaceView_SharedSpacesLimit(t *testing.T) {
 	require.Equal(t, 10, fx.GetSharedSpacesLimit())
 }
 
+func TestSpaceView_SetOwner(t *testing.T) {
+	fx := newSpaceViewFixture(t)
+	defer fx.finish()
+	err := fx.SetOwner("ownerId", 125)
+	require.NoError(t, err)
+	require.Equal(t, "ownerId", pbtypes.GetString(fx.CombinedDetails(), bundle.RelationKeyCreator.String()))
+	require.Equal(t, int64(125), pbtypes.GetInt64(fx.CombinedDetails(), bundle.RelationKeyCreatedDate.String()))
+}
+
 type spaceServiceStub struct {
 }
 

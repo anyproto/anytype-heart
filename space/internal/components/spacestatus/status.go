@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
@@ -24,6 +25,7 @@ type SpaceStatus interface {
 	SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 	SetAccessType(status spaceinfo.AccessType) (err error)
 	SetAclIsEmpty(isEmpty bool) (err error)
+	SetOwner(ownerIdentity string, createdDate int64) (err error)
 	GetSpaceView() techspace.SpaceView
 }
 
@@ -130,6 +132,12 @@ func (s *spaceStatus) SetLocalStatus(status spaceinfo.LocalStatus) error {
 	info := spaceinfo.NewSpaceLocalInfo(s.spaceId)
 	info.SetLocalStatus(status)
 	return s.SetLocalInfo(info)
+}
+
+func (s *spaceStatus) SetOwner(ownerIdentity string, createdDate int64) (err error) {
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
+		return view.SetOwner(domain.NewParticipantId(s.spaceId, ownerIdentity), createdDate)
+	})
 }
 
 func (s *spaceStatus) SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
