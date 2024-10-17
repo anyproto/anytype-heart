@@ -53,8 +53,9 @@ func Test_newCollectionObserver(t *testing.T) {
 			id := pbtypes.GetString(msg.(database.Record).Details, "id")
 			receivedIds = append(receivedIds, id)
 		}
-
 		assert.Equal(t, expectedIds, receivedIds)
+		err = batcher.Close()
+		assert.NoError(t, err)
 	})
 	t.Run("fetch entries from object store", func(t *testing.T) {
 		// given
@@ -98,7 +99,8 @@ func Test_newCollectionObserver(t *testing.T) {
 			id := pbtypes.GetString(msg.(database.Record).Details, "id")
 			receivedIds = append(receivedIds, id)
 		}
-
 		assert.Equal(t, expectedIds, receivedIds)
+		err = batcher.Close()
+		assert.NoError(t, err)
 	})
 }
