@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/gogo/protobuf/types"
+	format "github.com/ipfs/go-ipld-format"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -195,7 +195,7 @@ func logIndexLoop(err error) {
 	if errors.Is(err, treestorage.ErrUnknownTreeId) {
 		return
 	}
-	if errors.Is(err, fileprotoerr.ErrCIDNotFound) {
+	if errors.Is(err, format.ErrNotFound{}) {
 		return
 	}
 	if errors.Is(err, rpcstore.ErrNoConnectionToAnyFile) {
