@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
@@ -77,7 +76,7 @@ func TestStore_Get(t *testing.T) {
 		}
 		b, err := fx.Get(ctx, bs[0].Cid())
 		assert.Nil(t, b)
-		assert.ErrorIs(t, err, fileblockstore.ErrCIDNotFound)
+		assert.ErrorIs(t, err, fileprotoerr.ErrCIDNotFound)
 	})
 }
 

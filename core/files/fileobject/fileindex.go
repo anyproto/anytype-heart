@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/any-sync/commonfile/fileblockstore"
+	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/gogo/protobuf/types"
@@ -195,7 +195,7 @@ func logIndexLoop(err error) {
 	if errors.Is(err, treestorage.ErrUnknownTreeId) {
 		return
 	}
-	if errors.Is(err, fileblockstore.ErrCIDNotFound) {
+	if errors.Is(err, fileprotoerr.ErrCIDNotFound) {
 		return
 	}
 	if errors.Is(err, rpcstore.ErrNoConnectionToAnyFile) {
