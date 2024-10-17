@@ -643,7 +643,6 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, e
 		// info from ipfs
 		fileList, err = s.fileIndexInfo(ctx, id, false)
 		if err != nil {
-			log.With("fileId", id.FileId.String()).Errorf("FileByHash: failed to retrieve from IPFS: %s", err)
 			return nil, err
 		}
 		ok, err := s.fileStore.IsFileImported(id.FileId)
