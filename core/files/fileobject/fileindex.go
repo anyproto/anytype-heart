@@ -198,7 +198,7 @@ func logIndexLoop(err error) {
 	if errors.Is(err, format.ErrNotFound{}) {
 		return
 	}
-	if errors.Is(err, rpcstore.ErrNoConnectionToAnyFile) {
+	if errors.Is(err, rpcstore.ErrNoConnectionToAnyFileClient) {
 		return
 	}
 	log.Errorf("index loop: %v", err)

@@ -29,8 +29,8 @@ type operationNameKeyType string
 const operationNameKey operationNameKeyType = "operationName"
 
 var (
-	clientCreateTimeout      = 1 * time.Minute
-	ErrNoConnectionToAnyFile = errors.New("no connection to any file client")
+	clientCreateTimeout            = 1 * time.Minute
+	ErrNoConnectionToAnyFileClient = errors.New("no connection to any file client")
 )
 
 func newClientManager(pool pool.Pool, peerStore peerstore.PeerStore, peerUpdateCh chan struct{}) *clientManager {
@@ -201,7 +201,7 @@ func (m *clientManager) checkPeers(ctx context.Context, needClient bool) (err er
 		addPeer(peerId)
 	}
 	if m.ocache.Len() == 0 {
-		return ErrNoConnectionToAnyFile
+		return ErrNoConnectionToAnyFileClient
 	}
 	return nil
 }
