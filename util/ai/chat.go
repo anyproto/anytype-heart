@@ -14,7 +14,7 @@ import (
 type ChatRequest struct {
 	Model          string                 `json:"model"`
 	Messages       []map[string]string    `json:"messages"`
-	Temperature    float64                `json:"temperature"`
+	Temperature    float32                `json:"temperature"`
 	Stream         bool                   `json:"stream"`
 	ResponseFormat map[string]interface{} `json:"response_format"`
 }
@@ -137,7 +137,10 @@ func chat(config APIConfig, prompt PromptConfig) (*[]ChatResponse, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("error reading response body: %w", err)
+		}
 		bodyString := string(bodyBytes)
 		return nil, fmt.Errorf("error: received non-200 status code %d: %s", resp.StatusCode, bodyString)
 	}

@@ -100,18 +100,18 @@ func (mw *Middleware) AIWritingTools(_ context.Context, req *pb.RpcAIWritingTool
 			Text:  resp,
 		}
 		if err != nil {
-			m.Error.Code = pb.RpcAIWritingToolsResponseError_INVALID_TOKEN
+			m.Error.Code = pb.RpcAIWritingToolsResponseError_UNKNOWN_ERROR
 			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
 
-	ai := mw.applicationService.GetApp().Component(ai.CName).(ai.AI)
-	if ai == nil {
+	aiService := mw.applicationService.GetApp().Component(ai.CName).(ai.AI)
+	if aiService == nil {
 		return response("", fmt.Errorf("node not started"))
 	}
 
-	result, err := ai.WritingTools(context.TODO(), req.Mode, req.Text, req.Endpoint, req.Language)
+	result, err := aiService.WritingTools(context.TODO(), req)
 	return response(result.Text, err)
 }
 

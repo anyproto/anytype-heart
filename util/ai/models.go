@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 type Model struct {
@@ -21,7 +23,7 @@ type Response struct {
 
 func getChatModels(config APIConfig) (Response, error) {
 	switch config.Provider {
-	case ProviderOllama:
+	case pb.RpcAIWritingToolsRequest_OLLAMA:
 		resp, err := getModels(config)
 		if err != nil {
 			return Response{}, fmt.Errorf("error getting Ollama models: %w", err)
@@ -29,7 +31,7 @@ func getChatModels(config APIConfig) (Response, error) {
 		return filterModels(resp, func(model Model) bool {
 			return strings.Contains(model.Id, "llama") || strings.Contains(model.Id, "gemma")
 		}), nil
-	case ProviderOpenAI:
+	case pb.RpcAIWritingToolsRequest_OPENAI:
 		resp, err := getModels(config)
 		if err != nil {
 			return Response{}, fmt.Errorf("error getting OpenAI models: %w", err)
@@ -44,7 +46,7 @@ func getChatModels(config APIConfig) (Response, error) {
 
 func getEmbedModels(config APIConfig) (Response, error) {
 	switch config.Provider {
-	case ProviderOllama:
+	case pb.RpcAIWritingToolsRequest_OLLAMA:
 		resp, err := getModels(config)
 		if err != nil {
 			return Response{}, fmt.Errorf("error getting Ollama models: %w", err)
@@ -52,7 +54,7 @@ func getEmbedModels(config APIConfig) (Response, error) {
 		return filterModels(resp, func(model Model) bool {
 			return strings.Contains(model.Id, "embed") || strings.Contains(model.Id, "all-minilm")
 		}), nil
-	case ProviderOpenAI:
+	case pb.RpcAIWritingToolsRequest_OPENAI:
 		resp, err := getModels(config)
 		if err != nil {
 			return Response{}, fmt.Errorf("error getting OpenAI models: %w", err)
@@ -67,7 +69,8 @@ func getEmbedModels(config APIConfig) (Response, error) {
 
 func getModels(config APIConfig) (Response, error) {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", config.EndpointModels, nil)
+	// TODO: fix model endpoint
+	req, err := http.NewRequest("GET", config.Endpoint, nil)
 	if err != nil {
 		return Response{}, fmt.Errorf("error creating the request: %w", err)
 	}
@@ -91,7 +94,7 @@ func getModels(config APIConfig) (Response, error) {
 		return Response{}, fmt.Errorf("error reading the response body: %w", err)
 	}
 
-	// TODO data prefix stripping reader
+	// TODO: use data prefix stripping reader
 	var apiResponse struct {
 		Data []struct {
 			Id       string `json:"id"`

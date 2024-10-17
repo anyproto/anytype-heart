@@ -3642,9 +3642,12 @@ message Rpc {
             message Request {
                 Mode mode = 1;
                 Language language = 2;
-                string text = 3;
+                Provider provider = 3;
                 string endpoint = 4;
-                string token = 5;
+                string model = 5;
+                string token = 6;
+                float temperature = 7;
+                string text = 8;
 
                 enum Mode {
                     NULL = 0;
@@ -3676,6 +3679,13 @@ message Rpc {
                     TH = 8;
                     // ...
                 }
+
+                enum Provider {
+                    PROVIDER_NULL = 0;
+                    OLLAMA = 1;
+                    OPENAI = 2;
+                    // ...
+                }
             }
 
             message Response {
@@ -3690,11 +3700,11 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
-                        ENDPOINT_NOT_FOUND = 3;
-                        INVALID_TOKEN = 4;
 
                         RATE_LIMIT_EXCEEDED = 100;
-                        // ...
+                        ENDPOINT_NOT_FOUND = 101;
+                        INVALID_TOKEN = 102;
+                        // TODO more codes
                     }
                 }
             }

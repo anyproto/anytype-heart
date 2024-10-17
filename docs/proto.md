@@ -1208,6 +1208,7 @@
   
     - [Rpc.AI.WritingTools.Request.Language](#anytype-Rpc-AI-WritingTools-Request-Language)
     - [Rpc.AI.WritingTools.Request.Mode](#anytype-Rpc-AI-WritingTools-Request-Mode)
+    - [Rpc.AI.WritingTools.Request.Provider](#anytype-Rpc-AI-WritingTools-Request-Provider)
     - [Rpc.AI.WritingTools.Response.Error.Code](#anytype-Rpc-AI-WritingTools-Response-Error-Code)
     - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
@@ -2729,9 +2730,12 @@ Response – message from a middleware.
 | ----- | ---- | ----- | ----------- |
 | mode | [Rpc.AI.WritingTools.Request.Mode](#anytype-Rpc-AI-WritingTools-Request-Mode) |  |  |
 | language | [Rpc.AI.WritingTools.Request.Language](#anytype-Rpc-AI-WritingTools-Request-Language) |  |  |
-| text | [string](#string) |  |  |
+| provider | [Rpc.AI.WritingTools.Request.Provider](#anytype-Rpc-AI-WritingTools-Request-Provider) |  |  |
 | endpoint | [string](#string) |  |  |
+| model | [string](#string) |  |  |
 | token | [string](#string) |  |  |
+| temperature | [float](#float) |  |  |
+| text | [string](#string) |  |  |
 
 
 
@@ -19627,6 +19631,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-AI-WritingTools-Request-Provider"></a>
+
+### Rpc.AI.WritingTools.Request.Provider
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| PROVIDER_NULL | 0 |  |
+| OLLAMA | 1 |  |
+| OPENAI | 2 | ... |
+
+
+
 <a name="anytype-Rpc-AI-WritingTools-Response-Error-Code"></a>
 
 ### Rpc.AI.WritingTools.Response.Error.Code
@@ -19637,9 +19654,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| ENDPOINT_NOT_FOUND | 3 |  |
-| INVALID_TOKEN | 4 |  |
-| RATE_LIMIT_EXCEEDED | 100 | ... |
+| RATE_LIMIT_EXCEEDED | 100 |  |
+| ENDPOINT_NOT_FOUND | 101 |  |
+| INVALID_TOKEN | 102 | TODO more codes |
 
 
 

@@ -35,24 +35,18 @@ func init() {
 	openaiAPIKey = os.Getenv("OPENAI_API_KEY")
 }
 
-const (
-	ProviderOllama APIProvider = "ollama"
-	ProviderOpenAI APIProvider = "openai"
-)
-
 type APIConfig struct {
-	Provider       APIProvider
-	Endpoint       string
-	EndpointModels string
-	Model          string
-	AuthRequired   bool
-	AuthToken      string
+	Provider     pb.RpcAIWritingToolsRequestProvider
+	Model        string
+	Endpoint     string
+	AuthRequired bool
+	AuthToken    string
 }
 
 type PromptConfig struct {
 	SystemPrompt string
 	UserPrompt   string
-	Temperature  float64
+	Temperature  float32
 	JSONMode     bool
 }
 

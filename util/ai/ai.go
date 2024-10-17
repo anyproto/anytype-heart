@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/app/ocache"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/pb"
@@ -20,29 +19,18 @@ var log = logging.Logger("ai")
 var DefaultToken = ""
 
 const (
-	CName         = "ai"
-	cacheTTL      = time.Minute * 10
-	cacheGCPeriod = time.Minute * 5
+	CName = "ai"
 )
 
-type WritingToolsParams struct {
-	Mode     pb.RpcAIWritingToolsRequestMode
-	Language pb.RpcAIWritingToolsRequestLanguage
-	Text     string
-	Endpoint string
-	Token    string
-}
-
 type AI interface {
-	WritingTools(ctx context.Context, mode pb.RpcAIWritingToolsRequestMode, text string, endpoint string, language pb.RpcAIWritingToolsRequestLanguage) (result, error)
+	WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (result, error)
 	// TODO: functions
 
 	app.ComponentRunnable
 }
 
 type AIService struct {
-	mu    sync.Mutex
-	cache ocache.OCache
+	mu sync.Mutex
 }
 
 func New() AI {
@@ -50,7 +38,6 @@ func New() AI {
 }
 
 func (l *AIService) Init(a *app.App) (err error) {
-	l.cache = ocache.New(l.writingTools, ocache.WithTTL(cacheTTL), ocache.WithGCPeriod(cacheGCPeriod))
 	return
 }
 
@@ -63,7 +50,7 @@ func (l *AIService) Run(_ context.Context) error {
 }
 
 func (l *AIService) Close(_ context.Context) error {
-	return l.cache.Close()
+	return nil
 }
 
 type result struct {
@@ -79,43 +66,21 @@ func (r result) Close() error {
 	return nil
 }
 
-func (l *AIService) WritingTools(ctx context.Context, mode pb.RpcAIWritingToolsRequestMode, text string, endpoint string, language pb.RpcAIWritingToolsRequestLanguage) (result, error) {
-	text = strings.TrimSpace(text)
-	if text == "" {
-		return result{}, fmt.Errorf("empty text")
-	}
-	v, err := l.cache.Get(ctx, fmt.Sprintf("%s-%s-%s-%s", mode, text, endpoint, language))
-	if err != nil {
-		return result{}, err
-	}
-
-	if r, ok := v.(result); ok {
-		return r, nil
-	} else {
-		panic("invalid cache value")
-	}
-}
-
-// TODO: fix signature
-func (l *AIService) writingTools(ctx context.Context, query string) (ocache.Object, error) {
-	text := strings.ToLower(strings.TrimSpace(query))
+func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (result, error) {
+	text := strings.ToLower(strings.TrimSpace(params.Text))
 
 	configChat := APIConfig{
-		Provider:       ProviderOllama,
-		Endpoint:       ollamaEndpointChat,
-		EndpointModels: ollamaEndpointModels,
-		Model:          ollamaDefaultModelChat,
-
-		AuthRequired: false,
-		AuthToken:    "",
+		Provider:     params.Provider,
+		Endpoint:     params.Endpoint,
+		Model:        params.Model,
+		AuthRequired: params.Provider != pb.RpcAIWritingToolsRequest_OLLAMA,
+		AuthToken:    params.Token,
 	}
 
-	// systemPrompt := systemPrompts[params.Mode]
-	// userPrompt := fmt.Sprintf(userPrompts[params.Mode], text)
 	configPrompt := PromptConfig{
-		SystemPrompt: systemPrompts[2],
-		UserPrompt:   fmt.Sprintf(userPrompts[2], text),
-		Temperature:  0.1,
+		SystemPrompt: systemPrompts[params.Mode],
+		UserPrompt:   fmt.Sprintf(userPrompts[params.Mode], text),
+		Temperature:  params.Temperature,
 		JSONMode:     true,
 	}
 
