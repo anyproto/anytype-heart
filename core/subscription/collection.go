@@ -67,7 +67,7 @@ func (s *spaceSubscriptions) newCollectionObserver(spaceId string, collectionID 
 		for {
 			select {
 			case objectIDs := <-objectsCh:
-				obs.updateIDs(objectIDs)
+				obs.updateIds(objectIDs)
 			case <-obs.closeCh:
 				return
 			}
@@ -98,7 +98,7 @@ func (c *collectionObserver) listEntries() []*entry {
 	return res
 }
 
-func (c *collectionObserver) updateIDs(ids []string) {
+func (c *collectionObserver) updateIds(ids []string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
