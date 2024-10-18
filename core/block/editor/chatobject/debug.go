@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 
@@ -20,7 +21,13 @@ type DebugChange struct {
 }
 
 func (s *storeObject) DebugChanges(ctx context.Context) ([]*DebugChange, error) {
-	ot := s.SmartBlock.Tree()
+	historyTree, err := s.SmartBlock.Space().TreeBuilder().BuildHistoryTree(context.Background(), s.Id(), objecttreebuilder.HistoryTreeOpts{
+		Heads:   nil,
+		Include: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("build history tree: %w", err)
+	}
 
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
@@ -29,7 +36,7 @@ func (s *storeObject) DebugChanges(ctx context.Context) ([]*DebugChange, error) 
 	defer tx.Commit()
 
 	var result []*DebugChange
-	err = ot.IterateRoot(source.UnmarshalStoreChange, func(change *objecttree.Change) bool {
+	err = historyTree.IterateFrom(historyTree.Root().Id, source.UnmarshalStoreChange, func(change *objecttree.Change) bool {
 		orderId, err := tx.GetOrder(change.Id)
 		if err != nil {
 			result = append(result, &DebugChange{
