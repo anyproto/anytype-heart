@@ -10444,6 +10444,7 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Debug.ChatChanges.Response.Error](#anytype-Rpc-Debug-ChatChanges-Response-Error) |  |  |
 | changes | [Rpc.Debug.ChatChanges.Response.Change](#anytype-Rpc-Debug-ChatChanges-Response-Change) | repeated |  |
+| wrongOrder | [bool](#bool) |  |  |
 
 
 

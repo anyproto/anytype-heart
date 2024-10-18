@@ -241,7 +241,7 @@ func (mw *Middleware) DebugAccountSelectTrace(cctx context.Context, req *pb.RpcD
 
 func (mw *Middleware) DebugChatChanges(cctx context.Context, req *pb.RpcDebugChatChangesRequest) *pb.RpcDebugChatChangesResponse {
 	chatService := getService[chats.Service](mw)
-	changes, err := chatService.DebugChanges(cctx, req.ChatObjectId, req.OrderBy)
+	changes, wrongOrder, err := chatService.DebugChanges(cctx, req.ChatObjectId, req.OrderBy)
 	if err != nil {
 		return &pb.RpcDebugChatChangesResponse{
 			Error: &pb.RpcDebugChatChangesResponseError{
@@ -252,6 +252,7 @@ func (mw *Middleware) DebugChatChanges(cctx context.Context, req *pb.RpcDebugCha
 	}
 
 	return &pb.RpcDebugChatChangesResponse{
-		Changes: changes,
+		Changes:    changes,
+		WrongOrder: wrongOrder,
 	}
 }

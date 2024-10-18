@@ -24,7 +24,7 @@ type Service interface {
 	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe(chatObjectId string) error
-	DebugChanges(ctx context.Context, chatObjectId string, orderBy pb.RpcDebugChatChangesRequestOrderBy) ([]*pb.RpcDebugChatChangesResponseChange, error)
+	DebugChanges(ctx context.Context, chatObjectId string, orderBy pb.RpcDebugChatChangesRequestOrderBy) ([]*pb.RpcDebugChatChangesResponseChange, bool, error)
 
 	app.Component
 }
@@ -125,7 +125,7 @@ func (s *service) Unsubscribe(chatObjectId string) error {
 	})
 }
 
-func (s *service) DebugChanges(ctx context.Context, chatObjectId string, orderBy pb.RpcDebugChatChangesRequestOrderBy) ([]*pb.RpcDebugChatChangesResponseChange, error) {
+func (s *service) DebugChanges(ctx context.Context, chatObjectId string, orderBy pb.RpcDebugChatChangesRequestOrderBy) ([]*pb.RpcDebugChatChangesResponseChange, bool, error) {
 	var changesOut []*pb.RpcDebugChatChangesResponseChange
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		changes, err := sb.DebugChanges(ctx)
@@ -146,10 +146,24 @@ func (s *service) DebugChanges(ctx context.Context, chatObjectId string, orderBy
 		}
 		return nil
 	})
-
-	if orderBy == pb.RpcDebugChatChangesRequest_ORDER_ID {
-		sort.Slice(changesOut, func(i, j int) bool { return changesOut[i].OrderId < changesOut[j].OrderId })
+	if err != nil {
+		return nil, false, err
 	}
 
-	return changesOut, err
+	sortedByOrderId := make([]*pb.RpcDebugChatChangesResponseChange, len(changesOut))
+	copy(sortedByOrderId, changesOut)
+	sort.Slice(sortedByOrderId, func(i, j int) bool { return sortedByOrderId[i].OrderId < sortedByOrderId[j].OrderId })
+
+	orderIsOK := true
+	for i, ch := range changesOut {
+		sortedByOrder := sortedByOrderId[i]
+		if ch.OrderId != sortedByOrder.OrderId {
+			orderIsOK = false
+		}
+	}
+
+	if orderBy == pb.RpcDebugChatChangesRequest_ORDER_ID {
+		return sortedByOrderId, !orderIsOK, nil
+	}
+	return changesOut, !orderIsOK, nil
 }
