@@ -1,6 +1,7 @@
 package localdiscovery
 
 import (
+	"context"
 	"fmt"
 	gonet "net"
 	"runtime"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/net/addrs"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -44,7 +46,7 @@ type OwnAddresses struct {
 }
 
 type Notifier interface {
-	PeerDiscovered(peer DiscoveredPeer, own OwnAddresses)
+	PeerDiscovered(ctx context.Context, peer DiscoveredPeer, own OwnAddresses)
 }
 
 type LocalDiscovery interface {
@@ -71,9 +73,11 @@ func filterMulticastInterfaces(ifaces []addrs.NetInterfaceWithAddrCache) []addrs
 	})
 }
 
-func (l *localDiscovery) getP2PPossibility(newAddrs addrs.InterfacesAddrs) DiscoveryPossibility {
+func (l *localDiscovery) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs) DiscoveryPossibility {
 	// some sophisticated logic for ios, because of possible Local Network Restrictions
 	var err error
+	// we can extend it later to check on another platforms
+	var checkSelfConnect = runtime.GOOS == "ios"
 	interfaces := newAddrs.Interfaces
 	for _, iface := range interfaces {
 		if runtime.GOOS == "ios" {
@@ -94,6 +98,9 @@ func (l *localDiscovery) getP2PPossibility(newAddrs addrs.InterfacesAddrs) Disco
 				if ipv4 == nil {
 					continue
 				}
+				if !checkSelfConnect {
+					return DiscoveryPossible
+				}
 				err = testSelfConnection(ipv4.String())
 				if err != nil {
 					log.Warn(fmt.Sprintf("self connection via %s to %s failed: %v", iface.Name, ipv4.String(), err))
@@ -111,15 +118,23 @@ func (l *localDiscovery) getP2PPossibility(newAddrs addrs.InterfacesAddrs) Disco
 	return DiscoveryNoInterfaces
 }
 
-func (l *localDiscovery) notifyP2PPossibilityState(state DiscoveryPossibility) {
+func (l *localDiscovery) discoveryPossibilitySetState(state DiscoveryPossibility) {
+	l.discoveryPossibilitySwapState(func(_ DiscoveryPossibility) DiscoveryPossibility {
+		return state
+	})
+}
+
+func (l *localDiscovery) discoveryPossibilitySwapState(f func(currentState DiscoveryPossibility) DiscoveryPossibility) {
 	l.hookMu.Lock()
 	defer l.hookMu.Unlock()
-	if state == l.hookState {
+	newState := f(l.hookState)
+	if l.hookState == newState {
 		return
 	}
-	l.hookState = state
+	l.hookState = newState
+	log.Debug("discovery possibility state changed", zap.Int("state", int(newState)))
 	for _, callback := range l.hooks {
-		callback(state)
+		callback(newState)
 	}
 }
 
@@ -127,4 +142,32 @@ func (l *localDiscovery) RegisterDiscoveryPossibilityHook(hook func(state Discov
 	l.hookMu.Lock()
 	defer l.hookMu.Unlock()
 	l.hooks = append(l.hooks, hook)
+}
+
+func (l *localDiscovery) getAddresses() (ipv4, ipv6 []gonet.IP) {
+	for _, iface := range l.interfacesAddrs.Interfaces {
+		for _, addr := range iface.GetAddr() {
+			ip := addr.(*gonet.IPNet).IP
+			if ip.To4() != nil {
+				ipv4 = append(ipv4, ip)
+			} else {
+				ipv6 = append(ipv6, ip)
+			}
+		}
+	}
+
+	if len(ipv4) == 0 {
+		// fallback in case we have no ipv4 addresses from interfaces
+		for _, addr := range l.interfacesAddrs.Addrs {
+			ip := strings.Split(addr.String(), "/")[0]
+			ipVal := gonet.ParseIP(ip)
+			if ipVal.To4() != nil {
+				ipv4 = append(ipv4, ipVal)
+			} else {
+				ipv6 = append(ipv6, ipVal)
+			}
+		}
+		l.interfacesAddrs.SortIPsLikeInterfaces(ipv4)
+	}
+	return
 }
