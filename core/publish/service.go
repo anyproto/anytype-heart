@@ -83,6 +83,13 @@ type fileObject struct {
 	Content  []byte
 }
 
+// current structure of published ufs dir:
+// ```
+// - keys.json <- encrypted with main key, has keys for all the other files
+// - index.json <- renderer input
+// - asset1
+// - asset2....
+// ```
 func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res PublishResult, err error) {
 	dagService := s.dagServiceForSpace(spaceId)
 	outer := uio.NewDirectory(dagService)
