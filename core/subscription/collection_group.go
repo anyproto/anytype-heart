@@ -11,7 +11,7 @@ type collectionGroupSub struct {
 	colObserver *collectionObserver
 }
 
-func (s *service) newCollectionGroupSub(id string, relKey string, f *database.Filters, groups []*model.BlockContentDataviewGroup, colObserver *collectionObserver) *collectionGroupSub {
+func (s *spaceSubscriptions) newCollectionGroupSub(id string, relKey string, f *database.Filters, groups []*model.BlockContentDataviewGroup, colObserver *collectionObserver) *collectionGroupSub {
 	sub := &collectionGroupSub{
 		groupSub:    s.newGroupSub(id, relKey, f, groups),
 		colObserver: colObserver,

@@ -1,6 +1,8 @@
 package kanban
 
 import (
+	"fmt"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -9,6 +11,9 @@ type GroupCheckBox struct {
 }
 
 func (gCh *GroupCheckBox) InitGroups(spaceID string, f *database.Filters) error {
+	if spaceID == "" {
+		return fmt.Errorf("spaceId is required")
+	}
 	return nil
 }
 

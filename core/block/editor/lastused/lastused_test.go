@@ -69,7 +69,7 @@ func TestUpdateLastUsedDate(t *testing.T) {
 	}
 
 	store := objectstore.NewStoreFixture(t)
-	store.AddObjects(t, []objectstore.TestObject{
+	store.AddObjects(t, spaceId, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:        pbtypes.String(bundle.RelationKeyCamera.URL()),
 			bundle.RelationKeySpaceId:   pbtypes.String(spaceId),

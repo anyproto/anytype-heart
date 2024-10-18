@@ -96,7 +96,7 @@ func TestService_CreateBookmarkObject(t *testing.T) {
 		details := &types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeySource.String(): pbtypes.String(url),
 		}}
-		fx.store.AddObjects(t, []objectstore.TestObject{{
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{{
 			bundle.RelationKeyId:     pbtypes.String("bk"),
 			bundle.RelationKeySource: pbtypes.String(url),
 			bundle.RelationKeyType:   pbtypes.String(bookmarkId),

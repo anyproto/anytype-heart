@@ -9,9 +9,11 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/net/streampool"
+	"storj.io/drpc"
+
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/peermanager"
-	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
 
@@ -54,6 +56,7 @@ type clientPeerManager struct {
 	availableResponsiblePeers chan struct{}
 	nodeStatus                NodeStatus
 	spaceSyncService          Updater
+	streamPool                streampool.StreamPool
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -69,6 +72,7 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.watchingPeers = make(map[string]struct{})
 	n.availableResponsiblePeers = make(chan struct{})
 	n.nodeStatus = app.MustComponent[NodeStatus](a)
+	n.streamPool = app.MustComponent[streampool.StreamPool](a)
 	n.spaceSyncService = app.MustComponent[Updater](a)
 	n.peerToPeerStatus = app.MustComponent[PeerToPeerStatus](a)
 	return
@@ -92,25 +96,21 @@ func (n *clientPeerManager) GetNodePeers(ctx context.Context) (peers []peer.Peer
 	return
 }
 
-func (n *clientPeerManager) SendPeer(ctx context.Context, peerId string, msg *spacesyncproto.ObjectSyncMessage) (err error) {
-	// TODO: peer manager will be changed to not have this possibility
-	// use context.Background()
-	//
-	// explanation:
-	// the context which comes here should not be used. It can be cancelled and thus kill the stream,
-	// because the stream will be opened with this context
-	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
-	return n.p.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
-		return n.getExactPeer(ctx, peerId)
-	})
-}
-
-func (n *clientPeerManager) Broadcast(ctx context.Context, msg *spacesyncproto.ObjectSyncMessage) (err error) {
+func (n *clientPeerManager) BroadcastMessage(ctx context.Context, msg drpc.Message) (err error) {
 	// the context which comes here should not be used. It can be cancelled and thus kill the stream,
 	// because the stream can be opened with this context
 	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
-	return n.p.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
+	return n.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
 		return n.getStreamResponsiblePeers(ctx)
+	})
+}
+
+func (n *clientPeerManager) SendMessage(ctx context.Context, peerId string, msg drpc.Message) (err error) {
+	// the context which comes here should not be used. It can be cancelled and thus kill the stream,
+	// because the stream can be opened with this context
+	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
+	return n.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
+		return n.getExactPeer(ctx, peerId)
 	})
 }
 

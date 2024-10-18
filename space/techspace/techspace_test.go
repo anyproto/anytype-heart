@@ -31,9 +31,10 @@ var ctx = context.Background()
 
 const (
 	testTechSpaceId = "techspaceId"
+	accountObjectId = "accountObjectId"
 )
 
-func TestTechSpace_Init(t *testing.T) {
+func TestTechSpace_Run(t *testing.T) {
 	var initIDs = []string{"1", "2", "3"}
 	fx := newFixture(t, initIDs)
 	defer fx.finish(t)
@@ -55,6 +56,10 @@ func (s *spaceViewStub) SetSharedSpacesLimit(limits int) (err error) {
 }
 
 func (s *spaceViewStub) GetSharedSpacesLimit() (limits int) {
+	return
+}
+
+func (s *spaceViewStub) SetOwner(owner string, createdDate int64) (err error) {
 	return
 }
 
@@ -115,7 +120,7 @@ func TestTechSpace_SpaceViewCreate(t *testing.T) {
 		defer fx.finish(t)
 
 		fx.expectDeriveTreePayload(viewId)
-		fx.objectCache.EXPECT().GetObject(ctx, viewId).Return(nil, fmt.Errorf("not found"))
+		fx.objectCache.EXPECT().GetObject(ctx, viewId).Return(nil, fmt.Errorf("not found")).Times(1)
 		fx.objectCache.EXPECT().DeriveTreeObject(ctx, mock.Anything).Return(view, nil)
 		info := spaceinfo.NewSpacePersistentInfo(spaceId)
 		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
@@ -341,9 +346,20 @@ func newFixture(t *testing.T, storeIDs []string) *fixture {
 
 	// expect wakeUpIds
 	fx.techCore.EXPECT().Id().Return(testTechSpaceId).AnyTimes()
+	fx.objectCache.EXPECT().DeriveTreePayload(ctx, mock.Anything).Return(treestorage.TreeStorageCreatePayload{
+		RootRawChange: &treechangeproto.RawTreeChangeWithId{
+			Id: accountObjectId,
+		},
+	}, nil).Times(1)
 
+	fx.objectCache.EXPECT().GetObject(mock.Anything, accountObjectId).RunAndReturn(func(ctx context.Context, id string) (smartblock.SmartBlock, error) {
+		peerId, err := peer.CtxPeerId(ctx)
+		require.NoError(t, err)
+		require.Equal(t, peer.CtxResponsiblePeers, peerId)
+		return nil, nil
+	}).Times(1)
 	require.NoError(t, fx.a.Start(ctx))
-	err := fx.TechSpace.Run(fx.techCore, fx.objectCache)
+	err := fx.TechSpace.Run(fx.techCore, fx.objectCache, false)
 	require.NoError(t, err)
 
 	// do not cancel wakeUpIds func
@@ -357,7 +373,7 @@ func (fx *fixture) expectDeriveTreePayload(viewId string) {
 		RootRawChange: &treechangeproto.RawTreeChangeWithId{
 			Id: viewId,
 		},
-	}, nil)
+	}, nil).Times(1)
 }
 
 func (fx *fixture) finish(t *testing.T) {

@@ -7,8 +7,8 @@ import "github.com/anyproto/anytype-heart/pb"
 type subDebugger struct {
 }
 
-func (s *service) initDebugger() {
+func (s *spaceSubscriptions) initDebugger() {
 }
 
-func (s *service) debugEvents(ev *pb.Event) {
+func (s *spaceSubscriptions) debugEvents(ev *pb.Event) {
 }
