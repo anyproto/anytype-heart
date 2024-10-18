@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
+	"github.com/anyproto/anytype-heart/core/block/editor/migrator"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
@@ -213,7 +214,8 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			case model.ObjectType_tag:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithNoDescription)
+					template.WithNoDescription,
+					template.WithRelations([]domain.RelationKey{bundle.RelationKeyRelationOptionColor}))
 			default:
 				templates = append(templates,
 					template.WithTitle,
@@ -231,5 +233,17 @@ func (p *Page) StateMigrations() migration.Migrations {
 			Version: 2,
 			Proc:    template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 		},
+		{
+			Version: 3,
+			Proc: func(s *state.State) {
+				p.runStateMigrations(s)
+			},
+		},
 	})
+}
+
+func (p *Page) runStateMigrations(s *state.State) {
+	for _, m := range []migrator.Migrator{migrator.NewMigrationTags(), migrator.NewMigrationRelations(p.Space())} {
+		m.Migrate(s)
+	}
 }
