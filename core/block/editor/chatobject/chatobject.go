@@ -37,6 +37,8 @@ type StoreObject interface {
 	DeleteMessage(ctx context.Context, messageId string) error
 	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe() error
+
+	DebugChanges(ctx context.Context) ([]*DebugChange, error)
 }
 
 type AccountService interface {

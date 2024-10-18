@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
@@ -235,5 +236,22 @@ func (mw *Middleware) DebugAccountSelectTrace(cctx context.Context, req *pb.RpcD
 	}
 	return &pb.RpcDebugAccountSelectTraceResponse{
 		Path: path,
+	}
+}
+
+func (mw *Middleware) DebugChatChanges(cctx context.Context, req *pb.RpcDebugChatChangesRequest) *pb.RpcDebugChatChangesResponse {
+	chatService := getService[chats.Service](mw)
+	changes, err := chatService.DebugChanges(cctx, req.ChatObjectId, req.OrderBy)
+	if err != nil {
+		return &pb.RpcDebugChatChangesResponse{
+			Error: &pb.RpcDebugChatChangesResponseError{
+				Code:        pb.RpcDebugChatChangesResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return &pb.RpcDebugChatChangesResponse{
+		Changes: changes,
 	}
 }

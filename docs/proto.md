@@ -568,6 +568,11 @@
     - [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request)
     - [Rpc.Debug.AccountSelectTrace.Response](#anytype-Rpc-Debug-AccountSelectTrace-Response)
     - [Rpc.Debug.AccountSelectTrace.Response.Error](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error)
+    - [Rpc.Debug.ChatChanges](#anytype-Rpc-Debug-ChatChanges)
+    - [Rpc.Debug.ChatChanges.Request](#anytype-Rpc-Debug-ChatChanges-Request)
+    - [Rpc.Debug.ChatChanges.Response](#anytype-Rpc-Debug-ChatChanges-Response)
+    - [Rpc.Debug.ChatChanges.Response.Change](#anytype-Rpc-Debug-ChatChanges-Response-Change)
+    - [Rpc.Debug.ChatChanges.Response.Error](#anytype-Rpc-Debug-ChatChanges-Response-Error)
     - [Rpc.Debug.ExportLocalstore](#anytype-Rpc-Debug-ExportLocalstore)
     - [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request)
     - [Rpc.Debug.ExportLocalstore.Response](#anytype-Rpc-Debug-ExportLocalstore-Response)
@@ -1342,6 +1347,8 @@
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
     - [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code)
     - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
+    - [Rpc.Debug.ChatChanges.Request.OrderBy](#anytype-Rpc-Debug-ChatChanges-Request-OrderBy)
+    - [Rpc.Debug.ChatChanges.Response.Error.Code](#anytype-Rpc-Debug-ChatChanges-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
@@ -2145,6 +2152,7 @@
 | DebugOpenedObjects | [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request) | [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response) |  |
 | DebugRunProfiler | [Rpc.Debug.RunProfiler.Request](#anytype-Rpc-Debug-RunProfiler-Request) | [Rpc.Debug.RunProfiler.Response](#anytype-Rpc-Debug-RunProfiler-Response) |  |
 | DebugAccountSelectTrace | [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request) | [Rpc.Debug.AccountSelectTrace.Response](#anytype-Rpc-Debug-AccountSelectTrace-Response) |  |
+| DebugChatChanges | [Rpc.Debug.ChatChanges.Request](#anytype-Rpc-Debug-ChatChanges-Request) | [Rpc.Debug.ChatChanges.Response](#anytype-Rpc-Debug-ChatChanges-Response) |  |
 | MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request) | [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
@@ -10393,6 +10401,82 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-ChatChanges"></a>
+
+### Rpc.Debug.ChatChanges
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-ChatChanges-Request"></a>
+
+### Rpc.Debug.ChatChanges.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| orderBy | [Rpc.Debug.ChatChanges.Request.OrderBy](#anytype-Rpc-Debug-ChatChanges-Request-OrderBy) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-ChatChanges-Response"></a>
+
+### Rpc.Debug.ChatChanges.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.ChatChanges.Response.Error](#anytype-Rpc-Debug-ChatChanges-Response-Error) |  |  |
+| changes | [Rpc.Debug.ChatChanges.Response.Change](#anytype-Rpc-Debug-ChatChanges-Response-Change) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-ChatChanges-Response-Change"></a>
+
+### Rpc.Debug.ChatChanges.Response.Change
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| changeId | [string](#string) |  |  |
+| orderId | [string](#string) |  |  |
+| error | [string](#string) |  |  |
+| change | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-ChatChanges-Response-Error"></a>
+
+### Rpc.Debug.ChatChanges.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.ChatChanges.Response.Error.Code](#anytype-Rpc-Debug-ChatChanges-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -21471,6 +21555,31 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Debug-ChatChanges-Request-OrderBy"></a>
+
+### Rpc.Debug.ChatChanges.Request.OrderBy
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ORDER_ID | 0 |  |
+| ITERATION_ORDER | 1 |  |
+
+
+
+<a name="anytype-Rpc-Debug-ChatChanges-Response-Error-Code"></a>
+
+### Rpc.Debug.ChatChanges.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code"></a>
 
 ### Rpc.Debug.ExportLocalstore.Response.Error.Code
@@ -28833,7 +28942,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 | description | [string](#string) |  |  |
 | scope | [Relation.Scope](#anytype-model-Relation-Scope) |  | on-store fields, injected only locally
 
-scope from which this relation have been aggregated |
+deprecated, to be removed |
 | creator | [string](#string) |  | creator profile id |
 | revision | [int64](#int64) |  | revision of system relation. Used to check if we should change relation content or not |
 
