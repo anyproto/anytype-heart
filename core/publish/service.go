@@ -237,6 +237,11 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 		return
 	}
 
+	err = dagService.Add(ctx, outerNode)
+	if err != nil {
+		return
+	}
+
 	outerNodeCid := outerNode.Cid().String()
 
 	// upload ufs root node Cid
@@ -256,7 +261,6 @@ func (s *service) Publish(ctx context.Context, spaceId, input string) (res Publi
 	// so I just pass the whole object for now instead of id.
 	res, err = s.publishUfs(ctx, spaceId, input)
 	if err != nil {
-		// {"level":"ERROR","ts":"2024-10-17T19:41:59.212+0200","logger":"common.core.publishservice","msg":"Failed to publish","error":"check blocks availability: walk DAG: walk DAG: get root node: CID not found"}
 		log.Error("Failed to publish", zap.Error(err))
 	}
 
