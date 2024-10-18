@@ -92,7 +92,7 @@ require (
 	github.com/yuin/goldmark v1.7.4
 	github.com/zeebo/blake3 v0.2.4
 	go.uber.org/atomic v1.11.0
-	go.uber.org/mock v0.4.0
+	go.uber.org/mock v0.5.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948
