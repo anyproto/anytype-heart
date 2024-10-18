@@ -9,13 +9,13 @@ on:
       perf-test:
         description: 'Run perf test times'
         required: true
-        default: '100'
+        default: '10'
   schedule:
-    - cron: '0 0 * * *' # every day at midnight
+    - cron: '0 1 * * *' # every day at 1am
       filters:
         branches:
           include:
-            - 'feature/chat'
+            - 'main'
 
 
 permissions:
