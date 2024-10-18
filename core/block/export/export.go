@@ -103,9 +103,9 @@ func (e *export) Name() (name string) {
 
 func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error) {
 	queue := e.processService.NewQueue(pb.ModelProcess{
-		Id:    bson.NewObjectId().Hex(),
-		Type:  pb.ModelProcess_Export,
-		State: 0,
+		Id:      bson.NewObjectId().Hex(),
+		State:   0,
+		Message: &pb.ModelProcessMessageOfExport{Export: &pb.ModelProcessExport{}},
 	}, 4)
 	queue.SetMessage("prepare")
 
