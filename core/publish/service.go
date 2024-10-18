@@ -17,7 +17,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
-	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
 	"github.com/anyproto/anytype-heart/space"
@@ -39,12 +38,10 @@ type Service interface {
 }
 
 type service struct {
-	commonFile          fileservice.FileService
-	fileUploaderService fileuploader.Service
-	fileSyncService     filesync.FileSync
-	spaceService        space.Service
-	dagService          ipld.DAGService
-	techSpaceId         string
+	commonFile      fileservice.FileService
+	fileSyncService filesync.FileSync
+	spaceService    space.Service
+	dagService      ipld.DAGService
 }
 
 func New() Service {
@@ -52,7 +49,6 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) error {
-	s.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
 	s.dagService = s.commonFile.DAGService()
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
@@ -62,7 +58,6 @@ func (s *service) Init(a *app.App) error {
 }
 
 func (s *service) Run(_ context.Context) error {
-	s.techSpaceId = s.spaceService.TechSpaceId()
 	return nil
 }
 
@@ -76,38 +71,6 @@ func (s *service) Name() (name string) {
 
 func (s *service) dagServiceForSpace(spaceID string) ipld.DAGService {
 	return filehelper.NewDAGServiceWithSpaceID(spaceID, s.dagService)
-}
-
-func (s *service) publishData(ctx context.Context, spaceId, input string) (res PublishResult, err error) {
-	key, err := crypto.NewRandomAES()
-	if err != nil {
-		return
-	}
-	data, err := key.Encrypt([]byte(input))
-	if err != nil {
-		return
-	}
-
-	rd := bytes.NewReader(data)
-	node, err := s.commonFile.AddFile(ctx, rd)
-	if err != nil {
-		return
-	}
-
-	cidStr := node.Cid().String()
-	err = s.fileSyncService.UploadSynchronously(ctx, spaceId, domain.FileId(cidStr))
-	if err != nil {
-		return
-	}
-
-	keyStr, err := encode.EncodeKeyToBase58(key)
-	if err != nil {
-		return
-	}
-
-	res.Cid = cidStr
-	res.Key = keyStr
-	return
 }
 
 type keyObject struct {
@@ -161,7 +124,7 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 		}
 
 		var encContent []byte
-		encContent, err = key.Encrypt([]byte(file.Content))
+		encContent, err = key.Encrypt(file.Content)
 		if err != nil {
 			return
 		}
