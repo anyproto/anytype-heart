@@ -2,6 +2,7 @@ package rpcstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
+	"github.com/anyproto/anytype-heart/util/contexthelper"
 )
 
 const (
@@ -27,7 +29,8 @@ type operationNameKeyType string
 const operationNameKey operationNameKeyType = "operationName"
 
 var (
-	clientCreateTimeout = 1 * time.Minute
+	clientCreateTimeout            = 1 * time.Minute
+	ErrNoConnectionToAnyFileClient = errors.New("no connection to any file client")
 )
 
 func newClientManager(pool pool.Pool, peerStore peerstore.PeerStore, peerUpdateCh chan struct{}) *clientManager {
@@ -67,6 +70,8 @@ type clientManager struct {
 }
 
 func (m *clientManager) add(ctx context.Context, ts ...*task) (err error) {
+	ctx, cancel := contexthelper.ContextWithCloseChan(ctx, m.ctx.Done())
+	defer cancel()
 	select {
 	case m.addLimiter <- struct{}{}:
 	case <-ctx.Done():
@@ -196,7 +201,7 @@ func (m *clientManager) checkPeers(ctx context.Context, needClient bool) (err er
 		addPeer(peerId)
 	}
 	if m.ocache.Len() == 0 {
-		return fmt.Errorf("no connection to any file client")
+		return ErrNoConnectionToAnyFileClient
 	}
 	return nil
 }

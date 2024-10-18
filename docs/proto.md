@@ -833,6 +833,14 @@
     - [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request)
     - [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response)
     - [Rpc.Object.CreateSet.Response.Error](#anytype-Rpc-Object-CreateSet-Response-Error)
+    - [Rpc.Object.CrossSpaceSearchSubscribe](#anytype-Rpc-Object-CrossSpaceSearchSubscribe)
+    - [Rpc.Object.CrossSpaceSearchSubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Request)
+    - [Rpc.Object.CrossSpaceSearchSubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response)
+    - [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error)
+    - [Rpc.Object.CrossSpaceSearchUnsubscribe](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe)
+    - [Rpc.Object.CrossSpaceSearchUnsubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Request)
+    - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response)
+    - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error)
     - [Rpc.Object.Duplicate](#anytype-Rpc-Object-Duplicate)
     - [Rpc.Object.Duplicate.Request](#anytype-Rpc-Object-Duplicate-Request)
     - [Rpc.Object.Duplicate.Response](#anytype-Rpc-Object-Duplicate-Response)
@@ -1402,6 +1410,8 @@
     - [Rpc.Object.CreateRelation.Response.Error.Code](#anytype-Rpc-Object-CreateRelation-Response-Error-Code)
     - [Rpc.Object.CreateRelationOption.Response.Error.Code](#anytype-Rpc-Object-CreateRelationOption-Response-Error-Code)
     - [Rpc.Object.CreateSet.Response.Error.Code](#anytype-Rpc-Object-CreateSet-Response-Error-Code)
+    - [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code)
+    - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code)
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
     - [Rpc.Object.Graph.Response.Error.Code](#anytype-Rpc-Object-Graph-Response-Error-Code)
@@ -1966,6 +1976,8 @@
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request) | [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response) |  |
 | ObjectSearchWithMeta | [Rpc.Object.SearchWithMeta.Request](#anytype-Rpc-Object-SearchWithMeta-Request) | [Rpc.Object.SearchWithMeta.Response](#anytype-Rpc-Object-SearchWithMeta-Response) |  |
 | ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype-Rpc-Object-SearchSubscribe-Request) | [Rpc.Object.SearchSubscribe.Response](#anytype-Rpc-Object-SearchSubscribe-Response) |  |
+| ObjectCrossSpaceSearchSubscribe | [Rpc.Object.CrossSpaceSearchSubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Request) | [Rpc.Object.CrossSpaceSearchSubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response) |  |
+| ObjectCrossSpaceSearchUnsubscribe | [Rpc.Object.CrossSpaceSearchUnsubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Request) | [Rpc.Object.CrossSpaceSearchUnsubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response) |  |
 | ObjectSubscribeIds | [Rpc.Object.SubscribeIds.Request](#anytype-Rpc-Object-SubscribeIds-Request) | [Rpc.Object.SubscribeIds.Response](#anytype-Rpc-Object-SubscribeIds-Response) |  |
 | ObjectGroupsSubscribe | [Rpc.Object.GroupsSubscribe.Request](#anytype-Rpc-Object-GroupsSubscribe-Request) | [Rpc.Object.GroupsSubscribe.Response](#anytype-Rpc-Object-GroupsSubscribe-Response) |  |
 | ObjectSearchUnsubscribe | [Rpc.Object.SearchUnsubscribe.Request](#anytype-Rpc-Object-SearchUnsubscribe-Request) | [Rpc.Object.SearchUnsubscribe.Response](#anytype-Rpc-Object-SearchUnsubscribe-Response) |  |
@@ -14194,6 +14206,128 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-CrossSpaceSearchSubscribe"></a>
+
+### Rpc.Object.CrossSpaceSearchSubscribe
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchSubscribe-Request"></a>
+
+### Rpc.Object.CrossSpaceSearchSubscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
+| filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated | filters |
+| sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated | sorts |
+| keys | [string](#string) | repeated | (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
+| source | [string](#string) | repeated |  |
+| noDepSubscription | [bool](#bool) |  | disable dependent subscription |
+| collectionId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response"></a>
+
+### Rpc.Object.CrossSpaceSearchSubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error) |  |  |
+| records | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
+| dependencies | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
+| subId | [string](#string) |  |  |
+| counters | [Event.Object.Subscription.Counters](#anytype-Event-Object-Subscription-Counters) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error"></a>
+
+### Rpc.Object.CrossSpaceSearchSubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchUnsubscribe"></a>
+
+### Rpc.Object.CrossSpaceSearchUnsubscribe
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Request"></a>
+
+### Rpc.Object.CrossSpaceSearchUnsubscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response"></a>
+
+### Rpc.Object.CrossSpaceSearchUnsubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error"></a>
+
+### Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Duplicate"></a>
 
 ### Rpc.Object.Duplicate
@@ -22322,6 +22456,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code"></a>
+
+### Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code"></a>
+
+### Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Object-Duplicate-Response-Error-Code"></a>
 
 ### Rpc.Object.Duplicate.Response.Error.Code
@@ -28753,7 +28913,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 | description | [string](#string) |  |  |
 | scope | [Relation.Scope](#anytype-model-Relation-Scope) |  | on-store fields, injected only locally
 
-scope from which this relation have been aggregated |
+deprecated, to be removed |
 | creator | [string](#string) |  | creator profile id |
 | revision | [int64](#int64) |  | revision of system relation. Used to check if we should change relation content or not |
 

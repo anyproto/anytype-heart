@@ -140,6 +140,13 @@ func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 	return s.Apply(st)
 }
 
+func (s *SpaceView) SetOwner(ownerId string, createdDate int64) (err error) {
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(ownerId))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(createdDate))
+	return s.Apply(st)
+}
+
 func (s *SpaceView) SetAclIsEmpty(isEmpty bool) (err error) {
 	st := s.NewState()
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, pbtypes.Bool(!isEmpty))
@@ -242,8 +249,6 @@ var workspaceKeysToCopy = []string{
 	bundle.RelationKeyIconImage.String(),
 	bundle.RelationKeyIconOption.String(),
 	bundle.RelationKeySpaceDashboardId.String(),
-	bundle.RelationKeyCreator.String(),
-	bundle.RelationKeyCreatedDate.String(),
 }
 
 func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {

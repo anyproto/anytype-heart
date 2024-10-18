@@ -1,7 +1,7 @@
 package chatobject
 
 import (
-	"github.com/valyala/fastjson"
+	"github.com/anyproto/any-store/anyenc"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -16,11 +16,11 @@ const (
 )
 
 type messageWrapper struct {
-	val   *fastjson.Value
-	arena *fastjson.Arena
+	val   *anyenc.Value
+	arena *anyenc.Arena
 }
 
-func newMessageWrapper(arena *fastjson.Arena, val *fastjson.Value) *messageWrapper {
+func newMessageWrapper(arena *anyenc.Arena, val *anyenc.Value) *messageWrapper {
 	return &messageWrapper{arena: arena, val: val}
 }
 
@@ -70,7 +70,7 @@ func (m *messageWrapper) setCreatedAt(v int64) {
 
 */
 
-func marshalModel(arena *fastjson.Arena, msg *model.ChatMessage) *fastjson.Value {
+func marshalModel(arena *anyenc.Arena, msg *model.ChatMessage) *anyenc.Value {
 	message := arena.NewObject()
 	message.Set("text", arena.NewString(msg.Message.Text))
 	message.Set("style", arena.NewNumberInt(int(msg.Message.Style)))
@@ -122,8 +122,8 @@ func (m *messageWrapper) toModel() *model.ChatMessage {
 	return &model.ChatMessage{
 		Id:               string(m.val.GetStringBytes("id")),
 		Creator:          string(m.val.GetStringBytes(creatorKey)),
-		CreatedAt:        m.val.GetInt64(createdAtKey),
-		ModifiedAt:       m.val.GetInt64(modifiedAtKey),
+		CreatedAt:        int64(m.val.GetInt(createdAtKey)),
+		ModifiedAt:       int64(m.val.GetInt(modifiedAtKey)),
 		OrderId:          string(m.val.GetStringBytes("_o", "id")),
 		ReplyToMessageId: string(m.val.GetStringBytes("replyToMessageId")),
 		Message:          m.contentToModel(),
@@ -158,7 +158,7 @@ func (m *messageWrapper) attachmentsToModel() []*model.ChatMessageAttachment {
 	var attachments []*model.ChatMessageAttachment
 	if inAttachments != nil {
 		attachments = make([]*model.ChatMessageAttachment, 0, inAttachments.Len())
-		inAttachments.Visit(func(targetObjectId []byte, inAttachment *fastjson.Value) {
+		inAttachments.Visit(func(targetObjectId []byte, inAttachment *anyenc.Value) {
 			attachments = append(attachments, &model.ChatMessageAttachment{
 				Target: string(targetObjectId),
 				Type:   model.ChatMessageAttachmentAttachmentType(inAttachment.GetInt("type")),
@@ -174,7 +174,7 @@ func (m *messageWrapper) reactionsToModel() *model.ChatMessageReactions {
 		Reactions: map[string]*model.ChatMessageReactionsIdentityList{},
 	}
 	if inReactions != nil {
-		inReactions.Visit(func(emoji []byte, inReaction *fastjson.Value) {
+		inReactions.Visit(func(emoji []byte, inReaction *anyenc.Value) {
 			inReactionArr := inReaction.GetArray()
 			identities := make([]string, 0, len(inReactionArr))
 			for _, identity := range inReactionArr {

@@ -81,7 +81,8 @@ func TestService_Search(t *testing.T) {
 		spaceSub, err := fx.getSpaceSubscriptions(testSpaceId)
 		require.NoError(t, err)
 
-		time.Sleep(batchTime)
+		// Wait enough time to flush pending updates to subscriptions handler
+		time.Sleep(batchTime + time.Millisecond)
 
 		spaceSub.onChange([]*entry{
 			{id: "1", data: &types.Struct{Fields: map[string]*types.Value{

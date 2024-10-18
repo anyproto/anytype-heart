@@ -7,6 +7,7 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/lexid"
@@ -39,7 +40,7 @@ func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (s
 	state = &StoreState{
 		id:       id,
 		handlers: map[string]Handler{},
-		arena:    &fastjson.Arena{},
+		arena:    &anyenc.Arena{},
 		parser:   &fastjson.Parser{},
 		db:       db,
 	}
@@ -96,7 +97,7 @@ type StoreState struct {
 
 	handlers map[string]Handler
 
-	arena  *fastjson.Arena
+	arena  *anyenc.Arena
 	parser *fastjson.Parser
 
 	db anystore.DB
@@ -119,7 +120,7 @@ func (ss *StoreState) NewTx(ctx context.Context) (*StoreStateTx, error) {
 	if err != nil {
 		return nil, err
 	}
-	stx := &StoreStateTx{state: ss, tx: tx, ctx: tx.Context(), arena: &fastjson.Arena{}}
+	stx := &StoreStateTx{state: ss, tx: tx, ctx: tx.Context(), arena: &anyenc.Arena{}}
 	if err = stx.init(); err != nil {
 		return nil, err
 	}
@@ -183,10 +184,11 @@ func (ss *StoreState) applyCreate(ctx context.Context, ch Change) (err error) {
 		create.DocumentId = ch.Id
 	}
 	// parse value and force set id
-	value, err := ss.parser.Parse(create.Value)
+	jsonValue, err := ss.parser.Parse(create.Value)
 	if err != nil {
 		return
 	}
+	value := ss.arena.NewFromFastJson(jsonValue)
 	value.Set("id", ss.arena.NewString(create.DocumentId))
 
 	// call handler
@@ -284,7 +286,7 @@ func (ss *StoreState) applyDelete(ctx context.Context, ch Change) (err error) {
 	return
 }
 
-func (ss *StoreState) changeOp(ch Change, val *fastjson.Value) ChangeOp {
+func (ss *StoreState) changeOp(ch Change, val *anyenc.Value) ChangeOp {
 	return ChangeOp{
 		Change: ch,
 		State:  ss,
@@ -293,7 +295,7 @@ func (ss *StoreState) changeOp(ch Change, val *fastjson.Value) ChangeOp {
 	}
 }
 
-func (ss *StoreState) newDeleteMark(id string) *fastjson.Value {
+func (ss *StoreState) newDeleteMark(id string) *anyenc.Value {
 	obj := ss.arena.NewObject()
 	obj.Set("id", ss.arena.NewString(id))
 	obj.Set("_d", ss.arena.NewNumberInt(int(time.Now().UnixMilli())))

@@ -83,6 +83,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
@@ -293,6 +294,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(collection.New()).
 		Register(subscription.New()).
+		Register(crossspacesub.New()).
 		Register(syncsubscriptions.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).
