@@ -15,9 +15,11 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -160,8 +162,11 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			return err
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, space, ids...)
-
+		progress := process.NewProgress(&pb.ModelProcessMessageOfRecoverAccount{})
+		progress.SetProgressMessage("start account recovery")
+		progress.SetTotal(int64(len(ids)))
+		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, space, progress, ids...)
+		progress.Finish(nil)
 		i.logFinishedReindexStat(metrics.ReindexTypeThreads, len(ids), successfullyReindexed, time.Since(start))
 		l := log.With(zap.String("space", space.Id()), zap.Int("total", len(ids)), zap.Int("succeed", successfullyReindexed))
 		if successfullyReindexed != len(ids) {
@@ -471,7 +476,7 @@ func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space smartb
 
 func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reindexType metrics.ReindexType, ids []string) error {
 	start := time.Now()
-	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, space, ids...)
+	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, space, nil, ids...)
 	i.logFinishedReindexStat(reindexType, len(ids), successfullyReindexed, time.Since(start))
 	return nil
 }
@@ -509,7 +514,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 		}
 	}
 
-	success = i.reindexIdsIgnoreErr(ctx, space, idsToReindex...)
+	success = i.reindexIdsIgnoreErr(ctx, space, nil, idsToReindex...)
 	return len(idsToReindex), success, nil
 }
 
@@ -519,13 +524,16 @@ func (i *indexer) reindexDoc(ctx context.Context, space smartblock.Space, id str
 	})
 }
 
-func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space smartblock.Space, ids ...string) (successfullyReindexed int) {
+func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space smartblock.Space, progress process.Progress, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
 		err := i.reindexDoc(ctx, space, id)
 		if err != nil {
 			log.With("objectID", id).Errorf("failed to reindex: %v", err)
 		} else {
 			successfullyReindexed++
+		}
+		if progress != nil {
+			progress.AddDone(1)
 		}
 	}
 	return
