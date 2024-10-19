@@ -2,12 +2,14 @@ package ai
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/pemistahl/lingua-go"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/pb"
@@ -18,19 +20,39 @@ var log = logging.Logger("ai")
 
 var DefaultToken = ""
 
+var (
+	ErrUnsupportedLanguage  = errors.New("unsupported input language detected")
+	ErrEndpointNotReachable = errors.New("endpoint not reachable")
+	ErrModelNotFound        = errors.New("model not found at specified endpoint")
+	ErrAuthRequired         = errors.New("api key not provided or invalid for endpoint")
+)
+
 const (
 	CName = "ai"
 )
 
 type AI interface {
 	WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (result, error)
-	// TODO: functions
-
 	app.ComponentRunnable
 }
 
 type AIService struct {
 	mu sync.Mutex
+}
+
+type APIConfig struct {
+	Provider     pb.RpcAIWritingToolsRequestProvider
+	Model        string
+	Endpoint     string
+	AuthRequired bool
+	AuthToken    string
+}
+
+type PromptConfig struct {
+	SystemPrompt string
+	UserPrompt   string
+	Temperature  float32
+	JSONMode     bool
 }
 
 func New() AI {
@@ -54,8 +76,7 @@ func (l *AIService) Close(_ context.Context) error {
 }
 
 type result struct {
-	Text string
-	// TODO: fields
+	Answer string
 }
 
 func (r result) TryClose(objectTTL time.Duration) (bool, error) {
@@ -69,6 +90,18 @@ func (r result) Close() error {
 func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (result, error) {
 	text := strings.ToLower(strings.TrimSpace(params.Text))
 
+	if params.Provider == pb.RpcAIWritingToolsRequest_OLLAMA {
+		languages := []lingua.Language{lingua.English, lingua.Spanish, lingua.French, lingua.German, lingua.Italian, lingua.Portuguese, lingua.Hindi, lingua.Thai}
+		detector := lingua.NewLanguageDetectorBuilder().
+			FromLanguages(languages...).
+			WithLowAccuracyMode().
+			Build()
+
+		if language, exists := detector.DetectLanguageOf(text); !exists {
+			return result{}, fmt.Errorf("%w: %s", ErrUnsupportedLanguage, language)
+		}
+	}
+
 	configChat := APIConfig{
 		Provider:     params.Provider,
 		Endpoint:     params.Endpoint,
@@ -81,7 +114,7 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 		SystemPrompt: systemPrompts[params.Mode],
 		UserPrompt:   fmt.Sprintf(userPrompts[params.Mode], text),
 		Temperature:  params.Temperature,
-		JSONMode:     true,
+		JSONMode:     params.Mode != 1,
 	}
 
 	answerChunks, err := chat(configChat, configPrompt)
@@ -96,7 +129,7 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 		}
 	}
 
-	return result{Text: answerBuilder.String()}, nil
+	return result{Answer: answerBuilder.String()}, nil
 }
 
 func init() {

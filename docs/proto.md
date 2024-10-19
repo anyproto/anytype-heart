@@ -19595,7 +19595,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| UNKNOWN | 0 |  |
+| LANG_NULL | 0 |  |
 | EN | 1 |  |
 | ES | 2 |  |
 | FR | 3 |  |
@@ -19655,8 +19655,10 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | RATE_LIMIT_EXCEEDED | 100 |  |
-| ENDPOINT_NOT_FOUND | 101 |  |
-| INVALID_TOKEN | 102 | TODO more codes |
+| LANGUAGE_NOT_SUPPORTED | 101 |  |
+| ENDPOINT_NOT_REACHABLE | 102 |  |
+| MODEL_NOT_FOUND | 103 |  |
+| AUTH_REQUIRED | 104 | ... |
 
 
 

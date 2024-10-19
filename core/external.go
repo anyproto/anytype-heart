@@ -100,7 +100,11 @@ func (mw *Middleware) AIWritingTools(_ context.Context, req *pb.RpcAIWritingTool
 			Text:  resp,
 		}
 		if err != nil {
-			m.Error.Code = pb.RpcAIWritingToolsResponseError_UNKNOWN_ERROR
+			m.Error.Code = mapErrorCode(err,
+				errToCode(ai.ErrUnsupportedLanguage, pb.RpcAIWritingToolsResponseError_LANGUAGE_NOT_SUPPORTED),
+				errToCode(ai.ErrEndpointNotReachable, pb.RpcAIWritingToolsResponseError_ENDPOINT_NOT_REACHABLE),
+				errToCode(ai.ErrModelNotFound, pb.RpcAIWritingToolsResponseError_MODEL_NOT_FOUND),
+				errToCode(ai.ErrAuthRequired, pb.RpcAIWritingToolsResponseError_AUTH_REQUIRED))
 			m.Error.Description = getErrorDescription(err)
 		}
 		return m
@@ -112,7 +116,7 @@ func (mw *Middleware) AIWritingTools(_ context.Context, req *pb.RpcAIWritingTool
 	}
 
 	result, err := aiService.WritingTools(context.TODO(), req)
-	return response(result.Text, err)
+	return response(result.Answer, err)
 }
 
 func (mw *Middleware) GalleryDownloadManifest(_ context.Context, req *pb.RpcGalleryDownloadManifestRequest) *pb.RpcGalleryDownloadManifestResponse {

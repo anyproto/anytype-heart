@@ -132,7 +132,7 @@ func chat(config APIConfig, prompt PromptConfig) (*[]ChatResponse, error) {
 
 	resp, err := sendChatRequest(jsonData, config)
 	if err != nil {
-		return nil, fmt.Errorf("error sending request: %w", err)
+		return nil, fmt.Errorf("%w: %s", ErrEndpointNotReachable, err)
 	}
 	defer resp.Body.Close()
 
@@ -142,7 +142,13 @@ func chat(config APIConfig, prompt PromptConfig) (*[]ChatResponse, error) {
 			return nil, fmt.Errorf("error reading response body: %w", err)
 		}
 		bodyString := string(bodyBytes)
-		return nil, fmt.Errorf("error: received non-200 status code %d: %s", resp.StatusCode, bodyString)
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, fmt.Errorf("%s %w: %s", config.Model, ErrModelNotFound, config.Endpoint)
+		} else if resp.StatusCode == http.StatusUnauthorized {
+			return nil, fmt.Errorf("%w %s", ErrAuthRequired, config.Endpoint)
+		} else {
+			return nil, fmt.Errorf("error: received non-200 status code %d: %s", resp.StatusCode, bodyString)
+		}
 	}
 
 	return parseChatResponse(resp.Body)

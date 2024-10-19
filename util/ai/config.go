@@ -35,26 +35,11 @@ func init() {
 	openaiAPIKey = os.Getenv("OPENAI_API_KEY")
 }
 
-type APIConfig struct {
-	Provider     pb.RpcAIWritingToolsRequestProvider
-	Model        string
-	Endpoint     string
-	AuthRequired bool
-	AuthToken    string
-}
-
-type PromptConfig struct {
-	SystemPrompt string
-	UserPrompt   string
-	Temperature  float32
-	JSONMode     bool
-}
-
 var systemPrompts = map[pb.RpcAIWritingToolsRequestMode]string{
 	// Default
 	1: "You are a personal assistant helping Anytype users with various questions around their workspace.",
 	// Summarize
-	2: "You are a writing assistant helping to summarize key points from a text in a clear and concise manner. Respond in JSON mode.",
+	2: "You are a writing assistant helping to summarize key points from a text in a clear and concise manner. Respond in JSON mode. When answering, always stick with the user's language.",
 	// Grammar
 	3: "You are a writing assistant helping to improve text quality by correcting any spelling or grammar issues. Respond in JSON mode.",
 	// Shorten
