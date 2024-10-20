@@ -51,7 +51,7 @@ func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertE
 		}
 	}
 	if importSource.CountFilesWithGivenExtensions([]string{".md"}) == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(common.GetNoObjectErrorBySourceType(importSource))
 		return nil
 	}
 	fileInfo := m.getFileInfo(importSource, allErrors)
