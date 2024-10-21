@@ -367,7 +367,7 @@ func (f *ftSearchTantivy) cleanupBleve() {
 
 func (f *ftSearchTantivy) recover() {
 	if strings.HasSuffix(f.rootPath, ftsDir2) {
-		_ = os.RemoveAll(filepath.Join(f.rootPath))
+		_ = os.RemoveAll(f.rootPath)
 	}
 }
 
