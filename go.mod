@@ -107,6 +107,7 @@ require (
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/yaml.v3 v3.0.1
 	storj.io/drpc v0.0.34
+	zombiezen.com/go/sqlite v1.4.0
 
 )
 
@@ -282,7 +283,6 @@ require (
 	modernc.org/memory v1.8.0 // indirect
 	modernc.org/sqlite v1.33.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
-	zombiezen.com/go/sqlite v1.4.0 // indirect
 )
 
 replace github.com/dgraph-io/badger/v4 => github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580
