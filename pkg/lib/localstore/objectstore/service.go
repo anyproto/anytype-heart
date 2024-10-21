@@ -138,6 +138,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	s.arenaPool = &anyenc.ArenaPool{}
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
 	s.anyStoreConfig = *app.MustComponent[configProvider](a).GetAnyStoreConfig()
+	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
 	s.oldStore = app.MustComponent[oldstore.Service](a)
 	s.techSpaceIdProvider = app.MustComponent[TechSpaceIdProvider](a)
 
@@ -175,7 +176,6 @@ func ensureDirExists(dir string) error {
 }
 
 func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
-	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
 	store, lockRemove, err := helper.OpenDatabaseWithLockCheck(ctx, path, &s.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
@@ -251,6 +251,7 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	for i := 0; i < len(s.crdtDbs); i++ {
 		err = errors.Join(err, <-closeChan)
 	}
+	s.crdtDbs = map[string]anystore.DB{}
 	s.crtdStoreLock.Unlock()
 
 	return err

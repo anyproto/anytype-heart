@@ -49,19 +49,21 @@ func OpenDatabaseWithLockCheck(ctx context.Context, path string, config *anystor
 		// todo: process some possible corrupted state errors here
 		return nil, lockCloseNoop, err
 	}
-	if runQuickCheck {
-		// means we have not closed properly
-		err = store.QuickCheck(ctx)
+	if !runQuickCheck {
+		return
+	}
+	// means we have not closed properly
+	err = store.QuickCheck(ctx)
+	if err != nil {
+		// db is corrupted, close it and reinit
+		err = store.Close()
+		log.With("closeErr", err).Errorf("quick check failed: %s; reinit store", err)
+		if err = os.RemoveAll(path); err != nil {
+			return nil, lockCloseNoop, err
+		}
+		store, err = anystore.Open(ctx, path, config)
 		if err != nil {
-			err = store.Close()
-			log.With("closeErr", err).Errorf("quick check failed: %s; reinit store", err)
-			if err = os.RemoveAll(path); err != nil {
-				return nil, lockCloseNoop, err
-			}
-			store, err = anystore.Open(ctx, path, config)
-			if err != nil {
-				return nil, lockCloseNoop, err
-			}
+			return nil, lockCloseNoop, err
 		}
 	}
 

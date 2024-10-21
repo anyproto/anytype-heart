@@ -281,12 +281,12 @@ func (s *dsObjectStore) Close() error {
 	}
 
 	s.lock.Lock()
-	err = errors.Join(s.db.Checkpoint(context.Background(), true))
+	err = errors.Join(err, s.db.Checkpoint(context.Background(), true))
 	s.lock.Unlock()
 
-	err = errors.Join(s.db.Close())
+	err = errors.Join(err, s.db.Close())
 	// remove lock file only after successful close
-	err = errors.Join(s.dbLockRemove())
+	err = errors.Join(err, s.dbLockRemove())
 	return err
 }
 
