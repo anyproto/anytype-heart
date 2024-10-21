@@ -159,8 +159,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	if err != nil {
 		return err
 	}
-
-	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
+	index, err := f.tryToBuildSchema(schema)
 	if err != nil {
 		return err
 	}
@@ -192,6 +191,15 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	}
 
 	return nil
+}
+
+func (f *ftSearchTantivy) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.TantivyContext, error) {
+	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
+	if err != nil {
+		f.recover()
+		return tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
+	}
+	return index, err
 }
 
 func (f *ftSearchTantivy) Index(doc SearchDoc) error {
@@ -355,6 +363,12 @@ func (f *ftSearchTantivy) Close(ctx context.Context) error {
 
 func (f *ftSearchTantivy) cleanupBleve() {
 	_ = os.RemoveAll(filepath.Join(f.rootPath, ftsDir))
+}
+
+func (f *ftSearchTantivy) recover() {
+	if strings.HasSuffix(f.rootPath, ftsDir2) {
+		_ = os.RemoveAll(filepath.Join(f.rootPath))
+	}
 }
 
 func prepareQuery(query string) string {
