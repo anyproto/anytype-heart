@@ -107,7 +107,8 @@ type dsObjectStore struct {
 	techSpaceIdProvider TechSpaceIdProvider
 
 	sync.Mutex
-	spaceIndexes map[string]spaceindex.Store
+	spaceIndexes        map[string]spaceindex.Store
+	spaceStoreDirsCheck sync.Once
 
 	crtdStoreLock sync.Mutex
 	crdtDbs       map[string]anystore.DB
@@ -213,20 +214,26 @@ func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
 	s.indexerChecksums = indexerChecksums
 	s.virtualSpaces = virtualSpaces
 
-	entries, err := os.ReadDir(s.storeRootDir())
-	if err != nil {
-		return fmt.Errorf("read spaceindexes dir: %w", err)
-	}
-	s.Lock()
-	defer s.Unlock()
-	for _, entry := range entries {
-		if entry.IsDir() {
-			spaceId := entry.Name()
-			s.getOrInitSpaceIndex(spaceId)
-		}
-	}
-
 	return nil
+}
+
+// preloadExistingObjectStores loads all existing object stores from the filesystem
+// this makes sense to do because spaces register themselves in the object store asynchronously and we may want to know the list before that
+func (s *dsObjectStore) preloadExistingObjectStores() error {
+	var err error
+	s.spaceStoreDirsCheck.Do(func() {
+		var entries []os.DirEntry
+		entries, err = os.ReadDir(s.storeRootDir())
+		s.Lock()
+		defer s.Unlock()
+		for _, entry := range entries {
+			if entry.IsDir() {
+				spaceId := entry.Name()
+				_ = s.getOrInitSpaceIndex(spaceId)
+			}
+		}
+	})
+	return err
 }
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {
@@ -323,6 +330,10 @@ func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
 }
 
 func (s *dsObjectStore) listStores() []spaceindex.Store {
+	err := s.preloadExistingObjectStores()
+	if err != nil {
+		log.Errorf("preloadExistingObjectStores: %v", err)
+	}
 	s.Lock()
 	stores := make([]spaceindex.Store, 0, len(s.spaceIndexes))
 	for _, store := range s.spaceIndexes {
