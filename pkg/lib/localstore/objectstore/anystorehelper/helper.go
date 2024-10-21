@@ -41,7 +41,7 @@ func OpenDatabaseWithLockCheck(ctx context.Context, path string, config *anystor
 	store, err = anystore.Open(ctx, path, config)
 	if err != nil {
 		code := sqlite.ErrCode(err)
-		l := log.With("err", err).With("code", code)
+		l := log.With("error", err).With("code", code)
 		if errors.Is(err, anystore.ErrIncompatibleVersion) || code == sqlite.ResultCorrupt || code == sqlite.ResultNotADB || code == sqlite.ResultCantOpen {
 			runQuickCheck = false
 			l.Errorf("failed to open anystore, reinit db")
@@ -71,7 +71,7 @@ func OpenDatabaseWithLockCheck(ctx context.Context, path string, config *anystor
 	if err != nil {
 		// db is corrupted, close it and reinit
 		err = store.Close()
-		log.With("closeErr", err).With("err", err).Error("quick check failed. reinit db")
+		log.With("closeError", err).With("error", err).Error("quick check failed. reinit db")
 		if err = os.RemoveAll(path); err != nil {
 			return nil, lockCloseNoop, err
 		}
