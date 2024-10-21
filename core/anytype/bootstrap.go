@@ -66,6 +66,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/indexer"
@@ -108,8 +109,8 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
-	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
+	"github.com/anyproto/anytype-heart/util/dashboardinjector"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/unsplash"
 	"github.com/anyproto/anytype-heart/util/vcs"
@@ -287,7 +288,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(collection.New()).
 		Register(subscription.New()).
 		Register(syncsubscriptions.New()).
-		Register(builtinobjects.New()).
+		Register(gallery.NewCache()).
+		Register(gallery.New()).
+		Register(dashboardinjector.New()).
 		Register(bookmark.New()).
 		Register(importer.New()).
 		Register(decorator.New()).

@@ -15,12 +15,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/builtinobjects"
 )
 
 type testApplication struct {
@@ -85,8 +84,8 @@ func createAccountAndStartApp(t *testing.T, defaultUsecase pb.RpcObjectImportUse
 		account:    acc,
 		eventQueue: eventQueue,
 	}
-	objCreator := getService[builtinobjects.BuiltinObjects](testApp)
-	_, err = objCreator.CreateObjectsForUseCase(session.NewContext(), acc.Info.AccountSpaceId, defaultUsecase)
+	objCreator := getService[gallery.Service](testApp)
+	_, err = objCreator.ImportBuiltInUseCase(ctx, acc.Info.AccountSpaceId, "./testdata/import/artifact", defaultUsecase)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

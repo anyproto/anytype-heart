@@ -24,8 +24,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/anyerror"
-	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/constant"
+	"github.com/anyproto/anytype-heart/util/dashboardinjector"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -118,7 +118,7 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 	}
 
 	spaceID := app.MustComponent[account.Service](s.app).PersonalSpaceID()
-	if err = s.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).InjectMigrationDashboard(spaceID); err != nil {
+	if err = app.MustComponent[dashboardinjector.DashboardInjector](s.app).InjectMigrationDashboard(spaceID); err != nil {
 		return RecoverFromLegacyResponse{}, errors.Join(ErrBadInput, err)
 	}
 

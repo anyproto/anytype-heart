@@ -1,7 +1,7 @@
 package gallery
 
 import (
-	_ "embed"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,8 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/jsonpb"
 	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/xeipuuv/gojsonschema"
+	"go.uber.org/zap"
 	"golang.org/x/net/html"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -20,18 +22,16 @@ import (
 )
 
 const (
-	timeout = time.Second * 30
+	defaultTimeout = time.Second * 30
 
-	indexURI = "https://tools.gallery.any.coop/app-index.json"
+	versionHeader = "If-None-Match"
+	eTagHeader    = "ETag"
 )
-
-type schemaResponse struct {
-	Schema string `json:"$schema"`
-}
 
 var (
 	ErrUnmarshalJson = fmt.Errorf("failed to unmarshall json")
 	ErrDownloadIndex = fmt.Errorf("failed to download gallery index")
+	ErrNotModified   = fmt.Errorf("resource is not modified")
 )
 
 // whitelist maps allowed hosts to regular expressions of URL paths
@@ -45,20 +45,47 @@ var whitelist = map[string]*regexp.Regexp{
 	"storage.gallery.any.coop":  regexp.MustCompile(`.*`),
 }
 
-func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo, err error) {
+// GetGalleryIndex tries to get gallery index from different places in following order:
+// 1. Middleware index cache
+// 2. Remote index (with HTTP request timeout = 1 second)
+// 3. Client cache, path to which is passed by argument
+// 4. Remote index (with default HTTP request timeout)
+func (s *service) GetGalleryIndex(clientCachePath string) (index *pb.RpcGalleryDownloadIndexResponse, err error) {
+	index, err = s.indexCache.GetIndex(1)
+	if err == nil {
+		return index, nil
+	}
+
+	log.Warn("failed to get gallery index. Getting it from client cache", zap.Error(err))
+
+	// TODO: GO-4131 Maybe we should not return index from client cache, as it could be reduced (need to be discussed)
+	_, index, err = readArtifact(clientCachePath, true)
+	if err == nil {
+		return index, nil
+	}
+
+	log.Warn("failed to get gallery index from client cache. Getting it from mw cache one more time", zap.Error(err))
+	index, err = s.indexCache.GetIndex(0)
+	if err != nil {
+		return nil, err
+	}
+	return index, nil
+}
+
+func (s *service) GetManifest(url string, checkWhitelist bool) (info *model.ManifestInfo, err error) {
 	if err = uri.ValidateURI(url); err != nil {
 		return nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
-	if checkWhitelist && !IsInWhitelist(url) {
+	if checkWhitelist && !isInWhitelist(url) {
 		return nil, fmt.Errorf("URL '%s' is not in whitelist", url)
 	}
-	raw, err := getRawJson(url)
+	raw, _, err := getRawJson(url, 0, "")
 	if err != nil {
 		return nil, err
 	}
 
-	schemaResp := schemaResponse{}
-	err = json.Unmarshal(raw, &schemaResp)
+	info = &model.ManifestInfo{}
+	err = jsonpb.Unmarshal(bytes.NewReader(raw), info)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshall json to get schema: %w", err)
 	}
@@ -68,36 +95,21 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 		return nil, fmt.Errorf("failed to unmarshall json to get manifest: %w", err)
 	}
 
-	if err = validateSchema(schemaResp, info); err != nil {
+	if err = validateSchema(info.Schema, info); err != nil {
 		return nil, err
 	}
 
 	for _, urlToCheck := range append(info.Screenshots, info.DownloadLink) {
-		if !IsInWhitelist(urlToCheck) {
+		if !isInWhitelist(urlToCheck) {
 			return nil, fmt.Errorf("URL '%s' provided in manifest is not in whitelist", urlToCheck)
 		}
 	}
 
-	info.Description = stripTags(info.Description)
+	stripTags(info)
 	return info, nil
 }
 
-func DownloadGalleryIndex() (*pb.RpcGalleryDownloadIndexResponse, error) {
-	raw, err := getRawJson(indexURI)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrDownloadIndex, err)
-	}
-
-	response := &pb.RpcGalleryDownloadIndexResponse{}
-	err = json.Unmarshal(raw, &response)
-	if err != nil {
-		return nil, fmt.Errorf("%w to get lists of categories and experiences from gallery index: %w", ErrUnmarshalJson, err)
-	}
-
-	return response, nil
-}
-
-func IsInWhitelist(url string) bool {
+func isInWhitelist(url string) bool {
 	if len(whitelist) == 0 {
 		return true
 	}
@@ -113,39 +125,52 @@ func IsInWhitelist(url string) bool {
 	return false
 }
 
-func getRawJson(url string) ([]byte, error) {
+func getRawJson(url string, timeoutInSeconds int, currentVersion string) (body []byte, newVersion string, err error) {
+	timeout := defaultTimeout
+	if timeoutInSeconds != 0 {
+		timeout = time.Duration(timeoutInSeconds) * time.Second
+	}
 	client := http.Client{Timeout: timeout}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, err
+		return nil, "", err
+	}
+
+	if currentVersion != "" {
+		req.Header.Add(versionHeader, currentVersion)
 	}
 
 	res, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get json file. Status: %s", res.Status)
+		if res.StatusCode == http.StatusNotModified {
+			return nil, currentVersion, ErrNotModified
+		}
+		return nil, "", fmt.Errorf("failed to get json file. Status: %s", res.Status)
 	}
+
+	newVersion = res.Header.Get(eTagHeader)
 
 	if res.Body != nil {
 		defer res.Body.Close()
 	}
 
-	body, err := io.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return body, nil
+	return body, newVersion, nil
 }
 
-func validateSchema(schemaResp schemaResponse, info *model.ManifestInfo) (err error) {
-	if schemaResp.Schema == "" {
+func validateSchema(schema string, info *model.ManifestInfo) (err error) {
+	if schema == "" {
 		return
 	}
 	var result *gojsonschema.Result
-	schemaLoader := gojsonschema.NewReferenceLoader(schemaResp.Schema)
+	schemaLoader := gojsonschema.NewReferenceLoader(schema)
 	jsonLoader := gojsonschema.NewGoLoader(info)
 	result, err = gojsonschema.Validate(schemaLoader, jsonLoader)
 	if err != nil {
@@ -154,15 +179,15 @@ func validateSchema(schemaResp schemaResponse, info *model.ManifestInfo) (err er
 	if !result.Valid() {
 		return buildResultError(result)
 	}
-	info.Schema = schemaResp.Schema
 	return nil
 }
 
-func stripTags(str string) string {
-	if _, err := html.Parse(strings.NewReader(str)); err != nil {
-		return str
+func stripTags(info *model.ManifestInfo) {
+	description := info.Description
+	if _, err := html.Parse(strings.NewReader(description)); err != nil {
+		return
 	}
-	return strip.StripTags(str)
+	info.Description = strip.StripTags(description)
 }
 
 func buildResultError(result *gojsonschema.Result) error {
