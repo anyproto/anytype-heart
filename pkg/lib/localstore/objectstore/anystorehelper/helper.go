@@ -21,13 +21,13 @@ func OpenDatabaseWithLockCheck(ctx context.Context, path string, config *anystor
 	lockCloseNoop := func() error {
 		return nil
 	}
-	var runQuickCheck bool
+	var lockFileAlreadyExists, runQuickCheck bool
 
 	// Attempt to create the lock file atomically
 	lockFile, err := os.OpenFile(lockFilePath, os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		if os.IsExist(err) {
-			runQuickCheck = true
+			lockFileAlreadyExists, runQuickCheck = true, true
 		} else {
 			return
 		}
@@ -49,6 +49,14 @@ func OpenDatabaseWithLockCheck(ctx context.Context, path string, config *anystor
 		// todo: process some possible corrupted state errors here
 		return nil, lockCloseNoop, err
 	}
+	if lockFileAlreadyExists {
+		// overwrite existing lock file with the current pid
+		err = os.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d", os.Getpid())), 0644)
+		if err != nil {
+			log.Errorf("failed to write pid to existing lock file: %v", err.Error())
+		}
+	}
+
 	if !runQuickCheck {
 		return
 	}
@@ -57,7 +65,7 @@ func OpenDatabaseWithLockCheck(ctx context.Context, path string, config *anystor
 	if err != nil {
 		// db is corrupted, close it and reinit
 		err = store.Close()
-		log.With("closeErr", err).Errorf("quick check failed: %s; reinit store", err)
+		log.With("closeErr", err).With("err", err).Error("quick check failed. reinit store")
 		if err = os.RemoveAll(path); err != nil {
 			return nil, lockCloseNoop, err
 		}

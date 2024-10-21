@@ -178,29 +178,31 @@ func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 }
 
 func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
-	store, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(s.componentCtx, path, s.anyStoreConfig)
+	var err error
+	s.db, s.dbLockRemove, err = anystorehelper.OpenDatabaseWithLockCheck(s.componentCtx, path, s.anyStoreConfig)
 	if err != nil {
 		return err
 	}
+
 	objects, err := s.newCollection(ctx, "objects")
 	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open objects collection: %w", err))
+		return errors.Join(s.db.Close(), fmt.Errorf("open objects collection: %w", err))
 	}
 	links, err := s.newCollection(ctx, "links")
 	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open links collection: %w", err))
+		return errors.Join(s.db.Close(), fmt.Errorf("open links collection: %w", err))
 	}
 	headsState, err := s.newCollection(ctx, "headsState")
 	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open headsState collection: %w", err))
+		return errors.Join(s.db.Close(), fmt.Errorf("open headsState collection: %w", err))
 	}
 	activeViews, err := s.newCollection(ctx, "activeViews")
 	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open activeViews collection: %w", err))
+		return errors.Join(s.db.Close(), fmt.Errorf("open activeViews collection: %w", err))
 	}
 	pendingDetails, err := s.newCollection(ctx, "pendingDetails")
 	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open pendingDetails collection: %w", err))
+		return errors.Join(s.db.Close(), fmt.Errorf("open pendingDetails collection: %w", err))
 	}
 
 	objectIndexes := []anystore.IndexInfo{
@@ -260,8 +262,7 @@ func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
 	s.headsState = headsState
 	s.activeViews = activeViews
 	s.pendingDetails = pendingDetails
-	s.db = store
-	s.dbLockRemove = lockRemove
+
 	return nil
 }
 
