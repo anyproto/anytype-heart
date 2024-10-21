@@ -83,8 +83,8 @@ github.com/andybalholm/cascadia v1.2.0/go.mod h1:YCyR8vOZT9aZ1CHEd8ap0gMVm2aFgxB
 github.com/andybalholm/cascadia v1.3.1/go.mod h1:R4bJ1UQfqADjvDa4P6HZHLh/3OxWWEqc0Sk8XGwHqvA=
 github.com/andybalholm/cascadia v1.3.2 h1:3Xi6Dw5lHF15JtdcmAHD3i1+T8plmv7BQ/nsViSLyss=
 github.com/andybalholm/cascadia v1.3.2/go.mod h1:7gtRlve5FxPPgIgX36uWBX58OdBsSS6lUvCFb+h7KvU=
-github.com/anyproto/any-store v0.1.0 h1:zpf8VZxSZC3UR5pNYWKdtKfILayUHr70aBOqW89FEFY=
-github.com/anyproto/any-store v0.1.0/go.mod h1:SDlN2AzysAfs8CDd28rrs6boUUtf5H/ydCvwmj+EbsE=
+github.com/anyproto/any-store v0.1.1 h1:dZJt/ELKHzP0P6G3mT/Ch6CnX0pSHTAGpZYuBPCw2hA=
+github.com/anyproto/any-store v0.1.1/go.mod h1:SDlN2AzysAfs8CDd28rrs6boUUtf5H/ydCvwmj+EbsE=
 github.com/anyproto/any-sync v0.5.5 h1:StWApo7eE9dzWw/PtGkEayEsrO7dbFid0dDRsq3DVio=
 github.com/anyproto/any-sync v0.5.5/go.mod h1:jXPhT2kjMVIPKEJZ/mW3NTP5j4Xsg4J5cp/ILGc/60A=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
