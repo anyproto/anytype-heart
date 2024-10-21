@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-store/query"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -28,6 +29,7 @@ const (
 
 type StoreObject interface {
 	smartblock.SmartBlock
+	anystoredebug.AnystoreDebug
 
 	AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error)
 	GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
@@ -37,8 +39,6 @@ type StoreObject interface {
 	DeleteMessage(ctx context.Context, messageId string) error
 	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe() error
-
-	DebugChanges(ctx context.Context) ([]*DebugChange, error)
 }
 
 type AccountService interface {
@@ -46,6 +46,7 @@ type AccountService interface {
 }
 
 type storeObject struct {
+	anystoredebug.AnystoreDebug
 	smartblock.SmartBlock
 	locker smartblock.Locker
 
@@ -94,6 +95,8 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return fmt.Errorf("read store doc: %w", err)
 	}
+
+	s.AnystoreDebug = anystoredebug.New(s.SmartBlock, stateStore)
 
 	return nil
 }

@@ -6546,9 +6546,9 @@ message Rpc {
             }
         }
 
-        message ChatChanges {
+        message AnystoreObjectChanges {
             message Request {
-                string chatObjectId = 1;
+                string objectId = 1;
                 OrderBy orderBy = 2;
 
                 enum OrderBy {

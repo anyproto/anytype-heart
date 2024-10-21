@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
@@ -239,19 +238,19 @@ func (mw *Middleware) DebugAccountSelectTrace(cctx context.Context, req *pb.RpcD
 	}
 }
 
-func (mw *Middleware) DebugChatChanges(cctx context.Context, req *pb.RpcDebugChatChangesRequest) *pb.RpcDebugChatChangesResponse {
-	chatService := getService[chats.Service](mw)
-	changes, wrongOrder, err := chatService.DebugChanges(cctx, req.ChatObjectId, req.OrderBy)
+func (mw *Middleware) DebugAnystoreObjectChanges(cctx context.Context, req *pb.RpcDebugAnystoreObjectChangesRequest) *pb.RpcDebugAnystoreObjectChangesResponse {
+	debugService := getService[debug.Debug](mw)
+	changes, wrongOrder, err := debugService.DebugAnystoreObjectChanges(cctx, req.ObjectId, req.OrderBy)
 	if err != nil {
-		return &pb.RpcDebugChatChangesResponse{
-			Error: &pb.RpcDebugChatChangesResponseError{
-				Code:        pb.RpcDebugChatChangesResponseError_UNKNOWN_ERROR,
+		return &pb.RpcDebugAnystoreObjectChangesResponse{
+			Error: &pb.RpcDebugAnystoreObjectChangesResponseError{
+				Code:        pb.RpcDebugAnystoreObjectChangesResponseError_UNKNOWN_ERROR,
 				Description: getErrorDescription(err),
 			},
 		}
 	}
 
-	return &pb.RpcDebugChatChangesResponse{
+	return &pb.RpcDebugAnystoreObjectChangesResponse{
 		Changes:    changes,
 		WrongOrder: wrongOrder,
 	}

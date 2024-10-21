@@ -2,14 +2,12 @@ package chats
 
 import (
 	"context"
-	"sort"
 
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -24,7 +22,6 @@ type Service interface {
 	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe(chatObjectId string) error
-	DebugChanges(ctx context.Context, chatObjectId string, orderBy pb.RpcDebugChatChangesRequestOrderBy) ([]*pb.RpcDebugChatChangesResponseChange, bool, error)
 
 	app.Component
 }
@@ -123,47 +120,4 @@ func (s *service) Unsubscribe(chatObjectId string) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		return sb.Unsubscribe()
 	})
-}
-
-func (s *service) DebugChanges(ctx context.Context, chatObjectId string, orderBy pb.RpcDebugChatChangesRequestOrderBy) ([]*pb.RpcDebugChatChangesResponseChange, bool, error) {
-	var changesOut []*pb.RpcDebugChatChangesResponseChange
-	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		changes, err := sb.DebugChanges(ctx)
-		if err != nil {
-			return err
-		}
-		for _, ch := range changes {
-			var errString string
-			if ch.Error != nil {
-				errString = ch.Error.Error()
-			}
-			changesOut = append(changesOut, &pb.RpcDebugChatChangesResponseChange{
-				ChangeId: ch.ChangeId,
-				OrderId:  ch.OrderId,
-				Error:    errString,
-				Change:   ch.Change,
-			})
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, false, err
-	}
-
-	sortedByOrderId := make([]*pb.RpcDebugChatChangesResponseChange, len(changesOut))
-	copy(sortedByOrderId, changesOut)
-	sort.Slice(sortedByOrderId, func(i, j int) bool { return sortedByOrderId[i].OrderId < sortedByOrderId[j].OrderId })
-
-	orderIsOK := true
-	for i, ch := range changesOut {
-		sortedByOrder := sortedByOrderId[i]
-		if ch.OrderId != sortedByOrder.OrderId {
-			orderIsOK = false
-		}
-	}
-
-	if orderBy == pb.RpcDebugChatChangesRequest_ORDER_ID {
-		return sortedByOrderId, !orderIsOK, nil
-	}
-	return changesOut, !orderIsOK, nil
 }

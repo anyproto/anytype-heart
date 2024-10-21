@@ -1,4 +1,4 @@
-package chatobject
+package anystoredebug
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
 )
 
@@ -20,7 +22,23 @@ type DebugChange struct {
 	Error    error
 }
 
-func (s *storeObject) DebugChanges(ctx context.Context) ([]*DebugChange, error) {
+type AnystoreDebug interface {
+	DebugChanges(ctx context.Context) ([]*DebugChange, error)
+}
+
+type debugComponent struct {
+	smartblock.SmartBlock
+	store *storestate.StoreState
+}
+
+func New(sb smartblock.SmartBlock, store *storestate.StoreState) AnystoreDebug {
+	return &debugComponent{
+		SmartBlock: sb,
+		store:      store,
+	}
+}
+
+func (s *debugComponent) DebugChanges(ctx context.Context) ([]*DebugChange, error) {
 	historyTree, err := s.SmartBlock.Space().TreeBuilder().BuildHistoryTree(context.Background(), s.Id(), objecttreebuilder.HistoryTreeOpts{
 		Heads:   nil,
 		Include: true,
