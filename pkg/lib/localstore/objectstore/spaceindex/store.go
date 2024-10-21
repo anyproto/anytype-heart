@@ -156,7 +156,6 @@ func New(componentCtx context.Context, spaceId string, deps Deps) Store {
 		fulltextQueue:      deps.FulltextQueue,
 	}
 
-	deps.AnyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
 	var err error
 	s.db, s.dbLockRemove, err = helper.OpenDatabaseWithLockCheck(componentCtx, deps.DbPath, deps.AnyStoreConfig)
 	if err != nil {

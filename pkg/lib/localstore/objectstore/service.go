@@ -88,7 +88,7 @@ type TechSpaceIdProvider interface {
 type dsObjectStore struct {
 	repoPath       string
 	techSpaceId    string
-	anyStoreConfig *anystore.Config
+	anyStoreConfig anystore.Config
 
 	anyStore           anystore.DB
 	anyStoreLockRemove func() error
@@ -137,7 +137,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	}
 	s.arenaPool = &anyenc.ArenaPool{}
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
-	s.anyStoreConfig = app.MustComponent[configProvider](a).GetAnyStoreConfig()
+	s.anyStoreConfig = *app.MustComponent[configProvider](a).GetAnyStoreConfig()
 	s.oldStore = app.MustComponent[oldstore.Service](a)
 	s.techSpaceIdProvider = app.MustComponent[TechSpaceIdProvider](a)
 
@@ -176,7 +176,7 @@ func ensureDirExists(dir string) error {
 
 func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
-	store, lockRemove, err := helper.OpenDatabaseWithLockCheck(ctx, path, s.anyStoreConfig)
+	store, lockRemove, err := helper.OpenDatabaseWithLockCheck(ctx, path, &s.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -275,7 +275,7 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 			return spaceindex.NewInvalidStore(err)
 		}
 		store = spaceindex.New(s.componentCtx, spaceId, spaceindex.Deps{
-			AnyStoreConfig: s.anyStoreConfig,
+			AnyStoreConfig: &s.anyStoreConfig,
 			SourceService:  s.sourceService,
 			OldStore:       s.oldStore,
 			Fts:            s.fts,
@@ -300,10 +300,10 @@ func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
 			return nil
 		}
 		path := filepath.Join(dir, "crdt.db")
-		db, err = anystore.Open(s.componentCtx, path, s.anyStoreConfig)
+		db, err = anystore.Open(s.componentCtx, path, &s.anyStoreConfig)
 		if errors.Is(err, anystore.ErrIncompatibleVersion) {
 			_ = os.RemoveAll(path)
-			db, err = anystore.Open(s.componentCtx, path, s.anyStoreConfig)
+			db, err = anystore.Open(s.componentCtx, path, &s.anyStoreConfig)
 		}
 		if err != nil {
 			return nil
