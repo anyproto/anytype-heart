@@ -237,3 +237,21 @@ func (mw *Middleware) DebugAccountSelectTrace(cctx context.Context, req *pb.RpcD
 		Path: path,
 	}
 }
+
+func (mw *Middleware) DebugAnystoreObjectChanges(cctx context.Context, req *pb.RpcDebugAnystoreObjectChangesRequest) *pb.RpcDebugAnystoreObjectChangesResponse {
+	debugService := getService[debug.Debug](mw)
+	changes, wrongOrder, err := debugService.DebugAnystoreObjectChanges(cctx, req.ObjectId, req.OrderBy)
+	if err != nil {
+		return &pb.RpcDebugAnystoreObjectChangesResponse{
+			Error: &pb.RpcDebugAnystoreObjectChangesResponseError{
+				Code:        pb.RpcDebugAnystoreObjectChangesResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return &pb.RpcDebugAnystoreObjectChangesResponse{
+		Changes:    changes,
+		WrongOrder: wrongOrder,
+	}
+}
