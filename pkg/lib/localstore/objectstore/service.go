@@ -138,7 +138,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	s.arenaPool = &anyenc.ArenaPool{}
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
 	s.anyStoreConfig = *app.MustComponent[configProvider](a).GetAnyStoreConfig()
-	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
+	s.setDefaultConfig()
 	s.oldStore = app.MustComponent[oldstore.Service](a)
 	s.techSpaceIdProvider = app.MustComponent[TechSpaceIdProvider](a)
 
@@ -158,6 +158,14 @@ func (s *dsObjectStore) Run(ctx context.Context) error {
 		return err
 	}
 	return s.runDatabase(ctx, filepath.Join(dbDir, "objects.db"))
+}
+
+f unc (s *dsObjectStore) setDefaultConfig() {
+	if s.anyStoreConfig.SQLiteConnectionOptions == nil {
+		s.anyStoreConfig.SQLiteConnectionOptions = map[string]string{}
+	}
+
+	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
 }
 
 func (s *dsObjectStore) storeRootDir() string {
