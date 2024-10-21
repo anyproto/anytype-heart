@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/helper"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -89,7 +90,8 @@ type dsObjectStore struct {
 	techSpaceId    string
 	anyStoreConfig *anystore.Config
 
-	anyStore anystore.DB
+	anyStore          anystore.DB
+	anyStoreLockClose func() error
 
 	indexerChecksums anystore.Collection
 	virtualSpaces    anystore.Collection
@@ -173,13 +175,8 @@ func ensureDirExists(dir string) error {
 }
 
 func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
-	store, err := anystore.Open(ctx, path, s.anyStoreConfig)
-	if errors.Is(err, anystore.ErrIncompatibleVersion) {
-		if err = os.RemoveAll(path); err != nil {
-			return err
-		}
-		store, err = anystore.Open(ctx, path, s.anyStoreConfig)
-	}
+	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
+	store, lockClose, err := helper.OpenDatabaseWithLockCheck(ctx, path, s.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -201,6 +198,7 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	}
 
 	s.anyStore = store
+	s.anyStoreLockClose = lockClose
 
 	s.fulltextQueue = fulltextQueue
 	s.system = system
@@ -226,20 +224,32 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	s.componentCtxCancel()
 	if s.anyStore != nil {
-		err = errors.Join(err, s.anyStore.Close())
+		err = errors.Join(err, s.anyStore.Close(), s.anyStoreLockClose())
 	}
 
 	s.Lock()
+	// close in parallel
+	closeChan := make(chan error, len(s.spaceIndexes))
 	for spaceId, store := range s.spaceIndexes {
-		err = errors.Join(err, store.Close())
-		delete(s.spaceIndexes, spaceId)
+		go func(spaceId string, store spaceindex.Store) {
+			closeChan <- store.Close()
+		}(spaceId, store)
 	}
+	for i := 0; i < len(s.spaceIndexes); i++ {
+		err = errors.Join(err, <-closeChan)
+	}
+	s.spaceIndexes = map[string]spaceindex.Store{}
 	s.Unlock()
 
 	s.crtdStoreLock.Lock()
+	closeChan = make(chan error, len(s.crdtDbs))
 	for spaceId, store := range s.crdtDbs {
-		err = errors.Join(err, store.Close())
-		delete(s.crdtDbs, spaceId)
+		go func(spaceId string, store anystore.DB) {
+			closeChan <- store.Close()
+		}(spaceId, store)
+	}
+	for i := 0; i < len(s.crdtDbs); i++ {
+		err = errors.Join(err, <-closeChan)
 	}
 	s.crtdStoreLock.Unlock()
 

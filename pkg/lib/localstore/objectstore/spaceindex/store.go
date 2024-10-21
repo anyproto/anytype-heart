@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 
 	anystore "github.com/anyproto/any-store"
@@ -17,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/helper"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -129,6 +129,7 @@ type dsObjectStore struct {
 	lock             sync.RWMutex
 	subscriptions    []database.Subscription
 	onChangeCallback func(rec database.Record)
+	dbLockClose      func() error
 }
 
 type Deps struct {
@@ -154,8 +155,18 @@ func New(componentCtx context.Context, spaceId string, deps Deps) Store {
 		subManager:         deps.SubManager,
 		fulltextQueue:      deps.FulltextQueue,
 	}
-	err := s.runDatabase(componentCtx, deps.DbPath)
+
+	deps.AnyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
+	var err error
+	s.db, s.dbLockClose, err = helper.OpenDatabaseWithLockCheck(componentCtx, deps.DbPath, deps.AnyStoreConfig)
 	if err != nil {
+		s.initErr = err
+		return s
+	}
+	err = s.initDatabase(componentCtx)
+	if err != nil {
+		_ = s.dbLockClose()
+		s.db = nil
 		s.initErr = err
 	}
 	return s
@@ -172,38 +183,26 @@ func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	return s.db.WriteTx(ctx)
 }
 
-func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
-	store, err := anystore.Open(ctx, path, s.anyStoreConfig)
-	if errors.Is(err, anystore.ErrIncompatibleVersion) {
-		if err = os.RemoveAll(path); err != nil {
-			return err
-		}
-		store, err = anystore.Open(ctx, path, s.anyStoreConfig)
-	}
-	if err != nil {
-		return fmt.Errorf("open database: %w", err)
-	}
-	s.db = store
-
+func (s *dsObjectStore) initDatabase(ctx context.Context) error {
 	objects, err := s.newCollection(ctx, "objects")
 	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open objects collection: %w", err))
+		return errors.Join(s.db.Close(), fmt.Errorf("open objects collection: %w", err))
 	}
 	links, err := s.newCollection(ctx, "links")
 	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open links collection: %w", err))
+		return errors.Join(s.db.Close(), fmt.Errorf("open links collection: %w", err))
 	}
 	headsState, err := s.newCollection(ctx, "headsState")
 	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open headsState collection: %w", err))
+		return errors.Join(s.db.Close(), fmt.Errorf("open headsState collection: %w", err))
 	}
 	activeViews, err := s.newCollection(ctx, "activeViews")
 	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open activeViews collection: %w", err))
+		return errors.Join(s.db.Close(), fmt.Errorf("open activeViews collection: %w", err))
 	}
 	pendingDetails, err := s.newCollection(ctx, "pendingDetails")
 	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open pendingDetails collection: %w", err))
+		return errors.Join(s.db.Close(), fmt.Errorf("open pendingDetails collection: %w", err))
 	}
 
 	objectIndexes := []anystore.IndexInfo{
@@ -281,7 +280,14 @@ func (s *dsObjectStore) Close() error {
 	for _, col := range s.collections {
 		err = errors.Join(err, col.Close())
 	}
+
+	s.lock.Lock()
+	err = errors.Join(s.db.Checkpoint(context.Background(), true))
+	s.lock.Unlock()
+
 	err = errors.Join(s.db.Close())
+	// remove lock file only after successful close
+	err = errors.Join(s.dbLockClose())
 	return err
 }
 
