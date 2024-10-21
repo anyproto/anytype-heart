@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"zombiezen.com/go/sqlite"
@@ -67,17 +68,25 @@ func OpenDatabaseWithLockCheck(ctx context.Context, path string, config *anystor
 		return
 	}
 	// means we have not closed properly
+	start := time.Now()
 	err = store.QuickCheck(ctx)
 	if err != nil {
 		// db is corrupted, close it and reinit
-		err = store.Close()
-		log.With("closeError", err).With("error", err).Error("quick check failed. reinit db")
+		closeErr := store.Close()
+		log.With("closeError", closeErr).With("error", err).Error("quick check failed. reinit db")
 		if err = os.RemoveAll(path); err != nil {
 			return nil, lockCloseNoop, err
 		}
 		store, err = anystore.Open(ctx, path, config)
 		if err != nil {
 			return nil, lockCloseNoop, err
+		}
+	} else {
+		spentMs := time.Since(start).Milliseconds()
+		if spentMs < 1000 {
+			log.With("spent", spentMs).Infof("quick check succeed")
+		} else {
+			log.With("spent", spentMs).Warn("quick check succeed")
 		}
 	}
 
