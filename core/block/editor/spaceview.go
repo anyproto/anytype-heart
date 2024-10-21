@@ -249,6 +249,7 @@ var workspaceKeysToCopy = []string{
 	bundle.RelationKeyIconImage.String(),
 	bundle.RelationKeyIconOption.String(),
 	bundle.RelationKeySpaceDashboardId.String(),
+	bundle.RelationKeyCreatedDate.String(),
 }
 
 func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
@@ -278,6 +279,9 @@ func (s *SpaceView) SetSpaceData(details *types.Struct) error {
 						v = pbtypes.StringList([]string{fileId.FileId.String()})
 					}
 				}
+			}
+			if k == bundle.RelationKeyCreatedDate.String() && !s.Space().IsPersonal() {
+				continue
 			}
 			changed = true
 			st.SetDetailAndBundledRelation(domain.RelationKey(k), v)
