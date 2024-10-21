@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -72,6 +73,7 @@ type ObjectFactory struct {
 	objectDeleter       ObjectDeleter
 	deviceService       deviceService
 	lastUsedUpdater     lastused.ObjectUsageUpdater
+	spaceIdResolver     idresolver.Resolver
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -104,6 +106,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
 	f.deviceService = app.MustComponent[deviceService](a)
 	f.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
+	f.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	return nil
 }
 
@@ -160,8 +163,10 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 		f.fileStore,
 		f.restrictionService,
 		store,
+		f.objectStore,
 		f.indexer,
 		f.eventSender,
+		f.spaceIdResolver,
 	), store
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/restriction/mock_restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -25,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -465,7 +467,10 @@ type fixture struct {
 }
 
 func newFixture(id string, t *testing.T) *fixture {
-	objectStore := spaceindex.NewStoreFixture(t)
+	objectStore := objectstore.NewStoreFixture(t)
+	spaceIndex := spaceindex.NewStoreFixture(t)
+
+	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
 	indexer := NewMockIndexer(t)
 
@@ -474,7 +479,7 @@ func newFixture(id string, t *testing.T) *fixture {
 
 	sender := mock_event.NewMockSender(t)
 
-	sb := New(nil, "", nil, restrictionService, objectStore, indexer, sender).(*smartBlock)
+	sb := New(nil, "", nil, restrictionService, spaceIndex, objectStore, indexer, sender, spaceIdResolver).(*smartBlock)
 	source := &sourceStub{
 		id:      id,
 		spaceId: "space1",
@@ -484,7 +489,7 @@ func newFixture(id string, t *testing.T) *fixture {
 	return &fixture{
 		source:             source,
 		smartBlock:         sb,
-		store:              objectStore,
+		store:              spaceIndex,
 		restrictionService: restrictionService,
 		indexer:            indexer,
 		eventSender:        sender,
