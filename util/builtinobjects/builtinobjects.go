@@ -102,11 +102,7 @@ var (
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
-			{model.BlockContentWidget_Tree, "bafyreib54qrvlara5ickx4sk7mtdmeuwnyrmsdwrrrmvw7rhluwd3mwkg4", "", true},
-			{model.BlockContentWidget_List, "bafyreifvmvqmlmrzzdd4db5gau4fcdhxbii4pkanjdvcjbofmmywhg3zni", "f984ddde-eb13-497e-809a-2b9a96fd3503", true},
-			{model.BlockContentWidget_List, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
+			{model.BlockContentWidget_Tree, "bafyreia4uol63iev5ywhiqdqf4trh44ep2j27rlrvmypd65adg4ntnihn4", "", true},
 		},
 		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
@@ -458,7 +454,7 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 
 func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string, err error) {
 	var ids []string
-	if ids, _, err = b.store.QueryObjectIDs(database.Query{
+	if ids, _, err = b.store.SpaceIndex(spaceID).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,

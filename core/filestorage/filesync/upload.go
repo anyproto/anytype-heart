@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -163,10 +164,12 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 			}
 		}
 		if limitErr == nil || !limitErrorIsLogged {
-			log.Error("retry uploading file error",
-				zap.String("fileId", fileId.String()), zap.Error(err),
-				zap.String("objectId", it.ObjectId),
-			)
+			if !format.IsNotFound(err) && !strings.Contains(err.Error(), "failed to fetch all nodes") {
+				log.Error("retry uploading file error",
+					zap.String("fileId", fileId.String()), zap.Error(err),
+					zap.String("objectId", it.ObjectId),
+				)
+			}
 		}
 
 		return persistentqueue.ActionRetry, nil

@@ -27,7 +27,6 @@ func RelationFromStruct(st *types.Struct) *Relation {
 			ObjectTypes:      pbtypes.GetStringList(st, bundle.RelationKeyRelationFormatObjectTypes.String()),
 			MaxCount:         maxCount,
 			Description:      pbtypes.GetString(st, bundle.RelationKeyDescription.String()),
-			Scope:            model.RelationScope(pbtypes.GetFloat64(st, bundle.RelationKeyScope.String())),
 			Creator:          pbtypes.GetString(st, bundle.RelationKeyCreator.String()),
 			Revision:         pbtypes.GetInt64(st, bundle.RelationKeyRevision.String()),
 		},
@@ -61,7 +60,6 @@ func (r *Relation) ToStruct() *types.Struct {
 			bundle.RelationKeyRelationKey.String():               pbtypes.String(r.GetKey()),
 			bundle.RelationKeyRelationMaxCount.String():          pbtypes.Float64(float64(r.GetMaxCount())),
 			bundle.RelationKeyRelationReadonlyValue.String():     pbtypes.Bool(r.GetReadOnly()),
-			bundle.RelationKeyScope.String():                     pbtypes.Float64(float64(r.GetScope())),
 			bundle.RelationKeyType.String():                      pbtypes.String(bundle.TypeKeyRelation.BundledURL()),
 			// TODO Is it ok?
 			bundle.RelationKeyUniqueKey.String(): pbtypes.String(domain.RelationKey(r.GetKey()).URL()),

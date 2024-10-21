@@ -685,6 +685,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 
 	msgs = s.processTrailingDuplicatedEvents(msgs)
+
+	sortEventMessages(msgs)
 	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
@@ -1086,7 +1088,7 @@ func (s *State) Snippet() string {
 		}
 		return true
 	})
-	return textutil.Truncate(builder.String(), snippetMaxSize)
+	return textutil.TruncateEllipsized(builder.String(), snippetMaxSize)
 }
 
 func (s *State) FileRelationKeys() []string {
