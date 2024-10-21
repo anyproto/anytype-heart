@@ -7,6 +7,7 @@ import (
 	"os"
 
 	anystore "github.com/anyproto/any-store"
+	"zombiezen.com/go/sqlite"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
@@ -38,16 +39,21 @@ func OpenDatabaseWithLockCheck(ctx context.Context, path string, config *anystor
 	}
 
 	store, err = anystore.Open(ctx, path, config)
-	if errors.Is(err, anystore.ErrIncompatibleVersion) {
-		runQuickCheck = false
-		if err = os.RemoveAll(path); err != nil {
+	if err != nil {
+		code := sqlite.ErrCode(err)
+		l := log.With("err", err).With("code", code)
+		if errors.Is(err, anystore.ErrIncompatibleVersion) || code == sqlite.ResultCorrupt || code == sqlite.ResultNotADB || code == sqlite.ResultCantOpen {
+			runQuickCheck = false
+			l.Errorf("failed to open anystore, reinit db")
+			if err = os.RemoveAll(path); err != nil {
+				return nil, lockCloseNoop, err
+			}
+			store, err = anystore.Open(ctx, path, config)
+		} else {
+			l.Errorf("failed to open anystore, non-recoverable error")
+			// some other error
 			return nil, lockCloseNoop, err
 		}
-		store, err = anystore.Open(ctx, path, config)
-	}
-	if err != nil {
-		// todo: process some possible corrupted state errors here
-		return nil, lockCloseNoop, err
 	}
 	if lockFileAlreadyExists {
 		// overwrite existing lock file with the current pid
@@ -65,7 +71,7 @@ func OpenDatabaseWithLockCheck(ctx context.Context, path string, config *anystor
 	if err != nil {
 		// db is corrupted, close it and reinit
 		err = store.Close()
-		log.With("closeErr", err).With("err", err).Error("quick check failed. reinit store")
+		log.With("closeErr", err).With("err", err).Error("quick check failed. reinit db")
 		if err = os.RemoveAll(path); err != nil {
 			return nil, lockCloseNoop, err
 		}
