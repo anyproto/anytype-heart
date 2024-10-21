@@ -196,6 +196,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 func (f *ftSearchTantivy) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.TantivyContext, error) {
 	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
 	if err != nil {
+		log.Warnf("recovering from error: %v", err)
 		f.recover()
 		return tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
 	}
