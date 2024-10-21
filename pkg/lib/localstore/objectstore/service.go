@@ -90,8 +90,8 @@ type dsObjectStore struct {
 	techSpaceId    string
 	anyStoreConfig *anystore.Config
 
-	anyStore          anystore.DB
-	anyStoreLockClose func() error
+	anyStore           anystore.DB
+	anyStoreLockRemove func() error
 
 	indexerChecksums anystore.Collection
 	virtualSpaces    anystore.Collection
@@ -176,7 +176,7 @@ func ensureDirExists(dir string) error {
 
 func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
-	store, lockClose, err := helper.OpenDatabaseWithLockCheck(ctx, path, s.anyStoreConfig)
+	store, lockRemove, err := helper.OpenDatabaseWithLockCheck(ctx, path, s.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -198,7 +198,7 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	}
 
 	s.anyStore = store
-	s.anyStoreLockClose = lockClose
+	s.anyStoreLockRemove = lockRemove
 
 	s.fulltextQueue = fulltextQueue
 	s.system = system
@@ -224,7 +224,7 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	s.componentCtxCancel()
 	if s.anyStore != nil {
-		err = errors.Join(err, s.anyStore.Close(), s.anyStoreLockClose())
+		err = errors.Join(err, s.anyStore.Close(), s.anyStoreLockRemove())
 	}
 
 	s.Lock()

@@ -129,7 +129,7 @@ type dsObjectStore struct {
 	lock             sync.RWMutex
 	subscriptions    []database.Subscription
 	onChangeCallback func(rec database.Record)
-	dbLockClose      func() error
+	dbLockRemove     func() error
 }
 
 type Deps struct {
@@ -158,14 +158,14 @@ func New(componentCtx context.Context, spaceId string, deps Deps) Store {
 
 	deps.AnyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
 	var err error
-	s.db, s.dbLockClose, err = helper.OpenDatabaseWithLockCheck(componentCtx, deps.DbPath, deps.AnyStoreConfig)
+	s.db, s.dbLockRemove, err = helper.OpenDatabaseWithLockCheck(componentCtx, deps.DbPath, deps.AnyStoreConfig)
 	if err != nil {
 		s.initErr = err
 		return s
 	}
 	err = s.initDatabase(componentCtx)
 	if err != nil {
-		_ = s.dbLockClose()
+		_ = s.dbLockRemove()
 		s.db = nil
 		s.initErr = err
 	}
@@ -287,7 +287,7 @@ func (s *dsObjectStore) Close() error {
 
 	err = errors.Join(s.db.Close())
 	// remove lock file only after successful close
-	err = errors.Join(s.dbLockClose())
+	err = errors.Join(s.dbLockRemove())
 	return err
 }
 
