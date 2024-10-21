@@ -197,7 +197,9 @@ func (f *ftSearchTantivy) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.Tan
 	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
 	if err != nil {
 		log.Warnf("recovering from error: %v", err)
-		f.recover()
+		if strings.HasSuffix(f.rootPath, ftsDir2) {
+			_ = os.RemoveAll(f.rootPath)
+		}
 		return tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
 	}
 	return index, err
@@ -364,12 +366,6 @@ func (f *ftSearchTantivy) Close(ctx context.Context) error {
 
 func (f *ftSearchTantivy) cleanupBleve() {
 	_ = os.RemoveAll(filepath.Join(f.rootPath, ftsDir))
-}
-
-func (f *ftSearchTantivy) recover() {
-	if strings.HasSuffix(f.rootPath, ftsDir2) {
-		_ = os.RemoveAll(f.rootPath)
-	}
 }
 
 func prepareQuery(query string) string {
