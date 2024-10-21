@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/helper"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -157,10 +157,10 @@ func (s *dsObjectStore) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return s.runDatabase(ctx, filepath.Join(dbDir, "objects.db"))
+	return s.openDatabase(ctx, filepath.Join(dbDir, "objects.db"))
 }
 
-f unc (s *dsObjectStore) setDefaultConfig() {
+func (s *dsObjectStore) setDefaultConfig() {
 	if s.anyStoreConfig.SQLiteConnectionOptions == nil {
 		s.anyStoreConfig.SQLiteConnectionOptions = map[string]string{}
 	}
@@ -183,8 +183,8 @@ func ensureDirExists(dir string) error {
 	return nil
 }
 
-func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
-	store, lockRemove, err := helper.OpenDatabaseWithLockCheck(ctx, path, &s.anyStoreConfig)
+func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
+	store, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(ctx, path, &s.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
