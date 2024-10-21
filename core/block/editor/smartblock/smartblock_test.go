@@ -139,13 +139,14 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 			},
 		}
 
-		fx.store.AddObjects(t, []spaceindex.TestObject{
-			{
+		err := fx.store.UpdateObjectDetails(context.Background(), id, &types.Struct{
+			Fields: map[string]*types.Value{
 				"id":     pbtypes.String(id),
 				"number": pbtypes.Float64(2.18281828459045),
 				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
 			},
 		})
+		require.NoError(t, err)
 
 		// when
 		detailsFromStore, err := fx.getDetailsFromStore()
@@ -457,18 +458,22 @@ func TestInjectDerivedDetails(t *testing.T) {
 }
 
 type fixture struct {
-	store              *spaceindex.StoreFixture
+	objectStore        *objectstore.StoreFixture
+	store              spaceindex.Store
 	restrictionService *mock_restriction.MockService
 	indexer            *MockIndexer
 	eventSender        *mock_event.MockSender
 	source             *sourceStub
+	spaceIdResolver    *mock_idresolver.MockResolver
 
 	*smartBlock
 }
 
+const testSpaceId = "space1"
+
 func newFixture(id string, t *testing.T) *fixture {
 	objectStore := objectstore.NewStoreFixture(t)
-	spaceIndex := spaceindex.NewStoreFixture(t)
+	spaceIndex := objectStore.SpaceIndex(testSpaceId)
 
 	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
@@ -486,6 +491,7 @@ func newFixture(id string, t *testing.T) *fixture {
 		sbType:  smartblock.SmartBlockTypePage,
 	}
 	sb.source = source
+
 	return &fixture{
 		source:             source,
 		smartBlock:         sb,
@@ -493,6 +499,8 @@ func newFixture(id string, t *testing.T) *fixture {
 		restrictionService: restrictionService,
 		indexer:            indexer,
 		eventSender:        sender,
+		spaceIdResolver:    spaceIdResolver,
+		objectStore:        objectStore,
 	}
 }
 

@@ -119,6 +119,7 @@ func New(
 		eventSender:        eventSender,
 		objectStore:        objectStore,
 		spaceIdResolver:    spaceIdResolver,
+		lastDepDetails:     map[string]*pb.EventObjectDetailsSet{},
 	}
 	return s
 }
@@ -327,7 +328,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	sb.undo = undo.NewHistory(0)
 	sb.restrictions = sb.restrictionService.GetRestrictions(sb)
-	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
 	if ctx.State != nil {
 		// need to store file keys in case we have some new files in the state
 		sb.storeFileKeys(ctx.State)
