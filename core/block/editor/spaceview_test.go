@@ -131,6 +131,10 @@ func TestSpaceView_SetOwner(t *testing.T) {
 type spaceServiceStub struct {
 }
 
+func (s *spaceServiceStub) PersonalSpaceId() string {
+	return ""
+}
+
 func (s *spaceServiceStub) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
 }
 

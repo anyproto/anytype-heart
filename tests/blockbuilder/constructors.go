@@ -7,6 +7,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -51,6 +52,15 @@ func (b *Block) Build() []*model.Block {
 	return append([]*model.Block{
 		b.block,
 	}, descendants...)
+}
+
+func (b *Block) BuildMap() map[string]simple.Block {
+	blocks := b.Build()
+	res := make(map[string]simple.Block, len(blocks))
+	for _, bl := range blocks {
+		res[bl.Id] = simple.New(bl)
+	}
+	return res
 }
 
 func mkBlock(b *model.Block, opts ...Option) *Block {

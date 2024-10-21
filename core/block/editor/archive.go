@@ -1,6 +1,9 @@
 package editor
 
 import (
+	"errors"
+
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
@@ -115,7 +118,7 @@ func (p *Archive) updateInStore(archivedIds []string) error {
 				current.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(false)
 				return current, nil
 			}); err != nil {
-				log.Errorf("archive: can't set detail to object: %v", err)
+				logArchiveError(err)
 			}
 		}(removedId)
 	}
@@ -130,9 +133,16 @@ func (p *Archive) updateInStore(archivedIds []string) error {
 				current.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(true)
 				return current, nil
 			}); err != nil {
-				log.Errorf("archive: can't set detail to object: %v", err)
+				logArchiveError(err)
 			}
 		}(addedId)
 	}
 	return nil
+}
+
+func logArchiveError(err error) {
+	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		return
+	}
+	log.Errorf("archive: can't set detail to object: %v", err)
 }
