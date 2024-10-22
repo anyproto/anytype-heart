@@ -17,7 +17,8 @@
   "task",
   "collection",
   "set",
-  "profile",
   "bookmark",
+  "chat",
+  "chatDerived",
   "tag"
 ]

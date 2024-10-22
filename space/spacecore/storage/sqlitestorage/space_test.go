@@ -175,20 +175,13 @@ func TestSpaceStorage_ReadSpaceHash(t *testing.T) {
 	hash, err := ss.ReadSpaceHash()
 	require.NoError(t, err)
 	assert.Empty(t, hash)
-	oldHash, err := ss.ReadOldSpaceHash()
-	require.NoError(t, err)
-	assert.Empty(t, oldHash)
 
 	require.NoError(t, ss.WriteSpaceHash("hash"))
-	require.NoError(t, ss.WriteOldSpaceHash("oldHash"))
 
 	var checkHashes = func(ss spacestorage.SpaceStorage) {
 		hash, err = ss.ReadSpaceHash()
 		require.NoError(t, err)
 		assert.Equal(t, "hash", hash)
-		oldHash, err = ss.ReadOldSpaceHash()
-		require.NoError(t, err)
-		assert.Equal(t, "oldHash", oldHash)
 	}
 
 	checkHashes(ss)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -42,12 +43,13 @@ func TestInstaller_queryDeletedObjects(t *testing.T) {
 		{false, true, "otherSpaceId", bundle.TypeKeyDiaryEntry},
 		{true, false, "otherSpaceId", bundle.RelationKeyAudioAlbum},
 	} {
-		store.AddObjects(t, []objectstore.TestObject{{
+		store.AddObjects(t, obj.spaceId, []objectstore.TestObject{{
 			bundle.RelationKeyId:           pbtypes.String(obj.key.URL()),
 			bundle.RelationKeySpaceId:      pbtypes.String(obj.spaceId),
 			bundle.RelationKeySourceObject: pbtypes.String(obj.key.BundledURL()),
 			bundle.RelationKeyIsDeleted:    pbtypes.Bool(obj.isDeleted),
 			bundle.RelationKeyIsArchived:   pbtypes.Bool(obj.isArchived),
+			bundle.RelationKeyLayout:       pbtypes.Int64(int64(model.ObjectType_relation)),
 		}})
 		sourceObjectIds = append(sourceObjectIds, obj.key.BundledURL())
 		if obj.spaceId == spaceId && (obj.isDeleted || obj.isArchived) {

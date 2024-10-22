@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "5e3ccfb73140e263358e27c4809e51ad219d9b19fc978a719a37460e58e7d4fa"
+const TypeChecksum = "f3ae9931142aa23ec9696ccb60fe1a68b4fdafcc345e307e0a26d4fb98a0686c"
 const (
 	TypePrefix = "_ot"
 )
@@ -41,7 +41,8 @@ const (
 	TypeKeyGoal           domain.TypeKey = "goal"
 	TypeKeyFile           domain.TypeKey = "file"
 	TypeKeyProject        domain.TypeKey = "project"
-	TypeKeyTag            domain.TypeKey = "tag"
+	TypeKeyChat           domain.TypeKey = "chat"
+	TypeKeyChatDerived    domain.TypeKey = "chatDerived"
 )
 
 var (
@@ -80,6 +81,29 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeySource), MustGetRelationLink(RelationKeyPicture)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "bookmark",
+		},
+		TypeKeyChat: {
+
+			Description:   "A chat",
+			IconEmoji:     "💬",
+			Layout:        model.ObjectType_chat,
+			Name:          "Chat",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_ChatObject},
+			Url:           TypePrefix + "chat",
+		},
+		TypeKeyChatDerived: {
+
+			Description:   "A chat derived object",
+			Hidden:        true,
+			Layout:        model.ObjectType_chatDerived,
+			Name:          "Chat Derived Object",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
+			Revision:      1,
+			Types:         []model.SmartBlockType{model.SmartBlockType_ChatDerivedObject},
+			Url:           TypePrefix + "chatDerived",
 		},
 		TypeKeyCollection: {
 
@@ -323,17 +347,6 @@ var (
 			RestrictObjectCreation: true,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_SpaceView},
 			Url:                    TypePrefix + "spaceView",
-		},
-		TypeKeyTag: {
-
-			Description:   "",
-			IconEmoji:     "🏷 ",
-			Layout:        model.ObjectType_tag,
-			Name:          "Tag",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRelationOptionColor)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "tag",
 		},
 		TypeKeyTask: {
 

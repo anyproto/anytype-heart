@@ -23,6 +23,7 @@ import (
 )
 
 func Test_GrouperTags(t *testing.T) {
+	const spaceId = "space1"
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
 
@@ -37,12 +38,12 @@ func Test_GrouperTags(t *testing.T) {
 	uniqueKey, err := domain.NewUniqueKey(sb.SmartBlockTypeRelation, key)
 	assert.NoError(t, err)
 
-	objectStore.AddObjects(t, []objectstore.TestObject{
+	objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:             pbtypes.String("relationId"),
 			bundle.RelationKeyUniqueKey:      pbtypes.String(uniqueKey.Marshal()),
 			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
-			bundle.RelationKeySpaceId:        pbtypes.String(""),
+			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
 		},
 	})
 
@@ -57,7 +58,7 @@ func Test_GrouperTags(t *testing.T) {
 	idTag2 := bson.NewObjectId().Hex()
 	idTag3 := bson.NewObjectId().Hex()
 
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), idTag1, &types.Struct{
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), idTag1, &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":          pbtypes.String(idTag1),
 			"relationKey": pbtypes.String(key),
@@ -66,7 +67,7 @@ func Test_GrouperTags(t *testing.T) {
 		},
 	}))
 
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), idTag2, &types.Struct{
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), idTag2, &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":          pbtypes.String(idTag2),
 			"relationKey": pbtypes.String(key),
@@ -74,7 +75,7 @@ func Test_GrouperTags(t *testing.T) {
 			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}))
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), idTag3, &types.Struct{
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), idTag3, &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":          pbtypes.String(idTag3),
 			"relationKey": pbtypes.String(key),
@@ -88,35 +89,35 @@ func Test_GrouperTags(t *testing.T) {
 	id3 := bson.NewObjectId().Hex()
 	id4 := bson.NewObjectId().Hex()
 
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), id1, &types.Struct{
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), id1, &types.Struct{
 		Fields: map[string]*types.Value{"name": pbtypes.String("one")},
 	}))
 
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), id2, &types.Struct{Fields: map[string]*types.Value{
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), id2, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("two"),
 		key:    pbtypes.StringList([]string{idTag1}),
 	}}))
 
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), id3, &types.Struct{Fields: map[string]*types.Value{
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), id3, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("three"),
 		key:    pbtypes.StringList([]string{idTag1, idTag2, idTag3}),
 	}}))
 
-	require.NoError(t, objectStore.UpdateObjectDetails(context.Background(), id4, &types.Struct{Fields: map[string]*types.Value{
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), id4, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("four"),
 		key:    pbtypes.StringList([]string{idTag1, idTag3}),
 	}}))
 
-	grouper, err := kanbanSrv.Grouper("", key)
+	grouper, err := kanbanSrv.Grouper(spaceId, key)
 	require.NoError(t, err)
-	err = grouper.InitGroups("", nil)
+	err = grouper.InitGroups(spaceId, nil)
 	require.NoError(t, err)
 	groups, err := grouper.MakeDataViewGroups()
 	require.NoError(t, err)
 	require.Len(t, groups, 6)
 
 	f := &database.Filters{FilterObj: database.FilterEq{Key: "name", Cond: 1, Value: pbtypes.String("three")}}
-	err = grouper.InitGroups("", f)
+	err = grouper.InitGroups(spaceId, f)
 	require.NoError(t, err)
 	groups, err = grouper.MakeDataViewGroups()
 	require.NoError(t, err)

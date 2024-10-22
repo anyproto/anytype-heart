@@ -45,6 +45,9 @@ func NewTechSpace(deps TechSpaceDeps) *TechSpace {
 }
 
 func (s *TechSpace) Close(ctx context.Context) error {
+	if s == nil || s.space == nil {
+		return nil
+	}
 	err := s.space.Close(ctx)
 	if err != nil {
 		log.Error("close tech space", zap.Error(err))

@@ -458,6 +458,37 @@
     "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim"
   },
   {
+    "id": "chat",
+    "name": "Chat",
+    "types": [
+      "ChatObject"
+    ],
+    "emoji": "💬",
+    "hidden": false,
+    "layout": "chat",
+    "relations": [
+        "tag",
+        "description"
+    ],
+    "description": "A chat"
+  },
+  {
+    "id": "chatDerived",
+    "name": "Chat Derived Object",
+    "types": [
+      "ChatDerivedObject"
+    ],
+    "emoji": "",
+    "hidden": true,
+    "layout": "chatDerived",
+    "relations": [
+      "tag",
+      "description"
+    ],
+    "description": "A chat derived object",
+    "revision": 1
+  },
+  {
     "id": "tag",
     "name": "Tag",
     "emoji": "🏷 ",
