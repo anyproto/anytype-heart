@@ -5,28 +5,30 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 type Model struct {
-	Id       string `json:"id"`
-	Object   string `json:"object"`
-	created  string `json:"created"`
-	owned_by string `json:"owned_by"`
+	Id      string `json:"Id"`
+	Object  string `json:"object"`
+	Created int64  `json:"created"`
+	OwnedBy string `json:"owned_by"`
 }
 
-type Response struct {
-	Models []Model `json:"models"`
+type ModelsResponse struct {
+	Object string  `json:"object"`
+	Data   []Model `json:"data"`
 }
 
-func getChatModels(config APIConfig) (Response, error) {
+func getChatModels(config APIConfig) ([]Model, error) {
 	switch config.Provider {
 	case pb.RpcAIWritingToolsRequest_OLLAMA:
 		resp, err := getModels(config)
 		if err != nil {
-			return Response{}, fmt.Errorf("error getting Ollama models: %w", err)
+			return nil, fmt.Errorf("error getting Ollama models: %w", err)
 		}
 		return filterModels(resp, func(model Model) bool {
 			return strings.Contains(model.Id, "llama") || strings.Contains(model.Id, "gemma")
@@ -34,22 +36,22 @@ func getChatModels(config APIConfig) (Response, error) {
 	case pb.RpcAIWritingToolsRequest_OPENAI:
 		resp, err := getModels(config)
 		if err != nil {
-			return Response{}, fmt.Errorf("error getting OpenAI models: %w", err)
+			return nil, fmt.Errorf("error getting OpenAI models: %w", err)
 		}
 		return filterModels(resp, func(model Model) bool {
 			return strings.Contains(model.Id, "gpt")
 		}), nil
 	default:
-		return Response{}, fmt.Errorf("unknown provider: %s", config.Provider)
+		return nil, fmt.Errorf("unknown provider: %s", config.Provider)
 	}
 }
 
-func getEmbedModels(config APIConfig) (Response, error) {
+func getEmbedModels(config APIConfig) ([]Model, error) {
 	switch config.Provider {
 	case pb.RpcAIWritingToolsRequest_OLLAMA:
 		resp, err := getModels(config)
 		if err != nil {
-			return Response{}, fmt.Errorf("error getting Ollama models: %w", err)
+			return nil, fmt.Errorf("error getting Ollama models: %w", err)
 		}
 		return filterModels(resp, func(model Model) bool {
 			return strings.Contains(model.Id, "embed") || strings.Contains(model.Id, "all-minilm")
@@ -57,77 +59,68 @@ func getEmbedModels(config APIConfig) (Response, error) {
 	case pb.RpcAIWritingToolsRequest_OPENAI:
 		resp, err := getModels(config)
 		if err != nil {
-			return Response{}, fmt.Errorf("error getting OpenAI models: %w", err)
+			return nil, fmt.Errorf("error getting OpenAI models: %w", err)
 		}
 		return filterModels(resp, func(model Model) bool {
 			return strings.Contains(model.Id, "embed")
 		}), nil
 	default:
-		return Response{}, fmt.Errorf("unknown provider: %s", config.Provider)
+		return nil, fmt.Errorf("unknown provider: %s", config.Provider)
 	}
 }
 
-func getModels(config APIConfig) (Response, error) {
-	client := &http.Client{}
-	// TODO: fix model endpoint
-	req, err := http.NewRequest("GET", config.Endpoint, nil)
+func getModels(config APIConfig) ([]Model, error) {
+	parsedURL, err := url.Parse(config.Endpoint)
 	if err != nil {
-		return Response{}, fmt.Errorf("error creating the request: %w", err)
+		return nil, fmt.Errorf("error parsing the URL: %w", err)
+	}
+	parsedURL.Path = strings.Replace(parsedURL.Path, "chat/completions", "models", 1)
+
+	req, err := http.NewRequest("GET", parsedURL.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating the request: %w", err)
 	}
 
 	if config.AuthRequired {
 		req.Header.Set("Authorization", "Bearer "+config.AuthToken)
 	}
 
+	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return Response{}, fmt.Errorf("error making the request: %w", err)
+		return nil, fmt.Errorf("error making the request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return Response{}, fmt.Errorf("error: received non-200 status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("error: received non-200 status code: %d", resp.StatusCode)
 	}
 
+	var modelsResp ModelsResponse
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return Response{}, fmt.Errorf("error reading the response body: %w", err)
+		return nil, fmt.Errorf("error reading the response body: %w", err)
 	}
 
-	// TODO: use data prefix stripping reader
-	var apiResponse struct {
-		Data []struct {
-			Id       string `json:"id"`
-			object   string `json:"object"`
-			created  string `json:"created"`
-			owned_by string `json:"owned_by"`
-		} `json:"data"`
-	}
-
-	err = json.Unmarshal(body, &apiResponse)
+	err = json.Unmarshal(body, &modelsResp)
 	if err != nil {
-		return Response{}, fmt.Errorf("error parsing JSON: %w", err)
+		return nil, fmt.Errorf("error parsing JSON: %w", err)
 	}
 
 	var models []Model
-	for _, data := range apiResponse.Data {
-		models = append(models, Model{
-			Id:       data.Id,
-			Object:   data.object,
-			created:  data.created,
-			owned_by: data.owned_by,
-		})
+	for _, model := range modelsResp.Data {
+		models = append(models, model)
 	}
 
-	return Response{Models: models}, nil
+	return models, nil
 }
 
-func filterModels(response Response, filterFunc func(model Model) bool) Response {
+func filterModels(models []Model, filterFunc func(model Model) bool) []Model {
 	var filteredModels []Model
-	for _, model := range response.Models {
+	for _, model := range models {
 		if filterFunc(model) {
 			filteredModels = append(filteredModels, model)
 		}
 	}
-	return Response{Models: filteredModels}
+	return filteredModels
 }
