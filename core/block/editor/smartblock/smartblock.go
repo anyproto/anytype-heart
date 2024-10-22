@@ -523,7 +523,7 @@ func (sb *smartBlock) partitionIdsBySpace(ids []string) (map[string][]string, er
 		}
 
 		if err != nil {
-			log.Error("resolve space id", zap.Error(err))
+			log.With("id", id).Warn("resolve space id", zap.Error(err))
 			continue
 		}
 		perSpace[spaceId] = append(perSpace[spaceId], id)
