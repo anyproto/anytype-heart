@@ -1171,6 +1171,7 @@ message Model {
             SaveFile saveFile = 9;
             Migration migration = 10;
             RecoverAccount recoverAccount = 11;
+            SpaceLoading spaceLoading = 12;
         }
 
         message DropFiles {}
@@ -1179,6 +1180,7 @@ message Model {
         message SaveFile {}
         message RecoverAccount {}
         message Migration {}
+        message SpaceLoading {}
 
         enum State {
             None = 0;
