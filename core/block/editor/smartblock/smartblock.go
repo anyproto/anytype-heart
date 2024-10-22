@@ -12,6 +12,8 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/dgraph-io/badger/v4"
+	"go.uber.org/zap"
 
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -515,12 +517,14 @@ func (sb *smartBlock) partitionIdsBySpace(ids []string) (map[string][]string, er
 	perSpace := map[string][]string{}
 	for _, id := range ids {
 		spaceId, err := sb.spaceIdResolver.ResolveSpaceID(id)
-		if errors.Is(err, sqlitestorage.ErrObjectNotFound) {
+		if errors.Is(err, sqlitestorage.ErrObjectNotFound) || errors.Is(err, badger.ErrKeyNotFound) {
 			perSpace[sb.space.Id()] = append(perSpace[sb.space.Id()], id)
 			continue
 		}
+
 		if err != nil {
-			return nil, fmt.Errorf("resolve space id: %w", err)
+			log.Error("resolve space id", zap.Error(err))
+			continue
 		}
 		perSpace[spaceId] = append(perSpace[spaceId], id)
 	}
