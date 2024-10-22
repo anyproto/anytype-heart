@@ -11,8 +11,6 @@ import (
 
 	pb "github.com/anyproto/anytype-heart/pb"
 
-	session "github.com/anyproto/anytype-heart/core/session"
-
 	subscription "github.com/anyproto/anytype-heart/core/subscription"
 
 	types "github.com/gogo/protobuf/types"
@@ -272,9 +270,9 @@ func (_c *MockService_Search_Call) RunAndReturn(run func(subscription.SubscribeR
 	return _c
 }
 
-// SubscribeGroups provides a mock function with given fields: ctx, req
-func (_m *MockService) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
-	ret := _m.Called(ctx, req)
+// SubscribeGroups provides a mock function with given fields: req
+func (_m *MockService) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
+	ret := _m.Called(req)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SubscribeGroups")
@@ -282,19 +280,19 @@ func (_m *MockService) SubscribeGroups(ctx session.Context, req pb.RpcObjectGrou
 
 	var r0 *pb.RpcObjectGroupsSubscribeResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(session.Context, pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)); ok {
-		return rf(ctx, req)
+	if rf, ok := ret.Get(0).(func(pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)); ok {
+		return rf(req)
 	}
-	if rf, ok := ret.Get(0).(func(session.Context, pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse); ok {
-		r0 = rf(ctx, req)
+	if rf, ok := ret.Get(0).(func(pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse); ok {
+		r0 = rf(req)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*pb.RpcObjectGroupsSubscribeResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(session.Context, pb.RpcObjectGroupsSubscribeRequest) error); ok {
-		r1 = rf(ctx, req)
+	if rf, ok := ret.Get(1).(func(pb.RpcObjectGroupsSubscribeRequest) error); ok {
+		r1 = rf(req)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -308,15 +306,14 @@ type MockService_SubscribeGroups_Call struct {
 }
 
 // SubscribeGroups is a helper method to define mock.On call
-//   - ctx session.Context
 //   - req pb.RpcObjectGroupsSubscribeRequest
-func (_e *MockService_Expecter) SubscribeGroups(ctx interface{}, req interface{}) *MockService_SubscribeGroups_Call {
-	return &MockService_SubscribeGroups_Call{Call: _e.mock.On("SubscribeGroups", ctx, req)}
+func (_e *MockService_Expecter) SubscribeGroups(req interface{}) *MockService_SubscribeGroups_Call {
+	return &MockService_SubscribeGroups_Call{Call: _e.mock.On("SubscribeGroups", req)}
 }
 
-func (_c *MockService_SubscribeGroups_Call) Run(run func(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest)) *MockService_SubscribeGroups_Call {
+func (_c *MockService_SubscribeGroups_Call) Run(run func(req pb.RpcObjectGroupsSubscribeRequest)) *MockService_SubscribeGroups_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].(pb.RpcObjectGroupsSubscribeRequest))
+		run(args[0].(pb.RpcObjectGroupsSubscribeRequest))
 	})
 	return _c
 }
@@ -326,7 +323,7 @@ func (_c *MockService_SubscribeGroups_Call) Return(_a0 *pb.RpcObjectGroupsSubscr
 	return _c
 }
 
-func (_c *MockService_SubscribeGroups_Call) RunAndReturn(run func(session.Context, pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)) *MockService_SubscribeGroups_Call {
+func (_c *MockService_SubscribeGroups_Call) RunAndReturn(run func(pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)) *MockService_SubscribeGroups_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -595,6 +592,65 @@ func (_c *MockService_UnsubscribeAll_Call) Return(err error) *MockService_Unsubs
 }
 
 func (_c *MockService_UnsubscribeAll_Call) RunAndReturn(run func() error) *MockService_UnsubscribeAll_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UnsubscribeAndReturnIds provides a mock function with given fields: spaceId, subId
+func (_m *MockService) UnsubscribeAndReturnIds(spaceId string, subId string) ([]string, error) {
+	ret := _m.Called(spaceId, subId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnsubscribeAndReturnIds")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) ([]string, error)); ok {
+		return rf(spaceId, subId)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) []string); ok {
+		r0 = rf(spaceId, subId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(spaceId, subId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_UnsubscribeAndReturnIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnsubscribeAndReturnIds'
+type MockService_UnsubscribeAndReturnIds_Call struct {
+	*mock.Call
+}
+
+// UnsubscribeAndReturnIds is a helper method to define mock.On call
+//   - spaceId string
+//   - subId string
+func (_e *MockService_Expecter) UnsubscribeAndReturnIds(spaceId interface{}, subId interface{}) *MockService_UnsubscribeAndReturnIds_Call {
+	return &MockService_UnsubscribeAndReturnIds_Call{Call: _e.mock.On("UnsubscribeAndReturnIds", spaceId, subId)}
+}
+
+func (_c *MockService_UnsubscribeAndReturnIds_Call) Run(run func(spaceId string, subId string)) *MockService_UnsubscribeAndReturnIds_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_UnsubscribeAndReturnIds_Call) Return(_a0 []string, _a1 error) *MockService_UnsubscribeAndReturnIds_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_UnsubscribeAndReturnIds_Call) RunAndReturn(run func(string, string) ([]string, error)) *MockService_UnsubscribeAndReturnIds_Call {
 	_c.Call.Return(run)
 	return _c
 }

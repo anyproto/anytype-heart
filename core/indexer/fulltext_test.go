@@ -61,7 +61,7 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	testApp.Register(ds)
 	testApp.Register(walletService)
 
-	testApp.Register(objectStore.FTSearch())
+	testApp.Register(objectStore.FullText)
 
 	indxr := &indexer{}
 
@@ -81,14 +81,15 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	indxr.btHash = hasher
 
 	indxr.fileStore = fileStore
-	indxr.ftsearch = objectStore.FTSearch()
+	indxr.ftsearch = objectStore.FullText
 	indexerFx.ftsearch = indxr.ftsearch
 	indexerFx.pickerFx = mock_cache.NewMockObjectGetter(t)
 	indxr.picker = indexerFx.pickerFx
-	indxr.quit = make(chan struct{})
+	indxr.spaceIndexers = make(map[string]*spaceIndexer)
 	indxr.forceFt = make(chan struct{})
 	indxr.config = &config.Config{NetworkMode: pb.RpcAccount_LocalOnly}
-
+	indxr.runCtx, indxr.runCtxCancel = context.WithCancel(ctx)
+	// go indxr.indexBatchLoop()
 	return indexerFx
 }
 
@@ -326,7 +327,7 @@ func TestRunFullTextIndexer(t *testing.T) {
 					blockbuilder.ID("blockId1"),
 				),
 			)))
-		indexerFx.store.AddToIndexQueue("objectId" + strconv.Itoa(i))
+		indexerFx.store.AddToIndexQueue(context.Background(), "objectId"+strconv.Itoa(i))
 		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, "objectId"+strconv.Itoa(i)).Return(smartTest, nil).Once()
 	}
 
@@ -352,7 +353,7 @@ func TestRunFullTextIndexer(t *testing.T) {
 				),
 			)))
 		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, "objectId"+strconv.Itoa(i)).Return(smartTest, nil).Once()
-		indexerFx.store.AddToIndexQueue("objectId" + strconv.Itoa(i))
+		indexerFx.store.AddToIndexQueue(context.Background(), "objectId"+strconv.Itoa(i))
 
 	}
 
@@ -381,7 +382,7 @@ func TestPrepareSearchDocument_Reindex_Removed(t *testing.T) {
 				blockbuilder.ID("blockId1"),
 			),
 		)))
-	indexerFx.store.AddToIndexQueue("objectId1")
+	indexerFx.store.AddToIndexQueue(context.Background(), "objectId1")
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 	indexerFx.runFullTextIndexer(context.Background())
 

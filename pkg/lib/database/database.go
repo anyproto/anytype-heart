@@ -1,11 +1,11 @@
 package database
 
 import (
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
-	"github.com/valyala/fastjson"
+	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -27,6 +27,7 @@ type Record struct {
 
 type Query struct {
 	FullText    string
+	SpaceId     string
 	Highlighter ftsearch.HighlightFormatter         // default is json
 	Filters     []*model.BlockContentDataviewFilter // filters results. apply sequentially
 	Sorts       []*model.BlockContentDataviewSort   // order results. apply hierarchically
@@ -124,17 +125,17 @@ func injectDefaultOrder(qry Query, sorts []*model.BlockContentDataviewSort) []*m
 	return sorts
 }
 
-func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena) (filters *Filters, err error) {
+func NewFilters(qry Query, store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate.Buffer) (filters *Filters, err error) {
 	// spaceID could be empty
-	spaceID := getSpaceIDFromFilters(qry.Filters)
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	qry.Sorts = injectDefaultOrder(qry, qry.Sorts)
 	filters = new(Filters)
 
 	qb := queryBuilder{
-		spaceId:     spaceID,
-		arena:       arena,
-		objectStore: store,
+		spaceId:        store.SpaceId(),
+		arena:          arena,
+		objectStore:    store,
+		collatorBuffer: collatorBuffer,
 	}
 
 	filterObj, err := MakeFilters(qry.Filters, store)
@@ -148,9 +149,10 @@ func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena) (filters *F
 }
 
 type queryBuilder struct {
-	spaceId     string
-	arena       *fastjson.Arena
-	objectStore ObjectStore
+	spaceId        string
+	arena          *anyenc.Arena
+	objectStore    ObjectStore
+	collatorBuffer *collate.Buffer
 }
 
 func getSpaceIDFromFilters(filters []*model.BlockContentDataviewFilter) string {
@@ -180,6 +182,7 @@ func (b *queryBuilder) extractOrder(sorts []*model.BlockContentDataviewSort) Set
 				relationFormat: format,
 				Store:          b.objectStore,
 				arena:          b.arena,
+				collatorBuffer: b.collatorBuffer,
 			}
 			order = b.appendCustomOrder(sort, order, keyOrder)
 		}
@@ -195,9 +198,9 @@ func (b *queryBuilder) appendCustomOrder(sort *model.BlockContentDataviewSort, o
 		idsIndices := make(map[string]int, len(sort.CustomOrder))
 		var idx int
 		for _, it := range sort.CustomOrder {
-			jsonVal := pbtypes.ProtoValueToJson(b.arena, it)
+			val := pbtypes.ProtoValueToAnyEnc(b.arena, it)
 
-			raw := jsonVal.String()
+			raw := string(val.MarshalTo(nil))
 			if raw != "" {
 				idsIndices[raw] = idx
 				idx++
@@ -242,35 +245,4 @@ func (r FulltextResult) Model() model.SearchMeta {
 type Filters struct {
 	FilterObj Filter
 	Order     Order
-}
-
-// ListRelationOptions returns options for specific relation
-func ListRelationOptions(store ObjectStore, spaceID string, relationKey string) (options []*model.RelationOption, err error) {
-	filters := []*model.BlockContentDataviewFilter{
-		{
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeyRelationKey.String(),
-			Value:       pbtypes.String(relationKey),
-		},
-		{
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeyLayout.String(),
-			Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
-		},
-	}
-	if spaceID != "" {
-		filters = append(filters, &model.BlockContentDataviewFilter{
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Value:       pbtypes.String(spaceID),
-		})
-	}
-	records, err := store.Query(Query{
-		Filters: filters,
-	})
-
-	for _, rec := range records {
-		options = append(options, relationutils.OptionFromStruct(rec.Details).RelationOption)
-	}
-	return
 }

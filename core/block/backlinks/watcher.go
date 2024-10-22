@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -30,7 +31,7 @@ const CName = "backlinks-update-watcher"
 var log = logging.Logger(CName)
 
 type backlinksUpdater interface {
-	SubscribeLinksUpdate(callback func(info objectstore.LinksUpdateInfo))
+	SubscribeLinksUpdate(callback func(info spaceindex.LinksUpdateInfo))
 }
 
 type backLinksUpdate struct {
@@ -75,7 +76,7 @@ func (uw *UpdateWatcher) Close(context.Context) error {
 }
 
 func (uw *UpdateWatcher) Run(context.Context) error {
-	uw.updater.SubscribeLinksUpdate(func(info objectstore.LinksUpdateInfo) {
+	uw.updater.SubscribeLinksUpdate(func(info spaceindex.LinksUpdateInfo) {
 		if err := uw.infoBatch.Add(info); err != nil {
 			log.With("objectId", info.LinksFromId).Errorf("failed to add backlinks update info to message batch: %v", err)
 		}
@@ -85,7 +86,7 @@ func (uw *UpdateWatcher) Run(context.Context) error {
 	return nil
 }
 
-func applyUpdates(m map[string]*backLinksUpdate, update objectstore.LinksUpdateInfo) {
+func applyUpdates(m map[string]*backLinksUpdate, update spaceindex.LinksUpdateInfo) {
 	if update.LinksFromId == "" {
 		return
 	}
@@ -161,7 +162,7 @@ func (uw *UpdateWatcher) backlinksUpdateHandler() {
 
 		l.Lock()
 		for _, msg := range msgs {
-			info, ok := msg.(objectstore.LinksUpdateInfo)
+			info, ok := msg.(spaceindex.LinksUpdateInfo)
 			if !ok || hasSelfLinks(info) {
 				continue
 			}
@@ -206,7 +207,7 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 	}
 
 	err = spc.DoLockedIfNotExists(id, func() error {
-		return uw.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
+		return uw.store.SpaceIndex(spaceId).ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
 			return updateBacklinks(details, backlinksUpdate)
 		})
 	})
@@ -232,7 +233,7 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 
 }
 
-func hasSelfLinks(info objectstore.LinksUpdateInfo) bool {
+func hasSelfLinks(info spaceindex.LinksUpdateInfo) bool {
 	for _, link := range info.Added {
 		if link == info.LinksFromId {
 			return true

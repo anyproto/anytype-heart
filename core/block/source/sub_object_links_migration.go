@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -26,10 +27,10 @@ type subObjectsAndProfileLinksMigration struct {
 	identityObjectID string
 	sbType           smartblock.SmartBlockType
 	space            Space
-	objectStore      Store
+	objectStore      spaceindex.Store
 }
 
-func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore Store) *subObjectsAndProfileLinksMigration {
+func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore spaceindex.Store) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,
@@ -192,7 +193,7 @@ func (m *subObjectsAndProfileLinksMigration) migrateFilter(filter *model.BlockCo
 		log.With("relationKey", filter.RelationKey).Warnf("empty filter value")
 		return nil
 	}
-	relation, err := m.objectStore.GetRelationByKey(m.space.Id(), filter.RelationKey)
+	relation, err := m.objectStore.GetRelationByKey(filter.RelationKey)
 	if err != nil {
 		log.Warnf("migration: failed to get relation by key %s: %s", filter.RelationKey, err)
 	}

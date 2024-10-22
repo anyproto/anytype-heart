@@ -4,12 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-sync/util/slice"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
@@ -207,7 +204,8 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}
 	}
 
-	i.addSyncDetails(space)
+	go i.addSyncDetails(space)
+
 	return i.saveLatestChecksums(space.Id())
 }
 
@@ -223,9 +221,10 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 	if err != nil {
 		log.Debug("failed to add sync status relations", zap.Error(err))
 	}
+	store := i.store.SpaceIndex(space.Id())
 	for _, id := range ids {
 		err := space.DoLockedIfNotExists(id, func() error {
-			return i.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
+			return store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
 				details = helper.InjectsSyncDetails(details, syncStatus, syncError)
 				return details, true, nil
 			})
@@ -237,7 +236,8 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 }
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
-	recs, err := i.store.Query(database.Query{
+	store := i.store.SpaceIndex(space.Id())
+	recs, err := store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
@@ -261,7 +261,7 @@ func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
 			continue
 		}
 		if status != "" {
-			err = i.store.DeleteObject(domain.FullID{SpaceID: space.Id(), ObjectID: objectId})
+			err = store.DeleteObject(objectId)
 			if err != nil {
 				log.With("spaceId", space.Id(), "objectId", objectId).Errorf("failed to reindex deleted object: %s", err)
 			}
@@ -274,13 +274,9 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 	if !flags.removeOldFiles {
 		return nil
 	}
-	ids, _, err := i.store.QueryObjectIDs(database.Query{
+	store := i.store.SpaceIndex(spaceId)
+	ids, _, err := store.QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
@@ -302,7 +298,7 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 	}
 	for _, id := range ids {
 		if domain.IsFileId(id) {
-			err = i.store.DeleteDetails(id)
+			err = store.DeleteDetails(i.runCtx, []string{id})
 			if err != nil {
 				log.Errorf("delete old file %s: %s", id, err)
 			}
@@ -340,7 +336,8 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 	}
 
 	if flags.bundledTemplates {
-		existing, _, err := i.store.QueryObjectIDs(database.Query{
+		store := i.store.SpaceIndex(space.Id())
+		existing, _, err := store.QueryObjectIds(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyType.String(),
@@ -353,7 +350,7 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 			return fmt.Errorf("query bundled templates: %w", err)
 		}
 		for _, id := range existing {
-			err = i.store.DeleteObject(domain.FullID{SpaceID: space.Id(), ObjectID: id})
+			err = store.DeleteObject(id)
 			if err != nil {
 				log.Errorf("delete old bundled template %s: %s", id, err)
 			}
@@ -372,48 +369,16 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 }
 
 func (i *indexer) removeDetails(spaceId string) error {
-	err := i.removeOldObjects()
-	if err != nil {
-		err = nil
-		log.Errorf("reindex failed to removeOldObjects: %v", err)
-	}
-	ids, err := i.store.ListIdsBySpace(spaceId)
+	store := i.store.SpaceIndex(spaceId)
+	ids, err := store.ListIds()
 	if err != nil {
 		log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
 	}
 	for _, id := range ids {
-		if err = i.store.DeleteDetails(id); err != nil {
+		if err = store.DeleteDetails(i.runCtx, []string{id}); err != nil {
 			log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
 		}
 	}
-	return err
-}
-
-// removeOldObjects removes all objects that are not supported anymore (e.g. old subobjects) and no longer returned by the underlying source
-func (i *indexer) removeOldObjects() (err error) {
-	ids, err := i.store.ListIds()
-	if err != nil {
-		return err
-	}
-	ids = slice.Filter(ids, func(id string) bool {
-		if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
-			return true
-		}
-		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
-			return true
-		}
-		if bson.IsObjectIdHex(id) {
-			return true
-		}
-		return false
-	})
-
-	if len(ids) == 0 {
-		return
-	}
-
-	err = i.store.DeleteDetails(ids...)
-	log.With(zap.Int("count", len(ids)), zap.Error(err)).Warnf("removeOldObjects")
 	return err
 }
 
@@ -432,7 +397,8 @@ func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, f
 	}
 
 	if flags.eraseLinks {
-		ids, err := i.store.ListIdsBySpace(spaceId)
+		store := i.store.SpaceIndex(spaceId)
+		ids, err := store.ListIds()
 		if err != nil {
 			log.Errorf("reindex failed to get all ids(eraseLinks): %v", err)
 		}
@@ -448,7 +414,7 @@ func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, f
 		}
 
 		for _, id := range ids {
-			if err = i.store.DeleteLinks(id); err != nil {
+			if err = store.DeleteLinks([]string{id}); err != nil {
 				log.Errorf("reindex failed to delete links(eraseLinks): %v", err)
 			}
 		}
@@ -477,6 +443,7 @@ func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reinde
 }
 
 func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.Space) (toReindex, success int, err error) {
+	store := i.store.SpaceIndex(space.Id())
 	tids := space.StoredIds()
 	var idsToReindex []string
 	for _, tid := range tids {
@@ -484,7 +451,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
 		}
 
-		lastHash, err := i.store.GetLastIndexedHeadsHash(tid)
+		lastHash, err := store.GetLastIndexedHeadsHash(ctx, tid)
 		if err != nil {
 			logErr(err)
 			continue
@@ -513,15 +480,20 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	return len(idsToReindex), success, nil
 }
 
-func (i *indexer) reindexDoc(ctx context.Context, space smartblock.Space, id string) error {
+func (i *indexer) reindexDoc(space smartblock.Space, id string) error {
 	return space.Do(id, func(sb smartblock.SmartBlock) error {
-		return i.Index(ctx, sb.GetDocInfo())
+		return i.Index(sb.GetDocInfo())
 	})
 }
 
 func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space smartblock.Space, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
-		err := i.reindexDoc(ctx, space, id)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		err := i.reindexDoc(space, id)
 		if err != nil {
 			log.With("objectID", id).Errorf("failed to reindex: %v", err)
 		} else {

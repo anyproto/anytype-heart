@@ -576,6 +576,53 @@ func (_c *MockSpaceStatus_SetLocalStatus_Call) RunAndReturn(run func(spaceinfo.L
 	return _c
 }
 
+// SetOwner provides a mock function with given fields: ownerIdentity, createdDate
+func (_m *MockSpaceStatus) SetOwner(ownerIdentity string, createdDate int64) error {
+	ret := _m.Called(ownerIdentity, createdDate)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetOwner")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, int64) error); ok {
+		r0 = rf(ownerIdentity, createdDate)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceStatus_SetOwner_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetOwner'
+type MockSpaceStatus_SetOwner_Call struct {
+	*mock.Call
+}
+
+// SetOwner is a helper method to define mock.On call
+//   - ownerIdentity string
+//   - createdDate int64
+func (_e *MockSpaceStatus_Expecter) SetOwner(ownerIdentity interface{}, createdDate interface{}) *MockSpaceStatus_SetOwner_Call {
+	return &MockSpaceStatus_SetOwner_Call{Call: _e.mock.On("SetOwner", ownerIdentity, createdDate)}
+}
+
+func (_c *MockSpaceStatus_SetOwner_Call) Run(run func(ownerIdentity string, createdDate int64)) *MockSpaceStatus_SetOwner_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockSpaceStatus_SetOwner_Call) Return(err error) *MockSpaceStatus_SetOwner_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpaceStatus_SetOwner_Call) RunAndReturn(run func(string, int64) error) *MockSpaceStatus_SetOwner_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetPersistentInfo provides a mock function with given fields: info
 func (_m *MockSpaceStatus) SetPersistentInfo(info spaceinfo.SpacePersistentInfo) error {
 	ret := _m.Called(info)

@@ -7,11 +7,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/anyproto/any-store/encoding"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -197,13 +196,13 @@ func makeFilterByCondition(spaceID string, rawFilter *model.BlockContentDataview
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return newFilterOptionsEqual(&fastjson.Arena{}, rawFilter.RelationKey, list, optionsToMap(spaceID, rawFilter.RelationKey, store)), nil
+		return newFilterOptionsEqual(&anyenc.Arena{}, rawFilter.RelationKey, list, optionsToMap(spaceID, rawFilter.RelationKey, store)), nil
 	case model.BlockContentDataviewFilter_NotExactIn:
 		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return FilterNot{newFilterOptionsEqual(&fastjson.Arena{}, rawFilter.RelationKey, list, optionsToMap(spaceID, rawFilter.RelationKey, store))}, nil
+		return FilterNot{newFilterOptionsEqual(&anyenc.Arena{}, rawFilter.RelationKey, list, optionsToMap(spaceID, rawFilter.RelationKey, store))}, nil
 	case model.BlockContentDataviewFilter_Exists:
 		return FilterExists{
 			Key: rawFilter.RelationKey,
@@ -375,23 +374,27 @@ func (e FilterEq) AnystoreFilter() query.Filter {
 	}
 	return query.Key{
 		Path:   path,
-		Filter: query.NewComp(op, scalarPbValueToAny(e.Value)),
+		Filter: query.NewCompValue(op, encodeScalarPbValue(&anyenc.Arena{}, e.Value)),
 	}
 }
 
-func scalarPbValueToAny(v *types.Value) any {
+func encodeScalarPbValue(a *anyenc.Arena, v *types.Value) *anyenc.Value {
 	if v == nil || v.Kind == nil {
 		return nil
 	}
 	switch v.Kind.(type) {
 	case *types.Value_NullValue:
-		return nil
+		return a.NewNull()
 	case *types.Value_StringValue:
-		return v.GetStringValue()
+		return a.NewString(v.GetStringValue())
 	case *types.Value_NumberValue:
-		return v.GetNumberValue()
+		return a.NewNumberFloat64(v.GetNumberValue())
 	case *types.Value_BoolValue:
-		return v.GetBoolValue()
+		if v.GetBoolValue() {
+			return a.NewTrue()
+		} else {
+			return a.NewFalse()
+		}
 	case *types.Value_StructValue:
 		return nil
 	case *types.Value_ListValue:
@@ -452,10 +455,11 @@ func (i FilterIn) FilterObject(g *types.Struct) bool {
 func (i FilterIn) AnystoreFilter() query.Filter {
 	path := []string{i.Key}
 	conds := make([]query.Filter, 0, len(i.Value.GetValues()))
+	arena := &anyenc.Arena{}
 	for _, v := range i.Value.GetValues() {
 		conds = append(conds, query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, scalarPbValueToAny(v)),
+			Filter: query.NewCompValue(query.CompOpEq, encodeScalarPbValue(arena, v)),
 		})
 	}
 	return query.Or(conds)
@@ -540,6 +544,17 @@ func (e FilterEmpty) FilterObject(g *types.Struct) bool {
 	return false
 }
 
+var (
+	filterEqNil         = query.NewComp(query.CompOpEq, nil)
+	filterEqEmptyString = query.NewComp(query.CompOpEq, "")
+	filterEq0           = query.NewComp(query.CompOpEq, 0)
+	filterEqFalse       = query.NewComp(query.CompOpEq, false)
+	filterEqEmptyArray  = &query.Comp{
+		CompOp:  query.CompOpEq,
+		EqValue: anyenc.MustParseJson(`[]`).MarshalTo(nil),
+	}
+)
+
 func (e FilterEmpty) AnystoreFilter() query.Filter {
 	path := []string{e.Key}
 	return query.Or{
@@ -549,26 +564,23 @@ func (e FilterEmpty) AnystoreFilter() query.Filter {
 		},
 		query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, nil),
+			Filter: filterEqNil,
 		},
 		query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, ""),
+			Filter: filterEqEmptyString,
 		},
 		query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, 0),
+			Filter: filterEq0,
 		},
 		query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, false),
+			Filter: filterEqFalse,
 		},
 		query.Key{
-			Path: path,
-			Filter: &query.Comp{
-				CompOp:  query.CompOpEq,
-				EqValue: encoding.AppendJSONValue(nil, fastjson.MustParse(`[]`)),
-			},
+			Path:   path,
+			Filter: filterEqEmptyArray,
 		},
 	}
 }
@@ -611,16 +623,17 @@ func (l FilterAllIn) FilterObject(g *types.Struct) bool {
 func (l FilterAllIn) AnystoreFilter() query.Filter {
 	path := []string{l.Key}
 	conds := make([]query.Filter, 0, len(l.Value.GetValues()))
+	arena := &anyenc.Arena{}
 	for _, v := range l.Value.GetValues() {
 		conds = append(conds, query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, scalarPbValueToAny(v)),
+			Filter: query.NewCompValue(query.CompOpEq, encodeScalarPbValue(arena, v)),
 		})
 	}
 	return query.And(conds)
 }
 
-func newFilterOptionsEqual(arena *fastjson.Arena, key string, value *types.ListValue, options map[string]string) *FilterOptionsEqual {
+func newFilterOptionsEqual(arena *anyenc.Arena, key string, value *types.ListValue, options map[string]string) *FilterOptionsEqual {
 	f := &FilterOptionsEqual{
 		arena:   arena,
 		Key:     key,
@@ -632,7 +645,7 @@ func newFilterOptionsEqual(arena *fastjson.Arena, key string, value *types.ListV
 }
 
 type FilterOptionsEqual struct {
-	arena *fastjson.Arena
+	arena *anyenc.Arena
 
 	Key     string
 	Value   *types.ListValue
@@ -682,7 +695,7 @@ func (exIn *FilterOptionsEqual) FilterObject(g *types.Struct) bool {
 	return true
 }
 
-func (exIn *FilterOptionsEqual) Ok(v *fastjson.Value) bool {
+func (exIn *FilterOptionsEqual) Ok(v *anyenc.Value) bool {
 	defer exIn.arena.Reset()
 
 	arr := v.GetArray(exIn.Key)
@@ -708,8 +721,9 @@ func (exIn *FilterOptionsEqual) Ok(v *fastjson.Value) bool {
 func (exIn *FilterOptionsEqual) compileValueFilter() {
 	conds := make([]query.Filter, 0, len(exIn.Value.GetValues())+1)
 	conds = append(conds, query.Size{Size: int64(len(exIn.Value.GetValues()))})
+	arena := &anyenc.Arena{}
 	for _, v := range exIn.Value.GetValues() {
-		conds = append(conds, query.NewComp(query.CompOpEq, scalarPbValueToAny(v)))
+		conds = append(conds, query.NewCompValue(query.CompOpEq, encodeScalarPbValue(arena, v)))
 	}
 	exIn.valueFilter = query.And(conds)
 }
@@ -728,7 +742,7 @@ func (exIn *FilterOptionsEqual) String() string {
 
 func optionsToMap(spaceID string, key string, store ObjectStore) map[string]string {
 	result := make(map[string]string)
-	options, err := ListRelationOptions(store, spaceID, key)
+	options, err := store.ListRelationOptions(key)
 	if err != nil {
 		log.Warn("nil objectStore for getting options")
 		return result
@@ -910,11 +924,11 @@ type Anystore2ValuesComp struct {
 	buf1, buf2                 []byte
 }
 
-func (e *Anystore2ValuesComp) Ok(v *fastjson.Value) bool {
+func (e *Anystore2ValuesComp) Ok(v *anyenc.Value) bool {
 	value1 := v.Get(e.RelationKey1)
 	value2 := v.Get(e.RelationKey2)
-	e.buf1 = encoding.AppendJSONValue(e.buf1[:0], value1)
-	e.buf2 = encoding.AppendJSONValue(e.buf2[:0], value2)
+	e.buf1 = value1.MarshalTo(e.buf1[:0])
+	e.buf2 = value2.MarshalTo(e.buf2[:0])
 	comp := bytes.Compare(e.buf1, e.buf2)
 	switch e.CompOp {
 	case query.CompOpEq:
