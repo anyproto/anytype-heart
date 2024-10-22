@@ -1718,6 +1718,7 @@
     - [Model.Process](#anytype-Model-Process)
     - [Model.Process.DropFiles](#anytype-Model-Process-DropFiles)
     - [Model.Process.Export](#anytype-Model-Process-Export)
+    - [Model.Process.FullText](#anytype-Model-Process-FullText)
     - [Model.Process.Import](#anytype-Model-Process-Import)
     - [Model.Process.Migration](#anytype-Model-Process-Migration)
     - [Model.Process.Progress](#anytype-Model-Process-Progress)
@@ -27076,6 +27077,7 @@ Precondition: user A and user B opened the same block
 | saveFile | [Model.Process.SaveFile](#anytype-Model-Process-SaveFile) |  |  |
 | migration | [Model.Process.Migration](#anytype-Model-Process-Migration) |  |  |
 | recoverAccount | [Model.Process.RecoverAccount](#anytype-Model-Process-RecoverAccount) |  |  |
+| fullText | [Model.Process.FullText](#anytype-Model-Process-FullText) |  |  |
 
 
 
@@ -27095,6 +27097,16 @@ Precondition: user A and user B opened the same block
 <a name="anytype-Model-Process-Export"></a>
 
 ### Model.Process.Export
+
+
+
+
+
+
+
+<a name="anytype-Model-Process-FullText"></a>
+
+### Model.Process.FullText
 
 
 
@@ -29028,7 +29040,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 | description | [string](#string) |  |  |
 | scope | [Relation.Scope](#anytype-model-Relation-Scope) |  | on-store fields, injected only locally
 
-scope from which this relation have been aggregated |
+deprecated, to be removed |
 | creator | [string](#string) |  | creator profile id |
 | revision | [int64](#int64) |  | revision of system relation. Used to check if we should change relation content or not |
 
