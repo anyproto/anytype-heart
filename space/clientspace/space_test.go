@@ -39,7 +39,7 @@ func Test_migrateRelationOptions(t *testing.T) {
 
 		// when
 		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:          pbtypes.String("id1"),
 				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
@@ -67,7 +67,7 @@ func Test_migrateRelationOptions(t *testing.T) {
 
 		// when
 		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:          pbtypes.String("id1"),
 				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
@@ -117,7 +117,7 @@ func Test_migrateTag(t *testing.T) {
 
 		// when
 		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
 				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_relation)),
@@ -139,7 +139,7 @@ func Test_migrateTag(t *testing.T) {
 
 		// when
 		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             pbtypes.String("id1"),
 				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),

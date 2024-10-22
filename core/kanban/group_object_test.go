@@ -33,7 +33,7 @@ func TestGroupObject_InitGroups(t *testing.T) {
 			key:   "test",
 			store: storeFixture,
 		}
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:          pbtypes.String("test"),
 				bundle.RelationKeyRelationKey: pbtypes.String("test"),
@@ -60,7 +60,7 @@ func TestGroupObject_InitGroups(t *testing.T) {
 			key:   "test",
 			store: storeFixture,
 		}
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:                        pbtypes.String("test"),
 				bundle.RelationKeyRelationKey:               pbtypes.String("test"),
@@ -97,7 +97,7 @@ func TestGroupObject_InitGroups(t *testing.T) {
 			key:   "test",
 			store: storeFixture,
 		}
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:                        pbtypes.String("test"),
 				bundle.RelationKeyRelationKey:               pbtypes.String("test"),
@@ -154,7 +154,7 @@ func TestGroupObject_InitGroups(t *testing.T) {
 			key:   "test",
 			store: storeFixture,
 		}
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:                        pbtypes.String("test"),
 				bundle.RelationKeyRelationKey:               pbtypes.String("test"),
@@ -213,7 +213,7 @@ func TestGroupObject_InitGroups(t *testing.T) {
 			key:   "test",
 			store: storeFixture,
 		}
-		storeFixture.AddObjects(t, []objectstore.TestObject{
+		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:          pbtypes.String("test"),
 				bundle.RelationKeyRelationKey: pbtypes.String("test"),

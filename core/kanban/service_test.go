@@ -54,6 +54,18 @@ func Test_GrouperTags(t *testing.T) {
 		Start(context.Background())
 	require.NoError(t, err)
 
+	store := objectStore.SpaceIndex(spaceId)
+
+	require.NoError(t, store.UpdateObjectDetails(context.Background(), "rel-tag", &types.Struct{
+		Fields: map[string]*types.Value{
+			"id":             pbtypes.String("rel-tag"),
+			"relationKey":    pbtypes.String("tag"),
+			"relationFormat": pbtypes.Int64(int64(model.RelationFormat_tag)),
+			"type":           pbtypes.String(bundle.TypeKeyRelation.URL()),
+			"layout":         pbtypes.Int64(int64(model.ObjectType_relation)),
+		},
+	}))
+
 	idTag1 := bson.NewObjectId().Hex()
 	idTag2 := bson.NewObjectId().Hex()
 	idTag3 := bson.NewObjectId().Hex()

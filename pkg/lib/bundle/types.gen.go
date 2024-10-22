@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "f3ae9931142aa23ec9696ccb60fe1a68b4fdafcc345e307e0a26d4fb98a0686c"
+const TypeChecksum = "f2dab508c4849d8fe083743e11a953636e5f2b8de707bb35be2c3cea695b8c58"
 const (
 	TypePrefix = "_ot"
 )
@@ -43,6 +43,7 @@ const (
 	TypeKeyProject        domain.TypeKey = "project"
 	TypeKeyChat           domain.TypeKey = "chat"
 	TypeKeyChatDerived    domain.TypeKey = "chatDerived"
+	TypeKeyTag            domain.TypeKey = "tag"
 )
 
 var (
@@ -347,6 +348,17 @@ var (
 			RestrictObjectCreation: true,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_SpaceView},
 			Url:                    TypePrefix + "spaceView",
+		},
+		TypeKeyTag: {
+
+			Description:   "",
+			IconEmoji:     "🏷 ",
+			Layout:        model.ObjectType_tag,
+			Name:          "Tag",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRelationOptionColor)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:           TypePrefix + "tag",
 		},
 		TypeKeyTask: {
 

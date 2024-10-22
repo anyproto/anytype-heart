@@ -45,24 +45,14 @@ func (t *GroupObject) InitGroups(spaceId string, f *database.Filters) error {
 }
 
 func (t *GroupObject) retrieveObjectsWithGivenRelation(f *database.Filters, spaceID string) ([]database.Record, error) {
-	spaceFilter := database.FilterEq{
-		Key:   bundle.RelationKeySpaceId.String(),
-		Cond:  model.BlockContentDataviewFilter_Equal,
-		Value: pbtypes.String(spaceID),
-	}
-
-	filterEmptyRelation := database.FiltersAnd{
-		database.FilterNot{Filter: database.FilterEmpty{Key: t.key}},
-		spaceFilter,
-	}
-
+	filterEmptyRelation := database.FilterNot{Filter: database.FilterEmpty{Key: t.key}}
 	if f == nil {
 		f = &database.Filters{FilterObj: filterEmptyRelation}
 	} else {
 		f.FilterObj = database.FiltersAnd{f.FilterObj, filterEmptyRelation}
 	}
 
-	return t.store.QueryRaw(f, 0, 0)
+	return t.store.SpaceIndex(spaceID).QueryRaw(f, 0, 0)
 }
 
 func (t *GroupObject) retrieveObjectsWithGivenType(spaceID string, relation database.Record) ([]database.Record, error) {
@@ -71,19 +61,14 @@ func (t *GroupObject) retrieveObjectsWithGivenType(spaceID string, relation data
 		Key:   bundle.RelationKeyType.String(),
 		Value: &types.ListValue{Values: objectTypes},
 	}
-	spaceFilter := database.FilterEq{
-		Key:   bundle.RelationKeySpaceId.String(),
-		Cond:  model.BlockContentDataviewFilter_Equal,
-		Value: pbtypes.String(spaceID),
-	}
-	filter := &database.Filters{FilterObj: database.FiltersAnd{spaceFilter, filterObjectTypes}}
+	filter := &database.Filters{FilterObj: filterObjectTypes}
 	if len(objectTypes) == 0 {
-		filter = t.makeFilterForEmptyObjectTypesList(spaceFilter)
+		filter = t.makeFilterForEmptyObjectTypesList()
 	}
-	return t.store.QueryRaw(filter, 0, 0)
+	return t.store.SpaceIndex(spaceID).QueryRaw(filter, 0, 0)
 }
 
-func (t *GroupObject) makeFilterForEmptyObjectTypesList(spaceFilter database.FilterEq) *database.Filters {
+func (t *GroupObject) makeFilterForEmptyObjectTypesList() *database.Filters {
 	list := pbtypes.GetList(pbtypes.IntList([]int{int(model.ObjectType_relationOption), int(model.ObjectType_space), int(model.ObjectType_spaceView)}...))
 	filterLayouts := database.FilterNot{
 		Filter: database.FilterIn{
@@ -103,16 +88,11 @@ func (t *GroupObject) makeFilterForEmptyObjectTypesList(spaceFilter database.Fil
 			Value: pbtypes.Int64(int64(model.ObjectType_relation)),
 		},
 	}}
-	return &database.Filters{FilterObj: database.FiltersAnd{spaceFilter, filterLayouts, filterRelation}}
+	return &database.Filters{FilterObj: database.FiltersAnd{filterLayouts, filterRelation}}
 }
 
 func (t *GroupObject) retrieveRelationFromStore(spaceID string) (database.Record, error) {
 	relationFilter := database.FiltersAnd{
-		database.FilterEq{
-			Key:   bundle.RelationKeySpaceId.String(),
-			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.String(spaceID),
-		},
 		database.FilterEq{
 			Key:   bundle.RelationKeyRelationKey.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
@@ -125,7 +105,7 @@ func (t *GroupObject) retrieveRelationFromStore(spaceID string) (database.Record
 		},
 	}
 
-	relations, err := t.store.QueryRaw(&database.Filters{FilterObj: relationFilter}, 0, 0)
+	relations, err := t.store.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: relationFilter}, 0, 0)
 	if err != nil {
 		return database.Record{}, err
 	}

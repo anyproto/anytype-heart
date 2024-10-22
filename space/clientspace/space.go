@@ -199,7 +199,7 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 }
 
 func (s *space) migrateRelationOptions(objectStore objectstore.ObjectStore) error {
-	relationOptions, _, err := objectStore.QueryObjectIDs(database.Query{
+	relationOptions, _, err := objectStore.SpaceIndex(s.Id()).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -210,11 +210,6 @@ func (s *space) migrateRelationOptions(objectStore objectstore.ObjectStore) erro
 				RelationKey: bundle.RelationKeyRelationKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(bundle.RelationKeyTag.String()),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(s.Id()),
 			},
 		},
 	})
@@ -233,7 +228,7 @@ func (s *space) migrateRelationOptions(objectStore objectstore.ObjectStore) erro
 }
 
 func (s *space) migrateTag(objectStore objectstore.ObjectStore) error {
-	relation, _, err := objectStore.QueryObjectIDs(database.Query{
+	relation, _, err := objectStore.SpaceIndex(s.Id()).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -249,11 +244,6 @@ func (s *space) migrateTag(objectStore objectstore.ObjectStore) error {
 				RelationKey: bundle.RelationKeyRelationFormat.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.RelationFormat_tag)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(s.Id()),
 			},
 		},
 	})
