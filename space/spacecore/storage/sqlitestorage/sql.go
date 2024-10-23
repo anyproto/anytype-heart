@@ -76,7 +76,7 @@ func initStmts(s *storageService) (err error) {
 	if s.stmt.treeDelStatus, err = s.readDb.Prepare(`SELECT deleteStatus FROM trees WHERE id = ?`); err != nil {
 		return
 	}
-	if s.stmt.allTreeDelStatus, err = s.readDb.Prepare(`SELECT id FROM trees WHERE deleteStatus IS NOT NULL AND spaceId = ?`); err != nil {
+	if s.stmt.allTreeDelStatus, err = s.readDb.Prepare(`SELECT id FROM trees WHERE spaceId = ? AND deleteStatus = ?`); err != nil {
 		return
 	}
 	if s.stmt.change, err = s.readDb.Prepare(`SELECT data FROM changes WHERE id = ? AND spaceId = ?`); err != nil {

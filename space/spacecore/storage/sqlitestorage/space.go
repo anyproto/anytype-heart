@@ -194,7 +194,7 @@ func (s *spaceStorage) TreeDeletedStatus(id string) (status string, err error) {
 }
 
 func (s *spaceStorage) AllDeletedTreeIds() (ids []string, err error) {
-	rows, err := s.service.stmt.allTreeDelStatus.Query(s.spaceId)
+	rows, err := s.service.stmt.allTreeDelStatus.Query(s.spaceId, spacestorage.TreeDeletedStatusDeleted)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
