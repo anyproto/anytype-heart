@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -77,11 +76,7 @@ func (s *spaceLoadingProgress) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to get tech space: %w", err)
 	}
-	ts, ok := techSpace.(techspace.TechSpace)
-	if !ok {
-		return errors.New("failed to cast tech space")
-	}
-	spaceViewIds := ts.GetViewIds()
+	spaceViewIds := techSpace.StoredIds()
 	progress, err := s.makeProgressBar(len(spaceViewIds))
 	if err != nil {
 		return fmt.Errorf("failed to create progress bar: %w", err)

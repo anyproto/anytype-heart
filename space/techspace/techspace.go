@@ -65,7 +65,6 @@ type TechSpace interface {
 	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
 	SpaceViewId(id string) (string, error)
 	AccountObjectId() (string, error)
-	GetViewIds() []string
 }
 
 type SpaceView interface {
@@ -370,14 +369,6 @@ func (s *techSpace) DoAccountObject(ctx context.Context, apply func(accountObjec
 	accountObject.Lock()
 	defer accountObject.Unlock()
 	return apply(accountObject)
-}
-
-func (s *techSpace) GetViewIds() []string {
-	viewIds := make([]string, 0, len(s.viewIds))
-	for _, id := range s.viewIds {
-		viewIds = append(viewIds, id)
-	}
-	return viewIds
 }
 
 func (s *techSpace) getViewIdLocked(ctx context.Context, spaceId string) (viewId string, err error) {
