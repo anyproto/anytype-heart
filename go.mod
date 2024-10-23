@@ -7,12 +7,12 @@ require (
 	github.com/PuerkitoBio/goquery v1.9.2
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-store v0.1.0
+	github.com/anyproto/any-store v0.1.1
 	github.com/anyproto/any-sync v0.5.5
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/lexid v0.0.2
 	github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5
-	github.com/anyproto/tantivy-go v0.1.0
+	github.com/anyproto/tantivy-go v0.1.3
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/blevesearch/bleve/v2 v2.3.10
@@ -59,7 +59,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/klauspost/compress v1.17.10
+	github.com/klauspost/compress v1.17.11
 	github.com/libp2p/go-libp2p v0.36.5
 	github.com/libp2p/zeroconf/v2 v2.2.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
@@ -94,7 +94,7 @@ require (
 	github.com/yuin/goldmark v1.7.4
 	github.com/zeebo/blake3 v0.2.4
 	go.uber.org/atomic v1.11.0
-	go.uber.org/mock v0.4.0
+	go.uber.org/mock v0.5.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
@@ -107,6 +107,7 @@ require (
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/yaml.v3 v3.0.1
 	storj.io/drpc v0.0.34
+	zombiezen.com/go/sqlite v1.4.0
 
 )
 
@@ -282,7 +283,6 @@ require (
 	modernc.org/memory v1.8.0 // indirect
 	modernc.org/sqlite v1.33.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
-	zombiezen.com/go/sqlite v1.4.0 // indirect
 )
 
 replace github.com/dgraph-io/badger/v4 => github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580

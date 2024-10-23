@@ -312,6 +312,7 @@ service ClientCommands {
     rpc DebugOpenedObjects (anytype.Rpc.Debug.OpenedObjects.Request) returns (anytype.Rpc.Debug.OpenedObjects.Response);
     rpc DebugRunProfiler (anytype.Rpc.Debug.RunProfiler.Request) returns (anytype.Rpc.Debug.RunProfiler.Response);
     rpc DebugAccountSelectTrace (anytype.Rpc.Debug.AccountSelectTrace.Request) returns (anytype.Rpc.Debug.AccountSelectTrace.Response);
+    rpc DebugAnystoreObjectChanges (anytype.Rpc.Debug.AnystoreObjectChanges.Request) returns (anytype.Rpc.Debug.AnystoreObjectChanges.Response);
 
     rpc MetricsSetParameters (anytype.Rpc.Metrics.SetParameters.Request) returns (anytype.Rpc.Metrics.SetParameters.Response);
 
