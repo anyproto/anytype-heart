@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -72,16 +73,11 @@ func (s *spaceLoadingProgress) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to run search: %w", err)
 	}
-	techSpace, err := s.spaceService.GetTechSpace(s.ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get tech space: %w", err)
-	}
-	spaceViewIds := techSpace.StoredIds()
-	progress, err := s.makeProgressBar(len(spaceViewIds))
+	progress, err := s.makeProgressBar(len(resp.Records))
 	if err != nil {
 		return fmt.Errorf("failed to create progress bar: %w", err)
 	}
-	s.fillIdsMap(spaceViewIds)
+	s.fillIdsMap(resp.Records)
 	go s.readEvents(resp.Output, progress)
 	return nil
 }
@@ -97,17 +93,15 @@ func (s *spaceLoadingProgress) makeProgressBar(spaceViewCount int) (process.Prog
 	return progress, nil
 }
 
-func (s *spaceLoadingProgress) fillIdsMap(spaceViewIds []string) {
-	for _, id := range spaceViewIds {
+func (s *spaceLoadingProgress) fillIdsMap(spaceViews []*types.Struct) {
+	for _, spaceView := range spaceViews {
+		id := pbtypes.GetString(spaceView, bundle.RelationKeyId.String())
 		s.spaceViewIds[id] = struct{}{}
 	}
 }
 
 func (s *spaceLoadingProgress) readEvents(batcher *mb.MB[*pb.EventMessage], progress process.Progress) {
 	defer progress.Finish(nil)
-	if len(s.spaceViewIds) == 0 {
-		return
-	}
 	matcher := subscription.EventMatcher{
 		OnSet:   s.handleDetailsSetEvent(progress),
 		OnAmend: s.handleDetailsAmendEvent(progress),
@@ -133,6 +127,11 @@ func (s *spaceLoadingProgress) handleDetailsSetEvent(progress process.Progress) 
 	return func(detailsSet *pb.EventObjectDetailsSet) {
 		status := pbtypes.GetInt64(detailsSet.Details, bundle.RelationKeySpaceLocalStatus.String())
 		id := pbtypes.GetString(detailsSet.Details, bundle.RelationKeyId.String())
+		if _, ok := s.spaceViewIds[id]; !ok && status != int64(model.SpaceStatus_Ok) {
+			s.spaceViewIds[id] = struct{}{}
+			progress.SetTotal(int64(len(s.spaceViewIds)))
+			return
+		}
 		if _, ok := s.spaceViewIds[id]; ok && status == int64(model.SpaceStatus_Ok) {
 			progress.SetProgressMessage("space was loaded")
 			progress.AddDone(1)
@@ -144,10 +143,12 @@ func (s *spaceLoadingProgress) handleDetailsSetEvent(progress process.Progress) 
 func (s *spaceLoadingProgress) handleDetailsAmendEvent(progress process.Progress) func(detailsAmend *pb.EventObjectDetailsAmend) {
 	return func(detailsAmend *pb.EventObjectDetailsAmend) {
 		for _, detail := range detailsAmend.Details {
-			if _, ok := s.spaceViewIds[detailsAmend.Id]; !ok {
-				continue
-			}
 			if detail.Key != bundle.RelationKeySpaceLocalStatus.String() {
+				return
+			}
+			if _, ok := s.spaceViewIds[detailsAmend.Id]; !ok && detail.Value.GetNumberValue() != float64(model.SpaceStatus_Ok) {
+				s.spaceViewIds[detailsAmend.Id] = struct{}{}
+				progress.SetTotal(int64(len(s.spaceViewIds)))
 				return
 			}
 			if detail.Value.GetNumberValue() == float64(model.SpaceStatus_Ok) {
