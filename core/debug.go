@@ -3,10 +3,12 @@ package core
 import (
 	"context"
 
+	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/environment"
 )
 
 func (mw *Middleware) DebugTree(cctx context.Context, req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse {
@@ -235,6 +237,21 @@ func (mw *Middleware) DebugAccountSelectTrace(cctx context.Context, req *pb.RpcD
 	}
 	return &pb.RpcDebugAccountSelectTraceResponse{
 		Path: path,
+	}
+}
+
+func (mw *Middleware) DebugExportLog(cctx context.Context, req *pb.RpcDebugExportLogRequest) *pb.RpcDebugExportLogResponse {
+	path, err := mw.applicationService.SaveLog(environment.LOG_PATH, req.Dir)
+
+	code := mapErrorCode(err,
+		errToCode(application.ErrNoFolder, pb.RpcDebugExportLogResponseError_NO_FOLDER),
+	)
+	return &pb.RpcDebugExportLogResponse{
+		Path: path,
+		Error: &pb.RpcDebugExportLogResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
 	}
 }
 
