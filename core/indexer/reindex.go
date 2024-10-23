@@ -241,7 +241,10 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
 	store := i.store.SpaceIndex(space.Id())
-	storage := space.Storage().(allDeletedIdsProvider)
+	storage, ok := space.Storage().(allDeletedIdsProvider)
+	if !ok {
+		return fmt.Errorf("space storage doesn't implement allDeletedIdsProvider")
+	}
 	allIds, err := storage.AllDeletedTreeIds()
 	if err != nil {
 		return fmt.Errorf("get deleted tree ids: %w", err)
