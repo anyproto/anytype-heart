@@ -159,8 +159,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	if err != nil {
 		return err
 	}
-
-	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
+	index, err := f.tryToBuildSchema(schema)
 	if err != nil {
 		return err
 	}
@@ -192,6 +191,18 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	}
 
 	return nil
+}
+
+func (f *ftSearchTantivy) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.TantivyContext, error) {
+	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
+	if err != nil {
+		log.Warnf("recovering from error: %v", err)
+		if strings.HasSuffix(f.rootPath, ftsDir2) {
+			_ = os.RemoveAll(f.rootPath)
+		}
+		return tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
+	}
+	return index, err
 }
 
 func (f *ftSearchTantivy) Index(doc SearchDoc) error {

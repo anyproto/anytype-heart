@@ -15,6 +15,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
@@ -53,6 +54,8 @@ type ProfileDetails struct {
 
 type AccountObject interface {
 	smartblock.SmartBlock
+	anystoredebug.AnystoreDebug
+
 	basic.DetailsSettable
 	SetSharedSpacesLimit(limit int) (err error)
 	SetProfileDetails(details *types.Struct) (err error)
@@ -70,6 +73,7 @@ type StoreDbProvider interface {
 var _ AccountObject = (*accountObject)(nil)
 
 type accountObject struct {
+	anystoredebug.AnystoreDebug
 	smartblock.SmartBlock
 	bs          basic.DetailsSettable
 	state       *storestate.StoreState
@@ -121,6 +125,9 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("create state store: %w", err)
 	}
 	a.state = stateStore
+
+	a.AnystoreDebug = anystoredebug.New(a.SmartBlock, stateStore)
+
 	storeSource, ok := ctx.Source.(source.Store)
 	if !ok {
 		return fmt.Errorf("source is not a store")
