@@ -242,14 +242,14 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
 	store := i.store.SpaceIndex(space.Id())
 	storage := space.Storage().(allDeletedIdsProvider)
-	allIds, err := storage.AllDeletedTreeIds() // = deleted
+	allIds, err := storage.AllDeletedTreeIds()
 	if err != nil {
 		return fmt.Errorf("get deleted tree ids: %w", err)
 	}
 	for _, objectId := range allIds {
 		err = store.DeleteObject(objectId)
 		if err != nil {
-			log.With("spaceId", space.Id(), "objectId", objectId).Errorf("failed to reindex deleted object: %s", err)
+			log.With("spaceId", space.Id(), "objectId", objectId, "error", err).Errorf("failed to reindex deleted object")
 		}
 	}
 	return nil
