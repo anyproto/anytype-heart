@@ -207,7 +207,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
 	case coresb.SmartBlockTypeParticipant:
-		return f.newParticipant(space.Id(), sb, store), nil
+		return f.newParticipant(sb, store), nil
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeChatDerivedObject:

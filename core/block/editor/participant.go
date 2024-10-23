@@ -32,7 +32,7 @@ type participant struct {
 	objectStore spaceindex.Store
 }
 
-func (f *ObjectFactory) newParticipant(spaceId string, sb smartblock.SmartBlock, spaceIndex spaceindex.Store) *participant {
+func (f *ObjectFactory) newParticipant(sb smartblock.SmartBlock, spaceIndex spaceindex.Store) *participant {
 	basicComponent := basic.NewBasic(sb, spaceIndex, f.layoutConverter, nil, f.lastUsedUpdater)
 	return &participant{
 		SmartBlock:       sb,

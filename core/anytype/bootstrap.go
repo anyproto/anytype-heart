@@ -107,6 +107,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
+	"github.com/anyproto/anytype-heart/space/spacecore/spaceprogressbar"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
@@ -314,7 +315,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(payments.New()).
 		Register(paymentscache.New()).
 		Register(peerstatus.New()).
-		Register(lastused.New())
+		Register(lastused.New()).
+		Register(spaceprogressbar.NewSpaceLoadingProgress())
 }
 
 func MiddlewareVersion() string {
