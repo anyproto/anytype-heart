@@ -193,6 +193,27 @@ func (s *spaceStorage) TreeDeletedStatus(id string) (status string, err error) {
 	return nullString.String, nil
 }
 
+func (s *spaceStorage) AllDeletedTreeIds() (ids []string, err error) {
+	rows, err := s.service.stmt.allTreeDelStatus.Query(s.spaceId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
 func (s *spaceStorage) SpaceSettingsId() string {
 	return s.spaceSettingsId
 }

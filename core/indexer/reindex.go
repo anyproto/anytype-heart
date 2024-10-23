@@ -48,6 +48,10 @@ const (
 	ForceMarketplaceReindex int32 = 1
 )
 
+type allDeletedIdsProvider interface {
+	AllDeletedTreeIds() (ids []string, err error)
+}
+
 func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	checksums, err := i.store.GetChecksums(spaceID)
 	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
@@ -73,7 +77,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 				// global
 				BundledObjects:             ForceBundledObjectsReindexCounter,
 				AreOldFilesRemoved:         true,
-				AreDeletedObjectsReindexed: true,
+				AreDeletedObjectsReindexed: false,
 			}
 		}
 	}
@@ -237,34 +241,15 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
 	store := i.store.SpaceIndex(space.Id())
-	recs, err := store.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Empty,
-			},
-		},
-	})
+	storage := space.Storage().(allDeletedIdsProvider)
+	allIds, err := storage.AllDeletedTreeIds() // = deleted
 	if err != nil {
-		return fmt.Errorf("query deleted objects: %w", err)
+		return fmt.Errorf("get deleted tree ids: %w", err)
 	}
-	for _, rec := range recs {
-		objectId := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
-		status, err := space.Storage().TreeDeletedStatus(objectId)
+	for _, objectId := range allIds {
+		err = store.DeleteObject(objectId)
 		if err != nil {
-			log.With("spaceId", space.Id(), "objectId", objectId).Warnf("failed to get tree deleted status: %s", err)
-			continue
-		}
-		if status != "" {
-			err = store.DeleteObject(objectId)
-			if err != nil {
-				log.With("spaceId", space.Id(), "objectId", objectId).Errorf("failed to reindex deleted object: %s", err)
-			}
+			log.With("spaceId", space.Id(), "objectId", objectId).Errorf("failed to reindex deleted object: %s", err)
 		}
 	}
 	return nil
