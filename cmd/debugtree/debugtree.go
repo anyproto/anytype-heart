@@ -148,7 +148,10 @@ func main() {
 		if err != nil {
 			log.Fatal("can't open graphviz:", err)
 		}
-		g.Render(ctx, gvo, graphviz.SVG, tf)
+		err = g.Render(ctx, gvo, graphviz.SVG, tf)
+		if err != nil {
+			log.Fatal("can't render graphviz:", err)
+		}
 		fmt.Println("tree file:", tf.Name())
 		tf.Close()
 		open(tf.Name())
