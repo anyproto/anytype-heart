@@ -46,6 +46,8 @@ const (
 
 	// ForceMarketplaceReindex forces to do reindex only for marketplace space
 	ForceMarketplaceReindex int32 = 1
+
+	ForceReindexDeletedObjectsCounter int32 = 1
 )
 
 type allDeletedIdsProvider interface {
@@ -75,9 +77,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 				FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 				LinksErase:                       ForceLinksReindexCounter,
 				// global
-				BundledObjects:             ForceBundledObjectsReindexCounter,
-				AreOldFilesRemoved:         true,
-				AreDeletedObjectsReindexed: false,
+				BundledObjects:        ForceBundledObjectsReindexCounter,
+				AreOldFilesRemoved:    true,
+				ReindexDeletedObjects: 0, // Set to zero to force reindexing of deleted objects when objectstore was deleted
 			}
 		}
 	}
@@ -110,7 +112,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	if !checksums.AreOldFilesRemoved {
 		flags.removeOldFiles = true
 	}
-	if !checksums.AreDeletedObjectsReindexed {
+	if checksums.ReindexDeletedObjects != ForceReindexDeletedObjectsCounter {
 		flags.deletedObjects = true
 	}
 	if checksums.LinksErase != ForceLinksReindexCounter {
@@ -504,6 +506,7 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 		AreOldFilesRemoved:               true,
 		AreDeletedObjectsReindexed:       true,
 		LinksErase:                       ForceLinksReindexCounter,
+		ReindexDeletedObjects:            ForceReindexDeletedObjectsCounter,
 	}
 	if isMarketplace {
 		checksums.MarketplaceForceReindexCounter = ForceMarketplaceReindex
