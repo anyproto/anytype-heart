@@ -60,27 +60,20 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 		return reindexFlags{}, err
 	}
 	if checksums == nil {
-		checksums, err = i.store.GetGlobalChecksums()
-		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
-			return reindexFlags{}, err
-		}
-
-		if checksums == nil {
-			checksums = &model.ObjectStoreChecksums{
-				// per space
-				ObjectsForceReindexCounter: ForceObjectsReindexCounter,
-				// ?
-				FilesForceReindexCounter: ForceFilesReindexCounter,
-				// global
-				IdxRebuildCounter: ForceIdxRebuildCounter,
-				// per space
-				FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
-				LinksErase:                       ForceLinksReindexCounter,
-				// global
-				BundledObjects:        ForceBundledObjectsReindexCounter,
-				AreOldFilesRemoved:    true,
-				ReindexDeletedObjects: 0, // Set to zero to force reindexing of deleted objects when objectstore was deleted
-			}
+		checksums = &model.ObjectStoreChecksums{
+			// per space
+			ObjectsForceReindexCounter: ForceObjectsReindexCounter,
+			// ?
+			FilesForceReindexCounter: ForceFilesReindexCounter,
+			// global
+			IdxRebuildCounter: ForceIdxRebuildCounter,
+			// per space
+			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
+			LinksErase:                       ForceLinksReindexCounter,
+			// global
+			BundledObjects:        ForceBundledObjectsReindexCounter,
+			AreOldFilesRemoved:    true,
+			ReindexDeletedObjects: 0, // Set to zero to force reindexing of deleted objects when objectstore was deleted
 		}
 	}
 
