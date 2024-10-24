@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const testFileId = domain.FileId("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku")
@@ -91,15 +90,15 @@ func TestReconcileRemoteStorage(t *testing.T) {
 	fx := newFixture(t)
 	fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:               pbtypes.String("objectId1"),
-			bundle.RelationKeyFileId:           pbtypes.String(testFileId.String()),
-			bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
+			bundle.RelationKeyId:               domain.String("objectId1"),
+			bundle.RelationKeyFileId:           domain.String(testFileId.String()),
+			bundle.RelationKeyFileBackupStatus: domain.Int64(int64(filesyncstatus.Synced)),
 		},
 		{
-			bundle.RelationKeyId:               pbtypes.String("objectId2"),
-			bundle.RelationKeyFileId:           pbtypes.String("deletedFileId"),
-			bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
-			bundle.RelationKeyIsDeleted:        pbtypes.Bool(true),
+			bundle.RelationKeyId:               domain.String("objectId2"),
+			bundle.RelationKeyFileId:           domain.String("deletedFileId"),
+			bundle.RelationKeyFileBackupStatus: domain.Int64(int64(filesyncstatus.Synced)),
+			bundle.RelationKeyIsDeleted:        domain.Bool(true),
 		},
 	})
 
@@ -141,8 +140,8 @@ func TestFileObjectHook(t *testing.T) {
 		hook := fx.FileObjectHook(fullId)
 
 		st := state.NewDoc(fullId.ObjectID, nil).(*state.State)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, pbtypes.Int64(int64(filesyncstatus.Synced)))
-		st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, pbtypes.String(testFileId.String()))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
 
 		err = hook(smartblock.ApplyInfo{
 			State: st,
@@ -166,8 +165,8 @@ func TestFileObjectHook(t *testing.T) {
 			hook := fx.FileObjectHook(fullId)
 
 			st := state.NewDoc(fullId.ObjectID, nil).(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, pbtypes.Int64(int64(filesyncstatus.Synced)))
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, pbtypes.String(testFileId.String()))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
 
 			err := hook(smartblock.ApplyInfo{
 				State: st,
@@ -191,8 +190,8 @@ func TestFileObjectHook(t *testing.T) {
 			hook := fx.FileObjectHook(fullId)
 
 			st := state.NewDoc(fullId.ObjectID, nil).(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, pbtypes.Int64(int64(filesyncstatus.Synced)))
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, pbtypes.String(testFileId.String()))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
 
 			err = hook(smartblock.ApplyInfo{
 				State: st,

@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -27,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "common.acl.aclservice"
@@ -368,10 +366,10 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 	if err != nil {
 		return convertedOrInternalError("join space", err)
 	}
-	err = a.spaceService.TechSpace().SpaceViewSetData(ctx, spaceId, &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():      pbtypes.String(invitePayload.SpaceName),
-		bundle.RelationKeyIconImage.String(): pbtypes.String(invitePayload.SpaceIconCid),
-	}})
+	err = a.spaceService.TechSpace().SpaceViewSetData(ctx, spaceId,
+		domain.NewDetails().
+			SetString(bundle.RelationKeyName, invitePayload.SpaceName).
+			SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid))
 	if err != nil {
 		return convertedOrInternalError("set space data", err)
 	}

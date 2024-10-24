@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const InternalKeyOldProfileData = "oldprofile"
@@ -57,10 +56,10 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 	}
 	newState := state.NewDocWithUniqueKey(st.RootId(), blocksMap, uk).(*state.State)
 	newState.AddRelationLinks(st.GetRelationLinks()...)
-	newStateDetails := pbtypes.CopyStruct(st.Details(), true)
-	newName := pbtypes.GetString(newStateDetails, bundle.RelationKeyName.String()) + " [migrated]"
-	newStateDetails.Fields[bundle.RelationKeyName.String()] = pbtypes.String(newName)
-	newStateDetails.Fields[bundle.RelationKeyIsHidden.String()] = pbtypes.Bool(false)
+	newStateDetails := st.Details().Copy()
+	newName := newStateDetails.GetString(bundle.RelationKeyName) + " [migrated]"
+	newStateDetails.SetString(bundle.RelationKeyName, newName)
+	newStateDetails.SetBool(bundle.RelationKeyIsHidden, false)
 	newState.SetDetails(newStateDetails)
 	// remove the identity block
 	newState.Unlink(identityBlockId)
@@ -73,7 +72,7 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 		return !slices.Contains(whitelistBlocks, s)
 	})
 
-	whitelistDetailKeys := []string{
+	whitelistDetailKeys := []domain.RelationKey{
 		"iconEmoji",
 		"name",
 		"isHidden",
@@ -83,10 +82,10 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 		"iconImage",
 		"iconOption",
 	}
-	var keysToRemove []string
-	for k := range st.Details().GetFields() {
-		if !slices.Contains(whitelistDetailKeys, k) {
-			keysToRemove = append(keysToRemove, k)
+	var keysToRemove []domain.RelationKey
+	for key, _ := range st.Details().Iterate() {
+		if !slices.Contains(whitelistDetailKeys, key) {
+			keysToRemove = append(keysToRemove, key)
 		}
 	}
 	// cleanup custom details from old state

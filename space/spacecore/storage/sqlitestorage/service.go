@@ -47,6 +47,7 @@ type storageService struct {
 		treeIdsBySpace,
 		updateTreeDelStatus,
 		treeDelStatus,
+		allTreeDelStatus,
 		change,
 		hasTree,
 		hasChange,

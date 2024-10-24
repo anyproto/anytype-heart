@@ -128,7 +128,7 @@ func (s *Service) getDebugObject(id string) (debugObject, error) {
 		st := sb.NewState()
 		root := blockbuilder.BuildAST(st.Blocks())
 		marshaller := jsonpb.Marshaler{}
-		detailsRaw, err := marshaller.MarshalToString(st.CombinedDetails())
+		detailsRaw, err := marshaller.MarshalToString(st.CombinedDetails().ToProto())
 		if err != nil {
 			return fmt.Errorf("marshal details: %w", err)
 		}

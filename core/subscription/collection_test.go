@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	"github.com/cheggaaa/mb"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func Test_newCollectionObserver(t *testing.T) {
@@ -24,12 +23,13 @@ func Test_newCollectionObserver(t *testing.T) {
 		collectionService.EXPECT().SubscribeForCollection(collectionID, subId).Return([]string{"id"}, ch, nil)
 		store := spaceindex.NewStoreFixture(t)
 		cache := newCache()
-		cache.Set(&entry{id: "id1", data: &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String(): pbtypes.String("id1"),
-		}}})
-		cache.Set(&entry{id: "id2", data: &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String(): pbtypes.String("id2"),
-		}}})
+		cache.Set(&entry{id: "id1", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String("id1"),
+		})})
+
+		cache.Set(&entry{id: "id2", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String("id2"),
+		})})
 		batcher := mb.New(0)
 		c := &spaceSubscriptions{
 			collectionService: collectionService,
@@ -50,7 +50,7 @@ func Test_newCollectionObserver(t *testing.T) {
 
 		var receivedIds []string
 		for _, msg := range msgs {
-			id := pbtypes.GetString(msg.(database.Record).Details, "id")
+			id := msg.(database.Record).Details.GetString(bundle.RelationKeyId)
 			receivedIds = append(receivedIds, id)
 		}
 		assert.Equal(t, expectedIds, receivedIds)
@@ -68,12 +68,12 @@ func Test_newCollectionObserver(t *testing.T) {
 
 		store.AddObjects(t, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String("id1"),
-				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
+				bundle.RelationKeyId:      domain.String("id1"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 			{
-				bundle.RelationKeyId:      pbtypes.String("id2"),
-				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
+				bundle.RelationKeyId:      domain.String("id2"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 		})
 		batcher := mb.New(0)
@@ -96,7 +96,7 @@ func Test_newCollectionObserver(t *testing.T) {
 
 		var receivedIds []string
 		for _, msg := range msgs {
-			id := pbtypes.GetString(msg.(database.Record).Details, "id")
+			id := msg.(database.Record).Details.GetString(bundle.RelationKeyId)
 			receivedIds = append(receivedIds, id)
 		}
 		assert.Equal(t, expectedIds, receivedIds)

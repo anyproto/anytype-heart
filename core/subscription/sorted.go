@@ -3,12 +3,11 @@ package subscription
 import (
 	"errors"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/huandu/skiplist"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -17,7 +16,7 @@ var (
 	ErrNoRecords = errors.New("no records with given offset")
 )
 
-func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []string, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
+func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []domain.RelationKey, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
 	sub := &sortedSub{
 		id:          id,
 		spaceId:     spaceId,
@@ -36,7 +35,7 @@ func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []stri
 type sortedSub struct {
 	id      string
 	spaceId string
-	keys    []string
+	keys    []domain.RelationKey
 	filter  database.Filter
 	order   database.Order
 
@@ -47,7 +46,7 @@ type sortedSub struct {
 	afterEl, beforeEl *skiplist.Element
 
 	depSub           *simpleSub
-	depKeys          []string
+	depKeys          []domain.RelationKey
 	activeEntriesBuf []*entry
 
 	forceSubIds []string
@@ -294,9 +293,9 @@ func (s *sortedSub) counters() (prev, next int) {
 	return
 }
 
-func (s *sortedSub) getActiveRecords() (res []*types.Struct) {
+func (s *sortedSub) getActiveRecords() (res []*domain.Details) {
 	reverse := s.iterateActive(func(e *entry) {
-		res = append(res, pbtypes.StructFilterKeys(e.data, s.keys))
+		res = append(res, e.data.CopyOnlyKeys(s.keys...))
 	})
 	if reverse {
 		for i, j := 0, len(res)-1; i < j; i, j = i+1, j-1 {

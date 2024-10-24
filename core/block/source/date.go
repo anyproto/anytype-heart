@@ -6,10 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -54,7 +53,7 @@ func (v *date) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeDate
 }
 
-func (v *date) getDetails(ctx context.Context) (*types.Struct, error) {
+func (v *date) getDetails(ctx context.Context) (*domain.Details, error) {
 	linksRelationId, err := v.space.GetRelationIdByKey(ctx, bundle.RelationKeyLinks)
 	if err != nil {
 		return nil, fmt.Errorf("get links relation id: %w", err)
@@ -63,35 +62,35 @@ func (v *date) getDetails(ctx context.Context) (*types.Struct, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get date type id: %w", err)
 	}
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("Mon Jan  2 2006")),
-		bundle.RelationKeyId.String():         pbtypes.String(v.id),
-		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
-		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_date)),
-		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
-		bundle.RelationKeySpaceId.String():    pbtypes.String(v.SpaceID()),
-		bundle.RelationKeySetOf.String():      pbtypes.StringList([]string{linksRelationId}),
-		bundle.RelationKeyType.String():       pbtypes.String(dateTypeId),
-	}}, nil
+	det := domain.NewDetails()
+	det.SetString(bundle.RelationKeyName, v.t.Format("Mon Jan  2 2006"))
+	det.SetString(bundle.RelationKeyId, v.id)
+	det.SetBool(bundle.RelationKeyIsReadonly, true)
+	det.SetBool(bundle.RelationKeyIsArchived, false)
+	det.SetBool(bundle.RelationKeyIsHidden, false)
+	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_date))
+	det.SetString(bundle.RelationKeyIconEmoji, "📅")
+	det.SetString(bundle.RelationKeySpaceId, v.SpaceID())
+	det.SetStringList(bundle.RelationKeySetOf, []string{linksRelationId})
+	det.SetString(bundle.RelationKeyType, dateTypeId)
+	return det, nil
 }
 
 // TODO Fix?
-func (v *date) DetailsFromId() (*types.Struct, error) {
+func (v *date) DetailsFromId() (*domain.Details, error) {
 	if err := v.parseId(); err != nil {
 		return nil, err
 	}
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("Mon Jan  2 2006")),
-		bundle.RelationKeyId.String():         pbtypes.String(v.id),
-		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
-		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_date)),
-		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
-		bundle.RelationKeySpaceId.String():    pbtypes.String(v.SpaceID()),
-	}}, nil
+	det := domain.NewDetails()
+	det.SetString(bundle.RelationKeyName, v.t.Format("Mon Jan  2 2006"))
+	det.SetString(bundle.RelationKeyId, v.id)
+	det.SetBool(bundle.RelationKeyIsReadonly, true)
+	det.SetBool(bundle.RelationKeyIsArchived, false)
+	det.SetBool(bundle.RelationKeyIsHidden, false)
+	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_date))
+	det.SetString(bundle.RelationKeyIconEmoji, "📅")
+	det.SetString(bundle.RelationKeySpaceId, v.SpaceID())
+	return det, nil
 }
 
 func (v *date) parseId() error {

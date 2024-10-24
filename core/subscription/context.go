@@ -1,19 +1,17 @@
 package subscription
 
 import (
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type opChange struct {
 	id    string
 	subId string
-	keys  []string
+	keys  []domain.RelationKey
 }
 
 type opRemove struct {
@@ -25,7 +23,7 @@ type opPosition struct {
 	id      string
 	subId   string
 	afterId string
-	keys    []string
+	keys    []domain.RelationKey
 	isAdd   bool
 }
 
@@ -56,7 +54,7 @@ type opCtx struct {
 	keysBuf []struct {
 		id     string
 		subIds []string
-		keys   []string
+		keys   []domain.RelationKey
 	}
 
 	c *cache
@@ -177,17 +175,17 @@ func (ctx *opCtx) detailsEvents() {
 			continue
 		}
 		prev := ctx.c.Get(info.id)
-		var prevData *types.Struct
+		var prevData *domain.Details
 		if prev != nil && prev.IsActive(info.subIds...) && prev.IsFullDetailsSent(info.subIds...) {
 			prevData = prev.data
-			diff := pbtypes.StructDiff(prevData, curr.data)
+			diff := domain.StructDiff(prevData, curr.data)
 			msgs = append(msgs, state.StructDiffIntoEventsWithSubIds(info.id, diff, info.keys, info.subIds)...)
 		} else {
 			msgs = append(msgs, &pb.EventMessage{
 				Value: &pb.EventMessageValueOfObjectDetailsSet{
 					ObjectDetailsSet: &pb.EventObjectDetailsSet{
 						Id:      curr.id,
-						Details: pbtypes.StructFilterKeys(curr.data, info.keys),
+						Details: curr.data.CopyOnlyKeys(info.keys...).ToProto(),
 						SubIds:  info.subIds,
 					},
 				},
@@ -304,7 +302,7 @@ func (ctx *opCtx) groupEventsDetailsAmend(v *pb.EventObjectDetailsAmend) {
 	}
 }
 
-func (ctx *opCtx) collectKeys(id string, subId string, keys []string) {
+func (ctx *opCtx) collectKeys(id string, subId string, keys []domain.RelationKey) {
 	var found bool
 	for i, kb := range ctx.keysBuf {
 		if kb.id == id {
@@ -321,12 +319,12 @@ func (ctx *opCtx) collectKeys(id string, subId string, keys []string) {
 		}
 	}
 	if !found {
-		keysCopy := make([]string, len(keys))
+		keysCopy := make([]domain.RelationKey, len(keys))
 		copy(keysCopy, keys)
 		ctx.keysBuf = append(ctx.keysBuf, struct {
 			id     string
 			subIds []string
-			keys   []string
+			keys   []domain.RelationKey
 		}{id: id, keys: keysCopy, subIds: []string{subId}})
 	}
 }

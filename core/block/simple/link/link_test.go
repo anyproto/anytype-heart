@@ -3,15 +3,14 @@ package link
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/test"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestLink_Diff(t *testing.T) {
@@ -100,11 +99,9 @@ func TestLink_ToText(t *testing.T) {
 			Restrictions: &model.BlockRestrictions{},
 			Content:      &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "targetId"}},
 		}).(*Link)
-		tb := b.ToText(&types.Struct{
-			Fields: map[string]*types.Value{
-				"name": pbtypes.String("target name"),
-			},
-		})
+		tb := b.ToText(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"name": domain.String("target name"),
+		}))
 		require.NotNil(t, tb)
 		textModel := tb.Model().GetText()
 		assert.Equal(t, "target name", textModel.Text)

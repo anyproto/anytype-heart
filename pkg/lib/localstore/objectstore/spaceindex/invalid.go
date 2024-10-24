@@ -4,7 +4,6 @@ import (
 	"context"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -51,7 +50,7 @@ func (s *invalidStore) QueryObjectIds(q database.Query) (ids []string, total int
 	return nil, 0, s.err
 }
 
-func (s *invalidStore) QueryIterate(q database.Query, proc func(details *types.Struct)) error {
+func (s *invalidStore) QueryIterate(q database.Query, proc func(details *domain.Details)) error {
 	return s.err
 }
 
@@ -59,11 +58,11 @@ func (s *invalidStore) HasIds(ids []string) (exists []string, err error) {
 	return nil, s.err
 }
 
-func (s *invalidStore) GetInfosByIds(ids []string) ([]*model.ObjectInfo, error) {
+func (s *invalidStore) GetInfosByIds(ids []string) ([]*database.ObjectInfo, error) {
 	return nil, s.err
 }
 
-func (s *invalidStore) List(includeArchived bool) ([]*model.ObjectInfo, error) {
+func (s *invalidStore) List(includeArchived bool) ([]*database.ObjectInfo, error) {
 	return nil, s.err
 }
 
@@ -71,7 +70,7 @@ func (s *invalidStore) ListIds() ([]string, error) {
 	return nil, s.err
 }
 
-func (s *invalidStore) UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error {
+func (s *invalidStore) UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error {
 	return s.err
 }
 
@@ -79,11 +78,11 @@ func (s *invalidStore) UpdateObjectLinks(ctx context.Context, id string, links [
 	return s.err
 }
 
-func (s *invalidStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
+func (s *invalidStore) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error {
 	return s.err
 }
 
-func (s *invalidStore) ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error {
+func (s *invalidStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error {
 	return s.err
 }
 
@@ -99,11 +98,11 @@ func (s *invalidStore) DeleteLinks(ids []string) error {
 	return s.err
 }
 
-func (s *invalidStore) GetDetails(id string) (*model.ObjectDetails, error) {
+func (s *invalidStore) GetDetails(id string) (*domain.Details, error) {
 	return nil, s.err
 }
 
-func (s *invalidStore) GetObjectByUniqueKey(uniqueKey domain.UniqueKey) (*model.ObjectDetails, error) {
+func (s *invalidStore) GetObjectByUniqueKey(uniqueKey domain.UniqueKey) (*domain.Details, error) {
 	return nil, s.err
 }
 
@@ -143,7 +142,7 @@ func (s *invalidStore) FetchRelationByKey(key string) (relation *relationutils.R
 	return nil, s.err
 }
 
-func (s *invalidStore) FetchRelationByKeys(keys ...string) (relations relationutils.Relations, err error) {
+func (s *invalidStore) FetchRelationByKeys(keys ...domain.RelationKey) (relations relationutils.Relations, err error) {
 	return nil, s.err
 }
 
@@ -163,11 +162,11 @@ func (s *invalidStore) GetRelationByKey(key string) (*model.Relation, error) {
 	return nil, s.err
 }
 
-func (s *invalidStore) GetRelationFormatByKey(key string) (model.RelationFormat, error) {
+func (s *invalidStore) GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error) {
 	return 0, s.err
 }
 
-func (s *invalidStore) ListRelationOptions(relationKey string) (options []*model.RelationOption, err error) {
+func (s *invalidStore) ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error) {
 	return nil, s.err
 }
 

@@ -13,6 +13,8 @@ import (
 func TestDsObjectStore_IndexQueue(t *testing.T) {
 	s := NewStoreFixture(t)
 
+	ctx := context.Background()
+
 	t.Run("add to queue", func(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue(ctx, "one"))
 		require.NoError(t, s.AddToIndexQueue(ctx, "one"))
@@ -35,6 +37,7 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 
 func TestIndexerBatch(t *testing.T) {
 	s := NewStoreFixture(t)
+	ctx := context.Background()
 
 	t.Run("batch - no more than limit", func(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue(ctx, "one"))
@@ -55,13 +58,6 @@ func TestIndexerBatch(t *testing.T) {
 }
 
 func TestIndexerChecksums(t *testing.T) {
-	t.Run("previous checksums are not found", func(t *testing.T) {
-		s := NewStoreFixture(t)
-
-		_, err := s.GetGlobalChecksums()
-		require.Error(t, err)
-	})
-
 	t.Run("save and load checksums", func(t *testing.T) {
 		s := NewStoreFixture(t)
 

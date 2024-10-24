@@ -373,6 +373,7 @@ func TestState_SetParent(t *testing.T) {
 
 	st2 := orig.Copy()
 	require.NoError(t, st2.ApplyChange(st.GetChanges()...))
+
 	assert.Equal(t, st.StringDebug(), st2.StringDebug())
 }
 

@@ -55,18 +55,18 @@ var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]domain.TypeKe
 }
 
 // filled in init
-var LocalRelationsKeys []string   // stored only in localstore
-var DerivedRelationsKeys []string // derived
-var LocalAndDerivedRelationKeys []string
+var LocalRelationsKeys []domain.RelationKey   // stored only in localstore
+var DerivedRelationsKeys []domain.RelationKey // derived
+var LocalAndDerivedRelationKeys []domain.RelationKey
 
 var ErrNotFound = fmt.Errorf("not found")
 
 func init() {
 	for _, r := range relations {
 		if r.DataSource == model.Relation_account || r.DataSource == model.Relation_local {
-			LocalRelationsKeys = append(LocalRelationsKeys, r.Key)
+			LocalRelationsKeys = append(LocalRelationsKeys, domain.RelationKey(r.Key))
 		} else if r.DataSource == model.Relation_derived {
-			DerivedRelationsKeys = append(DerivedRelationsKeys, r.Key)
+			DerivedRelationsKeys = append(DerivedRelationsKeys, domain.RelationKey(r.Key))
 		}
 	}
 	LocalAndDerivedRelationKeys = slices.Clone(DerivedRelationsKeys)
@@ -181,8 +181,8 @@ func ListRelationsUrls() []string {
 	return keys
 }
 
-func HasRelation(key string) bool {
-	_, exists := relations[domain.RelationKey(key)]
+func HasRelation(key domain.RelationKey) bool {
+	_, exists := relations[key]
 
 	return exists
 }

@@ -5,17 +5,16 @@ import (
 	"sync"
 
 	"github.com/cheggaaa/mb/v3"
-	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type (
-	extract[T any] func(*types.Struct) (string, T)
-	update[T any]  func(string, *types.Value, T) T
+	extract[T any] func(*domain.Details) (string, T)
+	update[T any]  func(string, domain.Value, T) T
 	unset[T any]   func([]string, T) T
 )
 
@@ -55,10 +54,10 @@ type ObjectSubscription[T any] struct {
 func NewIdSubscription(service subscription.Service, request subscription.SubscribeRequest) *ObjectSubscription[struct{}] {
 	return New(service, SubscriptionParams[struct{}]{
 		Request: request,
-		Extract: func(t *types.Struct) (string, struct{}) {
-			return pbtypes.GetString(t, bundle.RelationKeyId.String()), struct{}{}
+		Extract: func(t *domain.Details) (string, struct{}) {
+			return t.GetString(bundle.RelationKeyId), struct{}{}
 		},
-		Update: func(s string, value *types.Value, s2 struct{}) struct{} {
+		Update: func(s string, value domain.Value, s2 struct{}) struct{} {
 			return struct{}{}
 		},
 		Unset: func(strings []string, s struct{}) struct{} {
@@ -132,7 +131,7 @@ func (o *ObjectSubscription[T]) read() {
 				return
 			}
 			for _, value := range v.ObjectDetailsAmend.Details {
-				curEntry.data = o.update(value.Key, value.Value, curEntry.data)
+				curEntry.data = o.update(value.Key, domain.ValueFromProto(value.Value), curEntry.data)
 			}
 		case *pb.EventMessageValueOfObjectDetailsUnset:
 			curEntry := o.sub[v.ObjectDetailsUnset.Id]
@@ -145,7 +144,8 @@ func (o *ObjectSubscription[T]) read() {
 			if curEntry == nil {
 				return
 			}
-			_, curEntry.data = o.extract(v.ObjectDetailsSet.Details)
+			// TODO Think about using domain layer structs for events with domain.Details inside
+			_, curEntry.data = o.extract(domain.NewDetailsFromProto(v.ObjectDetailsSet.Details))
 		}
 	}
 	for {
