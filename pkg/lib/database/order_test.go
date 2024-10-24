@@ -16,8 +16,8 @@ import (
 func assertCompare(t *testing.T, order Order, a *domain.Details, b *domain.Details, expected int) {
 	assert.Equal(t, expected, order.Compare(a, b))
 	arena := &anyenc.Arena{}
-	aJson := a.ToAnyEnc(arena)
-	bJson := b.ToAnyEnc(arena)
+	aValue := a.ToAnyEnc(arena)
+	bValue := b.ToAnyEnc(arena)
 	s := order.AnystoreSort()
 	aBytes := s.AppendKey(nil, aValue)
 	bBytes := s.AppendKey(nil, bValue)

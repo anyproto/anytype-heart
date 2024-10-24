@@ -17,7 +17,7 @@ func assertFilter(t *testing.T, f Filter, obj *domain.Details, expected bool) {
 	assert.Equal(t, expected, f.FilterObject(obj))
 	anystoreFilter := f.AnystoreFilter()
 	arena := &anyenc.Arena{}
-	val := pbtypes.ProtoToAnyEnc(arena, obj)
+	val := obj.ToAnyEnc(arena)
 	result := anystoreFilter.Ok(val)
 	assert.Equal(t, expected, result)
 }
@@ -478,15 +478,15 @@ func TestNestedFilters(t *testing.T) {
 			queryRawResult: []Record{
 				{
 					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeyId:        domain.String("id1"),
-					bundle.RelationKeyUniqueKey: domain.String("ot-note"),
+						bundle.RelationKeyId:        domain.String("id1"),
+						bundle.RelationKeyUniqueKey: domain.String("ot-note"),
 					}),
 				},
 				{
 					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeyId:        domain.String("id2"),
-					bundle.RelationKeyUniqueKey: domain.String("ot-note"),
-				}),
+						bundle.RelationKeyId:        domain.String("id2"),
+						bundle.RelationKeyUniqueKey: domain.String("ot-note"),
+					}),
 				},
 			},
 		}

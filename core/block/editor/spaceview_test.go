@@ -123,8 +123,8 @@ func TestSpaceView_SetOwner(t *testing.T) {
 	defer fx.finish()
 	err := fx.SetOwner("ownerId", 125)
 	require.NoError(t, err)
-	require.Equal(t, "ownerId", pbtypes.GetString(fx.CombinedDetails(), bundle.RelationKeyCreator.String()))
-	require.Equal(t, int64(125), pbtypes.GetInt64(fx.CombinedDetails(), bundle.RelationKeyCreatedDate.String()))
+	require.Equal(t, "ownerId", fx.CombinedDetails().GetString(bundle.RelationKeyCreator))
+	require.Equal(t, int64(125), fx.CombinedDetails().GetInt64(bundle.RelationKeyCreatedDate))
 }
 
 type spaceServiceStub struct {

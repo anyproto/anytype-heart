@@ -233,8 +233,8 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 		assert.Len(t, sn.Snapshots, 4)
 
 		for _, snapshot := range sn.Snapshots {
-			if snapshot.SbType == sb.SmartBlockTypeRelation {
-				name := pbtypes.GetString(snapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
+			if snapshot.Snapshot.SbType == sb.SmartBlockTypeRelation {
+				name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 				assert.True(t, name == "price123")
 			}
 		}

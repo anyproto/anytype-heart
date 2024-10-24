@@ -129,21 +129,13 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		details := &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":     pbtypes.String(id),
-				"number": pbtypes.Float64(2.18281828459045),
-				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
-			},
-		}
-
-		err := fx.store.UpdateObjectDetails(context.Background(), id, &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":     pbtypes.String(id),
-				"number": pbtypes.Float64(2.18281828459045),
-				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
-			},
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"id":     domain.String(id),
+			"number": domain.Float64(2.18281828459045),
+			"🔥":      domain.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
 		})
+
+		err := fx.store.UpdateObjectDetails(context.Background(), id, details)
 		require.NoError(t, err)
 
 		// when
