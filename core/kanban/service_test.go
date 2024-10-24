@@ -9,9 +9,12 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -31,17 +34,21 @@ func Test_GrouperTags(t *testing.T) {
 
 	objectStore := objectstore.NewStoreFixture(t)
 
+	key := "key"
+	uniqueKey, err := domain.NewUniqueKey(sb.SmartBlockTypeRelation, key)
+	assert.NoError(t, err)
+
 	objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:             pbtypes.String("tag1"),
-			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-tag"),
+			bundle.RelationKeyId:             pbtypes.String("relationId"),
+			bundle.RelationKeyUniqueKey:      pbtypes.String(uniqueKey.Marshal()),
 			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
 			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
 		},
 	})
 
 	kanbanSrv := New()
-	err := a.Register(objectStore).
+	err = a.Register(objectStore).
 		Register(kanbanSrv).
 		Register(tp).
 		Start(context.Background())
@@ -66,7 +73,7 @@ func Test_GrouperTags(t *testing.T) {
 	require.NoError(t, store.UpdateObjectDetails(context.Background(), idTag1, &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":          pbtypes.String(idTag1),
-			"relationKey": pbtypes.String("tag"),
+			"relationKey": pbtypes.String(key),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
@@ -75,7 +82,7 @@ func Test_GrouperTags(t *testing.T) {
 	require.NoError(t, store.UpdateObjectDetails(context.Background(), idTag2, &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":          pbtypes.String(idTag2),
-			"relationKey": pbtypes.String("tag"),
+			"relationKey": pbtypes.String(key),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
@@ -83,7 +90,7 @@ func Test_GrouperTags(t *testing.T) {
 	require.NoError(t, store.UpdateObjectDetails(context.Background(), idTag3, &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":          pbtypes.String(idTag3),
-			"relationKey": pbtypes.String("tag"),
+			"relationKey": pbtypes.String(key),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
@@ -100,20 +107,20 @@ func Test_GrouperTags(t *testing.T) {
 
 	require.NoError(t, store.UpdateObjectDetails(context.Background(), id2, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("two"),
-		"tag":  pbtypes.StringList([]string{idTag1}),
+		key:    pbtypes.StringList([]string{idTag1}),
 	}}))
 
 	require.NoError(t, store.UpdateObjectDetails(context.Background(), id3, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("three"),
-		"tag":  pbtypes.StringList([]string{idTag1, idTag2, idTag3}),
+		key:    pbtypes.StringList([]string{idTag1, idTag2, idTag3}),
 	}}))
 
 	require.NoError(t, store.UpdateObjectDetails(context.Background(), id4, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("four"),
-		"tag":  pbtypes.StringList([]string{idTag1, idTag3}),
+		key:    pbtypes.StringList([]string{idTag1, idTag3}),
 	}}))
 
-	grouper, err := kanbanSrv.Grouper(spaceId, "tag")
+	grouper, err := kanbanSrv.Grouper(spaceId, key)
 	require.NoError(t, err)
 	err = grouper.InitGroups(spaceId, nil)
 	require.NoError(t, err)

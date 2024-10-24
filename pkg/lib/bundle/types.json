@@ -487,5 +487,18 @@
     ],
     "description": "A chat derived object",
     "revision": 1
+  },
+  {
+    "id": "tag",
+    "name": "Tag",
+    "emoji": "🏷 ",
+    "types": [
+      "Page"
+    ],
+    "hidden": false,
+    "layout": "tag",
+    "relations": [
+      "relationOptionColor"
+    ]
   }
 ]

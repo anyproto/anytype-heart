@@ -25,7 +25,6 @@ type Service interface {
 
 type Grouper interface {
 	InitGroups(spaceID string, f *database.Filters) error
-	MakeGroups() (GroupSlice, error)
 	MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, error)
 }
 
@@ -49,6 +48,9 @@ func (s *service) Init(a *app.App) (err error) {
 	}
 	s.groupColumns[model.RelationFormat_checkbox] = func(key string) Grouper {
 		return &GroupCheckBox{}
+	}
+	s.groupColumns[model.RelationFormat_object] = func(key string) Grouper {
+		return &GroupObject{key: key, store: s.objectStore}
 	}
 
 	return nil

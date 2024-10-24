@@ -263,6 +263,7 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_audio:          {},
 	model.ObjectType_video:          {},
 	model.ObjectType_pdf:            {},
+	model.ObjectType_tag:            {},
 }
 
 func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *types.Struct) bool {
