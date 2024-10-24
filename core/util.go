@@ -52,7 +52,7 @@ func getErrorDescription(err error) string {
 }
 
 func filtersFromProto(filters []*model.BlockContentDataviewFilter) []database.FilterRequest {
-	var res []database.FilterRequest
+	res := make([]database.FilterRequest, 0, len(filters))
 	for _, f := range filters {
 		res = append(res, database.FilterRequest{
 			Id:               f.Id,
