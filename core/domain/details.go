@@ -67,7 +67,7 @@ func NewDetailsFromAnyEnc(v *anyenc.Value) (*Details, error) {
 			return
 		}
 		// key is copied
-		err := jsonValueToAny(res, RelationKey(k), v)
+		err := setValueFromAnyEnc(res, RelationKey(k), v)
 		if err != nil {
 			visitErr = err
 		}
@@ -75,7 +75,7 @@ func NewDetailsFromAnyEnc(v *anyenc.Value) (*Details, error) {
 	return res, visitErr
 }
 
-func jsonValueToAny(d *Details, key RelationKey, val *anyenc.Value) error {
+func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 	switch val.Type() {
 	case anyenc.TypeNumber:
 		v, err := val.Float64()
