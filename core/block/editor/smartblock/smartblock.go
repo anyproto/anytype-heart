@@ -357,12 +357,11 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	// Add bundled relations
 	var relKeys []domain.RelationKey
-	ctx.State.Details().Iterate(func(k domain.RelationKey, _ domain.Value) bool {
+	for k, _ := range ctx.State.Details().Iterate() {
 		if bundle.HasRelation(k) {
 			relKeys = append(relKeys, k)
 		}
-		return true
-	})
+	}
 	ctx.State.AddBundledRelationLinks(relKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
 		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex).Migrate(ctx.State)
@@ -1182,7 +1181,7 @@ func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 		}
 
 		var changed bool
-		act.Details.After.Iterate(func(k domain.RelationKey, after domain.Value) bool {
+		for k, after := range act.Details.After.Iterate() {
 			rel := relations.Get(string(k))
 			if rel != nil && (rel.Format == model.RelationFormat_status ||
 				rel.Format == model.RelationFormat_tag ||
@@ -1198,7 +1197,7 @@ func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 				}
 			}
 			return true
-		})
+		}
 		if changed {
 			return true
 		}

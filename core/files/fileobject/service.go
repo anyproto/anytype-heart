@@ -328,10 +328,9 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	}
 
 	if req.AdditionalDetails != nil {
-		req.AdditionalDetails.Iterate(func(k domain.RelationKey, v domain.Value) bool {
+		for k, v := range req.AdditionalDetails.Iterate() {
 			createState.SetDetailAndBundledRelation(k, v)
-			return true
-		})
+		}
 	}
 
 	// Type will be changed after indexing, just use general type File for now

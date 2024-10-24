@@ -127,7 +127,7 @@ func extractTargetDetails(originDetails *domain.Details, templateDetails *domain
 	if templateDetails == nil {
 		return targetDetails
 	}
-	originDetails.Iterate(func(key domain.RelationKey, originalVal domain.Value) bool {
+	for key, originalVal := range originDetails.Iterate() {
 		templateVal := templateDetails.Get(key)
 		if templateVal.Ok() {
 			inTemplateEmpty := templateVal.IsEmpty()
@@ -141,8 +141,7 @@ func extractTargetDetails(originDetails *domain.Details, templateDetails *domain
 				targetDetails.Delete(key)
 			}
 		}
-		return true
-	})
+	}
 	return targetDetails
 }
 

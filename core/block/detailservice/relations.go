@@ -70,7 +70,7 @@ func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) (ke
 	err = s.store.SpaceIndex(spaceId).QueryIterate(
 		database.Query{Filters: nil},
 		func(details *domain.Details) {
-			details.Iterate(func(key domain.RelationKey, valueToCheck domain.Value) bool {
+			for key, valueToCheck := range details.Iterate() {
 				if detailHandlesValue(valueToCheck) {
 					if counter, ok := countersByKeys[key]; ok {
 						countersByKeys[key] = counter + 1
@@ -78,8 +78,7 @@ func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) (ke
 						countersByKeys[key] = 1
 					}
 				}
-				return true
-			})
+			}
 		})
 
 	if err != nil {

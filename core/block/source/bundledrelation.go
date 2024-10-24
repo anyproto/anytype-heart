@@ -77,10 +77,9 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 	if err != nil {
 		return nil, err
 	}
-	d.Iterate(func(k domain.RelationKey, v domain.Value) bool {
+	for k, v := range d.Iterate() {
 		s.SetDetailAndBundledRelation(k, v)
-		return true
-	})
+	}
 	s.SetObjectTypeKey(bundle.TypeKeyRelation)
 	return s, nil
 }

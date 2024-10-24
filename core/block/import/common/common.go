@@ -258,23 +258,22 @@ func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 
 func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string) {
 	rels := st.GetRelationLinks()
-	st.Details().Iterate(func(k domain.RelationKey, v domain.Value) bool {
+	for k, v := range st.Details().Iterate() {
 		relLink := rels.Get(string(k))
 		if relLink == nil {
-			return true
+			continue
 		}
 		if !isLinkToObject(relLink) {
-			return true
+			continue
 		}
 		if relLink.Key == bundle.RelationKeyFeaturedRelations.String() {
 			// special cases
 			// featured relations have incorrect IDs
-			return true
+			continue
 		}
 		// For example, RelationKeySetOf is handled here
 		handleObjectRelation(st, oldIDtoNew, v, k)
-		return true
-	})
+	}
 }
 
 func isLinkToObject(relLink *model.RelationLink) bool {

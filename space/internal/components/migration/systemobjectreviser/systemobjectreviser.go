@@ -110,10 +110,9 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 		log.Debug("updating system object", zap.String("source", source), zap.String("space", space.Id()))
 		if err := space.DoCtx(ctx, localObject.GetString(bundle.RelationKeyId), func(sb smartblock.SmartBlock) error {
 			st := sb.NewState()
-			details.Iterate(func(key domain.RelationKey, value domain.Value) bool {
+			for key, value := range details.Iterate() {
 				st.SetDetail(key, value)
-				return true
-			})
+			}
 			return sb.Apply(st)
 		}); err != nil {
 			return true, fmt.Errorf("failed to update system object %s in space %s: %w", source, space.Id(), err)
@@ -152,7 +151,7 @@ func buildDiffDetails(origin, current *domain.Details) *domain.Details {
 	)
 
 	details := domain.NewDetails()
-	diff.Iterate(func(key domain.RelationKey, value domain.Value) bool {
+	for key, value := range diff.Iterate() {
 		if key == bundle.RelationKeyTargetObjectType {
 			// special case. We don't want to remove the types that was set by user, so only add ones that we have
 			currentList := current.GetStringList(bundle.RelationKeyTargetObjectType)
@@ -161,8 +160,7 @@ func buildDiffDetails(origin, current *domain.Details) *domain.Details {
 			value = domain.StringList(currentList)
 		}
 		details.Set(key, value)
-		return true
-	})
+	}
 	return details
 }
 

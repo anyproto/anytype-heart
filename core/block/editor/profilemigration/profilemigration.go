@@ -83,12 +83,11 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 		"iconOption",
 	}
 	var keysToRemove []domain.RelationKey
-	st.Details().Iterate(func(key domain.RelationKey, a domain.Value) bool {
+	for key, _ := range st.Details().Iterate() {
 		if !slices.Contains(whitelistDetailKeys, key) {
 			keysToRemove = append(keysToRemove, key)
 		}
-		return true
-	})
+	}
 	// cleanup custom details from old state
 	st.RemoveDetail(keysToRemove...)
 	st.RemoveRelation(keysToRemove...)

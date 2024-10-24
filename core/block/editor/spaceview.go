@@ -263,7 +263,7 @@ func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
 func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 	st := s.NewState()
 	var changed bool
-	details.Iterate(func(k domain.RelationKey, v domain.Value) bool {
+	for k, v := range details.Iterate() {
 		if slices.Contains(workspaceKeysToCopy, k) {
 			// Special case for migration to Files as Objects to handle following situation:
 			// - We have an icon in Workspace that was created in pre-Files as Objects version
@@ -277,13 +277,12 @@ func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 				}
 			}
 			if k == bundle.RelationKeyCreatedDate && s.GetLocalInfo().SpaceId != s.spaceService.PersonalSpaceId() {
-				return true
+				continue
 			}
 			changed = true
 			st.SetDetailAndBundledRelation(k, v)
 		}
-		return true
-	})
+	}
 
 	if changed {
 		if st.ParentState().ParentState() == nil {

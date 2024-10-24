@@ -821,17 +821,15 @@ func (s *State) StringDebug() string {
 
 	fmt.Fprintf(buf, "\nDetails:\n")
 	arena := &anyenc.Arena{}
-	s.Details().IterateSorted(func(k domain.RelationKey, v domain.Value) bool {
+	for k, v := range s.Details().IterateSorted() {
 		raw := string(v.ToAnyEnc(arena).MarshalTo(nil))
 		fmt.Fprintf(buf, "\t%s:\t%v\n", k, raw)
-		return true
-	})
+	}
 	fmt.Fprintf(buf, "\nLocal details:\n")
-	s.LocalDetails().IterateSorted(func(k domain.RelationKey, v domain.Value) bool {
+	for k, v := range s.LocalDetails().IterateSorted() {
 		raw := string(v.ToAnyEnc(arena).MarshalTo(nil))
 		fmt.Fprintf(buf, "\t%s:\t%v\n", k, raw)
-		return true
-	})
+	}
 	fmt.Fprintf(buf, "\nBlocks:\n")
 	s.writeString(buf, 0, s.RootId())
 	fmt.Fprintf(buf, "\nCollection:\n")
@@ -854,10 +852,9 @@ func (s *State) SetDetails(d *domain.Details) *State {
 
 	local := d.CopyOnlyKeys(bundle.LocalAndDerivedRelationKeys...)
 	if local != nil && local.Len() > 0 {
-		local.Iterate(func(k domain.RelationKey, v domain.Value) bool {
+		for k, v := range local.Iterate() {
 			s.SetLocalDetail(k, v)
-			return true
-		})
+		}
 		s.details = d.CopyWithoutKeys(bundle.LocalAndDerivedRelationKeys...)
 		return s
 	}
@@ -895,10 +892,9 @@ func (s *State) SetLocalDetails(d *domain.Details) {
 }
 
 func (s *State) AddDetails(details *domain.Details) {
-	details.Iterate(func(k domain.RelationKey, v domain.Value) bool {
+	for k, v := range details.Iterate() {
 		s.SetDetail(k, v)
-		return true
-	})
+	}
 }
 
 func (s *State) SetDetail(key domain.RelationKey, value domain.Value) {
@@ -984,10 +980,9 @@ func (s *State) SetObjectTypeKeys(objectTypeKeys []domain.TypeKey) *State {
 }
 
 func (s *State) InjectLocalDetails(localDetails *domain.Details) {
-	localDetails.Iterate(func(k domain.RelationKey, v domain.Value) bool {
+	for k, v := range localDetails.Iterate() {
 		s.SetDetailAndBundledRelation(k, v)
-		return true
-	})
+	}
 }
 
 func (s *State) LocalDetails() *domain.Details {

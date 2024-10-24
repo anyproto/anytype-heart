@@ -110,10 +110,9 @@ func assertDetails(t *testing.T, id string, ts testCreator, details *domain.Deta
 		return
 	}
 	objDetails := object.Details()
-	details.Iterate(func(key domain.RelationKey, value domain.Value) bool {
+	for key, value := range details.Iterate() {
 		assert.Equal(t, value, objDetails.Get(key))
-		return true
-	})
+	}
 }
 
 func TestExtractObjects(t *testing.T) {

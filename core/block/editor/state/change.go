@@ -711,7 +711,7 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	}
 	curDetails := s.Details()
 
-	curDetails.Iterate(func(k domain.RelationKey, v domain.Value) bool {
+	for k, v := range curDetails.Iterate() {
 		prevValue := prev.Get(k)
 		if !prevValue.Ok() || !prevValue.Equal(v) {
 			ch = append(ch, &pb.ChangeContent{
@@ -720,10 +720,9 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 				},
 			})
 		}
-		return true
-	})
+	}
 
-	prev.Iterate(func(k domain.RelationKey, v domain.Value) bool {
+	for k, _ := range prev.Iterate() {
 		if !curDetails.Has(k) {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsUnset{
@@ -731,8 +730,7 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 				},
 			})
 		}
-		return true
-	})
+	}
 
 	return
 }

@@ -299,10 +299,9 @@ func (st *SmartTest) UpdateDetailsAndLastUsed(update func(current *domain.Detail
 		return nil
 	}
 
-	diff.Iterate(func(k domain.RelationKey, v domain.Value) bool {
+	for k, _ := range diff.Iterate() {
 		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, string(k))
-		return true
-	})
+	}
 	return nil
 }
 

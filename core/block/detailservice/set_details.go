@@ -29,13 +29,12 @@ func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
 	workspaceId := spc.DerivedIDs().Workspace
 
 	setDetails := make([]domain.Detail, 0, details.Len())
-	details.Iterate(func(k domain.RelationKey, v domain.Value) bool {
+	for k, v := range details.Iterate() {
 		setDetails = append(setDetails, domain.Detail{
 			Key:   k,
 			Value: v,
 		})
-		return true
-	})
+	}
 	return s.SetDetails(nil, workspaceId, setDetails)
 }
 

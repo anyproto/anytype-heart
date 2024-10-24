@@ -889,7 +889,7 @@ func TestProfileMigrationExtractCustomState(t *testing.T) {
 		"iconImage",
 		"iconOption",
 	}
-	originalStateCopy.Details().Iterate(func(k domain.RelationKey, v domain.Value) bool {
+	for k, v := range originalStateCopy.Details().Iterate() {
 		if k == bundle.RelationKeyName {
 			// should has suffix in the name
 			v = domain.String(v.String() + " [migrated]")
@@ -899,13 +899,11 @@ func TestProfileMigrationExtractCustomState(t *testing.T) {
 			v = domain.Bool(false)
 		}
 		require.Truef(t, v.Equal(extractedState.Details().Get(k)), "detail %s should be equal to original state", k)
-		return true
-	})
+	}
 
-	originalState.Details().Iterate(func(k domain.RelationKey, v domain.Value) bool {
+	for k, _ := range originalState.Details().Iterate() {
 		require.Contains(t, whitelistedDetailKeys, k.String(), "old state should not contain %s", k)
-		return true
-	})
+	}
 	require.Equal(t, bundle.TypeKeyPage, extractedState.ObjectTypeKey())
 
 	_, err = ExtractCustomState(originalState.NewState())

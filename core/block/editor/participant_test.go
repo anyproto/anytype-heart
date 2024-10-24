@@ -38,11 +38,10 @@ func TestParticipant_ModifyProfileDetails(t *testing.T) {
 	details.Delete(bundle.RelationKeyId)
 	participantDetails := fx.CombinedDetails()
 	participantRelationLinks := fx.GetRelationLinks()
-	details.Iterate(func(key domain.RelationKey, value domain.Value) bool {
+	for key, _ := range details.Iterate() {
 		require.True(t, details.Get(key).Equal(participantDetails.Get(key)))
 		require.True(t, participantRelationLinks.Has(key.String()))
-		return true
-	})
+	}
 }
 
 func TestParticipant_ModifyParticipantAclState(t *testing.T) {
@@ -72,11 +71,10 @@ func TestParticipant_ModifyParticipantAclState(t *testing.T) {
 	})
 	participantDetails := fx.CombinedDetails()
 	participantRelationLinks := fx.GetRelationLinks()
-	details.Iterate(func(key domain.RelationKey, value domain.Value) bool {
+	for key, _ := range details.Iterate() {
 		require.True(t, details.Get(key).Equal(participantDetails.Get(key)))
 		require.True(t, participantRelationLinks.Has(key.String()))
-		return true
-	})
+	}
 }
 
 func TestParticipant_ModifyIdentityDetails(t *testing.T) {
@@ -103,11 +101,10 @@ func TestParticipant_ModifyIdentityDetails(t *testing.T) {
 	})
 	participantDetails := fx.CombinedDetails()
 	participantRelationLinks := fx.GetRelationLinks()
-	details.Iterate(func(key domain.RelationKey, value domain.Value) bool {
+	for key, _ := range details.Iterate() {
 		require.True(t, details.Get(key).Equal(participantDetails.Get(key)))
 		require.True(t, participantRelationLinks.Has(key.String()))
-		return true
-	})
+	}
 }
 
 func newStoreFixture(t *testing.T) *spaceindex.StoreFixture {

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"iter"
 	"sort"
 
 	"github.com/anyproto/any-store/anyenc"
@@ -73,34 +74,38 @@ func (d *GenericMap[K]) Keys() []K {
 	return keys
 }
 
-func (d *GenericMap[K]) Iterate(proc func(key K, value Value) bool) {
-	if d == nil {
-		return
-	}
-	for k, v := range d.data {
-		if !proc(k, v) {
+func (d *GenericMap[K]) Iterate() iter.Seq2[K, Value] {
+	return func(proc func(key K, value Value) bool) {
+		if d == nil {
 			return
+		}
+		for k, v := range d.data {
+			if !proc(k, v) {
+				return
+			}
 		}
 	}
 }
 
-func (d *GenericMap[K]) IterateSorted(proc func(key K, value Value) bool) {
-	if d == nil {
-		return
-	}
-
-	keys := make([]K, 0, len(d.data))
-	for k := range d.data {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
-	})
-
-	for _, k := range keys {
-		v := d.data[k]
-		if !proc(k, v) {
+func (d *GenericMap[K]) IterateSorted() iter.Seq2[K, Value] {
+	return func(proc func(key K, value Value) bool) {
+		if d == nil {
 			return
+		}
+
+		keys := make([]K, 0, len(d.data))
+		for k := range d.data {
+			keys = append(keys, k)
+		}
+		sort.Slice(keys, func(i, j int) bool {
+			return keys[i] < keys[j]
+		})
+
+		for _, k := range keys {
+			v := d.data[k]
+			if !proc(k, v) {
+				return
+			}
 		}
 	}
 }
@@ -263,10 +268,9 @@ func (d *GenericMap[K]) Merge(other *GenericMap[K]) *GenericMap[K] {
 		return other.Copy()
 	}
 	res := d.Copy()
-	other.Iterate(func(k K, v Value) bool {
+	for k, v := range other.Iterate() {
 		res.Set(k, v)
-		return true
-	})
+	}
 	return res
 }
 
@@ -285,9 +289,8 @@ func (d *GenericMap[K]) ToProto() *types.Struct {
 
 func (d *GenericMap[K]) ToAnyEnc(arena *anyenc.Arena) *anyenc.Value {
 	obj := arena.NewObject()
-	d.Iterate(func(k K, v Value) bool {
+	for k, v := range d.Iterate() {
 		obj.Set(string(k), v.ToAnyEnc(arena))
-		return true
-	})
+	}
 	return obj
 }

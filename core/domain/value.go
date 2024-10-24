@@ -415,10 +415,9 @@ func (v Value) ToProto() *types.Value {
 		return pbtypes.FloatList(v)
 	case ValueMap:
 		s := &types.Struct{Fields: make(map[string]*types.Value, v.Len())}
-		v.Iterate(func(k string, v Value) bool {
-			s.Fields[k] = v.ToProto()
-			return true
-		})
+		for k, val := range v.Iterate() {
+			s.Fields[k] = val.ToProto()
+		}
 		return pbtypes.Struct(s)
 	default:
 		panic("integrity violation")

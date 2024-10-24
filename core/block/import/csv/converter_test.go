@@ -308,13 +308,12 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOn(t *testing.T) {
 }
 
 func assertSnapshotsHaveDetails(t *testing.T, want []string, objects *common.Snapshot) {
-	objects.Snapshot.Data.Details.Iterate(func(key domain.RelationKey, value domain.Value) bool {
+	for key, value := range objects.Snapshot.Data.Details.Iterate() {
 		if key == bundle.RelationKeySourceFilePath || key == bundle.RelationKeyLayout {
-			return true
+			continue
 		}
 		assert.Contains(t, want, value.String())
-		return true
-	})
+	}
 }
 
 func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {

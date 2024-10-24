@@ -196,13 +196,11 @@ func generateRelationKeysFromState(st *state.State) (relationKeys []domain.Relat
 	details := st.Details()
 	localDetails := st.LocalDetails()
 	relationKeys = make([]domain.RelationKey, 0, details.Len()+localDetails.Len())
-	details.Iterate(func(k domain.RelationKey, _ domain.Value) bool {
+	for k, _ := range details.Iterate() {
 		relationKeys = append(relationKeys, k)
-		return true
-	})
-	localDetails.Iterate(func(k domain.RelationKey, _ domain.Value) bool {
+	}
+	for k, _ := range localDetails.Iterate() {
 		relationKeys = append(relationKeys, k)
-		return true
-	})
+	}
 	return
 }

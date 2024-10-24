@@ -348,10 +348,9 @@ func (a *accountObject) GetSharedSpacesLimit() (limit int) {
 func (a *accountObject) SetProfileDetails(details *domain.Details) (err error) {
 	st := a.NewState()
 	// we should set everything in local state, but not everything in the store (this should be filtered in OnPushChange)
-	details.Iterate(func(key domain.RelationKey, value domain.Value) bool {
+	for key, value := range details.Iterate() {
 		st.SetDetailAndBundledRelation(key, value)
-		return true
-	})
+	}
 	return a.Apply(st)
 }
 

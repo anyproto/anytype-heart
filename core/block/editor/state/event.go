@@ -327,19 +327,18 @@ func StructDiffIntoEventsWithSubIds(contextId string, diff *domain.Details, keys
 		details []*pb.EventObjectDetailsAmendKeyValue
 	)
 
-	diff.Iterate(func(k domain.RelationKey, v domain.Value) bool {
+	for k, v := range diff.Iterate() {
 		key := string(k)
 		if len(keys) > 0 && slice.FindPos(keys, k) == -1 {
-			return true
+			continue
 		}
 		// TODO This is not correct! Rewrite this code to use separate diff structures
 		if v.IsNull() {
 			removed = append(removed, key)
-			return true
+			continue
 		}
 		details = append(details, &pb.EventObjectDetailsAmendKeyValue{Key: key, Value: v.ToProto()})
-		return true
-	})
+	}
 
 	if len(details) > 0 {
 		msgs = append(msgs, &pb.EventMessage{

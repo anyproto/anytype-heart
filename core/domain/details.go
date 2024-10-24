@@ -135,15 +135,14 @@ func StructDiff(st1, st2 *Details) *Details {
 	}
 	if st2 == nil {
 		diff = NewDetails()
-		st1.Iterate(func(k RelationKey, v Value) bool {
+		for k, _ := range st1.Iterate() {
 			// TODO This is not correct, Null value could be a valid value. Just rewrite this diff and generate events logic
 			diff.Set(k, Null())
-			return true
-		})
+		}
 		return diff
 	}
 
-	st2.Iterate(func(k2 RelationKey, v2 Value) bool {
+	for k2, v2 := range st2.Iterate() {
 		v1 := st1.Get(k2)
 		if !v1.Ok() || !v1.Equal(v2) {
 			if diff == nil {
@@ -151,18 +150,16 @@ func StructDiff(st1, st2 *Details) *Details {
 			}
 			diff.Set(k2, v2)
 		}
-		return true
-	})
+	}
 
-	st1.Iterate(func(k RelationKey, _ Value) bool {
+	for k, _ := range st1.Iterate() {
 		if !st2.Has(k) {
 			if diff == nil {
 				diff = NewDetails()
 			}
 			diff.Set(k, Null())
 		}
-		return true
-	})
+	}
 
 	return diff
 }
