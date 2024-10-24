@@ -5,6 +5,7 @@ package dot
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 
@@ -43,6 +44,7 @@ type linkInfo struct {
 }
 
 type dot struct {
+	ctx          context.Context
 	graph        *cgraph.Graph
 	graphviz     *graphviz.Graphviz
 	knownDocs    map[string]*types.Struct
@@ -58,13 +60,18 @@ func NewMultiConverter(
 	format graphviz.Format,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) converter.MultiConverter {
-	g := graphviz.New()
+	ctx := context.Background()
+	g, err := graphviz.New(ctx)
+	if err != nil {
+		return nil
+	}
 	graph, err := g.Graph()
 	if err != nil {
 		return nil
 	}
 
 	return &dot{
+		ctx:          ctx,
 		graph:        graph,
 		graphviz:     g,
 		exportFormat: format,
@@ -88,7 +95,7 @@ func (d *dot) ImageHashes() []string {
 }
 
 func (d *dot) Add(space smartblock.Space, st *state.State) error {
-	n, e := d.graph.CreateNode(st.RootId())
+	n, e := d.graph.CreateNodeByName(st.RootId())
 	if e != nil {
 		return e
 	}
@@ -159,7 +166,7 @@ func (d *dot) Convert(sbType model.SmartBlockType) []byte {
 			if !exists {
 				continue
 			}
-			e, err = d.graph.CreateEdge("", source, target)
+			e, err = d.graph.CreateEdgeByName("", source, target)
 			if err != nil {
 				return nil
 			}
@@ -173,7 +180,7 @@ func (d *dot) Convert(sbType model.SmartBlockType) []byte {
 	}
 
 	var buf bytes.Buffer
-	if err = d.graphviz.Render(d.graph, d.exportFormat, &buf); err != nil {
+	if err = d.graphviz.Render(d.ctx, d.graph, d.exportFormat, &buf); err != nil {
 		return nil
 	}
 
