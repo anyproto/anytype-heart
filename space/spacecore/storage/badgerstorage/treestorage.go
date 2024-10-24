@@ -2,6 +2,7 @@ package badgerstorage
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -106,6 +107,10 @@ func (t *treeStorage) Heads() (heads []string, err error) {
 	return
 }
 
+func (t *treeStorage) GetAllChangeIds() (chs []string, err error) {
+	return nil, fmt.Errorf("get all change ids should not be called")
+}
+
 func (t *treeStorage) SetHeads(heads []string) (err error) {
 	payload := treestorage.CreateHeadsPayload(heads)
 	return putDB(t.db, t.keys.HeadsKey(), payload)
@@ -139,6 +144,10 @@ func (t *treeStorage) GetRawChange(ctx context.Context, id string) (raw *treecha
 		Id:        id,
 	}
 	return
+}
+
+func (t *treeStorage) GetAppendRawChange(ctx context.Context, buf []byte, id string) (raw *treechangeproto.RawTreeChangeWithId, err error) {
+	return t.GetRawChange(ctx, id)
 }
 
 func (t *treeStorage) HasChange(ctx context.Context, id string) (bool, error) {

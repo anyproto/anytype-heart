@@ -5,6 +5,12 @@
 
 ### Install local deps
 
+#### Update tantivy
+Update the tantivy version in go.mod and run:
+```
+make download-tantivy-all-force
+```
+
 #### Mac
 As of 16.01.23 last protobuf version (21.12) broke the JS plugin support, so you can use the v3 branch:
 ```

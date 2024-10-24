@@ -105,7 +105,6 @@ func (a *aclObjectManager) Name() (name string) {
 func (a *aclObjectManager) Run(ctx context.Context) (err error) {
 	a.started = true
 	a.ctx, a.cancel = context.WithCancel(context.Background())
-	go a.waitSpace()
 	go a.process()
 	return
 }
@@ -123,30 +122,18 @@ func (a *aclObjectManager) Close(ctx context.Context) (err error) {
 	return
 }
 
-func (a *aclObjectManager) waitSpace() {
-	a.sp, a.loadErr = a.spaceLoader.WaitLoad(a.ctx)
-	if a.loadErr == nil {
-		err := a.inviteMigrator.MigrateExistingInvites(a.sp)
-		if err != nil {
-			log.Warn("migrate existing invites", zap.Error(err))
-		}
-	}
-	close(a.waitLoad)
-}
-
 func (a *aclObjectManager) process() {
 	defer close(a.wait)
-	select {
-	case <-a.ctx.Done():
+	a.sp, a.loadErr = a.spaceLoader.WaitLoad(a.ctx)
+	if a.loadErr != nil {
+		log.Error("load space", zap.Error(a.loadErr))
 		return
-	case <-a.waitLoad:
-		if a.loadErr != nil {
-			return
-		}
-		break
 	}
-
-	err := a.participantWatcher.UpdateAccountParticipantFromProfile(a.ctx, a.sp)
+	err := a.inviteMigrator.MigrateExistingInvites(a.sp)
+	if err != nil {
+		log.Warn("migrate existing invites", zap.Error(err))
+	}
+	err = a.participantWatcher.UpdateAccountParticipantFromProfile(a.ctx, a.sp)
 	if err != nil {
 		log.Error("init my identity", zap.Error(err))
 	}
@@ -169,6 +156,11 @@ func (a *aclObjectManager) processAcl() (err error) {
 		aclState = acl.AclState()
 		upToDate bool
 	)
+	firstRec, err := acl.GetIndex(0)
+	if err != nil {
+		return
+	}
+	createdDate := firstRec.Timestamp
 	defer func() {
 		if err == nil {
 			permissions := aclState.Permissions(aclState.AccountKey().GetPublic())
@@ -196,6 +188,14 @@ func (a *aclObjectManager) processAcl() (err error) {
 	states, err = decryptAll(states, decrypt)
 	if err != nil {
 		return
+	}
+	for _, st := range states {
+		if st.Permissions.IsOwner() {
+			err = a.status.SetOwner(st.PubKey.Account(), createdDate)
+			if err != nil {
+				return
+			}
+		}
 	}
 
 	statusAclHeadId := a.status.GetLatestAclHeadId()

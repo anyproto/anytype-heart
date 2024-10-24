@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -29,6 +30,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/util/text"
 )
 
 func TantivyNew() FTSearch {
@@ -48,12 +50,15 @@ type ftSearchTantivy struct {
 	index      *tantivy.TantivyContext
 	schema     *tantivy.Schema
 	parserPool *fastjson.ParserPool
+	mu         sync.Mutex
 }
 
 func (f *ftSearchTantivy) BatchDeleteObjects(ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	start := time.Now()
 	defer func() {
 		spentMs := time.Since(start).Milliseconds()
@@ -73,6 +78,8 @@ func (f *ftSearchTantivy) BatchDeleteObjects(ids []string) error {
 }
 
 func (f *ftSearchTantivy) DeleteObject(objectId string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.index.DeleteDocuments(fieldIdRaw, objectId)
 }
 
@@ -82,7 +89,7 @@ func (f *ftSearchTantivy) Init(a *app.App) error {
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
 	f.ftsPath = filepath.Join(repoPath, ftsDir2, ftsVer)
-	return tantivy.LibInit("release")
+	return tantivy.LibInit(false, "release")
 }
 
 func (f *ftSearchTantivy) cleanUpOldIndexes() {
@@ -158,8 +165,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	if err != nil {
 		return err
 	}
-
-	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
+	index, err := f.tryToBuildSchema(schema)
 	if err != nil {
 		return err
 	}
@@ -180,12 +186,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 		return err
 	}
 
-	err = index.RegisterTextAnalyzerEdgeNgram(tantivy.TokenizerEdgeNgram, 1, 5, 100)
-	if err != nil {
-		return err
-	}
-
-	err = index.RegisterTextAnalyzerNgram(tantivy.TokenizerNgram, 1, 5, false)
+	err = index.RegisterTextAnalyzerNgram(tantivy.TokenizerNgram, 3, 5, false)
 	if err != nil {
 		return err
 	}
@@ -198,7 +199,21 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	return nil
 }
 
+func (f *ftSearchTantivy) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.TantivyContext, error) {
+	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
+	if err != nil {
+		log.Warnf("recovering from error: %v", err)
+		if strings.HasSuffix(f.rootPath, ftsDir2) {
+			_ = os.RemoveAll(f.rootPath)
+		}
+		return tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
+	}
+	return index, err
+}
+
 func (f *ftSearchTantivy) Index(doc SearchDoc) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	metrics.ObjectFTUpdatedCounter.Inc()
 	tantivyDoc, err := f.convertDoc(doc)
 	if err != nil {
@@ -249,7 +264,9 @@ func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, dele
 			l.Debugf("ft index done")
 		}
 	}()
+	f.mu.Lock()
 	err = f.index.DeleteDocuments(fieldIdRaw, deletedDocs...)
+	f.mu.Unlock()
 	if err != nil {
 		return err
 	}
@@ -261,19 +278,23 @@ func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, dele
 		}
 		tantivyDocs = append(tantivyDocs, tantivyDoc)
 	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.index.AddAndConsumeDocuments(tantivyDocs...)
 }
 
 func (f *ftSearchTantivy) Search(spaceIds []string, highlightFormatter HighlightFormatter, query string) (results search.DocumentMatchCollection, err error) {
 	spaceIdsQuery := getSpaceIdsQuery(spaceIds)
-	if spaceIdsQuery == "" {
-		query = escapeQuery(query)
-	} else {
-		query = fmt.Sprintf("%s AND %s", spaceIdsQuery, escapeQuery(query))
+	query = prepareQuery(query)
+	if query == "" {
+		return nil, nil
+	}
+	if spaceIdsQuery != "" {
+		query = fmt.Sprintf("%s AND %s", spaceIdsQuery, query)
 	}
 	result, err := f.index.Search(query, 100, true, fieldId, fieldSpace, fieldTitle, fieldText)
 	if err != nil {
-		return nil, err
+		return nil, wrapError(err)
 	}
 	p := f.parserPool.Get()
 	defer f.parserPool.Put(p)
@@ -309,7 +330,16 @@ func (f *ftSearchTantivy) Search(spaceIds []string, highlightFormatter Highlight
 	)
 }
 
+func wrapError(err error) error {
+	errStr := err.Error()
+	if strings.Contains(errStr, "Syntax Error:") {
+		return fmt.Errorf("invalid query")
+	}
+	return err
+}
+
 func getSpaceIdsQuery(ids []string) string {
+	ids = lo.Filter(ids, func(item string, index int) bool { return item != "" })
 	if len(ids) == 0 || lo.EveryBy(ids, func(id string) bool { return id == "" }) {
 		return ""
 	}
@@ -338,7 +368,11 @@ func (f *ftSearchTantivy) DocCount() (uint64, error) {
 
 func (f *ftSearchTantivy) Close(ctx context.Context) error {
 	f.schema = nil
-	f.index.Free()
+	if f.index != nil {
+		f.index.Free()
+		f.index = nil
+		f.schema = nil
+	}
 	return nil
 }
 
@@ -346,16 +380,21 @@ func (f *ftSearchTantivy) cleanupBleve() {
 	_ = os.RemoveAll(filepath.Join(f.rootPath, ftsDir))
 }
 
-func escapeQuery(query string) string {
+func prepareQuery(query string) string {
+	query = text.Truncate(query, 100, "")
+	query = strings.ToLower(query)
+	query = strings.TrimSpace(query)
 	var escapedQuery strings.Builder
 
 	for _, char := range query {
-		if _, found := specialChars[char]; found {
-			escapedQuery.WriteRune(' ')
+		if _, found := specialChars[char]; !found {
+			escapedQuery.WriteRune(char)
 		}
-		escapedQuery.WriteRune(char)
 	}
 
 	resultQuery := escapedQuery.String()
+	if resultQuery == "" {
+		return resultQuery
+	}
 	return "(\"" + resultQuery + "\" OR " + resultQuery + ")"
 }

@@ -11,10 +11,14 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl/headupdater"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/commonspace/sync/syncdeps"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/protobuf/proto"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
@@ -47,6 +51,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
+		fx.mockStatus.EXPECT().SetOwner(acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).
 			RunAndReturn(func(_ context.Context, space clientspace.Space, state list.AccountState) error {
 				require.True(t, state.PubKey.Equals(acl.AclState().Identity()))
@@ -84,6 +89,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
+		fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
 		var callCounter atomic.Bool
 		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).
@@ -126,6 +132,7 @@ func TestAclObjectManager(t *testing.T) {
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
 		fx.mockInviteMigrator.EXPECT().MigrateExistingInvites(fx.mockSpace).Return(nil)
+		fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
@@ -205,6 +212,8 @@ type syncAclStub struct {
 	updater headupdater.AclUpdater
 }
 
+var _ syncacl.SyncAcl = &syncAclStub{}
+
 func (s *syncAclStub) HandleMessage(ctx context.Context, senderId string, protoVersion uint32, message *spacesyncproto.ObjectSyncMessage) (err error) {
 	return
 }
@@ -236,4 +245,21 @@ func (s *syncAclStub) SetHeadUpdater(updater headupdater.HeadUpdater) {
 func (s *syncAclStub) SetAclUpdater(updater headupdater.AclUpdater) {
 	s.updater = updater
 	return
+}
+
+func (s *syncAclStub) HandleHeadUpdate(ctx context.Context, statusUpdater syncstatus.StatusUpdater, headUpdate drpc.Message) (syncdeps.Request, error) {
+	return nil, nil
+}
+func (s *syncAclStub) HandleStreamRequest(ctx context.Context, rq syncdeps.Request, updater syncdeps.QueueSizeUpdater, send func(resp proto.Message) error) (syncdeps.Request, error) {
+	return nil, nil
+}
+func (s *syncAclStub) HandleDeprecatedRequest(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
+	return nil, nil
+}
+
+func (s *syncAclStub) HandleResponse(ctx context.Context, peerId string, objectId string, resp syncdeps.Response) error {
+	return nil
+}
+func (s *syncAclStub) ResponseCollector() syncdeps.ResponseCollector {
+	return nil
 }
