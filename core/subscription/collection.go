@@ -100,7 +100,6 @@ func (c *collectionObserver) listEntries() []*entry {
 
 func (c *collectionObserver) updateIds(ids []string) {
 	c.lock.Lock()
-	defer c.lock.Unlock()
 
 	removed, added := slice.DifferenceRemovedAdded(c.ids, ids)
 	for _, id := range removed {
@@ -110,7 +109,7 @@ func (c *collectionObserver) updateIds(ids []string) {
 		c.idsSet[id] = struct{}{}
 	}
 	c.ids = ids
-
+	c.lock.Unlock()
 	entries := c.spaceSubscription.fetchEntriesLocked(append(removed, added...))
 	for _, e := range entries {
 		err := c.recBatch.Add(database.Record{
