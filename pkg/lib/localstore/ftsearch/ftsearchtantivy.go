@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -49,12 +50,15 @@ type ftSearchTantivy struct {
 	index      *tantivy.TantivyContext
 	schema     *tantivy.Schema
 	parserPool *fastjson.ParserPool
+	mu         sync.Mutex
 }
 
 func (f *ftSearchTantivy) BatchDeleteObjects(ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	start := time.Now()
 	defer func() {
 		spentMs := time.Since(start).Milliseconds()
@@ -74,6 +78,8 @@ func (f *ftSearchTantivy) BatchDeleteObjects(ids []string) error {
 }
 
 func (f *ftSearchTantivy) DeleteObject(objectId string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.index.DeleteDocuments(fieldIdRaw, objectId)
 }
 
@@ -206,6 +212,8 @@ func (f *ftSearchTantivy) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.Tan
 }
 
 func (f *ftSearchTantivy) Index(doc SearchDoc) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	metrics.ObjectFTUpdatedCounter.Inc()
 	tantivyDoc, err := f.convertDoc(doc)
 	if err != nil {
@@ -256,7 +264,9 @@ func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, dele
 			l.Debugf("ft index done")
 		}
 	}()
+	f.mu.Lock()
 	err = f.index.DeleteDocuments(fieldIdRaw, deletedDocs...)
+	f.mu.Unlock()
 	if err != nil {
 		return err
 	}
@@ -268,6 +278,8 @@ func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, dele
 		}
 		tantivyDocs = append(tantivyDocs, tantivyDoc)
 	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.index.AddAndConsumeDocuments(tantivyDocs...)
 }
 
