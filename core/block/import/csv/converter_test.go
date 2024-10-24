@@ -168,43 +168,77 @@ func TestCsv_GetSnapshotsSemiColon(t *testing.T) {
 }
 
 func TestCsv_GetSnapshotsTranspose(t *testing.T) {
-	csv := CSV{}
-	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
-			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/transpose.csv"},
-				Delimiter:               ";",
-				TransposeRowsAndColumns: true,
-				UseFirstRowForRelations: true,
+	t.Run("number of columns equal", func(t *testing.T) {
+		csv := CSV{}
+		p := process.NewProgress(pb.ModelProcess_Import)
+		sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+				CsvParams: &pb.RpcObjectImportRequestCsvParams{
+					Path:                    []string{"testdata/transpose.csv"},
+					Delimiter:               ";",
+					TransposeRowsAndColumns: true,
+					UseFirstRowForRelations: true,
+				},
 			},
-		},
-		Type: model.Import_Csv,
-		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+			Type: model.Import_Csv,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
 
-	assert.Nil(t, err)
-	assert.NotNil(t, sn)
-	assert.Len(t, sn.Snapshots, 4) // 2 object + root collection + transpose collection + 1 relations
+		assert.Nil(t, err)
+		assert.NotNil(t, sn)
+		assert.Len(t, sn.Snapshots, 4) // 2 object + root collection + transpose collection + 1 relations
 
-	for _, snapshot := range sn.Snapshots {
-		if snapshot.SbType == sb.SmartBlockTypeRelation {
-			name := pbtypes.GetString(snapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
-			assert.True(t, name == "name" || name == "price")
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.SbType == sb.SmartBlockTypeRelation {
+				name := pbtypes.GetString(snapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
+				assert.True(t, name == "price")
+			}
 		}
-	}
 
-	var collection *common.Snapshot
-	for _, snapshot := range sn.Snapshots {
-		// only objects created from rows
-		if snapshot.SbType != sb.SmartBlockTypeRelation &&
-			lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) &&
-			pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String()) == "transpose Transpose" {
-			collection = snapshot
+		var collection *common.Snapshot
+		for _, snapshot := range sn.Snapshots {
+			// only objects created from rows
+			if snapshot.SbType != sb.SmartBlockTypeRelation &&
+				lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) &&
+				pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String()) == "transpose Transpose" {
+				collection = snapshot
+			}
 		}
-	}
 
-	assert.NotNil(t, collection)
+		assert.NotNil(t, collection)
+	})
+
+	t.Run("number of columns is not equal", func(t *testing.T) {
+		// given
+		csv := CSV{}
+		p := process.NewProgress(pb.ModelProcess_Import)
+
+		// when
+		sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+				CsvParams: &pb.RpcObjectImportRequestCsvParams{
+					Path:                    []string{"testdata/transpose_not_matrix.csv"},
+					Delimiter:               ";",
+					TransposeRowsAndColumns: true,
+					UseFirstRowForRelations: true,
+				},
+			},
+			Type: model.Import_Csv,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, sn)
+		assert.Len(t, sn.Snapshots, 4)
+
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.SbType == sb.SmartBlockTypeRelation {
+				name := pbtypes.GetString(snapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
+				assert.True(t, name == "price123")
+			}
+		}
+	})
 }
 
 func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
@@ -702,7 +736,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 		assert.Len(t, objects, 1)
 		assert.Equal(t, pbtypes.GetString(objects[0].Snapshot.Data.Details, bundle.RelationKeyName.String()), "differentcolumnnumber")
 		numberOfCSVColumns := lo.CountBy(objects[0].Snapshot.Data.Blocks, func(item *model.Block) bool { return item.GetTableColumn() != nil })
-		assert.Equal(t, numberOfCSVColumns, 3)
+		assert.Equal(t, 5, numberOfCSVColumns)
 		numberOfCSVRows := lo.CountBy(objects[0].Snapshot.Data.Blocks, func(item *model.Block) bool { return item.GetTableRow() != nil })
 		assert.Equal(t, 3, numberOfCSVRows)
 	})
@@ -742,7 +776,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 		for _, object := range objects {
 			keys := lo.MapToSlice(object.Snapshot.Data.Details.Fields, func(key string, value *types.Value) string { return key })
 			numberOfCSVRelations := getRelationsNumber(keys)
-			assert.Equal(t, numberOfCSVRelations, 3)
+			assert.Equal(t, 5, numberOfCSVRelations)
 		}
 	})
 }

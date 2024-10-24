@@ -10,6 +10,7 @@ import (
 	spacestorage "github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/consensus/consensusproto"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -96,6 +97,10 @@ func TestSpaceStorage_NewAndCreateTree(t *testing.T) {
 		status, err := store.TreeDeletedStatus(otherStore.Id())
 		require.NoError(t, err)
 		require.Equal(t, initialStatus, status)
+
+		ids, err := store.(*spaceStorage).AllDeletedTreeIds()
+		require.NoError(t, err)
+		assert.Equal(t, []string{otherStore.Id()}, ids)
 	})
 }
 

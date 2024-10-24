@@ -110,10 +110,3 @@ func (s *dsObjectStore) SaveChecksums(spaceId string, checksums *model.ObjectSto
 	err = s.indexerChecksums.UpsertOne(s.componentCtx, it)
 	return err
 }
-
-// GetGlobalChecksums is a migration method, it returns checksums stored before we started to store them per space
-// it will be deleted after the first SaveChecksums() call
-func (s *dsObjectStore) GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error) {
-	// TODO What to do?
-	return s.GetChecksums("global")
-}
