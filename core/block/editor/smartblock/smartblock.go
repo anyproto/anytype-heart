@@ -1180,7 +1180,6 @@ func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 			return true
 		}
 
-		var changed bool
 		for k, after := range act.Details.After.Iterate() {
 			rel := relations.Get(string(k))
 			if rel != nil && (rel.Format == model.RelationFormat_status ||
@@ -1192,14 +1191,9 @@ func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 				before := act.Details.Before.Get(k)
 				// Check that value is actually changed
 				if !before.Ok() || !before.Equal(after) {
-					changed = true
-					return false
+					return true
 				}
 			}
-			return true
-		}
-		if changed {
-			return true
 		}
 	}
 
