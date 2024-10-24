@@ -7,10 +7,6 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-type GenericMap[K ~string] struct {
-	data map[K]Value
-}
-
 // Detail is Key-Value pair
 type Detail struct {
 	Key   RelationKey
@@ -40,19 +36,6 @@ func NewDetailsFromMap(details map[RelationKey]Value) *Details {
 
 func NewDetailsWithSize(size int) *Details {
 	return &GenericMap[RelationKey]{data: make(map[RelationKey]Value, size)}
-}
-
-func (d *GenericMap[K]) ToProto() *types.Struct {
-	if d == nil {
-		return &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	res := &types.Struct{
-		Fields: make(map[string]*types.Value, len(d.data)),
-	}
-	for k, v := range d.data {
-		res.Fields[string(k)] = v.ToProto()
-	}
-	return res
 }
 
 func NewDetailsFromAnyEnc(v *anyenc.Value) (*Details, error) {
@@ -138,46 +121,6 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 	}
 	d.Set(key, Null())
 	return nil
-}
-
-func (d *GenericMap[K]) ToAnyEnc(arena *anyenc.Arena) *anyenc.Value {
-	obj := arena.NewObject()
-	d.Iterate(func(k K, v Value) bool {
-		obj.Set(string(k), v.ToAnyEnc(arena))
-		return true
-	})
-	return obj
-}
-
-func (v Value) ToAnyEnc(arena *anyenc.Arena) *anyenc.Value {
-	switch v := v.value.(type) {
-	case nullValue:
-		return arena.NewNull()
-	case string:
-		return arena.NewString(v)
-	case float64:
-		return arena.NewNumberFloat64(v)
-	case bool:
-		if v {
-			return arena.NewTrue()
-		} else {
-			return arena.NewFalse()
-		}
-	case []string:
-		lst := arena.NewArray()
-		for i, it := range v {
-			lst.SetArrayItem(i, arena.NewString(it))
-		}
-		return lst
-	case []float64:
-		lst := arena.NewArray()
-		for i, it := range v {
-			lst.SetArrayItem(i, arena.NewNumberFloat64(it))
-		}
-		return lst
-	default:
-		return arena.NewNull()
-	}
 }
 
 // StructDiff returns pb struct which contains:
