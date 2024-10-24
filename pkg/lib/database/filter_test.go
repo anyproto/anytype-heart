@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -16,8 +16,8 @@ import (
 func assertFilter(t *testing.T, f Filter, obj *domain.Details, expected bool) {
 	assert.Equal(t, expected, f.FilterObject(obj))
 	anystoreFilter := f.AnystoreFilter()
-	arena := &fastjson.Arena{}
-	val := obj.ToJson(arena)
+	arena := &anyenc.Arena{}
+	val := pbtypes.ProtoToAnyEnc(arena, obj)
 	result := anystoreFilter.Ok(val)
 	assert.Equal(t, expected, result)
 }
@@ -530,32 +530,32 @@ func TestFilterOptionsEqual(t *testing.T) {
 		"optionId3": "3",
 	}
 	t.Run("one option, ok", func(t *testing.T) {
-		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", []string{"optionId1"}, optionIdToName)
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1"}, optionIdToName)
 		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"optionId1"})})
 		assertFilter(t, eq, obj, true)
 	})
 	t.Run("two options, ok", func(t *testing.T) {
-		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", []string{"optionId1", "optionId3"}, optionIdToName)
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1", "optionId3"}, optionIdToName)
 		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"optionId1", "optionId3"})})
 		assertFilter(t, eq, obj, true)
 	})
 	t.Run("two options, ok, not existing options are discarded", func(t *testing.T) {
-		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", []string{"optionId1", "optionId3"}, optionIdToName)
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1", "optionId3"}, optionIdToName)
 		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"optionId1", "optionId3", "optionId7000"})})
 		assertFilter(t, eq, obj, true)
 	})
 	t.Run("two options, not ok", func(t *testing.T) {
-		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", []string{"optionId1", "optionId2"}, optionIdToName)
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1", "optionId2"}, optionIdToName)
 		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"optionId1", "optionId3"})})
 		assertFilter(t, eq, obj, false)
 	})
 	t.Run("two options, not ok, because object has 1 option", func(t *testing.T) {
-		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", []string{"optionId1", "optionId2"}, optionIdToName)
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1", "optionId2"}, optionIdToName)
 		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"optionId1"})})
 		assertFilter(t, eq, obj, false)
 	})
 	t.Run("two options, not ok, because object has 3 options", func(t *testing.T) {
-		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", []string{"optionId1", "optionId2"}, optionIdToName)
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1", "optionId2"}, optionIdToName)
 		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"optionId1", "optionId2", "optionId3"})})
 		assertFilter(t, eq, obj, false)
 	})

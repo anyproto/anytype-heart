@@ -8,10 +8,11 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
-	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -28,6 +29,7 @@ const (
 
 type StoreObject interface {
 	smartblock.SmartBlock
+	anystoredebug.AnystoreDebug
 
 	AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error)
 	GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
@@ -44,6 +46,7 @@ type AccountService interface {
 }
 
 type storeObject struct {
+	anystoredebug.AnystoreDebug
 	smartblock.SmartBlock
 	locker smartblock.Locker
 
@@ -54,7 +57,7 @@ type storeObject struct {
 	subscription   *subscription
 	crdtDb         anystore.DB
 
-	arenaPool *fastjson.ArenaPool
+	arenaPool *anyenc.ArenaPool
 }
 
 func New(sb smartblock.SmartBlock, accountService AccountService, eventSender event.Sender, crdtDb anystore.DB) StoreObject {
@@ -62,7 +65,7 @@ func New(sb smartblock.SmartBlock, accountService AccountService, eventSender ev
 		SmartBlock:     sb,
 		locker:         sb.(smartblock.Locker),
 		accountService: accountService,
-		arenaPool:      &fastjson.ArenaPool{},
+		arenaPool:      &anyenc.ArenaPool{},
 		eventSender:    eventSender,
 		crdtDb:         crdtDb,
 	}
@@ -92,6 +95,8 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return fmt.Errorf("read store doc: %w", err)
 	}
+
+	s.AnystoreDebug = anystoredebug.New(s.SmartBlock, stateStore)
 
 	return nil
 }
@@ -276,7 +281,7 @@ func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId strin
 	return nil
 }
 
-func (s *storeObject) hasMyReaction(ctx context.Context, arena *fastjson.Arena, messageId string, emoji string) (bool, error) {
+func (s *storeObject) hasMyReaction(ctx context.Context, arena *anyenc.Arena, messageId string, emoji string) (bool, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return false, fmt.Errorf("get collection: %w", err)

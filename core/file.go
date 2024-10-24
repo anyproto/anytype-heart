@@ -67,7 +67,11 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 			},
 		}
 	}
-	return &pb.RpcFileListOffloadResponse{}
+	return &pb.RpcFileListOffloadResponse{
+		Error: &pb.RpcFileListOffloadResponseError{
+			Code: pb.RpcFileListOffloadResponseError_NULL,
+		},
+	}
 }
 
 func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {

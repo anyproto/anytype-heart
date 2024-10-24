@@ -305,10 +305,13 @@ func (bs *basic) addRelationLink(st *state.State, relationKey domain.RelationKey
 	return nil
 }
 
+// addRelationLinks is deprecated and will be removed in release 7
 func (bs *basic) addRelationLinks(st *state.State, relationKeys ...domain.RelationKey) error {
 	if len(relationKeys) == 0 {
 		return nil
 	}
+	// this code depends on the objectstore being indexed, but can be run on start with empty account
+	// todo: remove this code in release because we will no longer need relationLinks
 	relations, err := bs.objectStore.FetchRelationByKeys(relationKeys...)
 	if err != nil || relations == nil {
 		return fmt.Errorf("failed to get relations: %w", err)

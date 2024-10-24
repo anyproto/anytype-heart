@@ -2,12 +2,15 @@ package fileobject
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/cheggaaa/mb/v3"
+	format "github.com/ipfs/go-ipld-format"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -16,6 +19,7 @@ import (
 	fileblock "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -180,9 +184,22 @@ func (ind *indexer) runIndexingWorker() {
 		default:
 		}
 		if err := ind.indexNext(ind.indexCtx); err != nil {
-			log.Errorf("index loop: %v", err)
+			logIndexLoop(err)
 		}
 	}
+}
+
+func logIndexLoop(err error) {
+	if errors.Is(err, treestorage.ErrUnknownTreeId) {
+		return
+	}
+	if errors.Is(err, format.ErrNotFound{}) {
+		return
+	}
+	if errors.Is(err, rpcstore.ErrNoConnectionToAnyFileClient) {
+		return
+	}
+	log.Errorf("index loop: %v", err)
 }
 
 func (ind *indexer) indexNext(ctx context.Context) error {

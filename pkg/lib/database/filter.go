@@ -7,10 +7,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/anyproto/any-store/encoding"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
 	"github.com/samber/lo"
-	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -212,13 +211,13 @@ func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store Object
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return newFilterOptionsEqual(&fastjson.Arena{}, rawFilter.RelationKey, list, optionsToMap(spaceID, rawFilter.RelationKey, store)), nil
+		return newFilterOptionsEqual(&anyenc.Arena{}, rawFilter.RelationKey, list, optionsToMap(spaceID, rawFilter.RelationKey, store)), nil
 	case model.BlockContentDataviewFilter_NotExactIn:
 		list, err := wrapValueToStringList(rawFilter.Value)
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return FilterNot{newFilterOptionsEqual(&fastjson.Arena{}, rawFilter.RelationKey, list, optionsToMap(spaceID, rawFilter.RelationKey, store))}, nil
+		return FilterNot{newFilterOptionsEqual(&anyenc.Arena{}, rawFilter.RelationKey, list, optionsToMap(spaceID, rawFilter.RelationKey, store))}, nil
 	case model.BlockContentDataviewFilter_Exists:
 		return FilterExists{
 			Key: rawFilter.RelationKey,
@@ -536,6 +535,17 @@ func (e FilterEmpty) FilterObject(g *domain.Details) bool {
 	return val.IsEmpty()
 }
 
+var (
+	filterEqNil         = query.NewComp(query.CompOpEq, nil)
+	filterEqEmptyString = query.NewComp(query.CompOpEq, "")
+	filterEq0           = query.NewComp(query.CompOpEq, 0)
+	filterEqFalse       = query.NewComp(query.CompOpEq, false)
+	filterEqEmptyArray  = &query.Comp{
+		CompOp:  query.CompOpEq,
+		EqValue: anyenc.MustParseJson(`[]`).MarshalTo(nil),
+	}
+)
+
 func (e FilterEmpty) AnystoreFilter() query.Filter {
 	path := []string{string(e.Key)}
 	return query.Or{
@@ -545,26 +555,23 @@ func (e FilterEmpty) AnystoreFilter() query.Filter {
 		},
 		query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, nil),
+			Filter: filterEqNil,
 		},
 		query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, ""),
+			Filter: filterEqEmptyString,
 		},
 		query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, 0),
+			Filter: filterEq0,
 		},
 		query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, false),
+			Filter: filterEqFalse,
 		},
 		query.Key{
-			Path: path,
-			Filter: &query.Comp{
-				CompOp:  query.CompOpEq,
-				EqValue: encoding.AppendJSONValue(nil, fastjson.MustParse(`[]`)),
-			},
+			Path:   path,
+			Filter: filterEqEmptyArray,
 		},
 	}
 }
@@ -620,24 +627,25 @@ func (l FilterAllIn) FilterObject(g *domain.Details) bool {
 }
 
 func (l FilterAllIn) AnystoreFilter() query.Filter {
+	arena := &anyenc.Arena{}
 	path := []string{string(l.Key)}
 	conds := make([]query.Filter, 0, len(l.Strings)+len(l.Floats))
 	for _, v := range l.Strings {
 		conds = append(conds, query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, v),
+			Filter: query.NewCompValue(query.CompOpEq, arena.NewString(v)),
 		})
 	}
 	for _, v := range l.Floats {
 		conds = append(conds, query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, v),
+			Filter: query.NewCompValue(query.CompOpEq, arena.NewNumberFloat64(v)),
 		})
 	}
 	return query.And(conds)
 }
 
-func newFilterOptionsEqual(arena *fastjson.Arena, key domain.RelationKey, value []string, options map[string]string) *FilterOptionsEqual {
+func newFilterOptionsEqual(arena *anyenc.Arena, key domain.RelationKey, value []string, options map[string]string) *FilterOptionsEqual {
 	f := &FilterOptionsEqual{
 		arena:   arena,
 		Key:     key,
@@ -649,7 +657,7 @@ func newFilterOptionsEqual(arena *fastjson.Arena, key domain.RelationKey, value 
 }
 
 type FilterOptionsEqual struct {
-	arena *fastjson.Arena
+	arena *anyenc.Arena
 
 	Key     domain.RelationKey
 	Value   []string
@@ -685,7 +693,7 @@ func (exIn *FilterOptionsEqual) FilterObject(g *domain.Details) bool {
 	return false
 }
 
-func (exIn *FilterOptionsEqual) Ok(v *fastjson.Value) bool {
+func (exIn *FilterOptionsEqual) Ok(v *anyenc.Value) bool {
 	defer exIn.arena.Reset()
 
 	arr := v.GetArray(string(exIn.Key))
@@ -709,10 +717,11 @@ func (exIn *FilterOptionsEqual) Ok(v *fastjson.Value) bool {
 }
 
 func (exIn *FilterOptionsEqual) compileValueFilter() {
+	arena := &anyenc.Arena{}
 	conds := make([]query.Filter, 0, len(exIn.Value)+1)
 	conds = append(conds, query.Size{Size: int64(len(exIn.Value))})
 	for _, v := range exIn.Value {
-		conds = append(conds, query.NewComp(query.CompOpEq, v))
+		conds = append(conds, query.NewCompValue(query.CompOpEq, arena.NewString(v)))
 	}
 	exIn.valueFilter = query.And(conds)
 }
@@ -913,11 +922,11 @@ type Anystore2ValuesComp struct {
 	buf1, buf2                 []byte
 }
 
-func (e *Anystore2ValuesComp) Ok(v *fastjson.Value) bool {
+func (e *Anystore2ValuesComp) Ok(v *anyenc.Value) bool {
 	value1 := v.Get(e.RelationKey1)
 	value2 := v.Get(e.RelationKey2)
-	e.buf1 = encoding.AppendJSONValue(e.buf1[:0], value1)
-	e.buf2 = encoding.AppendJSONValue(e.buf2[:0], value2)
+	e.buf1 = value1.MarshalTo(e.buf1[:0])
+	e.buf2 = value2.MarshalTo(e.buf2[:0])
 	comp := bytes.Compare(e.buf1, e.buf2)
 	switch e.CompOp {
 	case query.CompOpEq:

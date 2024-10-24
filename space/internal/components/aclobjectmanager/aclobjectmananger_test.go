@@ -51,6 +51,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
+		fx.mockStatus.EXPECT().SetOwner(acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).
 			RunAndReturn(func(_ context.Context, space clientspace.Space, state list.AccountState) error {
 				require.True(t, state.PubKey.Equals(acl.AclState().Identity()))
@@ -88,6 +89,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
+		fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
 		var callCounter atomic.Bool
 		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).
@@ -130,6 +132,7 @@ func TestAclObjectManager(t *testing.T) {
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
 		fx.mockInviteMigrator.EXPECT().MigrateExistingInvites(fx.mockSpace).Return(nil)
+		fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)

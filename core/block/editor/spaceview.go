@@ -42,6 +42,7 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 type spaceService interface {
 	OnViewUpdated(info spaceinfo.SpacePersistentInfo)
 	OnWorkspaceChanged(spaceId string, details *domain.Details)
+	PersonalSpaceId() string
 }
 
 // SpaceView is a wrapper around smartblock.SmartBlock that indicates the current space state
@@ -135,6 +136,15 @@ func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 	st := s.NewState()
 	info.UpdateDetails(st).Log(log)
 	s.updateAccessType(st)
+	return s.Apply(st)
+}
+
+func (s *SpaceView) SetOwner(ownerId string, createdDate int64) (err error) {
+	st := s.NewState()
+	if createdDate != 0 {
+		st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, domain.Int64(createdDate))
+	}
+	st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, domain.String(ownerId))
 	return s.Apply(st)
 }
 
@@ -240,7 +250,6 @@ var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyIconImage,
 	bundle.RelationKeyIconOption,
 	bundle.RelationKeySpaceDashboardId,
-	bundle.RelationKeyCreator,
 	bundle.RelationKeyCreatedDate,
 }
 
@@ -266,6 +275,9 @@ func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 				if err == nil {
 					v = domain.String(fileId.FileId.String())
 				}
+			}
+			if k == bundle.RelationKeyCreatedDate && s.GetLocalInfo().SpaceId != s.spaceService.PersonalSpaceId() {
+				return true
 			}
 			changed = true
 			st.SetDetailAndBundledRelation(k, v)

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/restriction/mock_restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -24,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -127,13 +129,21 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			"id":     domain.String(id),
-			"number": domain.Float64(2.18281828459045),
-			"🔥":      domain.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
-		})
+		details := &types.Struct{
+			Fields: map[string]*types.Value{
+				"id":     pbtypes.String(id),
+				"number": pbtypes.Float64(2.18281828459045),
+				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
+			},
+		}
 
-		err := fx.store.UpdateObjectDetails(context.Background(), id, details)
+		err := fx.store.UpdateObjectDetails(context.Background(), id, &types.Struct{
+			Fields: map[string]*types.Value{
+				"id":     pbtypes.String(id),
+				"number": pbtypes.Float64(2.18281828459045),
+				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
+			},
+		})
 		require.NoError(t, err)
 
 		// when
@@ -444,17 +454,24 @@ func TestInjectDerivedDetails(t *testing.T) {
 }
 
 type fixture struct {
-	store              *spaceindex.StoreFixture
+	objectStore        *objectstore.StoreFixture
+	store              spaceindex.Store
 	restrictionService *mock_restriction.MockService
 	indexer            *MockIndexer
 	eventSender        *mock_event.MockSender
 	source             *sourceStub
+	spaceIdResolver    *mock_idresolver.MockResolver
 
 	*smartBlock
 }
 
+const testSpaceId = "space1"
+
 func newFixture(id string, t *testing.T) *fixture {
-	objectStore := spaceindex.NewStoreFixture(t)
+	objectStore := objectstore.NewStoreFixture(t)
+	spaceIndex := objectStore.SpaceIndex(testSpaceId)
+
+	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
 	indexer := NewMockIndexer(t)
 
@@ -463,20 +480,23 @@ func newFixture(id string, t *testing.T) *fixture {
 
 	sender := mock_event.NewMockSender(t)
 
-	sb := New(nil, "", nil, restrictionService, objectStore, indexer, sender).(*smartBlock)
+	sb := New(nil, "", nil, restrictionService, spaceIndex, objectStore, indexer, sender, spaceIdResolver).(*smartBlock)
 	source := &sourceStub{
 		id:      id,
 		spaceId: "space1",
 		sbType:  smartblock.SmartBlockTypePage,
 	}
 	sb.source = source
+
 	return &fixture{
 		source:             source,
 		smartBlock:         sb,
-		store:              objectStore,
+		store:              spaceIndex,
 		restrictionService: restrictionService,
 		indexer:            indexer,
 		eventSender:        sender,
+		spaceIdResolver:    spaceIdResolver,
+		objectStore:        objectStore,
 	}
 }
 

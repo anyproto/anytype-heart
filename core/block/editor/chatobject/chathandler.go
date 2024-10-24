@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
@@ -75,7 +75,7 @@ func (d ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (
 }
 
 func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModify, mod query.Modifier) query.Modifier {
-	return query.ModifyFunc(func(a *fastjson.Arena, v *fastjson.Value) (result *fastjson.Value, modified bool, err error) {
+	return query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
 		if len(key.KeyPath) == 0 {
 			return nil, false, fmt.Errorf("no key path")
 		}

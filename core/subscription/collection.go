@@ -30,6 +30,8 @@ type collectionObserver struct {
 	objectStore       spaceindex.Store
 	collectionService CollectionService
 	recBatch          *mb.MB
+
+	spaceSubscription *spaceSubscriptions
 }
 
 func (s *spaceSubscriptions) newCollectionObserver(spaceId string, collectionID string, subID string) (*collectionObserver, error) {
@@ -52,6 +54,8 @@ func (s *spaceSubscriptions) newCollectionObserver(spaceId string, collectionID 
 		collectionService: s.collectionService,
 
 		idsSet: map[string]struct{}{},
+
+		spaceSubscription: s,
 	}
 	obs.ids = initialObjectIDs
 	for _, id := range initialObjectIDs {
@@ -62,7 +66,7 @@ func (s *spaceSubscriptions) newCollectionObserver(spaceId string, collectionID 
 		for {
 			select {
 			case objectIDs := <-objectsCh:
-				obs.updateIDs(objectIDs)
+				obs.updateIds(objectIDs)
 			case <-obs.closeCh:
 				return
 			}
@@ -87,13 +91,13 @@ func (c *collectionObserver) close() {
 func (c *collectionObserver) listEntries() []*entry {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	entries := c.fetchEntries(c.ids)
+	entries := c.spaceSubscription.fetchEntries(c.ids)
 	res := make([]*entry, len(entries))
 	copy(res, entries)
 	return res
 }
 
-func (c *collectionObserver) updateIDs(ids []string) {
+func (c *collectionObserver) updateIds(ids []string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -106,7 +110,7 @@ func (c *collectionObserver) updateIDs(ids []string) {
 	}
 	c.ids = ids
 
-	entries := c.fetchEntries(append(removed, added...))
+	entries := c.spaceSubscription.fetchEntriesLocked(append(removed, added...))
 	for _, e := range entries {
 		err := c.recBatch.Add(database.Record{
 			Details: e.data,
@@ -214,11 +218,17 @@ func (s *spaceSubscriptions) newCollectionSub(id string, spaceId string, collect
 	return sub, nil
 }
 
-func (c *collectionObserver) fetchEntries(ids []string) []*entry {
+func (s *spaceSubscriptions) fetchEntriesLocked(ids []string) []*entry {
+	s.m.Lock()
+	defer s.m.Unlock()
+	return s.fetchEntries(ids)
+}
+
+func (s *spaceSubscriptions) fetchEntries(ids []string) []*entry {
 	res := make([]*entry, 0, len(ids))
 	missingIDs := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if e := c.cache.Get(id); e != nil {
+		if e := s.cache.Get(id); e != nil {
 			res = append(res, e)
 			continue
 		}
@@ -228,7 +238,7 @@ func (c *collectionObserver) fetchEntries(ids []string) []*entry {
 	if len(missingIDs) == 0 {
 		return res
 	}
-	recs, err := c.objectStore.QueryByIds(missingIDs)
+	recs, err := s.objectStore.QueryByIds(missingIDs)
 	if err != nil {
 		log.Error("can't query by ids:", err)
 	}

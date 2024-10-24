@@ -3,8 +3,8 @@ package domain
 import (
 	"fmt"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
-	"github.com/valyala/fastjson"
 )
 
 type GenericMap[K ~string] struct {
@@ -55,14 +55,14 @@ func (d *GenericMap[K]) ToProto() *types.Struct {
 	return res
 }
 
-func JsonToProto(v *fastjson.Value) (*Details, error) {
+func NewDetailsFromAnyEnc(v *anyenc.Value) (*Details, error) {
 	obj, err := v.Object()
 	if err != nil {
 		return nil, fmt.Errorf("is object: %w", err)
 	}
 	res := NewDetailsWithSize(obj.Len())
 	var visitErr error
-	obj.Visit(func(k []byte, v *fastjson.Value) {
+	obj.Visit(func(k []byte, v *anyenc.Value) {
 		if visitErr != nil {
 			return
 		}
@@ -75,9 +75,9 @@ func JsonToProto(v *fastjson.Value) (*Details, error) {
 	return res, visitErr
 }
 
-func jsonValueToAny(d *Details, key RelationKey, val *fastjson.Value) error {
+func jsonValueToAny(d *Details, key RelationKey, val *anyenc.Value) error {
 	switch val.Type() {
-	case fastjson.TypeNumber:
+	case anyenc.TypeNumber:
 		v, err := val.Float64()
 		if err != nil {
 			return fmt.Errorf("number: %w", err)
@@ -85,20 +85,20 @@ func jsonValueToAny(d *Details, key RelationKey, val *fastjson.Value) error {
 		d.SetFloat(key, v)
 		return nil
 
-	case fastjson.TypeString:
+	case anyenc.TypeString:
 		v, err := val.StringBytes()
 		if err != nil {
 			return fmt.Errorf("string: %w", err)
 		}
 		d.SetString(key, string(v))
 		return nil
-	case fastjson.TypeTrue:
+	case anyenc.TypeTrue:
 		d.SetBool(key, true)
 		return nil
-	case fastjson.TypeFalse:
+	case anyenc.TypeFalse:
 		d.SetBool(key, false)
 		return nil
-	case fastjson.TypeArray:
+	case anyenc.TypeArray:
 		arrVals, err := val.Array()
 		if err != nil {
 			return fmt.Errorf("array: %w", err)
@@ -110,7 +110,7 @@ func jsonValueToAny(d *Details, key RelationKey, val *fastjson.Value) error {
 		}
 
 		firstVal := arrVals[0]
-		if firstVal.Type() == fastjson.TypeString {
+		if firstVal.Type() == anyenc.TypeString {
 			res := make([]string, 0, len(arrVals))
 			for _, arrVal := range arrVals {
 				v, err := arrVal.StringBytes()
@@ -121,7 +121,7 @@ func jsonValueToAny(d *Details, key RelationKey, val *fastjson.Value) error {
 			}
 			d.SetStringList(key, res)
 			return nil
-		} else if firstVal.Type() == fastjson.TypeNumber {
+		} else if firstVal.Type() == anyenc.TypeNumber {
 			res := make([]float64, 0, len(arrVals))
 			for _, arrVal := range arrVals {
 				v, err := arrVal.Float64()
@@ -140,16 +140,16 @@ func jsonValueToAny(d *Details, key RelationKey, val *fastjson.Value) error {
 	return nil
 }
 
-func (d *GenericMap[K]) ToJson(arena *fastjson.Arena) *fastjson.Value {
+func (d *GenericMap[K]) ToAnyEnc(arena *anyenc.Arena) *anyenc.Value {
 	obj := arena.NewObject()
 	d.Iterate(func(k K, v Value) bool {
-		obj.Set(string(k), v.ToJson(arena))
+		obj.Set(string(k), v.ToAnyEnc(arena))
 		return true
 	})
 	return obj
 }
 
-func (v Value) ToJson(arena *fastjson.Arena) *fastjson.Value {
+func (v Value) ToAnyEnc(arena *anyenc.Arena) *anyenc.Value {
 	switch v := v.value.(type) {
 	case nullValue:
 		return arena.NewNull()

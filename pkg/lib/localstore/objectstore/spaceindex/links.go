@@ -91,7 +91,7 @@ func (s *dsObjectStore) findOutboundLinks(ctx context.Context, id string) ([]str
 		return nil, err
 	}
 	arr := doc.Value().GetArray(linkOutboundField)
-	return jsonArrayToStrings(arr), nil
+	return anyEncArrayToStrings(arr), nil
 }
 
 // Find from which IDs specified one has inbound links.

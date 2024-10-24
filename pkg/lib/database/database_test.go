@@ -3,8 +3,8 @@ package database
 import (
 	"testing"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/stretchr/testify/assert"
-	"github.com/valyala/fastjson"
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -63,7 +63,7 @@ func newTestQueryBuilder(t *testing.T) queryBuilder {
 	objectStore := &stubSpaceObjectStore{}
 	return queryBuilder{
 		objectStore: objectStore,
-		arena:       &fastjson.Arena{},
+		arena:       &anyenc.Arena{},
 	}
 }
 
@@ -164,7 +164,7 @@ func Test_NewFilters(t *testing.T) {
 		mockStore := &stubSpaceObjectStore{}
 
 		// when
-		filters, err := NewFilters(Query{}, mockStore, &fastjson.Arena{}, &collate.Buffer{})
+		filters, err := NewFilters(Query{}, mockStore, &anyenc.Arena{}, &collate.Buffer{})
 
 		// then
 		assert.Nil(t, err)
@@ -196,7 +196,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// when
-		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{}, &collate.Buffer{})
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &anyenc.Arena{}, &collate.Buffer{})
 
 		// when
 		assert.Nil(t, err)
@@ -236,7 +236,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// then
-		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{}, &collate.Buffer{})
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &anyenc.Arena{}, &collate.Buffer{})
 
 		// when
 		assert.Nil(t, err)
@@ -276,7 +276,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// then
-		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{}, &collate.Buffer{})
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &anyenc.Arena{}, &collate.Buffer{})
 
 		// when
 		assert.Nil(t, err)
@@ -316,7 +316,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// then
-		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{}, &collate.Buffer{})
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &anyenc.Arena{}, &collate.Buffer{})
 
 		// when
 		assert.Nil(t, err)
@@ -350,7 +350,7 @@ func Test_NewFilters(t *testing.T) {
 		}
 
 		// then
-		filters, err := NewFilters(Query{Filters: filter}, mockStore, &fastjson.Arena{}, &collate.Buffer{})
+		filters, err := NewFilters(Query{Filters: filter}, mockStore, &anyenc.Arena{}, &collate.Buffer{})
 
 		// when
 		assert.Nil(t, err)

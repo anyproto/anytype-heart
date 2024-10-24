@@ -3,8 +3,8 @@ package subscription
 import (
 	"testing"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/stretchr/testify/require"
-	"github.com/valyala/fastjson"
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -63,7 +63,7 @@ func TestGroupTag(t *testing.T) {
 
 	q := database.Query{}
 
-	f, err := database.NewFilters(q, spaceindex.NewStoreFixture(t), &fastjson.Arena{}, &collate.Buffer{})
+	f, err := database.NewFilters(q, spaceindex.NewStoreFixture(t), &anyenc.Arena{}, &collate.Buffer{})
 	require.NoError(t, err)
 	filterTag := database.FilterNot{Filter: database.FilterEmpty{Key: kanbanKey}}
 	f.FilterObj = database.FiltersAnd{f.FilterObj, filterTag}

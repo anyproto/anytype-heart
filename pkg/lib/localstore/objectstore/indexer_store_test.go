@@ -58,13 +58,6 @@ func TestIndexerBatch(t *testing.T) {
 }
 
 func TestIndexerChecksums(t *testing.T) {
-	t.Run("previous checksums are not found", func(t *testing.T) {
-		s := NewStoreFixture(t)
-
-		_, err := s.GetGlobalChecksums()
-		require.Error(t, err)
-	})
-
 	t.Run("save and load checksums", func(t *testing.T) {
 		s := NewStoreFixture(t)
 

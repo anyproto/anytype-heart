@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -145,91 +144,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, det.Len() == 0)
 	})
-}
-
-func TestReindexDeletedObjects(t *testing.T) {
-	const (
-		spaceId1 = "spaceId1"
-		spaceId2 = "spaceId2"
-		spaceId3 = "spaceId3"
-	)
-	fx := NewIndexerFixture(t)
-	fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
-
-	fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
-		{
-			bundle.RelationKeyId:        domain.String("1"),
-			bundle.RelationKeyIsDeleted: domain.Bool(true),
-		},
-	})
-	fx.objectStore.AddObjects(t, spaceId2, []objectstore.TestObject{
-		{
-			bundle.RelationKeyId:        domain.String("2"),
-			bundle.RelationKeyIsDeleted: domain.Bool(true),
-		},
-	})
-	fx.objectStore.AddObjects(t, spaceId3, []objectstore.TestObject{
-		{
-			bundle.RelationKeyId:        domain.String("3"),
-			bundle.RelationKeyIsDeleted: domain.Bool(true),
-			bundle.RelationKeySpaceId:   domain.String(spaceId3),
-		},
-		{
-			bundle.RelationKeyId:   domain.String("4"),
-			bundle.RelationKeyName: domain.String("4"),
-		},
-	})
-
-	checksums := fx.getLatestChecksums(false)
-	checksums.AreDeletedObjectsReindexed = false
-
-	err := fx.objectStore.SaveChecksums(spaceId1, &checksums)
-	require.NoError(t, err)
-	err = fx.objectStore.SaveChecksums(spaceId2, &checksums)
-	require.NoError(t, err)
-
-	t.Run("reindex first space", func(t *testing.T) {
-		storage1 := mock_spacestorage.NewMockSpaceStorage(gomock.NewController(t))
-		storage1.EXPECT().TreeDeletedStatus("1").Return(spacestorage.TreeDeletedStatusDeleted, nil)
-		space1 := mock_space.NewMockSpace(t)
-		space1.EXPECT().Id().Return(spaceId1)
-		space1.EXPECT().Storage().Return(storage1)
-		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
-
-		err = fx.ReindexSpace(space1)
-		require.NoError(t, err)
-
-		sums, err := fx.objectStore.GetChecksums(spaceId1)
-		require.NoError(t, err)
-
-		assert.True(t, sums.AreDeletedObjectsReindexed)
-	})
-
-	t.Run("reindex second space", func(t *testing.T) {
-		storage2 := mock_spacestorage.NewMockSpaceStorage(gomock.NewController(t))
-		storage2.EXPECT().TreeDeletedStatus("2").Return(spacestorage.TreeDeletedStatusDeleted, nil)
-		space2 := mock_space.NewMockSpace(t)
-		space2.EXPECT().Id().Return(spaceId2)
-		space2.EXPECT().Storage().Return(storage2)
-		space2.EXPECT().StoredIds().Return([]string{}).Maybe()
-
-		err = fx.ReindexSpace(space2)
-		require.NoError(t, err)
-
-		sums, err := fx.objectStore.GetChecksums(spaceId2)
-		require.NoError(t, err)
-
-		assert.True(t, sums.AreDeletedObjectsReindexed)
-	})
-
-	got := fx.queryDeletedObjectIds(t, spaceId1)
-	assert.Equal(t, []string{"1"}, got)
-
-	got = fx.queryDeletedObjectIds(t, spaceId2)
-	assert.Equal(t, []string{"2"}, got)
-
-	got = fx.queryDeletedObjectIds(t, spaceId3)
-	assert.Equal(t, []string{"3"}, got)
 }
 
 func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {

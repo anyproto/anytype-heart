@@ -58,6 +58,10 @@ func (s *spaceViewStub) GetSharedSpacesLimit() (limits int) {
 	return
 }
 
+func (s *spaceViewStub) SetOwner(owner string, createdDate int64) (err error) {
+	return
+}
+
 func (s *spaceViewStub) GetPersistentInfo() spaceinfo.SpacePersistentInfo {
 	return spaceinfo.NewSpacePersistentInfo("spaceId")
 }

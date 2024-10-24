@@ -3,8 +3,8 @@ package storestate
 import (
 	"context"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -12,8 +12,8 @@ import (
 type ChangeOp struct {
 	Change Change
 	State  *StoreState
-	Value  *fastjson.Value
-	Arena  *fastjson.Arena
+	Value  *anyenc.Value
+	Arena  *anyenc.Arena
 }
 
 type DeleteMode uint

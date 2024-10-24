@@ -9,13 +9,13 @@ on:
       perf-test:
         description: 'Run perf test times'
         required: true
-        default: '100'
+        default: '10'
   schedule:
-    - cron: '0 0 * * *' # every day at midnight
+    - cron: '0 1 * * *' # every day at 1am
       filters:
         branches:
           include:
-            - 'feature/chat'
+            - 'main'
 
 
 permissions:
@@ -73,7 +73,6 @@ jobs:
       - name: run perf tests
         run: |
           echo "Running perf tests"
-          make download-tantivy-all
           RUN_COUNT=${{ github.event.inputs.perf-test }}
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             RUN_COUNT=100

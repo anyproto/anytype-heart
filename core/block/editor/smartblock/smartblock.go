@@ -12,6 +12,8 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/dgraph-io/badger/v4"
+	"go.uber.org/zap"
 
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -19,6 +21,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -40,6 +43,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/sqlitestorage"
 	"github.com/anyproto/anytype-heart/util/anonymize"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -95,9 +99,11 @@ func New(
 	currentParticipantId string,
 	fileStore filestore.FileStore,
 	restrictionService restriction.Service,
-	objectStore spaceindex.Store,
+	spaceIndex spaceindex.Store,
+	objectStore objectstore.ObjectStore,
 	indexer Indexer,
 	eventSender event.Sender,
+	spaceIdResolver idresolver.Resolver,
 ) SmartBlock {
 	s := &smartBlock{
 		currentParticipantId: currentParticipantId,
@@ -109,9 +115,12 @@ func New(
 
 		fileStore:          fileStore,
 		restrictionService: restrictionService,
-		objectStore:        objectStore,
+		spaceIndex:         spaceIndex,
 		indexer:            indexer,
 		eventSender:        eventSender,
+		objectStore:        objectStore,
+		spaceIdResolver:    spaceIdResolver,
+		lastDepDetails:     map[string]*domain.Details{},
 	}
 	return s
 }
@@ -244,9 +253,11 @@ type smartBlock struct {
 	// Deps
 	fileStore          filestore.FileStore
 	restrictionService restriction.Service
-	objectStore        spaceindex.Store
+	spaceIndex         spaceindex.Store
+	objectStore        objectstore.ObjectStore
 	indexer            Indexer
 	eventSender        event.Sender
+	spaceIdResolver    idresolver.Resolver
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -318,7 +329,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	sb.undo = undo.NewHistory(0)
 	sb.restrictions = sb.restrictionService.GetRestrictions(sb)
-	sb.lastDepDetails = map[string]*domain.Details{}
 	if ctx.State != nil {
 		// need to store file keys in case we have some new files in the state
 		sb.storeFileKeys(ctx.State)
@@ -355,7 +365,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	})
 	ctx.State.AddBundledRelationLinks(relKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
-		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.objectStore).Migrate(ctx.State)
+		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex).Migrate(ctx.State)
 	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
@@ -447,19 +457,42 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
 	}
+
+	depIds := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true)
+	sb.setDependentIDs(depIds)
+
+	perSpace, err := sb.partitionIdsBySpace(sb.depIds)
+	if err != nil {
+		return nil, fmt.Errorf("partiton by space: %w", err)
+	}
+
 	recordsCh := make(chan *domain.Details, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
 
-	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true)
-	sb.setDependentIDs(depIDs)
-
 	var records []database.Record
-	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdsAndSubscribeForChanges(sb.depIds, sb.recordsSub)
-	if err != nil {
-		// datastore unavailable, cancel the subscription
-		sb.recordsSub.Close()
-		sb.closeRecordsSub = nil
-		return
+	closers := make([]func(), 0, len(perSpace))
+
+	for spaceId, perSpaceDepIds := range perSpace {
+		spaceIndex := sb.objectStore.SpaceIndex(spaceId)
+
+		recs, closeRecordsSub, err := spaceIndex.QueryByIdsAndSubscribeForChanges(perSpaceDepIds, sb.recordsSub)
+		if err != nil {
+			for _, closer := range closers {
+				closer()
+			}
+			// datastore unavailable, cancel the subscription
+			sb.recordsSub.Close()
+			sb.closeRecordsSub = nil
+			return nil, fmt.Errorf("subscribe: %w", err)
+		}
+
+		closers = append(closers, closeRecordsSub)
+		records = append(records, recs...)
+	}
+	sb.closeRecordsSub = func() {
+		for _, closer := range closers {
+			closer()
+		}
 	}
 
 	details = make([]*model.ObjectViewDetailsSet, 0, len(records)+1)
@@ -478,6 +511,25 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	}
 	go sb.metaListener(recordsCh)
 	return
+}
+
+func (sb *smartBlock) partitionIdsBySpace(ids []string) (map[string][]string, error) {
+	perSpace := map[string][]string{}
+	for _, id := range ids {
+		spaceId, err := sb.spaceIdResolver.ResolveSpaceID(id)
+		if errors.Is(err, sqlitestorage.ErrObjectNotFound) || errors.Is(err, badger.ErrKeyNotFound) {
+			perSpace[sb.space.Id()] = append(perSpace[sb.space.Id()], id)
+			continue
+		}
+
+		if err != nil {
+			perSpace[sb.space.Id()] = append(perSpace[sb.space.Id()], id)
+			log.With("id", id).Warn("resolve space id", zap.Error(err))
+			continue
+		}
+		perSpace[spaceId] = append(perSpace[spaceId], id)
+	}
+	return perSpace, nil
 }
 
 func (sb *smartBlock) Lock() {
@@ -784,7 +836,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
-	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.objectStore).Migrate(s)
+	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex).Migrate(s)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
@@ -805,13 +857,23 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 		return true
 	}
 	newIDs := sb.recordsSub.Subscribe(sb.depIds)
-	records, err := sb.objectStore.QueryByIds(newIDs)
+
+	perSpace, err := sb.partitionIdsBySpace(newIDs)
 	if err != nil {
-		log.Errorf("queryById error: %v", err)
+		log.Errorf("partiton by space error: %v", err)
 	}
-	for _, rec := range records {
-		sb.onMetaChange(rec.Details)
+
+	for spaceId, ids := range perSpace {
+		spaceIndex := sb.objectStore.SpaceIndex(spaceId)
+		records, err := spaceIndex.QueryByIds(ids)
+		if err != nil {
+			log.Errorf("queryById error: %v", err)
+		}
+		for _, rec := range records {
+			sb.onMetaChange(rec.Details)
+		}
 	}
+
 	return true
 }
 
@@ -859,7 +921,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...do
 	}
 	// todo: filter-out existing relation links?
 	// in the most cases it should save as an objectstore query
-	relations, err := sb.objectStore.FetchRelationByKeys(relationKeys...)
+	relations, err := sb.spaceIndex.FetchRelationByKeys(relationKeys...)
 	if err != nil {
 		return
 	}
@@ -899,7 +961,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 }
 
 func (sb *smartBlock) getDetailsFromStore() (*domain.Details, error) {
-	storedDetails, err := sb.objectStore.GetDetails(sb.Id())
+	storedDetails, err := sb.spaceIndex.GetDetails(sb.Id())
 	if err != nil || storedDetails == nil {
 		return nil, err
 	}
@@ -908,7 +970,7 @@ func (sb *smartBlock) getDetailsFromStore() (*domain.Details, error) {
 
 func (sb *smartBlock) appendPendingDetails(details *domain.Details) (resultDetails *domain.Details, hasPendingLocalDetails bool) {
 	// Consume pending details
-	err := sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *domain.Details) (*domain.Details, error) {
+	err := sb.spaceIndex.UpdatePendingLocalDetails(sb.Id(), func(pending *domain.Details) (*domain.Details, error) {
 		if pending.Len() > 0 {
 			hasPendingLocalDetails = true
 		}
@@ -1242,7 +1304,7 @@ func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	} else {
 		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.objectStore.FetchRelationByLinks(links)
+	rels, _ := sb.spaceIndex.FetchRelationByLinks(links)
 	return rels
 }
 

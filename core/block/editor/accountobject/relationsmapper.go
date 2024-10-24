@@ -3,8 +3,8 @@ package accountobject
 import (
 	"fmt"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 )
@@ -26,7 +26,7 @@ func newRelationsMapper(keys map[string]KeyType) *relationsMapper {
 	}
 }
 
-func (r *relationsMapper) GetRelationKey(key string, val *fastjson.Value) (domain.Value, bool) {
+func (r *relationsMapper) GetRelationKey(key string, val *anyenc.Value) (domain.Value, bool) {
 	kt, ok := r.keys[key]
 	if !ok {
 		return domain.Invalid(), false
@@ -39,11 +39,11 @@ func (r *relationsMapper) GetRelationKey(key string, val *fastjson.Value) (domai
 		}
 		return domain.String(string(val)), true
 	case KeyTypeInt64:
-		val := val.GetInt64(key)
+		val := val.GetInt(key)
 		if val == 0 {
 			return domain.Invalid(), false
 		}
-		return domain.Int64(val), true
+		return domain.Int64(int64(val)), true
 	}
 	return domain.Invalid(), false
 }

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
@@ -820,15 +820,15 @@ func (s *State) StringDebug() string {
 	}
 
 	fmt.Fprintf(buf, "\nDetails:\n")
-	arena := &fastjson.Arena{}
+	arena := &anyenc.Arena{}
 	s.Details().IterateSorted(func(k domain.RelationKey, v domain.Value) bool {
-		raw := string(v.ToJson(arena).MarshalTo(nil))
+		raw := string(v.ToAnyEnc(arena).MarshalTo(nil))
 		fmt.Fprintf(buf, "\t%s:\t%v\n", k, raw)
 		return true
 	})
 	fmt.Fprintf(buf, "\nLocal details:\n")
 	s.LocalDetails().IterateSorted(func(k domain.RelationKey, v domain.Value) bool {
-		raw := string(v.ToJson(arena).MarshalTo(nil))
+		raw := string(v.ToAnyEnc(arena).MarshalTo(nil))
 		fmt.Fprintf(buf, "\t%s:\t%v\n", k, raw)
 		return true
 	})

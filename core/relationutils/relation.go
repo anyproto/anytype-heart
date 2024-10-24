@@ -23,9 +23,8 @@ func RelationFromDetails(det *domain.Details) *Relation {
 			ObjectTypes:      det.GetStringList(bundle.RelationKeyRelationFormatObjectTypes),
 			MaxCount:         maxCount,
 			Description:      det.GetString(bundle.RelationKeyDescription),
-			Scope:            model.RelationScope(det.GetFloat64(bundle.RelationKeyScope)),
 			Creator:          det.GetString(bundle.RelationKeyCreator),
-			Revision:         int64(det.GetInt64(bundle.RelationKeyRevision)),
+			Revision:         det.GetInt64(bundle.RelationKeyRevision),
 		},
 	}
 
@@ -43,25 +42,25 @@ func (r *Relation) RelationLink() *model.RelationLink {
 }
 
 func (r *Relation) ToDetails() *domain.Details {
-	det := domain.NewDetails()
-	det.SetString(bundle.RelationKeyCreator, r.GetCreator())
-	det.SetString(bundle.RelationKeyDescription, r.GetDescription())
-	det.SetString(bundle.RelationKeyId, r.Id)
-	det.SetBool(bundle.RelationKeyIsHidden, r.GetHidden())
-	det.SetBool(bundle.RelationKeyIsReadonly, r.GetReadOnlyRelation())
-	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
-	det.SetString(bundle.RelationKeyName, r.GetName())
-	det.SetProtoValue(bundle.RelationKeyRelationDefaultValue, r.GetDefaultValue())
-	det.SetInt64(bundle.RelationKeyRelationFormat, int64(r.GetFormat()))
-	det.SetStringList(bundle.RelationKeyRelationFormatObjectTypes, r.GetObjectTypes())
-	det.SetString(bundle.RelationKeyRelationKey, r.GetKey())
-	det.SetInt64(bundle.RelationKeyRelationMaxCount, int64(r.GetMaxCount()))
-	det.SetBool(bundle.RelationKeyRelationReadonlyValue, r.GetReadOnly())
-	det.SetInt64(bundle.RelationKeyScope, int64(r.GetScope()))
-	det.SetString(bundle.RelationKeyType, bundle.TypeKeyRelation.BundledURL())
-	det.SetString(bundle.RelationKeyUniqueKey, domain.RelationKey(r.GetKey()).URL())
-	det.SetInt64(bundle.RelationKeyRevision, r.GetRevision())
-	return det
+	return domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyCreator:                   domain.String(r.GetCreator()),
+		bundle.RelationKeyDescription:               domain.String(r.GetDescription()),
+		bundle.RelationKeyId:                        domain.String(r.Id),
+		bundle.RelationKeyIsHidden:                  domain.Bool(r.GetHidden()),
+		bundle.RelationKeyIsReadonly:                domain.Bool(r.GetReadOnlyRelation()),
+		bundle.RelationKeyLayout:                    domain.Int64(int64(model.ObjectType_relation)),
+		bundle.RelationKeyName:                      domain.String(r.GetName()),
+		bundle.RelationKeyRelationDefaultValue:      domain.ValueFromProto(r.GetDefaultValue()),
+		bundle.RelationKeyRelationFormat:            domain.Float64(float64(r.GetFormat())),
+		bundle.RelationKeyRelationFormatObjectTypes: domain.StringList(r.GetObjectTypes()),
+		bundle.RelationKeyRelationKey:               domain.String(r.GetKey()),
+		bundle.RelationKeyRelationMaxCount:          domain.Float64(float64(r.GetMaxCount())),
+		bundle.RelationKeyRelationReadonlyValue:     domain.Bool(r.GetReadOnly()),
+		bundle.RelationKeyType:                      domain.String(bundle.TypeKeyRelation.BundledURL()),
+		// TODO Is it ok?
+		bundle.RelationKeyUniqueKey: domain.String(domain.RelationKey(r.GetKey()).URL()),
+		bundle.RelationKeyRevision:  domain.Int64(r.GetRevision()),
+	})
 }
 
 type Relations []*Relation

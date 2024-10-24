@@ -75,6 +75,7 @@ type SpaceView interface {
 	SetInviteFileInfo(fileCid string, fileKey string) (err error)
 	SetAccessType(acc spaceinfo.AccessType) error
 	SetAclIsEmpty(isEmpty bool) (err error)
+	SetOwner(ownerId string, createdDate int64) (err error)
 	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
 	RemoveExistingInviteInfo() (fileCid string, err error)
 	GetSpaceDescription() (data spaceinfo.SpaceDescription)

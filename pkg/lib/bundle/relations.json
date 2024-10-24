@@ -894,15 +894,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "scope",
-    "maxCount": 1,
-    "name": "Scope",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Important relations that always appear at the top of the object",
     "format": "object",
     "hidden": true,

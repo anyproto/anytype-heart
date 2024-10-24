@@ -23,7 +23,7 @@ func (s *dsObjectStore) GetDetails(id string) (*domain.Details, error) {
 	if err != nil {
 		return nil, fmt.Errorf("find by id: %w", err)
 	}
-	details, err := domain.JsonToProto(doc.Value())
+	details, err := domain.NewDetailsFromAnyEnc(doc.Value())
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal details: %w", err)
 	}
@@ -91,7 +91,7 @@ func (s *dsObjectStore) getObjectInfo(ctx context.Context, id string) (*database
 	if err != nil {
 		return nil, fmt.Errorf("find by id: %w", err)
 	}
-	details, err = domain.JsonToProto(doc.Value())
+	details, err = domain.NewDetailsFromAnyEnc(doc.Value())
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal details: %w", err)
 	}

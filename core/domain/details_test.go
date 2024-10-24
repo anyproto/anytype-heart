@@ -116,7 +116,7 @@ func TestStructDiff(t *testing.T) {
 // 	t.Run("empty", func(t *testing.T) {
 // 		val := fastjson.MustParse(`{}`)
 //
-// 		got, err := JsonToProto(val)
+// 		got, err := NewDetailsFromAnyEnc(val)
 // 		require.NoError(t, err)
 //
 // 		want := &types.Struct{
@@ -144,7 +144,7 @@ func TestStructDiff(t *testing.T) {
 // 				"key9": {"nestedKey1": "value1", "nestedKey2": 123}
 // 		}`)
 //
-// 		got, err := JsonToProto(val)
+// 		got, err := NewDetailsFromAnyEnc(val)
 // 		require.NoError(t, err)
 //
 // 		want := &types.Struct{

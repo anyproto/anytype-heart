@@ -149,7 +149,7 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 		if err != nil {
 			return nil, fmt.Errorf("get doc: %w", err)
 		}
-		details, err := domain.JsonToProto(doc.Value())
+		details, err := domain.NewDetailsFromAnyEnc(doc.Value())
 		if err != nil {
 			return nil, fmt.Errorf("json to proto: %w", err)
 		}
@@ -198,7 +198,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 			log.Errorf("QueryByIds failed to find id: %s", res.Path.ObjectId)
 			continue
 		}
-		details, err := domain.JsonToProto(doc.Value())
+		details, err := domain.NewDetailsFromAnyEnc(doc.Value())
 		if err != nil {
 			log.Errorf("QueryByIds failed to extract details: %s", res.Path.ObjectId)
 			continue
@@ -458,7 +458,7 @@ func (s *dsObjectStore) QueryByIds(ids []string) (records []database.Record, err
 			log.Infof("QueryByIds failed to find id: %s", id)
 			continue
 		}
-		details, err := domain.JsonToProto(doc.Value())
+		details, err := domain.NewDetailsFromAnyEnc(doc.Value())
 		if err != nil {
 			log.Errorf("QueryByIds failed to extract details: %s", id)
 			continue
@@ -545,7 +545,7 @@ func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *domain
 		}
 
 		var details *domain.Details
-		details, err = domain.JsonToProto(doc.Value())
+		details, err = domain.NewDetailsFromAnyEnc(doc.Value())
 		if err != nil {
 			err = fmt.Errorf("json to proto: %w", err)
 			return

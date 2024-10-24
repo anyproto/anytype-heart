@@ -8,12 +8,13 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/valyala/fastjson"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
@@ -36,7 +37,7 @@ var log = logger.NewNamedSugared("common.editor.accountobject")
 
 const (
 	collectionName        = "account"
-	accountDocument       = "accountObject"
+	accountDocumentId     = "accountObject"
 	idKey                 = "id"
 	analyticsKey          = "analyticsId"
 	iconMigrationKey      = "iconMigration"
@@ -51,6 +52,8 @@ type ProfileDetails struct {
 
 type AccountObject interface {
 	smartblock.SmartBlock
+	anystoredebug.AnystoreDebug
+
 	basic.DetailsSettable
 	SetSharedSpacesLimit(limit int) (err error)
 	SetProfileDetails(details *domain.Details) (err error)
@@ -68,6 +71,7 @@ type StoreDbProvider interface {
 var _ AccountObject = (*accountObject)(nil)
 
 type accountObject struct {
+	anystoredebug.AnystoreDebug
 	smartblock.SmartBlock
 	bs          basic.DetailsSettable
 	state       *storestate.StoreState
@@ -119,6 +123,9 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("create state store: %w", err)
 	}
 	a.state = stateStore
+
+	a.AnystoreDebug = anystoredebug.New(a.SmartBlock, stateStore)
+
 	storeSource, ok := ctx.Source.(source.Store)
 	if !ok {
 		return fmt.Errorf("source is not a store")
@@ -134,7 +141,7 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("get collection: %w", err)
 	}
 	a.ctx, a.cancel = context.WithCancel(context.Background())
-	_, err = coll.FindId(ctx.Ctx, accountDocument)
+	_, err = coll.FindId(ctx.Ctx, accountDocumentId)
 	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 		return fmt.Errorf("find id: %w", err)
 	}
@@ -144,7 +151,7 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 		if err != nil {
 			return fmt.Errorf("generate initial doc: %w", err)
 		}
-		err = coll.Insert(ctx.Ctx, docToInsert)
+		err = coll.Insert(ctx.Ctx, anyenc.MustParseJson(docToInsert))
 		if err != nil {
 			return fmt.Errorf("insert account document: %w", err)
 		}
@@ -179,12 +186,12 @@ func (a *accountObject) genInitialDoc(isNewAccount bool) (docToInsert string, er
 	if isNewAccount {
 		docToInsert = fmt.Sprintf(
 			`{"%s":"%s","%s":"%s","%s":"true","%s":"%s"}`,
-			idKey, accountDocument,
+			idKey, accountDocumentId,
 			analyticsKey, a.cfg.AnalyticsId,
 			iconMigrationKey,
 			privateAnalyticsIdKey, privateAnalytics)
 	} else {
-		docToInsert = fmt.Sprintf(`{"%s":"%s"}`, idKey, accountDocument)
+		docToInsert = fmt.Sprintf(`{"%s":"%s"}`, idKey, accountDocumentId)
 	}
 	return
 }
@@ -231,7 +238,7 @@ func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string,
 			if !ok {
 				continue
 			}
-			err := builder.Modify(collectionName, accountDocument, []string{set.Key}, pb.ModifyOp_Set, val)
+			err := builder.Modify(collectionName, accountDocumentId, []string{set.Key}, pb.ModifyOp_Set, val)
 			if err != nil {
 				return "", fmt.Errorf("modify content: %w", err)
 			}
@@ -249,7 +256,7 @@ func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string,
 
 func (a *accountObject) SetAnalyticsId(id string) error {
 	builder := &storestate.Builder{}
-	err := builder.Modify(collectionName, accountDocument, []string{analyticsKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, id))
+	err := builder.Modify(collectionName, accountDocumentId, []string{analyticsKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, id))
 	if err != nil {
 		return nil
 	}
@@ -257,7 +264,7 @@ func (a *accountObject) SetAnalyticsId(id string) error {
 	if err != nil {
 		return fmt.Errorf("generate private analytics id: %w", err)
 	}
-	err = builder.Modify(collectionName, accountDocument, []string{privateAnalyticsIdKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, privateAnalyticsId))
+	err = builder.Modify(collectionName, accountDocumentId, []string{privateAnalyticsIdKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, privateAnalyticsId))
 	if err != nil {
 		return nil
 	}
@@ -285,7 +292,7 @@ func (a *accountObject) onUpdate() {
 
 func (a *accountObject) setValue(key string, val any) error {
 	builder := &storestate.Builder{}
-	err := builder.Modify(collectionName, accountDocument, []string{key}, pb.ModifyOp_Set, val)
+	err := builder.Modify(collectionName, accountDocumentId, []string{key}, pb.ModifyOp_Set, val)
 	if err != nil {
 		return nil
 	}
@@ -297,13 +304,13 @@ func (a *accountObject) setValue(key string, val any) error {
 	return err
 }
 
-func (a *accountObject) getValue() (val *fastjson.Value, err error) {
+func (a *accountObject) getValue() (val *anyenc.Value, err error) {
 	coll, err := a.state.Collection(a.ctx, collectionName)
 	if err != nil {
 		err = fmt.Errorf("get collection: %w", err)
 		return
 	}
-	obj, err := coll.FindId(a.ctx, accountDocument)
+	obj, err := coll.FindId(a.ctx, accountDocumentId)
 	if err != nil {
 		err = fmt.Errorf("find id: %w", err)
 		return
@@ -373,7 +380,7 @@ func (a *accountObject) update(ctx context.Context, st *state.State) (err error)
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
-	obj, err := coll.FindId(ctx, accountDocument)
+	obj, err := coll.FindId(ctx, accountDocumentId)
 	if err != nil {
 		return fmt.Errorf("find id: %w", err)
 	}

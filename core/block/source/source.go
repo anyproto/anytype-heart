@@ -328,15 +328,10 @@ func (s *source) buildState() (doc state.Doc, err error) {
 }
 
 func (s *source) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
-	root := s.ObjectTree.Root()
-	createdDate = root.Timestamp
-
 	header := s.ObjectTree.UnmarshalledHeader()
-	if header != nil && header.Timestamp != 0 && header.Timestamp < createdDate {
-		createdDate = header.Timestamp
-	}
-	if root != nil && root.Identity != nil {
-		creatorObjectId = domain.NewParticipantId(s.spaceID, root.Identity.Account())
+	createdDate = header.Timestamp
+	if header.Identity != nil {
+		creatorObjectId = domain.NewParticipantId(s.spaceID, header.Identity.Account())
 	}
 	return
 }

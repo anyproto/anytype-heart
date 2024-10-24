@@ -23,7 +23,7 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...string) erro
 	obj := arena.NewObject()
 	for _, id := range ids {
 		obj.Set("id", arena.NewString(id))
-		_, err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
+		err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
 		if err != nil {
 			return errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
 		}
@@ -107,13 +107,6 @@ func (s *dsObjectStore) SaveChecksums(spaceId string, checksums *model.ObjectSto
 	if err != nil {
 		return err
 	}
-	_, err = s.indexerChecksums.UpsertOne(s.componentCtx, it)
+	err = s.indexerChecksums.UpsertOne(s.componentCtx, it)
 	return err
-}
-
-// GetGlobalChecksums is a migration method, it returns checksums stored before we started to store them per space
-// it will be deleted after the first SaveChecksums() call
-func (s *dsObjectStore) GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error) {
-	// TODO What to do?
-	return s.GetChecksums("global")
 }
