@@ -48,7 +48,13 @@ const (
 
 	// ForceMarketplaceReindex forces to do reindex only for marketplace space
 	ForceMarketplaceReindex int32 = 1
+
+	ForceReindexDeletedObjectsCounter int32 = 1
 )
+
+type allDeletedIdsProvider interface {
+	AllDeletedTreeIds() (ids []string, err error)
+}
 
 func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	checksums, err := i.store.GetChecksums(spaceID)
@@ -56,27 +62,20 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 		return reindexFlags{}, err
 	}
 	if checksums == nil {
-		checksums, err = i.store.GetGlobalChecksums()
-		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
-			return reindexFlags{}, err
-		}
-
-		if checksums == nil {
-			checksums = &model.ObjectStoreChecksums{
-				// per space
-				ObjectsForceReindexCounter: ForceObjectsReindexCounter,
-				// ?
-				FilesForceReindexCounter: ForceFilesReindexCounter,
-				// global
-				IdxRebuildCounter: ForceIdxRebuildCounter,
-				// per space
-				FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
-				LinksErase:                       ForceLinksReindexCounter,
-				// global
-				BundledObjects:             ForceBundledObjectsReindexCounter,
-				AreOldFilesRemoved:         true,
-				AreDeletedObjectsReindexed: true,
-			}
+		checksums = &model.ObjectStoreChecksums{
+			// per space
+			ObjectsForceReindexCounter: ForceObjectsReindexCounter,
+			// ?
+			FilesForceReindexCounter: ForceFilesReindexCounter,
+			// global
+			IdxRebuildCounter: ForceIdxRebuildCounter,
+			// per space
+			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
+			LinksErase:                       ForceLinksReindexCounter,
+			// global
+			BundledObjects:        ForceBundledObjectsReindexCounter,
+			AreOldFilesRemoved:    true,
+			ReindexDeletedObjects: 0, // Set to zero to force reindexing of deleted objects when objectstore was deleted
 		}
 	}
 
@@ -108,7 +107,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	if !checksums.AreOldFilesRemoved {
 		flags.removeOldFiles = true
 	}
-	if !checksums.AreDeletedObjectsReindexed {
+	if checksums.ReindexDeletedObjects != ForceReindexDeletedObjectsCounter {
 		flags.deletedObjects = true
 	}
 	if checksums.LinksErase != ForceLinksReindexCounter {
@@ -242,34 +241,18 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
 	store := i.store.SpaceIndex(space.Id())
-	recs, err := store.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Empty,
-			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("query deleted objects: %w", err)
+	storage, ok := space.Storage().(allDeletedIdsProvider)
+	if !ok {
+		return fmt.Errorf("space storage doesn't implement allDeletedIdsProvider")
 	}
-	for _, rec := range recs {
-		objectId := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
-		status, err := space.Storage().TreeDeletedStatus(objectId)
+	allIds, err := storage.AllDeletedTreeIds()
+	if err != nil {
+		return fmt.Errorf("get deleted tree ids: %w", err)
+	}
+	for _, objectId := range allIds {
+		err = store.DeleteObject(objectId)
 		if err != nil {
-			log.With("spaceId", space.Id(), "objectId", objectId).Warnf("failed to get tree deleted status: %s", err)
-			continue
-		}
-		if status != "" {
-			err = store.DeleteObject(objectId)
-			if err != nil {
-				log.With("spaceId", space.Id(), "objectId", objectId).Errorf("failed to reindex deleted object: %s", err)
-			}
+			log.With("spaceId", space.Id(), "objectId", objectId, "error", err).Errorf("failed to reindex deleted object")
 		}
 	}
 	return nil
@@ -524,6 +507,7 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 		AreOldFilesRemoved:               true,
 		AreDeletedObjectsReindexed:       true,
 		LinksErase:                       ForceLinksReindexCounter,
+		ReindexDeletedObjects:            ForceReindexDeletedObjectsCounter,
 	}
 	if isMarketplace {
 		checksums.MarketplaceForceReindexCounter = ForceMarketplaceReindex

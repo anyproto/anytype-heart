@@ -108,6 +108,10 @@ func (s spaceKeys) TreeDeletedKey(id string) []byte {
 	return treestorage.JoinStringsToBytes("space", s.spaceId, "deleted", id)
 }
 
+func (s spaceKeys) TreeDeletedPrefix() []byte {
+	return treestorage.JoinStringsToBytes("space", s.spaceId, "deleted")
+}
+
 func (s spaceKeys) SpaceDeletedKey() []byte {
 	return s.spaceDeletedKey
 }

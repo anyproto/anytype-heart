@@ -32,7 +32,7 @@ func (s *service) ProfileInfo() (Profile, error) {
 		AccountId: s.AccountID(),
 	}
 
-	profileDetails, err := s.objectStore.SpaceIndex(s.personalSpaceId).GetDetails(profile.Id)
+	profileDetails, err := s.objectStore.SpaceIndex(s.spaceService.TechSpaceId()).GetDetails(profile.Id)
 	if err != nil {
 		return profile, err
 	}

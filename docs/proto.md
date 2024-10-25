@@ -27607,9 +27607,10 @@ Precondition: user A and user B opened the same block
 | bundledObjects | [int32](#int32) |  | anytypeProfile and maybe some others in the feature |
 | filestoreKeysForceReindexCounter | [int32](#int32) |  |  |
 | areOldFilesRemoved | [bool](#bool) |  |  |
-| areDeletedObjectsReindexed | [bool](#bool) |  |  |
+| areDeletedObjectsReindexed | [bool](#bool) |  | DEPRECATED |
 | linksErase | [int32](#int32) |  |  |
 | marketplaceForceReindexCounter | [int32](#int32) |  |  |
+| reindexDeletedObjects | [int32](#int32) |  |  |
 
 
 
