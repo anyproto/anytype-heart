@@ -3,11 +3,13 @@ package editor
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -109,6 +111,68 @@ func TestParticipant_ModifyIdentityDetails(t *testing.T) {
 		require.Equal(t, fields[key], participantFields[key])
 		require.True(t, participantRelationLinks.Has(key))
 	}
+}
+
+func TestParticipant_Init(t *testing.T) {
+	t.Run("title block not empty, because name detail is in store", func(t *testing.T) {
+		// given
+		sb := smarttest.New("root")
+		store := newStoreFixture(t)
+		store.AddObjects(t, []objectstore.TestObject{{
+			bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
+			bundle.RelationKeyId:      pbtypes.String("root"),
+			bundle.RelationKeyName:    pbtypes.String("test"),
+		}})
+
+		basicComponent := basic.NewBasic(sb, store, nil, nil, nil)
+		p := &participant{
+			SmartBlock:       sb,
+			DetailsUpdatable: basicComponent,
+			objectStore:      store,
+		}
+
+		initCtx := &smartblock.InitContext{
+			IsNewObject: true,
+		}
+
+		// then
+		err := p.Init(initCtx)
+		assert.NoError(t, err)
+		migration.RunMigrations(p, initCtx)
+		err = p.Apply(initCtx.State)
+		assert.NoError(t, err)
+
+		// then
+		assert.NotNil(t, p.NewState().Get(state.TitleBlockID))
+		assert.Equal(t, "test", p.NewState().Get(state.TitleBlockID).Model().GetText().GetText())
+	})
+	t.Run("title block is not empty", func(t *testing.T) {
+		// given
+		sb := smarttest.New("root")
+		store := newStoreFixture(t)
+
+		basicComponent := basic.NewBasic(sb, store, nil, nil, nil)
+		p := &participant{
+			SmartBlock:       sb,
+			DetailsUpdatable: basicComponent,
+			objectStore:      store,
+		}
+
+		initCtx := &smartblock.InitContext{
+			IsNewObject: true,
+		}
+
+		// then
+		err := p.Init(initCtx)
+		assert.NoError(t, err)
+		migration.RunMigrations(p, initCtx)
+		err = p.Apply(initCtx.State)
+		assert.NoError(t, err)
+
+		// then
+		assert.NotNil(t, p.NewState().Get(state.TitleBlockID))
+		assert.Equal(t, "", p.NewState().Get(state.TitleBlockID).Model().GetText().GetText())
+	})
 }
 
 func newStoreFixture(t *testing.T) *spaceindex.StoreFixture {
