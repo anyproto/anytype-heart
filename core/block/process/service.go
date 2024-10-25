@@ -27,6 +27,11 @@ type Process interface {
 	Done() chan struct{}
 }
 
+type UpdatableProcess interface {
+	Process
+	Updated() chan struct{}
+}
+
 type Service interface {
 	// Add adds new process to pool
 	Add(p Process) (err error)
@@ -92,6 +97,10 @@ func (s *service) monitor(p Process) {
 			},
 		},
 	})
+	var updated chan struct{}
+	if updatableProcess, ok := p.(UpdatableProcess); ok {
+		updated = updatableProcess.Updated()
+	}
 	var prevInfo = info
 	for {
 		select {
@@ -128,6 +137,22 @@ func (s *service) monitor(p Process) {
 				notificationSender.SendNotification()
 			}
 			return
+		case <-updated:
+			info := p.Info()
+			if !infoEquals(info, prevInfo) {
+				s.eventSender.BroadcastExceptSessions(&pb.Event{
+					Messages: []*pb.EventMessage{
+						{
+							Value: &pb.EventMessageValueOfProcessUpdate{
+								ProcessUpdate: &pb.EventProcessUpdate{
+									Process: &info,
+								},
+							},
+						},
+					},
+				}, s.getExcludedSessions())
+				prevInfo = info
+			}
 		}
 	}
 }

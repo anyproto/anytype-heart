@@ -27,13 +27,14 @@ func NewProgress(processMessage pb.IsModelProcessMessage) Progress {
 		id:             bson.NewObjectId().Hex(),
 		done:           make(chan struct{}),
 		cancel:         make(chan struct{}),
+		update:         make(chan struct{}, 1),
 		processMessage: processMessage,
 	}
 }
 
 type progress struct {
 	id                    string
-	done, cancel          chan struct{}
+	done, cancel, update  chan struct{}
 	totalCount, doneCount int64
 
 	processMessage pb.IsModelProcessMessage
@@ -64,10 +65,12 @@ func (p *progress) SetTotalPreservingRatio(total int64) {
 
 func (p *progress) SetDone(done int64) {
 	atomic.StoreInt64(&p.doneCount, done)
+	p.update <- struct{}{}
 }
 
 func (p *progress) AddDone(delta int64) {
 	atomic.AddInt64(&p.doneCount, delta)
+	p.update <- struct{}{}
 }
 
 func (p *progress) SetProgressMessage(msg string) {
@@ -136,6 +139,10 @@ func (p *progress) Info() pb.ModelProcess {
 		},
 		Message: p.processMessage,
 	}
+}
+
+func (p *progress) Updated() chan struct{} {
+	return p.update
 }
 
 func (p *progress) Done() chan struct{} {
