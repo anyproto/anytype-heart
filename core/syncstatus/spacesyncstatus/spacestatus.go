@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -55,14 +56,19 @@ type spaceSyncStatus struct {
 	nodeUsage     NodeUsage
 	subs          syncsubscriptions.SyncSubscriptions
 
-	spaceIdGetter  SpaceIdGetter
-	curStatuses    map[string]struct{}
-	missingIds     map[string][]string
-	lastSentEvents map[string]pb.EventSpaceSyncStatusUpdate
-	mx             sync.Mutex
-	periodicCall   periodicsync.PeriodicSync
-	loopInterval   time.Duration
-	isLocal        bool
+	spaceIdGetter   SpaceIdGetter
+	curStatuses     map[string]struct{}
+	missingIds      map[string][]string
+	lastSentEvents  map[string]pb.EventSpaceSyncStatusUpdate
+	mx              sync.Mutex
+	periodicCall    periodicsync.PeriodicSync
+	loopInterval    time.Duration
+	isLocal         bool
+	progressService process.Service
+
+	updateProgressCh      chan string
+	updateProgressChClose bool
+	updateProgressChMx    sync.Mutex
 }
 
 func NewSpaceSyncStatus() Updater {
@@ -86,6 +92,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	sessionHookRunner := app.MustComponent[session.HookRunner](a)
 	sessionHookRunner.RegisterHook(s.sendSyncEventForNewSession)
 	s.periodicCall = periodicsync.NewPeriodicSyncDuration(s.loopInterval, time.Second*5, s.update, logger.CtxLogger{Logger: log.Desugar()})
+	s.progressService = app.MustComponent[process.Service](a)
 	return
 }
 
@@ -108,7 +115,10 @@ func (s *spaceSyncStatus) UpdateMissingIds(spaceId string, ids []string) {
 }
 
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
-	s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
+	spaceIds := s.spaceIdGetter.AllSpaceIds()
+	s.sendStartEvent(spaceIds)
+	s.updateProgressCh = make(chan string, len(spaceIds))
+	go s.runProgress()
 	s.periodicCall.Run()
 	return
 }
@@ -254,10 +264,18 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 			},
 		}},
 	})
+	go func() {
+		s.updateProgressChMx.Lock()
+		defer s.updateProgressChMx.Unlock()
+		if !s.updateProgressChClose {
+			s.updateProgressCh <- spaceId
+		}
+	}()
 }
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 	s.periodicCall.Close()
+	s.finishProgressUpdate()
 	return
 }
 
@@ -297,6 +315,92 @@ func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.E
 		Error:                 err,
 		SyncingObjectsCounter: syncingObjectsCount,
 	}
+}
+
+func (s *spaceSyncStatus) runProgress() {
+	spaceIds := s.spaceIdGetter.AllSpaceIds()
+	progressBarPerSpace := make(map[string]process.Progress, 0)
+	for _, id := range spaceIds {
+		if _, err := s.initProgressBar(id, progressBarPerSpace); err != nil {
+			log.Errorf("failed to create progress bar: %s", err)
+		}
+	}
+	processed := make(map[string]struct{}, len(spaceIds))
+	for spaceId := range s.updateProgressCh {
+		err := s.updateSpaceProgressBar(spaceId, progressBarPerSpace, processed)
+		if err != nil {
+			log.Errorf("failed to update progress bar: %s", err)
+		}
+	}
+}
+
+func (s *spaceSyncStatus) initProgressBar(id string, progressBarPerSpace map[string]process.Progress) (process.Progress, error) {
+	total := int64(s.getObjectSyncingObjectsCount(id, s.getMissingIds(id)))
+	if total == 0 {
+		return nil, nil
+	}
+	progress := process.NewProgress(&pb.ModelProcessMessageOfRecoverAccount{})
+	err := s.progressService.Add(progress)
+	if err != nil {
+		return nil, err
+	}
+	progress.SetProgressMessage("start object syncing progress")
+	progress.SetTotal(total)
+	progressBarPerSpace[id] = progress
+	return progress, nil
+}
+
+func (s *spaceSyncStatus) finishProgressUpdate() {
+	s.updateProgressChMx.Lock()
+	s.updateProgressChClose = true
+	close(s.updateProgressCh)
+	s.updateProgressChMx.Unlock()
+}
+
+func (s *spaceSyncStatus) updateSpaceProgressBar(
+	spaceId string,
+	progressBarPerSpace map[string]process.Progress,
+	processed map[string]struct{},
+) error {
+	var (
+		progress process.Progress
+		ok       bool
+		err      error
+	)
+	if _, ok = processed[spaceId]; ok {
+		return nil
+	}
+	if progress, ok = progressBarPerSpace[spaceId]; !ok {
+		progress, err = s.initProgressBar(spaceId, progressBarPerSpace)
+		if err != nil {
+			return err
+		}
+		if progress == nil {
+			return nil
+		}
+	}
+	canceled := progress.Canceled()
+	select {
+	case <-canceled:
+		delete(progressBarPerSpace, spaceId)
+		return nil
+	default:
+	}
+	total := int64(s.getObjectSyncingObjectsCount(spaceId, s.getMissingIds(spaceId)))
+	info := progress.Info()
+	if total == 0 {
+		progress.SetDone(info.Progress.Total)
+		progress.Finish(nil)
+		processed[spaceId] = struct{}{}
+		delete(progressBarPerSpace, spaceId)
+		return nil
+	}
+	if info.Progress.Total >= total {
+		progress.SetDone(info.Progress.Total - total)
+	} else {
+		progress.SetTotal(total)
+	}
+	return nil
 }
 
 func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {

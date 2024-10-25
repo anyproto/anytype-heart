@@ -230,10 +230,10 @@ func (i *indexer) ftInit() (process.Progress, error) {
 				return nil, err
 			}
 			progress = process.NewProgress(&pb.ModelProcessMessageOfFullText{})
-			err = i.processService.Add(progress)
-			if err != nil {
-				return nil, err
-			}
+			// err = i.processService.Add(progress)
+			// if err != nil {
+			// 	return nil, err
+			// }
 			progress.SetTotal(int64(len(ids)))
 			if err := i.store.AddToIndexQueue(i.runCtx, ids...); err != nil {
 				return nil, err
