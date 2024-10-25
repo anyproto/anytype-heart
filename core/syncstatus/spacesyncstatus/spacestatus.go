@@ -69,6 +69,9 @@ type spaceSyncStatus struct {
 	updateProgressCh      chan string
 	updateProgressChClose bool
 	updateProgressChMx    sync.Mutex
+
+	ctx       context.Context
+	ctxCancel context.CancelFunc
 }
 
 func NewSpaceSyncStatus() Updater {
@@ -117,6 +120,7 @@ func (s *spaceSyncStatus) UpdateMissingIds(spaceId string, ids []string) {
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	spaceIds := s.spaceIdGetter.AllSpaceIds()
 	s.sendStartEvent(spaceIds)
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	s.updateProgressCh = make(chan string, len(spaceIds))
 	if len(spaceIds) == 0 {
 		s.updateProgressCh = make(chan string, 1)
@@ -278,6 +282,9 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 	s.periodicCall.Close()
+	if s.ctxCancel != nil {
+		s.ctxCancel()
+	}
 	s.finishProgressUpdate()
 	return
 }
@@ -329,8 +336,20 @@ func (s *spaceSyncStatus) runProgress() {
 		}
 	}
 	processed := make(map[string]struct{}, len(spaceIds))
+	var mapMx sync.Mutex
+	go func() {
+		select {
+		case <-s.ctx.Done():
+			mapMx.Lock()
+			for _, progress := range progressBarPerSpace {
+				progress.Canceled()
+			}
+			mapMx.Unlock()
+			return
+		}
+	}()
 	for spaceId := range s.updateProgressCh {
-		err := s.updateSpaceProgressBar(spaceId, progressBarPerSpace, processed)
+		err := s.updateSpaceProgressBar(spaceId, progressBarPerSpace, processed, &mapMx)
 		if err != nil {
 			log.Errorf("failed to update progress bar: %s", err)
 		}
@@ -364,12 +383,15 @@ func (s *spaceSyncStatus) updateSpaceProgressBar(
 	spaceId string,
 	progressBarPerSpace map[string]process.Progress,
 	processed map[string]struct{},
+	mx *sync.Mutex,
 ) error {
 	var (
 		progress process.Progress
 		ok       bool
 		err      error
 	)
+	mx.Lock()
+	defer mx.Unlock()
 	if _, ok = processed[spaceId]; ok {
 		return nil
 	}
