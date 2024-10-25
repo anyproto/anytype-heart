@@ -28,10 +28,12 @@ import (
 const (
 	CName  = "fts"
 	ftsDir = "fts"
-	ftsVer = "6"
+	ftsVer = "7"
 
 	fieldTitle        = "Title"
+	fieldTitleCh      = "TitleCh"
 	fieldText         = "Text"
+	fieldTextCh       = "TextCh"
 	fieldSpace        = "SpaceID"
 	fieldTitleNoTerms = "TitleNoTerms"
 	fieldTextNoTerms  = "TextNoTerms"

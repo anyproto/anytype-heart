@@ -153,12 +153,30 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	)
 
 	err = builder.AddTextField(
+		fieldTitleCh,
+		true,
+		true,
+		false,
+		tantivy.IndexRecordOptionWithFreqsAndPositions,
+		tantivy.TokenizerJieba,
+	)
+
+	err = builder.AddTextField(
 		fieldText,
 		true,
 		true,
 		false,
 		tantivy.IndexRecordOptionWithFreqsAndPositions,
 		tantivy.TokenizerSimple,
+	)
+
+	err = builder.AddTextField(
+		fieldTextCh,
+		true,
+		true,
+		false,
+		tantivy.IndexRecordOptionWithFreqsAndPositions,
+		tantivy.TokenizerJieba,
 	)
 
 	schema, err := builder.BuildSchema()
@@ -177,6 +195,11 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	f.cleanUpOldIndexes()
 
 	err = index.RegisterTextAnalyzerSimple(tantivy.TokenizerSimple, 40, tantivy.English)
+	if err != nil {
+		return err
+	}
+
+	err = index.RegisterTextAnalyzerJieba(tantivy.TokenizerJieba, 40)
 	if err != nil {
 		return err
 	}
@@ -242,7 +265,15 @@ func (f *ftSearchTantivy) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = document.AddField(fieldTitleCh, doc.Title, f.index)
+	if err != nil {
+		return nil, err
+	}
 	err = document.AddField(fieldText, doc.Text, f.index)
+	if err != nil {
+		return nil, err
+	}
+	err = document.AddField(fieldTextCh, doc.Text, f.index)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +323,9 @@ func (f *ftSearchTantivy) Search(spaceIds []string, highlightFormatter Highlight
 	if spaceIdsQuery != "" {
 		query = fmt.Sprintf("%s AND %s", spaceIdsQuery, query)
 	}
-	result, err := f.index.Search(query, 100, true, fieldId, fieldSpace, fieldTitle, fieldText)
+	result, err := f.index.Search(query, 100, true,
+		fieldId, fieldSpace, fieldTitle, fieldTitleCh, fieldText, fieldTextCh,
+	)
 	if err != nil {
 		return nil, wrapError(err)
 	}
@@ -313,9 +346,9 @@ func (f *ftSearchTantivy) Search(spaceIds []string, highlightFormatter Highlight
 			for _, val := range highlights {
 				object := val.GetObject()
 				fieldName := string(object.Get("field_name").GetStringBytes())
-				if fieldName == fieldTitle {
+				if fieldName == fieldTitle || fieldName == fieldTitleCh {
 					// fragments[fieldTitle] = append(fragments[fieldTitle], string(object.Get("fragment").MarshalTo(nil)))
-				} else if fieldName == fieldText {
+				} else if fieldName == fieldText || fieldName == fieldTextCh {
 					fragments[fieldText] = append(fragments[fieldText], string(object.Get("fragment").MarshalTo(nil)))
 				}
 			}
