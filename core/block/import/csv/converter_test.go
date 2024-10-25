@@ -211,7 +211,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 	t.Run("number of columns is not equal", func(t *testing.T) {
 		// given
 		csv := CSV{}
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
 
 		// when
 		sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
