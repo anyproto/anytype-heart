@@ -118,6 +118,9 @@ func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	spaceIds := s.spaceIdGetter.AllSpaceIds()
 	s.sendStartEvent(spaceIds)
 	s.updateProgressCh = make(chan string, len(spaceIds))
+	if len(spaceIds) == 0 {
+		s.updateProgressCh = make(chan string, 1)
+	}
 	go s.runProgress()
 	s.periodicCall.Run()
 	return
