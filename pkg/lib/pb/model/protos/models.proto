@@ -1305,6 +1305,7 @@ message MembershipTierData {
     string androidProductId = 17;
     string androidManageUrl = 18;
 }
+
 enum DeviceNetworkType {
     WIFI = 0;
     CELLULAR = 1;
@@ -1358,5 +1359,84 @@ message ChatMessage {
         message IdentityList {
             repeated string ids = 1; // List of user IDs
         }
+    }
+}
+
+message MembershipV2 {
+    message Amount {
+        // three-letter ISO currency code
+        string currency = 1;
+        // $0.01 = 1
+        // $1.00 = 100
+        uint32 amountCents = 2;
+    }
+
+    message Product {
+        // this is a unique Payment Node ID of the product
+        // adding 2 same products to a cart means we will have 2 items with same ID
+        string id = 1;
+        bool isActive = 2;
+        // is it a product that should be attached to a space
+        bool isAttachToSpace = 3;
+        // the price of a Package may not be equal to the sum of all underlying products
+        bool isPackage = 4;
+        // localized
+        string name = 5;
+        string description = 6;
+        MembershipTierData.PeriodType periodType = 7;
+        // i.e. "5 days" or "3 years"
+        uint32 periodValue = 8;
+    }
+
+    message PurchaseInfo {
+        uint64 dateStarted = 1;
+        uint64 dateEnds = 2;
+        bool isAutoRenew = 3;
+        Membership.PaymentMethod paymentMethod = 4;
+    }
+
+    message ProductStatus {
+        enum Status {
+            StatusUnknown = 0;
+            StatusPending = 1;
+            StatusActive = 2;
+            StatusPendingRequiresFinalization = 3;
+        }
+        Status status = 1;
+
+        string spaceAttachedTo = 2;
+        bool isNeedsAttachmentToSpace = 3;
+    }
+
+    message PurchasedProduct {
+        Product product = 1;
+        PurchaseInfo purchaseInfo = 2;
+        ProductStatus productStatus = 3;
+    }
+
+    message StoreProduct {
+        Product product = 1;
+        Amount price = 2;
+    }
+
+    message Invoice {
+        enum Status {
+            Unpaid = 0;
+            Paid = 1;
+        }
+        
+        string id = 1;
+        uint64 date = 2;
+        Amount total = 3;
+        Status status = 4;
+    }
+
+    message Cart {
+        // if you add Nx the same product - it will be Nx in the 'products' array, i.e:
+        // each product instance has a unique index
+        // each product instance can have a different "context" attached (like spaceId)
+        repeated Product products = 1;
+        // total amount of the cart (including discounts, etc)
+        Amount total = 2;
     }
 }

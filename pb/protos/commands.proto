@@ -6866,7 +6866,7 @@ message Rpc {
                 // will feature current billing ID
                 // stripe.com/?client_reference_id=1234
                 string paymentUrl = 2;
-                // billingID is only needed for mobile clients
+                // billingId is only needed for mobile clients
                 string billingId = 3;
 
                 message Error {
@@ -7562,6 +7562,226 @@ message Rpc {
                     }
                 }
             }
+        }
+    }
+
+    message MembershipV2 {
+        message GetStatus {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+                repeated anytype.model.MembershipV2.PurchasedProduct products = 2;
+                anytype.model.MembershipV2.Invoice nextInvoice = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+                    }
+                }
+            }
+        }
+
+        // Some products require extra allocation step
+        message ProductAllocateToSpace {
+            message Request {
+                string spaceId = 1;
+                string productId = 2;
+                // some additional data
+                string context = 3;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+                        CAN_NOT_CONNECT = 6;
+                    }
+                }
+            }
+        }
+    }
+
+    message Store {
+        message ProductsEnumerate {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+                repeated anytype.model.MembershipV2.StoreProduct products = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+                        CAN_NOT_CONNECT = 6;
+                    }
+                }
+            }
+        }
+
+        message Cart {
+            message Get {
+                message Request {
+                }
+
+                message Response {
+                    Error error = 1;
+                    anytype.model.MembershipV2.Cart cart = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            NOT_LOGGED_IN = 3;
+                            PAYMENT_NODE_ERROR = 4;
+                            CACHE_ERROR = 5;
+                            CAN_NOT_CONNECT = 6;
+                        }
+                    }
+                }
+            }
+
+            message ProductAdd {
+                message Request {
+                    string productId = 1;
+                    // if "isAttachedToSpace" was true for that product
+                    string spaceId = 2;
+                    // some additional context (extra) 
+                    string context = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    anytype.model.MembershipV2.Cart cart = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            NOT_LOGGED_IN = 3;
+                            PAYMENT_NODE_ERROR = 4;
+                            CACHE_ERROR = 5;
+                            CAN_NOT_CONNECT = 6;
+                        }
+                    }
+                }
+            }
+
+            message ProductRemove {
+                message Request {
+                    // each product instance has a unique index
+                    // each product instance can have a different "context" attached (like spaceId)
+                    string index = 1;
+                }
+
+                message Response {
+                    Error error = 1;
+                    anytype.model.MembershipV2.Cart cart = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            NOT_LOGGED_IN = 3;
+                            PAYMENT_NODE_ERROR = 4;
+                            CACHE_ERROR = 5;
+                            CAN_NOT_CONNECT = 6;
+                        }
+                    }
+                }
+            }
+
+            message PromocodeApply {
+                message Request {
+                    string promocode = 1;
+                }
+
+                message Response {
+                    Error error = 1;
+                    anytype.model.MembershipV2.Cart cart = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            NOT_LOGGED_IN = 3;
+                            PAYMENT_NODE_ERROR = 4;
+                            CACHE_ERROR = 5;
+                            CAN_NOT_CONNECT = 6;
+                        }
+                    }
+                }
+            }
+
+            // redirect user to the payment page
+            message CheckoutGenerate {
+                message Request {
+                }
+
+                message Response {
+                    Error error = 1;
+                    string paymentUrl = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            NOT_LOGGED_IN = 3;
+                            PAYMENT_NODE_ERROR = 4;
+                            CACHE_ERROR = 5;
+                            CAN_NOT_CONNECT = 6;
+                        }
+                    }
+                }
+            } 
         }
     }
 }

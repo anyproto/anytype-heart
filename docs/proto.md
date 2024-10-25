@@ -748,6 +748,15 @@
     - [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request)
     - [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response)
     - [Rpc.Membership.VerifyEmailCode.Response.Error](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error)
+    - [Rpc.MembershipV2](#anytype-Rpc-MembershipV2)
+    - [Rpc.MembershipV2.GetStatus](#anytype-Rpc-MembershipV2-GetStatus)
+    - [Rpc.MembershipV2.GetStatus.Request](#anytype-Rpc-MembershipV2-GetStatus-Request)
+    - [Rpc.MembershipV2.GetStatus.Response](#anytype-Rpc-MembershipV2-GetStatus-Response)
+    - [Rpc.MembershipV2.GetStatus.Response.Error](#anytype-Rpc-MembershipV2-GetStatus-Response-Error)
+    - [Rpc.MembershipV2.ProductAllocateToSpace](#anytype-Rpc-MembershipV2-ProductAllocateToSpace)
+    - [Rpc.MembershipV2.ProductAllocateToSpace.Request](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Request)
+    - [Rpc.MembershipV2.ProductAllocateToSpace.Response](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response)
+    - [Rpc.MembershipV2.ProductAllocateToSpace.Response.Error](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response-Error)
     - [Rpc.Metrics](#anytype-Rpc-Metrics)
     - [Rpc.Metrics.SetParameters](#anytype-Rpc-Metrics-SetParameters)
     - [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request)
@@ -1134,6 +1143,32 @@
     - [Rpc.Space.StopSharing.Request](#anytype-Rpc-Space-StopSharing-Request)
     - [Rpc.Space.StopSharing.Response](#anytype-Rpc-Space-StopSharing-Response)
     - [Rpc.Space.StopSharing.Response.Error](#anytype-Rpc-Space-StopSharing-Response-Error)
+    - [Rpc.Store](#anytype-Rpc-Store)
+    - [Rpc.Store.Cart](#anytype-Rpc-Store-Cart)
+    - [Rpc.Store.Cart.CheckoutGenerate](#anytype-Rpc-Store-Cart-CheckoutGenerate)
+    - [Rpc.Store.Cart.CheckoutGenerate.Request](#anytype-Rpc-Store-Cart-CheckoutGenerate-Request)
+    - [Rpc.Store.Cart.CheckoutGenerate.Response](#anytype-Rpc-Store-Cart-CheckoutGenerate-Response)
+    - [Rpc.Store.Cart.CheckoutGenerate.Response.Error](#anytype-Rpc-Store-Cart-CheckoutGenerate-Response-Error)
+    - [Rpc.Store.Cart.Get](#anytype-Rpc-Store-Cart-Get)
+    - [Rpc.Store.Cart.Get.Request](#anytype-Rpc-Store-Cart-Get-Request)
+    - [Rpc.Store.Cart.Get.Response](#anytype-Rpc-Store-Cart-Get-Response)
+    - [Rpc.Store.Cart.Get.Response.Error](#anytype-Rpc-Store-Cart-Get-Response-Error)
+    - [Rpc.Store.Cart.ProductAdd](#anytype-Rpc-Store-Cart-ProductAdd)
+    - [Rpc.Store.Cart.ProductAdd.Request](#anytype-Rpc-Store-Cart-ProductAdd-Request)
+    - [Rpc.Store.Cart.ProductAdd.Response](#anytype-Rpc-Store-Cart-ProductAdd-Response)
+    - [Rpc.Store.Cart.ProductAdd.Response.Error](#anytype-Rpc-Store-Cart-ProductAdd-Response-Error)
+    - [Rpc.Store.Cart.ProductRemove](#anytype-Rpc-Store-Cart-ProductRemove)
+    - [Rpc.Store.Cart.ProductRemove.Request](#anytype-Rpc-Store-Cart-ProductRemove-Request)
+    - [Rpc.Store.Cart.ProductRemove.Response](#anytype-Rpc-Store-Cart-ProductRemove-Response)
+    - [Rpc.Store.Cart.ProductRemove.Response.Error](#anytype-Rpc-Store-Cart-ProductRemove-Response-Error)
+    - [Rpc.Store.Cart.PromocodeApply](#anytype-Rpc-Store-Cart-PromocodeApply)
+    - [Rpc.Store.Cart.PromocodeApply.Request](#anytype-Rpc-Store-Cart-PromocodeApply-Request)
+    - [Rpc.Store.Cart.PromocodeApply.Response](#anytype-Rpc-Store-Cart-PromocodeApply-Response)
+    - [Rpc.Store.Cart.PromocodeApply.Response.Error](#anytype-Rpc-Store-Cart-PromocodeApply-Response-Error)
+    - [Rpc.Store.ProductsEnumerate](#anytype-Rpc-Store-ProductsEnumerate)
+    - [Rpc.Store.ProductsEnumerate.Request](#anytype-Rpc-Store-ProductsEnumerate-Request)
+    - [Rpc.Store.ProductsEnumerate.Response](#anytype-Rpc-Store-ProductsEnumerate-Response)
+    - [Rpc.Store.ProductsEnumerate.Response.Error](#anytype-Rpc-Store-ProductsEnumerate-Response-Error)
     - [Rpc.Template](#anytype-Rpc-Template)
     - [Rpc.Template.Clone](#anytype-Rpc-Template-Clone)
     - [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request)
@@ -1391,6 +1426,8 @@
     - [Rpc.Membership.RegisterPaymentRequest.Response.Error.Code](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error-Code)
     - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
+    - [Rpc.MembershipV2.GetStatus.Response.Error.Code](#anytype-Rpc-MembershipV2-GetStatus-Response-Error-Code)
+    - [Rpc.MembershipV2.ProductAllocateToSpace.Response.Error.Code](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response-Error-Code)
     - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
     - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
     - [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code)
@@ -1488,6 +1525,12 @@
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
     - [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code)
     - [Rpc.Space.StopSharing.Response.Error.Code](#anytype-Rpc-Space-StopSharing-Response-Error-Code)
+    - [Rpc.Store.Cart.CheckoutGenerate.Response.Error.Code](#anytype-Rpc-Store-Cart-CheckoutGenerate-Response-Error-Code)
+    - [Rpc.Store.Cart.Get.Response.Error.Code](#anytype-Rpc-Store-Cart-Get-Response-Error-Code)
+    - [Rpc.Store.Cart.ProductAdd.Response.Error.Code](#anytype-Rpc-Store-Cart-ProductAdd-Response-Error-Code)
+    - [Rpc.Store.Cart.ProductRemove.Response.Error.Code](#anytype-Rpc-Store-Cart-ProductRemove-Response-Error-Code)
+    - [Rpc.Store.Cart.PromocodeApply.Response.Error.Code](#anytype-Rpc-Store-Cart-PromocodeApply-Response-Error-Code)
+    - [Rpc.Store.ProductsEnumerate.Response.Error.Code](#anytype-Rpc-Store-ProductsEnumerate-Response-Error-Code)
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype-Rpc-Template-CreateFromObject-Response-Error-Code)
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
@@ -1801,6 +1844,15 @@
     - [ManifestInfo](#anytype-model-ManifestInfo)
     - [Membership](#anytype-model-Membership)
     - [MembershipTierData](#anytype-model-MembershipTierData)
+    - [MembershipV2](#anytype-model-MembershipV2)
+    - [MembershipV2.Amount](#anytype-model-MembershipV2-Amount)
+    - [MembershipV2.Cart](#anytype-model-MembershipV2-Cart)
+    - [MembershipV2.Invoice](#anytype-model-MembershipV2-Invoice)
+    - [MembershipV2.Product](#anytype-model-MembershipV2-Product)
+    - [MembershipV2.ProductStatus](#anytype-model-MembershipV2-ProductStatus)
+    - [MembershipV2.PurchaseInfo](#anytype-model-MembershipV2-PurchaseInfo)
+    - [MembershipV2.PurchasedProduct](#anytype-model-MembershipV2-PurchasedProduct)
+    - [MembershipV2.StoreProduct](#anytype-model-MembershipV2-StoreProduct)
     - [Metadata](#anytype-model-Metadata)
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
@@ -1879,6 +1931,8 @@
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
     - [Membership.Status](#anytype-model-Membership-Status)
     - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
+    - [MembershipV2.Invoice.Status](#anytype-model-MembershipV2-Invoice-Status)
+    - [MembershipV2.ProductStatus.Status](#anytype-model-MembershipV2-ProductStatus-Status)
     - [NameserviceNameType](#anytype-model-NameserviceNameType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
@@ -2184,6 +2238,14 @@
 | ChatSubscribeLastMessages | [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request) | [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response) |  |
 | ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
+| StoreProductsEnumerate | [Rpc.Store.ProductsEnumerate.Request](#anytype-Rpc-Store-ProductsEnumerate-Request) | [Rpc.Store.ProductsEnumerate.Response](#anytype-Rpc-Store-ProductsEnumerate-Response) | Store |
+| StoreCartGet | [Rpc.Store.Cart.Get.Request](#anytype-Rpc-Store-Cart-Get-Request) | [Rpc.Store.Cart.Get.Response](#anytype-Rpc-Store-Cart-Get-Response) |  |
+| StoreCartProductAdd | [Rpc.Store.Cart.ProductAdd.Request](#anytype-Rpc-Store-Cart-ProductAdd-Request) | [Rpc.Store.Cart.ProductAdd.Response](#anytype-Rpc-Store-Cart-ProductAdd-Response) |  |
+| StoreCartProductRemove | [Rpc.Store.Cart.ProductRemove.Request](#anytype-Rpc-Store-Cart-ProductRemove-Request) | [Rpc.Store.Cart.ProductRemove.Response](#anytype-Rpc-Store-Cart-ProductRemove-Response) |  |
+| StoreCartPromocodeApply | [Rpc.Store.Cart.PromocodeApply.Request](#anytype-Rpc-Store-Cart-PromocodeApply-Request) | [Rpc.Store.Cart.PromocodeApply.Response](#anytype-Rpc-Store-Cart-PromocodeApply-Response) |  |
+| StoreCartCheckoutGenerate | [Rpc.Store.Cart.CheckoutGenerate.Request](#anytype-Rpc-Store-Cart-CheckoutGenerate-Request) | [Rpc.Store.Cart.CheckoutGenerate.Response](#anytype-Rpc-Store-Cart-CheckoutGenerate-Response) |  |
+| MembershipV2GetStatus | [Rpc.MembershipV2.GetStatus.Request](#anytype-Rpc-MembershipV2-GetStatus-Request) | [Rpc.MembershipV2.GetStatus.Response](#anytype-Rpc-MembershipV2-GetStatus-Response) | MembershipV2 |
+| MembershipV2ProductAllocateToSpace | [Rpc.MembershipV2.ProductAllocateToSpace.Request](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Request) | [Rpc.MembershipV2.ProductAllocateToSpace.Response](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response) |  |
 
  
 
@@ -12851,7 +12913,7 @@ Generate a link to Stripe/Crypto where user can pay for the membership (for desk
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Membership.RegisterPaymentRequest.Response.Error](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error) |  |  |
 | paymentUrl | [string](#string) |  | will feature current billing ID stripe.com/?client_reference_id=1234 |
-| billingId | [string](#string) |  | billingID is only needed for mobile clients |
+| billingId | [string](#string) |  | billingId is only needed for mobile clients |
 
 
 
@@ -12980,6 +13042,127 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2"></a>
+
+### Rpc.MembershipV2
+
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-GetStatus"></a>
+
+### Rpc.MembershipV2.GetStatus
+
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-GetStatus-Request"></a>
+
+### Rpc.MembershipV2.GetStatus.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-GetStatus-Response"></a>
+
+### Rpc.MembershipV2.GetStatus.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.MembershipV2.GetStatus.Response.Error](#anytype-Rpc-MembershipV2-GetStatus-Response-Error) |  |  |
+| products | [model.MembershipV2.PurchasedProduct](#anytype-model-MembershipV2-PurchasedProduct) | repeated |  |
+| nextInvoice | [model.MembershipV2.Invoice](#anytype-model-MembershipV2-Invoice) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-GetStatus-Response-Error"></a>
+
+### Rpc.MembershipV2.GetStatus.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.MembershipV2.GetStatus.Response.Error.Code](#anytype-Rpc-MembershipV2-GetStatus-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-ProductAllocateToSpace"></a>
+
+### Rpc.MembershipV2.ProductAllocateToSpace
+Some products require extra allocation step
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-ProductAllocateToSpace-Request"></a>
+
+### Rpc.MembershipV2.ProductAllocateToSpace.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| productId | [string](#string) |  |  |
+| context | [string](#string) |  | some additional data |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response"></a>
+
+### Rpc.MembershipV2.ProductAllocateToSpace.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.MembershipV2.ProductAllocateToSpace.Response.Error](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response-Error"></a>
+
+### Rpc.MembershipV2.ProductAllocateToSpace.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.MembershipV2.ProductAllocateToSpace.Response.Error.Code](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -18626,6 +18809,355 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Store"></a>
+
+### Rpc.Store
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart"></a>
+
+### Rpc.Store.Cart
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-CheckoutGenerate"></a>
+
+### Rpc.Store.Cart.CheckoutGenerate
+redirect user to the payment page
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-CheckoutGenerate-Request"></a>
+
+### Rpc.Store.Cart.CheckoutGenerate.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-CheckoutGenerate-Response"></a>
+
+### Rpc.Store.Cart.CheckoutGenerate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Store.Cart.CheckoutGenerate.Response.Error](#anytype-Rpc-Store-Cart-CheckoutGenerate-Response-Error) |  |  |
+| paymentUrl | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-CheckoutGenerate-Response-Error"></a>
+
+### Rpc.Store.Cart.CheckoutGenerate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Store.Cart.CheckoutGenerate.Response.Error.Code](#anytype-Rpc-Store-Cart-CheckoutGenerate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-Get"></a>
+
+### Rpc.Store.Cart.Get
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-Get-Request"></a>
+
+### Rpc.Store.Cart.Get.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-Get-Response"></a>
+
+### Rpc.Store.Cart.Get.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Store.Cart.Get.Response.Error](#anytype-Rpc-Store-Cart-Get-Response-Error) |  |  |
+| cart | [model.MembershipV2.Cart](#anytype-model-MembershipV2-Cart) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-Get-Response-Error"></a>
+
+### Rpc.Store.Cart.Get.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Store.Cart.Get.Response.Error.Code](#anytype-Rpc-Store-Cart-Get-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-ProductAdd"></a>
+
+### Rpc.Store.Cart.ProductAdd
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-ProductAdd-Request"></a>
+
+### Rpc.Store.Cart.ProductAdd.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| productId | [string](#string) |  |  |
+| spaceId | [string](#string) |  | if &#34;isAttachedToSpace&#34; was true for that product |
+| context | [string](#string) |  | some additional context (extra) |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-ProductAdd-Response"></a>
+
+### Rpc.Store.Cart.ProductAdd.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Store.Cart.ProductAdd.Response.Error](#anytype-Rpc-Store-Cart-ProductAdd-Response-Error) |  |  |
+| cart | [model.MembershipV2.Cart](#anytype-model-MembershipV2-Cart) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-ProductAdd-Response-Error"></a>
+
+### Rpc.Store.Cart.ProductAdd.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Store.Cart.ProductAdd.Response.Error.Code](#anytype-Rpc-Store-Cart-ProductAdd-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-ProductRemove"></a>
+
+### Rpc.Store.Cart.ProductRemove
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-ProductRemove-Request"></a>
+
+### Rpc.Store.Cart.ProductRemove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| index | [string](#string) |  | each product instance has a unique index each product instance can have a different &#34;context&#34; attached (like spaceId) |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-ProductRemove-Response"></a>
+
+### Rpc.Store.Cart.ProductRemove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Store.Cart.ProductRemove.Response.Error](#anytype-Rpc-Store-Cart-ProductRemove-Response-Error) |  |  |
+| cart | [model.MembershipV2.Cart](#anytype-model-MembershipV2-Cart) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-ProductRemove-Response-Error"></a>
+
+### Rpc.Store.Cart.ProductRemove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Store.Cart.ProductRemove.Response.Error.Code](#anytype-Rpc-Store-Cart-ProductRemove-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-PromocodeApply"></a>
+
+### Rpc.Store.Cart.PromocodeApply
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-PromocodeApply-Request"></a>
+
+### Rpc.Store.Cart.PromocodeApply.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| promocode | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-PromocodeApply-Response"></a>
+
+### Rpc.Store.Cart.PromocodeApply.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Store.Cart.PromocodeApply.Response.Error](#anytype-Rpc-Store-Cart-PromocodeApply-Response-Error) |  |  |
+| cart | [model.MembershipV2.Cart](#anytype-model-MembershipV2-Cart) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-Cart-PromocodeApply-Response-Error"></a>
+
+### Rpc.Store.Cart.PromocodeApply.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Store.Cart.PromocodeApply.Response.Error.Code](#anytype-Rpc-Store-Cart-PromocodeApply-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-ProductsEnumerate"></a>
+
+### Rpc.Store.ProductsEnumerate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-ProductsEnumerate-Request"></a>
+
+### Rpc.Store.ProductsEnumerate.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-ProductsEnumerate-Response"></a>
+
+### Rpc.Store.ProductsEnumerate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Store.ProductsEnumerate.Response.Error](#anytype-Rpc-Store-ProductsEnumerate-Response-Error) |  |  |
+| products | [model.MembershipV2.StoreProduct](#anytype-model-MembershipV2-StoreProduct) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Store-ProductsEnumerate-Response-Error"></a>
+
+### Rpc.Store.ProductsEnumerate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Store.ProductsEnumerate.Response.Error.Code](#anytype-Rpc-Store-ProductsEnumerate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Template"></a>
 
 ### Rpc.Template
@@ -22205,6 +22737,39 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-MembershipV2-GetStatus-Response-Error-Code"></a>
+
+### Rpc.MembershipV2.GetStatus.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+
+
+
+<a name="anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response-Error-Code"></a>
+
+### Rpc.MembershipV2.ProductAllocateToSpace.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
+
+
+
 <a name="anytype-Rpc-Metrics-SetParameters-Response-Error-Code"></a>
 
 ### Rpc.Metrics.SetParameters.Response.Error.Code
@@ -23571,6 +24136,108 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
+
+
+
+<a name="anytype-Rpc-Store-Cart-CheckoutGenerate-Response-Error-Code"></a>
+
+### Rpc.Store.Cart.CheckoutGenerate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
+
+
+
+<a name="anytype-Rpc-Store-Cart-Get-Response-Error-Code"></a>
+
+### Rpc.Store.Cart.Get.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
+
+
+
+<a name="anytype-Rpc-Store-Cart-ProductAdd-Response-Error-Code"></a>
+
+### Rpc.Store.Cart.ProductAdd.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
+
+
+
+<a name="anytype-Rpc-Store-Cart-ProductRemove-Response-Error-Code"></a>
+
+### Rpc.Store.Cart.ProductRemove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
+
+
+
+<a name="anytype-Rpc-Store-Cart-PromocodeApply-Response-Error-Code"></a>
+
+### Rpc.Store.Cart.PromocodeApply.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
+
+
+
+<a name="anytype-Rpc-Store-ProductsEnumerate-Response-Error-Code"></a>
+
+### Rpc.Store.ProductsEnumerate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
 
 
 
@@ -28500,6 +29167,156 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-MembershipV2"></a>
+
+### MembershipV2
+
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-Amount"></a>
+
+### MembershipV2.Amount
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| currency | [string](#string) |  | three-letter ISO currency code |
+| amountCents | [uint32](#uint32) |  | $0.01 = 1 $1.00 = 100 |
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-Cart"></a>
+
+### MembershipV2.Cart
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| products | [MembershipV2.Product](#anytype-model-MembershipV2-Product) | repeated | if you add Nx the same product - it will be Nx in the &#39;products&#39; array, i.e: each product instance has a unique index each product instance can have a different &#34;context&#34; attached (like spaceId) |
+| total | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) |  | total amount of the cart (including discounts, etc) |
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-Invoice"></a>
+
+### MembershipV2.Invoice
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| date | [uint64](#uint64) |  |  |
+| total | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) |  |  |
+| status | [MembershipV2.Invoice.Status](#anytype-model-MembershipV2-Invoice-Status) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-Product"></a>
+
+### MembershipV2.Product
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | this is a unique Payment Node ID of the product adding 2 same products to a cart means we will have 2 items with same ID |
+| isActive | [bool](#bool) |  |  |
+| isAttachToSpace | [bool](#bool) |  | is it a product that should be attached to a space |
+| isPackage | [bool](#bool) |  | the price of a Package may not be equal to the sum of all underlying products |
+| name | [string](#string) |  | localized |
+| description | [string](#string) |  |  |
+| periodType | [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType) |  |  |
+| periodValue | [uint32](#uint32) |  | i.e. &#34;5 days&#34; or &#34;3 years&#34; |
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-ProductStatus"></a>
+
+### MembershipV2.ProductStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [MembershipV2.ProductStatus.Status](#anytype-model-MembershipV2-ProductStatus-Status) |  |  |
+| spaceAttachedTo | [string](#string) |  |  |
+| isNeedsAttachmentToSpace | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-PurchaseInfo"></a>
+
+### MembershipV2.PurchaseInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| dateStarted | [uint64](#uint64) |  |  |
+| dateEnds | [uint64](#uint64) |  |  |
+| isAutoRenew | [bool](#bool) |  |  |
+| paymentMethod | [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-PurchasedProduct"></a>
+
+### MembershipV2.PurchasedProduct
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| product | [MembershipV2.Product](#anytype-model-MembershipV2-Product) |  |  |
+| purchaseInfo | [MembershipV2.PurchaseInfo](#anytype-model-MembershipV2-PurchaseInfo) |  |  |
+| productStatus | [MembershipV2.ProductStatus](#anytype-model-MembershipV2-ProductStatus) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-StoreProduct"></a>
+
+### MembershipV2.StoreProduct
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| product | [MembershipV2.Product](#anytype-model-MembershipV2-Product) |  |  |
+| price | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Metadata"></a>
 
 ### Metadata
@@ -29778,6 +30595,32 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | PeriodTypeWeeks | 3 |  |
 | PeriodTypeMonths | 4 |  |
 | PeriodTypeYears | 5 |  |
+
+
+
+<a name="anytype-model-MembershipV2-Invoice-Status"></a>
+
+### MembershipV2.Invoice.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Unpaid | 0 |  |
+| Paid | 1 |  |
+
+
+
+<a name="anytype-model-MembershipV2-ProductStatus-Status"></a>
+
+### MembershipV2.ProductStatus.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| StatusUnknown | 0 |  |
+| StatusPending | 1 |  |
+| StatusActive | 2 |  |
+| StatusPendingRequiresFinalization | 3 |  |
 
 
 
