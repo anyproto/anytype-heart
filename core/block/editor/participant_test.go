@@ -135,7 +135,7 @@ func TestParticipant_Init(t *testing.T) {
 			IsNewObject: true,
 		}
 
-		// then
+		// when
 		err := p.Init(initCtx)
 		assert.NoError(t, err)
 		migration.RunMigrations(p, initCtx)
@@ -146,7 +146,7 @@ func TestParticipant_Init(t *testing.T) {
 		assert.NotNil(t, p.NewState().Get(state.TitleBlockID))
 		assert.Equal(t, "test", p.NewState().Get(state.TitleBlockID).Model().GetText().GetText())
 	})
-	t.Run("title block is not empty", func(t *testing.T) {
+	t.Run("title block is empty", func(t *testing.T) {
 		// given
 		sb := smarttest.New("root")
 		store := newStoreFixture(t)
@@ -162,7 +162,7 @@ func TestParticipant_Init(t *testing.T) {
 			IsNewObject: true,
 		}
 
-		// then
+		// when
 		err := p.Init(initCtx)
 		assert.NoError(t, err)
 		migration.RunMigrations(p, initCtx)
