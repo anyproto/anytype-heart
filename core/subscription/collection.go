@@ -31,6 +31,7 @@ type collectionObserver struct {
 	objectStore       spaceindex.Store
 	collectionService CollectionService
 	recBatch          *mb.MB
+	recBatchMutex     sync.Mutex
 
 	spaceSubscription *spaceSubscriptions
 }
@@ -98,6 +99,8 @@ func (c *collectionObserver) listEntries() []*entry {
 	return res
 }
 
+// updateIds updates the list of ids in the observer and updates the subscription
+// IMPORTANT: this function is not thread-safe because of recBatch add is not under the lock and should be called only sequentially
 func (c *collectionObserver) updateIds(ids []string) {
 	c.lock.Lock()
 
