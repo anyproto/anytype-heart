@@ -3,12 +3,12 @@ package process
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -33,6 +34,7 @@ type spaceLoadingProgress struct {
 	cancel                context.CancelFunc
 	spaceViewIds          map[string]struct{}
 	spaceViewIdsLoaded    map[string]struct{}
+	newAccount            bool
 }
 
 func NewSpaceLoadingProgress() app.ComponentRunnable {
@@ -45,6 +47,8 @@ func (s *spaceLoadingProgress) Init(a *app.App) (err error) {
 	s.subService = app.MustComponent[subscription.Service](a)
 	s.spaceViewIds = make(map[string]struct{})
 	s.spaceViewIdsLoaded = make(map[string]struct{})
+	config := app.MustComponent[*config.Config](a)
+	s.newAccount = config.IsNewAccount()
 	return
 }
 
@@ -53,7 +57,15 @@ func (s *spaceLoadingProgress) Name() (name string) {
 }
 
 func (s *spaceLoadingProgress) Run(ctx context.Context) (err error) {
+	if s.newAccount {
+		return nil
+	}
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+	go s.runSpaceLoadingProgress()
+	return nil
+}
+
+func (s *spaceLoadingProgress) runSpaceLoadingProgress() {
 	searchReq := subscription.SubscribeRequest{
 		SpaceId: s.spaceService.TechSpaceId(),
 		Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceLocalStatus.String()},
@@ -63,25 +75,17 @@ func (s *spaceLoadingProgress) Run(ctx context.Context) (err error) {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 			},
-			{
-				RelationKey: bundle.RelationKeySpaceAccountStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_NotIn,
-				Value:       pbtypes.IntList(int(model.Account_Deleted)),
-			},
 		},
 		Internal: true,
 	}
 	resp, err := s.subService.Search(searchReq)
 	if err != nil {
-		return fmt.Errorf("failed to run search: %w", err)
+		log.Errorf("failed to run search: %s", err)
+		return
 	}
 	progress, err := s.makeProgressBar(len(resp.Records))
-	if err != nil {
-		return fmt.Errorf("failed to create progress bar: %w", err)
-	}
 	s.fillIdsMap(resp.Records)
 	go s.readEvents(resp.Output, progress)
-	return nil
 }
 
 func (s *spaceLoadingProgress) makeProgressBar(spaceViewCount int) (process.Progress, error) {
@@ -150,6 +154,11 @@ func (s *spaceLoadingProgress) handleDetailsAmendEvent(progress process.Progress
 }
 
 func (s *spaceLoadingProgress) updateProgressBar(id string, progress process.Progress, status int64) {
+	if status == int64(spaceinfo.LocalStatusMissing) {
+		delete(s.spaceViewIds, id)
+		progress.SetTotal(int64(len(s.spaceViewIds)))
+		return
+	}
 	if _, ok := s.spaceViewIds[id]; !ok {
 		s.spaceViewIds[id] = struct{}{}
 		progress.SetTotal(int64(len(s.spaceViewIds)))
@@ -163,6 +172,7 @@ func (s *spaceLoadingProgress) updateProgressBar(id string, progress process.Pro
 		progress.SetProgressMessage("space was loaded")
 		progress.SetDone(int64(len(s.spaceViewIdsLoaded)))
 	}
+
 }
 
 func (s *spaceLoadingProgress) Close(ctx context.Context) (err error) {
