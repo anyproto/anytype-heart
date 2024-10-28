@@ -13,7 +13,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
@@ -237,25 +236,25 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
 		return nil
 	}
-	var st *state.State
+	st := sb.NewState()
 	if !u.isLayoutSuitableForSyncRelations(sb.Details()) {
 		var syncRelations = []string{
 			bundle.RelationKeySyncStatus.String(),
 			bundle.RelationKeySyncError.String(),
 			bundle.RelationKeySyncDate.String(),
 		}
+		removedOnce := false
 		for _, relation := range syncRelations {
-			if st == nil {
-				st = sb.NewState()
+			if st.HasRelation(relation) {
+				removedOnce = true
+				st.RemoveRelation(relation)
 			}
-			st.RemoveRelation(relation)
 		}
-		if st != nil {
+		if removedOnce {
 			return sb.Apply(st, smartblock.KeepInternalFlags /* do not erase flags */)
 		}
 		return nil
 	}
-	st = sb.NewState()
 	if fileStatus, ok := st.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
 		status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus.GetNumberValue())))
 	}
