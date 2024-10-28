@@ -24,7 +24,7 @@ var (
 		model.Restrictions_Template,
 		model.Restrictions_Duplicate,
 	}
-	objRestrictEditDup = ObjectRestrictions{
+	objRestrictEditAndDuplicate = ObjectRestrictions{
 		model.Restrictions_Blocks,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
@@ -63,7 +63,7 @@ var (
 		model.ObjectType_collection: objRestrictEdit,
 		model.ObjectType_objectType: objRestrictEdit,
 		model.ObjectType_relation:   objRestrictEdit,
-		model.ObjectType_file:       objRestrictEditDup,
+		model.ObjectType_file:       objRestrictEditAndDuplicate,
 		model.ObjectType_dashboard: {
 			model.Restrictions_Details,
 			model.Restrictions_Relations,
@@ -85,8 +85,8 @@ var (
 			model.Restrictions_Template,
 		},
 		model.ObjectType_participant: objRestrictAll,
-		model.ObjectType_chat:        objRestrictEditDup,
-		model.ObjectType_chatDerived: objRestrictEditDup,
+		model.ObjectType_chat:        objRestrictEditAndDuplicate,
+		model.ObjectType_chatDerived: objRestrictEditAndDuplicate,
 		model.ObjectType_tag:         objRestrictEdit,
 	}
 
@@ -117,7 +117,7 @@ var (
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
 		},
-		smartblock.SmartBlockTypeFileObject:        objRestrictEditDup,
+		smartblock.SmartBlockTypeFileObject:        objRestrictEditAndDuplicate,
 		smartblock.SmartBlockTypeArchive:           objRestrictAll,
 		smartblock.SmartBlockTypeBundledRelation:   objRestrictAll,
 		smartblock.SmartBlockTypeSubObject:         objRestrictEdit,
@@ -144,8 +144,8 @@ var (
 			model.Restrictions_Template,
 		},
 		smartblock.SmartBlockTypeParticipant:       objRestrictAll,
-		smartblock.SmartBlockTypeChatObject:        objRestrictEditDup,
-		smartblock.SmartBlockTypeChatDerivedObject: objRestrictEditDup,
+		smartblock.SmartBlockTypeChatObject:        objRestrictEditAndDuplicate,
+		smartblock.SmartBlockTypeChatDerivedObject: objRestrictEditAndDuplicate,
 	}
 )
 
