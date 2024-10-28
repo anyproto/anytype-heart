@@ -102,7 +102,7 @@ var (
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
-			{model.BlockContentWidget_Tree, "bafyreia4uol63iev5ywhiqdqf4trh44ep2j27rlrvmypd65adg4ntnihn4", "", true},
+			{model.BlockContentWidget_Link, "bafyreia4uol63iev5ywhiqdqf4trh44ep2j27rlrvmypd65adg4ntnihn4", "", true},
 		},
 		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
