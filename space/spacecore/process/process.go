@@ -1,4 +1,4 @@
-package spaceprogressbar
+package process
 
 import (
 	"context"
@@ -32,6 +32,7 @@ type spaceLoadingProgress struct {
 	ctx                   context.Context
 	cancel                context.CancelFunc
 	spaceViewIds          map[string]struct{}
+	spaceViewIdsLoaded    map[string]struct{}
 }
 
 func NewSpaceLoadingProgress() app.ComponentRunnable {
@@ -43,6 +44,7 @@ func (s *spaceLoadingProgress) Init(a *app.App) (err error) {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.subService = app.MustComponent[subscription.Service](a)
 	s.spaceViewIds = make(map[string]struct{})
+	s.spaceViewIdsLoaded = make(map[string]struct{})
 	return
 }
 
@@ -107,8 +109,16 @@ func (s *spaceLoadingProgress) readEvents(batcher *mb.MB[*pb.EventMessage], prog
 		OnAmend: s.handleDetailsAmendEvent(progress),
 	}
 	for {
+		select {
+		case <-progress.Canceled():
+			return
+		default:
+		}
 		records, err := batcher.Wait(s.ctx)
 		if errors.Is(err, context.Canceled) {
+			if err != nil {
+				log.Errorf("failed to cancel process, %s", err)
+			}
 			return
 		}
 		if err != nil {
@@ -117,9 +127,6 @@ func (s *spaceLoadingProgress) readEvents(batcher *mb.MB[*pb.EventMessage], prog
 		for _, rec := range records {
 			matcher.Match(rec)
 		}
-		if len(s.spaceViewIds) == 0 {
-			return
-		}
 	}
 }
 
@@ -127,16 +134,7 @@ func (s *spaceLoadingProgress) handleDetailsSetEvent(progress process.Progress) 
 	return func(detailsSet *pb.EventObjectDetailsSet) {
 		status := pbtypes.GetInt64(detailsSet.Details, bundle.RelationKeySpaceLocalStatus.String())
 		id := pbtypes.GetString(detailsSet.Details, bundle.RelationKeyId.String())
-		if _, ok := s.spaceViewIds[id]; !ok && status != int64(model.SpaceStatus_Ok) {
-			s.spaceViewIds[id] = struct{}{}
-			progress.SetTotal(int64(len(s.spaceViewIds)))
-			return
-		}
-		if _, ok := s.spaceViewIds[id]; ok && status == int64(model.SpaceStatus_Ok) {
-			progress.SetProgressMessage("space was loaded")
-			progress.AddDone(1)
-			delete(s.spaceViewIds, id)
-		}
+		s.updateProgressBar(id, progress, status)
 	}
 }
 
@@ -146,17 +144,24 @@ func (s *spaceLoadingProgress) handleDetailsAmendEvent(progress process.Progress
 			if detail.Key != bundle.RelationKeySpaceLocalStatus.String() {
 				return
 			}
-			if _, ok := s.spaceViewIds[detailsAmend.Id]; !ok && detail.Value.GetNumberValue() != float64(model.SpaceStatus_Ok) {
-				s.spaceViewIds[detailsAmend.Id] = struct{}{}
-				progress.SetTotal(int64(len(s.spaceViewIds)))
-				return
-			}
-			if detail.Value.GetNumberValue() == float64(model.SpaceStatus_Ok) {
-				progress.SetProgressMessage("space was loaded")
-				progress.AddDone(1)
-				delete(s.spaceViewIds, detailsAmend.Id)
-			}
+			s.updateProgressBar(detailsAmend.Id, progress, int64(detail.Value.GetNumberValue()))
 		}
+	}
+}
+
+func (s *spaceLoadingProgress) updateProgressBar(id string, progress process.Progress, status int64) {
+	if _, ok := s.spaceViewIds[id]; !ok {
+		s.spaceViewIds[id] = struct{}{}
+		progress.SetTotal(int64(len(s.spaceViewIds)))
+	}
+	if status != int64(model.SpaceStatus_Ok) {
+		delete(s.spaceViewIdsLoaded, id)
+		progress.SetDone(int64(len(s.spaceViewIdsLoaded)))
+	}
+	if status == int64(model.SpaceStatus_Ok) {
+		s.spaceViewIdsLoaded[id] = struct{}{}
+		progress.SetProgressMessage("space was loaded")
+		progress.SetDone(int64(len(s.spaceViewIdsLoaded)))
 	}
 }
 
