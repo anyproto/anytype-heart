@@ -155,6 +155,10 @@ func (s *service) createObjectInSpace(
 		return s.createChatDerived(ctx, space, details)
 	case bundle.TypeKeyFile:
 		return "", nil, fmt.Errorf("files must be created via fileobject service")
+	case bundle.TypeKeyTemplate:
+		if pbtypes.GetString(details, bundle.RelationKeyTargetObjectType.String()) == "" {
+			return "", nil, fmt.Errorf("cannot create template without target object")
+		}
 	}
 
 	return s.createObjectFromTemplate(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, details, req.TemplateId)
