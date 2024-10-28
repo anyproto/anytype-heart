@@ -19,7 +19,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// given
 		testDirectory := setupTestDirectory(t)
 		h := &Markdown{}
-		p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+		p := process.NewNoOp()
 
 		// when
 		sn, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
@@ -60,7 +60,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// given
 		testDirectory := t.TempDir()
 		h := &Markdown{}
-		p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+		p := process.NewNoOp()
 
 		// when
 		sn, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
@@ -81,7 +81,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		tempDirProvider := &MockTempDir{}
 		converter := newMDConverter(tempDirProvider)
 		h := &Markdown{blockConverter: converter}
-		p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
+		p := process.NewNoOp()
 
 		// when
 		sn, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
