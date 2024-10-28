@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/fs"
+	"os"
+	"path/filepath"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -15,10 +18,13 @@ import (
 	mh "github.com/multiformats/go-multihash"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/encode"
 )
@@ -42,6 +48,7 @@ type service struct {
 	fileSyncService filesync.FileSync
 	spaceService    space.Service
 	dagService      ipld.DAGService
+	exportService   export.Export
 }
 
 func New() Service {
@@ -53,6 +60,7 @@ func (s *service) Init(a *app.App) error {
 	s.dagService = s.commonFile.DAGService()
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	s.spaceService = app.MustComponent[space.Service](a)
+	s.exportService = app.MustComponent[export.Export](a)
 
 	return nil
 }
@@ -83,6 +91,44 @@ type fileObject struct {
 	Content  []byte
 }
 
+func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirEntries []fs.DirEntry, exportPath string, err error) {
+	tempDir := os.TempDir()
+	exportPath, _, err = s.exportService.Export(ctx, pb.RpcObjectListExportRequest{
+		SpaceId:      spaceId,
+		Format:       model.Export_Protobuf,
+		IncludeFiles: true,
+		IsJson:       false,
+		Zip:          false,
+		Path:         tempDir,
+		ObjectIds:    []string{pageId},
+	})
+	if err != nil {
+		return
+	}
+
+	dirEntries, err = os.ReadDir(exportPath)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func makeFileObject(dirPath, fileName string) (asset fileObject, err error) {
+	var content []byte
+
+	content, err = os.ReadFile(filepath.Join(dirPath, fileName))
+	if err != nil {
+		return
+	}
+	asset = fileObject{
+		FileName: fileName,
+		Content:  content,
+	}
+
+	return
+
+}
+
 // current structure of published ufs dir:
 // ```
 // - keys.json <- encrypted with main key, has keys for all the other files
@@ -105,22 +151,40 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 	// will be added via commonFile.AddFile
 	files := make([]fileObject, 0)
 
-	// pageId is json content for now
-	indexJson := fileObject{
-		FileName: "index.json",
-		Content:  []byte(pageId),
+	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
+	if err != nil {
+		return
 	}
 
-	asset1 := fileObject{
-		FileName: "foo.jpg",
-		Content:  []byte("foo.jpg content"),
-	}
-	asset2 := fileObject{
-		FileName: "bar.jpg",
-		Content:  []byte("bar.jpg content"),
-	}
+	for _, entry := range dirEntries {
+		var asset fileObject
+		if entry.IsDir() {
+			var dirFiles []fs.DirEntry
+			dirName := entry.Name()
 
-	files = append(files, indexJson, asset1, asset2)
+			dirFiles, err = os.ReadDir(filepath.Join(exportPath, dirName))
+			if err != nil {
+				return
+			}
+
+			for _, file := range dirFiles {
+				withDirName := filepath.Join(dirName, file.Name())
+				asset, err = makeFileObject(exportPath, withDirName)
+				if err != nil {
+					return
+				}
+
+				files = append(files, asset)
+			}
+		} else {
+			asset, err = makeFileObject(exportPath, entry.Name())
+			if err != nil {
+				return
+			}
+
+			files = append(files, asset)
+		}
+	}
 
 	// add all files via common file, to outer ipfs dir and to keys
 	for _, file := range files {
@@ -226,10 +290,8 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 	return
 }
 
-func (s *service) Publish(ctx context.Context, spaceId, input string) (res PublishResult, err error) {
-	// shortcut, because anytype-ts uses custom mapping to make json object
-	// so I just pass the whole object for now instead of id.
-	res, err = s.publishUfs(ctx, spaceId, input)
+func (s *service) Publish(ctx context.Context, spaceId, pageId string) (res PublishResult, err error) {
+	res, err = s.publishUfs(ctx, spaceId, pageId)
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
 	}
