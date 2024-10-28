@@ -2,6 +2,7 @@ package ftsearch
 
 import (
 	"fmt"
+	"sync"
 
 	tantivy "github.com/anyproto/tantivy-go"
 	"github.com/blevesearch/bleve/v2/search"
@@ -12,6 +13,7 @@ const docLimit = 10000
 func (f *ftSearchTantivy) NewAutoBatcher(maxDocs int, maxSizeBytes uint64) AutoBatcher {
 	return &ftIndexBatcherTantivy{
 		index: f.index,
+		mu:    &f.mu,
 	}
 }
 
@@ -76,6 +78,7 @@ type ftIndexBatcherTantivy struct {
 	index      *tantivy.TantivyContext
 	deleteIds  []string
 	updateDocs []*tantivy.Document
+	mu         *sync.Mutex // original mutex, temporary solution
 }
 
 // Add adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
@@ -124,6 +127,8 @@ func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
 
 // Finish indexes the remaining documents in the batch.
 func (f *ftIndexBatcherTantivy) Finish() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	err := f.index.DeleteDocuments(fieldIdRaw, f.deleteIds...)
 	if err != nil {
 		return err
