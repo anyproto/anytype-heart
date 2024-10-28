@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/any-sync/util/syncqueues"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
@@ -37,7 +38,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	decorator "github.com/anyproto/anytype-heart/core/block/bookmark/bookmarkimporter"
+	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/collection"
+	"github.com/anyproto/anytype-heart/core/block/dataviewservice"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -79,6 +82,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
@@ -218,6 +222,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
+		Register(syncqueues.New()).
 		Register(peerstore.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
@@ -229,10 +234,11 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(yamux.New()).
 		Register(quic.New()).
 		Register(clientserver.New()).
-		Register(streampool.New()).
 		Register(coordinatorclient.New()).
 		Register(nodeclient.New()).
 		Register(credentialprovider.New()).
+		Register(spacecore.NewStreamOpener()).
+		Register(streampool.New()).
 		Register(commonspace.New()).
 		Register(aclclient.NewAclJoiningClient()).
 		Register(virtualspaceservice.New()).
@@ -249,6 +255,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(files.New()).
 		Register(fileoffloader.New()).
 		Register(fileacl.New()).
+		Register(chats.New()).
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
@@ -267,8 +274,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(core.New()).
 		Register(core.NewTempDirService()).
 		Register(treemanager.New()).
-		Register(detailservice.New()).
 		Register(block.New()).
+		Register(detailservice.New()).
+		Register(dataviewservice.New()).
 		Register(indexer.New()).
 		Register(detailsupdater.New()).
 		Register(session.NewHookRunner()).
@@ -284,6 +292,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(collection.New()).
 		Register(subscription.New()).
+		Register(crossspacesub.New()).
 		Register(syncsubscriptions.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).

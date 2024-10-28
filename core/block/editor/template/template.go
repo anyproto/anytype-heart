@@ -26,6 +26,7 @@ const (
 	DescriptionBlockId  = "description"
 	DataviewBlockId     = "dataview"
 	FeaturedRelationsId = "featuredRelations"
+	ChatId              = "chat"
 )
 
 var log = logging.Logger("anytype-state-template")
@@ -413,6 +414,22 @@ var WithFeaturedRelations = StateTransformer(func(s *state.State) {
 
 	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, FeaturedRelationsId); err != nil {
 		log.Errorf("template FeaturedRelations failed to insert: %v", err)
+	}
+})
+
+var WithBlockChat = StateTransformer(func(s *state.State) {
+	blockExists := s.Exists(ChatId)
+	if blockExists {
+		return
+	}
+
+	s.Set(simple.New(&model.Block{
+		Id:      ChatId,
+		Content: &model.BlockContentOfChat{Chat: &model.BlockContentChat{}},
+	}))
+
+	if err := s.InsertTo(s.RootId(), model.Block_Inner, ChatId); err != nil {
+		log.Errorf("template BlockChat failed to insert: %v", err)
 	}
 })
 

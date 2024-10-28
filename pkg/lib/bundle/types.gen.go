@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "a475473f827167d93b818920569ea0f2c758761ef24d6a6bcb8da6b009f01904"
+const TypeChecksum = "f3ae9931142aa23ec9696ccb60fe1a68b4fdafcc345e307e0a26d4fb98a0686c"
 const (
 	TypePrefix = "_ot"
 )
@@ -41,6 +41,8 @@ const (
 	TypeKeyGoal           domain.TypeKey = "goal"
 	TypeKeyFile           domain.TypeKey = "file"
 	TypeKeyProject        domain.TypeKey = "project"
+	TypeKeyChat           domain.TypeKey = "chat"
+	TypeKeyChatDerived    domain.TypeKey = "chatDerived"
 )
 
 var (
@@ -79,6 +81,29 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeySource), MustGetRelationLink(RelationKeyPicture)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "bookmark",
+		},
+		TypeKeyChat: {
+
+			Description:   "A chat",
+			IconEmoji:     "💬",
+			Layout:        model.ObjectType_chat,
+			Name:          "Chat",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_ChatObject},
+			Url:           TypePrefix + "chat",
+		},
+		TypeKeyChatDerived: {
+
+			Description:   "A chat derived object",
+			Hidden:        true,
+			Layout:        model.ObjectType_chatDerived,
+			Name:          "Chat Derived Object",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
+			Revision:      1,
+			Types:         []model.SmartBlockType{model.SmartBlockType_ChatDerivedObject},
+			Url:           TypePrefix + "chatDerived",
 		},
 		TypeKeyCollection: {
 

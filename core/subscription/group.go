@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func (s *service) newGroupSub(id string, relKey string, f *database.Filters, groups []*model.BlockContentDataviewGroup) *groupSub {
+func (s *spaceSubscriptions) newGroupSub(id string, relKey string, f *database.Filters, groups []*model.BlockContentDataviewGroup) *groupSub {
 	sub := &groupSub{
 		id:     id,
 		relKey: relKey,

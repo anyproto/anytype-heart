@@ -61,12 +61,14 @@ func processByPid(pid int) (*process.Process, error) {
 	return nil, fmt.Errorf("process not found")
 }
 
-func isMyProcess(exePath string, process *process.Process) bool {
+func isSameProcessExeFilename(exePath string, process *process.Process) bool {
 	processPath, err := process.Exe()
 	if err != nil {
 		return false
 	}
-	return processPath == exePath
+
+	// only check the last part of the path
+	return filepath.Base(processPath) == filepath.Base(exePath)
 }
 
 func cleanupAfterOldProcess(exePath string, lockfile string) {
@@ -82,7 +84,8 @@ func cleanupAfterOldProcess(exePath string, lockfile string) {
 
 	isNotCurrentRun := os.Getpid() != oldPid
 
-	if isNotCurrentRun && !isMyProcess(exePath, proc) {
+	if isNotCurrentRun && isSameProcessExeFilename(exePath, proc) {
+		// isSameProcessExeFilename is to avoid false positives, because PIDs can be reused by the OS
 		log.Warnf("Killing the old process.")
 		err = proc.Kill()
 		if err != nil {

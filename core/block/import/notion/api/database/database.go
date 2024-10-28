@@ -349,8 +349,9 @@ func (ds *Service) AddObjectsToNotionCollection(notionContext *api.NotionImportC
 	notionPages []page.Page) (*common.Snapshot, error) {
 	allObjects := ds.filterObjects(notionContext, notionDB, notionPages)
 
-	rootCollection := common.NewRootCollection(ds.collectionService)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects, "", nil, true, true)
+	rootCollection := common.NewImportCollection(ds.collectionService)
+	settings := common.MakeImportCollectionSetting(rootCollectionName, allObjects, "", nil, true, true, true)
+	rootCol, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, err
 	}

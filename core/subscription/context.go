@@ -354,3 +354,51 @@ func (ctx *opCtx) reset() {
 		}
 	}
 }
+
+type EventMatcher struct {
+	OnAdd      func(*pb.EventObjectSubscriptionAdd)
+	OnRemove   func(*pb.EventObjectSubscriptionRemove)
+	OnPosition func(*pb.EventObjectSubscriptionPosition)
+	OnSet      func(*pb.EventObjectDetailsSet)
+	OnUnset    func(*pb.EventObjectDetailsUnset)
+	OnAmend    func(*pb.EventObjectDetailsAmend)
+	OnCounters func(*pb.EventObjectSubscriptionCounters)
+	OnGroups   func(*pb.EventObjectSubscriptionGroups)
+}
+
+func (m EventMatcher) Match(msg *pb.EventMessage) {
+	switch v := msg.Value.(type) {
+	case *pb.EventMessageValueOfSubscriptionAdd:
+		if m.OnAdd != nil {
+			m.OnAdd(v.SubscriptionAdd)
+		}
+	case *pb.EventMessageValueOfSubscriptionRemove:
+		if m.OnRemove != nil {
+			m.OnRemove(v.SubscriptionRemove)
+		}
+	case *pb.EventMessageValueOfSubscriptionPosition:
+		if m.OnPosition != nil {
+			m.OnPosition(v.SubscriptionPosition)
+		}
+	case *pb.EventMessageValueOfObjectDetailsSet:
+		if m.OnSet != nil {
+			m.OnSet(v.ObjectDetailsSet)
+		}
+	case *pb.EventMessageValueOfObjectDetailsUnset:
+		if m.OnUnset != nil {
+			m.OnUnset(v.ObjectDetailsUnset)
+		}
+	case *pb.EventMessageValueOfObjectDetailsAmend:
+		if m.OnAmend != nil {
+			m.OnAmend(v.ObjectDetailsAmend)
+		}
+	case *pb.EventMessageValueOfSubscriptionCounters:
+		if m.OnCounters != nil {
+			m.OnCounters(v.SubscriptionCounters)
+		}
+	case *pb.EventMessageValueOfSubscriptionGroups:
+		if m.OnGroups != nil {
+			m.OnGroups(v.SubscriptionGroups)
+		}
+	}
+}

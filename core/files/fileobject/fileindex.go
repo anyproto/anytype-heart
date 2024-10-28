@@ -2,13 +2,16 @@ package fileobject
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/gogo/protobuf/types"
+	format "github.com/ipfs/go-ipld-format"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -17,6 +20,7 @@ import (
 	fileblock "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -122,7 +126,7 @@ func (ind *indexer) initQuery() {
 }
 
 func (ind *indexer) addToQueueFromObjectStore(ctx context.Context) error {
-	recs, err := ind.objectStore.Query(ind.query)
+	recs, err := ind.objectStore.QueryCrossSpace(ind.query)
 	if err != nil {
 		return fmt.Errorf("query: %w", err)
 	}
@@ -182,9 +186,22 @@ func (ind *indexer) runIndexingWorker() {
 		default:
 		}
 		if err := ind.indexNext(ind.indexCtx); err != nil {
-			log.Errorf("index loop: %v", err)
+			logIndexLoop(err)
 		}
 	}
+}
+
+func logIndexLoop(err error) {
+	if errors.Is(err, treestorage.ErrUnknownTreeId) {
+		return
+	}
+	if errors.Is(err, format.ErrNotFound{}) {
+		return
+	}
+	if errors.Is(err, rpcstore.ErrNoConnectionToAnyFileClient) {
+		return
+	}
+	log.Errorf("index loop: %v", err)
 }
 
 func (ind *indexer) indexNext(ctx context.Context) error {
@@ -276,9 +293,9 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (det
 }
 
 func (ind *indexer) addBlocks(st *state.State, details *types.Struct, objectId string) error {
-	fileType := fileblock.DetectTypeByMIME(pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()))
-
 	fname := pbtypes.GetString(details, bundle.RelationKeyName.String())
+	fileType := fileblock.DetectTypeByMIME(fname, pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()))
+
 	ext := pbtypes.GetString(details, bundle.RelationKeyFileExt.String())
 
 	if ext != "" && !strings.HasSuffix(fname, "."+ext) {

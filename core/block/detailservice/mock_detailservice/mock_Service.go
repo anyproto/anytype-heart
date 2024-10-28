@@ -17,8 +17,6 @@ import (
 
 	session "github.com/anyproto/anytype-heart/core/session"
 
-	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-
 	types "github.com/gogo/protobuf/types"
 )
 
@@ -33,124 +31,6 @@ type MockService_Expecter struct {
 
 func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
-}
-
-// GetObject provides a mock function with given fields: ctx, objectID
-func (_m *MockService) GetObject(ctx context.Context, objectID string) (smartblock.SmartBlock, error) {
-	ret := _m.Called(ctx, objectID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetObject")
-	}
-
-	var r0 smartblock.SmartBlock
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (smartblock.SmartBlock, error)); ok {
-		return rf(ctx, objectID)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) smartblock.SmartBlock); ok {
-		r0 = rf(ctx, objectID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(smartblock.SmartBlock)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, objectID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_GetObject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetObject'
-type MockService_GetObject_Call struct {
-	*mock.Call
-}
-
-// GetObject is a helper method to define mock.On call
-//   - ctx context.Context
-//   - objectID string
-func (_e *MockService_Expecter) GetObject(ctx interface{}, objectID interface{}) *MockService_GetObject_Call {
-	return &MockService_GetObject_Call{Call: _e.mock.On("GetObject", ctx, objectID)}
-}
-
-func (_c *MockService_GetObject_Call) Run(run func(ctx context.Context, objectID string)) *MockService_GetObject_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockService_GetObject_Call) Return(sb smartblock.SmartBlock, err error) *MockService_GetObject_Call {
-	_c.Call.Return(sb, err)
-	return _c
-}
-
-func (_c *MockService_GetObject_Call) RunAndReturn(run func(context.Context, string) (smartblock.SmartBlock, error)) *MockService_GetObject_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetObjectByFullID provides a mock function with given fields: ctx, id
-func (_m *MockService) GetObjectByFullID(ctx context.Context, id domain.FullID) (smartblock.SmartBlock, error) {
-	ret := _m.Called(ctx, id)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetObjectByFullID")
-	}
-
-	var r0 smartblock.SmartBlock
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, domain.FullID) (smartblock.SmartBlock, error)); ok {
-		return rf(ctx, id)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, domain.FullID) smartblock.SmartBlock); ok {
-		r0 = rf(ctx, id)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(smartblock.SmartBlock)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, domain.FullID) error); ok {
-		r1 = rf(ctx, id)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_GetObjectByFullID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetObjectByFullID'
-type MockService_GetObjectByFullID_Call struct {
-	*mock.Call
-}
-
-// GetObjectByFullID is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id domain.FullID
-func (_e *MockService_Expecter) GetObjectByFullID(ctx interface{}, id interface{}) *MockService_GetObjectByFullID_Call {
-	return &MockService_GetObjectByFullID_Call{Call: _e.mock.On("GetObjectByFullID", ctx, id)}
-}
-
-func (_c *MockService_GetObjectByFullID_Call) Run(run func(ctx context.Context, id domain.FullID)) *MockService_GetObjectByFullID_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(domain.FullID))
-	})
-	return _c
-}
-
-func (_c *MockService_GetObjectByFullID_Call) Return(sb smartblock.SmartBlock, err error) *MockService_GetObjectByFullID_Call {
-	_c.Call.Return(sb, err)
-	return _c
-}
-
-func (_c *MockService_GetObjectByFullID_Call) RunAndReturn(run func(context.Context, domain.FullID) (smartblock.SmartBlock, error)) *MockService_GetObjectByFullID_Call {
-	_c.Call.Return(run)
-	return _c
 }
 
 // Init provides a mock function with given fields: a
@@ -829,54 +709,6 @@ func (_c *MockService_SetListIsFavorite_Call) Return(_a0 error) *MockService_Set
 }
 
 func (_c *MockService_SetListIsFavorite_Call) RunAndReturn(run func([]string, bool) error) *MockService_SetListIsFavorite_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetSource provides a mock function with given fields: ctx, objectId, source
-func (_m *MockService) SetSource(ctx session.Context, objectId string, source []string) error {
-	ret := _m.Called(ctx, objectId, source)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetSource")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(session.Context, string, []string) error); ok {
-		r0 = rf(ctx, objectId, source)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockService_SetSource_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetSource'
-type MockService_SetSource_Call struct {
-	*mock.Call
-}
-
-// SetSource is a helper method to define mock.On call
-//   - ctx session.Context
-//   - objectId string
-//   - source []string
-func (_e *MockService_Expecter) SetSource(ctx interface{}, objectId interface{}, source interface{}) *MockService_SetSource_Call {
-	return &MockService_SetSource_Call{Call: _e.mock.On("SetSource", ctx, objectId, source)}
-}
-
-func (_c *MockService_SetSource_Call) Run(run func(ctx session.Context, objectId string, source []string)) *MockService_SetSource_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].(string), args[2].([]string))
-	})
-	return _c
-}
-
-func (_c *MockService_SetSource_Call) Return(_a0 error) *MockService_SetSource_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockService_SetSource_Call) RunAndReturn(run func(session.Context, string, []string) error) *MockService_SetSource_Call {
 	_c.Call.Return(run)
 	return _c
 }

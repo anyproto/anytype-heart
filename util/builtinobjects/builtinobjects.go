@@ -102,11 +102,7 @@ var (
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
-			{model.BlockContentWidget_Tree, "bafyreib54qrvlara5ickx4sk7mtdmeuwnyrmsdwrrrmvw7rhluwd3mwkg4", "", true},
-			{model.BlockContentWidget_List, "bafyreifvmvqmlmrzzdd4db5gau4fcdhxbii4pkanjdvcjbofmmywhg3zni", "f984ddde-eb13-497e-809a-2b9a96fd3503", true},
-			{model.BlockContentWidget_List, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
+			{model.BlockContentWidget_Link, "bafyreia4uol63iev5ywhiqdqf4trh44ep2j27rlrvmypd65adg4ntnihn4", "", true},
 		},
 		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
@@ -146,6 +142,7 @@ type BuiltinObjects interface {
 }
 
 type builtinObjects struct {
+	objectGetter   cache.ObjectGetter
 	detailsService detailservice.Service
 	importer       importer.Importer
 	store          objectstore.ObjectStore
@@ -160,6 +157,7 @@ func New() BuiltinObjects {
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
+	b.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	b.detailsService = app.MustComponent[detailservice.Service](a)
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
@@ -237,10 +235,10 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
-	progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
+	progress.FinishWithNotification(b.provideNotification(spaceID, progress, importErr, title), importErr)
 
-	if err != nil {
-		log.Errorf("failed to send notification: %v", err)
+	if importErr != nil {
+		log.Errorf("failed to send notification: %v", importErr)
 	}
 
 	if isNewSpace {
@@ -414,7 +412,7 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 
 	widgetObjectID := spc.DerivedIDs().Widgets
 
-	if err = cache.DoStateCtx(b.detailsService, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
+	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
 		for _, param := range widgetParams[useCase] {
 			objectID := param.objectID
 			if param.isObjectIDChanged {
@@ -456,7 +454,7 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 
 func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string, err error) {
 	var ids []string
-	if ids, _, err = b.store.QueryObjectIDs(database.Query{
+	if ids, _, err = b.store.SpaceIndex(spaceID).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,

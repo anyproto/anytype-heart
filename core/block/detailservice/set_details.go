@@ -40,7 +40,7 @@ func (s *service) SetSpaceInfo(spaceId string, details *types.Struct) error {
 }
 
 func (s *service) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error) {
-	err = cache.Do(s, workspaceId, func(ws *editor.Workspaces) error {
+	err = cache.Do(s.objectGetter, workspaceId, func(ws *editor.Workspaces) error {
 		if ws.Type() != coresb.SmartBlockTypeWorkspace {
 			return ErrUnexpectedBlockType
 		}
@@ -85,22 +85,32 @@ func (s *service) SetIsArchived(objectId string, isArchived bool) error {
 }
 
 func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
-	ids, err := s.store.HasIDs(objectIds...)
+	objectIdsPerSpace, err := s.partitionObjectIdsBySpaceId(objectIds)
 	if err != nil {
-		return err
+		return fmt.Errorf("partition object ids by spaces: %w", err)
 	}
+
 	var (
 		anySucceed  bool
 		resultError error
 	)
-	for _, id := range ids {
-		err := s.SetIsFavorite(id, isFavorite)
+	for spaceId, objectIds := range objectIdsPerSpace {
+		ids, err := s.store.SpaceIndex(spaceId).HasIds(objectIds)
 		if err != nil {
-			log.Error("failed to favorite object", zap.String("objectId", id), zap.Error(err))
-			resultError = errors.Join(resultError, err)
-		} else {
-			anySucceed = true
+			return err
 		}
+
+		for _, id := range ids {
+			// TODO Set list of ids at once
+			err := s.SetIsFavorite(id, isFavorite)
+			if err != nil {
+				log.Error("failed to favorite object", zap.String("objectId", id), zap.Error(err))
+				resultError = errors.Join(resultError, err)
+			} else {
+				anySucceed = true
+			}
+		}
+
 	}
 	if resultError != nil {
 		log.Warn("failed to set objects as favorite", zap.Error(resultError))
@@ -141,13 +151,13 @@ func (s *service) checkArchivedRestriction(isArchived bool, objectId string) err
 	if !isArchived {
 		return nil
 	}
-	return cache.Do(s, objectId, func(sb smartblock.SmartBlock) error {
+	return cache.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
 		return s.restriction.CheckRestrictions(sb, model.Restrictions_Delete)
 	})
 }
 
 func (s *service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
-	return cache.Do(s, collectionId, func(b smartblock.SmartBlock) error {
+	return cache.Do(s.objectGetter, collectionId, func(b smartblock.SmartBlock) error {
 		coll, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unsupported sb block type: %T", b)
@@ -177,13 +187,13 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
+	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
-		ids, err := s.store.HasIDs(objectIds...)
+		ids, err := s.store.SpaceIndex(spaceId).HasIds(objectIds)
 		if err != nil {
 			return err
 		}
