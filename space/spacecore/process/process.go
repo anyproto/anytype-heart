@@ -32,7 +32,7 @@ type spaceLoadingProgress struct {
 	spaceViewSubscription *objectsubscription.ObjectSubscription[struct{}]
 	ctx                   context.Context
 	cancel                context.CancelFunc
-	spaceViewIds          map[string]struct{}
+	activeViewIds         map[string]struct{}
 	spaceViewIdsLoaded    map[string]struct{}
 	newAccount            bool
 }
@@ -45,7 +45,7 @@ func (s *spaceLoadingProgress) Init(a *app.App) (err error) {
 	s.processService = app.MustComponent[process.Service](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.subService = app.MustComponent[subscription.Service](a)
-	s.spaceViewIds = make(map[string]struct{})
+	s.activeViewIds = make(map[string]struct{})
 	s.spaceViewIdsLoaded = make(map[string]struct{})
 	config := app.MustComponent[*config.Config](a)
 	s.newAccount = config.IsNewAccount()
@@ -102,7 +102,7 @@ func (s *spaceLoadingProgress) makeProgressBar(spaceViewCount int) (process.Prog
 func (s *spaceLoadingProgress) fillIdsMap(spaceViews []*types.Struct) {
 	for _, spaceView := range spaceViews {
 		id := pbtypes.GetString(spaceView, bundle.RelationKeyId.String())
-		s.spaceViewIds[id] = struct{}{}
+		s.activeViewIds[id] = struct{}{}
 	}
 }
 
@@ -146,7 +146,7 @@ func (s *spaceLoadingProgress) handleDetailsAmendEvent(progress process.Progress
 	return func(detailsAmend *pb.EventObjectDetailsAmend) {
 		for _, detail := range detailsAmend.Details {
 			if detail.Key != bundle.RelationKeySpaceLocalStatus.String() {
-				return
+				continue
 			}
 			s.updateProgressBar(detailsAmend.Id, progress, int64(detail.Value.GetNumberValue()))
 		}
@@ -154,19 +154,23 @@ func (s *spaceLoadingProgress) handleDetailsAmendEvent(progress process.Progress
 }
 
 func (s *spaceLoadingProgress) updateProgressBar(id string, progress process.Progress, status int64) {
+	// in case space is missed, decrease number of active view
 	if status == int64(spaceinfo.LocalStatusMissing) {
-		delete(s.spaceViewIds, id)
-		progress.SetTotal(int64(len(s.spaceViewIds)))
+		delete(s.activeViewIds, id)
+		progress.SetTotal(int64(len(s.activeViewIds)))
 		return
 	}
-	if _, ok := s.spaceViewIds[id]; !ok {
-		s.spaceViewIds[id] = struct{}{}
-		progress.SetTotal(int64(len(s.spaceViewIds)))
+	// if new space view is appeared, increase number of total active view
+	if _, ok := s.activeViewIds[id]; !ok {
+		s.activeViewIds[id] = struct{}{}
+		progress.SetTotal(int64(len(s.activeViewIds)))
 	}
+	// if space view is not loaded, remove it from map and decrease number of processed view
 	if status != int64(model.SpaceStatus_Ok) {
 		delete(s.spaceViewIdsLoaded, id)
 		progress.SetDone(int64(len(s.spaceViewIdsLoaded)))
 	}
+	// mark space view as loaded
 	if status == int64(model.SpaceStatus_Ok) {
 		s.spaceViewIdsLoaded[id] = struct{}{}
 		progress.SetProgressMessage("space was loaded")
