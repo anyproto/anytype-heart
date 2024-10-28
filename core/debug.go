@@ -255,3 +255,19 @@ func (mw *Middleware) DebugAnystoreObjectChanges(cctx context.Context, req *pb.R
 		WrongOrder: wrongOrder,
 	}
 }
+
+func (mw *Middleware) DebugNetCheck(cctx context.Context, req *pb.RpcDebugNetCheckRequest) *pb.RpcDebugNetCheckResponse {
+	res, err := getService[debug.Debug](mw).NetCheck(cctx, req.ClientYml)
+	if err != nil {
+		return &pb.RpcDebugNetCheckResponse{
+			Error: &pb.RpcDebugNetCheckResponseError{
+				Code:        pb.RpcDebugNetCheckResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return &pb.RpcDebugNetCheckResponse{
+		Result: res,
+	}
+}
