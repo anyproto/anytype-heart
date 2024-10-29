@@ -1,10 +1,8 @@
 package source
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
@@ -328,10 +326,4 @@ func changeWithSmallTextUpdate() *pb.Change {
 				}}}},
 		}}},
 	}}
-}
-
-func TestName(t *testing.T) {
-	ts := time.Now()
-	fmt.Println(ts.Format("16 Sep 2024"))
-	fmt.Println(ts.Format("02 Jan 2006"))
 }
