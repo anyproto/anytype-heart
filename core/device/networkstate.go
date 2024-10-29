@@ -45,14 +45,13 @@ func (n *networkState) GetNetworkState() model.DeviceNetworkType {
 
 func (n *networkState) SetNetworkState(networkState model.DeviceNetworkType) {
 	n.networkMu.Lock()
-	defer n.networkMu.Unlock()
-
 	if n.networkState == networkState {
 		// to avoid unnecessary hook calls
 		return
 	}
 	n.networkState = networkState
-	n.runOnNetworkUpdateHook()
+	n.networkMu.Unlock()
+	n.runOnNetworkUpdateHook(networkState)
 }
 
 func (n *networkState) RegisterHook(hook func(network model.DeviceNetworkType)) {
@@ -61,10 +60,10 @@ func (n *networkState) RegisterHook(hook func(network model.DeviceNetworkType)) 
 	n.onNetworkUpdateHooks = append(n.onNetworkUpdateHooks, hook)
 }
 
-func (n *networkState) runOnNetworkUpdateHook() {
+func (n *networkState) runOnNetworkUpdateHook(networkState model.DeviceNetworkType) {
 	n.hookMu.Lock()
 	defer n.hookMu.Unlock()
 	for _, hook := range n.onNetworkUpdateHooks {
-		hook(n.networkState)
+		hook(networkState)
 	}
 }

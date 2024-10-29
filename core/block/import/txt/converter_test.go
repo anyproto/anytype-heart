@@ -17,7 +17,7 @@ import (
 
 func TestTXT_GetSnapshots(t *testing.T) {
 	h := &TXT{}
-	p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
+	p := process.NewNoOp()
 	sn, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfTxtParams{
 			TxtParams: &pb.RpcObjectImportRequestTxtParams{Path: []string{"testdata/test.txt", "testdata/test"}},
