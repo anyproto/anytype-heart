@@ -74,6 +74,9 @@ type spaceSyncStatus struct {
 	ctx        context.Context
 	ctxCancel  context.CancelFunc
 	newAccount bool
+
+	progressBarPerSpace map[string]process.Progress
+	progressMx          sync.Mutex
 }
 
 func NewSpaceSyncStatus() Updater {
@@ -100,6 +103,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.progressService = app.MustComponent[process.Service](a)
 	cfg := app.MustComponent[*config.Config](a)
 	s.newAccount = cfg.IsNewAccount()
+	s.progressBarPerSpace = make(map[string]process.Progress)
 	return
 }
 
@@ -125,11 +129,11 @@ func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	spaceIds := s.spaceIdGetter.AllSpaceIds()
 	s.sendStartEvent(spaceIds)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+	s.updateProgressCh = make(chan string, len(spaceIds))
+	if len(spaceIds) == 0 {
+		s.updateProgressCh = make(chan string, 1)
+	}
 	if !s.newAccount {
-		s.updateProgressCh = make(chan string, len(spaceIds))
-		if len(spaceIds) == 0 {
-			s.updateProgressCh = make(chan string, 1)
-		}
 		go s.runProgress()
 	}
 	s.periodicCall.Run()
@@ -337,27 +341,14 @@ func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.E
 
 func (s *spaceSyncStatus) runProgress() {
 	spaceIds := s.spaceIdGetter.AllSpaceIds()
-	progressBarPerSpace := make(map[string]process.Progress)
 	for _, id := range spaceIds {
-		if _, err := s.initProgressBar(id, progressBarPerSpace); err != nil {
+		if _, err := s.initProgressBar(id, s.progressBarPerSpace); err != nil {
 			log.Errorf("failed to create progress bar: %s", err)
 		}
 	}
 	processed := make(map[string]struct{}, len(spaceIds))
-	var mapMx sync.Mutex
-	go func() {
-		select {
-		case <-s.ctx.Done():
-			mapMx.Lock()
-			for _, progress := range progressBarPerSpace {
-				progress.Canceled()
-			}
-			mapMx.Unlock()
-			return
-		}
-	}()
 	for spaceId := range s.updateProgressCh {
-		err := s.updateSpaceProgressBar(spaceId, progressBarPerSpace, processed, &mapMx)
+		err := s.updateSpaceProgressBar(spaceId, s.progressBarPerSpace, processed)
 		if err != nil {
 			log.Errorf("failed to update progress bar: %s", err)
 		}
@@ -368,23 +359,15 @@ func (s *spaceSyncStatus) updateSpaceProgressBar(
 	spaceId string,
 	progressBarPerSpace map[string]process.Progress,
 	processed map[string]struct{},
-	mx *sync.Mutex,
 ) error {
-	var (
-		progress process.Progress
-		ok       bool
-		err      error
-	)
-	mx.Lock()
-	defer mx.Unlock()
-	if _, ok = processed[spaceId]; ok {
+	if _, ok := processed[spaceId]; ok {
 		return nil
 	}
-	if progress, ok = progressBarPerSpace[spaceId]; !ok {
-		progress, err = s.initProgressBar(spaceId, progressBarPerSpace)
-		if err != nil {
-			return err
-		}
+	s.progressMx.Lock()
+	defer s.progressMx.Unlock()
+	progress, err := s.getProgressBarForSpace(spaceId, progressBarPerSpace)
+	if err != nil {
+		return err
 	}
 	if progress == nil {
 		return nil
@@ -392,10 +375,36 @@ func (s *spaceSyncStatus) updateSpaceProgressBar(
 	canceled := progress.Canceled()
 	select {
 	case <-canceled:
+		progress.Finish(nil)
 		delete(progressBarPerSpace, spaceId)
 		return nil
 	default:
 	}
+	s.updateProcess(spaceId, progressBarPerSpace, processed, progress)
+	return nil
+}
+
+func (s *spaceSyncStatus) getProgressBarForSpace(spaceId string, progressBarPerSpace map[string]process.Progress) (process.Progress, error) {
+	var (
+		progress process.Progress
+		ok       bool
+		err      error
+	)
+	if progress, ok = progressBarPerSpace[spaceId]; !ok {
+		progress, err = s.initProgressBar(spaceId, progressBarPerSpace)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return progress, nil
+}
+
+func (s *spaceSyncStatus) updateProcess(
+	spaceId string,
+	progressBarPerSpace map[string]process.Progress,
+	processed map[string]struct{},
+	progress process.Progress,
+) {
 	total := int64(s.getObjectSyncingObjectsCount(spaceId, s.getMissingIds(spaceId)))
 	info := progress.Info()
 	if total == 0 {
@@ -403,14 +412,13 @@ func (s *spaceSyncStatus) updateSpaceProgressBar(
 		progress.Finish(nil)
 		processed[spaceId] = struct{}{}
 		delete(progressBarPerSpace, spaceId)
-		return nil
+		return
 	}
 	if info.Progress.Total >= total {
 		progress.SetDone(info.Progress.Total - total)
 	} else {
 		progress.SetTotal(total)
 	}
-	return nil
 }
 
 func (s *spaceSyncStatus) initProgressBar(id string, progressBarPerSpace map[string]process.Progress) (process.Progress, error) {
@@ -434,6 +442,12 @@ func (s *spaceSyncStatus) finishProgressUpdate() {
 	s.updateProgressChClose = true
 	close(s.updateProgressCh)
 	s.updateProgressChMx.Unlock()
+
+	s.progressMx.Lock()
+	for _, progress := range s.progressBarPerSpace {
+		progress.Finish(nil)
+	}
+	s.progressMx.Unlock()
 }
 
 func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
