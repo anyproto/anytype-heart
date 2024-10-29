@@ -1725,7 +1725,6 @@
     - [Model.Process](#anytype-Model-Process)
     - [Model.Process.DropFiles](#anytype-Model-Process-DropFiles)
     - [Model.Process.Export](#anytype-Model-Process-Export)
-    - [Model.Process.FullText](#anytype-Model-Process-FullText)
     - [Model.Process.Import](#anytype-Model-Process-Import)
     - [Model.Process.Migration](#anytype-Model-Process-Migration)
     - [Model.Process.Progress](#anytype-Model-Process-Progress)
@@ -27187,7 +27186,6 @@ Precondition: user A and user B opened the same block
 | saveFile | [Model.Process.SaveFile](#anytype-Model-Process-SaveFile) |  |  |
 | migration | [Model.Process.Migration](#anytype-Model-Process-Migration) |  |  |
 | recoverAccount | [Model.Process.RecoverAccount](#anytype-Model-Process-RecoverAccount) |  |  |
-| fullText | [Model.Process.FullText](#anytype-Model-Process-FullText) |  |  |
 
 
 
@@ -27207,16 +27205,6 @@ Precondition: user A and user B opened the same block
 <a name="anytype-Model-Process-Export"></a>
 
 ### Model.Process.Export
-
-
-
-
-
-
-
-<a name="anytype-Model-Process-FullText"></a>
-
-### Model.Process.FullText
 
 
 

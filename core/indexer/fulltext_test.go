@@ -331,7 +331,7 @@ func TestRunFullTextIndexer(t *testing.T) {
 		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, "objectId"+strconv.Itoa(i)).Return(smartTest, nil).Once()
 	}
 
-	indexerFx.runFullTextIndexer(context.Background(), nil)
+	indexerFx.runFullTextIndexer(context.Background())
 
 	count, _ := indexerFx.ftsearch.DocCount()
 	assert.Equal(t, 10, int(count))
@@ -357,7 +357,7 @@ func TestRunFullTextIndexer(t *testing.T) {
 
 	}
 
-	indexerFx.runFullTextIndexer(context.Background(), nil)
+	indexerFx.runFullTextIndexer(context.Background())
 
 	count, _ = indexerFx.ftsearch.DocCount()
 	assert.Equal(t, 10, int(count))
@@ -384,7 +384,7 @@ func TestPrepareSearchDocument_Reindex_Removed(t *testing.T) {
 		)))
 	indexerFx.store.AddToIndexQueue(context.Background(), "objectId1")
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
-	indexerFx.runFullTextIndexer(context.Background(), nil)
+	indexerFx.runFullTextIndexer(context.Background())
 
 	count, _ = indexerFx.ftsearch.DocCount()
 	assert.Equal(t, uint64(1), count)

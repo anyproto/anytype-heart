@@ -1171,7 +1171,6 @@ message Model {
             SaveFile saveFile = 9;
             Migration migration = 10;
             RecoverAccount recoverAccount = 11;
-            FullText fullText = 12;
         }
 
         message DropFiles {}
@@ -1180,7 +1179,6 @@ message Model {
         message SaveFile {}
         message RecoverAccount {}
         message Migration {}
-        message FullText {}
 
         enum State {
             None = 0;

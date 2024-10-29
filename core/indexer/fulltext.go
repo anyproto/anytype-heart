@@ -11,12 +11,10 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -40,31 +38,29 @@ func (i *indexer) ForceFTIndex() {
 
 // ftLoop runs full-text indexer
 // MUST NOT be called more than once
-func (i *indexer) ftLoopRoutine(progress process.Progress) {
+func (i *indexer) ftLoopRoutine() {
 	ticker := time.NewTicker(ftIndexInterval)
 	ctx := i.runCtx
 
-	i.runFullTextIndexer(ctx, progress)
+	i.runFullTextIndexer(ctx)
 	defer close(i.ftQueueFinished)
 	var lastForceIndex time.Time
-	progress = process.NewNoOp()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			i.runFullTextIndexer(ctx, progress)
+			i.runFullTextIndexer(ctx)
 		case <-i.forceFt:
 			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
-				i.runFullTextIndexer(ctx, progress)
+				i.runFullTextIndexer(ctx)
 				lastForceIndex = time.Now()
 			}
 		}
 	}
 }
 
-func (i *indexer) runFullTextIndexer(ctx context.Context, progress process.Progress) {
-	progress.SetProgressMessage("start fulltext indexing")
+func (i *indexer) runFullTextIndexer(ctx context.Context) {
 	batcher := i.ftsearch.NewAutoBatcher(ftsearch.AutoBatcherRecommendedMaxDocs, ftsearch.AutoBatcherRecommendedMaxSize)
 	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(objectIds []string) error {
 		for _, objectId := range objectIds {
@@ -94,7 +90,6 @@ func (i *indexer) runFullTextIndexer(ctx context.Context, progress process.Progr
 					return fmt.Errorf("batcher add: %w", err)
 				}
 			}
-			progress.AddDone(1)
 		}
 		err := batcher.Finish()
 		if err != nil {
@@ -103,11 +98,10 @@ func (i *indexer) runFullTextIndexer(ctx context.Context, progress process.Progr
 		return nil
 	})
 	if err != nil {
-		progress.Finish(err)
 		log.Errorf("list ids from full-text queue: %v", err)
 		return
 	}
-	progress.Finish(nil)
+
 }
 
 func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.SearchDoc) (changed []ftsearch.SearchDoc, removedIds []string, err error) {
@@ -215,30 +209,24 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 	return docs, err
 }
 
-func (i *indexer) ftInit() (process.Progress, error) {
-	progress := process.NewNoOp()
+func (i *indexer) ftInit() error {
 	if ft := i.ftsearch; ft != nil {
 		docCount, err := ft.DocCount()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if docCount == 0 {
 			// query objects that are existing in the store
 			// if they are not existing in the object store, they will be indexed and added via reindexOutdatedObjects or on receiving via any-sync
 			ids, err := i.store.ListIdsCrossSpace()
 			if err != nil {
-				return nil, err
+				return err
 			}
-			progress = process.NewProgress(&pb.ModelProcessMessageOfFullText{})
-			err = i.processService.Add(progress)
-			if err != nil {
-				return nil, err
-			}
-			progress.SetTotal(int64(len(ids)))
 			if err := i.store.AddToIndexQueue(i.runCtx, ids...); err != nil {
-				return nil, err
+				return err
 			}
+
 		}
 	}
-	return progress, nil
+	return nil
 }

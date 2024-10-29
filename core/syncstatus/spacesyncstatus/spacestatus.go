@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -70,8 +71,9 @@ type spaceSyncStatus struct {
 	updateProgressChClose bool
 	updateProgressChMx    sync.Mutex
 
-	ctx       context.Context
-	ctxCancel context.CancelFunc
+	ctx        context.Context
+	ctxCancel  context.CancelFunc
+	newAccount bool
 }
 
 func NewSpaceSyncStatus() Updater {
@@ -96,6 +98,8 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	sessionHookRunner.RegisterHook(s.sendSyncEventForNewSession)
 	s.periodicCall = periodicsync.NewPeriodicSyncDuration(s.loopInterval, time.Second*5, s.update, logger.CtxLogger{Logger: log.Desugar()})
 	s.progressService = app.MustComponent[process.Service](a)
+	cfg := app.MustComponent[*config.Config](a)
+	s.newAccount = cfg.IsNewAccount()
 	return
 }
 
@@ -121,11 +125,13 @@ func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	spaceIds := s.spaceIdGetter.AllSpaceIds()
 	s.sendStartEvent(spaceIds)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-	s.updateProgressCh = make(chan string, len(spaceIds))
-	if len(spaceIds) == 0 {
-		s.updateProgressCh = make(chan string, 1)
+	if !s.newAccount {
+		s.updateProgressCh = make(chan string, len(spaceIds))
+		if len(spaceIds) == 0 {
+			s.updateProgressCh = make(chan string, 1)
+		}
+		go s.runProgress()
 	}
-	go s.runProgress()
 	s.periodicCall.Run()
 	return
 }
@@ -272,10 +278,12 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 		}},
 	})
 	go func() {
-		s.updateProgressChMx.Lock()
-		defer s.updateProgressChMx.Unlock()
-		if !s.updateProgressChClose {
-			s.updateProgressCh <- spaceId
+		if !s.newAccount {
+			s.updateProgressChMx.Lock()
+			defer s.updateProgressChMx.Unlock()
+			if !s.updateProgressChClose {
+				s.updateProgressCh <- spaceId
+			}
 		}
 	}()
 }
@@ -329,7 +337,7 @@ func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.E
 
 func (s *spaceSyncStatus) runProgress() {
 	spaceIds := s.spaceIdGetter.AllSpaceIds()
-	progressBarPerSpace := make(map[string]process.Progress, 0)
+	progressBarPerSpace := make(map[string]process.Progress)
 	for _, id := range spaceIds {
 		if _, err := s.initProgressBar(id, progressBarPerSpace); err != nil {
 			log.Errorf("failed to create progress bar: %s", err)
@@ -356,29 +364,6 @@ func (s *spaceSyncStatus) runProgress() {
 	}
 }
 
-func (s *spaceSyncStatus) initProgressBar(id string, progressBarPerSpace map[string]process.Progress) (process.Progress, error) {
-	total := int64(s.getObjectSyncingObjectsCount(id, s.getMissingIds(id)))
-	if total == 0 {
-		return nil, nil
-	}
-	progress := process.NewProgress(&pb.ModelProcessMessageOfRecoverAccount{})
-	err := s.progressService.Add(progress)
-	if err != nil {
-		return nil, err
-	}
-	progress.SetProgressMessage("start object syncing progress")
-	progress.SetTotal(total)
-	progressBarPerSpace[id] = progress
-	return progress, nil
-}
-
-func (s *spaceSyncStatus) finishProgressUpdate() {
-	s.updateProgressChMx.Lock()
-	s.updateProgressChClose = true
-	close(s.updateProgressCh)
-	s.updateProgressChMx.Unlock()
-}
-
 func (s *spaceSyncStatus) updateSpaceProgressBar(
 	spaceId string,
 	progressBarPerSpace map[string]process.Progress,
@@ -400,9 +385,9 @@ func (s *spaceSyncStatus) updateSpaceProgressBar(
 		if err != nil {
 			return err
 		}
-		if progress == nil {
-			return nil
-		}
+	}
+	if progress == nil {
+		return nil
 	}
 	canceled := progress.Canceled()
 	select {
@@ -426,6 +411,29 @@ func (s *spaceSyncStatus) updateSpaceProgressBar(
 		progress.SetTotal(total)
 	}
 	return nil
+}
+
+func (s *spaceSyncStatus) initProgressBar(id string, progressBarPerSpace map[string]process.Progress) (process.Progress, error) {
+	total := int64(s.getObjectSyncingObjectsCount(id, s.getMissingIds(id)))
+	if total == 0 {
+		return nil, nil
+	}
+	progress := process.NewProgress(&pb.ModelProcessMessageOfRecoverAccount{})
+	err := s.progressService.Add(progress)
+	if err != nil {
+		return nil, err
+	}
+	progress.SetProgressMessage("start object syncing progress")
+	progress.SetTotal(total)
+	progressBarPerSpace[id] = progress
+	return progress, nil
+}
+
+func (s *spaceSyncStatus) finishProgressUpdate() {
+	s.updateProgressChMx.Lock()
+	s.updateProgressChClose = true
+	close(s.updateProgressCh)
+	s.updateProgressChMx.Unlock()
 }
 
 func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {

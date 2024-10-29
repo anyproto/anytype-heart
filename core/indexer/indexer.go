@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -69,7 +68,6 @@ type indexer struct {
 	lock             sync.Mutex
 	reindexLogFields []zap.Field
 	spaceIndexers    map[string]*spaceIndexer
-	processService   process.Service
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -84,7 +82,6 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.forceFt = make(chan struct{})
 	i.config = app.MustComponent[*config.Config](a)
 	i.spaceIndexers = map[string]*spaceIndexer{}
-	i.processService = app.MustComponent[process.Service](a)
 	return
 }
 
@@ -97,15 +94,11 @@ func (i *indexer) Run(context.Context) (err error) {
 }
 
 func (i *indexer) StartFullTextIndex() (err error) {
-	var (
-		progress process.Progress
-		ftErr    error
-	)
-	if progress, ftErr = i.ftInit(); ftErr != nil {
+	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
 	i.ftQueueFinished = make(chan struct{})
-	go i.ftLoopRoutine(progress)
+	go i.ftLoopRoutine()
 	return
 }
 
