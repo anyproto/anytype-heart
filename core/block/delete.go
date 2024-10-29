@@ -132,7 +132,7 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 		b.ObjectCloseAllSessions()
 		st := b.NewState()
 		isFavorite := pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
-		if err := s.detailsService.SetIsFavorite(id.ObjectID, isFavorite); err != nil {
+		if err := s.detailsService.SetIsFavorite(id.ObjectID, isFavorite, false); err != nil {
 			log.With("objectId", id).Errorf("failed to favorite object: %v", err)
 		}
 		b.SetIsDeleted()
