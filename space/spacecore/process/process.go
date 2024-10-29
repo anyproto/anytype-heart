@@ -35,6 +35,7 @@ type spaceLoadingProgress struct {
 	activeViewIds         map[string]struct{}
 	spaceViewIdsLoaded    map[string]struct{}
 	newAccount            bool
+	progress              process.Progress
 }
 
 func NewSpaceLoadingProgress() app.ComponentRunnable {
@@ -83,9 +84,13 @@ func (s *spaceLoadingProgress) runSpaceLoadingProgress() {
 		log.Errorf("failed to run search: %s", err)
 		return
 	}
-	progress, err := s.makeProgressBar(len(resp.Records))
+	s.progress, err = s.makeProgressBar(len(resp.Records))
+	if err != nil {
+		log.Errorf("failed to create progress bar: %s", err)
+		return
+	}
 	s.fillIdsMap(resp.Records)
-	go s.readEvents(resp.Output, progress)
+	go s.readEvents(resp.Output)
 }
 
 func (s *spaceLoadingProgress) makeProgressBar(spaceViewCount int) (process.Progress, error) {
@@ -106,23 +111,20 @@ func (s *spaceLoadingProgress) fillIdsMap(spaceViews []*types.Struct) {
 	}
 }
 
-func (s *spaceLoadingProgress) readEvents(batcher *mb.MB[*pb.EventMessage], progress process.Progress) {
-	defer progress.Finish(nil)
+func (s *spaceLoadingProgress) readEvents(batcher *mb.MB[*pb.EventMessage]) {
+	defer s.progress.Finish(nil)
 	matcher := subscription.EventMatcher{
-		OnSet:   s.handleDetailsSetEvent(progress),
-		OnAmend: s.handleDetailsAmendEvent(progress),
+		OnSet:   s.handleDetailsSetEvent(s.progress),
+		OnAmend: s.handleDetailsAmendEvent(s.progress),
 	}
 	for {
 		select {
-		case <-progress.Canceled():
+		case <-s.progress.Canceled():
 			return
 		default:
 		}
 		records, err := batcher.Wait(s.ctx)
 		if errors.Is(err, context.Canceled) {
-			if err != nil {
-				log.Errorf("failed to cancel process, %s", err)
-			}
 			return
 		}
 		if err != nil {
