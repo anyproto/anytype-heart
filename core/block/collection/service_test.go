@@ -2,6 +2,7 @@ package collection
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -22,16 +24,25 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+const collectionID = "collectionID"
+
 type testPicker struct {
-	sb smartblock.SmartBlock
+	sbMap map[string]smartblock.SmartBlock
 }
 
-func (t *testPicker) GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
-	return t.sb, nil
+func (t *testPicker) GetObject(ctx context.Context, id string) (smartblock.SmartBlock, error) {
+	if t.sbMap == nil {
+		return nil, fmt.Errorf("not found")
+	}
+	sb, found := t.sbMap[id]
+	if !found {
+		return nil, fmt.Errorf("not found")
+	}
+	return sb, nil
 }
 
 func (t *testPicker) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
-	return t.sb, nil
+	return t.GetObject(ctx, id.ObjectID)
 }
 
 func (t *testPicker) Init(a *app.App) error { return nil }
@@ -59,11 +70,12 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func TestBroadcast(t *testing.T) {
-	const collectionID = "collectionID"
 	sb := smarttest.New(collectionID)
 
 	s := newFixture(t)
-	s.picker.sb = sb
+	s.picker.sbMap = map[string]smartblock.SmartBlock{
+		collectionID: sb,
+	}
 
 	_, subCh1, err := s.SubscribeForCollection(collectionID, "sub1")
 	require.NoError(t, err)
@@ -192,4 +204,32 @@ func TestSetObjectTypeToViews(t *testing.T) {
 			assertViews(st, testCase.expected)
 		})
 	}
+}
+
+func TestService_Add(t *testing.T) {
+	t.Run("add new objects to collection", func(t *testing.T) {
+		// given
+		coll := smarttest.New(collectionID)
+		obj1 := smarttest.New("obj1")
+		obj2 := smarttest.New("obj2")
+
+		s := newFixture(t)
+		s.picker.sbMap = map[string]smartblock.SmartBlock{
+			collectionID: coll,
+			"obj1":       obj1,
+			"obj2":       obj2,
+		}
+
+		// when
+		err := s.Add(nil, &pb.RpcObjectCollectionAddRequest{
+			ContextId: collectionID,
+			ObjectIds: []string{"obj1", "obj2"},
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, []string{collectionID}, pbtypes.GetStringList(obj1.LocalDetails(), bundle.RelationKeyBacklinks.String()))
+		assert.Equal(t, []string{collectionID}, pbtypes.GetStringList(obj2.LocalDetails(), bundle.RelationKeyBacklinks.String()))
+		assert.Equal(t, []string{"obj1", "obj2"}, coll.NewState().GetStoreSlice(template.CollectionStoreKey))
+	})
 }

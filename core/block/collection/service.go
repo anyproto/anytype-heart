@@ -56,8 +56,9 @@ func (s *Service) CollectionType() string {
 }
 
 func (s *Service) Add(ctx session.Context, req *pb.RpcObjectCollectionAddRequest) error {
-	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
-		toAdd := slice.Difference(req.ObjectIds, col)
+	var toAdd []string
+	err := s.updateCollection(ctx, req.ContextId, func(col []string) []string {
+		toAdd = slice.Difference(req.ObjectIds, col)
 		pos := slice.FindPos(col, req.AfterId)
 		if pos >= 0 {
 			col = slice.Insert(col, pos+1, toAdd...)
@@ -66,6 +67,24 @@ func (s *Service) Add(ctx session.Context, req *pb.RpcObjectCollectionAddRequest
 		}
 		return col
 	})
+	if err != nil {
+		return err
+	}
+
+	// we update backlinks of objects to add synchronously to avoid object rerender on adding them to collection
+	for _, id := range toAdd {
+		err = cache.DoStateCtx(s.picker, ctx, id, func(s *state.State, sb smartblock.SmartBlock) error {
+			backlinks := pbtypes.GetStringList(s.LocalDetails(), bundle.RelationKeyBacklinks.String())
+			backlinks = append(backlinks, req.ContextId)
+			s.SetLocalDetail(bundle.RelationKeyBacklinks.String(), pbtypes.StringList(backlinks))
+			return nil
+		})
+
+		if err != nil {
+			log.With("objectId", id).Warnf("failed to update backlinks")
+		}
+	}
+	return nil
 }
 
 func (s *Service) Remove(ctx session.Context, req *pb.RpcObjectCollectionRemoveRequest) error {
