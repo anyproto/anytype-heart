@@ -8,7 +8,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.1.1
-	github.com/anyproto/any-sync v0.5.5
+	github.com/anyproto/any-sync v0.5.10
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/lexid v0.0.2
 	github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5
@@ -31,7 +31,7 @@ require (
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/go-chi/chi/v5 v5.0.13
 	github.com/go-shiori/go-readability v0.0.0-20220215145315-dd6828d2f09b
-	github.com/goccy/go-graphviz v0.1.3
+	github.com/goccy/go-graphviz v0.2.9
 	github.com/gogo/protobuf v1.3.2
 	github.com/gogo/status v1.1.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -78,7 +78,7 @@ require (
 	github.com/otiai10/copy v1.14.0
 	github.com/otiai10/opengraph/v2 v2.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.20.4
+	github.com/prometheus/client_golang v1.20.5
 	github.com/pseudomuto/protoc-gen-doc v1.5.1
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/samber/lo v1.47.0
@@ -161,6 +161,7 @@ require (
 	github.com/dsoprea/go-utility/v2 v2.0.0-20221003172846-a3e1774ef349 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.1.0 // indirect
+	github.com/flopp/go-findfont v0.1.0 // indirect
 	github.com/fogleman/gg v1.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
@@ -252,6 +253,7 @@ require (
 	github.com/spf13/viper v1.15.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
+	github.com/tetratelabs/wazero v1.8.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
@@ -270,7 +272,7 @@ require (
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/term v0.25.0 // indirect
-	golang.org/x/time v0.6.0 // indirect
+	golang.org/x/time v0.7.0 // indirect
 	golang.org/x/tools v0.26.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240814211410-ddb44dafa142 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect

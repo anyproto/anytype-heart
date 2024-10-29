@@ -17,6 +17,10 @@ func (mw *Middleware) DeviceNetworkStateSet(cctx context.Context, req *pb.RpcDev
 		}
 		return m
 	}
-	app.MustComponent[device.NetworkState](mw.GetApp()).SetNetworkState(req.DeviceNetworkType)
+	mwApp := mw.GetApp()
+	if mwApp == nil {
+		return response(pb.RpcDeviceNetworkStateSetResponseError_INTERNAL_ERROR, ErrNotLoggedIn)
+	}
+	app.MustComponent[device.NetworkState](mwApp).SetNetworkState(req.DeviceNetworkType)
 	return response(pb.RpcDeviceNetworkStateSetResponseError_NULL, nil)
 }
