@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -18,17 +19,18 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func NewDate(space Space, id string) (s Source) {
+func NewDate(space Space, id domain.FullID) (s Source) {
 	return &date{
-		id:    id,
-		space: space,
+		id:      id.ObjectID,
+		spaceId: id.SpaceID,
+		space:   space,
 	}
 }
 
 type date struct {
-	space Space
-	id    string
-	t     time.Time
+	space       Space
+	id, spaceId string
+	t           time.Time
 }
 
 func (v *date) ListIds() ([]string, error) {
@@ -44,10 +46,13 @@ func (v *date) Id() string {
 }
 
 func (v *date) SpaceID() string {
-	if v.space == nil {
-		return ""
+	if v.space != nil {
+		return v.space.Id()
 	}
-	return v.space.Id()
+	if v.spaceId != "" {
+		return v.spaceId
+	}
+	return ""
 }
 
 func (v *date) Type() smartblock.SmartBlockType {
@@ -64,7 +69,7 @@ func (v *date) getDetails(ctx context.Context) (*types.Struct, error) {
 		return nil, fmt.Errorf("get date type id: %w", err)
 	}
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("Mon Jan  2 2006")),
+		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("02 Jan 2006")),
 		bundle.RelationKeyId.String():         pbtypes.String(v.id),
 		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
 		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
@@ -83,7 +88,7 @@ func (v *date) DetailsFromId() (*types.Struct, error) {
 		return nil, err
 	}
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("Mon Jan  2 2006")),
+		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("02 Jan 2006")),
 		bundle.RelationKeyId.String():         pbtypes.String(v.id),
 		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
 		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
@@ -180,10 +185,10 @@ func (v *date) Heads() []string {
 	return []string{v.id}
 }
 
-func (s *date) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
+func (v *date) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
 
-func (s *date) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
+func (v *date) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
 	return addr.AnytypeProfileId, 0, nil
 }

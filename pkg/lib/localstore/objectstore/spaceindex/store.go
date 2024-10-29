@@ -92,7 +92,7 @@ type Store interface {
 }
 
 type SourceDetailsFromID interface {
-	DetailsFromIdBasedSource(id string) (*types.Struct, error)
+	DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error)
 }
 
 type FulltextQueue interface {

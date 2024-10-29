@@ -1,8 +1,10 @@
 package source
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
@@ -19,26 +21,26 @@ var text = "-- Еh bien, mon prince. Gênes et Lucques ne sont plus que des apan
 
 func TestMarshallChange(t *testing.T) {
 	t.Run("marshall small change", func(t *testing.T) {
-		//given
+		// given
 		c := changeWithSmallTextUpdate()
 
-		//when
+		// when
 		data, dt, err := MarshalChange(c)
 
-		//then
+		// then
 		assert.NoError(t, err)
 		assert.NotZero(t, len(data))
 		assert.Empty(t, dt)
 	})
 
 	t.Run("marshall bigger change", func(t *testing.T) {
-		//given
+		// given
 		c := changeWithSetBigDetail(snappyLowerLimit)
 
-		//when
+		// when
 		data, dt, err := MarshalChange(c)
 
-		//then
+		// then
 		assert.NoError(t, err)
 		assert.NotEmpty(t, data)
 		assert.Equal(t, dataTypeSnappy, dt)
@@ -49,97 +51,97 @@ func TestUnmarshallChange(t *testing.T) {
 	invalidDataType := "invalid"
 
 	t.Run("unmarshall small change", func(t *testing.T) {
-		//given
+		// given
 		c := changeWithSmallTextUpdate()
 		data, dt, err := MarshalChange(c)
 		require.NoError(t, err)
 		require.NotEmpty(t, data)
 		require.Empty(t, dt)
 
-		//when
+		// when
 		res, err := UnmarshalChange(&objecttree.Change{DataType: dt}, data)
 
-		//then
+		// then
 		assert.NoError(t, err)
 		assert.Equal(t, c, res)
 	})
 
 	t.Run("unmarshall bigger change", func(t *testing.T) {
-		//given
+		// given
 		c := changeWithSetBigDetail(snappyLowerLimit)
 		data, dt, err := MarshalChange(c)
 		require.NoError(t, err)
 		require.NotEmpty(t, data)
 		require.Equal(t, dataTypeSnappy, dt)
 
-		//when
+		// when
 		res, err := UnmarshalChange(&objecttree.Change{DataType: dt}, data)
 
-		//then
+		// then
 		assert.NoError(t, err)
 		assert.Equal(t, c, res)
 	})
 
 	t.Run("unmarshall plain change with invalid data type", func(t *testing.T) {
-		//given
+		// given
 		c := changeWithSmallTextUpdate()
 		data, dt, err := MarshalChange(c)
 		require.NoError(t, err)
 		require.NotEmpty(t, data)
 		require.Empty(t, dt)
 
-		//when
+		// when
 		res, err := UnmarshalChange(&objecttree.Change{DataType: invalidDataType}, data)
 
-		//then
+		// then
 		assert.NoError(t, err)
 		assert.Equal(t, c, res)
 	})
 
 	t.Run("unmarshall plain change with encoded data type", func(t *testing.T) {
-		//given
+		// given
 		c := changeWithSmallTextUpdate()
 		data, dt, err := MarshalChange(c)
 		require.NoError(t, err)
 		require.NotEmpty(t, data)
 		require.Empty(t, dt)
 
-		//when
+		// when
 		res, err := UnmarshalChange(&objecttree.Change{DataType: dataTypeSnappy}, data)
 
-		//then
+		// then
 		assert.NoError(t, err)
 		assert.Equal(t, c, res)
 	})
 
 	t.Run("unmarshall bigger change with empty data type", func(t *testing.T) {
-		//given
+		// given
 		c := changeWithSetBigDetail(snappyLowerLimit)
 		data, dt, err := MarshalChange(c)
 		require.NoError(t, err)
 		require.NotEmpty(t, data)
 		require.Equal(t, dataTypeSnappy, dt)
 
-		//when
+		// when
 		res, err := UnmarshalChange(&objecttree.Change{DataType: ""}, data)
 
-		//then
+		// then
 		assert.Error(t, err)
 		assert.Nil(t, res)
 	})
 
 	t.Run("unmarshall encoded change with invalid data type", func(t *testing.T) {
-		//given
+		// given
 		c := changeWithSetBigDetail(snappyLowerLimit)
 		data, dt, err := MarshalChange(c)
 		require.NoError(t, err)
 		require.NotEmpty(t, data)
 		require.Equal(t, dataTypeSnappy, dt)
 
-		//when
+		// when
 		res, err := UnmarshalChange(&objecttree.Change{DataType: invalidDataType}, data)
 
-		//then
+		// then
 		assert.Error(t, err)
 		assert.Nil(t, res)
 	})
@@ -326,4 +328,10 @@ func changeWithSmallTextUpdate() *pb.Change {
 				}}}},
 		}}},
 	}}
+}
+
+func TestName(t *testing.T) {
+	ts := time.Now()
+	fmt.Println(ts.Format("16 Sep 2024"))
+	fmt.Println(ts.Format("02 Jan 2006"))
 }
