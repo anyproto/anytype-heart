@@ -242,10 +242,13 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 }
 
 func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.ObjectSyncStatus, syncError domain.SyncError) error {
-	st := sb.NewState()
+	var (
+		st      = sb.NewState()
+		details = sb.CombinedDetails()
+	)
 	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) ||
-		!u.isLayoutSuitableForSyncRelations(sb.Details()) ||
-		pbtypes.GetString(st.Details(), bundle.RelationKeySpaceId.String()) == "" { // this was the case with incorrectly indexed objects
+		!u.isLayoutSuitableForSyncRelations(details) ||
+		pbtypes.GetString(details, bundle.RelationKeySpaceId.String()) == "" { // this was the case with incorrectly indexed objects
 		var syncRelations = []string{
 			bundle.RelationKeySyncStatus.String(),
 			bundle.RelationKeySyncError.String(),
