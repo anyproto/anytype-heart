@@ -86,7 +86,8 @@
   "syncDate",
   "syncStatus",
   "syncError",
-  "scope",
   "lastUsedDate",
-  "mentions"
+  "mentions",
+  "chatId",
+  "hasChat"
 ]

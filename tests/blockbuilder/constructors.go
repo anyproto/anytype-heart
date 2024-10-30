@@ -7,6 +7,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -53,6 +54,15 @@ func (b *Block) Build() []*model.Block {
 	}, descendants...)
 }
 
+func (b *Block) BuildMap() map[string]simple.Block {
+	blocks := b.Build()
+	res := make(map[string]simple.Block, len(blocks))
+	for _, bl := range blocks {
+		res[bl.Id] = simple.New(bl)
+	}
+	return res
+}
+
 func mkBlock(b *model.Block, opts ...Option) *Block {
 	o := options{
 		// Init children for easier equality check in tests
@@ -83,6 +93,8 @@ type options struct {
 	id              string
 	backgroundColor string
 	fileHash        string
+	fileName        string
+	fileType        model.BlockContentFileType
 }
 
 type Option func(*options)
@@ -214,6 +226,18 @@ func FileHash(hash string) Option {
 	}
 }
 
+func FileName(fileName string) Option {
+	return func(o *options) {
+		o.fileName = fileName
+	}
+}
+
+func FileType(fileType model.BlockContentFileType) Option {
+	return func(o *options) {
+		o.fileType = fileType
+	}
+}
+
 func File(targetObjectId string, opts ...Option) *Block {
 	var o options
 	for _, apply := range opts {
@@ -225,7 +249,29 @@ func File(targetObjectId string, opts ...Option) *Block {
 			File: &model.BlockContentFile{
 				Hash:           o.fileHash,
 				TargetObjectId: targetObjectId,
+				Name:           o.fileName,
+				Type:           o.fileType,
 			},
 		},
 	}, opts...)
+}
+
+func Bookmark(url string) *Block {
+	return mkBlock(&model.Block{
+		Content: &model.BlockContentOfBookmark{
+			Bookmark: &model.BlockContentBookmark{
+				Url: url,
+			},
+		},
+	})
+}
+
+func Link(targetBlockId string) *Block {
+	return mkBlock(&model.Block{
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: targetBlockId,
+			},
+		},
+	})
 }

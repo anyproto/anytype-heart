@@ -27,6 +27,9 @@ const (
 	SmartBlockTypeAnytypeProfile    = SmartBlockType(model.SmartBlockType_AnytypeProfile)
 	SmartBlockTypeDate              = SmartBlockType(model.SmartBlockType_Date)
 	SmartBlockTypeIdentity          = SmartBlockType(model.SmartBlockType_Identity)
+	SmartBlockTypeChatObject        = SmartBlockType(model.SmartBlockType_ChatObject)        // Container for any-store based chats
+	SmartBlockTypeChatDerivedObject = SmartBlockType(model.SmartBlockType_ChatDerivedObject) // Any-store based object for chat
+	SmartBlockTypeAccountObject     = SmartBlockType(model.SmartBlockType_AccountObject)
 
 	SmartBlockTypeWorkspace      = SmartBlockType(model.SmartBlockType_Workspace)
 	SmartBlockTypeWidget         = SmartBlockType(model.SmartBlockType_Widget)
@@ -69,10 +72,9 @@ func (sbt SmartBlockType) IsOneOf(sbts ...SmartBlockType) bool {
 // Indexable determines if the object of specific type need to be proceeded by the indexer in order to appear in sets
 func (sbt SmartBlockType) Indexable() (details, outgoingLinks bool) {
 	switch sbt {
-	case SmartBlockTypeDate, SmartBlockTypeAccountOld, SmartBlockTypeArchive,
-		SmartBlockTypeHome, SmartBlockTypeNotificationObject, SmartBlockTypeDevicesObject:
+	case SmartBlockTypeDate, SmartBlockTypeAccountOld, SmartBlockTypeNotificationObject, SmartBlockTypeDevicesObject:
 		return false, false
-	case SmartBlockTypeWidget:
+	case SmartBlockTypeWidget, SmartBlockTypeArchive, SmartBlockTypeHome:
 		return true, false
 	default:
 		return true, true
