@@ -206,11 +206,20 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			if details == nil || details.Fields == nil {
 				details = &types.Struct{Fields: map[string]*types.Value{}}
 			}
-			if !u.isLayoutSuitableForSyncRelations(details) {
-				delete(details.Fields, bundle.RelationKeySyncStatus.String())
-				delete(details.Fields, bundle.RelationKeySyncError.String())
-				delete(details.Fields, bundle.RelationKeySyncDate.String())
-				return details, false, nil
+			if !u.isLayoutSuitableForSyncRelations(details) || pbtypes.GetString(details, bundle.RelationKeySpaceId.String()) == "" {
+				var syncRelations = []string{
+					bundle.RelationKeySyncStatus.String(),
+					bundle.RelationKeySyncError.String(),
+					bundle.RelationKeySyncDate.String(),
+				}
+				modified := false
+				for _, relation := range syncRelations {
+					if _, ok := details.GetFields()[relation]; ok {
+						delete(details.Fields, relation)
+						modified = true
+					}
+				}
+				return details, modified, nil
 			}
 			if fileStatus, ok := details.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
 				status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus.GetNumberValue())))
@@ -233,11 +242,13 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 }
 
 func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.ObjectSyncStatus, syncError domain.SyncError) error {
-	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
-		return nil
-	}
-	st := sb.NewState()
-	if !u.isLayoutSuitableForSyncRelations(sb.Details()) {
+	var (
+		st      = sb.NewState()
+		details = sb.CombinedDetails()
+	)
+	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) ||
+		!u.isLayoutSuitableForSyncRelations(details) ||
+		pbtypes.GetString(details, bundle.RelationKeySpaceId.String()) == "" { // this was the case with incorrectly indexed objects
 		var syncRelations = []string{
 			bundle.RelationKeySyncStatus.String(),
 			bundle.RelationKeySyncError.String(),
