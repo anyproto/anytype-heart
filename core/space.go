@@ -315,6 +315,14 @@ func (mw *Middleware) SpaceLeaveApprove(cctx context.Context, req *pb.RpcSpaceLe
 	}
 }
 
+func (mw *Middleware) SpaceSetOrder(ctx context.Context, request *pb.RpcSpaceSetOrderRequest) *pb.RpcSpaceSetOrderResponse {
+
+}
+
+func (mw *Middleware) SpaceUnsetOrder(ctx context.Context, request *pb.RpcSpaceUnsetOrderRequest) *pb.RpcSpaceUnsetOrderResponse {
+
+}
+
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
 	inviteFileKey, err := encode.DecodeKeyFromBase58(req.InviteFileKey)
 	if err != nil {
