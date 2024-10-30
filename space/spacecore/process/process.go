@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/subscription"
-	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -26,16 +25,15 @@ var log = logging.Logger(serviceName)
 const serviceName = "spaceLoadingProgress"
 
 type spaceLoadingProgress struct {
-	processService        process.Service
-	spaceService          space.Service
-	subService            subscription.Service
-	spaceViewSubscription *objectsubscription.ObjectSubscription[struct{}]
-	ctx                   context.Context
-	cancel                context.CancelFunc
-	activeViewIds         map[string]struct{}
-	spaceViewIdsLoaded    map[string]struct{}
-	newAccount            bool
-	progress              process.Progress
+	processService     process.Service
+	spaceService       space.Service
+	subService         subscription.Service
+	ctx                context.Context
+	cancel             context.CancelFunc
+	activeViewIds      map[string]struct{}
+	spaceViewIdsLoaded map[string]struct{}
+	newAccount         bool
+	progress           process.Progress
 }
 
 func NewSpaceLoadingProgress() app.ComponentRunnable {
