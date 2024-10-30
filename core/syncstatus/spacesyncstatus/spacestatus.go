@@ -71,8 +71,6 @@ type spaceSyncStatus struct {
 	updateProgressChClose bool
 	updateProgressChMx    sync.Mutex
 
-	ctx        context.Context
-	ctxCancel  context.CancelFunc
 	newAccount bool
 
 	progressBarPerSpace map[string]process.Progress
@@ -128,7 +126,6 @@ func (s *spaceSyncStatus) UpdateMissingIds(spaceId string, ids []string) {
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	spaceIds := s.spaceIdGetter.AllSpaceIds()
 	s.sendStartEvent(spaceIds)
-	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	s.updateProgressCh = make(chan string, len(spaceIds))
 	if len(spaceIds) == 0 {
 		s.updateProgressCh = make(chan string, 1)
@@ -294,9 +291,6 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 	s.periodicCall.Close()
-	if s.ctxCancel != nil {
-		s.ctxCancel()
-	}
 	s.finishProgressUpdate()
 	return
 }
