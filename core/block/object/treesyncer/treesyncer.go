@@ -162,10 +162,9 @@ func (t *treeSyncer) SyncAll(ctx context.Context, p peer.Peer, existing, missing
 	defer t.Unlock()
 	peerId := p.Id()
 	isResponsible := slices.Contains(t.nodeConf.NodeIds(t.spaceId), peerId)
-	existing = lo.Filter(existing, func(id string, index int) bool {
+	t.sendSyncEvents(lo.Filter(existing, func(id string, index int) bool {
 		return id != t.spaceSettingsId
-	})
-	t.sendSyncEvents(existing, missing, isResponsible)
+	}), missing, isResponsible)
 	reqExec, exists := t.requestPools[peerId]
 	if !exists {
 		reqExec = newExecutor(t.requests, 0)
