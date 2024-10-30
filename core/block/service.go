@@ -73,10 +73,6 @@ func init() {
 	}
 }
 
-type SmartblockOpener interface {
-	Open(id string) (sb smartblock.SmartBlock, err error)
-}
-
 func New() *Service {
 	s := &Service{
 		openedObjs: &openedObjects{
@@ -401,7 +397,7 @@ func (s *Service) RemoveListOption(optionIds []string, checkInObjects bool) erro
 				st := b.NewState()
 				relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
 
-				records, err := s.objectStore.Query(database.Query{
+				records, err := s.objectStore.SpaceIndex(b.SpaceID()).Query(database.Query{
 					Filters: []*model.BlockContentDataviewFilter{
 						{
 							Condition:   model.BlockContentDataviewFilter_Equal,
@@ -506,7 +502,7 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 		return
 	}
 
-	res, err := s.objectStore.GetWithLinksInfoByID(spaceID, id)
+	res, err := s.objectStore.SpaceIndex(spaceID).GetWithLinksInfoById(id)
 	if err != nil {
 		return
 	}

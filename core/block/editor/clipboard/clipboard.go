@@ -26,7 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -47,7 +47,7 @@ type Clipboard interface {
 	Export(req pb.RpcBlockExportRequest) (path string, err error)
 }
 
-func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core.TempDirProvider, objectStore objectstore.ObjectStore, fileService files.Service, fileObjectService fileobject.Service) Clipboard {
+func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core.TempDirProvider, objectStore spaceindex.Store, fileService files.Service, fileObjectService fileobject.Service) Clipboard {
 	return &clipboard{
 		SmartBlock:        sb,
 		file:              file,
@@ -61,9 +61,9 @@ func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core
 type clipboard struct {
 	smartblock.SmartBlock
 	file              file.File
-	tempDirProvider   core.TempDirProvider
-	objectStore       objectstore.ObjectStore
-	fileService       files.Service
+	tempDirProvider core.TempDirProvider
+	objectStore     spaceindex.Store
+	fileService     files.Service
 	fileObjectService fileobject.Service
 }
 
@@ -572,7 +572,7 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 	for k := range relationKeys {
 		relationKeysList = append(relationKeysList, k)
 	}
-	relations, err := cb.objectStore.FetchRelationByKeys(cb.SpaceID(), relationKeysList...)
+	relations, err := cb.objectStore.FetchRelationByKeys(relationKeysList...)
 	if err != nil {
 		return fmt.Errorf("failed to fetch relation keys of dataview: %w", err)
 	}

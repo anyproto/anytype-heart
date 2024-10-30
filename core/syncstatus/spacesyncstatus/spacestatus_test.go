@@ -166,7 +166,7 @@ func Test(t *testing.T) {
 	t.Run("objects syncing", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			objs := genSyncingObjects(10, 100, "spaceId")
-			fx.objectStore.AddObjects(t, objs)
+			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
@@ -197,7 +197,7 @@ func Test(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			fx.spaceSyncStatus.loopInterval = 10 * time.Millisecond
 			objs := genSyncingObjects(10, 100, "spaceId")
-			fx.objectStore.AddObjects(t, objs)
+			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
@@ -229,7 +229,7 @@ func Test(t *testing.T) {
 	t.Run("local only", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			objs := genSyncingObjects(10, 100, "spaceId")
-			fx.objectStore.AddObjects(t, objs)
+			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_LocalOnly)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.eventSender.EXPECT().Broadcast(&pb.Event{
@@ -249,7 +249,7 @@ func Test(t *testing.T) {
 	t.Run("size exceeded", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			objs := genSyncingObjects(10, 100, "spaceId")
-			fx.objectStore.AddObjects(t, objs)
+			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
@@ -280,7 +280,7 @@ func Test(t *testing.T) {
 	t.Run("connection error", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			objs := genSyncingObjects(10, 100, "spaceId")
-			fx.objectStore.AddObjects(t, objs)
+			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.ConnectionError)
@@ -311,7 +311,7 @@ func Test(t *testing.T) {
 	t.Run("network incompatible", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			objs := genSyncingObjects(10, 100, "spaceId")
-			fx.objectStore.AddObjects(t, objs)
+			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.ConnectionError)
@@ -343,7 +343,7 @@ func Test(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			fx.spaceSyncStatus.loopInterval = 10 * time.Millisecond
 			objs := genSyncingObjects(10, 100, "spaceId")
-			fx.objectStore.AddObjects(t, objs)
+			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
@@ -415,7 +415,7 @@ func Test(t *testing.T) {
 	t.Run("hook new session", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			objs := genSyncingObjects(10, 100, "spaceId")
-			fx.objectStore.AddObjects(t, objs)
+			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.ConnectionError)
@@ -460,7 +460,7 @@ func Test(t *testing.T) {
 	t.Run("hook new session local only", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			objs := genSyncingObjects(10, 100, "spaceId")
-			fx.objectStore.AddObjects(t, objs)
+			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_LocalOnly)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.eventSender.EXPECT().Broadcast(&pb.Event{

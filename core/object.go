@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -93,8 +94,9 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	}
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	records, err := ds.Query(database.Query{
+	records, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
 		Filters:  req.Filters,
+		SpaceId:  req.SpaceId,
 		Sorts:    req.Sorts,
 		Offset:   int(req.Offset),
 		Limit:    int(req.Limit),
@@ -143,12 +145,13 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	if req.ReturnHTMLHighlightsInsteadOfRanges {
 		highlighter = ftsearch.HtmlHighlightFormatter
 	}
-	results, err := ds.Query(database.Query{
+	results, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
 		Filters:     req.Filters,
 		Sorts:       req.Sorts,
 		Offset:      int(req.Offset),
 		Limit:       int(req.Limit),
 		FullText:    req.FullText,
+		SpaceId:     req.SpaceId,
 		Highlighter: highlighter,
 	})
 
@@ -198,26 +201,11 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 	}
 
 	var rec database.Record
-	var spaceID string
-	for _, f := range req.Filters {
-		if f.RelationKey == bundle.RelationKeySpaceId.String() {
-			if f.Condition == model.BlockContentDataviewFilter_Equal {
-				spaceID = f.Value.GetStringValue()
-			}
-			if f.Condition == model.BlockContentDataviewFilter_In {
-				spaces := f.Value.GetListValue().Values
-				if len(spaces) > 0 {
-					spaceID = spaces[0].GetStringValue()
-				}
-			}
-			break
-		}
-	}
-	rec, err := mw.makeSuggestedDateRecord(ctx, spaceID, dt)
+	rec, err := mw.makeSuggestedDateRecord(ctx, req.SpaceId, dt)
 	if err != nil {
 		return nil, fmt.Errorf("make date record: %w", err)
 	}
-	f, _ := database.MakeFilters(req.Filters, store) //nolint:errcheck
+	f, _ := database.MakeFilters(req.Filters, store.SpaceIndex(req.SpaceId)) //nolint:errcheck
 	if f.FilterObject(rec.Details) {
 		return append([]database.Record{rec}, records...), nil
 	}
@@ -327,6 +315,7 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 	subService := mw.applicationService.GetApp().MustComponent(subscription.CName).(subscription.Service)
 
 	resp, err := subService.Search(subscription.SubscribeRequest{
+		SpaceId:           req.SpaceId,
 		SubId:             req.SubId,
 		Filters:           req.Filters,
 		Sorts:             req.Sorts,
@@ -336,7 +325,6 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 		AfterId:           req.AfterId,
 		BeforeId:          req.BeforeId,
 		Source:            req.Source,
-		IgnoreWorkspace:   req.IgnoreWorkspace,
 		NoDepSubscription: req.NoDepSubscription,
 		CollectionId:      req.CollectionId,
 	})
@@ -352,8 +340,49 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 	}
 }
 
-func (mw *Middleware) ObjectGroupsSubscribe(cctx context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
-	ctx := mw.newContext(cctx)
+func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req *pb.RpcObjectCrossSpaceSearchSubscribeRequest) *pb.RpcObjectCrossSpaceSearchSubscribeResponse {
+	subService := getService[crossspacesub.Service](mw)
+	resp, err := subService.Subscribe(subscription.SubscribeRequest{
+		SubId:             req.SubId,
+		Filters:           req.Filters,
+		Sorts:             req.Sorts,
+		Keys:              req.Keys,
+		Source:            req.Source,
+		NoDepSubscription: req.NoDepSubscription,
+		CollectionId:      req.CollectionId,
+	})
+	if err != nil {
+		return &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
+			Error: &pb.RpcObjectCrossSpaceSearchSubscribeResponseError{
+				Code:        pb.RpcObjectCrossSpaceSearchSubscribeResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
+		SubId:        resp.SubId,
+		Records:      resp.Records,
+		Dependencies: resp.Dependencies,
+		Counters:     resp.Counters,
+	}
+}
+
+func (mw *Middleware) ObjectCrossSpaceSearchUnsubscribe(cctx context.Context, req *pb.RpcObjectCrossSpaceSearchUnsubscribeRequest) *pb.RpcObjectCrossSpaceSearchUnsubscribeResponse {
+	subService := getService[crossspacesub.Service](mw)
+	err := subService.Unsubscribe(req.SubId)
+	if err != nil {
+		return &pb.RpcObjectCrossSpaceSearchUnsubscribeResponse{
+			Error: &pb.RpcObjectCrossSpaceSearchUnsubscribeResponseError{
+				Code:        pb.RpcObjectCrossSpaceSearchUnsubscribeResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcObjectCrossSpaceSearchUnsubscribeResponse{}
+}
+
+func (mw *Middleware) ObjectGroupsSubscribe(_ context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
 	errResponse := func(err error) *pb.RpcObjectGroupsSubscribeResponse {
 		r := &pb.RpcObjectGroupsSubscribeResponse{
 			Error: &pb.RpcObjectGroupsSubscribeResponseError{
@@ -372,7 +401,7 @@ func (mw *Middleware) ObjectGroupsSubscribe(cctx context.Context, req *pb.RpcObj
 
 	subService := mw.applicationService.GetApp().MustComponent(subscription.CName).(subscription.Service)
 
-	resp, err := subService.SubscribeGroups(ctx, *req)
+	resp, err := subService.SubscribeGroups(*req)
 	if err != nil {
 		return errResponse(err)
 	}

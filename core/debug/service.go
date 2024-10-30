@@ -20,9 +20,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/gogo/protobuf/jsonpb"
 
+	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
@@ -43,6 +46,8 @@ type Debug interface {
 	DumpLocalstore(ctx context.Context, spaceID string, objectIds []string, path string) (filename string, err error)
 	SpaceSummary(ctx context.Context, spaceID string) (summary SpaceSummary, err error)
 	TreeHeads(ctx context.Context, id string) (info TreeInfo, err error)
+
+	DebugAnystoreObjectChanges(ctx context.Context, chatObjectId string, orderBy pb.RpcDebugAnystoreObjectChangesRequestOrderBy) ([]*pb.RpcDebugAnystoreObjectChangesResponseChange, bool, error)
 }
 
 type debug struct {
@@ -50,6 +55,7 @@ type debug struct {
 	spaceService space.Service
 	resolver     idresolver.Resolver
 	statService  debugstat.StatService
+	objectGetter cache.ObjectGetter
 
 	server *http.Server
 }
@@ -63,6 +69,7 @@ func (d *debug) Init(a *app.App) (err error) {
 	d.spaceService = app.MustComponent[space.Service](a)
 	d.resolver = app.MustComponent[idresolver.Resolver](a)
 	d.statService, _ = a.Component(debugstat.CName).(debugstat.StatService)
+	d.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	if d.statService == nil {
 		d.statService = debugstat.NewNoOp()
 	}
@@ -231,7 +238,7 @@ func (d *debug) DumpTree(ctx context.Context, objectID string, path string, anon
 
 func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []string, path string) (filename string, err error) {
 	if len(objIds) == 0 {
-		objIds, err = d.store.ListIds()
+		objIds, err = d.store.ListIdsCrossSpace()
 		if err != nil {
 			return "", err
 		}
@@ -250,8 +257,10 @@ func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []str
 	var wr io.Writer
 	m := jsonpb.Marshaler{Indent: " "}
 
+	store := d.store.SpaceIndex(spaceID)
+
 	for _, objId := range objIds {
-		doc, err := d.store.GetWithLinksInfoByID(spaceID, objId)
+		doc, err := store.GetWithLinksInfoById(objId)
 		if err != nil {
 			var err2 error
 			wr, err2 = zw.Create(fmt.Sprintf("%s.txt", objId))
@@ -273,4 +282,47 @@ func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []str
 		}
 	}
 	return filename, nil
+}
+
+func (d *debug) DebugAnystoreObjectChanges(ctx context.Context, chatObjectId string, orderBy pb.RpcDebugAnystoreObjectChangesRequestOrderBy) ([]*pb.RpcDebugAnystoreObjectChangesResponseChange, bool, error) {
+	var changesOut []*pb.RpcDebugAnystoreObjectChangesResponseChange
+	err := cache.Do(d.objectGetter, chatObjectId, func(sb anystoredebug.AnystoreDebug) error {
+		changes, err := sb.DebugChanges(ctx)
+		if err != nil {
+			return err
+		}
+		for _, ch := range changes {
+			var errString string
+			if ch.Error != nil {
+				errString = ch.Error.Error()
+			}
+			changesOut = append(changesOut, &pb.RpcDebugAnystoreObjectChangesResponseChange{
+				ChangeId: ch.ChangeId,
+				OrderId:  ch.OrderId,
+				Error:    errString,
+				Change:   ch.Change,
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, false, err
+	}
+
+	sortedByOrderId := make([]*pb.RpcDebugAnystoreObjectChangesResponseChange, len(changesOut))
+	copy(sortedByOrderId, changesOut)
+	sort.Slice(sortedByOrderId, func(i, j int) bool { return sortedByOrderId[i].OrderId < sortedByOrderId[j].OrderId })
+
+	orderIsOK := true
+	for i, ch := range changesOut {
+		sortedByOrder := sortedByOrderId[i]
+		if ch.OrderId != sortedByOrder.OrderId {
+			orderIsOK = false
+		}
+	}
+
+	if orderBy == pb.RpcDebugAnystoreObjectChangesRequest_ORDER_ID {
+		return sortedByOrderId, !orderIsOK, nil
+	}
+	return changesOut, !orderIsOK, nil
 }

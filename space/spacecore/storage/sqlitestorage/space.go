@@ -180,7 +180,7 @@ func (s *spaceStorage) IsSpaceDeleted() (bool, error) {
 }
 
 func (s *spaceStorage) SetTreeDeletedStatus(id, state string) error {
-	_, err := s.service.stmt.updateTreeDelStatus.Exec(id, state, state)
+	_, err := s.service.stmt.updateTreeDelStatus.Exec(id, state, s.spaceId, state)
 	return replaceNoRowsErr(err, ErrTreeNotFound)
 }
 
@@ -191,6 +191,27 @@ func (s *spaceStorage) TreeDeletedStatus(id string) (status string, err error) {
 		return "", err
 	}
 	return nullString.String, nil
+}
+
+func (s *spaceStorage) AllDeletedTreeIds() (ids []string, err error) {
+	rows, err := s.service.stmt.allTreeDelStatus.Query(s.spaceId, spacestorage.TreeDeletedStatusDeleted)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 func (s *spaceStorage) SpaceSettingsId() string {
@@ -264,26 +285,10 @@ func (s *spaceStorage) WriteSpaceHash(hash string) error {
 	return nil
 }
 
-func (s *spaceStorage) WriteOldSpaceHash(hash string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if _, err := s.service.stmt.updateSpaceOldHash.Exec(hash, s.spaceId); err != nil {
-		return err
-	}
-	s.oldHash = hash
-	return nil
-}
-
 func (s *spaceStorage) ReadSpaceHash() (hash string, err error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.hash, nil
-}
-
-func (s *spaceStorage) ReadOldSpaceHash() (hash string, err error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.oldHash, nil
 }
 
 func (s *spaceStorage) Close(_ context.Context) (err error) {

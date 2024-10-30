@@ -163,7 +163,7 @@ func buildExpectedTree(fileNameToObjectId map[string]string, provider *MockTempD
 					Param: fileNameToObjectId[testMdPath],
 				},
 			}})),
-			blockbuilder.File("", blockbuilder.FileName(provider.TempDir()+testTxtPath), blockbuilder.FileType(model.BlockContentFile_File)),
+			blockbuilder.File("", blockbuilder.FileName(filepath.Join(provider.TempDir(), testTxtPath)), blockbuilder.FileType(model.BlockContentFile_File)),
 			blockbuilder.Text("Test link to csv test4", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
 				{
 					Range: &model.Range{From: 17, To: 22},
@@ -227,7 +227,7 @@ func buildExpectedTree(fileNameToObjectId map[string]string, provider *MockTempD
 					Type:  model.BlockContentTextMark_Bold,
 				},
 			}})),
-			blockbuilder.File("", blockbuilder.FileName(provider.TempDir()+testTxtPath), blockbuilder.FileType(model.BlockContentFile_File)),
+			blockbuilder.File("", blockbuilder.FileName(filepath.Join(provider.TempDir(), testTxtPath)), blockbuilder.FileType(model.BlockContentFile_File)),
 			blockbuilder.Text("test4", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
 				{
 					Range: &model.Range{From: 0, To: 5},

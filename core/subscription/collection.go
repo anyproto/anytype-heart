@@ -10,12 +10,13 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type collectionObserver struct {
+	spaceId      string
 	collectionID string
 	subID        string
 	objectsCh    <-chan []string
@@ -27,18 +28,22 @@ type collectionObserver struct {
 	closeCh chan struct{}
 
 	cache             *cache
-	objectStore       objectstore.ObjectStore
+	objectStore       spaceindex.Store
 	collectionService CollectionService
 	recBatch          *mb.MB
+	recBatchMutex     sync.Mutex
+
+	spaceSubscription *spaceSubscriptions
 }
 
-func (s *service) newCollectionObserver(collectionID string, subID string) (*collectionObserver, error) {
+func (s *spaceSubscriptions) newCollectionObserver(spaceId string, collectionID string, subID string) (*collectionObserver, error) {
 	initialObjectIDs, objectsCh, err := s.collectionService.SubscribeForCollection(collectionID, subID)
 	if err != nil {
 		return nil, fmt.Errorf("subscribe for collection: %w", err)
 	}
 
 	obs := &collectionObserver{
+		spaceId:      spaceId,
 		collectionID: collectionID,
 		subID:        subID,
 		objectsCh:    objectsCh,
@@ -51,6 +56,8 @@ func (s *service) newCollectionObserver(collectionID string, subID string) (*col
 		collectionService: s.collectionService,
 
 		idsSet: map[string]struct{}{},
+
+		spaceSubscription: s,
 	}
 	obs.ids = initialObjectIDs
 	for _, id := range initialObjectIDs {
@@ -61,7 +68,7 @@ func (s *service) newCollectionObserver(collectionID string, subID string) (*col
 		for {
 			select {
 			case objectIDs := <-objectsCh:
-				obs.updateIDs(objectIDs)
+				obs.updateIds(objectIDs)
 			case <-obs.closeCh:
 				return
 			}
@@ -86,15 +93,16 @@ func (c *collectionObserver) close() {
 func (c *collectionObserver) listEntries() []*entry {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	entries := fetchEntries(c.cache, c.objectStore, c.ids)
+	entries := c.spaceSubscription.fetchEntries(c.ids)
 	res := make([]*entry, len(entries))
 	copy(res, entries)
 	return res
 }
 
-func (c *collectionObserver) updateIDs(ids []string) {
+// updateIds updates the list of ids in the observer and updates the subscription
+// IMPORTANT: this function is not thread-safe because of recBatch add is not under the lock and should be called only sequentially
+func (c *collectionObserver) updateIds(ids []string) {
 	c.lock.Lock()
-	defer c.lock.Unlock()
 
 	removed, added := slice.DifferenceRemovedAdded(c.ids, ids)
 	for _, id := range removed {
@@ -104,8 +112,8 @@ func (c *collectionObserver) updateIDs(ids []string) {
 		c.idsSet[id] = struct{}{}
 	}
 	c.ids = ids
-
-	entries := fetchEntries(c.cache, c.objectStore, append(removed, added...))
+	c.lock.Unlock()
+	entries := c.spaceSubscription.fetchEntriesLocked(append(removed, added...))
 	for _, e := range entries {
 		err := c.recBatch.Add(database.Record{
 			Details: e.data,
@@ -178,10 +186,8 @@ func (c *collectionSub) close() {
 	c.sortedSub.close()
 }
 
-func (s *service) newCollectionSub(
-	id, collectionID string, keys, filterDepIds []string, flt database.Filter, order database.Order, limit, offset int, disableDepSub bool,
-) (*collectionSub, error) {
-	obs, err := s.newCollectionObserver(collectionID, id)
+func (s *spaceSubscriptions) newCollectionSub(id string, spaceId string, collectionID string, keys, filterDepIds []string, flt database.Filter, order database.Order, limit, offset int, disableDepSub bool) (*collectionSub, error) {
+	obs, err := s.newCollectionObserver(spaceId, collectionID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +197,7 @@ func (s *service) newCollectionSub(
 		flt = database.FiltersAnd{obs, flt}
 	}
 
-	ssub := s.newSortedSub(id, keys, flt, order, limit, offset)
+	ssub := s.newSortedSub(id, spaceId, keys, flt, order, limit, offset)
 	ssub.disableDep = disableDepSub
 	if !ssub.disableDep {
 		ssub.forceSubIds = filterDepIds
@@ -215,11 +221,17 @@ func (s *service) newCollectionSub(
 	return sub, nil
 }
 
-func fetchEntries(cache *cache, objectStore objectstore.ObjectStore, ids []string) []*entry {
+func (s *spaceSubscriptions) fetchEntriesLocked(ids []string) []*entry {
+	s.m.Lock()
+	defer s.m.Unlock()
+	return s.fetchEntries(ids)
+}
+
+func (s *spaceSubscriptions) fetchEntries(ids []string) []*entry {
 	res := make([]*entry, 0, len(ids))
 	missingIDs := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if e := cache.Get(id); e != nil {
+		if e := s.cache.Get(id); e != nil {
 			res = append(res, e)
 			continue
 		}
@@ -229,7 +241,7 @@ func fetchEntries(cache *cache, objectStore objectstore.ObjectStore, ids []strin
 	if len(missingIDs) == 0 {
 		return res
 	}
-	recs, err := objectStore.QueryByID(missingIDs)
+	recs, err := s.objectStore.QueryByIds(missingIDs)
 	if err != nil {
 		log.Error("can't query by ids:", err)
 	}

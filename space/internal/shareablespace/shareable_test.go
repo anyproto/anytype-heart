@@ -133,6 +133,10 @@ func (s *spaceStatusStub) GetLocalStatus() spaceinfo.LocalStatus {
 	return s.localStatus
 }
 
+func (s *spaceStatusStub) SetOwner(ownerIdentity string, createdDate int64) (err error) {
+	return
+}
+
 func (s *spaceStatusStub) GetRemoteStatus() spaceinfo.RemoteStatus {
 	s.Lock()
 	defer s.Unlock()

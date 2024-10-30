@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"go.uber.org/zap"
 
@@ -77,6 +78,16 @@ func (m *treeManager) GetTree(ctx context.Context, spaceId, id string) (tr objec
 
 	sb := v.(smartblock.SmartBlock)
 	return sb.Tree(), nil
+}
+
+func (m *treeManager) ValidateAndPutTree(ctx context.Context, spaceId string, payload treestorage.TreeStorageCreatePayload) error {
+	// TODO: this should be better done inside cache
+	spc, err := m.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	_, err = spc.TreeBuilder().PutTree(ctx, payload, nil)
+	return err
 }
 
 func (m *treeManager) MarkTreeDeleted(ctx context.Context, spaceId, treeId string) error {

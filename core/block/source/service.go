@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
@@ -34,6 +35,7 @@ func New() Service {
 }
 
 type accountService interface {
+	AccountID() string
 	MyParticipantId(string) string
 	PersonalSpaceID() string
 }
@@ -64,7 +66,7 @@ type service struct {
 	accountKeysService accountservice.Service
 	storageService     storage.ClientStorage
 	fileService        files.Service
-	objectStore        Store
+	objectStore        objectstore.ObjectStore
 	fileObjectMigrator fileObjectMigrator
 
 	mu        sync.Mutex
@@ -78,9 +80,9 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountService = app.MustComponent[accountService](a)
 	s.accountKeysService = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
-	s.objectStore = app.MustComponent[Store](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
 	return
 }
@@ -96,8 +98,21 @@ type BuildOptions struct {
 
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	return objecttreebuilder.BuildTreeOpts{
-		Listener:    b.Listener,
-		TreeBuilder: objecttree.BuildKeyFilterableObjectTree,
+		Listener: b.Listener,
+		TreeBuilder: func(treeStorage treestorage.TreeStorage, aclList list.AclList) (objecttree.ObjectTree, error) {
+			ot, err := objecttree.BuildKeyFilterableObjectTree(treeStorage, aclList)
+			if err != nil {
+				return nil, err
+			}
+			sbt, _, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
+			if err != nil {
+				return nil, err
+			}
+			if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
+				ot.SetFlusher(objecttree.MarkNewChangeFlusher())
+			}
+			return ot, nil
+		},
 		TreeValidator: func(payload treestorage.TreeStorageCreatePayload, buildFunc objecttree.BuildObjectTreeFunc, aclList list.AclList) (retPayload treestorage.TreeStorageCreatePayload, err error) {
 			return objecttree.ValidateFilterRawTree(payload, aclList)
 		},
