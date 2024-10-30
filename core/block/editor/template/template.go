@@ -1,8 +1,8 @@
 package template
 
 import (
-	"math/rand"
-	"time"
+	"crypto/rand"
+	"math/big"
 
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
@@ -92,10 +92,11 @@ var WithRelations = func(rels []domain.RelationKey) StateTransformer {
 }
 
 var WithRandomRelationOptionColor = StateTransformer(func(s *state.State) {
-	source := rand.NewSource(time.Now().Unix())
-	r := rand.New(source)
-	randomColor := r.Intn(len(relationOptionsColors))
-	s.SetDetail(bundle.RelationKeyRelationOptionColor.String(), pbtypes.String(relationOptionsColors[randomColor]))
+	randomIndex, err := rand.Int(rand.Reader, big.NewInt(int64(len(relationOptionsColors))))
+	if err != nil {
+		return
+	}
+	s.SetDetail(bundle.RelationKeyRelationOptionColor.String(), pbtypes.String(relationOptionsColors[randomIndex.Int64()]))
 	s.AddBundledRelationLinks([]domain.RelationKey{bundle.RelationKeyRelationOptionColor}...)
 })
 
