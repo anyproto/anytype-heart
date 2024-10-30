@@ -383,4 +383,5 @@ service ClientCommands {
     // MembershipV2
     rpc MembershipV2GetStatus (anytype.Rpc.MembershipV2.GetStatus.Request) returns (anytype.Rpc.MembershipV2.GetStatus.Response);
     rpc MembershipV2ProductAllocateToSpace (anytype.Rpc.MembershipV2.ProductAllocateToSpace.Request) returns (anytype.Rpc.MembershipV2.ProductAllocateToSpace.Response);
+    rpc MembershipV2ProductSetSettings (anytype.Rpc.MembershipV2.ProductSetSettings.Request) returns (anytype.Rpc.MembershipV2.ProductSetSettings.Response);
 }

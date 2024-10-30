@@ -757,6 +757,10 @@
     - [Rpc.MembershipV2.ProductAllocateToSpace.Request](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Request)
     - [Rpc.MembershipV2.ProductAllocateToSpace.Response](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response)
     - [Rpc.MembershipV2.ProductAllocateToSpace.Response.Error](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response-Error)
+    - [Rpc.MembershipV2.ProductSetSettings](#anytype-Rpc-MembershipV2-ProductSetSettings)
+    - [Rpc.MembershipV2.ProductSetSettings.Request](#anytype-Rpc-MembershipV2-ProductSetSettings-Request)
+    - [Rpc.MembershipV2.ProductSetSettings.Response](#anytype-Rpc-MembershipV2-ProductSetSettings-Response)
+    - [Rpc.MembershipV2.ProductSetSettings.Response.Error](#anytype-Rpc-MembershipV2-ProductSetSettings-Response-Error)
     - [Rpc.Metrics](#anytype-Rpc-Metrics)
     - [Rpc.Metrics.SetParameters](#anytype-Rpc-Metrics-SetParameters)
     - [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request)
@@ -1428,6 +1432,7 @@
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
     - [Rpc.MembershipV2.GetStatus.Response.Error.Code](#anytype-Rpc-MembershipV2-GetStatus-Response-Error-Code)
     - [Rpc.MembershipV2.ProductAllocateToSpace.Response.Error.Code](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response-Error-Code)
+    - [Rpc.MembershipV2.ProductSetSettings.Response.Error.Code](#anytype-Rpc-MembershipV2-ProductSetSettings-Response-Error-Code)
     - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
     - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
     - [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code)
@@ -2246,6 +2251,7 @@
 | StoreCartCheckoutGenerate | [Rpc.Store.Cart.CheckoutGenerate.Request](#anytype-Rpc-Store-Cart-CheckoutGenerate-Request) | [Rpc.Store.Cart.CheckoutGenerate.Response](#anytype-Rpc-Store-Cart-CheckoutGenerate-Response) |  |
 | MembershipV2GetStatus | [Rpc.MembershipV2.GetStatus.Request](#anytype-Rpc-MembershipV2-GetStatus-Request) | [Rpc.MembershipV2.GetStatus.Response](#anytype-Rpc-MembershipV2-GetStatus-Response) | MembershipV2 |
 | MembershipV2ProductAllocateToSpace | [Rpc.MembershipV2.ProductAllocateToSpace.Request](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Request) | [Rpc.MembershipV2.ProductAllocateToSpace.Response](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response) |  |
+| MembershipV2ProductSetSettings | [Rpc.MembershipV2.ProductSetSettings.Request](#anytype-Rpc-MembershipV2-ProductSetSettings-Request) | [Rpc.MembershipV2.ProductSetSettings.Response](#anytype-Rpc-MembershipV2-ProductSetSettings-Response) |  |
 
  
 
@@ -13170,6 +13176,63 @@ Some products require extra allocation step
 
 
 
+<a name="anytype-Rpc-MembershipV2-ProductSetSettings"></a>
+
+### Rpc.MembershipV2.ProductSetSettings
+
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-ProductSetSettings-Request"></a>
+
+### Rpc.MembershipV2.ProductSetSettings.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| productId | [string](#string) |  |  |
+| isRenewalEnabled | [bool](#bool) |  | renew from next period |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-ProductSetSettings-Response"></a>
+
+### Rpc.MembershipV2.ProductSetSettings.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.MembershipV2.ProductSetSettings.Response.Error](#anytype-Rpc-MembershipV2-ProductSetSettings-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-ProductSetSettings-Response-Error"></a>
+
+### Rpc.MembershipV2.ProductSetSettings.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.MembershipV2.ProductSetSettings.Response.Error.Code](#anytype-Rpc-MembershipV2-ProductSetSettings-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Metrics"></a>
 
 ### Rpc.Metrics
@@ -22770,6 +22833,23 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-MembershipV2-ProductSetSettings-Response-Error-Code"></a>
+
+### Rpc.MembershipV2.ProductSetSettings.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
+
+
+
 <a name="anytype-Rpc-Metrics-SetParameters-Response-Error-Code"></a>
 
 ### Rpc.Metrics.SetParameters.Response.Error.Code
@@ -29260,6 +29340,7 @@ Used to decode block meta only, without the content itself
 | status | [MembershipV2.ProductStatus.Status](#anytype-model-MembershipV2-ProductStatus-Status) |  |  |
 | spaceAttachedTo | [string](#string) |  |  |
 | isNeedsAttachmentToSpace | [bool](#bool) |  |  |
+| isRenewalEnabled | [bool](#bool) |  |  |
 
 
 

@@ -1406,6 +1406,7 @@ message MembershipV2 {
 
         string spaceAttachedTo = 2;
         bool isNeedsAttachmentToSpace = 3;
+        bool isRenewalEnabled = 4;
     }
 
     message PurchasedProduct {
