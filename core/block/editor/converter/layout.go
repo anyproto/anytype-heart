@@ -336,7 +336,7 @@ func (c *layoutConverter) fromAnyToTag(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithNoDescription,
-		template.WithRelations([]domain.RelationKey{bundle.RelationKeyRelationOptionColor}),
+		template.WithRandomRelationOptionColor,
 	)
 	return nil
 }
