@@ -171,7 +171,7 @@ func (p *Pb) extractFiles(importPath string, importSource source.Source) error {
 		return err
 	}
 	if importSource.CountFilesWithGivenExtensions([]string{".pb", ".json"}) == 0 {
-		return common.GetNoObjectErrorBySourceType(importSource)
+		return common.ErrorBySourceType(importSource)
 	}
 	return nil
 }

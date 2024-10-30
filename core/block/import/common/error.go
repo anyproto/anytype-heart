@@ -13,22 +13,22 @@ import (
 )
 
 var (
-	ErrCancel           = fmt.Errorf("import is canceled")
-	ErrCsvLimitExceeded = fmt.Errorf("Limit of relations or objects are exceeded ")
-	ErrFileLoad         = fmt.Errorf("file was not synced")
+	ErrCancel           = errors.New("import is canceled")
+	ErrCsvLimitExceeded = errors.New("Limit of relations or objects are exceeded ")
+	ErrFileLoad         = errors.New("file was not synced")
 
-	ErrNoObjectInIntegration       = fmt.Errorf("no objects added to Notion integration")
-	ErrNotionServerIsUnavailable   = fmt.Errorf("notion server is unavailable")
-	ErrNotionServerExceedRateLimit = fmt.Errorf("rate limit exceeded")
+	ErrNoObjectInIntegration       = errors.New("no objects added to Notion integration")
+	ErrNotionServerIsUnavailable   = errors.New("notion server is unavailable")
+	ErrNotionServerExceedRateLimit = errors.New("rate limit exceeded")
 
-	ErrFileImportNoObjectsInZipArchive = fmt.Errorf("no objects in zip archive")
-	ErrFileImportNoObjectsInDirectory  = fmt.Errorf("no objects in directory")
+	ErrFileImportNoObjectsInZipArchive = errors.New("no objects in zip archive")
+	ErrFileImportNoObjectsInDirectory  = errors.New("no objects in directory")
 
-	ErrPbNotAnyBlockFormat = fmt.Errorf("file doesn't match Anyblock format ")
+	ErrPbNotAnyBlockFormat = errors.New("file doesn't match Anyblock format ")
 
-	ErrWrongHTMLFormat = fmt.Errorf("html file has wrong structure")
+	ErrWrongHTMLFormat = errors.New("html file has wrong structure")
 
-	ErrNoSnapshotToImport = fmt.Errorf("no snapshot to import") // for external import
+	ErrNoSnapshotToImport = errors.New("no snapshot to import") // for external import
 )
 
 type ConvertError struct {
@@ -123,7 +123,9 @@ func GetImportNotificationErrorCode(err error) model.ImportErrorCode {
 		return model.Import_NULL
 	}
 	switch {
-	case errors.Is(err, ErrNoObjectInIntegration):
+	case errors.Is(err, ErrNoObjectInIntegration) ||
+		errors.Is(err, ErrFileImportNoObjectsInDirectory) ||
+		errors.Is(err, ErrFileImportNoObjectsInZipArchive): // support existing protocol
 		return model.Import_NOTION_NO_OBJECTS_IN_INTEGRATION
 	case errors.Is(err, ErrNotionServerIsUnavailable):
 		return model.Import_NOTION_SERVER_IS_UNAVAILABLE
@@ -150,7 +152,7 @@ func GetImportNotificationErrorCode(err error) model.ImportErrorCode {
 	}
 }
 
-func GetNoObjectErrorBySourceType(s source.Source) error {
+func ErrorBySourceType(s source.Source) error {
 	if _, ok := s.(*source.Directory); ok {
 		return ErrFileImportNoObjectsInDirectory
 	}

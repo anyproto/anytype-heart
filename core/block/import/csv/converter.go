@@ -122,7 +122,7 @@ func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".csv"}); numberOfFiles == 0 {
-		allErrors.Add(common.GetNoObjectErrorBySourceType(importSource))
+		allErrors.Add(common.ErrorBySourceType(importSource))
 		return nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")

@@ -134,7 +134,7 @@ func TestGetImportNotificationErrorCode(t *testing.T) {
 		code := GetImportNotificationErrorCode(err)
 
 		// then
-		assert.Equal(t, model.Import_FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY, code)
+		assert.Equal(t, model.Import_NOTION_NO_OBJECTS_IN_INTEGRATION, code)
 	})
 	t.Run("GetImportNotificationErrorCode - no objects in zip", func(t *testing.T) {
 		// given
@@ -144,7 +144,7 @@ func TestGetImportNotificationErrorCode(t *testing.T) {
 		code := GetImportNotificationErrorCode(err)
 
 		// then
-		assert.Equal(t, model.Import_FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE, code)
+		assert.Equal(t, model.Import_NOTION_NO_OBJECTS_IN_INTEGRATION, code)
 	})
 	t.Run("GetImportNotificationErrorCode - not any block format", func(t *testing.T) {
 		// given
@@ -326,7 +326,7 @@ func TestGetNoObjectErrorBySourceType(t *testing.T) {
 		dirSource := &source.Directory{}
 
 		// when
-		err := GetNoObjectErrorBySourceType(dirSource)
+		err := ErrorBySourceType(dirSource)
 
 		// then
 		assert.ErrorIs(t, err, ErrFileImportNoObjectsInDirectory)
@@ -336,14 +336,14 @@ func TestGetNoObjectErrorBySourceType(t *testing.T) {
 		zipSource := &source.Zip{}
 
 		// when
-		err := GetNoObjectErrorBySourceType(zipSource)
+		err := ErrorBySourceType(zipSource)
 
 		// then
 		assert.ErrorIs(t, err, ErrFileImportNoObjectsInZipArchive)
 	})
 	t.Run("source is nil", func(t *testing.T) {
 		// when
-		err := GetNoObjectErrorBySourceType(nil)
+		err := ErrorBySourceType(nil)
 
 		// then
 		assert.Nil(t, err)

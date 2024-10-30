@@ -120,7 +120,7 @@ func (h *HTML) handleImportPath(path string, allErrors *common.ConvertError) ([]
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".html"}); numberOfFiles == 0 {
-		allErrors.Add(common.GetNoObjectErrorBySourceType(importSource))
+		allErrors.Add(common.ErrorBySourceType(importSource))
 		return nil, nil
 	}
 	return h.getSnapshotsAndRootObjects(path, allErrors, numberOfFiles, importSource)
