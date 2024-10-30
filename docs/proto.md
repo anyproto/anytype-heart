@@ -29316,7 +29316,6 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | this is a unique Payment Node ID of the product adding 2 same products to a cart means we will have 2 items with same ID |
-| isActive | [bool](#bool) |  |  |
 | isAttachToSpace | [bool](#bool) |  | is it a product that should be attached to a space |
 | isPackage | [bool](#bool) |  | the price of a Package may not be equal to the sum of all underlying products |
 | name | [string](#string) |  | localized |
