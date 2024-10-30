@@ -7595,7 +7595,8 @@ message Rpc {
         message ProductAllocateToSpace {
             message Request {
                 string spaceId = 1;
-                string productId = 2;
+                // index in the list of products (from Store.ProductsEnumerate)
+                uint32 productIndex = 2;
                 // some additional data
                 string context = 3;
             }
@@ -7622,7 +7623,8 @@ message Rpc {
 
         message ProductSetSettings {
             message Request {
-                string productId = 1;
+                // index in the list of products (from Store.ProductsEnumerate)
+                uint32 productIndex = 1;
                 // renew from next period
                 bool isRenewalEnabled = 2;
             }

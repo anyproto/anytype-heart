@@ -13137,7 +13137,7 @@ Some products require extra allocation step
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| productId | [string](#string) |  |  |
+| productIndex | [uint32](#uint32) |  | index in the list of products (from Store.ProductsEnumerate) |
 | context | [string](#string) |  | some additional data |
 
 
@@ -13194,7 +13194,7 @@ Some products require extra allocation step
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| productId | [string](#string) |  |  |
+| productIndex | [uint32](#uint32) |  | index in the list of products (from Store.ProductsEnumerate) |
 | isRenewalEnabled | [bool](#bool) |  | renew from next period |
 
 
