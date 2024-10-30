@@ -1,7 +1,9 @@
 package service
 
 import (
+	"context"
 	"fmt"
+	"strings"
 
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
@@ -13,7 +15,7 @@ type AndroidDiscoveryProxy interface {
 
 type ObservationResult interface {
 	Port() int
-	Ip() string
+	Ip() string // in case of multiple IPs, separated by comma
 	PeerId() string
 }
 
@@ -29,20 +31,26 @@ func SetDiscoveryProxy(proxy AndroidDiscoveryProxy) {
 }
 
 type notifierProvider struct {
-	proxy AndroidDiscoveryProxy
+	proxy  AndroidDiscoveryProxy
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func newNotifierProvider(proxy AndroidDiscoveryProxy) *notifierProvider {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &notifierProvider{
-		proxy: proxy,
+		proxy:  proxy,
+		ctx:    ctx,
+		cancel: cancel,
 	}
 }
 
 func (n *notifierProvider) Provide(notifier localdiscovery.Notifier, port int, peerId, serviceName string) {
-	n.proxy.SetObserver(newDiscoveryObserver(port, peerId, serviceName, notifier))
+	n.proxy.SetObserver(newDiscoveryObserver(n.ctx, port, peerId, serviceName, notifier))
 }
 
 func (n *notifierProvider) Remove() {
+	n.cancel() // in order to cancel undergoing peers' space exchange requests
 	n.proxy.RemoveObserver()
 }
 
@@ -51,11 +59,13 @@ type discoveryObserver struct {
 	peerId      string
 	serviceType string
 
+	ctx      context.Context
 	notifier localdiscovery.Notifier
 }
 
-func newDiscoveryObserver(port int, peerId, serviceType string, notifier localdiscovery.Notifier) *discoveryObserver {
+func newDiscoveryObserver(ctx context.Context, port int, peerId, serviceType string, notifier localdiscovery.Notifier) *discoveryObserver {
 	return &discoveryObserver{
+		ctx:         ctx,
 		port:        port,
 		peerId:      peerId,
 		notifier:    notifier,
@@ -76,11 +86,18 @@ func (d *discoveryObserver) ServiceType() string {
 }
 
 func (d *discoveryObserver) ObserveChange(result ObservationResult) {
+	// in the newer android API it can return multiple IPs separated by comma
+	// sorry, slices are not supported in the bridge :'(
+	var ips = strings.Split(result.Ip(), ",")
+	var addrs = make([]string, 0, len(ips))
+	for _, ip := range ips {
+		addrs = append(addrs, fmt.Sprintf("%s:%d", ip, result.Port()))
+	}
 	peer := localdiscovery.DiscoveredPeer{
-		Addrs:  []string{fmt.Sprintf("%s:%d", result.Ip(), result.Port())},
+		Addrs:  addrs,
 		PeerId: result.PeerId(),
 	}
 	if d.notifier != nil {
-		d.notifier.PeerDiscovered(peer, localdiscovery.OwnAddresses{})
+		d.notifier.PeerDiscovered(d.ctx, peer, localdiscovery.OwnAddresses{})
 	}
 }

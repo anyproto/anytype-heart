@@ -66,8 +66,9 @@ func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	if allErrors.ShouldAbortImport(len(params.Path), req.Type) {
 		return nil, allErrors
 	}
-	rootCollection := common.NewRootCollection(c.collectionService)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, result.objectIDs, "", nil, true, true)
+	rootCollection := common.NewImportCollection(c.collectionService)
+	settings := common.MakeImportCollectionSetting(rootCollectionName, result.objectIDs, "", nil, true, true, true)
+	rootCol, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		allErrors.Add(err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -149,6 +150,7 @@ func (c *CSV) getSnapshotsAndObjectsIds(importSource source.Source,
 			allErrors.Add(err)
 			return !allErrors.ShouldAbortImport(len(params.GetPath()), model.Import_Csv)
 		}
+		csvTable = normalizeCSV(csvTable)
 		if params.TransposeRowsAndColumns && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
@@ -203,4 +205,36 @@ func transpose(csvTable [][]string) [][]string {
 		}
 	}
 	return result
+}
+
+func normalizeCSV(csvTable [][]string) [][]string {
+	if isMatrix(csvTable) {
+		return csvTable
+	}
+	maxColumns := 0
+	for _, row := range csvTable {
+		if len(row) > maxColumns {
+			maxColumns = len(row)
+		}
+	}
+	for i, row := range csvTable {
+		for len(row) < maxColumns {
+			row = append(row, "")
+		}
+		csvTable[i] = row
+	}
+	return csvTable
+}
+
+func isMatrix(arr [][]string) bool {
+	if len(arr) == 0 {
+		return true
+	}
+	columnCount := len(arr[0])
+	for _, row := range arr {
+		if len(row) != columnCount {
+			return false
+		}
+	}
+	return true
 }

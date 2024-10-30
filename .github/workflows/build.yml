@@ -43,7 +43,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.22
+          go-version: 1.22.8
         if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Setup GO
         run: |
@@ -109,7 +109,6 @@ jobs:
           which gomobile
       - name: Cross-compile library mac/win/linux
         run: |
-          make download-tantivy-all
           echo $FLAGS
           mkdir -p .release
           echo $SDKROOT
@@ -118,16 +117,15 @@ jobs:
           echo $SDKROOT
           GOOS="darwin" GOARCH="arm64" CGO_ENABLED="1" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -ldflags="$FLAGS" -o darwin-arm64 github.com/anyproto/anytype-heart/cmd/grpcserver
           GOOS="windows" GOARCH="amd64" CGO_ENABLED="1" CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -ldflags="$FLAGS -linkmode external -extldflags=-static" -o windows-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
-          GOOS="linux" GOARCH="amd64" CGO_ENABLED="1" CC="x86_64-linux-musl-gcc" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -ldflags="$FLAGS -linkmode external -extldflags=-static" -o linux-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
+          GOOS="linux" GOARCH="amd64" CGO_ENABLED="1" CC="x86_64-linux-musl-gcc" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -ldflags="$FLAGS -linkmode external -extldflags '-static -Wl,-z stack-size=1000000'" -o linux-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
           ls -lha .
       - name: run perf tests
         run: |
           echo "Running perf tests"
-          make download-tantivy-all
           RUN_COUNT=${{ github.event.inputs.perf-test }}
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             RUN_COUNT=10
-          fi          
+          fi
           cd cmd/perftester/
           CGO_ENABLED="1" go run main.go $RUN_COUNT
         env:
@@ -224,7 +222,7 @@ jobs:
           go install github.com/vektra/mockery/v2@v2.42.2
           go install go.uber.org/mock/mockgen@v0.3.0
           make test-deps
-          gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector timetzdata" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
+          gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector timetzdata rasterizesvg" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
           mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
           go run cmd/iosrepack/main.go
           mv dist/ios/Lib.xcframework .
@@ -254,7 +252,7 @@ jobs:
           cp pkg/lib/bundle/internalTypes.json ./json
       - name: Compile android lib
         run: |
-          gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector timetzdata" -ldflags "$FLAGS" -v -target=android -androidapi 19 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
+          gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector timetzdata rasterizesvg" -ldflags "$FLAGS" -v -target=android -androidapi 19 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
           gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf json
           mv android_lib_${VERSION}.tar.gz .release/
       - name: Publish android lib to maven

@@ -26,7 +26,7 @@ func (s *service) BundledObjectsIdsToInstall(
 	ctx context.Context,
 	space clientspace.Space,
 	sourceObjectIds []string,
-) (objectIds []string, err error) {
+) (ids domain.BundledObjectIds, err error) {
 	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
 		return nil, fmt.Errorf("get marketplace space: %w", err)
@@ -51,7 +51,10 @@ func (s *service) BundledObjectsIdsToInstall(
 			if err != nil {
 				return err
 			}
-			objectIds = append(objectIds, objectId)
+			ids = append(ids, domain.BundledObjectId{
+				SourceId:        sourceObjectId,
+				DerivedObjectId: objectId,
+			})
 			return nil
 		})
 		if err != nil {
@@ -134,7 +137,7 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 }
 
 func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds []string) (map[string]*types.Struct, error) {
-	existingObjects, err := s.objectStore.Query(database.Query{
+	existingObjects, err := s.objectStore.SpaceIndex(space.Id()).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),
@@ -142,9 +145,19 @@ func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds 
 				Value:       pbtypes.StringList(sourceObjectIds),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(space.Id()),
+				Operator: model.BlockContentDataviewFilter_Or,
+				NestedFilters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyLayout.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
+					},
+					{
+						RelationKey: bundle.RelationKeyLayout.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+					},
+				},
 			},
 		},
 	})
@@ -274,15 +287,20 @@ func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs [
 	if err != nil {
 		return nil, err
 	}
-	return s.objectStore.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+	return s.objectStore.SpaceIndex(space.Id()).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FiltersOr{
+			database.FilterEq{
+				Key:   bundle.RelationKeyLayout.String(),
+				Value: pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+			database.FilterEq{
+				Key:   bundle.RelationKeyLayout.String(),
+				Value: pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+		},
 		database.FilterIn{
 			Key:   bundle.RelationKeySourceObject.String(),
 			Value: sourceList,
-		},
-		database.FilterEq{
-			Key:   bundle.RelationKeySpaceId.String(),
-			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.String(space.Id()),
 		},
 		database.FiltersOr{
 			database.FilterEq{

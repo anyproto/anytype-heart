@@ -7,8 +7,12 @@ import (
 
 const TruncateEllipsis = " …"
 
-func Truncate(text string, length int) string {
-	length = length - UTF16RuneCountString(TruncateEllipsis)
+func TruncateEllipsized(text string, length int) string {
+	return Truncate(text, length, TruncateEllipsis)
+}
+
+func Truncate(text string, length int, ending string) string {
+	length -= UTF16RuneCountString(ending)
 	if UTF16RuneCountString(text) <= length {
 		return text
 	}
@@ -30,14 +34,21 @@ func Truncate(text string, length int) string {
 				endTextPos = lastWordIndex
 			}
 			out := utf16Text[0:endTextPos]
-			return UTF16ToStr(out) + TruncateEllipsis
+			return UTF16ToStr(out) + ending
 		}
 	}
 	return UTF16ToStr(utf16Text)
 }
 
 func UTF16RuneCountString(str string) int {
-	return len(utf16.Encode([]rune(str)))
+	buf := make([]uint16, 0, 2)
+	var n int
+	for _, s := range str {
+		buf = utf16.AppendRune(buf, s)
+		n += len(buf)
+		buf = buf[:0]
+	}
+	return n
 }
 
 func UTF16RuneCount(bStr []byte) int {

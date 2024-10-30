@@ -18,7 +18,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -30,7 +29,7 @@ func (s *service) ObjectTypeAddRelations(ctx context.Context, objectTypeId strin
 	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
 		return ErrBundledTypeIsReadonly
 	}
-	return cache.Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
+	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 		list := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String())
 		for _, relKey := range relationKeys {
@@ -51,7 +50,7 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
 		return ErrBundledTypeIsReadonly
 	}
-	return cache.Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
+	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 		list := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String())
 		for _, relKey := range relationKeys {
@@ -70,11 +69,7 @@ func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) (ke
 	countersByKeys := make(map[string]int64)
 	detailHandlesValue := generateFilter(value)
 
-	err = s.store.QueryIterate(database.Query{Filters: []*model.BlockContentDataviewFilter{{
-		RelationKey: bundle.RelationKeySpaceId.String(),
-		Condition:   model.BlockContentDataviewFilter_Equal,
-		Value:       pbtypes.String(spaceId),
-	}}}, func(details *types.Struct) {
+	err = s.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: nil}, func(details *types.Struct) {
 		for key, valueToCheck := range details.Fields {
 			if detailHandlesValue(valueToCheck) {
 				if counter, ok := countersByKeys[key]; ok {

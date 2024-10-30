@@ -2,22 +2,16 @@ package indexer
 
 import (
 	"context"
-	"crypto/sha256"
-	"fmt"
-	"strings"
 	"sync"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -46,7 +40,7 @@ type Indexer interface {
 	ReindexMarketplaceSpace(space clientspace.Space) error
 	ReindexSpace(space clientspace.Space) error
 	RemoveIndexes(spaceId string) (err error)
-	Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error
+	Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -62,15 +56,18 @@ type indexer struct {
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
 
-	quit            chan struct{}
+	runCtx          context.Context
+	runCtxCancel    context.CancelFunc
 	ftQueueFinished chan struct{}
 	config          *config.Config
 
 	btHash  Hasher
 	forceFt chan struct{}
 
+	// state
 	lock             sync.Mutex
 	reindexLogFields []zap.Field
+	spaceIndexers    map[string]*spaceIndexer
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -81,10 +78,10 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.picker = app.MustComponent[cache.ObjectGetter](a)
-	i.quit = make(chan struct{})
-	i.ftQueueFinished = make(chan struct{})
+	i.runCtx, i.runCtxCancel = context.WithCancel(context.Background())
 	i.forceFt = make(chan struct{})
 	i.config = app.MustComponent[*config.Config](a)
+	i.spaceIndexers = map[string]*spaceIndexer{}
 	return
 }
 
@@ -100,25 +97,32 @@ func (i *indexer) StartFullTextIndex() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
+	i.ftQueueFinished = make(chan struct{})
 	go i.ftLoopRoutine()
 	return
 }
 
 func (i *indexer) Close(ctx context.Context) (err error) {
-	close(i.quit)
-	// we need to wait for the ftQueue processing to be finished gracefully. Because we may be in the middle of badger transaction
-	<-i.ftQueueFinished
+	i.lock.Lock()
+	for spaceId, si := range i.spaceIndexers {
+		err = si.close()
+		if err != nil {
+			log.With("spaceId", spaceId, "error", err).Errorf("close spaceIndexer")
+		}
+		delete(i.spaceIndexers, spaceId)
+	}
+	i.lock.Unlock()
+	if i.runCtxCancel != nil {
+		i.runCtxCancel()
+		// we need to wait for the ftQueue processing to be finished gracefully. Because we may be in the middle of badger transaction
+		<-i.ftQueueFinished
+	}
 	return nil
 }
 
 func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
-	ids, _, err := i.store.QueryObjectIDs(database.Query{
+	ids, _, err := i.store.SpaceIndex(spaceId).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -129,119 +133,17 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	if err != nil {
 		return
 	}
-	return i.store.DeleteDetails(ids...)
+	return i.store.SpaceIndex(spaceId).DeleteDetails(i.runCtx, ids)
 }
 
-func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
-	// options are stored in smartblock pkg because of cyclic dependency :(
-	startTime := time.Now()
-	opts := &smartblock.IndexOptions{}
-	for _, o := range options {
-		o(opts)
+func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
+	i.lock.Lock()
+	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
+	if !ok {
+		spaceInd = newSpaceIndexer(i.runCtx, i.store.SpaceIndex(info.Space.Id()), i.store, i.storageService)
+		i.spaceIndexers[info.Space.Id()] = spaceInd
 	}
-	err := i.storageService.BindSpaceID(info.Space.Id(), info.Id)
-	if err != nil {
-		log.Error("failed to bind space id", zap.Error(err), zap.String("id", info.Id))
-		return err
-	}
-	headHashToIndex := headsHash(info.Heads)
-	saveIndexedHash := func() {
-		if headHashToIndex == "" {
-			return
-		}
+	i.lock.Unlock()
 
-		err = i.store.SaveLastIndexedHeadsHash(info.Id, headHashToIndex)
-		if err != nil {
-			log.With("objectID", info.Id).Errorf("failed to save indexed heads hash: %v", err)
-		}
-	}
-
-	indexDetails, indexLinks := info.SmartblockType.Indexable()
-	if !indexDetails && !indexLinks {
-		return nil
-	}
-
-	lastIndexedHash, err := i.store.GetLastIndexedHeadsHash(info.Id)
-	if err != nil {
-		log.With("object", info.Id).Errorf("failed to get last indexed heads hash: %v", err)
-	}
-
-	if opts.SkipIfHeadsNotChanged {
-		if headHashToIndex == "" {
-			log.With("objectID", info.Id).Errorf("heads hash is empty")
-		} else if lastIndexedHash == headHashToIndex {
-			log.With("objectID", info.Id).Debugf("heads not changed, skipping indexing")
-			return nil
-		}
-	}
-
-	details := info.Details
-
-	indexSetTime := time.Now()
-	var hasError bool
-	if indexLinks {
-		if err = i.store.UpdateObjectLinks(info.Id, info.Links); err != nil {
-			hasError = true
-			log.With("objectID", info.Id).Errorf("failed to save object links: %v", err)
-		}
-	}
-
-	indexLinksTime := time.Now()
-	if indexDetails {
-		if err := i.store.UpdateObjectDetails(ctx, info.Id, details); err != nil {
-			hasError = true
-			log.With("objectID", info.Id).Errorf("can't update object store: %v", err)
-		} else {
-			// todo: remove temp log
-			if lastIndexedHash == headHashToIndex {
-				l := log.With("objectID", info.Id).
-					With("hashesAreEqual", lastIndexedHash == headHashToIndex).
-					With("lastHashIsEmpty", lastIndexedHash == "").
-					With("skipFlagSet", opts.SkipIfHeadsNotChanged)
-
-				if opts.SkipIfHeadsNotChanged {
-					l.Warnf("details have changed, but heads are equal")
-				} else {
-					l.Debugf("details have changed, but heads are equal")
-				}
-			}
-		}
-
-		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
-			if err := i.store.AddToIndexQueue(info.Id); err != nil {
-				log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
-			}
-		}
-	} else {
-		_ = i.store.DeleteDetails(info.Id)
-	}
-	indexDetailsTime := time.Now()
-	detailsCount := 0
-	if details.GetFields() != nil {
-		detailsCount = len(details.GetFields())
-	}
-
-	if !hasError {
-		saveIndexedHash()
-	}
-
-	metrics.Service.Send(&metrics.IndexEvent{
-		ObjectId:                info.Id,
-		IndexLinksTimeMs:        indexLinksTime.Sub(indexSetTime).Milliseconds(),
-		IndexDetailsTimeMs:      indexDetailsTime.Sub(indexLinksTime).Milliseconds(),
-		IndexSetRelationsTimeMs: indexSetTime.Sub(startTime).Milliseconds(),
-		DetailsCount:            detailsCount,
-	})
-
-	return nil
-}
-
-func headsHash(heads []string) string {
-	if len(heads) == 0 {
-		return ""
-	}
-	slices.Sort(heads)
-
-	sum := sha256.Sum256([]byte(strings.Join(heads, ",")))
-	return fmt.Sprintf("%x", sum)
+	return spaceInd.Index(info, options...)
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/migration"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
-	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/components/aclindexcleaner"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 )
 
@@ -31,21 +30,24 @@ type Loader interface {
 }
 
 type Params struct {
-	SpaceId       string
-	IsPersonal    bool
-	OwnerMetadata []byte
+	SpaceId         string
+	IsPersonal      bool
+	OwnerMetadata   []byte
+	AdditionalComps []app.Component
 }
 
 func New(app *app.App, params Params) Loader {
 	child := app.ChildApp()
-	child.Register(aclindexcleaner.New()).
-		Register(builder.New()).
+	child.Register(builder.New()).
 		Register(spaceloader.New(params.IsPersonal, false)).
 		Register(aclnotifications.NewAclNotificationSender()).
 		Register(aclobjectmanager.New(params.OwnerMetadata)).
 		Register(invitemigrator.New()).
 		Register(participantwatcher.New()).
 		Register(migration.New())
+	for _, comp := range params.AdditionalComps {
+		child.Register(comp)
+	}
 	return &loader{
 		app: child,
 	}
