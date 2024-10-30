@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
@@ -25,6 +27,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus/mock_nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus/mock_spacesyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
+	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -77,6 +81,8 @@ type fixture struct {
 	session             session.HookRunner
 	networkConfig       *mock_spacesyncstatus.MockNetworkConfig
 	ctrl                *gomock.Controller
+	processService      process.Service
+	cfg                 *config.Config
 }
 
 func genObject(syncStatus domain.ObjectSyncStatus, spaceId string) objectstore.TestObject {
@@ -104,10 +110,16 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 	internalSubs := subscription.RegisterSubscriptionService(t, a)
 	networkConfig := mock_spacesyncstatus.NewMockNetworkConfig(t)
 	sess := session.NewHookRunner()
+	syncStatus := NewSpaceSyncStatus().(*spaceSyncStatus)
+	processService := process.New()
+	wallet := mock_wallet.NewMockWallet(t)
+	wallet.EXPECT().Name().Return(wallet2.CName)
+	wallet.EXPECT().RepoPath().Return("repo/path")
+	cfg := &config.Config{NewAccount: true, DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true}
 	fx := &fixture{
 		a:                   a,
 		ctrl:                ctrl,
-		spaceSyncStatus:     NewSpaceSyncStatus().(*spaceSyncStatus),
+		spaceSyncStatus:     syncStatus,
 		nodeUsage:           mock_spacesyncstatus.NewMockNodeUsage(t),
 		nodeStatus:          mock_nodestatus.NewMockNodeStatus(t),
 		nodeConf:            mock_nodeconf.NewMockService(ctrl),
@@ -118,6 +130,8 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 		session:             sess,
 		syncSubs:            syncsubscriptions.New(),
 		networkConfig:       networkConfig,
+		processService:      processService,
+		cfg:                 cfg,
 	}
 	fx.spaceIdGetter.EXPECT().TechSpaceId().Return("techSpaceId").Maybe()
 
@@ -127,8 +141,11 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 		Register(testutil.PrepareMock(ctx, a, fx.spaceIdGetter)).
 		Register(testutil.PrepareMock(ctx, a, fx.nodeConf)).
 		Register(testutil.PrepareMock(ctx, a, fx.nodeUsage)).
+		Register(fx.processService).
 		Register(sess).
-		Register(fx.spaceSyncStatus)
+		Register(fx.spaceSyncStatus).
+		Register(testutil.PrepareMock(ctx, a, wallet)).
+		Register(cfg)
 	beforeStart(fx)
 	err := a.Start(ctx)
 	require.NoError(t, err)
@@ -139,7 +156,7 @@ func Test(t *testing.T) {
 	t.Run("empty space synced", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
-			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"}).Times(1)
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
 			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
