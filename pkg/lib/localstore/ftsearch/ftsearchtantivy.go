@@ -153,7 +153,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	)
 
 	err = builder.AddTextField(
-		fieldTitleCh,
+		fieldTitleZh,
 		true,
 		true,
 		false,
@@ -171,7 +171,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	)
 
 	err = builder.AddTextField(
-		fieldTextCh,
+		fieldTextZh,
 		true,
 		true,
 		false,
@@ -265,7 +265,7 @@ func (f *ftSearchTantivy) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = document.AddField(fieldTitleCh, doc.Title, f.index)
+	err = document.AddField(fieldTitleZh, doc.Title, f.index)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +273,7 @@ func (f *ftSearchTantivy) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = document.AddField(fieldTextCh, doc.Text, f.index)
+	err = document.AddField(fieldTextZh, doc.Text, f.index)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +324,7 @@ func (f *ftSearchTantivy) Search(spaceIds []string, highlightFormatter Highlight
 		query = fmt.Sprintf("%s AND %s", spaceIdsQuery, query)
 	}
 	result, err := f.index.Search(query, 100, true,
-		fieldId, fieldSpace, fieldTitle, fieldTitleCh, fieldText, fieldTextCh,
+		fieldId, fieldSpace, fieldTitle, fieldTitleZh, fieldText, fieldTextZh,
 	)
 	if err != nil {
 		return nil, wrapError(err)
@@ -346,9 +346,9 @@ func (f *ftSearchTantivy) Search(spaceIds []string, highlightFormatter Highlight
 			for _, val := range highlights {
 				object := val.GetObject()
 				fieldName := string(object.Get("field_name").GetStringBytes())
-				if fieldName == fieldTitle || fieldName == fieldTitleCh {
+				if fieldName == fieldTitle || fieldName == fieldTitleZh {
 					// fragments[fieldTitle] = append(fragments[fieldTitle], string(object.Get("fragment").MarshalTo(nil)))
-				} else if fieldName == fieldText || fieldName == fieldTextCh {
+				} else if fieldName == fieldText || fieldName == fieldTextZh {
 					fragments[fieldText] = append(fragments[fieldText], string(object.Get("fragment").MarshalTo(nil)))
 				}
 			}

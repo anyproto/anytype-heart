@@ -31,9 +31,9 @@ const (
 	ftsVer = "7"
 
 	fieldTitle        = "Title"
-	fieldTitleCh      = "TitleCh"
+	fieldTitleZh      = "TitleZh"
 	fieldText         = "Text"
-	fieldTextCh       = "TextCh"
+	fieldTextZh       = "TextZh"
 	fieldSpace        = "SpaceID"
 	fieldTitleNoTerms = "TitleNoTerms"
 	fieldTextNoTerms  = "TextNoTerms"

@@ -39,12 +39,12 @@ func (f *ftSearchTantivy) Iterate(objectId string, fields []string, shouldContin
 			dm.Fields = make(map[string]any)
 			dm.Fields[fieldSpace] = string(value.GetStringBytes(fieldSpace))
 			dm.Fields[fieldText] = string(value.GetStringBytes(fieldText))
-			dm.Fields[fieldTextCh] = string(value.GetStringBytes(fieldTextCh))
+			dm.Fields[fieldTextZh] = string(value.GetStringBytes(fieldTextZh))
 			dm.Fields[fieldTitle] = string(value.GetStringBytes(fieldTitle))
-			dm.Fields[fieldTitleCh] = string(value.GetStringBytes(fieldTitleCh))
+			dm.Fields[fieldTitleZh] = string(value.GetStringBytes(fieldTitleZh))
 			return dm, nil
 		},
-		fieldId, fieldSpace, fieldTitle, fieldTitleCh, fieldText, fieldTextCh,
+		fieldId, fieldSpace, fieldTitle, fieldTitleZh, fieldText, fieldTextZh,
 	)
 	if err != nil {
 		return err
@@ -53,14 +53,14 @@ func (f *ftSearchTantivy) Iterate(objectId string, fields []string, shouldContin
 	var text, title, spaceId string
 	for _, hit := range searchResult {
 		if hit.Fields != nil {
-			if hit.Fields[fieldTextCh] != nil {
-				text, _ = hit.Fields[fieldTextCh].(string)
+			if hit.Fields[fieldTextZh] != nil {
+				text, _ = hit.Fields[fieldTextZh].(string)
 			}
 			if hit.Fields[fieldText] != nil {
 				text, _ = hit.Fields[fieldText].(string)
 			}
-			if hit.Fields[fieldTitleCh] != nil {
-				title, _ = hit.Fields[fieldTitleCh].(string)
+			if hit.Fields[fieldTitleZh] != nil {
+				title, _ = hit.Fields[fieldTitleZh].(string)
 			}
 			if hit.Fields[fieldTitle] != nil {
 				title, _ = hit.Fields[fieldTitle].(string)
@@ -120,7 +120,7 @@ func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
 		return err
 	}
 
-	err = doc.AddField(fieldTitleCh, searchDoc.Title, f.index)
+	err = doc.AddField(fieldTitleZh, searchDoc.Title, f.index)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
 		return err
 	}
 
-	err = doc.AddField(fieldTextCh, searchDoc.Text, f.index)
+	err = doc.AddField(fieldTextZh, searchDoc.Text, f.index)
 	if err != nil {
 		return err
 	}
