@@ -7,6 +7,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -28,10 +29,11 @@ import (
 var log = logging.Logger("collection-service")
 
 type Service struct {
-	lock        *sync.RWMutex
-	collections map[string]map[string]chan []string
-	picker      cache.ObjectGetter
-	objectStore objectstore.ObjectStore
+	lock             *sync.RWMutex
+	collections      map[string]map[string]chan []string
+	picker           cache.ObjectGetter
+	objectStore      objectstore.ObjectStore
+	backlinksUpdater backlinks.UpdateWatcher
 }
 
 func New() *Service {
@@ -44,6 +46,7 @@ func New() *Service {
 func (s *Service) Init(a *app.App) (err error) {
 	s.picker = app.MustComponent[cache.ObjectGetter](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
 	return nil
 }
 
@@ -71,19 +74,11 @@ func (s *Service) Add(ctx session.Context, req *pb.RpcObjectCollectionAddRequest
 		return err
 	}
 
-	// we update backlinks of objects to add synchronously to avoid object rerender on adding them to collection
-	for _, id := range toAdd {
-		err = cache.DoStateCtx(s.picker, ctx, id, func(s *state.State, sb smartblock.SmartBlock) error {
-			backlinks := pbtypes.GetStringList(s.LocalDetails(), bundle.RelationKeyBacklinks.String())
-			backlinks = append(backlinks, req.ContextId)
-			s.SetLocalDetail(bundle.RelationKeyBacklinks.String(), pbtypes.StringList(backlinks))
-			return nil
-		})
-
-		if err != nil {
-			log.With("objectId", id).Warnf("failed to update backlinks")
-		}
+	// we update backlinks of objects added to collection synchronously to avoid object rerender after backlinks accumulation interval
+	if len(toAdd) != 0 {
+		s.backlinksUpdater.FlushUpdates()
 	}
+
 	return nil
 }
 

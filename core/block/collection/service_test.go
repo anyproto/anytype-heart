@@ -47,7 +47,19 @@ func (t *testPicker) GetObjectByFullID(ctx context.Context, id domain.FullID) (s
 
 func (t *testPicker) Init(a *app.App) error { return nil }
 
-func (t *testPicker) Name() string { return "" }
+func (t *testPicker) Name() string { return "test.picker" }
+
+type testFlusher struct{}
+
+func (tf *testFlusher) Name() string { return "test.flusher" }
+
+func (tf *testFlusher) Init(*app.App) error { return nil }
+
+func (tf *testFlusher) Run(context.Context) error { return nil }
+
+func (tf *testFlusher) Close(context.Context) error { return nil }
+
+func (tf *testFlusher) FlushUpdates() {}
 
 type fixture struct {
 	picker *testPicker
@@ -56,12 +68,14 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
-	picker := &testPicker{}
 	a := &app.App{}
+	picker := &testPicker{}
+	flusher := &testFlusher{}
 	objectStore := objectstore.NewStoreFixture(t)
 
 	a.Register(picker)
 	a.Register(objectStore)
+	a.Register(flusher)
 	s := New()
 
 	err := s.Init(a)
@@ -228,8 +242,6 @@ func TestService_Add(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, []string{collectionID}, pbtypes.GetStringList(obj1.LocalDetails(), bundle.RelationKeyBacklinks.String()))
-		assert.Equal(t, []string{collectionID}, pbtypes.GetStringList(obj2.LocalDetails(), bundle.RelationKeyBacklinks.String()))
 		assert.Equal(t, []string{"obj1", "obj2"}, coll.NewState().GetStoreSlice(template.CollectionStoreKey))
 	})
 }
