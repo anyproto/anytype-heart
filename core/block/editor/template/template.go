@@ -1,6 +1,9 @@
 package template
 
 import (
+	"crypto/rand"
+	"math/big"
+
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
@@ -28,6 +31,8 @@ const (
 	FeaturedRelationsId = "featuredRelations"
 	ChatId              = "chat"
 )
+
+var relationOptionsColors = []string{"grey", "yellow", "orange", "red", "pink", "purple", "blue", "ice", "teal", "lime"}
 
 var log = logging.Logger("anytype-state-template")
 
@@ -85,6 +90,15 @@ var WithRelations = func(rels []domain.RelationKey) StateTransformer {
 		s.AddBundledRelationLinks(rels...)
 	}
 }
+
+var WithRandomRelationOptionColor = StateTransformer(func(s *state.State) {
+	randomIndex, err := rand.Int(rand.Reader, big.NewInt(int64(len(relationOptionsColors))))
+	if err != nil {
+		return
+	}
+	s.SetDetail(bundle.RelationKeyRelationOptionColor.String(), pbtypes.String(relationOptionsColors[randomIndex.Int64()]))
+	s.AddBundledRelationLinks([]domain.RelationKey{bundle.RelationKeyRelationOptionColor}...)
+})
 
 var WithRequiredRelations = func(s *state.State) {
 	WithRelations(bundle.RequiredInternalRelations)(s)
