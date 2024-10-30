@@ -92,7 +92,7 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 
 		detailsCopy := rec.Details.Copy()
 		// set the same score as original object
-		detailsCopy.SetFloat(database.RecordScoreField, score)
+		detailsCopy.SetFloat64(database.RecordScoreField, score)
 		injectedResults = append(injectedResults, database.Record{
 			Details: detailsCopy,
 			Meta:    metaInj,
@@ -184,7 +184,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 					continue
 				}
 				details.SetString(bundle.RelationKeyId, res.Path.ObjectId)
-				details.SetFloat(database.RecordScoreField, res.Score)
+				details.SetFloat64(database.RecordScoreField, res.Score)
 				rec := database.Record{Details: details}
 				if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 					resultObjectMap[res.Path.ObjectId] = struct{}{}
@@ -203,7 +203,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 			log.Errorf("QueryByIds failed to extract details: %s", res.Path.ObjectId)
 			continue
 		}
-		details.SetFloat(database.RecordScoreField, res.Score)
+		details.SetFloat64(database.RecordScoreField, res.Score)
 
 		rec := database.Record{Details: details}
 		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {

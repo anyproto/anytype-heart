@@ -160,7 +160,7 @@ func (np *DatabaseNumber) GetID() string {
 }
 
 func (np *DatabaseNumber) SetDetail(key string, details *domain.Details) {
-	details.SetFloat(domain.RelationKey(key), 0)
+	details.SetFloat64(domain.RelationKey(key), 0)
 }
 
 func (np *DatabaseNumber) GetFormat() model.RelationFormat {
@@ -208,7 +208,7 @@ func (dp *DatabaseDate) GetID() string {
 }
 
 func (dp *DatabaseDate) SetDetail(key string, details *domain.Details) {
-	details.SetFloat(domain.RelationKey(key), 0)
+	details.SetFloat64(domain.RelationKey(key), 0)
 }
 
 func (dp *DatabaseDate) GetFormat() model.RelationFormat {
@@ -328,7 +328,7 @@ func (ct *DatabaseCreatedTime) GetID() string {
 }
 
 func (ct *DatabaseCreatedTime) SetDetail(key string, details *domain.Details) {
-	details.SetFloat(domain.RelationKey(key), 0)
+	details.SetFloat64(domain.RelationKey(key), 0)
 }
 
 func (ct *DatabaseCreatedTime) GetFormat() model.RelationFormat {
@@ -360,7 +360,7 @@ func (le *DatabaseLastEditedTime) GetID() string {
 }
 
 func (le *DatabaseLastEditedTime) SetDetail(key string, details *domain.Details) {
-	details.SetFloat(domain.RelationKey(key), 0)
+	details.SetFloat64(domain.RelationKey(key), 0)
 }
 
 func (le *DatabaseLastEditedTime) GetFormat() model.RelationFormat {

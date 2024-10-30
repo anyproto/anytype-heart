@@ -174,7 +174,7 @@ func getDefaultRelationName(i int) string {
 
 func getRelationDetails(name, key string, format float64) *domain.Details {
 	details := domain.NewDetails()
-	details.SetFloat(bundle.RelationKeyRelationFormat, format)
+	details.SetFloat64(bundle.RelationKeyRelationFormat, format)
 	details.SetString(bundle.RelationKeyName, name)
 	details.SetString(bundle.RelationKeyRelationKey, key)
 	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))

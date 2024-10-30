@@ -13,6 +13,10 @@ type GenericMap[K ~string] struct {
 	data map[K]Value
 }
 
+func NewGenericMap[K ~string]() *GenericMap[K] {
+	return &GenericMap[K]{data: make(map[K]Value)}
+}
+
 func (d *GenericMap[K]) Len() int {
 	if d == nil {
 		return 0
@@ -39,7 +43,7 @@ func (d *GenericMap[K]) SetInt64(key K, value int64) *GenericMap[K] {
 	return d
 }
 
-func (d *GenericMap[K]) SetFloat(key K, value float64) *GenericMap[K] {
+func (d *GenericMap[K]) SetFloat64(key K, value float64) *GenericMap[K] {
 	d.data[key] = Float64(value)
 	return d
 }
@@ -49,8 +53,13 @@ func (d *GenericMap[K]) SetStringList(key K, value []string) *GenericMap[K] {
 	return d
 }
 
-func (d *GenericMap[K]) SetFloatList(key K, value []float64) *GenericMap[K] {
+func (d *GenericMap[K]) SetFloat64List(key K, value []float64) *GenericMap[K] {
 	d.data[key] = Float64List(value)
+	return d
+}
+
+func (d *GenericMap[K]) SetInt64List(key K, value []int64) *GenericMap[K] {
+	d.data[key] = Int64List(value...)
 	return d
 }
 

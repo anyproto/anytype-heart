@@ -65,7 +65,7 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 		if err != nil {
 			return fmt.Errorf("number: %w", err)
 		}
-		d.SetFloat(key, v)
+		d.SetFloat64(key, v)
 		return nil
 
 	case anyenc.TypeString:
@@ -113,7 +113,7 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 				}
 				res = append(res, v)
 			}
-			d.SetFloatList(key, res)
+			d.SetFloat64List(key, res)
 			return nil
 		} else {
 			return fmt.Errorf("unsupported array type %s", firstVal.Type())

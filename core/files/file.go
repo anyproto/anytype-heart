@@ -83,8 +83,8 @@ func (f *file) Details(ctx context.Context) (*domain.Details, domain.TypeKey, er
 	details.SetString(bundle.RelationKeyFileMimeType, meta.Media)
 	details.SetString(bundle.RelationKeyName, strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name)))
 	details.SetString(bundle.RelationKeyFileExt, strings.TrimPrefix(filepath.Ext(meta.Name), "."))
-	details.SetFloat(bundle.RelationKeySizeInBytes, float64(meta.Size))
-	details.SetFloat(bundle.RelationKeyAddedDate, float64(meta.Added.Unix()))
+	details.SetFloat64(bundle.RelationKeySizeInBytes, float64(meta.Size))
+	details.SetFloat64(bundle.RelationKeyAddedDate, float64(meta.Added.Unix()))
 
 	if meta.Media == "application/pdf" {
 		typeKey = bundle.TypeKeyFile
@@ -141,6 +141,6 @@ func calculateCommonDetails(
 	det.SetString(bundle.RelationKeyFileId, fileId.String())
 	det.SetBool(bundle.RelationKeyIsReadonly, false)
 	det.SetInt64(bundle.RelationKeyLayout, int64(layout))
-	det.SetFloat(bundle.RelationKeyLastModifiedDate, float64(lastModifiedDate))
+	det.SetFloat64(bundle.RelationKeyLastModifiedDate, float64(lastModifiedDate))
 	return det
 }

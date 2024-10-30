@@ -49,7 +49,7 @@ func (ot *ObjectType) BundledTypeDetails() *domain.Details {
 	det.SetBool(bundle.RelationKeyIsHidden, ot.Hidden)
 	det.SetBool(bundle.RelationKeyIsArchived, false)
 	det.SetBool(bundle.RelationKeyIsReadonly, ot.Readonly)
-	det.SetFloatList(bundle.RelationKeySmartblockTypes, sbTypes)
+	det.SetFloat64List(bundle.RelationKeySmartblockTypes, sbTypes)
 	det.SetString(bundle.RelationKeySpaceId, addr.AnytypeMarketplaceWorkspace)
 	det.SetInt64(bundle.RelationKeyOrigin, int64(model.ObjectOrigin_builtin))
 	det.SetInt64(bundle.RelationKeyRevision, ot.Revision)

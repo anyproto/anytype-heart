@@ -186,23 +186,23 @@ func (i *image) Details(ctx context.Context) (*domain.Details, error) {
 	}
 
 	if v := pbtypes.Get(largest.GetMeta(), "width"); v != nil {
-		details.SetFloat(bundle.RelationKeyWidthInPixels, v.GetNumberValue())
+		details.SetFloat64(bundle.RelationKeyWidthInPixels, v.GetNumberValue())
 	}
 
 	if v := pbtypes.Get(largest.GetMeta(), "height"); v != nil {
-		details.SetFloat(bundle.RelationKeyHeightInPixels, v.GetNumberValue())
+		details.SetFloat64(bundle.RelationKeyHeightInPixels, v.GetNumberValue())
 	}
 
 	if largest.Meta != nil {
 		details.SetString(bundle.RelationKeyName, strings.TrimSuffix(largest.Name, filepath.Ext(largest.Name)))
 		details.SetString(bundle.RelationKeyFileExt, strings.TrimPrefix(filepath.Ext(largest.Name), "."))
 		details.SetString(bundle.RelationKeyFileMimeType, largest.Media)
-		details.SetFloat(bundle.RelationKeySizeInBytes, float64(largest.Size_))
-		details.SetFloat(bundle.RelationKeyAddedDate, float64(largest.Added))
+		details.SetFloat64(bundle.RelationKeySizeInBytes, float64(largest.Size_))
+		details.SetFloat64(bundle.RelationKeyAddedDate, float64(largest.Added))
 	}
 
 	if !imageExif.Created.IsZero() {
-		details.SetFloat(bundle.RelationKeyCreatedDate, float64(imageExif.Created.Unix()))
+		details.SetFloat64(bundle.RelationKeyCreatedDate, float64(imageExif.Created.Unix()))
 	}
 	/*if exif.Latitude != 0.0 {
 		details.Set("latitude",  pbtypes.Float64(exif.Latitude))
@@ -217,10 +217,10 @@ func (i *image) Details(ctx context.Context) (*domain.Details, error) {
 		details.SetString(bundle.RelationKeyExposure, imageExif.ExposureTime)
 	}
 	if imageExif.FNumber != 0 {
-		details.SetFloat(bundle.RelationKeyFocalRatio, imageExif.FNumber)
+		details.SetFloat64(bundle.RelationKeyFocalRatio, imageExif.FNumber)
 	}
 	if imageExif.ISO != 0 {
-		details.SetFloat(bundle.RelationKeyCameraIso, float64(imageExif.ISO))
+		details.SetFloat64(bundle.RelationKeyCameraIso, float64(imageExif.ISO))
 	}
 	if imageExif.Description != "" {
 		// use non-empty image description as an image name, because it much uglier to use file names for objects

@@ -71,7 +71,7 @@ func putToDetails(details *domain.Details, flags []float64) *domain.Details {
 	if details == nil {
 		details = domain.NewDetails()
 	}
-	details.SetFloatList(relationKey, flags)
+	details.SetFloat64List(relationKey, flags)
 
 	return details
 }

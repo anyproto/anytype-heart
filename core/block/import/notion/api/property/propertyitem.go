@@ -143,7 +143,7 @@ type NumberItem struct {
 
 func (np *NumberItem) SetDetail(key string, details *domain.Details) {
 	if np.Number != nil {
-		details.SetFloat(domain.RelationKey(key), *np.Number)
+		details.SetFloat64(domain.RelationKey(key), *np.Number)
 	}
 }
 
@@ -642,7 +642,7 @@ type RollupObject struct {
 func (r *RollupItem) SetDetail(key string, details *domain.Details) {
 	switch r.Rollup.Type {
 	case rollupNumber:
-		details.SetFloat(domain.RelationKey(key), r.Rollup.Number)
+		details.SetFloat64(domain.RelationKey(key), r.Rollup.Number)
 	case rollupDate:
 		di := DateItem{Date: r.Rollup.Date}
 		di.SetDetail(key, details)
