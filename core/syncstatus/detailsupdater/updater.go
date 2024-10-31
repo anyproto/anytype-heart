@@ -206,20 +206,8 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			if details == nil || details.Fields == nil {
 				details = &types.Struct{Fields: map[string]*types.Value{}}
 			}
-			if !u.isLayoutSuitableForSyncRelations(details) || pbtypes.GetString(details, bundle.RelationKeySpaceId.String()) == "" {
-				var syncRelations = []string{
-					bundle.RelationKeySyncStatus.String(),
-					bundle.RelationKeySyncError.String(),
-					bundle.RelationKeySyncDate.String(),
-				}
-				modified := false
-				for _, relation := range syncRelations {
-					if _, ok := details.GetFields()[relation]; ok {
-						delete(details.Fields, relation)
-						modified = true
-					}
-				}
-				return details, modified, nil
+			if !u.isLayoutSuitableForSyncRelations(details) {
+				return details, false, nil
 			}
 			if fileStatus, ok := details.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
 				status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus.GetNumberValue())))
