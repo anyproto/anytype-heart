@@ -19970,12 +19970,12 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | EXPAND | 4 |  |
 | BULLET | 5 |  |
 | TABLE | 6 |  |
-| TRANSLATE | 7 |  |
-| CASUAL | 8 |  |
-| FUNNY | 9 |  |
-| CONFIDENT | 10 |  |
-| STRAIGHTFORWARD | 11 |  |
-| PROFESSIONAL | 12 | ... |
+| CASUAL | 7 |  |
+| FUNNY | 8 |  |
+| CONFIDENT | 9 |  |
+| STRAIGHTFORWARD | 10 |  |
+| PROFESSIONAL | 11 |  |
+| TRANSLATE | 12 | ... |
 
 
 
