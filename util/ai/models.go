@@ -107,7 +107,7 @@ func getModels(config APIConfig) ([]Model, error) {
 		return nil, fmt.Errorf("error parsing JSON: %w", err)
 	}
 
-	var models []Model
+	models := make([]Model, 0, len(modelsResp.Data))
 	for _, model := range modelsResp.Data {
 		models = append(models, model)
 	}

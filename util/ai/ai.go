@@ -88,6 +88,9 @@ func (r result) Close() error {
 }
 
 func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (result, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	text := strings.ToLower(strings.TrimSpace(params.Text))
 
 	if params.Provider == pb.RpcAIWritingToolsRequest_OLLAMA {

@@ -1,39 +1,35 @@
 package ai
 
 import (
-	"os"
-
-	"github.com/joho/godotenv"
-
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 type APIProvider string
 
-var (
-	// Ollama
-	ollamaEndpointChat      = "http://localhost:11434/v1/chat/completions"
-	ollamaEndpointModels    = "http://localhost:11434/v1/models"
-	ollamaEndpointEmbed     = "http://localhost:11434/v1/embeddings"
-	ollamaDefaultModelChat  = "llama3.2:3b"
-	ollamaDefaultModelEmbed = "all-minilm:latest"
-
-	// OpenAI
-	openaiEndpointChat      = "https://api.openai.com/v1/chat/completions"
-	openaiEndpointModels    = "https://api.openai.com/v1/models"
-	openaiEndpointEmbed     = "https://api.openai.com/v1/embeddings"
-	openaiDefaultModelChat  = "gpt-4o-mini"
-	openaiDefaultModelEmbed = "text-embedding-3-small"
-	openaiAPIKey            string
-)
-
-func init() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
-	openaiAPIKey = os.Getenv("OPENAI_API_KEY")
-}
+// var (
+// 	// Ollama
+// 	ollamaEndpointChat      = "http://localhost:11434/v1/chat/completions"
+// 	ollamaEndpointModels    = "http://localhost:11434/v1/models"
+// 	ollamaEndpointEmbed     = "http://localhost:11434/v1/embeddings"
+// 	ollamaDefaultModelChat  = "llama3.2:3b"
+// 	ollamaDefaultModelEmbed = "all-minilm:latest"
+//
+// 	// OpenAI
+// 	openaiEndpointChat      = "https://api.openai.com/v1/chat/completions"
+// 	openaiEndpointModels    = "https://api.openai.com/v1/models"
+// 	openaiEndpointEmbed     = "https://api.openai.com/v1/embeddings"
+// 	openaiDefaultModelChat  = "gpt-4o-mini"
+// 	openaiDefaultModelEmbed = "text-embedding-3-small"
+// 	openaiAPIKey            string
+// )
+//
+// func init() {
+// 	err := godotenv.Load()
+// 	if err != nil {
+// 		log.Fatalf("Error loading .env file: %v", err)
+// 	}
+// 	openaiAPIKey = os.Getenv("OPENAI_API_KEY")
+// }
 
 var systemPrompts = map[pb.RpcAIWritingToolsRequestMode]string{
 	// Default
