@@ -35,6 +35,21 @@ type ChatResponse struct {
 	} `json:"choices"`
 }
 
+type ContentResponse struct {
+	Summary                string `json:"summary,omitempty"`
+	Corrected              string `json:"corrected,omitempty"`
+	Shortened              string `json:"shortened,omitempty"`
+	Expanded               string `json:"expanded,omitempty"`
+	Bullet                 string `json:"bullet,omitempty"`
+	ContentAsTable         string `json:"content_as_table,omitempty"`
+	Translation            string `json:"translation,omitempty"`
+	CasualContent          string `json:"casual_content,omitempty"`
+	FunnyContent           string `json:"funny_content,omitempty"`
+	ConfidentContent       string `json:"confident_content,omitempty"`
+	StraightforwardContent string `json:"straightforward_content,omitempty"`
+	ProfessionalContent    string `json:"professional_content,omitempty"`
+}
+
 type prefixStrippingReader struct {
 	reader *bufio.Reader
 	prefix string
@@ -120,6 +135,39 @@ func parseChatResponse(body io.Reader) (*[]ChatResponse, error) {
 	}
 
 	return &responses, nil
+}
+
+func extractContentByMode(jsonData string, promptConfig PromptConfig) (string, error) {
+	var response ContentResponse
+	err := json.Unmarshal([]byte(jsonData), &response)
+	if err != nil {
+		return "", fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
+	}
+
+	modeToContent := map[int]string{
+		1:  response.Summary,
+		2:  response.Corrected,
+		3:  response.Shortened,
+		4:  response.Expanded,
+		5:  response.Bullet,
+		6:  response.ContentAsTable,
+		7:  response.CasualContent,
+		8:  response.FunnyContent,
+		9:  response.ConfidentContent,
+		10: response.StraightforwardContent,
+		11: response.ProfessionalContent,
+		12: response.Translation,
+	}
+
+	content, exists := modeToContent[int(promptConfig.Mode)]
+	if !exists {
+		return "", fmt.Errorf("unknown mode: %d", promptConfig.Mode)
+	}
+	if content == "" {
+		return "", fmt.Errorf("response content is empty")
+	}
+
+	return content, nil
 }
 
 func chat(config APIConfig, promptConfig PromptConfig) (*[]ChatResponse, error) {

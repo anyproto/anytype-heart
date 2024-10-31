@@ -43,6 +43,7 @@ type APIConfig struct {
 }
 
 type PromptConfig struct {
+	Mode         pb.RpcAIWritingToolsRequestMode
 	SystemPrompt string
 	UserPrompt   string
 	Temperature  float32
@@ -87,6 +88,7 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 
 	text := strings.ToLower(strings.TrimSpace(params.Text))
 
+	// check supported languages for llama models
 	if params.Provider == pb.RpcAIWritingToolsRequest_OLLAMA {
 		languages := []lingua.Language{lingua.English, lingua.Spanish, lingua.French, lingua.German, lingua.Italian, lingua.Portuguese, lingua.Hindi, lingua.Thai}
 		detector := lingua.NewLanguageDetectorBuilder().
@@ -108,6 +110,7 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 	}
 
 	promptConfig := PromptConfig{
+		Mode:         params.Mode,
 		SystemPrompt: systemPrompts[params.Mode],
 		UserPrompt:   fmt.Sprintf(userPrompts[params.Mode], text),
 		Temperature:  params.Temperature,
@@ -124,6 +127,16 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 		for _, choice := range chunk.Choices {
 			answerBuilder.WriteString(choice.Delta.Content)
 		}
+	}
+
+	// extract content from json response, except for default mode
+	if params.Mode != 0 {
+		extractedAnswer, err := extractContentByMode(answerBuilder.String(), promptConfig)
+		if err != nil {
+			return result{}, err
+		}
+
+		return result{Answer: extractedAnswer}, nil
 	}
 
 	return result{Answer: answerBuilder.String()}, nil
