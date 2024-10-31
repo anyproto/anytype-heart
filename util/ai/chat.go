@@ -47,9 +47,7 @@ func (psr *prefixStrippingReader) Read(p []byte) (int, error) {
 			return 0, err
 		}
 
-		if strings.HasPrefix(line, psr.prefix) {
-			line = strings.TrimPrefix(line, psr.prefix)
-		}
+		line = strings.TrimPrefix(line, psr.prefix)
 
 		// Ignore the "[DONE]" line
 		if strings.TrimSpace(line) == "[DONE]" {
@@ -132,7 +130,7 @@ func chat(config APIConfig, promptConfig PromptConfig) (*[]ChatResponse, error) 
 
 	resp, err := sendChatRequest(jsonData, config)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrEndpointNotReachable, err)
+		return nil, fmt.Errorf("%w: %s", ErrEndpointNotReachable, err.Error())
 	}
 	defer resp.Body.Close()
 

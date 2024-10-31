@@ -11,14 +11,8 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/pemistahl/lingua-go"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
-
-var log = logging.Logger("ai")
-
-var DefaultToken = ""
 
 var (
 	ErrUnsupportedLanguage  = errors.New("unsupported input language detected")
@@ -133,10 +127,4 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 	}
 
 	return result{Answer: answerBuilder.String()}, nil
-}
-
-func init() {
-	if DefaultToken == "" {
-		DefaultToken = loadenv.Get("OPENAI_API_KEY")
-	}
 }
