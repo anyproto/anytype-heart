@@ -38,6 +38,11 @@ func (s *syncingObjects) Run() error {
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       pbtypes.IntList(int(domain.SpaceSyncStatusSyncing), int(domain.ObjectSyncStatusQueued), int(domain.ObjectSyncStatusError)),
 			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(s.spaceId),
+			},
 		},
 	}
 	s.objectSubscription = objectsubscription.NewIdSubscription(s.service, objectReq)
