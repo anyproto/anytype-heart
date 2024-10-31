@@ -43,7 +43,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.22.8
+          go-version: 1.23.2
         if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Setup GO
         run: |
