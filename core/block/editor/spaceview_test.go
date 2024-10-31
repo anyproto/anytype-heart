@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -126,6 +127,88 @@ func TestSpaceView_SetOwner(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "ownerId", pbtypes.GetString(fx.CombinedDetails(), bundle.RelationKeyCreator.String()))
 	require.Equal(t, int64(125), pbtypes.GetInt64(fx.CombinedDetails(), bundle.RelationKeyCreatedDate.String()))
+}
+
+func TestSpaceView_SetAfterGivenView(t *testing.T) {
+	t.Run("set view in the beginning", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+
+		// when
+		spaceViewOrderId, err := fx.SetAfterGivenView("")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, spaceViewOrderId, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
+	})
+	t.Run("set view after given id", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+
+		// when
+		spaceViewOrderId, err := fx.SetAfterGivenView("viewOrderId")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, spaceViewOrderId, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
+	})
+	t.Run("set view after given id, order exist", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		state := fx.NewState()
+		state.SetDetail(bundle.RelationKeySpaceOrder.String(), pbtypes.String("spaceViewOrderId"))
+
+		// when
+		spaceViewOrderId, err := fx.SetAfterGivenView("viewOrderId")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, spaceViewOrderId, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
+	})
+}
+
+func TestSpaceView_SetBetweenViews(t *testing.T) {
+	t.Run("set view in the beginning", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+
+		// when
+		err := fx.SetBetweenViews("", "afterId")
+
+		// then
+		require.NoError(t, err)
+		assert.NotEmpty(t, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
+	})
+	t.Run("set view between", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		firstSpaceView := lx.Next("")
+		secondSpaceView := lx.Next(firstSpaceView)
+		thirdSpaceView := lx.Next(secondSpaceView)
+
+		// when
+		err := fx.SetBetweenViews(secondSpaceView, thirdSpaceView)
+
+		// then
+		require.NoError(t, err)
+		assert.NotEmpty(t, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
+	})
+	t.Run("after id is empty", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+
+		// when
+		err := fx.SetBetweenViews("afterId", "")
+
+		// then
+		require.Error(t, err)
+	})
 }
 
 type spaceServiceStub struct {

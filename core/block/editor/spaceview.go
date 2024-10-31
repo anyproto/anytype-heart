@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/lexid"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
@@ -25,6 +26,8 @@ import (
 var spaceViewLog = logging.Logger("core.block.editor.spaceview")
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
+
+var lx = lexid.Must(lexid.CharsAll, 3, 10)
 
 // required relations for spaceview beside the bundle.RequiredInternalRelations
 var spaceViewRequiredRelations = []domain.RelationKey{
@@ -310,6 +313,23 @@ func (s *SpaceView) UpdateLastOpenedDate() error {
 	st := s.NewState()
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
 	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
+}
+
+func (s *SpaceView) SetAfterGivenView(viewOrderId string) (string, error) {
+	st := s.NewState()
+	spaceOrderId := lx.Next(viewOrderId)
+	st.SetDetail(bundle.RelationKeySpaceOrder.String(), pbtypes.String(spaceOrderId))
+	return spaceOrderId, s.Apply(st)
+}
+
+func (s *SpaceView) SetBetweenViews(prevViewOrderId, afterViewOrderId string) error {
+	st := s.NewState()
+	before, err := lx.NextBefore(prevViewOrderId, afterViewOrderId)
+	if err != nil {
+		return fmt.Errorf("failed to get before lexid, %w", err)
+	}
+	st.SetDetail(bundle.RelationKeySpaceOrder.String(), pbtypes.String(before))
+	return s.Apply(st)
 }
 
 func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {

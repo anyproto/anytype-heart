@@ -8,9 +8,13 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
+	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/encode"
@@ -315,12 +319,39 @@ func (mw *Middleware) SpaceLeaveApprove(cctx context.Context, req *pb.RpcSpaceLe
 	}
 }
 
-func (mw *Middleware) SpaceSetOrder(ctx context.Context, request *pb.RpcSpaceSetOrderRequest) *pb.RpcSpaceSetOrderResponse {
-
+func (mw *Middleware) SpaceSetOrder(_ context.Context, request *pb.RpcSpaceSetOrderRequest) *pb.RpcSpaceSetOrderResponse {
+	response := func(code pb.RpcSpaceSetOrderResponseErrorCode, err error) *pb.RpcSpaceSetOrderResponse {
+		m := &pb.RpcSpaceSetOrderResponse{Error: &pb.RpcSpaceSetOrderResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return setSpaceViewOrder(bs, request)
+	})
+	if err != nil {
+		return response(pb.RpcSpaceSetOrderResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcSpaceSetOrderResponseError_NULL, nil)
 }
 
-func (mw *Middleware) SpaceUnsetOrder(ctx context.Context, request *pb.RpcSpaceUnsetOrderRequest) *pb.RpcSpaceUnsetOrderResponse {
-
+func (mw *Middleware) SpaceUnsetOrder(cctx context.Context, request *pb.RpcSpaceUnsetOrderRequest) *pb.RpcSpaceUnsetOrderResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcSpaceUnsetOrderResponseErrorCode, err error) *pb.RpcSpaceUnsetOrderResponse {
+		m := &pb.RpcSpaceUnsetOrderResponse{Error: &pb.RpcSpaceUnsetOrderResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.RemoveExtraRelations(ctx, request.SpaceViewId, []string{bundle.RelationKeySpaceOrder.String()})
+	})
+	if err != nil {
+		return response(pb.RpcSpaceUnsetOrderResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcSpaceUnsetOrderResponseError_NULL, nil)
 }
 
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
@@ -388,4 +419,62 @@ func permissionsChange(ctx context.Context, spaceId string, changes []*model.Par
 		})
 	}
 	return aclService.ChangePermissions(ctx, spaceId, accPermissions)
+}
+
+func setSpaceViewOrder(og cache.ObjectGetter, request *pb.RpcSpaceSetOrderRequest) error {
+	var (
+		prevLexId string
+		err       error
+	)
+	for _, id := range request.GetBeforeIds() {
+		err = cache.Do[*editor.SpaceView](og, id, func(sv *editor.SpaceView) error {
+			prevLexId, err = sv.SetAfterGivenView(prevLexId)
+			if err != nil {
+				return fmt.Errorf("failed to update space order of view, %w", err)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	if request.AfterId != "" {
+		return setViewBetween(og, request.SpaceViewId, request.AfterId, prevLexId)
+	}
+	return setViewAfter(og, request.SpaceViewId, prevLexId)
+}
+
+func setViewAfter(og cache.ObjectGetter, spaceViewId, prevLexId string) error {
+	err := cache.Do[*editor.SpaceView](og, spaceViewId, func(sv *editor.SpaceView) error {
+		_, err := sv.SetAfterGivenView(prevLexId)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func setViewBetween(og cache.ObjectGetter, spaceViewId, afterViewId, prevLexId string) error {
+	var (
+		after string
+		err   error
+	)
+	err = cache.Do[*editor.SpaceView](og, afterViewId, func(sv *editor.SpaceView) error {
+		after, err = sv.SetAfterGivenView(prevLexId)
+		if err != nil {
+			return fmt.Errorf("failed to update space order of view, %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	err = cache.Do[*editor.SpaceView](og, spaceViewId, func(sv *editor.SpaceView) error {
+		return sv.SetBetweenViews(prevLexId, after)
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }

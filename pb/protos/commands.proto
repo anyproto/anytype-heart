@@ -495,8 +495,8 @@ message Rpc {
         message SetOrder {
             message Request {
                 string spaceViewId = 1;
-                string afterViewId = 2;
-                string beforeViewId = 3;
+                repeated string beforeIds = 2;
+                string afterId = 3;
             }
 
             message Response {
