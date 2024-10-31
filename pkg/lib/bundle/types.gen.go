@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "f3ae9931142aa23ec9696ccb60fe1a68b4fdafcc345e307e0a26d4fb98a0686c"
+const TypeChecksum = "4a3f1aa2ffad920796064537b109a2a1337117914cdaa1a62bd648a0a0855967"
 const (
 	TypePrefix = "_ot"
 )
@@ -143,7 +143,7 @@ var (
 			Description:   "Gregorian calendar date",
 			Hidden:        true,
 			IconEmoji:     "📅",
-			Layout:        model.ObjectType_basic,
+			Layout:        model.ObjectType_date,
 			Name:          "Date",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},

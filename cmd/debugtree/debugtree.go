@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -142,8 +143,15 @@ func main() {
 		if err != nil {
 			log.Fatal("can't create temp file:", err)
 		}
-		g := graphviz.New()
-		g.Render(gvo, graphviz.SVG, tf)
+		ctx := context.Background()
+		g, err := graphviz.New(ctx)
+		if err != nil {
+			log.Fatal("can't open graphviz:", err)
+		}
+		err = g.Render(ctx, gvo, graphviz.SVG, tf)
+		if err != nil {
+			log.Fatal("can't render graphviz:", err)
+		}
 		fmt.Println("tree file:", tf.Name())
 		tf.Close()
 		open(tf.Name())
