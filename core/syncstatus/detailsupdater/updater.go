@@ -242,28 +242,11 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 }
 
 func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.ObjectSyncStatus, syncError domain.SyncError) error {
-	var (
-		st      = sb.NewState()
-		details = sb.CombinedDetails()
-	)
-	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) ||
-		!u.isLayoutSuitableForSyncRelations(details) ||
-		pbtypes.GetString(details, bundle.RelationKeySpaceId.String()) == "" { // this was the case with incorrectly indexed objects
-		var syncRelations = []string{
-			bundle.RelationKeySyncStatus.String(),
-			bundle.RelationKeySyncError.String(),
-			bundle.RelationKeySyncDate.String(),
-		}
-		removedOnce := false
-		for _, relation := range syncRelations {
-			if st.HasRelation(relation) {
-				removedOnce = true
-				st.RemoveRelation(relation)
-			}
-		}
-		if removedOnce {
-			return sb.Apply(st, smartblock.KeepInternalFlags /* do not erase flags */)
-		}
+	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
+		return nil
+	}
+	st := sb.NewState()
+	if !u.isLayoutSuitableForSyncRelations(sb.Details()) {
 		return nil
 	}
 	if fileStatus, ok := st.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
