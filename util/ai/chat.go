@@ -124,8 +124,8 @@ func parseChatResponse(body io.Reader) (*[]ChatResponse, error) {
 	return &responses, nil
 }
 
-func chat(config APIConfig, prompt PromptConfig) (*[]ChatResponse, error) {
-	jsonData, err := createChatRequest(config, prompt)
+func chat(config APIConfig, promptConfig PromptConfig) (*[]ChatResponse, error) {
+	jsonData, err := createChatRequest(config, promptConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error creating the payload: %w", err)
 	}

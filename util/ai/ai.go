@@ -102,7 +102,7 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 		}
 	}
 
-	configChat := APIConfig{
+	chatConfig := APIConfig{
 		Provider:     params.Provider,
 		Endpoint:     params.Endpoint,
 		Model:        params.Model,
@@ -110,14 +110,14 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 		AuthToken:    params.Token,
 	}
 
-	configPrompt := PromptConfig{
+	promptConfig := PromptConfig{
 		SystemPrompt: systemPrompts[params.Mode],
 		UserPrompt:   fmt.Sprintf(userPrompts[params.Mode], text),
 		Temperature:  params.Temperature,
-		JSONMode:     params.Mode != 1,
+		JSONMode:     params.Mode != 0,
 	}
 
-	answerChunks, err := chat(configChat, configPrompt)
+	answerChunks, err := chat(chatConfig, promptConfig)
 	if err != nil {
 		return result{}, err
 	}

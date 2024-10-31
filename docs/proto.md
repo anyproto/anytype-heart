@@ -19945,15 +19945,14 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| LANG_NULL | 0 |  |
-| EN | 1 |  |
-| ES | 2 |  |
-| FR | 3 |  |
-| DE | 4 |  |
-| IT | 5 |  |
-| PT | 6 |  |
-| HI | 7 |  |
-| TH | 8 | ... |
+| EN | 0 |  |
+| ES | 1 |  |
+| FR | 2 |  |
+| DE | 3 |  |
+| IT | 4 |  |
+| PT | 5 |  |
+| HI | 6 |  |
+| TH | 7 | ... |
 
 
 
@@ -19964,20 +19963,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| NULL | 0 |  |
-| DEFAULT | 1 |  |
-| SUMMARIZE | 2 |  |
-| GRAMMAR | 3 |  |
-| SHORTEN | 4 |  |
-| EXPAND | 5 |  |
-| BULLET | 6 |  |
-| TABLE | 7 |  |
-| TRANSLATE | 8 |  |
-| CASUAL | 9 |  |
-| FUNNY | 10 |  |
-| CONFIDENT | 11 |  |
-| STRAIGHTFORWARD | 12 |  |
-| PROFESSIONAL | 13 | ... |
+| DEFAULT | 0 |  |
+| SUMMARIZE | 1 |  |
+| GRAMMAR | 2 |  |
+| SHORTEN | 3 |  |
+| EXPAND | 4 |  |
+| BULLET | 5 |  |
+| TABLE | 6 |  |
+| TRANSLATE | 7 |  |
+| CASUAL | 8 |  |
+| FUNNY | 9 |  |
+| CONFIDENT | 10 |  |
+| STRAIGHTFORWARD | 11 |  |
+| PROFESSIONAL | 12 | ... |
 
 
 
@@ -19988,9 +19986,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| PROVIDER_NULL | 0 |  |
-| OLLAMA | 1 |  |
-| OPENAI | 2 | ... |
+| OLLAMA | 0 |  |
+| OPENAI | 1 | ... |
 
 
 
