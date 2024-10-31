@@ -317,9 +317,13 @@ func (s *SpaceView) UpdateLastOpenedDate() error {
 
 func (s *SpaceView) SetAfterGivenView(viewOrderId string) (string, error) {
 	st := s.NewState()
-	spaceOrderId := lx.Next(viewOrderId)
-	st.SetDetail(bundle.RelationKeySpaceOrder.String(), pbtypes.String(spaceOrderId))
-	return spaceOrderId, s.Apply(st)
+	spaceOrderId := pbtypes.GetString(st.Details(), bundle.RelationKeySpaceOrder.String())
+	if spaceOrderId == "" || viewOrderId > spaceOrderId {
+		spaceOrderId = lx.Next(viewOrderId)
+		st.SetDetail(bundle.RelationKeySpaceOrder.String(), pbtypes.String(spaceOrderId))
+		return spaceOrderId, s.Apply(st)
+	}
+	return spaceOrderId, nil
 }
 
 func (s *SpaceView) SetBetweenViews(prevViewOrderId, afterViewOrderId string) error {

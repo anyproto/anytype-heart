@@ -423,12 +423,12 @@ func permissionsChange(ctx context.Context, spaceId string, changes []*model.Par
 
 func setSpaceViewOrder(og cache.ObjectGetter, request *pb.RpcSpaceSetOrderRequest) error {
 	var (
-		prevLexId string
-		err       error
+		prevOrderId string
+		err         error
 	)
 	for _, id := range request.GetBeforeIds() {
 		err = cache.Do[*editor.SpaceView](og, id, func(sv *editor.SpaceView) error {
-			prevLexId, err = sv.SetAfterGivenView(prevLexId)
+			prevOrderId, err = sv.SetAfterGivenView(prevOrderId)
 			if err != nil {
 				return fmt.Errorf("failed to update space order of view, %w", err)
 			}
@@ -439,9 +439,9 @@ func setSpaceViewOrder(og cache.ObjectGetter, request *pb.RpcSpaceSetOrderReques
 		}
 	}
 	if request.AfterId != "" {
-		return setViewBetween(og, request.SpaceViewId, request.AfterId, prevLexId)
+		return setViewBetween(og, request.SpaceViewId, request.AfterId, prevOrderId)
 	}
-	return setViewAfter(og, request.SpaceViewId, prevLexId)
+	return setViewAfter(og, request.SpaceViewId, prevOrderId)
 }
 
 func setViewAfter(og cache.ObjectGetter, spaceViewId, prevLexId string) error {
@@ -455,13 +455,13 @@ func setViewAfter(og cache.ObjectGetter, spaceViewId, prevLexId string) error {
 	return nil
 }
 
-func setViewBetween(og cache.ObjectGetter, spaceViewId, afterViewId, prevLexId string) error {
+func setViewBetween(og cache.ObjectGetter, spaceViewId, afterViewId, prevOrderId string) error {
 	var (
 		after string
 		err   error
 	)
 	err = cache.Do[*editor.SpaceView](og, afterViewId, func(sv *editor.SpaceView) error {
-		after, err = sv.SetAfterGivenView(prevLexId)
+		after, err = sv.SetAfterGivenView(prevOrderId)
 		if err != nil {
 			return fmt.Errorf("failed to update space order of view, %w", err)
 		}
@@ -471,7 +471,7 @@ func setViewBetween(og cache.ObjectGetter, spaceViewId, afterViewId, prevLexId s
 		return err
 	}
 	err = cache.Do[*editor.SpaceView](og, spaceViewId, func(sv *editor.SpaceView) error {
-		return sv.SetBetweenViews(prevLexId, after)
+		return sv.SetBetweenViews(prevOrderId, after)
 	})
 	if err != nil {
 		return err
