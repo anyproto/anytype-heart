@@ -762,7 +762,7 @@ message ObjectType {
         participant = 19;
 
         pdf = 20;
-        chat = 21;
+        chat = 21; // deprecated
         chatDerived = 22;
         tag = 23;
     }

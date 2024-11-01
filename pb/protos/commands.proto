@@ -1131,6 +1131,7 @@ message Rpc {
             message Request {
                 google.protobuf.Struct details = 1; // object details
                 anytype.Rpc.Object.ImportUseCase.Request.UseCase useCase = 2; // use case
+                bool withChat = 3; // create space-level chat; temporary solution, should be removed after chats released for all users
             }
 
             message Response {
@@ -1154,6 +1155,7 @@ message Rpc {
         message Open {
             message Request {
                 string spaceId = 1;
+                bool withChat = 2; // create space-level chat if not exists; temporary solution, should be removed after chats released for all users
             }
 
             message Response {

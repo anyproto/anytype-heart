@@ -49,6 +49,7 @@ type Service interface {
 
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+	AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string) (chatId string, err error)
 
 	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) (ids []string, objects []*types.Struct, err error)
 	app.Component
@@ -149,8 +150,6 @@ func (s *service) createObjectInSpace(
 		return s.createRelation(ctx, space, details)
 	case bundle.TypeKeyRelationOption:
 		return s.createRelationOption(ctx, space, details)
-	case bundle.TypeKeyChat:
-		return s.createChat(ctx, space, details)
 	case bundle.TypeKeyChatDerived:
 		return s.createChatDerived(ctx, space, details)
 	case bundle.TypeKeyFile:
