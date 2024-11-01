@@ -340,7 +340,7 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 	err = spc.DoCtx(ctx, workspaceId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 		st.SetLocalDetail(bundle.RelationKeyChatId.String(), pbtypes.String(chatId))
-		// st.SetDetail(bundle.RelationKeyHasChat.String(), pbtypes.Bool(true))
+		st.SetDetail(bundle.RelationKeyHasChat.String(), pbtypes.Bool(true))
 
 		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
 	})
