@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -16,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	dateutil "github.com/anyproto/anytype-heart/util/date"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -59,17 +59,14 @@ func (v *date) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeDate
 }
 
-func (v *date) getDetails(ctx context.Context) (*types.Struct, error) {
-	linksRelationId, err := v.space.GetRelationIdByKey(ctx, bundle.RelationKeyLinks)
+func (v *date) getDetails(ctx context.Context, withType bool) (*types.Struct, error) {
+	t, err := dateutil.ParseDateId(v.id)
 	if err != nil {
-		return nil, fmt.Errorf("get links relation id: %w", err)
+		return nil, fmt.Errorf("failed to parse date id: %w", err)
 	}
-	dateTypeId, err := v.space.GetTypeIdByKey(ctx, bundle.TypeKeyDate)
-	if err != nil {
-		return nil, fmt.Errorf("get date type id: %w", err)
-	}
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("02 Jan 2006")),
+
+	details := &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyName.String():       pbtypes.String(dateutil.TimeToDateName(t)),
 		bundle.RelationKeyId.String():         pbtypes.String(v.id),
 		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
 		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
@@ -77,30 +74,28 @@ func (v *date) getDetails(ctx context.Context) (*types.Struct, error) {
 		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_date)),
 		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
 		bundle.RelationKeySpaceId.String():    pbtypes.String(v.SpaceID()),
-		bundle.RelationKeySetOf.String():      pbtypes.StringList([]string{linksRelationId}),
-		bundle.RelationKeyType.String():       pbtypes.String(dateTypeId),
-	}}, nil
+		bundle.RelationKeyTimestamp.String():  pbtypes.Int64(t.Unix()),
+	}}
+
+	if withType {
+		if v.space == nil {
+			return nil, fmt.Errorf("get date type id: space is nil")
+		}
+		dateTypeId, err := v.space.GetTypeIdByKey(ctx, bundle.TypeKeyDate)
+		if err != nil {
+			return nil, fmt.Errorf("get date type id: %w", err)
+		}
+		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(dateTypeId)
+	}
+	return details, nil
 }
 
-// TODO Fix?
 func (v *date) DetailsFromId() (*types.Struct, error) {
-	if err := v.parseId(); err != nil {
-		return nil, err
-	}
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("02 Jan 2006")),
-		bundle.RelationKeyId.String():         pbtypes.String(v.id),
-		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
-		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_date)),
-		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
-		bundle.RelationKeySpaceId.String():    pbtypes.String(v.SpaceID()),
-	}}, nil
+	return v.getDetails(nil, false)
 }
 
 func (v *date) parseId() error {
-	t, err := time.Parse("2006-01-02", strings.TrimPrefix(v.id, addr.DatePrefix))
+	t, err := dateutil.ParseDateId(v.id)
 	if err != nil {
 		return err
 	}
@@ -109,63 +104,15 @@ func (v *date) parseId() error {
 }
 
 func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
-	if err = v.parseId(); err != nil {
-		return
-	}
-	s := state.NewDoc(v.id, nil).(*state.State)
-	d, err := v.getDetails(ctx)
+	d, err := v.getDetails(ctx, true)
 	if err != nil {
 		return
 	}
-	dataview := &model.BlockContentOfDataview{
-		Dataview: &model.BlockContentDataview{
-			RelationLinks: []*model.RelationLink{
-				{
-					Key:    bundle.RelationKeyName.String(),
-					Format: model.RelationFormat_shorttext,
-				},
-				{
-					Key:    bundle.RelationKeyLastModifiedDate.String(),
-					Format: model.RelationFormat_date,
-				},
-			},
-			Views: []*model.BlockContentDataviewView{
-				{
-					Id:   "1",
-					Type: model.BlockContentDataviewView_Table,
-					Name: "Date backlinks",
-					Sorts: []*model.BlockContentDataviewSort{
-						{
-							RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-							Type:        model.BlockContentDataviewSort_Desc,
-						},
-					},
-					Filters: []*model.BlockContentDataviewFilter{
-						{
-							RelationKey: bundle.RelationKeyLinks.String(),
-							Condition:   model.BlockContentDataviewFilter_In,
-							Value:       pbtypes.String(v.id),
-						},
-					},
-					Relations: []*model.BlockContentDataviewRelation{
-						{
-							Key:       bundle.RelationKeyName.String(),
-							IsVisible: true,
-						},
-						{
-							Key:       bundle.RelationKeyLastModifiedDate.String(),
-							IsVisible: true,
-						},
-					},
-				},
-			},
-		},
-	}
 
+	s := state.NewDoc(v.id, nil).(*state.State)
 	template.InitTemplate(s,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,
-		template.WithDataview(dataview, true),
 		template.WithAllBlocksEditsRestricted,
 	)
 	s.SetDetails(d)

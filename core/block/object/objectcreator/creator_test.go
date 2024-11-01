@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -15,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/util/date"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -98,6 +100,47 @@ func TestService_CreateObject(t *testing.T) {
 		// when
 		_, _, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
 			ObjectTypeKey: bundle.TypeKeyTemplate,
+		})
+
+		// then
+		assert.Error(t, err)
+	})
+
+	t.Run("date object creation", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		f.spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(f.spc, nil)
+		f.spc.EXPECT().Id().Return(spaceId)
+		ts := time.Now()
+		name := date.TimeToDateName(ts)
+
+		// when
+		id, details, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
+			ObjectTypeKey: bundle.TypeKeyDate,
+			Details: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String(): pbtypes.String(name),
+			}},
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, date.TimeToDateId(ts), id)
+		assert.Equal(t, spaceId, pbtypes.GetString(details, bundle.RelationKeySpaceId.String()))
+	})
+
+	t.Run("date object creation - invalid name", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		f.spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(f.spc, nil)
+		ts := time.Now()
+		name := ts.Format(time.RFC3339)
+
+		// when
+		_, _, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
+			ObjectTypeKey: bundle.TypeKeyDate,
+			Details: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String(): pbtypes.String(name),
+			}},
 		})
 
 		// then

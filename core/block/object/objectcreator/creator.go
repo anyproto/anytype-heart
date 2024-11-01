@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -20,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/util/date"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -159,6 +161,8 @@ func (s *service) createObjectInSpace(
 		if pbtypes.GetString(details, bundle.RelationKeyTargetObjectType.String()) == "" {
 			return "", nil, fmt.Errorf("cannot create template without target object")
 		}
+	case bundle.TypeKeyDate:
+		return buildDateObject(space, details)
 	}
 
 	return s.createObjectFromTemplate(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, details, req.TemplateId)
@@ -176,4 +180,26 @@ func (s *service) createObjectFromTemplate(
 		return
 	}
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
+}
+
+// buildDateObject does not create real date object. It just builds date object details
+func buildDateObject(space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
+	name := pbtypes.GetString(details, bundle.RelationKeyName.String())
+	id, err := date.DateNameToId(name)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to build date object, as its name is invalid: %w", err)
+	}
+
+	dateSource := source.NewDate(space, domain.FullID{
+		ObjectID: id,
+		SpaceID:  space.Id(),
+	})
+
+	detailsGetter, ok := dateSource.(source.SourceIdEndodedDetails)
+	if !ok {
+		return "", nil, fmt.Errorf("date object does not implement DetailsFromId")
+	}
+
+	details, err = detailsGetter.DetailsFromId()
+	return id, details, err
 }
