@@ -27635,6 +27635,7 @@ Contains basic information about a user account
 | archiveObjectId | [string](#string) |  | archive block id |
 | profileObjectId | [string](#string) |  | profile block id |
 | marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
+| workspaceObjectId | [string](#string) |  | workspace object id. used for space-level chat |
 | deviceId | [string](#string) |  |  |
 | accountSpaceId | [string](#string) |  |  |
 | widgetsId | [string](#string) |  |  |
