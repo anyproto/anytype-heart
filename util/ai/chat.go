@@ -111,7 +111,7 @@ func sendChatRequest(jsonData []byte, config APIConfig) (*http.Response, error) 
 		req.Header.Set("Authorization", "Bearer "+config.AuthToken)
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: 30 * time.Second}
 	return client.Do(req)
 }
 
