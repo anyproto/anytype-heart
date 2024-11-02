@@ -8153,7 +8153,6 @@ func (m *EventBlockDataviewViewUpdateFields) GetDefaultObjectTypeId() string {
 
 type EventBlockDataviewViewUpdateFilter struct {
 	// Types that are valid to be assigned to Operation:
-	//
 	//	*EventBlockDataviewViewUpdateFilterOperationOfAdd
 	//	*EventBlockDataviewViewUpdateFilterOperationOfRemove
 	//	*EventBlockDataviewViewUpdateFilterOperationOfUpdate
