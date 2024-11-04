@@ -35,6 +35,16 @@ const CName = "debug"
 
 var log = logging.Logger("anytype-debug")
 
+const defaultAddrs = `
+yamux://prod-any-sync-coordinator1.anyclub.org:443,
+yamux://prod-any-sync-coordinator1.anyclub.org:1443,
+yamux://prod-any-sync-coordinator1.toolpad.org:443,
+yamux://prod-any-sync-coordinator1.toolpad.org:1443,
+yamux://prod-any-sync-coordinator1.anytype.io:443,
+yamux://prod-any-sync-coordinator1.anytype.io:1443,
+quic://prod-any-sync-coordinator1.anyclub.org:5430
+`
+
 func New() Debug {
 	return new(debug)
 }
@@ -48,6 +58,7 @@ type Debug interface {
 	TreeHeads(ctx context.Context, id string) (info TreeInfo, err error)
 
 	DebugAnystoreObjectChanges(ctx context.Context, chatObjectId string, orderBy pb.RpcDebugAnystoreObjectChangesRequestOrderBy) ([]*pb.RpcDebugAnystoreObjectChangesResponseChange, bool, error)
+	NetCheck(ctx context.Context, clientYml string) (string, error)
 }
 
 type debug struct {
