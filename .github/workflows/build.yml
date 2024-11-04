@@ -61,6 +61,10 @@ jobs:
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install grpcurl
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew tap messense/macos-cross-toolchains && brew install x86_64-unknown-linux-musl
           npm i -g node-gyp
+          echo "Azaza"
+          protoc --version
+          which protoc
+          echo "Azaza2"
         if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Checkout
         uses: actions/checkout@v3
