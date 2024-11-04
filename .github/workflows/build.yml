@@ -44,7 +44,7 @@ jobs:
         uses: actions/setup-go@v1
         with:
           go-version: 1.23.2
-        if: runner.name != 'arm64'
+        if: runner.name != 'mac-mini-org-heart'
       - name: Setup GO
         run: |
           go version
@@ -66,7 +66,7 @@ jobs:
           which x86_64-w64-mingw32-gcc
           which protoc
           echo "Azaza2"
-        if: runner.name != 'arm64'
+        if: runner.name != 'mac-mini-org-heart'
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -78,7 +78,7 @@ jobs:
             ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Install old MacOS SDK (for backward compatibility of CGO)
         run: source .github/install_macos_sdk.sh 10.15
-        if: runner.name != 'arm64'
+        if: runner.name != 'mac-mini-org-heart'
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
