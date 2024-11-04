@@ -117,6 +117,9 @@ func TestNewFTSearch(t *testing.T) {
 		{
 			name:   "assertFoundCaseSensitivePartsOfTheWords",
 			tester: assertFoundCaseSensitivePartsOfTheWords,
+		}, {
+			name:   "assertChineseFound",
+			tester: assertChineseFound,
 		},
 		{
 			name:   "assertMultiSpace",
@@ -176,27 +179,21 @@ func assertChineseFound(t *testing.T, tmpDir string) {
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "1",
 		Title: "",
-		Text:  "你好",
+		Text:  "张华考上了北京大学；李萍进了中等技术学校；我在百货公司当售货员：我们都有光明的前途",
 	}))
+
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "2",
-		Title: "",
-		Text:  "交代",
-	}))
-	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "3",
-		Title: "",
-		Text:  "长江大桥",
+		Title: "张华考上了北京大学；李萍进了中等技术学校；我在百货公司当售货员：我们都有光明的前途",
+		Text:  "",
 	}))
 
 	queries := []string{
-		"你好世界",
-		"亲口交代",
-		"长江",
+		"售货员",
 	}
 
 	for _, qry := range queries {
-		validateSearch(t, ft, "", qry, 1)
+		validateSearch(t, ft, "", qry, 2)
 	}
 
 	_ = ft.Close(nil)
@@ -388,7 +385,7 @@ func assertMultiSpace(t *testing.T, tmpDir string) {
 	validateSearch(t, ft, "", "Advanced", 1)
 	validateSearch(t, ft, "", "dash", 2)
 	validateSearch(t, ft, "", "space", 4)
-	validateSearch(t, ft, "", "of", 0)
+	validateSearch(t, ft, "", "of", 4)
 
 	_ = ft.Close(nil)
 }

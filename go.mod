@@ -12,7 +12,7 @@ require (
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/lexid v0.0.2
 	github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5
-	github.com/anyproto/tantivy-go v0.1.4
+	github.com/anyproto/tantivy-go v0.1.6-jieba
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/blevesearch/bleve/v2 v2.3.10
@@ -100,7 +100,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	golang.org/x/image v0.21.0
-	golang.org/x/mobile v0.0.0-20240806205939-81131f6468ab
+	golang.org/x/mobile v0.0.0-20241016134751-7ff83004ec2c
 	golang.org/x/net v0.30.0
 	golang.org/x/oauth2 v0.23.0
 	golang.org/x/text v0.19.0
