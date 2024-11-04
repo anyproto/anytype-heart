@@ -36,6 +36,7 @@
     - [Change.StoreSliceUpdate.Add](#anytype-Change-StoreSliceUpdate-Add)
     - [Change.StoreSliceUpdate.Move](#anytype-Change-StoreSliceUpdate-Move)
     - [Change.StoreSliceUpdate.Remove](#anytype-Change-StoreSliceUpdate-Remove)
+    - [ChangeNoSnapshot](#anytype-ChangeNoSnapshot)
     - [DocumentCreate](#anytype-DocumentCreate)
     - [DocumentDelete](#anytype-DocumentDelete)
     - [DocumentModify](#anytype-DocumentModify)
@@ -2204,9 +2205,6 @@ the element of change tree used to store and internal apply smartBlock history
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| previous_ids | [string](#string) | repeated | ids of previous changes |
-| last_snapshot_id | [string](#string) |  | id of the last snapshot |
-| previous_meta_ids | [string](#string) | repeated | ids of the last changes with details/relations content |
 | content | [Change.Content](#anytype-Change-Content) | repeated | set of actions to apply |
 | snapshot | [Change.Snapshot](#anytype-Change-Snapshot) |  | snapshot - when not null, the Content will be ignored |
 | fileKeys | [Change.FileKeys](#anytype-Change-FileKeys) | repeated | file keys related to changes content |
@@ -2673,6 +2671,24 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-ChangeNoSnapshot"></a>
+
+### ChangeNoSnapshot
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| content | [Change.Content](#anytype-Change-Content) | repeated | set of actions to apply |
+| fileKeys | [Change.FileKeys](#anytype-Change-FileKeys) | repeated | file keys related to changes content |
+| timestamp | [int64](#int64) |  | creation timestamp |
+| version | [uint32](#uint32) |  | version of business logic |
 
 
 
