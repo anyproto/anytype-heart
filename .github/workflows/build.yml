@@ -32,7 +32,7 @@ permissions:
 name: Build
 jobs:
   build:
-    runs-on: ${{ github.event_name == 'push' && 'macos-12' || (github.event.inputs.run-on-runner || 'ARM64') }}
+    runs-on: ${{ github.event_name == 'push' && 'macos-13' || (github.event.inputs.run-on-runner || 'ARM64') }}
     steps:
       - name: validate agent
         run: |
