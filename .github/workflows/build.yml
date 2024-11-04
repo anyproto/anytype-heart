@@ -63,6 +63,7 @@ jobs:
           npm i -g node-gyp
           echo "Azaza"
           protoc --version
+          which x86_64-w64-mingw32-gcc
           which protoc
           echo "Azaza2"
         if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
