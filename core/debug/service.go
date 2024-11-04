@@ -277,7 +277,7 @@ func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []str
 					return err
 				}
 
-				wr.Write([]byte(err.Error()))
+				_, _ = wr.Write([]byte(err.Error()))
 				continue
 			}
 			wr, err = zw.Create(fmt.Sprintf("%s/%s.json", store.SpaceId(), objId))
