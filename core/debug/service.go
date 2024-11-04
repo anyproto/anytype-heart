@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 )
@@ -248,13 +249,6 @@ func (d *debug) DumpTree(ctx context.Context, objectID string, path string, anon
 }
 
 func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []string, path string) (filename string, err error) {
-	if len(objIds) == 0 {
-		objIds, err = d.store.ListIdsCrossSpace()
-		if err != nil {
-			return "", err
-		}
-	}
-
 	filename = filepath.Join(path, fmt.Sprintf("at.store.dbg.%s.zip", time.Now().Format("20060102.150405.99")))
 	f, err := os.Create(filename)
 	if err != nil {
@@ -268,31 +262,38 @@ func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []str
 	var wr io.Writer
 	m := jsonpb.Marshaler{Indent: " "}
 
-	store := d.store.SpaceIndex(spaceID)
-
-	for _, objId := range objIds {
-		doc, err := store.GetWithLinksInfoById(objId)
+	err = d.store.IterateSpaceIndex(func(store spaceindex.Store) error {
+		objIds, err = store.ListIds()
 		if err != nil {
-			var err2 error
-			wr, err2 = zw.Create(fmt.Sprintf("%s.txt", objId))
-			if err2 != nil {
-				return "", err
+			return err
+		}
+
+		for _, objId := range objIds {
+			doc, err := store.GetWithLinksInfoById(objId)
+			if err != nil {
+				var err2 error
+				wr, err2 = zw.Create(fmt.Sprintf("%s/%s.txt", store.SpaceId(), objId))
+				if err2 != nil {
+					return err
+				}
+
+				_, _ = wr.Write([]byte(err.Error()))
+				continue
+			}
+			wr, err = zw.Create(fmt.Sprintf("%s/%s.json", store.SpaceId(), objId))
+			if err != nil {
+				return err
 			}
 
-			wr.Write([]byte(err.Error()))
-			continue
+			err = m.Marshal(wr, doc)
+			if err != nil {
+				return err
+			}
 		}
-		wr, err = zw.Create(fmt.Sprintf("%s.json", objId))
-		if err != nil {
-			return "", err
-		}
+		return nil
+	})
 
-		err = m.Marshal(wr, doc)
-		if err != nil {
-			return "", err
-		}
-	}
-	return filename, nil
+	return filename, err
 }
 
 func (d *debug) DebugAnystoreObjectChanges(ctx context.Context, chatObjectId string, orderBy pb.RpcDebugAnystoreObjectChangesRequestOrderBy) ([]*pb.RpcDebugAnystoreObjectChangesResponseChange, bool, error) {
