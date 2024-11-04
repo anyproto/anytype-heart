@@ -44,7 +44,7 @@ jobs:
         uses: actions/setup-go@v1
         with:
           go-version: 1.23.2
-        if: github.event.inputs.run-on-runner != 'arm64' && github.event_name != 'schedule'
+        if: github.event.inputs.run-on-runner != 'arm64'
       - name: Setup GO
         run: |
           go version
@@ -66,7 +66,7 @@ jobs:
           which x86_64-w64-mingw32-gcc
           which protoc
           echo "Azaza2"
-        if: github.event.inputs.run-on-runner != 'arm64' && github.event_name != 'schedule'
+        if: github.event.inputs.run-on-runner != 'arm64'
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -78,7 +78,7 @@ jobs:
             ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Install old MacOS SDK (for backward compatibility of CGO)
         run: source .github/install_macos_sdk.sh 10.15
-        if: github.event.inputs.run-on-runner != 'arm64' && github.event_name != 'schedule'
+        if: github.event.inputs.run-on-runner != 'arm64'
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
@@ -138,14 +138,14 @@ jobs:
           TEST_MNEMONIC: ${{ secrets.TEST_MNEMONIC }}
           PROM_KEY: ${{ secrets.PROMETHEUS_USERNAME }}
           PROM_PASSWORD: ${{ secrets.PROMETHEUS_PASSWORD }}
-        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
+        if: github.event.inputs.perf-test != '0'
       - name: Archive perf tests results
         uses: actions/upload-artifact@v4
         with:
           name: pprofs
           path: |
             *.pprof
-        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
+        if: github.event.inputs.perf-test != '0'
       - name: end run perf tests
         run: |
           rm -rf *.pprof
@@ -154,7 +154,7 @@ jobs:
           gh run watch ${{ github.run_id }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
+        if: github.event.inputs.perf-test != '0'
       - name: Make JS protos
         run: |
           make protos-js
