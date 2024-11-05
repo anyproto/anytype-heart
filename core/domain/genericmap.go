@@ -125,11 +125,6 @@ func (d *GenericMap[K]) IterateSorted() iter.Seq2[K, Value] {
 	}
 }
 
-func (d *GenericMap[K]) GetRaw(key K) (any, bool) {
-	v, ok := d.data[key]
-	return v, ok
-}
-
 func (d *GenericMap[K]) Get(key K) Value {
 	if d == nil {
 		return Value{}
@@ -264,6 +259,7 @@ func (d *GenericMap[K]) Equal(other *GenericMap[K]) bool {
 	if d == nil && other == nil {
 		return true
 	}
+	// One is nil, other is not
 	if d == nil || other == nil {
 		return false
 	}

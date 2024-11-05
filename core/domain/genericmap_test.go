@@ -2,13 +2,17 @@ package domain
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func TestGenericMap_Set(t *testing.T) {
-	for _, val := range []Value{
+func givenValues() []Value {
+	return []Value{
 		Null(),
 		String("hi"),
 		Int64(123),
@@ -22,7 +26,11 @@ func TestGenericMap_Set(t *testing.T) {
 			"int64":  Int64(101010),
 			"string": String("string"),
 		}),
-	} {
+	}
+}
+
+func TestGenericMap_Set(t *testing.T) {
+	for _, val := range givenValues() {
 		m := NewGenericMap[string]()
 		key := "only"
 		m.Set(key, val)
@@ -323,4 +331,121 @@ func TestGenericMap_TryGet(t *testing.T) {
 			assert.False(t, m.Get(key).IsMapValue())
 		}
 	}
+}
+
+func TestGenericMap_Equal(t *testing.T) {
+	t.Run("equal", func(t *testing.T) {
+		t.Run("empty", func(t *testing.T) {
+			m1 := NewGenericMap[string]()
+			m2 := NewGenericMap[string]()
+
+			assert.True(t, m1.Equal(m2))
+			assert.True(t, m2.Equal(m1))
+		})
+		t.Run("both are nils", func(t *testing.T) {
+			var (
+				m1 *GenericMap[string]
+				m2 *GenericMap[string]
+			)
+			assert.True(t, m1.Equal(m2))
+			assert.True(t, m2.Equal(m1))
+		})
+		t.Run("single value", func(t *testing.T) {
+			for _, val := range givenValues() {
+				m1 := NewGenericMap[string]()
+				m1.Set("key", val)
+				m2 := NewGenericMap[string]()
+				m2.Set("key", val)
+
+				assert.True(t, m1.Equal(m2))
+				assert.True(t, m2.Equal(m1))
+			}
+		})
+		t.Run("many values", func(t *testing.T) {
+			m1 := NewGenericMap[string]()
+			m2 := NewGenericMap[string]()
+
+			for i, val := range givenValues() {
+				m1.Set(strconv.Itoa(i), val)
+				m2.Set(strconv.Itoa(i), val)
+			}
+
+			assert.True(t, m1.Equal(m2))
+			assert.True(t, m2.Equal(m1))
+		})
+	})
+
+	t.Run("not equal", func(t *testing.T) {
+		t.Run("one map is nil", func(t *testing.T) {
+			m1 := NewGenericMap[string]()
+			var m2 *GenericMap[string]
+			assert.False(t, m1.Equal(m2))
+			assert.False(t, m2.Equal(m1))
+		})
+
+		t.Run("single value", func(t *testing.T) {
+			vals := givenValues()
+			length := len(vals)
+			for i := range vals {
+				m1val := vals[i]
+				// Next value in list
+				m2val := vals[(i+1)%length]
+
+				m1 := NewGenericMap[string]()
+				m1.Set("key", m1val)
+				m2 := NewGenericMap[string]()
+				m2.Set("key", m2val)
+
+				assert.False(t, m1.Equal(m2))
+				assert.False(t, m2.Equal(m1))
+			}
+		})
+
+		t.Run("multiple values", func(t *testing.T) {
+			vals := givenValues()
+			length := len(vals)
+
+			m1 := NewGenericMap[string]()
+			m2 := NewGenericMap[string]()
+			for i, val := range vals {
+				key := fmt.Sprintf("key-%d", i)
+				m1.Set(key, val)
+				m2.Set(key, vals[(i+1)%length])
+			}
+
+			assert.False(t, m1.Equal(m2))
+			assert.False(t, m2.Equal(m1))
+		})
+	})
+}
+
+func TestGenericMap_ToProto(t *testing.T) {
+	m := NewGenericMap[string]()
+	for i, val := range givenValues() {
+		m.Set(fmt.Sprintf("key-%d", i), val)
+	}
+
+	got := m.ToProto()
+
+	want := &types.Struct{
+		Fields: map[string]*types.Value{
+			"key-0": pbtypes.Null(),
+			"key-1": pbtypes.String("hi"),
+			"key-2": pbtypes.Int64(123),
+			"key-3": pbtypes.Float64(123.456),
+			"key-4": pbtypes.Bool(true),
+			"key-5": pbtypes.Bool(false),
+			"key-6": pbtypes.StringList([]string{"1", "2", "3"}),
+			"key-7": pbtypes.FloatList([]float64{1.1, 2.2, 3.3, 4.4}),
+			"key-8": pbtypes.IntList(1, 2, 3),
+			"key-9": pbtypes.Struct(&types.Struct{
+				Fields: map[string]*types.Value{
+					"int64":  pbtypes.Int64(101010),
+					"string": pbtypes.String("string"),
+				},
+			}),
+		},
+	}
+
+	assert.Equal(t, want, got)
 }
