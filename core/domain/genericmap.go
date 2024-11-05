@@ -59,7 +59,7 @@ func (d *GenericMap[K]) SetFloat64List(key K, value []float64) *GenericMap[K] {
 }
 
 func (d *GenericMap[K]) SetInt64List(key K, value []int64) *GenericMap[K] {
-	d.data[key] = Int64List(value...)
+	d.data[key] = Int64List(value)
 	return d
 }
 

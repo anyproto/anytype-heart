@@ -36,11 +36,11 @@ func (s *syncingObjects) Run() error {
 			{
 				RelationKey: bundle.RelationKeySyncStatus,
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value: domain.Int64List(
+				Value: domain.Int64List([]int64{
 					int64(domain.SpaceSyncStatusSyncing),
 					int64(domain.ObjectSyncStatusQueued),
 					int64(domain.ObjectSyncStatusError),
-				),
+				}),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId,

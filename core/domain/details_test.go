@@ -157,7 +157,7 @@ func TestNewDetailsFromAnyEnc(t *testing.T) {
 			"key4": Bool(true),
 			"key5": Bool(false),
 			"key6": Null(),
-			"key7": Int64List(1, 2, 3),
+			"key7": Int64List([]int64{1, 2, 3}),
 			"key8": StringList([]string{"foo", "bar"}),
 			"key9": Null(),
 		})

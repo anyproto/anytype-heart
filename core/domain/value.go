@@ -45,7 +45,7 @@ func Int64[T constraints.Integer](v T) Value {
 	return Value{ok: true, value: float64(v)}
 }
 
-func Int64List[T constraints.Integer](v ...T) Value {
+func Int64List[T constraints.Integer](v []T) Value {
 	conv := make([]float64, len(v))
 	for i, val := range v {
 		conv[i] = float64(val)

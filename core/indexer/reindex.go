@@ -261,12 +261,12 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 			{
 				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value: domain.Int64List(
+				Value: domain.Int64List([]model.ObjectTypeLayout{
 					model.ObjectType_file,
 					model.ObjectType_image,
 					model.ObjectType_video,
 					model.ObjectType_audio,
-				),
+				}),
 			},
 			{
 				RelationKey: bundle.RelationKeyFileId,

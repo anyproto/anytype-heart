@@ -73,7 +73,7 @@ func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string)
 			{
 				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.Int64List(model.ObjectType_objectType, model.ObjectType_relation),
+				Value:       domain.Int64List([]model.ObjectTypeLayout{model.ObjectType_objectType, model.ObjectType_relation}),
 			},
 		},
 	})
