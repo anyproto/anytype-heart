@@ -246,7 +246,7 @@ func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []st
 	if len(identities) == 0 {
 		return nil, nil
 	}
-	res, err := s.identityRepoClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
+	res, err := s.batchIdentities(ctx, identities)
 	if err == nil {
 		return res, nil
 	}
@@ -278,6 +278,28 @@ func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []st
 		return nil, fmt.Errorf("get identities data from local cache: %w", err)
 	}
 	return res, nil
+}
+
+func (s *service) batchIdentities(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
+	allObjects := make([]*identityrepoproto.DataWithIdentity, 0, len(identities))
+	const singleBatchCount = 100
+	for j := 0; j < len(identities); {
+		if j+singleBatchCount < len(identities) {
+			res, err := s.identityRepoClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
+			if err != nil {
+				return nil, err
+			}
+			allObjects = append(allObjects, res...)
+		} else {
+			res, err := s.identityRepoClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
+			if err != nil {
+				return nil, err
+			}
+			allObjects = append(allObjects, res...)
+		}
+		j += singleBatchCount
+	}
+	return allObjects, nil
 }
 
 func (s *service) indexIconImage(profile *model.IdentityProfile) error {
