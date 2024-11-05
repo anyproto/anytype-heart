@@ -24,8 +24,14 @@ func (d *GenericMap[K]) Len() int {
 	return len(d.data)
 }
 
-func (d *GenericMap[K]) Set(key K, value Value) {
+func (d *GenericMap[K]) Set(key K, value Value) *GenericMap[K] {
 	d.data[key] = value
+	return d
+}
+
+func (d *GenericMap[K]) SetNull(key K) *GenericMap[K] {
+	d.Set(key, Null())
+	return d
 }
 
 func (d *GenericMap[K]) SetBool(key K, value bool) *GenericMap[K] {
@@ -147,6 +153,10 @@ func (d *GenericMap[K]) Has(key K) bool {
 	}
 	_, ok := d.data[key]
 	return ok
+}
+
+func (d *GenericMap[K]) GetNull(key K) bool {
+	return d.Get(key).IsNull()
 }
 
 func (d *GenericMap[K]) TryBool(key K) (bool, bool) {

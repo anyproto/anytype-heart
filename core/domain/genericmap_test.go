@@ -159,3 +159,168 @@ func TestGenericMap_Merge(t *testing.T) {
 	got := m1.Merge(m2)
 	assert.Equal(t, want, got)
 }
+
+type maybe[T any] struct {
+	val *T
+}
+
+func some[T any](v T) *maybe[T] {
+	return &maybe[T]{&v}
+}
+func (m *maybe[T]) value() T {
+	return *m.val
+}
+
+func TestGenericMap_TryGet(t *testing.T) {
+	for _, tc := range []struct {
+		value       Value
+		null        *maybe[nullValue]
+		bool        *maybe[bool]
+		int64       *maybe[int64]
+		float64     *maybe[float64]
+		string      *maybe[string]
+		stringList  *maybe[[]string]
+		float64List *maybe[[]float64]
+		int64List   *maybe[[]int64]
+		mapValue    *maybe[ValueMap]
+	}{
+		{
+			value: Null(),
+			null:  some(nullValue{}),
+		},
+		{
+			value: Bool(false),
+			bool:  some(false),
+		},
+		{
+			value: Bool(true),
+			bool:  some(true),
+		},
+		{
+			value:   Int64(1024),
+			int64:   some(int64(1024)),
+			float64: some(float64(1024)),
+		},
+		{
+			value:   Float64(123),
+			int64:   some(int64(123)),
+			float64: some(float64(123)),
+		},
+		{
+			value:  String("foo"),
+			string: some("foo"),
+		},
+		{
+			value:      StringList([]string{"foo", "bar"}),
+			stringList: some([]string{"foo", "bar"}),
+		},
+		{
+			value:       Float64List([]float64{1.1, 2.2, 3.3, 4.4}),
+			float64List: some([]float64{1.1, 2.2, 3.3, 4.4}),
+			int64List:   some([]int64{1, 2, 3, 4}),
+		},
+		{
+			value:       Int64List([]int64{1, 2, 3}),
+			int64List:   some([]int64{1, 2, 3}),
+			float64List: some([]float64{1, 2, 3}),
+		},
+		{
+			value: NewValueMap(map[string]Value{
+				"key1": String("value1"),
+			}),
+			mapValue: some(NewGenericMap[string]().Set("key1", String("value1"))),
+		},
+	} {
+		key := "key"
+		m := NewGenericMap[string]()
+		m.Set(key, tc.value)
+
+		if tc.null != nil {
+			ok := m.GetNull(key)
+			assert.True(t, ok)
+		} else {
+			ok := m.GetNull(key)
+			assert.False(t, ok)
+		}
+		if tc.bool != nil {
+			v, ok := m.TryBool(key)
+			assert.True(t, ok)
+			assert.Equal(t, tc.bool.value(), v)
+			assert.True(t, m.Get(key).IsBool())
+		} else {
+			_, ok := m.TryBool(key)
+			assert.False(t, ok)
+			assert.False(t, m.Get(key).IsBool())
+		}
+		if tc.int64 != nil {
+			v, ok := m.TryInt64(key)
+			assert.True(t, ok)
+			assert.Equal(t, tc.int64.value(), v)
+			assert.True(t, m.Get(key).IsInt64())
+		} else {
+			_, ok := m.TryInt64(key)
+			assert.False(t, ok)
+			assert.False(t, m.Get(key).IsInt64())
+		}
+		if tc.float64 != nil {
+			v, ok := m.TryFloat64(key)
+			assert.True(t, ok)
+			assert.Equal(t, tc.float64.value(), v)
+			assert.True(t, m.Get(key).IsFloat64())
+		} else {
+			_, ok := m.TryFloat64(key)
+			assert.False(t, ok)
+			assert.False(t, m.Get(key).IsFloat64())
+		}
+		if tc.string != nil {
+			v, ok := m.TryString(key)
+			assert.True(t, ok)
+			assert.Equal(t, tc.string.value(), v)
+			assert.True(t, m.Get(key).IsString())
+		} else {
+			_, ok := m.TryString(key)
+			assert.False(t, ok)
+			assert.False(t, m.Get(key).IsString())
+		}
+		if tc.stringList != nil {
+			v, ok := m.TryStringList(key)
+			assert.True(t, ok)
+			assert.Equal(t, tc.stringList.value(), v)
+			assert.True(t, m.Get(key).IsStringList())
+		} else {
+			_, ok := m.TryStringList(key)
+			assert.False(t, ok)
+			assert.False(t, m.Get(key).IsStringList())
+		}
+		if tc.float64List != nil {
+			v, ok := m.TryFloat64List(key)
+			assert.True(t, ok)
+			assert.Equal(t, tc.float64List.value(), v)
+			assert.True(t, m.Get(key).IsFloat64List())
+		} else {
+			_, ok := m.TryFloat64List(key)
+			assert.False(t, ok)
+			assert.False(t, m.Get(key).IsFloat64List())
+		}
+		if tc.int64List != nil {
+			v, ok := m.TryInt64List(key)
+			assert.True(t, ok)
+			assert.Equal(t, tc.int64List.value(), v)
+			assert.True(t, m.Get(key).IsInt64List())
+		} else {
+			_, ok := m.TryInt64List(key)
+			assert.False(t, ok)
+			assert.False(t, m.Get(key).IsInt64List())
+		}
+		if tc.mapValue != nil {
+			v, ok := m.TryMapValue(key)
+			assert.True(t, ok)
+			assert.Equal(t, tc.mapValue.value(), v)
+			assert.True(t, m.Get(key).IsMapValue())
+		} else {
+			_, ok := m.TryMapValue(key)
+			assert.False(t, ok)
+			assert.False(t, m.Get(key).IsMapValue())
+		}
+	}
+}

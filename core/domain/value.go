@@ -151,7 +151,7 @@ func (v Value) IsStringList() bool {
 	return ok
 }
 
-func (v Value) IsFloatList() bool {
+func (v Value) IsFloat64List() bool {
 	if !v.ok {
 		return false
 	}
@@ -218,14 +218,15 @@ func (v Value) String() string {
 	return res
 }
 
+func (v Value) IsInt64() bool {
+	return v.IsFloat64()
+}
+
 func (v Value) TryInt64() (int64, bool) {
-	if !v.ok {
-		return 0, false
-	}
-	switch v := v.value.(type) {
-	case float64:
-		return int64(v), true
-	default:
+	res, ok := v.TryFloat64()
+	if ok {
+		return int64(res), true
+	} else {
 		return 0, false
 	}
 }
@@ -280,6 +281,10 @@ func (v Value) StringList() []string {
 		return nil
 	}
 	return res
+}
+
+func (v Value) IsInt64List() bool {
+	return v.IsFloat64List()
 }
 
 func (v Value) TryInt64List() ([]int64, bool) {
@@ -351,6 +356,14 @@ func (v Value) TryWrapToList() ([]Value, error) {
 		return res, nil
 	}
 	return nil, fmt.Errorf("unsupported type: %v", v.Type())
+}
+
+func (v Value) IsMapValue() bool {
+	if !v.ok {
+		return false
+	}
+	_, ok := v.value.(ValueMap)
+	return ok
 }
 
 func (v Value) MapValue() ValueMap {

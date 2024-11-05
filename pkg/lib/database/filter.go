@@ -419,7 +419,7 @@ func (e FilterEq) FilterObject(g *domain.Details) bool {
 
 func (e FilterEq) filterObject(v domain.Value) bool {
 	// if list := v.GetListValue(); list != nil && e.Value.GetListValue() == nil {
-	isFilterValueScalar := !e.Value.IsStringList() && !e.Value.IsFloatList()
+	isFilterValueScalar := !e.Value.IsStringList() && !e.Value.IsFloat64List()
 	if isFilterValueScalar {
 		if list, ok := v.TryFloat64List(); ok {
 			for _, lv := range list {
