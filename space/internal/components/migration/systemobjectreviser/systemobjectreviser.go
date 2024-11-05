@@ -19,7 +19,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -44,7 +43,7 @@ func (Migration) Name() string {
 	return MName
 }
 
-func (Migration) Run(ctx context.Context, log logger.CtxLogger, store objectstore.ObjectStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependencies.SpaceIndexStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	spaceStore := store.SpaceIndex(space.Id())
 	marketPlaceStore := store.SpaceIndex(addr.AnytypeMarketplaceWorkspace)
 

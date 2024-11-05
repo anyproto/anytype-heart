@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -32,12 +31,12 @@ func (Migration) Name() string {
 	return MName
 }
 
-func (Migration) Run(ctx context.Context, log logger.CtxLogger, store objectstore.ObjectStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependencies.SpaceIndexStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	spaceId := space.Id()
 
 	spaceStore := store.SpaceIndex(spaceId)
 
-	relations, err := listReadonlyTagAndStatusRelations(spaceStore, spaceId)
+	relations, err := listReadonlyTagAndStatusRelations(spaceStore)
 	toMigrate = len(relations)
 
 	if err != nil {
@@ -76,7 +75,7 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store objectstor
 	return
 }
 
-func listReadonlyTagAndStatusRelations(store dependencies.QueryableStore, spaceId string) ([]database.Record, error) {
+func listReadonlyTagAndStatusRelations(store dependencies.QueryableStore) ([]database.Record, error) {
 	return store.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyRelationFormat.String(),

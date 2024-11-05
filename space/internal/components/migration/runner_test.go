@@ -138,7 +138,7 @@ func (longStoreMigration) Name() string {
 	return "long migration"
 }
 
-func (longStoreMigration) Run(ctx context.Context, _ logger.CtxLogger, store objectstore.ObjectStore, spc dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (longStoreMigration) Run(ctx context.Context, _ logger.CtxLogger, store dependencies.SpaceIndexStore, spc dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	spaceStore := store.SpaceIndex(spc.Id())
 	for {
 		if _, err = spaceStore.Query(database.Query{}); err != nil {
@@ -153,7 +153,7 @@ func (longSpaceMigration) Name() string {
 	return "long migration"
 }
 
-func (longSpaceMigration) Run(ctx context.Context, _ logger.CtxLogger, _ objectstore.ObjectStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (longSpaceMigration) Run(ctx context.Context, _ logger.CtxLogger, _ dependencies.SpaceIndexStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	for {
 		if err = space.DoCtx(ctx, "", func(smartblock.SmartBlock) error {
 			// do smth
@@ -170,6 +170,6 @@ func (instantMigration) Name() string {
 	return "instant migration"
 }
 
-func (instantMigration) Run(context.Context, logger.CtxLogger, objectstore.ObjectStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (instantMigration) Run(context.Context, logger.CtxLogger, dependencies.SpaceIndexStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	return 0, 0, nil
 }

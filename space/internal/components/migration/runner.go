@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/readonlyfixer"
@@ -25,7 +24,7 @@ const (
 var log = logger.NewNamed(CName)
 
 type Migration interface {
-	Run(context.Context, logger.CtxLogger, objectstore.ObjectStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error)
+	Run(context.Context, logger.CtxLogger, dependencies.SpaceIndexStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error)
 	Name() string
 }
 
@@ -34,7 +33,7 @@ func New() *Runner {
 }
 
 type Runner struct {
-	store       objectstore.ObjectStore
+	store       dependencies.SpaceIndexStore
 	spaceLoader spaceloader.SpaceLoader
 
 	ctx      context.Context
@@ -52,7 +51,7 @@ func (r *Runner) Name() string {
 }
 
 func (r *Runner) Init(a *app.App) error {
-	r.store = app.MustComponent[objectstore.ObjectStore](a)
+	r.store = app.MustComponent[dependencies.SpaceIndexStore](a)
 	r.spaceLoader = app.MustComponent[spaceloader.SpaceLoader](a)
 	r.waitLoad = make(chan struct{})
 	return nil
