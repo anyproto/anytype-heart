@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -31,10 +32,12 @@ func (Migration) Name() string {
 	return MName
 }
 
-func (Migration) Run(ctx context.Context, log logger.CtxLogger, store, _ dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (Migration) Run(ctx context.Context, log logger.CtxLogger, store objectstore.ObjectStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	spaceId := space.Id()
 
-	relations, err := listReadonlyTagAndStatusRelations(store, spaceId)
+	spaceStore := store.SpaceIndex(spaceId)
+
+	relations, err := listReadonlyTagAndStatusRelations(spaceStore, spaceId)
 	toMigrate = len(relations)
 
 	if err != nil {

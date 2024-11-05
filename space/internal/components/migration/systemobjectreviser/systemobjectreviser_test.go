@@ -34,8 +34,7 @@ func TestMigration_Run(t *testing.T) {
 				bundle.RelationKeySourceObject:   pbtypes.String(bundle.RelationKeyDone.BundledURL()),
 			},
 		})
-		marketPlace := objectstore.NewStoreFixture(t)
-		marketPlace.AddObjects(t, addr.AnytypeMarketplaceWorkspace, []objectstore.TestObject{
+		store.AddObjects(t, addr.AnytypeMarketplaceWorkspace, []objectstore.TestObject{
 			{
 				bundle.RelationKeySpaceId:        pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_checkbox)),
@@ -54,7 +53,7 @@ func TestMigration_Run(t *testing.T) {
 		spc.EXPECT().DoCtx(ctx, "id1", mock.Anything).Return(nil).Times(1)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space1"), marketPlace.SpaceIndex(addr.AnytypeMarketplaceWorkspace), spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store, spc)
 
 		// then
 		assert.NoError(t, err)

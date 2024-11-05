@@ -19,6 +19,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -43,13 +44,16 @@ func (Migration) Name() string {
 	return MName
 }
 
-func (Migration) Run(ctx context.Context, log logger.CtxLogger, store, marketPlace dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
-	spaceObjects, err := listAllTypesAndRelations(store)
+func (Migration) Run(ctx context.Context, log logger.CtxLogger, store objectstore.ObjectStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+	spaceStore := store.SpaceIndex(space.Id())
+	marketPlaceStore := store.SpaceIndex(addr.AnytypeMarketplaceWorkspace)
+
+	spaceObjects, err := listAllTypesAndRelations(spaceStore)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %w", err)
 	}
 
-	marketObjects, err := listAllTypesAndRelations(marketPlace)
+	marketObjects, err := listAllTypesAndRelations(marketPlaceStore)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations from marketplace space: %w", err)
 	}
