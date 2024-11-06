@@ -369,6 +369,10 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 		if err = bs.Restrictions().Object.Check(model.Restrictions_TypeChange); errors.Is(err, restriction.ErrRestricted) {
 			return fmt.Errorf("objectType change is restricted for object '%s': %w", bs.Id(), err)
 		}
+
+		if objectTypeKeys[0] == bundle.TypeKeyTemplate {
+			return fmt.Errorf("changing object type to template is restricted")
+		}
 	}
 
 	s.SetObjectTypeKeys(objectTypeKeys)

@@ -52,6 +52,13 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_participant))
 	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter))
 
+	records, err := p.objectStore.QueryByIds([]string{p.Id()})
+	if err != nil {
+		return err
+	}
+	if len(records) > 0 {
+		ctx.State.SetDetails(records[0].Details)
+	}
 	template.InitTemplate(ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
@@ -60,15 +67,6 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 	)
-
-	records, err := p.objectStore.QueryByIds([]string{p.Id()})
-	if err != nil {
-		return err
-	}
-	if len(records) > 0 {
-		ctx.State.SetDetails(records[0].Details)
-	}
-
 	return nil
 }
 

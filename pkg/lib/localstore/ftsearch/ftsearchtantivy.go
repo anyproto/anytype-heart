@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -49,12 +50,15 @@ type ftSearchTantivy struct {
 	index      *tantivy.TantivyContext
 	schema     *tantivy.Schema
 	parserPool *fastjson.ParserPool
+	mu         sync.Mutex
 }
 
 func (f *ftSearchTantivy) BatchDeleteObjects(ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	start := time.Now()
 	defer func() {
 		spentMs := time.Since(start).Milliseconds()
@@ -74,6 +78,8 @@ func (f *ftSearchTantivy) BatchDeleteObjects(ids []string) error {
 }
 
 func (f *ftSearchTantivy) DeleteObject(objectId string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.index.DeleteDocuments(fieldIdRaw, objectId)
 }
 
@@ -147,12 +153,30 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	)
 
 	err = builder.AddTextField(
+		fieldTitleZh,
+		true,
+		true,
+		false,
+		tantivy.IndexRecordOptionWithFreqsAndPositions,
+		tantivy.TokenizerJieba,
+	)
+
+	err = builder.AddTextField(
 		fieldText,
 		true,
 		true,
 		false,
 		tantivy.IndexRecordOptionWithFreqsAndPositions,
 		tantivy.TokenizerSimple,
+	)
+
+	err = builder.AddTextField(
+		fieldTextZh,
+		true,
+		true,
+		false,
+		tantivy.IndexRecordOptionWithFreqsAndPositions,
+		tantivy.TokenizerJieba,
 	)
 
 	schema, err := builder.BuildSchema()
@@ -171,6 +195,11 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	f.cleanUpOldIndexes()
 
 	err = index.RegisterTextAnalyzerSimple(tantivy.TokenizerSimple, 40, tantivy.English)
+	if err != nil {
+		return err
+	}
+
+	err = index.RegisterTextAnalyzerJieba(tantivy.TokenizerJieba, 40)
 	if err != nil {
 		return err
 	}
@@ -206,6 +235,8 @@ func (f *ftSearchTantivy) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.Tan
 }
 
 func (f *ftSearchTantivy) Index(doc SearchDoc) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	metrics.ObjectFTUpdatedCounter.Inc()
 	tantivyDoc, err := f.convertDoc(doc)
 	if err != nil {
@@ -234,7 +265,15 @@ func (f *ftSearchTantivy) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = document.AddField(fieldTitleZh, doc.Title, f.index)
+	if err != nil {
+		return nil, err
+	}
 	err = document.AddField(fieldText, doc.Text, f.index)
+	if err != nil {
+		return nil, err
+	}
+	err = document.AddField(fieldTextZh, doc.Text, f.index)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +295,9 @@ func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, dele
 			l.Debugf("ft index done")
 		}
 	}()
+	f.mu.Lock()
 	err = f.index.DeleteDocuments(fieldIdRaw, deletedDocs...)
+	f.mu.Unlock()
 	if err != nil {
 		return err
 	}
@@ -268,6 +309,8 @@ func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, dele
 		}
 		tantivyDocs = append(tantivyDocs, tantivyDoc)
 	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.index.AddAndConsumeDocuments(tantivyDocs...)
 }
 
@@ -280,7 +323,9 @@ func (f *ftSearchTantivy) Search(spaceIds []string, highlightFormatter Highlight
 	if spaceIdsQuery != "" {
 		query = fmt.Sprintf("%s AND %s", spaceIdsQuery, query)
 	}
-	result, err := f.index.Search(query, 100, true, fieldId, fieldSpace, fieldTitle, fieldText)
+	result, err := f.index.Search(query, 100, true,
+		fieldId, fieldSpace, fieldTitle, fieldTitleZh, fieldText, fieldTextZh,
+	)
 	if err != nil {
 		return nil, wrapError(err)
 	}
@@ -301,9 +346,9 @@ func (f *ftSearchTantivy) Search(spaceIds []string, highlightFormatter Highlight
 			for _, val := range highlights {
 				object := val.GetObject()
 				fieldName := string(object.Get("field_name").GetStringBytes())
-				if fieldName == fieldTitle {
+				if fieldName == fieldTitle || fieldName == fieldTitleZh {
 					// fragments[fieldTitle] = append(fragments[fieldTitle], string(object.Get("fragment").MarshalTo(nil)))
-				} else if fieldName == fieldText {
+				} else if fieldName == fieldText || fieldName == fieldTextZh {
 					fragments[fieldText] = append(fragments[fieldText], string(object.Get("fragment").MarshalTo(nil)))
 				}
 			}

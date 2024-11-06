@@ -78,7 +78,10 @@ func (s *dsObjectStore) GetInfosByIds(ids []string) ([]*database.ObjectInfo, err
 }
 
 func (s *dsObjectStore) getObjectInfo(ctx context.Context, id string) (*database.ObjectInfo, error) {
-	details, err := s.sourceService.DetailsFromIdBasedSource(id)
+	details, err := s.sourceService.DetailsFromIdBasedSource(domain.FullID{
+		ObjectID: id,
+		SpaceID:  s.SpaceId(),
+	})
 	if err == nil {
 		details.SetString(bundle.RelationKeyId, id)
 		return &database.ObjectInfo{

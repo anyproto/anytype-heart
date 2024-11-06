@@ -577,6 +577,14 @@
     - [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request)
     - [Rpc.Debug.ExportLocalstore.Response](#anytype-Rpc-Debug-ExportLocalstore-Response)
     - [Rpc.Debug.ExportLocalstore.Response.Error](#anytype-Rpc-Debug-ExportLocalstore-Response-Error)
+    - [Rpc.Debug.ExportLog](#anytype-Rpc-Debug-ExportLog)
+    - [Rpc.Debug.ExportLog.Request](#anytype-Rpc-Debug-ExportLog-Request)
+    - [Rpc.Debug.ExportLog.Response](#anytype-Rpc-Debug-ExportLog-Response)
+    - [Rpc.Debug.ExportLog.Response.Error](#anytype-Rpc-Debug-ExportLog-Response-Error)
+    - [Rpc.Debug.NetCheck](#anytype-Rpc-Debug-NetCheck)
+    - [Rpc.Debug.NetCheck.Request](#anytype-Rpc-Debug-NetCheck-Request)
+    - [Rpc.Debug.NetCheck.Response](#anytype-Rpc-Debug-NetCheck-Response)
+    - [Rpc.Debug.NetCheck.Response.Error](#anytype-Rpc-Debug-NetCheck-Response-Error)
     - [Rpc.Debug.OpenedObjects](#anytype-Rpc-Debug-OpenedObjects)
     - [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request)
     - [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response)
@@ -698,6 +706,11 @@
     - [Rpc.History.ShowVersion.Response](#anytype-Rpc-History-ShowVersion-Response)
     - [Rpc.History.ShowVersion.Response.Error](#anytype-Rpc-History-ShowVersion-Response-Error)
     - [Rpc.History.Version](#anytype-Rpc-History-Version)
+    - [Rpc.Initial](#anytype-Rpc-Initial)
+    - [Rpc.Initial.SetParameters](#anytype-Rpc-Initial-SetParameters)
+    - [Rpc.Initial.SetParameters.Request](#anytype-Rpc-Initial-SetParameters-Request)
+    - [Rpc.Initial.SetParameters.Response](#anytype-Rpc-Initial-SetParameters-Response)
+    - [Rpc.Initial.SetParameters.Response.Error](#anytype-Rpc-Initial-SetParameters-Response-Error)
     - [Rpc.LinkPreview](#anytype-Rpc-LinkPreview)
     - [Rpc.LinkPreview.Request](#anytype-Rpc-LinkPreview-Request)
     - [Rpc.LinkPreview.Response](#anytype-Rpc-LinkPreview-Response)
@@ -748,11 +761,6 @@
     - [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request)
     - [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response)
     - [Rpc.Membership.VerifyEmailCode.Response.Error](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error)
-    - [Rpc.Metrics](#anytype-Rpc-Metrics)
-    - [Rpc.Metrics.SetParameters](#anytype-Rpc-Metrics-SetParameters)
-    - [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request)
-    - [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response)
-    - [Rpc.Metrics.SetParameters.Response.Error](#anytype-Rpc-Metrics-SetParameters-Response-Error)
     - [Rpc.NameService](#anytype-Rpc-NameService)
     - [Rpc.NameService.ResolveAnyId](#anytype-Rpc-NameService-ResolveAnyId)
     - [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request)
@@ -1350,6 +1358,8 @@
     - [Rpc.Debug.AnystoreObjectChanges.Request.OrderBy](#anytype-Rpc-Debug-AnystoreObjectChanges-Request-OrderBy)
     - [Rpc.Debug.AnystoreObjectChanges.Response.Error.Code](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
+    - [Rpc.Debug.ExportLog.Response.Error.Code](#anytype-Rpc-Debug-ExportLog-Response-Error-Code)
+    - [Rpc.Debug.NetCheck.Response.Error.Code](#anytype-Rpc-Debug-NetCheck-Response-Error-Code)
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
     - [Rpc.Debug.RunProfiler.Response.Error.Code](#anytype-Rpc-Debug-RunProfiler-Response-Error-Code)
@@ -1378,6 +1388,7 @@
     - [Rpc.History.GetVersions.Response.Error.Code](#anytype-Rpc-History-GetVersions-Response-Error-Code)
     - [Rpc.History.SetVersion.Response.Error.Code](#anytype-Rpc-History-SetVersion-Response-Error-Code)
     - [Rpc.History.ShowVersion.Response.Error.Code](#anytype-Rpc-History-ShowVersion-Response-Error-Code)
+    - [Rpc.Initial.SetParameters.Response.Error.Code](#anytype-Rpc-Initial-SetParameters-Response-Error-Code)
     - [Rpc.LinkPreview.Response.Error.Code](#anytype-Rpc-LinkPreview-Response-Error-Code)
     - [Rpc.Log.Send.Request.Level](#anytype-Rpc-Log-Send-Request-Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype-Rpc-Log-Send-Response-Error-Code)
@@ -1391,7 +1402,6 @@
     - [Rpc.Membership.RegisterPaymentRequest.Response.Error.Code](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error-Code)
     - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
-    - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
     - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
     - [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code)
     - [Rpc.NameService.ResolveSpaceId.Response.Error.Code](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error-Code)
@@ -2153,7 +2163,9 @@
 | DebugRunProfiler | [Rpc.Debug.RunProfiler.Request](#anytype-Rpc-Debug-RunProfiler-Request) | [Rpc.Debug.RunProfiler.Response](#anytype-Rpc-Debug-RunProfiler-Response) |  |
 | DebugAccountSelectTrace | [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request) | [Rpc.Debug.AccountSelectTrace.Response](#anytype-Rpc-Debug-AccountSelectTrace-Response) |  |
 | DebugAnystoreObjectChanges | [Rpc.Debug.AnystoreObjectChanges.Request](#anytype-Rpc-Debug-AnystoreObjectChanges-Request) | [Rpc.Debug.AnystoreObjectChanges.Response](#anytype-Rpc-Debug-AnystoreObjectChanges-Response) |  |
-| MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request) | [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response) |  |
+| DebugNetCheck | [Rpc.Debug.NetCheck.Request](#anytype-Rpc-Debug-NetCheck-Request) | [Rpc.Debug.NetCheck.Response](#anytype-Rpc-Debug-NetCheck-Response) |  |
+| DebugExportLog | [Rpc.Debug.ExportLog.Request](#anytype-Rpc-Debug-ExportLog-Request) | [Rpc.Debug.ExportLog.Response](#anytype-Rpc-Debug-ExportLog-Response) |  |
+| InitialSetParameters | [Rpc.Initial.SetParameters.Request](#anytype-Rpc-Initial-SetParameters-Request) | [Rpc.Initial.SetParameters.Response](#anytype-Rpc-Initial-SetParameters-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
@@ -10545,6 +10557,120 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Debug-ExportLog"></a>
+
+### Rpc.Debug.ExportLog
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-ExportLog-Request"></a>
+
+### Rpc.Debug.ExportLog.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| dir | [string](#string) |  | empty means using OS-provided temp dir |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-ExportLog-Response"></a>
+
+### Rpc.Debug.ExportLog.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.ExportLog.Response.Error](#anytype-Rpc-Debug-ExportLog-Response-Error) |  |  |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-ExportLog-Response-Error"></a>
+
+### Rpc.Debug.ExportLog.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.ExportLog.Response.Error.Code](#anytype-Rpc-Debug-ExportLog-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-NetCheck"></a>
+
+### Rpc.Debug.NetCheck
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-NetCheck-Request"></a>
+
+### Rpc.Debug.NetCheck.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| clientYml | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-NetCheck-Response"></a>
+
+### Rpc.Debug.NetCheck.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.NetCheck.Response.Error](#anytype-Rpc-Debug-NetCheck-Response-Error) |  |  |
+| result | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-NetCheck-Response-Error"></a>
+
+### Rpc.Debug.NetCheck.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.NetCheck.Response.Error.Code](#anytype-Rpc-Debug-NetCheck-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Debug-OpenedObjects"></a>
 
 ### Rpc.Debug.OpenedObjects
@@ -12273,6 +12399,78 @@ returns blockShow event for given version
 
 
 
+<a name="anytype-Rpc-Initial"></a>
+
+### Rpc.Initial
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Initial-SetParameters"></a>
+
+### Rpc.Initial.SetParameters
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Initial-SetParameters-Request"></a>
+
+### Rpc.Initial.SetParameters.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| platform | [string](#string) |  |  |
+| version | [string](#string) |  |  |
+| workdir | [string](#string) |  |  |
+| logLevel | [string](#string) |  |  |
+| doNotSendLogs | [bool](#bool) |  |  |
+| doNotSaveLogs | [bool](#bool) |  |  |
+| doNotSendTelemetry | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Initial-SetParameters-Response"></a>
+
+### Rpc.Initial.SetParameters.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Initial.SetParameters.Response.Error](#anytype-Rpc-Initial-SetParameters-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Initial-SetParameters-Response-Error"></a>
+
+### Rpc.Initial.SetParameters.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Initial.SetParameters.Response.Error.Code](#anytype-Rpc-Initial-SetParameters-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-LinkPreview"></a>
 
 ### Rpc.LinkPreview
@@ -12980,73 +13178,6 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Metrics"></a>
-
-### Rpc.Metrics
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Metrics-SetParameters"></a>
-
-### Rpc.Metrics.SetParameters
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Metrics-SetParameters-Request"></a>
-
-### Rpc.Metrics.SetParameters.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| platform | [string](#string) |  |  |
-| version | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Metrics-SetParameters-Response"></a>
-
-### Rpc.Metrics.SetParameters.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Metrics.SetParameters.Response.Error](#anytype-Rpc-Metrics-SetParameters-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Metrics-SetParameters-Response-Error"></a>
-
-### Rpc.Metrics.SetParameters.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -19282,6 +19413,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  | use case |
+| withChat | [bool](#bool) |  | create space-level chat; temporary solution, should be removed after chats released for all users |
 
 
 
@@ -19686,6 +19818,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
+| withChat | [bool](#bool) |  | create space-level chat if not exists; temporary solution, should be removed after chats released for all users |
 
 
 
@@ -21594,6 +21727,33 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Debug-ExportLog-Response-Error-Code"></a>
+
+### Rpc.Debug.ExportLog.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_FOLDER | 3 |  |
+
+
+
+<a name="anytype-Rpc-Debug-NetCheck-Response-Error-Code"></a>
+
+### Rpc.Debug.NetCheck.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Debug-OpenedObjects-Response-Error-Code"></a>
 
 ### Rpc.Debug.OpenedObjects.Response.Error.Code
@@ -21964,6 +22124,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Initial-SetParameters-Response-Error-Code"></a>
+
+### Rpc.Initial.SetParameters.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-LinkPreview-Response-Error-Code"></a>
 
 ### Rpc.LinkPreview.Response.Error.Code
@@ -22202,19 +22375,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | MEMBERSHIP_NOT_FOUND | 9 |  |
 | MEMBERSHIP_ALREADY_ACTIVE | 10 |  |
 | CAN_NOT_CONNECT | 11 |  |
-
-
-
-<a name="anytype-Rpc-Metrics-SetParameters-Response-Error-Code"></a>
-
-### Rpc.Metrics.SetParameters.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
 
 
 
@@ -27475,6 +27635,7 @@ Contains basic information about a user account
 | archiveObjectId | [string](#string) |  | archive block id |
 | profileObjectId | [string](#string) |  | profile block id |
 | marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
+| workspaceObjectId | [string](#string) |  | workspace object id. used for space-level chat |
 | deviceId | [string](#string) |  |  |
 | accountSpaceId | [string](#string) |  |  |
 | widgetsId | [string](#string) |  |  |
@@ -29877,7 +30038,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | spaceView | 18 |  |
 | participant | 19 |  |
 | pdf | 20 |  |
-| chat | 21 |  |
+| chat | 21 | deprecated |
 | chatDerived | 22 |  |
 | tag | 23 |  |
 

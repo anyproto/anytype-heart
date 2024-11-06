@@ -90,7 +90,7 @@ type Store interface {
 }
 
 type SourceDetailsFromID interface {
-	DetailsFromIdBasedSource(id string) (*domain.Details, error)
+	DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error)
 }
 
 type FulltextQueue interface {
@@ -100,8 +100,6 @@ type FulltextQueue interface {
 }
 
 type dsObjectStore struct {
-	initErr error
-
 	spaceId        string
 	db             anystore.DB
 	objects        anystore.Collection
@@ -157,8 +155,7 @@ func New(componentCtx context.Context, spaceId string, deps Deps) Store {
 	var err error
 	err = s.openDatabase(componentCtx, deps.DbPath)
 	if err != nil {
-		s.initErr = err
-		return s
+		return NewInvalidStore(err)
 	}
 
 	return s

@@ -39,6 +39,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -298,6 +299,54 @@ func (s *Service) SpaceInstallBundledObjects(
 		return nil, nil, fmt.Errorf("get space: %w", err)
 	}
 	return s.objectCreator.InstallBundledObjects(ctx, spc, sourceObjectIds, false)
+}
+
+func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	if spc.IsReadOnly() {
+		return nil
+	}
+	if spc.IsPersonal() {
+		return nil
+	}
+
+	workspaceId := spc.DerivedIDs().Workspace
+	chatUk, err := domain.NewUniqueKey(coresb.SmartBlockTypeChatDerivedObject, workspaceId)
+	if err != nil {
+		return err
+	}
+
+	chatId, err := spc.DeriveObjectID(context.Background(), chatUk)
+	if err != nil {
+		return err
+	}
+
+	if spaceChatExists, err := spc.Storage().HasTree(chatId); err != nil {
+		return err
+	} else if !spaceChatExists {
+		_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId)
+		if err != nil {
+			if !errors.Is(err, treestorage.ErrTreeExists) {
+				return fmt.Errorf("add chat derived object: %w", err)
+			}
+		}
+	}
+
+	err = spc.DoCtx(ctx, workspaceId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		st.SetLocalDetail(bundle.RelationKeyChatId.String(), pbtypes.String(chatId))
+		st.SetDetail(bundle.RelationKeyHasChat.String(), pbtypes.Bool(true))
+
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
+	})
+	if err != nil {
+		return fmt.Errorf("apply chatId to workspace: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {

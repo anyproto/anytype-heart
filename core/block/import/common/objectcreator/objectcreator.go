@@ -391,7 +391,7 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Detai
 func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID string) {
 	isFavorite := snapshot.Details.GetBool(bundle.RelationKeyIsFavorite)
 	if isFavorite {
-		err := oc.detailsService.SetIsFavorite(newID, true)
+		err := oc.detailsService.SetIsFavorite(newID, true, false)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err)
 		}

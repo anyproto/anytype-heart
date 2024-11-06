@@ -288,7 +288,7 @@ func (mw *Middleware) makeSuggestedDateRecord(ctx context.Context, spaceID strin
 	}
 	d := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyId:        domain.String(id),
-		bundle.RelationKeyName:      domain.String(t.Format("Mon Jan  2 2006")),
+		bundle.RelationKeyName:      domain.String(t.Format("02 Jan 2006")),
 		bundle.RelationKeyLayout:    domain.Int64(model.ObjectType_date),
 		bundle.RelationKeyType:      domain.String(typeId),
 		bundle.RelationKeyIconEmoji: domain.String("📅"),

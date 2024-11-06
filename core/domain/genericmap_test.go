@@ -436,7 +436,7 @@ func TestGenericMap_ToProto(t *testing.T) {
 			"key-4": pbtypes.Bool(true),
 			"key-5": pbtypes.Bool(false),
 			"key-6": pbtypes.StringList([]string{"1", "2", "3"}),
-			"key-7": pbtypes.FloatList([]float64{1.1, 2.2, 3.3, 4.4}),
+			"key-7": pbtypes.Float64List([]float64{1.1, 2.2, 3.3, 4.4}),
 			"key-8": pbtypes.IntList(1, 2, 3),
 			"key-9": pbtypes.Struct(&types.Struct{
 				Fields: map[string]*types.Value{

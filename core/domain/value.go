@@ -425,7 +425,7 @@ func (v Value) ToProto() *types.Value {
 	case []string:
 		return pbtypes.StringList(v)
 	case []float64:
-		return pbtypes.FloatList(v)
+		return pbtypes.Float64List(v)
 	case ValueMap:
 		s := &types.Struct{Fields: make(map[string]*types.Value, v.Len())}
 		for k, val := range v.Iterate() {

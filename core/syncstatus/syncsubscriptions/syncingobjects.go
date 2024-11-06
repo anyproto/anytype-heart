@@ -42,11 +42,6 @@ func (s *syncingObjects) Run() error {
 					int64(domain.ObjectSyncStatusError),
 				}),
 			},
-			{
-				RelationKey: bundle.RelationKeySpaceId,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(s.spaceId),
-			},
 		},
 	}
 	s.objectSubscription = objectsubscription.NewIdSubscription(s.service, objectReq)

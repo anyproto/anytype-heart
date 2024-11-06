@@ -11,8 +11,11 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/mock_synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager/mock_treemanager"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/mock_spacestorage"
+	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/rpc/rpctest"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -40,9 +43,12 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 	nodeConf.EXPECT().Name().Return("nodeConf").AnyTimes()
 	syncStatus := mock_treesyncer.NewMockSyncedTreeRemover(t)
 	syncDetailsUpdater := mock_treesyncer.NewMockSyncDetailsUpdater(t)
+	spaceStorage := mock_spacestorage.NewMockSpaceStorage(ctrl)
+	spaceStorage.EXPECT().SpaceSettingsId().Return("spaceSettingsId").AnyTimes()
 
 	a := new(app.App)
 	a.Register(testutil.PrepareMock(context.Background(), a, treeManager)).
+		Register(testutil.PrepareMock(context.Background(), a, spaceStorage)).
 		Register(testutil.PrepareMock(context.Background(), a, syncStatus)).
 		Register(testutil.PrepareMock(context.Background(), a, nodeConf)).
 		Register(testutil.PrepareMock(context.Background(), a, syncDetailsUpdater))
@@ -62,7 +68,6 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 }
 
 func TestTreeSyncer(t *testing.T) {
-
 	spaceId := "spaceId"
 	peerId := "peerId"
 	existingId := "existing"
@@ -144,6 +149,27 @@ func TestTreeSyncer(t *testing.T) {
 		fx.Close(ctx)
 	})
 
+	t.Run("sync spaceSettingsId", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t, spaceId)
+		fx.nodeConf.EXPECT().NodeIds(spaceId).Return(nil)
+		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, mock.Anything).RunAndReturn(func(s string, strings []string) {
+			require.Empty(t, strings)
+		})
+		ch := make(chan struct{})
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, "spaceSettingsId").Return(fx.existingMock, nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).DoAndReturn(func(ctx context.Context, peer peer.Peer) error {
+			close(ch)
+			return nil
+		})
+
+		fx.StartSync()
+		err := fx.SyncAll(context.Background(), pr, []string{"spaceSettingsId"}, nil)
+		require.NoError(t, err)
+		<-ch
+		fx.Close(ctx)
+	})
+
 	t.Run("sync concurrent ids", func(t *testing.T) {
 		ctx := context.Background()
 		ch := make(chan struct{}, 2)
@@ -185,9 +211,11 @@ func TestTreeSyncer(t *testing.T) {
 			mutex.Unlock()
 			return fx.missingMock, nil
 		})
-		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
+		fx.nodeConf.EXPECT().NodeIds(spaceId).Return(nil)
 		var existing []string
-		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, existing).Return()
+		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, mock.Anything).RunAndReturn(func(s string, strings []string) {
+			require.Empty(t, strings)
+		})
 
 		fx.StartSync()
 		err := fx.SyncAll(context.Background(), pr, existing, []string{missingId})

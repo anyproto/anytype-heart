@@ -16,8 +16,8 @@ import (
 )
 
 func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
-	response := func(workspaceId string, code pb.RpcWorkspaceCreateResponseErrorCode, err error) *pb.RpcWorkspaceCreateResponse {
-		m := &pb.RpcWorkspaceCreateResponse{SpaceId: workspaceId, Error: &pb.RpcWorkspaceCreateResponseError{Code: code}}
+	response := func(spaceId string, code pb.RpcWorkspaceCreateResponseErrorCode, err error) *pb.RpcWorkspaceCreateResponse {
+		m := &pb.RpcWorkspaceCreateResponse{SpaceId: spaceId, Error: &pb.RpcWorkspaceCreateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		}
@@ -25,16 +25,26 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		return m
 	}
 
-	var workspaceId string
+	var spaceId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		workspaceId, err = bs.CreateWorkspace(cctx, req)
+		spaceId, err = bs.CreateWorkspace(cctx, req)
+		if err != nil {
+			return
+		}
+		if req.WithChat {
+			// todo: as soon as it will be released for all users, we need to make it async inside the space init
+			err = bs.SpaceInitChat(cctx, spaceId)
+			if err != nil {
+				log.With("error", err).Warn("failed to init space level chat")
+			}
+		}
 		return
 	})
 	if err != nil {
 		return response("", pb.RpcWorkspaceCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(workspaceId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
+	return response(spaceId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOpenRequest) *pb.RpcWorkspaceOpenResponse {
@@ -54,10 +64,18 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 	}
 
 	err = mw.doBlockService(func(bs *block.Service) error {
+		if req.WithChat {
+			// todo: as soon as it will be released for all users, we need to make it async inside the space init
+			err = bs.SpaceInitChat(cctx, req.SpaceId)
+			if err != nil {
+				log.With("error", err).Warn("failed to init space level chat")
+			}
+		}
 		return cache.Do[*editor.SpaceView](bs, info.SpaceViewId, func(sv *editor.SpaceView) error {
 			return sv.UpdateLastOpenedDate()
 		})
 	})
+
 	if err != nil {
 		return response(info, pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR, err)
 	}

@@ -65,7 +65,7 @@ func IntList(ints ...int) *types.Value {
 	}
 }
 
-func FloatList(floats []float64) *types.Value {
+func Float64List(floats []float64) *types.Value {
 	var vals = make([]*types.Value, 0, len(floats))
 	for _, f := range floats {
 		vals = append(vals, Float64(f))

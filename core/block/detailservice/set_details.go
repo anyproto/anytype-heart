@@ -11,8 +11,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/widget"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -56,7 +59,7 @@ func (s *service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 	return id, err
 }
 
-func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
+func (s *service) SetIsFavorite(objectId string, isFavorite, createWidget bool) error {
 	spaceID, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
@@ -65,7 +68,18 @@ func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	return s.objectLinksCollectionModify(spc.DerivedIDs().Home, objectId, isFavorite)
+	if err = s.objectLinksCollectionModify(spc.DerivedIDs().Home, objectId, isFavorite); err != nil {
+		return err
+	}
+
+	if createWidget && isFavorite {
+		err = s.createFavoriteWidget(spc.DerivedIDs().Widgets)
+		if err != nil {
+			log.Error("failed to create favorite widget", zap.Error(err))
+		}
+	}
+
+	return nil
 }
 
 func (s *service) SetIsArchived(objectId string, isArchived bool) error {
@@ -99,9 +113,9 @@ func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
 			return err
 		}
 
-		for _, id := range ids {
+		for i, id := range ids {
 			// TODO Set list of ids at once
-			err := s.SetIsFavorite(id, isFavorite)
+			err := s.SetIsFavorite(id, isFavorite, i == 0)
 			if err != nil {
 				log.Error("failed to favorite object", zap.String("objectId", id), zap.Error(err))
 				resultError = errors.Join(resultError, err)
@@ -227,4 +241,43 @@ func (s *service) modifyArchiveLinks(
 		anySucceed = true
 	}
 	return
+}
+
+func (s *service) createFavoriteWidget(widgetObjectId string) error {
+	return cache.DoState(s.objectGetter, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
+		var favoriteBlockFound bool
+		err = st.Iterate(func(b simple.Block) (isContinue bool) {
+			link := b.Model().GetLink()
+			if link == nil {
+				return true
+			}
+			if link.TargetBlockId == widget.DefaultWidgetFavorite {
+				favoriteBlockFound = true
+				return false
+			}
+			return true
+		})
+
+		if err != nil {
+			return err
+		}
+
+		if favoriteBlockFound {
+			log.Debug("favorite widget block is already presented")
+			return nil
+		}
+
+		_, err = w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
+			ContextId:    widgetObjectId,
+			ObjectLimit:  6,
+			WidgetLayout: model.BlockContentWidget_List,
+			Position:     model.Block_Bottom,
+			Block: &model.Block{
+				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+					TargetBlockId: widget.DefaultWidgetFavorite,
+				}},
+			},
+		})
+		return err
+	})
 }
