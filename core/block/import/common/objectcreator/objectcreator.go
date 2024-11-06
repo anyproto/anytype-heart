@@ -392,7 +392,7 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct
 func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, newID string) {
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 	if isFavorite {
-		err := oc.detailsService.SetIsFavorite(newID, true)
+		err := oc.detailsService.SetIsFavorite(newID, true, false)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err)
 		}

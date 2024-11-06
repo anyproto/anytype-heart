@@ -172,7 +172,10 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(res.Path.ObjectId); err == nil {
 			if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
-				details, err := s.sourceService.DetailsFromIdBasedSource(res.Path.ObjectId)
+				details, err := s.sourceService.DetailsFromIdBasedSource(domain.FullID{
+					ObjectID: res.Path.ObjectId,
+					SpaceID:  s.SpaceId(),
+				})
 				if err != nil {
 					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", res.Path.ObjectId)
 					continue
@@ -434,7 +437,10 @@ func (s *dsObjectStore) QueryByIds(ids []string) (records []database.Record, err
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
 			if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
-				details, err := s.sourceService.DetailsFromIdBasedSource(id)
+				details, err := s.sourceService.DetailsFromIdBasedSource(domain.FullID{
+					ObjectID: id,
+					SpaceID:  s.SpaceId(),
+				})
 				if err != nil {
 					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
 					continue
