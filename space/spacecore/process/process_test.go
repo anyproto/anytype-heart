@@ -61,7 +61,7 @@ func TestSpaceLoadingProgress_runSpaceLoadingProgress(t *testing.T) {
 		f.ctx, f.cancel = context.WithCancel(context.Background())
 
 		// when
-		f.runSpaceLoadingProgress()
+		go f.runSpaceLoadingProgress()
 
 		// then
 		assert.NotNil(t, f.progress)
@@ -90,8 +90,7 @@ func TestSpaceLoadingProgress_runSpaceLoadingProgress(t *testing.T) {
 		f.ctx, f.cancel = context.WithCancel(context.Background())
 
 		// when
-		f.runSpaceLoadingProgress()
-		assert.NotNil(t, f.progress)
+		go f.runSpaceLoadingProgress()
 		err := outputQueue.Add(context.Background(),
 			&pb.EventMessage{
 				Value: &pb.EventMessageValueOfObjectDetailsSet{
@@ -144,8 +143,7 @@ func TestSpaceLoadingProgress_runSpaceLoadingProgress(t *testing.T) {
 		f.ctx, f.cancel = context.WithCancel(context.Background())
 
 		// when
-		f.runSpaceLoadingProgress()
-		assert.NotNil(t, f.progress)
+		go f.runSpaceLoadingProgress()
 		err := outputQueue.Add(context.Background(),
 			&pb.EventMessage{
 				Value: &pb.EventMessageValueOfObjectDetailsAmend{
@@ -193,10 +191,16 @@ func TestSpaceLoadingProgress_runSpaceLoadingProgress(t *testing.T) {
 		f.ctx, f.cancel = context.WithCancel(context.Background())
 
 		// when
-		f.runSpaceLoadingProgress()
-		err := f.progress.Cancel()
-		assert.NoError(t, err)
-		<-f.progress.Canceled()
+		go f.runSpaceLoadingProgress()
+		for {
+			if f.progress == nil {
+				continue
+			}
+			err := f.progress.Cancel()
+			assert.NoError(t, err)
+			<-f.progress.Canceled()
+			break
+		}
 
 		// then
 		assert.Equal(t, pb.ModelProcess_Canceled, f.progress.Info().State)
