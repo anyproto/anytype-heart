@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/gogo/protobuf/types"
@@ -341,7 +342,7 @@ func (s *dsObjectStore) performFulltextSearch(text string, spaceId string) ([]da
 		for _, v := range result.Fragments {
 			if len(v.Ranges) > 0 {
 				highlight = v.Text
-				ranges = convertToHighlightRanges(v.Ranges)
+				ranges = convertToHighlightRanges(v.Ranges, highlight)
 				break
 			}
 		}
@@ -363,17 +364,34 @@ func (s *dsObjectStore) performFulltextSearch(text string, spaceId string) ([]da
 	return results, nil
 }
 
-func convertToHighlightRanges(ranges [][]int) []*model.Range {
+func convertToHighlightRanges(ranges [][]int, highlight string) []*model.Range {
 	var highlightRanges []*model.Range
+
+	byteToRuneIndex := make([]int, len(highlight)+1)
+	for i := range byteToRuneIndex {
+		byteToRuneIndex[i] = utf8.RuneCountInString(highlight[:i])
+	}
+
 	for _, r := range ranges {
 		if len(r) == 2 {
+			fromByte := r[0]
+			toByte := r[1]
+
+			if fromByte < 0 || toByte > len(highlight) {
+				continue
+			}
+
+			fromRune := byteToRuneIndex[fromByte]
+			toRune := byteToRuneIndex[toByte]
+
 			highlightRange := &model.Range{
-				From: int32(r[0]),
-				To:   int32(r[1]),
+				From: int32(fromRune),
+				To:   int32(toRune),
 			}
 			highlightRanges = append(highlightRanges, highlightRange)
 		}
 	}
+
 	return highlightRanges
 }
 
