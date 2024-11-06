@@ -640,27 +640,49 @@ func (v Value) Equal(other Value) bool {
 	return false
 }
 
-func (v Value) Match(nullCase func(), boolCase func(v bool), floatCase func(v float64), stringCase func(v string), stringListCase func(v []string), floatListCase func(v []float64), mapListCase func(v ValueMap)) {
+type ValueMatcher struct {
+	Null        func()
+	Bool        func(v bool)
+	Float64     func(v float64)
+	Int64       func(v int64)
+	String      func(v string)
+	StringList  func(v []string)
+	Float64List func(v []float64)
+	Int64List   func(v []int64)
+	MapValue    func(valueMap ValueMap)
+}
+
+func (v Value) Match(matcher ValueMatcher) {
 	if !v.ok {
 		return
 	}
-	switch v := v.value.(type) {
-	case nullValue:
-		nullCase()
-	case bool:
-		boolCase(v)
-	case float64:
-		floatCase(v)
-	case string:
-		stringCase(v)
-	case []string:
-		stringListCase(v)
-	case []float64:
-		floatListCase(v)
-	case ValueMap:
-		mapListCase(v)
+	if v.IsNull() && matcher.Null != nil {
+		matcher.Null()
 	}
-
+	if v.IsBool() && matcher.Bool != nil {
+		matcher.Bool(v.Bool())
+	}
+	if v.IsFloat64() && matcher.Float64 != nil {
+		matcher.Float64(v.Float64())
+	}
+	if v.IsInt64() && matcher.Int64 != nil {
+		matcher.Int64(v.Int64())
+	}
+	if v.IsString() && matcher.String != nil {
+		matcher.String(v.String())
+	}
+	if v.IsStringList() && matcher.StringList != nil {
+		matcher.StringList(v.StringList())
+	}
+	if v.IsFloat64List() && matcher.Float64List != nil {
+		matcher.Float64List(v.Float64List())
+	}
+	if v.IsInt64List() && matcher.Int64List != nil {
+		matcher.Int64List(v.Int64List())
+	}
+	if v.IsMapValue() && matcher.MapValue != nil {
+		matcher.MapValue(v.MapValue())
+	}
 }
 
 func (v Value) IsEmpty() bool {
@@ -668,23 +690,29 @@ func (v Value) IsEmpty() bool {
 		return true
 	}
 	var ok bool
-	v.Match(
-		func() {
+	v.Match(ValueMatcher{
+		Null: func() {
 			ok = true
 		},
-		func(v bool) {
+		Bool: func(v bool) {
 			ok = !v
-		}, func(v float64) {
+		},
+		Float64: func(v float64) {
 			ok = v == 0
-		}, func(v string) {
+		},
+		String: func(v string) {
 			ok = v == ""
-		}, func(v []string) {
+		},
+		StringList: func(v []string) {
 			ok = len(v) == 0
-		}, func(v []float64) {
+		},
+		Float64List: func(v []float64) {
 			ok = len(v) == 0
-		}, func(v ValueMap) {
+		},
+		MapValue: func(v ValueMap) {
 			ok = v.Len() == 0
-		})
+		},
+	})
 	return ok
 }
 
