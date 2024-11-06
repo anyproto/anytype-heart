@@ -61,9 +61,9 @@ func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core
 type clipboard struct {
 	smartblock.SmartBlock
 	file              file.File
-	tempDirProvider core.TempDirProvider
-	objectStore     spaceindex.Store
-	fileService     files.Service
+	tempDirProvider   core.TempDirProvider
+	objectStore       spaceindex.Store
+	fileService       files.Service
 	fileObjectService fileobject.Service
 }
 
@@ -530,7 +530,7 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 			Path:      fs.LocalPath,
 			Name:      fs.Name,
 			Origin:    objectorigin.Clipboard(),
-			ImageKind: getImageKind(fs.Name),
+			ImageKind: model.ImageKind_Basic,
 		}, false); err != nil {
 			return
 		}
@@ -541,21 +541,6 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 		return
 	}
 	return blockIds, cb.Apply(s)
-}
-
-func getImageKind(filename string) model.ImageKind {
-	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
-	fileExt := filepath.Ext(filename)
-	if fileExt == "" {
-		return model.ImageKind_Basic
-	}
-	fileExt = fileExt[1:]
-	for _, ext := range imageFormats {
-		if strings.EqualFold(fileExt, ext) {
-			return model.ImageKind_AutomaticallyAdded
-		}
-	}
-	return model.ImageKind_Basic
 }
 
 func (cb *clipboard) getFileBlockPosition(req *pb.RpcBlockPasteRequest) model.BlockPosition {

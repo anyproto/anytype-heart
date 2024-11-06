@@ -1894,12 +1894,3 @@ func TestProcessFileBlock(t *testing.T) {
 		assert.Equal(t, fileObject1, fb.File.TargetObjectId)
 	})
 }
-
-func TestGetImageKind(t *testing.T) {
-	assert.Equal(t, model.ImageKind_Basic, getImageKind(""))
-	assert.Equal(t, model.ImageKind_Basic, getImageKind("somefile"))
-	assert.Equal(t, model.ImageKind_Basic, getImageKind("somefile.txt"))
-	assert.Equal(t, model.ImageKind_Basic, getImageKind("somefile.mov"))
-	assert.Equal(t, model.ImageKind_AutomaticallyAdded, getImageKind("somefile.JPG"))
-	assert.Equal(t, model.ImageKind_AutomaticallyAdded, getImageKind("somefile.png"))
-}
