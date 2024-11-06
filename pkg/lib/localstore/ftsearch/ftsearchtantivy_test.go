@@ -2,14 +2,12 @@ package ftsearch
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/blevesearch/bleve/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,12 +15,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 )
 
-type fixture2 struct {
+type fixture struct {
 	ft FTSearch
 	ta *app.App
 }
 
-func newFixture(path string, t *testing.T) *fixture2 {
+func newFixture(path string, t *testing.T) *fixture {
 	ft := TantivyNew()
 	ta := new(app.App)
 
@@ -30,7 +28,7 @@ func newFixture(path string, t *testing.T) *fixture2 {
 		Register(ft)
 
 	require.NoError(t, ta.Start(context.Background()))
-	return &fixture2{
+	return &fixture{
 		ft: ft,
 		ta: ta,
 	}
@@ -78,23 +76,23 @@ func TestDifferentSpaces(t *testing.T) {
 		SpaceID: "space2",
 	}))
 
-	search, err := ft.Search([]string{"space1"}, HtmlHighlightFormatter, "one")
+	search, err := ft.Search([]string{"space1"}, "one")
 	require.NoError(t, err)
 	require.Len(t, search, 1)
 
-	search, err = ft.Search([]string{"space2"}, HtmlHighlightFormatter, "one")
+	search, err = ft.Search([]string{"space2"}, "one")
 	require.NoError(t, err)
 	require.Len(t, search, 1)
 
-	search, err = ft.Search([]string{"space1", "space2"}, HtmlHighlightFormatter, "one")
+	search, err = ft.Search([]string{"space1", "space2"}, "one")
 	require.NoError(t, err)
 	require.Len(t, search, 2)
 
-	search, err = ft.Search([]string{""}, HtmlHighlightFormatter, "one")
+	search, err = ft.Search([]string{""}, "one")
 	require.NoError(t, err)
 	require.Len(t, search, 2)
 
-	search, err = ft.Search(nil, HtmlHighlightFormatter, "one")
+	search, err = ft.Search(nil, "one")
 	require.NoError(t, err)
 	require.Len(t, search, 2)
 
@@ -254,100 +252,9 @@ func assertSearch(t *testing.T, tmpDir string) {
 }
 
 func validateSearch(t *testing.T, ft FTSearch, spaceID, qry string, times int) {
-	res, err := ft.Search([]string{spaceID}, HtmlHighlightFormatter, qry)
+	res, err := ft.Search([]string{spaceID}, qry)
 	require.NoError(t, err)
 	assert.Len(t, res, times)
-}
-
-func TestChineseSearch(t *testing.T) {
-	// given
-	index := givenPrefilledChineseIndex()
-	defer func() { _ = index.Close() }()
-
-	expected := givenExpectedChinese()
-
-	// when
-	queries := []string{
-		"你好世界",
-		"亲口交代",
-		"长江",
-	}
-
-	// then
-	result := validateChinese(queries, index)
-	assert.Equal(t, expected, result)
-}
-
-func prettify(res *bleve.SearchResult) string {
-	type Result struct {
-		Id    string  `json:"id"`
-		Score float64 `json:"score"`
-	}
-	results := []Result{}
-	for _, item := range res.Hits {
-		results = append(results, Result{item.ID, item.Score})
-	}
-	b, err := json.Marshal(results)
-	if err != nil {
-		panic(err)
-	}
-	return string(b)
-}
-
-func validateChinese(queries []string, index bleve.Index) [3]string {
-	result := [3]string{}
-	for i, q := range queries {
-		req := bleve.NewSearchRequest(bleve.NewQueryStringQuery(q))
-		req.Highlight = bleve.NewHighlight()
-		res, err := index.Search(req)
-		if err != nil {
-			panic(err)
-		}
-		result[i] = prettify(res)
-	}
-	return result
-}
-
-func givenExpectedChinese() [3]string {
-	return [3]string{
-		`[{"id":"1","score":0.3192794660708729}]`,
-		`[{"id":"2","score":0.3192794660708729}]`,
-		`[{"id":"3","score":0.8888941720598743}]`,
-	}
-}
-
-func givenPrefilledChineseIndex() bleve.Index {
-	tmpDir, _ := os.MkdirTemp("", "")
-	messages := []struct {
-		Id   string
-		Text string
-	}{
-		{
-			Id:   "1",
-			Text: "你好",
-		},
-		{
-			Id:   "2",
-			Text: "交代",
-		},
-		{
-			Id:   "3",
-			Text: "长江大桥",
-		},
-	}
-
-	indexMapping := makeMapping()
-
-	index, err := bleve.New(tmpDir, indexMapping)
-	if err != nil {
-		panic(err)
-	}
-	for _, msg := range messages {
-		if err := index.Index(msg.Id, msg); err != nil {
-			panic(err)
-		}
-	}
-	return index
 }
 
 func assertMultiSpace(t *testing.T, tmpDir string) {

@@ -140,6 +140,14 @@ func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.Sea
 	return changedDocs, removeDocs, nil
 }
 
+var filesLayouts = map[model.ObjectTypeLayout]struct{}{
+	model.ObjectType_file:  {},
+	model.ObjectType_image: {},
+	model.ObjectType_audio: {},
+	model.ObjectType_video: {},
+	model.ObjectType_pdf:   {},
+}
+
 func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []ftsearch.SearchDoc, err error) {
 	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")
 	err = cache.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
@@ -169,8 +177,12 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 				Text:    val,
 			}
 
-			if rel.Key == bundle.RelationKeyName.String() {
-				doc.Title = val
+			layout, layoutValid := sb.Layout()
+			if layoutValid {
+				if _, contains := filesLayouts[layout]; !contains {
+					doc.Title = val
+					doc.Text = ""
+				}
 			}
 			docs = append(docs, doc)
 		}

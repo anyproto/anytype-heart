@@ -24,7 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -141,18 +140,13 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	}
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	highlighter := ftsearch.DefaultHighlightFormatter
-	if req.ReturnHTMLHighlightsInsteadOfRanges {
-		highlighter = ftsearch.HtmlHighlightFormatter
-	}
 	results, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
-		Filters:     req.Filters,
-		Sorts:       req.Sorts,
-		Offset:      int(req.Offset),
-		Limit:       int(req.Limit),
-		FullText:    req.FullText,
-		SpaceId:     req.SpaceId,
-		Highlighter: highlighter,
+		Filters:  req.Filters,
+		Sorts:    req.Sorts,
+		Offset:   int(req.Offset),
+		Limit:    int(req.Limit),
+		FullText: req.FullText,
+		SpaceId:  req.SpaceId,
 	})
 
 	var resultsModels = make([]*model.SearchResult, 0, len(results))

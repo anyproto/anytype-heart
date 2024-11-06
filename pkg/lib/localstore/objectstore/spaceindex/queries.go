@@ -2,24 +2,20 @@ package spaceindex
 
 import (
 	"fmt"
-	"math"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/blevesearch/bleve/v2/search"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slices"
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
-	jsonFormatter "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch/jsonhighlighter/json"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -273,12 +269,7 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 		return nil, fmt.Errorf("new filters: %w", err)
 	}
 	if q.FullText != "" {
-		highlighter := q.Highlighter
-		if highlighter == "" {
-			highlighter = ftsearch.DefaultHighlightFormatter
-		}
-
-		fulltextResults, err := s.performFulltextSearch(q.FullText, highlighter, q.SpaceId)
+		fulltextResults, err := s.performFulltextSearch(q.FullText, q.SpaceId)
 		if err != nil {
 			return nil, fmt.Errorf("perform fulltext search: %w", err)
 		}
@@ -288,78 +279,29 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 	return s.QueryRaw(filters, q.Limit, q.Offset)
 }
 
-// jsonHighlightToRanges converts json highlight to runes ranges
-// input ranges are positions of bytes, the returned ranges are position of runes
-func jsonHighlightToRanges(s string) (text string, ranges []*model.Range) {
-	fragment, err := jsonFormatter.UnmarshalFromString(s)
-	if err != nil {
-		log.Warnf("Failed to unmarshal json highlight: %v", err)
-		// fallback to plain text without ranges
-		return string(fragment.Text), nil
-	}
-	// sort ranges, because we need to have a guarantee that they are not overlapping
-	slices.SortFunc(fragment.Ranges, func(a, b [2]int) int {
-		if a[0] < b[0] {
-			return -1
-		}
-		if a[0] > b[0] {
-			return 1
-		}
-		return 0
-	})
-
-	for i, rangesAr := range fragment.Ranges {
-		if i > 0 && fragment.Ranges[i-1][1] >= rangesAr[0] {
-			// overlapping ranges
-			continue
-		}
-		if rangesAr[0] < 0 || rangesAr[1] < 0 {
-			continue
-		}
-		if rangesAr[0] > rangesAr[1] {
-			continue
-		}
-		if rangesAr[0] == rangesAr[1] {
-			continue
-		}
-		if rangesAr[0] > len(fragment.Text) || rangesAr[1] > len(fragment.Text) {
-			continue
-		}
-		if rangesAr[0] > math.MaxInt32 || rangesAr[1] > math.MaxInt32 {
-			continue
-		}
-
-		ranges = append(ranges, &model.Range{
-			From: int32(text2.UTF16RuneCount(fragment.Text[:rangesAr[0]])),
-			To:   int32(text2.UTF16RuneCount(fragment.Text[:rangesAr[1]])),
-		})
-	}
-
-	return string(fragment.Text), ranges
-}
-
-func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ftsearch.HighlightFormatter, spaceId string) ([]database.FulltextResult, error) {
-	bleveResults, err := s.fts.Search([]string{spaceId}, highlightFormatter, text)
+func (s *dsObjectStore) performFulltextSearch(text string, spaceId string) ([]database.FulltextResult, error) {
+	ftsResults, err := s.fts.Search([]string{spaceId}, text)
 	if err != nil {
 		return nil, fmt.Errorf("fullText search: %w", err)
 	}
 
-	var resultsByObjectId = make(map[string][]*search.DocumentMatch)
-	for _, result := range bleveResults {
+	var resultsByObjectId = make(map[string][]*ftsearch.DocumentMatch)
+	for _, result := range ftsResults {
 		path, err := domain.NewFromPath(result.ID)
 		if err != nil {
 			return nil, fmt.Errorf("fullText search: %w", err)
 		}
 		if _, ok := resultsByObjectId[path.ObjectId]; !ok {
-			resultsByObjectId[path.ObjectId] = make([]*search.DocumentMatch, 0, 1)
+			resultsByObjectId[path.ObjectId] = make([]*ftsearch.DocumentMatch, 0, 1)
 		}
 
 		resultsByObjectId[path.ObjectId] = append(resultsByObjectId[path.ObjectId], result)
 	}
 
 	for objectId := range resultsByObjectId {
-		sort.Slice(resultsByObjectId[objectId], func(i, j int) bool {
-			if bleveResults[i].Score > bleveResults[j].Score {
+		cur := resultsByObjectId[objectId]
+		sort.Slice(cur, func(i, j int) bool {
+			if cur[i].Score > cur[j].Score {
 				return true
 			}
 			// to make the search deterministic in case we have the same-score results we can prioritize the one with the higher ID
@@ -368,15 +310,15 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 			// 2. Relation Status: "Done" (id "r/status")
 			// if the score is the same, lets prioritize the relation, as it has more context for this short result
 			// Usually, blocks are naturally longer than relations and will have a lower score
-			if bleveResults[i].Score == bleveResults[j].Score {
-				return bleveResults[i].ID > bleveResults[j].ID
+			if cur[i].Score == cur[j].Score {
+				return cur[i].ID > cur[j].ID
 			}
 			return false
 		})
 	}
 
 	// select only the best block/relation result for each object
-	var objectResults = make([]*search.DocumentMatch, 0, len(resultsByObjectId))
+	var objectResults = make([]*ftsearch.DocumentMatch, 0, len(resultsByObjectId))
 	for _, objectPerBlockResults := range resultsByObjectId {
 		if len(objectPerBlockResults) == 0 {
 			continue
@@ -395,9 +337,11 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 			return nil, fmt.Errorf("fullText search: %w", err)
 		}
 		var highlight string
+		var ranges []*model.Range
 		for _, v := range result.Fragments {
-			if len(v) > 0 {
-				highlight = v[0]
+			if len(v.Ranges) > 0 {
+				highlight = v.Text
+				ranges = convertToHighlightRanges(v.Ranges)
 				break
 			}
 		}
@@ -406,8 +350,8 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 			Highlight: highlight,
 			Score:     result.Score,
 		}
-		if highlightFormatter == ftsearch.JSONHighlightFormatter && highlight != "" {
-			res.Highlight, res.HighlightRanges = jsonHighlightToRanges(highlight)
+		if highlight != "" {
+			res.Highlight, res.HighlightRanges = highlight, ranges
 		}
 		if result.Score < minFulltextScore && len(res.HighlightRanges) == 0 {
 			continue
@@ -417,6 +361,20 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 	}
 
 	return results, nil
+}
+
+func convertToHighlightRanges(ranges [][]int) []*model.Range {
+	var highlightRanges []*model.Range
+	for _, r := range ranges {
+		if len(r) == 2 {
+			highlightRange := &model.Range{
+				From: int32(r[0]),
+				To:   int32(r[1]),
+			}
+			highlightRanges = append(highlightRanges, highlightRange)
+		}
+	}
+	return highlightRanges
 }
 
 // TODO: objstore: no one uses total
