@@ -55,7 +55,7 @@ type Service interface {
 	RegisterStaticSource(s Source) error
 	NewStaticSource(params StaticSourceParams) SourceWithType
 
-	DetailsFromIdBasedSource(id string) (*types.Struct, error)
+	DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error)
 	IDsListerBySmartblockType(space Space, blockType smartblock.SmartBlockType) (IDsLister, error)
 	app.Component
 }
@@ -140,7 +140,10 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	if err == nil {
 		switch st {
 		case smartblock.SmartBlockTypeDate:
-			return NewDate(space, id), nil
+			return NewDate(space, domain.FullID{
+				ObjectID: id,
+				SpaceID:  space.Id(),
+			}), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
 			return NewBundledObjectType(id), nil
 		case smartblock.SmartBlockTypeBundledRelation:
@@ -201,11 +204,10 @@ func (s *service) IDsListerBySmartblockType(space Space, blockType smartblock.Sm
 	}
 }
 
-func (s *service) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
-	if !strings.HasPrefix(id, addr.DatePrefix) {
+func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error) {
+	if !strings.HasPrefix(id.ObjectID, addr.DatePrefix) {
 		return nil, fmt.Errorf("unsupported id")
 	}
-	// TODO Fix this, but how? It's broken by design, because no one pass spaceId here
 	ss := NewDate(nil, id)
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {

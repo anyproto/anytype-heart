@@ -273,7 +273,7 @@ func (_c *MockSpace_CreateTreeObject_Call) RunAndReturn(run func(context.Context
 }
 
 // CreateTreeObjectWithPayload provides a mock function with given fields: ctx, payload, initFunc
-func (_m *MockSpace) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc func(string) *smartblock.InitContext) (smartblock.SmartBlock, error) {
+func (_m *MockSpace) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc objectcache.InitFunc) (smartblock.SmartBlock, error) {
 	ret := _m.Called(ctx, payload, initFunc)
 
 	if len(ret) == 0 {
@@ -282,10 +282,10 @@ func (_m *MockSpace) CreateTreeObjectWithPayload(ctx context.Context, payload tr
 
 	var r0 smartblock.SmartBlock
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, treestorage.TreeStorageCreatePayload, func(string) *smartblock.InitContext) (smartblock.SmartBlock, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, treestorage.TreeStorageCreatePayload, objectcache.InitFunc) (smartblock.SmartBlock, error)); ok {
 		return rf(ctx, payload, initFunc)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, treestorage.TreeStorageCreatePayload, func(string) *smartblock.InitContext) smartblock.SmartBlock); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, treestorage.TreeStorageCreatePayload, objectcache.InitFunc) smartblock.SmartBlock); ok {
 		r0 = rf(ctx, payload, initFunc)
 	} else {
 		if ret.Get(0) != nil {
@@ -293,7 +293,7 @@ func (_m *MockSpace) CreateTreeObjectWithPayload(ctx context.Context, payload tr
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, treestorage.TreeStorageCreatePayload, func(string) *smartblock.InitContext) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, treestorage.TreeStorageCreatePayload, objectcache.InitFunc) error); ok {
 		r1 = rf(ctx, payload, initFunc)
 	} else {
 		r1 = ret.Error(1)
@@ -310,14 +310,14 @@ type MockSpace_CreateTreeObjectWithPayload_Call struct {
 // CreateTreeObjectWithPayload is a helper method to define mock.On call
 //   - ctx context.Context
 //   - payload treestorage.TreeStorageCreatePayload
-//   - initFunc func(string) *smartblock.InitContext
+//   - initFunc objectcache.InitFunc
 func (_e *MockSpace_Expecter) CreateTreeObjectWithPayload(ctx interface{}, payload interface{}, initFunc interface{}) *MockSpace_CreateTreeObjectWithPayload_Call {
 	return &MockSpace_CreateTreeObjectWithPayload_Call{Call: _e.mock.On("CreateTreeObjectWithPayload", ctx, payload, initFunc)}
 }
 
-func (_c *MockSpace_CreateTreeObjectWithPayload_Call) Run(run func(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc func(string) *smartblock.InitContext)) *MockSpace_CreateTreeObjectWithPayload_Call {
+func (_c *MockSpace_CreateTreeObjectWithPayload_Call) Run(run func(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc objectcache.InitFunc)) *MockSpace_CreateTreeObjectWithPayload_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(treestorage.TreeStorageCreatePayload), args[2].(func(string) *smartblock.InitContext))
+		run(args[0].(context.Context), args[1].(treestorage.TreeStorageCreatePayload), args[2].(objectcache.InitFunc))
 	})
 	return _c
 }
@@ -327,7 +327,7 @@ func (_c *MockSpace_CreateTreeObjectWithPayload_Call) Return(sb smartblock.Smart
 	return _c
 }
 
-func (_c *MockSpace_CreateTreeObjectWithPayload_Call) RunAndReturn(run func(context.Context, treestorage.TreeStorageCreatePayload, func(string) *smartblock.InitContext) (smartblock.SmartBlock, error)) *MockSpace_CreateTreeObjectWithPayload_Call {
+func (_c *MockSpace_CreateTreeObjectWithPayload_Call) RunAndReturn(run func(context.Context, treestorage.TreeStorageCreatePayload, objectcache.InitFunc) (smartblock.SmartBlock, error)) *MockSpace_CreateTreeObjectWithPayload_Call {
 	_c.Call.Return(run)
 	return _c
 }
