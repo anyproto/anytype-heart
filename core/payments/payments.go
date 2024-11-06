@@ -14,6 +14,7 @@ import (
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/nameservice"
@@ -123,6 +124,7 @@ func New() Service {
 }
 
 type service struct {
+	cfg                    *config.Config
 	cache                  cache.CacheService
 	ppclient               ppclient.AnyPpClientService
 	wallet                 wallet.Wallet
@@ -142,6 +144,7 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Init(a *app.App) (err error) {
+	s.cfg = app.MustComponent[*config.Config](a)
 	s.cache = app.MustComponent[cache.CacheService](a)
 	s.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
@@ -173,6 +176,12 @@ func (s *service) Close(_ context.Context) (err error) {
 }
 
 func (s *service) getPeriodicStatus(ctx context.Context) error {
+	// skip running loop if we are on a custom network or in local-only mode
+	if s.cfg.GetNetworkMode() != pb.RpcAccount_DefaultConfig {
+		// do not trace to log to prevent spamming
+		return nil
+	}
+
 	// get subscription status (from cache or from the PP node)
 	// if status has changed -> it will send events, etc
 	_, err := s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})

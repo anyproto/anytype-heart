@@ -325,19 +325,27 @@ func TestService_SetListIsFavorite(t *testing.T) {
 			{bundle.RelationKeyId: pbtypes.String("obj2"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
 			{bundle.RelationKeyId: pbtypes.String("obj3"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
 		}
-		homeId = "home"
+		homeId   = "home"
+		widgetId = "widget"
 	)
 
 	t.Run("no error on favoriting", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		sb := smarttest.New(homeId)
-		sb.AddBlock(simple.New(&model.Block{Id: homeId, ChildrenIds: []string{}}))
+		home := smarttest.New(homeId)
+		home.AddBlock(simple.New(&model.Block{Id: homeId, ChildrenIds: []string{}}))
+		widget := smarttest.New(widgetId)
+		widget.AddBlock(simple.New(&model.Block{Id: widgetId, ChildrenIds: []string{}}))
 		fx.store.AddObjects(t, spaceId, objects)
-		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId, Widgets: widgetId})
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
-			require.Equal(t, homeId, objectId)
-			return editor.NewDashboard(sb, fx.store.SpaceIndex(spaceId), nil), nil
+			switch objectId {
+			case homeId:
+				return editor.NewDashboard(home, fx.store.SpaceIndex(spaceId), nil), nil
+			case widgetId:
+				return editor.NewWidgetObject(widget, fx.store.SpaceIndex(spaceId), nil), nil
+			}
+			return nil, fmt.Errorf("failed to get object")
 		})
 
 		// when
@@ -345,22 +353,30 @@ func TestService_SetListIsFavorite(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Len(t, sb.Blocks(), 4)
+		assert.Len(t, home.Blocks(), 4)
+		assert.Len(t, widget.Blocks(), 3)
 	})
 
 	t.Run("no error on unfavoriting", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		sb := smarttest.New(homeId)
-		sb.AddBlock(simple.New(&model.Block{Id: homeId, ChildrenIds: []string{"obj1", "obj2", "obj3"}}))
-		sb.AddBlock(simple.New(&model.Block{Id: "obj1", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj1"}}}))
-		sb.AddBlock(simple.New(&model.Block{Id: "obj2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj2"}}}))
-		sb.AddBlock(simple.New(&model.Block{Id: "obj3", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj3"}}}))
+		home := smarttest.New(homeId)
+		home.AddBlock(simple.New(&model.Block{Id: homeId, ChildrenIds: []string{"obj1", "obj2", "obj3"}}))
+		home.AddBlock(simple.New(&model.Block{Id: "obj1", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj1"}}}))
+		home.AddBlock(simple.New(&model.Block{Id: "obj2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj2"}}}))
+		home.AddBlock(simple.New(&model.Block{Id: "obj3", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj3"}}}))
+		widget := smarttest.New(widgetId)
+		widget.AddBlock(simple.New(&model.Block{Id: widgetId, ChildrenIds: []string{}}))
 		fx.store.AddObjects(t, spaceId, objects)
-		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId, Widgets: widgetId})
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
-			require.Equal(t, homeId, objectId)
-			return editor.NewDashboard(sb, fx.store.SpaceIndex(spaceId), nil), nil
+			switch objectId {
+			case homeId:
+				return editor.NewDashboard(home, fx.store.SpaceIndex(spaceId), nil), nil
+			case widgetId:
+				return editor.NewWidgetObject(widget, fx.store.SpaceIndex(spaceId), nil), nil
+			}
+			return nil, fmt.Errorf("failed to get object")
 		})
 
 		// when
@@ -368,24 +384,32 @@ func TestService_SetListIsFavorite(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Len(t, sb.Blocks(), 2)
+		assert.Len(t, home.Blocks(), 2)
+		assert.Len(t, widget.Blocks(), 1)
 	})
 
 	t.Run("some updates failed", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		sb := smarttest.New(homeId)
-		sb.AddBlock(simple.New(&model.Block{Id: homeId, ChildrenIds: []string{}}))
+		home := smarttest.New(homeId)
+		home.AddBlock(simple.New(&model.Block{Id: homeId, ChildrenIds: []string{}}))
+		widget := smarttest.New(widgetId)
+		widget.AddBlock(simple.New(&model.Block{Id: widgetId, ChildrenIds: []string{}}))
 		fx.store.AddObjects(t, spaceId, objects)
-		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId, Widgets: widgetId})
 		flag := false
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
-			require.Equal(t, homeId, objectId)
-			if flag {
-				return nil, fmt.Errorf("unexpected error")
+			switch objectId {
+			case homeId:
+				if flag {
+					return nil, fmt.Errorf("unexpected error")
+				}
+				flag = true
+				return editor.NewDashboard(home, fx.store.SpaceIndex(spaceId), nil), nil
+			case widgetId:
+				return editor.NewWidgetObject(widget, fx.store.SpaceIndex(spaceId), nil), nil
 			}
-			flag = true
-			return editor.NewDashboard(sb, fx.store.SpaceIndex(spaceId), nil), nil
+			return nil, fmt.Errorf("failed to get object")
 		})
 
 		// when
@@ -393,14 +417,15 @@ func TestService_SetListIsFavorite(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Len(t, sb.Blocks(), 2)
+		assert.Len(t, home.Blocks(), 2)
+		assert.Len(t, widget.Blocks(), 3)
 	})
 
 	t.Run("all updates failed", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.store.AddObjects(t, spaceId, objects)
-		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId, Widgets: widgetId})
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			require.Equal(t, homeId, objectId)
 			return nil, fmt.Errorf("unexpected error")
