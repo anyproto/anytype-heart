@@ -45,6 +45,18 @@ func TestMarshallChange(t *testing.T) {
 	})
 }
 
+func TestNewUnmarshalTreeChange(t *testing.T) {
+	ch1, _, _ := MarshalChange(changeWithBigSnapshot())
+	ch2, _, _ := MarshalChange(changeWithBigSnapshot())
+	unmarshalF := NewUnmarshalTreeChange()
+	res1, err := unmarshalF(&objecttree.Change{DataType: dataTypeSnappy}, ch1)
+	require.NoError(t, err)
+	assert.NotNil(t, res1.(*pb.Change).Snapshot)
+	res2, err := unmarshalF(&objecttree.Change{DataType: dataTypeSnappy}, ch2)
+	require.NoError(t, err)
+	assert.Nil(t, res2.(*pb.Change).Snapshot)
+}
+
 func TestUnmarshallChange(t *testing.T) {
 	invalidDataType := "invalid"
 
