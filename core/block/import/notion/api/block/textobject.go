@@ -7,7 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	dateUtil "github.com/anyproto/anytype-heart/util/date"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	textUtil "github.com/anyproto/anytype-heart/util/text"
 )
 
@@ -239,7 +239,7 @@ func (t *TextObject) handleDateMention(rt api.RichText,
 	if rt.Mention.Date.End != "" {
 		textDate = rt.Mention.Date.End
 	}
-	date, err := dateUtil.ParseDateId(textDate)
+	date, err := dateutil.ParseDateId(textDate)
 	if err != nil {
 		return nil
 	}
@@ -252,7 +252,7 @@ func (t *TextObject) handleDateMention(rt api.RichText,
 				To:   int32(to),
 			},
 			Type:  model.BlockContentTextMark_Mention,
-			Param: dateUtil.TimeToDateId(date),
+			Param: dateutil.TimeToDateId(date),
 		},
 	}
 }

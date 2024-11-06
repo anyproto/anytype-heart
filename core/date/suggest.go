@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space"
-	dateutil "github.com/anyproto/anytype-heart/util/date"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 )
 
 func EnrichRecordsWithDateSuggestion(

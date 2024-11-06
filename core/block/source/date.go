@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	dateutil "github.com/anyproto/anytype-heart/util/date"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 

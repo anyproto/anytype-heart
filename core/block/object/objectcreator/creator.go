@@ -21,7 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/date"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -185,7 +185,7 @@ func (s *service) createObjectFromTemplate(
 // buildDateObject does not create real date object. It just builds date object details
 func buildDateObject(space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
 	name := pbtypes.GetString(details, bundle.RelationKeyName.String())
-	id, err := date.DateNameToId(name)
+	id, err := dateutil.DateNameToId(name)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to build date object, as its name is invalid: %w", err)
 	}

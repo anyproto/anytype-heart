@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
-	"github.com/anyproto/anytype-heart/util/date"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -112,7 +112,7 @@ func TestService_CreateObject(t *testing.T) {
 		f.spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(f.spc, nil)
 		f.spc.EXPECT().Id().Return(spaceId)
 		ts := time.Now()
-		name := date.TimeToDateName(ts)
+		name := dateutil.TimeToDateName(ts)
 
 		// when
 		id, details, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
@@ -124,7 +124,7 @@ func TestService_CreateObject(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, date.TimeToDateId(ts), id)
+		assert.Equal(t, dateutil.TimeToDateId(ts), id)
 		assert.Equal(t, spaceId, pbtypes.GetString(details, bundle.RelationKeySpaceId.String()))
 	})
 
