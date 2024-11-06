@@ -88,7 +88,7 @@ func (s *spaceLoadingProgress) runSpaceLoadingProgress() {
 		return
 	}
 	s.fillIdsMap(resp.Records)
-	go s.readEvents(resp.Output)
+	s.readEvents(resp.Output)
 }
 
 func (s *spaceLoadingProgress) makeProgressBar(spaceViewCount int) (process.Progress, error) {
