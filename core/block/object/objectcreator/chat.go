@@ -3,12 +3,10 @@ package objectcreator
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -17,36 +15,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) createChat(ctx context.Context, space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
-	payload, err := space.CreateTreePayload(ctx, payloadcreator.PayloadCreationParams{
-		Time:           time.Now(),
-		SmartblockType: smartblock.SmartBlockTypeChatObject,
-	})
-	if err != nil {
-		return "", nil, fmt.Errorf("create tree payload: %w", err)
-	}
-
-	createState := state.NewDoc(payload.RootRawChange.Id, nil).(*state.State)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_chat))
-	createState.SetDetails(details)
-	err = s.addChatDerivedObject(ctx, space, createState, payload.RootRawChange.Id)
-	if err != nil {
-		return "", nil, fmt.Errorf("add chat derived object: %w", err)
-	}
-
-	id, newDetails, err := s.CreateSmartBlockFromStateInSpaceWithOptions(ctx, space, []domain.TypeKey{bundle.TypeKeyChat}, createState, WithPayload(&payload))
-	if err != nil {
-		return "", nil, fmt.Errorf("create smartblock from state: %w", err)
-	}
-
-	return id, newDetails, nil
-}
-
-func (s *service) addChatDerivedObject(ctx context.Context, space clientspace.Space, st *state.State, chatObjectId string) error {
+func (s *service) AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string) (chatId string, err error) {
 	chatDetails := &types.Struct{Fields: map[string]*types.Value{}}
 	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatDerivedObject, chatObjectId)
 	if err != nil {
-		return fmt.Errorf("create payload: %w", err)
+		return "", fmt.Errorf("create payload: %w", err)
 	}
 	chatDetails.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(chatUniqueKey.Marshal())
 
@@ -55,14 +28,12 @@ func (s *service) addChatDerivedObject(ctx context.Context, space clientspace.Sp
 		Details:       chatDetails,
 	}
 
-	chatId, _, err := s.createObjectInSpace(ctx, space, chatReq)
+	chatId, _, err = s.createObjectInSpace(ctx, space, chatReq)
 	if err != nil {
-		return fmt.Errorf("create object: %w", err)
+		return "", fmt.Errorf("create object: %w", err)
 	}
 
-	st.SetDetailAndBundledRelation(bundle.RelationKeyChatId, pbtypes.String(chatId))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyHasChat, pbtypes.Bool(true))
-	return nil
+	return chatId, nil
 }
 
 func (s *service) createChatDerived(ctx context.Context, space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {

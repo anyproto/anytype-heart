@@ -19,6 +19,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/debug"
 )
 
+var ErrNoFolder = fmt.Errorf("no folder provided")
+
 func (s *Service) RunProfiler(ctx context.Context, seconds int) (string, error) {
 	// Start
 	inFlightTraceBuf, err := s.traceRecorder.stopAndGetInFlightTrace()
@@ -113,6 +115,32 @@ func createZipArchive(w io.Writer, files []zipFile) error {
 
 func (s *Service) SaveLoginTrace(dir string) (string, error) {
 	return s.traceRecorder.save(dir)
+}
+
+// empty dir means use system temp dir
+func (s *Service) SaveLog(srcPath, destDir string) (string, error) {
+	if srcPath == "" {
+		return "", ErrNoFolder
+	}
+	targetFile, err := os.CreateTemp(destDir, "anytype-log-*.zip")
+	if err != nil {
+		return "", fmt.Errorf("create temp file: %w", err)
+	}
+
+	file, err := os.Open(srcPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open source file: %w", err)
+	}
+	defer file.Close()
+
+	err = createZipArchive(targetFile, []zipFile{
+		{name: "anytype.log", data: file},
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create zip archive: %w", err)
+	}
+
+	return targetFile.Name(), targetFile.Close()
 }
 
 // traceRecorder is a helper to start and stop flight trace recorder
