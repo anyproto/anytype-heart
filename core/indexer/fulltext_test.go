@@ -186,7 +186,7 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/name", docs[0].Id)
 	assert.Equal(t, "Title Text", docs[0].Text)
-	assert.Equal(t, "Title Text", docs[0].Title)
+	assert.Equal(t, "", docs[0].Title)
 }
 
 func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
@@ -208,7 +208,7 @@ func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/name", docs[0].Id)
 	assert.Equal(t, "Title Text", docs[0].Text)
-	assert.Equal(t, "Title Text", docs[0].Title)
+	assert.Equal(t, "", docs[0].Title)
 }
 
 func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
