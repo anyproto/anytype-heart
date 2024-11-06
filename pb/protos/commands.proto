@@ -7787,7 +7787,7 @@ message Rpc {
             }
 
             // redirect user to the payment page
-            message CheckoutGenerate {
+            message Checkout {
                 message Request {
                 }
 

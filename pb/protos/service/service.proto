@@ -378,7 +378,7 @@ service ClientCommands {
     rpc StoreCartProductAdd (anytype.Rpc.Store.Cart.ProductAdd.Request) returns (anytype.Rpc.Store.Cart.ProductAdd.Response);
     rpc StoreCartProductRemove (anytype.Rpc.Store.Cart.ProductRemove.Request) returns (anytype.Rpc.Store.Cart.ProductRemove.Response);
     rpc StoreCartPromocodeApply (anytype.Rpc.Store.Cart.PromocodeApply.Request) returns (anytype.Rpc.Store.Cart.PromocodeApply.Response);
-    rpc StoreCartCheckoutGenerate (anytype.Rpc.Store.Cart.CheckoutGenerate.Request) returns (anytype.Rpc.Store.Cart.CheckoutGenerate.Response);
+    rpc StoreCartCheckout (anytype.Rpc.Store.Cart.Checkout.Request) returns (anytype.Rpc.Store.Cart.Checkout.Response);
 
     // MembershipV2
     rpc MembershipV2GetStatus (anytype.Rpc.MembershipV2.GetStatus.Request) returns (anytype.Rpc.MembershipV2.GetStatus.Response);

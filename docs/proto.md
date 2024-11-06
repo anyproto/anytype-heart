@@ -1149,10 +1149,10 @@
     - [Rpc.Space.StopSharing.Response.Error](#anytype-Rpc-Space-StopSharing-Response-Error)
     - [Rpc.Store](#anytype-Rpc-Store)
     - [Rpc.Store.Cart](#anytype-Rpc-Store-Cart)
-    - [Rpc.Store.Cart.CheckoutGenerate](#anytype-Rpc-Store-Cart-CheckoutGenerate)
-    - [Rpc.Store.Cart.CheckoutGenerate.Request](#anytype-Rpc-Store-Cart-CheckoutGenerate-Request)
-    - [Rpc.Store.Cart.CheckoutGenerate.Response](#anytype-Rpc-Store-Cart-CheckoutGenerate-Response)
-    - [Rpc.Store.Cart.CheckoutGenerate.Response.Error](#anytype-Rpc-Store-Cart-CheckoutGenerate-Response-Error)
+    - [Rpc.Store.Cart.Checkout](#anytype-Rpc-Store-Cart-Checkout)
+    - [Rpc.Store.Cart.Checkout.Request](#anytype-Rpc-Store-Cart-Checkout-Request)
+    - [Rpc.Store.Cart.Checkout.Response](#anytype-Rpc-Store-Cart-Checkout-Response)
+    - [Rpc.Store.Cart.Checkout.Response.Error](#anytype-Rpc-Store-Cart-Checkout-Response-Error)
     - [Rpc.Store.Cart.Get](#anytype-Rpc-Store-Cart-Get)
     - [Rpc.Store.Cart.Get.Request](#anytype-Rpc-Store-Cart-Get-Request)
     - [Rpc.Store.Cart.Get.Response](#anytype-Rpc-Store-Cart-Get-Response)
@@ -1530,7 +1530,7 @@
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
     - [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code)
     - [Rpc.Space.StopSharing.Response.Error.Code](#anytype-Rpc-Space-StopSharing-Response-Error-Code)
-    - [Rpc.Store.Cart.CheckoutGenerate.Response.Error.Code](#anytype-Rpc-Store-Cart-CheckoutGenerate-Response-Error-Code)
+    - [Rpc.Store.Cart.Checkout.Response.Error.Code](#anytype-Rpc-Store-Cart-Checkout-Response-Error-Code)
     - [Rpc.Store.Cart.Get.Response.Error.Code](#anytype-Rpc-Store-Cart-Get-Response-Error-Code)
     - [Rpc.Store.Cart.ProductAdd.Response.Error.Code](#anytype-Rpc-Store-Cart-ProductAdd-Response-Error-Code)
     - [Rpc.Store.Cart.ProductRemove.Response.Error.Code](#anytype-Rpc-Store-Cart-ProductRemove-Response-Error-Code)
@@ -2248,7 +2248,7 @@
 | StoreCartProductAdd | [Rpc.Store.Cart.ProductAdd.Request](#anytype-Rpc-Store-Cart-ProductAdd-Request) | [Rpc.Store.Cart.ProductAdd.Response](#anytype-Rpc-Store-Cart-ProductAdd-Response) |  |
 | StoreCartProductRemove | [Rpc.Store.Cart.ProductRemove.Request](#anytype-Rpc-Store-Cart-ProductRemove-Request) | [Rpc.Store.Cart.ProductRemove.Response](#anytype-Rpc-Store-Cart-ProductRemove-Response) |  |
 | StoreCartPromocodeApply | [Rpc.Store.Cart.PromocodeApply.Request](#anytype-Rpc-Store-Cart-PromocodeApply-Request) | [Rpc.Store.Cart.PromocodeApply.Response](#anytype-Rpc-Store-Cart-PromocodeApply-Response) |  |
-| StoreCartCheckoutGenerate | [Rpc.Store.Cart.CheckoutGenerate.Request](#anytype-Rpc-Store-Cart-CheckoutGenerate-Request) | [Rpc.Store.Cart.CheckoutGenerate.Response](#anytype-Rpc-Store-Cart-CheckoutGenerate-Response) |  |
+| StoreCartCheckout | [Rpc.Store.Cart.Checkout.Request](#anytype-Rpc-Store-Cart-Checkout-Request) | [Rpc.Store.Cart.Checkout.Response](#anytype-Rpc-Store-Cart-Checkout-Response) |  |
 | MembershipV2GetStatus | [Rpc.MembershipV2.GetStatus.Request](#anytype-Rpc-MembershipV2-GetStatus-Request) | [Rpc.MembershipV2.GetStatus.Response](#anytype-Rpc-MembershipV2-GetStatus-Response) | MembershipV2 |
 | MembershipV2ProductAllocateToSpace | [Rpc.MembershipV2.ProductAllocateToSpace.Request](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Request) | [Rpc.MembershipV2.ProductAllocateToSpace.Response](#anytype-Rpc-MembershipV2-ProductAllocateToSpace-Response) |  |
 | MembershipV2ProductSetSettings | [Rpc.MembershipV2.ProductSetSettings.Request](#anytype-Rpc-MembershipV2-ProductSetSettings-Request) | [Rpc.MembershipV2.ProductSetSettings.Response](#anytype-Rpc-MembershipV2-ProductSetSettings-Response) |  |
@@ -18892,9 +18892,9 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-Store-Cart-CheckoutGenerate"></a>
+<a name="anytype-Rpc-Store-Cart-Checkout"></a>
 
-### Rpc.Store.Cart.CheckoutGenerate
+### Rpc.Store.Cart.Checkout
 redirect user to the payment page
 
 
@@ -18902,25 +18902,25 @@ redirect user to the payment page
 
 
 
-<a name="anytype-Rpc-Store-Cart-CheckoutGenerate-Request"></a>
+<a name="anytype-Rpc-Store-Cart-Checkout-Request"></a>
 
-### Rpc.Store.Cart.CheckoutGenerate.Request
-
-
+### Rpc.Store.Cart.Checkout.Request
 
 
 
 
 
-<a name="anytype-Rpc-Store-Cart-CheckoutGenerate-Response"></a>
 
-### Rpc.Store.Cart.CheckoutGenerate.Response
+
+<a name="anytype-Rpc-Store-Cart-Checkout-Response"></a>
+
+### Rpc.Store.Cart.Checkout.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Store.Cart.CheckoutGenerate.Response.Error](#anytype-Rpc-Store-Cart-CheckoutGenerate-Response-Error) |  |  |
+| error | [Rpc.Store.Cart.Checkout.Response.Error](#anytype-Rpc-Store-Cart-Checkout-Response-Error) |  |  |
 | paymentUrl | [string](#string) |  |  |
 
 
@@ -18928,15 +18928,15 @@ redirect user to the payment page
 
 
 
-<a name="anytype-Rpc-Store-Cart-CheckoutGenerate-Response-Error"></a>
+<a name="anytype-Rpc-Store-Cart-Checkout-Response-Error"></a>
 
-### Rpc.Store.Cart.CheckoutGenerate.Response.Error
+### Rpc.Store.Cart.Checkout.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Store.Cart.CheckoutGenerate.Response.Error.Code](#anytype-Rpc-Store-Cart-CheckoutGenerate-Response-Error-Code) |  |  |
+| code | [Rpc.Store.Cart.Checkout.Response.Error.Code](#anytype-Rpc-Store-Cart-Checkout-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -24219,9 +24219,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Store-Cart-CheckoutGenerate-Response-Error-Code"></a>
+<a name="anytype-Rpc-Store-Cart-Checkout-Response-Error-Code"></a>
 
-### Rpc.Store.Cart.CheckoutGenerate.Response.Error.Code
+### Rpc.Store.Cart.Checkout.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -29283,6 +29283,8 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | products | [MembershipV2.Product](#anytype-model-MembershipV2-Product) | repeated | if you add Nx the same product - it will be Nx in the &#39;products&#39; array, i.e: each product instance has a unique index each product instance can have a different &#34;context&#34; attached (like spaceId) |
 | total | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) |  | total amount of the cart (including discounts, etc) |
+| totalNextInvoice | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) |  | in case you are paying in the middle of the period (for existing customers) the next invoice amount will also be generated otherwise - it will be equal to total! |
+| nextInvoiceDate | [uint64](#uint64) |  |  |
 
 
 

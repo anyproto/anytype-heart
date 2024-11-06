@@ -1438,5 +1438,11 @@ message MembershipV2 {
         repeated Product products = 1;
         // total amount of the cart (including discounts, etc)
         Amount total = 2;
+
+        // in case you are paying in the middle of the period (for existing customers)
+        // the next invoice amount will also be generated
+        // otherwise - it will be equal to total!
+        Amount totalNextInvoice = 3;
+        uint64 nextInvoiceDate = 4;
     }
 }
