@@ -7204,6 +7204,7 @@ set the current active view locally
 | url | [string](#string) |  |  |
 | localPath | [string](#string) |  |  |
 | fileType | [model.Block.Content.File.Type](#anytype-model-Block-Content-File-Type) |  |  |
+| imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
 
 
 
@@ -11939,6 +11940,7 @@ Get marks list in the selected range in text block.
 | style | [model.Block.Content.File.Style](#anytype-model-Block-Content-File-Style) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | additional details for file object |
 | origin | [model.ObjectOrigin](#anytype-model-ObjectOrigin) |  |  |
+| imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
 
 
 
@@ -18986,6 +18988,7 @@ Available undo/redo operations
 | ----- | ---- | ----- | ----------- |
 | pictureId | [string](#string) |  |  |
 | spaceId | [string](#string) |  |  |
+| imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
 
 
 
@@ -29832,6 +29835,7 @@ stored |
 | Basic | 0 |  |
 | Cover | 1 |  |
 | Icon | 2 |  |
+| AutomaticallyAdded | 3 |  |
 
 
 
