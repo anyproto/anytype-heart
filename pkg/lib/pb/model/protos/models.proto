@@ -1172,6 +1172,7 @@ enum ImageKind {
     Basic = 0;
     Cover = 1;
     Icon = 2;
+    AutomaticallyAdded = 3;
 }
 
 enum FileIndexingStatus {
