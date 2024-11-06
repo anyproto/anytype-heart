@@ -283,7 +283,7 @@ func (mw *Middleware) makeSuggestedDateRecord(ctx context.Context, spaceID strin
 	}
 	d := &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyId.String():        pbtypes.String(id),
-		bundle.RelationKeyName.String():      pbtypes.String(t.Format("Mon Jan  2 2006")),
+		bundle.RelationKeyName.String():      pbtypes.String(t.Format("02 Jan 2006")),
 		bundle.RelationKeyLayout.String():    pbtypes.Int64(int64(model.ObjectType_date)),
 		bundle.RelationKeyType.String():      pbtypes.String(typeId),
 		bundle.RelationKeyIconEmoji.String(): pbtypes.String("📅"),

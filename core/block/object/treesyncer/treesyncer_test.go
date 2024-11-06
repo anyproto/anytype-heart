@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/mock_synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager/mock_treemanager"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/mock_spacestorage"
+	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/rpc/rpctest"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/stretchr/testify/mock"
@@ -155,10 +156,17 @@ func TestTreeSyncer(t *testing.T) {
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, mock.Anything).RunAndReturn(func(s string, strings []string) {
 			require.Empty(t, strings)
 		})
+		ch := make(chan struct{})
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, "spaceSettingsId").Return(fx.existingMock, nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).DoAndReturn(func(ctx context.Context, peer peer.Peer) error {
+			close(ch)
+			return nil
+		})
 
 		fx.StartSync()
 		err := fx.SyncAll(context.Background(), pr, []string{"spaceSettingsId"}, nil)
 		require.NoError(t, err)
+		<-ch
 		fx.Close(ctx)
 	})
 

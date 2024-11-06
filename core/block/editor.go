@@ -26,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
@@ -40,22 +39,12 @@ type FileUploadRequest struct {
 type UploadRequest struct {
 	pb.RpcBlockUploadRequest
 	ObjectOrigin objectorigin.ObjectOrigin
+	ImageKind    model.ImageKind
 }
 
 type BookmarkFetchRequest struct {
 	pb.RpcBlockBookmarkFetchRequest
 	ObjectOrigin objectorigin.ObjectOrigin
-}
-
-func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (err error) {
-	return cache.Do(s, id, func(b basic.CommonOperations) error {
-		return b.SetDetails(nil, []*model.Detail{
-			{
-				Key:   "isArchived",
-				Value: pbtypes.Bool(archived),
-			},
-		}, true)
-	})
 }
 
 func (s *Service) CreateBlock(ctx session.Context, req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -349,29 +338,21 @@ func (s *Service) FeaturedRelationRemove(ctx session.Context, contextId string, 
 	})
 }
 
-func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupID string) (err error) {
-	return cache.Do(s, req.ContextId, func(b file.File) error {
-		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
-			Path:    req.FilePath,
-			Url:     req.Url,
-			Bytes:   req.Bytes,
-			GroupID: groupID,
-			Origin:  req.ObjectOrigin,
-		}, false)
+func (s *Service) UploadBlockFile(
+	ctx session.Context, req UploadRequest, groupID string, isSync bool,
+) (fileObjectId string, err error) {
+	err = cache.Do(s, req.ContextId, func(b file.File) error {
+		fileObjectId, err = b.Upload(ctx, req.BlockId, file.FileSource{
+			Path:      req.FilePath,
+			Url:       req.Url,
+			Bytes:     req.Bytes,
+			GroupID:   groupID,
+			Origin:    req.ObjectOrigin,
+			ImageKind: req.ImageKind,
+		}, isSync)
 		return err
 	})
-}
-
-func (s *Service) UploadBlockFileSync(ctx session.Context, req UploadRequest) (err error) {
-	return cache.Do(s, req.ContextId, func(b file.File) error {
-		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
-			Path:   req.FilePath,
-			Url:    req.Url,
-			Bytes:  req.Bytes,
-			Origin: req.ObjectOrigin,
-		}, true)
-		return err
-	})
+	return fileObjectId, err
 }
 
 func (s *Service) CreateAndUploadFile(
@@ -403,6 +384,9 @@ func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUpload
 	} else if req.Url != "" {
 		upl.SetUrl(req.Url)
 	}
+	if req.ImageKind != model.ImageKind_Basic {
+		upl.SetImageKind(req.ImageKind)
+	}
 	res := upl.Upload(ctx)
 	if res.Err != nil {
 		return "", nil, res.Err
@@ -428,25 +412,6 @@ func (s *Service) SetFileStyle(
 	return cache.Do(s, contextId, func(b file.File) error {
 		return b.SetFileStyle(ctx, style, blockIds...)
 	})
-}
-
-func (s *Service) UploadFileBlock(
-	contextID string, req UploadRequest,
-) (fileObjectId string, err error) {
-	err = cache.Do(s, contextID, func(b file.File) error {
-		fileObjectId, err = b.Upload(nil, req.BlockId, file.FileSource{
-			Path:    req.FilePath,
-			Url:     req.Url,
-			Bytes:   req.Bytes,
-			GroupID: "",
-			Origin:  req.ObjectOrigin,
-		}, true)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	return fileObjectId, err
 }
 
 func (s *Service) Undo(
