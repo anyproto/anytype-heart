@@ -12,17 +12,20 @@ import (
 	"github.com/pemistahl/lingua-go"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
+
+const (
+	CName = "ai"
+)
+
+var log = logging.Logger("ai")
 
 var (
 	ErrUnsupportedLanguage  = errors.New("unsupported input language detected")
 	ErrEndpointNotReachable = errors.New("endpoint not reachable")
 	ErrModelNotFound        = errors.New("model not found at specified endpoint")
 	ErrAuthRequired         = errors.New("api key not provided or invalid for endpoint")
-)
-
-const (
-	CName = "ai"
 )
 
 type AI interface {
@@ -86,6 +89,7 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
+	log.Infof("received request with text: %s", params.Text)
 	text := strings.ToLower(strings.TrimSpace(params.Text))
 
 	// check supported languages for llama models
@@ -97,6 +101,7 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 			Build()
 
 		if language, exists := detector.DetectLanguageOf(text); !exists {
+			log.Errorf("unsupported language detected: %s", language)
 			return result{}, fmt.Errorf("%w: %s", ErrUnsupportedLanguage, language)
 		}
 	}
@@ -114,7 +119,7 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 		SystemPrompt: systemPrompts[params.Mode],
 		UserPrompt:   fmt.Sprintf(userPrompts[params.Mode], text),
 		Temperature:  params.Temperature,
-		JSONMode:     params.Mode != 0,
+		JSONMode:     params.Mode != 0, // use json mode for all modes except default
 	}
 
 	answerChunks, err := chat(chatConfig, promptConfig)

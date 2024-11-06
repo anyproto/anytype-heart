@@ -20,18 +20,10 @@ import (
 // 	openaiDefaultModelEmbed = "text-embedding-3-small"
 // 	openaiAPIKey            string
 // )
-//
-// func init() {
-// 	err := godotenv.Load()
-// 	if err != nil {
-// 		log.Fatalf("Error loading .env file: %v", err)
-// 	}
-// 	openaiAPIKey = os.Getenv("OPENAI_API_KEY")
-// }
 
 var systemPrompts = map[pb.RpcAIWritingToolsRequestMode]string{
 	// Default
-	0: "You are a helpful personal assistant helping Anytype users with various questions around their workspace.",
+	0: "You are a helpful personal assistant helping Anytype users with questions about their workspace and the app.",
 	// Summarize
 	1: "You are a helpful writing assistant helping to summarize key points from a text in a clear and concise manner. Respond in JSON mode.",
 	// Grammar
