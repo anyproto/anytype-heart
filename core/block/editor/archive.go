@@ -60,7 +60,7 @@ func (p *Archive) CreationStateMigration(ctx *smartblock.InitContext) migration.
 				template.WithNoObjectTypes(),
 				template.WithDetailName("Archive"),
 				template.WithDetailIconEmoji("🗑"),
-				template.WithForcedDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
+				template.WithForcedDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
 			)
 		},
 	}
@@ -69,7 +69,7 @@ func (p *Archive) CreationStateMigration(ctx *smartblock.InitContext) migration.
 func (p *Archive) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations([]migration.Migration{{
 		Version: 2,
-		Proc:    template.WithForcedDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
+		Proc:    template.WithForcedDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
 	}})
 }
 

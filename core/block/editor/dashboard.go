@@ -57,7 +57,7 @@ func (p *Dashboard) CreationStateMigration(ctx *smartblock.InitContext) migratio
 				template.WithDetailName("Home"),
 				template.WithDetailIconEmoji("🏠"),
 				template.WithNoDuplicateLinks(),
-				template.WithForcedDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
+				template.WithForcedDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
 			)
 		},
 	}
@@ -66,7 +66,7 @@ func (p *Dashboard) CreationStateMigration(ctx *smartblock.InitContext) migratio
 func (p *Dashboard) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations([]migration.Migration{{
 		Version: 2,
-		Proc:    template.WithForcedDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
+		Proc:    template.WithForcedDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
 	}})
 }
 

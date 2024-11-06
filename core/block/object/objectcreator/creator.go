@@ -152,7 +152,7 @@ func (s *service) createObjectInSpace(
 	case bundle.TypeKeyFile:
 		return "", nil, fmt.Errorf("files must be created via fileobject service")
 	case bundle.TypeKeyTemplate:
-		if pbtypes.GetString(details, bundle.RelationKeyTargetObjectType.String()) == "" {
+		if details.GetString(bundle.RelationKeyTargetObjectType) == "" {
 			return "", nil, fmt.Errorf("cannot create template without target object")
 		}
 	}
