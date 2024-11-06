@@ -113,8 +113,8 @@ github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5 h1:aY7tBzQ+z8H
 github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5/go.mod h1:5+PHE01DgsDPkralb8MYmGg2sPQahsqEJ9ue7ciDHKg=
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c h1:GicoaTUyB2mtCIl3YMrO0OzysqRT5GA4vuvDsqEkhSM=
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
-github.com/anyproto/tantivy-go v0.1.6-jieba h1:Adc1OA3pBzTktnDmO7KnEbzA0VkhIC4zqZB6EiDwOgg=
-github.com/anyproto/tantivy-go v0.1.6-jieba/go.mod h1:MMLYW7e5SIzsHS3Q5CYiF1J7kJJaIRT+VVHGArU24IQ=
+github.com/anyproto/tantivy-go v0.1.8-jieba h1:lTm9YoNbe5sqled8AILncpTpn354wRMB0Npiw1b5Sl4=
+github.com/anyproto/tantivy-go v0.1.8-jieba/go.mod h1:MMLYW7e5SIzsHS3Q5CYiF1J7kJJaIRT+VVHGArU24IQ=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d h1:5bj7nX/AS8sxGpTIrapE7PC4oPlhkHMwMqXlJbUHBlg=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d/go.mod h1:fuJqLnUwZTshS3U/bMRJ3+ow/v9oid1n0DmyYyNO1Xs=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
