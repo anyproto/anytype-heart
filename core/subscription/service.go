@@ -900,8 +900,10 @@ func (s *spaceSubscriptions) Close(ctx context.Context) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.recBatch.Close()
-	s.iterateSubscriptions(func(sub subscription) {
+	for subId, sub := range s.subscriptions {
 		sub.close()
-	})
+		delete(s.subscriptions, subId)
+	}
+	s.subscriptionKeys = s.subscriptionKeys[:0]
 	return
 }

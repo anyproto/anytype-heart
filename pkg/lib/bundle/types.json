@@ -70,7 +70,7 @@
     ],
     "emoji": "📅",
     "hidden": true,
-    "layout": "basic",
+    "layout": "date",
     "relations": [
       "tag"
     ],
@@ -459,18 +459,18 @@
   },
   {
     "id": "chat",
-    "name": "Chat",
+    "name": "Chat [deprecated]",
     "types": [
       "ChatObject"
     ],
     "emoji": "💬",
-    "hidden": false,
+    "hidden": true,
     "layout": "chat",
     "relations": [
         "tag",
         "description"
     ],
-    "description": "A chat"
+    "description": "A chat [deprecated]"
   },
   {
     "id": "chatDerived",
