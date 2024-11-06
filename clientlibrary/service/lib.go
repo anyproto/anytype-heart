@@ -64,10 +64,6 @@ func RunDebugServer(addr string) {
 	})
 }
 
-func SetLogLevels(levels string) {
-	logging.SetLogLevels(levels)
-}
-
 func SetEnv(key, value string) {
 	os.Setenv(key, value)
 }

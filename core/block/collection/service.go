@@ -7,6 +7,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -28,10 +29,11 @@ import (
 var log = logging.Logger("collection-service")
 
 type Service struct {
-	lock        *sync.RWMutex
-	collections map[string]map[string]chan []string
-	picker      cache.ObjectGetter
-	objectStore objectstore.ObjectStore
+	lock             *sync.RWMutex
+	collections      map[string]map[string]chan []string
+	picker           cache.ObjectGetter
+	objectStore      objectstore.ObjectStore
+	backlinksUpdater backlinks.UpdateWatcher
 }
 
 func New() *Service {
@@ -44,6 +46,7 @@ func New() *Service {
 func (s *Service) Init(a *app.App) (err error) {
 	s.picker = app.MustComponent[cache.ObjectGetter](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
 	return nil
 }
 
@@ -56,8 +59,9 @@ func (s *Service) CollectionType() string {
 }
 
 func (s *Service) Add(ctx session.Context, req *pb.RpcObjectCollectionAddRequest) error {
-	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
-		toAdd := slice.Difference(req.ObjectIds, col)
+	var toAdd []string
+	err := s.updateCollection(ctx, req.ContextId, func(col []string) []string {
+		toAdd = slice.Difference(req.ObjectIds, col)
 		pos := slice.FindPos(col, req.AfterId)
 		if pos >= 0 {
 			col = slice.Insert(col, pos+1, toAdd...)
@@ -66,6 +70,16 @@ func (s *Service) Add(ctx session.Context, req *pb.RpcObjectCollectionAddRequest
 		}
 		return col
 	})
+	if err != nil {
+		return err
+	}
+
+	// we update backlinks of objects added to collection synchronously to avoid object rerender after backlinks accumulation interval
+	if len(toAdd) != 0 {
+		s.backlinksUpdater.FlushUpdates()
+	}
+
+	return nil
 }
 
 func (s *Service) Remove(ctx session.Context, req *pb.RpcObjectCollectionRemoveRequest) error {
