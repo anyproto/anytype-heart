@@ -98,6 +98,10 @@ func TestValue_Match(t *testing.T) {
 		want  []string
 	}{
 		{
+			value: Invalid(),
+			want:  []string{},
+		},
+		{
 			value: Null(),
 			want:  []string{"null"},
 		},
@@ -146,6 +150,10 @@ func TestValue_Empty(t *testing.T) {
 		value Value
 		want  bool
 	}{
+		{
+			value: Invalid(),
+			want:  true,
+		},
 		{
 			value: Null(),
 			want:  true,
