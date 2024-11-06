@@ -537,7 +537,7 @@ func TestQuery(t *testing.T) {
 						Operator:    0,
 						RelationKey: "layout",
 						Condition:   model.BlockContentDataviewFilter_NotIn,
-						Value:       domain.Int64List(int(model.ObjectType_relationOption)),
+						Value:       domain.Int64List([]int64{int64(model.ObjectType_relationOption)}),
 					},
 				},
 			})
@@ -561,7 +561,7 @@ func TestQuery(t *testing.T) {
 						Operator:    0,
 						RelationKey: "layout",
 						Condition:   model.BlockContentDataviewFilter_NotIn,
-						Value:       domain.Int64List(int(model.ObjectType_relationOption)),
+						Value:       domain.Int64List([]int64{int64(model.ObjectType_relationOption)}),
 					},
 				},
 			})
@@ -578,7 +578,7 @@ func TestQuery(t *testing.T) {
 						Operator:    0,
 						RelationKey: "layout",
 						Condition:   model.BlockContentDataviewFilter_NotIn,
-						Value:       domain.Int64List(int(model.ObjectType_relationOption)),
+						Value:       domain.Int64List([]int64{int64(model.ObjectType_relationOption)}),
 					},
 				},
 			})
@@ -595,7 +595,7 @@ func TestQuery(t *testing.T) {
 						Operator:    0,
 						RelationKey: "layout",
 						Condition:   model.BlockContentDataviewFilter_NotIn,
-						Value:       domain.Int64List(int(model.ObjectType_objectType)),
+						Value:       domain.Int64List([]int64{int64(model.ObjectType_objectType)}),
 					},
 				},
 			})

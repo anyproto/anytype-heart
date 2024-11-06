@@ -571,7 +571,7 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 		sb := smarttest.New(rootID)
 		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{blockID}})).
 			AddBlock(newTextBlock(blockID, text))
-		_ = sb.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyInternalFlags, Value: domain.Int64List(0, 1, 2)}}, false)
+		_ = sb.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyInternalFlags, Value: domain.Int64List([]int64{0, 1, 2})}}, false)
 		tb := NewText(sb, nil, nil)
 
 		// when
@@ -593,7 +593,7 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 		sb := smarttest.New(rootID)
 		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{blockID}})).
 			AddBlock(newTextBlock(blockID, text))
-		_ = sb.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyInternalFlags, Value: domain.Int64List(0, 1, 2)}}, false)
+		_ = sb.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyInternalFlags, Value: domain.Int64List([]int64{0, 1, 2})}}, false)
 		tb := NewText(sb, nil, nil)
 
 		// when
@@ -615,7 +615,7 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 		sb := smarttest.New(rootID)
 		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{blockID}})).
 			AddBlock(newTextBlock(blockID, text))
-		_ = sb.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyInternalFlags, Value: domain.Int64List(0, 1, 2)}}, false)
+		_ = sb.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyInternalFlags, Value: domain.Int64List([]int64{0, 1, 2})}}, false)
 		tb := NewText(sb, nil, nil)
 
 		// when
@@ -638,7 +638,7 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 		sb := smarttest.New(rootID)
 		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{template.TitleBlockId}})).
 			AddBlock(newTextBlock(template.TitleBlockId, text))
-		_ = sb.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyInternalFlags, Value: domain.Int64List(0, 1, 2)}}, false)
+		_ = sb.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyInternalFlags, Value: domain.Int64List([]int64{0, 1, 2})}}, false)
 		tb := NewText(sb, nil, nil)
 
 		// when

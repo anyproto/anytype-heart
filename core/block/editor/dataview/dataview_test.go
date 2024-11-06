@@ -214,7 +214,7 @@ func TestDataview_SetSourceInSet(t *testing.T) {
 			Value: domain.StringList([]string{"rel-name", "rel-id"}),
 		}, {
 			Key:   bundle.RelationKeyInternalFlags,
-			Value: domain.Int64List(model.InternalFlag_editorDeleteEmpty),
+			Value: domain.Int64List([]int64{int64(model.InternalFlag_editorDeleteEmpty)}),
 		}}, false)
 		require.NoError(t, err)
 

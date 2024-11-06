@@ -374,7 +374,7 @@ func TestBuildTemplateStateFromObject(t *testing.T) {
 		obj := smarttest.New("object")
 		err := obj.SetDetails(nil, []domain.Detail{{
 			Key:   bundle.RelationKeyInternalFlags,
-			Value: domain.Int64List(0, 1, 2, 3),
+			Value: domain.Int64List([]int64{0, 1, 2, 3}),
 		}}, false)
 		assert.NoError(t, err)
 

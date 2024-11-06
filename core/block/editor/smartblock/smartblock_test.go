@@ -345,7 +345,7 @@ func Test_removeInternalFlags(t *testing.T) {
 	t.Run("no flags - no changes", func(t *testing.T) {
 		// given
 		st := state.NewDoc("test", nil).(*state.State)
-		st.SetDetail(bundle.RelationKeyInternalFlags, domain.Int64List[int64]())
+		st.SetDetail(bundle.RelationKeyInternalFlags, domain.Int64List([]int64{}))
 
 		// when
 		removeInternalFlags(st)
