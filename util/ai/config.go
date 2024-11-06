@@ -23,31 +23,31 @@ import (
 
 var systemPrompts = map[pb.RpcAIWritingToolsRequestMode]string{
 	// Default
-	0: "You are a helpful personal assistant helping Anytype users with questions about their workspace and the app.",
+	0: "You are a personal assistant to Anytype users, answering their questions and providing helpful information.",
 	// Summarize
-	1: "You are a helpful writing assistant helping to summarize key points from a text in a clear and concise manner. Respond in JSON mode.",
+	1: "You are a helpful writing assistant dedicated to summarize key points from a text in a clear and concise manner. Respond in JSON mode.",
 	// Grammar
-	2: "You are a helpful writing assistant helping to improve text quality by correcting any spelling or grammar issues. Respond in JSON mode.",
+	2: "You are a helpful writing assistant dedicated to improve text quality by correcting any spelling or grammar issues. Respond in JSON mode.",
 	// Shorten
-	3: "You are a helpful writing assistant helping to make text shorter by summarizing and condensing the content. Respond in JSON mode.",
+	3: "You are a helpful writing assistant dedicated to make text shorter by summarizing and condensing the content. Respond in JSON mode.",
 	// Expand
-	4: "You are a helpful writing assistant helping to expand and add more detail to content. Respond in JSON mode.",
+	4: "You are a helpful writing assistant dedicated to expand and add more detail to content. Respond in JSON mode.",
 	// Bullet
-	5: "You are a helpful writing assistant helping to turn the given data into a well structured markdown bullet list. Respond in JSON mode.",
+	5: "You are a helpful writing assistant dedicated to turn the given data into a well structured markdown bullet list. Respond in JSON mode.",
 	// Table
-	6: "You are a helpful writing assistant helping to turn the given data into a well structured markdown table. Respond in JSON mode.",
+	6: "You are a helpful writing assistant dedicated to turn the given data into a well structured markdown table. Respond in JSON mode.",
 	// Casual
-	7: "You are a helpful writing assistant helping to make the tone of the text more casual. Respond in JSON mode.",
+	7: "You are a helpful writing assistant dedicated to make the tone of the text more casual. Respond in JSON mode.",
 	// Funny
-	8: "You are a helpful writing assistant helping to make the text funnier. Respond in JSON mode.",
+	8: "You are a helpful writing assistant dedicated to make the text funnier. Respond in JSON mode.",
 	// Confident
-	9: "You are a helpful writing assistant helping to make the tone of the text more confident. Respond in JSON mode.",
+	9: "You are a helpful writing assistant dedicated to make the tone of the text more confident. Respond in JSON mode.",
 	// Straightforward
-	10: "You are a helpful writing assistant helping to make the text more straightforward. Respond in JSON mode.",
+	10: "You are a helpful writing assistant dedicated to make the text more straightforward. Respond in JSON mode.",
 	// Professional
-	11: "You are a helpful writing assistant helping to make the tone of the text more professional. Respond in JSON mode.",
+	11: "You are a helpful writing assistant dedicated to make the tone of the text more professional. Respond in JSON mode.",
 	// Translate
-	12: "You are a helpful writing assistant and multilingual expert helping to translate text from one language to another. You are able to translate between English, Spanish, French, German, Italian, Portuguese, Hindi, and Thai. Respond in JSON mode.",
+	12: "You are a helpful writing assistant and multilingual expert dedicated to translate text from one language to another. You are able to translate between English, Spanish, French, German, Italian, Portuguese, Hindi, and Thai. Respond in JSON mode.",
 }
 
 var userPrompts = map[pb.RpcAIWritingToolsRequestMode]string{

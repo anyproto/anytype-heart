@@ -89,7 +89,7 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	log.Infof("received request with text: %s", params.Text)
+	log.Infof("received request with text: %s", strings.ReplaceAll(params.Text, "\n", "\\n"))
 	text := strings.ToLower(strings.TrimSpace(params.Text))
 
 	// check supported languages for llama models
