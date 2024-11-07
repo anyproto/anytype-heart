@@ -795,7 +795,7 @@ func TestCSV_GetSnapshots(t *testing.T) {
 		filePath := filepath.Join(dir, file)
 
 		csv := CSV{}
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
 		_, ce := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
@@ -822,7 +822,7 @@ func TestCSV_GetSnapshots(t *testing.T) {
 		err := test.CreateEmptyZip(t, zipPath)
 		assert.Nil(t, err)
 		csv := CSV{}
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
 		_, ce := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
@@ -846,7 +846,7 @@ func TestCSV_GetSnapshots(t *testing.T) {
 		// given
 		dir := t.TempDir()
 		csv := CSV{}
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
 		_, ce := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{

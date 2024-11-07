@@ -60,7 +60,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 		// given
 		dir := t.TempDir()
 		h := &TXT{}
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
 		_, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
@@ -82,7 +82,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 		assert.Nil(t, err)
 
 		h := &TXT{}
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
 		_, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{

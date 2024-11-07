@@ -123,7 +123,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		assert.Nil(t, err)
 
 		h := &Markdown{}
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
 		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
