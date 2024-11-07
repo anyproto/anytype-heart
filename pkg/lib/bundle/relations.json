@@ -1356,7 +1356,7 @@
     "format": "date",
     "hidden": true,
     "key": "timestamp",
-    "maxCount": 0,
+    "maxCount": 1,
     "name": "Timestamp",
     "readonly": true,
     "source": "derived"
