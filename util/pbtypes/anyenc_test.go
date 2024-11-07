@@ -24,7 +24,7 @@ func TestJsonToProto(t *testing.T) {
 		assert.Equal(t, want, got)
 
 		gotJson := ProtoToAnyEnc(arena, got)
-		diff, err := AnyEncJson(val, gotJson)
+		diff, err := DiffAnyEnc(val, gotJson)
 		require.NoError(t, err)
 		assert.Empty(t, diff)
 	})
@@ -62,7 +62,7 @@ func TestJsonToProto(t *testing.T) {
 		assert.Equal(t, want, got)
 
 		gotJson := ProtoToAnyEnc(arena, got)
-		diff, err := AnyEncJson(val, gotJson)
+		diff, err := DiffAnyEnc(val, gotJson)
 		require.NoError(t, err)
 
 		// We don't yet support converting nested objects from JSON to proto
@@ -80,7 +80,7 @@ func TestJsonToProto(t *testing.T) {
 func TestDiffJson(t *testing.T) {
 	arena := &anyenc.Arena{}
 	t.Run("empty objects -- no changes", func(t *testing.T) {
-		diff, err := AnyEncJson(arena.NewObject(), arena.NewObject())
+		diff, err := DiffAnyEnc(arena.NewObject(), arena.NewObject())
 		require.NoError(t, err)
 		assert.Empty(t, diff)
 	})
@@ -106,7 +106,7 @@ func TestDiffJson(t *testing.T) {
 		b := arena.NewObject()
 		fillObject(b)
 
-		diff, err := AnyEncJson(a, b)
+		diff, err := DiffAnyEnc(a, b)
 		require.NoError(t, err)
 		assert.Empty(t, diff)
 	})
@@ -143,7 +143,7 @@ func TestDiffJson(t *testing.T) {
 		objB.Set("nestedKey2", arena.NewNumberFloat64(123))
 		b.Set("key7", objB)
 
-		diff, err := AnyEncJson(a, b)
+		diff, err := DiffAnyEnc(a, b)
 		require.NoError(t, err)
 
 		want := []AnyEncDiff{
@@ -195,7 +195,7 @@ func TestDiffJson(t *testing.T) {
 		b := arena.NewObject()
 		b.Set("key1", arena.NewString("value1"))
 
-		diff, err := AnyEncJson(a, b)
+		diff, err := DiffAnyEnc(a, b)
 		require.NoError(t, err)
 		assert.Equal(t, []AnyEncDiff{
 			{
@@ -210,7 +210,7 @@ func TestDiffJson(t *testing.T) {
 		a.Set("key1", arena.NewString("value1"))
 		b := arena.NewObject()
 
-		diff, err := AnyEncJson(a, b)
+		diff, err := DiffAnyEnc(a, b)
 		require.NoError(t, err)
 		assert.Equal(t, []AnyEncDiff{
 			{

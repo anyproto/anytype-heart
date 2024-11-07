@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "414402e104d3b92fa6045649ffa60f6988979f427cf91ef678c53257a0d83fc4"
+const RelationChecksum = "44f147da7e8233e89bb42533778c305d0735a54238aa2e5ba331a3396145450d"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -143,6 +143,7 @@ const (
 	RelationKeyHasChat                   domain.RelationKey = "hasChat"
 	RelationKeyChatId                    domain.RelationKey = "chatId"
 	RelationKeyMentions                  domain.RelationKey = "mentions"
+	RelationKeyTimestamp                 domain.RelationKey = "timestamp"
 )
 
 var (
@@ -1844,6 +1845,20 @@ var (
 			MaxCount:         1,
 			Name:             "Time",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyTimestamp: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Unix time representation of date object",
+			Format:           model.RelationFormat_date,
+			Hidden:           true,
+			Id:               "_brtimestamp",
+			Key:              "timestamp",
+			MaxCount:         1,
+			Name:             "Timestamp",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

@@ -17,8 +17,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -96,13 +96,20 @@ func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) (ke
 }
 
 func generateFilter(value *types.Value) func(v *types.Value) bool {
-	equalFilter := func(v *types.Value) bool {
+	equalOrHasFilter := func(v *types.Value) bool {
+		if list := v.GetListValue(); list != nil {
+			for _, element := range list.Values {
+				if element.Equal(value) {
+					return true
+				}
+			}
+		}
 		return v.Equal(value)
 	}
 
 	stringValue := value.GetStringValue()
 	if stringValue == "" {
-		return equalFilter
+		return equalOrHasFilter
 	}
 
 	sbt, err := typeprovider.SmartblockTypeFromID(stringValue)
@@ -111,13 +118,13 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 	}
 
 	if sbt != coresb.SmartBlockTypeDate {
-		return equalFilter
+		return equalOrHasFilter
 	}
 
-	start, err := dateIDToDayStart(stringValue)
+	start, err := dateutil.ParseDateId(stringValue)
 	if err != nil {
 		log.Error("failed to convert date id to day start", zap.Error(err))
-		return equalFilter
+		return equalOrHasFilter
 	}
 
 	end := start.Add(24 * time.Hour)
@@ -129,13 +136,6 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 		if numberValue >= startTimestamp && numberValue < endTimestamp {
 			return true
 		}
-		return equalFilter(v)
+		return equalOrHasFilter(v)
 	}
-}
-
-func dateIDToDayStart(id string) (time.Time, error) {
-	if !strings.HasPrefix(id, addr.DatePrefix) {
-		return time.Time{}, fmt.Errorf("invalid id: date prefix not found")
-	}
-	return time.Parse("2006-01-02", strings.TrimPrefix(id, addr.DatePrefix))
 }

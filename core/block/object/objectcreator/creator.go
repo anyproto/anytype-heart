@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -20,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -49,6 +51,7 @@ type Service interface {
 
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+	AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string) (chatId string, err error)
 
 	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) (ids []string, objects []*types.Struct, err error)
 	app.Component
@@ -149,12 +152,16 @@ func (s *service) createObjectInSpace(
 		return s.createRelation(ctx, space, details)
 	case bundle.TypeKeyRelationOption:
 		return s.createRelationOption(ctx, space, details)
-	case bundle.TypeKeyChat:
-		return s.createChat(ctx, space, details)
 	case bundle.TypeKeyChatDerived:
 		return s.createChatDerived(ctx, space, details)
 	case bundle.TypeKeyFile:
 		return "", nil, fmt.Errorf("files must be created via fileobject service")
+	case bundle.TypeKeyTemplate:
+		if pbtypes.GetString(details, bundle.RelationKeyTargetObjectType.String()) == "" {
+			return "", nil, fmt.Errorf("cannot create template without target object")
+		}
+	case bundle.TypeKeyDate:
+		return buildDateObject(space, details)
 	}
 
 	return s.createObjectFromTemplate(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, details, req.TemplateId)
@@ -172,4 +179,34 @@ func (s *service) createObjectFromTemplate(
 		return
 	}
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
+}
+
+// buildDateObject does not create real date object. It just builds date object details
+func buildDateObject(space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
+	name := pbtypes.GetString(details, bundle.RelationKeyName.String())
+	id, err := dateutil.DateNameToId(name)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to build date object, as its name is invalid: %w", err)
+	}
+
+	typeId, err := space.GetTypeIdByKey(context.Background(), bundle.TypeKeyDate)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to find Date type to build Date object: %w", err)
+	}
+
+	dateSource := source.NewDate(source.DateSourceParams{
+		Id: domain.FullID{
+			ObjectID: id,
+			SpaceID:  space.Id(),
+		},
+		DateObjectTypeId: typeId,
+	})
+
+	detailsGetter, ok := dateSource.(source.SourceIdEndodedDetails)
+	if !ok {
+		return "", nil, fmt.Errorf("date object does not implement DetailsFromId")
+	}
+
+	details, err = detailsGetter.DetailsFromId()
+	return id, details, err
 }
