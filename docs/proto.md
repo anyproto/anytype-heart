@@ -27365,6 +27365,7 @@ Precondition: user A and user B opened the same block
 | saveFile | [Model.Process.SaveFile](#anytype-Model-Process-SaveFile) |  |  |
 | migration | [Model.Process.Migration](#anytype-Model-Process-Migration) |  |  |
 | recoverAccount | [Model.Process.RecoverAccount](#anytype-Model-Process-RecoverAccount) |  |  |
+| error | [string](#string) |  |  |
 
 
 

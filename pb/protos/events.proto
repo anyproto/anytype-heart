@@ -1173,6 +1173,7 @@ message Model {
             RecoverAccount recoverAccount = 11;
         }
 
+        string error = 12;
         message DropFiles {}
         message Import {}
         message Export {}
