@@ -4,12 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
-	"time"
 
-	"github.com/anyproto/go-naturaldate/v2"
-	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 
@@ -17,12 +12,12 @@ import (
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
+	"github.com/anyproto/anytype-heart/core/date"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -107,7 +102,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	// Add dates only to the first page of search results
 	if req.Offset == 0 {
-		records, err = mw.enrichWithDateSuggestion(cctx, records, req, ds)
+		records, err = date.EnrichRecordsWithDateSuggestion(cctx, records, req, ds, getService[space.Service](mw))
 		if err != nil {
 			return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 		}
@@ -166,127 +161,6 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	}
 
 	return response(pb.RpcObjectSearchWithMetaResponseError_NULL, resultsModels, nil)
-}
-
-func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []database.Record, req *pb.RpcObjectSearchRequest, store objectstore.ObjectStore) ([]database.Record, error) {
-	dt := suggestDateForSearch(time.Now(), req.FullText)
-	if dt.IsZero() {
-		return records, nil
-	}
-
-	id := deriveDateId(dt)
-
-	// Don't duplicate search suggestions
-	var found bool
-	for _, r := range records {
-		if r.Details == nil || r.Details.Fields == nil {
-			continue
-		}
-		if v, ok := r.Details.Fields[bundle.RelationKeyId.String()]; ok {
-			if v.GetStringValue() == id {
-				found = true
-				break
-			}
-		}
-
-	}
-	if found {
-		return records, nil
-	}
-
-	var rec database.Record
-	rec, err := mw.makeSuggestedDateRecord(ctx, req.SpaceId, dt)
-	if err != nil {
-		return nil, fmt.Errorf("make date record: %w", err)
-	}
-	f, _ := database.MakeFilters(req.Filters, store.SpaceIndex(req.SpaceId)) //nolint:errcheck
-	if f.FilterObject(rec.Details) {
-		return append([]database.Record{rec}, records...), nil
-	}
-	return records, nil
-}
-
-func suggestDateForSearch(now time.Time, raw string) time.Time {
-	suggesters := []func() time.Time{
-		func() time.Time {
-			var exprType naturaldate.ExprType
-			t, exprType, err := naturaldate.Parse(raw, now)
-			if err != nil {
-				return time.Time{}
-			}
-			if exprType == naturaldate.ExprTypeInvalid {
-				return time.Time{}
-			}
-
-			// naturaldate parses numbers without qualifiers (m,s) as hours in 24 hours clock format. It leads to weird behavior
-			// when inputs like "123" represented as "current time + 123 hours"
-			if (exprType & naturaldate.ExprTypeClock24Hour) != 0 {
-				t = time.Time{}
-			}
-			return t
-		},
-		func() time.Time {
-			// Don't use plain numbers, because they will be represented as years
-			if _, err := strconv.Atoi(strings.TrimSpace(raw)); err == nil {
-				return time.Time{}
-			}
-			// todo: use system locale to get preferred date format
-			t, err := dateparse.ParseIn(raw, now.Location(), dateparse.PreferMonthFirst(false))
-			if err != nil {
-				return time.Time{}
-			}
-			return t
-		},
-	}
-
-	var t time.Time
-	for _, s := range suggesters {
-		if t = s(); !t.IsZero() {
-			break
-		}
-	}
-	if t.IsZero() {
-		return t
-	}
-
-	// Sanitize date
-
-	// Date without year
-	if t.Year() == 0 {
-		_, month, day := t.Date()
-		h, m, s := t.Clock()
-		t = time.Date(now.Year(), month, day, h, m, s, 0, t.Location())
-	}
-
-	return t
-}
-
-func deriveDateId(t time.Time) string {
-	return "_date_" + t.Format("2006-01-02")
-}
-
-func (mw *Middleware) makeSuggestedDateRecord(ctx context.Context, spaceID string, t time.Time) (database.Record, error) {
-	id := deriveDateId(t)
-	spc, err := getService[space.Service](mw).Get(ctx, spaceID)
-	if err != nil {
-		return database.Record{}, fmt.Errorf("get space: %w", err)
-	}
-	typeId, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyDate)
-	if err != nil {
-		return database.Record{}, fmt.Errorf("get date type id: %w", err)
-	}
-	d := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyId.String():        pbtypes.String(id),
-		bundle.RelationKeyName.String():      pbtypes.String(t.Format("02 Jan 2006")),
-		bundle.RelationKeyLayout.String():    pbtypes.Int64(int64(model.ObjectType_date)),
-		bundle.RelationKeyType.String():      pbtypes.String(typeId),
-		bundle.RelationKeyIconEmoji.String(): pbtypes.String("📅"),
-		bundle.RelationKeySpaceId.String():   pbtypes.String(spaceID),
-	}}
-
-	return database.Record{
-		Details: d,
-	}, nil
 }
 
 func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {
@@ -744,18 +618,6 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 }
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
-	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
-		m := &pb.RpcObjectImportResponse{
-			Error: &pb.RpcObjectImportResponseError{
-				Code: code,
-			},
-		}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		}
-		return m
-	}
-
 	importRequest := &importer.ImportRequest{
 		RpcObjectImportRequest: req,
 		Origin:                 objectorigin.Import(req.Type),
@@ -763,23 +625,9 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		SendNotification:       true,
 		IsSync:                 false,
 	}
-	res := getService[importer.Importer](mw).Import(cctx, importRequest)
 
-	if res == nil || res.Err == nil {
-		return response(pb.RpcObjectImportResponseError_NULL, nil)
-	}
-	switch {
-	case errors.Is(res.Err, common.ErrNoObjectsToImport):
-		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, res.Err)
-	case errors.Is(res.Err, common.ErrCancel):
-		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, res.Err)
-	case errors.Is(res.Err, common.ErrLimitExceeded):
-		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, res.Err)
-	case errors.Is(res.Err, common.ErrFileLoad):
-		return response(pb.RpcObjectImportResponseError_FILE_LOAD_ERROR, res.Err)
-	default:
-		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, res.Err)
-	}
+	getService[importer.Importer](mw).Import(cctx, importRequest)
+	return &pb.RpcObjectImportResponse{}
 }
 
 func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {
