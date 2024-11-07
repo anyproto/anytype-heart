@@ -116,9 +116,7 @@ func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 			}
 			return ot, nil
 		},
-		TreeValidator: func(payload treestorage.TreeStorageCreatePayload, buildFunc objecttree.BuildObjectTreeFunc, aclList list.AclList) (retPayload treestorage.TreeStorageCreatePayload, err error) {
-			return objecttree.ValidateFilterRawTree(payload, aclList)
-		},
+		TreeValidator: objecttree.ValidateFilterRawTree,
 	}
 }
 

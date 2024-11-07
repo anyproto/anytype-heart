@@ -39,6 +39,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		relationObject(bundle.RelationKeyAddedDate, model.RelationFormat_date),
 		relationObject(bundle.RelationKeyCreatedDate, model.RelationFormat_date),
 		relationObject(bundle.RelationKeyLinks, model.RelationFormat_object),
+		relationObject(bundle.RelationKeyMentions, model.RelationFormat_object),
 		relationObject(bundle.RelationKeyName, model.RelationFormat_longtext),
 		relationObject(bundle.RelationKeyIsHidden, model.RelationFormat_checkbox),
 		relationObject(bundle.RelationKeyIsFavorite, model.RelationFormat_checkbox),
@@ -71,6 +72,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 			bundle.RelationKeyLastModifiedDate: pbtypes.Int64(now.Unix()),
 			bundle.RelationKeyIsFavorite:       pbtypes.Bool(true),
 			bundle.RelationKeyCoverX:           pbtypes.Int64(300),
+			bundle.RelationKeyMentions:         pbtypes.StringList([]string{dateutil.TimeToDateId(now), dateutil.TimeToDateId(now.Add(-24 * time.Hour))}),
 		},
 	})
 
@@ -85,14 +87,14 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		{
 			"date object - today",
 			pbtypes.String(dateutil.TimeToDateId(now)),
-			[]string{bundle.RelationKeyAddedDate.String(), bundle.RelationKeyCreatedDate.String(), bundle.RelationKeyLastModifiedDate.String(), bundle.RelationKeyName.String()},
-			[]int64{1, 2, 3, 1},
+			[]string{bundle.RelationKeyAddedDate.String(), bundle.RelationKeyCreatedDate.String(), bundle.RelationKeyLastModifiedDate.String(), bundle.RelationKeyMentions.String(), bundle.RelationKeyName.String()},
+			[]int64{1, 2, 3, 1, 1},
 		},
 		{
 			"date object - yesterday",
 			pbtypes.String(dateutil.TimeToDateId(now.Add(-24 * time.Hour))),
-			[]string{bundle.RelationKeyAddedDate.String(), bundle.RelationKeyCreatedDate.String()},
-			[]int64{1, 1},
+			[]string{bundle.RelationKeyAddedDate.String(), bundle.RelationKeyCreatedDate.String(), bundle.RelationKeyMentions.String()},
+			[]int64{1, 1, 1},
 		},
 		{
 			"number",
