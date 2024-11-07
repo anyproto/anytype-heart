@@ -248,7 +248,7 @@ func (i *Import) importFromExternalSource(ctx context.Context, req *ImportReques
 		}
 		return int64(len(details)), nil
 	}
-	return 0, common.ErrNoObjectsToImport
+	return 0, common.ErrNoSnapshotToImport
 }
 
 func (i *Import) finishImportProcess(returnedErr error, req *ImportRequest) {
@@ -266,7 +266,7 @@ func (i *Import) provideNotification(returnedErr error, progress process.Progres
 		Space:   req.SpaceId,
 		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
 			ProcessId:  progress.Id(),
-			ErrorCode:  common.GetImportErrorCode(returnedErr),
+			ErrorCode:  common.GetImportNotificationErrorCode(returnedErr),
 			ImportType: req.Type,
 			SpaceId:    req.SpaceId,
 		}},
@@ -275,8 +275,8 @@ func (i *Import) provideNotification(returnedErr error, progress process.Progres
 
 func shouldReturnError(e error, res *common.Response, req *pb.RpcObjectImportRequest) bool {
 	return (e != nil && req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS) ||
-		errors.Is(e, common.ErrFailedToReceiveListOfObjects) || errors.Is(e, common.ErrLimitExceeded) ||
-		(errors.Is(e, common.ErrNoObjectsToImport) && (res == nil || len(res.Snapshots) == 0)) || // return error only if we don't have object to import
+		errors.Is(e, common.ErrNotionServerExceedRateLimit) || errors.Is(e, common.ErrCsvLimitExceeded) ||
+		(common.IsNoObjectError(e) && (res == nil || len(res.Snapshots) == 0)) || // return error only if we don't have object to import
 		errors.Is(e, common.ErrCancel)
 }
 

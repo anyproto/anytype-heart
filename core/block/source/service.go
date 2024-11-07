@@ -22,10 +22,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "source"
@@ -113,9 +116,7 @@ func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 			}
 			return ot, nil
 		},
-		TreeValidator: func(payload treestorage.TreeStorageCreatePayload, buildFunc objecttree.BuildObjectTreeFunc, aclList list.AclList) (retPayload treestorage.TreeStorageCreatePayload, err error) {
-			return objecttree.ValidateFilterRawTree(payload, aclList)
-		},
+		TreeValidator: objecttree.ValidateFilterRawTree,
 	}
 }
 
@@ -142,9 +143,16 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	if err == nil {
 		switch st {
 		case smartblock.SmartBlockTypeDate:
-			return NewDate(space, domain.FullID{
-				ObjectID: id,
-				SpaceID:  space.Id(),
+			typeId, err := space.GetTypeIdByKey(context.Background(), bundle.TypeKeyDate)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find Date type to build Date object: %w", err)
+			}
+			return NewDate(DateSourceParams{
+				Id: domain.FullID{
+					ObjectID: id,
+					SpaceID:  space.Id(),
+				},
+				DateObjectTypeId: typeId,
 			}), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
 			return NewBundledObjectType(id), nil
@@ -210,7 +218,27 @@ func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, err
 	if !strings.HasPrefix(id.ObjectID, addr.DatePrefix) {
 		return nil, fmt.Errorf("unsupported id")
 	}
-	ss := NewDate(nil, id)
+
+	records, err := s.objectStore.SpaceIndex(id.SpaceID).Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{{
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			RelationKey: bundle.RelationKeyUniqueKey.String(),
+			Value:       pbtypes.String(bundle.TypeKeyDate.URL()),
+		},
+		}})
+
+	if len(records) != 1 && err == nil {
+		err = fmt.Errorf("expected 1 record, got %d", len(records))
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to query details of Date type object: %w", err)
+	}
+
+	ss := NewDate(DateSourceParams{
+		Id:               id,
+		DateObjectTypeId: pbtypes.GetString(records[0].Details, bundle.RelationKeyId.String()),
+	})
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
 		return v.DetailsFromId()

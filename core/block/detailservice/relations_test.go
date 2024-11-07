@@ -14,9 +14,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -39,6 +39,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		relationObject(bundle.RelationKeyAddedDate, model.RelationFormat_date),
 		relationObject(bundle.RelationKeyCreatedDate, model.RelationFormat_date),
 		relationObject(bundle.RelationKeyLinks, model.RelationFormat_object),
+		relationObject(bundle.RelationKeyMentions, model.RelationFormat_object),
 		relationObject(bundle.RelationKeyName, model.RelationFormat_longtext),
 		relationObject(bundle.RelationKeyIsHidden, model.RelationFormat_checkbox),
 		relationObject(bundle.RelationKeyIsFavorite, model.RelationFormat_checkbox),
@@ -57,7 +58,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		{
 			bundle.RelationKeyId:               pbtypes.String("obj2"),
 			bundle.RelationKeySpaceId:          pbtypes.String(spaceId),
-			bundle.RelationKeyName:             pbtypes.String(addr.TimeToID(now)),
+			bundle.RelationKeyName:             pbtypes.String(dateutil.TimeToDateId(now)),
 			bundle.RelationKeyCreatedDate:      pbtypes.Int64(now.Add(-24*time.Hour - 5*time.Minute).Unix()),
 			bundle.RelationKeyAddedDate:        pbtypes.Int64(now.Add(-24*time.Hour - 3*time.Minute).Unix()),
 			bundle.RelationKeyLastModifiedDate: pbtypes.Int64(now.Add(-1 * time.Minute).Unix()),
@@ -71,6 +72,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 			bundle.RelationKeyLastModifiedDate: pbtypes.Int64(now.Unix()),
 			bundle.RelationKeyIsFavorite:       pbtypes.Bool(true),
 			bundle.RelationKeyCoverX:           pbtypes.Int64(300),
+			bundle.RelationKeyMentions:         pbtypes.StringList([]string{dateutil.TimeToDateId(now), dateutil.TimeToDateId(now.Add(-24 * time.Hour))}),
 		},
 	})
 
@@ -84,15 +86,15 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 	}{
 		{
 			"date object - today",
-			pbtypes.String(addr.TimeToID(now)),
-			[]string{bundle.RelationKeyAddedDate.String(), bundle.RelationKeyCreatedDate.String(), bundle.RelationKeyLastModifiedDate.String(), bundle.RelationKeyName.String()},
-			[]int64{1, 2, 3, 1},
+			pbtypes.String(dateutil.TimeToDateId(now)),
+			[]string{bundle.RelationKeyAddedDate.String(), bundle.RelationKeyCreatedDate.String(), bundle.RelationKeyLastModifiedDate.String(), bundle.RelationKeyMentions.String(), bundle.RelationKeyName.String()},
+			[]int64{1, 2, 3, 1, 1},
 		},
 		{
 			"date object - yesterday",
-			pbtypes.String(addr.TimeToID(now.Add(-24 * time.Hour))),
-			[]string{bundle.RelationKeyAddedDate.String(), bundle.RelationKeyCreatedDate.String()},
-			[]int64{1, 1},
+			pbtypes.String(dateutil.TimeToDateId(now.Add(-24 * time.Hour))),
+			[]string{bundle.RelationKeyAddedDate.String(), bundle.RelationKeyCreatedDate.String(), bundle.RelationKeyMentions.String()},
+			[]int64{1, 1, 1},
 		},
 		{
 			"number",
