@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/gogo/protobuf/types"
 
@@ -34,7 +33,6 @@ func NewDate(params DateSourceParams) (s Source) {
 
 type date struct {
 	id, spaceId, typeId string
-	t                   time.Time
 }
 
 func (d *date) ListIds() ([]string, error) {
@@ -79,15 +77,6 @@ func (d *date) getDetails() (*types.Struct, error) {
 
 func (d *date) DetailsFromId() (*types.Struct, error) {
 	return d.getDetails()
-}
-
-func (d *date) parseId() error {
-	t, err := dateutil.ParseDateId(d.id)
-	if err != nil {
-		return err
-	}
-	d.t = t
-	return nil
 }
 
 func (d *date) ReadDoc(context.Context, ChangeReceiver, bool) (doc state.Doc, err error) {
