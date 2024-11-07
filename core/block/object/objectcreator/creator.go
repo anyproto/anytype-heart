@@ -189,9 +189,17 @@ func buildDateObject(space clientspace.Space, details *types.Struct) (string, *t
 		return "", nil, fmt.Errorf("failed to build date object, as its name is invalid: %w", err)
 	}
 
-	dateSource := source.NewDate(space, domain.FullID{
-		ObjectID: id,
-		SpaceID:  space.Id(),
+	typeId, err := space.GetTypeIdByKey(context.Background(), bundle.TypeKeyDate)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to find Date type to build Date object: %w", err)
+	}
+
+	dateSource := source.NewDate(source.DateSourceParams{
+		Id: domain.FullID{
+			ObjectID: id,
+			SpaceID:  space.Id(),
+		},
+		DateObjectTypeId: typeId,
 	})
 
 	detailsGetter, ok := dateSource.(source.SourceIdEndodedDetails)

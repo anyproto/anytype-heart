@@ -125,9 +125,18 @@ func suggestDateForSearch(now time.Time, raw string) time.Time {
 
 func makeSuggestedDateRecord(spc source.Space, t time.Time) (database.Record, error) {
 	id := dateutil.TimeToDateId(t)
-	dateSource := source.NewDate(spc, domain.FullID{
-		ObjectID: id,
-		SpaceID:  spc.Id(),
+
+	typeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyDate)
+	if err != nil {
+		return database.Record{}, fmt.Errorf("failed to find Date type to build Date object: %w", err)
+	}
+
+	dateSource := source.NewDate(source.DateSourceParams{
+		Id: domain.FullID{
+			ObjectID: id,
+			SpaceID:  spc.Id(),
+		},
+		DateObjectTypeId: typeId,
 	})
 
 	v, ok := dateSource.(source.SourceIdEndodedDetails)

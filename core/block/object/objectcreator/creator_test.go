@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused/mock_lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
@@ -111,6 +112,10 @@ func TestService_CreateObject(t *testing.T) {
 		f := newFixture(t)
 		f.spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(f.spc, nil)
 		f.spc.EXPECT().Id().Return(spaceId)
+		f.spc.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, key domain.TypeKey) (string, error) {
+			assert.Equal(t, bundle.TypeKeyDate, key)
+			return bundle.TypeKeyDate.URL(), nil
+		})
 		ts := time.Now()
 		name := dateutil.TimeToDateName(ts)
 
@@ -126,6 +131,7 @@ func TestService_CreateObject(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, dateutil.TimeToDateId(ts), id)
 		assert.Equal(t, spaceId, pbtypes.GetString(details, bundle.RelationKeySpaceId.String()))
+		assert.Equal(t, bundle.TypeKeyDate.URL(), pbtypes.GetString(details, bundle.RelationKeyType.String()))
 	})
 
 	t.Run("date object creation - invalid name", func(t *testing.T) {

@@ -19,123 +19,110 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func NewDate(space Space, id domain.FullID) (s Source) {
+type DateSourceParams struct {
+	Id               domain.FullID
+	DateObjectTypeId string
+}
+
+func NewDate(params DateSourceParams) (s Source) {
 	return &date{
-		id:      id.ObjectID,
-		spaceId: id.SpaceID,
-		space:   space,
+		id:      params.Id.ObjectID,
+		spaceId: params.Id.SpaceID,
+		typeId:  params.DateObjectTypeId,
 	}
 }
 
 type date struct {
-	space       Space
-	id, spaceId string
-	t           time.Time
+	id, spaceId, typeId string
+	t                   time.Time
 }
 
-func (v *date) ListIds() ([]string, error) {
+func (d *date) ListIds() ([]string, error) {
 	return []string{}, nil
 }
 
-func (v *date) ReadOnly() bool {
+func (d *date) ReadOnly() bool {
 	return true
 }
 
-func (v *date) Id() string {
-	return v.id
+func (d *date) Id() string {
+	return d.id
 }
 
-func (v *date) SpaceID() string {
-	if v.space != nil {
-		return v.space.Id()
-	}
-	if v.spaceId != "" {
-		return v.spaceId
-	}
-	return ""
+func (d *date) SpaceID() string {
+	return d.spaceId
 }
 
-func (v *date) Type() smartblock.SmartBlockType {
+func (d *date) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeDate
 }
 
-func (v *date) getDetails(ctx context.Context, withType bool) (*types.Struct, error) {
-	t, err := dateutil.ParseDateId(v.id)
+func (d *date) getDetails() (*types.Struct, error) {
+	t, err := dateutil.ParseDateId(d.id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse date id: %w", err)
 	}
 
-	details := &types.Struct{Fields: map[string]*types.Value{
+	return &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyName.String():       pbtypes.String(dateutil.TimeToDateName(t)),
-		bundle.RelationKeyId.String():         pbtypes.String(v.id),
+		bundle.RelationKeyId.String():         pbtypes.String(d.id),
+		bundle.RelationKeyType.String():       pbtypes.String(d.typeId),
 		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
 		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
 		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
 		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_date)),
 		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
-		bundle.RelationKeySpaceId.String():    pbtypes.String(v.SpaceID()),
+		bundle.RelationKeySpaceId.String():    pbtypes.String(d.SpaceID()),
 		bundle.RelationKeyTimestamp.String():  pbtypes.Int64(t.Unix()),
-	}}
-
-	if withType {
-		if v.space == nil {
-			return nil, fmt.Errorf("get date type id: space is nil")
-		}
-		dateTypeId, err := v.space.GetTypeIdByKey(ctx, bundle.TypeKeyDate)
-		if err != nil {
-			return nil, fmt.Errorf("get date type id: %w", err)
-		}
-		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(dateTypeId)
-	}
-	return details, nil
+	}}, nil
 }
 
-func (v *date) DetailsFromId() (*types.Struct, error) {
-	return v.getDetails(nil, false)
+func (d *date) DetailsFromId() (*types.Struct, error) {
+	return d.getDetails()
 }
 
-func (v *date) parseId() error {
-	t, err := dateutil.ParseDateId(v.id)
+func (d *date) parseId() error {
+	t, err := dateutil.ParseDateId(d.id)
 	if err != nil {
 		return err
 	}
-	v.t = t
+	d.t = t
 	return nil
 }
 
-func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
-	d, err := v.getDetails(ctx, true)
+func (d *date) ReadDoc(context.Context, ChangeReceiver, bool) (doc state.Doc, err error) {
+	details, err := d.getDetails()
 	if err != nil {
 		return
 	}
 
-	s := state.NewDoc(v.id, nil).(*state.State)
+	s := state.NewDoc(d.id, nil).(*state.State)
 	template.InitTemplate(s,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,
 		template.WithAllBlocksEditsRestricted,
 	)
-	s.SetDetails(d)
+	s.SetDetails(details)
 	s.SetObjectTypeKey(bundle.TypeKeyDate)
 	return s, nil
 }
 
-func (v *date) PushChange(params PushChangeParams) (id string, err error) {
+func (d *date) PushChange(PushChangeParams) (id string, err error) {
 	return "", nil
 }
 
-func (v *date) Close() (err error) {
+func (d *date) Close() (err error) {
 	return
 }
 
-func (v *date) Heads() []string {
-	return []string{v.id}
+func (d *date) Heads() []string {
+	return []string{d.id}
 }
 
-func (v *date) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
+func (d *date) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
 
-func (v *date) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
+func (d *date) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
 	return addr.AnytypeProfileId, 0, nil
 }
