@@ -363,9 +363,9 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 	if kind == model.ImageKind_Basic {
 		return details
 	}
-	details.Fields[bundle.RelationKeyImageKind.String()] = pbtypes.Int64(int64(kind))
+	details.SetInt64(bundle.RelationKeyImageKind, int64(kind))
 	if kind == model.ImageKind_AutomaticallyAdded {
-		details.Fields[bundle.RelationKeyIsHiddenDiscovery.String()] = pbtypes.Bool(true)
+		details.SetBool(bundle.RelationKeyIsHiddenDiscovery, true)
 	}
 	return details
 }

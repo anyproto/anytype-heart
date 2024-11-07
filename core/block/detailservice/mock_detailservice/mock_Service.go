@@ -144,7 +144,7 @@ func (_c *MockService_ListRelationsWithValue_Call) RunAndReturn(run func(string,
 }
 
 // ModifyDetails provides a mock function with given fields: objectId, modifier
-func (_m *MockService) ModifyDetails(objectId string, modifier func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)) error {
+func (_m *MockService) ModifyDetails(objectId string, modifier func(*domain.Details) (*domain.Details, error)) error {
 	ret := _m.Called(objectId, modifier)
 
 	if len(ret) == 0 {
@@ -152,7 +152,7 @@ func (_m *MockService) ModifyDetails(objectId string, modifier func(*domain.Gene
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)) error); ok {
+	if rf, ok := ret.Get(0).(func(string, func(*domain.Details) (*domain.Details, error)) error); ok {
 		r0 = rf(objectId, modifier)
 	} else {
 		r0 = ret.Error(0)
@@ -168,14 +168,14 @@ type MockService_ModifyDetails_Call struct {
 
 // ModifyDetails is a helper method to define mock.On call
 //   - objectId string
-//   - modifier func(*domain.GenericMap[domain.RelationKey])(*domain.GenericMap[domain.RelationKey] , error)
+//   - modifier func(*domain.Details)(*domain.Details , error)
 func (_e *MockService_Expecter) ModifyDetails(objectId interface{}, modifier interface{}) *MockService_ModifyDetails_Call {
 	return &MockService_ModifyDetails_Call{Call: _e.mock.On("ModifyDetails", objectId, modifier)}
 }
 
-func (_c *MockService_ModifyDetails_Call) Run(run func(objectId string, modifier func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error))) *MockService_ModifyDetails_Call {
+func (_c *MockService_ModifyDetails_Call) Run(run func(objectId string, modifier func(*domain.Details) (*domain.Details, error))) *MockService_ModifyDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)))
+		run(args[0].(string), args[1].(func(*domain.Details) (*domain.Details, error)))
 	})
 	return _c
 }
@@ -185,7 +185,7 @@ func (_c *MockService_ModifyDetails_Call) Return(_a0 error) *MockService_ModifyD
 	return _c
 }
 
-func (_c *MockService_ModifyDetails_Call) RunAndReturn(run func(string, func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)) error) *MockService_ModifyDetails_Call {
+func (_c *MockService_ModifyDetails_Call) RunAndReturn(run func(string, func(*domain.Details) (*domain.Details, error)) error) *MockService_ModifyDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -711,7 +711,7 @@ func (_c *MockService_SetListIsFavorite_Call) RunAndReturn(run func([]string, bo
 }
 
 // SetSpaceInfo provides a mock function with given fields: spaceId, details
-func (_m *MockService) SetSpaceInfo(spaceId string, details *domain.GenericMap[domain.RelationKey]) error {
+func (_m *MockService) SetSpaceInfo(spaceId string, details *domain.Details) error {
 	ret := _m.Called(spaceId, details)
 
 	if len(ret) == 0 {
@@ -719,7 +719,7 @@ func (_m *MockService) SetSpaceInfo(spaceId string, details *domain.GenericMap[d
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, *domain.GenericMap[domain.RelationKey]) error); ok {
+	if rf, ok := ret.Get(0).(func(string, *domain.Details) error); ok {
 		r0 = rf(spaceId, details)
 	} else {
 		r0 = ret.Error(0)
@@ -735,14 +735,14 @@ type MockService_SetSpaceInfo_Call struct {
 
 // SetSpaceInfo is a helper method to define mock.On call
 //   - spaceId string
-//   - details *domain.GenericMap[domain.RelationKey]
+//   - details *domain.Details
 func (_e *MockService_Expecter) SetSpaceInfo(spaceId interface{}, details interface{}) *MockService_SetSpaceInfo_Call {
 	return &MockService_SetSpaceInfo_Call{Call: _e.mock.On("SetSpaceInfo", spaceId, details)}
 }
 
-func (_c *MockService_SetSpaceInfo_Call) Run(run func(spaceId string, details *domain.GenericMap[domain.RelationKey])) *MockService_SetSpaceInfo_Call {
+func (_c *MockService_SetSpaceInfo_Call) Run(run func(spaceId string, details *domain.Details)) *MockService_SetSpaceInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(*domain.GenericMap[domain.RelationKey]))
+		run(args[0].(string), args[1].(*domain.Details))
 	})
 	return _c
 }
@@ -752,7 +752,7 @@ func (_c *MockService_SetSpaceInfo_Call) Return(_a0 error) *MockService_SetSpace
 	return _c
 }
 
-func (_c *MockService_SetSpaceInfo_Call) RunAndReturn(run func(string, *domain.GenericMap[domain.RelationKey]) error) *MockService_SetSpaceInfo_Call {
+func (_c *MockService_SetSpaceInfo_Call) RunAndReturn(run func(string, *domain.Details) error) *MockService_SetSpaceInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

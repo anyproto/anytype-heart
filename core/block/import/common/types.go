@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/globalsign/mgo/bson"
@@ -121,7 +122,10 @@ func migrateAddMissingUniqueKey(snapshot *SnapshotModel) {
 	snapshot.Data.Key = uk.InternalKey()
 }
 
-func NewSnapshotModelFromProto(sn *pb.SnapshotWithType) *SnapshotModel {
+func NewSnapshotModelFromProto(sn *pb.SnapshotWithType) (*SnapshotModel, error) {
+	if sn == nil || sn.Snapshot == nil || sn.Snapshot.Data == nil {
+		return nil, fmt.Errorf("snapshot is not valid")
+	}
 	res := &SnapshotModel{
 		SbType:   coresb.SmartBlockType(sn.SbType),
 		LogHeads: sn.Snapshot.LogHeads,
@@ -129,7 +133,7 @@ func NewSnapshotModelFromProto(sn *pb.SnapshotWithType) *SnapshotModel {
 		FileKeys: sn.Snapshot.FileKeys,
 	}
 	migrateAddMissingUniqueKey(res)
-	return res
+	return res, nil
 }
 
 // Response expected response of each converter, incapsulate blocks snapshots and converting errors

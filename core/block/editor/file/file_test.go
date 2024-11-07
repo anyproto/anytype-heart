@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -22,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
@@ -160,12 +160,12 @@ func TestDropFiles(t *testing.T) {
 
 		fx := newFixture(t)
 		st := fx.sb.Doc.NewState()
-		st.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(model.ObjectType_collection)))
+		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_collection)))
 		fx.sb.Doc = st
 		fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil).Maybe()
 		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 		mockService := mock_fileobject.NewMockService(t)
-		mockService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return("fileObjectId", &types.Struct{Fields: map[string]*types.Value{}}, nil).Maybe()
+		mockService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return("fileObjectId", domain.NewDetails(), nil).Maybe()
 		fx.fileUploaderFactory = prepareFileService(t, fx.mockSender, mockService)
 
 		// when
@@ -185,12 +185,12 @@ func TestDropFiles(t *testing.T) {
 
 		fx := newFixture(t)
 		st := fx.sb.Doc.NewState()
-		st.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(model.ObjectType_collection)))
+		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_collection)))
 		fx.sb.Doc = st
 		fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil).Maybe()
 		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 		mockService := mock_fileobject.NewMockService(t)
-		mockService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return("fileObjectId", &types.Struct{Fields: map[string]*types.Value{}}, nil).Maybe()
+		mockService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return("fileObjectId", domain.NewDetails(), nil).Maybe()
 		fx.fileUploaderFactory = prepareFileService(t, fx.mockSender, mockService)
 
 		// when
@@ -210,12 +210,12 @@ func TestDropFiles(t *testing.T) {
 
 		fx := newFixture(t)
 		st := fx.sb.Doc.NewState()
-		st.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(model.ObjectType_collection)))
+		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_collection)))
 		fx.sb.Doc = st
 		fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
 		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
 		mockService := mock_fileobject.NewMockService(t)
-		mockService.EXPECT().Create(context.Background(), "", mock.Anything).Return("fileObjectId", &types.Struct{Fields: map[string]*types.Value{}}, nil).Maybe()
+		mockService.EXPECT().Create(context.Background(), "", mock.Anything).Return("fileObjectId", domain.NewDetails(), nil).Maybe()
 		fx.fileUploaderFactory = prepareFileService(t, fx.mockSender, mockService)
 
 		// when
@@ -245,12 +245,12 @@ func TestDropFiles(t *testing.T) {
 
 		fx := newFixture(t)
 		st := fx.sb.Doc.NewState()
-		st.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(model.ObjectType_collection)))
+		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_collection)))
 		fx.sb.Doc = st
 		fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
 		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
 		mockService := mock_fileobject.NewMockService(t)
-		mockService.EXPECT().Create(context.Background(), "", mock.Anything).Return("fileObjectId", &types.Struct{Fields: map[string]*types.Value{}}, nil).Maybe()
+		mockService.EXPECT().Create(context.Background(), "", mock.Anything).Return("fileObjectId", domain.NewDetails(), nil).Maybe()
 		fx.fileUploaderFactory = prepareFileService(t, fx.mockSender, mockService)
 
 		// when

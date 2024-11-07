@@ -329,23 +329,23 @@ func (_c *MockService_SubscribeGroups_Call) RunAndReturn(run func(subscription.S
 }
 
 // SubscribeIds provides a mock function with given fields: subId, ids
-func (_m *MockService) SubscribeIds(subId string, ids []string) ([]*domain.GenericMap[domain.RelationKey], error) {
+func (_m *MockService) SubscribeIds(subId string, ids []string) ([]*domain.Details, error) {
 	ret := _m.Called(subId, ids)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SubscribeIds")
 	}
 
-	var r0 []*domain.GenericMap[domain.RelationKey]
+	var r0 []*domain.Details
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, []string) ([]*domain.GenericMap[domain.RelationKey], error)); ok {
+	if rf, ok := ret.Get(0).(func(string, []string) ([]*domain.Details, error)); ok {
 		return rf(subId, ids)
 	}
-	if rf, ok := ret.Get(0).(func(string, []string) []*domain.GenericMap[domain.RelationKey]); ok {
+	if rf, ok := ret.Get(0).(func(string, []string) []*domain.Details); ok {
 		r0 = rf(subId, ids)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*domain.GenericMap[domain.RelationKey])
+			r0 = ret.Get(0).([]*domain.Details)
 		}
 	}
 
@@ -377,12 +377,12 @@ func (_c *MockService_SubscribeIds_Call) Run(run func(subId string, ids []string
 	return _c
 }
 
-func (_c *MockService_SubscribeIds_Call) Return(records []*domain.GenericMap[domain.RelationKey], err error) *MockService_SubscribeIds_Call {
+func (_c *MockService_SubscribeIds_Call) Return(records []*domain.Details, err error) *MockService_SubscribeIds_Call {
 	_c.Call.Return(records, err)
 	return _c
 }
 
-func (_c *MockService_SubscribeIds_Call) RunAndReturn(run func(string, []string) ([]*domain.GenericMap[domain.RelationKey], error)) *MockService_SubscribeIds_Call {
+func (_c *MockService_SubscribeIds_Call) RunAndReturn(run func(string, []string) ([]*domain.Details, error)) *MockService_SubscribeIds_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -28,7 +28,7 @@ func (_m *MockfileObjectGetter) EXPECT() *MockfileObjectGetter_Expecter {
 }
 
 // Create provides a mock function with given fields: ctx, spaceId, req
-func (_m *MockfileObjectGetter) Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (string, *domain.GenericMap[domain.RelationKey], error) {
+func (_m *MockfileObjectGetter) Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (string, *domain.Details, error) {
 	ret := _m.Called(ctx, spaceId, req)
 
 	if len(ret) == 0 {
@@ -36,9 +36,9 @@ func (_m *MockfileObjectGetter) Create(ctx context.Context, spaceId string, req 
 	}
 
 	var r0 string
-	var r1 *domain.GenericMap[domain.RelationKey]
+	var r1 *domain.Details
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, filemodels.CreateRequest) (string, *domain.GenericMap[domain.RelationKey], error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, filemodels.CreateRequest) (string, *domain.Details, error)); ok {
 		return rf(ctx, spaceId, req)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, string, filemodels.CreateRequest) string); ok {
@@ -47,11 +47,11 @@ func (_m *MockfileObjectGetter) Create(ctx context.Context, spaceId string, req 
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, filemodels.CreateRequest) *domain.GenericMap[domain.RelationKey]); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, filemodels.CreateRequest) *domain.Details); ok {
 		r1 = rf(ctx, spaceId, req)
 	} else {
 		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*domain.GenericMap[domain.RelationKey])
+			r1 = ret.Get(1).(*domain.Details)
 		}
 	}
 
@@ -84,12 +84,12 @@ func (_c *MockfileObjectGetter_Create_Call) Run(run func(ctx context.Context, sp
 	return _c
 }
 
-func (_c *MockfileObjectGetter_Create_Call) Return(id string, object *domain.GenericMap[domain.RelationKey], err error) *MockfileObjectGetter_Create_Call {
+func (_c *MockfileObjectGetter_Create_Call) Return(id string, object *domain.Details, err error) *MockfileObjectGetter_Create_Call {
 	_c.Call.Return(id, object, err)
 	return _c
 }
 
-func (_c *MockfileObjectGetter_Create_Call) RunAndReturn(run func(context.Context, string, filemodels.CreateRequest) (string, *domain.GenericMap[domain.RelationKey], error)) *MockfileObjectGetter_Create_Call {
+func (_c *MockfileObjectGetter_Create_Call) RunAndReturn(run func(context.Context, string, filemodels.CreateRequest) (string, *domain.Details, error)) *MockfileObjectGetter_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }

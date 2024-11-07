@@ -542,19 +542,19 @@ func (_c *MockAccountObject_Close_Call) RunAndReturn(run func() error) *MockAcco
 }
 
 // CombinedDetails provides a mock function with given fields:
-func (_m *MockAccountObject) CombinedDetails() *domain.GenericMap[domain.RelationKey] {
+func (_m *MockAccountObject) CombinedDetails() *domain.Details {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for CombinedDetails")
 	}
 
-	var r0 *domain.GenericMap[domain.RelationKey]
-	if rf, ok := ret.Get(0).(func() *domain.GenericMap[domain.RelationKey]); ok {
+	var r0 *domain.Details
+	if rf, ok := ret.Get(0).(func() *domain.Details); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.GenericMap[domain.RelationKey])
+			r0 = ret.Get(0).(*domain.Details)
 		}
 	}
 
@@ -578,30 +578,30 @@ func (_c *MockAccountObject_CombinedDetails_Call) Run(run func()) *MockAccountOb
 	return _c
 }
 
-func (_c *MockAccountObject_CombinedDetails_Call) Return(_a0 *domain.GenericMap[domain.RelationKey]) *MockAccountObject_CombinedDetails_Call {
+func (_c *MockAccountObject_CombinedDetails_Call) Return(_a0 *domain.Details) *MockAccountObject_CombinedDetails_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockAccountObject_CombinedDetails_Call) RunAndReturn(run func() *domain.GenericMap[domain.RelationKey]) *MockAccountObject_CombinedDetails_Call {
+func (_c *MockAccountObject_CombinedDetails_Call) RunAndReturn(run func() *domain.Details) *MockAccountObject_CombinedDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Details provides a mock function with given fields:
-func (_m *MockAccountObject) Details() *domain.GenericMap[domain.RelationKey] {
+func (_m *MockAccountObject) Details() *domain.Details {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Details")
 	}
 
-	var r0 *domain.GenericMap[domain.RelationKey]
-	if rf, ok := ret.Get(0).(func() *domain.GenericMap[domain.RelationKey]); ok {
+	var r0 *domain.Details
+	if rf, ok := ret.Get(0).(func() *domain.Details); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.GenericMap[domain.RelationKey])
+			r0 = ret.Get(0).(*domain.Details)
 		}
 	}
 
@@ -625,12 +625,12 @@ func (_c *MockAccountObject_Details_Call) Run(run func()) *MockAccountObject_Det
 	return _c
 }
 
-func (_c *MockAccountObject_Details_Call) Return(_a0 *domain.GenericMap[domain.RelationKey]) *MockAccountObject_Details_Call {
+func (_c *MockAccountObject_Details_Call) Return(_a0 *domain.Details) *MockAccountObject_Details_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockAccountObject_Details_Call) RunAndReturn(run func() *domain.GenericMap[domain.RelationKey]) *MockAccountObject_Details_Call {
+func (_c *MockAccountObject_Details_Call) RunAndReturn(run func() *domain.Details) *MockAccountObject_Details_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1370,19 +1370,19 @@ func (_c *MockAccountObject_Layout_Call) RunAndReturn(run func() (model.ObjectTy
 }
 
 // LocalDetails provides a mock function with given fields:
-func (_m *MockAccountObject) LocalDetails() *domain.GenericMap[domain.RelationKey] {
+func (_m *MockAccountObject) LocalDetails() *domain.Details {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for LocalDetails")
 	}
 
-	var r0 *domain.GenericMap[domain.RelationKey]
-	if rf, ok := ret.Get(0).(func() *domain.GenericMap[domain.RelationKey]); ok {
+	var r0 *domain.Details
+	if rf, ok := ret.Get(0).(func() *domain.Details); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.GenericMap[domain.RelationKey])
+			r0 = ret.Get(0).(*domain.Details)
 		}
 	}
 
@@ -1406,12 +1406,12 @@ func (_c *MockAccountObject_LocalDetails_Call) Run(run func()) *MockAccountObjec
 	return _c
 }
 
-func (_c *MockAccountObject_LocalDetails_Call) Return(_a0 *domain.GenericMap[domain.RelationKey]) *MockAccountObject_LocalDetails_Call {
+func (_c *MockAccountObject_LocalDetails_Call) Return(_a0 *domain.Details) *MockAccountObject_LocalDetails_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockAccountObject_LocalDetails_Call) RunAndReturn(run func() *domain.GenericMap[domain.RelationKey]) *MockAccountObject_LocalDetails_Call {
+func (_c *MockAccountObject_LocalDetails_Call) RunAndReturn(run func() *domain.Details) *MockAccountObject_LocalDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2248,7 +2248,7 @@ func (_c *MockAccountObject_SetLocker_Call) RunAndReturn(run func(smartblock.Loc
 }
 
 // SetProfileDetails provides a mock function with given fields: details
-func (_m *MockAccountObject) SetProfileDetails(details *domain.GenericMap[domain.RelationKey]) error {
+func (_m *MockAccountObject) SetProfileDetails(details *domain.Details) error {
 	ret := _m.Called(details)
 
 	if len(ret) == 0 {
@@ -2256,7 +2256,7 @@ func (_m *MockAccountObject) SetProfileDetails(details *domain.GenericMap[domain
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*domain.GenericMap[domain.RelationKey]) error); ok {
+	if rf, ok := ret.Get(0).(func(*domain.Details) error); ok {
 		r0 = rf(details)
 	} else {
 		r0 = ret.Error(0)
@@ -2271,14 +2271,14 @@ type MockAccountObject_SetProfileDetails_Call struct {
 }
 
 // SetProfileDetails is a helper method to define mock.On call
-//   - details *domain.GenericMap[domain.RelationKey]
+//   - details *domain.Details
 func (_e *MockAccountObject_Expecter) SetProfileDetails(details interface{}) *MockAccountObject_SetProfileDetails_Call {
 	return &MockAccountObject_SetProfileDetails_Call{Call: _e.mock.On("SetProfileDetails", details)}
 }
 
-func (_c *MockAccountObject_SetProfileDetails_Call) Run(run func(details *domain.GenericMap[domain.RelationKey])) *MockAccountObject_SetProfileDetails_Call {
+func (_c *MockAccountObject_SetProfileDetails_Call) Run(run func(details *domain.Details)) *MockAccountObject_SetProfileDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*domain.GenericMap[domain.RelationKey]))
+		run(args[0].(*domain.Details))
 	})
 	return _c
 }
@@ -2288,7 +2288,7 @@ func (_c *MockAccountObject_SetProfileDetails_Call) Return(err error) *MockAccou
 	return _c
 }
 
-func (_c *MockAccountObject_SetProfileDetails_Call) RunAndReturn(run func(*domain.GenericMap[domain.RelationKey]) error) *MockAccountObject_SetProfileDetails_Call {
+func (_c *MockAccountObject_SetProfileDetails_Call) RunAndReturn(run func(*domain.Details) error) *MockAccountObject_SetProfileDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }

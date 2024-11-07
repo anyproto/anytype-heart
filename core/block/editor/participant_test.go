@@ -115,9 +115,9 @@ func TestParticipant_Init(t *testing.T) {
 		sb := smarttest.New("root")
 		store := newStoreFixture(t)
 		store.AddObjects(t, []objectstore.TestObject{{
-			bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
-			bundle.RelationKeyId:      pbtypes.String("root"),
-			bundle.RelationKeyName:    pbtypes.String("test"),
+			bundle.RelationKeySpaceId: domain.String("spaceId"),
+			bundle.RelationKeyId:      domain.String("root"),
+			bundle.RelationKeyName:    domain.String("test"),
 		}})
 
 		basicComponent := basic.NewBasic(sb, store, nil, nil, nil)

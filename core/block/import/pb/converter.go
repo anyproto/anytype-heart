@@ -268,9 +268,6 @@ func (p *Pb) makeSnapshot(name, profileID, path string,
 		}
 		return nil, fmt.Errorf("%w: %s", common.ErrPbNotAnyBlockFormat, errGS.Error())
 	}
-	if valid := p.isSnapshotValid(snapshot); !valid {
-		return nil, fmt.Errorf("%w: snapshot is not valid", common.ErrPbNotAnyBlockFormat)
-	}
 	id := uuid.New().String()
 	id, err := p.normalizeSnapshot(snapshot, id, profileID, path, isMigration, pbFiles)
 	if err != nil {
@@ -292,7 +289,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*common.Snapsho
 		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
 			return nil, fmt.Errorf("PB:GetSnapshot %w", uErr)
 		}
-		return common.NewSnapshotModelFromProto(snapshot), nil
+		return common.NewSnapshotModelFromProto(snapshot)
 	}
 	if filepath.Ext(name) == ".pb" {
 		snapshot := &pb.SnapshotWithType{}
@@ -303,7 +300,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*common.Snapsho
 		if err = snapshot.Unmarshal(data); err != nil {
 			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
 		}
-		return common.NewSnapshotModelFromProto(snapshot), nil
+		return common.NewSnapshotModelFromProto(snapshot)
 	}
 	return nil, ErrNotAnyBlockExtension
 }
@@ -515,8 +512,4 @@ func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[strin
 	if len(objectsInCollections) != 0 {
 		st.UpdateStoreSlice(template.CollectionStoreKey, objectsInCollections)
 	}
-}
-
-func (p *Pb) isSnapshotValid(snapshot *common.SnapshotModel) bool {
-	return !(snapshot == nil || snapshot.Data == nil)
 }

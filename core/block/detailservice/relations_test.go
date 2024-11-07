@@ -70,7 +70,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 			bundle.RelationKeyLastModifiedDate: domain.Int64(now.Unix()),
 			bundle.RelationKeyIsFavorite:       domain.Bool(true),
 			bundle.RelationKeyCoverX:           domain.Int64(300),
-			bundle.RelationKeyMentions:         pbtypes.StringList([]string{addr.TimeToID(now), addr.TimeToID(now.Add(-24 * time.Hour))}),
+			bundle.RelationKeyMentions:         domain.StringList([]string{addr.TimeToID(now), addr.TimeToID(now.Add(-24 * time.Hour))}),
 		},
 	})
 
@@ -85,13 +85,13 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		{
 			"date object - today",
 			domain.String(addr.TimeToID(now)),
-			[]domain.RelationKey{bundle.RelationKeyAddedDate, bundle.RelationKeyCreatedDate, bundle.RelationKeyLastModifiedDate, bundle.RelationKeyMentions.String(), bundle.RelationKeyName},
+			[]domain.RelationKey{bundle.RelationKeyAddedDate, bundle.RelationKeyCreatedDate, bundle.RelationKeyLastModifiedDate, bundle.RelationKeyMentions, bundle.RelationKeyName},
 			[]int64{1, 2, 3, 1, 1},
 		},
 		{
 			"date object - yesterday",
-			pbtypes.String(addr.TimeToID(now.Add(-24 * time.Hour))),
-			[]string{bundle.RelationKeyAddedDate.String(), bundle.RelationKeyCreatedDate.String(), bundle.RelationKeyMentions.String()},
+			domain.String(addr.TimeToID(now.Add(-24 * time.Hour))),
+			[]domain.RelationKey{bundle.RelationKeyAddedDate, bundle.RelationKeyCreatedDate, bundle.RelationKeyMentions},
 			[]int64{1, 1, 1},
 		},
 		{

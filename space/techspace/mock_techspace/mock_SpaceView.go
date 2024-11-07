@@ -577,7 +577,7 @@ func (_c *MockSpaceView_SetSharedSpacesLimit_Call) RunAndReturn(run func(int) er
 }
 
 // SetSpaceData provides a mock function with given fields: details
-func (_m *MockSpaceView) SetSpaceData(details *domain.GenericMap[domain.RelationKey]) error {
+func (_m *MockSpaceView) SetSpaceData(details *domain.Details) error {
 	ret := _m.Called(details)
 
 	if len(ret) == 0 {
@@ -585,7 +585,7 @@ func (_m *MockSpaceView) SetSpaceData(details *domain.GenericMap[domain.Relation
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*domain.GenericMap[domain.RelationKey]) error); ok {
+	if rf, ok := ret.Get(0).(func(*domain.Details) error); ok {
 		r0 = rf(details)
 	} else {
 		r0 = ret.Error(0)
@@ -600,14 +600,14 @@ type MockSpaceView_SetSpaceData_Call struct {
 }
 
 // SetSpaceData is a helper method to define mock.On call
-//   - details *domain.GenericMap[domain.RelationKey]
+//   - details *domain.Details
 func (_e *MockSpaceView_Expecter) SetSpaceData(details interface{}) *MockSpaceView_SetSpaceData_Call {
 	return &MockSpaceView_SetSpaceData_Call{Call: _e.mock.On("SetSpaceData", details)}
 }
 
-func (_c *MockSpaceView_SetSpaceData_Call) Run(run func(details *domain.GenericMap[domain.RelationKey])) *MockSpaceView_SetSpaceData_Call {
+func (_c *MockSpaceView_SetSpaceData_Call) Run(run func(details *domain.Details)) *MockSpaceView_SetSpaceData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*domain.GenericMap[domain.RelationKey]))
+		run(args[0].(*domain.Details))
 	})
 	return _c
 }
@@ -617,7 +617,7 @@ func (_c *MockSpaceView_SetSpaceData_Call) Return(_a0 error) *MockSpaceView_SetS
 	return _c
 }
 
-func (_c *MockSpaceView_SetSpaceData_Call) RunAndReturn(run func(*domain.GenericMap[domain.RelationKey]) error) *MockSpaceView_SetSpaceData_Call {
+func (_c *MockSpaceView_SetSpaceData_Call) RunAndReturn(run func(*domain.Details) error) *MockSpaceView_SetSpaceData_Call {
 	_c.Call.Return(run)
 	return _c
 }

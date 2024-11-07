@@ -30,8 +30,66 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
+// AddChatDerivedObject provides a mock function with given fields: ctx, space, chatObjectId
+func (_m *MockService) AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string) (string, error) {
+	ret := _m.Called(ctx, space, chatObjectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddChatDerivedObject")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, string) (string, error)); ok {
+		return rf(ctx, space, chatObjectId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, string) string); ok {
+		r0 = rf(ctx, space, chatObjectId)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, clientspace.Space, string) error); ok {
+		r1 = rf(ctx, space, chatObjectId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_AddChatDerivedObject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddChatDerivedObject'
+type MockService_AddChatDerivedObject_Call struct {
+	*mock.Call
+}
+
+// AddChatDerivedObject is a helper method to define mock.On call
+//   - ctx context.Context
+//   - space clientspace.Space
+//   - chatObjectId string
+func (_e *MockService_Expecter) AddChatDerivedObject(ctx interface{}, space interface{}, chatObjectId interface{}) *MockService_AddChatDerivedObject_Call {
+	return &MockService_AddChatDerivedObject_Call{Call: _e.mock.On("AddChatDerivedObject", ctx, space, chatObjectId)}
+}
+
+func (_c *MockService_AddChatDerivedObject_Call) Run(run func(ctx context.Context, space clientspace.Space, chatObjectId string)) *MockService_AddChatDerivedObject_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_AddChatDerivedObject_Call) Return(chatId string, err error) *MockService_AddChatDerivedObject_Call {
+	_c.Call.Return(chatId, err)
+	return _c
+}
+
+func (_c *MockService_AddChatDerivedObject_Call) RunAndReturn(run func(context.Context, clientspace.Space, string) (string, error)) *MockService_AddChatDerivedObject_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateObject provides a mock function with given fields: ctx, spaceID, req
-func (_m *MockService) CreateObject(ctx context.Context, spaceID string, req objectcreator.CreateObjectRequest) (string, *domain.GenericMap[domain.RelationKey], error) {
+func (_m *MockService) CreateObject(ctx context.Context, spaceID string, req objectcreator.CreateObjectRequest) (string, *domain.Details, error) {
 	ret := _m.Called(ctx, spaceID, req)
 
 	if len(ret) == 0 {
@@ -39,9 +97,9 @@ func (_m *MockService) CreateObject(ctx context.Context, spaceID string, req obj
 	}
 
 	var r0 string
-	var r1 *domain.GenericMap[domain.RelationKey]
+	var r1 *domain.Details
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, objectcreator.CreateObjectRequest) (string, *domain.GenericMap[domain.RelationKey], error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, objectcreator.CreateObjectRequest) (string, *domain.Details, error)); ok {
 		return rf(ctx, spaceID, req)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, string, objectcreator.CreateObjectRequest) string); ok {
@@ -50,11 +108,11 @@ func (_m *MockService) CreateObject(ctx context.Context, spaceID string, req obj
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, objectcreator.CreateObjectRequest) *domain.GenericMap[domain.RelationKey]); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, objectcreator.CreateObjectRequest) *domain.Details); ok {
 		r1 = rf(ctx, spaceID, req)
 	} else {
 		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*domain.GenericMap[domain.RelationKey])
+			r1 = ret.Get(1).(*domain.Details)
 		}
 	}
 
@@ -87,18 +145,18 @@ func (_c *MockService_CreateObject_Call) Run(run func(ctx context.Context, space
 	return _c
 }
 
-func (_c *MockService_CreateObject_Call) Return(id string, details *domain.GenericMap[domain.RelationKey], err error) *MockService_CreateObject_Call {
+func (_c *MockService_CreateObject_Call) Return(id string, details *domain.Details, err error) *MockService_CreateObject_Call {
 	_c.Call.Return(id, details, err)
 	return _c
 }
 
-func (_c *MockService_CreateObject_Call) RunAndReturn(run func(context.Context, string, objectcreator.CreateObjectRequest) (string, *domain.GenericMap[domain.RelationKey], error)) *MockService_CreateObject_Call {
+func (_c *MockService_CreateObject_Call) RunAndReturn(run func(context.Context, string, objectcreator.CreateObjectRequest) (string, *domain.Details, error)) *MockService_CreateObject_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // CreateObjectUsingObjectUniqueTypeKey provides a mock function with given fields: ctx, spaceID, objectUniqueTypeKey, req
-func (_m *MockService) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, objectUniqueTypeKey string, req objectcreator.CreateObjectRequest) (string, *domain.GenericMap[domain.RelationKey], error) {
+func (_m *MockService) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, objectUniqueTypeKey string, req objectcreator.CreateObjectRequest) (string, *domain.Details, error) {
 	ret := _m.Called(ctx, spaceID, objectUniqueTypeKey, req)
 
 	if len(ret) == 0 {
@@ -106,9 +164,9 @@ func (_m *MockService) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context,
 	}
 
 	var r0 string
-	var r1 *domain.GenericMap[domain.RelationKey]
+	var r1 *domain.Details
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, objectcreator.CreateObjectRequest) (string, *domain.GenericMap[domain.RelationKey], error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, objectcreator.CreateObjectRequest) (string, *domain.Details, error)); ok {
 		return rf(ctx, spaceID, objectUniqueTypeKey, req)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, string, string, objectcreator.CreateObjectRequest) string); ok {
@@ -117,11 +175,11 @@ func (_m *MockService) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context,
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, objectcreator.CreateObjectRequest) *domain.GenericMap[domain.RelationKey]); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, objectcreator.CreateObjectRequest) *domain.Details); ok {
 		r1 = rf(ctx, spaceID, objectUniqueTypeKey, req)
 	} else {
 		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*domain.GenericMap[domain.RelationKey])
+			r1 = ret.Get(1).(*domain.Details)
 		}
 	}
 
@@ -155,18 +213,18 @@ func (_c *MockService_CreateObjectUsingObjectUniqueTypeKey_Call) Run(run func(ct
 	return _c
 }
 
-func (_c *MockService_CreateObjectUsingObjectUniqueTypeKey_Call) Return(id string, details *domain.GenericMap[domain.RelationKey], err error) *MockService_CreateObjectUsingObjectUniqueTypeKey_Call {
+func (_c *MockService_CreateObjectUsingObjectUniqueTypeKey_Call) Return(id string, details *domain.Details, err error) *MockService_CreateObjectUsingObjectUniqueTypeKey_Call {
 	_c.Call.Return(id, details, err)
 	return _c
 }
 
-func (_c *MockService_CreateObjectUsingObjectUniqueTypeKey_Call) RunAndReturn(run func(context.Context, string, string, objectcreator.CreateObjectRequest) (string, *domain.GenericMap[domain.RelationKey], error)) *MockService_CreateObjectUsingObjectUniqueTypeKey_Call {
+func (_c *MockService_CreateObjectUsingObjectUniqueTypeKey_Call) RunAndReturn(run func(context.Context, string, string, objectcreator.CreateObjectRequest) (string, *domain.Details, error)) *MockService_CreateObjectUsingObjectUniqueTypeKey_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // CreateSmartBlockFromState provides a mock function with given fields: ctx, spaceID, objectTypeKeys, createState
-func (_m *MockService) CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (string, *domain.GenericMap[domain.RelationKey], error) {
+func (_m *MockService) CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (string, *domain.Details, error) {
 	ret := _m.Called(ctx, spaceID, objectTypeKeys, createState)
 
 	if len(ret) == 0 {
@@ -174,9 +232,9 @@ func (_m *MockService) CreateSmartBlockFromState(ctx context.Context, spaceID st
 	}
 
 	var r0 string
-	var r1 *domain.GenericMap[domain.RelationKey]
+	var r1 *domain.Details
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, []domain.TypeKey, *state.State) (string, *domain.GenericMap[domain.RelationKey], error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, []domain.TypeKey, *state.State) (string, *domain.Details, error)); ok {
 		return rf(ctx, spaceID, objectTypeKeys, createState)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, string, []domain.TypeKey, *state.State) string); ok {
@@ -185,11 +243,11 @@ func (_m *MockService) CreateSmartBlockFromState(ctx context.Context, spaceID st
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, []domain.TypeKey, *state.State) *domain.GenericMap[domain.RelationKey]); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, []domain.TypeKey, *state.State) *domain.Details); ok {
 		r1 = rf(ctx, spaceID, objectTypeKeys, createState)
 	} else {
 		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*domain.GenericMap[domain.RelationKey])
+			r1 = ret.Get(1).(*domain.Details)
 		}
 	}
 
@@ -223,18 +281,18 @@ func (_c *MockService_CreateSmartBlockFromState_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockService_CreateSmartBlockFromState_Call) Return(id string, newDetails *domain.GenericMap[domain.RelationKey], err error) *MockService_CreateSmartBlockFromState_Call {
+func (_c *MockService_CreateSmartBlockFromState_Call) Return(id string, newDetails *domain.Details, err error) *MockService_CreateSmartBlockFromState_Call {
 	_c.Call.Return(id, newDetails, err)
 	return _c
 }
 
-func (_c *MockService_CreateSmartBlockFromState_Call) RunAndReturn(run func(context.Context, string, []domain.TypeKey, *state.State) (string, *domain.GenericMap[domain.RelationKey], error)) *MockService_CreateSmartBlockFromState_Call {
+func (_c *MockService_CreateSmartBlockFromState_Call) RunAndReturn(run func(context.Context, string, []domain.TypeKey, *state.State) (string, *domain.Details, error)) *MockService_CreateSmartBlockFromState_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // CreateSmartBlockFromStateInSpace provides a mock function with given fields: ctx, space, objectTypeKeys, createState
-func (_m *MockService) CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (string, *domain.GenericMap[domain.RelationKey], error) {
+func (_m *MockService) CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (string, *domain.Details, error) {
 	ret := _m.Called(ctx, space, objectTypeKeys, createState)
 
 	if len(ret) == 0 {
@@ -242,9 +300,9 @@ func (_m *MockService) CreateSmartBlockFromStateInSpace(ctx context.Context, spa
 	}
 
 	var r0 string
-	var r1 *domain.GenericMap[domain.RelationKey]
+	var r1 *domain.Details
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, []domain.TypeKey, *state.State) (string, *domain.GenericMap[domain.RelationKey], error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, []domain.TypeKey, *state.State) (string, *domain.Details, error)); ok {
 		return rf(ctx, space, objectTypeKeys, createState)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, []domain.TypeKey, *state.State) string); ok {
@@ -253,11 +311,11 @@ func (_m *MockService) CreateSmartBlockFromStateInSpace(ctx context.Context, spa
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, clientspace.Space, []domain.TypeKey, *state.State) *domain.GenericMap[domain.RelationKey]); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, clientspace.Space, []domain.TypeKey, *state.State) *domain.Details); ok {
 		r1 = rf(ctx, space, objectTypeKeys, createState)
 	} else {
 		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*domain.GenericMap[domain.RelationKey])
+			r1 = ret.Get(1).(*domain.Details)
 		}
 	}
 
@@ -291,12 +349,12 @@ func (_c *MockService_CreateSmartBlockFromStateInSpace_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *MockService_CreateSmartBlockFromStateInSpace_Call) Return(id string, newDetails *domain.GenericMap[domain.RelationKey], err error) *MockService_CreateSmartBlockFromStateInSpace_Call {
+func (_c *MockService_CreateSmartBlockFromStateInSpace_Call) Return(id string, newDetails *domain.Details, err error) *MockService_CreateSmartBlockFromStateInSpace_Call {
 	_c.Call.Return(id, newDetails, err)
 	return _c
 }
 
-func (_c *MockService_CreateSmartBlockFromStateInSpace_Call) RunAndReturn(run func(context.Context, clientspace.Space, []domain.TypeKey, *state.State) (string, *domain.GenericMap[domain.RelationKey], error)) *MockService_CreateSmartBlockFromStateInSpace_Call {
+func (_c *MockService_CreateSmartBlockFromStateInSpace_Call) RunAndReturn(run func(context.Context, clientspace.Space, []domain.TypeKey, *state.State) (string, *domain.Details, error)) *MockService_CreateSmartBlockFromStateInSpace_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -348,7 +406,7 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 }
 
 // InstallBundledObjects provides a mock function with given fields: ctx, space, sourceObjectIds, isNewSpace
-func (_m *MockService) InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) ([]string, []*domain.GenericMap[domain.RelationKey], error) {
+func (_m *MockService) InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) ([]string, []*domain.Details, error) {
 	ret := _m.Called(ctx, space, sourceObjectIds, isNewSpace)
 
 	if len(ret) == 0 {
@@ -356,9 +414,9 @@ func (_m *MockService) InstallBundledObjects(ctx context.Context, space clientsp
 	}
 
 	var r0 []string
-	var r1 []*domain.GenericMap[domain.RelationKey]
+	var r1 []*domain.Details
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, []string, bool) ([]string, []*domain.GenericMap[domain.RelationKey], error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, []string, bool) ([]string, []*domain.Details, error)); ok {
 		return rf(ctx, space, sourceObjectIds, isNewSpace)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, []string, bool) []string); ok {
@@ -369,11 +427,11 @@ func (_m *MockService) InstallBundledObjects(ctx context.Context, space clientsp
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, clientspace.Space, []string, bool) []*domain.GenericMap[domain.RelationKey]); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, clientspace.Space, []string, bool) []*domain.Details); ok {
 		r1 = rf(ctx, space, sourceObjectIds, isNewSpace)
 	} else {
 		if ret.Get(1) != nil {
-			r1 = ret.Get(1).([]*domain.GenericMap[domain.RelationKey])
+			r1 = ret.Get(1).([]*domain.Details)
 		}
 	}
 
@@ -407,12 +465,12 @@ func (_c *MockService_InstallBundledObjects_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockService_InstallBundledObjects_Call) Return(ids []string, objects []*domain.GenericMap[domain.RelationKey], err error) *MockService_InstallBundledObjects_Call {
+func (_c *MockService_InstallBundledObjects_Call) Return(ids []string, objects []*domain.Details, err error) *MockService_InstallBundledObjects_Call {
 	_c.Call.Return(ids, objects, err)
 	return _c
 }
 
-func (_c *MockService_InstallBundledObjects_Call) RunAndReturn(run func(context.Context, clientspace.Space, []string, bool) ([]string, []*domain.GenericMap[domain.RelationKey], error)) *MockService_InstallBundledObjects_Call {
+func (_c *MockService_InstallBundledObjects_Call) RunAndReturn(run func(context.Context, clientspace.Space, []string, bool) ([]string, []*domain.Details, error)) *MockService_InstallBundledObjects_Call {
 	_c.Call.Return(run)
 	return _c
 }

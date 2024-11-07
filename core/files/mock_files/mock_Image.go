@@ -25,23 +25,23 @@ func (_m *MockImage) EXPECT() *MockImage_Expecter {
 }
 
 // Details provides a mock function with given fields: ctx
-func (_m *MockImage) Details(ctx context.Context) (*domain.GenericMap[domain.RelationKey], error) {
+func (_m *MockImage) Details(ctx context.Context) (*domain.Details, error) {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Details")
 	}
 
-	var r0 *domain.GenericMap[domain.RelationKey]
+	var r0 *domain.Details
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (*domain.GenericMap[domain.RelationKey], error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) (*domain.Details, error)); ok {
 		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) *domain.GenericMap[domain.RelationKey]); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) *domain.Details); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.GenericMap[domain.RelationKey])
+			r0 = ret.Get(0).(*domain.Details)
 		}
 	}
 
@@ -72,12 +72,12 @@ func (_c *MockImage_Details_Call) Run(run func(ctx context.Context)) *MockImage_
 	return _c
 }
 
-func (_c *MockImage_Details_Call) Return(_a0 *domain.GenericMap[domain.RelationKey], _a1 error) *MockImage_Details_Call {
+func (_c *MockImage_Details_Call) Return(_a0 *domain.Details, _a1 error) *MockImage_Details_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockImage_Details_Call) RunAndReturn(run func(context.Context) (*domain.GenericMap[domain.RelationKey], error)) *MockImage_Details_Call {
+func (_c *MockImage_Details_Call) RunAndReturn(run func(context.Context) (*domain.Details, error)) *MockImage_Details_Call {
 	_c.Call.Return(run)
 	return _c
 }

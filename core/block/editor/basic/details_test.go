@@ -151,10 +151,10 @@ func TestBasic_SetObjectTypesInState(t *testing.T) {
 
 		f.lastUsed.EXPECT().UpdateLastUsedDate(mock.Anything, bundle.TypeKeyTask, mock.Anything).Return().Once()
 		f.store.AddObjects(t, []objectstore.TestObject{{
-			bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
-			bundle.RelationKeyId:        pbtypes.String("ot-task"),
-			bundle.RelationKeyUniqueKey: pbtypes.String("ot-task"),
-			bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_todo)),
+			bundle.RelationKeySpaceId:   domain.String(spaceId),
+			bundle.RelationKeyId:        domain.String("ot-task"),
+			bundle.RelationKeyUniqueKey: domain.String("ot-task"),
+			bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_todo)),
 		}})
 
 		s := f.sb.NewState()

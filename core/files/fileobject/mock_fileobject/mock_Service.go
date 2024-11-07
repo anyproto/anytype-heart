@@ -82,7 +82,7 @@ func (_c *MockService_Close_Call) RunAndReturn(run func(context.Context) error) 
 }
 
 // Create provides a mock function with given fields: ctx, spaceId, req
-func (_m *MockService) Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (string, *domain.GenericMap[domain.RelationKey], error) {
+func (_m *MockService) Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (string, *domain.Details, error) {
 	ret := _m.Called(ctx, spaceId, req)
 
 	if len(ret) == 0 {
@@ -90,9 +90,9 @@ func (_m *MockService) Create(ctx context.Context, spaceId string, req filemodel
 	}
 
 	var r0 string
-	var r1 *domain.GenericMap[domain.RelationKey]
+	var r1 *domain.Details
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, filemodels.CreateRequest) (string, *domain.GenericMap[domain.RelationKey], error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, filemodels.CreateRequest) (string, *domain.Details, error)); ok {
 		return rf(ctx, spaceId, req)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, string, filemodels.CreateRequest) string); ok {
@@ -101,11 +101,11 @@ func (_m *MockService) Create(ctx context.Context, spaceId string, req filemodel
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, filemodels.CreateRequest) *domain.GenericMap[domain.RelationKey]); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, filemodels.CreateRequest) *domain.Details); ok {
 		r1 = rf(ctx, spaceId, req)
 	} else {
 		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*domain.GenericMap[domain.RelationKey])
+			r1 = ret.Get(1).(*domain.Details)
 		}
 	}
 
@@ -138,12 +138,12 @@ func (_c *MockService_Create_Call) Run(run func(ctx context.Context, spaceId str
 	return _c
 }
 
-func (_c *MockService_Create_Call) Return(id string, object *domain.GenericMap[domain.RelationKey], err error) *MockService_Create_Call {
+func (_c *MockService_Create_Call) Return(id string, object *domain.Details, err error) *MockService_Create_Call {
 	_c.Call.Return(id, object, err)
 	return _c
 }
 
-func (_c *MockService_Create_Call) RunAndReturn(run func(context.Context, string, filemodels.CreateRequest) (string, *domain.GenericMap[domain.RelationKey], error)) *MockService_Create_Call {
+func (_c *MockService_Create_Call) RunAndReturn(run func(context.Context, string, filemodels.CreateRequest) (string, *domain.Details, error)) *MockService_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -253,7 +253,7 @@ func (_c *MockService_DeleteFileData_Call) RunAndReturn(run func(string, string)
 }
 
 // EnsureFileAddedToSyncQueue provides a mock function with given fields: id, details
-func (_m *MockService) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.GenericMap[domain.RelationKey]) error {
+func (_m *MockService) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.Details) error {
 	ret := _m.Called(id, details)
 
 	if len(ret) == 0 {
@@ -261,7 +261,7 @@ func (_m *MockService) EnsureFileAddedToSyncQueue(id domain.FullID, details *dom
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(domain.FullID, *domain.GenericMap[domain.RelationKey]) error); ok {
+	if rf, ok := ret.Get(0).(func(domain.FullID, *domain.Details) error); ok {
 		r0 = rf(id, details)
 	} else {
 		r0 = ret.Error(0)
@@ -277,14 +277,14 @@ type MockService_EnsureFileAddedToSyncQueue_Call struct {
 
 // EnsureFileAddedToSyncQueue is a helper method to define mock.On call
 //   - id domain.FullID
-//   - details *domain.GenericMap[domain.RelationKey]
+//   - details *domain.Details
 func (_e *MockService_Expecter) EnsureFileAddedToSyncQueue(id interface{}, details interface{}) *MockService_EnsureFileAddedToSyncQueue_Call {
 	return &MockService_EnsureFileAddedToSyncQueue_Call{Call: _e.mock.On("EnsureFileAddedToSyncQueue", id, details)}
 }
 
-func (_c *MockService_EnsureFileAddedToSyncQueue_Call) Run(run func(id domain.FullID, details *domain.GenericMap[domain.RelationKey])) *MockService_EnsureFileAddedToSyncQueue_Call {
+func (_c *MockService_EnsureFileAddedToSyncQueue_Call) Run(run func(id domain.FullID, details *domain.Details)) *MockService_EnsureFileAddedToSyncQueue_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(domain.FullID), args[1].(*domain.GenericMap[domain.RelationKey]))
+		run(args[0].(domain.FullID), args[1].(*domain.Details))
 	})
 	return _c
 }
@@ -294,7 +294,7 @@ func (_c *MockService_EnsureFileAddedToSyncQueue_Call) Return(_a0 error) *MockSe
 	return _c
 }
 
-func (_c *MockService_EnsureFileAddedToSyncQueue_Call) RunAndReturn(run func(domain.FullID, *domain.GenericMap[domain.RelationKey]) error) *MockService_EnsureFileAddedToSyncQueue_Call {
+func (_c *MockService_EnsureFileAddedToSyncQueue_Call) RunAndReturn(run func(domain.FullID, *domain.Details) error) *MockService_EnsureFileAddedToSyncQueue_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -413,7 +413,7 @@ func (_c *MockService_GetFileIdFromObjectWaitLoad_Call) RunAndReturn(run func(co
 }
 
 // GetObjectDetailsByFileId provides a mock function with given fields: fileId
-func (_m *MockService) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.GenericMap[domain.RelationKey], error) {
+func (_m *MockService) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error) {
 	ret := _m.Called(fileId)
 
 	if len(ret) == 0 {
@@ -421,9 +421,9 @@ func (_m *MockService) GetObjectDetailsByFileId(fileId domain.FullFileId) (strin
 	}
 
 	var r0 string
-	var r1 *domain.GenericMap[domain.RelationKey]
+	var r1 *domain.Details
 	var r2 error
-	if rf, ok := ret.Get(0).(func(domain.FullFileId) (string, *domain.GenericMap[domain.RelationKey], error)); ok {
+	if rf, ok := ret.Get(0).(func(domain.FullFileId) (string, *domain.Details, error)); ok {
 		return rf(fileId)
 	}
 	if rf, ok := ret.Get(0).(func(domain.FullFileId) string); ok {
@@ -432,11 +432,11 @@ func (_m *MockService) GetObjectDetailsByFileId(fileId domain.FullFileId) (strin
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(domain.FullFileId) *domain.GenericMap[domain.RelationKey]); ok {
+	if rf, ok := ret.Get(1).(func(domain.FullFileId) *domain.Details); ok {
 		r1 = rf(fileId)
 	} else {
 		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*domain.GenericMap[domain.RelationKey])
+			r1 = ret.Get(1).(*domain.Details)
 		}
 	}
 
@@ -467,12 +467,12 @@ func (_c *MockService_GetObjectDetailsByFileId_Call) Run(run func(fileId domain.
 	return _c
 }
 
-func (_c *MockService_GetObjectDetailsByFileId_Call) Return(_a0 string, _a1 *domain.GenericMap[domain.RelationKey], _a2 error) *MockService_GetObjectDetailsByFileId_Call {
+func (_c *MockService_GetObjectDetailsByFileId_Call) Return(_a0 string, _a1 *domain.Details, _a2 error) *MockService_GetObjectDetailsByFileId_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockService_GetObjectDetailsByFileId_Call) RunAndReturn(run func(domain.FullFileId) (string, *domain.GenericMap[domain.RelationKey], error)) *MockService_GetObjectDetailsByFileId_Call {
+func (_c *MockService_GetObjectDetailsByFileId_Call) RunAndReturn(run func(domain.FullFileId) (string, *domain.Details, error)) *MockService_GetObjectDetailsByFileId_Call {
 	_c.Call.Return(run)
 	return _c
 }

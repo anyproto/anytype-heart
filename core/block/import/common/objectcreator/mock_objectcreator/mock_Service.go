@@ -25,24 +25,24 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 }
 
 // Create provides a mock function with given fields: dataObject, sn
-func (_m *MockService) Create(dataObject *objectcreator.DataObject, sn *common.Snapshot) (*domain.GenericMap[domain.RelationKey], string, error) {
+func (_m *MockService) Create(dataObject *objectcreator.DataObject, sn *common.Snapshot) (*domain.Details, string, error) {
 	ret := _m.Called(dataObject, sn)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
 	}
 
-	var r0 *domain.GenericMap[domain.RelationKey]
+	var r0 *domain.Details
 	var r1 string
 	var r2 error
-	if rf, ok := ret.Get(0).(func(*objectcreator.DataObject, *common.Snapshot) (*domain.GenericMap[domain.RelationKey], string, error)); ok {
+	if rf, ok := ret.Get(0).(func(*objectcreator.DataObject, *common.Snapshot) (*domain.Details, string, error)); ok {
 		return rf(dataObject, sn)
 	}
-	if rf, ok := ret.Get(0).(func(*objectcreator.DataObject, *common.Snapshot) *domain.GenericMap[domain.RelationKey]); ok {
+	if rf, ok := ret.Get(0).(func(*objectcreator.DataObject, *common.Snapshot) *domain.Details); ok {
 		r0 = rf(dataObject, sn)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.GenericMap[domain.RelationKey])
+			r0 = ret.Get(0).(*domain.Details)
 		}
 	}
 
@@ -80,12 +80,12 @@ func (_c *MockService_Create_Call) Run(run func(dataObject *objectcreator.DataOb
 	return _c
 }
 
-func (_c *MockService_Create_Call) Return(_a0 *domain.GenericMap[domain.RelationKey], _a1 string, _a2 error) *MockService_Create_Call {
+func (_c *MockService_Create_Call) Return(_a0 *domain.Details, _a1 string, _a2 error) *MockService_Create_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockService_Create_Call) RunAndReturn(run func(*objectcreator.DataObject, *common.Snapshot) (*domain.GenericMap[domain.RelationKey], string, error)) *MockService_Create_Call {
+func (_c *MockService_Create_Call) RunAndReturn(run func(*objectcreator.DataObject, *common.Snapshot) (*domain.Details, string, error)) *MockService_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }

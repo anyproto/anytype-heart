@@ -683,7 +683,7 @@ func (_c *MockTechSpace_SpaceViewId_Call) RunAndReturn(run func(string) (string,
 }
 
 // SpaceViewSetData provides a mock function with given fields: ctx, spaceId, details
-func (_m *MockTechSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *domain.GenericMap[domain.RelationKey]) error {
+func (_m *MockTechSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *domain.Details) error {
 	ret := _m.Called(ctx, spaceId, details)
 
 	if len(ret) == 0 {
@@ -691,7 +691,7 @@ func (_m *MockTechSpace) SpaceViewSetData(ctx context.Context, spaceId string, d
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, *domain.GenericMap[domain.RelationKey]) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, *domain.Details) error); ok {
 		r0 = rf(ctx, spaceId, details)
 	} else {
 		r0 = ret.Error(0)
@@ -708,14 +708,14 @@ type MockTechSpace_SpaceViewSetData_Call struct {
 // SpaceViewSetData is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spaceId string
-//   - details *domain.GenericMap[domain.RelationKey]
+//   - details *domain.Details
 func (_e *MockTechSpace_Expecter) SpaceViewSetData(ctx interface{}, spaceId interface{}, details interface{}) *MockTechSpace_SpaceViewSetData_Call {
 	return &MockTechSpace_SpaceViewSetData_Call{Call: _e.mock.On("SpaceViewSetData", ctx, spaceId, details)}
 }
 
-func (_c *MockTechSpace_SpaceViewSetData_Call) Run(run func(ctx context.Context, spaceId string, details *domain.GenericMap[domain.RelationKey])) *MockTechSpace_SpaceViewSetData_Call {
+func (_c *MockTechSpace_SpaceViewSetData_Call) Run(run func(ctx context.Context, spaceId string, details *domain.Details)) *MockTechSpace_SpaceViewSetData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(*domain.GenericMap[domain.RelationKey]))
+		run(args[0].(context.Context), args[1].(string), args[2].(*domain.Details))
 	})
 	return _c
 }
@@ -725,7 +725,7 @@ func (_c *MockTechSpace_SpaceViewSetData_Call) Return(err error) *MockTechSpace_
 	return _c
 }
 
-func (_c *MockTechSpace_SpaceViewSetData_Call) RunAndReturn(run func(context.Context, string, *domain.GenericMap[domain.RelationKey]) error) *MockTechSpace_SpaceViewSetData_Call {
+func (_c *MockTechSpace_SpaceViewSetData_Call) RunAndReturn(run func(context.Context, string, *domain.Details) error) *MockTechSpace_SpaceViewSetData_Call {
 	_c.Call.Return(run)
 	return _c
 }

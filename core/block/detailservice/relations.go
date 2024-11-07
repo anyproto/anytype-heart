@@ -97,8 +97,8 @@ func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) (ke
 
 func generateFilter(value domain.Value) func(v domain.Value) bool {
 	equalOrHasFilter := func(v domain.Value) bool {
-		if list := v.GetListValue(); list != nil {
-			for _, element := range list.Values {
+		if list, ok := v.TryListValues(); ok {
+			for _, element := range list {
 				if element.Equal(value) {
 					return true
 				}

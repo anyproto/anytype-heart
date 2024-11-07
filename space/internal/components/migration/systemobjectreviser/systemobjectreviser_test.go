@@ -22,24 +22,24 @@ func TestMigration_Run(t *testing.T) {
 		store := objectstore.NewStoreFixture(t)
 		store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
-				bundle.RelationKeySpaceId:        pbtypes.String("space1"),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_checkbox)),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyId:             pbtypes.String("id1"),
-				bundle.RelationKeyIsHidden:       pbtypes.Bool(true),
-				bundle.RelationKeyRevision:       pbtypes.Int64(1),
-				bundle.RelationKeyUniqueKey:      pbtypes.String(bundle.RelationKeyDone.URL()),
-				bundle.RelationKeySourceObject:   pbtypes.String(bundle.RelationKeyDone.BundledURL()),
+				bundle.RelationKeySpaceId:        domain.String("space1"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_checkbox)),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:             domain.String("id1"),
+				bundle.RelationKeyIsHidden:       domain.Bool(true),
+				bundle.RelationKeyRevision:       domain.Int64(1),
+				bundle.RelationKeyUniqueKey:      domain.String(bundle.RelationKeyDone.URL()),
+				bundle.RelationKeySourceObject:   domain.String(bundle.RelationKeyDone.BundledURL()),
 			},
 		})
 		marketPlace := objectstore.NewStoreFixture(t)
 		marketPlace.AddObjects(t, addr.AnytypeMarketplaceWorkspace, []objectstore.TestObject{
 			{
-				bundle.RelationKeySpaceId:        pbtypes.String(addr.AnytypeMarketplaceWorkspace),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_checkbox)),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyId:             pbtypes.String(bundle.RelationKeyDone.BundledURL()),
-				bundle.RelationKeyRevision:       pbtypes.Int64(2),
+				bundle.RelationKeySpaceId:        domain.String(addr.AnytypeMarketplaceWorkspace),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_checkbox)),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:             domain.String(bundle.RelationKeyDone.BundledURL()),
+				bundle.RelationKeyRevision:       domain.Int64(2),
 			},
 		})
 		fixer := &Migration{}

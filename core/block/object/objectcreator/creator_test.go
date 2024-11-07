@@ -4,18 +4,17 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused/mock_lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const spaceId = "spc1"
@@ -54,7 +53,7 @@ type testTemplateService struct {
 	templates map[string]*state.State
 }
 
-func (tts *testTemplateService) CreateTemplateStateWithDetails(templateId string, details *types.Struct) (*state.State, error) {
+func (tts *testTemplateService) CreateTemplateStateWithDetails(templateId string, details *domain.Details) (*state.State, error) {
 	if tts.templates != nil {
 		if st, found := tts.templates[templateId]; found {
 			return st, nil
@@ -79,9 +78,9 @@ func TestService_CreateObject(t *testing.T) {
 
 		// when
 		id, _, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
-			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyTargetObjectType.String(): pbtypes.String(bundle.TypeKeyTask.URL()),
-			}},
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyTargetObjectType: domain.String(bundle.TypeKeyTask.URL()),
+			}),
 			ObjectTypeKey: bundle.TypeKeyTemplate,
 		})
 
