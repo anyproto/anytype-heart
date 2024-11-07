@@ -17,8 +17,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -121,7 +121,7 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 		return equalOrHasFilter
 	}
 
-	start, err := dateIDToDayStart(stringValue)
+	start, err := dateutil.ParseDateId(stringValue)
 	if err != nil {
 		log.Error("failed to convert date id to day start", zap.Error(err))
 		return equalOrHasFilter
@@ -138,11 +138,4 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 		}
 		return equalOrHasFilter(v)
 	}
-}
-
-func dateIDToDayStart(id string) (time.Time, error) {
-	if !strings.HasPrefix(id, addr.DatePrefix) {
-		return time.Time{}, fmt.Errorf("invalid id: date prefix not found")
-	}
-	return time.Parse("2006-01-02", strings.TrimPrefix(id, addr.DatePrefix))
 }
