@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -74,7 +75,16 @@ func MarshalChange(change *pb.Change) (result []byte, dataType string, err error
 }
 
 func UnmarshalChange(treeChange *objecttree.Change, data []byte) (result any, err error) {
-	change := &pb.Change{}
+	return unmarshalChange(treeChange, data, true)
+}
+
+func unmarshalChange(treeChange *objecttree.Change, data []byte, needSnapshot bool) (result any, err error) {
+	var change proto.Message
+	if needSnapshot {
+		change = &pb.Change{}
+	} else {
+		change = &pb.ChangeNoSnapshot{}
+	}
 	if treeChange.DataType == dataTypeSnappy {
 		buf := bytesPool.Get().([]byte)[:0]
 		defer func() {
@@ -91,10 +101,28 @@ func UnmarshalChange(treeChange *objecttree.Change, data []byte) (result any, er
 			}
 		}
 	}
-	if err = proto.Unmarshal(data, change); err == nil {
-		result = change
+	if err = proto.Unmarshal(data, change); err != nil {
+		return
 	}
-	return
+	if needSnapshot {
+		return change, nil
+	} else {
+		noSnapshotChange := change.(*pb.ChangeNoSnapshot)
+		return &pb.Change{
+			Content:   noSnapshotChange.Content,
+			FileKeys:  noSnapshotChange.FileKeys,
+			Timestamp: noSnapshotChange.Timestamp,
+			Version:   noSnapshotChange.Version,
+		}, nil
+	}
+}
+
+// NewUnmarshalTreeChange creates UnmarshalChange func that unmarshalls snapshot only for the first change and ignores it for following. It saves some memory
+func NewUnmarshalTreeChange() objecttree.ChangeConvertFunc {
+	var changeCount atomic.Int32
+	return func(treeChange *objecttree.Change, data []byte) (result any, err error) {
+		return unmarshalChange(treeChange, data, changeCount.CompareAndSwap(0, 1))
+	}
 }
 
 func UnmarshalChangeWithDataType(dataType string, decrypted []byte) (res any, err error) {
@@ -551,7 +579,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		return
 	}
 	var lastMigrationVersion uint32
-	err = ot.IterateFrom(startId, UnmarshalChange,
+	err = ot.IterateFrom(startId, NewUnmarshalTreeChange(),
 		func(change *objecttree.Change) bool {
 			count++
 			lastChange = change

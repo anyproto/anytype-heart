@@ -142,8 +142,11 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 	return sp, nil
 }
 
-func (s *space) tryLoadBundledAndInstallIfMissing() {
+func (s *space) tryLoadBundledAndInstallIfMissing(disableRemoteLoad bool) {
 	ctxWithPeerTimeout := context.WithValue(s.loadMissingBundledObjectsCtx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(BundledObjectsPeerFindTimeout))
+	if !disableRemoteLoad {
+		ctxWithPeerTimeout = peer.CtxWithPeerId(ctxWithPeerTimeout, peer.CtxResponsiblePeers)
+	}
 	missingSourceIds, err := s.TryLoadBundledObjects(ctxWithPeerTimeout)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
@@ -171,7 +174,7 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
-	go s.tryLoadBundledAndInstallIfMissing()
+	go s.tryLoadBundledAndInstallIfMissing(disableRemoteLoad)
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}

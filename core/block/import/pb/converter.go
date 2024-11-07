@@ -38,7 +38,6 @@ const (
 )
 
 var ErrNotAnyBlockExtension = errors.New("not JSON or PB extension")
-var ErrWrongFormat = errors.New("wrong PB or JSON format")
 
 type Pb struct {
 	service         *collection.Service
@@ -171,7 +170,7 @@ func (p *Pb) extractFiles(importPath string, importSource source.Source) error {
 		return err
 	}
 	if importSource.CountFilesWithGivenExtensions([]string{".pb", ".json"}) == 0 {
-		return common.ErrNoObjectsToImport
+		return common.ErrorBySourceType(importSource)
 	}
 	return nil
 }
@@ -267,10 +266,10 @@ func (p *Pb) makeSnapshot(name, profileID, path string,
 		if errors.Is(errGS, ErrNotAnyBlockExtension) {
 			return nil, nil
 		}
-		return nil, errGS
+		return nil, fmt.Errorf("%w: %s", common.ErrPbNotAnyBlockFormat, errGS.Error())
 	}
 	if valid := p.isSnapshotValid(snapshot); !valid {
-		return nil, fmt.Errorf("snapshot is not valid")
+		return nil, fmt.Errorf("%w: snapshot is not valid", common.ErrPbNotAnyBlockFormat)
 	}
 	id := uuid.New().String()
 	id, err := p.normalizeSnapshot(snapshot, id, profileID, path, isMigration, pbFiles)
@@ -291,7 +290,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*common.Snapsho
 		snapshot := &pb.SnapshotWithType{}
 		um := jsonpb.Unmarshaler{}
 		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
-			return nil, ErrWrongFormat
+			return nil, fmt.Errorf("PB:GetSnapshot %w", uErr)
 		}
 		return common.NewSnapshotModelFromProto(snapshot), nil
 	}
@@ -302,7 +301,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*common.Snapsho
 			return nil, err
 		}
 		if err = snapshot.Unmarshal(data); err != nil {
-			return nil, ErrWrongFormat
+			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
 		}
 		return common.NewSnapshotModelFromProto(snapshot), nil
 	}

@@ -41,13 +41,13 @@ func (Migration) Name() string {
 	return MName
 }
 
-func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
-	spaceObjects, err := listAllTypesAndRelations(store, space.Id())
+func (Migration) Run(ctx context.Context, log logger.CtxLogger, store, marketPlace dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+	spaceObjects, err := listAllTypesAndRelations(store)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %w", err)
 	}
 
-	marketObjects, err := listAllTypesAndRelations(store, addr.AnytypeMarketplaceWorkspace)
+	marketObjects, err := listAllTypesAndRelations(marketPlace)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations from marketplace space: %w", err)
 	}
@@ -67,7 +67,7 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 	return
 }
 
-func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string) (map[string]*domain.Details, error) {
+func listAllTypesAndRelations(store dependencies.QueryableStore) (map[string]*domain.Details, error) {
 	records, err := store.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{

@@ -113,7 +113,7 @@ func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *common.Conve
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".txt"}); numberOfFiles == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(common.ErrorBySourceType(importSource))
 		return nil, nil
 	}
 	snapshots := make([]*common.Snapshot, 0, numberOfFiles)

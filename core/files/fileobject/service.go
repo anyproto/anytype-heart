@@ -301,7 +301,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		return "", nil, fmt.Errorf("file hash is empty")
 	}
 
-	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin)
+	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin, req.ImageKind)
 
 	payload, err := space.CreateTreePayload(ctx, payloadcreator.PayloadCreationParams{
 		Time:           time.Now(),
@@ -350,7 +350,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	return id, object, nil
 }
 
-func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin) *domain.Details {
+func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin, kind model.ImageKind) *domain.Details {
 	details := domain.NewDetails()
 	details.SetString(bundle.RelationKeyFileId, fileId.String())
 	// Use general file layout. It will be changed for proper layout after indexing
@@ -360,6 +360,13 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 	details.SetInt64(bundle.RelationKeySyncError, int64(domain.SyncErrorNull))
 	details.SetInt64(bundle.RelationKeyFileBackupStatus, int64(filesyncstatus.Queued))
 	origin.AddToDetails(details)
+	if kind == model.ImageKind_Basic {
+		return details
+	}
+	details.Fields[bundle.RelationKeyImageKind.String()] = pbtypes.Int64(int64(kind))
+	if kind == model.ImageKind_AutomaticallyAdded {
+		details.Fields[bundle.RelationKeyIsHiddenDiscovery.String()] = pbtypes.Bool(true)
+	}
 	return details
 }
 

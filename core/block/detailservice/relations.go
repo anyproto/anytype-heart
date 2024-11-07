@@ -96,13 +96,20 @@ func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) (ke
 }
 
 func generateFilter(value domain.Value) func(v domain.Value) bool {
-	equalFilter := func(v domain.Value) bool {
+	equalOrHasFilter := func(v domain.Value) bool {
+		if list := v.GetListValue(); list != nil {
+			for _, element := range list.Values {
+				if element.Equal(value) {
+					return true
+				}
+			}
+		}
 		return v.Equal(value)
 	}
 
 	stringValue := value.String()
 	if stringValue == "" {
-		return equalFilter
+		return equalOrHasFilter
 	}
 
 	sbt, err := typeprovider.SmartblockTypeFromID(stringValue)
@@ -111,13 +118,13 @@ func generateFilter(value domain.Value) func(v domain.Value) bool {
 	}
 
 	if sbt != coresb.SmartBlockTypeDate {
-		return equalFilter
+		return equalOrHasFilter
 	}
 
 	start, err := dateIDToDayStart(stringValue)
 	if err != nil {
 		log.Error("failed to convert date id to day start", zap.Error(err))
-		return equalFilter
+		return equalOrHasFilter
 	}
 
 	end := start.Add(24 * time.Hour)
@@ -129,7 +136,7 @@ func generateFilter(value domain.Value) func(v domain.Value) bool {
 		if numberValue >= startTimestamp && numberValue < endTimestamp {
 			return true
 		}
-		return equalFilter(v)
+		return equalOrHasFilter(v)
 	}
 }
 

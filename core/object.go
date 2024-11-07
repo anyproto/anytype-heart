@@ -762,18 +762,6 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 }
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
-	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
-		m := &pb.RpcObjectImportResponse{
-			Error: &pb.RpcObjectImportResponseError{
-				Code: code,
-			},
-		}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		}
-		return m
-	}
-
 	importRequest := &importer.ImportRequest{
 		RpcObjectImportRequest: req,
 		Origin:                 objectorigin.Import(req.Type),
@@ -781,23 +769,9 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		SendNotification:       true,
 		IsSync:                 false,
 	}
-	res := getService[importer.Importer](mw).Import(cctx, importRequest)
 
-	if res == nil || res.Err == nil {
-		return response(pb.RpcObjectImportResponseError_NULL, nil)
-	}
-	switch {
-	case errors.Is(res.Err, common.ErrNoObjectsToImport):
-		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, res.Err)
-	case errors.Is(res.Err, common.ErrCancel):
-		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, res.Err)
-	case errors.Is(res.Err, common.ErrLimitExceeded):
-		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, res.Err)
-	case errors.Is(res.Err, common.ErrFileLoad):
-		return response(pb.RpcObjectImportResponseError_FILE_LOAD_ERROR, res.Err)
-	default:
-		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, res.Err)
-	}
+	getService[importer.Importer](mw).Import(cctx, importRequest)
+	return &pb.RpcObjectImportResponse{}
 }
 
 func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {

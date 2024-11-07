@@ -44,13 +44,13 @@ func createPageWithFileBlock(t *testing.T, app *testApplication, filePath string
 	})
 	require.NoError(t, err)
 
-	_, err = blockService.UploadFileBlock(id, block.UploadRequest{
+	_, err = blockService.UploadBlockFile(nil, block.UploadRequest{
 		RpcBlockUploadRequest: pb.RpcBlockUploadRequest{
 			ContextId: id,
 			BlockId:   fileBlockId,
 			FilePath:  filePath,
 		},
-	})
+	}, "", true)
 	require.NoError(t, err)
 	return id
 }

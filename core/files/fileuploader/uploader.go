@@ -102,6 +102,7 @@ type Uploader interface {
 	SetLastModifiedDate() Uploader
 	SetGroupId(groupId string) Uploader
 	SetCustomEncryptionKeys(keys map[string]string) Uploader
+	SetImageKind(imageKind model.ImageKind) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
 
@@ -164,6 +165,7 @@ type uploader struct {
 	tempDirProvider      core.TempDirProvider
 	fileService          files.Service
 	origin               objectorigin.ObjectOrigin
+	imageKind            model.ImageKind
 	additionalDetails    *domain.Details
 	customEncryptionKeys map[string]string
 }
@@ -252,6 +254,11 @@ func (u *uploader) SetBytes(b []byte) Uploader {
 
 func (u *uploader) SetCustomEncryptionKeys(keys map[string]string) Uploader {
 	u.customEncryptionKeys = keys
+	return u
+}
+
+func (u *uploader) SetImageKind(imageKind model.ImageKind) Uploader {
+	u.imageKind = imageKind
 	return u
 }
 
@@ -508,6 +515,7 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.A
 		FileId:            addResult.FileId,
 		EncryptionKeys:    addResult.EncryptionKeys.EncryptionKeys,
 		ObjectOrigin:      u.origin,
+		ImageKind:         u.imageKind,
 		AdditionalDetails: u.additionalDetails,
 	})
 	if err != nil {
