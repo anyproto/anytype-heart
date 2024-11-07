@@ -101,7 +101,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	golang.org/x/image v0.21.0
-	golang.org/x/mobile v0.0.0-20240806205939-81131f6468ab
+	golang.org/x/mobile v0.0.0-20241016134751-7ff83004ec2c
 	golang.org/x/net v0.30.0
 	golang.org/x/oauth2 v0.23.0
 	golang.org/x/text v0.19.0
