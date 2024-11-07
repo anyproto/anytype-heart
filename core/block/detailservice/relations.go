@@ -121,21 +121,39 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 		return equalOrHasFilter
 	}
 
-	start, err := dateutil.ParseDateId(stringValue)
+	ts, err := dateutil.ParseDateId(stringValue)
 	if err != nil {
-		log.Error("failed to convert date id to day start", zap.Error(err))
+		log.Error("failed to parse Date object id", zap.Error(err))
 		return equalOrHasFilter
 	}
 
+	shortId := dateutil.TimeToShortDateId(ts)
+
+	start := ts.Truncate(24 * time.Hour)
 	end := start.Add(24 * time.Hour)
 	startTimestamp := start.Unix()
 	endTimestamp := end.Unix()
 
+	// filter for date objects is able to find relations with values between the borders of queried day
+	// - for relations with number format it checks timestamp value is between timestamps of this day midnights
+	// - for relations carrying string list it checks if some of the strings has day prefix, e.g.
+	// if _date_2023-12-12-08-30-50 is queried, then all relations with prefix _date_2023-12-12 will be returned
 	return func(v *types.Value) bool {
 		numberValue := int64(v.GetNumberValue())
 		if numberValue >= startTimestamp && numberValue < endTimestamp {
 			return true
 		}
-		return equalOrHasFilter(v)
+
+		if list := v.GetListValue(); list != nil {
+			for _, element := range list.Values {
+				if element.Equal(value) {
+					return true
+				}
+				if strings.HasPrefix(element.GetStringValue(), shortId) {
+					return true
+				}
+			}
+		}
+		return v.Equal(value)
 	}
 }
