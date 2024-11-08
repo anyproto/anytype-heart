@@ -121,6 +121,18 @@ func handleZip(input, output string) {
 	defer r.Close()
 
 	for _, f := range r.File {
+		dir := filepath.Dir(f.Name)
+		if dir != "." {
+			// nolint: gosec
+			outputDir := filepath.Join(output, dir)
+			if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+				if err := os.MkdirAll(outputDir, 0755); err != nil {
+					log.Printf("Failed to create output subdirectory: %v\n", err)
+					return
+				}
+			}
+		}
+
 		// assuming we are only working with files, not directories
 		if f.FileInfo().IsDir() {
 			continue

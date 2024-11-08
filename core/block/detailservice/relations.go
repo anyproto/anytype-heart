@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -65,11 +66,11 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 	})
 }
 
-func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) (keys []string, counters []int64, err error) {
+func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {
 	countersByKeys := make(map[string]int64)
 	detailHandlesValue := generateFilter(value)
 
-	err = s.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: nil}, func(details *types.Struct) {
+	err := s.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: nil}, func(details *types.Struct) {
 		for key, valueToCheck := range details.Fields {
 			if detailHandlesValue(valueToCheck) {
 				if counter, ok := countersByKeys[key]; ok {
@@ -82,17 +83,21 @@ func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) (ke
 	})
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to query objects: %w", err)
+		return nil, fmt.Errorf("failed to query objects: %w", err)
 	}
 
-	keys = maps.Keys(countersByKeys)
+	keys := maps.Keys(countersByKeys)
 	slices.Sort(keys)
+	list := make([]*pb.RpcRelationListWithValueResponseResponseItem, len(keys))
 
-	for _, key := range keys {
-		counters = append(counters, countersByKeys[key])
+	for i, key := range keys {
+		list[i] = &pb.RpcRelationListWithValueResponseResponseItem{
+			RelationKey: key,
+			Counter:     countersByKeys[key],
+		}
 	}
 
-	return keys, counters, nil
+	return list, nil
 }
 
 func generateFilter(value *types.Value) func(v *types.Value) bool {
