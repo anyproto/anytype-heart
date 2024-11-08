@@ -1090,6 +1090,7 @@
     - [Rpc.Relation.ListWithValue.Request](#anytype-Rpc-Relation-ListWithValue-Request)
     - [Rpc.Relation.ListWithValue.Response](#anytype-Rpc-Relation-ListWithValue-Response)
     - [Rpc.Relation.ListWithValue.Response.Error](#anytype-Rpc-Relation-ListWithValue-Response-Error)
+    - [Rpc.Relation.ListWithValue.Response.ResponseItem](#anytype-Rpc-Relation-ListWithValue-Response-ResponseItem)
     - [Rpc.Relation.Options](#anytype-Rpc-Relation-Options)
     - [Rpc.Relation.Options.Request](#anytype-Rpc-Relation-Options-Request)
     - [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response)
@@ -18000,8 +18001,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Relation.ListWithValue.Response.Error](#anytype-Rpc-Relation-ListWithValue-Response-Error) |  |  |
-| relationKeys | [string](#string) | repeated |  |
-| counters | [int64](#int64) | repeated |  |
+| list | [Rpc.Relation.ListWithValue.Response.ResponseItem](#anytype-Rpc-Relation-ListWithValue-Response-ResponseItem) | repeated |  |
 
 
 
@@ -18018,6 +18018,22 @@ Available undo/redo operations
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-ListWithValue-Response-ResponseItem"></a>
+
+### Rpc.Relation.ListWithValue.Response.ResponseItem
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| counter | [int64](#int64) |  |  |
 
 
 
