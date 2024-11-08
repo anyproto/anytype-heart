@@ -41,7 +41,7 @@ type Service interface {
 	ObjectTypeAddRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error
 	ObjectTypeRemoveRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error
 
-	ListRelationsWithValue(spaceId string, value *types.Value) (keys []string, counters []int64, err error)
+	ListRelationsWithValue(spaceId string, value *types.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error)
 
 	SetSpaceInfo(spaceId string, details *types.Struct) error
 	SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error)
