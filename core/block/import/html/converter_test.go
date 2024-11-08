@@ -14,6 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
+	"github.com/anyproto/anytype-heart/core/block/import/common/test"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -28,28 +29,79 @@ func (p *MockTempDirProvider) TempDir() string {
 }
 
 func TestHTML_GetSnapshots(t *testing.T) {
-	h := &HTML{}
-	p := process.NewNoOp()
-	sn, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
-			HtmlParams: &pb.RpcObjectImportRequestHtmlParams{Path: []string{"testdata/test.html", "testdata/test"}},
-		},
-		Type: model.Import_Html,
-		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	t.Run("success", func(t *testing.T) {
+		h := &HTML{}
+		p := process.NewNoOp()
+		sn, err := h.GetSnapshots(
+			context.Background(),
+			&pb.RpcObjectImportRequest{
+				Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
+					HtmlParams: &pb.RpcObjectImportRequestHtmlParams{Path: []string{filepath.Join("testdata", "test.html"), filepath.Join("testdata", "test")}},
+				},
+				Type: model.Import_Html,
+				Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+			},
+			p,
+		)
 
-	assert.NotNil(t, sn)
-	assert.Len(t, sn.Snapshots, 2)
-	assert.Contains(t, sn.Snapshots[0].FileName, "test.html")
-	assert.NotEmpty(t, sn.Snapshots[0].Snapshot.Data.Details.Fields["name"])
-	assert.Equal(t, sn.Snapshots[0].Snapshot.Data.Details.Fields["name"], pbtypes.String("test"))
+		assert.NotNil(t, sn)
+		assert.Len(t, sn.Snapshots, 2)
+		assert.Contains(t, sn.Snapshots[0].FileName, "test.html")
+		assert.NotEmpty(t, sn.Snapshots[0].Snapshot.Data.Details.Fields["name"])
+		assert.Equal(t, sn.Snapshots[0].Snapshot.Data.Details.Fields["name"], pbtypes.String("test"))
 
-	assert.Contains(t, sn.Snapshots[1].FileName, rootCollectionName)
-	assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes)
-	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.String())
+		assert.Contains(t, sn.Snapshots[1].FileName, rootCollectionName)
+		assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes)
+		assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.String())
 
-	assert.NotEmpty(t, err)
-	assert.True(t, errors.Is(err.GetResultError(model.Import_Html), common.ErrNoObjectsToImport))
+		assert.NotEmpty(t, err)
+		assert.True(t, errors.Is(err.GetResultError(model.Import_Html), common.ErrFileImportNoObjectsInDirectory))
+	})
+	t.Run("no object in archive", func(t *testing.T) {
+		// given
+		dir := t.TempDir()
+		zipPath := filepath.Join(dir, "empty.zip")
+		err := test.CreateEmptyZip(t, zipPath)
+		assert.Nil(t, err)
+		html := HTML{}
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
+
+		// when
+		_, ce := html.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
+				HtmlParams: &pb.RpcObjectImportRequestHtmlParams{
+					Path: []string{zipPath},
+				},
+			},
+			Type: model.Import_Html,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.NotNil(t, ce)
+		assert.True(t, errors.Is(ce.GetResultError(model.Import_Html), common.ErrFileImportNoObjectsInZipArchive))
+	})
+	t.Run("no object in dir", func(t *testing.T) {
+		// given
+		dir := t.TempDir()
+		html := HTML{}
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
+
+		// when
+		_, ce := html.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
+				HtmlParams: &pb.RpcObjectImportRequestHtmlParams{
+					Path: []string{dir},
+				},
+			},
+			Type: model.Import_Html,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.NotNil(t, ce)
+		assert.True(t, errors.Is(ce.GetResultError(model.Import_Html), common.ErrFileImportNoObjectsInDirectory))
+	})
 }
 
 func TestHTML_provideFileName(t *testing.T) {
@@ -73,9 +125,10 @@ func TestHTML_provideFileName(t *testing.T) {
 		currentDir, err := os.Getwd()
 		assert.Nil(t, err)
 		source := source.GetSource(currentDir)
+		filePath := filepath.Join("testdata", "test")
 
 		// when
-		absPath, err := filepath.Abs("testdata/test")
+		absPath, err := filepath.Abs(filePath)
 		assert.Nil(t, err)
 		newFileName, _, err := common.ProvideFileName(absPath, source, currentDir, h.tempDirProvider)
 
@@ -89,13 +142,14 @@ func TestHTML_provideFileName(t *testing.T) {
 		currentDir, err := os.Getwd()
 		assert.Nil(t, err)
 		source := source.GetSource(currentDir)
+		filePath := filepath.Join("testdata", "test")
 
 		// when
-		newFileName, _, err := common.ProvideFileName("testdata/test", source, currentDir, h.tempDirProvider)
+		newFileName, _, err := common.ProvideFileName(filePath, source, currentDir, h.tempDirProvider)
 
 		// then
 		assert.Nil(t, err)
-		absPath, err := filepath.Abs("testdata/test")
+		absPath, err := filepath.Abs(filePath)
 		assert.Nil(t, err)
 		assert.Equal(t, absPath, newFileName)
 	})

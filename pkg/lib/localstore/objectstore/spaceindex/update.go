@@ -228,7 +228,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 		newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
 		jsonVal := pbtypes.ProtoToAnyEnc(arena, newDetails)
-		diff, err := pbtypes.AnyEncJson(val, jsonVal)
+		diff, err := pbtypes.DiffAnyEnc(val, jsonVal)
 		if err != nil {
 			return nil, false, fmt.Errorf("diff json: %w", err)
 		}

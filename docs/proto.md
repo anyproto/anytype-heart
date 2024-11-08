@@ -36,6 +36,7 @@
     - [Change.StoreSliceUpdate.Add](#anytype-Change-StoreSliceUpdate-Add)
     - [Change.StoreSliceUpdate.Move](#anytype-Change-StoreSliceUpdate-Move)
     - [Change.StoreSliceUpdate.Remove](#anytype-Change-StoreSliceUpdate-Remove)
+    - [ChangeNoSnapshot](#anytype-ChangeNoSnapshot)
     - [DocumentCreate](#anytype-DocumentCreate)
     - [DocumentDelete](#anytype-DocumentDelete)
     - [DocumentModify](#anytype-DocumentModify)
@@ -1089,6 +1090,7 @@
     - [Rpc.Relation.ListWithValue.Request](#anytype-Rpc-Relation-ListWithValue-Request)
     - [Rpc.Relation.ListWithValue.Response](#anytype-Rpc-Relation-ListWithValue-Response)
     - [Rpc.Relation.ListWithValue.Response.Error](#anytype-Rpc-Relation-ListWithValue-Response-Error)
+    - [Rpc.Relation.ListWithValue.Response.ResponseItem](#anytype-Rpc-Relation-ListWithValue-Response-ResponseItem)
     - [Rpc.Relation.Options](#anytype-Rpc-Relation-Options)
     - [Rpc.Relation.Options.Request](#anytype-Rpc-Relation-Options-Request)
     - [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response)
@@ -1740,7 +1742,6 @@
     - [Model.Process.Progress](#anytype-Model-Process-Progress)
     - [Model.Process.RecoverAccount](#anytype-Model-Process-RecoverAccount)
     - [Model.Process.SaveFile](#anytype-Model-Process-SaveFile)
-    - [Model.Process.SpaceLoading](#anytype-Model-Process-SpaceLoading)
     - [ResponseEvent](#anytype-ResponseEvent)
   
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
@@ -2234,9 +2235,6 @@ the element of change tree used to store and internal apply smartBlock history
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| previous_ids | [string](#string) | repeated | ids of previous changes |
-| last_snapshot_id | [string](#string) |  | id of the last snapshot |
-| previous_meta_ids | [string](#string) | repeated | ids of the last changes with details/relations content |
 | content | [Change.Content](#anytype-Change-Content) | repeated | set of actions to apply |
 | snapshot | [Change.Snapshot](#anytype-Change-Snapshot) |  | snapshot - when not null, the Content will be ignored |
 | fileKeys | [Change.FileKeys](#anytype-Change-FileKeys) | repeated | file keys related to changes content |
@@ -2703,6 +2701,24 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-ChangeNoSnapshot"></a>
+
+### ChangeNoSnapshot
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| content | [Change.Content](#anytype-Change-Content) | repeated | set of actions to apply |
+| fileKeys | [Change.FileKeys](#anytype-Change-FileKeys) | repeated | file keys related to changes content |
+| timestamp | [int64](#int64) |  | creation timestamp |
+| version | [uint32](#uint32) |  | version of business logic |
 
 
 
@@ -7206,6 +7222,7 @@ set the current active view locally
 | url | [string](#string) |  |  |
 | localPath | [string](#string) |  |  |
 | fileType | [model.Block.Content.File.Type](#anytype-model-Block-Content-File-Type) |  |  |
+| imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
 
 
 
@@ -11941,6 +11958,7 @@ Get marks list in the selected range in text block.
 | style | [model.Block.Content.File.Style](#anytype-model-Block-Content-File-Style) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | additional details for file object |
 | origin | [model.ObjectOrigin](#anytype-model-ObjectOrigin) |  |  |
+| imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
 
 
 
@@ -17983,8 +18001,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Relation.ListWithValue.Response.Error](#anytype-Rpc-Relation-ListWithValue-Response-Error) |  |  |
-| relationKeys | [string](#string) | repeated |  |
-| counters | [int64](#int64) | repeated |  |
+| list | [Rpc.Relation.ListWithValue.Response.ResponseItem](#anytype-Rpc-Relation-ListWithValue-Response-ResponseItem) | repeated |  |
 
 
 
@@ -18001,6 +18018,22 @@ Available undo/redo operations
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-ListWithValue-Response-ResponseItem"></a>
+
+### Rpc.Relation.ListWithValue.Response.ResponseItem
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| counter | [int64](#int64) |  |  |
 
 
 
@@ -19090,6 +19123,7 @@ Available undo/redo operations
 | ----- | ---- | ----- | ----------- |
 | pictureId | [string](#string) |  |  |
 | spaceId | [string](#string) |  |  |
+| imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
 
 
 
@@ -27347,7 +27381,7 @@ Precondition: user A and user B opened the same block
 | saveFile | [Model.Process.SaveFile](#anytype-Model-Process-SaveFile) |  |  |
 | migration | [Model.Process.Migration](#anytype-Model-Process-Migration) |  |  |
 | recoverAccount | [Model.Process.RecoverAccount](#anytype-Model-Process-RecoverAccount) |  |  |
-| spaceLoading | [Model.Process.SpaceLoading](#anytype-Model-Process-SpaceLoading) |  |  |
+| error | [string](#string) |  |  |
 
 
 
@@ -27424,16 +27458,6 @@ Precondition: user A and user B opened the same block
 <a name="anytype-Model-Process-SaveFile"></a>
 
 ### Model.Process.SaveFile
-
-
-
-
-
-
-
-<a name="anytype-Model-Process-SpaceLoading"></a>
-
-### Model.Process.SpaceLoading
 
 
 
@@ -30023,6 +30047,7 @@ stored |
 | Basic | 0 |  |
 | Cover | 1 |  |
 | Icon | 2 |  |
+| AutomaticallyAdded | 3 |  |
 
 
 
@@ -30037,10 +30062,16 @@ stored |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | INTERNAL_ERROR | 3 |  |
-| NO_OBJECTS_TO_IMPORT | 5 |  |
-| IMPORT_IS_CANCELED | 6 |  |
-| LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
 | FILE_LOAD_ERROR | 8 |  |
+| IMPORT_IS_CANCELED | 6 |  |
+| NOTION_NO_OBJECTS_IN_INTEGRATION | 5 |  |
+| NOTION_SERVER_IS_UNAVAILABLE | 12 |  |
+| NOTION_RATE_LIMIT_EXCEEDED | 13 |  |
+| FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE | 14 |  |
+| FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY | 17 |  |
+| HTML_WRONG_HTML_STRUCTURE | 10 |  |
+| PB_NOT_ANYBLOCK_FORMAT | 11 |  |
+| CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
 | INSUFFICIENT_PERMISSIONS | 9 |  |
 
 

@@ -1174,6 +1174,7 @@ message Model {
             SpaceLoading spaceLoading = 12;
         }
 
+        string error = 12;
         message DropFiles {}
         message Import {}
         message Export {}

@@ -3119,8 +3119,12 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                repeated string relationKeys = 2;
-                repeated int64 counters = 3;
+                repeated ResponseItem list = 2;
+
+                message ResponseItem {
+                    string relationKey = 1;
+                    int64 counter = 2;
+                }
 
                 message Error {
                     Code code = 1;
@@ -3357,6 +3361,7 @@ message Rpc {
                 anytype.model.Block.Content.File.Style style = 5;
                 google.protobuf.Struct details = 7; // additional details for file object
                 anytype.model.ObjectOrigin origin = 8;
+                anytype.model.ImageKind imageKind = 9;
             }
 
             message Response {
@@ -3690,6 +3695,7 @@ message Rpc {
             message Request {
                 string pictureId = 1;
                 string spaceId = 2;
+                anytype.model.ImageKind imageKind = 3;
             }
 
             message Response {
@@ -5212,6 +5218,7 @@ message Rpc {
                 string url = 4;
                 string localPath = 5;
                 anytype.model.Block.Content.File.Type fileType = 6;
+                anytype.model.ImageKind imageKind = 7;
             }
 
             message Response {

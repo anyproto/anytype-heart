@@ -44,6 +44,8 @@ type progress struct {
 	isCancelled         bool
 	isDone              bool
 	isFinishedWithError bool
+
+	err error
 }
 
 func (p *progress) SetTotal(total int64) {
@@ -91,6 +93,7 @@ func (p *progress) Finish(err error) {
 	}
 	if err != nil {
 		p.isFinishedWithError = true
+		p.err = err
 	}
 	close(p.done)
 	p.isDone = true
@@ -114,10 +117,12 @@ func (p *progress) Cancel() (err error) {
 
 func (p *progress) Info() pb.ModelProcess {
 	state := pb.ModelProcess_Running
+	var errDescription string
 	select {
 	case <-p.done:
 		state = pb.ModelProcess_Done
 		if p.isFinishedWithError {
+			errDescription = p.err.Error()
 			state = pb.ModelProcess_Error
 		}
 	default:
@@ -137,6 +142,7 @@ func (p *progress) Info() pb.ModelProcess {
 			Done:    atomic.LoadInt64(&p.doneCount),
 			Message: p.pMessage,
 		},
+		Error:   errDescription,
 		Message: p.processMessage,
 	}
 }
