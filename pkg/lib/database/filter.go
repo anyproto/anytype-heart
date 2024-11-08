@@ -435,6 +435,34 @@ func (e FilterEq) filterObject(v *types.Value) bool {
 	return false
 }
 
+type FilterHasPrefix struct {
+	Key, Prefix string
+}
+
+func (p FilterHasPrefix) FilterObject(s *types.Struct) bool {
+	val := pbtypes.Get(s, p.Key)
+	if strings.HasPrefix(val.GetStringValue(), p.Prefix) {
+		return true
+	}
+
+	list := val.GetListValue()
+	if list == nil {
+		return false
+	}
+
+	for _, v := range list.Values {
+		if strings.HasPrefix(v.GetStringValue(), p.Prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func (p FilterHasPrefix) AnystoreFilter() query.Filter {
+	// TODO
+	return query.Or{}
+}
+
 // any
 type FilterIn struct {
 	Key   string
