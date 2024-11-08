@@ -37,7 +37,7 @@ func (s *service) hasCid(ctx context.Context, spaceID string, c cid.Cid) (bool, 
 
 func (s *service) dataAtPath(ctx context.Context, spaceID string, pth string) (cid.Cid, symmetric.ReadSeekCloser, error) {
 	dagService := s.dagServiceForSpace(spaceID)
-	newPath, err := path.NewPath(pth)
+	newPath, err := path.NewPath("/ipfs/" + pth)
 	if err != nil {
 		return cid.Undef, nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
 	}
