@@ -87,17 +87,16 @@ func (mw *Middleware) RelationOptions(_ context.Context, _ *pb.RpcRelationOption
 }
 
 func (mw *Middleware) RelationListWithValue(_ context.Context, req *pb.RpcRelationListWithValueRequest) *pb.RpcRelationListWithValueResponse {
-	response := func(keys []string, counters []int64, err error) *pb.RpcRelationListWithValueResponse {
+	response := func(list []*pb.RpcRelationListWithValueResponseResponseItem, err error) *pb.RpcRelationListWithValueResponse {
 		m := &pb.RpcRelationListWithValueResponse{Error: &pb.RpcRelationListWithValueResponseError{Code: pb.RpcRelationListWithValueResponseError_NULL}}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		} else {
-			m.RelationKeys = keys
-			m.Counters = counters
+			m.List = list
 		}
 		return m
 	}
 
-	keys, counters, err := getService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, req.Value)
-	return response(keys, counters, err)
+	list, err := getService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, req.Value)
+	return response(list, err)
 }

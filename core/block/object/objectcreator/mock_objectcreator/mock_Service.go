@@ -32,6 +32,64 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
+// AddChatDerivedObject provides a mock function with given fields: ctx, space, chatObjectId
+func (_m *MockService) AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string) (string, error) {
+	ret := _m.Called(ctx, space, chatObjectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddChatDerivedObject")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, string) (string, error)); ok {
+		return rf(ctx, space, chatObjectId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, string) string); ok {
+		r0 = rf(ctx, space, chatObjectId)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, clientspace.Space, string) error); ok {
+		r1 = rf(ctx, space, chatObjectId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_AddChatDerivedObject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddChatDerivedObject'
+type MockService_AddChatDerivedObject_Call struct {
+	*mock.Call
+}
+
+// AddChatDerivedObject is a helper method to define mock.On call
+//   - ctx context.Context
+//   - space clientspace.Space
+//   - chatObjectId string
+func (_e *MockService_Expecter) AddChatDerivedObject(ctx interface{}, space interface{}, chatObjectId interface{}) *MockService_AddChatDerivedObject_Call {
+	return &MockService_AddChatDerivedObject_Call{Call: _e.mock.On("AddChatDerivedObject", ctx, space, chatObjectId)}
+}
+
+func (_c *MockService_AddChatDerivedObject_Call) Run(run func(ctx context.Context, space clientspace.Space, chatObjectId string)) *MockService_AddChatDerivedObject_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_AddChatDerivedObject_Call) Return(chatId string, err error) *MockService_AddChatDerivedObject_Call {
+	_c.Call.Return(chatId, err)
+	return _c
+}
+
+func (_c *MockService_AddChatDerivedObject_Call) RunAndReturn(run func(context.Context, clientspace.Space, string) (string, error)) *MockService_AddChatDerivedObject_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateObject provides a mock function with given fields: ctx, spaceID, req
 func (_m *MockService) CreateObject(ctx context.Context, spaceID string, req objectcreator.CreateObjectRequest) (string, *types.Struct, error) {
 	ret := _m.Called(ctx, spaceID, req)
