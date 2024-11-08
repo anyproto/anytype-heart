@@ -474,7 +474,9 @@ func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
 			bundle.RelationKeyWorkspaceId.String(),
 			bundle.RelationKeyIdentityProfileLink.String(),
 			bundle.RelationKeyAddedDate.String(),
-			bundle.RelationKeySyncDate.String():
+			bundle.RelationKeySyncDate.String(),
+			bundle.RelationKeySyncError.String(),
+			bundle.RelationKeySyncStatus.String():
 
 			delete(s.Data.Details.Fields, key)
 		}
