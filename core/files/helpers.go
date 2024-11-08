@@ -7,9 +7,9 @@ import (
 
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	ufsio "github.com/ipfs/boxo/ipld/unixfs/io"
+	"github.com/ipfs/boxo/path"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/interface-go-ipfs-core/path"
 
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
@@ -37,15 +37,19 @@ func (s *service) hasCid(ctx context.Context, spaceID string, c cid.Cid) (bool, 
 
 func (s *service) dataAtPath(ctx context.Context, spaceID string, pth string) (cid.Cid, symmetric.ReadSeekCloser, error) {
 	dagService := s.dagServiceForSpace(spaceID)
-	resolvedPath, err := helpers.ResolvePath(ctx, dagService, path.New(pth))
+	newPath, err := path.NewPath(pth)
+	if err != nil {
+		return cid.Undef, nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
+	}
+	rCid, err := helpers.ResolveCid(ctx, dagService, newPath)
 	if err != nil {
 		return cid.Undef, nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
 	}
 
-	r, err := s.getFile(ctx, spaceID, resolvedPath.Cid())
+	r, err := s.getFile(ctx, spaceID, rCid)
 	if err != nil {
 		return cid.Undef, nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
 	}
 
-	return resolvedPath.Cid(), r, nil
+	return rCid, r, nil
 }
