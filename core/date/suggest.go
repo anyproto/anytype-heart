@@ -69,6 +69,11 @@ func EnrichRecordsWithDateSuggestion(
 }
 
 func suggestDateForSearch(now time.Time, raw string) time.Time {
+	// a hack to show calendar in case date is typed
+	if raw == "date" {
+		return now
+	}
+
 	suggesters := []func() time.Time{
 		func() time.Time {
 			var exprType naturaldate.ExprType

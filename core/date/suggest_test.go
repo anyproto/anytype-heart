@@ -21,6 +21,10 @@ func Test_suggestDateForSearch(t *testing.T) {
 			want: time.Date(2022, 5, 18, 14, 56, 33, 0, loc),
 		},
 		{
+			raw:  "date",
+			want: time.Date(2022, 5, 18, 14, 56, 33, 0, loc),
+		},
+		{
 			raw:  "today",
 			want: time.Date(2022, 5, 18, 0, 0, 0, 0, loc),
 		},

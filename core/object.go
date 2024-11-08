@@ -725,3 +725,22 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace)
 	return response(common.GetGalleryResponseCode(err), err)
 }
+
+func (mw *Middleware) ObjectDateByTimestamp(ctx context.Context, req *pb.RpcObjectDateByTimestampRequest) *pb.RpcObjectDateByTimestampResponse {
+	response := func(details *types.Struct, err error) *pb.RpcObjectDateByTimestampResponse {
+		resp := &pb.RpcObjectDateByTimestampResponse{
+			Error: &pb.RpcObjectDateByTimestampResponseError{
+				Code: pb.RpcObjectDateByTimestampResponseError_NULL,
+			},
+		}
+		if err != nil {
+			resp.Error.Code = pb.RpcObjectDateByTimestampResponseError_UNKNOWN_ERROR
+			resp.Error.Description = getErrorDescription(err)
+		} else {
+			resp.Details = details
+		}
+		return resp
+	}
+
+	return response(date.BuildDetailsFromTimestamp(ctx, getService[space.Service](mw), req.SpaceId, req.Timestamp))
+}
