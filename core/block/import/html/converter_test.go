@@ -31,7 +31,7 @@ func (p *MockTempDirProvider) TempDir() string {
 func TestHTML_GetSnapshots(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h := &HTML{}
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewNoOp()
 		sn, err := h.GetSnapshots(
 			context.Background(),
 			&pb.RpcObjectImportRequest{
@@ -64,7 +64,7 @@ func TestHTML_GetSnapshots(t *testing.T) {
 		err := test.CreateEmptyZip(t, zipPath)
 		assert.Nil(t, err)
 		html := HTML{}
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
 		_, ce := html.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
@@ -85,7 +85,7 @@ func TestHTML_GetSnapshots(t *testing.T) {
 		// given
 		dir := t.TempDir()
 		html := HTML{}
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
 		_, ce := html.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
