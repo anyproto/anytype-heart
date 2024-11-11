@@ -245,10 +245,10 @@ func (s *service) listRegisteredIdentities() []string {
 }
 
 func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
-	return slice.Batch(ctx, identities, identityBatch, []string{identityRepoDataKind}, s.identityRepoClient.IdentityRepoGet, s.processFailedIdentities)
+	return slice.Batch(ctx, identities, []string{identityRepoDataKind}, identityRepoDataKind, s.identityRepoClient.IdentityRepoGet, s.processFailedIdentities, identityBatch)
 }
 
-func (s *service) processFailedIdentities(ctx context.Context, failedIdentities []string, _ any) ([]*identityrepoproto.DataWithIdentity, error) {
+func (s *service) processFailedIdentities(_ context.Context, failedIdentities []string, kind string) ([]*identityrepoproto.DataWithIdentity, error) {
 	res := make([]*identityrepoproto.DataWithIdentity, 0, len(failedIdentities))
 	err := s.db.View(func(txn *badger.Txn) error {
 		for _, identity := range failedIdentities {
@@ -263,7 +263,7 @@ func (s *service) processFailedIdentities(ctx context.Context, failedIdentities 
 				Identity: identity,
 				Data: []*identityrepoproto.Data{
 					{
-						Kind: identityRepoDataKind,
+						Kind: kind,
 						Data: rawData,
 					},
 				},

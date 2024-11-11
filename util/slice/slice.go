@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
@@ -255,13 +256,23 @@ func MergeUniqBy[T comparable](s1, s2 []T, equal func(v1, v2 T) bool) (result []
 	return result
 }
 
-func Batch[T any, R any](ctx context.Context, s []T, batchCount int, params any, process, processFailed func(context.Context, []T, any) ([]R, error)) ([]R, error) {
+func Batch[T any, R any, P any, F any](
+	ctx context.Context,
+	s []T,
+	params P,
+	failedParams F,
+	remote func(context.Context, []T, P) ([]R, error),
+	local func(context.Context, []T, F) ([]R, error),
+	batchCount int,
+) ([]R, error) {
 	if len(s) == 0 {
 		return nil, nil
 	}
-	result := make([]R, 0, len(s))
 	failed := make([]T, 0)
-	for j := 0; j < len(s); {
+	result := make([]R, 0, len(s))
+	var wg sync.WaitGroup
+	wg.Add(len(s))
+	for j := 0; j < len(s); j += batchCount {
 		var (
 			resultFromFunc []R
 			err            error
@@ -272,15 +283,18 @@ func Batch[T any, R any](ctx context.Context, s []T, batchCount int, params any,
 		} else {
 			requestedBatch = s[j:]
 		}
-		resultFromFunc, err = process(ctx, requestedBatch, params)
-		if err != nil {
-			failed = append(failed, requestedBatch...)
-		} else {
-			result = append(result, resultFromFunc...)
-		}
-		j += batchCount
+		go func() {
+			defer wg.Done()
+			resultFromFunc, err = remote(ctx, requestedBatch, params)
+			if err != nil {
+				failed = append(failed, requestedBatch...)
+			} else {
+				result = append(result, resultFromFunc...)
+			}
+		}()
 	}
-	failedResult, err := processFailed(ctx, failed, params)
+	wg.Wait()
+	failedResult, err := local(ctx, failed, failedParams)
 	if err != nil {
 		return nil, err
 	}
