@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const CName = "identity"
@@ -244,13 +245,11 @@ func (s *service) listRegisteredIdentities() []string {
 }
 
 func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
-	if len(identities) == 0 {
-		return nil, nil
-	}
-	res, failedIdentities := s.batchIdentities(ctx, identities)
-	if len(failedIdentities) == 0 {
-		return res, nil
-	}
+	return slice.Batch(ctx, identities, identityBatch, []string{identityRepoDataKind}, s.identityRepoClient.IdentityRepoGet, s.processFailedIdentities)
+}
+
+func (s *service) processFailedIdentities(ctx context.Context, failedIdentities []string, _ any) ([]*identityrepoproto.DataWithIdentity, error) {
+	res := make([]*identityrepoproto.DataWithIdentity, 0, len(failedIdentities))
 	err := s.db.View(func(txn *badger.Txn) error {
 		for _, identity := range failedIdentities {
 			rawData, err := badgerhelper.GetValueTxn(txn, makeIdentityProfileKey(identity), badgerhelper.UnmarshalBytes)
@@ -276,32 +275,6 @@ func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []st
 		return nil, fmt.Errorf("get identities data from local cache: %w", err)
 	}
 	return res, nil
-}
-
-func (s *service) batchIdentities(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, []string) {
-	resultIdentities := make([]*identityrepoproto.DataWithIdentity, 0, len(identities))
-	failedIdentities := make([]string, 0)
-	for j := 0; j < len(identities); {
-		var (
-			repoIdentities      []*identityrepoproto.DataWithIdentity
-			err                 error
-			requestedIdentities []string
-		)
-		if j+identityBatch < len(identities) {
-			requestedIdentities = identities[j : j+identityBatch]
-		} else {
-			requestedIdentities = identities[j:]
-		}
-		repoIdentities, err = s.identityRepoClient.IdentityRepoGet(ctx, requestedIdentities, []string{identityRepoDataKind})
-		if err != nil {
-			log.Error("error getting identity repo data", zap.Error(err))
-			failedIdentities = append(failedIdentities, requestedIdentities...)
-		} else {
-			resultIdentities = append(resultIdentities, repoIdentities...)
-		}
-		j += identityBatch
-	}
-	return resultIdentities, failedIdentities
 }
 
 func (s *service) indexIconImage(profile *model.IdentityProfile) error {

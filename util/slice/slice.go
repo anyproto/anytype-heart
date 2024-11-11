@@ -1,6 +1,7 @@
 package slice
 
 import (
+	"context"
 	"hash/fnv"
 	"math/rand"
 	"sort"
@@ -252,4 +253,37 @@ func MergeUniqBy[T comparable](s1, s2 []T, equal func(v1, v2 T) bool) (result []
 	}
 
 	return result
+}
+
+func Batch[T any, R any](ctx context.Context, s []T, batchCount int, params any, process, processFailed func(context.Context, []T, any) ([]R, error)) ([]R, error) {
+	if len(s) == 0 {
+		return nil, nil
+	}
+	result := make([]R, 0, len(s))
+	failed := make([]T, 0)
+	for j := 0; j < len(s); {
+		var (
+			resultFromFunc []R
+			err            error
+			requestedBatch []T
+		)
+		if j+batchCount < len(s) {
+			requestedBatch = s[j : j+batchCount]
+		} else {
+			requestedBatch = s[j:]
+		}
+		resultFromFunc, err = process(ctx, requestedBatch, params)
+		if err != nil {
+			failed = append(failed, requestedBatch...)
+		} else {
+			result = append(result, resultFromFunc...)
+		}
+		j += batchCount
+	}
+	failedResult, err := processFailed(ctx, failed, params)
+	if err != nil {
+		return nil, err
+	}
+	result = append(result, failedResult...)
+	return result, nil
 }
