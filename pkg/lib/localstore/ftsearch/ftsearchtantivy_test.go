@@ -292,7 +292,7 @@ func assertMultiSpace(t *testing.T, tmpDir string) {
 	validateSearch(t, ft, "", "Advanced", 1)
 	validateSearch(t, ft, "", "dash", 2)
 	validateSearch(t, ft, "", "space", 4)
-	validateSearch(t, ft, "", "of", 4)
+	validateSearch(t, ft, "", "of", 5)
 
 	_ = ft.Close(nil)
 }
