@@ -24,17 +24,15 @@ type Progress interface {
 
 func NewProgress(processMessage pb.IsModelProcessMessage) Progress {
 	return &progress{
-		id:             bson.NewObjectId().Hex(),
-		done:           make(chan struct{}),
-		cancel:         make(chan struct{}),
-		update:         make(chan struct{}, 1),
-		processMessage: processMessage,
+		id:     bson.NewObjectId().Hex(),
+		done:   make(chan struct{}),
+		cancel: make(chan struct{}),
 	}
 }
 
 type progress struct {
 	id                    string
-	done, cancel, update  chan struct{}
+	done, cancel          chan struct{}
 	totalCount, doneCount int64
 
 	processMessage pb.IsModelProcessMessage
@@ -67,12 +65,10 @@ func (p *progress) SetTotalPreservingRatio(total int64) {
 
 func (p *progress) SetDone(done int64) {
 	atomic.StoreInt64(&p.doneCount, done)
-	p.update <- struct{}{}
 }
 
 func (p *progress) AddDone(delta int64) {
 	atomic.AddInt64(&p.doneCount, delta)
-	p.update <- struct{}{}
 }
 
 func (p *progress) SetProgressMessage(msg string) {
@@ -125,6 +121,10 @@ func (p *progress) Info() pb.ModelProcess {
 			errDescription = p.err.Error()
 			state = pb.ModelProcess_Error
 		}
+		p.m.Lock()
+		defer p.m.Unlock()
+		p.SetDone(atomic.LoadInt64(&p.totalCount))
+		return p.makeInfo(state, errDescription)
 	default:
 	}
 	select {
@@ -134,6 +134,10 @@ func (p *progress) Info() pb.ModelProcess {
 	}
 	p.m.Lock()
 	defer p.m.Unlock()
+	return p.makeInfo(state, errDescription)
+}
+
+func (p *progress) makeInfo(state pb.ModelProcessState, errDescription string) pb.ModelProcess {
 	return pb.ModelProcess{
 		Id:    p.id,
 		State: state,
@@ -145,10 +149,6 @@ func (p *progress) Info() pb.ModelProcess {
 		Error:   errDescription,
 		Message: p.processMessage,
 	}
-}
-
-func (p *progress) Updated() chan struct{} {
-	return p.update
 }
 
 func (p *progress) Done() chan struct{} {

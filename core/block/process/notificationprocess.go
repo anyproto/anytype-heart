@@ -34,7 +34,6 @@ func NewNotificationProcess(processMessage pb.IsModelProcessMessage, notificatio
 		id:             bson.NewObjectId().Hex(),
 		done:           make(chan struct{}),
 		cancel:         make(chan struct{}),
-		update:         make(chan struct{}, 1),
 		processMessage: processMessage,
 	}, notificationService: notificationService}
 }
