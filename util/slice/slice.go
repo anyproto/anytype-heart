@@ -256,23 +256,36 @@ func MergeUniqBy[T comparable](s1, s2 []T, equal func(v1, v2 T) bool) (result []
 	return result
 }
 
-func Batch[T any, R any, P any, F any](
+func Batch[T any, R any](
 	ctx context.Context,
 	s []T,
-	params P,
-	failedParams F,
-	remote func(context.Context, []T, P) ([]R, error),
-	local func(context.Context, []T, F) ([]R, error),
+	remote func(context.Context, []T) ([]R, error),
+	local func(context.Context, []T) ([]R, error),
 	batchCount int,
 ) ([]R, error) {
 	if len(s) == 0 {
 		return nil, nil
 	}
-	failed := make([]T, 0)
-	result := make([]R, 0, len(s))
-	var wg sync.WaitGroup
-	wg.Add(len(s))
+	var (
+		failed   = make([]T, 0)
+		failedMu sync.Mutex
+		result   = make([]R, 0, len(s))
+		resultMu sync.Mutex
+		wg       sync.WaitGroup
+	)
+	appendResults := func(r []R) {
+		resultMu.Lock()
+		defer resultMu.Unlock()
+		result = append(result, r...)
+	}
+
+	appendFailed := func(f []T) {
+		failedMu.Lock()
+		defer failedMu.Unlock()
+		failed = append(failed, f...)
+	}
 	for j := 0; j < len(s); j += batchCount {
+		wg.Add(1)
 		var (
 			resultFromFunc []R
 			err            error
@@ -285,19 +298,21 @@ func Batch[T any, R any, P any, F any](
 		}
 		go func() {
 			defer wg.Done()
-			resultFromFunc, err = remote(ctx, requestedBatch, params)
+			resultFromFunc, err = remote(ctx, requestedBatch)
 			if err != nil {
-				failed = append(failed, requestedBatch...)
+				appendFailed(requestedBatch)
 			} else {
-				result = append(result, resultFromFunc...)
+				appendResults(resultFromFunc)
 			}
 		}()
 	}
 	wg.Wait()
-	failedResult, err := local(ctx, failed, failedParams)
-	if err != nil {
-		return nil, err
+	if len(failed) != 0 {
+		failedResult, err := local(ctx, failed)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, failedResult...)
 	}
-	result = append(result, failedResult...)
 	return result, nil
 }

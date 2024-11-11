@@ -209,7 +209,8 @@ const identityRepoDataKind = "profile"
 func (s *service) observeIdentities(ctx context.Context) error {
 	identities := s.listRegisteredIdentities()
 
-	identitiesData, err := s.getIdentitiesDataFromRepo(ctx, identities)
+	identitiesData, err := slice.Batch(ctx, identities, s.getIdentitiesDataFromRepo, s.processFailedIdentities, identityBatch)
+
 	if err != nil {
 		return fmt.Errorf("failed to pull identity: %w", err)
 	}
@@ -245,10 +246,10 @@ func (s *service) listRegisteredIdentities() []string {
 }
 
 func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
-	return slice.Batch(ctx, identities, []string{identityRepoDataKind}, identityRepoDataKind, s.identityRepoClient.IdentityRepoGet, s.processFailedIdentities, identityBatch)
+	return s.identityRepoClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
 }
 
-func (s *service) processFailedIdentities(_ context.Context, failedIdentities []string, kind string) ([]*identityrepoproto.DataWithIdentity, error) {
+func (s *service) processFailedIdentities(_ context.Context, failedIdentities []string) ([]*identityrepoproto.DataWithIdentity, error) {
 	res := make([]*identityrepoproto.DataWithIdentity, 0, len(failedIdentities))
 	err := s.db.View(func(txn *badger.Txn) error {
 		for _, identity := range failedIdentities {
@@ -263,7 +264,7 @@ func (s *service) processFailedIdentities(_ context.Context, failedIdentities []
 				Identity: identity,
 				Data: []*identityrepoproto.Data{
 					{
-						Kind: kind,
+						Kind: identityRepoDataKind,
 						Data: rawData,
 					},
 				},
