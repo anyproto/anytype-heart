@@ -10,6 +10,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slices"
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -300,20 +301,17 @@ func (s *dsObjectStore) performFulltextSearch(text string, spaceId string) ([]da
 
 	for objectId := range resultsByObjectId {
 		cur := resultsByObjectId[objectId]
-		sort.Slice(cur, func(i, j int) bool {
-			if cur[i].Score > cur[j].Score {
-				return true
+		slices.SortFunc(cur, func(a, b *ftsearch.DocumentMatch) int {
+			if a.Score == b.Score {
+				// to make the search deterministic in case we have the same-score results we can prioritize the one with the higher ID
+				// e.g. we have 2 matches:
+				// 1. Block "Done" (id "b/id")
+				// 2. Relation Status: "Done" (id "r/status")
+				// if the score is the same, lets prioritize the relation, as it has more context for this short result
+				// Usually, blocks are naturally longer than relations and will have a lower score
+				return strings.Compare(b.ID, a.ID)
 			}
-			// to make the search deterministic in case we have the same-score results we can prioritize the one with the higher ID
-			// e.g. we have 2 matches:
-			// 1. Block "Done" (id "b/id")
-			// 2. Relation Status: "Done" (id "r/status")
-			// if the score is the same, lets prioritize the relation, as it has more context for this short result
-			// Usually, blocks are naturally longer than relations and will have a lower score
-			if cur[i].Score == cur[j].Score {
-				return cur[i].ID > cur[j].ID
-			}
-			return false
+			return int(b.Score - a.Score)
 		})
 	}
 
