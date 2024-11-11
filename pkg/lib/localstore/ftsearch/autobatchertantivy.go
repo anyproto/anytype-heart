@@ -13,7 +13,7 @@ type AutoBatcher interface {
 	// DeleteDoc adds a delete operation to the batcher
 	// maxSize limit check is not performed for this operation
 	DeleteDoc(id string) error
-	// Finish performs the
+	// Finish performs the operations
 	Finish() error
 }
 

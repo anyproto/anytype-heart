@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"time"
-	"unicode/utf8"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -25,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 	"github.com/anyproto/anytype-heart/util/contexthelper"
+	textutil "github.com/anyproto/anytype-heart/util/text"
 )
 
 const CName = "payments"
@@ -576,7 +576,7 @@ func (s *service) validateAnyName(tier model.MembershipTierData, name string) pr
 	if tier.AnyNameMinLength == 0 {
 		return proto.IsNameValidResponse_TierFeatureNoName
 	}
-	if uint32(utf8.RuneCountInString(name)) < tier.AnyNameMinLength {
+	if uint32(textutil.UTF16RuneCountString(name)) < tier.AnyNameMinLength {
 		return proto.IsNameValidResponse_TooShort
 	}
 

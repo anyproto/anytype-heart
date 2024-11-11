@@ -6,7 +6,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/gogo/protobuf/types"
@@ -369,7 +368,7 @@ func convertToHighlightRanges(ranges [][]int, highlight string) []*model.Range {
 
 	byteToRuneIndex := make([]int, len(highlight)+1)
 	for i := range byteToRuneIndex {
-		byteToRuneIndex[i] = utf8.RuneCountInString(highlight[:i])
+		byteToRuneIndex[i] = text2.UTF16RuneCountString(highlight[:i])
 	}
 
 	for _, r := range ranges {
