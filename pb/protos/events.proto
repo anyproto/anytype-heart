@@ -1172,7 +1172,7 @@ message Model {
             Migration migration = 10;
         }
 
-        string error = 12;
+        string error = 11;
         message DropFiles {}
         message Import {}
         message Export {}
