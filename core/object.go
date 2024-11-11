@@ -727,20 +727,19 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 }
 
 func (mw *Middleware) ObjectDateByTimestamp(ctx context.Context, req *pb.RpcObjectDateByTimestampRequest) *pb.RpcObjectDateByTimestampResponse {
-	response := func(details *types.Struct, err error) *pb.RpcObjectDateByTimestampResponse {
-		resp := &pb.RpcObjectDateByTimestampResponse{
+	spaceService := getService[space.Service](mw)
+	details, err := date.BuildDetailsFromTimestamp(ctx, spaceService, req.SpaceId, req.Timestamp)
+
+	if err != nil {
+		return &pb.RpcObjectDateByTimestampResponse{
 			Error: &pb.RpcObjectDateByTimestampResponseError{
-				Code: pb.RpcObjectDateByTimestampResponseError_NULL,
+				Code:        pb.RpcObjectDateByTimestampResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
 			},
 		}
-		if err != nil {
-			resp.Error.Code = pb.RpcObjectDateByTimestampResponseError_UNKNOWN_ERROR
-			resp.Error.Description = getErrorDescription(err)
-		} else {
-			resp.Details = details
-		}
-		return resp
 	}
 
-	return response(date.BuildDetailsFromTimestamp(ctx, getService[space.Service](mw), req.SpaceId, req.Timestamp))
+	return &pb.RpcObjectDateByTimestampResponse{
+		Details: details,
+	}
 }
