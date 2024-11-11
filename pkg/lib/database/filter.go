@@ -468,11 +468,14 @@ func (p FilterHasPrefix) FilterObject(s *types.Struct) bool {
 }
 
 func (p FilterHasPrefix) AnystoreFilter() query.Filter {
-	f, err := query.ParseCondition(`{"` + p.Key + `":{"$regex": "^` + p.Prefix + `"}}`)
+	re, err := regexp.Compile("^" + regexp.QuoteMeta(p.Prefix))
 	if err != nil {
 		log.Errorf("failed to build anystore HAS PREFIX filter: %v", err)
 	}
-	return f
+	return query.Key{
+		Path:   []string{p.Key},
+		Filter: query.Regexp{Regexp: re},
+	}
 }
 
 // any
