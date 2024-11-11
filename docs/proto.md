@@ -1082,6 +1082,7 @@
     - [Rpc.Relation.ListWithValue.Request](#anytype-Rpc-Relation-ListWithValue-Request)
     - [Rpc.Relation.ListWithValue.Response](#anytype-Rpc-Relation-ListWithValue-Response)
     - [Rpc.Relation.ListWithValue.Response.Error](#anytype-Rpc-Relation-ListWithValue-Response-Error)
+    - [Rpc.Relation.ListWithValue.Response.ResponseItem](#anytype-Rpc-Relation-ListWithValue-Response-ResponseItem)
     - [Rpc.Relation.Options](#anytype-Rpc-Relation-Options)
     - [Rpc.Relation.Options.Request](#anytype-Rpc-Relation-Options-Request)
     - [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response)
@@ -17881,8 +17882,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Relation.ListWithValue.Response.Error](#anytype-Rpc-Relation-ListWithValue-Response-Error) |  |  |
-| relationKeys | [string](#string) | repeated |  |
-| counters | [int64](#int64) | repeated |  |
+| list | [Rpc.Relation.ListWithValue.Response.ResponseItem](#anytype-Rpc-Relation-ListWithValue-Response-ResponseItem) | repeated |  |
 
 
 
@@ -17899,6 +17899,22 @@ Available undo/redo operations
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-ListWithValue-Response-ResponseItem"></a>
+
+### Rpc.Relation.ListWithValue.Response.ResponseItem
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| counter | [int64](#int64) |  |  |
 
 
 
@@ -29850,10 +29866,16 @@ stored |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | INTERNAL_ERROR | 3 |  |
-| NO_OBJECTS_TO_IMPORT | 5 |  |
-| IMPORT_IS_CANCELED | 6 |  |
-| LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
 | FILE_LOAD_ERROR | 8 |  |
+| IMPORT_IS_CANCELED | 6 |  |
+| NOTION_NO_OBJECTS_IN_INTEGRATION | 5 |  |
+| NOTION_SERVER_IS_UNAVAILABLE | 12 |  |
+| NOTION_RATE_LIMIT_EXCEEDED | 13 |  |
+| FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE | 14 |  |
+| FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY | 17 |  |
+| HTML_WRONG_HTML_STRUCTURE | 10 |  |
+| PB_NOT_ANYBLOCK_FORMAT | 11 |  |
+| CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
 | INSUFFICIENT_PERMISSIONS | 9 |  |
 
 
