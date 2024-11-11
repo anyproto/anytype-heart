@@ -37,9 +37,6 @@ func TestSpaceLoadingProgress_Run(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Nil(t, f.progress)
 	})
-}
-
-func TestSpaceLoadingProgress_runSpaceLoadingProgress(t *testing.T) {
 	t.Run("no space view", func(t *testing.T) {
 		// given
 		f := newFixture(t, false)
@@ -58,15 +55,14 @@ func TestSpaceLoadingProgress_runSpaceLoadingProgress(t *testing.T) {
 			},
 			Internal: true,
 		}).Return(&subscription.SubscribeResponse{Output: outputQueue}, nil)
-		f.ctx, f.cancel = context.WithCancel(context.Background())
 
 		// when
-		go f.runSpaceLoadingProgress()
+		err := f.Run(nil)
 
 		// then
 		assert.NotNil(t, f.progress)
 		assert.Equal(t, int64(0), f.progress.Info().Progress.Total)
-		err := f.Close(nil)
+		err = f.Close(nil)
 		assert.Nil(t, err)
 	})
 	t.Run("missing space view", func(t *testing.T) {
@@ -87,11 +83,23 @@ func TestSpaceLoadingProgress_runSpaceLoadingProgress(t *testing.T) {
 			},
 			Internal: true,
 		}).Return(&subscription.SubscribeResponse{Output: outputQueue}, nil)
-		f.ctx, f.cancel = context.WithCancel(context.Background())
 
 		// when
-		go f.runSpaceLoadingProgress()
 		err := outputQueue.Add(context.Background(),
+			&pb.EventMessage{
+				Value: &pb.EventMessageValueOfSubscriptionAdd{
+					SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+						Id: "id",
+					},
+				},
+			},
+			&pb.EventMessage{
+				Value: &pb.EventMessageValueOfSubscriptionAdd{
+					SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+						Id: "id1",
+					},
+				},
+			},
 			&pb.EventMessage{
 				Value: &pb.EventMessageValueOfObjectDetailsSet{
 					ObjectDetailsSet: &pb.EventObjectDetailsSet{
@@ -115,6 +123,7 @@ func TestSpaceLoadingProgress_runSpaceLoadingProgress(t *testing.T) {
 				},
 			})
 		assert.Nil(t, err)
+		err = f.Run(nil)
 
 		// then
 		waitForEmptyQueue(outputQueue)
@@ -140,11 +149,19 @@ func TestSpaceLoadingProgress_runSpaceLoadingProgress(t *testing.T) {
 			},
 			Internal: true,
 		}).Return(&subscription.SubscribeResponse{Output: outputQueue}, nil)
-		f.ctx, f.cancel = context.WithCancel(context.Background())
 
 		// when
-		go f.runSpaceLoadingProgress()
-		err := outputQueue.Add(context.Background(),
+		err := f.Run(nil)
+		assert.Nil(t, err)
+
+		err = outputQueue.Add(context.Background(),
+			&pb.EventMessage{
+				Value: &pb.EventMessageValueOfSubscriptionAdd{
+					SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+						Id: "id",
+					},
+				},
+			},
 			&pb.EventMessage{
 				Value: &pb.EventMessageValueOfObjectDetailsAmend{
 					ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
@@ -188,10 +205,9 @@ func TestSpaceLoadingProgress_runSpaceLoadingProgress(t *testing.T) {
 			},
 			Internal: true,
 		}).Return(&subscription.SubscribeResponse{Output: outputQueue}, nil)
-		f.ctx, f.cancel = context.WithCancel(context.Background())
 
 		// when
-		go f.runSpaceLoadingProgress()
+		f.runSpaceLoadingProgress()
 		for {
 			if f.progress == nil {
 				continue

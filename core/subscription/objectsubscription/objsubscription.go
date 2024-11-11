@@ -15,7 +15,7 @@ import (
 
 type (
 	extract[T any] func(*types.Struct) (string, T)
-	update[T any]  func(string, *types.Value, T) T
+	update[T any]  func(string, string, *types.Value, T) T
 	unset[T any]   func([]string, T) T
 )
 
@@ -58,7 +58,7 @@ func NewIdSubscription(service subscription.Service, request subscription.Subscr
 		Extract: func(t *types.Struct) (string, struct{}) {
 			return pbtypes.GetString(t, bundle.RelationKeyId.String()), struct{}{}
 		},
-		Update: func(s string, value *types.Value, s2 struct{}) struct{} {
+		Update: func(objectId, key string, value *types.Value, _ struct{}) struct{} {
 			return struct{}{}
 		},
 		Unset: func(strings []string, s struct{}) struct{} {
@@ -132,7 +132,7 @@ func (o *ObjectSubscription[T]) read() {
 				return
 			}
 			for _, value := range v.ObjectDetailsAmend.Details {
-				curEntry.data = o.update(value.Key, value.Value, curEntry.data)
+				curEntry.data = o.update(v.ObjectDetailsAmend.Id, value.Key, value.Value, curEntry.data)
 			}
 		case *pb.EventMessageValueOfObjectDetailsUnset:
 			curEntry := o.sub[v.ObjectDetailsUnset.Id]
