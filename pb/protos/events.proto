@@ -1170,7 +1170,6 @@ message Model {
             Export export= 8;
             SaveFile saveFile = 9;
             Migration migration = 10;
-            RecoverAccount recoverAccount = 11;
         }
 
         string error = 12;
@@ -1178,7 +1177,6 @@ message Model {
         message Import {}
         message Export {}
         message SaveFile {}
-        message RecoverAccount {}
         message Migration {}
 
         enum State {

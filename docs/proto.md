@@ -1740,7 +1740,6 @@
     - [Model.Process.Import](#anytype-Model-Process-Import)
     - [Model.Process.Migration](#anytype-Model-Process-Migration)
     - [Model.Process.Progress](#anytype-Model-Process-Progress)
-    - [Model.Process.RecoverAccount](#anytype-Model-Process-RecoverAccount)
     - [Model.Process.SaveFile](#anytype-Model-Process-SaveFile)
     - [ResponseEvent](#anytype-ResponseEvent)
   
@@ -27380,7 +27379,6 @@ Precondition: user A and user B opened the same block
 | export | [Model.Process.Export](#anytype-Model-Process-Export) |  |  |
 | saveFile | [Model.Process.SaveFile](#anytype-Model-Process-SaveFile) |  |  |
 | migration | [Model.Process.Migration](#anytype-Model-Process-Migration) |  |  |
-| recoverAccount | [Model.Process.RecoverAccount](#anytype-Model-Process-RecoverAccount) |  |  |
 | error | [string](#string) |  |  |
 
 
@@ -27439,16 +27437,6 @@ Precondition: user A and user B opened the same block
 | total | [int64](#int64) |  |  |
 | done | [int64](#int64) |  |  |
 | message | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Model-Process-RecoverAccount"></a>
-
-### Model.Process.RecoverAccount
-
 
 
 

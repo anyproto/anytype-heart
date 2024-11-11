@@ -121,10 +121,9 @@ func (p *progress) Info() pb.ModelProcess {
 		if p.isFinishedWithError {
 			errDescription = p.err.Error()
 			state = pb.ModelProcess_Error
+		} else {
+			p.SetDone(atomic.LoadInt64(&p.totalCount))
 		}
-		p.m.Lock()
-		defer p.m.Unlock()
-		p.SetDone(atomic.LoadInt64(&p.totalCount))
 		return p.makeInfo(state, errDescription)
 	default:
 	}
@@ -133,12 +132,12 @@ func (p *progress) Info() pb.ModelProcess {
 		state = pb.ModelProcess_Canceled
 	default:
 	}
-	p.m.Lock()
-	defer p.m.Unlock()
 	return p.makeInfo(state, errDescription)
 }
 
 func (p *progress) makeInfo(state pb.ModelProcessState, errDescription string) pb.ModelProcess {
+	p.m.Lock()
+	defer p.m.Unlock()
 	return pb.ModelProcess{
 		Id:    p.id,
 		State: state,
