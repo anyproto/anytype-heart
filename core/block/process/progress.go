@@ -24,9 +24,10 @@ type Progress interface {
 
 func NewProgress(processMessage pb.IsModelProcessMessage) Progress {
 	return &progress{
-		id:     bson.NewObjectId().Hex(),
-		done:   make(chan struct{}),
-		cancel: make(chan struct{}),
+		id:             bson.NewObjectId().Hex(),
+		done:           make(chan struct{}),
+		cancel:         make(chan struct{}),
+		processMessage: processMessage,
 	}
 }
 
