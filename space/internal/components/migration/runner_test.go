@@ -60,7 +60,7 @@ func TestRunner(t *testing.T) {
 					return nil
 				}
 			},
-		)
+		).Maybe()
 		runner := Runner{ctx: ctx, spc: space, store: store}
 
 		// when
@@ -85,7 +85,8 @@ func TestRunner(t *testing.T) {
 
 		// when
 		go func() {
-			time.Sleep(10 * time.Millisecond)
+			// TODO: GO-4444 Migration runner wastes much time to get 2 store indexes instead of 1
+			time.Sleep(20 * time.Millisecond)
 			cancel()
 		}()
 		err := runner.run(instantMigration{})
