@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
@@ -196,6 +197,7 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(false))
 			st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
 			st.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, pbtypes.Bool(false))
+			st.SetOriginalCreatedTimestamp(time.Now().Unix())
 			typeKey = domain.TypeKey(st.UniqueKeyInternal())
 
 			ids = append(ids, id)
@@ -237,6 +239,7 @@ func (s *service) prepareDetailsForInstallingObject(
 	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(spaceID)
 	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
+	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
 
 	if isNewSpace {
 		lastused.SetLastUsedDateForInitialObjectType(sourceId, details)

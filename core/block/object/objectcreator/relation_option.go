@@ -40,6 +40,9 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
+	if createDate := pbtypes.GetInt64(details, bundle.RelationKeyCreatedDate.String()); createDate != 0 {
+		createState.SetOriginalCreatedTimestamp(createDate)
+	}
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyRelationOption}, createState)
 }
 
