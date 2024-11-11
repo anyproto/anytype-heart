@@ -47,6 +47,7 @@ type CrossSpace interface {
 type ObjectStore interface {
 	app.ComponentRunnable
 
+	IterateSpaceIndex(func(store spaceindex.Store) error) error
 	SpaceIndex(spaceId string) spaceindex.Store
 	GetCrdtDb(spaceId string) anystore.DB
 
@@ -114,6 +115,21 @@ type dsObjectStore struct {
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
+}
+
+func (s *dsObjectStore) IterateSpaceIndex(f func(store spaceindex.Store) error) error {
+	s.Lock()
+	spaceIndexes := make([]spaceindex.Store, 0, len(s.spaceIndexes))
+	for _, store := range s.spaceIndexes {
+		spaceIndexes = append(spaceIndexes, store)
+	}
+	s.Unlock()
+	for _, store := range s.spaceIndexes {
+		if err := f(store); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func New() ObjectStore {

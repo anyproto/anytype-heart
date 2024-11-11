@@ -34,7 +34,7 @@ const spaceName = "space1"
 type detailsFromId struct {
 }
 
-func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+func (d *detailsFromId) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error) {
 	return nil, fmt.Errorf("not found")
 }
 

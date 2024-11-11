@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "1c8092b7f33ee794036ea8afcd8a810cf3ab9c8a4deabd146d682048f1e9b06a"
+const RelationChecksum = "44f147da7e8233e89bb42533778c305d0735a54238aa2e5ba331a3396145450d"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -143,7 +143,7 @@ const (
 	RelationKeyHasChat                   domain.RelationKey = "hasChat"
 	RelationKeyChatId                    domain.RelationKey = "chatId"
 	RelationKeyMentions                  domain.RelationKey = "mentions"
-	RelationKeySpaceOrder                domain.RelationKey = "spaceOrder"
+	RelationKeyTimestamp                 domain.RelationKey = "timestamp"
 )
 
 var (
@@ -1671,20 +1671,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeySpaceOrder: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Space order",
-			Format:           model.RelationFormat_longtext,
-			Hidden:           true,
-			Id:               "_brspaceOrder",
-			Key:              "spaceOrder",
-			MaxCount:         1,
-			Name:             "Space order",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeySpaceRemoteStatus: {
 
 			DataSource:       model.Relation_derived,
@@ -1859,6 +1845,20 @@ var (
 			MaxCount:         1,
 			Name:             "Time",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyTimestamp: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Unix time representation of date object",
+			Format:           model.RelationFormat_date,
+			Hidden:           true,
+			Id:               "_brtimestamp",
+			Key:              "timestamp",
+			MaxCount:         1,
+			Name:             "Timestamp",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

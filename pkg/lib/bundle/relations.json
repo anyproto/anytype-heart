@@ -1352,6 +1352,16 @@
     "source": "local"
   },
   {
+    "description": "Unix time representation of date object",
+    "format": "date",
+    "hidden": true,
+    "key": "timestamp",
+    "maxCount": 1,
+    "name": "Timestamp",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Space order",
     "format": "longtext",
     "hidden": true,

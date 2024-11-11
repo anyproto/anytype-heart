@@ -207,9 +207,6 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 				details = &types.Struct{Fields: map[string]*types.Value{}}
 			}
 			if !u.isLayoutSuitableForSyncRelations(details) {
-				delete(details.Fields, bundle.RelationKeySyncStatus.String())
-				delete(details.Fields, bundle.RelationKeySyncError.String())
-				delete(details.Fields, bundle.RelationKeySyncDate.String())
 				return details, false, nil
 			}
 			if fileStatus, ok := details.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
@@ -238,21 +235,6 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 	}
 	st := sb.NewState()
 	if !u.isLayoutSuitableForSyncRelations(sb.Details()) {
-		var syncRelations = []string{
-			bundle.RelationKeySyncStatus.String(),
-			bundle.RelationKeySyncError.String(),
-			bundle.RelationKeySyncDate.String(),
-		}
-		removedOnce := false
-		for _, relation := range syncRelations {
-			if st.HasRelation(relation) {
-				removedOnce = true
-				st.RemoveRelation(relation)
-			}
-		}
-		if removedOnce {
-			return sb.Apply(st, smartblock.KeepInternalFlags /* do not erase flags */)
-		}
 		return nil
 	}
 	if fileStatus, ok := st.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {

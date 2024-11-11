@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "f3ae9931142aa23ec9696ccb60fe1a68b4fdafcc345e307e0a26d4fb98a0686c"
+const TypeChecksum = "5458717a4167a70b8a8e3148147e192263a645484359ec155b6856a8996e8ec8"
 const (
 	TypePrefix = "_ot"
 )
@@ -84,10 +84,11 @@ var (
 		},
 		TypeKeyChat: {
 
-			Description:   "A chat",
+			Description:   "A chat [deprecated]",
+			Hidden:        true,
 			IconEmoji:     "💬",
 			Layout:        model.ObjectType_chat,
-			Name:          "Chat",
+			Name:          "Chat [deprecated]",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_ChatObject},
@@ -143,7 +144,7 @@ var (
 			Description:   "Gregorian calendar date",
 			Hidden:        true,
 			IconEmoji:     "📅",
-			Layout:        model.ObjectType_basic,
+			Layout:        model.ObjectType_date,
 			Name:          "Date",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},

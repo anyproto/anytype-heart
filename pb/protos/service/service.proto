@@ -313,8 +313,10 @@ service ClientCommands {
     rpc DebugRunProfiler (anytype.Rpc.Debug.RunProfiler.Request) returns (anytype.Rpc.Debug.RunProfiler.Response);
     rpc DebugAccountSelectTrace (anytype.Rpc.Debug.AccountSelectTrace.Request) returns (anytype.Rpc.Debug.AccountSelectTrace.Response);
     rpc DebugAnystoreObjectChanges (anytype.Rpc.Debug.AnystoreObjectChanges.Request) returns (anytype.Rpc.Debug.AnystoreObjectChanges.Response);
+    rpc DebugNetCheck (anytype.Rpc.Debug.NetCheck.Request) returns (anytype.Rpc.Debug.NetCheck.Response);
+    rpc DebugExportLog (anytype.Rpc.Debug.ExportLog.Request) returns (anytype.Rpc.Debug.ExportLog.Response);
 
-    rpc MetricsSetParameters (anytype.Rpc.Metrics.SetParameters.Request) returns (anytype.Rpc.Metrics.SetParameters.Response);
+    rpc InitialSetParameters (anytype.Rpc.Initial.SetParameters.Request) returns (anytype.Rpc.Initial.SetParameters.Response);
 
     // used only for lib-server via grpc
     rpc ListenSessionEvents (anytype.StreamRequest) returns (stream anytype.Event);

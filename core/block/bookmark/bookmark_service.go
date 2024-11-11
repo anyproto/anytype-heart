@@ -421,6 +421,6 @@ func (s *service) loadImage(spaceId string, title, url string) (hash string, err
 	if title != "" {
 		fileName = title
 	}
-	res := uploader.SetName(fileName).SetFile(tmpFile.Name()).Upload(ctx)
+	res := uploader.SetName(fileName).SetFile(tmpFile.Name()).SetImageKind(model.ImageKind_AutomaticallyAdded).Upload(ctx)
 	return res.FileObjectId, res.Err
 }

@@ -46,6 +46,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/sqlitestorage"
 	"github.com/anyproto/anytype-heart/util/anonymize"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -461,10 +462,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	depIds := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true)
 	sb.setDependentIDs(depIds)
 
-	perSpace, err := sb.partitionIdsBySpace(sb.depIds)
-	if err != nil {
-		return nil, fmt.Errorf("partiton by space: %w", err)
-	}
+	perSpace := sb.partitionIdsBySpace(sb.depIds)
 
 	recordsCh := make(chan *types.Struct, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
@@ -513,9 +511,14 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	return
 }
 
-func (sb *smartBlock) partitionIdsBySpace(ids []string) (map[string][]string, error) {
+func (sb *smartBlock) partitionIdsBySpace(ids []string) map[string][]string {
 	perSpace := map[string][]string{}
 	for _, id := range ids {
+		if _, parseErr := dateutil.ParseDateId(id); parseErr == nil {
+			perSpace[sb.space.Id()] = append(perSpace[sb.space.Id()], id)
+			continue
+		}
+
 		spaceId, err := sb.spaceIdResolver.ResolveSpaceID(id)
 		if errors.Is(err, sqlitestorage.ErrObjectNotFound) || errors.Is(err, badger.ErrKeyNotFound) {
 			perSpace[sb.space.Id()] = append(perSpace[sb.space.Id()], id)
@@ -529,7 +532,7 @@ func (sb *smartBlock) partitionIdsBySpace(ids []string) (map[string][]string, er
 		}
 		perSpace[spaceId] = append(perSpace[spaceId], id)
 	}
-	return perSpace, nil
+	return perSpace
 }
 
 func (sb *smartBlock) Lock() {
@@ -861,10 +864,7 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 	}
 	newIDs := sb.recordsSub.Subscribe(sb.depIds)
 
-	perSpace, err := sb.partitionIdsBySpace(newIDs)
-	if err != nil {
-		log.Errorf("partiton by space error: %v", err)
-	}
+	perSpace := sb.partitionIdsBySpace(newIDs)
 
 	for spaceId, ids := range perSpace {
 		spaceIndex := sb.objectStore.SpaceIndex(spaceId)

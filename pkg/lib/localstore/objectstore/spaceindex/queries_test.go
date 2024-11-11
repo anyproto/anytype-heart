@@ -1038,7 +1038,7 @@ type dummySourceService struct {
 	objectToReturn TestObject
 }
 
-func (s dummySourceService) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+func (s dummySourceService) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error) {
 	return makeDetails(s.objectToReturn), nil
 }
 

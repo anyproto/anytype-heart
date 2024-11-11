@@ -121,7 +121,7 @@ type AnyEncDiff struct {
 	Value *anyenc.Value
 }
 
-func AnyEncJson(a *anyenc.Value, b *anyenc.Value) ([]AnyEncDiff, error) {
+func DiffAnyEnc(a *anyenc.Value, b *anyenc.Value) ([]AnyEncDiff, error) {
 	objA, err := a.Object()
 	if err != nil {
 		return nil, fmt.Errorf("param a is not an object: %w", err)
