@@ -13,7 +13,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
@@ -47,6 +49,8 @@ func TestRunner(t *testing.T) {
 	t.Run("context exceeds + space operation in progress -> context.Canceled", func(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, "spaceId", []spaceindex.TestObject{})
+		store.AddObjects(t, addr.AnytypeMarketplaceWorkspace, []spaceindex.TestObject{})
 		ctx, cancel := context.WithCancel(context.Background())
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Id().Times(1).Return("")
@@ -60,7 +64,7 @@ func TestRunner(t *testing.T) {
 					return nil
 				}
 			},
-		).Maybe()
+		)
 		runner := Runner{ctx: ctx, spc: space, store: store}
 
 		// when
@@ -78,15 +82,16 @@ func TestRunner(t *testing.T) {
 	t.Run("context exceeds + migration is finished -> no error", func(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, "spaceId", []spaceindex.TestObject{})
+		store.AddObjects(t, addr.AnytypeMarketplaceWorkspace, []spaceindex.TestObject{})
 		ctx, cancel := context.WithCancel(context.Background())
 		space := mock_space.NewMockSpace(t)
-		space.EXPECT().Id().Times(1).Return("")
+		space.EXPECT().Id().Times(1).Return("spaceId")
 		runner := Runner{ctx: ctx, store: store, spc: space}
 
 		// when
 		go func() {
-			// TODO: GO-4444 Migration runner wastes much time to get 2 store indexes instead of 1
-			time.Sleep(20 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 			cancel()
 		}()
 		err := runner.run(instantMigration{})
