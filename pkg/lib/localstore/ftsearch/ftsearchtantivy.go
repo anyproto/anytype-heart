@@ -37,7 +37,7 @@ const (
 	CName    = "fts"
 	ftsDir   = "fts"
 	ftsDir2  = "fts_tantivy"
-	ftsVer   = "9"
+	ftsVer   = "10"
 	docLimit = 10000
 
 	fieldTitle   = "Title"
@@ -200,7 +200,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 
 	err = builder.AddTextField(
 		fieldTitleZh,
-		false, // todo remove
+		true,
 		true,
 		false,
 		tantivy.IndexRecordOptionWithFreqsAndPositions,
