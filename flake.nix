@@ -14,9 +14,10 @@
         name = "anytype-heart";
         nativeBuildInputs = [
           pkgs.protoc-gen-grpc-web
+          pkgs.protoc-gen-js
           pkgs.go_1_23
           pkgs.gox
-          pkgs.protobuf3_20
+          pkgs.protobuf3_21
           pkgs.pkg-config
           pkgs.pre-commit
           # todo: govvv, not packaged
