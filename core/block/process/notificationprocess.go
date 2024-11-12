@@ -29,12 +29,12 @@ type notificationProcess struct {
 	notificationService NotificationService
 }
 
-func NewNotificationProcess(pbType pb.ModelProcessType, notificationService NotificationService) Notificationable {
+func NewNotificationProcess(processMessage pb.IsModelProcessMessage, notificationService NotificationService) Notificationable {
 	return &notificationProcess{progress: &progress{
-		id:     bson.NewObjectId().Hex(),
-		done:   make(chan struct{}),
-		cancel: make(chan struct{}),
-		pType:  pbType,
+		id:             bson.NewObjectId().Hex(),
+		done:           make(chan struct{}),
+		cancel:         make(chan struct{}),
+		processMessage: processMessage,
 	}, notificationService: notificationService}
 }
 

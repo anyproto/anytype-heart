@@ -59,6 +59,47 @@ func TestService_Cancel(t *testing.T) {
 	}
 }
 
+func TestService_Subscribe(t *testing.T) {
+	t.Run("remove non existing token from excluded sessions", func(t *testing.T) {
+		// given
+		s := New()
+
+		// when
+		s.Subscribe("test")
+
+		// then
+		service := s.(*service)
+		assert.Empty(t, service.disabledProcessEvent["test"])
+	})
+	t.Run("remove existing token from excluded sessions", func(t *testing.T) {
+		// given
+		s := New()
+
+		// when
+		service := s.(*service)
+		service.disabledProcessEvent["test"] = struct{}{}
+		s.Subscribe("test")
+
+		// then
+		assert.Empty(t, service.disabledProcessEvent["test"])
+	})
+}
+
+func TestService_Unsubscribe(t *testing.T) {
+	t.Run("add disabled session", func(t *testing.T) {
+		// given
+		s := New()
+
+		// when
+		s.Unsubscribe("test")
+
+		// then
+		service := s.(*service)
+		_, ok := service.disabledProcessEvent["test"]
+		assert.True(t, ok)
+	})
+}
+
 func newTestProcess(id string) *testProcess {
 	return &testProcess{
 		id:   id,

@@ -34,11 +34,15 @@ type Service interface {
 	Cancel(id string) (err error)
 	// NewQueue creates new queue with given workers count
 	NewQueue(info pb.ModelProcess, workers int) Queue
+	// Subscribe remove session from the map of disabled sessions
+	Subscribe(token string)
+	// Unsubscribe add session to the map of disabled sessions
+	Unsubscribe(token string)
 	app.ComponentRunnable
 }
 
 func New() Service {
-	return &service{}
+	return &service{disabledProcessEvent: make(map[string]struct{})}
 }
 
 type service struct {
@@ -46,6 +50,9 @@ type service struct {
 	eventSender event.Sender
 	waiters     map[string]chan struct{}
 	m           sync.Mutex
+
+	disabledProcessEvent map[string]struct{}
+	sessionMu            sync.Mutex
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -91,7 +98,7 @@ func (s *service) monitor(p Process) {
 		case <-ticker.C:
 			info := p.Info()
 			if !infoEquals(info, prevInfo) {
-				s.eventSender.Broadcast(&pb.Event{
+				s.eventSender.BroadcastExceptSessions(&pb.Event{
 					Messages: []*pb.EventMessage{
 						{
 							Value: &pb.EventMessageValueOfProcessUpdate{
@@ -101,7 +108,7 @@ func (s *service) monitor(p Process) {
 							},
 						},
 					},
-				})
+				}, s.getExcludedSessions())
 				prevInfo = info
 			}
 		case <-p.Done():
@@ -170,6 +177,28 @@ func (s *service) Close(ctx context.Context) (err error) {
 		return fmt.Errorf("process closed with errors: %v", errs)
 	}
 	return nil
+}
+
+func (s *service) Subscribe(token string) {
+	s.sessionMu.Lock()
+	defer s.sessionMu.Unlock()
+	delete(s.disabledProcessEvent, token)
+}
+
+func (s *service) Unsubscribe(token string) {
+	s.sessionMu.Lock()
+	defer s.sessionMu.Unlock()
+	s.disabledProcessEvent[token] = struct{}{}
+}
+
+func (s *service) getExcludedSessions() []string {
+	s.sessionMu.Lock()
+	defer s.sessionMu.Unlock()
+	tokens := make([]string, 0, len(s.disabledProcessEvent))
+	for token := range s.disabledProcessEvent {
+		tokens = append(tokens, token)
+	}
+	return tokens
 }
 
 func infoEquals(i1, i2 pb.ModelProcess) bool {

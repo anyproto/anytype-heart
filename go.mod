@@ -101,8 +101,8 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	golang.org/x/image v0.22.0
-	golang.org/x/mobile v0.0.0-20241016134751-7ff83004ec2c
-	golang.org/x/net v0.30.0
+	golang.org/x/mobile v0.0.0-20241108191957-fa514ef75a0f
+	golang.org/x/net v0.31.0
 	golang.org/x/oauth2 v0.24.0
 	golang.org/x/text v0.20.0
 	google.golang.org/grpc v1.68.0
@@ -241,7 +241,7 @@ require (
 	github.com/quic-go/quic-go v0.48.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
-	github.com/rs/cors v1.10.1 // indirect
+	github.com/rs/cors v1.11.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
@@ -266,18 +266,18 @@ require (
 	github.com/zeebo/errs v1.3.0 // indirect
 	go.etcd.io/bbolt v1.3.7 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	go.opentelemetry.io/otel v1.31.0 // indirect
-	go.opentelemetry.io/otel/metric v1.31.0 // indirect
-	go.opentelemetry.io/otel/trace v1.31.0 // indirect
-	golang.org/x/crypto v0.28.0 // indirect
-	golang.org/x/mod v0.21.0 // indirect
+	go.opentelemetry.io/otel v1.32.0 // indirect
+	go.opentelemetry.io/otel/metric v1.32.0 // indirect
+	go.opentelemetry.io/otel/trace v1.32.0 // indirect
+	golang.org/x/crypto v0.29.0 // indirect
+	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/sync v0.9.0 // indirect
-	golang.org/x/sys v0.26.0 // indirect
-	golang.org/x/term v0.25.0 // indirect
-	golang.org/x/time v0.7.0 // indirect
-	golang.org/x/tools v0.26.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20241007155032-5fefd90f89a9 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241007155032-5fefd90f89a9 // indirect
+	golang.org/x/sys v0.27.0 // indirect
+	golang.org/x/term v0.26.0 // indirect
+	golang.org/x/time v0.8.0 // indirect
+	golang.org/x/tools v0.27.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20241104194629-dd2ea8efbc28 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
@@ -306,3 +306,5 @@ replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-202
 replace github.com/multiformats/go-multiaddr => github.com/anyproto/go-multiaddr v0.8.1-0.20221213144344-0b6b93adaec4
 
 replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38
+
+replace google.golang.org/genproto/googleapis/rpc => google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38

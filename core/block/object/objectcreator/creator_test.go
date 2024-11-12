@@ -2,6 +2,7 @@ package objectcreator
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -129,7 +130,7 @@ func TestService_CreateObject(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, dateutil.TimeToDateId(ts), id)
+		assert.True(t, strings.HasPrefix(id, dateutil.TimeToShortDateId(ts)))
 		assert.Equal(t, spaceId, pbtypes.GetString(details, bundle.RelationKeySpaceId.String()))
 		assert.Equal(t, bundle.TypeKeyDate.URL(), pbtypes.GetString(details, bundle.RelationKeyType.String()))
 	})
