@@ -391,12 +391,12 @@ func (dp *dropFilesProcess) Info() pb.ModelProcess {
 	}
 	return pb.ModelProcess{
 		Id:    dp.id,
-		Type:  pb.ModelProcess_DropFiles,
 		State: state,
 		Progress: &pb.ModelProcessProgress{
 			Total: atomic.LoadInt64(&dp.total),
 			Done:  atomic.LoadInt64(&dp.done),
 		},
+		Message: &pb.ModelProcessMessageOfDropFiles{DropFiles: &pb.ModelProcessDropFiles{}},
 	}
 }
 

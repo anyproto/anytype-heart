@@ -3,12 +3,10 @@ package helpers
 import (
 	"context"
 	"fmt"
-	gopath "path"
 	"time"
 
-	"github.com/ipfs/boxo/coreiface/path"
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
-	ipfspath "github.com/ipfs/boxo/path"
+	"github.com/ipfs/boxo/path"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	mh "github.com/multiformats/go-multihash"
@@ -37,16 +35,11 @@ func LinksAtCid(ctx context.Context, dag ipld.DAGService, pathCid string) ([]*ip
 	return dir.Links(ctx)
 }
 
-func ResolvePath(ctx context.Context, dag ipld.DAGService, p path.Path) (path.Resolved, error) {
-	if _, ok := p.(path.Resolved); ok {
-		return p.(path.Resolved), nil
+func ResolveCid(ctx context.Context, dag ipld.DAGService, p path.Path) (cid.Cid, error) {
+	ipath, err := path.NewImmutablePath(p)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("unsupported path namespace: %s", p.Namespace())
 	}
-	if err := p.IsValid(); err != nil {
-		return nil, err
-	}
-
-	ipath := ipfspath.Path(p.String())
-
 	var resolveOnce resolver.ResolveOnce
 	switch ipath.Segments()[0] {
 	case "ipfs":
@@ -54,24 +47,19 @@ func ResolvePath(ctx context.Context, dag ipld.DAGService, p path.Path) (path.Re
 	case "ipld":
 		resolveOnce = resolver.ResolveSingle
 	default:
-		return nil, fmt.Errorf("unsupported path namespace: %s", p.Namespace())
+		return cid.Undef, fmt.Errorf("unsupported path namespace: %s", p.Namespace())
 	}
 	r := &resolver.Resolver{
 		DAG:         dag,
 		ResolveOnce: resolveOnce,
 	}
 
-	node, rest, err := r.ResolveToLastNode(ctx, ipath)
+	node, _, err := r.ResolveToLastNode(ctx, ipath)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
-	root, err := cid.Parse(ipath.Segments()[1])
-	if err != nil {
-		return nil, err
-	}
-
-	return path.NewResolvedPath(ipath, node, root, gopath.Join(rest...)), nil
+	return node, nil
 }
 
 // AddLinkToDirectory adds a link to a virtual dir

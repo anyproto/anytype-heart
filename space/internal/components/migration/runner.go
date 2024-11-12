@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -104,8 +105,10 @@ func (r *Runner) runMigrations() {
 func (r *Runner) run(migrations ...Migration) (err error) {
 	spaceId := r.spc.Id()
 
+	start := time.Now()
 	store := r.store.SpaceIndex(spaceId)
 	marketPlaceStore := r.store.SpaceIndex(addr.AnytypeMarketplaceWorkspace)
+	spent := time.Since(start)
 
 	for _, m := range migrations {
 		if e := r.ctx.Err(); e != nil {
@@ -117,8 +120,8 @@ func (r *Runner) run(migrations ...Migration) (err error) {
 			err = errors.Join(err, wrapError(e, m.Name(), spaceId, migrated, toMigrate))
 			continue
 		}
-		log.Debug(fmt.Sprintf("migration '%s' in space '%s' is successful. %d out of %d objects were migrated",
-			m.Name(), spaceId, migrated, toMigrate))
+		log.Debug(fmt.Sprintf("migration '%s' in space '%s' is successful. %d out of %d objects were migrated. Spent: %d micros",
+			m.Name(), spaceId, migrated, toMigrate, spent.Microseconds()))
 	}
 	return
 }
