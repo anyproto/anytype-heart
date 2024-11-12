@@ -68,7 +68,7 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, par
 	snapshots = append(snapshots, relationsSnapshots...)
 	progress.AddDone(1)
 	if errRelationLimit != nil || errRowLimit != nil {
-		return "", nil, common.ErrLimitExceeded
+		return "", nil, common.ErrCsvLimitExceeded
 	}
 	return snapshot.Id, snapshots, nil
 }
@@ -99,7 +99,7 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 	var err error
 	numberOfRelationsLimit := len(allRelations)
 	if numberOfRelationsLimit > limitForColumns {
-		err = common.ErrLimitExceeded
+		err = common.ErrCsvLimitExceeded
 		numberOfRelationsLimit = limitForColumns
 	}
 	allRelations = findUniqueRelationAndAddNumber(allRelations)
@@ -193,7 +193,7 @@ func getObjectsFromCSVRows(path string, csvTable [][]string, relations []*model.
 	numberOfObjectsLimit := len(csvTable)
 	var err error
 	if numberOfObjectsLimit > limitForRows {
-		err = common.ErrLimitExceeded
+		err = common.ErrCsvLimitExceeded
 		numberOfObjectsLimit = limitForRows
 		if params.UseFirstRowForRelations {
 			numberOfObjectsLimit++ // because first row is relations, so we need to add plus 1 row

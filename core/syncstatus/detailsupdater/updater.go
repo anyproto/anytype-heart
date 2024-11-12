@@ -233,10 +233,10 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
 		return nil
 	}
+	st := sb.NewState()
 	if !u.isLayoutSuitableForSyncRelations(sb.Details()) {
 		return nil
 	}
-	st := sb.NewState()
 	if fileStatus, ok := st.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
 		status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus.GetNumberValue())))
 	}

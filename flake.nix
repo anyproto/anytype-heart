@@ -14,7 +14,7 @@
         name = "anytype-heart";
         nativeBuildInputs = [
           pkgs.protoc-gen-grpc-web
-          pkgs.go_1_22
+          pkgs.go_1_23
           pkgs.gox
           pkgs.protobuf3_20
           pkgs.pkg-config

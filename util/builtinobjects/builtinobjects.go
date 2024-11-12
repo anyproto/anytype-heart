@@ -259,7 +259,7 @@ func (b *builtinObjects) provideNotification(spaceID string, progress process.Pr
 		Space:   spaceID,
 		Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
 			ProcessId: progress.Id(),
-			ErrorCode: common.GetImportErrorCode(err),
+			ErrorCode: common.GetImportNotificationErrorCode(err),
 			SpaceId:   spaceID,
 			Name:      title,
 			SpaceName: spaceName,
@@ -540,7 +540,7 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 }
 
 func (b *builtinObjects) setupProgress() (process.Notificationable, error) {
-	progress := process.NewNotificationProcess(pb.ModelProcess_Import, b.notifications)
+	progress := process.NewNotificationProcess(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}, b.notifications)
 	if err := b.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)
 	}

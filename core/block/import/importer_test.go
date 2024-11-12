@@ -14,6 +14,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common/objectid/mock_objectid"
+	"github.com/anyproto/anytype-heart/core/block/process"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/mock_common"
@@ -375,7 +376,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 	}
 	res := i.Import(context.Background(), importRequest)
 	assert.NotNil(t, res)
-	assert.Contains(t, res.Err.Error(), common.ErrNoObjectsToImport.Error())
+	assert.Contains(t, res.Err.Error(), common.ErrNoSnapshotToImport.Error())
 }
 
 func Test_ListImports(t *testing.T) {
@@ -402,9 +403,12 @@ func Test_ImportWebNoParser(t *testing.T) {
 	creator := mock_objectcreator.NewMockService(t)
 	i.oc = creator
 	i.idProvider = mock_objectid.NewMockIdAndKeyProvider(t)
-	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
-		UpdateExistingObjects: true,
+	_, _, err := i.ImportWeb(context.Background(), &ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+			UpdateExistingObjects: true,
+		},
+		Progress: process.NewNoOp(),
 	})
 
 	assert.NotNil(t, err)
@@ -430,9 +434,12 @@ func Test_ImportWebFailedToParse(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
-		UpdateExistingObjects: true,
+	_, _, err := i.ImportWeb(context.Background(), &ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+			UpdateExistingObjects: true,
+		},
+		Progress: process.NewNoOp(),
 	})
 
 	assert.NotNil(t, err)
@@ -472,9 +479,12 @@ func Test_ImportWebSuccess(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
-		UpdateExistingObjects: true,
+	_, _, err := i.ImportWeb(context.Background(), &ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+			UpdateExistingObjects: true,
+		},
+		Progress: process.NewNoOp(),
 	})
 
 	assert.Nil(t, err)
@@ -514,9 +524,12 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
-		UpdateExistingObjects: true,
+	_, _, err := i.ImportWeb(context.Background(), &ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+			UpdateExistingObjects: true,
+		},
+		Progress: process.NewNoOp(),
 	})
 
 	assert.NotNil(t, err)
@@ -556,7 +569,7 @@ func Test_ImportCancelError(t *testing.T) {
 func Test_ImportNoObjectToImportError(t *testing.T) {
 	i := Import{}
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_IGNORE_ERRORS)
+	e := common.NewFromError(common.ErrNoObjectInIntegration, pb.RpcObjectImportRequest_IGNORE_ERRORS)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]common.Converter, 0)
 	i.converters["Notion"] = converter
@@ -581,13 +594,13 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 	res := i.Import(context.Background(), importRequest)
 
 	assert.NotNil(t, res.Err)
-	assert.True(t, errors.Is(res.Err, common.ErrNoObjectsToImport))
+	assert.True(t, errors.Is(res.Err, common.ErrNoObjectInIntegration))
 }
 
 func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 	i := Import{}
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	e := common.NewFromError(common.ErrNoObjectInIntegration, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -627,12 +640,12 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 	res := i.Import(context.Background(), importRequest)
 
 	assert.NotNil(t, res.Err)
-	assert.True(t, errors.Is(res.Err, common.ErrNoObjectsToImport))
+	assert.True(t, errors.Is(res.Err, common.ErrNoObjectInIntegration))
 }
 
 func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	i := Import{}
-	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_IGNORE_ERRORS)
+	e := common.NewFromError(common.ErrNoObjectInIntegration, pb.RpcObjectImportRequest_IGNORE_ERRORS)
 	converter := mock_common.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
@@ -682,13 +695,13 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	res := i.Import(context.Background(), importRequest)
 
 	assert.NotNil(t, res.Err)
-	assert.True(t, errors.Is(res.Err, common.ErrNoObjectsToImport))
+	assert.True(t, errors.Is(res.Err, common.ErrNoObjectInIntegration))
 }
 
 func Test_ImportErrLimitExceeded(t *testing.T) {
 	i := Import{}
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewFromError(common.ErrLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	e := common.NewFromError(common.ErrCsvLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -729,13 +742,13 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 	res := i.Import(context.Background(), importRequest)
 
 	assert.NotNil(t, res.Err)
-	assert.True(t, errors.Is(res.Err, common.ErrLimitExceeded))
+	assert.True(t, errors.Is(res.Err, common.ErrCsvLimitExceeded))
 }
 
 func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 	i := Import{}
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewFromError(common.ErrLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	e := common.NewFromError(common.ErrCsvLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -776,7 +789,7 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 	res := i.Import(context.Background(), importRequest)
 
 	assert.NotNil(t, res.Err)
-	assert.True(t, errors.Is(res.Err, common.ErrLimitExceeded))
+	assert.True(t, errors.Is(res.Err, common.ErrCsvLimitExceeded))
 }
 
 func TestImport_replaceRelationKeyWithNew(t *testing.T) {

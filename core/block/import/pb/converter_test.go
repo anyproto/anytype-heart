@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -15,9 +16,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/test"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func Test_GetSnapshotsSuccess(t *testing.T) {
@@ -26,7 +30,7 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 	defer os.RemoveAll(path)
 	wr, err := newZipWriter(path)
 	assert.NoError(t, err)
-	f, err := os.Open("testdata/bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb")
+	f, err := os.Open(filepath.Join("testdata", "bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb"))
 	reader := bufio.NewReader(f)
 
 	assert.NoError(t, err)
@@ -43,7 +47,7 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.Nil(t, ce)
 	assert.Len(t, res.Snapshots, 2)
@@ -63,7 +67,7 @@ func Test_GetSnapshotsFailedReadZip(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.NotNil(t, ce)
 }
@@ -74,7 +78,7 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 	defer os.RemoveAll(path)
 	wr, err := newZipWriter(path)
 	assert.NoError(t, err)
-	f, err := os.Open("testdata/test.pb")
+	f, err := os.Open(filepath.Join("testdata", "test.pb"))
 	reader := bufio.NewReader(f)
 
 	assert.NoError(t, err)
@@ -90,16 +94,46 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.NotNil(t, ce)
 	assert.False(t, ce.IsEmpty())
+	assert.True(t, errors.Is(ce.GetResultError(model.Import_Pb), common.ErrPbNotAnyBlockFormat))
+}
+
+func Test_GetSnapshotsEmptySnapshot(t *testing.T) {
+	path, err := ioutil.TempDir("", "")
+	assert.NoError(t, err)
+	defer os.RemoveAll(path)
+	wr, err := newZipWriter(path)
+	assert.NoError(t, err)
+	f, err := os.Open(filepath.Join("testdata", "emptysnapshot.pb.json"))
+	reader := bufio.NewReader(f)
+
+	assert.NoError(t, err)
+	assert.NoError(t, wr.WriteFile("emptysnapshot.pb.json", reader))
+	assert.NoError(t, wr.Close())
+
+	p := &Pb{}
+
+	_, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
+			Path: []string{wr.Path()},
+		}},
+		UpdateExistingObjects: false,
+		Type:                  0,
+		Mode:                  0,
+	}, process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}))
+
+	assert.NotNil(t, ce)
+	assert.False(t, ce.IsEmpty())
+	assert.True(t, errors.Is(ce.GetResultError(model.Import_Pb), common.ErrPbNotAnyBlockFormat))
 }
 
 func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 	p := &Pb{}
 
-	paths := []string{"testdata/bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb", "testdata/test.pb"}
+	paths := []string{filepath.Join("testdata", "bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb"), filepath.Join("testdata", "test.pb")}
 	// ALL_OR_NOTHING mode
 	res, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
@@ -108,7 +142,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.NotNil(t, ce)
 	assert.Nil(t, res)
@@ -121,7 +155,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.NotNil(t, ce)
 	assert.NotNil(t, res.Snapshots)
@@ -132,7 +166,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 func Test_GetSnapshotsWithoutRootCollection(t *testing.T) {
 	p := &Pb{}
 
-	path := "testdata/bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb"
+	path := filepath.Join("testdata", "bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb")
 	res, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
 			Path:         []string{path},
@@ -141,7 +175,7 @@ func Test_GetSnapshotsWithoutRootCollection(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)
@@ -155,13 +189,13 @@ func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
 	wr, err := newZipWriter(path)
 	assert.NoError(t, err)
 
-	f, err := os.Open("testdata/bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb")
+	f, err := os.Open(filepath.Join("testdata", "bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb"))
 	assert.NoError(t, err)
 	reader := bufio.NewReader(f)
 
 	assert.NoError(t, wr.WriteFile("bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb", reader))
 
-	f, err = os.Open("testdata/test")
+	f, err = os.Open(filepath.Join("testdata", "test"))
 	assert.NoError(t, err)
 	reader = bufio.NewReader(f)
 
@@ -177,7 +211,7 @@ func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)
@@ -185,6 +219,44 @@ func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
 
 	assert.Equal(t, res.Snapshots[0].FileName, "bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb")
 	assert.Contains(t, res.Snapshots[1].FileName, rootCollectionName)
+}
+
+func TestPb_GetSnapshots(t *testing.T) {
+	t.Run("no objects in dir", func(t *testing.T) {
+		// given
+		dir := t.TempDir()
+		p := &Pb{}
+
+		// when
+		_, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
+				Path: []string{dir},
+			}},
+		}, process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}))
+
+		// then
+		assert.NotNil(t, ce)
+		assert.True(t, errors.Is(ce.GetResultError(model.Import_Pb), common.ErrFileImportNoObjectsInDirectory))
+	})
+	t.Run("no objects in archive", func(t *testing.T) {
+		// given
+		dir := t.TempDir()
+		p := &Pb{}
+		zipPath := filepath.Join(dir, "empty.zip")
+		err := test.CreateEmptyZip(t, zipPath)
+		assert.Nil(t, err)
+
+		// when
+		_, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
+				Path: []string{zipPath},
+			}},
+		}, process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}))
+
+		// then
+		assert.NotNil(t, ce)
+		assert.True(t, errors.Is(ce.GetResultError(model.Import_Pb), common.ErrFileImportNoObjectsInZipArchive))
+	})
 }
 
 func newZipWriter(path string) (*zipWriter, error) {
