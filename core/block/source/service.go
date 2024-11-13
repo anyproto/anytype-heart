@@ -147,12 +147,20 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 			if err != nil {
 				return nil, fmt.Errorf("failed to find Date type to build Date object: %w", err)
 			}
+
+			// TODO: GO-4494 - Remove links relation id fetch
+			linksRelationId, err := space.GetRelationIdByKey(context.Background(), bundle.RelationKeyLinks)
+			if err != nil {
+				return nil, fmt.Errorf("get links relation id: %w", err)
+			}
+
 			return NewDate(DateSourceParams{
 				Id: domain.FullID{
 					ObjectID: id,
 					SpaceID:  space.Id(),
 				},
 				DateObjectTypeId: typeId,
+				LinksRelationId:  linksRelationId,
 			}), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
 			return NewBundledObjectType(id), nil
@@ -224,8 +232,8 @@ func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, err
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			RelationKey: bundle.RelationKeyUniqueKey.String(),
 			Value:       pbtypes.String(bundle.TypeKeyDate.URL()),
-		},
-		}})
+		}},
+	})
 
 	if len(records) != 1 && err == nil {
 		err = fmt.Errorf("expected 1 record, got %d", len(records))
@@ -235,9 +243,16 @@ func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, err
 		return nil, fmt.Errorf("failed to query details of Date type object: %w", err)
 	}
 
+	// TODO: GO-4494 - Remove links relation id fetch
+	linksId, err := s.getLinksRelationId(id.SpaceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query details of Links relation object: %w", err)
+	}
+
 	ss := NewDate(DateSourceParams{
 		Id:               id,
 		DateObjectTypeId: pbtypes.GetString(records[0].Details, bundle.RelationKeyId.String()),
+		LinksRelationId:  linksId,
 	})
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
@@ -245,6 +260,27 @@ func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, err
 	}
 	_ = ss.Close()
 	return nil, fmt.Errorf("date source miss the details")
+}
+
+// TODO: GO-4494 - Remove links relation id fetch
+func (s *service) getLinksRelationId(spaceId string) (string, error) {
+	records, err := s.objectStore.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{{
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			RelationKey: bundle.RelationKeyUniqueKey.String(),
+			Value:       pbtypes.String(bundle.RelationKeyLinks.URL()),
+		}},
+	})
+
+	if len(records) != 1 && err == nil {
+		err = fmt.Errorf("expected 1 record, got %d", len(records))
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("failed to query details of Date type object: %w", err)
+	}
+
+	return pbtypes.GetString(records[0].Details, bundle.RelationKeyId.String()), nil
 }
 
 func (s *service) RegisterStaticSource(src Source) error {
