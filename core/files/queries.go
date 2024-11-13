@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum string, options string) (domain.FileId, *storage.FileInfo, error) {
+func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum string, options string) (domain.FileId, []*storage.FileInfo, error) {
 	recs, err := s.objectStore.QueryCrossSpace(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -40,16 +40,10 @@ func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum str
 	}
 
 	infos := getFileInfosFromDetails(recs[0].Details)
-	for _, info := range infos {
-		if info.Mill == mill && info.Opts == options {
-			return domain.FileId(pbtypes.GetString(recs[0].Details, bundle.RelationKeyFileId.String())), info, nil
-		}
-	}
-	// Should never happen
-	return "", nil, fmt.Errorf("variant with specified mill not found")
+	return domain.FileId(pbtypes.GetString(recs[0].Details, bundle.RelationKeyFileId.String())), infos, nil
 }
 
-func (s *service) getFileVariantByChecksum(mill string, variantChecksum string) (domain.FileId, *storage.FileInfo, error) {
+func (s *service) getFileVariantByChecksum(mill string, variantChecksum string) (domain.FileId, *storage.FileInfo, []*storage.FileInfo, error) {
 	recs, err := s.objectStore.QueryCrossSpace(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -66,18 +60,18 @@ func (s *service) getFileVariantByChecksum(mill string, variantChecksum string) 
 		Limit: 1,
 	})
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	if len(recs) == 0 {
-		return "", nil, fmt.Errorf("variant not found")
+		return "", nil, nil, fmt.Errorf("variant not found")
 	}
 
 	infos := getFileInfosFromDetails(recs[0].Details)
 	for _, info := range infos {
 		if info.Mill == mill && info.Checksum == variantChecksum {
-			return domain.FileId(pbtypes.GetString(recs[0].Details, bundle.RelationKeyFileId.String())), info, nil
+			return domain.FileId(pbtypes.GetString(recs[0].Details, bundle.RelationKeyFileId.String())), info, infos, nil
 		}
 	}
 	// Should never happen
-	return "", nil, fmt.Errorf("variant with specified mill not found")
+	return "", nil, nil, fmt.Errorf("variant with specified mill not found")
 }

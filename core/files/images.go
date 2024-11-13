@@ -48,21 +48,15 @@ func (s *service) imageFromDetails(details *types.Struct) (Image, error) {
 	}
 
 	infos := getFileInfosFromDetails(details)
-	return &image{
-		spaceID:            pbtypes.GetString(details, bundle.RelationKeySpaceId.String()),
-		fileId:             domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
-		onlyResizeVariants: selectAndSortResizeVariants(infos),
-		service:            s,
-	}, nil
+	id := domain.FullFileId{
+		SpaceId: pbtypes.GetString(details, bundle.RelationKeySpaceId.String()),
+		FileId:  domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
+	}
+	return newImage(s, id, infos), nil
 }
 
 func (s *service) ImageFromInfos(fileId domain.FullFileId, infos []*storage.FileInfo) Image {
-	return &image{
-		spaceID:            fileId.SpaceId,
-		fileId:             fileId.FileId,
-		onlyResizeVariants: selectAndSortResizeVariants(infos),
-		service:            s,
-	}
+	return newImage(s, fileId, infos)
 }
 
 func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOption) (*AddResult, error) {
@@ -83,7 +77,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		return nil, err
 	}
 	if addNodesResult.isExisting {
-		res, err := s.newExistingFileResult(addLock, addNodesResult.fileId)
+		res, err := s.newExistingFileResult(addLock, addNodesResult.fileId, addNodesResult.existingVariants)
 		if err != nil {
 			addLock.Unlock()
 			return nil, err
@@ -130,15 +124,17 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 }
 
 type addImageNodesResult struct {
-	isExisting bool
-	fileId     domain.FileId
-	dirEntries []dirEntry
+	isExisting       bool
+	fileId           domain.FileId
+	dirEntries       []dirEntry
+	existingVariants []*storage.FileInfo
 }
 
-func newExistingImageResult(fileId domain.FileId) *addImageNodesResult {
+func newExistingImageResult(fileId domain.FileId, variants []*storage.FileInfo) *addImageNodesResult {
 	return &addImageNodesResult{
-		isExisting: true,
-		fileId:     fileId,
+		isExisting:       true,
+		fileId:           fileId,
+		existingVariants: variants,
 	}
 }
 
@@ -175,7 +171,7 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, addOpts Add
 			return nil, err
 		}
 		if addNodeResult.isExisting {
-			return newExistingImageResult(addNodeResult.fileId), nil
+			return newExistingImageResult(addNodeResult.fileId, addNodeResult.existingVariants), nil
 		}
 		dirEntries = append(dirEntries, dirEntry{
 			name:     link.Name,

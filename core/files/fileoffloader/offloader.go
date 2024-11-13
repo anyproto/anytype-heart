@@ -176,10 +176,6 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 		}
 		if size > 0 {
 			filesOffloaded++
-			err = s.fileStore.DeleteFile(domain.FileId(fileId))
-			if err != nil {
-				return 0, 0, fmt.Errorf("failed to delete file from store: %w", err)
-			}
 		}
 		totalSize += size
 	}

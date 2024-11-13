@@ -531,9 +531,6 @@ func (s *service) DeleteFileData(spaceId string, objectId string) error {
 		return fmt.Errorf("list objects that use file id: %w", err)
 	}
 	if len(records) == 0 {
-		if err := s.fileStore.DeleteFile(fullId.FileId); err != nil {
-			return err
-		}
 		if err := s.fileSync.DeleteFile(objectId, fullId); err != nil {
 			return fmt.Errorf("failed to remove file from sync: %w", err)
 		}

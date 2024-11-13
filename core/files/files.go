@@ -146,7 +146,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, err
 	}
 	if addNodeResult.isExisting {
-		res, err := s.newExistingFileResult(addLock, addNodeResult.fileId)
+		res, err := s.newExistingFileResult(addLock, addNodeResult.fileId, addNodeResult.existingVariants)
 		if err != nil {
 			addLock.Unlock()
 			return nil, err
@@ -182,14 +182,10 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 	}, nil
 }
 
-func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId) (*AddResult, error) {
+func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId, variants []*storage.FileInfo) (*AddResult, error) {
 	keys, err := s.FileGetKeys(fileId)
 	if err != nil {
 		return nil, fmt.Errorf("get keys: %w", err)
-	}
-	variants, err := s.fileStore.ListFileVariants(fileId)
-	if err != nil {
-		return nil, fmt.Errorf("list variants: %w", err)
 	}
 	if len(variants) == 0 {
 		return nil, fmt.Errorf("variants not found")
@@ -335,17 +331,20 @@ func (s *service) getContentReader(ctx context.Context, spaceID string, rawCid s
 }
 
 type addFileNodeResult struct {
-	isExisting bool
-	fileId     domain.FileId
-	variant    *storage.FileInfo
+	isExisting       bool
+	existingVariants []*storage.FileInfo
+
+	fileId  domain.FileId
+	variant *storage.FileInfo
 	// filePairNode is the root node for meta + content file nodes
 	filePairNode ipld.Node
 }
 
-func newExistingFileResult(fileId domain.FileId, variant *storage.FileInfo) (*addFileNodeResult, error) {
+func newExistingFileResult(fileId domain.FileId, variants []*storage.FileInfo) (*addFileNodeResult, error) {
 	return &addFileNodeResult{
-		isExisting: true,
-		fileId:     fileId,
+		isExisting:       true,
+		existingVariants: variants,
+		fileId:           fileId,
 	}, nil
 }
 
@@ -370,9 +369,8 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	// TODO USE SPACE ID?
-	if existingFileId, variant, err := s.getFileVariantBySourceChecksum(mill.ID(), conf.checksum, opts); err == nil {
-		existingRes, err := newExistingFileResult(existingFileId, variant)
+	if existingFileId, variants, err := s.getFileVariantBySourceChecksum(mill.ID(), conf.checksum, opts); err == nil {
+		existingRes, err := newExistingFileResult(existingFileId, variants)
 		if err == nil {
 			return existingRes, nil
 		}
@@ -390,13 +388,12 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	// TODO USE SPACE ID?
-	if existingFileId, variant, err := s.getFileVariantByChecksum(mill.ID(), variantChecksum); err == nil {
+	if existingFileId, variant, variants, err := s.getFileVariantByChecksum(mill.ID(), variantChecksum); err == nil {
 		if variant.Source == conf.checksum {
 			// we may have same variant checksum for different files
 			// e.g. empty image exif with the same resolution
 			// reuse the whole file only in case the checksum of the original file is the same
-			existingRes, err := newExistingFileResult(existingFileId, variant)
+			existingRes, err := newExistingFileResult(existingFileId, variants)
 			if err == nil {
 				return existingRes, nil
 			}

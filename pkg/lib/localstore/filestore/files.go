@@ -89,14 +89,6 @@ type FileStore interface {
 	app.ComponentRunnable
 	localstore.Indexable
 
-	DeleteFileVariants(variantIds []domain.FileContentId) error
-
-	ListFileIds() ([]domain.FileId, error)
-	ListFileVariants(fileId domain.FileId) ([]*storage.FileInfo, error)
-	ListAllFileVariants() ([]*storage.FileInfo, error)
-
-	DeleteFile(fileId domain.FileId) error
-
 	AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error
 	GetFileKeys(fileId domain.FileId) (map[string]string, error)
 
