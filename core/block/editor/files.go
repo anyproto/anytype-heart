@@ -13,11 +13,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -89,10 +89,11 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 		return err
 	}
 
-	f.SmartBlock.AddHook(f.reconciler.FileObjectHook(domain.FullID{SpaceID: f.SpaceID(), ObjectID: f.Id()}), smartblock.HookBeforeApply)
+	fullId := domain.FullID{SpaceID: f.SpaceID(), ObjectID: f.Id()}
+
+	f.SmartBlock.AddHook(f.reconciler.FileObjectHook(fullId), smartblock.HookBeforeApply)
 
 	if !ctx.IsNewObject {
-		fullId := domain.FullID{ObjectID: f.Id(), SpaceID: f.SpaceID()}
 		err = f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, ctx.State.Details())
 		if err != nil {
 			log.Errorf("failed to ensure file added to sync queue: %v", err)
@@ -102,46 +103,16 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 		}, smartblock.HookOnStateRebuild)
 	}
 
-	infos, err := f.fileService.IndexFile(ctx.Ctx, ctx.State.Details())
+	infos, err := f.fileService.IndexFile(ctx.Ctx, domain.FullFileId{
+		FileId:  domain.FileId(pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyFileId.String())),
+		SpaceId: f.SpaceID(),
+	}, ctx.State.Details())
 	if err != nil {
 		return fmt.Errorf("get infos for indexing: %w", err)
 	}
 	if len(infos) > 0 {
-		fileInfosToDetails(infos, ctx.State)
+		filemodels.FileInfosToDetails(infos, ctx.State)
 	}
 
-	return nil
-}
-
-func fileInfosToDetails(infos []*storage.FileInfo, st *state.State) error {
-	if len(infos) == 0 {
-		return fmt.Errorf("empty info list")
-	}
-	var (
-		variantIds []string
-		keys       []string // fill in smartblock?
-		widths     []int
-		checksums  []string
-		mills      []string
-		options    []string
-	)
-
-	keysInfo := st.GetFileInfo().EncryptionKeys
-
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileSourceChecksum, pbtypes.String(infos[0].Source))
-	for _, info := range infos {
-		variantIds = append(variantIds, info.Hash)
-		checksums = append(checksums, info.Checksum)
-		mills = append(mills, info.Mill)
-		widths = append(widths, int(pbtypes.GetInt64(info.Meta, "width")))
-		keys = append(keys, keysInfo[info.Path])
-		options = append(options, info.Opts)
-	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantIds, pbtypes.StringList(variantIds))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantChecksums, pbtypes.StringList(checksums))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantMills, pbtypes.StringList(mills))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantWidths, pbtypes.IntList(widths...))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantKeys, pbtypes.StringList(keys))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantOptions, pbtypes.StringList(options))
 	return nil
 }

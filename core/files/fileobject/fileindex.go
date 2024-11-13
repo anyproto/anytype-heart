@@ -20,12 +20,14 @@ import (
 	fileblock "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -235,13 +237,21 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 }
 
 func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
-	details, typeKey, err := ind.buildDetails(ctx, fileId)
+	infos, err := ind.fileService.IndexFile(ctx, fileId, st.Details())
+	if err != nil {
+		return fmt.Errorf("get infos for indexing: %w", err)
+	}
+	if len(infos) > 0 {
+		filemodels.FileInfosToDetails(infos, st)
+	}
+
+	prevDetails := st.CombinedDetails()
+	details, typeKey, err := ind.buildDetails(ctx, fileId, infos)
 	if err != nil {
 		return fmt.Errorf("build details: %w", err)
 	}
 
 	st.SetObjectTypeKey(typeKey)
-	prevDetails := st.CombinedDetails()
 
 	keys := make([]domain.RelationKey, 0, len(details.Fields))
 	for k := range details.Fields {
@@ -259,11 +269,8 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	return nil
 }
 
-func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (details *types.Struct, typeKey domain.TypeKey, err error) {
-	file, err := ind.fileService.FileByHash(ctx, id)
-	if err != nil {
-		return nil, "", err
-	}
+func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId, infos []*storage.FileInfo) (details *types.Struct, typeKey domain.TypeKey, err error) {
+	file := ind.fileService.FileFromInfos(id, infos)
 
 	if file.Mill() == mill.BlobId {
 		details, typeKey, err = file.Details(ctx)
@@ -271,10 +278,7 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (det
 			return nil, "", err
 		}
 	} else {
-		image, err := ind.fileService.ImageByHash(ctx, id)
-		if err != nil {
-			return nil, "", err
-		}
+		image := ind.fileService.ImageFromInfos(id, infos)
 		details, err = image.Details(ctx)
 		if err != nil {
 			return nil, "", err

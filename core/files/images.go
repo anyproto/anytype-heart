@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/gogo/protobuf/types"
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	ipld "github.com/ipfs/go-ipld-format"
 
@@ -37,18 +38,31 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image,
 	}
 	fileRec := recs[0]
 
-	variantsList := pbtypes.GetStringList(fileRec.Details, bundle.RelationKeyFileVariantIds.String())
+	return s.imageFromDetails(fileRec.Details)
+}
+
+func (s *service) imageFromDetails(details *types.Struct) (Image, error) {
+	variantsList := pbtypes.GetStringList(details, bundle.RelationKeyFileVariantIds.String())
 	if len(variantsList) == 0 {
 		return nil, fmt.Errorf("not indexed")
 	}
 
-	infos := getFileInfosFromDetails(fileRec.Details)
+	infos := getFileInfosFromDetails(details)
 	return &image{
-		spaceID:            id.SpaceId,
-		fileId:             id.FileId,
+		spaceID:            pbtypes.GetString(details, bundle.RelationKeySpaceId.String()),
+		fileId:             domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
 		onlyResizeVariants: selectAndSortResizeVariants(infos),
 		service:            s,
 	}, nil
+}
+
+func (s *service) ImageFromInfos(fileId domain.FullFileId, infos []*storage.FileInfo) Image {
+	return &image{
+		spaceID:            fileId.SpaceId,
+		fileId:             fileId.FileId,
+		onlyResizeVariants: selectAndSortResizeVariants(infos),
+		service:            s,
+	}
 }
 
 func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOption) (*AddResult, error) {

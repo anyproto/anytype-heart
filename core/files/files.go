@@ -55,6 +55,7 @@ type Service interface {
 	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
 	// buildDetails (fileindex.go), gateway, export, DownloadFile
 	FileByHash(ctx context.Context, id domain.FullFileId) (File, error)
+	FileFromInfos(fileId domain.FullFileId, infos []*storage.FileInfo) File
 	FileGetKeys(id domain.FileId) (*domain.FileEncryptionKeys, error)
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
@@ -62,8 +63,9 @@ type Service interface {
 	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
 	// buildDetails (fileindex.go), gateway, export, DownloadFile, html converter (clipboard)
 	ImageByHash(ctx context.Context, id domain.FullFileId) (Image, error)
+	ImageFromInfos(fileId domain.FullFileId, infos []*storage.FileInfo) Image
 
-	IndexFile(ctx context.Context, details *types.Struct) ([]*storage.FileInfo, error)
+	IndexFile(ctx context.Context, fileId domain.FullFileId, details *types.Struct) ([]*storage.FileInfo, error)
 
 	app.Component
 }
@@ -612,11 +614,7 @@ func getEncryptorDecryptor(key symmetric.Key) (symmetric.EncryptorDecryptor, err
 	return cfb.New(key, [aes.BlockSize]byte{}), nil
 }
 
-func (s *service) IndexFile(ctx context.Context, details *types.Struct) ([]*storage.FileInfo, error) {
-	id := domain.FullFileId{
-		SpaceId: pbtypes.GetString(details, bundle.RelationKeySpaceId.String()),
-		FileId:  domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
-	}
+func (s *service) IndexFile(ctx context.Context, id domain.FullFileId, details *types.Struct) ([]*storage.FileInfo, error) {
 	variantsList := pbtypes.GetStringList(details, bundle.RelationKeyFileVariantIds.String())
 	if true || len(variantsList) == 0 {
 		// info from ipfs
@@ -661,18 +659,31 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, e
 	}
 	fileRec := recs[0]
 
-	variantsList := pbtypes.GetStringList(fileRec.Details, bundle.RelationKeyFileVariantIds.String())
+	return s.fileFromDetails(fileRec.Details)
+}
+
+func (s *service) fileFromDetails(details *types.Struct) (File, error) {
+	variantsList := pbtypes.GetStringList(details, bundle.RelationKeyFileVariantIds.String())
 	if len(variantsList) == 0 {
 		return nil, fmt.Errorf("not indexed")
 	}
 
-	infos := getFileInfosFromDetails(fileRec.Details)
+	infos := getFileInfosFromDetails(details)
+	return &file{
+		spaceID: pbtypes.GetString(details, bundle.RelationKeySpaceId.String()),
+		fileId:  domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
+		info:    infos[0],
+		node:    s,
+	}, nil
+}
+
+func (s *service) FileFromInfos(id domain.FullFileId, infos []*storage.FileInfo) File {
 	return &file{
 		spaceID: id.SpaceId,
 		fileId:  id.FileId,
 		info:    infos[0],
 		node:    s,
-	}, nil
+	}
 }
 
 func getFileInfosFromDetails(details *types.Struct) []*storage.FileInfo {

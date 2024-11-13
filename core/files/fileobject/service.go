@@ -315,7 +315,8 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		s.InitEmptyFileState(createState)
 		fullFileId := domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}
 		fullObjectId := domain.FullID{SpaceID: space.Id(), ObjectID: payload.RootRawChange.Id}
-		err := s.indexer.injectMetadataToState(ctx, createState, fullFileId, fullObjectId)
+
+		err = s.indexer.injectMetadataToState(ctx, createState, fullFileId, fullObjectId)
 		if err != nil {
 			return "", nil, fmt.Errorf("inject metadata to state: %w", err)
 		}
