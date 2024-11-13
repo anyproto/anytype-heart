@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
@@ -85,6 +86,50 @@ func TestOffloadAllFiles(t *testing.T) {
 
 	err = fx.FilesOffload(ctx, nil, false)
 	require.NoError(t, err)
+
+	_, err = fx.commonFile.GetFile(ctx, fileNode1.Cid())
+	require.Error(t, err)
+
+	_, err = fx.commonFile.GetFile(ctx, fileNode2.Cid())
+	require.NoError(t, err)
+}
+
+func TestSpaceOffload(t *testing.T) {
+	fx := newFixture(t)
+
+	ctx := context.Background()
+	fileNode1, err := fx.commonFile.AddFile(ctx, generateTestFileData(t, 2*1024*1024))
+	require.NoError(t, err)
+
+	fileNode2, err := fx.commonFile.AddFile(ctx, generateTestFileData(t, 2*1024*1024))
+	require.NoError(t, err)
+
+	fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:               pbtypes.String("fileObjectId1"),
+			bundle.RelationKeySpaceId:          pbtypes.String("space1"),
+			bundle.RelationKeyFileId:           pbtypes.String(fileNode1.Cid().String()),
+			bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
+		},
+		{
+			bundle.RelationKeyId:               pbtypes.String("fileObjectId2"),
+			bundle.RelationKeySpaceId:          pbtypes.String("space1"),
+			bundle.RelationKeyFileId:           pbtypes.String(fileNode2.Cid().String()),
+			bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
+		},
+	})
+	fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:               pbtypes.String("fileObjectId3"),
+			bundle.RelationKeySpaceId:          pbtypes.String("space2"),
+			bundle.RelationKeyFileId:           pbtypes.String(fileNode2.Cid().String()),
+			bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
+		},
+	})
+
+	offloaded, _, err := fx.FileSpaceOffload(ctx, "space1", false)
+	require.NoError(t, err)
+	assert.True(t, 1 == offloaded)
 
 	_, err = fx.commonFile.GetFile(ctx, fileNode1.Cid())
 	require.Error(t, err)
