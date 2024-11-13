@@ -11,11 +11,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // required relations for files beside the bundle.RequiredInternalRelations
@@ -34,6 +37,7 @@ func (f *ObjectFactory) newFile(spaceId string, sb smartblock.SmartBlock) *File 
 		Text:              stext.NewText(sb, store, f.eventSender),
 		fileObjectService: f.fileObjectService,
 		reconciler:        f.fileReconciler,
+		fileService:       f.fileService,
 	}
 }
 
@@ -44,6 +48,7 @@ type File struct {
 	stext.Text
 	fileObjectService fileobject.Service
 	reconciler        reconciler.Reconciler
+	fileService       files.Service
 }
 
 func (f *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
@@ -96,5 +101,44 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 			return f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, applyInfo.State.Details())
 		}, smartblock.HookOnStateRebuild)
 	}
+
+	infos, err := f.fileService.IndexFile(ctx.Ctx, ctx.State.Details())
+	if err != nil {
+		return fmt.Errorf("get infos for indexing: %w", err)
+	}
+	if len(infos) > 0 {
+		fileInfosToDetails(infos, ctx.State)
+	}
+
+	return nil
+}
+
+func fileInfosToDetails(infos []*storage.FileInfo, st *state.State) error {
+	if len(infos) == 0 {
+		return fmt.Errorf("empty info list")
+	}
+	var (
+		variantIds []string
+		keys       []string // fill in smartblock?
+		widths     []int
+		checksums  []string
+		mills      []string
+	)
+
+	keysInfo := st.GetFileInfo().EncryptionKeys
+
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileSourceChecksum, pbtypes.String(infos[0].Source))
+	for _, info := range infos {
+		variantIds = append(variantIds, info.Hash)
+		checksums = append(checksums, info.Checksum)
+		mills = append(mills, info.Mill)
+		widths = append(widths, int(pbtypes.GetInt64(info.Meta, "width")))
+		keys = append(keys, keysInfo[info.Path])
+	}
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantIds, pbtypes.StringList(variantIds))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantChecksums, pbtypes.StringList(checksums))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantMills, pbtypes.StringList(mills))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantWidths, pbtypes.IntList(widths...))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantKeys, pbtypes.StringList(keys))
 	return nil
 }

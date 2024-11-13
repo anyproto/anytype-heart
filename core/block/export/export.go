@@ -960,7 +960,7 @@ func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.S
 	if err != nil {
 		return "", err
 	}
-	if strings.HasPrefix(file.Info().Media, "image") {
+	if strings.HasPrefix(file.Media(), "image") {
 		image, err := e.fileService.ImageByHash(context.TODO(), fullId)
 		if err != nil {
 			return "", err
@@ -980,7 +980,7 @@ func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.S
 	if err != nil {
 		return "", err
 	}
-	return fileName, wr.WriteFile(fileName, rd, file.Info().LastModifiedDate)
+	return fileName, wr.WriteFile(fileName, rd, file.LastModifiedDate())
 }
 
 func (e *exportContext) createProfileFile(spaceID string, wr writer) error {

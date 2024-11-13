@@ -19,11 +19,14 @@ import (
 )
 
 type File interface {
-	Meta() *FileMeta
+	Meta() *FileMeta // could be taken from Details
 	FileId() domain.FileId
-	Reader(ctx context.Context) (io.ReadSeeker, error)
+	Reader(ctx context.Context) (io.ReadSeeker, error) // getNode(details.FileVariants[idx])
 	Details(ctx context.Context) (*types.Struct, domain.TypeKey, error)
-	Info() *storage.FileInfo
+	Name() string
+	Media() string
+	LastModifiedDate() int64
+	Mill() string
 }
 
 var _ File = (*file)(nil)
@@ -119,8 +122,20 @@ func (f *file) Details(ctx context.Context) (*types.Struct, domain.TypeKey, erro
 	return t, typeKey, nil
 }
 
-func (f *file) Info() *storage.FileInfo {
-	return f.info
+func (f *file) Name() string {
+	return f.info.Name
+}
+
+func (f *file) Media() string {
+	return f.info.Media
+}
+
+func (f *file) LastModifiedDate() int64 {
+	return f.info.LastModifiedDate
+}
+
+func (f *file) Mill() string {
+	return f.info.Mill
 }
 
 func (f *file) Meta() *FileMeta {
@@ -138,7 +153,7 @@ func (f *file) FileId() domain.FileId {
 }
 
 func (f *file) Reader(ctx context.Context) (io.ReadSeeker, error) {
-	return f.node.getContentReader(ctx, f.spaceID, f.info)
+	return f.node.getContentReader(ctx, f.spaceID, f.info.Hash, f.info.Key)
 }
 
 func calculateCommonDetails(

@@ -9,31 +9,45 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image, error) {
-	files, err := s.fileStore.ListFileVariants(id.FileId)
+	recs, err := s.objectStore.SpaceIndex(id.SpaceId).Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyFileId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(id.FileId.String()),
+			},
+		},
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query details: %w", err)
 	}
 
-	// check the image files count explicitly because we have a bug when the info can be cached not fully(only for some files)
-	if len(files) < 4 || files[0].MetaHash == "" {
-		// index image files info from ipfs
-		files, err = s.fileIndexInfo(ctx, id, true)
-		if err != nil {
-			return nil, err
-		}
+	if len(recs) == 0 {
+		return nil, fmt.Errorf("noooooo")
+	}
+	fileRec := recs[0]
+
+	variantsList := pbtypes.GetStringList(fileRec.Details, bundle.RelationKeyFileVariantIds.String())
+	if len(variantsList) == 0 {
+		return nil, fmt.Errorf("not indexed")
 	}
 
+	infos := getFileInfosFromDetails(fileRec.Details)
 	return &image{
 		spaceID:            id.SpaceId,
 		fileId:             id.FileId,
-		onlyResizeVariants: selectAndSortResizeVariants(files),
+		onlyResizeVariants: selectAndSortResizeVariants(infos),
 		service:            s,
 	}, nil
 }

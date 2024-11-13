@@ -265,7 +265,7 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (det
 		return nil, "", err
 	}
 
-	if file.Info().Mill == mill.BlobId {
+	if file.Mill() == mill.BlobId {
 		details, typeKey, err = file.Details(ctx)
 		if err != nil {
 			return nil, "", err
@@ -284,7 +284,7 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (det
 	// Overwrite typeKey for images in case that image is uploaded as file.
 	// That can be possible because some images can't be handled properly and wee fall back to
 	// handling them as files
-	if mill.IsImage(file.Info().Media) {
+	if mill.IsImage(file.Media()) {
 		typeKey = bundle.TypeKeyImage
 	}
 

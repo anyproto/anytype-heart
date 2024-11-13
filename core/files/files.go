@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -26,14 +27,17 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/cfb"
-	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/gcm"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	m "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -47,13 +51,19 @@ var log = logging.Logger("anytype-files")
 var _ Service = (*service)(nil)
 
 type Service interface {
+	// only in uploader
 	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
+	// buildDetails (fileindex.go), gateway, export, DownloadFile
 	FileByHash(ctx context.Context, id domain.FullFileId) (File, error)
 	FileGetKeys(id domain.FileId) (*domain.FileEncryptionKeys, error)
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
+	// only in uploader
 	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
+	// buildDetails (fileindex.go), gateway, export, DownloadFile, html converter (clipboard)
 	ImageByHash(ctx context.Context, id domain.FullFileId) (Image, error)
+
+	IndexFile(ctx context.Context, details *types.Struct) ([]*storage.FileInfo, error)
 
 	app.Component
 }
@@ -64,6 +74,7 @@ type service struct {
 	fileSync    filesync.FileSync
 	dagService  ipld.DAGService
 	fileStorage filestorage.FileStorage
+	objectStore objectstore.ObjectStore
 
 	lock              sync.Mutex
 	addOperationLocks map[string]*sync.Mutex
@@ -79,6 +90,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
@@ -263,41 +275,22 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 		if err != nil {
 			return nil, err
 		}
+		ed, err := getEncryptorDecryptor(key)
+		if err != nil {
+			return nil, err
+		}
+		decryptedReader, err := ed.DecryptReader(r)
+		if err != nil {
+			return nil, err
+		}
+		b, err := ioutil.ReadAll(decryptedReader)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal file info proto with all encryption modes: %w", err)
 
-		modes := []storage.FileInfoEncryptionMode{storage.FileInfo_AES_CFB, storage.FileInfo_AES_GCM}
-		for i, mode := range modes {
-			if i > 0 {
-				_, err = r.Seek(0, io.SeekStart)
-				if err != nil {
-					return nil, fmt.Errorf("failed to seek ciphertext after enc mode try")
-				}
-			}
-			ed, err := getEncryptorDecryptor(key, mode)
-			if err != nil {
-				return nil, err
-			}
-			decryptedReader, err := ed.DecryptReader(r)
-			if err != nil {
-				return nil, err
-			}
-			b, err := ioutil.ReadAll(decryptedReader)
-			if err != nil {
-				if i == len(modes)-1 {
-					return nil, fmt.Errorf("failed to unmarshal file info proto with all encryption modes: %w", err)
-				}
-
-				continue
-			}
-			err = proto.Unmarshal(b, &file)
-			if err != nil || file.Hash == "" {
-				if i == len(modes)-1 {
-					return nil, fmt.Errorf("failed to unmarshal file info proto with all encryption modes: %w", err)
-				}
-				continue
-			}
-			// save successful enc mode so it will be cached in the DB
-			file.EncMode = mode
-			break
+		}
+		err = proto.Unmarshal(b, &file)
+		if err != nil || file.Hash == "" {
+			return nil, fmt.Errorf("failed to unmarshal file info proto with all encryption modes: %w", err)
 		}
 	} else {
 		b, err := io.ReadAll(r)
@@ -318,8 +311,8 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 	return &file, nil
 }
 
-func (s *service) getContentReader(ctx context.Context, spaceID string, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {
-	fileCid, err := cid.Parse(file.Hash)
+func (s *service) getContentReader(ctx context.Context, spaceID string, rawCid string, encKey string) (symmetric.ReadSeekCloser, error) {
+	fileCid, err := cid.Parse(rawCid)
 	if err != nil {
 		return nil, err
 	}
@@ -327,16 +320,16 @@ func (s *service) getContentReader(ctx context.Context, spaceID string, file *st
 	if err != nil {
 		return nil, err
 	}
-	if file.Key == "" {
+	if encKey == "" {
 		return fd, nil
 	}
 
-	key, err := symmetric.FromString(file.Key)
+	key, err := symmetric.FromString(encKey)
 	if err != nil {
 		return nil, err
 	}
 
-	dec, err := getEncryptorDecryptor(key, file.EncMode)
+	dec, err := getEncryptorDecryptor(key)
 	if err != nil {
 		return nil, err
 	}
@@ -556,34 +549,33 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullFileId, updat
 
 	var files []*storage.FileInfo
 	if looksLikeFileNode(dirNode) {
+		path := encryptionKeyPath(schema.LinkFile)
 		var key string
 		if keys != nil {
-			key = keys[encryptionKeyPath(schema.LinkFile)]
+			key = keys[path]
 		}
 
 		fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceId, id.FileId, id.FileId.String()+"/"+dirLink.Name, key)
 		if err != nil {
 			return nil, fmt.Errorf("fileInfoFromPath error: %w", err)
 		}
+		fileIndex.Path = path
 		files = append(files, fileIndex)
 	} else {
 		for _, link := range dirNode.Links() {
+			path := encryptionKeyPath(link.Name)
 			var key string
 			if keys != nil {
-				key = keys[encryptionKeyPath(link.Name)]
+				key = keys[path]
 			}
 
 			fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceId, id.FileId, id.FileId.String()+"/"+dirLink.Name+"/"+link.Name, key)
 			if err != nil {
 				return nil, fmt.Errorf("fileInfoFromPath error: %w", err)
 			}
+			fileIndex.Path = path
 			files = append(files, fileIndex)
 		}
-	}
-
-	err = s.fileStore.AddFileVariants(updateIfExists, files...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add files to store: %w", err)
 	}
 
 	return files, nil
@@ -622,26 +614,19 @@ func checksum(r io.Reader, wontEncrypt bool) (string, error) {
 	return base32.RawHexEncoding.EncodeToString(checksum[:]), nil
 }
 
-func getEncryptorDecryptor(key symmetric.Key, mode storage.FileInfoEncryptionMode) (symmetric.EncryptorDecryptor, error) {
-	switch mode {
-	case storage.FileInfo_AES_GCM:
-		return gcm.New(key), nil
-	case storage.FileInfo_AES_CFB:
-		return cfb.New(key, [aes.BlockSize]byte{}), nil
-	default:
-		return nil, fmt.Errorf("unsupported encryption mode")
-	}
+func getEncryptorDecryptor(key symmetric.Key) (symmetric.EncryptorDecryptor, error) {
+	return cfb.New(key, [aes.BlockSize]byte{}), nil
 }
 
-func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, error) {
-	fileList, err := s.fileStore.ListFileVariants(id.FileId)
-	if err != nil {
-		return nil, err
+func (s *service) IndexFile(ctx context.Context, details *types.Struct) ([]*storage.FileInfo, error) {
+	id := domain.FullFileId{
+		SpaceId: pbtypes.GetString(details, bundle.RelationKeySpaceId.String()),
+		FileId:  domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
 	}
-
-	if len(fileList) == 0 || fileList[0].MetaHash == "" {
+	variantsList := pbtypes.GetStringList(details, bundle.RelationKeyFileVariantIds.String())
+	if true || len(variantsList) == 0 {
 		// info from ipfs
-		fileList, err = s.fileIndexInfo(ctx, id, false)
+		fileList, err := s.fileIndexInfo(ctx, id, false)
 		if err != nil {
 			return nil, err
 		}
@@ -657,14 +642,74 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, e
 				return nil, fmt.Errorf("set is file imported: %w", err)
 			}
 		}
+		return fileList, nil
 	}
-	fileIndex := fileList[0]
+	return nil, nil
+}
+
+// TODO SHould be accesed via OBJECT
+func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, error) {
+	recs, err := s.objectStore.SpaceIndex(id.SpaceId).Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyFileId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(id.FileId.String()),
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query details: %w", err)
+	}
+
+	if len(recs) == 0 {
+		return nil, fmt.Errorf("noooooo")
+	}
+	fileRec := recs[0]
+
+	variantsList := pbtypes.GetStringList(fileRec.Details, bundle.RelationKeyFileVariantIds.String())
+	if len(variantsList) == 0 {
+		return nil, fmt.Errorf("not indexed")
+	}
+
+	infos := getFileInfosFromDetails(fileRec.Details)
 	return &file{
 		spaceID: id.SpaceId,
 		fileId:  id.FileId,
-		info:    fileIndex,
+		info:    infos[0],
 		node:    s,
 	}, nil
+}
+
+func getFileInfosFromDetails(details *types.Struct) []*storage.FileInfo {
+	variantsList := pbtypes.GetStringList(details, bundle.RelationKeyFileVariantIds.String())
+	sourceChecksum := pbtypes.GetString(details, bundle.RelationKeyFileSourceChecksum.String())
+	infos := make([]*storage.FileInfo, 0, len(variantsList))
+	for i, variantId := range variantsList {
+		var meta *types.Struct
+		widths := pbtypes.GetIntList(details, bundle.RelationKeyFileVariantWidths.String())
+		if widths[i] > 0 {
+			meta = &types.Struct{
+				Fields: map[string]*types.Value{
+					"width": pbtypes.Int64(int64(widths[i])),
+				},
+			}
+		}
+		info := &storage.FileInfo{
+			Name:   pbtypes.GetString(details, bundle.RelationKeyName.String()),
+			Size_:  pbtypes.GetInt64(details, bundle.RelationKeySizeInBytes.String()),
+			Source: sourceChecksum,
+			Media:  pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()),
+
+			Hash:     variantId,
+			Checksum: pbtypes.GetStringList(details, bundle.RelationKeyFileVariantChecksums.String())[i],
+			Mill:     pbtypes.GetStringList(details, bundle.RelationKeyFileVariantMills.String())[i],
+			Meta:     meta,
+			Key:      pbtypes.GetStringList(details, bundle.RelationKeyFileVariantKeys.String())[i],
+		}
+		infos = append(infos, info)
+	}
+	return infos
 }
 
 func encryptionKeyPath(linkName string) string {

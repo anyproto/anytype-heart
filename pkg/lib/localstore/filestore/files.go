@@ -90,8 +90,6 @@ type FileStore interface {
 	localstore.Indexable
 
 	AddFileVariant(file *storage.FileInfo) error
-	AddFileVariants(upsert bool, files ...*storage.FileInfo) error
-	GetFileVariant(fileId domain.FileContentId) (*storage.FileInfo, error)
 	GetFileVariantBySource(mill string, source string, opts string) (*storage.FileInfo, error)
 	GetFileVariantByChecksum(mill string, checksum string) (*storage.FileInfo, error)
 	DeleteFileVariants(variantIds []domain.FileContentId) error
@@ -104,7 +102,6 @@ type FileStore interface {
 
 	AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error
 	GetFileKeys(fileId domain.FileId) (map[string]string, error)
-	RemoveEmptyFileKeys() error
 
 	GetChunksCount(fileId domain.FileId) (int, error)
 	SetChunksCount(fileId domain.FileId, chunksCount int) error
@@ -230,48 +227,6 @@ func (s *dsFileStore) AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error {
 	})
 }
 
-func (s *dsFileStore) RemoveEmptyFileKeys() error {
-	return s.updateTxn(func(txn *badger.Txn) error {
-		res := localstore.GetKeys(txn, filesKeysBase.String(), 0)
-
-		fileIds, err := localstore.GetLeavesFromResults(res)
-		if err != nil {
-			return err
-		}
-
-		var removed int
-		for _, fileId := range fileIds {
-			// TODO USE TXN
-			v, err := s.GetFileKeys(domain.FileId(fileId))
-			if err != nil {
-				if err != nil {
-					log.Errorf("RemoveEmptyFileKeys failed to get keys: %s", err)
-				}
-				continue
-			}
-			if len(v) == 0 {
-				removed++
-				// TODO USE TXN
-				err = s.deleteFileKeys(domain.FileId(fileId))
-				if err != nil {
-					log.Errorf("RemoveEmptyFileKeys failed to delete empty file keys: %s", err)
-				}
-			}
-		}
-		if removed > 0 {
-			log.Errorf("RemoveEmptyFileKeys removed %d empty file keys", removed)
-		}
-		return nil
-	})
-}
-
-func (s *dsFileStore) deleteFileKeys(fileId domain.FileId) error {
-	return s.updateTxn(func(txn *badger.Txn) error {
-		fileKeysKey := filesKeysBase.ChildString(fileId.String())
-		return txn.Delete(fileKeysKey.Bytes())
-	})
-}
-
 func (s *dsFileStore) addSingleFileKeys(txn *badger.Txn, fileKeys domain.FileEncryptionKeys) error {
 	fileKeysKey := filesKeysBase.ChildString(fileKeys.FileId.String())
 
@@ -329,12 +284,6 @@ func (s *dsFileStore) LinkFileVariantToFile(fileId domain.FileId, childId domain
 			return err
 		}
 		return nil
-	})
-}
-
-func (s *dsFileStore) GetFileVariant(childId domain.FileContentId) (*storage.FileInfo, error) {
-	return badgerhelper.ViewTxnWithResult(s.db, func(txn *badger.Txn) (*storage.FileInfo, error) {
-		return s.getVariant(txn, childId)
 	})
 }
 
