@@ -27856,7 +27856,7 @@ Contains basic information about a user account
 | marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
 | workspaceObjectId | [string](#string) |  | workspace object id. used for space-level chat |
 | deviceId | [string](#string) |  |  |
-| accountSpaceId | [string](#string) |  |  |
+| accountSpaceId | [string](#string) |  | the first created private space. It&#39;s filled only when account is created |
 | widgetsId | [string](#string) |  |  |
 | spaceViewId | [string](#string) |  |  |
 | techSpaceId | [string](#string) |  |  |
