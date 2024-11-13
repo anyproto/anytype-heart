@@ -1409,6 +1409,15 @@
   {
     "format": "shorttext",
     "hidden": true,
+    "key": "fileVariantOptions",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
     "key": "fileSourceChecksum",
     "maxCount": 1,
     "name": "Underlying file id",

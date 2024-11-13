@@ -160,11 +160,6 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 	fileId := domain.FileId(rootNode.Cid().String())
 
 	addNodeResult.variant.Targets = []string{fileId.String()}
-	err = s.fileStore.AddFileVariant(addNodeResult.variant)
-	if err != nil {
-		addLock.Unlock()
-		return nil, err
-	}
 
 	fileKeys := domain.FileEncryptionKeys{
 		FileId:         fileId,
@@ -345,14 +340,11 @@ type addFileNodeResult struct {
 	filePairNode ipld.Node
 }
 
-func newExistingFileResult(variant *storage.FileInfo) (*addFileNodeResult, error) {
-	if len(variant.Targets) > 0 {
-		return &addFileNodeResult{
-			isExisting: true,
-			fileId:     domain.FileId(variant.Targets[0]),
-		}, nil
-	}
-	return nil, fmt.Errorf("file exists but has no targets")
+func newExistingFileResult(fileId domain.FileId, variant *storage.FileInfo) (*addFileNodeResult, error) {
+	return &addFileNodeResult{
+		isExisting: true,
+		fileId:     fileId,
+	}, nil
 }
 
 func newAddedFileResult(variant *storage.FileInfo, fileNode ipld.Node) (*addFileNodeResult, error) {
@@ -376,8 +368,9 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	if variant, err := s.fileStore.GetFileVariantBySource(mill.ID(), conf.checksum, opts); err == nil {
-		existingRes, err := newExistingFileResult(variant)
+	// TODO USE SPACE ID?
+	if existingFileId, variant, err := s.getFileVariantBySourceChecksum(mill.ID(), conf.checksum, opts); err == nil {
+		existingRes, err := newExistingFileResult(existingFileId, variant)
 		if err == nil {
 			return existingRes, nil
 		}
@@ -395,12 +388,13 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	if variant, err := s.fileStore.GetFileVariantByChecksum(mill.ID(), variantChecksum); err == nil {
+	// TODO USE SPACE ID?
+	if existingFileId, variant, err := s.getFileVariantByChecksum(mill.ID(), variantChecksum); err == nil {
 		if variant.Source == conf.checksum {
 			// we may have same variant checksum for different files
 			// e.g. empty image exif with the same resolution
 			// reuse the whole file only in case the checksum of the original file is the same
-			existingRes, err := newExistingFileResult(variant)
+			existingRes, err := newExistingFileResult(existingFileId, variant)
 			if err == nil {
 				return existingRes, nil
 			}
@@ -706,6 +700,7 @@ func getFileInfosFromDetails(details *types.Struct) []*storage.FileInfo {
 			Mill:     pbtypes.GetStringList(details, bundle.RelationKeyFileVariantMills.String())[i],
 			Meta:     meta,
 			Key:      pbtypes.GetStringList(details, bundle.RelationKeyFileVariantKeys.String())[i],
+			Opts:     pbtypes.GetStringList(details, bundle.RelationKeyFileVariantOptions.String())[i],
 		}
 		infos = append(infos, info)
 	}

@@ -123,6 +123,7 @@ func fileInfosToDetails(infos []*storage.FileInfo, st *state.State) error {
 		widths     []int
 		checksums  []string
 		mills      []string
+		options    []string
 	)
 
 	keysInfo := st.GetFileInfo().EncryptionKeys
@@ -134,11 +135,13 @@ func fileInfosToDetails(infos []*storage.FileInfo, st *state.State) error {
 		mills = append(mills, info.Mill)
 		widths = append(widths, int(pbtypes.GetInt64(info.Meta, "width")))
 		keys = append(keys, keysInfo[info.Path])
+		options = append(options, info.Opts)
 	}
 	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantIds, pbtypes.StringList(variantIds))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantChecksums, pbtypes.StringList(checksums))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantMills, pbtypes.StringList(mills))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantWidths, pbtypes.IntList(widths...))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantKeys, pbtypes.StringList(keys))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantOptions, pbtypes.StringList(options))
 	return nil
 }

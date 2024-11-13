@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
@@ -103,16 +102,6 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	successfullyAdded := make([]domain.FileContentId, 0, len(dirEntries))
 	for _, variant := range dirEntries {
 		variant.fileInfo.Targets = []string{id.FileId.String()}
-		err = s.fileStore.AddFileVariant(variant.fileInfo)
-		if err != nil && !errors.Is(err, localstore.ErrDuplicateKey) {
-			// Cleanup
-			deleteErr := s.fileStore.DeleteFileVariants(successfullyAdded)
-			if deleteErr != nil {
-				log.Errorf("cleanup: failed to delete file variants %s", deleteErr)
-			}
-			addLock.Unlock()
-			return nil, fmt.Errorf("failed to store file variant: %w", err)
-		}
 		successfullyAdded = append(successfullyAdded, domain.FileContentId(variant.fileInfo.Hash))
 	}
 

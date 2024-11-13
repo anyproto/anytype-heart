@@ -89,9 +89,6 @@ type FileStore interface {
 	app.ComponentRunnable
 	localstore.Indexable
 
-	AddFileVariant(file *storage.FileInfo) error
-	GetFileVariantBySource(mill string, source string, opts string) (*storage.FileInfo, error)
-	GetFileVariantByChecksum(mill string, checksum string) (*storage.FileInfo, error)
 	DeleteFileVariants(variantIds []domain.FileContentId) error
 
 	ListFileIds() ([]domain.FileId, error)
