@@ -75,7 +75,9 @@ func (p *Pb) GetSnapshots(_ context.Context, req *pb.RpcObjectImportRequest, pro
 	}
 	snapshots := p.getSnapshots()
 	if snapshots == nil {
-		p.errors.Add(fmt.Errorf("PB: no snapshots are gathered"))
+		if p.errors.IsEmpty() {
+			p.errors.Add(fmt.Errorf("PB: no snapshots are gathered"))
+		}
 		return nil, p.errors
 	}
 	oldToNewID := p.updateLinksToObjects(snapshots.List)

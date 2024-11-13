@@ -238,8 +238,6 @@ func TestPb_GetSnapshots(t *testing.T) {
 		// then
 		assert.NotNil(t, ce)
 		assert.True(t, errors.Is(ce.GetResultError(model.Import_Pb), common.ErrFileImportNoObjectsInDirectory))
-		e := ce.GetResultError(model.Import_Pb)
-		fmt.Println(e)
 	})
 	t.Run("no objects in archive", func(t *testing.T) {
 		// given
