@@ -62,7 +62,7 @@ func (d *date) getDetails() (*types.Struct, error) {
 	}
 
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(dateutil.TimeToDateName(t)),
+		bundle.RelationKeyName.String():       pbtypes.String(dateutil.TimeToDateName(t, nil)),
 		bundle.RelationKeyId.String():         pbtypes.String(d.id),
 		bundle.RelationKeyType.String():       pbtypes.String(d.typeId),
 		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),

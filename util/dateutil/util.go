@@ -13,13 +13,14 @@ const (
 	dateNameLayout    = "02 Jan 2006"
 )
 
+// TimeToDateId returns date object id. Its format is _date_YYYY-MM-DD-hh-mm-ss in UTC time zone
 func TimeToDateId(t time.Time) string {
-	return addr.DatePrefix + t.Format(dateIdLayout)
+	return addr.DatePrefix + t.UTC().Format(dateIdLayout)
 }
 
 // TimeToShortDateId should not be used to generate Date object id. Use TimeToDateId instead
 func TimeToShortDateId(t time.Time) string {
-	return addr.DatePrefix + t.Format(shortDateIdLayout)
+	return addr.DatePrefix + t.UTC().Format(shortDateIdLayout)
 }
 
 func ParseDateId(id string) (time.Time, error) {
@@ -30,8 +31,11 @@ func ParseDateId(id string) (time.Time, error) {
 	return time.Parse(shortDateIdLayout, strings.TrimPrefix(id, addr.DatePrefix))
 }
 
-func TimeToDateName(t time.Time) string {
-	return t.Format(dateNameLayout)
+func TimeToDateName(t time.Time, loc *time.Location) string {
+	if loc != nil {
+		return t.In(loc).Format(dateNameLayout)
+	}
+	return t.Local().Format(dateNameLayout)
 }
 
 func DateNameToId(name string) (string, error) {
