@@ -149,5 +149,8 @@ func (f *fileStorage) NewLocalStoreGarbageCollector() LocalStoreGarbageCollector
 }
 
 func (f *fileStorage) Close(ctx context.Context) (err error) {
-	return f.proxy.Close()
+	if f.proxy != nil {
+		return f.proxy.Close()
+	}
+	return nil
 }

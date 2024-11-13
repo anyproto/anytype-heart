@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a8068f8bee7828cfa88a4cf262a8276bf2cbf1eadc9934dd52c5c06be2d02bbd"
+const RelationChecksum = "44f147da7e8233e89bb42533778c305d0735a54238aa2e5ba331a3396145450d"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -97,7 +97,6 @@ const (
 	RelationKeySetOf                     domain.RelationKey = "setOf"
 	RelationKeyIsArchived                domain.RelationKey = "isArchived"
 	RelationKeyFileExt                   domain.RelationKey = "fileExt"
-	RelationKeyScope                     domain.RelationKey = "scope"
 	RelationKeyFeaturedRelations         domain.RelationKey = "featuredRelations"
 	RelationKeyPhone                     domain.RelationKey = "phone"
 	RelationKeySmartblockTypes           domain.RelationKey = "smartblockTypes"
@@ -141,7 +140,10 @@ const (
 	RelationKeySyncStatus                domain.RelationKey = "syncStatus"
 	RelationKeySyncDate                  domain.RelationKey = "syncDate"
 	RelationKeySyncError                 domain.RelationKey = "syncError"
+	RelationKeyHasChat                   domain.RelationKey = "hasChat"
+	RelationKeyChatId                    domain.RelationKey = "chatId"
 	RelationKeyMentions                  domain.RelationKey = "mentions"
+	RelationKeyTimestamp                 domain.RelationKey = "timestamp"
 )
 
 var (
@@ -301,6 +303,20 @@ var (
 			MaxCount:         1,
 			Name:             "ISO",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyChatId: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Chat id",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brchatId",
+			Key:              "chatId",
+			MaxCount:         1,
+			Name:             "Chat id",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -637,6 +653,20 @@ var (
 			Key:              "globalName",
 			MaxCount:         1,
 			Name:             "Global name",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyHasChat: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Object has a chat",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brhasChat",
+			Key:              "hasChat",
+			MaxCount:         1,
+			Name:             "Has a chat",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1421,19 +1451,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyScope: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brscope",
-			Key:              "scope",
-			MaxCount:         1,
-			Name:             "Scope",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeySetOf: {
 
 			DataSource:       model.Relation_details,
@@ -1828,6 +1845,20 @@ var (
 			MaxCount:         1,
 			Name:             "Time",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyTimestamp: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Unix time representation of date object",
+			Format:           model.RelationFormat_date,
+			Hidden:           true,
+			Id:               "_brtimestamp",
+			Key:              "timestamp",
+			MaxCount:         1,
+			Name:             "Timestamp",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

@@ -31,7 +31,7 @@ func (Migration) Name() string {
 	return MName
 }
 
-func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (Migration) Run(ctx context.Context, log logger.CtxLogger, store, _ dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	spaceId := space.Id()
 
 	relations, err := listReadonlyTagAndStatusRelations(store, spaceId)
@@ -79,11 +79,6 @@ func listReadonlyTagAndStatusRelations(store dependencies.QueryableStore, spaceI
 			RelationKey: bundle.RelationKeyRelationFormat.String(),
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value:       pbtypes.IntList(int(model.RelationFormat_status), int(model.RelationFormat_tag)),
-		},
-		{
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceId),
 		},
 		{
 			RelationKey: bundle.RelationKeyRelationReadonlyValue.String(),

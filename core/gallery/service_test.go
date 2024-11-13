@@ -39,6 +39,10 @@ func (dp *dumbProgress) NewQueue(pb.ModelProcess, int) process.Queue {
 	return nil
 }
 
+func (dp *dumbProgress) Subscribe(token string) {}
+
+func (dp *dumbProgress) Unsubscribe(token string) {}
+
 type spaceNameGetter struct{}
 
 func (sng *spaceNameGetter) GetSpaceName(string) string {

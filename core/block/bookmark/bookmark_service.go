@@ -127,7 +127,7 @@ func (s *service) CreateBookmarkObject(
 	}
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
 
-	records, err := s.store.Query(database.Query{
+	records, err := s.store.SpaceIndex(spaceID).Query(database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
@@ -421,6 +421,6 @@ func (s *service) loadImage(spaceId string, title, url string) (hash string, err
 	if title != "" {
 		fileName = title
 	}
-	res := uploader.SetName(fileName).SetFile(tmpFile.Name()).Upload(ctx)
+	res := uploader.SetName(fileName).SetFile(tmpFile.Name()).SetImageKind(model.ImageKind_AutomaticallyAdded).Upload(ctx)
 	return res.FileObjectId, res.Err
 }

@@ -483,6 +483,53 @@ func (_c *MockSpaceView_SetInviteFileInfo_Call) RunAndReturn(run func(string, st
 	return _c
 }
 
+// SetOwner provides a mock function with given fields: ownerId, createdDate
+func (_m *MockSpaceView) SetOwner(ownerId string, createdDate int64) error {
+	ret := _m.Called(ownerId, createdDate)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetOwner")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, int64) error); ok {
+		r0 = rf(ownerId, createdDate)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceView_SetOwner_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetOwner'
+type MockSpaceView_SetOwner_Call struct {
+	*mock.Call
+}
+
+// SetOwner is a helper method to define mock.On call
+//   - ownerId string
+//   - createdDate int64
+func (_e *MockSpaceView_Expecter) SetOwner(ownerId interface{}, createdDate interface{}) *MockSpaceView_SetOwner_Call {
+	return &MockSpaceView_SetOwner_Call{Call: _e.mock.On("SetOwner", ownerId, createdDate)}
+}
+
+func (_c *MockSpaceView_SetOwner_Call) Run(run func(ownerId string, createdDate int64)) *MockSpaceView_SetOwner_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockSpaceView_SetOwner_Call) Return(err error) *MockSpaceView_SetOwner_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpaceView_SetOwner_Call) RunAndReturn(run func(string, int64) error) *MockSpaceView_SetOwner_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetSharedSpacesLimit provides a mock function with given fields: limits
 func (_m *MockSpaceView) SetSharedSpacesLimit(limits int) error {
 	ret := _m.Called(limits)

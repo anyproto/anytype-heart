@@ -79,7 +79,7 @@ func (_c *MockImporter_Import_Call) RunAndReturn(run func(context.Context, *impo
 }
 
 // ImportWeb provides a mock function with given fields: ctx, req
-func (_m *MockImporter) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
+func (_m *MockImporter) ImportWeb(ctx context.Context, req *importer.ImportRequest) (string, *types.Struct, error) {
 	ret := _m.Called(ctx, req)
 
 	if len(ret) == 0 {
@@ -89,16 +89,16 @@ func (_m *MockImporter) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRe
 	var r0 string
 	var r1 *types.Struct
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectImportRequest) (string, *types.Struct, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *importer.ImportRequest) (string, *types.Struct, error)); ok {
 		return rf(ctx, req)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectImportRequest) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *importer.ImportRequest) string); ok {
 		r0 = rf(ctx, req)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *pb.RpcObjectImportRequest) *types.Struct); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *importer.ImportRequest) *types.Struct); ok {
 		r1 = rf(ctx, req)
 	} else {
 		if ret.Get(1) != nil {
@@ -106,7 +106,7 @@ func (_m *MockImporter) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRe
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, *pb.RpcObjectImportRequest) error); ok {
+	if rf, ok := ret.Get(2).(func(context.Context, *importer.ImportRequest) error); ok {
 		r2 = rf(ctx, req)
 	} else {
 		r2 = ret.Error(2)
@@ -122,14 +122,14 @@ type MockImporter_ImportWeb_Call struct {
 
 // ImportWeb is a helper method to define mock.On call
 //   - ctx context.Context
-//   - req *pb.RpcObjectImportRequest
+//   - req *importer.ImportRequest
 func (_e *MockImporter_Expecter) ImportWeb(ctx interface{}, req interface{}) *MockImporter_ImportWeb_Call {
 	return &MockImporter_ImportWeb_Call{Call: _e.mock.On("ImportWeb", ctx, req)}
 }
 
-func (_c *MockImporter_ImportWeb_Call) Run(run func(ctx context.Context, req *pb.RpcObjectImportRequest)) *MockImporter_ImportWeb_Call {
+func (_c *MockImporter_ImportWeb_Call) Run(run func(ctx context.Context, req *importer.ImportRequest)) *MockImporter_ImportWeb_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*pb.RpcObjectImportRequest))
+		run(args[0].(context.Context), args[1].(*importer.ImportRequest))
 	})
 	return _c
 }
@@ -139,7 +139,7 @@ func (_c *MockImporter_ImportWeb_Call) Return(_a0 string, _a1 *types.Struct, _a2
 	return _c
 }
 
-func (_c *MockImporter_ImportWeb_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectImportRequest) (string, *types.Struct, error)) *MockImporter_ImportWeb_Call {
+func (_c *MockImporter_ImportWeb_Call) RunAndReturn(run func(context.Context, *importer.ImportRequest) (string, *types.Struct, error)) *MockImporter_ImportWeb_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -51,7 +51,7 @@ func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertE
 		}
 	}
 	if importSource.CountFilesWithGivenExtensions([]string{".md"}) == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(common.ErrorBySourceType(importSource))
 		return nil
 	}
 	fileInfo := m.getFileInfo(importSource, allErrors)
@@ -98,35 +98,72 @@ func (m *mdConverter) processBlocks(shortPath string, file *FileInfo, files map[
 
 func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*FileInfo) {
 	txt := block.GetText()
-	if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
-		txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
-		link := txt.Marks.Marks[0].Param
-		wholeLineLink := m.isWholeLineLink(txt)
-		ext := filepath.Ext(link)
-
-		// todo: bug with multiple markup links in arow when the first is external
-		if file := files[link]; file != nil {
-			if strings.EqualFold(ext, ".csv") {
-				m.processCSVFileLink(block, files, link, wholeLineLink)
-				return
-			}
-			if strings.EqualFold(ext, ".md") {
-				// only convert if this is the only link in the row
-				m.convertToAnytypeLinkBlock(block, wholeLineLink)
-			} else {
-				anymark.ConvertTextToFile(block)
-			}
-			file.HasInboundLinks = true
-		} else if wholeLineLink {
-			m.convertTextToBookmark(block)
+	if txt != nil && txt.Marks != nil {
+		if len(txt.Marks.Marks) == 1 && txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
+			m.handleSingleMark(block, files)
+		} else {
+			m.handleMultipleMarks(block, files)
 		}
 	}
 }
 
-func (m *mdConverter) isWholeLineLink(txt *model.BlockContentText) bool {
+func (m *mdConverter) handleSingleMark(block *model.Block, files map[string]*FileInfo) {
+	txt := block.GetText()
+	link := txt.Marks.Marks[0].Param
+	wholeLineLink := m.isWholeLineLink(txt.Text, txt.Marks.Marks[0])
+	ext := filepath.Ext(link)
+	if file := files[link]; file != nil {
+		if strings.EqualFold(ext, ".csv") {
+			m.processCSVFileLink(block, files, link, wholeLineLink)
+			return
+		}
+		if strings.EqualFold(ext, ".md") {
+			// only convert if this is the only link in the row
+			m.convertToAnytypeLinkBlock(block, wholeLineLink)
+		} else {
+			block.Content = anymark.ConvertTextToFile(txt.Marks.Marks[0].Param)
+		}
+		file.HasInboundLinks = true
+	} else if wholeLineLink {
+		block.Content = m.convertTextToBookmark(txt.Marks.Marks[0].Param)
+	}
+}
+
+func (m *mdConverter) handleMultipleMarks(block *model.Block, files map[string]*FileInfo) {
+	txt := block.GetText()
+	for _, mark := range txt.Marks.Marks {
+		if mark.Type == model.BlockContentTextMark_Link {
+			if stop := m.handleSingleLinkMark(block, files, mark, txt); stop {
+				return
+			}
+		}
+	}
+}
+
+func (m *mdConverter) handleSingleLinkMark(block *model.Block, files map[string]*FileInfo, mark *model.BlockContentTextMark, txt *model.BlockContentText) bool {
+	link := mark.Param
+	ext := filepath.Ext(link)
+	if file := files[link]; file != nil {
+		file.HasInboundLinks = true
+		if strings.EqualFold(ext, ".md") || strings.EqualFold(ext, ".csv") {
+			mark.Type = model.BlockContentTextMark_Mention
+			return false
+		}
+		if m.isWholeLineLink(txt.Text, mark) {
+			block.Content = anymark.ConvertTextToFile(mark.Param)
+			return true
+		}
+	} else if m.isWholeLineLink(txt.Text, mark) {
+		block.Content = m.convertTextToBookmark(mark.Param)
+		return true
+	}
+	return false
+}
+
+func (m *mdConverter) isWholeLineLink(text string, marks *model.BlockContentTextMark) bool {
 	var wholeLineLink bool
-	textRunes := []rune(txt.Text)
-	var from, to = int(txt.Marks.Marks[0].Range.From), int(txt.Marks.Marks[0].Range.To)
+	textRunes := []rune(text)
+	var from, to = int(marks.Range.From), int(marks.Range.To)
 	if from == 0 || (from < len(textRunes) && len(strings.TrimSpace(string(textRunes[0:from]))) == 0) {
 		if to >= len(textRunes) || len(strings.TrimSpace(string(textRunes[to:]))) == 0 {
 			wholeLineLink = true
@@ -201,14 +238,14 @@ func (m *mdConverter) convertTextToPageLink(block *model.Block) {
 	}
 }
 
-func (m *mdConverter) convertTextToBookmark(block *model.Block) {
-	if err := uri.ValidateURI(block.GetText().Marks.Marks[0].Param); err != nil {
-		return
+func (m *mdConverter) convertTextToBookmark(url string) *model.BlockContentOfBookmark {
+	if err := uri.ValidateURI(url); err != nil {
+		return nil
 	}
 
-	block.Content = &model.BlockContentOfBookmark{
+	return &model.BlockContentOfBookmark{
 		Bookmark: &model.BlockContentBookmark{
-			Url: block.GetText().Marks.Marks[0].Param,
+			Url: url,
 		},
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -116,6 +117,9 @@ func TestNewFTSearch(t *testing.T) {
 		{
 			name:   "assertFoundCaseSensitivePartsOfTheWords",
 			tester: assertFoundCaseSensitivePartsOfTheWords,
+		}, {
+			name:   "assertChineseFound",
+			tester: assertChineseFound,
 		},
 		{
 			name:   "assertMultiSpace",
@@ -175,27 +179,21 @@ func assertChineseFound(t *testing.T, tmpDir string) {
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "1",
 		Title: "",
-		Text:  "你好",
+		Text:  "张华考上了北京大学；李萍进了中等技术学校；我在百货公司当售货员：我们都有光明的前途",
 	}))
+
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "2",
-		Title: "",
-		Text:  "交代",
-	}))
-	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "3",
-		Title: "",
-		Text:  "长江大桥",
+		Title: "张华考上了北京大学；李萍进了中等技术学校；我在百货公司当售货员：我们都有光明的前途",
+		Text:  "",
 	}))
 
 	queries := []string{
-		"你好世界",
-		"亲口交代",
-		"长江",
+		"售货员",
 	}
 
 	for _, qry := range queries {
-		validateSearch(t, ft, "", qry, 1)
+		validateSearch(t, ft, "", qry, 2)
 	}
 
 	_ = ft.Close(nil)
@@ -387,7 +385,58 @@ func assertMultiSpace(t *testing.T, tmpDir string) {
 	validateSearch(t, ft, "", "Advanced", 1)
 	validateSearch(t, ft, "", "dash", 2)
 	validateSearch(t, ft, "", "space", 4)
-	validateSearch(t, ft, "", "of", 5)
+	validateSearch(t, ft, "", "of", 4)
 
 	_ = ft.Close(nil)
+}
+
+func TestEscapeQuery(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{strings.Repeat("a", 99) + " aa", `("` + strings.Repeat("a", 99) + `" OR ` + strings.Repeat("a", 99) + `)`},
+		{`""`, ``},
+		{"simpleQuery", `("simplequery" OR simplequery)`},
+		{"with+special^chars", `("withspecialchars" OR withspecialchars)`},
+		{"text`with:brackets{}", `("textwithbrackets" OR textwithbrackets)`},
+		{"escaped[]symbols()", `("escapedsymbols" OR escapedsymbols)`},
+		{"multiple!!special~~", `("multiplespecial" OR multiplespecial)`},
+	}
+
+	for _, test := range tests {
+		actual := prepareQuery(test.input)
+		if actual != test.expected {
+			t.Errorf("For input '%s', expected '%s', but got '%s'", test.input, test.expected, actual)
+		}
+	}
+}
+
+// Tests
+func TestGetSpaceIdsQuery(t *testing.T) {
+	// Test with empty slice of ids
+	assert.Equal(t, "", getSpaceIdsQuery([]string{}))
+
+	// Test with slice containing only empty strings
+	assert.Equal(t, "", getSpaceIdsQuery([]string{"", "", ""}))
+
+	// Test with a single id
+	assert.Equal(t, "(SpaceID:123)", getSpaceIdsQuery([]string{"123"}))
+
+	// Test with multiple ids
+	assert.Equal(t, "(SpaceID:123 OR SpaceID:456 OR SpaceID:789)", getSpaceIdsQuery([]string{"123", "456", "789"}))
+
+	// Test with some empty ids
+	assert.Equal(t, "(SpaceID:123 OR SpaceID:789)", getSpaceIdsQuery([]string{"123", "", "789"}))
+}
+
+func TestFtSearch_Close(t *testing.T) {
+	// given
+	fts := new(ftSearchTantivy)
+
+	// when
+	err := fts.Close(nil)
+
+	// then
+	assert.NoError(t, err)
 }

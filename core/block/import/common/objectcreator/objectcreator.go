@@ -104,7 +104,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	)
 	defer func() {
 		// delete file in ipfs if there is error after creation
-		oc.onFinish(err, st, filesToDelete)
+		oc.onFinish(err, spaceID, st, filesToDelete)
 	}()
 
 	common.UpdateObjectIDsInRelations(st, oldIDtoNew)
@@ -295,21 +295,21 @@ func (oc *ObjectCreator) setRootBlock(snapshot *model.SmartBlockSnapshotBase, ne
 	}
 }
 
-func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []string) {
+func (oc *ObjectCreator) onFinish(err error, spaceId string, st *state.State, filesToDelete []string) {
 	if err != nil {
 		for _, bl := range st.Blocks() {
 			if f := bl.GetFile(); f != nil {
-				oc.deleteFile(f.Hash)
+				oc.deleteFile(spaceId, f.Hash)
 			}
 			for _, hash := range filesToDelete {
-				oc.deleteFile(hash)
+				oc.deleteFile(spaceId, hash)
 			}
 		}
 	}
 }
 
-func (oc *ObjectCreator) deleteFile(hash string) {
-	inboundLinks, err := oc.objectStore.GetOutboundLinksByID(hash)
+func (oc *ObjectCreator) deleteFile(spaceId string, hash string) {
+	inboundLinks, err := oc.objectStore.SpaceIndex(spaceId).GetOutboundLinksById(hash)
 	if err != nil {
 		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err)
 	}
@@ -392,7 +392,7 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct
 func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, newID string) {
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 	if isFavorite {
-		err := oc.detailsService.SetIsFavorite(newID, true)
+		err := oc.detailsService.SetIsFavorite(newID, true, false)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err)
 		}

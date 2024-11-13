@@ -2,6 +2,7 @@ package collection
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -15,55 +16,80 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+const collectionID = "collectionID"
+
 type testPicker struct {
-	sb smartblock.SmartBlock
+	sbMap map[string]smartblock.SmartBlock
 }
 
-func (t *testPicker) GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
-	return t.sb, nil
+func (t *testPicker) GetObject(ctx context.Context, id string) (smartblock.SmartBlock, error) {
+	if t.sbMap == nil {
+		return nil, fmt.Errorf("not found")
+	}
+	sb, found := t.sbMap[id]
+	if !found {
+		return nil, fmt.Errorf("not found")
+	}
+	return sb, nil
 }
 
 func (t *testPicker) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
-	return t.sb, nil
+	return t.GetObject(ctx, id.ObjectID)
 }
 
 func (t *testPicker) Init(a *app.App) error { return nil }
 
-func (t *testPicker) Name() string { return "" }
+func (t *testPicker) Name() string { return "test.picker" }
+
+type testFlusher struct{}
+
+func (tf *testFlusher) Name() string { return "test.flusher" }
+
+func (tf *testFlusher) Init(*app.App) error { return nil }
+
+func (tf *testFlusher) Run(context.Context) error { return nil }
+
+func (tf *testFlusher) Close(context.Context) error { return nil }
+
+func (tf *testFlusher) FlushUpdates() {}
 
 type fixture struct {
 	picker *testPicker
 	*Service
+	objectStore *objectstore.StoreFixture
 }
 
 func newFixture(t *testing.T) *fixture {
-	picker := &testPicker{}
 	a := &app.App{}
-	objectStore := mock_objectstore.NewMockObjectStore(t)
-	objectStore.EXPECT().Name().Return("objectStore")
+	picker := &testPicker{}
+	flusher := &testFlusher{}
+	objectStore := objectstore.NewStoreFixture(t)
 
 	a.Register(picker)
 	a.Register(objectStore)
+	a.Register(flusher)
 	s := New()
 
 	err := s.Init(a)
 	require.NoError(t, err)
-	return &fixture{picker: picker, Service: s}
+	return &fixture{picker: picker, Service: s, objectStore: objectStore}
 }
 
 func TestBroadcast(t *testing.T) {
-	const collectionID = "collectionID"
 	sb := smarttest.New(collectionID)
 
 	s := newFixture(t)
-	s.picker.sb = sb
+	s.picker.sbMap = map[string]smartblock.SmartBlock{
+		collectionID: sb,
+	}
 
 	_, subCh1, err := s.SubscribeForCollection(collectionID, "sub1")
 	require.NoError(t, err)
@@ -157,7 +183,7 @@ func TestSetObjectTypeToViews(t *testing.T) {
 		st := generateState(bundle.TypeKeyPage, setOfValue)
 
 		// when
-		s.setDefaultObjectTypeToViews(st)
+		s.setDefaultObjectTypeToViews("space1", st)
 
 		// then
 		assertViews(st, "")
@@ -175,16 +201,47 @@ func TestSetObjectTypeToViews(t *testing.T) {
 	} {
 		t.Run("object is a set by "+testCase.name, func(t *testing.T) {
 			// given
-			store := mock_objectstore.NewMockObjectStore(t)
-			store.EXPECT().GetUniqueKeyById(setOfValue).Return(domain.NewUniqueKey(testCase.sbType, testCase.key))
-			s := Service{objectStore: store}
+			s := newFixture(t)
+			s.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
+				{
+					bundle.RelationKeyId:        pbtypes.String(setOfValue),
+					bundle.RelationKeyUniqueKey: pbtypes.String(domain.MustUniqueKey(testCase.sbType, testCase.key).Marshal()),
+				},
+			})
+
 			st := generateState(bundle.TypeKeySet, setOfValue)
 
 			// when
-			s.setDefaultObjectTypeToViews(st)
+			s.setDefaultObjectTypeToViews("space1", st)
 
 			// then
 			assertViews(st, testCase.expected)
 		})
 	}
+}
+
+func TestService_Add(t *testing.T) {
+	t.Run("add new objects to collection", func(t *testing.T) {
+		// given
+		coll := smarttest.New(collectionID)
+		obj1 := smarttest.New("obj1")
+		obj2 := smarttest.New("obj2")
+
+		s := newFixture(t)
+		s.picker.sbMap = map[string]smartblock.SmartBlock{
+			collectionID: coll,
+			"obj1":       obj1,
+			"obj2":       obj2,
+		}
+
+		// when
+		err := s.Add(nil, &pb.RpcObjectCollectionAddRequest{
+			ContextId: collectionID,
+			ObjectIds: []string{"obj1", "obj2"},
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"obj1", "obj2"}, coll.NewState().GetStoreSlice(template.CollectionStoreKey))
+	})
 }

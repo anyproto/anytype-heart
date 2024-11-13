@@ -47,6 +47,7 @@ type MetricsService interface {
 	SetUserId(id string)
 	Send(ev anymetry.Event)
 	SendSampled(ev SamplableEvent)
+	SetEnabled(isEnabled bool)
 
 	Run()
 	Close()
@@ -64,13 +65,21 @@ type service struct {
 	workingDir     string
 	clients        [1]*client
 	alreadyRunning bool
+	isEnabled      bool
 }
 
 func (s *service) SendSampled(ev SamplableEvent) {
+	if !s.isEnabled {
+		return
+	}
 	if ev == nil {
 		return
 	}
 	s.getBackend(ev.GetBackend()).sendSampled(ev)
+}
+
+func (s *service) SetEnabled(isEnabled bool) {
+	s.isEnabled = isEnabled
 }
 
 func NewService() MetricsService {
@@ -173,6 +182,9 @@ func (s *service) GetStartVersion() string {
 func (s *service) Run() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	if !s.isEnabled {
+		return
+	}
 	if s.alreadyRunning {
 		return
 	}
@@ -189,6 +201,9 @@ func (s *service) Run() {
 func (s *service) Close() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	if !s.isEnabled {
+		return
+	}
 	for _, c := range s.clients {
 		c.Close()
 	}
@@ -196,6 +211,9 @@ func (s *service) Close() {
 }
 
 func (s *service) Send(ev anymetry.Event) {
+	if !s.isEnabled {
+		return
+	}
 	if ev == nil {
 		return
 	}

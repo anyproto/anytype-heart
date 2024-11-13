@@ -306,7 +306,7 @@ func (s *service) provideNotification(spaceID string, progress process.Progress,
 		Space:   spaceID,
 		Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
 			ProcessId: progress.Id(),
-			ErrorCode: common.GetImportErrorCode(err),
+			ErrorCode: common.GetImportNotificationErrorCode(err),
 			SpaceId:   spaceID,
 			Name:      title,
 			SpaceName: spaceName,
@@ -414,7 +414,7 @@ func (s *service) downloadZipToFile(url string, progress process.Progress) (path
 }
 
 func (s *service) setupProgress() (process.Notificationable, error) {
-	progress := process.NewNotificationProcess(pb.ModelProcess_Import, s.notifications)
+	progress := process.NewNotificationProcess(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}, s.notifications)
 	if err := s.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)
 	}

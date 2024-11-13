@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	domain "github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/mock_detailsupdater"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
@@ -100,6 +100,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			sb := smarttest.New(objectId)
 			st := sb.Doc.(*state.State)
 			st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
+			st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String("spaceId"))
 			err := apply(sb)
 			require.NoError(t, err)
 
@@ -125,7 +126,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		fx := newUpdateDetailsFixture(t)
 		updTester := newUpdateTester(t, 1, 1)
 
-		fx.subscriptionService.StoreFixture.AddObjects(t, []objectstore.TestObject{
+		fx.subscriptionService.StoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id1"),
 				bundle.RelationKeySpaceId: pbtypes.String("space1"),
@@ -139,7 +140,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			err := proc()
 			require.NoError(t, err)
 
-			details, err := fx.objectStore.GetDetails(objectId)
+			details, err := fx.objectStore.SpaceIndex("space1").GetDetails(objectId)
 			require.NoError(t, err)
 
 			assert.True(t, pbtypes.GetInt64(details.Details, bundle.RelationKeySyncStatus.String()) == int64(domain.ObjectSyncStatusError))
@@ -166,6 +167,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
 				sb := smarttest.New(objectId)
 				st := sb.Doc.(*state.State)
+				st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String("spaceId"))
 				st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_file)))
 				st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, pbtypes.Int64(int64(filesyncstatus.Limited)))
 				err := apply(sb)
@@ -195,6 +197,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
 				sb := smarttest.New(objectId)
 				st := sb.Doc.(*state.State)
+				st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String("spaceId"))
 				st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_file)))
 				st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, pbtypes.Int64(int64(filesyncstatus.Synced)))
 				err := apply(sb)
@@ -223,7 +226,7 @@ func TestSyncStatusUpdater_UpdateSpaceDetails(t *testing.T) {
 	fx := newUpdateDetailsFixture(t)
 	updTester := newUpdateTester(t, 3, 3)
 
-	fx.subscriptionService.StoreFixture.AddObjects(t, []objectstore.TestObject{
+	fx.subscriptionService.StoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:         pbtypes.String("id1"),
 			bundle.RelationKeySpaceId:    pbtypes.String("space1"),
@@ -246,6 +249,7 @@ func TestSyncStatusUpdater_UpdateSpaceDetails(t *testing.T) {
 		space.EXPECT().DoCtx(mock.Anything, objectId, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
 			sb := smarttest.New(objectId)
 			st := sb.Doc.(*state.State)
+			st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String("spaceId"))
 			st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
 			err := apply(sb)
 			require.NoError(t, err)
@@ -279,7 +283,8 @@ func TestSyncStatusUpdater_setSyncDetails(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		sb := smarttest.New("id")
-
+		st := sb.Doc.(*state.State)
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String("spaceId"))
 		// when
 		err := fx.setSyncDetails(sb, domain.ObjectSyncStatusError, domain.SyncErrorNetworkError)
 		assert.Nil(t, err)

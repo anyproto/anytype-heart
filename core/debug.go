@@ -3,10 +3,12 @@ package core
 import (
 	"context"
 
+	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/environment"
 )
 
 func (mw *Middleware) DebugTree(cctx context.Context, req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse {
@@ -235,5 +237,54 @@ func (mw *Middleware) DebugAccountSelectTrace(cctx context.Context, req *pb.RpcD
 	}
 	return &pb.RpcDebugAccountSelectTraceResponse{
 		Path: path,
+	}
+}
+
+func (mw *Middleware) DebugExportLog(cctx context.Context, req *pb.RpcDebugExportLogRequest) *pb.RpcDebugExportLogResponse {
+	path, err := mw.applicationService.SaveLog(environment.LOG_PATH, req.Dir)
+
+	code := mapErrorCode(err,
+		errToCode(application.ErrNoFolder, pb.RpcDebugExportLogResponseError_NO_FOLDER),
+	)
+	return &pb.RpcDebugExportLogResponse{
+		Path: path,
+		Error: &pb.RpcDebugExportLogResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) DebugAnystoreObjectChanges(cctx context.Context, req *pb.RpcDebugAnystoreObjectChangesRequest) *pb.RpcDebugAnystoreObjectChangesResponse {
+	debugService := getService[debug.Debug](mw)
+	changes, wrongOrder, err := debugService.DebugAnystoreObjectChanges(cctx, req.ObjectId, req.OrderBy)
+	if err != nil {
+		return &pb.RpcDebugAnystoreObjectChangesResponse{
+			Error: &pb.RpcDebugAnystoreObjectChangesResponseError{
+				Code:        pb.RpcDebugAnystoreObjectChangesResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return &pb.RpcDebugAnystoreObjectChangesResponse{
+		Changes:    changes,
+		WrongOrder: wrongOrder,
+	}
+}
+
+func (mw *Middleware) DebugNetCheck(cctx context.Context, req *pb.RpcDebugNetCheckRequest) *pb.RpcDebugNetCheckResponse {
+	res, err := getService[debug.Debug](mw).NetCheck(cctx, req.ClientYml)
+	if err != nil {
+		return &pb.RpcDebugNetCheckResponse{
+			Error: &pb.RpcDebugNetCheckResponseError{
+				Code:        pb.RpcDebugNetCheckResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return &pb.RpcDebugNetCheckResponse{
+		Result: res,
 	}
 }

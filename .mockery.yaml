@@ -40,19 +40,12 @@ packages:
   github.com/anyproto/anytype-heart/core/block/import:
     interfaces:
       Importer:
+  github.com/anyproto/anytype-heart/core/block/editor/lastused:
+    interfaces:
+      ObjectUsageUpdater:
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
-  github.com/anyproto/anytype-heart/pkg/lib/database:
-    interfaces:
-      ObjectStore:
-        config:
-          dir: "{{.InterfaceDir}}"
-          outpkg: "{{.PackageName}}"
-          inpackage: true
-  github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore:
-    interfaces:
-      ObjectStore:
   github.com/anyproto/anytype-heart/core/block/restriction:
     interfaces:
       Service:
@@ -105,6 +98,7 @@ packages:
     interfaces:
       TechSpace:
       SpaceView:
+      AccountObject:
   github.com/anyproto/anytype-heart/space/spacefactory:
     interfaces:
       SpaceFactory:
@@ -115,6 +109,9 @@ packages:
   github.com/anyproto/anytype-heart/space/internal/components/spaceloader:
     interfaces:
       SpaceLoader:
+  github.com/anyproto/anytype-heart/space/internal/components/personalmigration:
+    interfaces:
+      fileObjectGetter:
   github.com/anyproto/anytype-heart/space/internal/components/participantwatcher:
     interfaces:
       ParticipantWatcher:
@@ -135,6 +132,8 @@ packages:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       Service:
+      coordinatorStatusUpdater:
+      NotificationSender:
   github.com/anyproto/anytype-heart/space/clientspace:
     interfaces:
       Space:
@@ -168,6 +167,7 @@ packages:
   github.com/anyproto/anytype-heart/core/block/source:
     interfaces:
       Service:
+      Store:
   github.com/anyproto/anytype-heart/core/block/object/idresolver:
     interfaces:
       Resolver:
@@ -220,5 +220,8 @@ packages:
     interfaces:
       Downloader:
   github.com/anyproto/anytype-heart/core/block/detailservice:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/kanban:
     interfaces:
       Service:

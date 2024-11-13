@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/gogo/protobuf/types"
 
@@ -33,11 +34,22 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		TemplateId:    req.TemplateId,
 	}
 	id, newDetails, err := creator.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req.ObjectTypeUniqueKey, createReq)
-
 	if err != nil {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
+	if req.WithChat {
+		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
+	}
 	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails, nil)
+}
+
+func (mw *Middleware) ObjectChatAdd(cctx context.Context, req *pb.RpcObjectChatAddRequest) *pb.RpcObjectChatAddResponse {
+	return &pb.RpcObjectChatAddResponse{
+		Error: &pb.RpcObjectChatAddResponseError{
+			Code:        pb.RpcObjectChatAddResponseError_UNKNOWN_ERROR,
+			Description: "not implemented",
+		},
+	}
 }
 
 func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
@@ -74,7 +86,9 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 		}
 		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
-
+	if req.WithChat {
+		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
+	}
 	return response(pb.RpcObjectCreateSetResponseError_NULL, id, newDetails, nil)
 }
 
@@ -96,6 +110,10 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 	if err != nil {
 		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
 	}
+	if req.WithChat {
+		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
+	}
+
 	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, newDetails, nil)
 }
 
@@ -195,6 +213,10 @@ func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjec
 	id, newDetails, err := bs.CreateObjectFromUrl(cctx, req)
 	if err != nil {
 		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", err, nil)
+	}
+
+	if req.WithChat {
+		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", fmt.Errorf("WithChat is not implemented"), nil)
 	}
 	return response(pb.RpcObjectCreateFromUrlResponseError_NULL, id, nil, newDetails)
 }

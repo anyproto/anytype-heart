@@ -10,7 +10,7 @@ on:
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
-        default: 'ARM64'
+        default: 'arm64'
       perf-test:
         description: 'Run perf test times'
         required: true
@@ -32,19 +32,19 @@ permissions:
 name: Build
 jobs:
   build:
-    runs-on: ${{ github.event_name == 'push' && 'macos-12' || (github.event.inputs.run-on-runner || 'ARM64') }}
+    runs-on: ${{ github.event_name == 'push' && 'arm64' || (github.event.inputs.run-on-runner || 'arm64') }}
     steps:
       - name: validate agent
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "ARM64" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "arm64" ]]; then
             echo "Invalid runner"
             exit 1
           fi
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.22
-        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
+          go-version: 1.23.2
+        if: runner.name != 'mac-mini-org-heart'
       - name: Setup GO
         run: |
           go version
@@ -61,7 +61,12 @@ jobs:
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install grpcurl
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew tap messense/macos-cross-toolchains && brew install x86_64-unknown-linux-musl
           npm i -g node-gyp
-        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
+          echo "Azaza"
+          protoc --version
+          which x86_64-w64-mingw32-gcc
+          which protoc
+          echo "Azaza2"
+        if: runner.name != 'mac-mini-org-heart'
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -73,7 +78,7 @@ jobs:
             ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Install old MacOS SDK (for backward compatibility of CGO)
         run: source .github/install_macos_sdk.sh 10.15
-        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
+        if: runner.name != 'mac-mini-org-heart'
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
@@ -109,7 +114,6 @@ jobs:
           which gomobile
       - name: Cross-compile library mac/win/linux
         run: |
-          make download-tantivy-all
           echo $FLAGS
           mkdir -p .release
           echo $SDKROOT
@@ -123,7 +127,6 @@ jobs:
       - name: run perf tests
         run: |
           echo "Running perf tests"
-          make download-tantivy-all
           RUN_COUNT=${{ github.event.inputs.perf-test }}
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             RUN_COUNT=10
@@ -135,14 +138,14 @@ jobs:
           TEST_MNEMONIC: ${{ secrets.TEST_MNEMONIC }}
           PROM_KEY: ${{ secrets.PROMETHEUS_USERNAME }}
           PROM_PASSWORD: ${{ secrets.PROMETHEUS_PASSWORD }}
-        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
+        if: github.event.inputs.perf-test != '0'
       - name: Archive perf tests results
         uses: actions/upload-artifact@v4
         with:
           name: pprofs
           path: |
             *.pprof
-        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
+        if: github.event.inputs.perf-test != '0'
       - name: end run perf tests
         run: |
           rm -rf *.pprof
@@ -151,7 +154,7 @@ jobs:
           gh run watch ${{ github.run_id }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
+        if: github.event.inputs.perf-test != '0'
       - name: Make JS protos
         run: |
           make protos-js
@@ -254,7 +257,7 @@ jobs:
           cp pkg/lib/bundle/internalTypes.json ./json
       - name: Compile android lib
         run: |
-          gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector timetzdata rasterizesvg" -ldflags "$FLAGS" -v -target=android -androidapi 19 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
+          gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector timetzdata rasterizesvg" -ldflags "$FLAGS" -v -target=android -androidapi 26 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
           gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf json
           mv android_lib_${VERSION}.tar.gz .release/
       - name: Publish android lib to maven

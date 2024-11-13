@@ -2,6 +2,7 @@ package configfetcher
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -14,10 +15,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	pbMiddle "github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/cafe/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
@@ -35,52 +35,24 @@ type WorkspaceGetter interface {
 	GetAllWorkspaces() ([]string, error)
 }
 
-var defaultAccountState = &pb.AccountState{
-	Status: &pb.AccountStateStatus{
-		Status:       pb.AccountState_Active,
-		DeletionDate: 0,
-	},
-}
-
 type ConfigFetcher interface {
 	app.ComponentRunnable
-	GetAccountState() *pb.AccountState
 	Refetch()
 }
 
-type personalSpaceIDGetter interface {
-	PersonalSpaceID() string
+type techSpaceGetter interface {
+	TechSpace() *clientspace.TechSpace
 }
 
 type configFetcher struct {
-	store         objectstore.ObjectStore
-	eventSender   event.Sender
-	fetched       chan struct{}
-	fetchedClosed sync.Once
-
+	eventSender  event.Sender
 	periodicSync periodicsync.PeriodicSync
 	client       coordinatorclient.CoordinatorClient
 	spaceService spacecore.SpaceCoreService
-	account      personalSpaceIDGetter
+	getter       techSpaceGetter
 	wallet       wallet.Wallet
 	lastStatus   model.AccountStatusType
 	mutex        sync.Mutex
-}
-
-func (c *configFetcher) GetAccountState() (state *pb.AccountState) {
-	select {
-	case <-c.fetched:
-	case <-time.After(time.Second):
-	}
-	state = defaultAccountState
-	status, err := c.store.GetAccountStatus()
-	if err != nil {
-		log.Debug("failed to account state config from the store: %s", err)
-	} else {
-		state.Status.Status = pb.AccountStateStatusType(status.Status)
-		state.Status.DeletionDate = status.DeletionTimestamp
-	}
-	return state
 }
 
 func New() ConfigFetcher {
@@ -93,14 +65,12 @@ func (c *configFetcher) Run(context.Context) error {
 }
 
 func (c *configFetcher) Init(a *app.App) (err error) {
-	c.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
 	c.eventSender = a.MustComponent(event.CName).(event.Sender)
 	c.periodicSync = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, c.updateStatus, logger.CtxLogger{Logger: log.Desugar()})
 	c.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
 	c.spaceService = a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
-	c.account = app.MustComponent[personalSpaceIDGetter](a)
-	c.fetched = make(chan struct{})
+	c.getter = app.MustComponent[techSpaceGetter](a)
 	c.lastStatus = initialStatus
 	return nil
 }
@@ -110,19 +80,10 @@ func (c *configFetcher) Name() (name string) {
 }
 
 func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
-	defer func() {
-		c.fetchedClosed.Do(func() {
-			close(c.fetched)
-		})
-	}()
-	personalSpaceID := c.account.PersonalSpaceID()
-	res, err := c.client.StatusCheck(ctx, personalSpaceID)
-	if err == coordinatorproto.ErrSpaceNotExists {
-		sp, cErr := c.spaceService.Get(ctx, personalSpaceID)
-		if cErr != nil {
-			return cErr
-		}
-		header, sErr := sp.Storage().SpaceHeader()
+	techSpace := c.getter.TechSpace()
+	res, err := c.client.StatusCheck(ctx, techSpace.Id())
+	if errors.Is(err, coordinatorproto.ErrSpaceNotExists) {
+		header, sErr := techSpace.Storage().SpaceHeader()
 		if sErr != nil {
 			return sErr
 		}
@@ -139,10 +100,6 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 		}
 		return c.updateStatus(ctx)
 	}
-	if err != nil {
-		return
-	}
-	err = c.store.SaveAccountStatus(res)
 	if err != nil {
 		return
 	}

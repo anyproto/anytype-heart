@@ -1131,7 +1131,8 @@ message Rpc {
             message Request {
                 google.protobuf.Struct details = 1; // object details
                 anytype.Rpc.Object.ImportUseCase.Request.UseCase useCase = 2; // use case
-                string artifactPath = 3;
+                bool withChat = 3; // create space-level chat; temporary solution, should be removed after chats released for all users
+                string artifactPath = 4;
             }
 
             message Response {
@@ -1155,6 +1156,7 @@ message Rpc {
         message Open {
             message Request {
                 string spaceId = 1;
+                bool withChat = 2; // create space-level chat if not exists; temporary solution, should be removed after chats released for all users
             }
 
             message Response {
@@ -1414,6 +1416,7 @@ message Rpc {
                 string templateId = 3;
                 string spaceId = 4;
                 string objectTypeUniqueKey = 5;
+                bool withChat = 6;
             }
 
             message Response {
@@ -1440,6 +1443,7 @@ message Rpc {
             message Request {
                 google.protobuf.Struct details = 1;
                 string spaceId = 2;
+                bool withChat = 3;
             }
 
             message Response {
@@ -1517,6 +1521,7 @@ message Rpc {
                 string templateId = 3; // optional template id for creating from template
                 repeated anytype.model.InternalFlag internalFlags = 4;
                 string spaceId = 5;
+                bool withChat = 6;
             }
 
             message Response {
@@ -1572,12 +1577,14 @@ message Rpc {
                 string url = 3;
                 google.protobuf.Struct details = 4;
                 bool addPageContent = 5;
+                bool withChat = 6;
             }
 
             message Response {
                 Error error = 1;
                 string objectId = 2;
                 google.protobuf.Struct details = 3;
+                string chatId = 4;
 
                 message Error {
                     Code code = 1;
@@ -1605,6 +1612,7 @@ message Rpc {
                 message Error {
                     Code code = 1;
                     string description = 2;
+
                     enum Code {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
@@ -1763,6 +1771,7 @@ message Rpc {
         // deprecated in favor of SearchWithMeta
         message Search {
             message Request {
+                string spaceId = 8;
                 repeated anytype.model.Block.Content.Dataview.Filter filters = 1;
                 repeated anytype.model.Block.Content.Dataview.Sort sorts = 2;
                 string fullText = 3;
@@ -1791,6 +1800,7 @@ message Rpc {
         }
         message SearchWithMeta {
             message Request {
+                string spaceId = 11;
                 repeated anytype.model.Block.Content.Dataview.Filter filters = 1;
                 repeated anytype.model.Block.Content.Dataview.Sort sorts = 2;
                 string fullText = 3;
@@ -1869,6 +1879,7 @@ message Rpc {
 
         message SearchSubscribe {
             message Request {
+                string spaceId = 15;
                 // (optional) subscription identifier
                 // client can provide some string or middleware will generate it automatically
                 // if subId is already registered on middleware, the new query will replace previous subscription
@@ -1891,7 +1902,6 @@ message Rpc {
 
                 repeated string source = 10;
 
-                string ignoreWorkspace = 12;
                 // disable dependent subscription
                 bool noDepSubscription = 13;
                 string collectionId = 14;
@@ -1906,6 +1916,72 @@ message Rpc {
                 string subId = 4;
 
                 Event.Object.Subscription.Counters counters = 5;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message CrossSpaceSearchSubscribe {
+            message Request {
+                // (optional) subscription identifier
+                // client can provide some string or middleware will generate it automatically
+                // if subId is already registered on middleware, the new query will replace previous subscription
+                string subId = 1;
+                // filters
+                repeated anytype.model.Block.Content.Dataview.Filter filters = 2;
+                // sorts
+                repeated anytype.model.Block.Content.Dataview.Sort sorts = 3;
+                // (required)  needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent
+                repeated string keys = 7;
+
+                repeated string source = 10;
+
+                // disable dependent subscription
+                bool noDepSubscription = 13;
+                string collectionId = 14;
+            }
+
+            message Response {
+                Error error = 1;
+
+                repeated google.protobuf.Struct records = 2;
+                repeated google.protobuf.Struct dependencies = 3;
+
+                string subId = 4;
+
+                Event.Object.Subscription.Counters counters = 5;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message CrossSpaceSearchUnsubscribe {
+            message Request {
+                   string subId = 1;
+            }
+
+            message Response {
+                Error error = 1;
 
                 message Error {
                     Code code = 1;
@@ -1953,6 +2029,7 @@ message Rpc {
 
         message SubscribeIds {
             message Request {
+                string spaceId = 13;
                 // (optional) subscription identifier
                 // client can provide some string or middleware will generate it automatically
                 // if subId is already registered on middleware, the new query will replace previous subscription
@@ -1963,7 +2040,6 @@ message Rpc {
                 // (required)  needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent
                 repeated string keys = 3;
 
-                string ignoreWorkspace = 11;
                 // disable dependent subscription
                 bool noDepSubscription = 12;
             }
@@ -3047,8 +3123,12 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                repeated string relationKeys = 2;
-                repeated int64 counters = 3;
+                repeated ResponseItem list = 2;
+
+                message ResponseItem {
+                    string relationKey = 1;
+                    int64 counter = 2;
+                }
 
                 message Error {
                     Code code = 1;
@@ -3285,6 +3365,7 @@ message Rpc {
                 anytype.model.Block.Content.File.Style style = 5;
                 google.protobuf.Struct details = 7; // additional details for file object
                 anytype.model.ObjectOrigin origin = 8;
+                anytype.model.ImageKind imageKind = 9;
             }
 
             message Response {
@@ -3618,6 +3699,7 @@ message Rpc {
             message Request {
                 string pictureId = 1;
                 string spaceId = 2;
+                anytype.model.ImageKind imageKind = 3;
             }
 
             message Response {
@@ -5141,6 +5223,7 @@ message Rpc {
                 string url = 4;
                 string localPath = 5;
                 anytype.model.Block.Content.File.Type fileType = 6;
+                anytype.model.ImageKind imageKind = 7;
             }
 
             message Response {
@@ -6454,6 +6537,30 @@ message Rpc {
             }
         }
 
+        message ExportLog {
+            message Request {
+                option (no_auth) = true;
+                string dir = 1; // empty means using OS-provided temp dir
+            }
+
+            message Response {
+                Error error = 1;
+                string path = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        NO_FOLDER = 3;
+                    }
+                }
+            }
+        }
+
         message Ping {
             message Request {
                 int32 index = 1;
@@ -6476,14 +6583,77 @@ message Rpc {
                 }
             }
         }
+
+        message AnystoreObjectChanges {
+            message Request {
+                string objectId = 1;
+                OrderBy orderBy = 2;
+
+                enum OrderBy {
+                    ORDER_ID = 0;
+                    ITERATION_ORDER = 1;
+                }
+            }
+
+            message Response {
+                Error error = 1;
+                repeated Change changes = 2;
+                bool wrongOrder = 3;
+
+                message Change {
+                    string changeId = 1;
+                    string orderId = 2;
+                    string error = 3;
+                    google.protobuf.Struct change = 4;
+                }
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message NetCheck {
+            message Request {
+                string clientYml = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                string result = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
     }
 
-    message Metrics {
+    message Initial {
         message SetParameters {
             message Request {
                 option (no_auth) = true;
                 string platform = 1;
                 string version = 2;
+                string workdir = 3;
+                string logLevel = 4;
+                bool doNotSendLogs = 5;
+                bool doNotSaveLogs = 6;
+                bool doNotSendTelemetry = 7;
             }
 
             message Response {
@@ -6541,6 +6711,42 @@ message Rpc {
             message Request {
                 string id = 1;
             }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+        message Subscribe {
+            message Request {}
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+        message Unsubscribe {
+            message Request {}
 
             message Response {
                 Error error = 1;
@@ -6899,6 +7105,11 @@ message Rpc {
                 string email = 1;
 
                 bool subscribeToNewsletter = 2;
+
+                bool insiderTipsAndTutorials = 3;
+
+                // if we are coming from the onboarding list
+                bool isOnboardingList = 4;
             }
 
             message Response {

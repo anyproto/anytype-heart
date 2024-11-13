@@ -12,6 +12,8 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/dgraph-io/badger/v4"
+	"go.uber.org/zap"
 
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -20,6 +22,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -37,10 +40,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/sqlitestorage"
 	"github.com/anyproto/anytype-heart/util/anonymize"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -61,7 +67,8 @@ const (
 	DoSnapshot
 	SkipIfNoChanges
 	KeepInternalFlags
-	IgnoreNoPermissions // Used only for read-only actions like InitObject or OpenObject
+	IgnoreNoPermissions
+	NotPushChanges // Used only for read-only actions like InitObject or OpenObject
 )
 
 type Hook int
@@ -94,9 +101,11 @@ func New(
 	currentParticipantId string,
 	fileStore filestore.FileStore,
 	restrictionService restriction.Service,
+	spaceIndex spaceindex.Store,
 	objectStore objectstore.ObjectStore,
 	indexer Indexer,
 	eventSender event.Sender,
+	spaceIdResolver idresolver.Resolver,
 ) SmartBlock {
 	s := &smartBlock{
 		currentParticipantId: currentParticipantId,
@@ -108,9 +117,12 @@ func New(
 
 		fileStore:          fileStore,
 		restrictionService: restrictionService,
-		objectStore:        objectStore,
+		spaceIndex:         spaceIndex,
 		indexer:            indexer,
 		eventSender:        eventSender,
+		objectStore:        objectStore,
+		spaceIdResolver:    spaceIdResolver,
+		lastDepDetails:     map[string]*pb.EventObjectDetailsSet{},
 	}
 	return s
 }
@@ -212,7 +224,7 @@ type Locker interface {
 }
 
 type Indexer interface {
-	Index(ctx context.Context, info DocInfo, options ...IndexOption) error
+	Index(info DocInfo, options ...IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -243,9 +255,11 @@ type smartBlock struct {
 	// Deps
 	fileStore          filestore.FileStore
 	restrictionService restriction.Service
+	spaceIndex         spaceindex.Store
 	objectStore        objectstore.ObjectStore
 	indexer            Indexer
 	eventSender        event.Sender
+	spaceIdResolver    idresolver.Resolver
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -297,10 +311,6 @@ func (sb *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 	return
 }
 
-func (sb *smartBlock) ObjectStore() objectstore.ObjectStore {
-	return sb.objectStore
-}
-
 func (sb *smartBlock) Type() smartblock.SmartBlockType {
 	return sb.source.Type()
 }
@@ -321,7 +331,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	sb.undo = undo.NewHistory(0)
 	sb.restrictions = sb.restrictionService.GetRestrictions(sb)
-	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
 	if ctx.State != nil {
 		// need to store file keys in case we have some new files in the state
 		sb.storeFileKeys(ctx.State)
@@ -357,7 +366,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	ctx.State.AddBundledRelationLinks(relKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
-		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.objectStore).Migrate(ctx.State)
+		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex).Migrate(ctx.State)
 	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
@@ -449,19 +458,39 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
 	}
+
+	depIds := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true)
+	sb.setDependentIDs(depIds)
+
+	perSpace := sb.partitionIdsBySpace(sb.depIds)
+
 	recordsCh := make(chan *types.Struct, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
 
-	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true)
-	sb.setDependentIDs(depIDs)
-
 	var records []database.Record
-	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIDAndSubscribeForChanges(sb.depIds, sb.recordsSub)
-	if err != nil {
-		// datastore unavailable, cancel the subscription
-		sb.recordsSub.Close()
-		sb.closeRecordsSub = nil
-		return
+	closers := make([]func(), 0, len(perSpace))
+
+	for spaceId, perSpaceDepIds := range perSpace {
+		spaceIndex := sb.objectStore.SpaceIndex(spaceId)
+
+		recs, closeRecordsSub, err := spaceIndex.QueryByIdsAndSubscribeForChanges(perSpaceDepIds, sb.recordsSub)
+		if err != nil {
+			for _, closer := range closers {
+				closer()
+			}
+			// datastore unavailable, cancel the subscription
+			sb.recordsSub.Close()
+			sb.closeRecordsSub = nil
+			return nil, fmt.Errorf("subscribe: %w", err)
+		}
+
+		closers = append(closers, closeRecordsSub)
+		records = append(records, recs...)
+	}
+	sb.closeRecordsSub = func() {
+		for _, closer := range closers {
+			closer()
+		}
 	}
 
 	details = make([]*model.ObjectViewDetailsSet, 0, len(records)+1)
@@ -482,8 +511,36 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	return
 }
 
+func (sb *smartBlock) partitionIdsBySpace(ids []string) map[string][]string {
+	perSpace := map[string][]string{}
+	for _, id := range ids {
+		if _, parseErr := dateutil.ParseDateId(id); parseErr == nil {
+			perSpace[sb.space.Id()] = append(perSpace[sb.space.Id()], id)
+			continue
+		}
+
+		spaceId, err := sb.spaceIdResolver.ResolveSpaceID(id)
+		if errors.Is(err, sqlitestorage.ErrObjectNotFound) || errors.Is(err, badger.ErrKeyNotFound) {
+			perSpace[sb.space.Id()] = append(perSpace[sb.space.Id()], id)
+			continue
+		}
+
+		if err != nil {
+			perSpace[sb.space.Id()] = append(perSpace[sb.space.Id()], id)
+			log.With("id", id).Warn("resolve space id", zap.Error(err))
+			continue
+		}
+		perSpace[spaceId] = append(perSpace[spaceId], id)
+	}
+	return perSpace
+}
+
 func (sb *smartBlock) Lock() {
 	sb.Locker.Lock()
+}
+
+func (sb *smartBlock) TryLock() bool {
+	return sb.Locker.TryLock()
 }
 
 func (sb *smartBlock) Unlock() {
@@ -588,6 +645,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		skipIfNoChanges     = false
 		keepInternalFlags   = false
 		ignoreNoPermissions = false
+		notPushChanges      = false
 	)
 	for _, f := range flags {
 		switch f {
@@ -607,6 +665,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			keepInternalFlags = true
 		case IgnoreNoPermissions:
 			ignoreNoPermissions = true
+		case NotPushChanges:
+			notPushChanges = true
 		}
 	}
 
@@ -676,6 +736,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return nil
 	}
 	pushChange := func() error {
+		if notPushChanges {
+			return nil
+		}
 		if !sb.source.ReadOnly() {
 			// We can set details directly in object's state, they'll be indexed correctly
 			st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentParticipantId))
@@ -779,7 +842,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
-	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.objectStore).Migrate(s)
+	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex).Migrate(s)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
@@ -800,13 +863,20 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 		return true
 	}
 	newIDs := sb.recordsSub.Subscribe(sb.depIds)
-	records, err := sb.objectStore.QueryByID(newIDs)
-	if err != nil {
-		log.Errorf("queryById error: %v", err)
+
+	perSpace := sb.partitionIdsBySpace(newIDs)
+
+	for spaceId, ids := range perSpace {
+		spaceIndex := sb.objectStore.SpaceIndex(spaceId)
+		records, err := spaceIndex.QueryByIds(ids)
+		if err != nil {
+			log.Errorf("queryById error: %v", err)
+		}
+		for _, rec := range records {
+			sb.onMetaChange(rec.Details)
+		}
 	}
-	for _, rec := range records {
-		sb.onMetaChange(rec.Details)
-	}
+
 	return true
 }
 
@@ -854,7 +924,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	}
 	// todo: filter-out existing relation links?
 	// in the most cases it should save as an objectstore query
-	relations, err := sb.objectStore.FetchRelationByKeys(sb.SpaceID(), relationKeys...)
+	relations, err := sb.spaceIndex.FetchRelationByKeys(relationKeys...)
 	if err != nil {
 		return
 	}
@@ -894,7 +964,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 }
 
 func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
-	storedDetails, err := sb.objectStore.GetDetails(sb.Id())
+	storedDetails, err := sb.spaceIndex.GetDetails(sb.Id())
 	if err != nil || storedDetails == nil {
 		return nil, err
 	}
@@ -903,7 +973,7 @@ func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
 
 func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails *types.Struct, hasPendingLocalDetails bool) {
 	// Consume pending details
-	err := sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
+	err := sb.spaceIndex.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
 		if len(pending.GetFields()) > 0 {
 			hasPendingLocalDetails = true
 		}
@@ -1230,7 +1300,7 @@ func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	} else {
 		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.objectStore.FetchRelationByLinks(sb.SpaceID(), links)
+	rels, _ := sb.spaceIndex.FetchRelationByLinks(links)
 	return rels
 }
 
@@ -1288,7 +1358,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 
 func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	docInfo := sb.getDocInfo(s)
-	if err := sb.indexer.Index(context.Background(), docInfo, opts...); err != nil {
+	if err := sb.indexer.Index(docInfo, opts...); err != nil {
 		log.Errorf("index object %s error: %s", sb.Id(), err)
 	}
 }
@@ -1437,6 +1507,11 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		}
 	}
 
+	err := sb.deriveChatId(s)
+	if err != nil {
+		log.With("objectId", sb.Id()).Errorf("can't derive chat id: %v", err)
+	}
+
 	sb.setRestrictionsDetail(s)
 
 	snippet := s.Snippet()
@@ -1456,6 +1531,23 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	sb.injectLinksDetails(s)
 	sb.injectMentions(s)
 	sb.updateBackLinks(s)
+}
+
+func (sb *smartBlock) deriveChatId(s *state.State) error {
+	hasChat := pbtypes.GetBool(s.Details(), bundle.RelationKeyHasChat.String())
+	if hasChat {
+		chatUk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatDerivedObject, sb.Id())
+		if err != nil {
+			return err
+		}
+
+		chatId, err := sb.space.DeriveObjectID(context.Background(), chatUk)
+		if err != nil {
+			return err
+		}
+		s.SetDetailAndBundledRelation(bundle.RelationKeyChatId, pbtypes.String(chatId))
+	}
+	return nil
 }
 
 type InitFunc = func(id string) *InitContext
