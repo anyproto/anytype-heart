@@ -106,7 +106,7 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 	infos, err := f.fileService.IndexFile(ctx.Ctx, domain.FullFileId{
 		FileId:  domain.FileId(pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyFileId.String())),
 		SpaceId: f.SpaceID(),
-	}, ctx.State.Details())
+	}, ctx.State.Details(), ctx.State.GetFileInfo().EncryptionKeys)
 	if err != nil {
 		return fmt.Errorf("get infos for indexing: %w", err)
 	}

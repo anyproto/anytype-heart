@@ -237,7 +237,7 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 }
 
 func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
-	infos, err := ind.fileService.IndexFile(ctx, fileId, st.Details())
+	infos, err := ind.fileService.IndexFile(ctx, fileId, st.Details(), st.GetFileInfo().EncryptionKeys)
 	if err != nil {
 		return fmt.Errorf("get infos for indexing: %w", err)
 	}

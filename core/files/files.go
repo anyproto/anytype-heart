@@ -65,7 +65,7 @@ type Service interface {
 	ImageByHash(ctx context.Context, id domain.FullFileId) (Image, error)
 	ImageFromInfos(fileId domain.FullFileId, infos []*storage.FileInfo) Image
 
-	IndexFile(ctx context.Context, fileId domain.FullFileId, details *types.Struct) ([]*storage.FileInfo, error)
+	IndexFile(ctx context.Context, fileId domain.FullFileId, details *types.Struct, keys map[string]string) ([]*storage.FileInfo, error)
 
 	app.Component
 }
@@ -522,7 +522,7 @@ type dirEntry struct {
 	fileNode ipld.Node
 }
 
-func (s *service) fileIndexInfo(ctx context.Context, id domain.FullFileId, updateIfExists bool) ([]*storage.FileInfo, error) {
+func (s *service) fileIndexInfo(ctx context.Context, id domain.FullFileId, keys map[string]string) ([]*storage.FileInfo, error) {
 	dagService := s.dagServiceForSpace(id.SpaceId)
 	dirLinks, err := helpers.LinksAtCid(ctx, dagService, id.FileId.String())
 	if err != nil {
@@ -531,13 +531,6 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullFileId, updat
 	dirNode, dirLink, err := s.getInnerDirNode(ctx, dagService, dirLinks)
 	if err != nil {
 		return nil, fmt.Errorf("get inner dir node: %w", err)
-	}
-
-	// File keys should be available at this moment
-	keys, err := s.fileStore.GetFileKeys(id.FileId)
-	if err != nil {
-		// no keys means file is not encrypted or keys are missing
-		log.Debugf("failed to get file keys from filestore %s: %s", id.FileId.String(), err)
 	}
 
 	var files []*storage.FileInfo
@@ -611,11 +604,11 @@ func getEncryptorDecryptor(key symmetric.Key) (symmetric.EncryptorDecryptor, err
 	return cfb.New(key, [aes.BlockSize]byte{}), nil
 }
 
-func (s *service) IndexFile(ctx context.Context, id domain.FullFileId, details *types.Struct) ([]*storage.FileInfo, error) {
+func (s *service) IndexFile(ctx context.Context, id domain.FullFileId, details *types.Struct, keys map[string]string) ([]*storage.FileInfo, error) {
 	variantsList := pbtypes.GetStringList(details, bundle.RelationKeyFileVariantIds.String())
 	if true || len(variantsList) == 0 {
 		// info from ipfs
-		fileList, err := s.fileIndexInfo(ctx, id, false)
+		fileList, err := s.fileIndexInfo(ctx, id, keys)
 		if err != nil {
 			return nil, err
 		}
