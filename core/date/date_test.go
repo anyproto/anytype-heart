@@ -19,7 +19,6 @@ const spaceId = "space1"
 
 func TestBuildDetailsFromTimestamp(t *testing.T) {
 	spc := mock_clientspace.NewMockSpace(t)
-	spc.EXPECT().Id().Return(spaceId)
 	spc.EXPECT().GetTypeIdByKey(mock.Anything, bundle.TypeKeyDate).Return(bundle.TypeKeyDate.URL(), nil)
 	spcService := mock_space.NewMockService(t)
 	spcService.EXPECT().Get(mock.Anything, mock.Anything).Return(spc, nil)
