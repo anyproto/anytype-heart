@@ -272,7 +272,6 @@ func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string,
 }
 
 func (a *accountObject) SetAnalyticsId(id string) error {
-	fmt.Println("[x]: setting analytics id", id)
 	builder := &storestate.Builder{}
 	err := builder.Modify(collectionName, accountDocumentId, []string{analyticsKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, id))
 	if err != nil {
