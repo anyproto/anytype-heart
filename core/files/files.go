@@ -32,7 +32,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	m "github.com/anyproto/anytype-heart/pkg/lib/mill"
@@ -71,7 +70,6 @@ type Service interface {
 }
 
 type service struct {
-	fileStore   filestore.FileStore
 	commonFile  fileservice.FileService
 	fileSync    filesync.FileSync
 	dagService  ipld.DAGService
@@ -89,7 +87,6 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)

@@ -24,7 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -55,7 +54,6 @@ func newFixture(t *testing.T) *fixture {
 	a := new(app.App)
 	a.Register(objectstore.NewStoreFixture(t))
 	a.Register(dataStoreProvider)
-	a.Register(filestore.New())
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
 	a.Register(filestorage.NewInMemory())

@@ -32,7 +32,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -73,7 +72,6 @@ type service struct {
 	objectCreator   objectCreatorService
 	fileService     files.Service
 	fileSync        filesync.FileSync
-	fileStore       filestore.FileStore
 	fileOffloader   fileoffloader.Service
 	objectStore     objectstore.ObjectStore
 	spaceIdResolver idresolver.Resolver
@@ -115,7 +113,6 @@ func (s *service) Init(a *app.App) error {
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.objectArchiver = app.MustComponent[objectArchiver](a)

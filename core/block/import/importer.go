@@ -44,7 +44,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -65,7 +64,6 @@ type Import struct {
 	oc                  creator.Service
 	idProvider          objectid.IdAndKeyProvider
 	tempDirProvider     core.TempDirProvider
-	fileStore           filestore.FileStore
 	fileSync            filesync.FileSync
 	notificationService notifications.Notifications
 	eventSender         event.Sender
@@ -100,9 +98,8 @@ func (i *Import) Init(a *app.App) (err error) {
 		i.converters[c.Name()] = c
 	}
 	i.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	fileObjectService := app.MustComponent[fileobject.Service](a)
-	i.idProvider = objectid.NewIDProvider(i.objectStore, spaceService, i.s, i.fileStore, fileObjectService)
+	i.idProvider = objectid.NewIDProvider(i.objectStore, spaceService, i.s, fileObjectService)
 	factory := syncer.New(syncer.NewFileSyncer(i.s, fileObjectService), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, fileObjectService))
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileObjectService)
 	objectCreator := app.MustComponent[objectcreator.Service](a)

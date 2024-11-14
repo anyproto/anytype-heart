@@ -35,7 +35,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
@@ -82,7 +81,6 @@ func (a *dummyObjectArchiver) Init(_ *app.App) error { return nil }
 const testResolveRetryDelay = 5 * time.Millisecond
 
 func newFixture(t *testing.T) *fixture {
-	fileStore := filestore.New()
 	objectStore := objectstore.NewStoreFixture(t)
 	objectCreator := &objectCreatorStub{}
 	dataStoreProvider, err := datastore.NewInMemory()
@@ -110,7 +108,6 @@ func newFixture(t *testing.T) *fixture {
 	a := new(app.App)
 	a.Register(&dummyConfig{})
 	a.Register(dataStoreProvider)
-	a.Register(fileStore)
 	a.Register(objectStore)
 	a.Register(commonFileService)
 	a.Register(fileSyncService)

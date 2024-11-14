@@ -38,7 +38,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -99,7 +98,6 @@ var log = logging.Logger("anytype-mw-smartblock")
 func New(
 	space Space,
 	currentParticipantId string,
-	fileStore filestore.FileStore,
 	restrictionService restriction.Service,
 	spaceIndex spaceindex.Store,
 	objectStore objectstore.ObjectStore,
@@ -115,7 +113,6 @@ func New(
 		Locker:               &sync.Mutex{},
 		sessions:             map[string]session.Context{},
 
-		fileStore:          fileStore,
 		restrictionService: restrictionService,
 		spaceIndex:         spaceIndex,
 		indexer:            indexer,
@@ -253,7 +250,6 @@ type smartBlock struct {
 	space Space
 
 	// Deps
-	fileStore          filestore.FileStore
 	restrictionService restriction.Service
 	spaceIndex         spaceindex.Store
 	objectStore        objectstore.ObjectStore

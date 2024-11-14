@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -50,7 +49,6 @@ type Hasher interface {
 
 type indexer struct {
 	store          objectstore.ObjectStore
-	fileStore      filestore.FileStore
 	source         source.Service
 	picker         cache.ObjectGetter
 	ftsearch       ftsearch.FTSearch
@@ -75,7 +73,6 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
-	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.picker = app.MustComponent[cache.ObjectGetter](a)
 	i.runCtx, i.runCtxCancel = context.WithCancel(context.Background())

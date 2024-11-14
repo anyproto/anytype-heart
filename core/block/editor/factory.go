@@ -28,7 +28,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -57,7 +56,6 @@ type ObjectFactory struct {
 	objectStore         objectstore.ObjectStore
 	sourceService       source.Service
 	tempDirProvider     core.TempDirProvider
-	fileStore           filestore.FileStore
 	fileService         files.Service
 	config              *config.Config
 	picker              cache.ObjectGetter
@@ -84,7 +82,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.config = app.MustComponent[*config.Config](a)
 	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
-	f.fileStore = app.MustComponent[filestore.FileStore](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	f.fileService = app.MustComponent[files.Service](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
@@ -160,7 +157,6 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 	return smartblock.New(
 		space,
 		f.accountService.MyParticipantId(space.Id()),
-		f.fileStore,
 		f.restrictionService,
 		store,
 		f.objectStore,

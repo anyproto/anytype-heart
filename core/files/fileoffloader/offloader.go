@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -43,7 +42,6 @@ type Service interface {
 
 type service struct {
 	objectStore     objectstore.ObjectStore
-	fileStore       filestore.FileStore
 	dagService      ipld.DAGService
 	commonFile      fileservice.FileService
 	fileStorage     filestorage.FileStorage
@@ -56,7 +54,6 @@ func New() Service {
 
 func (s *service) Init(a *app.App) error {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)

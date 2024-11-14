@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -40,7 +39,6 @@ type fixture struct {
 	commonFileService fileservice.FileService
 	fileSyncService   filesync.FileSync
 	rpcStore          rpcstore.RpcStore
-	fileStore         filestore.FileStore
 }
 
 const (
@@ -50,7 +48,6 @@ const (
 )
 
 func newFixture(t *testing.T) *fixture {
-	fileStore := filestore.New()
 	dataStoreProvider, err := datastore.NewInMemory()
 	require.NoError(t, err)
 
@@ -71,7 +68,6 @@ func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
 	a := new(app.App)
 	a.Register(dataStoreProvider)
-	a.Register(fileStore)
 	a.Register(commonFileService)
 	a.Register(fileSyncService)
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
@@ -93,7 +89,6 @@ func newFixture(t *testing.T) *fixture {
 		commonFileService: commonFileService,
 		fileSyncService:   fileSyncService,
 		rpcStore:          rpcStore,
-		fileStore:         fileStore,
 	}
 }
 
