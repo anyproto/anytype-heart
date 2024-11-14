@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -257,8 +256,6 @@ func TestPb_GetSnapshots(t *testing.T) {
 		// then
 		assert.NotNil(t, ce)
 		assert.True(t, errors.Is(ce.GetResultError(model.Import_Pb), common.ErrFileImportNoObjectsInZipArchive))
-		e := ce.GetResultError(model.Import_Pb)
-		fmt.Println(e)
 	})
 }
 
