@@ -87,19 +87,9 @@ const CName = "filestore"
 
 type FileStore interface {
 	app.ComponentRunnable
-	localstore.Indexable
 
 	AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error
 	GetFileKeys(fileId domain.FileId) (map[string]string, error)
-
-	GetChunksCount(fileId domain.FileId) (int, error)
-	SetChunksCount(fileId domain.FileId, chunksCount int) error
-	IsFileImported(fileId domain.FileId) (bool, error)
-	SetIsFileImported(fileId domain.FileId, isImported bool) error
-	SetFileSize(fileId domain.FileId, size int) error
-	GetFileSize(fileId domain.FileId) (int, error)
-	GetFileOrigin(fileId domain.FileId) (objectorigin.ObjectOrigin, error)
-	SetFileOrigin(fileId domain.FileId, origin objectorigin.ObjectOrigin) error
 }
 
 func New() FileStore {

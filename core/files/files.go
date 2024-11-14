@@ -612,18 +612,6 @@ func (s *service) IndexFile(ctx context.Context, id domain.FullFileId, details *
 		if err != nil {
 			return nil, err
 		}
-		ok, err := s.fileStore.IsFileImported(id.FileId)
-		if err != nil {
-			return nil, fmt.Errorf("check if file is imported: %w", err)
-		}
-		if ok {
-			log.With("fileId", id.FileId.String()).Warn("file is imported, push it to uploading queue")
-			// If file is imported we have to sync it, so we don't set sync status to synced
-			err = s.fileStore.SetIsFileImported(id.FileId, false)
-			if err != nil {
-				return nil, fmt.Errorf("set is file imported: %w", err)
-			}
-		}
 		return fileList, nil
 	}
 	return nil, nil
