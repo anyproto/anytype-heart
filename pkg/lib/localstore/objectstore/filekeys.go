@@ -30,7 +30,7 @@ func (s *dsObjectStore) AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error
 		if err != nil {
 			return errors.Join(txn.Rollback(), fmt.Errorf("create item: %w", err))
 		}
-		err = s.system.UpsertOne(s.componentCtx, it)
+		err = s.system.UpsertOne(txn.Context(), it)
 		if err != nil {
 			return errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
 		}
@@ -45,6 +45,6 @@ func (s *dsObjectStore) GetFileKeys(fileId domain.FileId) (map[string]string, er
 	}
 	val := doc.Value().GetStringBytes("value")
 	keys := map[string]string{}
-	err = json.Unmarshal(val, keys)
+	err = json.Unmarshal(val, &keys)
 	return keys, err
 }

@@ -182,11 +182,10 @@ func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSp
 		return nil
 	})
 	if analyticsId == "" {
-		// TODO Temporarily commented
-		// err = s.spaceService.WaitPersonalSpaceMigration(ctx)
-		// if err != nil {
-		// 	return
-		// }
+		err = s.spaceService.WaitPersonalSpaceMigration(ctx)
+		if err != nil {
+			return
+		}
 	} else {
 		return analyticsId, nil
 	}
