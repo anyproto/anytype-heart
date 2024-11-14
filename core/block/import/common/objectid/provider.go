@@ -56,7 +56,7 @@ func NewIDProvider(
 	}
 	oldFile := &oldFile{
 		blockService:      blockService,
-		fileStore:         fileStore,
+		objectStore:       objectStore,
 		fileObjectService: fileObjectService,
 	}
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeWorkspace] = newWorkspace(spaceService)

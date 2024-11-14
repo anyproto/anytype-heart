@@ -370,15 +370,6 @@ func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, f
 		log.Infof("start store reindex (%s)", flags.String())
 	}
 
-	if flags.fileKeys {
-		err = i.fileStore.RemoveEmptyFileKeys()
-		if err != nil {
-			log.Errorf("reindex failed to RemoveEmptyFileKeys: %v", err)
-		} else {
-			log.Infof("RemoveEmptyFileKeys filekeys succeed")
-		}
-	}
-
 	if flags.eraseLinks {
 		store := i.store.SpaceIndex(spaceId)
 		ids, err := store.ListIds()

@@ -176,10 +176,6 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 		}
 		if size > 0 {
 			filesOffloaded++
-			err = s.fileStore.DeleteFile(domain.FileId(fileId))
-			if err != nil {
-				return 0, 0, fmt.Errorf("failed to delete file from store: %w", err)
-			}
 		}
 		totalSize += size
 	}
@@ -192,12 +188,17 @@ func (s *service) offloadFileSafe(ctx context.Context,
 	record database.Record,
 	includeNotPinned bool,
 ) (uint64, error) {
-	existingObjects, err := s.objectStore.SpaceIndex(spaceId).Query(database.Query{
+	existingObjects, err := s.objectStore.QueryCrossSpace(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(fileId),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String(spaceId),
 			},
 		},
 	})
@@ -205,7 +206,7 @@ func (s *service) offloadFileSafe(ctx context.Context,
 		return 0, err
 	}
 	if len(existingObjects) > 0 {
-		return s.fileOffload(ctx, record.Details, false)
+		return 0, nil
 	}
 	return s.fileOffload(ctx, record.Details, includeNotPinned)
 }

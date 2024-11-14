@@ -13,20 +13,27 @@ message FileKeys {
     map<string,string> keysByPath = 1;
 }
 
+// To details: {hash, encKey, width}
+// fileVariants: [hash1, hash2]
+// fileKeys: [key1, key2]
+// fileWidths: [width1, width2]
+// fileSource: checksum
+// fileVariantChecksums: [sum1, sum2]
 message FileInfo {
+    string path = 16; // for retrieving key
     string mill = 1;
     string checksum = 2;
     string source = 3;
-    string opts = 4;
-    string hash = 5;
-    string key = 6;
+    string opts = 4; // useless?
+    string hash = 5; // fileHashes []
+    string key = 6; // fileKeys []
     string media = 7;
     string name = 8;
-    int64 size = 9;
+    int64 size = 9; // useless for variants, used only with original file
     int64 added = 10;
-    google.protobuf.Struct meta = 11;
-    repeated string targets = 12;
-    EncryptionMode encMode = 13;
+    google.protobuf.Struct meta = 11; // goes straight to details, but width is used in searching for resize variant
+    repeated string targets = 12; // useless
+    EncryptionMode encMode = 13; // useless
     string metaHash = 14;
     int64 lastModifiedDate = 15;
 

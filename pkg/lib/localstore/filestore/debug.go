@@ -2,7 +2,6 @@ package filestore
 
 import (
 	"net/http"
-	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gogo/protobuf/proto"
@@ -39,7 +38,7 @@ func sanitizeFileInfos(infos []*storage.FileInfo, err error) ([]*storage.FileInf
 
 func sanitizeFileInfoForDebug(info *storage.FileInfo) *storage.FileInfo {
 	out := proto.Clone(info).(*storage.FileInfo)
-	out.Key = "<ENCRYPTION KEY>"
-	out.Name = "<SENSITIVE DATA>" + filepath.Ext(out.Name)
+	// out.Key = "<ENCRYPTION KEY>"
+	// out.Name = "<SENSITIVE DATA>" + filepath.Ext(out.Name)
 	return out
 }

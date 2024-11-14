@@ -312,7 +312,8 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		s.InitEmptyFileState(createState)
 		fullFileId := domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}
 		fullObjectId := domain.FullID{SpaceID: space.Id(), ObjectID: payload.RootRawChange.Id}
-		err := s.indexer.injectMetadataToState(ctx, createState, fullFileId, fullObjectId)
+
+		err = s.indexer.injectMetadataToState(ctx, createState, fullFileId, fullObjectId)
 		if err != nil {
 			return "", nil, fmt.Errorf("inject metadata to state: %w", err)
 		}
@@ -389,7 +390,7 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 	if err == nil {
 		return fileObjectId, nil
 	}
-	keys, err := s.fileStore.GetFileKeys(fileId.FileId)
+	keys, err := s.objectStore.GetFileKeys(fileId.FileId)
 	if err != nil {
 		return "", fmt.Errorf("get file keys: %w", err)
 	}
@@ -527,9 +528,6 @@ func (s *service) DeleteFileData(spaceId string, objectId string) error {
 		return fmt.Errorf("list objects that use file id: %w", err)
 	}
 	if len(records) == 0 {
-		if err := s.fileStore.DeleteFile(fullId.FileId); err != nil {
-			return err
-		}
 		if err := s.fileSync.DeleteFile(objectId, fullId); err != nil {
 			return fmt.Errorf("failed to remove file from sync: %w", err)
 		}

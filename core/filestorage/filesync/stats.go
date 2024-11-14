@@ -7,16 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/ipfs/go-cid"
-	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/samber/lo"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/util/conc"
 )
 
 type NodeUsage struct {
@@ -259,86 +253,6 @@ func makeLimitUpdatedEvent(limit uint64) *pb.Event {
 			},
 		},
 	}
-}
-
-func (s *fileSync) FileListStats(ctx context.Context, spaceID string, hashes []domain.FileId) ([]FileStat, error) {
-	filesInfo, err := s.fetchFilesInfo(ctx, spaceID, hashes)
-	if err != nil {
-		return nil, err
-	}
-	return conc.MapErr(filesInfo, func(fileInfo *fileproto.FileInfo) (FileStat, error) {
-		return s.fileInfoToStat(ctx, spaceID, fileInfo)
-	})
-}
-
-func (s *fileSync) fetchFilesInfo(ctx context.Context, spaceId string, hashes []domain.FileId) ([]*fileproto.FileInfo, error) {
-	requests := lo.Chunk(hashes, 50)
-	responses, err := conc.MapErr(requests, func(chunk []domain.FileId) ([]*fileproto.FileInfo, error) {
-		return s.rpcStore.FilesInfo(ctx, spaceId, chunk...)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return lo.Flatten(responses), nil
-}
-
-func (s *fileSync) fileInfoToStat(ctx context.Context, spaceId string, file *fileproto.FileInfo) (FileStat, error) {
-	totalChunks, err := s.countChunks(ctx, spaceId, domain.FileId(file.FileId))
-	if err != nil {
-		return FileStat{}, fmt.Errorf("count chunks: %w", err)
-	}
-
-	return FileStat{
-		SpaceId:             spaceId,
-		FileId:              file.FileId,
-		TotalChunksCount:    totalChunks,
-		UploadedChunksCount: int(file.CidsCount),
-		BytesUsage:          int(file.UsageBytes),
-	}, nil
-}
-
-func (s *fileSync) countChunks(ctx context.Context, spaceID string, fileId domain.FileId) (int, error) {
-	chunksCount, err := s.fileStore.GetChunksCount(fileId)
-	if err == nil {
-		return chunksCount, nil
-	}
-
-	chunksCount, err = s.fetchChunksCount(ctx, spaceID, fileId)
-	if err != nil {
-		return -1, fmt.Errorf("count chunks in IPFS: %w", err)
-	}
-
-	err = s.fileStore.SetChunksCount(fileId, chunksCount)
-
-	return chunksCount, err
-}
-
-func (s *fileSync) fetchChunksCount(ctx context.Context, spaceID string, fileId domain.FileId) (int, error) {
-	fileCid, err := cid.Parse(fileId.String())
-	if err != nil {
-		return -1, err
-	}
-	dagService := s.dagServiceForSpace(spaceID)
-	node, err := dagService.Get(ctx, fileCid)
-	if err != nil {
-		return -1, err
-	}
-
-	var count int
-	visited := map[string]struct{}{}
-	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, dagService))
-	err = walker.Iterate(func(node ipld.NavigableNode) error {
-		id := node.GetIPLDNode().Cid().String()
-		if _, ok := visited[id]; !ok {
-			visited[id] = struct{}{}
-			count++
-		}
-		return nil
-	})
-	if err == ipld.EndOfDag {
-		err = nil
-	}
-	return count, err
 }
 
 func (s *fileSync) DebugQueue(_ *http.Request) (*QueueInfo, error) {

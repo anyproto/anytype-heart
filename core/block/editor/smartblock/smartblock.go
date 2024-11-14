@@ -1272,7 +1272,7 @@ func (sb *smartBlock) storeFileKeys(doc state.Doc) {
 			EncryptionKeys: k.Keys,
 		}
 	}
-	if err := sb.fileStore.AddFileKeys(fileKeys...); err != nil {
+	if err := sb.objectStore.AddFileKeys(fileKeys...); err != nil {
 		log.Warnf("can't store file keys: %v", err)
 	}
 }
@@ -1468,7 +1468,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	if info := s.GetFileInfo(); info.FileId != "" {
-		err := sb.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+		err := sb.objectStore.AddFileKeys(domain.FileEncryptionKeys{
 			FileId:         info.FileId,
 			EncryptionKeys: info.EncryptionKeys,
 		})

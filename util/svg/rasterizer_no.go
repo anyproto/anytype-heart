@@ -16,6 +16,7 @@ func ProcessSvg(ctx context.Context, file files.File) (io.ReadSeeker, error) {
 	if err != nil {
 		return nil, err
 	}
-	file.Info().Media = svgMedia
+	// TODO Why?
+	// file.Info().Media = svgMedia
 	return reader, nil
 }

@@ -378,7 +378,7 @@ func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req 
 		if err != nil {
 			return nil, fmt.Errorf("get image file: %w", err)
 		}
-		if filepath.Ext(file.Info().Name) == constant.SvgExt {
+		if filepath.Ext(file.Name()) == constant.SvgExt {
 			return g.handleSVGFile(ctx, file)
 		}
 	} else {
@@ -390,7 +390,7 @@ func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req 
 		if err != nil {
 			return nil, fmt.Errorf("get image file: %w", err)
 		}
-		if filepath.Ext(file.Info().Name) == constant.SvgExt {
+		if filepath.Ext(file.Name()) == constant.SvgExt {
 			return g.handleSVGFile(ctx, file)
 		}
 	}

@@ -11,11 +11,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // required relations for files beside the bundle.RequiredInternalRelations
@@ -34,6 +37,7 @@ func (f *ObjectFactory) newFile(spaceId string, sb smartblock.SmartBlock) *File 
 		Text:              stext.NewText(sb, store, f.eventSender),
 		fileObjectService: f.fileObjectService,
 		reconciler:        f.fileReconciler,
+		fileService:       f.fileService,
 	}
 }
 
@@ -44,6 +48,7 @@ type File struct {
 	stext.Text
 	fileObjectService fileobject.Service
 	reconciler        reconciler.Reconciler
+	fileService       files.Service
 }
 
 func (f *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
@@ -84,10 +89,11 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 		return err
 	}
 
-	f.SmartBlock.AddHook(f.reconciler.FileObjectHook(domain.FullID{SpaceID: f.SpaceID(), ObjectID: f.Id()}), smartblock.HookBeforeApply)
+	fullId := domain.FullID{SpaceID: f.SpaceID(), ObjectID: f.Id()}
+
+	f.SmartBlock.AddHook(f.reconciler.FileObjectHook(fullId), smartblock.HookBeforeApply)
 
 	if !ctx.IsNewObject {
-		fullId := domain.FullID{ObjectID: f.Id(), SpaceID: f.SpaceID()}
 		err = f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, ctx.State.Details())
 		if err != nil {
 			log.Errorf("failed to ensure file added to sync queue: %v", err)
@@ -96,5 +102,17 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 			return f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, applyInfo.State.Details())
 		}, smartblock.HookOnStateRebuild)
 	}
+
+	infos, err := f.fileService.IndexFile(ctx.Ctx, domain.FullFileId{
+		FileId:  domain.FileId(pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyFileId.String())),
+		SpaceId: f.SpaceID(),
+	}, ctx.State.Details(), ctx.State.GetFileInfo().EncryptionKeys)
+	if err != nil {
+		return fmt.Errorf("get infos for indexing: %w", err)
+	}
+	if len(infos) > 0 {
+		filemodels.FileInfosToDetails(infos, ctx.State)
+	}
+
 	return nil
 }

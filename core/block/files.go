@@ -67,7 +67,7 @@ func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadReque
 	countReader = datacounter.NewReaderCounter(r)
 	fileName := f.Meta().Name
 	if fileName == "" {
-		fileName = f.Info().Name
+		fileName = f.Name()
 	}
 
 	path, err := files.WriteReaderIntoFileReuseSameExistingFile(req.Path+string(os.PathSeparator)+fileName, countReader)

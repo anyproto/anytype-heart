@@ -34,7 +34,24 @@ type image struct {
 	fileId             domain.FileId
 	spaceID            string
 	onlyResizeVariants []*storage.FileInfo
+	exifVariant        *storage.FileInfo
 	service            *service
+}
+
+func newImage(service *service, id domain.FullFileId, variants []*storage.FileInfo) Image {
+	var exifVariant *storage.FileInfo
+	for _, variant := range variants {
+		if variant.Mill == mill.ImageExifId {
+			exifVariant = variant
+		}
+	}
+	return &image{
+		service:            service,
+		fileId:             id.FileId,
+		spaceID:            id.SpaceId,
+		onlyResizeVariants: selectAndSortResizeVariants(variants),
+		exifVariant:        exifVariant,
+	}
 }
 
 func selectAndSortResizeVariants(variants []*storage.FileInfo) []*storage.FileInfo {
@@ -52,46 +69,25 @@ func selectAndSortResizeVariants(variants []*storage.FileInfo) []*storage.FileIn
 	return onlyResizeVariants
 }
 
-func (i *image) listResizeVariants() ([]*storage.FileInfo, error) {
-	if i.onlyResizeVariants != nil {
-		return i.onlyResizeVariants, nil
-	}
-	variants, err := i.service.fileStore.ListFileVariants(i.fileId)
-	if err != nil {
-		return nil, fmt.Errorf("get variants: %w", err)
-	}
-	i.onlyResizeVariants = selectAndSortResizeVariants(variants)
-	return i.onlyResizeVariants, nil
-}
-
 func (i *image) getLargestVariant() (*storage.FileInfo, error) {
-	onlyResizeVariants, err := i.listResizeVariants()
-	if err != nil {
-		return nil, fmt.Errorf("list resize variants: %w", err)
-	}
-	if len(onlyResizeVariants) == 0 {
+	if len(i.onlyResizeVariants) == 0 {
 		return nil, errors.New("no resize variants")
 	}
-	return onlyResizeVariants[len(onlyResizeVariants)-1], nil
+	return i.onlyResizeVariants[len(i.onlyResizeVariants)-1], nil
 }
 
 func (i *image) getVariantForWidth(wantWidth int) (*storage.FileInfo, error) {
-	onlyResizeVariants, err := i.listResizeVariants()
-	if err != nil {
-		return nil, fmt.Errorf("list resize variants: %w", err)
-	}
-
-	if len(onlyResizeVariants) == 0 {
+	if len(i.onlyResizeVariants) == 0 {
 		return nil, errors.New("no resize variants")
 	}
 
-	for _, variant := range onlyResizeVariants {
+	for _, variant := range i.onlyResizeVariants {
 		if getVariantWidth(variant) >= wantWidth {
 			return variant, nil
 		}
 	}
 	// return largest if no more suitable variant found
-	return onlyResizeVariants[len(onlyResizeVariants)-1], nil
+	return i.onlyResizeVariants[len(i.onlyResizeVariants)-1], nil
 }
 
 func getVariantWidth(variantInfo *storage.FileInfo) int {
@@ -130,24 +126,14 @@ func (i *image) FileId() domain.FileId {
 }
 
 func (i *image) getExif(ctx context.Context) (*mill.ImageExifSchema, error) {
-	variants, err := i.service.fileStore.ListFileVariants(i.fileId)
-	if err != nil {
-		return nil, fmt.Errorf("get variants: %w", err)
-	}
-	var variant *storage.FileInfo
-	for _, v := range variants {
-		if v.Mill == mill.ImageExifId {
-			variant = v
-		}
-	}
-	if variant == nil {
+	if i.exifVariant == nil {
 		return nil, fmt.Errorf("exif variant not found")
 	}
 
 	f := &file{
 		spaceID: i.spaceID,
 		fileId:  i.fileId,
-		info:    variant,
+		info:    i.exifVariant,
 		node:    i.service,
 	}
 	r, err := f.Reader(ctx)
