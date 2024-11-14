@@ -53,7 +53,6 @@ func newFixture(t *testing.T, isNewAccount bool, prepareDb func(db anystore.DB))
 	sb := smarttest.New("accountId1")
 	indexStore := objectstore.NewStoreFixture(t).SpaceIndex("spaceId")
 	object := New(sb, indexStore, nil, nil, nil, db, cfg)
-
 	fx := &fixture{
 		storeFx:       objectstore.NewStoreFixture(t),
 		db:            db,
@@ -153,8 +152,7 @@ func TestAccountNew(t *testing.T) {
 func TestAccountOldInitWithData(t *testing.T) {
 	fx := newFixture(t, false, func(db anystore.DB) {
 		tx, err := db.WriteTx(ctx)
-		collName := "accountId1" + collectionName
-		coll, err := db.CreateCollection(tx.Context(), collName)
+		coll, err := db.CreateCollection(tx.Context(), "accountId1"+collectionName)
 		require.NoError(t, err)
 		err = coll.Insert(tx.Context(), anyenc.MustParseJson(fmt.Sprintf(`{"id":"%s","analyticsId":"%s","%s":"true","name":"Anna","description":"Molly"}`, accountDocumentId, "analyticsId", iconMigrationKey)))
 		require.NoError(t, err)
