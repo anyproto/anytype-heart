@@ -1,4 +1,4 @@
-package files
+package fileobject
 
 import (
 	"context"
@@ -39,7 +39,7 @@ type image struct {
 	commonFile         fileservice.FileService
 }
 
-func newImage(service *service, id domain.FullFileId, variants []*storage.FileInfo) Image {
+func NewImage(commonFile fileservice.FileService, id domain.FullFileId, variants []*storage.FileInfo) Image {
 	var exifVariant *storage.FileInfo
 	for _, variant := range variants {
 		if variant.Mill == mill.ImageExifId {
@@ -51,7 +51,7 @@ func newImage(service *service, id domain.FullFileId, variants []*storage.FileIn
 		spaceID:            id.SpaceId,
 		onlyResizeVariants: selectAndSortResizeVariants(variants),
 		exifVariant:        exifVariant,
-		commonFile:         service.commonFile,
+		commonFile:         commonFile,
 	}
 }
 

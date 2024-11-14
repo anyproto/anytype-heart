@@ -1,7 +1,8 @@
-package files
+package fileobject
 
 import (
 	"context"
+	"crypto/aes"
 	"io"
 	"path/filepath"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
+	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/constant"
@@ -203,4 +205,8 @@ func calculateCommonDetails(
 		bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(layout)),
 		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(lastModifiedDate),
 	}
+}
+
+func getEncryptorDecryptor(key symmetric.Key) (symmetric.EncryptorDecryptor, error) {
+	return cfb.New(key, [aes.BlockSize]byte{}), nil
 }

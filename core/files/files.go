@@ -30,13 +30,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/cfb"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	m "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -56,8 +54,6 @@ type Service interface {
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
 
-	FileFromInfos(fileId domain.FullFileId, infos []*storage.FileInfo) File
-	ImageFromInfos(fileId domain.FullFileId, infos []*storage.FileInfo) Image
 	IndexFile(ctx context.Context, fileId domain.FullFileId, details *types.Struct, keys map[string]string) ([]*storage.FileInfo, error)
 
 	app.Component
@@ -293,6 +289,10 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 	file.MetaHash = id.String()
 	file.Targets = []string{fileId.String()}
 	return &file, nil
+}
+
+func getEncryptorDecryptor(key symmetric.Key) (symmetric.EncryptorDecryptor, error) {
+	return cfb.New(key, [aes.BlockSize]byte{}), nil
 }
 
 type addFileNodeResult struct {
@@ -565,10 +565,6 @@ func checksum(r io.Reader, wontEncrypt bool) (string, error) {
 	return base32.RawHexEncoding.EncodeToString(checksum[:]), nil
 }
 
-func getEncryptorDecryptor(key symmetric.Key) (symmetric.EncryptorDecryptor, error) {
-	return cfb.New(key, [aes.BlockSize]byte{}), nil
-}
-
 func (s *service) IndexFile(ctx context.Context, id domain.FullFileId, details *types.Struct, keys map[string]string) ([]*storage.FileInfo, error) {
 	variantsList := pbtypes.GetStringList(details, bundle.RelationKeyFileVariantIds.String())
 	if true || len(variantsList) == 0 {
@@ -580,85 +576,6 @@ func (s *service) IndexFile(ctx context.Context, id domain.FullFileId, details *
 		return fileList, nil
 	}
 	return nil, nil
-}
-
-// TODO SHould be accesed via OBJECT
-func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, error) {
-	recs, err := s.objectStore.SpaceIndex(id.SpaceId).Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyFileId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(id.FileId.String()),
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("query details: %w", err)
-	}
-
-	if len(recs) == 0 {
-		return nil, fmt.Errorf("noooooo")
-	}
-	fileRec := recs[0]
-
-	return s.fileFromDetails(fileRec.Details)
-}
-
-func (s *service) fileFromDetails(details *types.Struct) (File, error) {
-	variantsList := pbtypes.GetStringList(details, bundle.RelationKeyFileVariantIds.String())
-	if len(variantsList) == 0 {
-		return nil, fmt.Errorf("not indexed")
-	}
-
-	infos := getFileInfosFromDetails(details)
-	return &file{
-		spaceID:    pbtypes.GetString(details, bundle.RelationKeySpaceId.String()),
-		fileId:     domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
-		info:       infos[0],
-		commonFile: s.commonFile,
-	}, nil
-}
-
-func (s *service) FileFromInfos(id domain.FullFileId, infos []*storage.FileInfo) File {
-	return &file{
-		spaceID:    id.SpaceId,
-		fileId:     id.FileId,
-		info:       infos[0],
-		commonFile: s.commonFile,
-	}
-}
-
-func getFileInfosFromDetails(details *types.Struct) []*storage.FileInfo {
-	variantsList := pbtypes.GetStringList(details, bundle.RelationKeyFileVariantIds.String())
-	sourceChecksum := pbtypes.GetString(details, bundle.RelationKeyFileSourceChecksum.String())
-	infos := make([]*storage.FileInfo, 0, len(variantsList))
-	for i, variantId := range variantsList {
-		var meta *types.Struct
-		widths := pbtypes.GetIntList(details, bundle.RelationKeyFileVariantWidths.String())
-		if widths[i] > 0 {
-			meta = &types.Struct{
-				Fields: map[string]*types.Value{
-					"width": pbtypes.Int64(int64(widths[i])),
-				},
-			}
-		}
-		info := &storage.FileInfo{
-			Name:   pbtypes.GetString(details, bundle.RelationKeyName.String()),
-			Size_:  pbtypes.GetInt64(details, bundle.RelationKeySizeInBytes.String()),
-			Source: sourceChecksum,
-			Media:  pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()),
-
-			Hash:     variantId,
-			Checksum: pbtypes.GetStringList(details, bundle.RelationKeyFileVariantChecksums.String())[i],
-			Mill:     pbtypes.GetStringList(details, bundle.RelationKeyFileVariantMills.String())[i],
-			Meta:     meta,
-			Key:      pbtypes.GetStringList(details, bundle.RelationKeyFileVariantKeys.String())[i],
-			Opts:     pbtypes.GetStringList(details, bundle.RelationKeyFileVariantOptions.String())[i],
-		}
-		infos = append(infos, info)
-	}
-	return infos
 }
 
 func encryptionKeyPath(linkName string) string {

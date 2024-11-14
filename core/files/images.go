@@ -5,59 +5,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image, error) {
-	recs, err := s.objectStore.SpaceIndex(id.SpaceId).Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyFileId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(id.FileId.String()),
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("query details: %w", err)
-	}
-
-	if len(recs) == 0 {
-		return nil, fmt.Errorf("noooooo")
-	}
-	fileRec := recs[0]
-
-	return s.imageFromDetails(fileRec.Details)
-}
-
-func (s *service) imageFromDetails(details *types.Struct) (Image, error) {
-	variantsList := pbtypes.GetStringList(details, bundle.RelationKeyFileVariantIds.String())
-	if len(variantsList) == 0 {
-		return nil, fmt.Errorf("not indexed")
-	}
-
-	infos := getFileInfosFromDetails(details)
-	id := domain.FullFileId{
-		SpaceId: pbtypes.GetString(details, bundle.RelationKeySpaceId.String()),
-		FileId:  domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
-	}
-	return newImage(s, id, infos), nil
-}
-
-func (s *service) ImageFromInfos(fileId domain.FullFileId, infos []*storage.FileInfo) Image {
-	return newImage(s, fileId, infos)
-}
 
 func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOption) (*AddResult, error) {
 	opts := AddOptions{}

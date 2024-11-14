@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -39,7 +40,7 @@ func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum str
 		return "", nil, fmt.Errorf("variant not found")
 	}
 
-	infos := getFileInfosFromDetails(recs[0].Details)
+	infos := filemodels.GetFileInfosFromDetails(recs[0].Details)
 	return domain.FileId(pbtypes.GetString(recs[0].Details, bundle.RelationKeyFileId.String())), infos, nil
 }
 
@@ -66,7 +67,7 @@ func (s *service) getFileVariantByChecksum(mill string, variantChecksum string) 
 		return "", nil, nil, fmt.Errorf("variant not found")
 	}
 
-	infos := getFileInfosFromDetails(recs[0].Details)
+	infos := filemodels.GetFileInfosFromDetails(recs[0].Details)
 	for _, info := range infos {
 		if info.Mill == mill && info.Checksum == variantChecksum {
 			return domain.FileId(pbtypes.GetString(recs[0].Details, bundle.RelationKeyFileId.String())), info, infos, nil

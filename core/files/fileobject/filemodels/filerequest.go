@@ -60,3 +60,35 @@ func FileInfosToDetails(infos []*storage.FileInfo, st *state.State) error {
 	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantOptions, pbtypes.StringList(options))
 	return nil
 }
+
+func GetFileInfosFromDetails(details *types.Struct) []*storage.FileInfo {
+	variantsList := pbtypes.GetStringList(details, bundle.RelationKeyFileVariantIds.String())
+	sourceChecksum := pbtypes.GetString(details, bundle.RelationKeyFileSourceChecksum.String())
+	infos := make([]*storage.FileInfo, 0, len(variantsList))
+	for i, variantId := range variantsList {
+		var meta *types.Struct
+		widths := pbtypes.GetIntList(details, bundle.RelationKeyFileVariantWidths.String())
+		if widths[i] > 0 {
+			meta = &types.Struct{
+				Fields: map[string]*types.Value{
+					"width": pbtypes.Int64(int64(widths[i])),
+				},
+			}
+		}
+		info := &storage.FileInfo{
+			Name:   pbtypes.GetString(details, bundle.RelationKeyName.String()),
+			Size_:  pbtypes.GetInt64(details, bundle.RelationKeySizeInBytes.String()),
+			Source: sourceChecksum,
+			Media:  pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()),
+
+			Hash:     variantId,
+			Checksum: pbtypes.GetStringList(details, bundle.RelationKeyFileVariantChecksums.String())[i],
+			Mill:     pbtypes.GetStringList(details, bundle.RelationKeyFileVariantMills.String())[i],
+			Meta:     meta,
+			Key:      pbtypes.GetStringList(details, bundle.RelationKeyFileVariantKeys.String())[i],
+			Opts:     pbtypes.GetStringList(details, bundle.RelationKeyFileVariantOptions.String())[i],
+		}
+		infos = append(infos, info)
+	}
+	return infos
+}

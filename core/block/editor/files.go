@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
+	fileobject2 "github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
@@ -33,6 +34,7 @@ func (f *ObjectFactory) newFile(spaceId string, sb smartblock.SmartBlock) *File 
 	return &File{
 		SmartBlock:        sb,
 		ChangeReceiver:    sb.(source.ChangeReceiver),
+		FileObject:        fileobject2.NewFileObject(sb, f.commonFile),
 		AllOperations:     basicComponent,
 		Text:              stext.NewText(sb, store, f.eventSender),
 		fileObjectService: f.fileObjectService,
@@ -43,6 +45,7 @@ func (f *ObjectFactory) newFile(spaceId string, sb smartblock.SmartBlock) *File 
 
 type File struct {
 	smartblock.SmartBlock
+	fileobject2.FileObject
 	source.ChangeReceiver
 	basic.AllOperations
 	stext.Text

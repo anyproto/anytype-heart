@@ -8,11 +8,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/gogo/protobuf/types"
 	format "github.com/ipfs/go-ipld-format"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -36,6 +38,7 @@ type indexer struct {
 	fileService  files.Service
 	spaceService space.Service
 	objectStore  objectstore.ObjectStore
+	commonFile   fileservice.FileService
 
 	query        database.Query
 	indexCtx     context.Context
@@ -52,6 +55,7 @@ func (s *service) newIndexer() *indexer {
 		fileService:  s.fileService,
 		spaceService: s.spaceService,
 		objectStore:  s.objectStore,
+		commonFile:   s.commonFile,
 
 		indexQueue: mb.New[indexRequest](0),
 		isQueued:   make(map[domain.FullID]struct{}),
@@ -270,7 +274,7 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 }
 
 func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId, infos []*storage.FileInfo) (details *types.Struct, typeKey domain.TypeKey, err error) {
-	file := ind.fileService.FileFromInfos(id, infos)
+	file := fileobject.NewFile(ind.commonFile, id, infos)
 
 	if file.Mill() == mill.BlobId {
 		details, typeKey, err = file.Details(ctx)
@@ -278,7 +282,7 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId, info
 			return nil, "", err
 		}
 	} else {
-		image := ind.fileService.ImageFromInfos(id, infos)
+		image := fileobject.NewImage(ind.commonFile, id, infos)
 		details, err = image.Details(ctx)
 		if err != nil {
 			return nil, "", err

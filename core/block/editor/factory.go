@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -72,6 +73,7 @@ type ObjectFactory struct {
 	deviceService       deviceService
 	lastUsedUpdater     lastused.ObjectUsageUpdater
 	spaceIdResolver     idresolver.Resolver
+	commonFile          fileservice.FileService
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -104,6 +106,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.deviceService = app.MustComponent[deviceService](a)
 	f.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
 	f.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	f.commonFile = app.MustComponent[fileservice.FileService](a)
 	return nil
 }
 
