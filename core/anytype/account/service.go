@@ -2,8 +2,10 @@ package account
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -182,18 +184,29 @@ func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSp
 		return nil
 	})
 	if analyticsId == "" {
-		err = s.spaceService.WaitPersonalSpaceMigration(ctx)
-		if err != nil {
-			return
+		for {
+			// waiting for personal space
+			ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+			err = s.spaceService.WaitPersonalSpaceMigration(ctx)
+			cancel()
+			if err != nil && !errors.Is(err, ctx.Err()) {
+				return
+			}
+			// there is also this case that account object could be unsynced on start
+			// because we can't distinguish between accounts without account object (i.e. old accounts)
+			// and new ones which have the account object
+			// so it may be the case that it will sync but a little bit later
+			err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
+				analyticsId, err = accountObject.GetAnalyticsId()
+				return nil
+			})
+			if analyticsId != "" {
+				return analyticsId, nil
+			}
 		}
 	} else {
 		return analyticsId, nil
 	}
-	err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
-		analyticsId, err = accountObject.GetAnalyticsId()
-		return err
-	})
-	return
 }
 
 func (s *service) getNetworkId() string {

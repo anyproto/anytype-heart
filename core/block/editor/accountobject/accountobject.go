@@ -149,15 +149,20 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	}
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		var builder *storestate.Builder
-		builder, err = a.genInitialDoc(a.cfg.IsNewAccount())
-		if err != nil {
-			return fmt.Errorf("generate initial doc: %w", err)
+		if a.cfg.IsNewAccount() {
+			builder, err = a.genInitialDoc()
+			if err != nil {
+				return fmt.Errorf("generate initial doc: %w", err)
+			}
+			_, err = a.storeSource.PushStoreChange(ctx.Ctx, source.PushStoreChangeParams{
+				Changes: builder.ChangeSet,
+				State:   a.state,
+				Time:    time.Now(),
+			})
+		} else {
+			docToInsert := fmt.Sprintf(`{"%s":"%s"}`, idKey, accountDocumentId)
+			err = coll.Insert(ctx.Ctx, anyenc.MustParseJson(docToInsert))
 		}
-		_, err = a.storeSource.PushStoreChange(ctx.Ctx, source.PushStoreChangeParams{
-			Changes: builder.ChangeSet,
-			State:   a.state,
-			Time:    time.Now(),
-		})
 		if err != nil {
 			return fmt.Errorf("insert account document: %w", err)
 		}
@@ -184,24 +189,17 @@ func (a *accountObject) GetPrivateAnalyticsId() string {
 	return string(val.GetStringBytes(privateAnalyticsIdKey))
 }
 
-func (a *accountObject) genInitialDoc(isNewAccount bool) (builder *storestate.Builder, err error) {
+func (a *accountObject) genInitialDoc() (builder *storestate.Builder, err error) {
 	builder = &storestate.Builder{}
 	privateAnalytics, err := generatePrivateAnalyticsId()
 	if err != nil {
 		err = fmt.Errorf("generate private analytics id: %w", err)
 	}
-	var newDocument map[string]any
-	if isNewAccount {
-		newDocument = map[string]any{
-			idKey:                 accountDocumentId,
-			analyticsKey:          a.cfg.AnalyticsId,
-			iconMigrationKey:      "true",
-			privateAnalyticsIdKey: privateAnalytics,
-		}
-	} else {
-		newDocument = map[string]any{
-			idKey: accountDocumentId,
-		}
+	newDocument := map[string]any{
+		idKey:                 accountDocumentId,
+		analyticsKey:          a.cfg.AnalyticsId,
+		iconMigrationKey:      "true",
+		privateAnalyticsIdKey: privateAnalytics,
 	}
 	for key, val := range newDocument {
 		if str, ok := val.(string); ok {
@@ -274,6 +272,7 @@ func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string,
 }
 
 func (a *accountObject) SetAnalyticsId(id string) error {
+	fmt.Println("[x]: setting analytics id", id)
 	builder := &storestate.Builder{}
 	err := builder.Modify(collectionName, accountDocumentId, []string{analyticsKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, id))
 	if err != nil {
