@@ -87,9 +87,6 @@ const CName = "filestore"
 
 type FileStore interface {
 	app.ComponentRunnable
-
-	AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error
-	GetFileKeys(fileId domain.FileId) (map[string]string, error)
 }
 
 func New() FileStore {

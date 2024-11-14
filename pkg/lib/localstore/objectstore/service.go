@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -53,6 +54,9 @@ type ObjectStore interface {
 
 	SpaceNameGetter
 	CrossSpace
+
+	AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error
+	GetFileKeys(fileId domain.FileId) (map[string]string, error)
 }
 
 type IndexerStore interface {

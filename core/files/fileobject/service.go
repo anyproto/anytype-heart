@@ -390,7 +390,7 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 	if err == nil {
 		return fileObjectId, nil
 	}
-	keys, err := s.fileStore.GetFileKeys(fileId.FileId)
+	keys, err := s.objectStore.GetFileKeys(fileId.FileId)
 	if err != nil {
 		return "", fmt.Errorf("get file keys: %w", err)
 	}

@@ -167,7 +167,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		FileId:         fileId,
 		EncryptionKeys: keys.KeysByPath,
 	}
-	err = s.fileStore.AddFileKeys(fileKeys)
+	err = s.objectStore.AddFileKeys(fileKeys)
 	if err != nil {
 		addLock.Unlock()
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
@@ -244,7 +244,7 @@ func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo 
 }
 
 func (s *service) FileGetKeys(id domain.FileId) (*domain.FileEncryptionKeys, error) {
-	keys, err := s.fileStore.GetFileKeys(id)
+	keys, err := s.objectStore.GetFileKeys(id)
 	if err != nil {
 		return nil, err
 	}

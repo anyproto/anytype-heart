@@ -99,7 +99,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		FileId:         fileId,
 		EncryptionKeys: keys.KeysByPath,
 	}
-	err = s.fileStore.AddFileKeys(fileKeys)
+	err = s.objectStore.AddFileKeys(fileKeys)
 	if err != nil {
 		addLock.Unlock()
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
