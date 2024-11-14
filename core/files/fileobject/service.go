@@ -13,6 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -55,7 +56,7 @@ type Service interface {
 	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *types.Struct, err error)
 	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
 	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
-	GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error)
+	DoFileWaitLoad(ctx context.Context, objectId string, proc func(object fileobject.FileObject) error) error
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
 	MigrateFileIdsInDetails(st *state.State, spc source.Space)
 	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
@@ -454,30 +455,22 @@ func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error
 	}, nil
 }
 
-func (s *service) GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error) {
+func (s *service) DoFileWaitLoad(ctx context.Context, objectId string, proc func(object fileobject.FileObject) error) error {
 	spaceId, err := s.resolveSpaceIdWithRetry(ctx, objectId)
 	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("resolve space id: %w", err)
+		return fmt.Errorf("resolve space id: %w", err)
 	}
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("get space: %w", err)
+		return fmt.Errorf("get space: %w", err)
 	}
-	id := domain.FullFileId{
-		SpaceId: spaceId,
-	}
-	err = spc.Do(objectId, func(sb smartblock.SmartBlock) error {
-		details := sb.Details()
-		id.FileId = domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String()))
-		if id.FileId == "" {
-			return filemodels.ErrEmptyFileId
+	return spc.Do(objectId, func(sb smartblock.SmartBlock) error {
+		fileObj, ok := sb.(fileobject.FileObject)
+		if !ok {
+			return fmt.Errorf("object is not a fileobject")
 		}
-		return nil
+		return proc(fileObj)
 	})
-	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("get object details: %w", err)
-	}
-	return id, nil
 }
 
 func (s *service) resolveSpaceIdWithRetry(ctx context.Context, objectId string) (string, error) {

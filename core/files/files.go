@@ -50,20 +50,14 @@ var log = logging.Logger("anytype-files")
 var _ Service = (*service)(nil)
 
 type Service interface {
-	// only in uploader
 	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
-	// buildDetails (fileindex.go), gateway, export, DownloadFile
-	FileByHash(ctx context.Context, id domain.FullFileId) (File, error)
-	FileFromInfos(fileId domain.FullFileId, infos []*storage.FileInfo) File
+	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
 	FileGetKeys(id domain.FileId) (*domain.FileEncryptionKeys, error)
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
-	// only in uploader
-	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
-	// buildDetails (fileindex.go), gateway, export, DownloadFile, html converter (clipboard)
-	ImageByHash(ctx context.Context, id domain.FullFileId) (Image, error)
-	ImageFromInfos(fileId domain.FullFileId, infos []*storage.FileInfo) Image
 
+	FileFromInfos(fileId domain.FullFileId, infos []*storage.FileInfo) File
+	ImageFromInfos(fileId domain.FullFileId, infos []*storage.FileInfo) Image
 	IndexFile(ctx context.Context, fileId domain.FullFileId, details *types.Struct, keys map[string]string) ([]*storage.FileInfo, error)
 
 	app.Component
@@ -299,32 +293,6 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 	file.MetaHash = id.String()
 	file.Targets = []string{fileId.String()}
 	return &file, nil
-}
-
-func (s *service) getContentReader(ctx context.Context, spaceID string, rawCid string, encKey string) (symmetric.ReadSeekCloser, error) {
-	fileCid, err := cid.Parse(rawCid)
-	if err != nil {
-		return nil, err
-	}
-	fd, err := s.getFile(ctx, spaceID, fileCid)
-	if err != nil {
-		return nil, err
-	}
-	if encKey == "" {
-		return fd, nil
-	}
-
-	key, err := symmetric.FromString(encKey)
-	if err != nil {
-		return nil, err
-	}
-
-	dec, err := getEncryptorDecryptor(key)
-	if err != nil {
-		return nil, err
-	}
-
-	return dec.DecryptReader(fd)
 }
 
 type addFileNodeResult struct {
@@ -645,19 +613,19 @@ func (s *service) fileFromDetails(details *types.Struct) (File, error) {
 
 	infos := getFileInfosFromDetails(details)
 	return &file{
-		spaceID: pbtypes.GetString(details, bundle.RelationKeySpaceId.String()),
-		fileId:  domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
-		info:    infos[0],
-		node:    s,
+		spaceID:    pbtypes.GetString(details, bundle.RelationKeySpaceId.String()),
+		fileId:     domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
+		info:       infos[0],
+		commonFile: s.commonFile,
 	}, nil
 }
 
 func (s *service) FileFromInfos(id domain.FullFileId, infos []*storage.FileInfo) File {
 	return &file{
-		spaceID: id.SpaceId,
-		fileId:  id.FileId,
-		info:    infos[0],
-		node:    s,
+		spaceID:    id.SpaceId,
+		fileId:     id.FileId,
+		info:       infos[0],
+		commonFile: s.commonFile,
 	}
 }
 

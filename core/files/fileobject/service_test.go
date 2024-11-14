@@ -188,13 +188,13 @@ const testFileObjectId = "bafyreiebxsn65332wl7qavcxxkfwnsroba5x5h2sshcn7f7cr66zt
 func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 	t.Run("with invalid id expect error", func(t *testing.T) {
 		fx := newFixture(t)
-		_, err := fx.GetFileIdFromObjectWaitLoad(context.Background(), "invalid")
+		_, err := fx.DoFileWaitLoad(context.Background(), "invalid")
 		require.Error(t, err)
 	})
 
 	t.Run("with file id expect error", func(t *testing.T) {
 		fx := newFixture(t)
-		_, err := fx.GetFileIdFromObjectWaitLoad(context.Background(), testFileId.String())
+		_, err := fx.DoFileWaitLoad(context.Background(), testFileId.String())
 		require.Error(t, err)
 	})
 
@@ -206,7 +206,7 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 
 		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).Return("", fmt.Errorf("not yet resolved"))
 
-		_, err := fx.GetFileIdFromObjectWaitLoad(ctx, testFileObjectId)
+		_, err := fx.DoFileWaitLoad(ctx, testFileObjectId)
 		require.Error(t, err)
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 	})
@@ -240,7 +240,7 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 
 		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
 
-		id, err := fx.GetFileIdFromObjectWaitLoad(ctx, testFileObjectId)
+		id, err := fx.DoFileWaitLoad(ctx, testFileObjectId)
 		require.NoError(t, err)
 		assert.Equal(t, domain.FullFileId{
 			SpaceId: spaceId,
@@ -267,7 +267,7 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 
 		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
 
-		_, err := fx.GetFileIdFromObjectWaitLoad(ctx, testFileObjectId)
+		_, err := fx.DoFileWaitLoad(ctx, testFileObjectId)
 		require.ErrorIs(t, err, filemodels.ErrEmptyFileId)
 	})
 }

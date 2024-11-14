@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -35,7 +36,7 @@ type image struct {
 	spaceID            string
 	onlyResizeVariants []*storage.FileInfo
 	exifVariant        *storage.FileInfo
-	service            *service
+	commonFile         fileservice.FileService
 }
 
 func newImage(service *service, id domain.FullFileId, variants []*storage.FileInfo) Image {
@@ -46,11 +47,11 @@ func newImage(service *service, id domain.FullFileId, variants []*storage.FileIn
 		}
 	}
 	return &image{
-		service:            service,
 		fileId:             id.FileId,
 		spaceID:            id.SpaceId,
 		onlyResizeVariants: selectAndSortResizeVariants(variants),
 		exifVariant:        exifVariant,
+		commonFile:         service.commonFile,
 	}
 }
 
@@ -100,10 +101,10 @@ func (i *image) GetFileForWidth(wantWidth int) (File, error) {
 		return nil, fmt.Errorf("get variant for width: %w", err)
 	}
 	return &file{
-		spaceID: i.spaceID,
-		fileId:  i.fileId,
-		info:    variant,
-		node:    i.service,
+		spaceID:    i.spaceID,
+		fileId:     i.fileId,
+		info:       variant,
+		commonFile: i.commonFile,
 	}, nil
 }
 
@@ -114,10 +115,10 @@ func (i *image) GetOriginalFile() (File, error) {
 		return nil, fmt.Errorf("get largest variant: %w", err)
 	}
 	return &file{
-		spaceID: i.spaceID,
-		fileId:  i.fileId,
-		info:    variant,
-		node:    i.service,
+		spaceID:    i.spaceID,
+		fileId:     i.fileId,
+		info:       variant,
+		commonFile: i.commonFile,
 	}, nil
 }
 
@@ -131,10 +132,10 @@ func (i *image) getExif(ctx context.Context) (*mill.ImageExifSchema, error) {
 	}
 
 	f := &file{
-		spaceID: i.spaceID,
-		fileId:  i.fileId,
-		info:    i.exifVariant,
-		node:    i.service,
+		spaceID:    i.spaceID,
+		fileId:     i.fileId,
+		info:       i.exifVariant,
+		commonFile: i.commonFile,
 	}
 	r, err := f.Reader(ctx)
 	if err != nil {

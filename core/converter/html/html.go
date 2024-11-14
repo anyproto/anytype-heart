@@ -11,11 +11,10 @@ import (
 
 	"go.uber.org/zap"
 
+	fileobject2 "github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -25,10 +24,9 @@ import (
 
 var log = logging.Logger("html-converter").Desugar()
 
-func NewHTMLConverter(fileService files.Service, s *state.State, fileObjectService fileobject.Service) *HTML {
+func NewHTMLConverter(s *state.State, fileObjectService fileobject.Service) *HTML {
 	return &HTML{
 		s:                 s,
-		fileService:       fileService,
 		fileObjectService: fileObjectService,
 	}
 }
@@ -36,7 +34,6 @@ func NewHTMLConverter(fileService files.Service, s *state.State, fileObjectServi
 type HTML struct {
 	s                 *state.State
 	buf               *bytes.Buffer
-	fileService       files.Service
 	fileObjectService fileobject.Service
 }
 
@@ -180,15 +177,10 @@ func (h *HTML) renderFile(b *model.Block) {
 		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_Image:
-		fileId, err := h.fileObjectService.GetFileIdFromObject(file.TargetObjectId)
-		if err == nil {
-			baseImg := h.getImageBase64(fileId)
-			fmt.Fprintf(h.buf, `<div><img alt="%s" src="%s" />`, html.EscapeString(file.Name), baseImg)
-			h.renderChildren(b)
-			h.buf.WriteString("</div>")
-		} else {
-			log.Error("failed to get file id from object", zap.Error(err))
-		}
+		baseImg := h.getImageBase64(file.TargetObjectId)
+		fmt.Fprintf(h.buf, `<div><img alt="%s" src="%s" />`, html.EscapeString(file.Name), baseImg)
+		h.renderChildren(b)
+		h.buf.WriteString("</div>")
 
 	case model.BlockContentFile_Video:
 		h.buf.WriteString(`<div class="video"><div class="name">`)
@@ -478,21 +470,26 @@ func (h *HTML) writeTextToBuf(text *model.BlockContentText) {
 	}
 }
 
-func (h *HTML) getImageBase64(fileId domain.FullFileId) (res string) {
+func (h *HTML) getImageBase64(fileObjectId string) (res string) {
 	ctx := context.Background()
-	im, err := h.fileService.ImageByHash(ctx, fileId)
+	var encoded string
+	err := h.fileObjectService.DoFileWaitLoad(context.Background(), fileObjectId, func(object fileobject2.FileObject) error {
+		im := object.GetImage()
+		f, err := im.GetFileForWidth(1024)
+		if err != nil {
+			return err
+		}
+		rd, err := f.Reader(ctx)
+		if err != nil {
+			return err
+		}
+		data, _ := ioutil.ReadAll(rd)
+		dataBase64 := base64.StdEncoding.EncodeToString(data)
+		encoded = fmt.Sprintf("data:%s;base64, %s", f.Meta().Media, dataBase64)
+		return nil
+	})
 	if err != nil {
-		return
+		log.Error("getImageBase64", zap.Error(err))
 	}
-	f, err := im.GetFileForWidth(1024)
-	if err != nil {
-		return
-	}
-	rd, err := f.Reader(ctx)
-	if err != nil {
-		return
-	}
-	data, _ := ioutil.ReadAll(rd)
-	dataBase64 := base64.StdEncoding.EncodeToString(data)
-	return fmt.Sprintf("data:%s;base64, %s", f.Meta().Media, dataBase64)
+	return encoded
 }

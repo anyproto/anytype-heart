@@ -21,6 +21,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -951,20 +952,13 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string) (
 }
 
 func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlock, exportAllSpaces bool) (fileName string, err error) {
-	fullId := domain.FullFileId{
-		SpaceId: fileObject.Space().Id(),
-		FileId:  domain.FileId(pbtypes.GetString(fileObject.Details(), bundle.RelationKeyFileId.String())),
+	fileObjectComponent, ok := fileObject.(fileobject.FileObject)
+	if !ok {
+		return "", fmt.Errorf("object is not a file object")
 	}
-
-	file, err := e.fileService.FileByHash(ctx, fullId)
-	if err != nil {
-		return "", err
-	}
+	file := fileObjectComponent.GetFile()
 	if strings.HasPrefix(file.Media(), "image") {
-		image, err := e.fileService.ImageByHash(context.TODO(), fullId)
-		if err != nil {
-			return "", err
-		}
+		image := fileObjectComponent.GetImage()
 		file, err = image.GetOriginalFile()
 		if err != nil {
 			return "", err

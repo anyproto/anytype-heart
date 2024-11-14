@@ -101,7 +101,7 @@ func (_m *MockfileObjectGetter) GetFileIdFromObjectWaitLoad(ctx context.Context,
 	ret := _m.Called(ctx, objectId)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetFileIdFromObjectWaitLoad")
+		panic("no return value specified for DoFileWaitLoad")
 	}
 
 	var r0 domain.FullFileId
@@ -124,7 +124,7 @@ func (_m *MockfileObjectGetter) GetFileIdFromObjectWaitLoad(ctx context.Context,
 	return r0, r1
 }
 
-// MockfileObjectGetter_GetFileIdFromObjectWaitLoad_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFileIdFromObjectWaitLoad'
+// MockfileObjectGetter_GetFileIdFromObjectWaitLoad_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DoFileWaitLoad'
 type MockfileObjectGetter_GetFileIdFromObjectWaitLoad_Call struct {
 	*mock.Call
 }
@@ -133,7 +133,7 @@ type MockfileObjectGetter_GetFileIdFromObjectWaitLoad_Call struct {
 //   - ctx context.Context
 //   - objectId string
 func (_e *MockfileObjectGetter_Expecter) GetFileIdFromObjectWaitLoad(ctx interface{}, objectId interface{}) *MockfileObjectGetter_GetFileIdFromObjectWaitLoad_Call {
-	return &MockfileObjectGetter_GetFileIdFromObjectWaitLoad_Call{Call: _e.mock.On("GetFileIdFromObjectWaitLoad", ctx, objectId)}
+	return &MockfileObjectGetter_GetFileIdFromObjectWaitLoad_Call{Call: _e.mock.On("DoFileWaitLoad", ctx, objectId)}
 }
 
 func (_c *MockfileObjectGetter_GetFileIdFromObjectWaitLoad_Call) Run(run func(ctx context.Context, objectId string)) *MockfileObjectGetter_GetFileIdFromObjectWaitLoad_Call {

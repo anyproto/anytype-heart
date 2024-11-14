@@ -8,6 +8,7 @@ import (
 
 	"github.com/miolini/datacounter"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
@@ -80,19 +81,26 @@ func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadReque
 }
 
 func (s *Service) getFileOrLargestImage(ctx context.Context, objectId string) (files.File, error) {
-	id, err := s.fileObjectService.GetFileIdFromObject(objectId)
-	if err != nil {
-		return nil, fmt.Errorf("get file hash from object: %w", err)
-	}
-	image, err := s.fileService.ImageByHash(ctx, id)
-	if err != nil {
-		return s.fileService.FileByHash(ctx, id)
-	}
-
-	f, err := image.GetOriginalFile()
-	if err != nil {
-		return s.fileService.FileByHash(ctx, id)
-	}
-
-	return f, nil
+	var (
+		f files.File
+	)
+	err := s.fileObjectService.DoFileWaitLoad(ctx, objectId, func(object fileobject.FileObject) error {
+		f = object.GetFile()
+		return nil
+	})
+	return f, err
+	// if err != nil {
+	// 	return nil, fmt.Errorf("get file: %w", err)
+	// }
+	// image, err := s.fileService.ImageByHash(ctx, id)
+	// if err != nil {
+	// 	return f, nil
+	// }
+	//
+	// f, err := image.GetOriginalFile()
+	// if err != nil {
+	// 	return s.fileService.FileByHash(ctx, id)
+	// }
+	//
+	// return f, nil
 }
