@@ -68,7 +68,7 @@ func TestGetImageForWidth(t *testing.T) {
 
 func assertWidth(t *testing.T, file File, width int64) {
 	require.NotNil(t, file)
-	require.NotNil(t, file.Info().GetMeta())
+	require.NotNil(t, file.Meta())
 
 	meta := file.Info().GetMeta()
 

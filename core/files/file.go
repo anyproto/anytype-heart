@@ -19,8 +19,8 @@ import (
 )
 
 type File interface {
-	Meta() *FileMeta // could be taken from Details
 	FileId() domain.FileId
+	Meta() *FileMeta                                   // could be taken from Details
 	Reader(ctx context.Context) (io.ReadSeeker, error) // getNode(details.FileVariants[idx])
 	Details(ctx context.Context) (*types.Struct, domain.TypeKey, error)
 	Name() string

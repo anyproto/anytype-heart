@@ -51,6 +51,7 @@ type fixture struct {
 	spaceService      *mock_space.MockService
 	spaceIdResolver   *mock_idresolver.MockResolver
 	commonFileService fileservice.FileService
+	rpcStore          *rpcstore.InMemoryStore
 	*service
 }
 

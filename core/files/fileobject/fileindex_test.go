@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -13,9 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -57,19 +54,8 @@ func TestIndexer_buildDetails(t *testing.T) {
 				}
 				ctx := context.Background()
 
-				file := mock_files.NewMockFile(t)
-				file.EXPECT().Info().Return(&storage.FileInfo{
-					Mill:  mill.BlobId,
-					Media: "text",
-				})
-				file.EXPECT().Details(ctx).Return(&types.Struct{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String("name"),
-					},
-				}, typeKey, nil)
-				fx.fileService.EXPECT().FileByHash(ctx, id).Return(file, nil)
-
-				details, gotTypeKey, err := fx.buildDetails(ctx, id)
+				// TODO Infos
+				details, gotTypeKey, err := fx.buildDetails(ctx, id, nil)
 				require.NoError(t, err)
 				assert.Equal(t, typeKey, gotTypeKey)
 				assert.Equal(t, "name", pbtypes.GetString(details, bundle.RelationKeyName.String()))
@@ -85,22 +71,8 @@ func TestIndexer_buildDetails(t *testing.T) {
 		}
 		ctx := context.Background()
 
-		file := mock_files.NewMockFile(t)
-		file.EXPECT().Info().Return(&storage.FileInfo{
-			Mill:  mill.ImageResizeId,
-			Media: "image/jpeg",
-		})
-
-		image := mock_files.NewMockImage(t)
-		image.EXPECT().Details(ctx).Return(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String(): pbtypes.String("name"),
-			},
-		}, nil)
-		fx.fileService.EXPECT().FileByHash(ctx, id).Return(file, nil)
-		fx.fileService.EXPECT().ImageByHash(ctx, id).Return(image, nil)
-
-		details, gotTypeKey, err := fx.buildDetails(ctx, id)
+		// TODO Infos
+		details, gotTypeKey, err := fx.buildDetails(ctx, id, nil)
 		require.NoError(t, err)
 		assert.Equal(t, bundle.TypeKeyImage, gotTypeKey)
 		assert.Equal(t, "name", pbtypes.GetString(details, bundle.RelationKeyName.String()))
@@ -121,19 +93,8 @@ func TestIndexer_buildDetails(t *testing.T) {
 				}
 				ctx := context.Background()
 
-				file := mock_files.NewMockFile(t)
-				file.EXPECT().Info().Return(&storage.FileInfo{
-					Mill:  mill.BlobId,
-					Media: "image/jpeg",
-				})
-				file.EXPECT().Details(ctx).Return(&types.Struct{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String("name"),
-					},
-				}, typeKey, nil)
-				fx.fileService.EXPECT().FileByHash(ctx, id).Return(file, nil)
-
-				details, gotTypeKey, err := fx.buildDetails(ctx, id)
+				// TODO Infos
+				details, gotTypeKey, err := fx.buildDetails(ctx, id, nil)
 				require.NoError(t, err)
 				assert.Equal(t, bundle.TypeKeyImage, gotTypeKey)
 				assert.Equal(t, "name", pbtypes.GetString(details, bundle.RelationKeyName.String()))

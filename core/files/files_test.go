@@ -39,6 +39,7 @@ type fixture struct {
 	commonFileService fileservice.FileService
 	fileSyncService   filesync.FileSync
 	rpcStore          rpcstore.RpcStore
+	objectStore       objectstore.ObjectStore
 }
 
 const (
@@ -89,6 +90,7 @@ func newFixture(t *testing.T) *fixture {
 		commonFileService: commonFileService,
 		fileSyncService:   fileSyncService,
 		rpcStore:          rpcStore,
+		objectStore:       objectStore,
 	}
 }
 
@@ -115,7 +117,7 @@ func TestFileAdd(t *testing.T) {
 		file, err := fx.FileByHash(ctx, domain.FullFileId{FileId: got.FileId, SpaceId: spaceId})
 		require.NoError(t, err)
 
-		contentCid := cid.MustParse(file.Info().Hash)
+		contentCid := cid.MustParse(file.FileId().String())
 		encryptedContent, err := fx.commonFileService.GetFile(ctx, contentCid)
 		require.NoError(t, err)
 		gotEncryptedContent, err := io.ReadAll(encryptedContent)
@@ -168,13 +170,6 @@ func TestIndexFile(t *testing.T) {
 
 		fileResult := testAddFile(t, fx)
 
-		// Delete from index
-		err := fx.fileStore.DeleteFile(fileResult.FileId)
-		require.NoError(t, err)
-
-		err = fx.fileStore.AddFileKeys(*fileResult.EncryptionKeys)
-		require.NoError(t, err)
-
 		// Index
 		file, err := fx.FileByHash(context.Background(), domain.FullFileId{FileId: fileResult.FileId, SpaceId: spaceId})
 		require.NoError(t, err)
@@ -187,11 +182,7 @@ func TestIndexFile(t *testing.T) {
 
 		fileResult := testAddFile(t, fx)
 
-		// Delete from index
-		err := fx.fileStore.DeleteFile(fileResult.FileId)
-		require.NoError(t, err)
-
-		_, err = fx.FileByHash(context.Background(), domain.FullFileId{FileId: fileResult.FileId, SpaceId: spaceId})
+		_, err := fx.FileByHash(context.Background(), domain.FullFileId{FileId: fileResult.FileId, SpaceId: spaceId})
 		require.Error(t, err)
 	})
 }
@@ -271,7 +262,7 @@ func TestFileAddWithCustomKeys(t *testing.T) {
 				assert.NotEmpty(t, got.FileId)
 				got.Commit()
 
-				encKeys, err := fx.fileStore.GetFileKeys(got.FileId)
+				encKeys, err := fx.objectStore.GetFileKeys(got.FileId)
 				require.NoError(t, err)
 				assert.NotEmpty(t, encKeys)
 				assert.NotEqual(t, customKeys, encKeys)
