@@ -89,12 +89,12 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	records, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
-		Filters:  req.Filters,
-		SpaceId:  req.SpaceId,
-		Sorts:    req.Sorts,
-		Offset:   int(req.Offset),
-		Limit:    int(req.Limit),
-		FullText: req.FullText,
+		Filters:   req.Filters,
+		SpaceId:   req.SpaceId,
+		Sorts:     req.Sorts,
+		Offset:    int(req.Offset),
+		Limit:     int(req.Limit),
+		TextQuery: req.FullText,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
@@ -136,12 +136,12 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	results, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
-		Filters:  req.Filters,
-		Sorts:    req.Sorts,
-		Offset:   int(req.Offset),
-		Limit:    int(req.Limit),
-		FullText: req.FullText,
-		SpaceId:  req.SpaceId,
+		Filters:   req.Filters,
+		Sorts:     req.Sorts,
+		Offset:    int(req.Offset),
+		Limit:     int(req.Limit),
+		TextQuery: req.FullText,
+		SpaceId:   req.SpaceId,
 	})
 
 	var resultsModels = make([]*model.SearchResult, 0, len(results))

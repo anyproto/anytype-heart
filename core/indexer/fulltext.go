@@ -61,7 +61,7 @@ func (i *indexer) ftLoopRoutine() {
 }
 
 func (i *indexer) runFullTextIndexer(ctx context.Context) {
-	batcher := i.ftsearch.NewAutoBatcher(ftsearch.AutoBatcherRecommendedMaxDocs, ftsearch.AutoBatcherRecommendedMaxSize)
+	batcher := i.ftsearch.NewAutoBatcher()
 	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(objectIds []string) error {
 		for _, objectId := range objectIds {
 			objDocs, err := i.prepareSearchDocument(ctx, objectId)
@@ -173,7 +173,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 
 			doc := ftsearch.SearchDoc{
 				Id:      domain.NewObjectPathWithRelation(id, rel.Key).String(),
-				SpaceID: sb.SpaceID(),
+				SpaceId: sb.SpaceID(),
 				Text:    val,
 			}
 
@@ -202,7 +202,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 				}
 				doc := ftsearch.SearchDoc{
 					Id:      domain.NewObjectPathWithBlock(id, b.Model().Id).String(),
-					SpaceID: sb.SpaceID(),
+					SpaceId: sb.SpaceID(),
 				}
 				if len(tb.Text) > ftBlockMaxSize {
 					doc.Text = tb.Text[:ftBlockMaxSize]

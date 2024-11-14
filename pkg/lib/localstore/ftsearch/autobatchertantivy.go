@@ -17,7 +17,7 @@ type AutoBatcher interface {
 	Finish() error
 }
 
-func (f *ftSearchTantivy) NewAutoBatcher(maxDocs int, maxSizeBytes uint64) AutoBatcher {
+func (f *ftSearchTantivy) NewAutoBatcher() AutoBatcher {
 	return &ftIndexBatcherTantivy{
 		index: f.index,
 		mu:    &f.mu,
@@ -88,7 +88,7 @@ func (f *ftSearchTantivy) Iterate(objectId string, fields []string, shouldContin
 			Id:      hit.ID,
 			Text:    text,
 			Title:   title,
-			SpaceID: spaceId,
+			SpaceId: spaceId,
 		}) {
 			break
 		}
@@ -124,7 +124,7 @@ func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
 		return err
 	}
 
-	err = doc.AddField(fieldSpace, searchDoc.SpaceID, f.index)
+	err = doc.AddField(fieldSpace, searchDoc.SpaceId, f.index)
 	if err != nil {
 		return err
 	}

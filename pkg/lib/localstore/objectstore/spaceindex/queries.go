@@ -264,18 +264,18 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 	collatorBuffer := s.collatorBufferPool.get()
 	defer s.collatorBufferPool.put(collatorBuffer)
 
-	q.FullText = strings.TrimSpace(q.FullText)
+	q.TextQuery = strings.TrimSpace(q.TextQuery)
 	filters, err := database.NewFilters(q, s, arena, collatorBuffer)
 	if err != nil {
 		return nil, fmt.Errorf("new filters: %w", err)
 	}
-	if q.FullText != "" {
-		fulltextResults, err := s.performFulltextSearch(q.FullText, q.SpaceId)
+	if q.TextQuery != "" {
+		fulltextResults, err := s.performFulltextSearch(q.TextQuery, q.SpaceId)
 		if err != nil {
 			return nil, fmt.Errorf("perform fulltext search: %w", err)
 		}
 
-		return s.QueryFromFulltext(fulltextResults, *filters, q.Limit, q.Offset, q.FullText)
+		return s.QueryFromFulltext(fulltextResults, *filters, q.Limit, q.Offset, q.TextQuery)
 	}
 	return s.QueryRaw(filters, q.Limit, q.Offset)
 }

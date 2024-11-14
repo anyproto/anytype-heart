@@ -68,12 +68,12 @@ func TestDifferentSpaces(t *testing.T) {
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:      "1",
 		Title:   "one",
-		SpaceID: "space1",
+		SpaceId: "space1",
 	}))
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:      "2",
 		Title:   "one",
-		SpaceID: "space2",
+		SpaceId: "space2",
 	}))
 
 	search, err := ft.Search([]string{"space1"}, "one")
@@ -219,11 +219,11 @@ func assertProperIds(t *testing.T, tmpDir string) {
 	for i := range 50 {
 		docs = append(docs, SearchDoc{
 			Id:      fmt.Sprintf("randomid%d/r/randomrel%d", i, i+100),
-			SpaceID: fmt.Sprintf("randomspaceid%d", i),
+			SpaceId: fmt.Sprintf("randomspaceid%d", i),
 		})
 		docs = append(docs, SearchDoc{
 			Id:      fmt.Sprintf("randomid%d/r/randomrel%d", i, i+1000),
-			SpaceID: fmt.Sprintf("randomspaceid%d", i),
+			SpaceId: fmt.Sprintf("randomspaceid%d", i),
 		})
 	}
 	assert.NoError(t, ft.BatchIndex(context.Background(), docs, nil))
@@ -262,22 +262,22 @@ func assertMultiSpace(t *testing.T, tmpDir string) {
 	ft := fixture.ft
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:      "1/1",
-		SpaceID: "first",
+		SpaceId: "first",
 		Title:   "Dashboard of first space",
 	}))
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:      "1/2",
-		SpaceID: "first",
+		SpaceId: "first",
 		Title:   "Advanced of first space",
 	}))
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:      "2/1",
-		SpaceID: "second",
+		SpaceId: "second",
 		Title:   "Dashboard of second space",
 	}))
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:      "2/2",
-		SpaceID: "second",
+		SpaceId: "second",
 		Title:   "Get Started of second space",
 	}))
 	require.NoError(t, ft.Index(SearchDoc{

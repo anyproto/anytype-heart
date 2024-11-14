@@ -37,7 +37,7 @@ const (
 	CName    = "fts"
 	ftsDir   = "fts"
 	ftsDir2  = "fts_tantivy"
-	ftsVer   = "10"
+	ftsVer   = "8"
 	docLimit = 10000
 
 	fieldTitle   = "Title"
@@ -56,15 +56,10 @@ const (
 
 var log = logging.Logger("ftsearch")
 
-const (
-	AutoBatcherRecommendedMaxDocs = 300
-	AutoBatcherRecommendedMaxSize = 10 * 1024 * 1024 // 10MB
-)
-
 type FTSearch interface {
 	app.ComponentRunnable
 	Index(d SearchDoc) (err error)
-	NewAutoBatcher(maxDocs int, maxDocsSize uint64) AutoBatcher
+	NewAutoBatcher() AutoBatcher
 	BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error)
 	BatchDeleteObjects(ids []string) (err error)
 	Search(spaceIds []string, query string) (results []*DocumentMatch, err error)
@@ -74,15 +69,22 @@ type FTSearch interface {
 }
 
 type SearchDoc struct {
-	//nolint:all
 	Id      string
-	SpaceID string
+	SpaceId string
 	Title   string
 	Text    string
 }
 
-func TantivyNew() FTSearch {
-	return new(ftSearchTantivy)
+type Highlight struct {
+	Ranges [][]int `json:"r"`
+	Text   string  `json:"t"`
+}
+
+type DocumentMatch struct {
+	Score     float64
+	ID        string
+	Fragments map[string]*Highlight
+	Fields    map[string]any
 }
 
 var specialChars = map[rune]struct{}{
@@ -99,6 +101,10 @@ type ftSearchTantivy struct {
 	schema     *tantivy.Schema
 	parserPool *fastjson.ParserPool
 	mu         sync.Mutex
+}
+
+func TantivyNew() FTSearch {
+	return new(ftSearchTantivy)
 }
 
 func (f *ftSearchTantivy) BatchDeleteObjects(ids []string) error {
@@ -303,7 +309,7 @@ func (f *ftSearchTantivy) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = document.AddField(fieldSpace, doc.SpaceID, f.index)
+	err = document.AddField(fieldSpace, doc.SpaceId, f.index)
 	if err != nil {
 		return nil, err
 	}
@@ -358,18 +364,6 @@ func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, dele
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.index.AddAndConsumeDocuments(tantivyDocs...)
-}
-
-type Highlight struct {
-	Ranges [][]int `json:"r"`
-	Text   string  `json:"t"`
-}
-
-type DocumentMatch struct {
-	Score     float64
-	ID        string
-	Fragments map[string]*Highlight
-	Fields    map[string]any
 }
 
 func (f *ftSearchTantivy) Search(spaceIds []string, query string) (results []*DocumentMatch, err error) {
