@@ -38,7 +38,7 @@ var excludedMethods = []string{
 	"ObjectSearchSubscribe",
 	"ObjectSearchUnsubscribe",
 	"ObjectSubscribeIds",
-	"MetricsSetParameters",
+	"InitialSetParameters",
 	"AppSetDeviceState",
 }
 
