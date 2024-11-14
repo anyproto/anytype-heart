@@ -61,11 +61,6 @@ jobs:
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install grpcurl
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew tap messense/macos-cross-toolchains && brew install x86_64-unknown-linux-musl
           npm i -g node-gyp
-          echo "Azaza"
-          protoc --version
-          which x86_64-w64-mingw32-gcc
-          which protoc
-          echo "Azaza2"
         if: runner.name != 'mac-mini-org-heart'
       - name: Checkout
         uses: actions/checkout@v3
@@ -138,14 +133,14 @@ jobs:
           TEST_MNEMONIC: ${{ secrets.TEST_MNEMONIC }}
           PROM_KEY: ${{ secrets.PROMETHEUS_USERNAME }}
           PROM_PASSWORD: ${{ secrets.PROMETHEUS_PASSWORD }}
-        if: github.event.inputs.perf-test != '0'
+        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
       - name: Archive perf tests results
         uses: actions/upload-artifact@v4
         with:
           name: pprofs
           path: |
             *.pprof
-        if: github.event.inputs.perf-test != '0'
+        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
       - name: end run perf tests
         run: |
           rm -rf *.pprof
@@ -154,7 +149,7 @@ jobs:
           gh run watch ${{ github.run_id }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: github.event.inputs.perf-test != '0'
+        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
       - name: Make JS protos
         run: |
           make protos-js
