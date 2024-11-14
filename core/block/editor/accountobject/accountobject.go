@@ -148,12 +148,16 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("find id: %w", err)
 	}
 	if errors.Is(err, anystore.ErrDocNotFound) {
-		var docToInsert string
-		docToInsert, err = a.genInitialDoc(true)
+		var builder *storestate.Builder
+		builder, err = a.genInitialDoc(a.cfg.IsNewAccount())
 		if err != nil {
 			return fmt.Errorf("generate initial doc: %w", err)
 		}
-		err = coll.Insert(ctx.Ctx, anyenc.MustParseJson(docToInsert))
+		_, err = a.storeSource.PushStoreChange(ctx.Ctx, source.PushStoreChangeParams{
+			Changes: builder.ChangeSet,
+			State:   a.state,
+			Time:    time.Now(),
+		})
 		if err != nil {
 			return fmt.Errorf("insert account document: %w", err)
 		}
@@ -180,20 +184,33 @@ func (a *accountObject) GetPrivateAnalyticsId() string {
 	return string(val.GetStringBytes(privateAnalyticsIdKey))
 }
 
-func (a *accountObject) genInitialDoc(isNewAccount bool) (docToInsert string, err error) {
+func (a *accountObject) genInitialDoc(isNewAccount bool) (builder *storestate.Builder, err error) {
+	builder = &storestate.Builder{}
 	privateAnalytics, err := generatePrivateAnalyticsId()
 	if err != nil {
 		err = fmt.Errorf("generate private analytics id: %w", err)
 	}
+	var newDocument map[string]any
 	if isNewAccount {
-		docToInsert = fmt.Sprintf(
-			`{"%s":"%s","%s":"%s","%s":"true","%s":"%s"}`,
-			idKey, accountDocumentId,
-			analyticsKey, a.cfg.AnalyticsId,
-			iconMigrationKey,
-			privateAnalyticsIdKey, privateAnalytics)
+		newDocument = map[string]any{
+			idKey:                 accountDocumentId,
+			analyticsKey:          a.cfg.AnalyticsId,
+			iconMigrationKey:      "true",
+			privateAnalyticsIdKey: privateAnalytics,
+		}
 	} else {
-		docToInsert = fmt.Sprintf(`{"%s":"%s"}`, idKey, accountDocumentId)
+		newDocument = map[string]any{
+			idKey: accountDocumentId,
+		}
+	}
+	for key, val := range newDocument {
+		if str, ok := val.(string); ok {
+			val = fmt.Sprintf(`"%s"`, str)
+		}
+		err = builder.Modify(collectionName, accountDocumentId, []string{key}, pb.ModifyOp_Set, val)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
@@ -381,7 +398,8 @@ func (a *accountObject) update(ctx context.Context, st *state.State) (err error)
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
-	obj, err := coll.FindId(ctx, accountDocumentId)
+	accId := accountDocumentId
+	obj, err := coll.FindId(ctx, accId)
 	if err != nil {
 		return fmt.Errorf("find id: %w", err)
 	}
