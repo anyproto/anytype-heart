@@ -23,16 +23,27 @@ func TestBuildDetailsFromTimestamp(t *testing.T) {
 	spcService := mock_space.NewMockService(t)
 	spcService.EXPECT().Get(mock.Anything, mock.Anything).Return(spc, nil)
 
-	for _, ts := range []int64{0, 1720035620, 1731099336} {
+	for _, ts := range []int64{0, 1720035620, 1731099336,
+		time.Date(2024, time.November, 30, 23, 55, 55, 0, time.UTC).Unix(),
+		time.Date(2024, time.November, 30, 23, 55, 55, 0, time.FixedZone("Berlin", +2*60*60)).Unix(),
+	} {
 		t.Run("date object details - "+strconv.FormatInt(ts, 10), func(t *testing.T) {
+			// when
 			details, err := BuildDetailsFromTimestamp(nil, spcService, spaceId, ts)
+
+			// then
 			assert.NoError(t, err)
 			assert.Equal(t, spaceId, pbtypes.GetString(details, bundle.RelationKeySpaceId.String()))
-			tt := time.Unix(ts, 0)
-			assert.Equal(t, dateutil.TimeToDateId(tt), pbtypes.GetString(details, bundle.RelationKeyId.String()))
-			assert.Equal(t, dateutil.TimeToDateName(tt, nil), pbtypes.GetString(details, bundle.RelationKeyName.String()))
 			assert.Equal(t, bundle.TypeKeyDate.URL(), pbtypes.GetString(details, bundle.RelationKeyType.String()))
-			assert.Equal(t, ts, pbtypes.GetInt64(details, bundle.RelationKeyTimestamp.String()))
+
+			tt := time.Unix(ts, 0)
+			assert.Equal(t, dateutil.TimeToDateId(tt, false), pbtypes.GetString(details, bundle.RelationKeyId.String()))
+			assert.Equal(t, dateutil.TimeToDateName(tt), pbtypes.GetString(details, bundle.RelationKeyName.String()))
+			ts2 := pbtypes.GetInt64(details, bundle.RelationKeyTimestamp.String())
+			tt2 := time.Unix(ts2, 0)
+			assert.Zero(t, tt2.Hour())
+			assert.Zero(t, tt2.Minute())
+			assert.Zero(t, tt2.Second())
 		})
 	}
 }

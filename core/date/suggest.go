@@ -32,7 +32,8 @@ func EnrichRecordsWithDateSuggestion(
 		return records, nil
 	}
 
-	id := dateutil.TimeToDateId(dt)
+	isDay := dt.Hour() == 0 && dt.Minute() == 0 && dt.Second() == 0
+	id := dateutil.TimeToDateId(dt, !isDay)
 
 	// Don't duplicate search suggestions
 	var found bool
@@ -57,7 +58,7 @@ func EnrichRecordsWithDateSuggestion(
 		return nil, fmt.Errorf("get space: %w", err)
 	}
 
-	rec, err := makeSuggestedDateRecord(spc, dt)
+	rec, err := makeSuggestedDateRecord(spc, id)
 	if err != nil {
 		return nil, fmt.Errorf("make date record: %w", err)
 	}
@@ -128,9 +129,7 @@ func suggestDateForSearch(now time.Time, raw string) time.Time {
 	return t
 }
 
-func makeSuggestedDateRecord(spc source.Space, t time.Time) (database.Record, error) {
-	id := dateutil.TimeToDateId(t)
-
+func makeSuggestedDateRecord(spc source.Space, id string) (database.Record, error) {
 	typeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyDate)
 	if err != nil {
 		return database.Record{}, fmt.Errorf("failed to find Date type to build Date object: %w", err)

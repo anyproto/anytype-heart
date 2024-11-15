@@ -132,9 +132,13 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 		return equalOrHasFilter
 	}
 
-	shortId := dateutil.TimeToShortDateId(ts)
+	shortId := dateutil.TimeToDateId(ts, false)
 
-	start := ts.Truncate(24 * time.Hour)
+	start, err := dateutil.ParseDateId(shortId)
+	if err != nil {
+		log.Error("failed to parse short Date object id", zap.Error(err))
+		return equalOrHasFilter
+	}
 	end := start.Add(24 * time.Hour)
 	startTimestamp := start.Unix()
 	endTimestamp := end.Unix()

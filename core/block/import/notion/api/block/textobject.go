@@ -252,7 +252,7 @@ func (t *TextObject) handleDateMention(rt api.RichText,
 				To:   int32(to),
 			},
 			Type:  model.BlockContentTextMark_Mention,
-			Param: dateutil.TimeToDateId(date),
+			Param: dateutil.TimeToDateId(date, false),
 		},
 	}
 }

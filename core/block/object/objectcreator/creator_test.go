@@ -118,7 +118,7 @@ func TestService_CreateObject(t *testing.T) {
 			return bundle.TypeKeyDate.URL(), nil
 		})
 		ts := time.Now()
-		name := dateutil.TimeToDateName(ts, nil)
+		name := dateutil.TimeToDateName(ts)
 
 		// when
 		id, details, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
@@ -130,7 +130,7 @@ func TestService_CreateObject(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, dateutil.TimeToShortDateId(ts)))
+		assert.True(t, strings.HasPrefix(id, dateutil.TimeToDateId(ts, false)))
 		assert.Equal(t, spaceId, pbtypes.GetString(details, bundle.RelationKeySpaceId.String()))
 		assert.Equal(t, bundle.TypeKeyDate.URL(), pbtypes.GetString(details, bundle.RelationKeyType.String()))
 	})
