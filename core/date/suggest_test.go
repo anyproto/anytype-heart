@@ -12,7 +12,6 @@ func Test_suggestDateForSearch(t *testing.T) {
 	now := time.Date(2022, 5, 18, 14, 56, 33, 0, loc)
 
 	tests := []struct {
-		now  time.Time
 		raw  string
 		want time.Time
 	}{
