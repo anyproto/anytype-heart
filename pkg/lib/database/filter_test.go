@@ -939,7 +939,7 @@ func TestFilterHasPrefix_FilterObject(t *testing.T) {
 		now := time.Now()
 		f := FilterHasPrefix{
 			Key:    key,
-			Prefix: dateutil.TimeToShortDateId(now), // _date_YYYY-MM-DD
+			Prefix: dateutil.TimeToDateId(now), // _date_YYYY-MM-DD
 		}
 		obj1 := &types.Struct{Fields: map[string]*types.Value{
 			key: pbtypes.StringList([]string{"obj2", dateutil.TimeToDateId(now.Add(30 * time.Minute)), "obj3"}), // _date_YYYY-MM-DD-hh-mm-ss
@@ -948,7 +948,7 @@ func TestFilterHasPrefix_FilterObject(t *testing.T) {
 			key: pbtypes.StringList([]string{dateutil.TimeToDateId(now.Add(24 * time.Hour)), "obj1", "obj3"}), // same format, but next day
 		}}
 		obj3 := &types.Struct{Fields: map[string]*types.Value{
-			key: pbtypes.StringList([]string{"obj2", "obj3", dateutil.TimeToShortDateId(now.Add(30 * time.Minute))}), // _date_YYYY-MM-DD
+			key: pbtypes.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(30 * time.Minute))}), // _date_YYYY-MM-DD
 		}}
 		assertFilter(t, f, obj1, true)
 		assertFilter(t, f, obj2, false)
