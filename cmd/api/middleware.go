@@ -7,7 +7,7 @@ import (
 )
 
 // Middleware to authenticate requests and add user info to context
-func AuthMiddleware() gin.HandlerFunc {
+func (a *ApiServer) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")
 		if token == "" {
@@ -28,7 +28,7 @@ func AuthMiddleware() gin.HandlerFunc {
 }
 
 // Middleware to check permissions
-func PermissionMiddleware(requiredPermission string) gin.HandlerFunc {
+func (a *ApiServer) PermissionMiddleware(requiredPermission string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, exists := c.Get("user")
 		if !exists {

@@ -31,7 +31,6 @@ import (
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
 	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 
-	"github.com/anyproto/anytype-heart/api"
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -315,8 +314,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(payments.New()).
 		Register(paymentscache.New()).
 		Register(peerstatus.New()).
-		Register(lastused.New()).
-		Register(api.New())
+		Register(lastused.New())
 }
 
 func MiddlewareVersion() string {

@@ -28,6 +28,7 @@ import (
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc"
 
+	"github.com/anyproto/anytype-heart/cmd/api"
 	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -226,6 +227,11 @@ func main() {
 
 	// do not change this, js client relies on this msg to ensure that server is up and parse address
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
+
+	// run rest api server
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go api.RunApiServer(ctx, mw)
 
 	for {
 		sig := <-signalChan
