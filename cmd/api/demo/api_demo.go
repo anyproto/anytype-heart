@@ -1,0 +1,109 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+)
+
+const (
+	baseURL      = "http://localhost:31009/v1"
+	testSpaceId  = "bafyreifymx5ucm3fdc7vupfg7wakdo5qelni3jvlmawlnvjcppurn2b3di.2lcu0r85yg10d" // dev (entry space)
+	testObjectId = "bafyreidhtlbbspxecab6xf4pi5zyxcmvwy6lqzursbjouq5fxovh6y3xwu"               // "Work Faster with Templates"
+	testTypeId   = "bafyreifuklfpndjtlekqcjzuaerjtv2mckhn2w6txeumt5kqbthd7qxhui"               // Space Member
+)
+
+var log = logging.Logger("rest-api")
+
+// ReplacePlaceholders replaces placeholders in the endpoint with actual values from parameters.
+func ReplacePlaceholders(endpoint string, parameters map[string]interface{}) string {
+	for key, value := range parameters {
+		placeholder := fmt.Sprintf("{%s}", key)
+		endpoint = strings.ReplaceAll(endpoint, placeholder, fmt.Sprintf("%v", value))
+	}
+
+	// Parse the base URL + endpoint
+	u, err := url.Parse(baseURL + endpoint)
+	if err != nil {
+		log.Errorf("Failed to parse URL: %v\n", err)
+		return ""
+	}
+
+	return u.String()
+}
+
+func main() {
+	endpoints := []struct {
+		method     string
+		endpoint   string
+		parameters map[string]interface{}
+		body       map[string]interface{}
+	}{
+		// auth
+		{"POST", "/auth/displayCode", nil, nil},
+		{"GET", "/auth/token?challengeId={challengeId}&code={code}", map[string]interface{}{"challengeId": "6738dfc5cda913aad90e8c2a", "code": "2931"}, nil},
+
+		// spaces
+		{"POST", "/spaces", nil, map[string]interface{}{"name": "New Space"}},
+		{"GET", "/spaces?limit={limit}&offset={offset}", map[string]interface{}{"limit": 100, "offset": 0}, nil},
+		{"GET", "/spaces/{space_id}/members", map[string]interface{}{"space_id": testSpaceId}, nil},
+
+		// space_objects
+		{"GET", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
+		{"GET", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, nil},
+		{"POST", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId}, map[string]interface{}{"name": "New Object"}},
+		{"PUT", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, map[string]interface{}{"name": "Updated Object"}},
+
+		// types_and_templates
+		{"GET", "/spaces/{space_id}/objectTypes?limit={limit}&offset={offset}", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
+		{"GET", "/spaces/{space_id}/objectTypes/{type_id}/templates", map[string]interface{}{"space_id": testSpaceId, "type_id": testTypeId}, nil},
+
+		// search
+		{"GET", "/objects?search={search}&object_type={object_type}&limit={limit}&offset={offset}", map[string]interface{}{"search": "term", "object_type": "note", "limit": 100, "offset": 0}, nil},
+	}
+
+	for _, ep := range endpoints {
+		finalURL := ReplacePlaceholders(ep.endpoint, ep.parameters)
+
+		var req *http.Request
+		var err error
+
+		if ep.body != nil {
+			body, _ := json.Marshal(ep.body)
+			req, err = http.NewRequest(ep.method, finalURL, bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+		} else {
+			req, err = http.NewRequest(ep.method, finalURL, nil)
+		}
+
+		if err != nil {
+			log.Errorf("Failed to create request for %s: %v\n", ep.endpoint, err)
+			continue
+		}
+
+		// Execute the HTTP request
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Errorf("Failed to make request to %s: %v\n", ep.endpoint, err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		// Read the response
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Errorf("Failed to read response body for %s: %v\n", ep.endpoint, err)
+			continue
+		}
+
+		// Log the response
+		log.Infof("Endpoint: %s, Status Code: %d, Body: %s\n", finalURL, resp.StatusCode, string(body))
+	}
+}
