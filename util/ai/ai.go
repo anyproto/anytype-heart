@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/pemistahl/lingua-go"
@@ -29,12 +28,14 @@ var (
 )
 
 type AI interface {
-	WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (result, error)
+	WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (Result, error)
 	app.ComponentRunnable
 }
 
 type AIService struct {
-	mu sync.Mutex
+	apiConfig    APIConfig
+	promptConfig PromptConfig
+	mu           sync.Mutex
 }
 
 type APIConfig struct {
@@ -53,41 +54,33 @@ type PromptConfig struct {
 	JSONMode     bool
 }
 
+type Result struct {
+	Answer string
+}
+
 func New() AI {
 	return &AIService{}
 }
 
-func (l *AIService) Init(a *app.App) (err error) {
-	return
+func (ai *AIService) Init(a *app.App) (err error) {
+	return nil
 }
 
-func (l *AIService) Name() (name string) {
+func (ai *AIService) Name() (name string) {
 	return CName
 }
 
-func (l *AIService) Run(_ context.Context) error {
+func (ai *AIService) Run(_ context.Context) (err error) {
 	return nil
 }
 
-func (l *AIService) Close(_ context.Context) error {
+func (ai *AIService) Close(_ context.Context) (err error) {
 	return nil
 }
 
-type result struct {
-	Answer string
-}
-
-func (r result) TryClose(objectTTL time.Duration) (bool, error) {
-	return true, r.Close()
-}
-
-func (r result) Close() error {
-	return nil
-}
-
-func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (result, error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (Result, error) {
+	ai.mu.Lock()
+	defer ai.mu.Unlock()
 
 	log.Infof("received request with text: %s", strings.ReplaceAll(params.Text, "\n", "\\n"))
 	text := strings.ToLower(strings.TrimSpace(params.Text))
@@ -102,11 +95,11 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 
 		if language, exists := detector.DetectLanguageOf(text); !exists {
 			log.Errorf("unsupported language detected: %s", language)
-			return result{}, fmt.Errorf("%w: %s", ErrUnsupportedLanguage, language)
+			return Result{}, fmt.Errorf("%w: %s", ErrUnsupportedLanguage, language)
 		}
 	}
 
-	chatConfig := APIConfig{
+	ai.apiConfig = APIConfig{
 		Provider:     params.Provider,
 		Endpoint:     params.Endpoint,
 		Model:        params.Model,
@@ -114,7 +107,7 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 		AuthToken:    params.Token,
 	}
 
-	promptConfig := PromptConfig{
+	ai.promptConfig = PromptConfig{
 		Mode:         params.Mode,
 		SystemPrompt: systemPrompts[params.Mode],
 		UserPrompt:   fmt.Sprintf(userPrompts[params.Mode], text),
@@ -122,27 +115,20 @@ func (l *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToo
 		JSONMode:     params.Mode != 0, // use json mode for all modes except default
 	}
 
-	answerChunks, err := chat(chatConfig, promptConfig)
+	answer, err := ai.chat(context.Background())
 	if err != nil {
-		return result{}, err
+		return Result{}, err
 	}
 
-	var answerBuilder strings.Builder
-	for _, chunk := range *answerChunks {
-		for _, choice := range chunk.Choices {
-			answerBuilder.WriteString(choice.Delta.Content)
-		}
-	}
-
-	// extract content from json response, except for default mode
+	// extract answer value from json response, except for default mode
 	if params.Mode != 0 {
-		extractedAnswer, err := extractContentByMode(answerBuilder.String(), promptConfig)
+		extractedAnswer, err := ai.extractAnswerByMode(answer)
 		if err != nil {
-			return result{}, err
+			return Result{}, err
 		}
 
-		return result{Answer: extractedAnswer}, nil
+		return Result{Answer: extractedAnswer}, nil
 	}
 
-	return result{Answer: answerBuilder.String()}, nil
+	return Result{Answer: answer}, nil
 }
