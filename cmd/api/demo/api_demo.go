@@ -75,8 +75,15 @@ func main() {
 		var err error
 
 		if ep.body != nil {
-			body, _ := json.Marshal(ep.body)
+			body, err := json.Marshal(ep.body)
+			if err != nil {
+				log.Errorf("Failed to marshal body for %s: %v\n", ep.endpoint, err)
+				continue
+			}
 			req, err = http.NewRequest(ep.method, finalURL, bytes.NewBuffer(body))
+			if err != nil {
+				log.Errorf("Failed to create request for %s: %v\n", ep.endpoint, err)
+			}
 			req.Header.Set("Content-Type", "application/json")
 		} else {
 			req, err = http.NewRequest(ep.method, finalURL, nil)

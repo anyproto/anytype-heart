@@ -2,7 +2,8 @@ package api
 
 import (
 	"context"
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,7 @@ type NameRequest struct {
 func (a *ApiServer) authDisplayCodeHandler(c *gin.Context) {
 	// Call AccountLocalLinkNewChallenge to display code modal
 	ctx := context.Background()
-	resp := a.mw.AccountLocalLinkNewChallenge(ctx, &pb.RpcAccountLocalLinkNewChallengeRequest{"api-test"})
+	resp := a.mw.AccountLocalLinkNewChallenge(ctx, &pb.RpcAccountLocalLinkNewChallengeRequest{AppName: "api-test"})
 
 	if resp.Error.Code != pb.RpcAccountLocalLinkNewChallengeResponseError_NULL {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to generate a new challenge."})
@@ -85,12 +86,16 @@ func (a *ApiServer) createSpaceHandler(c *gin.Context) {
 		return
 	}
 	name := nameRequest.Name
-	iconOption := rand.Intn(13)
+	iconOption, err := rand.Int(rand.Reader, big.NewInt(13))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to generate random icon."})
+		return
+	}
 
 	resp := a.mw.WorkspaceCreate(context.Background(), &pb.RpcWorkspaceCreateRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
-				"iconOption": {Kind: &types.Value_NumberValue{NumberValue: float64(iconOption)}},
+				"iconOption": {Kind: &types.Value_NumberValue{NumberValue: float64(iconOption.Int64())}},
 				"name":       {Kind: &types.Value_StringValue{StringValue: name}},
 				"spaceDashboardId": {Kind: &types.Value_StringValue{
 					StringValue: "lastOpened",

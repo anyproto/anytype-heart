@@ -40,8 +40,9 @@ func newApiServer(mw service.ClientCommandsServer) *ApiServer {
 	}
 
 	a.server = &http.Server{
-		Addr:    httpPort,
-		Handler: a.router,
+		Addr:              httpPort,
+		Handler:           a.router,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	return a
