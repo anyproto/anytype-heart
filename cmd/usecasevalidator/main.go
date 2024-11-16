@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/gogo/protobuf/jsonpb"
@@ -207,7 +208,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			continue
 		}
 
-		if strings.HasPrefix(f.Name, "files") {
+		if strings.HasPrefix(f.Name, "files") || f.FileInfo().IsDir() {
 			continue
 		}
 
@@ -296,14 +297,21 @@ func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo, flags *c
 		if err != nil {
 			return err
 		}
-		newData, err := processRawData(data, f.Name, info, flags)
-		if err != nil {
-			if !(flags.exclude && errors.Is(err, errValidationFailed)) {
-				// just do not include object that failed validation
-				incorrectFileFound = true
+
+		var newData []byte
+		if f.FileInfo().IsDir() {
+			newData = data
+		} else {
+			newData, err = processRawData(data, f.Name, info, flags)
+			if err != nil {
+				if !(flags.exclude && errors.Is(err, errValidationFailed)) {
+					// just do not include object that failed validation
+					incorrectFileFound = true
+				}
+				continue
 			}
-			continue
 		}
+
 		if newData == nil || !writeNewFile {
 			continue
 		}
@@ -464,7 +472,11 @@ func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
 			bundle.RelationKeyLinks.String(),
 			bundle.RelationKeyBacklinks.String(),
 			bundle.RelationKeyWorkspaceId.String(),
-			bundle.RelationKeyIdentityProfileLink.String():
+			bundle.RelationKeyIdentityProfileLink.String(),
+			bundle.RelationKeyAddedDate.String(),
+			bundle.RelationKeySyncDate.String(),
+			bundle.RelationKeySyncError.String(),
+			bundle.RelationKeySyncStatus.String():
 
 			delete(s.Data.Details.Fields, key)
 		}
@@ -492,7 +504,7 @@ func processProfile(data []byte, info *useCaseInfo, spaceDashboardId string) ([]
 	}
 
 	fmt.Println("spaceDashboardId = " + profile.SpaceDashboardId)
-	if _, found := info.objects[profile.SpaceDashboardId]; !found {
+	if _, found := info.objects[profile.SpaceDashboardId]; !found && !slices.Contains([]string{"lastOpened"}, profile.SpaceDashboardId) {
 		err := fmt.Errorf("failed to find Space Dashboard object '%s' among provided", profile.SpaceDashboardId)
 		fmt.Println(err)
 		return nil, err

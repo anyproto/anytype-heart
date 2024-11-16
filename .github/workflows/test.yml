@@ -53,7 +53,7 @@ jobs:
       - name: Generate mocks
         run: |
           make download-tantivy-all
-          go install go.uber.org/mock/mockgen@v0.3.0
+          go install go.uber.org/mock/mockgen@v0.5.0
           CGO_ENABLED=1 CGO_CFLAGS="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" go generate ./...
       - name: Go test
         env:

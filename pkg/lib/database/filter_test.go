@@ -11,6 +11,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -929,5 +930,68 @@ func TestFilter2ValuesComp_FilterObject(t *testing.T) {
 		assertFilter(t, eq, obj1, false)
 		assertFilter(t, eq, obj2, true)
 		assertFilter(t, eq, obj3, true)
+	})
+}
+
+func TestFilterHasPrefix_FilterObject(t *testing.T) {
+	t.Run("date object id", func(t *testing.T) {
+		key := bundle.RelationKeyMentions.String()
+		now := time.Now()
+		f := FilterHasPrefix{
+			Key:    key,
+			Prefix: dateutil.TimeToShortDateId(now), // _date_YYYY-MM-DD
+		}
+		obj1 := &types.Struct{Fields: map[string]*types.Value{
+			key: pbtypes.StringList([]string{"obj2", dateutil.TimeToDateId(now.Add(30 * time.Minute)), "obj3"}), // _date_YYYY-MM-DD-hh-mm-ss
+		}}
+		obj2 := &types.Struct{Fields: map[string]*types.Value{
+			key: pbtypes.StringList([]string{dateutil.TimeToDateId(now.Add(24 * time.Hour)), "obj1", "obj3"}), // same format, but next day
+		}}
+		obj3 := &types.Struct{Fields: map[string]*types.Value{
+			key: pbtypes.StringList([]string{"obj2", "obj3", dateutil.TimeToShortDateId(now.Add(30 * time.Minute))}), // _date_YYYY-MM-DD
+		}}
+		assertFilter(t, f, obj1, true)
+		assertFilter(t, f, obj2, false)
+		assertFilter(t, f, obj3, true)
+	})
+
+	t.Run("string", func(t *testing.T) {
+		key := bundle.RelationKeyName.String()
+		f := FilterHasPrefix{
+			Key:    key,
+			Prefix: "Let's",
+		}
+		obj1 := &types.Struct{Fields: map[string]*types.Value{
+			key: pbtypes.String("Let's do it"),
+		}}
+		obj2 := &types.Struct{Fields: map[string]*types.Value{
+			key: pbtypes.String("Lets do it"),
+		}}
+		obj3 := &types.Struct{Fields: map[string]*types.Value{
+			key: pbtypes.String("Let's fix it :("),
+		}}
+		assertFilter(t, f, obj1, true)
+		assertFilter(t, f, obj2, false)
+		assertFilter(t, f, obj3, true)
+	})
+
+	t.Run("string list", func(t *testing.T) {
+		toys := "my favorite toys"
+		f := FilterHasPrefix{
+			Key:    toys,
+			Prefix: "Fluffy",
+		}
+		obj1 := &types.Struct{Fields: map[string]*types.Value{
+			toys: pbtypes.StringList([]string{"Teddy bear", "Fluffy giraffe"}),
+		}}
+		obj2 := &types.Struct{Fields: map[string]*types.Value{
+			toys: pbtypes.StringList([]string{"Barbie doll", "Peppa Pig"}),
+		}}
+		obj3 := &types.Struct{Fields: map[string]*types.Value{
+			toys: pbtypes.StringList([]string{"T Rex", "Fluffy Rabbit the Murderer"}),
+		}}
+		assertFilter(t, f, obj1, true)
+		assertFilter(t, f, obj2, false)
+		assertFilter(t, f, obj3, true)
 	})
 }

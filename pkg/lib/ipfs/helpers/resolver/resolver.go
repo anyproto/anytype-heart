@@ -8,8 +8,8 @@ import (
 	"time"
 
 	dag "github.com/ipfs/boxo/ipld/merkledag"
-	path "github.com/ipfs/boxo/path"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/boxo/path"
+	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 )
@@ -44,11 +44,8 @@ type Resolver struct {
 
 // ResolveToLastNode walks the given path and returns the cid of the last node
 // referenced by the path
-func (r *Resolver) ResolveToLastNode(ctx context.Context, fpath path.Path) (cid.Cid, []string, error) {
-	c, p, err := path.SplitAbsPath(fpath)
-	if err != nil {
-		return cid.Cid{}, nil, err
-	}
+func (r *Resolver) ResolveToLastNode(ctx context.Context, fpath path.ImmutablePath) (cid.Cid, []string, error) {
+	c, p := fpath.RootCid(), fpath.Segments()[2:]
 
 	if len(p) == 0 {
 		return c, nil, nil

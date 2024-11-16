@@ -32,7 +32,7 @@ func TestNotion_GetSnapshots(t *testing.T) {
 		c := client.NewClient()
 		c.BasePath = s.URL
 		converter.search = search.New(c)
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
 		_, ce := converter.GetSnapshots(
@@ -60,7 +60,7 @@ func TestNotion_GetSnapshots(t *testing.T) {
 		c := client.NewClient()
 		c.BasePath = s.URL
 		converter.search = search.New(c)
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
 		_, ce := converter.GetSnapshots(
@@ -88,7 +88,7 @@ func TestNotion_GetSnapshots(t *testing.T) {
 		c := client.NewClient()
 		c.BasePath = s.URL
 		converter.search = search.New(c)
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
 		_, ce := converter.GetSnapshots(

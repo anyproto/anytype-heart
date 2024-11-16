@@ -47,7 +47,7 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.Nil(t, ce)
 	assert.Len(t, res.Snapshots, 2)
@@ -67,7 +67,7 @@ func Test_GetSnapshotsFailedReadZip(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.NotNil(t, ce)
 }
@@ -94,7 +94,7 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.NotNil(t, ce)
 	assert.False(t, ce.IsEmpty())
@@ -123,7 +123,7 @@ func Test_GetSnapshotsEmptySnapshot(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}))
 
 	assert.NotNil(t, ce)
 	assert.False(t, ce.IsEmpty())
@@ -142,7 +142,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.NotNil(t, ce)
 	assert.Nil(t, res)
@@ -155,7 +155,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.NotNil(t, ce)
 	assert.NotNil(t, res.Snapshots)
@@ -175,7 +175,7 @@ func Test_GetSnapshotsWithoutRootCollection(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)
@@ -211,7 +211,7 @@ func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewNoOp())
 
 	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)
@@ -232,7 +232,7 @@ func TestPb_GetSnapshots(t *testing.T) {
 			Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
 				Path: []string{dir},
 			}},
-		}, process.NewProgress(pb.ModelProcess_Import))
+		}, process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}))
 
 		// then
 		assert.NotNil(t, ce)
@@ -251,7 +251,7 @@ func TestPb_GetSnapshots(t *testing.T) {
 			Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
 				Path: []string{zipPath},
 			}},
-		}, process.NewProgress(pb.ModelProcess_Import))
+		}, process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}))
 
 		// then
 		assert.NotNil(t, ce)
