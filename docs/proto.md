@@ -20273,7 +20273,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | OLLAMA | 0 |  |
-| OPENAI | 1 | ... |
+| OPENAI | 1 |  |
+| LMSTUDIO | 2 | ... |
 
 
 

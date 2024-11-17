@@ -148,7 +148,25 @@ func TestWritingTools(t *testing.T) {
 			},
 		},
 		{
-			name: "JSONExtraction",
+			name: "ValidResponseLMStudio",
+			params: &pb.RpcAIWritingToolsRequest{
+				Mode:        0,
+				Language:    0,
+				Provider:    pb.RpcAIWritingToolsRequest_LMSTUDIO,
+				Endpoint:    "http://localhost:1234/v1/chat/completions",
+				Model:       "llama-3.2-3b-instruct",
+				Token:       "",
+				Temperature: 0,
+				Text:        "What is the capital of France?",
+			},
+			validateResult: func(t *testing.T, result Result, err error) {
+				assert.NoError(t, err)
+				assert.NotEmpty(t, result.Answer)
+				assert.Contains(t, result.Answer, "Paris")
+			},
+		},
+		{
+			name: "JSONExtractionOllama",
 			params: &pb.RpcAIWritingToolsRequest{
 				Mode:        6,
 				Language:    0,
@@ -163,6 +181,24 @@ func TestWritingTools(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotEmpty(t, result.Answer)
 				assert.Equal(t, "| Country | Capital |\n|----------|---------|\n| France   | Paris   |\n| Germany  | Berlin  |\n", result.Answer)
+			},
+		},
+		{
+			name: "JSONExtractionLMStudio",
+			params: &pb.RpcAIWritingToolsRequest{
+				Mode:        6,
+				Language:    0,
+				Provider:    pb.RpcAIWritingToolsRequest_LMSTUDIO,
+				Endpoint:    "http://localhost:1234/v1/chat/completions",
+				Model:       "llama-3.2-3b-instruct",
+				Token:       "",
+				Temperature: 0,
+				Text:        "Countries, Capitals\nFrance, Paris\nGermany, Berlin",
+			},
+			validateResult: func(t *testing.T, result Result, err error) {
+				assert.NoError(t, err)
+				assert.NotEmpty(t, result.Answer)
+				assert.Equal(t, "| Country | Capital |\n| --- | --- |\n| France | Paris |\n| Germany | Berlin |", result.Answer)
 			},
 		},
 	}

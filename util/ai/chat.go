@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 // ChatRequest represents the structure of the request payload for the chat API.
@@ -18,7 +20,7 @@ type ChatRequest struct {
 	Messages       []map[string]string    `json:"messages"`
 	Temperature    float32                `json:"temperature"`
 	Stream         bool                   `json:"stream"`
-	ResponseFormat map[string]interface{} `json:"response_format"`
+	ResponseFormat map[string]interface{} `json:"response_format,omitempty"`
 }
 
 // ChatResponse represents the structure of the response from the chat API.
@@ -52,6 +54,21 @@ type ContentResponse struct {
 	ConfidentContent       string `json:"confident_content,omitempty"`
 	StraightforwardContent string `json:"straightforward_content,omitempty"`
 	ProfessionalContent    string `json:"professional_content,omitempty"`
+}
+
+var modeToJSONKey = map[int]string{
+	1:  "summary",
+	2:  "corrected",
+	3:  "shortened",
+	4:  "expanded",
+	5:  "bullet",
+	6:  "content_as_table",
+	7:  "casual_content",
+	8:  "funny_content",
+	9:  "confident_content",
+	10: "straightforward_content",
+	11: "professional_content",
+	12: "translation",
 }
 
 // prefixStrippingReader is a custom reader that strips a specific prefix from each line.
@@ -99,8 +116,32 @@ func (ai *AIService) createChatRequest() ([]byte, error) {
 	}
 
 	if ai.promptConfig.JSONMode {
-		payload.ResponseFormat = map[string]interface{}{
-			"type": "json_object",
+		if ai.apiConfig.Provider == pb.RpcAIWritingToolsRequest_OLLAMA {
+			payload.ResponseFormat = map[string]interface{}{
+				"type": "json_object",
+			}
+		} else {
+			key, exists := modeToJSONKey[int(ai.promptConfig.Mode)]
+			if !exists {
+				return nil, fmt.Errorf("unknown mode: %d", ai.promptConfig.Mode)
+			}
+			// strict json schema for openai and lmstudio
+			payload.ResponseFormat = map[string]interface{}{
+				"type": "json_schema",
+				"json_schema": map[string]interface{}{
+					"name":   key + "_response",
+					"strict": "true",
+					"schema": map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							key: map[string]interface{}{
+								"type": "string",
+							},
+						},
+						"required": []string{key},
+					},
+				},
+			}
 		}
 	}
 
@@ -187,6 +228,7 @@ func (ai *AIService) chat(ctx context.Context) (string, error) {
 		}
 	}
 
+	log.Info("chat response: ", answerBuilder.String())
 	return answerBuilder.String(), nil
 }
 

@@ -3763,6 +3763,7 @@ message Rpc {
                 enum Provider {
                     OLLAMA = 0;
                     OPENAI = 1;
+                    LMSTUDIO = 2;
                     // ...
                 }
             }

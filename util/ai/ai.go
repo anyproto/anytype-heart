@@ -86,7 +86,7 @@ func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingTo
 	text := strings.ToLower(strings.TrimSpace(params.Text))
 
 	// check supported languages for llama models
-	if params.Provider == pb.RpcAIWritingToolsRequest_OLLAMA {
+	if params.Provider == pb.RpcAIWritingToolsRequest_OLLAMA || params.Provider == pb.RpcAIWritingToolsRequest_LMSTUDIO {
 		languages := []lingua.Language{lingua.English, lingua.Spanish, lingua.French, lingua.German, lingua.Italian, lingua.Portuguese, lingua.Hindi, lingua.Thai}
 		detector := lingua.NewLanguageDetectorBuilder().
 			FromLanguages(languages...).
@@ -103,7 +103,7 @@ func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingTo
 		Provider:     params.Provider,
 		Endpoint:     params.Endpoint,
 		Model:        params.Model,
-		AuthRequired: params.Provider != pb.RpcAIWritingToolsRequest_OLLAMA,
+		AuthRequired: params.Provider == pb.RpcAIWritingToolsRequest_OPENAI,
 		AuthToken:    params.Token,
 	}
 
@@ -127,6 +127,8 @@ func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingTo
 			return Result{}, err
 		}
 
+		// fix lmstudio newline issue for table responses
+		extractedAnswer = strings.ReplaceAll(extractedAnswer, "\\\\n", "\n")
 		return Result{Answer: extractedAnswer}, nil
 	}
 
