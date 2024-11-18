@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -148,6 +149,14 @@ func makeFilterByCondition(spaceID string, rawFilter *model.BlockContentDataview
 			Value: rawFilter.Value,
 		}}, nil
 	case model.BlockContentDataviewFilter_In:
+		// hack for queries for relations containing date objects ids with format _date_YYYY-MM-DD-hh-mm-ss
+		// to find all date object ids of the same day we search by prefix _date_YYYY-MM-DD
+		if ts, err := dateutil.ParseDateId(rawFilter.Value.GetStringValue()); err == nil {
+			return FilterHasPrefix{
+				Key:    rawFilter.RelationKey,
+				Prefix: dateutil.TimeToShortDateId(ts),
+			}, nil
+		}
 		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
@@ -433,6 +442,40 @@ func (e FilterEq) filterObject(v *types.Value) bool {
 		return comp != 0
 	}
 	return false
+}
+
+type FilterHasPrefix struct {
+	Key, Prefix string
+}
+
+func (p FilterHasPrefix) FilterObject(s *types.Struct) bool {
+	val := pbtypes.Get(s, p.Key)
+	if strings.HasPrefix(val.GetStringValue(), p.Prefix) {
+		return true
+	}
+
+	list := val.GetListValue()
+	if list == nil {
+		return false
+	}
+
+	for _, v := range list.Values {
+		if strings.HasPrefix(v.GetStringValue(), p.Prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func (p FilterHasPrefix) AnystoreFilter() query.Filter {
+	re, err := regexp.Compile("^" + regexp.QuoteMeta(p.Prefix))
+	if err != nil {
+		log.Errorf("failed to build anystore HAS PREFIX filter: %v", err)
+	}
+	return query.Key{
+		Path:   []string{p.Key},
+		Filter: query.Regexp{Regexp: re},
+	}
 }
 
 // any
