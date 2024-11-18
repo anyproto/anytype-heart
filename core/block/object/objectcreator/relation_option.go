@@ -49,7 +49,12 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct) (domain.UniqueKey, error) {
 	uniqueKey := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
 	if uniqueKey == "" {
-		return domain.NewUniqueKey(sbType, bson.NewObjectId().Hex())
+		newUniqueKey, err := domain.NewUniqueKey(sbType, bson.NewObjectId().Hex())
+		if err != nil {
+			return nil, err
+		}
+		details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(newUniqueKey.Marshal())
+		return newUniqueKey, err
 	}
 	return domain.UnmarshalUniqueKey(uniqueKey)
 }
