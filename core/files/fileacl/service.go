@@ -49,11 +49,11 @@ func (s *service) GetInfoForFileSharing(fileObjectId string) (cid string, encryp
 		return "", nil, fmt.Errorf("get file id from object: %w", err)
 	}
 	cid = fileId.FileId.String()
-	keys, err := s.fileService.FileGetKeys(fileId.FileId)
+	keys, err := s.objectStore.GetFileKeys(fileId.FileId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get file keys: %w", err)
 	}
-	for path, key := range keys.EncryptionKeys {
+	for path, key := range keys {
 		encryptionKeys = append(encryptionKeys, &model.FileEncryptionKey{
 			Path: path,
 			Key:  key,

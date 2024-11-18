@@ -1373,6 +1373,15 @@
   {
     "format": "shorttext",
     "hidden": true,
+    "key": "fileVariantPaths",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
     "key": "fileVariantKeys",
     "maxCount": 0,
     "name": "Underlying file id",

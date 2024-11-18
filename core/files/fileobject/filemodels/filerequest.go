@@ -28,17 +28,18 @@ var (
 	ErrEmptyFileId    = fmt.Errorf("empty file id")
 )
 
-func FileInfosToDetails(infos []*storage.FileInfo, st *state.State) error {
+func InjectVariantsToDetails(infos []*storage.FileInfo, st *state.State) error {
 	if len(infos) == 0 {
 		return fmt.Errorf("empty info list")
 	}
 	var (
 		variantIds []string
-		keys       []string // fill in smartblock?
+		keys       []string
 		widths     []int
 		checksums  []string
 		mills      []string
 		options    []string
+		paths      []string
 	)
 
 	keysInfo := st.GetFileInfo().EncryptionKeys
@@ -51,8 +52,10 @@ func FileInfosToDetails(infos []*storage.FileInfo, st *state.State) error {
 		widths = append(widths, int(pbtypes.GetInt64(info.Meta, "width")))
 		keys = append(keys, keysInfo[info.Path])
 		options = append(options, info.Opts)
+		paths = append(paths, info.Path)
 	}
 	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantIds, pbtypes.StringList(variantIds))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantPaths, pbtypes.StringList(paths))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantChecksums, pbtypes.StringList(checksums))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantMills, pbtypes.StringList(mills))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantWidths, pbtypes.IntList(widths...))
@@ -85,6 +88,7 @@ func GetFileInfosFromDetails(details *types.Struct) []*storage.FileInfo {
 			Checksum: pbtypes.GetStringList(details, bundle.RelationKeyFileVariantChecksums.String())[i],
 			Mill:     pbtypes.GetStringList(details, bundle.RelationKeyFileVariantMills.String())[i],
 			Meta:     meta,
+			Path:     pbtypes.GetStringList(details, bundle.RelationKeyFileVariantPaths.String())[i],
 			Key:      pbtypes.GetStringList(details, bundle.RelationKeyFileVariantKeys.String())[i],
 			Opts:     pbtypes.GetStringList(details, bundle.RelationKeyFileVariantOptions.String())[i],
 		}

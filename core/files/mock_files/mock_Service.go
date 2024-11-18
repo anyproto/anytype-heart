@@ -573,11 +573,11 @@ func (_c *MockService_ImageFromInfos_Call) RunAndReturn(run func(domain.FullFile
 }
 
 // IndexFile provides a mock function with given fields: ctx, fileId, details, keys
-func (_m *MockService) IndexFile(ctx context.Context, fileId domain.FullFileId, details *types.Struct, keys map[string]string) ([]*storage.FileInfo, error) {
+func (_m *MockService) GetFileVariants(ctx context.Context, fileId domain.FullFileId, details *types.Struct, keys map[string]string) ([]*storage.FileInfo, error) {
 	ret := _m.Called(ctx, fileId, details, keys)
 
 	if len(ret) == 0 {
-		panic("no return value specified for IndexFile")
+		panic("no return value specified for GetFileVariants")
 	}
 
 	var r0 []*storage.FileInfo
@@ -602,7 +602,7 @@ func (_m *MockService) IndexFile(ctx context.Context, fileId domain.FullFileId, 
 	return r0, r1
 }
 
-// MockService_IndexFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IndexFile'
+// MockService_IndexFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFileVariants'
 type MockService_IndexFile_Call struct {
 	*mock.Call
 }
@@ -613,7 +613,7 @@ type MockService_IndexFile_Call struct {
 //   - details *types.Struct
 //   - keys map[string]string
 func (_e *MockService_Expecter) IndexFile(ctx interface{}, fileId interface{}, details interface{}, keys interface{}) *MockService_IndexFile_Call {
-	return &MockService_IndexFile_Call{Call: _e.mock.On("IndexFile", ctx, fileId, details, keys)}
+	return &MockService_IndexFile_Call{Call: _e.mock.On("GetFileVariants", ctx, fileId, details, keys)}
 }
 
 func (_c *MockService_IndexFile_Call) Run(run func(ctx context.Context, fileId domain.FullFileId, details *types.Struct, keys map[string]string)) *MockService_IndexFile_Call {

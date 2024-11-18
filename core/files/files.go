@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -27,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
@@ -50,11 +48,10 @@ var _ Service = (*service)(nil)
 type Service interface {
 	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
 	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
-	FileGetKeys(id domain.FileId) (*domain.FileEncryptionKeys, error)
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
-
-	IndexFile(ctx context.Context, fileId domain.FullFileId, details *types.Struct, keys map[string]string) ([]*storage.FileInfo, error)
+	// GetFileVariants get file information from DAG. If file is not available locally, it fetches data from remote peer (file node or p2p peer)
+	GetFileVariants(ctx context.Context, fileId domain.FullFileId, keys map[string]string) ([]*storage.FileInfo, error)
 
 	app.Component
 }
@@ -170,10 +167,6 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 }
 
 func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId, variants []*storage.FileInfo) (*AddResult, error) {
-	keys, err := s.FileGetKeys(fileId)
-	if err != nil {
-		return nil, fmt.Errorf("get keys: %w", err)
-	}
 	if len(variants) == 0 {
 		return nil, fmt.Errorf("variants not found")
 	}
@@ -188,12 +181,15 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId, 
 	}
 
 	return &AddResult{
-		IsExisting:     true,
-		FileId:         fileId,
-		EncryptionKeys: keys,
-		MIME:           variant.GetMedia(),
-		Size:           variant.GetSize_(),
-		lock:           lock,
+		IsExisting: true,
+		FileId:     fileId,
+		EncryptionKeys: &domain.FileEncryptionKeys{
+			FileId:         fileId,
+			EncryptionKeys: collectKeysFromVariants(variants),
+		},
+		MIME: variant.GetMedia(),
+		Size: variant.GetSize_(),
+		lock: lock,
 	}, nil
 
 }
@@ -228,18 +224,6 @@ func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo 
 		return nil, nil, err
 	}
 	return node, keys, nil
-}
-
-func (s *service) FileGetKeys(id domain.FileId) (*domain.FileEncryptionKeys, error) {
-	keys, err := s.objectStore.GetFileKeys(id)
-	if err != nil {
-		return nil, err
-	}
-	return &domain.FileEncryptionKeys{
-		FileId:         id,
-		EncryptionKeys: keys,
-	}, nil
-
 }
 
 func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId domain.FileId, path string, key string) (*storage.FileInfo, error) {
@@ -305,11 +289,11 @@ type addFileNodeResult struct {
 	filePairNode ipld.Node
 }
 
-func newExistingFileResult(fileId domain.FileId, variants []*storage.FileInfo) (*addFileNodeResult, error) {
+func newExistingFileResult(file *existingFile) (*addFileNodeResult, error) {
 	return &addFileNodeResult{
 		isExisting:       true,
-		existingVariants: variants,
-		fileId:           fileId,
+		existingVariants: file.variants,
+		fileId:           file.fileId,
 	}, nil
 }
 
@@ -334,8 +318,8 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	if existingFileId, variants, err := s.getFileVariantBySourceChecksum(mill.ID(), conf.checksum, opts); err == nil {
-		existingRes, err := newExistingFileResult(existingFileId, variants)
+	if existingFile, err := s.getFileVariantBySourceChecksum(mill.ID(), conf.checksum, opts); err == nil {
+		existingRes, err := newExistingFileResult(existingFile)
 		if err == nil {
 			return existingRes, nil
 		}
@@ -353,12 +337,12 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	if existingFileId, variant, variants, err := s.getFileVariantByChecksum(mill.ID(), variantChecksum); err == nil {
+	if existingFile, variant, err := s.getFileVariantByChecksum(mill.ID(), variantChecksum); err == nil {
 		if variant.Source == conf.checksum {
 			// we may have same variant checksum for different files
 			// e.g. empty image exif with the same resolution
 			// reuse the whole file only in case the checksum of the original file is the same
-			existingRes, err := newExistingFileResult(existingFileId, variants)
+			existingRes, err := newExistingFileResult(existingFile)
 			if err == nil {
 				return existingRes, nil
 			}
@@ -487,7 +471,7 @@ type dirEntry struct {
 	fileNode ipld.Node
 }
 
-func (s *service) fileIndexInfo(ctx context.Context, id domain.FullFileId, keys map[string]string) ([]*storage.FileInfo, error) {
+func (s *service) GetFileVariants(ctx context.Context, id domain.FullFileId, keys map[string]string) ([]*storage.FileInfo, error) {
 	dagService := s.dagServiceForSpace(id.SpaceId)
 	dirLinks, err := helpers.LinksAtCid(ctx, dagService, id.FileId.String())
 	if err != nil {
@@ -561,21 +545,9 @@ func checksum(r io.Reader, wontEncrypt bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	checksum := h.Sum(nil)
 	return base32.RawHexEncoding.EncodeToString(checksum[:]), nil
-}
-
-func (s *service) IndexFile(ctx context.Context, id domain.FullFileId, details *types.Struct, keys map[string]string) ([]*storage.FileInfo, error) {
-	variantsList := pbtypes.GetStringList(details, bundle.RelationKeyFileVariantIds.String())
-	if true || len(variantsList) == 0 {
-		// info from ipfs
-		fileList, err := s.fileIndexInfo(ctx, id, keys)
-		if err != nil {
-			return nil, err
-		}
-		return fileList, nil
-	}
-	return nil, nil
 }
 
 func encryptionKeyPath(linkName string) string {

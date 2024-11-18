@@ -241,12 +241,13 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 }
 
 func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
-	infos, err := ind.fileService.IndexFile(ctx, fileId, st.Details(), st.GetFileInfo().EncryptionKeys)
+	infos, err := ind.fileService.GetFileVariants(ctx, fileId, st.GetFileInfo().EncryptionKeys)
 	if err != nil {
 		return fmt.Errorf("get infos for indexing: %w", err)
 	}
-	if len(infos) > 0 {
-		filemodels.FileInfosToDetails(infos, st)
+	err = filemodels.InjectVariantsToDetails(infos, st)
+	if err != nil {
+		return fmt.Errorf("inject variants: %w", err)
 	}
 
 	prevDetails := st.CombinedDetails()

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "f402a8788a9eb5cb3c58e0850101e561f3870969e07ba6bf568fed9efd256606"
+const RelationChecksum = "c5d86084ffb1e866c35cb877738c70a7361406735b55ddc37aee5b81d0bbd43b"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -145,6 +145,7 @@ const (
 	RelationKeyMentions                  domain.RelationKey = "mentions"
 	RelationKeyTimestamp                 domain.RelationKey = "timestamp"
 	RelationKeyFileVariantIds            domain.RelationKey = "fileVariantIds"
+	RelationKeyFileVariantPaths          domain.RelationKey = "fileVariantPaths"
 	RelationKeyFileVariantKeys           domain.RelationKey = "fileVariantKeys"
 	RelationKeyFileVariantWidths         domain.RelationKey = "fileVariantWidths"
 	RelationKeyFileVariantChecksums      domain.RelationKey = "fileVariantChecksums"
@@ -700,6 +701,19 @@ var (
 			Hidden:           true,
 			Id:               "_brfileVariantOptions",
 			Key:              "fileVariantOptions",
+			Name:             "Underlying file id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileVariantPaths: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brfileVariantPaths",
+			Key:              "fileVariantPaths",
 			Name:             "Underlying file id",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,

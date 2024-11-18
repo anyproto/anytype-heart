@@ -106,15 +106,19 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 		}, smartblock.HookOnStateRebuild)
 	}
 
-	infos, err := f.fileService.IndexFile(ctx.Ctx, domain.FullFileId{
+	fileId := domain.FullFileId{
 		FileId:  domain.FileId(pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyFileId.String())),
 		SpaceId: f.SpaceID(),
-	}, ctx.State.Details(), ctx.State.GetFileInfo().EncryptionKeys)
-	if err != nil {
-		return fmt.Errorf("get infos for indexing: %w", err)
 	}
-	if len(infos) > 0 {
-		filemodels.FileInfosToDetails(infos, ctx.State)
+	if len(pbtypes.GetStringList(ctx.State.Details(), bundle.RelationKeyFileVariantIds.String())) == 0 {
+		infos, err := f.fileService.GetFileVariants(ctx.Ctx, fileId, ctx.State.GetFileInfo().EncryptionKeys)
+		if err != nil {
+			return fmt.Errorf("get infos for indexing: %w", err)
+		}
+		err = filemodels.InjectVariantsToDetails(infos, ctx.State)
+		if err != nil {
+			return fmt.Errorf("inject variants: %w", err)
+		}
 	}
 
 	return nil

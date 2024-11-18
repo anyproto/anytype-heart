@@ -12,7 +12,20 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum string, options string) (domain.FileId, []*storage.FileInfo, error) {
+type existingFile struct {
+	fileId   domain.FileId
+	variants []*storage.FileInfo
+}
+
+func collectKeysFromVariants(variants []*storage.FileInfo) map[string]string {
+	keys := map[string]string{}
+	for _, variant := range variants {
+		keys[variant.Path] = variant.Key
+	}
+	return keys
+}
+
+func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum string, options string) (*existingFile, error) {
 	recs, err := s.objectStore.QueryCrossSpace(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -34,17 +47,20 @@ func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum str
 		Limit: 1,
 	})
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 	if len(recs) == 0 {
-		return "", nil, fmt.Errorf("variant not found")
+		return nil, fmt.Errorf("variant not found")
 	}
 
-	infos := filemodels.GetFileInfosFromDetails(recs[0].Details)
-	return domain.FileId(pbtypes.GetString(recs[0].Details, bundle.RelationKeyFileId.String())), infos, nil
+	variants := filemodels.GetFileInfosFromDetails(recs[0].Details)
+	return &existingFile{
+		fileId:   domain.FileId(pbtypes.GetString(recs[0].Details, bundle.RelationKeyFileId.String())),
+		variants: variants,
+	}, nil
 }
 
-func (s *service) getFileVariantByChecksum(mill string, variantChecksum string) (domain.FileId, *storage.FileInfo, []*storage.FileInfo, error) {
+func (s *service) getFileVariantByChecksum(mill string, variantChecksum string) (*existingFile, *storage.FileInfo, error) {
 	recs, err := s.objectStore.QueryCrossSpace(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -61,18 +77,21 @@ func (s *service) getFileVariantByChecksum(mill string, variantChecksum string) 
 		Limit: 1,
 	})
 	if err != nil {
-		return "", nil, nil, err
+		return nil, nil, err
 	}
 	if len(recs) == 0 {
-		return "", nil, nil, fmt.Errorf("variant not found")
+		return nil, nil, fmt.Errorf("variant not found")
 	}
 
-	infos := filemodels.GetFileInfosFromDetails(recs[0].Details)
-	for _, info := range infos {
+	variants := filemodels.GetFileInfosFromDetails(recs[0].Details)
+	for _, info := range variants {
 		if info.Mill == mill && info.Checksum == variantChecksum {
-			return domain.FileId(pbtypes.GetString(recs[0].Details, bundle.RelationKeyFileId.String())), info, infos, nil
+			return &existingFile{
+				fileId:   domain.FileId(pbtypes.GetString(recs[0].Details, bundle.RelationKeyFileId.String())),
+				variants: variants,
+			}, info, nil
 		}
 	}
 	// Should never happen
-	return "", nil, nil, fmt.Errorf("variant with specified mill not found")
+	return nil, nil, fmt.Errorf("variant with specified mill not found")
 }
