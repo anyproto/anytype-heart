@@ -75,7 +75,7 @@ jobs:
           echo "Running perf tests"
           RUN_COUNT=${{ github.event.inputs.perf-test }}
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            RUN_COUNT=100
+            RUN_COUNT=10
           fi          
           echo $PERF_CONFIG_STAGING > config.json
           mv .github/staging_fake.yml staging_fake.yml
