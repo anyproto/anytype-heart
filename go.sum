@@ -81,6 +81,10 @@ github.com/anyproto/any-store v0.1.2 h1:/WKsPOQxK1jOHS7efTIosnyJTvy0O3gYg/DSnt41
 github.com/anyproto/any-store v0.1.2/go.mod h1:SDlN2AzysAfs8CDd28rrs6boUUtf5H/ydCvwmj+EbsE=
 github.com/anyproto/any-sync v0.5.17 h1:KD0QUjRHhWYxDfHSV1hlgvPUGzyraybJUnl7xr1GsrA=
 github.com/anyproto/any-sync v0.5.17/go.mod h1:BOy7swQk2LTrjTXCpUOpy19kL1ggwKHt/JSYzFLLg0c=
+github.com/anyproto/any-sync v0.5.18-0.20241115164535-944c9cf10add h1:k/6kYpUOkJ93kpnaJG7q7sTwxBPu75ZdMiXHE8iqAeU=
+github.com/anyproto/any-sync v0.5.18-0.20241115164535-944c9cf10add/go.mod h1:K53/whh/9tmGbXrkPS59XyqWU3SaxhsX9g6VIYnBIlU=
+github.com/anyproto/any-sync v0.5.18 h1:isS9AXOs5b6kSM/fbANEvOxn8JJrSuaKKlrUWNLdTS4=
+github.com/anyproto/any-sync v0.5.18/go.mod h1:K53/whh/9tmGbXrkPS59XyqWU3SaxhsX9g6VIYnBIlU=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580/go.mod h1:T/uWAYxrXdaXw64ihI++9RMbKTCpKd/yE9+saARew7k=
 github.com/anyproto/go-chash v0.1.0 h1:I9meTPjXFRfXZHRJzjOHC/XF7Q5vzysKkiT/grsogXY=
@@ -1026,8 +1030,8 @@ github.com/urfave/cli v1.22.1/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtX
 github.com/urfave/cli v1.22.10/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/valyala/fastjson v1.6.4 h1:uAUNq9Z6ymTgGhcm0UynUAB6tlbakBrz6CQFax3BXVQ=
 github.com/valyala/fastjson v1.6.4/go.mod h1:CLCAqky6SMuOcxStkYQvblddUtoRxhYMGLrsQns1aXY=
-github.com/vektra/mockery/v2 v2.46.3 h1:Aia4iShZeNTy6CZJcvweK4X97XOzXcqb+k9jm8IqBS0=
-github.com/vektra/mockery/v2 v2.46.3/go.mod h1:dDivqi0ShM8A29mLgZn13yZ14MdXlTM4V360u8JDWCQ=
+github.com/vektra/mockery/v2 v2.47.0 h1:/OgQNNsUxwKCC8rt6cRXxvfj7/f9mYrCbX4m/tcZpFQ=
+github.com/vektra/mockery/v2 v2.47.0/go.mod h1:xO2DeYemEPC2tCzIZ+a1tifZ/7Laf/Chxg3vlc+oDsI=
 github.com/warpfork/go-testmark v0.12.1 h1:rMgCpJfwy1sJ50x0M0NgyphxYYPMOODIJHhsXyEHU0s=
 github.com/warpfork/go-testmark v0.12.1/go.mod h1:kHwy7wfvGSPh1rQJYKayD4AbtNaeyZdcGi9tNJTaa5Y=
 github.com/warpfork/go-wish v0.0.0-20220906213052-39a1cc7a02d0 h1:GDDkbFiaK8jsSDJfjId/PEGEShv6ugrt4kYsC5UIDaQ=
