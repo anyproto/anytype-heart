@@ -173,10 +173,10 @@ func (w *watcher) backlinksUpdateHandler() {
 		w.lock.Lock()
 		for _, msg := range msgs {
 			info, ok := msg.(spaceindex.LinksUpdateInfo)
-			if !ok || hasSelfLinks(info) {
+			if !ok {
 				continue
 			}
-
+			info = cleanSelfLinks(info)
 			applyUpdates(w.accumulatedBacklinks, info)
 		}
 		lastReceivedUpdates = time.Now()
@@ -281,4 +281,27 @@ func hasSelfLinks(info spaceindex.LinksUpdateInfo) bool {
 		}
 	}
 	return false
+}
+
+func cleanSelfLinks(info spaceindex.LinksUpdateInfo) spaceindex.LinksUpdateInfo {
+	if !hasSelfLinks(info) {
+		// optimisation to avoid additional allocations
+		return info
+	}
+	infoFilter := spaceindex.LinksUpdateInfo{
+		LinksFromId: info.LinksFromId,
+		Added:       make([]string, 0, len(info.Added)),
+		Removed:     make([]string, 0, len(info.Removed)),
+	}
+	for _, link := range info.Added {
+		if link != info.LinksFromId {
+			infoFilter.Added = append(infoFilter.Added, link)
+		}
+	}
+	for _, link := range info.Removed {
+		if link != info.LinksFromId {
+			infoFilter.Removed = append(infoFilter.Removed, link)
+		}
+	}
+	return infoFilter
 }
