@@ -71,7 +71,12 @@ func (f cliFlags) isUpdateNeeded() bool {
 	return f.analytics || f.creator || f.removeRelations || f.exclude || f.rules != ""
 }
 
-const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
+const (
+	anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
+
+	filesPrefix       = "files"
+	fileObjectsPrefix = "filesObjects"
+)
 
 var (
 	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
@@ -208,7 +213,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			continue
 		}
 
-		if (strings.HasPrefix(f.Name, "files") && !strings.HasPrefix(f.Name, "filesObjects")) || f.FileInfo().IsDir() {
+		if (strings.HasPrefix(f.Name, filesPrefix) && !strings.HasPrefix(f.Name, fileObjectsPrefix)) || f.FileInfo().IsDir() {
 			continue
 		}
 
