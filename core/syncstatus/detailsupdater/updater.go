@@ -139,7 +139,7 @@ func (u *syncStatusUpdater) updateSpecificObject(objectId string) {
 	if objectStatus != nil {
 		err := u.updateObjectDetails(objectStatus, objectId)
 		if err != nil {
-			log.Errorf("failed to update details %s", err)
+			log.Errorf("failed to update details: %s", err)
 		}
 	}
 }

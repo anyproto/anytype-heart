@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	ambiguousPageMessage  = "ambiguous page"   // more than one page with the same title without direct parent
-	pageNotFoundMessage   = "page not found"   // can't find notion page by title
-	objectNotFoundMessage = "object not found" // can't find anytypeId for notion page
+	ambiguousPageMessage  = "ambiguous page"          // more than one page with the same title without direct parent
+	pageNotFoundMessage   = "page not found"          // can't find notion page by title
+	objectNotFoundMessage = "notion object not found" // can't find anytypeId for notion page
 )
 
 var (

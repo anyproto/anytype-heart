@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/sqlitestorage"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -66,7 +67,9 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) {
 		for _, objectId := range objectIds {
 			objDocs, err := i.prepareSearchDocument(ctx, objectId)
 			if err != nil {
-				log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)
+				if !errors.Is(err, sqlitestorage.ErrObjectNotFound) {
+					log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)
+				}
 				if errors.Is(err, context.Canceled) {
 					return err
 				}

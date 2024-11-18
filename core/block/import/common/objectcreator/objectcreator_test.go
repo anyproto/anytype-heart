@@ -180,7 +180,7 @@ func (g *dumbObjectGetter) GetObject(_ context.Context, id string) (smartblock.S
 	if b, ok := g.objects[id]; ok {
 		return b, nil
 	}
-	return nil, fmt.Errorf("object not found")
+	return nil, fmt.Errorf("requested object not found")
 }
 
 func (g *dumbObjectGetter) GetObjectByFullID(ctx context.Context, id domain.FullID) (smartblock.SmartBlock, error) {

@@ -9,12 +9,11 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-var ErrObjectNotFound = fmt.Errorf("object not found")
+var ErrObjectNotFound = fmt.Errorf("collection object not found")
 
 func NewCollection(sb smartblock.SmartBlock, objectStore spaceindex.Store) Collection {
 	return &objectLinksCollection{SmartBlock: sb, objectStore: objectStore}
@@ -141,7 +140,7 @@ func (p *objectLinksCollection) ModifyLocalDetails(
 		return b.Apply(b.NewState().SetDetails(dets), smartblock.KeepInternalFlags)
 	})
 	// that means that we will apply the change later as soon as the block is loaded by thread queue
-	if errors.Is(err, source.ErrObjectNotFound) {
+	if errors.Is(err, ErrObjectNotFound) {
 		return nil
 	}
 	return err

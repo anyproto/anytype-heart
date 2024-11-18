@@ -25,7 +25,7 @@ var log = logger.NewNamed("sqlitestore")
 var (
 	ErrSpaceNotFound  = errors.New("space not found")
 	ErrTreeNotFound   = treestorage.ErrUnknownTreeId
-	ErrObjectNotFound = errors.New("object not found")
+	ErrObjectNotFound = errors.New("object not found in sqlite storage")
 )
 
 type configGetter interface {
