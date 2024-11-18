@@ -208,7 +208,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			continue
 		}
 
-		if strings.HasPrefix(f.Name, "files") || f.FileInfo().IsDir() {
+		if (strings.HasPrefix(f.Name, "files") && !strings.HasPrefix(f.Name, "filesObjects")) || f.FileInfo().IsDir() {
 			continue
 		}
 
@@ -471,6 +471,7 @@ func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
 			bundle.RelationKeySourceFilePath.String(),
 			bundle.RelationKeyLinks.String(),
 			bundle.RelationKeyBacklinks.String(),
+			bundle.RelationKeyMentions.String(),
 			bundle.RelationKeyWorkspaceId.String(),
 			bundle.RelationKeyIdentityProfileLink.String(),
 			bundle.RelationKeyAddedDate.String(),
