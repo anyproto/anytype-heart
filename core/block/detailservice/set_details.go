@@ -21,6 +21,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var ErrUnexpectedBlockType = errors.New("unexpected block type")
@@ -92,6 +93,9 @@ func (s *service) SetIsArchived(objectId string, isArchived bool) error {
 	spc, err := s.spaceService.Get(context.Background(), spaceID)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
+	}
+	if objectId == spc.DerivedIDs().Archive {
+		return fmt.Errorf("can't archive archive itself")
 	}
 	if err := s.checkArchivedRestriction(isArchived, objectId); err != nil {
 		return err
@@ -172,6 +176,9 @@ func (s *service) checkArchivedRestriction(isArchived bool, objectId string) err
 }
 
 func (s *service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
+	if objectId == collectionId {
+		return fmt.Errorf("can't add links collection to itself")
+	}
 	return cache.Do(s.objectGetter, collectionId, func(b smartblock.SmartBlock) error {
 		coll, ok := b.(collection.Collection)
 		if !ok {
@@ -212,6 +219,11 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 		if err != nil {
 			return err
 		}
+
+		ids = slice.Filter(ids, func(id string) bool {
+			// avoid archive itself otherwise we will deadlock
+			return id != spc.DerivedIDs().Archive
+		})
 		anySucceed, err := s.modifyArchiveLinks(archive, isArchived, ids...)
 
 		if err != nil {
