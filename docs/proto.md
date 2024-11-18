@@ -16123,7 +16123,7 @@ DEPRECATED, GO-1926 |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 | returnMeta | [bool](#bool) |  | add ResultMeta to each result |
 | returnMetaRelationDetails | [bool](#bool) |  | add relation option details to meta |
-| returnHTMLHighlightsInsteadOfRanges | [bool](#bool) |  |  |
+| returnHTMLHighlightsInsteadOfRanges | [bool](#bool) |  | DEPRECATED |
 
 
 
