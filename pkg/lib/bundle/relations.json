@@ -1360,5 +1360,18 @@
     "name": "Timestamp",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "List of recommended featured relations",
+    "format": "object",
+    "hidden": true,
+    "key": "recommendedFeaturedRelations",
+    "maxCount": 0,
+    "name": "Recommended featured relations",
+    "objectTypes": [
+      "relation"
+    ],
+    "readonly": false,
+    "source": "details"
   }
 ]
