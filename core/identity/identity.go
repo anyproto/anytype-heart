@@ -234,7 +234,7 @@ func (s *service) getIdentityData(ctx context.Context, identities []string) []*i
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			identitiesData := s.processBatch(ctx, batch)
+			identitiesData := s.getIdentitiesDataFromRepo(ctx, batch)
 			mx.Lock()
 			defer mx.Unlock()
 			allIdentitiesData = append(allIdentitiesData, identitiesData...)
@@ -242,15 +242,6 @@ func (s *service) getIdentityData(ctx context.Context, identities []string) []*i
 	}
 	wg.Wait()
 	return allIdentitiesData
-}
-
-func (s *service) processBatch(ctx context.Context, batch []string) []*identityrepoproto.DataWithIdentity {
-	identitiesData, err := s.getIdentitiesDataFromRepo(ctx, batch)
-	if err != nil {
-		log.Error("failed to pull identity", zap.Error(err))
-		return nil
-	}
-	return identitiesData
 }
 
 func (s *service) listRegisteredIdentities() []string {
@@ -270,12 +261,15 @@ func (s *service) listRegisteredIdentities() []string {
 	return identities
 }
 
-func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
+func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) []*identityrepoproto.DataWithIdentity {
 	res, err := s.identityRepoClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
 	if err != nil {
-		return s.processFailedIdentities(res, identities)
+		res, err = s.processFailedIdentities(res, identities)
 	}
-	return res, nil
+	if err != nil {
+		log.Error("failed to pull identity", zap.Error(err))
+	}
+	return res
 }
 
 func (s *service) processFailedIdentities(res []*identityrepoproto.DataWithIdentity, failedIdentities []string) ([]*identityrepoproto.DataWithIdentity, error) {
