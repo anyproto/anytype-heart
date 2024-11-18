@@ -344,9 +344,8 @@ func TestGetIdentitiesDataFromRepo(t *testing.T) {
 		fx.coordinatorClient.setCallback(func(_ []string, _ []string, _ []*identityrepoproto.DataWithIdentity, _ error) {
 			called.Set(true)
 		})
-		list, err := fx.getIdentitiesDataFromRepo(context.Background(), nil)
+		err := fx.observeIdentities(context.Background())
 		require.NoError(t, err)
-		require.Empty(t, list)
 		require.False(t, called.Get())
 	})
 	t.Run("receive 100 identities", func(t *testing.T) {
