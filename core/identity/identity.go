@@ -234,7 +234,7 @@ func (s *service) getIdentityData(ctx context.Context, identities []string) []*i
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			identitiesData := s.processIdentity(ctx, batch)
+			identitiesData := s.processBatch(ctx, batch)
 			mx.Lock()
 			defer mx.Unlock()
 			allIdentitiesData = append(allIdentitiesData, identitiesData...)
@@ -244,7 +244,7 @@ func (s *service) getIdentityData(ctx context.Context, identities []string) []*i
 	return allIdentitiesData
 }
 
-func (s *service) processIdentity(ctx context.Context, batch []string) []*identityrepoproto.DataWithIdentity {
+func (s *service) processBatch(ctx context.Context, batch []string) []*identityrepoproto.DataWithIdentity {
 	identitiesData, err := s.getIdentitiesDataFromRepo(ctx, batch)
 	if err != nil {
 		log.Error("failed to pull identity", zap.Error(err))
