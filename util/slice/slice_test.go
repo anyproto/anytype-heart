@@ -1,9 +1,6 @@
 package slice
 
 import (
-	"context"
-	"errors"
-	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -117,140 +114,52 @@ type testData struct {
 	id int
 }
 
-func TestBatch(t *testing.T) {
-	t.Run("all remote success", func(t *testing.T) {
+func TestSplitBatches(t *testing.T) {
+	t.Run("input is less than batch number", func(t *testing.T) {
 		// given
-		ctx := context.Background()
-		input := []testData{{1}, {2}, {3}, {4}, {5}}
+		input := []int{1, 2, 3, 4, 5}
 		batchCount := 2
 
-		remote := func(ctx context.Context, s []testData) ([]int, error) {
-			results := make([]int, len(s))
-			for i, data := range s {
-				results[i] = data.id * 10
-			}
-			return results, nil
-		}
-
-		local := func(ctx context.Context, s []testData) ([]int, error) {
-			return nil, errors.New("local should not be called")
-		}
-
-		expected := []int{10, 20, 30, 40, 50}
-
 		// when
-		result, err := Batch(ctx, input, remote, local, batchCount)
+		result := SplitBatches(input, batchCount)
 
 		// then
-		sort.Ints(result)
-		assert.NoError(t, err)
+		expected := [][]int{{1, 2}, {3, 4}, {5}}
 		assert.Equal(t, expected, result)
 	})
-	t.Run("remote failed, local succeed", func(t *testing.T) {
+	t.Run("input is more than batch number", func(t *testing.T) {
 		// given
-		ctx := context.Background()
-		input := []testData{{1}, {2}, {3}, {4}, {5}}
-		batchCount := 1
-
-		remote := func(ctx context.Context, s []testData) ([]int, error) {
-			for _, data := range s {
-				if data.id%2 != 0 {
-					return nil, errors.New("remote failure")
-				}
-			}
-			results := make([]int, len(s))
-			for i, data := range s {
-				results[i] = data.id * 10
-			}
-			return results, nil
-		}
-
-		local := func(ctx context.Context, s []testData) ([]int, error) {
-			results := make([]int, len(s))
-			for i, data := range s {
-				results[i] = data.id * 5
-			}
-			return results, nil
-		}
+		input := []int{1, 2, 3, 4, 5}
+		batchCount := 10
 
 		// when
-		expected := []int{5, 20, 15, 40, 25}
-		result, err := Batch(ctx, input, remote, local, batchCount)
+		result := SplitBatches(input, batchCount)
 
 		// then
-		sort.Ints(result)
-		sort.Ints(expected)
-		assert.NoError(t, err)
+		expected := [][]int{{1, 2, 3, 4, 5}}
 		assert.Equal(t, expected, result)
 	})
-	t.Run("all failed", func(t *testing.T) {
+	t.Run("input is equal to batch number", func(t *testing.T) {
 		// given
-		ctx := context.Background()
-		input := []testData{{1}, {2}, {3}}
-		batchCount := 2
-
-		remote := func(ctx context.Context, s []testData) ([]int, error) {
-			return nil, errors.New("remote failure")
-		}
-
-		local := func(ctx context.Context, s []testData) ([]int, error) {
-			return nil, errors.New("local failure")
-		}
+		input := []int{1, 2, 3, 4, 5}
+		batchCount := 5
 
 		// when
-		result, err := Batch(ctx, input, remote, local, batchCount)
+		result := SplitBatches(input, batchCount)
 
 		// then
-		assert.Error(t, err)
-		assert.Nil(t, result)
+		expected := [][]int{{1, 2, 3, 4, 5}}
+		assert.Equal(t, expected, result)
 	})
 	t.Run("empty input", func(t *testing.T) {
 		// given
-		ctx := context.Background()
-		input := []testData{}
+		var input []int
 		batchCount := 2
 
-		remote := func(ctx context.Context, s []testData) ([]int, error) {
-			return nil, errors.New("remote should not be called")
-		}
-
-		local := func(ctx context.Context, s []testData) ([]int, error) {
-			return nil, errors.New("local should not be called")
-		}
-
 		// when
-		result, err := Batch(ctx, input, remote, local, batchCount)
+		result := SplitBatches(input, batchCount)
 
 		// then
-		assert.NoError(t, err)
-		assert.Nil(t, result)
-	})
-	t.Run("batch count greater than input", func(t *testing.T) {
-		// given
-		ctx := context.Background()
-		input := []testData{{1}, {2}}
-		batchCount := 5
-
-		remote := func(ctx context.Context, s []testData) ([]int, error) {
-			results := make([]int, len(s))
-			for i, data := range s {
-				results[i] = data.id * 10
-			}
-			return results, nil
-		}
-
-		local := func(ctx context.Context, s []testData) ([]int, error) {
-			return nil, errors.New("local should not be called")
-		}
-
-		expected := []int{10, 20}
-
-		// when
-		result, err := Batch(ctx, input, remote, local, batchCount)
-
-		// then
-		sort.Ints(result)
-		assert.NoError(t, err)
-		assert.Equal(t, expected, result)
+		assert.Len(t, result, 0)
 	})
 }

@@ -1,12 +1,10 @@
 package slice
 
 import (
-	"context"
 	"hash/fnv"
 	"math/rand"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
@@ -272,104 +270,4 @@ func MergeUniqBy[T comparable](s1, s2 []T, equal func(v1, v2 T) bool) (result []
 	}
 
 	return result
-}
-
-func Batch[T any, R any](
-	ctx context.Context,
-	s []T,
-	remote func(context.Context, []T) ([]R, error),
-	local func(context.Context, []T) ([]R, error),
-	batchCount int,
-) ([]R, error) {
-	if len(s) == 0 {
-		return nil, nil
-	}
-
-	var (
-		result   = make([]R, 0, len(s))
-		failed   = make([]T, 0)
-		resultMu sync.Mutex
-		failedMu sync.Mutex
-		wg       sync.WaitGroup
-	)
-
-	runBatches(ctx, s, batchCount, remote, &wg, &result, &resultMu, &failed, &failedMu)
-	wg.Wait()
-
-	if len(failed) > 0 {
-		return retryFailedBatches(ctx, local, &result, &resultMu, failed)
-	}
-
-	return result, nil
-}
-
-func runBatches[T any, R any](
-	ctx context.Context,
-	s []T,
-	batchCount int,
-	remote func(context.Context, []T) ([]R, error),
-	wg *sync.WaitGroup,
-	result *[]R,
-	resultMu *sync.Mutex,
-	failed *[]T,
-	failedMu *sync.Mutex,
-) {
-	for i := 0; i < len(s); i += batchCount {
-		end := i + batchCount
-		if end > len(s) {
-			end = len(s)
-		}
-		batch := s[i:end]
-
-		wg.Add(1)
-		go func(batch []T) {
-			defer wg.Done()
-			processBatch(ctx, batch, remote, result, resultMu, failed, failedMu)
-		}(batch)
-	}
-}
-
-func processBatch[T any, R any](
-	ctx context.Context,
-	batch []T,
-	remote func(context.Context, []T) ([]R, error),
-	result *[]R,
-	resultMu *sync.Mutex,
-	failed *[]T,
-	failedMu *sync.Mutex,
-) {
-	results, err := remote(ctx, batch)
-	if err != nil {
-		appendFailed(failed, failedMu, batch)
-	} else {
-		appendResults(result, resultMu, results)
-	}
-}
-
-func appendResults[R any](result *[]R, resultMu *sync.Mutex, newResults []R) {
-	resultMu.Lock()
-	defer resultMu.Unlock()
-	*result = append(*result, newResults...)
-}
-
-func appendFailed[T any](failed *[]T, failedMu *sync.Mutex, batch []T) {
-	failedMu.Lock()
-	defer failedMu.Unlock()
-	*failed = append(*failed, batch...)
-}
-
-func retryFailedBatches[T any, R any](
-	ctx context.Context,
-	local func(context.Context, []T) ([]R, error),
-	result *[]R,
-	resultMu *sync.Mutex,
-	failed []T,
-) ([]R, error) {
-	localResults, err := local(ctx, failed)
-	if err != nil {
-		return nil, err
-	}
-
-	appendResults(result, resultMu, localResults)
-	return *result, nil
 }
