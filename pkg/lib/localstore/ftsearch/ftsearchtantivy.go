@@ -434,6 +434,9 @@ func (f *ftSearchTantivy) Search(spaceIds []string, query string) (results []*Do
 
 func extractHighlight(object *fastjson.Object, fragments map[string]*Highlight, fieldName string) {
 	highlightObj := object.Get(fragment)
+	if highlightObj == nil {
+		return
+	}
 	highlight := Highlight{}
 	fragments[fieldName] = &highlight
 	rangesArray := highlightObj.GetArray("r")
