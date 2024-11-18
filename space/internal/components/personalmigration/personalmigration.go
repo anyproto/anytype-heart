@@ -8,9 +8,9 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -37,7 +37,7 @@ func New() Runner {
 
 type fileObjectGetter interface {
 	app.Component
-	GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error)
+	DoFileWaitLoad(ctx context.Context, objectId string, proc func(object fileobject.FileObject) error) error
 	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *types.Struct, err error)
 }
 
@@ -142,7 +142,9 @@ func (r *runner) migrateIcon(oldIcon string) (err error) {
 		})
 		return
 	}
-	_, err = r.fileObjectGetter.GetFileIdFromObjectWaitLoad(r.ctx, oldIcon)
+	err = r.fileObjectGetter.DoFileWaitLoad(r.ctx, oldIcon, func(_ fileobject.FileObject) error {
+		return nil
+	})
 	if err != nil {
 		return
 	}
