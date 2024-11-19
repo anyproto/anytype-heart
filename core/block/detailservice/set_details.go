@@ -221,8 +221,13 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 		}
 
 		ids = slice.Filter(ids, func(id string) bool {
-			// avoid archive itself otherwise we will deadlock
-			return id != spc.DerivedIDs().Archive
+			for _, objId := range spc.DerivedIDs().IDsWithSystemTypesAndRelations() {
+				if id == objId {
+					// avoid archive system objects including archive itself
+					return false
+				}
+			}
+			return true
 		})
 		anySucceed, err := s.modifyArchiveLinks(archive, isArchived, ids...)
 
