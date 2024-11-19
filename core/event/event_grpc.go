@@ -4,6 +4,7 @@
 package event
 
 import (
+	"slices"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -96,6 +97,18 @@ func (es *GrpcSender) BroadcastToOtherSessions(token string, event *pb.Event) {
 
 	for _, s := range es.Servers {
 		if s.Token != token {
+			es.sendEvent(s, event)
+		}
+	}
+}
+
+// BroadcastExceptSessions broadcasts the event to session except provided
+func (es *GrpcSender) BroadcastExceptSessions(event *pb.Event, exceptTokens []string) {
+	es.ServerMutex.RLock()
+	defer es.ServerMutex.RUnlock()
+
+	for _, s := range es.Servers {
+		if !slices.Contains(exceptTokens, s.Token) {
 			es.sendEvent(s, event)
 		}
 	}

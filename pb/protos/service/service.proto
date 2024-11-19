@@ -298,6 +298,8 @@ service ClientCommands {
     rpc BlockLatexSetText (anytype.Rpc.BlockLatex.SetText.Request) returns (anytype.Rpc.BlockLatex.SetText.Response);
 
     rpc ProcessCancel (anytype.Rpc.Process.Cancel.Request) returns (anytype.Rpc.Process.Cancel.Response);
+    rpc ProcessSubscribe (anytype.Rpc.Process.Subscribe.Request) returns (anytype.Rpc.Process.Subscribe.Response);
+    rpc ProcessUnsubscribe (anytype.Rpc.Process.Unsubscribe.Request) returns (anytype.Rpc.Process.Unsubscribe.Response);
 
     rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);
 

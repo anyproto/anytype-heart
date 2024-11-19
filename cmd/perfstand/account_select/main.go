@@ -80,7 +80,7 @@ func iterate(prep *input, result internal.PerfResult) error {
 	}
 
 	grpcurlCommands := []internal.Command{
-		{internal.GrpcMetricsSetParameters(), ""},
+		{internal.GrpcInitialSetParameters(), ""},
 		{internal.GrpcWalletRecover(prep.Workspace, prep.Mnemonic), ""},
 		{internal.GrpcWalletCreateSession(prep.Mnemonic), ""},
 		accountSelect(prep),
