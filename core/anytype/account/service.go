@@ -177,31 +177,45 @@ func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSp
 		return s.config.AnalyticsId, nil
 	}
 	err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
-		analyticsId, err = accountObject.GetAnalyticsId()
-		if err != nil {
+		var innerErr error
+		analyticsId, innerErr = accountObject.GetAnalyticsId()
+		if innerErr != nil {
 			log.Debug("failed to get analytics id: %s", err)
 		}
 		return nil
 	})
+	if err != nil {
+		return
+	}
 	if analyticsId == "" {
 		for {
 			// waiting for personal space
 			ctx, cancel := context.WithTimeout(ctx, time.Second*10)
-			err = s.spaceService.WaitPersonalSpaceMigration(ctx)
+			persErr := s.spaceService.WaitPersonalSpaceMigration(ctx)
 			cancel()
-			if err != nil && !errors.Is(err, ctx.Err()) {
-				return
+			if persErr != nil && !errors.Is(persErr, ctx.Err()) {
+				return "", persErr
 			}
 			// there is also this case that account object could be unsynced on start
 			// because we can't distinguish between accounts without account object (i.e. old accounts)
 			// and new ones which have the account object
 			// so it may be the case that it will sync but a little bit later
 			err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
-				analyticsId, err = accountObject.GetAnalyticsId()
+				var innerErr error
+				analyticsId, innerErr = accountObject.GetAnalyticsId()
+				if innerErr != nil {
+					log.Debug("failed to get analytics id: %s", err)
+				}
 				return nil
 			})
+			if err != nil {
+				return
+			}
 			if analyticsId != "" {
 				return analyticsId, nil
+			}
+			if persErr == nil {
+				return "", fmt.Errorf("failed to get analytics id, but migrated successfully")
 			}
 		}
 	} else {
