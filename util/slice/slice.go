@@ -12,24 +12,6 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func SplitBatches[T any](init []T, numBatch int) (res [][]T) {
-	numIter := len(init) / numBatch
-	if len(init)%numBatch != 0 {
-		numIter++
-	}
-	res = make([][]T, 0, numIter)
-	for i := 0; i < numIter; i++ {
-		res = append(res, make([]T, 0, numBatch))
-		start := i * numBatch
-		end := start + numBatch
-		if end > len(init) {
-			end = len(init)
-		}
-		res[i] = append(res[i], init[start:end]...)
-	}
-	return
-}
-
 func Union(a, b []string) []string {
 	set := make(map[string]struct{}, len(a))
 	for _, v := range a {

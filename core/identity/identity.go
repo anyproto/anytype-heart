@@ -14,6 +14,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -25,7 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
-	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/anyproto/anytype-heart/util/conc"
 )
 
 const CName = "identity"
@@ -224,24 +225,14 @@ func (s *service) observeIdentities(ctx context.Context) error {
 }
 
 func (s *service) getIdentityData(ctx context.Context, identities []string) []*identityrepoproto.DataWithIdentity {
-	batches := slice.SplitBatches(identities, identityBatch)
-	var (
-		mx                sync.Mutex
-		allIdentitiesData []*identityrepoproto.DataWithIdentity
-		wg                sync.WaitGroup
-	)
-	for _, batch := range batches {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			identitiesData := s.getIdentitiesDataFromRepo(ctx, batch)
-			mx.Lock()
-			defer mx.Unlock()
-			allIdentitiesData = append(allIdentitiesData, identitiesData...)
-		}()
+	batches := lo.Chunk(identities, identityBatch)
+	allIdentitiesData, err := conc.MapErr(batches, func(batch []string) ([]*identityrepoproto.DataWithIdentity, error) {
+		return s.getIdentitiesDataFromRepo(ctx, batch)
+	})
+	if err != nil {
+		log.Error("failed to pull identity", zap.Error(err))
 	}
-	wg.Wait()
-	return allIdentitiesData
+	return lo.Flatten(allIdentitiesData)
 }
 
 func (s *service) listRegisteredIdentities() []string {
@@ -261,15 +252,12 @@ func (s *service) listRegisteredIdentities() []string {
 	return identities
 }
 
-func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) []*identityrepoproto.DataWithIdentity {
+func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
 	res, err := s.identityRepoClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
 	if err != nil {
-		res, err = s.processFailedIdentities(res, identities)
+		return s.processFailedIdentities(res, identities)
 	}
-	if err != nil {
-		log.Error("failed to pull identity", zap.Error(err))
-	}
-	return res
+	return res, nil
 }
 
 func (s *service) processFailedIdentities(res []*identityrepoproto.DataWithIdentity, failedIdentities []string) ([]*identityrepoproto.DataWithIdentity, error) {
