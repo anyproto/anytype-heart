@@ -37,7 +37,7 @@ const (
 	CName    = "fts"
 	ftsDir   = "fts"
 	ftsDir2  = "fts_tantivy"
-	ftsVer   = "8"
+	ftsVer   = "9"
 	docLimit = 10000
 
 	fieldTitle   = "Title"
@@ -141,7 +141,7 @@ func (f *ftSearchTantivy) Init(a *app.App) error {
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
 	f.ftsPath = filepath.Join(repoPath, ftsDir2, ftsVer)
-	return tantivy.LibInit(false, "release")
+	return tantivy.LibInit(false, true, "release")
 }
 
 func (f *ftSearchTantivy) cleanUpOldIndexes() {
