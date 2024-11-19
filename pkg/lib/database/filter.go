@@ -149,12 +149,12 @@ func makeFilterByCondition(spaceID string, rawFilter *model.BlockContentDataview
 			Value: rawFilter.Value,
 		}}, nil
 	case model.BlockContentDataviewFilter_In:
-		// hack for queries for relations containing date objects ids with format _date_YYYY-MM-DD-hh-mm-ss
+		// hack for queries for relations containing date objects ids with format _date_YYYY-MM-DD-hh-mm-ssZ-zzzz
 		// to find all date object ids of the same day we search by prefix _date_YYYY-MM-DD
 		if ts, err := dateutil.ParseDateId(rawFilter.Value.GetStringValue()); err == nil {
 			return FilterHasPrefix{
 				Key:    rawFilter.RelationKey,
-				Prefix: dateutil.TimeToShortDateId(ts),
+				Prefix: dateutil.TimeToDateId(ts, false),
 			}, nil
 		}
 		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
