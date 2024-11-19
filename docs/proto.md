@@ -18885,7 +18885,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceViewId | [string](#string) |  |  |
-| beforeIds | [string](#string) | repeated |  |
+| previousIds | [string](#string) | repeated |  |
 | afterId | [string](#string) |  |  |
 
 

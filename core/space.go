@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pb"
@@ -336,8 +337,7 @@ func (mw *Middleware) SpaceSetOrder(_ context.Context, request *pb.RpcSpaceSetOr
 	return response(pb.RpcSpaceSetOrderResponseError_NULL, nil)
 }
 
-func (mw *Middleware) SpaceUnsetOrder(cctx context.Context, request *pb.RpcSpaceUnsetOrderRequest) *pb.RpcSpaceUnsetOrderResponse {
-	ctx := mw.newContext(cctx)
+func (mw *Middleware) SpaceUnsetOrder(_ context.Context, request *pb.RpcSpaceUnsetOrderRequest) *pb.RpcSpaceUnsetOrderResponse {
 	response := func(code pb.RpcSpaceUnsetOrderResponseErrorCode, err error) *pb.RpcSpaceUnsetOrderResponse {
 		m := &pb.RpcSpaceUnsetOrderResponse{Error: &pb.RpcSpaceUnsetOrderResponseError{Code: code}}
 		if err != nil {
@@ -346,12 +346,20 @@ func (mw *Middleware) SpaceUnsetOrder(cctx context.Context, request *pb.RpcSpace
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.RemoveExtraRelations(ctx, request.SpaceViewId, []string{bundle.RelationKeySpaceOrder.String()})
+		return unsetOrder(bs, request)
 	})
 	if err != nil {
 		return response(pb.RpcSpaceUnsetOrderResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcSpaceUnsetOrderResponseError_NULL, nil)
+}
+
+func unsetOrder(bs *block.Service, request *pb.RpcSpaceUnsetOrderRequest) error {
+	return cache.Do(bs, request.SpaceViewId, func(sb smartblock.SmartBlock) error {
+		state := sb.NewState()
+		state.RemoveDetail(bundle.RelationKeySpaceOrder.String())
+		return sb.Apply(state)
+	})
 }
 
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
@@ -426,7 +434,7 @@ func setSpaceViewOrder(og cache.ObjectGetter, request *pb.RpcSpaceSetOrderReques
 		prevOrderId string
 		err         error
 	)
-	for _, id := range request.GetBeforeIds() {
+	for _, id := range request.GetPreviousIds() {
 		err = cache.Do[*editor.SpaceView](og, id, func(sv *editor.SpaceView) error {
 			prevOrderId, err = sv.SetAfterGivenView(prevOrderId)
 			if err != nil {
