@@ -46,6 +46,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/mutex"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -222,6 +223,10 @@ func (s *Service) DoFullId(id domain.FullID, apply func(sb smartblock.SmartBlock
 
 // resolveFullId resolves missing spaceId
 func (s *Service) resolveFullId(id domain.FullID) domain.FullID {
+	// TODO: GO-4494 - Do not resolve spaceId in case of date object id. This logic should be reviewed
+	if _, parseErr := dateutil.ParseDateId(id.ObjectID); parseErr == nil && id.SpaceID != "" {
+		return id
+	}
 	// First try to resolve space. It's necessary if client accidentally passes wrong spaceId
 	spaceId, err := s.resolver.ResolveSpaceID(id.ObjectID)
 	if err == nil {

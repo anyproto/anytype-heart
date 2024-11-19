@@ -154,7 +154,7 @@ func makeFilterByCondition(spaceID string, rawFilter *model.BlockContentDataview
 		if ts, err := dateutil.ParseDateId(rawFilter.Value.GetStringValue()); err == nil {
 			return FilterHasPrefix{
 				Key:    rawFilter.RelationKey,
-				Prefix: dateutil.TimeToShortDateId(ts),
+				Prefix: dateutil.TimeToDateId(ts),
 			}, nil
 		}
 		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
