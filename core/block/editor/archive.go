@@ -54,7 +54,7 @@ func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
 
 func (p *Archive) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 1,
+		Version: 2,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
 				template.WithEmpty,

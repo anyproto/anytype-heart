@@ -419,6 +419,9 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
+	if id == spc.DerivedIDs().Archive {
+		return fmt.Errorf("cannot delete archive object")
+	}
 	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
