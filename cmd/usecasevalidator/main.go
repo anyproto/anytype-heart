@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -71,12 +72,7 @@ func (f cliFlags) isUpdateNeeded() bool {
 	return f.analytics || f.creator || f.removeRelations || f.exclude || f.rules != ""
 }
 
-const (
-	anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
-
-	filesPrefix       = "files"
-	fileObjectsPrefix = "filesObjects"
-)
+const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
 
 var (
 	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
@@ -213,7 +209,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			continue
 		}
 
-		if (strings.HasPrefix(f.Name, filesPrefix) && !strings.HasPrefix(f.Name, fileObjectsPrefix)) || f.FileInfo().IsDir() {
+		if (strings.HasPrefix(f.Name, export.Files) && !strings.HasPrefix(f.Name, export.FilesObjects)) || f.FileInfo().IsDir() {
 			continue
 		}
 
