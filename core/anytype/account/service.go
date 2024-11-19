@@ -217,6 +217,8 @@ func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSp
 			if persErr == nil {
 				return "", fmt.Errorf("failed to get analytics id, but migrated successfully")
 			}
+			// adding sleep just in case to avoid infinite loops if we have some unforseen issues
+			time.Sleep(time.Second)
 		}
 	} else {
 		return analyticsId, nil
