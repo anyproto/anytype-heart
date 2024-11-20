@@ -19,13 +19,15 @@ type NameRequest struct {
 	Name string `json:"name"`
 }
 
-// @Summary	Open a modal window with a code in Anytype Desktop app
-// @Tags		auth
-// @Accept		json
-// @Produce	json
-// @Success	200	{string}	string		"Success"
-// @Failure	502	{object}	ServerError	"Internal server error"
-// @Router		/auth/displayCode [post]
+// authdisplayCodeHandler generates a new challenge and returns the challenge ID
+//
+//	@Summary	Open a modal window with a code in Anytype Desktop app
+//	@Tags		auth
+//	@Accept		json
+//	@Produce	json
+//	@Success	200	{string}	string		"Success"
+//	@Failure	502	{object}	ServerError	"Internal server error"
+//	@Router		/auth/displayCode [post]
 func (a *ApiServer) authDisplayCodeHandler(c *gin.Context) {
 	// Call AccountLocalLinkNewChallenge to display code modal
 	ctx := context.Background()
@@ -38,15 +40,18 @@ func (a *ApiServer) authDisplayCodeHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"challengeId": resp.ChallengeId})
 }
 
-// @Summary	Retrieve an authentication token using a code
-// @Tags		auth
-// @Accept		json
-// @Produce	json
-// @Param		code	query		string				true	"The code retrieved from Anytype Desktop app"
-// @Success	200		{object}	map[string]string	"Access and refresh tokens"
-// @Failure	400		{object}	ValidationError		"Invalid input"
-// @Failure	502		{object}	ServerError			"Internal server error"
-// @Router		/auth/token [get]
+// authTokenHandler retrieves an authentication token using a code and challenge ID
+//
+//	@Summary			Retrieve an authentication token using a code
+//	@Tags				auth
+//	@Accept				json
+//	@Produce			json
+//	@Param				code	query		string				true	"The code retrieved from Anytype Desktop app"
+//	@ParamchallengeId	query																																string								true	"The challenge ID"
+//	@Success			200		{object}	map[string]string	"Access and refresh tokens"
+//	@Failure			400		{object}	ValidationError		"Invalid input"
+//	@Failure			502		{object}	ServerError			"Internal server error"
+//	@Router				/auth/token [get]
 func (a *ApiServer) authTokenHandler(c *gin.Context) {
 	// Call AccountLocalLinkSolveChallenge to retrieve session token and app key
 	resp := a.mw.AccountLocalLinkSolveChallenge(context.Background(), &pb.RpcAccountLocalLinkSolveChallengeRequest{
@@ -65,16 +70,18 @@ func (a *ApiServer) authTokenHandler(c *gin.Context) {
 	})
 }
 
-// @Summary	Retrieve a list of spaces
-// @Tags		spaces
-// @Accept		json
-// @Produce	json
-// @Param		offset	query		int					false	"The number of items to skip before starting to collect the result set"
-// @Param		limit	query		int					false	"The number of items to return"	default(100)
-// @Success	200		{object}	map[string][]Space	"List of spaces"
-// @Failure	403		{object}	UnauthorizedError	"Unauthorized"
-// @Failure	502		{object}	ServerError			"Internal server error"
-// @Router		/spaces [get]
+// getSpacesHandler retrieves a list of spaces
+//
+//	@Summary	Retrieve a list of spaces
+//	@Tags		spaces
+//	@Accept		json
+//	@Produce	json
+//	@Param		offset	query		int					false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit	query		int					false	"The number of items to return"	default(100)
+//	@Success	200		{object}	map[string][]Space	"List of spaces"
+//	@Failure	403		{object}	UnauthorizedError	"Unauthorized"
+//	@Failure	502		{object}	ServerError			"Internal server error"
+//	@Router		/spaces [get]
 func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 	// Call ObjectSearch for all objects of type spaceView
 	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
@@ -129,15 +136,17 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"spaces": spaces})
 }
 
-// @Summary	Create a new Space
-// @Tags		spaces
-// @Accept		json
-// @Produce	json
-// @Param		name	body		string				true	"Space Name"
-// @Success	200		{object}	Space				"Space created successfully"
-// @Failure	403		{object}	UnauthorizedError	"Unauthorized"
-// @Failure	502		{object}	ServerError			"Internal server error"
-// @Router		/spaces [post]
+// createSpaceHandler creates a new space
+//
+//	@Summary	Create a new Space
+//	@Tags		spaces
+//	@Accept		json
+//	@Produce	json
+//	@Param		name	body		string				true	"Space Name"
+//	@Success	200		{object}	Space				"Space created successfully"
+//	@Failure	403		{object}	UnauthorizedError	"Unauthorized"
+//	@Failure	502		{object}	ServerError			"Internal server error"
+//	@Router		/spaces [post]
 func (a *ApiServer) createSpaceHandler(c *gin.Context) {
 	// Create new workspace with a random icon and import default usecase
 	nameRequest := NameRequest{}
@@ -174,16 +183,18 @@ func (a *ApiServer) createSpaceHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"spaceId": resp.SpaceId, "name": name, "iconOption": iconOption})
 }
 
-// @Summary	Retrieve a list of members for the specified Space
-// @Tags		spaces
-// @Accept		json
-// @Produce	json
-// @Param		space_id	path		string						true	"The ID of the space"
-// @Success	200			{object}	map[string][]SpaceMember	"List of members"
-// @Failure	403			{object}	UnauthorizedError			"Unauthorized"
-// @Failure	404			{object}	NotFoundError				"Resource not found"
-// @Failure	502			{object}	ServerError					"Internal server error"
-// @Router		/spaces/{space_id}/members [get]
+// getSpaceMembersHandler retrieves a list of members for the specified space
+//
+//	@Summary	Retrieve a list of members for the specified Space
+//	@Tags		spaces
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string						true	"The ID of the space"
+//	@Success	200			{object}	map[string][]SpaceMember	"List of members"
+//	@Failure	403			{object}	UnauthorizedError			"Unauthorized"
+//	@Failure	404			{object}	NotFoundError				"Resource not found"
+//	@Failure	502			{object}	ServerError					"Internal server error"
+//	@Router		/spaces/{space_id}/members [get]
 func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 	// Call ObjectSearch for all objects of type participant
 	spaceId := c.Param("space_id")
@@ -226,35 +237,39 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"members": members})
 }
 
-// @Summary	Retrieve objects in a specific space
-// @Tags		space_objects
-// @Accept		json
-// @Produce	json
-// @Param		space_id	path		string					true	"The ID of the space"
-// @Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
-// @Param		limit		query		int						false	"The number of items to return"	default(100)
-// @Success	200			{object}	map[string]interface{}	"Total objects and object list"
-// @Failure	403			{object}	UnauthorizedError		"Unauthorized"
-// @Failure	404			{object}	NotFoundError			"Resource not found"
-// @Failure	502			{object}	ServerError				"Internal server error"
-// @Router		/spaces/{space_id}/objects [get]
+// getSpaceHandler retrieves objects in a specific space
+//
+//	@Summary	Retrieve objects in a specific space
+//	@Tags		space_objects
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string					true	"The ID of the space"
+//	@Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int						false	"The number of items to return"	default(100)
+//	@Success	200			{object}	map[string]interface{}	"Total objects and object list"
+//	@Failure	403			{object}	UnauthorizedError		"Unauthorized"
+//	@Failure	404			{object}	NotFoundError			"Resource not found"
+//	@Failure	502			{object}	ServerError				"Internal server error"
+//	@Router		/spaces/{space_id}/objects [get]
 func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 	spaceID := c.Param("space_id")
 	// TODO: Implement logic to retrieve objects in a space
 	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet", "space_id": spaceID})
 }
 
-// @Summary	Retrieve a specific object in a space
-// @Tags		space_objects
-// @Accept		json
-// @Produce	json
-// @Param		space_id	path		string				true	"The ID of the space"
-// @Param		object_id	path		string				true	"The ID of the object"
-// @Success	200			{object}	Object				"The requested object"
-// @Failure	403			{object}	UnauthorizedError	"Unauthorized"
-// @Failure	404			{object}	NotFoundError		"Resource not found"
-// @Failure	502			{object}	ServerError			"Internal server error"
-// @Router		/spaces/{space_id}/objects/{object_id} [get]
+// getObjectHandler retrieves a specific object in a space
+//
+//	@Summary	Retrieve a specific object in a space
+//	@Tags		space_objects
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string				true	"The ID of the space"
+//	@Param		object_id	path		string				true	"The ID of the object"
+//	@Success	200			{object}	Object				"The requested object"
+//	@Failure	403			{object}	UnauthorizedError	"Unauthorized"
+//	@Failure	404			{object}	NotFoundError		"Resource not found"
+//	@Failure	502			{object}	ServerError			"Internal server error"
+//	@Router		/spaces/{space_id}/objects/{object_id} [get]
 func (a *ApiServer) getObjectHandler(c *gin.Context) {
 	spaceID := c.Param("space_id")
 	objectID := c.Param("object_id")
@@ -262,34 +277,38 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet", "space_id": spaceID, "object_id": objectID})
 }
 
-// @Summary	Create a new object in a specific space
-// @Tags		space_objects
-// @Accept		json
-// @Produce	json
-// @Param		space_id	path		string				true	"The ID of the space"
-// @Param		object		body		map[string]string	true	"Object details (e.g., name)"
-// @Success	200			{object}	Object				"The created object"
-// @Failure	403			{object}	UnauthorizedError	"Unauthorized"
-// @Failure	502			{object}	ServerError			"Internal server error"
-// @Router		/spaces/{space_id}/objects [post]
+// createObjectHandler creates a new object in a specific space
+//
+//	@Summary	Create a new object in a specific space
+//	@Tags		space_objects
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string				true	"The ID of the space"
+//	@Param		object		body		map[string]string	true	"Object details (e.g., name)"
+//	@Success	200			{object}	Object				"The created object"
+//	@Failure	403			{object}	UnauthorizedError	"Unauthorized"
+//	@Failure	502			{object}	ServerError			"Internal server error"
+//	@Router		/spaces/{space_id}/objects [post]
 func (a *ApiServer) createObjectHandler(c *gin.Context) {
 	spaceID := c.Param("space_id")
 	// TODO: Implement logic to create a new object
 	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet", "space_id": spaceID})
 }
 
-// @Summary	Update an existing object in a specific space
-// @Tags		space_objects
-// @Accept		json
-// @Produce	json
-// @Param		space_id	path		string				true	"The ID of the space"
-// @Param		object_id	path		string				true	"The ID of the object"
-// @Param		object		body		Object				true	"The updated object details"
-// @Success	200			{object}	Object				"The updated object"
-// @Failure	403			{object}	UnauthorizedError	"Unauthorized"
-// @Failure	404			{object}	NotFoundError		"Resource not found"
-// @Failure	502			{object}	ServerError			"Internal server error"
-// @Router		/spaces/{space_id}/objects/{object_id} [put]
+// updateObjectHandler updates an existing object in a specific space
+//
+//	@Summary	Update an existing object in a specific space
+//	@Tags		space_objects
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string				true	"The ID of the space"
+//	@Param		object_id	path		string				true	"The ID of the object"
+//	@Param		object		body		Object				true	"The updated object details"
+//	@Success	200			{object}	Object				"The updated object"
+//	@Failure	403			{object}	UnauthorizedError	"Unauthorized"
+//	@Failure	404			{object}	NotFoundError		"Resource not found"
+//	@Failure	502			{object}	ServerError			"Internal server error"
+//	@Router		/spaces/{space_id}/objects/{object_id} [put]
 func (a *ApiServer) updateObjectHandler(c *gin.Context) {
 	spaceID := c.Param("space_id")
 	objectID := c.Param("object_id")
@@ -297,35 +316,39 @@ func (a *ApiServer) updateObjectHandler(c *gin.Context) {
 	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet", "space_id": spaceID, "object_id": objectID})
 }
 
-// @Summary	Retrieve object types in a specific space
-// @Tags		types_and_templates
-// @Accept		json
-// @Produce	json
-// @Param		space_id	path		string					true	"The ID of the space"
-// @Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
-// @Param		limit		query		int						false	"The number of items to return"	default(100)
-// @Success	200			{object}	map[string]interface{}	"Total and object types"
-// @Failure	403			{object}	UnauthorizedError		"Unauthorized"
-// @Failure	404			{object}	NotFoundError			"Resource not found"
-// @Failure	502			{object}	ServerError				"Internal server error"
-// @Router		/spaces/{space_id}/objectTypes [get]
+// getObjectTypesHandler retrieves object types in a specific space
+//
+//	@Summary	Retrieve object types in a specific space
+//	@Tags		types_and_templates
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string					true	"The ID of the space"
+//	@Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int						false	"The number of items to return"	default(100)
+//	@Success	200			{object}	map[string]interface{}	"Total and object types"
+//	@Failure	403			{object}	UnauthorizedError		"Unauthorized"
+//	@Failure	404			{object}	NotFoundError			"Resource not found"
+//	@Failure	502			{object}	ServerError				"Internal server error"
+//	@Router		/spaces/{space_id}/objectTypes [get]
 func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 	spaceID := c.Param("space_id")
 	// TODO: Implement logic to retrieve object types in a space
 	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet", "space_id": spaceID})
 }
 
-// @Summary	Retrieve a list of templates for a specific object type in a space
-// @Tags		types_and_templates
-// @Accept		json
-// @Produce	json
-// @Param		space_id	path		string						true	"The ID of the space"
-// @Param		typeId		path		string						true	"The ID of the object type"
-// @Success	200			{object}	map[string][]ObjectTemplate	"List of templates"
-// @Failure	403			{object}	UnauthorizedError			"Unauthorized"
-// @Failure	404			{object}	NotFoundError				"Resource not found"
-// @Failure	502			{object}	ServerError					"Internal server error"
-// @Router		/spaces/{space_id}/objectTypes/{typeId}/templates [get]
+// getObjectTypeTemplatesHandler retrieves a list of templates for a specific object type in a space
+//
+//	@Summary	Retrieve a list of templates for a specific object type in a space
+//	@Tags		types_and_templates
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string						true	"The ID of the space"
+//	@Param		typeId		path		string						true	"The ID of the object type"
+//	@Success	200			{object}	map[string][]ObjectTemplate	"List of templates"
+//	@Failure	403			{object}	UnauthorizedError			"Unauthorized"
+//	@Failure	404			{object}	NotFoundError				"Resource not found"
+//	@Failure	502			{object}	ServerError					"Internal server error"
+//	@Router		/spaces/{space_id}/objectTypes/{typeId}/templates [get]
 func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 	spaceID := c.Param("space_id")
 	typeID := c.Param("typeId")
@@ -333,18 +356,20 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet", "space_id": spaceID, "typeId": typeID})
 }
 
-// @Summary	Search and retrieve objects across all the spaces
-// @Tags		search
-// @Accept		json
-// @Produce	json
-// @Param		search		query		string					false	"The search term to filter objects by name"
-// @Param		object_type	query		string					false	"Specify object type for search"
-// @Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
-// @Param		limit		query		int						false	"The number of items to return"	default(100)
-// @Success	200			{object}	map[string]interface{}	"Total objects and object list"
-// @Failure	403			{object}	UnauthorizedError		"Unauthorized"
-// @Failure	502			{object}	ServerError				"Internal server error"
-// @Router		/objects [get]
+// getObjectsHandler searches and retrieves objects across all the spaces
+//
+//	@Summary	Search and retrieve objects across all the spaces
+//	@Tags		search
+//	@Accept		json
+//	@Produce	json
+//	@Param		search		query		string					false	"The search term to filter objects by name"
+//	@Param		object_type	query		string					false	"Specify object type for search"
+//	@Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int						false	"The number of items to return"	default(100)
+//	@Success	200			{object}	map[string]interface{}	"Total objects and object list"
+//	@Failure	403			{object}	UnauthorizedError		"Unauthorized"
+//	@Failure	502			{object}	ServerError				"Internal server error"
+//	@Router		/objects [get]
 func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	// TODO: Implement logic to search and retrieve objects across all spaces
 	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
