@@ -91,3 +91,27 @@ type ObjectTemplate struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
+
+type ServerError struct {
+	Error struct {
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+type ValidationError struct {
+	Error struct {
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+type UnauthorizedError struct {
+	Error struct {
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+type NotFoundError struct {
+	Error struct {
+		Message string `json:"message"`
+	} `json:"error"`
+}

@@ -1,0 +1,657 @@
+basePath: /v1
+definitions:
+  api.Block:
+    properties:
+      align:
+        type: string
+      background_color:
+        type: string
+      children_ids:
+        items:
+          type: string
+        type: array
+      file:
+        $ref: '#/definitions/api.File'
+      id:
+        type: string
+      layout:
+        $ref: '#/definitions/api.Layout'
+      text:
+        $ref: '#/definitions/api.Text'
+      verticalalign:
+        type: string
+    type: object
+  api.Detail:
+    properties:
+      details:
+        additionalProperties: true
+        type: object
+      id:
+        type: string
+    type: object
+  api.File:
+    properties:
+      addedat:
+        type: integer
+      hash:
+        type: string
+      mime:
+        type: string
+      name:
+        type: string
+      size:
+        type: integer
+      state:
+        type: integer
+      style:
+        type: integer
+      targetobjectid:
+        type: string
+      type:
+        type: string
+    type: object
+  api.Layout:
+    properties:
+      style:
+        type: string
+    type: object
+  api.NotFoundError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+  api.Object:
+    properties:
+      blocks:
+        items:
+          $ref: '#/definitions/api.Block'
+        type: array
+      details:
+        items:
+          $ref: '#/definitions/api.Detail'
+        type: array
+      id:
+        type: string
+      object_type:
+        example: note
+        type: string
+      relation_links_list:
+        items:
+          $ref: '#/definitions/api.RelationLink'
+        type: array
+      root_id:
+        type: string
+      type:
+        example: object
+        type: string
+    type: object
+  api.ObjectTemplate:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        example: object_template
+        type: string
+    type: object
+  api.RelationLink:
+    properties:
+      format:
+        type: string
+      key:
+        type: string
+    type: object
+  api.ServerError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+  api.Space:
+    properties:
+      account_space_id:
+        example: bafyreihpd2knon5wbljhtfeg3fcqtg3i2pomhhnigui6lrjmzcjzep7gcy.23me69r569oi1
+        type: string
+      archive_object_id:
+        example: bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri
+        type: string
+      device_id:
+        example: 12D3KooWGZMJ4kQVyQVXaj7gJPZr3RZ2nvd9M2Eq2pprEoPih9WF
+        type: string
+      home_object_id:
+        example: bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya
+        type: string
+      id:
+        type: string
+      marketplace_workspace_id:
+        example: _anytype_marketplace
+        type: string
+      name:
+        example: Space Name
+        type: string
+      network_id:
+        example: N83gJpVd9MuNRZAuJLZ7LiMntTThhPc6DtzWWVjb1M3PouVU
+        type: string
+      profile_object_id:
+        example: bafyreiaxhwreshjqwndpwtdsu4mtihaqhhmlygqnyqpfyfwlqfq3rm3gw4
+        type: string
+      space_view_id:
+        example: bafyreigzv3vq7qwlrsin6njoduq727ssnhwd6bgyfj6nm4hv3pxoc2rxhy
+        type: string
+      tech_space_id:
+        example: bafyreif4xuwncrjl6jajt4zrrfnylpki476nv2w64yf42ovt7gia7oypii.23me69r569oi1
+        type: string
+      timezone:
+        example: ""
+        type: string
+      type:
+        example: space
+        type: string
+      widgets_id:
+        example: bafyreialj7pceh53mifm5dixlho47ke4qjmsn2uh4wsjf7xq2pnlo5xfva
+        type: string
+    type: object
+  api.SpaceMember:
+    properties:
+      id:
+        type: string
+      name:
+        example: ""
+        type: string
+      role:
+        type: string
+      type:
+        example: space_member
+        type: string
+    type: object
+  api.Text:
+    properties:
+      checked:
+        type: boolean
+      color:
+        type: string
+      iconemoji:
+        type: string
+      iconimage:
+        type: string
+      style:
+        type: string
+      text:
+        type: string
+    type: object
+  api.UnauthorizedError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+  api.ValidationError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+host: localhost:31009
+info:
+  contact:
+    email: support@anytype.io
+    name: Anytype Support
+    url: https://anytype.io/contact
+  description: This API allows interaction with Anytype resources such as spaces,
+    objects, and object types.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: https://anytype.io/terms_of_use
+  title: Anytype API
+  version: "1.0"
+paths:
+  /auth/displayCode:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            type: string
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Open a modal window with a code in Anytype Desktop app
+      tags:
+      - auth
+  /auth/token:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: The code retrieved from Anytype Desktop app
+        in: query
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Access and refresh tokens
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/api.ValidationError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Retrieve an authentication token using a code
+      tags:
+      - auth
+  /objects:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: The search term to filter objects by name
+        in: query
+        name: search
+        type: string
+      - description: Specify object type for search
+        in: query
+        name: object_type
+        type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Total objects and object list
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Search and retrieve objects across all the spaces
+      tags:
+      - search
+  /spaces:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of spaces
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/api.Space'
+              type: array
+            type: object
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Retrieve a list of spaces
+      tags:
+      - spaces
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space Name
+        in: body
+        name: name
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Space created successfully
+          schema:
+            $ref: '#/definitions/api.Space'
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Create a new Space
+      tags:
+      - spaces
+  /spaces/{space_id}/members:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of members
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/api.SpaceMember'
+              type: array
+            type: object
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedError'
+        "404":
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/api.NotFoundError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Retrieve a list of members for the specified Space
+      tags:
+      - spaces
+  /spaces/{space_id}/objectTypes:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Total and object types
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedError'
+        "404":
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/api.NotFoundError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Retrieve object types in a specific space
+      tags:
+      - types_and_templates
+  /spaces/{space_id}/objectTypes/{typeId}/templates:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: The ID of the object type
+        in: path
+        name: typeId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of templates
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/api.ObjectTemplate'
+              type: array
+            type: object
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedError'
+        "404":
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/api.NotFoundError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Retrieve a list of templates for a specific object type in a space
+      tags:
+      - types_and_templates
+  /spaces/{space_id}/objects:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Total objects and object list
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedError'
+        "404":
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/api.NotFoundError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Retrieve objects in a specific space
+      tags:
+      - space_objects
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Object details (e.g., name)
+        in: body
+        name: object
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: The created object
+          schema:
+            $ref: '#/definitions/api.Object'
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Create a new object in a specific space
+      tags:
+      - space_objects
+  /spaces/{space_id}/objects/{object_id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: The ID of the object
+        in: path
+        name: object_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: The requested object
+          schema:
+            $ref: '#/definitions/api.Object'
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedError'
+        "404":
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/api.NotFoundError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Retrieve a specific object in a space
+      tags:
+      - space_objects
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: The ID of the object
+        in: path
+        name: object_id
+        required: true
+        type: string
+      - description: The updated object details
+        in: body
+        name: object
+        required: true
+        schema:
+          $ref: '#/definitions/api.Object'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: The updated object
+          schema:
+            $ref: '#/definitions/api.Object'
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedError'
+        "404":
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/api.NotFoundError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Update an existing object in a specific space
+      tags:
+      - space_objects
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"
