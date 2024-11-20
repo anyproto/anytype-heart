@@ -131,12 +131,19 @@ func makeSuggestedDateRecord(spc source.Space, t time.Time) (database.Record, er
 		return database.Record{}, fmt.Errorf("failed to find Date type to build Date object: %w", err)
 	}
 
+	// TODO: GO-4494 - Remove links relation id fetch
+	linksRelationId, err := spc.GetRelationIdByKey(context.Background(), bundle.RelationKeyLinks)
+	if err != nil {
+		return database.Record{}, fmt.Errorf("get links relation id: %w", err)
+	}
+
 	dateSource := source.NewDate(source.DateSourceParams{
 		Id: domain.FullID{
 			ObjectID: id,
 			SpaceID:  spc.Id(),
 		},
 		DateObjectTypeId: typeId,
+		LinksRelationId:  linksRelationId,
 	})
 
 	v, ok := dateSource.(source.SourceIdEndodedDetails)

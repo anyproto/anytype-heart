@@ -48,9 +48,8 @@ var (
 
 	bytesPool = sync.Pool{New: func() any { return make([]byte, poolSize) }}
 
-	ErrObjectNotFound = errors.New("object not found")
-	ErrReadOnly       = errors.New("object is read only")
-	ErrBigChangeSize  = errors.New("change size is above the limit")
+	ErrReadOnly      = errors.New("object is read only")
+	ErrBigChangeSize = errors.New("change size is above the limit")
 )
 
 func MarshalChange(change *pb.Change) (result []byte, dataType string, err error) {

@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
-	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
 	// nolint:misspell
@@ -43,7 +42,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/sqlitestorage"
 	"github.com/anyproto/anytype-heart/util/anonymize"
 	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -516,7 +514,7 @@ func (sb *smartBlock) partitionIdsBySpace(ids []string) map[string][]string {
 		}
 
 		spaceId, err := sb.spaceIdResolver.ResolveSpaceID(id)
-		if errors.Is(err, sqlitestorage.ErrObjectNotFound) || errors.Is(err, badger.ErrKeyNotFound) {
+		if errors.Is(err, domain.ErrObjectNotFound) {
 			perSpace[sb.space.Id()] = append(perSpace[sb.space.Id()], id)
 			continue
 		}

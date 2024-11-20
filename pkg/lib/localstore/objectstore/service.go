@@ -34,7 +34,6 @@ var (
 
 type CrossSpace interface {
 	QueryCrossSpace(q database.Query) (records []database.Record, err error)
-	QueryRawCrossSpace(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
 
 	ListIdsCrossSpace() ([]string, error)
@@ -391,12 +390,6 @@ func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) ([]database.Record, er
 func (s *dsObjectStore) QueryCrossSpace(q database.Query) ([]database.Record, error) {
 	return collectCrossSpace(s, func(store spaceindex.Store) ([]database.Record, error) {
 		return store.Query(q)
-	})
-}
-
-func (s *dsObjectStore) QueryRawCrossSpace(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
-	return collectCrossSpace(s, func(store spaceindex.Store) ([]database.Record, error) {
-		return store.QueryRaw(filters, limit, offset)
 	})
 }
 

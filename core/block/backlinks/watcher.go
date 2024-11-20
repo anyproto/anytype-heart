@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -74,7 +75,6 @@ func (w *watcher) Init(a *app.App) error {
 	w.store = app.MustComponent[objectstore.ObjectStore](a)
 	w.resolver = app.MustComponent[idresolver.Resolver](a)
 	w.spaceService = app.MustComponent[space.Service](a)
-
 	w.infoBatch = mb.New(0)
 	w.accumulatedBacklinks = make(map[string]*backLinksUpdate)
 	w.aggregationInterval = defaultAggregationInterval
@@ -173,10 +173,10 @@ func (w *watcher) backlinksUpdateHandler() {
 		w.lock.Lock()
 		for _, msg := range msgs {
 			info, ok := msg.(spaceindex.LinksUpdateInfo)
-			if !ok || hasSelfLinks(info) {
+			if !ok {
 				continue
 			}
-
+			info = cleanSelfLinks(info)
 			applyUpdates(w.accumulatedBacklinks, info)
 		}
 		lastReceivedUpdates = time.Now()
@@ -192,6 +192,15 @@ func (w *watcher) updateAccumulatedBacklinks() {
 	w.accumulatedBacklinks = make(map[string]*backLinksUpdate)
 }
 
+func shouldIndexBacklinks(ids threads.DerivedSmartblockIds, id string) bool {
+	switch id {
+	case ids.Workspace, ids.Archive, ids.Home, ids.Widgets, ids.Profile:
+		return false
+	default:
+		return true
+	}
+}
+
 func (w *watcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksUpdate) {
 	spaceId, err := w.resolver.ResolveSpaceID(id)
 	if err != nil {
@@ -203,6 +212,7 @@ func (w *watcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksU
 		log.With("objectId", id, "spaceId", spaceId).Errorf("failed to get space: %v", err)
 		return
 	}
+	spaceDerivedIds := spc.DerivedIDs()
 
 	updateBacklinks := func(current *types.Struct, backlinksChange *backLinksUpdate) (*types.Struct, bool, error) {
 		if current == nil || current.Fields == nil {
@@ -220,15 +230,23 @@ func (w *watcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksU
 			}
 		}
 
+		backlinks = slice.Filter(backlinks, func(s string) bool {
+			// filter-out backlinks to system objects
+			return shouldIndexBacklinks(spaceDerivedIds, s)
+		})
+
 		current.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(backlinks)
 		return current, true, nil
 	}
 
-	err = spc.DoLockedIfNotExists(id, func() error {
-		return w.store.SpaceIndex(spaceId).ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
-			return updateBacklinks(details, backlinksUpdate)
+	if shouldIndexBacklinks(spaceDerivedIds, id) {
+		// filter-out backlinks in system objects
+		err = spc.DoLockedIfNotExists(id, func() error {
+			return w.store.SpaceIndex(spaceId).ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
+				return updateBacklinks(details, backlinksUpdate)
+			})
 		})
-	})
+	}
 
 	if err == nil {
 		return
@@ -263,4 +281,27 @@ func hasSelfLinks(info spaceindex.LinksUpdateInfo) bool {
 		}
 	}
 	return false
+}
+
+func cleanSelfLinks(info spaceindex.LinksUpdateInfo) spaceindex.LinksUpdateInfo {
+	if !hasSelfLinks(info) {
+		// optimisation to avoid additional allocations
+		return info
+	}
+	infoFilter := spaceindex.LinksUpdateInfo{
+		LinksFromId: info.LinksFromId,
+		Added:       make([]string, 0, len(info.Added)),
+		Removed:     make([]string, 0, len(info.Removed)),
+	}
+	for _, link := range info.Added {
+		if link != info.LinksFromId {
+			infoFilter.Added = append(infoFilter.Added, link)
+		}
+	}
+	for _, link := range info.Removed {
+		if link != info.LinksFromId {
+			infoFilter.Removed = append(infoFilter.Removed, link)
+		}
+	}
+	return infoFilter
 }
