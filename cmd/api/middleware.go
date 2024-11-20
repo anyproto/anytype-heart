@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Middleware to ensure account info is filled before each request
-func (a *ApiServer) EnsureAccountInfoMiddleware() gin.HandlerFunc {
+// AccountInfoMiddleware retrieves the account information from the middleware service
+func (a *ApiServer) AccountInfoMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if a.accountInfo.TechSpaceId == "" {
 			accountInfo, err := a.mwInternal.GetAccountInfo(context.Background())
@@ -22,7 +22,7 @@ func (a *ApiServer) EnsureAccountInfoMiddleware() gin.HandlerFunc {
 	}
 }
 
-// Middleware to authenticate requests and add user info to context
+// TODO: AuthMiddleware to ensure the user is authenticated
 func (a *ApiServer) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")
@@ -43,7 +43,7 @@ func (a *ApiServer) AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-// Middleware to check permissions
+// TODO: PermissionMiddleware to ensure the user has the required permissions
 func (a *ApiServer) PermissionMiddleware(requiredPermission string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, exists := c.Get("user")

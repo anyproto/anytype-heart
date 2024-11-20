@@ -47,7 +47,7 @@ func (a *ApiServer) authDisplayCodeHandler(c *gin.Context) {
 //	@Accept				json
 //	@Produce			json
 //	@Param				code	query		string				true	"The code retrieved from Anytype Desktop app"
-//	@ParamchallengeId	query																																string								true	"The challenge ID"
+//	@ParamchallengeId	query																																																																										string								true	"The challenge ID"
 //	@Success			200		{object}	map[string]string	"Access and refresh tokens"
 //	@Failure			400		{object}	ValidationError		"Invalid input"
 //	@Failure			502		{object}	ServerError			"Internal server error"
@@ -104,31 +104,40 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 		return
 	}
 
-	// Convert the response to a list of spaces with their details: type, id, homeObjectID, archiveObjectID, profileObjectID, marketplaceWorkspaceID, deviceID, accountSpaceID, widgetsID, spaceViewID, techSpaceID, timezone, networkID
 	spaces := make([]Space, 0, len(resp.Records))
 	for _, record := range resp.Records {
-		typeName, err := a.resolveTypeToName(record.Fields["targetSpaceId"].GetStringValue(), "ot-space")
+		spaceId := record.Fields["targetSpaceId"].GetStringValue()
+		workspaceResponse := a.mw.WorkspaceOpen(context.Background(), &pb.RpcWorkspaceOpenRequest{
+			SpaceId:  spaceId,
+			WithChat: true,
+		})
+
+		if workspaceResponse.Error.Code != pb.RpcWorkspaceOpenResponseError_NULL {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to open workspace."})
+			return
+		}
+
+		typeName, err := a.resolveTypeToName(spaceId, "ot-space")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve type to name."})
 			return
 		}
 
-		// TODO: Populate missing fields
 		space := Space{
-			Type:         typeName,
-			ID:           record.Fields["targetSpaceId"].GetStringValue(),
-			Name:         record.Fields["name"].GetStringValue(),
-			HomeObjectID: record.Fields["spaceDashboardId"].GetStringValue(),
-			// ArchiveObjectID:        record.Fields["archive_object_id"].GetStringValue(),
-			// ProfileObjectID:        record.Fields["profile_object_id"].GetStringValue(),
-			// MarketplaceWorkspaceID: record.Fields["marketplace_workspace_id"].GetStringValue(),
-			// DeviceID:               record.Fields["device_id"].GetStringValue(),
-			// AccountSpaceID:         record.Fields["account_space_id"].GetStringValue(),
-			// WidgetsID:              record.Fields["widgets_id"].GetStringValue(),
-			// SpaceViewID:            record.Fields["space_view_id"].GetStringValue(),
-			TechSpaceID: a.accountInfo.TechSpaceId,
-			// Timezone:               record.Fields["timezone"].GetStringValue(),
-			// NetworkID:              record.Fields["network_id"].GetStringValue(),
+			Type:                   typeName,
+			ID:                     spaceId,
+			Name:                   record.Fields["name"].GetStringValue(),
+			HomeObjectID:           record.Fields["spaceDashboardId"].GetStringValue(),
+			ArchiveObjectID:        workspaceResponse.Info.ArchiveObjectId,
+			ProfileObjectID:        workspaceResponse.Info.ProfileObjectId,
+			MarketplaceWorkspaceID: workspaceResponse.Info.MarketplaceWorkspaceId,
+			DeviceID:               workspaceResponse.Info.DeviceId,
+			AccountSpaceID:         workspaceResponse.Info.AccountSpaceId,
+			WidgetsID:              workspaceResponse.Info.WidgetsId,
+			SpaceViewID:            workspaceResponse.Info.SpaceViewId,
+			TechSpaceID:            a.accountInfo.TechSpaceId,
+			Timezone:               workspaceResponse.Info.TimeZone,
+			NetworkID:              workspaceResponse.Info.NetworkId,
 		}
 		spaces = append(spaces, space)
 	}
@@ -215,7 +224,6 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 		return
 	}
 
-	// Convert the response to a slice of SpaceMember structs with their details: type, identity, name, role
 	members := make([]SpaceMember, 0, len(resp.Records))
 	for _, record := range resp.Records {
 		typeName, err := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
@@ -253,7 +261,7 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 //	@Router		/spaces/{space_id}/objects [get]
 func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 	spaceID := c.Param("space_id")
-	// TODO implement offset and limit
+	// TODO: implement offset and limit
 	// offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	// limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
 
@@ -279,7 +287,6 @@ func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 		return
 	}
 
-	// Convert the response to a list of objects with their details: type, id, name, iconEmoji, objectType, rootID, blocks, details
 	objects := make([]Object, 0, len(resp.Records))
 	for _, record := range resp.Records {
 		object := Object{
@@ -289,8 +296,9 @@ func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 			IconEmoji:  record.Fields["iconEmoji"].GetStringValue(),
 			ObjectType: record.Fields["type"].GetStringValue(),
 			RootID:     record.Fields["rootId"].GetStringValue(),
-			Blocks:     []Block{},
-			Details:    []Detail{},
+			// TODO: populate other fields
+			Blocks:  []Block{},
+			Details: []Detail{},
 		}
 
 		objects = append(objects, object)
@@ -330,7 +338,6 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 		return
 	}
 
-	// Convert the response to an Object struct with its details: type, id, name, iconEmoji, objectType, rootID, blocks, details
 	object := Object{
 		Type:       "object",
 		ID:         objectID,
@@ -338,8 +345,9 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 		IconEmoji:  resp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(),
 		ObjectType: resp.ObjectView.Details[0].Details.Fields["type"].GetStringValue(),
 		RootID:     resp.ObjectView.RootId,
-		Blocks:     []Block{},
-		Details:    []Detail{},
+		// TODO: populate other fields
+		Blocks:  []Block{},
+		Details: []Detail{},
 	}
 
 	c.JSON(http.StatusOK, gin.H{"object": object})
@@ -441,7 +449,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	searchTerm := c.Query("search")
 	objectType := c.Query("object_type")
-	// TODO implement offset and limit
+	// TODO: implement offset and limit
 	// offset := c.DefaultQuery("offset", "0")
 	// limit := c.DefaultQuery("limit", "100")
 
@@ -508,10 +516,10 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 				Name:       record.Fields["name"].GetStringValue(),
 				IconEmoji:  record.Fields["iconEmoji"].GetStringValue(),
 				ObjectType: record.Fields["type"].GetStringValue(),
-				// TODO populate other fields
+				// TODO: populate other fields
 				// RootID:     record.Fields["rootId"].GetStringValue(),
 				// Blocks:     []Block{},
-				// Details: 	[]Detail{},
+				// Details:    []Detail{},
 			})
 		}
 	}

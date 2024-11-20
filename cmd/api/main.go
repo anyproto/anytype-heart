@@ -52,28 +52,25 @@ func newApiServer(mw service.ClientCommandsServer, mwInternal core.MiddlewareInt
 	return a
 }
 
-//	@title			Anytype API
-//	@version		1.0
-//	@description	This API allows interaction with Anytype resources such as spaces, objects, and object types.
-//	@termsOfService	https://anytype.io/terms_of_use
-
-//	@contact.name	Anytype Support
-//	@contact.url	https://anytype.io/contact
-//	@contact.email	support@anytype.io
-
-//	@license.name	Apache 2.0
-//	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
-
-//	@host		localhost:31009
-//	@BasePath	/v1
-
+// RunApiServer starts the HTTP server and registers the API routes.
+//
+//	@title						Anytype API
+//	@version					1.0
+//	@description				This API allows interaction with Anytype resources such as spaces, objects, and object types.
+//	@termsOfService				https://anytype.io/terms_of_use
+//	@contact.name				Anytype Support
+//	@contact.url				https://anytype.io/contact
+//	@contact.email				support@anytype.io
+//	@license.name				Any Source Available License 1.0
+//	@license.url				https://github.com/anyproto/anytype-ts/blob/main/LICENSE.md
+//	@host						localhost:31009
+//	@BasePath					/v1
 //	@securityDefinitions.basic	BasicAuth
-
-// @externalDocs.description	OpenAPI
-// @externalDocs.url			https://swagger.io/resources/open-api/
+//	@externalDocs.description	OpenAPI
+//	@externalDocs.url			https://swagger.io/resources/open-api/
 func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwInternal core.MiddlewareInternal) {
 	a := newApiServer(mw, mwInternal)
-	a.router.Use(a.EnsureAccountInfoMiddleware())
+	a.router.Use(a.AccountInfoMiddleware())
 
 	// Swagger route
 	a.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
