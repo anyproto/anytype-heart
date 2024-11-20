@@ -6,7 +6,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -66,10 +65,9 @@ type SortRequest struct {
 }
 
 type Query struct {
-	FullText    string
-	SpaceId     string
-	Highlighter ftsearch.HighlightFormatter // default is json
-	Filters     []FilterRequest             // filters results. apply sequentially
+	TextQuery string
+	SpaceId   string
+	Filters   []FilterRequest             // filters results. apply sequentially
 	Sorts       []SortRequest               // order results. apply hierarchically
 	Limit       int                         // maximum number of results
 	Offset      int                         // skip given number of results
@@ -159,7 +157,7 @@ func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	var (
 		hasScoreSort bool
 	)
-	if qry.FullText == "" {
+	if qry.TextQuery == "" {
 		return sorts
 	}
 

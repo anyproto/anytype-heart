@@ -102,7 +102,7 @@ var (
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
-			{model.BlockContentWidget_Link, "bafyreia4uol63iev5ywhiqdqf4trh44ep2j27rlrvmypd65adg4ntnihn4", "", true},
+			{model.BlockContentWidget_Link, "bafyreic75ulgm2yz426hjwdjkzqw3kafniknki7qkhufqgrspmxzdppixa", "", true},
 		},
 		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
@@ -535,7 +535,7 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 }
 
 func (b *builtinObjects) setupProgress() (process.Notificationable, error) {
-	progress := process.NewNotificationProcess(pb.ModelProcess_Import, b.notifications)
+	progress := process.NewNotificationProcess(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}, b.notifications)
 	if err := b.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)
 	}

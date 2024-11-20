@@ -18,7 +18,7 @@ const CName = "bookmark-importer"
 var log = logging.Logger("bookmark-importer")
 
 type Importer interface {
-	ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *domain.Details, error)
+	ImportWeb(ctx context.Context, req *importer.ImportRequest) (string, *domain.Details, error)
 }
 
 type BookmarkImporterDecorator struct {
@@ -39,9 +39,11 @@ func (bd *BookmarkImporterDecorator) Init(a *app.App) (err error) {
 
 func (bd *BookmarkImporterDecorator) CreateBookmarkObject(ctx context.Context, spaceID string, details *domain.Details, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *domain.Details, err error) {
 	url := details.GetString(bundle.RelationKeySource)
-	if objectId, newDetails, err = bd.Importer.ImportWeb(nil, &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: url}},
-		UpdateExistingObjects: true,
+	if objectId, newDetails, err = bd.Importer.ImportWeb(nil, &importer.ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: url}},
+			UpdateExistingObjects: true,
+		},
 	}); err != nil {
 		log.With(
 			"function", "BookmarkFetch",

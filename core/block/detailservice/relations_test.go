@@ -12,10 +12,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/dateutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func relationObject(key domain.RelationKey, format model.RelationFormat) objectstore.TestObject {
@@ -51,12 +53,12 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 			bundle.RelationKeyLastModifiedDate: domain.Int64(now.Add(-1 * time.Minute).Unix()),
 			bundle.RelationKeyIsFavorite:       domain.Bool(true),
 			"daysTillSummer":                   domain.Int64(300),
-			bundle.RelationKeyLinks:            domain.StringList([]string{"obj2", "obj3"}),
+			bundle.RelationKeyLinks:            domain.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(-30 * time.Minute))}),
 		},
 		{
 			bundle.RelationKeyId:               domain.String("obj2"),
 			bundle.RelationKeySpaceId:          domain.String(spaceId),
-			bundle.RelationKeyName:             domain.String(addr.TimeToID(now)),
+			bundle.RelationKeyName:             domain.String(dateutil.TimeToDateId(now)),
 			bundle.RelationKeyCreatedDate:      domain.Int64(now.Add(-24*time.Hour - 5*time.Minute).Unix()),
 			bundle.RelationKeyAddedDate:        domain.Int64(now.Add(-24*time.Hour - 3*time.Minute).Unix()),
 			bundle.RelationKeyLastModifiedDate: domain.Int64(now.Add(-1 * time.Minute).Unix()),
@@ -70,54 +72,66 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 			bundle.RelationKeyLastModifiedDate: domain.Int64(now.Unix()),
 			bundle.RelationKeyIsFavorite:       domain.Bool(true),
 			bundle.RelationKeyCoverX:           domain.Int64(300),
-			bundle.RelationKeyMentions:         domain.StringList([]string{addr.TimeToID(now), addr.TimeToID(now.Add(-24 * time.Hour))}),
+			bundle.RelationKeyMentions:         domain.StringList([]string{dateutil.TimeToDateId(now), dateutil.TimeToDateId(now.Add(-24 * time.Hour))}),
 		},
 	})
 
 	bs := service{store: store}
 
 	for _, tc := range []struct {
-		name             string
-		value            domain.Value
-		expectedKeys     []domain.RelationKey
-		expectedCounters []int64
+		name         string
+		value        *types.Value
+		expectedList []*pb.RpcRelationListWithValueResponseResponseItem
 	}{
 		{
 			"date object - today",
-			domain.String(addr.TimeToID(now)),
-			[]domain.RelationKey{bundle.RelationKeyAddedDate, bundle.RelationKeyCreatedDate, bundle.RelationKeyLastModifiedDate, bundle.RelationKeyMentions, bundle.RelationKeyName},
-			[]int64{1, 2, 3, 1, 1},
+			pbtypes.String(dateutil.TimeToDateId(now)),
+			[]*pb.RpcRelationListWithValueResponseResponseItem{
+				{bundle.RelationKeyAddedDate.String(), 1},
+				{bundle.RelationKeyCreatedDate.String(), 2},
+				{bundle.RelationKeyLastModifiedDate.String(), 3},
+				{bundle.RelationKeyLinks.String(), 1},
+				{bundle.RelationKeyMentions.String(), 1},
+				{bundle.RelationKeyName.String(), 1},
+			},
 		},
 		{
 			"date object - yesterday",
-			domain.String(addr.TimeToID(now.Add(-24 * time.Hour))),
-			[]domain.RelationKey{bundle.RelationKeyAddedDate, bundle.RelationKeyCreatedDate, bundle.RelationKeyMentions},
-			[]int64{1, 1, 1},
+			pbtypes.String(dateutil.TimeToDateId(now.Add(-24 * time.Hour))),
+			[]*pb.RpcRelationListWithValueResponseResponseItem{
+				{bundle.RelationKeyAddedDate.String(), 1},
+				{bundle.RelationKeyCreatedDate.String(), 1},
+				{bundle.RelationKeyMentions.String(), 1},
+			},
 		},
 		{
 			"number",
-			domain.Int64(300),
-			[]domain.RelationKey{bundle.RelationKeyCoverX, "daysTillSummer"},
-			[]int64{2, 1},
+			pbtypes.Int64(300),
+			[]*pb.RpcRelationListWithValueResponseResponseItem{
+				{bundle.RelationKeyCoverX.String(), 2},
+				{"daysTillSummer", 1},
+			},
 		},
 		{
 			"bool",
-			domain.Bool(true),
-			[]domain.RelationKey{bundle.RelationKeyIsFavorite, bundle.RelationKeyIsHidden},
-			[]int64{2, 1},
+			pbtypes.Bool(true),
+			[]*pb.RpcRelationListWithValueResponseResponseItem{
+				{bundle.RelationKeyIsFavorite.String(), 2},
+				{bundle.RelationKeyIsHidden.String(), 1},
+			},
 		},
 		{
 			"string list",
-			domain.StringList([]string{"obj2", "obj3"}),
-			[]domain.RelationKey{bundle.RelationKeyLinks},
-			[]int64{1},
+			pbtypes.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(-30 * time.Minute))}),
+			[]*pb.RpcRelationListWithValueResponseResponseItem{
+				{bundle.RelationKeyLinks.String(), 1},
+			},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			keys, counters, err := bs.ListRelationsWithValue(spaceId, tc.value)
+			list, err := bs.ListRelationsWithValue(spaceId, tc.value)
 			assert.NoError(t, err)
-			assert.Equal(t, tc.expectedKeys, keys)
-			assert.Equal(t, tc.expectedCounters, counters)
+			assert.Equal(t, tc.expectedList, list)
 		})
 	}
 }

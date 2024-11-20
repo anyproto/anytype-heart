@@ -35,7 +35,7 @@ type Importer interface {
 	Import(ctx context.Context, importRequest *ImportRequest) *ImportResponse
 
 	ListImports(req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error)
-	ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *domain.Details, error)
+	ImportWeb(ctx context.Context, req *ImportRequest) (string, *domain.Details, error)
 	// nolint: lll
 	ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) (pb.RpcObjectImportNotionValidateTokenResponseErrorCode, error)
 }

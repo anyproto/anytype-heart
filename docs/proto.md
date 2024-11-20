@@ -1073,6 +1073,14 @@
     - [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request)
     - [Rpc.Process.Cancel.Response](#anytype-Rpc-Process-Cancel-Response)
     - [Rpc.Process.Cancel.Response.Error](#anytype-Rpc-Process-Cancel-Response-Error)
+    - [Rpc.Process.Subscribe](#anytype-Rpc-Process-Subscribe)
+    - [Rpc.Process.Subscribe.Request](#anytype-Rpc-Process-Subscribe-Request)
+    - [Rpc.Process.Subscribe.Response](#anytype-Rpc-Process-Subscribe-Response)
+    - [Rpc.Process.Subscribe.Response.Error](#anytype-Rpc-Process-Subscribe-Response-Error)
+    - [Rpc.Process.Unsubscribe](#anytype-Rpc-Process-Unsubscribe)
+    - [Rpc.Process.Unsubscribe.Request](#anytype-Rpc-Process-Unsubscribe-Request)
+    - [Rpc.Process.Unsubscribe.Response](#anytype-Rpc-Process-Unsubscribe-Response)
+    - [Rpc.Process.Unsubscribe.Response.Error](#anytype-Rpc-Process-Unsubscribe-Response-Error)
     - [Rpc.Relation](#anytype-Rpc-Relation)
     - [Rpc.Relation.ListRemoveOption](#anytype-Rpc-Relation-ListRemoveOption)
     - [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request)
@@ -1082,6 +1090,7 @@
     - [Rpc.Relation.ListWithValue.Request](#anytype-Rpc-Relation-ListWithValue-Request)
     - [Rpc.Relation.ListWithValue.Response](#anytype-Rpc-Relation-ListWithValue-Response)
     - [Rpc.Relation.ListWithValue.Response.Error](#anytype-Rpc-Relation-ListWithValue-Response-Error)
+    - [Rpc.Relation.ListWithValue.Response.ResponseItem](#anytype-Rpc-Relation-ListWithValue-Response-ResponseItem)
     - [Rpc.Relation.Options](#anytype-Rpc-Relation-Options)
     - [Rpc.Relation.Options.Request](#anytype-Rpc-Relation-Options-Request)
     - [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response)
@@ -1482,6 +1491,8 @@
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
+    - [Rpc.Process.Subscribe.Response.Error.Code](#anytype-Rpc-Process-Subscribe-Response-Error-Code)
+    - [Rpc.Process.Unsubscribe.Response.Error.Code](#anytype-Rpc-Process-Unsubscribe-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
@@ -1724,7 +1735,12 @@
     - [Event.User.Block.TextRange](#anytype-Event-User-Block-TextRange)
     - [Model](#anytype-Model)
     - [Model.Process](#anytype-Model-Process)
+    - [Model.Process.DropFiles](#anytype-Model-Process-DropFiles)
+    - [Model.Process.Export](#anytype-Model-Process-Export)
+    - [Model.Process.Import](#anytype-Model-Process-Import)
+    - [Model.Process.Migration](#anytype-Model-Process-Migration)
     - [Model.Process.Progress](#anytype-Model-Process-Progress)
+    - [Model.Process.SaveFile](#anytype-Model-Process-SaveFile)
     - [ResponseEvent](#anytype-ResponseEvent)
   
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
@@ -1734,7 +1750,6 @@
     - [Event.Space.SyncError](#anytype-Event-Space-SyncError)
     - [Event.Status.Thread.SyncStatus](#anytype-Event-Status-Thread-SyncStatus)
     - [Model.Process.State](#anytype-Model-Process-State)
-    - [Model.Process.Type](#anytype-Model-Process-Type)
   
 - [pb/protos/snapshot.proto](#pb_protos_snapshot-proto)
     - [Profile](#anytype-Profile)
@@ -1857,6 +1872,7 @@
     - [Block.Content.Dataview.Filter.Operator](#anytype-model-Block-Content-Dataview-Filter-Operator)
     - [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption)
     - [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat)
+    - [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType)
     - [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat)
     - [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType)
     - [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type)
@@ -2151,6 +2167,8 @@
 | BlockDivListSetStyle | [Rpc.BlockDiv.ListSetStyle.Request](#anytype-Rpc-BlockDiv-ListSetStyle-Request) | [Rpc.BlockDiv.ListSetStyle.Response](#anytype-Rpc-BlockDiv-ListSetStyle-Response) |  |
 | BlockLatexSetText | [Rpc.BlockLatex.SetText.Request](#anytype-Rpc-BlockLatex-SetText-Request) | [Rpc.BlockLatex.SetText.Response](#anytype-Rpc-BlockLatex-SetText-Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request) | [Rpc.Process.Cancel.Response](#anytype-Rpc-Process-Cancel-Response) |  |
+| ProcessSubscribe | [Rpc.Process.Subscribe.Request](#anytype-Rpc-Process-Subscribe-Request) | [Rpc.Process.Subscribe.Response](#anytype-Rpc-Process-Subscribe-Response) |  |
+| ProcessUnsubscribe | [Rpc.Process.Unsubscribe.Request](#anytype-Rpc-Process-Unsubscribe-Request) | [Rpc.Process.Unsubscribe.Response](#anytype-Rpc-Process-Unsubscribe-Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype-Rpc-Log-Send-Request) | [Rpc.Log.Send.Response](#anytype-Rpc-Log-Send-Response) |  |
 | DebugStat | [Rpc.Debug.Stat.Request](#anytype-Rpc-Debug-Stat-Request) | [Rpc.Debug.Stat.Response](#anytype-Rpc-Debug-Stat-Response) |  |
 | DebugTree | [Rpc.Debug.Tree.Request](#anytype-Rpc-Debug-Tree-Request) | [Rpc.Debug.Tree.Response](#anytype-Rpc-Debug-Tree-Response) |  |
@@ -16105,7 +16123,7 @@ DEPRECATED, GO-1926 |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 | returnMeta | [bool](#bool) |  | add ResultMeta to each result |
 | returnMetaRelationDetails | [bool](#bool) |  | add relation option details to meta |
-| returnHTMLHighlightsInsteadOfRanges | [bool](#bool) |  |  |
+| returnHTMLHighlightsInsteadOfRanges | [bool](#bool) |  | DEPRECATED |
 
 
 
@@ -17779,6 +17797,108 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Process-Subscribe"></a>
+
+### Rpc.Process.Subscribe
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Subscribe-Request"></a>
+
+### Rpc.Process.Subscribe.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Subscribe-Response"></a>
+
+### Rpc.Process.Subscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Process.Subscribe.Response.Error](#anytype-Rpc-Process-Subscribe-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Subscribe-Response-Error"></a>
+
+### Rpc.Process.Subscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Process.Subscribe.Response.Error.Code](#anytype-Rpc-Process-Subscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Unsubscribe"></a>
+
+### Rpc.Process.Unsubscribe
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Unsubscribe-Request"></a>
+
+### Rpc.Process.Unsubscribe.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Unsubscribe-Response"></a>
+
+### Rpc.Process.Unsubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Process.Unsubscribe.Response.Error](#anytype-Rpc-Process-Unsubscribe-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Unsubscribe-Response-Error"></a>
+
+### Rpc.Process.Unsubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Process.Unsubscribe.Response.Error.Code](#anytype-Rpc-Process-Unsubscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Relation"></a>
 
 ### Rpc.Relation
@@ -17881,8 +18001,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Relation.ListWithValue.Response.Error](#anytype-Rpc-Relation-ListWithValue-Response-Error) |  |  |
-| relationKeys | [string](#string) | repeated |  |
-| counters | [int64](#int64) | repeated |  |
+| list | [Rpc.Relation.ListWithValue.Response.ResponseItem](#anytype-Rpc-Relation-ListWithValue-Response-ResponseItem) | repeated |  |
 
 
 
@@ -17899,6 +18018,22 @@ Available undo/redo operations
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-ListWithValue-Response-ResponseItem"></a>
+
+### Rpc.Relation.ListWithValue.Response.ResponseItem
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| counter | [int64](#int64) |  |  |
 
 
 
@@ -23458,6 +23593,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Process-Subscribe-Response-Error-Code"></a>
+
+### Rpc.Process.Subscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Process-Unsubscribe-Response-Error-Code"></a>
+
+### Rpc.Process.Unsubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code"></a>
 
 ### Rpc.Relation.ListRemoveOption.Response.Error.Code
@@ -27211,9 +27372,55 @@ Precondition: user A and user B opened the same block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| type | [Model.Process.Type](#anytype-Model-Process-Type) |  |  |
 | state | [Model.Process.State](#anytype-Model-Process-State) |  |  |
 | progress | [Model.Process.Progress](#anytype-Model-Process-Progress) |  |  |
+| spaceId | [string](#string) |  |  |
+| dropFiles | [Model.Process.DropFiles](#anytype-Model-Process-DropFiles) |  |  |
+| import | [Model.Process.Import](#anytype-Model-Process-Import) |  |  |
+| export | [Model.Process.Export](#anytype-Model-Process-Export) |  |  |
+| saveFile | [Model.Process.SaveFile](#anytype-Model-Process-SaveFile) |  |  |
+| migration | [Model.Process.Migration](#anytype-Model-Process-Migration) |  |  |
+| error | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Model-Process-DropFiles"></a>
+
+### Model.Process.DropFiles
+
+
+
+
+
+
+
+<a name="anytype-Model-Process-Export"></a>
+
+### Model.Process.Export
+
+
+
+
+
+
+
+<a name="anytype-Model-Process-Import"></a>
+
+### Model.Process.Import
+
+
+
+
+
+
+
+<a name="anytype-Model-Process-Migration"></a>
+
+### Model.Process.Migration
+
 
 
 
@@ -27231,6 +27438,16 @@ Precondition: user A and user B opened the same block
 | total | [int64](#int64) |  |  |
 | done | [int64](#int64) |  |  |
 | message | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Model-Process-SaveFile"></a>
+
+### Model.Process.SaveFile
+
 
 
 
@@ -27356,22 +27573,6 @@ Precondition: user A and user B opened the same block
 | Done | 2 |  |
 | Canceled | 3 |  |
 | Error | 4 |  |
-
-
-
-<a name="anytype-Model-Process-Type"></a>
-
-### Model.Process.Type
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| DropFiles | 0 |  |
-| Import | 1 |  |
-| Export | 2 |  |
-| SaveFile | 3 |  |
-| RecoverAccount | 4 |  |
-| Migration | 5 |  |
 
 
  
@@ -27906,6 +28107,7 @@ Bookmark is to keep a web-link and to preview a content.
 | dateIncludeTime | [bool](#bool) |  |  |
 | timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  |  |
 | dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  |  |
+| formula | [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType) |  |  |
 
 
 
@@ -29452,6 +29654,29 @@ stored |
 | Short | 2 | 30/07/2020 |
 | ShortUS | 3 | 07/30/2020 |
 | ISO | 4 | 2020-07-30 |
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Relation-FormulaType"></a>
+
+### Block.Content.Dataview.Relation.FormulaType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| None | 0 |  |
+| Count | 1 |  |
+| CountDistinct | 2 |  |
+| CountEmpty | 3 |  |
+| CountNotEmpty | 4 |  |
+| PercentEmpty | 5 |  |
+| PercentNotEmpty | 6 |  |
+| MathSum | 7 |  |
+| MathAverage | 8 |  |
+| MathMedian | 9 |  |
+| MathMin | 10 |  |
+| MathMax | 11 |  |
+| Range | 12 |  |
 
 
 

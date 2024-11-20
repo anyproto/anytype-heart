@@ -15,6 +15,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/dateutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var (
@@ -153,6 +156,14 @@ func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store Object
 			Value: rawFilter.Value.String(),
 		}}, nil
 	case model.BlockContentDataviewFilter_In:
+		// hack for queries for relations containing date objects ids with format _date_YYYY-MM-DD-hh-mm-ss
+		// to find all date object ids of the same day we search by prefix _date_YYYY-MM-DD
+		if ts, err := dateutil.ParseDateId(rawFilter.Value.GetStringValue()); err == nil {
+			return FilterHasPrefix{
+				Key:    rawFilter.RelationKey,
+				Prefix: dateutil.TimeToDateId(ts),
+			}, nil
+		}
 		list, err := rawFilter.Value.TryWrapToList()
 		if err != nil {
 			return nil, errors.Join(ErrValueMustBeListSupporting, err)
@@ -456,6 +467,40 @@ func (e FilterEq) filterObject(v domain.Value) bool {
 	return false
 }
 
+type FilterHasPrefix struct {
+	Key, Prefix string
+}
+
+func (p FilterHasPrefix) FilterObject(s *types.Struct) bool {
+	val := pbtypes.Get(s, p.Key)
+	if strings.HasPrefix(val.GetStringValue(), p.Prefix) {
+		return true
+	}
+
+	list := val.GetListValue()
+	if list == nil {
+		return false
+	}
+
+	for _, v := range list.Values {
+		if strings.HasPrefix(v.GetStringValue(), p.Prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func (p FilterHasPrefix) AnystoreFilter() query.Filter {
+	re, err := regexp.Compile("^" + regexp.QuoteMeta(p.Prefix))
+	if err != nil {
+		log.Errorf("failed to build anystore HAS PREFIX filter: %v", err)
+	}
+	return query.Key{
+		Path:   []string{p.Key},
+		Filter: query.Regexp{Regexp: re},
+	}
+}
+
 // any
 type FilterIn struct {
 	Key   domain.RelationKey
@@ -536,14 +581,7 @@ func (e FilterEmpty) FilterObject(g *domain.Details) bool {
 }
 
 var (
-	filterEqNil         = query.NewComp(query.CompOpEq, nil)
-	filterEqEmptyString = query.NewComp(query.CompOpEq, "")
-	filterEq0           = query.NewComp(query.CompOpEq, 0)
-	filterEqFalse       = query.NewComp(query.CompOpEq, false)
-	filterEqEmptyArray  = &query.Comp{
-		CompOp:  query.CompOpEq,
-		EqValue: anyenc.MustParseJson(`[]`).MarshalTo(nil),
-	}
+	emptyArrayValue = anyenc.MustParseJson(`[]`).MarshalTo(nil)
 )
 
 func (e FilterEmpty) AnystoreFilter() query.Filter {
@@ -555,23 +593,26 @@ func (e FilterEmpty) AnystoreFilter() query.Filter {
 		},
 		query.Key{
 			Path:   path,
-			Filter: filterEqNil,
+			Filter: query.NewComp(query.CompOpEq, nil),
 		},
 		query.Key{
 			Path:   path,
-			Filter: filterEqEmptyString,
+			Filter: query.NewComp(query.CompOpEq, ""),
 		},
 		query.Key{
 			Path:   path,
-			Filter: filterEq0,
+			Filter: query.NewComp(query.CompOpEq, 0),
 		},
 		query.Key{
 			Path:   path,
-			Filter: filterEqFalse,
+			Filter: query.NewComp(query.CompOpEq, false),
 		},
 		query.Key{
-			Path:   path,
-			Filter: filterEqEmptyArray,
+			Path: path,
+			Filter: &query.Comp{
+				CompOp:  query.CompOpEq,
+				EqValue: emptyArrayValue,
+			},
 		},
 	}
 }

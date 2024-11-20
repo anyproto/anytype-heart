@@ -25,7 +25,7 @@ import (
 var log = logging.Logger("objectstore.spaceindex")
 
 var (
-	ErrObjectNotFound = fmt.Errorf("object not found")
+	ErrObjectNotFound = fmt.Errorf("object not found in space index")
 	ErrNotAnObject    = fmt.Errorf("not an object")
 )
 

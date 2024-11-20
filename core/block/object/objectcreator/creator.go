@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 )
 
@@ -155,6 +157,8 @@ func (s *service) createObjectInSpace(
 		if details.GetString(bundle.RelationKeyTargetObjectType) == "" {
 			return "", nil, fmt.Errorf("cannot create template without target object")
 		}
+	case bundle.TypeKeyDate:
+		return buildDateObject(space, details)
 	}
 
 	return s.createObjectFromTemplate(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, details, req.TemplateId)
@@ -172,4 +176,41 @@ func (s *service) createObjectFromTemplate(
 		return
 	}
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
+}
+
+// buildDateObject does not create real date object. It just builds date object details
+func buildDateObject(space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
+	name := pbtypes.GetString(details, bundle.RelationKeyName.String())
+	id, err := dateutil.DateNameToId(name)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to build date object, as its name is invalid: %w", err)
+	}
+
+	typeId, err := space.GetTypeIdByKey(context.Background(), bundle.TypeKeyDate)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to find Date type to build Date object: %w", err)
+	}
+
+	// TODO: GO-4494 - Remove links relation id fetch
+	linksRelationId, err := space.GetRelationIdByKey(context.Background(), bundle.RelationKeyLinks)
+	if err != nil {
+		return "", nil, fmt.Errorf("get links relation id: %w", err)
+	}
+
+	dateSource := source.NewDate(source.DateSourceParams{
+		Id: domain.FullID{
+			ObjectID: id,
+			SpaceID:  space.Id(),
+		},
+		DateObjectTypeId: typeId,
+		LinksRelationId:  linksRelationId,
+	})
+
+	detailsGetter, ok := dateSource.(source.SourceIdEndodedDetails)
+	if !ok {
+		return "", nil, fmt.Errorf("date object does not implement DetailsFromId")
+	}
+
+	details, err = detailsGetter.DetailsFromId()
+	return id, details, err
 }

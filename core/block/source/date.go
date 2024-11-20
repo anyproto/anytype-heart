@@ -3,8 +3,6 @@ package source
 import (
 	"context"
 	"fmt"
-	"strings"
-	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -14,107 +12,84 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func NewDate(space Space, id domain.FullID) (s Source) {
+type DateSourceParams struct {
+	Id               domain.FullID
+	DateObjectTypeId string
+	// TODO: GO-4494 - Remove links relation id
+	LinksRelationId string
+}
+
+func NewDate(params DateSourceParams) (s Source) {
 	return &date{
-		id:      id.ObjectID,
-		spaceId: id.SpaceID,
-		space:   space,
+		id:      params.Id.ObjectID,
+		spaceId: params.Id.SpaceID,
+		typeId:  params.DateObjectTypeId,
+		linksId: params.LinksRelationId,
 	}
 }
 
 type date struct {
-	space       Space
-	id, spaceId string
-	t           time.Time
+	id, spaceId, typeId string
+	// TODO: GO-4494 - Remove links relation id
+	linksId string
 }
 
-func (v *date) ListIds() ([]string, error) {
+func (d *date) ListIds() ([]string, error) {
 	return []string{}, nil
 }
 
-func (v *date) ReadOnly() bool {
+func (d *date) ReadOnly() bool {
 	return true
 }
 
-func (v *date) Id() string {
-	return v.id
+func (d *date) Id() string {
+	return d.id
 }
 
-func (v *date) SpaceID() string {
-	if v.space != nil {
-		return v.space.Id()
-	}
-	if v.spaceId != "" {
-		return v.spaceId
-	}
-	return ""
+func (d *date) SpaceID() string {
+	return d.spaceId
 }
 
-func (v *date) Type() smartblock.SmartBlockType {
+func (d *date) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeDate
 }
 
-func (v *date) getDetails(ctx context.Context) (*domain.Details, error) {
-	linksRelationId, err := v.space.GetRelationIdByKey(ctx, bundle.RelationKeyLinks)
+func (d *date) getDetails() (*domain.Details, error) {
+	t, err := dateutil.ParseDateId(d.id)
 	if err != nil {
-		return nil, fmt.Errorf("get links relation id: %w", err)
+		return nil, fmt.Errorf("failed to parse date id: %w", err)
 	}
-	dateTypeId, err := v.space.GetTypeIdByKey(ctx, bundle.TypeKeyDate)
-	if err != nil {
-		return nil, fmt.Errorf("get date type id: %w", err)
-	}
-	det := domain.NewDetails()
-	det.SetString(bundle.RelationKeyName, v.t.Format("02 Jan 2006"))
-	det.SetString(bundle.RelationKeyId, v.id)
-	det.SetBool(bundle.RelationKeyIsReadonly, true)
-	det.SetBool(bundle.RelationKeyIsArchived, false)
-	det.SetBool(bundle.RelationKeyIsHidden, false)
-	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_date))
-	det.SetString(bundle.RelationKeyIconEmoji, "📅")
-	det.SetString(bundle.RelationKeySpaceId, v.SpaceID())
-	det.SetStringList(bundle.RelationKeySetOf, []string{linksRelationId})
-	det.SetString(bundle.RelationKeyType, dateTypeId)
-	return det, nil
+
+	return &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyName.String():       pbtypes.String(dateutil.TimeToDateName(t)),
+		bundle.RelationKeyId.String():         pbtypes.String(d.id),
+		bundle.RelationKeyType.String():       pbtypes.String(d.typeId),
+		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
+		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
+		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
+		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_date)),
+		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
+		bundle.RelationKeySpaceId.String():    pbtypes.String(d.SpaceID()),
+		bundle.RelationKeyTimestamp.String():  pbtypes.Int64(t.Unix()),
+		// TODO: GO-4494 - Remove links relation id
+		bundle.RelationKeySetOf.String(): pbtypes.StringList([]string{d.linksId}),
+	}}, nil
 }
 
-// TODO Fix?
-func (v *date) DetailsFromId() (*domain.Details, error) {
-	if err := v.parseId(); err != nil {
-		return nil, err
-	}
-	det := domain.NewDetails()
-	det.SetString(bundle.RelationKeyName, v.t.Format("02 Jan 2006"))
-	det.SetString(bundle.RelationKeyId, v.id)
-	det.SetBool(bundle.RelationKeyIsReadonly, true)
-	det.SetBool(bundle.RelationKeyIsArchived, false)
-	det.SetBool(bundle.RelationKeyIsHidden, false)
-	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_date))
-	det.SetString(bundle.RelationKeyIconEmoji, "📅")
-	det.SetString(bundle.RelationKeySpaceId, v.SpaceID())
-	return det, nil
+func (d *date) DetailsFromId() (*types.Struct, error) {
+	return d.getDetails()
 }
 
-func (v *date) parseId() error {
-	t, err := time.Parse("2006-01-02", strings.TrimPrefix(v.id, addr.DatePrefix))
-	if err != nil {
-		return err
-	}
-	v.t = t
-	return nil
-}
-
-func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
-	if err = v.parseId(); err != nil {
-		return
-	}
-	s := state.NewDoc(v.id, nil).(*state.State)
-	d, err := v.getDetails(ctx)
+func (d *date) ReadDoc(context.Context, ChangeReceiver, bool) (doc state.Doc, err error) {
+	details, err := d.getDetails()
 	if err != nil {
 		return
 	}
+
 	dataview := &model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			RelationLinks: []*model.RelationLink{
@@ -142,7 +117,7 @@ func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 						{
 							RelationKey: bundle.RelationKeyLinks.String(),
 							Condition:   model.BlockContentDataviewFilter_In,
-							Value:       pbtypes.String(v.id),
+							Value:       pbtypes.String(d.id),
 						},
 					},
 					Relations: []*model.BlockContentDataviewRelation{
@@ -160,33 +135,35 @@ func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 		},
 	}
 
+	s := state.NewDoc(d.id, nil).(*state.State)
 	template.InitTemplate(s,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,
+		// TODO: GO-4494 - Remove dataview block insertion
 		template.WithDataview(dataview, true),
 		template.WithAllBlocksEditsRestricted,
 	)
-	s.SetDetails(d)
+	s.SetDetails(details)
 	s.SetObjectTypeKey(bundle.TypeKeyDate)
 	return s, nil
 }
 
-func (v *date) PushChange(params PushChangeParams) (id string, err error) {
+func (d *date) PushChange(PushChangeParams) (id string, err error) {
 	return "", nil
 }
 
-func (v *date) Close() (err error) {
+func (d *date) Close() (err error) {
 	return
 }
 
-func (v *date) Heads() []string {
-	return []string{v.id}
+func (d *date) Heads() []string {
+	return []string{d.id}
 }
 
-func (v *date) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
+func (d *date) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
 
-func (v *date) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
+func (d *date) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
 	return addr.AnytypeProfileId, 0, nil
 }

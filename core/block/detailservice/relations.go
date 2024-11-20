@@ -13,11 +13,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/util/dateutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -63,11 +65,11 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 	})
 }
 
-func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) (keys []domain.RelationKey, counters []int64, err error) {
+func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {
 	countersByKeys := make(map[domain.RelationKey]int64)
 	detailHandlesValue := generateFilter(value)
 
-	err = s.store.SpaceIndex(spaceId).QueryIterate(
+	err := s.store.SpaceIndex(spaceId).QueryIterate(
 		database.Query{Filters: nil},
 		func(details *domain.Details) {
 			for key, valueToCheck := range details.Iterate() {
@@ -82,17 +84,21 @@ func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) (ke
 		})
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to query objects: %w", err)
+		return nil, fmt.Errorf("failed to query objects: %w", err)
 	}
 
-	keys = maps.Keys(countersByKeys)
+	keys := maps.Keys(countersByKeys)
 	slices.Sort(keys)
+	list := make([]*pb.RpcRelationListWithValueResponseResponseItem, len(keys))
 
-	for _, key := range keys {
-		counters = append(counters, countersByKeys[key])
+	for i, key := range keys {
+		list[i] = &pb.RpcRelationListWithValueResponseResponseItem{
+			RelationKey: key,
+			Counter:     countersByKeys[key],
+		}
 	}
 
-	return keys, counters, nil
+	return list, nil
 }
 
 func generateFilter(value domain.Value) func(v domain.Value) bool {
@@ -121,28 +127,39 @@ func generateFilter(value domain.Value) func(v domain.Value) bool {
 		return equalOrHasFilter
 	}
 
-	start, err := dateIDToDayStart(stringValue)
+	ts, err := dateutil.ParseDateId(stringValue)
 	if err != nil {
-		log.Error("failed to convert date id to day start", zap.Error(err))
+		log.Error("failed to parse Date object id", zap.Error(err))
 		return equalOrHasFilter
 	}
 
+	shortId := dateutil.TimeToDateId(ts)
+
+	start := ts.Truncate(24 * time.Hour)
 	end := start.Add(24 * time.Hour)
 	startTimestamp := start.Unix()
 	endTimestamp := end.Unix()
 
+	// filter for date objects is able to find relations with values between the borders of queried day
+	// - for relations with number format it checks timestamp value is between timestamps of this day midnights
+	// - for relations carrying string list it checks if some of the strings has day prefix, e.g.
+	// if _date_2023-12-12-08-30-50 is queried, then all relations with prefix _date_2023-12-12 will be returned
 	return func(v domain.Value) bool {
 		numberValue := v.Int64()
 		if numberValue >= startTimestamp && numberValue < endTimestamp {
 			return true
 		}
-		return equalOrHasFilter(v)
-	}
-}
 
-func dateIDToDayStart(id string) (time.Time, error) {
-	if !strings.HasPrefix(id, addr.DatePrefix) {
-		return time.Time{}, fmt.Errorf("invalid id: date prefix not found")
+		if list := v.GetListValue(); list != nil {
+			for _, element := range list.Values {
+				if element.Equal(value) {
+					return true
+				}
+				if strings.HasPrefix(element.GetStringValue(), shortId) {
+					return true
+				}
+			}
+		}
+		return v.Equal(value)
 	}
-	return time.Parse("2006-01-02", strings.TrimPrefix(id, addr.DatePrefix))
 }

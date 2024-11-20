@@ -281,9 +281,9 @@ func shouldReturnError(e error, res *common.Response, req *pb.RpcObjectImportReq
 }
 
 func (i *Import) setupProgressBar(req *ImportRequest) {
-	progressBarType := pb.ModelProcess_Import
+	var progressBarType pb.IsModelProcessMessage = &pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}
 	if req.IsMigration {
-		progressBarType = pb.ModelProcess_Migration
+		progressBarType = &pb.ModelProcessMessageOfMigration{Migration: &pb.ModelProcessMigration{}}
 	}
 	var progress process.Progress
 	if req.GetNoProgress() {
@@ -320,14 +320,22 @@ func (i *Import) ValidateNotionToken(
 	return tv.Validate(ctx, req.GetToken())
 }
 
-func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *domain.Details, error) {
-	progress := process.NewProgress(pb.ModelProcess_Import)
-	defer progress.Finish(nil)
+func (i *Import) ImportWeb(ctx context.Context, req *ImportRequest) (string, *domain.Details, error) {
+	if req.Progress == nil {
+		i.setupProgressBar(req)
+	}
+	defer req.Progress.Finish(nil)
+	if i.s != nil {
+		err := i.s.ProcessAdd(req.Progress)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to add process")
+		}
+	}
 	allErrors := common.NewError(0)
 
-	progress.SetProgressMessage("Parse url")
+	req.Progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
-	res, err := w.GetSnapshots(ctx, req, progress)
+	res, err := w.GetSnapshots(ctx, req.RpcObjectImportRequest, req.Progress)
 
 	if err != nil {
 		return "", nil, err.Error()
@@ -336,8 +344,8 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 		return "", nil, fmt.Errorf("snpashots are empty")
 	}
 
-	progress.SetProgressMessage("Create objects")
-	details, _ := i.createObjects(ctx, res, progress, req, allErrors, objectorigin.None())
+	req.Progress.SetProgressMessage("Create objects")
+	details, _ := i.createObjects(ctx, res, req.Progress, req.RpcObjectImportRequest, allErrors, objectorigin.None())
 	if !allErrors.IsEmpty() {
 		return "", nil, fmt.Errorf("couldn't create objects")
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common/objectid/mock_objectid"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers/mock_parsers"
 	"github.com/anyproto/anytype-heart/core/domain"
 
@@ -401,9 +402,12 @@ func Test_ImportWebNoParser(t *testing.T) {
 	creator := mock_objectcreator.NewMockService(t)
 	i.oc = creator
 	i.idProvider = mock_objectid.NewMockIdAndKeyProvider(t)
-	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
-		UpdateExistingObjects: true,
+	_, _, err := i.ImportWeb(context.Background(), &ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+			UpdateExistingObjects: true,
+		},
+		Progress: process.NewNoOp(),
 	})
 
 	assert.NotNil(t, err)
@@ -427,9 +431,12 @@ func Test_ImportWebFailedToParse(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
-		UpdateExistingObjects: true,
+	_, _, err := i.ImportWeb(context.Background(), &ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+			UpdateExistingObjects: true,
+		},
+		Progress: process.NewNoOp(),
 	})
 
 	assert.NotNil(t, err)
@@ -468,9 +475,12 @@ func Test_ImportWebSuccess(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
-		UpdateExistingObjects: true,
+	_, _, err := i.ImportWeb(context.Background(), &ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+			UpdateExistingObjects: true,
+		},
+		Progress: process.NewNoOp(),
 	})
 
 	assert.Nil(t, err)
@@ -508,9 +518,12 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
-		UpdateExistingObjects: true,
+	_, _, err := i.ImportWeb(context.Background(), &ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+			UpdateExistingObjects: true,
+		},
+		Progress: process.NewNoOp(),
 	})
 
 	assert.NotNil(t, err)

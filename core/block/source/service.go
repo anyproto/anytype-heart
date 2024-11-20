@@ -58,6 +58,12 @@ type Service interface {
 	app.Component
 }
 
+// TODO: GO-4494 - Remove this interface
+type derivedObjectIdGetter interface {
+	GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error)
+	GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error)
+}
+
 type service struct {
 	sbtProvider        typeprovider.SmartBlockTypeProvider
 	accountService     accountService
@@ -66,6 +72,9 @@ type service struct {
 	fileService        files.Service
 	objectStore        objectstore.ObjectStore
 	fileObjectMigrator fileObjectMigrator
+
+	// TODO: GO-4494 - Remove derivedObjectIdGetter
+	derivedObjectIdGetter derivedObjectIdGetter
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -82,6 +91,9 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
+
+	// TODO: GO-4494 - Remove derivedObjectIdGetter
+	s.derivedObjectIdGetter = app.MustComponent[derivedObjectIdGetter](a)
 	return
 }
 
@@ -138,9 +150,24 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	if err == nil {
 		switch st {
 		case smartblock.SmartBlockTypeDate:
-			return NewDate(space, domain.FullID{
-				ObjectID: id,
-				SpaceID:  space.Id(),
+			typeId, err := space.GetTypeIdByKey(context.Background(), bundle.TypeKeyDate)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find Date type to build Date object: %w", err)
+			}
+
+			// TODO: GO-4494 - Remove links relation id fetch
+			linksRelationId, err := space.GetRelationIdByKey(context.Background(), bundle.RelationKeyLinks)
+			if err != nil {
+				return nil, fmt.Errorf("get links relation id: %w", err)
+			}
+
+			return NewDate(DateSourceParams{
+				Id: domain.FullID{
+					ObjectID: id,
+					SpaceID:  space.Id(),
+				},
+				DateObjectTypeId: typeId,
+				LinksRelationId:  linksRelationId,
 			}), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
 			return NewBundledObjectType(id), nil
@@ -206,7 +233,24 @@ func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, e
 	if !strings.HasPrefix(id.ObjectID, addr.DatePrefix) {
 		return nil, fmt.Errorf("unsupported id")
 	}
-	ss := NewDate(nil, id)
+
+	// TODO: GO-4494 - Remove date type id fetch
+	dateObjectId, err := s.derivedObjectIdGetter.GetTypeIdByKey(context.Background(), id.SpaceID, bundle.TypeKeyDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get id of Date type object: %w", err)
+	}
+
+	// TODO: GO-4494 - Remove links relation id fetch
+	linksId, err := s.derivedObjectIdGetter.GetRelationIdByKey(context.Background(), id.SpaceID, bundle.RelationKeyLinks)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get id of Links relation object: %w", err)
+	}
+
+	ss := NewDate(DateSourceParams{
+		Id:               id,
+		DateObjectTypeId: dateObjectId,
+		LinksRelationId:  linksId,
+	})
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
 		return v.DetailsFromId()

@@ -39,7 +39,7 @@ type Service interface {
 	ObjectTypeAddRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error
 	ObjectTypeRemoveRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error
 
-	ListRelationsWithValue(spaceId string, value domain.Value) (keys []domain.RelationKey, counters []int64, err error)
+	ListRelationsWithValue(spaceId string, value domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error)
 
 	SetSpaceInfo(spaceId string, details *domain.Details) error
 	SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error)

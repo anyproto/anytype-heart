@@ -110,7 +110,7 @@ func TestPrepareSearchDocument_Success(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)
-	assert.Equal(t, "spaceId1", docs[0].SpaceID)
+	assert.Equal(t, "spaceId1", docs[0].SpaceId)
 }
 
 func TestPrepareSearchDocument_Empty_NotIndexing(t *testing.T) {
@@ -183,7 +183,7 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/name", docs[0].Id)
 	assert.Equal(t, "Title Text", docs[0].Text)
-	assert.Equal(t, "Title Text", docs[0].Title)
+	assert.Equal(t, "", docs[0].Title)
 }
 
 func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
@@ -203,7 +203,7 @@ func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/name", docs[0].Id)
 	assert.Equal(t, "Title Text", docs[0].Text)
-	assert.Equal(t, "Title Text", docs[0].Title)
+	assert.Equal(t, "", docs[0].Title)
 }
 
 func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
@@ -357,8 +357,8 @@ func TestRunFullTextIndexer(t *testing.T) {
 
 func TestPrepareSearchDocument_Reindex_Removed(t *testing.T) {
 	indexerFx := NewIndexerFixture(t)
-	indexerFx.ftsearch.Index(ftsearch.SearchDoc{Id: "objectId1/r/blockId1", SpaceID: "spaceId1"})
-	indexerFx.ftsearch.Index(ftsearch.SearchDoc{Id: "objectId1/r/blockId2", SpaceID: "spaceId1"})
+	indexerFx.ftsearch.Index(ftsearch.SearchDoc{Id: "objectId1/r/blockId1", SpaceId: "spaceId1"})
+	indexerFx.ftsearch.Index(ftsearch.SearchDoc{Id: "objectId1/r/blockId2", SpaceId: "spaceId1"})
 
 	count, _ := indexerFx.ftsearch.DocCount()
 	assert.Equal(t, uint64(2), count)
