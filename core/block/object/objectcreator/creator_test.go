@@ -117,6 +117,11 @@ func TestService_CreateObject(t *testing.T) {
 			assert.Equal(t, bundle.TypeKeyDate, key)
 			return bundle.TypeKeyDate.URL(), nil
 		})
+		// TODO: GO-4494 - Remove links relation id fetch
+		f.spc.EXPECT().GetRelationIdByKey(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, key domain.RelationKey) (string, error) {
+			assert.Equal(t, bundle.RelationKeyLinks, key)
+			return bundle.RelationKeyLinks.URL(), nil
+		})
 		ts := time.Now()
 		name := dateutil.TimeToDateName(ts)
 
@@ -130,7 +135,7 @@ func TestService_CreateObject(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, dateutil.TimeToShortDateId(ts)))
+		assert.True(t, strings.HasPrefix(id, dateutil.TimeToDateId(ts)))
 		assert.Equal(t, spaceId, pbtypes.GetString(details, bundle.RelationKeySpaceId.String()))
 		assert.Equal(t, bundle.TypeKeyDate.URL(), pbtypes.GetString(details, bundle.RelationKeyType.String()))
 	})
