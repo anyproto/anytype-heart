@@ -229,9 +229,10 @@ func main() {
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
 
 	// run rest api server
+	var mwInternal core.MiddlewareInternal = mw
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go api.RunApiServer(ctx, mw)
+	go api.RunApiServer(ctx, mw, mwInternal)
 
 	for {
 		sig := <-signalChan

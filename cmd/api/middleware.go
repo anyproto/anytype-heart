@@ -1,10 +1,26 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
+
+// Middleware to ensure account info is filled before each request
+func (a *ApiServer) EnsureAccountInfoMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if a.accountInfo.TechSpaceId == "" {
+			accountInfo, err := a.mwInternal.GetAccountInfo(context.Background())
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to get account info"})
+				return
+			}
+			a.accountInfo = *accountInfo
+		}
+		c.Next()
+	}
+}
 
 // Middleware to authenticate requests and add user info to context
 func (a *ApiServer) AuthMiddleware() gin.HandlerFunc {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -19,6 +20,7 @@ const (
 
 type ApiServer struct {
 	mw          service.ClientCommandsServer
+	mwInternal  core.MiddlewareInternal
 	router      *gin.Engine
 	server      *http.Server
 	accountInfo model.AccountInfo
@@ -30,13 +32,12 @@ type User struct {
 	Permissions string // "read-only" or "read-write"
 }
 
-func newApiServer(mw service.ClientCommandsServer) *ApiServer {
+func newApiServer(mw service.ClientCommandsServer, mwInternal core.MiddlewareInternal) *ApiServer {
 	a := &ApiServer{
-		mw:     mw,
-		router: gin.New(),
-		accountInfo: model.AccountInfo{
-			TechSpaceId: "bafyreidken4zbd7p2ai6h4bgowudxbhzop4f4fewctm77f43qn5mzhsrje.2lcu0r85yg10d",
-		},
+		mw:          mw,
+		mwInternal:  mwInternal,
+		router:      gin.New(),
+		accountInfo: model.AccountInfo{},
 	}
 
 	a.server = &http.Server{
@@ -48,10 +49,9 @@ func newApiServer(mw service.ClientCommandsServer) *ApiServer {
 	return a
 }
 
-func RunApiServer(ctx context.Context, mw service.ClientCommandsServer) {
-	a := newApiServer(mw)
-	// a.setInitialParameters(ctx)
-	// a.getAccountInfo(ctx, "AAHTtt8wuQEnaYBNZ1Cyfcvs6DqPqxgn8VXDVk4avsUkMuha")
+func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwInternal core.MiddlewareInternal) {
+	a := newApiServer(mw, mwInternal)
+	a.router.Use(a.EnsureAccountInfoMiddleware())
 
 	// Unprotected routes
 	auth := a.router.Group("/v1/auth")
@@ -101,14 +101,3 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer) {
 		fmt.Println("server shutdown failed: %w", err)
 	}
 }
-
-// func newClient(port string) (service.ClientCommandsClient, error) {
-// 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-// 	defer cancel()
-// 	conn, err := grpc.DialContext(ctx, ":"+port, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-// 	if err != nil {
-// 		return nil, err
-// 	}
-//
-// 	return service.NewClientCommandsClient(conn), nil
-// }

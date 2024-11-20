@@ -68,13 +68,42 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
 			},
 		},
-		Keys: []string{"id", "spaceId", "name", "description", "snippet", "iconEmoji", "iconImage", "iconOption", "relationFormat", "type", "layout", "isHidden", "isArchived", "isReadonly", "isDeleted", "isFavorite", "done", "fileExt", "fileMimeType", "sizeInBytes", "restrictions", "defaultTemplateId", "createdDate", "spaceDashboardId", "spaceAccountStatus", "spaceLocalStatus", "spaceAccessType", "readersLimit", "writersLimit", "targetSpaceId", "creator", "chatId", "identity", "participantPermissions", "participantStatus", "globalName"},
 	})
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of spaces."})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"spaces": resp.Records})
+
+	// Convert the response to a list of spaces with their details: type, id, homeObjectID, archiveObjectID, profileObjectID, marketplaceWorkspaceID, deviceID, accountSpaceID, widgetsID, spaceViewID, techSpaceID, timezone, networkID
+	spaces := make([]Space, 0, len(resp.Records))
+	for _, record := range resp.Records {
+		typeName, err := a.resolveTypeToName(record.Fields["targetSpaceId"].GetStringValue(), "ot-space")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve type to name."})
+			return
+		}
+
+		// TODO: Populate missing fields
+		space := Space{
+			Type:         typeName,
+			ID:           record.Fields["id"].GetStringValue(),
+			Name:         record.Fields["name"].GetStringValue(),
+			HomeObjectID: record.Fields["spaceDashboardId"].GetStringValue(),
+			// ArchiveObjectID:        record.Fields["archive_object_id"].GetStringValue(),
+			// ProfileObjectID:        record.Fields["profile_object_id"].GetStringValue(),
+			// MarketplaceWorkspaceID: record.Fields["marketplace_workspace_id"].GetStringValue(),
+			// DeviceID:               record.Fields["device_id"].GetStringValue(),
+			// AccountSpaceID:         record.Fields["account_space_id"].GetStringValue(),
+			// WidgetsID:              record.Fields["widgets_id"].GetStringValue(),
+			// SpaceViewID:            record.Fields["space_view_id"].GetStringValue(),
+			TechSpaceID: a.accountInfo.TechSpaceId,
+			// Timezone:               record.Fields["timezone"].GetStringValue(),
+			// NetworkID:              record.Fields["network_id"].GetStringValue(),
+		}
+		spaces = append(spaces, space)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"spaces": spaces})
 }
 
 // /v1/spaces [POST]
@@ -135,24 +164,23 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 		return
 	}
 
-	// Convert the response to a list of members with their details: type, identity, name, role
-	members := []gin.H{}
+	// Convert the response to a slice of SpaceMember structs with their details: type, identity, name, role
+	members := make([]SpaceMember, 0, len(resp.Records))
 	for _, record := range resp.Records {
-		identity := record.Fields["identity"].GetStringValue()
-		name := record.Fields["name"].GetStringValue()
-		role := record.Fields["participantPermissions"].GetNumberValue()
 		typeName, err := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve type to name."})
 			return
 		}
 
-		members = append(members, gin.H{
-			"type":     typeName,
-			"identity": identity,
-			"name":     name,
-			"role":     model.ParticipantPermissions_name[int32(role)],
-		})
+		member := SpaceMember{
+			Type: typeName,
+			ID:   record.Fields["identity"].GetStringValue(),
+			Name: record.Fields["name"].GetStringValue(),
+			Role: model.ParticipantPermissions_name[int32(record.Fields["participantPermissions"].GetNumberValue())],
+		}
+
+		members = append(members, member)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"members": members})
