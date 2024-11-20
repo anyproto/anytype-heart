@@ -197,7 +197,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("just full-text", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "important",
+				TextQuery: "important",
 			})
 			require.NoError(t, err)
 
@@ -210,7 +210,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("fulltext by relation", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "myname1",
+				TextQuery: "myname1",
 			})
 			require.NoError(t, err)
 
@@ -222,7 +222,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("full-text and filter", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "important",
+				TextQuery: "important",
 				Filters: []*model.BlockContentDataviewFilter{
 					{
 						RelationKey: bundle.RelationKeyDescription.String(),
@@ -379,7 +379,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("full-text relation description", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "first object",
+				TextQuery: "first object",
 			})
 			require.NoError(t, err)
 			removeScoreFromRecords(recs)
@@ -412,7 +412,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("full-text block single match", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "sage",
+				TextQuery: "sage",
 			})
 			require.NoError(t, err)
 			removeScoreFromRecords(recs)
@@ -432,7 +432,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("full-text block multi match", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "block",
+				TextQuery: "block",
 				Sorts: []*model.BlockContentDataviewSort{
 					{
 						RelationKey: bundle.RelationKeyId.String(),
@@ -479,7 +479,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("full-text block single match truncated", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "dog",
+				TextQuery: "dog",
 			})
 			require.NoError(t, err)
 			removeScoreFromRecords(recs)
@@ -510,7 +510,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("full-text block single match truncated cyrillic", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "Сонце",
+				TextQuery: "Сонце",
 			})
 			require.NoError(t, err)
 			removeScoreFromRecords(recs)
@@ -533,7 +533,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("full-text by tag", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "relname",
+				TextQuery: "relname",
 				Filters: []*model.BlockContentDataviewFilter{
 					{
 						Operator:    0,
@@ -557,7 +557,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("full-text by deleted tag", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "deleted",
+				TextQuery: "deleted",
 				Filters: []*model.BlockContentDataviewFilter{
 					{
 						Operator:    0,
@@ -574,7 +574,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("full-text by archived tag", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "archived",
+				TextQuery: "archived",
 				Filters: []*model.BlockContentDataviewFilter{
 					{
 						Operator:    0,
@@ -591,7 +591,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("full-text by type", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "typename",
+				TextQuery: "typename",
 				Filters: []*model.BlockContentDataviewFilter{
 					{
 						Operator:    0,
