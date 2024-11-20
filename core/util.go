@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 )
@@ -49,44 +48,6 @@ func getErrorDescription(err error) string {
 		return ""
 	}
 	return anyerror.CleanupError(err).Error()
-}
-
-func filtersFromProto(filters []*model.BlockContentDataviewFilter) []database.FilterRequest {
-	res := make([]database.FilterRequest, 0, len(filters))
-	for _, f := range filters {
-		res = append(res, database.FilterRequest{
-			Id:               f.Id,
-			Operator:         f.Operator,
-			RelationKey:      domain.RelationKey(f.RelationKey),
-			RelationProperty: f.RelationProperty,
-			Condition:        f.Condition,
-			Value:            domain.ValueFromProto(f.Value),
-			QuickOption:      f.QuickOption,
-			Format:           f.Format,
-			IncludeTime:      f.IncludeTime,
-		})
-	}
-	return res
-}
-
-func sortsFromProto(sorts []*model.BlockContentDataviewSort) []database.SortRequest {
-	var res []database.SortRequest
-	for _, s := range sorts {
-		custom := make([]domain.Value, 0, len(s.CustomOrder))
-		for _, item := range s.CustomOrder {
-			custom = append(custom, domain.ValueFromProto(item))
-		}
-		res = append(res, database.SortRequest{
-			RelationKey:    domain.RelationKey(s.RelationKey),
-			Type:           s.Type,
-			CustomOrder:    custom,
-			Format:         s.Format,
-			IncludeTime:    s.IncludeTime,
-			Id:             s.Id,
-			EmptyPlacement: s.EmptyPlacement,
-		})
-	}
-	return res
 }
 
 func requestDetailsListToDomain(list []*model.Detail) []domain.Detail {

@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/dateutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -93,7 +92,7 @@ func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) ([]
 
 	for i, key := range keys {
 		list[i] = &pb.RpcRelationListWithValueResponseResponseItem{
-			RelationKey: key,
+			RelationKey: string(key),
 			Counter:     countersByKeys[key],
 		}
 	}
@@ -150,16 +149,15 @@ func generateFilter(value domain.Value) func(v domain.Value) bool {
 			return true
 		}
 
-		if list := v.GetListValue(); list != nil {
-			for _, element := range list.Values {
-				if element.Equal(value) {
-					return true
-				}
-				if strings.HasPrefix(element.GetStringValue(), shortId) {
-					return true
-				}
+		for _, element := range v.WrapToList() {
+			if element.Equal(value) {
+				return true
+			}
+			if strings.HasPrefix(element.String(), shortId) {
+				return true
 			}
 		}
+
 		return v.Equal(value)
 	}
 }

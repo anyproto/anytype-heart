@@ -76,42 +76,33 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 }
 
 // ListRelationsWithValue provides a mock function with given fields: spaceId, value
-func (_m *MockService) ListRelationsWithValue(spaceId string, value domain.Value) ([]domain.RelationKey, []int64, error) {
+func (_m *MockService) ListRelationsWithValue(spaceId string, value domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {
 	ret := _m.Called(spaceId, value)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListRelationsWithValue")
 	}
 
-	var r0 []domain.RelationKey
-	var r1 []int64
-	var r2 error
-	if rf, ok := ret.Get(0).(func(string, domain.Value) ([]domain.RelationKey, []int64, error)); ok {
+	var r0 []*pb.RpcRelationListWithValueResponseResponseItem
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error)); ok {
 		return rf(spaceId, value)
 	}
-	if rf, ok := ret.Get(0).(func(string, domain.Value) []domain.RelationKey); ok {
+	if rf, ok := ret.Get(0).(func(string, domain.Value) []*pb.RpcRelationListWithValueResponseResponseItem); ok {
 		r0 = rf(spaceId, value)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]domain.RelationKey)
+			r0 = ret.Get(0).([]*pb.RpcRelationListWithValueResponseResponseItem)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, domain.Value) []int64); ok {
+	if rf, ok := ret.Get(1).(func(string, domain.Value) error); ok {
 		r1 = rf(spaceId, value)
 	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).([]int64)
-		}
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(string, domain.Value) error); ok {
-		r2 = rf(spaceId, value)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockService_ListRelationsWithValue_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListRelationsWithValue'
@@ -133,12 +124,12 @@ func (_c *MockService_ListRelationsWithValue_Call) Run(run func(spaceId string, 
 	return _c
 }
 
-func (_c *MockService_ListRelationsWithValue_Call) Return(keys []domain.RelationKey, counters []int64, err error) *MockService_ListRelationsWithValue_Call {
-	_c.Call.Return(keys, counters, err)
+func (_c *MockService_ListRelationsWithValue_Call) Return(_a0 []*pb.RpcRelationListWithValueResponseResponseItem, _a1 error) *MockService_ListRelationsWithValue_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockService_ListRelationsWithValue_Call) RunAndReturn(run func(string, domain.Value) ([]domain.RelationKey, []int64, error)) *MockService_ListRelationsWithValue_Call {
+func (_c *MockService_ListRelationsWithValue_Call) RunAndReturn(run func(string, domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error)) *MockService_ListRelationsWithValue_Call {
 	_c.Call.Return(run)
 	return _c
 }

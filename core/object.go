@@ -13,12 +13,14 @@ import (
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
+	"github.com/anyproto/anytype-heart/core/date"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -90,9 +92,9 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	records, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
-		Filters:   filtersFromProto(req.Filters),
+		Filters:   database.FiltersFromProto(req.Filters),
 		SpaceId:   req.SpaceId,
-		Sorts:     sortsFromProto(req.Sorts),
+		Sorts:     database.SortsFromProto(req.Sorts),
 		Offset:    int(req.Offset),
 		Limit:     int(req.Limit),
 		TextQuery: req.FullText,
@@ -140,8 +142,8 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	results, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
-		Filters:   filtersFromProto(req.Filters),
-		Sorts:     sortsFromProto(req.Sorts),
+		Filters:   database.FiltersFromProto(req.Filters),
+		Sorts:     database.SortsFromProto(req.Sorts),
 		Offset:    int(req.Offset),
 		Limit:     int(req.Limit),
 		TextQuery: req.FullText,
@@ -189,8 +191,8 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 	resp, err := subService.Search(subscription.SubscribeRequest{
 		SpaceId:           req.SpaceId,
 		SubId:             req.SubId,
-		Filters:           filtersFromProto(req.Filters),
-		Sorts:             sortsFromProto(req.Sorts),
+		Filters:           database.FiltersFromProto(req.Filters),
+		Sorts:             database.SortsFromProto(req.Sorts),
 		Limit:             req.Limit,
 		Offset:            req.Offset,
 		Keys:              req.Keys,
@@ -216,8 +218,8 @@ func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req 
 	subService := getService[crossspacesub.Service](mw)
 	resp, err := subService.Subscribe(subscription.SubscribeRequest{
 		SubId:             req.SubId,
-		Filters:           filtersFromProto(req.Filters),
-		Sorts:             sortsFromProto(req.Sorts),
+		Filters:           database.FiltersFromProto(req.Filters),
+		Sorts:             database.SortsFromProto(req.Sorts),
 		Keys:              req.Keys,
 		Source:            req.Source,
 		NoDepSubscription: req.NoDepSubscription,
@@ -277,7 +279,7 @@ func (mw *Middleware) ObjectGroupsSubscribe(_ context.Context, req *pb.RpcObject
 		SpaceId:      req.SpaceId,
 		SubId:        req.SubId,
 		RelationKey:  req.RelationKey,
-		Filters:      filtersFromProto(req.Filters),
+		Filters:      database.FiltersFromProto(req.Filters),
 		Source:       req.Source,
 		CollectionId: req.CollectionId,
 	})

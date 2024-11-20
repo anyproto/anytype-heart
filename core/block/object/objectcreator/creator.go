@@ -179,8 +179,8 @@ func (s *service) createObjectFromTemplate(
 }
 
 // buildDateObject does not create real date object. It just builds date object details
-func buildDateObject(space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
-	name := pbtypes.GetString(details, bundle.RelationKeyName.String())
+func buildDateObject(space clientspace.Space, details *domain.Details) (string, *domain.Details, error) {
+	name := details.GetString(bundle.RelationKeyName)
 	id, err := dateutil.DateNameToId(name)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to build date object, as its name is invalid: %w", err)

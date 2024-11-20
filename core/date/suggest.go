@@ -37,11 +37,11 @@ func EnrichRecordsWithDateSuggestion(
 	// Don't duplicate search suggestions
 	var found bool
 	for _, r := range records {
-		if r.Details == nil || r.Details.Fields == nil {
+		if r.Details == nil {
 			continue
 		}
-		if v, ok := r.Details.Fields[bundle.RelationKeyId.String()]; ok {
-			if v.GetStringValue() == id {
+		if v, ok := r.Details.TryString(bundle.RelationKeyId); ok {
+			if v == id {
 				found = true
 				break
 			}
@@ -61,7 +61,7 @@ func EnrichRecordsWithDateSuggestion(
 	if err != nil {
 		return nil, fmt.Errorf("make date record: %w", err)
 	}
-	f, _ := database.MakeFilters(req.Filters, store.SpaceIndex(req.SpaceId)) //nolint:errcheck
+	f, _ := database.MakeFilters(database.FiltersFromProto(req.Filters), store.SpaceIndex(req.SpaceId)) //nolint:errcheck
 	if f.FilterObject(rec.Details) {
 		return append([]database.Record{rec}, records...), nil
 	}

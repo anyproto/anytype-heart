@@ -67,10 +67,10 @@ type SortRequest struct {
 type Query struct {
 	TextQuery string
 	SpaceId   string
-	Filters   []FilterRequest             // filters results. apply sequentially
-	Sorts       []SortRequest               // order results. apply hierarchically
-	Limit       int                         // maximum number of results
-	Offset      int                         // skip given number of results
+	Filters   []FilterRequest // filters results. apply sequentially
+	Sorts     []SortRequest   // order results. apply hierarchically
+	Limit     int             // maximum number of results
+	Offset    int             // skip given number of results
 }
 
 func injectDefaultFilters(filters []FilterRequest) []FilterRequest {
@@ -173,6 +173,44 @@ func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	}
 
 	return sorts
+}
+
+func FiltersFromProto(filters []*model.BlockContentDataviewFilter) []FilterRequest {
+	res := make([]FilterRequest, 0, len(filters))
+	for _, f := range filters {
+		res = append(res, FilterRequest{
+			Id:               f.Id,
+			Operator:         f.Operator,
+			RelationKey:      domain.RelationKey(f.RelationKey),
+			RelationProperty: f.RelationProperty,
+			Condition:        f.Condition,
+			Value:            domain.ValueFromProto(f.Value),
+			QuickOption:      f.QuickOption,
+			Format:           f.Format,
+			IncludeTime:      f.IncludeTime,
+		})
+	}
+	return res
+}
+
+func SortsFromProto(sorts []*model.BlockContentDataviewSort) []SortRequest {
+	var res []SortRequest
+	for _, s := range sorts {
+		custom := make([]domain.Value, 0, len(s.CustomOrder))
+		for _, item := range s.CustomOrder {
+			custom = append(custom, domain.ValueFromProto(item))
+		}
+		res = append(res, SortRequest{
+			RelationKey:    domain.RelationKey(s.RelationKey),
+			Type:           s.Type,
+			CustomOrder:    custom,
+			Format:         s.Format,
+			IncludeTime:    s.IncludeTime,
+			Id:             s.Id,
+			EmptyPlacement: s.EmptyPlacement,
+		})
+	}
+	return res
 }
 
 func NewFilters(qry Query, store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate.Buffer) (filters *Filters, err error) {
