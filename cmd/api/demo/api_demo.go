@@ -16,7 +16,7 @@ const (
 	baseURL      = "http://localhost:31009/v1"
 	testSpaceId  = "bafyreifymx5ucm3fdc7vupfg7wakdo5qelni3jvlmawlnvjcppurn2b3di.2lcu0r85yg10d" // dev (entry space)
 	testObjectId = "bafyreidhtlbbspxecab6xf4pi5zyxcmvwy6lqzursbjouq5fxovh6y3xwu"               // "Work Faster with Templates"
-	testTypeId   = "bafyreifuklfpndjtlekqcjzuaerjtv2mckhn2w6txeumt5kqbthd7qxhui"               // Space Member
+	testTypeId   = "bafyreie3djy4mcldt3hgeet6bnjay2iajdyi2fvx556n6wcxii7brlni3i"               // Page (in dev space)
 )
 
 var log = logging.Logger("rest-api")
@@ -46,11 +46,11 @@ func main() {
 		body       map[string]interface{}
 	}{
 		// auth
-		{"POST", "/auth/displayCode", nil, nil},
-		{"GET", "/auth/token?challengeId={challengeId}&code={code}", map[string]interface{}{"challengeId": "6738dfc5cda913aad90e8c2a", "code": "2931"}, nil},
+		// {"POST", "/auth/displayCode", nil, nil},
+		// {"GET", "/auth/token?challengeId={challengeId}&code={code}", map[string]interface{}{"challengeId": "6738dfc5cda913aad90e8c2a", "code": "2931"}, nil},
 
 		// spaces
-		{"POST", "/spaces", nil, map[string]interface{}{"name": "New Space"}},
+		// {"POST", "/spaces", nil, map[string]interface{}{"name": "New Space"}},
 		{"GET", "/spaces?limit={limit}&offset={offset}", map[string]interface{}{"limit": 100, "offset": 0}, nil},
 		{"GET", "/spaces/{space_id}/members", map[string]interface{}{"space_id": testSpaceId}, nil},
 
@@ -65,7 +65,7 @@ func main() {
 		{"GET", "/spaces/{space_id}/objectTypes/{type_id}/templates", map[string]interface{}{"space_id": testSpaceId, "type_id": testTypeId}, nil},
 
 		// search
-		{"GET", "/objects?search={search}&object_type={object_type}&limit={limit}&offset={offset}", map[string]interface{}{"search": "term", "object_type": "note", "limit": 100, "offset": 0}, nil},
+		{"GET", "/objects?search={search}&object_type={object_type}&limit={limit}&offset={offset}", map[string]interface{}{"search": "writing", "object_type": testTypeId, "limit": 100, "offset": 0}, nil},
 	}
 
 	for _, ep := range endpoints {
@@ -111,6 +111,14 @@ func main() {
 		}
 
 		// Log the response
-		log.Infof("Endpoint: %s, Status Code: %d, Body: %s\n", finalURL, resp.StatusCode, string(body))
+		var prettyJSON bytes.Buffer
+		err = json.Indent(&prettyJSON, body, "", "  ")
+		if err != nil {
+			log.Errorf("Failed to pretty print response body for %s: %v\n", ep.endpoint, err)
+			log.Infof("%s\n", string(body))
+			continue
+		}
+
+		log.Infof("Endpoint: %s, Status Code: %d, Body: %s\n", finalURL, resp.StatusCode, prettyJSON.String())
 	}
 }
