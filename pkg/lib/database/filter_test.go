@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/dateutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func assertFilter(t *testing.T, f Filter, obj *domain.Details, expected bool) {
@@ -924,61 +923,61 @@ func TestFilter2ValuesComp_FilterObject(t *testing.T) {
 
 func TestFilterHasPrefix_FilterObject(t *testing.T) {
 	t.Run("date object id", func(t *testing.T) {
-		key := bundle.RelationKeyMentions.String()
+		key := bundle.RelationKeyMentions
 		now := time.Now()
 		f := FilterHasPrefix{
 			Key:    key,
 			Prefix: dateutil.TimeToDateId(now), // _date_YYYY-MM-DD
 		}
-		obj1 := &types.Struct{Fields: map[string]*types.Value{
-			key: pbtypes.StringList([]string{"obj2", dateutil.TimeToDateId(now.Add(30 * time.Minute)), "obj3"}), // _date_YYYY-MM-DD-hh-mm-ss
-		}}
-		obj2 := &types.Struct{Fields: map[string]*types.Value{
-			key: pbtypes.StringList([]string{dateutil.TimeToDateId(now.Add(24 * time.Hour)), "obj1", "obj3"}), // same format, but next day
-		}}
-		obj3 := &types.Struct{Fields: map[string]*types.Value{
-			key: pbtypes.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(30 * time.Minute))}), // _date_YYYY-MM-DD
-		}}
+		obj1 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			key: domain.StringList([]string{"obj2", dateutil.TimeToDateId(now.Add(30 * time.Minute)), "obj3"}), // _date_YYYY-MM-DD-hh-mm-ss
+		})
+		obj2 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			key: domain.StringList([]string{dateutil.TimeToDateId(now.Add(24 * time.Hour)), "obj1", "obj3"}), // same format, but next day
+		})
+		obj3 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			key: domain.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(30 * time.Minute))}), // _date_YYYY-MM-DD
+		})
 		assertFilter(t, f, obj1, true)
 		assertFilter(t, f, obj2, false)
 		assertFilter(t, f, obj3, true)
 	})
 
 	t.Run("string", func(t *testing.T) {
-		key := bundle.RelationKeyName.String()
+		key := bundle.RelationKeyName
 		f := FilterHasPrefix{
 			Key:    key,
 			Prefix: "Let's",
 		}
-		obj1 := &types.Struct{Fields: map[string]*types.Value{
-			key: pbtypes.String("Let's do it"),
-		}}
-		obj2 := &types.Struct{Fields: map[string]*types.Value{
-			key: pbtypes.String("Lets do it"),
-		}}
-		obj3 := &types.Struct{Fields: map[string]*types.Value{
-			key: pbtypes.String("Let's fix it :("),
-		}}
+		obj1 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			key: domain.String("Let's do it"),
+		})
+		obj2 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			key: domain.String("Lets do it"),
+		})
+		obj3 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			key: domain.String("Let's fix it :("),
+		})
 		assertFilter(t, f, obj1, true)
 		assertFilter(t, f, obj2, false)
 		assertFilter(t, f, obj3, true)
 	})
 
 	t.Run("string list", func(t *testing.T) {
-		toys := "my favorite toys"
+		toys := domain.RelationKey("my favorite toys")
 		f := FilterHasPrefix{
 			Key:    toys,
 			Prefix: "Fluffy",
 		}
-		obj1 := &types.Struct{Fields: map[string]*types.Value{
-			toys: pbtypes.StringList([]string{"Teddy bear", "Fluffy giraffe"}),
-		}}
-		obj2 := &types.Struct{Fields: map[string]*types.Value{
-			toys: pbtypes.StringList([]string{"Barbie doll", "Peppa Pig"}),
-		}}
-		obj3 := &types.Struct{Fields: map[string]*types.Value{
-			toys: pbtypes.StringList([]string{"T Rex", "Fluffy Rabbit the Murderer"}),
-		}}
+		obj1 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			toys: domain.StringList([]string{"Teddy bear", "Fluffy giraffe"}),
+		})
+		obj2 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			toys: domain.StringList([]string{"Barbie doll", "Peppa Pig"}),
+		})
+		obj3 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			toys: domain.StringList([]string{"T Rex", "Fluffy Rabbit the Murderer"}),
+		})
 		assertFilter(t, f, obj1, true)
 		assertFilter(t, f, obj2, false)
 		assertFilter(t, f, obj3, true)

@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/dateutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func relationObject(key domain.RelationKey, format model.RelationFormat) objectstore.TestObject {
@@ -80,12 +79,12 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 
 	for _, tc := range []struct {
 		name         string
-		value        *types.Value
+		value        domain.Value
 		expectedList []*pb.RpcRelationListWithValueResponseResponseItem
 	}{
 		{
 			"date object - today",
-			pbtypes.String(dateutil.TimeToDateId(now)),
+			domain.String(dateutil.TimeToDateId(now)),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
 				{bundle.RelationKeyAddedDate.String(), 1},
 				{bundle.RelationKeyCreatedDate.String(), 2},
@@ -97,7 +96,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		},
 		{
 			"date object - yesterday",
-			pbtypes.String(dateutil.TimeToDateId(now.Add(-24 * time.Hour))),
+			domain.String(dateutil.TimeToDateId(now.Add(-24 * time.Hour))),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
 				{bundle.RelationKeyAddedDate.String(), 1},
 				{bundle.RelationKeyCreatedDate.String(), 1},
@@ -106,7 +105,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		},
 		{
 			"number",
-			pbtypes.Int64(300),
+			domain.Int64(300),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
 				{bundle.RelationKeyCoverX.String(), 2},
 				{"daysTillSummer", 1},
@@ -114,7 +113,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		},
 		{
 			"bool",
-			pbtypes.Bool(true),
+			domain.Bool(true),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
 				{bundle.RelationKeyIsFavorite.String(), 2},
 				{bundle.RelationKeyIsHidden.String(), 1},
@@ -122,7 +121,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		},
 		{
 			"string list",
-			pbtypes.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(-30 * time.Minute))}),
+			domain.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(-30 * time.Minute))}),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
 				{bundle.RelationKeyLinks.String(), 1},
 			},

@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/util/dateutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const spaceId = "spc1"
@@ -127,16 +126,16 @@ func TestService_CreateObject(t *testing.T) {
 		// when
 		id, details, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
 			ObjectTypeKey: bundle.TypeKeyDate,
-			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String(): pbtypes.String(name),
-			}},
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String(name),
+			}),
 		})
 
 		// then
 		assert.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, dateutil.TimeToDateId(ts)))
-		assert.Equal(t, spaceId, pbtypes.GetString(details, bundle.RelationKeySpaceId.String()))
-		assert.Equal(t, bundle.TypeKeyDate.URL(), pbtypes.GetString(details, bundle.RelationKeyType.String()))
+		assert.Equal(t, spaceId, details.GetString(bundle.RelationKeySpaceId))
+		assert.Equal(t, bundle.TypeKeyDate.URL(), details.GetString(bundle.RelationKeyType))
 	})
 
 	t.Run("date object creation - invalid name", func(t *testing.T) {
@@ -149,9 +148,9 @@ func TestService_CreateObject(t *testing.T) {
 		// when
 		_, _, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
 			ObjectTypeKey: bundle.TypeKeyDate,
-			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String(): pbtypes.String(name),
-			}},
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String(name),
+			}),
 		})
 
 		// then
