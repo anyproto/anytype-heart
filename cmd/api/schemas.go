@@ -25,13 +25,14 @@ type SpaceMember struct {
 }
 
 type Object struct {
-	Type              string         `json:"type" example:"object"`
-	ID                string         `json:"id"`
-	ObjectType        string         `json:"object_type" example:"note"`
-	RootID            string         `json:"root_id"`
-	Blocks            []Block        `json:"blocks"`
-	Details           []Detail       `json:"details"`
-	RelationLinksList []RelationLink `json:"relation_links_list"`
+	Type       string   `json:"type" example:"object"`
+	ID         string   `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`
+	Name       string   `json:"name" example:"Object Name"`
+	IconEmoji  string   `json:"iconEmoji"`
+	ObjectType string   `json:"object_type" example:"note"`
+	RootID     string   `json:"root_id"`
+	Blocks     []Block  `json:"blocks"`
+	Details    []Detail `json:"details"`
 }
 
 type Block struct {

@@ -116,7 +116,7 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 		// TODO: Populate missing fields
 		space := Space{
 			Type:         typeName,
-			ID:           record.Fields["id"].GetStringValue(),
+			ID:           record.Fields["targetSpaceId"].GetStringValue(),
 			Name:         record.Fields["name"].GetStringValue(),
 			HomeObjectID: record.Fields["spaceDashboardId"].GetStringValue(),
 			// ArchiveObjectID:        record.Fields["archive_object_id"].GetStringValue(),
@@ -371,6 +371,82 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 //	@Failure	502			{object}	ServerError				"Internal server error"
 //	@Router		/objects [get]
 func (a *ApiServer) getObjectsHandler(c *gin.Context) {
-	// TODO: Implement logic to search and retrieve objects across all spaces
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
+	searchTerm := c.Query("search")
+	objectType := c.Query("object_type")
+	// TODO implement offset and limit
+	// offset := c.DefaultQuery("offset", "0")
+	// limit := c.DefaultQuery("limit", "100")
+
+	// First, call ObjectSearch for all objects of type spaceView
+	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		SpaceId: a.accountInfo.TechSpaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+			},
+		},
+	})
+	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of spaces."})
+		return
+	}
+
+	// Then, get objects from each space that match the search parameters
+	searchResults := make([]Object, 0)
+	for _, spaceRecord := range resp.Records {
+		objectSearchResponse := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+			SpaceId: spaceRecord.Fields["targetSpaceId"].GetStringValue(),
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value: pbtypes.IntList([]int{
+						int(model.ObjectType_basic),
+						int(model.ObjectType_note),
+						int(model.ObjectType_bookmark),
+						int(model.ObjectType_set),
+						int(model.ObjectType_collection),
+					}...),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.String("true"),
+				},
+				{
+					RelationKey: bundle.RelationKeyName.String(),
+					Condition:   model.BlockContentDataviewFilter_Like,
+					Value:       pbtypes.String(searchTerm),
+				},
+				{
+					RelationKey: bundle.RelationKeyType.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(objectType),
+				},
+			},
+		})
+
+		for _, record := range objectSearchResponse.Records {
+			searchResults = append(searchResults, Object{
+				Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
+				ID:         record.Fields["id"].GetStringValue(),
+				Name:       record.Fields["name"].GetStringValue(),
+				IconEmoji:  record.Fields["iconEmoji"].GetStringValue(),
+				ObjectType: record.Fields["type"].GetStringValue(),
+				// TODO populate other fields
+				// RootID:     record.Fields["rootId"].GetStringValue(),
+				// Blocks:     []Block{},
+				// Details: 	[]Detail{},
+			})
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"objects": searchResults})
 }
