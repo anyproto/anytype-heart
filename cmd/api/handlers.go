@@ -253,8 +253,50 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 //	@Router		/spaces/{space_id}/objects [get]
 func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 	spaceID := c.Param("space_id")
-	// TODO: Implement logic to retrieve objects in a space
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet", "space_id": spaceID})
+	// TODO implement offset and limit
+	// offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	// limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
+
+	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		SpaceId: spaceID,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value: pbtypes.IntList([]int{
+					int(model.ObjectType_basic),
+					int(model.ObjectType_note),
+					int(model.ObjectType_bookmark),
+					int(model.ObjectType_set),
+					int(model.ObjectType_collection),
+				}...),
+			},
+		},
+	})
+
+	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of objects."})
+		return
+	}
+
+	// Convert the response to a list of objects with their details: type, id, name, iconEmoji, objectType, rootID, blocks, details
+	objects := make([]Object, 0, len(resp.Records))
+	for _, record := range resp.Records {
+		object := Object{
+			Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
+			ID:         record.Fields["id"].GetStringValue(),
+			Name:       record.Fields["name"].GetStringValue(),
+			IconEmoji:  record.Fields["iconEmoji"].GetStringValue(),
+			ObjectType: record.Fields["type"].GetStringValue(),
+			RootID:     record.Fields["rootId"].GetStringValue(),
+			Blocks:     []Block{},
+			Details:    []Detail{},
+		}
+
+		objects = append(objects, object)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"objects": objects})
 }
 
 // getObjectHandler retrieves a specific object in a space
@@ -273,8 +315,34 @@ func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 func (a *ApiServer) getObjectHandler(c *gin.Context) {
 	spaceID := c.Param("space_id")
 	objectID := c.Param("object_id")
-	// TODO: Implement logic to retrieve a specific object
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet", "space_id": spaceID, "object_id": objectID})
+
+	resp := a.mw.ObjectOpen(context.Background(), &pb.RpcObjectOpenRequest{
+		SpaceId:  spaceID,
+		ObjectId: objectID,
+	})
+
+	if resp.Error.Code != pb.RpcObjectOpenResponseError_NULL {
+		if resp.Error.Code == pb.RpcObjectOpenResponseError_NOT_FOUND {
+			c.JSON(http.StatusNotFound, gin.H{"message": "Object not found", "space_id": spaceID, "object_id": objectID})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve object."})
+		return
+	}
+
+	// Convert the response to an Object struct with its details: type, id, name, iconEmoji, objectType, rootID, blocks, details
+	object := Object{
+		Type:       "object",
+		ID:         objectID,
+		Name:       resp.ObjectView.Details[0].Details.Fields["name"].GetStringValue(),
+		IconEmoji:  resp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(),
+		ObjectType: resp.ObjectView.Details[0].Details.Fields["type"].GetStringValue(),
+		RootID:     resp.ObjectView.RootId,
+		Blocks:     []Block{},
+		Details:    []Detail{},
+	}
+
+	c.JSON(http.StatusOK, gin.H{"object": object})
 }
 
 // createObjectHandler creates a new object in a specific space
