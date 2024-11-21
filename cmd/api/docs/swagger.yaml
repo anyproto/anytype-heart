@@ -73,16 +73,20 @@ definitions:
         items:
           $ref: '#/definitions/api.Detail'
         type: array
+      iconEmoji:
+        type: string
       id:
+        example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
+        type: string
+      name:
+        example: Object Name
         type: string
       object_type:
         example: note
         type: string
-      relation_links_list:
-        items:
-          $ref: '#/definitions/api.RelationLink'
-        type: array
       root_id:
+        type: string
+      space_id:
         type: string
       type:
         example: object
@@ -90,19 +94,14 @@ definitions:
     type: object
   api.ObjectTemplate:
     properties:
+      iconEmoji:
+        type: string
       id:
         type: string
       name:
         type: string
       type:
         example: object_template
-        type: string
-    type: object
-  api.RelationLink:
-    properties:
-      format:
-        type: string
-      key:
         type: string
     type: object
   api.ServerError:
@@ -126,6 +125,8 @@ definitions:
         type: string
       home_object_id:
         example: bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya
+        type: string
+      icon:
         type: string
       id:
         type: string
@@ -160,6 +161,9 @@ definitions:
   api.SpaceMember:
     properties:
       id:
+        type: string
+      identity:
+        example: ""
         type: string
       name:
         example: ""
@@ -213,8 +217,8 @@ info:
   description: This API allows interaction with Anytype resources such as spaces,
     objects, and object types.
   license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
+    name: Any Source Available License 1.0
+    url: https://github.com/anyproto/anytype-ts/blob/main/LICENSE.md
   termsOfService: https://anytype.io/terms_of_use
   title: Anytype API
   version: "1.0"

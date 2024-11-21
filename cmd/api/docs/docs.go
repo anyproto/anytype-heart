@@ -16,8 +16,8 @@ const docTemplate = `{
             "email": "support@anytype.io"
         },
         "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+            "name": "Any Source Available License 1.0",
+            "url": "https://github.com/anyproto/anytype-ts/blob/main/LICENSE.md"
         },
         "version": "{{.Version}}"
     },
@@ -787,20 +787,25 @@ const docTemplate = `{
                         "$ref": "#/definitions/api.Detail"
                     }
                 },
-                "id": {
+                "iconEmoji": {
                     "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Object Name"
                 },
                 "object_type": {
                     "type": "string",
                     "example": "note"
                 },
-                "relation_links_list": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.RelationLink"
-                    }
-                },
                 "root_id": {
+                    "type": "string"
+                },
+                "space_id": {
                     "type": "string"
                 },
                 "type": {
@@ -812,6 +817,9 @@ const docTemplate = `{
         "api.ObjectTemplate": {
             "type": "object",
             "properties": {
+                "iconEmoji": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -821,17 +829,6 @@ const docTemplate = `{
                 "type": {
                     "type": "string",
                     "example": "object_template"
-                }
-            }
-        },
-        "api.RelationLink": {
-            "type": "object",
-            "properties": {
-                "format": {
-                    "type": "string"
-                },
-                "key": {
-                    "type": "string"
                 }
             }
         },
@@ -866,6 +863,9 @@ const docTemplate = `{
                 "home_object_id": {
                     "type": "string",
                     "example": "bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya"
+                },
+                "icon": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"
@@ -913,6 +913,10 @@ const docTemplate = `{
             "properties": {
                 "id": {
                     "type": "string"
+                },
+                "identity": {
+                    "type": "string",
+                    "example": ""
                 },
                 "name": {
                     "type": "string",
