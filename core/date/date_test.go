@@ -38,7 +38,7 @@ func TestBuildDetailsFromTimestamp(t *testing.T) {
 
 			tt := time.Unix(ts, 0)
 			assert.Equal(t, dateutil.TimeToDateId(tt, false), pbtypes.GetString(details, bundle.RelationKeyId.String()))
-			assert.Equal(t, dateutil.TimeToDateName(tt), pbtypes.GetString(details, bundle.RelationKeyName.String()))
+			assert.Equal(t, dateutil.TimeToDateName(tt, false), pbtypes.GetString(details, bundle.RelationKeyName.String()))
 			ts2 := pbtypes.GetInt64(details, bundle.RelationKeyTimestamp.String())
 			tt2 := time.Unix(ts2, 0)
 			assert.Zero(t, tt2.Hour())

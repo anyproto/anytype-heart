@@ -24,12 +24,23 @@ func TestTimeToShortDateId(t *testing.T) {
 }
 
 func TestTimeToDateName(t *testing.T) {
-	assert.Equal(t, "07 Nov 2024", TimeToDateName(time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC)))
-	assert.Equal(t, "01 Jan 1998", TimeToDateName(time.Date(1998, time.January, 1, 0, 1, 1, 0, time.UTC)))
-	assert.Equal(t, "01 Jan 1998", TimeToDateName(time.Date(1998, time.January, 1, 0, 1, 1, 0, time.FixedZone("UTC", +4*60*60))))
-	assert.Equal(t, "25 Dec 2124", TimeToDateName(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC)))
-	assert.Equal(t, "25 Dec 2124", TimeToDateName(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60))))
-	assert.Equal(t, "25 Dec 2124", TimeToDateName(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60))))
+	t.Run("short name", func(t *testing.T) {
+		assert.Equal(t, "07 Nov 2024", TimeToDateName(time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC), false))
+		assert.Equal(t, "01 Jan 1998", TimeToDateName(time.Date(1998, time.January, 1, 0, 1, 1, 0, time.UTC), false))
+		assert.Equal(t, "01 Jan 1998", TimeToDateName(time.Date(1998, time.January, 1, 0, 1, 1, 0, time.FixedZone("UTC", +4*60*60)), false))
+		assert.Equal(t, "25 Dec 2124", TimeToDateName(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC), false))
+		assert.Equal(t, "25 Dec 2124", TimeToDateName(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)), false))
+		assert.Equal(t, "25 Dec 2124", TimeToDateName(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)), false))
+	})
+
+	t.Run("long name", func(t *testing.T) {
+		assert.Equal(t, "07 Nov 2024 12:25", TimeToDateName(time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC), true))
+		assert.Equal(t, "01 Jan 1998 00:01", TimeToDateName(time.Date(1998, time.January, 1, 0, 1, 1, 0, time.UTC), true))
+		assert.Equal(t, "01 Jan 1998 00:01", TimeToDateName(time.Date(1998, time.January, 1, 0, 1, 1, 0, time.FixedZone("UTC", +4*60*60)), true))
+		assert.Equal(t, "25 Dec 2124 23:34", TimeToDateName(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC), true))
+		assert.Equal(t, "25 Dec 2124 23:34", TimeToDateName(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)), true))
+		assert.Equal(t, "25 Dec 2124 23:34", TimeToDateName(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)), true))
+	})
 }
 
 func TestParseDateId(t *testing.T) {
@@ -43,9 +54,10 @@ func TestParseDateId(t *testing.T) {
 			time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)),
 		} {
 			dateId := TimeToDateId(ts, true)
-			ts2, err := ParseDateId(dateId)
+			ts2, includeTime, err := ParseDateId(dateId)
 			assert.NoError(t, err)
 			assert.Equal(t, ts.Unix(), ts2.Unix())
+			assert.True(t, includeTime)
 		}
 	})
 
@@ -59,8 +71,9 @@ func TestParseDateId(t *testing.T) {
 			time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)),
 		} {
 			dateId := TimeToDateId(ts, false)
-			ts2, err := ParseDateId(dateId)
+			ts2, includeTime, err := ParseDateId(dateId)
 			assert.NoError(t, err)
+			assert.False(t, includeTime)
 			assert.Equal(t, ts.Year(), ts2.Year())
 			assert.Equal(t, ts.Month(), ts2.Month())
 			assert.Equal(t, ts.Day(), ts2.Day())
@@ -72,10 +85,10 @@ func TestParseDateId(t *testing.T) {
 	})
 
 	t.Run("wrong format", func(t *testing.T) {
-		_, err := ParseDateId("_date_2024")
+		_, _, err := ParseDateId("_date_2024")
 		assert.Error(t, err)
 
-		_, err = ParseDateId("object1")
+		_, _, err = ParseDateId("object1")
 		assert.Error(t, err)
 	})
 }

@@ -239,7 +239,7 @@ func (t *TextObject) handleDateMention(rt api.RichText,
 	if rt.Mention.Date.End != "" {
 		textDate = rt.Mention.Date.End
 	}
-	date, err := dateutil.ParseDateId(textDate)
+	date, _, err := dateutil.ParseDateId(textDate)
 	if err != nil {
 		return nil
 	}

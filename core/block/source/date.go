@@ -56,13 +56,13 @@ func (d *date) Type() smartblock.SmartBlockType {
 }
 
 func (d *date) getDetails() (*types.Struct, error) {
-	t, err := dateutil.ParseDateId(d.id)
+	t, includeTime, err := dateutil.ParseDateId(d.id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse date id: %w", err)
 	}
 
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(dateutil.TimeToDateName(t)),
+		bundle.RelationKeyName.String():       pbtypes.String(dateutil.TimeToDateName(t, includeTime)),
 		bundle.RelationKeyId.String():         pbtypes.String(d.id),
 		bundle.RelationKeyType.String():       pbtypes.String(d.typeId),
 		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),

@@ -67,12 +67,19 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 }
 
 func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {
-	countersByKeys := make(map[string]int64)
-	detailHandlesValue := generateFilter(value)
+	var (
+		mentionsCounter    int64 = 0
+		countersByKeys           = make(map[string]int64)
+		detailHandlesValue       = generateFilter(value)
+	)
 
 	err := s.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: nil}, func(details *types.Struct) {
 		for key, valueToCheck := range details.Fields {
 			if detailHandlesValue(valueToCheck) {
+				if key == bundle.RelationKeyMentions.String() {
+					mentionsCounter++
+					continue
+				}
 				if counter, ok := countersByKeys[key]; ok {
 					countersByKeys[key] = counter + 1
 				} else {
@@ -95,6 +102,14 @@ func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) ([]
 			RelationKey: key,
 			Counter:     countersByKeys[key],
 		}
+	}
+
+	if mentionsCounter > 0 {
+		// we want to put mentions in 1st place, other relations sort alphabetically
+		return append([]*pb.RpcRelationListWithValueResponseResponseItem{{
+			RelationKey: bundle.RelationKeyMentions.String(),
+			Counter:     mentionsCounter,
+		}}, list...), nil
 	}
 
 	return list, nil
@@ -126,7 +141,7 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 		return equalOrHasFilter
 	}
 
-	ts, err := dateutil.ParseDateId(stringValue)
+	ts, _, err := dateutil.ParseDateId(stringValue)
 	if err != nil {
 		log.Error("failed to parse Date object id", zap.Error(err))
 		return equalOrHasFilter
@@ -134,7 +149,7 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 
 	shortId := dateutil.TimeToDateId(ts, false)
 
-	start, err := dateutil.ParseDateId(shortId)
+	start, _, err := dateutil.ParseDateId(shortId)
 	if err != nil {
 		log.Error("failed to parse short Date object id", zap.Error(err))
 		return equalOrHasFilter

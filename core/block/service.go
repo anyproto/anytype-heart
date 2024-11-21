@@ -224,7 +224,7 @@ func (s *Service) DoFullId(id domain.FullID, apply func(sb smartblock.SmartBlock
 // resolveFullId resolves missing spaceId
 func (s *Service) resolveFullId(id domain.FullID) domain.FullID {
 	// TODO: GO-4494 - Do not resolve spaceId in case of date object id. This logic should be reviewed
-	if _, parseErr := dateutil.ParseDateId(id.ObjectID); parseErr == nil && id.SpaceID != "" {
+	if _, _, parseErr := dateutil.ParseDateId(id.ObjectID); parseErr == nil && id.SpaceID != "" {
 		return id
 	}
 	// First try to resolve space. It's necessary if client accidentally passes wrong spaceId

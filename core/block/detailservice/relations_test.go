@@ -88,11 +88,11 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 			"date object - today",
 			pbtypes.String(dateutil.TimeToDateId(now, true)),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
+				{bundle.RelationKeyMentions.String(), 1},
 				{bundle.RelationKeyAddedDate.String(), 1},
 				{bundle.RelationKeyCreatedDate.String(), 2},
 				{bundle.RelationKeyLastModifiedDate.String(), 3},
 				{bundle.RelationKeyLinks.String(), 1},
-				{bundle.RelationKeyMentions.String(), 1},
 				{bundle.RelationKeyName.String(), 1},
 			},
 		},
@@ -100,9 +100,9 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 			"date object - yesterday",
 			pbtypes.String(dateutil.TimeToDateId(now.Add(-24*time.Hour), true)),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
+				{bundle.RelationKeyMentions.String(), 1},
 				{bundle.RelationKeyAddedDate.String(), 1},
 				{bundle.RelationKeyCreatedDate.String(), 1},
-				{bundle.RelationKeyMentions.String(), 1},
 			},
 		},
 		{

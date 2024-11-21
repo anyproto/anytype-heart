@@ -151,7 +151,7 @@ func makeFilterByCondition(spaceID string, rawFilter *model.BlockContentDataview
 	case model.BlockContentDataviewFilter_In:
 		// hack for queries for relations containing date objects ids with format _date_YYYY-MM-DD-hh-mm-ssZ-zzzz
 		// to find all date object ids of the same day we search by prefix _date_YYYY-MM-DD
-		if ts, err := dateutil.ParseDateId(rawFilter.Value.GetStringValue()); err == nil {
+		if ts, _, err := dateutil.ParseDateId(rawFilter.Value.GetStringValue()); err == nil {
 			return FilterHasPrefix{
 				Key:    rawFilter.RelationKey,
 				Prefix: dateutil.TimeToDateId(ts, false),

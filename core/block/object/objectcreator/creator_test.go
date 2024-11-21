@@ -118,7 +118,7 @@ func TestService_CreateObject(t *testing.T) {
 			return bundle.TypeKeyDate.URL(), nil
 		})
 		ts := time.Now()
-		name := dateutil.TimeToDateName(ts)
+		name := dateutil.TimeToDateName(ts, false)
 
 		// when
 		id, details, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
