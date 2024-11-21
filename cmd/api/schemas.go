@@ -30,6 +30,7 @@ type Object struct {
 	Name       string   `json:"name" example:"Object Name"`
 	IconEmoji  string   `json:"iconEmoji"`
 	ObjectType string   `json:"object_type" example:"note"`
+	SpaceID    string   `json:"space_id"`
 	RootID     string   `json:"root_id"`
 	Blocks     []Block  `json:"blocks"`
 	Details    []Detail `json:"details"`

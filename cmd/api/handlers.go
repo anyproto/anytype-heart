@@ -295,6 +295,7 @@ func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 			Name:       record.Fields["name"].GetStringValue(),
 			IconEmoji:  record.Fields["iconEmoji"].GetStringValue(),
 			ObjectType: record.Fields["type"].GetStringValue(),
+			SpaceID:    spaceID,
 			RootID:     record.Fields["rootId"].GetStringValue(),
 			// TODO: populate other fields
 			Blocks:  []Block{},
@@ -570,51 +571,82 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	}
 
 	// Then, get objects from each space that match the search parameters
+	var filters = []*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value: pbtypes.IntList([]int{
+				int(model.ObjectType_basic),
+				int(model.ObjectType_note),
+				int(model.ObjectType_bookmark),
+				int(model.ObjectType_set),
+				int(model.ObjectType_collection),
+				int(model.ObjectType_participant),
+			}...),
+		},
+		{
+			RelationKey: bundle.RelationKeyIsHidden.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.String("true"),
+		},
+		{
+			RelationKey: bundle.RelationKeyName.String(),
+			Condition:   model.BlockContentDataviewFilter_Like,
+			Value:       pbtypes.String(searchTerm),
+		},
+	}
+
+	if searchTerm != "" {
+		filters = append(filters, &model.BlockContentDataviewFilter{
+			RelationKey: bundle.RelationKeyName.String(),
+			Condition:   model.BlockContentDataviewFilter_Like,
+			Value:       pbtypes.String(searchTerm),
+		})
+	}
+
+	if objectType != "" {
+		filters = append(filters, &model.BlockContentDataviewFilter{
+			RelationKey: bundle.RelationKeyType.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(objectType),
+		})
+	}
+
 	searchResults := make([]Object, 0)
 	for _, spaceRecord := range resp.Records {
 		objectSearchResponse := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 			SpaceId: spaceRecord.Fields["targetSpaceId"].GetStringValue(),
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyLayout.String(),
-					Condition:   model.BlockContentDataviewFilter_In,
-					Value: pbtypes.IntList([]int{
-						int(model.ObjectType_basic),
-						int(model.ObjectType_note),
-						int(model.ObjectType_bookmark),
-						int(model.ObjectType_set),
-						int(model.ObjectType_collection),
-					}...),
-				},
-				{
-					RelationKey: bundle.RelationKeyIsHidden.String(),
-					Condition:   model.BlockContentDataviewFilter_NotEqual,
-					Value:       pbtypes.String("true"),
-				},
-				{
-					RelationKey: bundle.RelationKeyName.String(),
-					Condition:   model.BlockContentDataviewFilter_Like,
-					Value:       pbtypes.String(searchTerm),
-				},
-				{
-					RelationKey: bundle.RelationKeyType.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(objectType),
-				},
-			},
+			Filters: filters,
+			Sorts: []*model.BlockContentDataviewSort{{
+				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+				Type:        model.BlockContentDataviewSort_Desc,
+			}},
 		})
 
 		for _, record := range objectSearchResponse.Records {
+			objectTypeName, err := a.resolveTypeToName(spaceRecord.Fields["targetSpaceId"].GetStringValue(), record.Fields["type"].GetStringValue())
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve type to name."})
+				return
+			}
+
 			searchResults = append(searchResults, Object{
 				Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
 				ID:         record.Fields["id"].GetStringValue(),
 				Name:       record.Fields["name"].GetStringValue(),
 				IconEmoji:  record.Fields["iconEmoji"].GetStringValue(),
-				ObjectType: record.Fields["type"].GetStringValue(),
+				ObjectType: objectTypeName,
 				// TODO: populate other fields
 				// RootID:     record.Fields["rootId"].GetStringValue(),
 				// Blocks:     []Block{},
-				// Details:    []Detail{},
+				Details: []Detail{
+					{
+						ID: "lastModifiedDate",
+						Details: map[string]interface{}{
+							"lastModifiedDate": record.Fields["lastModifiedDate"].GetNumberValue(),
+						},
+					},
+				},
 			})
 		}
 	}
