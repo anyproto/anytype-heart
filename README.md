@@ -1,9 +1,6 @@
 # Anytype Heart
 Middleware library for Anytype, distributed as part of the Anytype clients.
 
-## ⚠️ Important notice
-Due to the any-sync protocol update and the upcoming release, the current Anytype production network is not compatible with the anytype-heart main branch. This is expected to remain the case until October 23, 10:00 UTC. You can use the [v0.35.7 release](https://github.com/anyproto/anytype-heart/releases/tag/v0.35.7)
-
 ## Docs
 - [Build instructions](docs/Build.md)
 - [Protobuf generation](docs/Protogen.md)
