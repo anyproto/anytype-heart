@@ -82,15 +82,17 @@ type RelationLink struct {
 }
 
 type ObjectType struct {
-	Type string `json:"type" example:"object_type"`
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	Type      string `json:"type" example:"object_type"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	IconEmoji string `json:"iconEmoji"`
 }
 
 type ObjectTemplate struct {
-	Type string `json:"type" example:"object_template"`
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	Type      string `json:"type" example:"object_template"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	IconEmoji string `json:"iconEmoji"`
 }
 
 type ServerError struct {

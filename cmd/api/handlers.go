@@ -408,8 +408,39 @@ func (a *ApiServer) updateObjectHandler(c *gin.Context) {
 //	@Router		/spaces/{space_id}/objectTypes [get]
 func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 	spaceID := c.Param("space_id")
-	// TODO: Implement logic to retrieve object types in a space
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet", "space_id": spaceID})
+
+	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		SpaceId: spaceID,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsHidden.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String("true"),
+			},
+		},
+	})
+
+	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve object types."})
+		return
+	}
+
+	objectTypes := make([]ObjectType, 0, len(resp.Records))
+	for _, record := range resp.Records {
+		objectTypes = append(objectTypes, ObjectType{
+			Type:      "object_type",
+			ID:        record.Fields["id"].GetStringValue(),
+			Name:      record.Fields["name"].GetStringValue(),
+			IconEmoji: record.Fields["iconEmoji"].GetStringValue(),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"objectTypes": objectTypes})
 }
 
 // getObjectTypeTemplatesHandler retrieves a list of templates for a specific object type in a space
@@ -428,8 +459,72 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 	spaceID := c.Param("space_id")
 	typeID := c.Param("typeId")
-	// TODO: Implement logic to retrieve templates for an object type
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet", "space_id": spaceID, "typeId": typeID})
+
+	// First, determine the type Id of "ot-template" in the space
+	templateTypeIdResp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		SpaceId: spaceID,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String("ot-template"),
+			},
+		},
+	})
+
+	if templateTypeIdResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve template type."})
+		return
+	}
+
+	templateTypeID := templateTypeIdResp.Records[0].Fields["id"].GetStringValue()
+
+	// Then, search all objects of the template type and filter by the target object type
+	templateObjectsResp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		SpaceId: spaceID,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(templateTypeID),
+			},
+		},
+	})
+
+	if templateObjectsResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve template objects."})
+		return
+	}
+
+	templateIds := make([]string, 0)
+	for _, record := range templateObjectsResp.Records {
+		if record.Fields["targetObjectType"].GetStringValue() == typeID {
+			templateIds = append(templateIds, record.Fields["id"].GetStringValue())
+		}
+	}
+
+	// Finally, open each template and populate the response
+	templates := make([]ObjectTemplate, 0, len(templateIds))
+	for _, templateId := range templateIds {
+		templateResp := a.mw.ObjectOpen(context.Background(), &pb.RpcObjectOpenRequest{
+			SpaceId:  spaceID,
+			ObjectId: templateId,
+		})
+
+		if templateResp.Error.Code != pb.RpcObjectOpenResponseError_NULL {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve template."})
+			return
+		}
+
+		templates = append(templates, ObjectTemplate{
+			Type:      "object_template",
+			ID:        templateId,
+			Name:      templateResp.ObjectView.Details[0].Details.Fields["name"].GetStringValue(),
+			IconEmoji: templateResp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"templates": templates})
 }
 
 // getObjectsHandler searches and retrieves objects across all the spaces
