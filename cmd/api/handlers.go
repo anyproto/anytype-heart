@@ -123,10 +123,28 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 			return
 		}
 
+		// TODO cleanup image logic
+		// Convert space image or option to base64 string
+		var iconBase64 string
+		iconImageId := record.Fields["iconImage"].GetStringValue()
+		if iconImageId != "" {
+			b64, err2 := a.imageToBase64(a.getGatewayURL(iconImageId))
+			if err2 != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to convert image to base64."})
+				return
+			}
+			iconBase64 = b64
+		} else {
+			iconOption := record.Fields["iconOption"].GetNumberValue()
+			// TODO figure out size
+			iconBase64 = a.spaceSvg(int(iconOption), 100, string([]rune(record.Fields["name"].GetStringValue())[0]))
+		}
+
 		space := Space{
 			Type:                   typeName,
 			ID:                     spaceId,
 			Name:                   record.Fields["name"].GetStringValue(),
+			Icon:                   iconBase64,
 			HomeObjectID:           record.Fields["spaceDashboardId"].GetStringValue(),
 			ArchiveObjectID:        workspaceResponse.Info.ArchiveObjectId,
 			ProfileObjectID:        workspaceResponse.Info.ProfileObjectId,
@@ -233,10 +251,11 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 		}
 
 		member := SpaceMember{
-			Type: typeName,
-			ID:   record.Fields["identity"].GetStringValue(),
-			Name: record.Fields["name"].GetStringValue(),
-			Role: model.ParticipantPermissions_name[int32(record.Fields["participantPermissions"].GetNumberValue())],
+			Type:     typeName,
+			ID:       record.Fields["id"].GetStringValue(),
+			Name:     record.Fields["name"].GetStringValue(),
+			Identity: record.Fields["identity"].GetStringValue(),
+			Role:     model.ParticipantPermissions_name[int32(record.Fields["participantPermissions"].GetNumberValue())],
 		}
 
 		members = append(members, member)
@@ -296,10 +315,17 @@ func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 			IconEmoji:  record.Fields["iconEmoji"].GetStringValue(),
 			ObjectType: record.Fields["type"].GetStringValue(),
 			SpaceID:    spaceID,
-			RootID:     record.Fields["rootId"].GetStringValue(),
 			// TODO: populate other fields
-			Blocks:  []Block{},
-			Details: []Detail{},
+			// RootID:     record.Fields["rootId"].GetStringValue(),
+			// Blocks:  []Block{},
+			Details: []Detail{
+				{
+					ID: "lastModifiedDate",
+					Details: map[string]interface{}{
+						"lastModifiedDate": record.Fields["lastModifiedDate"].GetNumberValue(),
+					},
+				},
+			},
 		}
 
 		objects = append(objects, object)

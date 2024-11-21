@@ -4,6 +4,7 @@ type Space struct {
 	Type                   string `json:"type" example:"space"`
 	ID                     string `json:"id"`
 	Name                   string `json:"name" example:"Space Name"`
+	Icon                   string `json:"icon"`
 	HomeObjectID           string `json:"home_object_id" example:"bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya"`
 	ArchiveObjectID        string `json:"archive_object_id" example:"bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri"`
 	ProfileObjectID        string `json:"profile_object_id" example:"bafyreiaxhwreshjqwndpwtdsu4mtihaqhhmlygqnyqpfyfwlqfq3rm3gw4"`
@@ -18,10 +19,11 @@ type Space struct {
 }
 
 type SpaceMember struct {
-	Type string `json:"type" example:"space_member"`
-	ID   string `json:"id"`
-	Name string `json:"name" example:""`
-	Role string `json:"role" enum:"editor,viewer,owner"`
+	Type     string `json:"type" example:"space_member"`
+	ID       string `json:"id"`
+	Name     string `json:"name" example:""`
+	Identity string `json:"identity" example:""`
+	Role     string `json:"role" enum:"editor,viewer,owner"`
 }
 
 type Object struct {
