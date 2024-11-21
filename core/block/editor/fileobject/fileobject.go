@@ -1,10 +1,9 @@
 package fileobject
 
 import (
-	"github.com/anyproto/any-sync/commonfile/fileservice"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -21,13 +20,13 @@ type FileObject interface {
 
 type fileObject struct {
 	smartblock.SmartBlock
-	commonFile fileservice.FileService
+	fileService files.Service
 }
 
-func NewFileObject(sb smartblock.SmartBlock, commonFile fileservice.FileService) FileObject {
+func NewFileObject(sb smartblock.SmartBlock, fileService files.Service) FileObject {
 	return &fileObject{
-		SmartBlock: sb,
-		commonFile: commonFile,
+		SmartBlock:  sb,
+		fileService: fileService,
 	}
 }
 
@@ -40,19 +39,19 @@ func (f *fileObject) getFullFileId() domain.FullFileId {
 
 func (f *fileObject) GetFile() File {
 	infos := filemodels.GetFileInfosFromDetails(f.Details())
-	return NewFile(f.commonFile, f.getFullFileId(), infos)
+	return NewFile(f.fileService, f.getFullFileId(), infos)
 }
 
 func (f *fileObject) GetImage() Image {
 	infos := filemodels.GetFileInfosFromDetails(f.Details())
-	return NewImage(f.commonFile, f.getFullFileId(), infos)
+	return NewImage(f.fileService, f.getFullFileId(), infos)
 }
 
-func NewFile(commonFile fileservice.FileService, id domain.FullFileId, infos []*storage.FileInfo) File {
+func NewFile(fileService files.Service, id domain.FullFileId, infos []*storage.FileInfo) File {
 	return &file{
-		spaceID:    id.SpaceId,
-		fileId:     id.FileId,
-		info:       infos[0],
-		commonFile: commonFile,
+		spaceID:     id.SpaceId,
+		fileId:      id.FileId,
+		info:        infos[0],
+		fileService: fileService,
 	}
 }

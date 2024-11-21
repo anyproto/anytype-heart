@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/avast/retry-go/v4"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
@@ -79,7 +78,6 @@ type service struct {
 	spaceIdResolver idresolver.Resolver
 	migrationQueue  *persistentqueue.Queue[*migrationItem]
 	objectArchiver  objectArchiver
-	commonFile      fileservice.FileService
 
 	indexer *indexer
 
@@ -119,7 +117,6 @@ func (s *service) Init(a *app.App) error {
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.objectArchiver = app.MustComponent[objectArchiver](a)
-	s.commonFile = app.MustComponent[fileservice.FileService](a)
 	cfg := app.MustComponent[configProvider](a)
 
 	s.indexer = s.newIndexer()

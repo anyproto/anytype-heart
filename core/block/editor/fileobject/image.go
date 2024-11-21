@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -36,10 +36,10 @@ type image struct {
 	spaceID            string
 	onlyResizeVariants []*storage.FileInfo
 	exifVariant        *storage.FileInfo
-	commonFile         fileservice.FileService
+	fileService        files.Service
 }
 
-func NewImage(commonFile fileservice.FileService, id domain.FullFileId, variants []*storage.FileInfo) Image {
+func NewImage(fileService files.Service, id domain.FullFileId, variants []*storage.FileInfo) Image {
 	var exifVariant *storage.FileInfo
 	for _, variant := range variants {
 		if variant.Mill == mill.ImageExifId {
@@ -51,7 +51,7 @@ func NewImage(commonFile fileservice.FileService, id domain.FullFileId, variants
 		spaceID:            id.SpaceId,
 		onlyResizeVariants: selectAndSortResizeVariants(variants),
 		exifVariant:        exifVariant,
-		commonFile:         commonFile,
+		fileService:        fileService,
 	}
 }
 
@@ -101,10 +101,10 @@ func (i *image) GetFileForWidth(wantWidth int) (File, error) {
 		return nil, fmt.Errorf("get variant for width: %w", err)
 	}
 	return &file{
-		spaceID:    i.spaceID,
-		fileId:     i.fileId,
-		info:       variant,
-		commonFile: i.commonFile,
+		spaceID:     i.spaceID,
+		fileId:      i.fileId,
+		info:        variant,
+		fileService: i.fileService,
 	}, nil
 }
 
@@ -115,10 +115,10 @@ func (i *image) GetOriginalFile() (File, error) {
 		return nil, fmt.Errorf("get largest variant: %w", err)
 	}
 	return &file{
-		spaceID:    i.spaceID,
-		fileId:     i.fileId,
-		info:       variant,
-		commonFile: i.commonFile,
+		spaceID:     i.spaceID,
+		fileId:      i.fileId,
+		info:        variant,
+		fileService: i.fileService,
 	}, nil
 }
 
@@ -132,10 +132,10 @@ func (i *image) getExif(ctx context.Context) (*mill.ImageExifSchema, error) {
 	}
 
 	f := &file{
-		spaceID:    i.spaceID,
-		fileId:     i.fileId,
-		info:       i.exifVariant,
-		commonFile: i.commonFile,
+		spaceID:     i.spaceID,
+		fileId:      i.fileId,
+		info:        i.exifVariant,
+		fileService: i.fileService,
 	}
 	r, err := f.Reader(ctx)
 	if err != nil {

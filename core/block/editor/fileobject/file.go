@@ -2,23 +2,17 @@ package fileobject
 
 import (
 	"context"
-	"crypto/aes"
 	"io"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/anyproto/any-sync/commonfile/fileblockstore"
-	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/dhowden/tag"
 	"github.com/gogo/protobuf/types"
-	ufsio "github.com/ipfs/boxo/ipld/unixfs/io"
-	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
-	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/constant"
@@ -39,10 +33,10 @@ type File interface {
 var _ File = (*file)(nil)
 
 type file struct {
-	spaceID    string
-	fileId     domain.FileId
-	info       *storage.FileInfo
-	commonFile fileservice.FileService
+	spaceID     string
+	fileId      domain.FileId
+	info        *storage.FileInfo
+	fileService files.Service
 }
 
 type FileMeta struct {
@@ -160,38 +154,7 @@ func (f *file) FileId() domain.FileId {
 }
 
 func (f *file) Reader(ctx context.Context) (io.ReadSeeker, error) {
-	return f.getContentReader(ctx, f.spaceID, f.info.Hash, f.info.Key)
-}
-
-func (f *file) getContentReader(ctx context.Context, spaceID string, rawCid string, encKey string) (symmetric.ReadSeekCloser, error) {
-	fileCid, err := cid.Parse(rawCid)
-	if err != nil {
-		return nil, err
-	}
-	fd, err := f.getFile(ctx, spaceID, fileCid)
-	if err != nil {
-		return nil, err
-	}
-	if encKey == "" {
-		return fd, nil
-	}
-
-	key, err := symmetric.FromString(encKey)
-	if err != nil {
-		return nil, err
-	}
-
-	dec, err := getEncryptorDecryptor(key)
-	if err != nil {
-		return nil, err
-	}
-
-	return dec.DecryptReader(fd)
-}
-
-func (f *file) getFile(ctx context.Context, spaceID string, c cid.Cid) (ufsio.ReadSeekCloser, error) {
-	cctx := fileblockstore.CtxWithSpaceId(ctx, spaceID)
-	return f.commonFile.GetFile(cctx, c)
+	return f.fileService.GetContentReader(ctx, f.spaceID, f.info.Hash, f.info.Key)
 }
 
 func calculateCommonDetails(
@@ -205,8 +168,4 @@ func calculateCommonDetails(
 		bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(layout)),
 		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(lastModifiedDate),
 	}
-}
-
-func getEncryptorDecryptor(key symmetric.Key) (symmetric.EncryptorDecryptor, error) {
-	return cfb.New(key, [aes.BlockSize]byte{}), nil
 }

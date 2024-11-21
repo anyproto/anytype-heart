@@ -52,6 +52,7 @@ type Service interface {
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
 	// GetFileVariants get file information from DAG. If file is not available locally, it fetches data from remote peer (file node or p2p peer)
 	GetFileVariants(ctx context.Context, fileId domain.FullFileId, keys map[string]string) ([]*storage.FileInfo, error)
+	GetContentReader(ctx context.Context, spaceID string, rawCid string, encKey string) (symmetric.ReadSeekCloser, error)
 
 	app.Component
 }
@@ -577,4 +578,30 @@ func (s *service) lockAddOperation(checksum string) *sync.Mutex {
 
 	opLock.Lock()
 	return opLock
+}
+
+func (s *service) GetContentReader(ctx context.Context, spaceID string, rawCid string, encKey string) (symmetric.ReadSeekCloser, error) {
+	fileCid, err := cid.Parse(rawCid)
+	if err != nil {
+		return nil, err
+	}
+	fd, err := s.getFile(ctx, spaceID, fileCid)
+	if err != nil {
+		return nil, err
+	}
+	if encKey == "" {
+		return fd, nil
+	}
+
+	key, err := symmetric.FromString(encKey)
+	if err != nil {
+		return nil, err
+	}
+
+	dec, err := getEncryptorDecryptor(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return dec.DecryptReader(fd)
 }
