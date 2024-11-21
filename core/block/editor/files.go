@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // required relations for files beside the bundle.RequiredInternalRelations
@@ -107,10 +106,10 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 	}
 
 	fileId := domain.FullFileId{
-		FileId:  domain.FileId(pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyFileId.String())),
+		FileId:  domain.FileId(ctx.State.Details().GetString(bundle.RelationKeyFileId)),
 		SpaceId: f.SpaceID(),
 	}
-	if len(pbtypes.GetStringList(ctx.State.Details(), bundle.RelationKeyFileVariantIds.String())) == 0 {
+	if len(ctx.State.Details().GetStringList(bundle.RelationKeyFileVariantIds)) == 0 {
 		infos, err := f.fileService.GetFileVariants(ctx.Ctx, fileId, ctx.State.GetFileInfo().EncryptionKeys)
 		if err != nil {
 			return fmt.Errorf("get infos for indexing: %w", err)

@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type existingFile struct {
@@ -27,21 +26,21 @@ func collectKeysFromVariants(variants []*storage.FileInfo) map[string]string {
 
 func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum string, options string) (*existingFile, error) {
 	recs, err := s.objectStore.QueryCrossSpace(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileVariantMills.String(),
+				RelationKey: bundle.RelationKeyFileVariantMills,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(mill),
+				Value:       domain.String(mill),
 			},
 			{
-				RelationKey: bundle.RelationKeyFileSourceChecksum.String(),
+				RelationKey: bundle.RelationKeyFileSourceChecksum,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(sourceChecksum),
+				Value:       domain.String(sourceChecksum),
 			},
 			{
-				RelationKey: bundle.RelationKeyFileVariantOptions.String(),
+				RelationKey: bundle.RelationKeyFileVariantOptions,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(options),
+				Value:       domain.String(options),
 			},
 		},
 		Limit: 1,
@@ -55,23 +54,23 @@ func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum str
 
 	variants := filemodels.GetFileInfosFromDetails(recs[0].Details)
 	return &existingFile{
-		fileId:   domain.FileId(pbtypes.GetString(recs[0].Details, bundle.RelationKeyFileId.String())),
+		fileId:   domain.FileId(recs[0].Details.GetString(bundle.RelationKeyFileId)),
 		variants: variants,
 	}, nil
 }
 
 func (s *service) getFileVariantByChecksum(mill string, variantChecksum string) (*existingFile, *storage.FileInfo, error) {
 	recs, err := s.objectStore.QueryCrossSpace(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileVariantMills.String(),
+				RelationKey: bundle.RelationKeyFileVariantMills,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(mill),
+				Value:       domain.String(mill),
 			},
 			{
-				RelationKey: bundle.RelationKeyFileVariantChecksums.String(),
+				RelationKey: bundle.RelationKeyFileVariantChecksums,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(variantChecksum),
+				Value:       domain.String(variantChecksum),
 			},
 		},
 		Limit: 1,
@@ -87,7 +86,7 @@ func (s *service) getFileVariantByChecksum(mill string, variantChecksum string) 
 	for _, info := range variants {
 		if info.Mill == mill && info.Checksum == variantChecksum {
 			return &existingFile{
-				fileId:   domain.FileId(pbtypes.GetString(recs[0].Details, bundle.RelationKeyFileId.String())),
+				fileId:   domain.FileId(recs[0].Details.GetString(bundle.RelationKeyFileId)),
 				variants: variants,
 			}, info, nil
 		}

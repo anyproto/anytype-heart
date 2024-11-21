@@ -3,6 +3,8 @@ package filemodels
 import (
 	"fmt"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -42,7 +44,7 @@ func InjectVariantsToDetails(infos []*storage.FileInfo, st *state.State) error {
 
 	keysInfo := st.GetFileInfo().EncryptionKeys
 
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileSourceChecksum, pbtypes.String(infos[0].Source))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileSourceChecksum, domain.String(infos[0].Source))
 	for _, info := range infos {
 		variantIds = append(variantIds, info.Hash)
 		checksums = append(checksums, info.Checksum)
@@ -52,23 +54,23 @@ func InjectVariantsToDetails(infos []*storage.FileInfo, st *state.State) error {
 		options = append(options, info.Opts)
 		paths = append(paths, info.Path)
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantIds, pbtypes.StringList(variantIds))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantPaths, pbtypes.StringList(paths))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantChecksums, pbtypes.StringList(checksums))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantMills, pbtypes.StringList(mills))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantWidths, pbtypes.IntList(widths...))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantKeys, pbtypes.StringList(keys))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantOptions, pbtypes.StringList(options))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantIds, domain.StringList(variantIds))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantPaths, domain.StringList(paths))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantChecksums, domain.StringList(checksums))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantMills, domain.StringList(mills))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantWidths, domain.Int64List(widths))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantKeys, domain.StringList(keys))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantOptions, domain.StringList(options))
 	return nil
 }
 
-func GetFileInfosFromDetails(details *types.Struct) []*storage.FileInfo {
-	variantsList := pbtypes.GetStringList(details, bundle.RelationKeyFileVariantIds.String())
-	sourceChecksum := pbtypes.GetString(details, bundle.RelationKeyFileSourceChecksum.String())
+func GetFileInfosFromDetails(details *domain.Details) []*storage.FileInfo {
+	variantsList := details.GetStringList(bundle.RelationKeyFileVariantIds)
+	sourceChecksum := details.GetString(bundle.RelationKeyFileSourceChecksum)
 	infos := make([]*storage.FileInfo, 0, len(variantsList))
 	for i, variantId := range variantsList {
 		var meta *types.Struct
-		widths := pbtypes.GetIntList(details, bundle.RelationKeyFileVariantWidths.String())
+		widths := details.GetInt64List(bundle.RelationKeyFileVariantWidths)
 		if widths[i] > 0 {
 			meta = &types.Struct{
 				Fields: map[string]*types.Value{
@@ -77,18 +79,18 @@ func GetFileInfosFromDetails(details *types.Struct) []*storage.FileInfo {
 			}
 		}
 		info := &storage.FileInfo{
-			Name:   pbtypes.GetString(details, bundle.RelationKeyName.String()),
-			Size_:  pbtypes.GetInt64(details, bundle.RelationKeySizeInBytes.String()),
+			Name:   details.GetString(bundle.RelationKeyName),
+			Size_:  details.GetInt64(bundle.RelationKeySizeInBytes),
 			Source: sourceChecksum,
-			Media:  pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()),
+			Media:  details.GetString(bundle.RelationKeyFileMimeType),
 
 			Hash:     variantId,
-			Checksum: pbtypes.GetStringList(details, bundle.RelationKeyFileVariantChecksums.String())[i],
-			Mill:     pbtypes.GetStringList(details, bundle.RelationKeyFileVariantMills.String())[i],
+			Checksum: details.GetStringList(bundle.RelationKeyFileVariantChecksums)[i],
+			Mill:     details.GetStringList(bundle.RelationKeyFileVariantMills)[i],
 			Meta:     meta,
-			Path:     pbtypes.GetStringList(details, bundle.RelationKeyFileVariantPaths.String())[i],
-			Key:      pbtypes.GetStringList(details, bundle.RelationKeyFileVariantKeys.String())[i],
-			Opts:     pbtypes.GetStringList(details, bundle.RelationKeyFileVariantOptions.String())[i],
+			Path:     details.GetStringList(bundle.RelationKeyFileVariantPaths)[i],
+			Key:      details.GetStringList(bundle.RelationKeyFileVariantKeys)[i],
+			Opts:     details.GetStringList(bundle.RelationKeyFileVariantOptions)[i],
 		}
 		infos = append(infos, info)
 	}

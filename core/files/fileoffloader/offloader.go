@@ -191,9 +191,9 @@ func (s *service) offloadFileSafe(ctx context.Context,
 				Value:       domain.String(fileId),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 			},
 		},
 	})

@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("anytype-mw-editor-fileobject")
@@ -33,7 +32,7 @@ func NewFileObject(sb smartblock.SmartBlock, fileService files.Service) FileObje
 func (f *fileObject) getFullFileId() domain.FullFileId {
 	return domain.FullFileId{
 		SpaceId: f.SpaceID(),
-		FileId:  domain.FileId(pbtypes.GetString(f.LocalDetails(), bundle.RelationKeyFileId.String())),
+		FileId:  domain.FileId(f.Details().GetString(bundle.RelationKeyFileId)),
 	}
 }
 
