@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -98,13 +99,17 @@ func TestFileAdd(t *testing.T) {
 	fx, got, uploaded := getFixtureAndFileInfo(t)
 	ctx := context.Background()
 
+	require.Len(t, got.Variants, 1)
+
+	var variantCid string
+
 	t.Run("expect decrypting content", func(t *testing.T) {
-		file, err := fx.FileByHash(ctx, domain.FullFileId{FileId: got.FileId, SpaceId: spaceId})
-		require.NoError(t, err)
+		assertFileMeta(t, got, got.Variants)
 
-		assertFileMeta(t, got, file)
+		variant := got.Variants[0]
 
-		reader, err := file.Reader(ctx)
+		variantCid = variant.Hash
+		reader, err := fx.GetContentReader(ctx, spaceId, variantCid, got.EncryptionKeys.EncryptionKeys[variant.Path])
 		require.NoError(t, err)
 
 		gotContent, err := io.ReadAll(reader)
@@ -114,10 +119,7 @@ func TestFileAdd(t *testing.T) {
 	})
 
 	t.Run("expect that encrypted content stored in DAG", func(t *testing.T) {
-		file, err := fx.FileByHash(ctx, domain.FullFileId{FileId: got.FileId, SpaceId: spaceId})
-		require.NoError(t, err)
-
-		contentCid := cid.MustParse(file.FileId().String())
+		contentCid := cid.MustParse(variantCid)
 		encryptedContent, err := fx.commonFileService.GetFile(ctx, contentCid)
 		require.NoError(t, err)
 		gotEncryptedContent, err := io.ReadAll(encryptedContent)
@@ -171,7 +173,7 @@ func TestIndexFile(t *testing.T) {
 		fileResult := testAddFile(t, fx)
 
 		// Index
-		file, err := fx.FileByHash(context.Background(), domain.FullFileId{FileId: fileResult.FileId, SpaceId: spaceId})
+		file, err := fx.GetFileVariants(context.Background(), domain.FullFileId{FileId: fileResult.FileId, SpaceId: spaceId}, fileResult.EncryptionKeys.EncryptionKeys)
 		require.NoError(t, err)
 
 		assertFileMeta(t, fileResult, file)
@@ -182,20 +184,20 @@ func TestIndexFile(t *testing.T) {
 
 		fileResult := testAddFile(t, fx)
 
-		_, err := fx.FileByHash(context.Background(), domain.FullFileId{FileId: fileResult.FileId, SpaceId: spaceId})
+		_, err := fx.GetFileVariants(context.Background(), domain.FullFileId{FileId: fileResult.FileId, SpaceId: spaceId}, nil)
 		require.Error(t, err)
 	})
 }
 
-func assertFileMeta(t *testing.T, fileResult *AddResult, file File) {
-	assert.Equal(t, fileResult.FileId, file.FileId())
-	assert.Equal(t, fileResult.MIME, file.Meta().Media)
-	assert.Equal(t, testFileName, file.Meta().Name)
-	assert.Equal(t, int64(len(testFileContent)), file.Meta().Size)
-
-	now := time.Now()
-	assert.True(t, now.Sub(time.Unix(file.Meta().LastModifiedDate, 0)) < time.Second)
-	assert.True(t, now.Sub(file.Meta().Added) < time.Second)
+func assertFileMeta(t *testing.T, fileResult *AddResult, variants []*storage.FileInfo) {
+	for _, v := range variants {
+		assert.Equal(t, fileResult.MIME, v.Media)
+		assert.Equal(t, testFileName, v.Name)
+		assert.Equal(t, int64(len(testFileContent)), v.Size_)
+		now := time.Now()
+		assert.True(t, now.Sub(time.Unix(v.LastModifiedDate, 0)) < time.Second)
+		assert.True(t, now.Sub(time.Unix(v.Added, 0)) < time.Second)
+	}
 }
 
 func TestFileAddWithCustomKeys(t *testing.T) {

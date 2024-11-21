@@ -8,10 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 )
 
@@ -54,17 +58,17 @@ func TestIndexImage(t *testing.T) {
 		err := fx.objectStore.AddFileKeys(*got.EncryptionKeys)
 		require.NoError(t, err)
 
-		image, err := fx.ImageByHash(context.Background(), domain.FullFileId{SpaceId: spaceId, FileId: got.FileId})
+		variants, err := fx.GetFileVariants(context.Background(), domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, got.EncryptionKeys.EncryptionKeys)
 		require.NoError(t, err)
 
-		assert.Equal(t, got.FileId, image.FileId())
+		assert.ElementsMatch(t, got.Variants, variants)
 	})
 
 	t.Run("with encryption keys not available", func(t *testing.T) {
 		fx := newFixture(t)
 		got := testAddImage(t, fx)
 
-		_, err := fx.ImageByHash(context.Background(), domain.FullFileId{SpaceId: spaceId, FileId: got.FileId})
+		_, err := fx.GetFileVariants(context.Background(), domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, nil)
 		require.Error(t, err)
 	})
 }
@@ -183,5 +187,35 @@ func testAddImage(t *testing.T, fx *fixture) *AddResult {
 	got, err := fx.ImageAdd(context.Background(), spaceId, opts...)
 	require.NoError(t, err)
 	got.Commit()
+
+	fx.addImageObjectToStore(t, got)
+
 	return got
+}
+
+func (fx *fixture) addImageObjectToStore(t *testing.T, got *AddResult) {
+
+	fullFileId := domain.FullFileId{
+		SpaceId: spaceId,
+		FileId:  got.FileId,
+	}
+
+	img := NewImage(fx.Service, fullFileId, got.Variants)
+
+	objectId := bson.NewObjectId().Hex()
+	st := state.NewDoc(objectId, nil).(*state.State)
+	st.SetFileInfo(state.FileInfo{
+		FileId:         got.FileId,
+		EncryptionKeys: got.EncryptionKeys.EncryptionKeys,
+	})
+	details, err := img.Details(context.Background())
+	require.NoError(t, err)
+
+	st.SetDetails(details)
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(got.FileId))
+	err = filemodels.InjectVariantsToDetails(got.Variants, st)
+	require.NoError(t, err)
+
+	err = fx.objectStore.SpaceIndex(spaceId).UpdateObjectDetails(context.Background(), objectId, st.CombinedDetails())
+	require.NoError(t, err)
 }

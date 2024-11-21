@@ -1,4 +1,4 @@
-package fileobject
+package files
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -34,10 +33,10 @@ type image struct {
 	spaceID            string
 	onlyResizeVariants []*storage.FileInfo
 	exifVariant        *storage.FileInfo
-	fileService        files.Service
+	fileService        Service
 }
 
-func NewImage(fileService files.Service, id domain.FullFileId, variants []*storage.FileInfo) Image {
+func NewImage(fileService Service, id domain.FullFileId, variants []*storage.FileInfo) Image {
 	var exifVariant *storage.FileInfo
 	for _, variant := range variants {
 		if variant.Mill == mill.ImageExifId {

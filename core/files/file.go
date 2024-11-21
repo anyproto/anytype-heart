@@ -1,4 +1,4 @@
-package fileobject
+package files
 
 import (
 	"context"
@@ -10,11 +10,11 @@ import (
 	"github.com/dhowden/tag"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/constant"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type File interface {
@@ -34,7 +34,7 @@ type file struct {
 	spaceID     string
 	fileId      domain.FileId
 	info        *storage.FileInfo
-	fileService files.Service
+	fileService Service
 }
 
 type FileMeta struct {
@@ -43,6 +43,8 @@ type FileMeta struct {
 	Size             int64
 	LastModifiedDate int64
 	Added            time.Time
+	Width            int64
+	Height           int64
 }
 
 func (f *file) audioDetails(ctx context.Context) (*domain.Details, error) {
@@ -137,6 +139,8 @@ func (f *file) Meta() *FileMeta {
 		Size:             f.info.Size_,
 		LastModifiedDate: f.info.LastModifiedDate,
 		Added:            time.Unix(f.info.Added, 0),
+		Width:            pbtypes.GetInt64(f.info.Meta, "width"),
+		Height:           pbtypes.GetInt64(f.info.Meta, "height"),
 	}
 }
 
@@ -159,4 +163,13 @@ func calculateCommonDetails(
 	det.SetInt64(bundle.RelationKeyLayout, int64(layout))
 	det.SetFloat64(bundle.RelationKeyLastModifiedDate, float64(lastModifiedDate))
 	return det
+}
+
+func NewFile(fileService Service, id domain.FullFileId, infos []*storage.FileInfo) File {
+	return &file{
+		spaceID:     id.SpaceId,
+		fileId:      id.FileId,
+		info:        infos[0],
+		fileService: fileService,
+	}
 }

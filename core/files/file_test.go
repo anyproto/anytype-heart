@@ -13,6 +13,7 @@ import (
 )
 
 func TestFile_Details(t *testing.T) {
+
 	t.Run("svg details", func(t *testing.T) {
 		// given
 		f := &file{

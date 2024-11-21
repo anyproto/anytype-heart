@@ -278,7 +278,7 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId, info
 			return nil, "", err
 		}
 	} else {
-		image := fileobject.NewImage(ind.fileService, id, infos)
+		image := files.NewImage(ind.fileService, id, infos)
 		details, err = image.Details(ctx)
 		if err != nil {
 			return nil, "", err

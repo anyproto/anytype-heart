@@ -230,12 +230,12 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, meta.Name, meta.Added, reader)
 }
 
-func (g *gateway) getFile(ctx context.Context, r *http.Request) (fileobject2.File, io.ReadSeeker, error) {
+func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
 	fileIdAndPath := strings.TrimPrefix(r.URL.Path, "/file/")
 	parts := strings.Split(fileIdAndPath, "/")
 	fileId := parts[0]
 
-	var file fileobject2.File
+	var file files.File
 	var reader io.ReadSeeker
 	err := g.fileObjectService.DoFileWaitLoad(ctx, fileId, func(object fileobject2.FileObject) error {
 		file = object.GetFile()
@@ -283,7 +283,7 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, meta.Name, meta.Added, reader)
 }
 
-func (g *gateway) getImage(ctx context.Context, r *http.Request) (fileobject2.File, io.ReadSeeker, error) {
+func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
 	urlParts := strings.Split(r.URL.Path, "/")
 	imageId := urlParts[2]
 
@@ -321,7 +321,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (fileobject2.Fi
 }
 
 type getImageReaderResult struct {
-	file   fileobject2.File
+	file   files.File
 	reader io.ReadSeeker
 }
 
@@ -355,8 +355,8 @@ func (r *retryReadSeeker) Seek(offset int64, whence int) (int64, error) {
 	}, r.options...)
 }
 
-func (g *gateway) getImageReader(ctx context.Context, image fileobject2.Image, req *http.Request) (*getImageReaderResult, error) {
-	var file fileobject2.File
+func (g *gateway) getImageReader(ctx context.Context, image files.Image, req *http.Request) (*getImageReaderResult, error) {
+	var file files.File
 	query := req.URL.Query()
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
@@ -387,7 +387,7 @@ func (g *gateway) getImageReader(ctx context.Context, image fileobject2.Image, r
 	return &getImageReaderResult{file: file, reader: reader}, nil
 }
 
-func (g *gateway) handleSVGFile(ctx context.Context, file fileobject2.File) (*getImageReaderResult, error) {
+func (g *gateway) handleSVGFile(ctx context.Context, file files.File) (*getImageReaderResult, error) {
 	reader, err := svg.ProcessSvg(ctx, file)
 	if err != nil {
 		return nil, err

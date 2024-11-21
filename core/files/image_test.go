@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestGetImageForWidth(t *testing.T) {
@@ -27,8 +26,10 @@ func TestGetImageForWidth(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	img, err := fx.ImageByHash(ctx, fullId)
+	variants, err := fx.GetFileVariants(ctx, fullId, res.EncryptionKeys.EncryptionKeys)
 	require.NoError(t, err)
+
+	img := NewImage(fx, fullId, variants)
 
 	for _, testCase := range []struct {
 		name           string
@@ -69,9 +70,9 @@ func assertWidth(t *testing.T, file File, width int64) {
 	require.NotNil(t, file)
 	require.NotNil(t, file.Meta())
 
-	meta := file.Info().GetMeta()
+	meta := file.Meta()
 
-	assert.Equal(t, width, pbtypes.GetInt64(meta, "width"))
+	assert.Equal(t, width, meta.Width)
 }
 
 func TestImageDetails(t *testing.T) {
@@ -79,9 +80,12 @@ func TestImageDetails(t *testing.T) {
 
 	got := testAddImageWithRichExifData(t, fx)
 
+	fullId := domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}
 	ctx := context.Background()
-	image, err := fx.ImageByHash(ctx, domain.FullFileId{SpaceId: spaceId, FileId: got.FileId})
+	variants, err := fx.GetFileVariants(ctx, fullId, got.EncryptionKeys.EncryptionKeys)
 	require.NoError(t, err)
+
+	image := NewImage(fx, fullId, variants)
 
 	details, err := image.Details(ctx)
 	require.NoError(t, err)
@@ -118,9 +122,12 @@ func TestImageGetOriginalFile(t *testing.T) {
 
 	got := testAddImageWithRichExifData(t, fx)
 
+	fullId := domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}
 	ctx := context.Background()
-	image, err := fx.ImageByHash(ctx, domain.FullFileId{SpaceId: spaceId, FileId: got.FileId})
+	variants, err := fx.GetFileVariants(ctx, fullId, got.EncryptionKeys.EncryptionKeys)
 	require.NoError(t, err)
+
+	image := NewImage(fx, fullId, variants)
 
 	file, err := image.GetOriginalFile()
 	require.NoError(t, err)

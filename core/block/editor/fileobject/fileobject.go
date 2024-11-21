@@ -7,14 +7,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
 var log = logging.Logger("anytype-mw-editor-fileobject")
 
 type FileObject interface {
-	GetFile() File
-	GetImage() Image
+	GetFile() files.File
+	GetImage() files.Image
 }
 
 type fileObject struct {
@@ -36,21 +35,12 @@ func (f *fileObject) getFullFileId() domain.FullFileId {
 	}
 }
 
-func (f *fileObject) GetFile() File {
+func (f *fileObject) GetFile() files.File {
 	infos := filemodels.GetFileInfosFromDetails(f.Details())
-	return NewFile(f.fileService, f.getFullFileId(), infos)
+	return files.NewFile(f.fileService, f.getFullFileId(), infos)
 }
 
-func (f *fileObject) GetImage() Image {
+func (f *fileObject) GetImage() files.Image {
 	infos := filemodels.GetFileInfosFromDetails(f.Details())
-	return NewImage(f.fileService, f.getFullFileId(), infos)
-}
-
-func NewFile(fileService files.Service, id domain.FullFileId, infos []*storage.FileInfo) File {
-	return &file{
-		spaceID:     id.SpaceId,
-		fileId:      id.FileId,
-		info:        infos[0],
-		fileService: fileService,
-	}
+	return files.NewImage(f.fileService, f.getFullFileId(), infos)
 }

@@ -80,9 +80,9 @@ func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadReque
 	return path, nil
 }
 
-func (s *Service) getFileOrLargestImage(ctx context.Context, objectId string) (fileobject.File, error) {
+func (s *Service) getFileOrLargestImage(ctx context.Context, objectId string) (files.File, error) {
 	var (
-		f fileobject.File
+		f files.File
 	)
 	err := s.fileObjectService.DoFileWaitLoad(ctx, objectId, func(object fileobject.FileObject) error {
 		f = object.GetFile()

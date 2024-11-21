@@ -100,6 +100,7 @@ type AddResult struct {
 	FileId         domain.FileId
 	EncryptionKeys *domain.FileEncryptionKeys
 	IsExisting     bool // Is file already added by user?
+	Variants       []*storage.FileInfo
 
 	MIME string
 	Size int64
@@ -161,6 +162,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 	return &AddResult{
 		FileId:         fileId,
 		EncryptionKeys: &fileKeys,
+		Variants:       []*storage.FileInfo{addNodeResult.variant},
 		Size:           addNodeResult.variant.Size_,
 		MIME:           opts.Media,
 		lock:           addLock,
@@ -188,9 +190,10 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId, 
 			FileId:         fileId,
 			EncryptionKeys: collectKeysFromVariants(variants),
 		},
-		MIME: variant.GetMedia(),
-		Size: variant.GetSize_(),
-		lock: lock,
+		Variants: variants,
+		MIME:     variant.GetMedia(),
+		Size:     variant.GetSize_(),
+		lock:     lock,
 	}, nil
 
 }
@@ -361,6 +364,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	}
 
 	fileInfo := &storage.FileInfo{
+		Path:             encryptionKeyPath(linkName),
 		Mill:             mill.ID(),
 		Checksum:         variantChecksum,
 		Source:           conf.checksum,
