@@ -27,6 +27,7 @@ type ApiServer struct {
 	router      *gin.Engine
 	server      *http.Server
 	accountInfo model.AccountInfo
+	ports       map[string][]string
 }
 
 // TODO: User represents an authenticated user with permissions
@@ -71,6 +72,7 @@ func newApiServer(mw service.ClientCommandsServer, mwInternal core.MiddlewareInt
 func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwInternal core.MiddlewareInternal) {
 	a := newApiServer(mw, mwInternal)
 	a.router.Use(a.AccountInfoMiddleware())
+	a.router.Use(a.PortsMiddleware())
 
 	// Swagger route
 	a.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

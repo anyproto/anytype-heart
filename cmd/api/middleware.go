@@ -22,6 +22,21 @@ func (a *ApiServer) AccountInfoMiddleware() gin.HandlerFunc {
 	}
 }
 
+// PortsMiddleware retrieves the open ports from the middleware service
+func (a *ApiServer) PortsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if len(a.ports) == 0 {
+			ports, err := getPorts()
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to get open ports"})
+				return
+			}
+			a.ports = ports
+		}
+		c.Next()
+	}
+}
+
 // TODO: AuthMiddleware to ensure the user is authenticated
 func (a *ApiServer) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
