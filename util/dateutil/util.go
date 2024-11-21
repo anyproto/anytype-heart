@@ -45,6 +45,11 @@ func TimeToDateName(t time.Time, includeTime bool) string {
 
 func DateNameToId(name string) (string, error) {
 	t, err := time.Parse(dateNameLayout, name)
+	if err == nil {
+		return TimeToDateId(t, true), nil
+	}
+
+	t, err = time.Parse(shortDateNameLayout, name)
 	if err != nil {
 		return "", err
 	}

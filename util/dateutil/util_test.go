@@ -92,3 +92,20 @@ func TestParseDateId(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestDateNameToId(t *testing.T) {
+	t.Run("short name", func(t *testing.T) {
+		for _, pair := range []struct {
+			name, id string
+		}{
+			{"21 Nov 2024", "_date_2024-11-21"},
+			{"01 Dec 2124", "_date_2124-12-01"},
+			{"01 Jan 1924", "_date_1924-01-01"},
+		} {
+			id, err := DateNameToId(pair.name)
+			assert.NoError(t, err)
+			assert.Equal(t, pair.id, id)
+		}
+
+	})
+}
