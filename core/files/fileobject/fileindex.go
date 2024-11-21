@@ -10,7 +10,6 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/cheggaaa/mb/v3"
-	"github.com/gogo/protobuf/types"
 	format "github.com/ipfs/go-ipld-format"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
@@ -30,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type indexer struct {
@@ -104,25 +102,25 @@ func (ind *indexer) markIndexingDone(id domain.FullID) {
 
 func (ind *indexer) initQuery() {
 	ind.query = database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value: pbtypes.IntList(
-					int(model.ObjectType_file),
-					int(model.ObjectType_image),
-					int(model.ObjectType_video),
-					int(model.ObjectType_audio),
-				),
+				Value: domain.Int64List([]model.ObjectTypeLayout{
+					model.ObjectType_file,
+					model.ObjectType_image,
+					model.ObjectType_video,
+					model.ObjectType_audio,
+				}),
 			},
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 			{
-				RelationKey: bundle.RelationKeyFileIndexingStatus.String(),
+				RelationKey: bundle.RelationKeyFileIndexingStatus,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)),
+				Value:       domain.Int64(int64(model.FileIndexingStatus_Indexed)),
 			},
 		},
 	}
@@ -134,14 +132,14 @@ func (ind *indexer) addToQueueFromObjectStore(ctx context.Context) error {
 		return fmt.Errorf("query: %w", err)
 	}
 	for _, rec := range recs {
-		spaceId := pbtypes.GetString(rec.Details, bundle.RelationKeySpaceId.String())
+		spaceId := rec.Details.GetString(bundle.RelationKeySpaceId)
 		id := domain.FullID{
 			SpaceID:  spaceId,
-			ObjectID: pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
+			ObjectID: rec.Details.GetString(bundle.RelationKeyId),
 		}
 		fileId := domain.FullFileId{
 			SpaceId: spaceId,
-			FileId:  domain.FileId(pbtypes.GetString(rec.Details, bundle.RelationKeyFileId.String())),
+			FileId:  domain.FileId(rec.Details.GetString(bundle.RelationKeyFileId)),
 		}
 		// Additional check if we are accidentally migrated file object
 		if !fileId.Valid() {
@@ -255,13 +253,13 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 
 	st.SetObjectTypeKey(typeKey)
 
-	keys := make([]domain.RelationKey, 0, len(details.Fields))
-	for k := range details.Fields {
-		keys = append(keys, domain.RelationKey(k))
+	keys := make([]domain.RelationKey, 0, details.Len())
+	for k, _ := range details.Iterate() {
+		keys = append(keys, k)
 	}
 	st.AddBundledRelationLinks(keys...)
 
-	details = pbtypes.StructMerge(prevDetails, details, false)
+	details = prevDetails.Merge(details)
 	st.SetDetails(details)
 
 	err = ind.addBlocks(st, details, id.ObjectID)
@@ -271,7 +269,7 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	return nil
 }
 
-func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId, infos []*storage.FileInfo) (details *types.Struct, typeKey domain.TypeKey, err error) {
+func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId, infos []*storage.FileInfo) (details *domain.Details, typeKey domain.TypeKey, err error) {
 	file := fileobject.NewFile(ind.fileService, id, infos)
 
 	if file.Mill() == mill.BlobId {
@@ -294,15 +292,15 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId, info
 		typeKey = bundle.TypeKeyImage
 	}
 
-	details.Fields[bundle.RelationKeyFileIndexingStatus.String()] = pbtypes.Int64(int64(model.FileIndexingStatus_Indexed))
+	details.SetInt64(bundle.RelationKeyFileIndexingStatus, int64(model.FileIndexingStatus_Indexed))
 	return details, typeKey, nil
 }
 
-func (ind *indexer) addBlocks(st *state.State, details *types.Struct, objectId string) error {
-	fname := pbtypes.GetString(details, bundle.RelationKeyName.String())
-	fileType := fileblock.DetectTypeByMIME(fname, pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()))
+func (ind *indexer) addBlocks(st *state.State, details *domain.Details, objectId string) error {
+	fname := details.GetString(bundle.RelationKeyName)
+	fileType := fileblock.DetectTypeByMIME(fname, details.GetString(bundle.RelationKeyFileMimeType))
 
-	ext := pbtypes.GetString(details, bundle.RelationKeyFileExt.String())
+	ext := details.GetString(bundle.RelationKeyFileExt)
 
 	if ext != "" && !strings.HasSuffix(fname, "."+ext) {
 		fname = fname + "." + ext
@@ -314,38 +312,38 @@ func (ind *indexer) addBlocks(st *state.State, details *types.Struct, objectId s
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
 				Name:           fname,
-				Mime:           pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()),
+				Mime:           details.GetString(bundle.RelationKeyFileMimeType),
 				TargetObjectId: objectId,
 				Type:           fileType,
-				Size_:          int64(pbtypes.GetFloat64(details, bundle.RelationKeySizeInBytes.String())),
+				Size_:          int64(details.GetFloat64(bundle.RelationKeySizeInBytes)),
 				State:          model.BlockContentFile_Done,
-				AddedAt:        int64(pbtypes.GetFloat64(details, bundle.RelationKeyFileMimeType.String())),
+				AddedAt:        int64(details.GetFloat64(bundle.RelationKeyFileMimeType)),
 			},
 		}})
 
 	switch fileType {
 	case model.BlockContentFile_Image:
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(objectId))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(objectId))
 
-		if pbtypes.GetInt64(details, bundle.RelationKeyWidthInPixels.String()) != 0 {
+		if details.GetInt64(bundle.RelationKeyWidthInPixels) != 0 {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyWidthInPixels))
 		}
 
-		if pbtypes.GetInt64(details, bundle.RelationKeyHeightInPixels.String()) != 0 {
+		if details.GetInt64(bundle.RelationKeyHeightInPixels) != 0 {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyHeightInPixels))
 		}
 
-		if pbtypes.GetString(details, bundle.RelationKeyCamera.String()) != "" {
+		if details.GetString(bundle.RelationKeyCamera) != "" {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyCamera))
 		}
 
-		if pbtypes.GetInt64(details, bundle.RelationKeySizeInBytes.String()) != 0 {
+		if details.GetInt64(bundle.RelationKeySizeInBytes) != 0 {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeySizeInBytes))
 		}
-		if pbtypes.GetString(details, bundle.RelationKeyMediaArtistName.String()) != "" {
+		if details.GetString(bundle.RelationKeyMediaArtistName) != "" {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyMediaArtistName))
 		}
-		if pbtypes.GetString(details, bundle.RelationKeyMediaArtistURL.String()) != "" {
+		if details.GetString(bundle.RelationKeyMediaArtistURL) != "" {
 			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyMediaArtistURL))
 		}
 	default:

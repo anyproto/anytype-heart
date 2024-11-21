@@ -161,7 +161,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 			if rel.Format != model.RelationFormat_shorttext && rel.Format != model.RelationFormat_longtext {
 				continue
 			}
-			val := pbtypes.GetString(sb.Details(), rel.Key)
+			val := sb.Details().GetString(domain.RelationKey(rel.Key))
 			if val == "" {
 				continue
 			}

@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -92,7 +93,7 @@ func (mw *Middleware) WorkspaceSetInfo(cctx context.Context, req *pb.RpcWorkspac
 		return m
 	}
 
-	err := getService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, req.Details)
+	err := getService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, domain.NewDetailsFromProto(req.Details))
 	if err != nil {
 		return response(pb.RpcWorkspaceSetInfoResponseError_UNKNOWN_ERROR, err)
 	}
@@ -203,7 +204,7 @@ func (mw *Middleware) WorkspaceObjectAdd(cctx context.Context, req *pb.RpcWorksp
 
 	var (
 		id      string
-		details *types.Struct
+		details *domain.Details
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
@@ -212,10 +213,10 @@ func (mw *Middleware) WorkspaceObjectAdd(cctx context.Context, req *pb.RpcWorksp
 	})
 
 	if err != nil {
-		return response(id, details, pb.RpcWorkspaceObjectAddResponseError_UNKNOWN_ERROR, err)
+		return response(id, nil, pb.RpcWorkspaceObjectAddResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(id, details, pb.RpcWorkspaceObjectAddResponseError_NULL, nil)
+	return response(id, details.ToProto(), pb.RpcWorkspaceObjectAddResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.RpcWorkspaceObjectListRemoveRequest) *pb.RpcWorkspaceObjectListRemoveResponse {

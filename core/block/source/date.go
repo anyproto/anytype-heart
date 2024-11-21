@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -60,29 +58,30 @@ func (d *date) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeDate
 }
 
-func (d *date) getDetails() (*types.Struct, error) {
+func (d *date) getDetails() (*domain.Details, error) {
 	t, err := dateutil.ParseDateId(d.id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse date id: %w", err)
 	}
 
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(dateutil.TimeToDateName(t)),
-		bundle.RelationKeyId.String():         pbtypes.String(d.id),
-		bundle.RelationKeyType.String():       pbtypes.String(d.typeId),
-		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
-		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_date)),
-		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
-		bundle.RelationKeySpaceId.String():    pbtypes.String(d.SpaceID()),
-		bundle.RelationKeyTimestamp.String():  pbtypes.Int64(t.Unix()),
+	return domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+
+		bundle.RelationKeyName:       domain.String(dateutil.TimeToDateName(t)),
+		bundle.RelationKeyId:         domain.String(d.id),
+		bundle.RelationKeyType:       domain.String(d.typeId),
+		bundle.RelationKeyIsReadonly: domain.Bool(true),
+		bundle.RelationKeyIsArchived: domain.Bool(false),
+		bundle.RelationKeyIsHidden:   domain.Bool(false),
+		bundle.RelationKeyLayout:     domain.Float64(float64(model.ObjectType_date)),
+		bundle.RelationKeyIconEmoji:  domain.String("📅"),
+		bundle.RelationKeySpaceId:    domain.String(d.SpaceID()),
+		bundle.RelationKeyTimestamp:  domain.Int64(t.Unix()),
 		// TODO: GO-4494 - Remove links relation id
-		bundle.RelationKeySetOf.String(): pbtypes.StringList([]string{d.linksId}),
-	}}, nil
+		bundle.RelationKeySetOf: domain.StringList([]string{d.linksId}),
+	}), nil
 }
 
-func (d *date) DetailsFromId() (*types.Struct, error) {
+func (d *date) DetailsFromId() (*domain.Details, error) {
 	return d.getDetails()
 }
 

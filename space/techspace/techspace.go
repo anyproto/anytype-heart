@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/net/peer"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -39,7 +38,7 @@ var (
 type AccountObject interface {
 	editorsb.SmartBlock
 	SetSharedSpacesLimit(limit int) (err error)
-	SetProfileDetails(details *types.Struct) (err error)
+	SetProfileDetails(details *domain.Details) (err error)
 	MigrateIconImage(image string) (err error)
 	IsIconMigrated() (bool, error)
 	SetAnalyticsId(analyticsId string) (err error)
@@ -62,7 +61,7 @@ type TechSpace interface {
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
 	SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error)
 	SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error)
-	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
+	SpaceViewSetData(ctx context.Context, spaceId string, details *domain.Details) (err error)
 	SpaceViewId(id string) (string, error)
 	AccountObjectId() (string, error)
 }
@@ -71,7 +70,7 @@ type SpaceView interface {
 	sync.Locker
 	GetPersistentInfo() spaceinfo.SpacePersistentInfo
 	GetLocalInfo() spaceinfo.SpaceLocalInfo
-	SetSpaceData(details *types.Struct) error
+	SetSpaceData(details *domain.Details) error
 	SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) error
 	SetInviteFileInfo(fileCid string, fileKey string) (err error)
 	SetAccessType(acc spaceinfo.AccessType) error
@@ -244,7 +243,7 @@ func (s *techSpace) GetSpaceView(ctx context.Context, spaceId string) (SpaceView
 	return spaceView, nil
 }
 
-func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error) {
+func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *domain.Details) (err error) {
 	return s.DoSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
 		return spaceView.SetSpaceData(details)
 	})

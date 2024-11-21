@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
@@ -17,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/techspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -38,7 +36,7 @@ func New() Runner {
 type fileObjectGetter interface {
 	app.Component
 	DoFileWaitLoad(ctx context.Context, objectId string, proc func(object fileobject.FileObject) error) error
-	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *types.Struct, err error)
+	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error)
 }
 
 type runner struct {
@@ -90,7 +88,7 @@ func (r *runner) migrateProfile() (hasIcon bool, oldIcon string, err error) {
 	defer close(r.waitMigrateProfile)
 	shouldMigrateProfile := true
 	err = r.techSpace.DoAccountObject(r.ctx, func(accountObject techspace.AccountObject) error {
-		if accountObject.CombinedDetails().GetFields()[bundle.RelationKeyName.String()].GetStringValue() != "" {
+		if accountObject.CombinedDetails().GetString(bundle.RelationKeyName) != "" {
 			shouldMigrateProfile = false
 			hasIcon, err = accountObject.IsIconMigrated()
 			return err
@@ -102,13 +100,14 @@ func (r *runner) migrateProfile() (hasIcon bool, oldIcon string, err error) {
 	}
 	space := r.spc
 	ids := space.DerivedIDs()
-	var details *types.Struct
+	var details *domain.Details
 	err = space.DoCtx(r.ctx, ids.Profile, func(sb smartblock.SmartBlock) error {
-		details = pbtypes.CopyStructFields(sb.CombinedDetails(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyDescription.String(),
-			bundle.RelationKeyIconOption.String())
-		oldIcon = sb.CombinedDetails().GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue()
+		details = sb.Details().CopyOnlyKeys(
+			bundle.RelationKeyName,
+			bundle.RelationKeyDescription,
+			bundle.RelationKeyIconOption,
+		)
+		oldIcon = sb.Details().GetString(bundle.RelationKeyIconImage)
 		return nil
 	})
 	if err != nil {

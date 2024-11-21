@@ -448,13 +448,13 @@ func (cb *clipboard) pasteAny(
 	}
 
 	relationLinks := destState.GetRelationLinks()
-	var missingRelationKeys []string
+	var missingRelationKeys []domain.RelationKey
 
 	// collect missing relation keys to add it to state
 	for _, b := range s.Blocks() {
 		if r := b.GetRelation(); r != nil {
 			if !relationLinks.Has(r.Key) {
-				missingRelationKeys = append(missingRelationKeys, r.Key)
+				missingRelationKeys = append(missingRelationKeys, domain.RelationKey(r.Key))
 			}
 		}
 	}
@@ -570,9 +570,9 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 		return
 	}
 
-	relationKeysList := make([]string, len(relationKeys))
+	relationKeysList := make([]domain.RelationKey, 0, len(relationKeys))
 	for k := range relationKeys {
-		relationKeysList = append(relationKeysList, k)
+		relationKeysList = append(relationKeysList, domain.RelationKey(k))
 	}
 	relations, err := cb.objectStore.FetchRelationByKeys(relationKeysList...)
 	if err != nil {

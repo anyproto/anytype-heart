@@ -8,13 +8,13 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common/objectid/mock_objectid"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/block/import/web/parsers/mock_parsers"
+	"github.com/anyproto/anytype-heart/core/domain"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/mock_common"
@@ -28,7 +28,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func Test_ImportSuccess(t *testing.T) {
@@ -36,8 +35,8 @@ func Test_ImportSuccess(t *testing.T) {
 
 	converter := mock_common.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
-		Snapshot: &pb.ChangeSnapshot{
-			Data: &model.SmartBlockSnapshotBase{
+		Snapshot: &common.SnapshotModel{
+			Data: &common.StateSnapshot{
 				Blocks: []*model.Block{&model.Block{
 					Id: "1",
 					Content: &model.BlockContentOfText{
@@ -127,8 +126,8 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 
 	converter := mock_common.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
-		Snapshot: &pb.ChangeSnapshot{
-			Data: &model.SmartBlockSnapshotBase{
+		Snapshot: &common.SnapshotModel{
+			Data: &common.StateSnapshot{
 				Blocks: []*model.Block{&model.Block{
 					Id: "1",
 					Content: &model.BlockContentOfText{
@@ -140,9 +139,9 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 				},
 				},
 			},
+			SbType: smartblock.SmartBlockTypePage,
 		},
-		SbType: smartblock.SmartBlockTypePage,
-		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, nil).Times(1)
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, nil).Times(1)
 	i.converters = make(map[string]common.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
@@ -184,7 +183,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	e := common.NewError(0)
 	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
-		Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
+		Snapshot: &common.SnapshotModel{Data: &common.StateSnapshot{
 			Blocks: []*model.Block{&model.Block{
 				Id: "1",
 				Content: &model.BlockContentOfText{
@@ -196,9 +195,9 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 			},
 			},
 		},
+			SbType: smartblock.SmartBlockTypePage,
 		},
-		SbType: smartblock.SmartBlockTypePage,
-		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]common.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
@@ -240,8 +239,8 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	e := common.NewError(0)
 	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
-		Snapshot: &pb.ChangeSnapshot{
-			Data: &model.SmartBlockSnapshotBase{
+		Snapshot: &common.SnapshotModel{
+			Data: &common.StateSnapshot{
 				Blocks: []*model.Block{&model.Block{
 					Id: "1",
 					Content: &model.BlockContentOfText{
@@ -253,9 +252,9 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 				},
 				},
 			},
+			SbType: smartblock.SmartBlockTypePage,
 		},
-		SbType: smartblock.SmartBlockTypePage,
-		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]common.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
@@ -418,14 +417,12 @@ func Test_ImportWebNoParser(t *testing.T) {
 func Test_ImportWebFailedToParse(t *testing.T) {
 	i := Import{}
 
-	ctrl := gomock.NewController(t)
-
 	i.converters = make(map[string]common.Converter, 0)
 	i.converters[web.Name] = web.NewConverter()
 	creator := mock_objectcreator.NewMockService(t)
 	i.oc = creator
 	i.idProvider = mock_objectid.NewMockIdAndKeyProvider(t)
-	parser := parsers.NewMockParser(ctrl)
+	parser := mock_parsers.NewMockParser(t)
 	parser.EXPECT().MatchUrl("http://example.com").Return(true).Times(1)
 	parser.EXPECT().ParseUrl("http://example.com").Return(nil, errors.New("failed")).Times(1)
 
@@ -449,7 +446,6 @@ func Test_ImportWebFailedToParse(t *testing.T) {
 func Test_ImportWebSuccess(t *testing.T) {
 	i := Import{}
 	parsers.Parsers = []parsers.RegisterParser{}
-	ctrl := gomock.NewController(t)
 
 	i.converters = make(map[string]common.Converter, 0)
 
@@ -462,9 +458,9 @@ func Test_ImportWebSuccess(t *testing.T) {
 	idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
 	idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.idProvider = idGetter
-	parser := parsers.NewMockParser(ctrl)
+	parser := mock_parsers.NewMockParser(t)
 	parser.EXPECT().MatchUrl("http://example.com").Return(true).Times(1)
-	parser.EXPECT().ParseUrl("http://example.com").Return(&model.SmartBlockSnapshotBase{Blocks: []*model.Block{&model.Block{
+	parser.EXPECT().ParseUrl("http://example.com").Return(&common.StateSnapshot{Blocks: []*model.Block{&model.Block{
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
@@ -494,8 +490,6 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	i := Import{}
 	parsers.Parsers = []parsers.RegisterParser{}
 
-	ctrl := gomock.NewController(t)
-
 	i.converters = make(map[string]common.Converter, 0)
 	i.converters[web.Name] = web.NewConverter()
 
@@ -507,9 +501,9 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
 	idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.idProvider = idGetter
-	parser := parsers.NewMockParser(ctrl)
+	parser := mock_parsers.NewMockParser(t)
 	parser.EXPECT().MatchUrl("http://example.com").Return(true).Times(1)
-	parser.EXPECT().ParseUrl("http://example.com").Return(&model.SmartBlockSnapshotBase{Blocks: []*model.Block{&model.Block{
+	parser.EXPECT().ParseUrl("http://example.com").Return(&common.StateSnapshot{Blocks: []*model.Block{&model.Block{
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
@@ -602,8 +596,8 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrNoObjectInIntegration, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
-		Snapshot: &pb.ChangeSnapshot{
-			Data: &model.SmartBlockSnapshotBase{
+		Snapshot: &common.SnapshotModel{
+			Data: &common.StateSnapshot{
 				Blocks: []*model.Block{&model.Block{
 					Id: "1",
 					Content: &model.BlockContentOfText{
@@ -648,8 +642,8 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	e := common.NewFromError(common.ErrNoObjectInIntegration, pb.RpcObjectImportRequest_IGNORE_ERRORS)
 	converter := mock_common.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
-		Snapshot: &pb.ChangeSnapshot{
-			Data: &model.SmartBlockSnapshotBase{
+		Snapshot: &common.SnapshotModel{
+			Data: &common.StateSnapshot{
 				Blocks: []*model.Block{&model.Block{
 					Id: "1",
 					Content: &model.BlockContentOfText{
@@ -661,9 +655,9 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 				},
 				},
 			},
+			SbType: smartblock.SmartBlockTypePage,
 		},
-		SbType: smartblock.SmartBlockTypePage,
-		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]common.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
@@ -703,8 +697,8 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrCsvLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
-		Snapshot: &pb.ChangeSnapshot{
-			Data: &model.SmartBlockSnapshotBase{
+		Snapshot: &common.SnapshotModel{
+			Data: &common.StateSnapshot{
 				Blocks: []*model.Block{&model.Block{
 					Id: "1",
 					Content: &model.BlockContentOfText{
@@ -716,9 +710,9 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 				},
 				},
 			},
+			SbType: smartblock.SmartBlockTypePage,
 		},
-		SbType: smartblock.SmartBlockTypePage,
-		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]common.Converter, 0)
 	i.converters["Notion"] = converter
 
@@ -750,8 +744,8 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrCsvLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
-		Snapshot: &pb.ChangeSnapshot{
-			Data: &model.SmartBlockSnapshotBase{
+		Snapshot: &common.SnapshotModel{
+			Data: &common.StateSnapshot{
 				Blocks: []*model.Block{&model.Block{
 					Id: "1",
 					Content: &model.BlockContentOfText{
@@ -763,9 +757,9 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 				},
 				},
 			},
+			SbType: smartblock.SmartBlockTypePage,
 		},
-		SbType: smartblock.SmartBlockTypePage,
-		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]common.Converter, 0)
 	i.converters["Notion"] = converter
 
@@ -797,16 +791,14 @@ func TestImport_replaceRelationKeyWithNew(t *testing.T) {
 		// given
 		i := Import{}
 		option := &common.Snapshot{
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
-					Details: &types.Struct{
-						Fields: map[string]*types.Value{
-							bundle.RelationKeyRelationKey.String(): pbtypes.String("key"),
-						},
-					},
+			Snapshot: &common.SnapshotModel{
+				Data: &common.StateSnapshot{
+					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+						bundle.RelationKeyRelationKey: domain.String("key"),
+					}),
 				},
+				SbType: smartblock.SmartBlockTypeSubObject,
 			},
-			SbType: smartblock.SmartBlockTypeSubObject,
 		}
 		oldIDToNew := make(map[string]string, 0)
 
@@ -814,22 +806,20 @@ func TestImport_replaceRelationKeyWithNew(t *testing.T) {
 		i.replaceRelationKeyWithNew(option, oldIDToNew)
 
 		// then
-		assert.Equal(t, "key", pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
+		assert.Equal(t, "key", option.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey))
 	})
 	t.Run("oldIDToNew map have relation id", func(t *testing.T) {
 		// given
 		i := Import{}
 		option := &common.Snapshot{
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
-					Details: &types.Struct{
-						Fields: map[string]*types.Value{
-							bundle.RelationKeyRelationKey.String(): pbtypes.String("key"),
-						},
-					},
+			Snapshot: &common.SnapshotModel{
+				Data: &common.StateSnapshot{
+					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+						bundle.RelationKeyRelationKey: domain.String("key"),
+					}),
 				},
+				SbType: smartblock.SmartBlockTypeSubObject,
 			},
-			SbType: smartblock.SmartBlockTypeSubObject,
 		}
 		oldIDToNew := map[string]string{"key": "newkey"}
 
@@ -837,19 +827,19 @@ func TestImport_replaceRelationKeyWithNew(t *testing.T) {
 		i.replaceRelationKeyWithNew(option, oldIDToNew)
 
 		// then
-		assert.Equal(t, "newkey", pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
+		assert.Equal(t, "newkey", option.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey))
 	})
 
 	t.Run("no details", func(t *testing.T) {
 		// given
 		i := Import{}
 		option := &common.Snapshot{
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
+			Snapshot: &common.SnapshotModel{
+				Data: &common.StateSnapshot{
 					Details: nil,
 				},
+				SbType: smartblock.SmartBlockTypeSubObject,
 			},
-			SbType: smartblock.SmartBlockTypeSubObject,
 		}
 		oldIDToNew := map[string]string{"rel-key": "rel-newkey"}
 
@@ -872,9 +862,11 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
 			Snapshots: []*common.Snapshot{
 				{
-					Snapshot: &pb.ChangeSnapshot{},
-					Id:       originalRootCollectionID,
-					SbType:   smartblock.SmartBlockTypePage,
+					Snapshot: &common.SnapshotModel{
+						SbType: smartblock.SmartBlockTypePage,
+						Data:   &common.StateSnapshot{},
+					},
+					Id: originalRootCollectionID,
 				},
 			},
 		}, nil).Times(1)
@@ -927,9 +919,11 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
-					Snapshot: &pb.ChangeSnapshot{},
-					Id:       originalRootCollectionId,
-					SbType:   smartblock.SmartBlockTypePage,
+					Snapshot: &common.SnapshotModel{
+						SbType: smartblock.SmartBlockTypePage,
+						Data:   &common.StateSnapshot{},
+					},
+					Id: originalRootCollectionId,
 				},
 			},
 		}, nil).Times(1)
@@ -981,9 +975,10 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
-					Snapshot: &pb.ChangeSnapshot{},
-					Id:       originalRootCollectionId,
-					SbType:   smartblock.SmartBlockTypePage,
+					Snapshot: &common.SnapshotModel{
+						SbType: smartblock.SmartBlockTypePage,
+					},
+					Id: originalRootCollectionId,
 				},
 			},
 		}, converterError).Times(1)
@@ -1026,9 +1021,11 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
-					Snapshot: &pb.ChangeSnapshot{},
-					Id:       originalRootCollectionId,
-					SbType:   smartblock.SmartBlockTypePage,
+					Snapshot: &common.SnapshotModel{
+						SbType: smartblock.SmartBlockTypePage,
+						Data:   &common.StateSnapshot{},
+					},
+					Id: originalRootCollectionId,
 				},
 			},
 		}, converterError).Times(1)
@@ -1074,8 +1071,8 @@ func Test_getObjectId(t *testing.T) {
 		createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, 0)
 		sn := &common.Snapshot{
 			Id: "oldId",
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{},
+			Snapshot: &common.SnapshotModel{
+				Data: &common.StateSnapshot{},
 			},
 		}
 		idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
@@ -1097,8 +1094,8 @@ func Test_getObjectId(t *testing.T) {
 		createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, 0)
 		sn := &common.Snapshot{
 			Id: "oldId",
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
+			Snapshot: &common.SnapshotModel{
+				Data: &common.StateSnapshot{
 					Key: "key",
 				},
 			},
@@ -1123,11 +1120,11 @@ func Test_getObjectId(t *testing.T) {
 		createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, 0)
 		sn := &common.Snapshot{
 			Id: "oldId",
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
-					Details: &types.Struct{Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String(): pbtypes.String("key"),
-					}},
+			Snapshot: &common.SnapshotModel{
+				Data: &common.StateSnapshot{
+					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+						bundle.RelationKeyUniqueKey: domain.String("key"),
+					}),
 				},
 			},
 		}
@@ -1151,11 +1148,11 @@ func Test_getObjectId(t *testing.T) {
 		createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, 0)
 		sn := &common.Snapshot{
 			Id: "oldId",
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
-					Details: &types.Struct{Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String(): pbtypes.String("key"),
-					}},
+			Snapshot: &common.SnapshotModel{
+				Data: &common.StateSnapshot{
+					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+						bundle.RelationKeyUniqueKey: domain.String("key"),
+					}),
 				},
 			},
 		}

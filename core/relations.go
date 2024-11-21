@@ -97,6 +97,6 @@ func (mw *Middleware) RelationListWithValue(_ context.Context, req *pb.RpcRelati
 		return m
 	}
 
-	list, err := getService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, req.Value)
+	list, err := getService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, domain.ValueFromProto(req.Value))
 	return response(list, err)
 }

@@ -29,7 +29,7 @@ type oldFile struct {
 }
 
 func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *common.Snapshot, _ time.Time, _ bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
-	fileId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	fileId := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyId)
 	filesKeys := map[string]string{}
 	for _, fileKeys := range sn.Snapshot.FileKeys {
 		if fileKeys.Hash == fileId {
@@ -38,9 +38,9 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 		}
 	}
 
-	filePath := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
+	filePath := sn.Snapshot.Data.Details.GetString(bundle.RelationKeySource)
 	if filePath != "" {
-		name := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyName.String())
+		name := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 		fileObjectId, err := uploadFile(ctx, f.blockService, spaceId, name, filePath, origin, filesKeys)
 		if err != nil {
 			log.Error("handling old file object: upload file", zap.Error(err))

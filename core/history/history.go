@@ -87,13 +87,13 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	if err != nil {
 		return
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id.ObjectID))
-	s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(id.SpaceID))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String(id.ObjectID))
+	s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(id.SpaceID))
 	typeId, err := space.GetTypeIdByKey(context.Background(), s.ObjectTypeKey())
 	if err != nil {
 		return nil, nil, fmt.Errorf("get type id by key: %w", err)
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeId))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(typeId))
 
 	dependentObjectIDs := objectlink.DependentObjectIDs(s, space, objectlink.Flags{
 		Blocks:    true,
@@ -108,8 +108,8 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	details := make([]*model.ObjectViewDetailsSet, 0, len(meta))
 	for _, m := range meta {
 		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      pbtypes.GetString(m.Details, bundle.RelationKeyId.String()),
-			Details: m.Details,
+			Id:      m.Details.GetString(bundle.RelationKeyId),
+			Details: m.Details.ToProto(),
 		})
 	}
 
@@ -272,8 +272,8 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	details := make([]*model.ObjectViewDetailsSet, 0, len(meta))
 	for _, m := range meta {
 		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      pbtypes.GetString(m.Details, bundle.RelationKeyId.String()),
-			Details: m.Details,
+			Id:      m.Details.GetString(bundle.RelationKeyId),
+			Details: m.Details.ToProto(),
 		})
 	}
 	objectView := &model.ObjectView{
@@ -334,7 +334,7 @@ func filterLocalAndDerivedRelationsByKey(removedRelations *pb.EventObjectRelatio
 	}
 	var relKeysWithoutLocal []string
 	for _, key := range removedRelations.RelationKeys {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
 			relKeysWithoutLocal = append(relKeysWithoutLocal, key)
 		}
 	}
@@ -347,7 +347,7 @@ func filterLocalAndDerivedRelations(addedRelations *pb.EventObjectRelationsAmend
 	}
 	var relLinksWithoutLocal pbtypes.RelationLinks
 	for _, link := range addedRelations.RelationLinks {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, link.Key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(link.Key)) {
 			relLinksWithoutLocal = relLinksWithoutLocal.Append(link)
 		}
 	}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -19,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/restriction/mock_restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const spaceId = "spaceId"
@@ -73,10 +72,10 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func TestService_SetDetailsList(t *testing.T) {
-	details := []*model.Detail{
-		{Key: bundle.RelationKeyAssignee.String(), Value: pbtypes.String("Mark Twain")},
-		{Key: bundle.RelationKeyDone.String(), Value: pbtypes.Bool(true)},
-		{Key: bundle.RelationKeyLinkedProjects.String(), Value: pbtypes.StringList([]string{"important", "urgent"})},
+	details := []domain.Detail{
+		{Key: bundle.RelationKeyAssignee, Value: domain.String("Mark Twain")},
+		{Key: bundle.RelationKeyDone, Value: domain.Bool(true)},
+		{Key: bundle.RelationKeyLinkedProjects, Value: domain.StringList([]string{"important", "urgent"})},
 	}
 
 	t.Run("lastUsed is updated once", func(t *testing.T) {
@@ -109,9 +108,9 @@ func TestService_SetDetailsList(t *testing.T) {
 		assert.Len(t, objects["obj2"].Results.LastUsedUpdates, 0)
 		assert.Len(t, objects["obj3"].Results.LastUsedUpdates, 0)
 
-		assert.Equal(t, "Mark Twain", pbtypes.GetString(objects["obj1"].NewState().Details(), bundle.RelationKeyAssignee.String()))
-		assert.True(t, pbtypes.GetBool(objects["obj2"].NewState().Details(), bundle.RelationKeyDone.String()))
-		assert.Equal(t, []string{"important", "urgent"}, pbtypes.GetStringList(objects["obj3"].NewState().Details(), bundle.RelationKeyLinkedProjects.String()))
+		assert.Equal(t, "Mark Twain", objects["obj1"].NewState().Details().GetString(bundle.RelationKeyAssignee))
+		assert.True(t, objects["obj2"].NewState().Details().GetBool(bundle.RelationKeyDone))
+		assert.Equal(t, []string{"important", "urgent"}, objects["obj3"].NewState().Details().GetStringList(bundle.RelationKeyLinkedProjects))
 	})
 
 	t.Run("some updates failed", func(t *testing.T) {
@@ -148,9 +147,9 @@ func TestService_SetDetailsList(t *testing.T) {
 
 func TestService_ModifyDetailsList(t *testing.T) {
 	ops := []*pb.RpcObjectListModifyDetailValuesRequestOperation{
-		{RelationKey: bundle.RelationKeyName.String(), Set: pbtypes.String("My favorite page")},
-		{RelationKey: bundle.RelationKeyLinks.String(), Add: pbtypes.String("some link")},
-		{RelationKey: bundle.RelationKeyDone.String(), Set: pbtypes.Bool(true)},
+		{RelationKey: bundle.RelationKeyName.String(), Set: domain.String("My favorite page").ToProto()},
+		{RelationKey: bundle.RelationKeyLinks.String(), Add: domain.String("some link").ToProto()},
+		{RelationKey: bundle.RelationKeyDone.String(), Set: domain.Bool(true).ToProto()},
 	}
 
 	t.Run("lastUsed is updated once", func(t *testing.T) {
@@ -222,11 +221,11 @@ func TestService_ModifyDetailsList(t *testing.T) {
 func TestService_SetSpaceInfo(t *testing.T) {
 	var (
 		wsObjectId = "workspace"
-		details    = &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyName.String():       pbtypes.String("My space"),
-			bundle.RelationKeyIconOption.String(): pbtypes.Int64(5),
-			bundle.RelationKeyIconImage.String():  pbtypes.String("kitten.jpg"),
-		}}
+		details    = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:       domain.String("My space"),
+			bundle.RelationKeyIconOption: domain.Int64(5),
+			bundle.RelationKeyIconImage:  domain.String("kitten.jpg"),
+		})
 	)
 
 	t.Run("no error", func(t *testing.T) {
@@ -244,9 +243,9 @@ func TestService_SetSpaceInfo(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, "My space", pbtypes.GetString(ws.NewState().Details(), bundle.RelationKeyName.String()))
-		assert.Equal(t, int64(5), pbtypes.GetInt64(ws.NewState().Details(), bundle.RelationKeyIconOption.String()))
-		assert.Equal(t, "kitten.jpg", pbtypes.GetString(ws.NewState().Details(), bundle.RelationKeyIconImage.String()))
+		assert.Equal(t, "My space", ws.NewState().Details().GetString(bundle.RelationKeyName))
+		assert.Equal(t, int64(5), ws.NewState().Details().GetInt64(bundle.RelationKeyIconOption))
+		assert.Equal(t, "kitten.jpg", ws.NewState().Details().GetString(bundle.RelationKeyIconImage))
 	})
 
 	t.Run("error on details setting", func(t *testing.T) {
@@ -292,7 +291,7 @@ func TestService_SetWorkspaceDashboardId(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, dashboardId, setId)
-		assert.Equal(t, dashboardId, pbtypes.GetString(sb.NewState().Details(), bundle.RelationKeySpaceDashboardId.String()))
+		assert.Equal(t, []string{dashboardId}, sb.NewState().Details().GetStringList(bundle.RelationKeySpaceDashboardId))
 	})
 
 	t.Run("error if wrong smartblock type", func(t *testing.T) {
@@ -321,9 +320,9 @@ func TestService_SetWorkspaceDashboardId(t *testing.T) {
 func TestService_SetListIsFavorite(t *testing.T) {
 	var (
 		objects = []objectstore.TestObject{
-			{bundle.RelationKeyId: pbtypes.String("obj1"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
-			{bundle.RelationKeyId: pbtypes.String("obj2"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
-			{bundle.RelationKeyId: pbtypes.String("obj3"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
+			{bundle.RelationKeyId: domain.String("obj1"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+			{bundle.RelationKeyId: domain.String("obj2"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+			{bundle.RelationKeyId: domain.String("obj3"), bundle.RelationKeySpaceId: domain.String(spaceId)},
 		}
 		homeId   = "home"
 		widgetId = "widget"
@@ -442,7 +441,7 @@ func TestService_SetListIsFavorite(t *testing.T) {
 func TestService_SetIsArchived(t *testing.T) {
 	var (
 		objects = []objectstore.TestObject{
-			{bundle.RelationKeyId: pbtypes.String("obj1"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
+			{bundle.RelationKeyId: domain.String("obj1"), bundle.RelationKeySpaceId: domain.String(spaceId)},
 		}
 		binId = "bin"
 	)
@@ -497,9 +496,9 @@ func TestService_SetIsArchived(t *testing.T) {
 func TestService_SetListIsArchived(t *testing.T) {
 	var (
 		objects = []objectstore.TestObject{
-			{bundle.RelationKeyId: pbtypes.String("obj1"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
-			{bundle.RelationKeyId: pbtypes.String("obj2"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
-			{bundle.RelationKeyId: pbtypes.String("obj3"), bundle.RelationKeySpaceId: pbtypes.String(spaceId)},
+			{bundle.RelationKeyId: domain.String("obj1"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+			{bundle.RelationKeyId: domain.String("obj2"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+			{bundle.RelationKeyId: domain.String("obj3"), bundle.RelationKeySpaceId: domain.String(spaceId)},
 		}
 		binId = "bin"
 	)

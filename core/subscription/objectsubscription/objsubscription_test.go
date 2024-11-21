@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/cheggaaa/mb/v3"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/anyproto/anytype-heart/pb"
@@ -42,11 +42,9 @@ func makeDetailsSet(id string) *pb.EventMessage {
 		Value: &pb.EventMessageValueOfObjectDetailsSet{
 			ObjectDetailsSet: &pb.EventObjectDetailsSet{
 				Id: id,
-				Details: &types.Struct{
-					Fields: map[string]*types.Value{
-						"key1": pbtypes.String("value1"),
-					},
-				},
+				Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					"key1": domain.String("value1"),
+				}).ToProto(),
 			},
 		},
 	}
@@ -79,14 +77,13 @@ func makeDetailsAmend(id string) *pb.EventMessage {
 	}
 }
 
-func makeStructs(ids []string) []*types.Struct {
-	structs := make([]*types.Struct, len(ids))
+func makeStructs(ids []string) []*domain.Details {
+	structs := make([]*domain.Details, len(ids))
 	for i, id := range ids {
-		structs[i] = &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String(): pbtypes.String(id),
-			},
-		}
+		structs[i] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String(id),
+		},
+		)
 	}
 	return structs
 }

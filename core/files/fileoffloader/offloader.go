@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
@@ -23,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "core.files.fileoffloader"
@@ -78,17 +76,17 @@ func (s *service) FileOffloadFullId(ctx context.Context, id domain.FullID, inclu
 	if err != nil {
 		return 0, fmt.Errorf("get object details: %w", err)
 	}
-	return s.fileOffload(ctx, details.GetDetails(), includeNotPinned)
+	return s.fileOffload(ctx, details, includeNotPinned)
 }
 
-func (s *service) fileOffload(ctx context.Context, fileDetails *types.Struct, includeNotPinned bool) (uint64, error) {
-	fileId := pbtypes.GetString(fileDetails, bundle.RelationKeyFileId.String())
+func (s *service) fileOffload(ctx context.Context, fileDetails *domain.Details, includeNotPinned bool) (uint64, error) {
+	fileId := fileDetails.GetString(bundle.RelationKeyFileId)
 	if fileId == "" {
 		return 0, fmt.Errorf("empty file id")
 	}
-	backupStatus := filesyncstatus.Status(pbtypes.GetInt64(fileDetails, bundle.RelationKeyFileBackupStatus.String()))
+	backupStatus := filesyncstatus.Status(fileDetails.GetInt64(bundle.RelationKeyFileBackupStatus))
 	id := domain.FullFileId{
-		SpaceId: pbtypes.GetString(fileDetails, bundle.RelationKeySpaceId.String()),
+		SpaceId: fileDetails.GetString(bundle.RelationKeySpaceId),
 		FileId:  domain.FileId(fileId),
 	}
 
@@ -119,15 +117,15 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 
 	if !includeNotPinned {
 		records, err := s.objectStore.QueryCrossSpace(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyFileId.String(),
+					RelationKey: bundle.RelationKeyFileId,
 					Condition:   model.BlockContentDataviewFilter_NotEmpty,
 				},
 				{
-					RelationKey: bundle.RelationKeyFileBackupStatus.String(),
+					RelationKey: bundle.RelationKeyFileBackupStatus,
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
-					Value:       pbtypes.Int64(int64(filesyncstatus.Synced)),
+					Value:       domain.Int64(filesyncstatus.Synced),
 				},
 			},
 		})
@@ -137,8 +135,8 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 
 		for _, record := range records {
 			fileId := domain.FullFileId{
-				SpaceId: pbtypes.GetString(record.Details, bundle.RelationKeySpaceId.String()),
-				FileId:  domain.FileId(pbtypes.GetString(record.Details, bundle.RelationKeyFileId.String())),
+				SpaceId: record.Details.GetString(bundle.RelationKeySpaceId),
+				FileId:  domain.FileId(record.Details.GetString(bundle.RelationKeyFileId)),
 			}
 			_, cids, err := s.getAllExistingFileBlocksCids(ctx, fileId)
 			if err != nil {
@@ -154,9 +152,9 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 
 func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
 	records, err := s.objectStore.SpaceIndex(spaceId).Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 		},
@@ -165,7 +163,7 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 		return 0, 0, fmt.Errorf("query file objects by spaceId: %w", err)
 	}
 	for _, record := range records {
-		fileId := pbtypes.GetString(record.Details, bundle.RelationKeyFileId.String())
+		fileId := record.Details.GetString(bundle.RelationKeyFileId)
 		size, err := s.offloadFileSafe(ctx, spaceId, fileId, record, includeNotPinned)
 		if err != nil {
 			log.Error("FileSpaceOffload: failed to offload file", zap.String("fileId", fileId), zap.Error(err))
@@ -186,11 +184,11 @@ func (s *service) offloadFileSafe(ctx context.Context,
 	includeNotPinned bool,
 ) (uint64, error) {
 	existingObjects, err := s.objectStore.QueryCrossSpace(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId),
+				Value:       domain.String(fileId),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),

@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -32,7 +31,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logger.NewNamedSugared("common.editor.accountobject")
@@ -58,7 +56,7 @@ type AccountObject interface {
 
 	basic.DetailsSettable
 	SetSharedSpacesLimit(limit int) (err error)
-	SetProfileDetails(details *types.Struct) (err error)
+	SetProfileDetails(details *domain.Details) (err error)
 	MigrateIconImage(image string) (err error)
 	IsIconMigrated() (bool, error)
 	SetAnalyticsId(analyticsId string) (err error)
@@ -85,11 +83,11 @@ type accountObject struct {
 	crdtDb      anystore.DB
 }
 
-func (a *accountObject) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (a *accountObject) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	return a.bs.SetDetails(ctx, details, showEvent)
 }
 
-func (a *accountObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (a *accountObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	return a.bs.SetDetailsAndUpdateLastUsed(ctx, details, showEvent)
 }
 
@@ -219,8 +217,8 @@ func (a *accountObject) initState(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeyProfile}),
-		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_profile))),
-		template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
+		template.WithForcedDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_profile)),
+		template.WithDetail(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter)),
 	)
 	blockId := "identity"
 	st.Set(simple.New(&model.Block{
@@ -241,7 +239,7 @@ func (a *accountObject) initState(st *state.State) error {
 	if err != nil {
 		return fmt.Errorf("insert block: %w", err)
 	}
-	st.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(true))
+	st.SetDetail(bundle.RelationKeyIsHidden, domain.Bool(true))
 	return nil
 }
 
@@ -356,19 +354,19 @@ func (a *accountObject) Close() error {
 
 func (a *accountObject) SetSharedSpacesLimit(limit int) (err error) {
 	st := a.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, pbtypes.Int64(int64(limit)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
 	return a.Apply(st)
 }
 
 func (a *accountObject) GetSharedSpacesLimit() (limit int) {
-	return int(pbtypes.GetInt64(a.CombinedDetails(), bundle.RelationKeySharedSpacesLimit.String()))
+	return int(a.CombinedDetails().GetInt64(bundle.RelationKeySharedSpacesLimit))
 }
 
-func (a *accountObject) SetProfileDetails(details *types.Struct) (err error) {
+func (a *accountObject) SetProfileDetails(details *domain.Details) (err error) {
 	st := a.NewState()
 	// we should set everything in local state, but not everything in the store (this should be filtered in OnPushChange)
-	for key, val := range details.Fields {
-		st.SetDetailAndBundledRelation(domain.RelationKey(key), val)
+	for key, value := range details.Iterate() {
+		st.SetDetailAndBundledRelation(key, value)
 	}
 	return a.Apply(st)
 }
@@ -376,7 +374,7 @@ func (a *accountObject) SetProfileDetails(details *types.Struct) (err error) {
 func (a *accountObject) MigrateIconImage(image string) (err error) {
 	if image != "" {
 		st := a.NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(image))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(image))
 		err = a.Apply(st)
 		if err != nil {
 			return fmt.Errorf("set icon image: %w", err)
