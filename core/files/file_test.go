@@ -13,16 +13,16 @@ import (
 )
 
 func TestFile_Details(t *testing.T) {
+	fx := newFixture(t)
 
 	t.Run("svg details", func(t *testing.T) {
 		// given
-		f := &file{
-			info: &storage.FileInfo{
+		f := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
+			{
 				Media: "svg+xml",
 				Name:  "image.svg",
 			},
-			fileId: domain.FileId("id"),
-		}
+		})
 
 		// when
 		details, typeKey, err := f.Details(context.Background())
@@ -37,12 +37,11 @@ func TestFile_Details(t *testing.T) {
 	})
 	t.Run("general file", func(t *testing.T) {
 		// given
-		f := &file{
-			info: &storage.FileInfo{
+		f := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
+			{
 				Name: "file.txt",
 			},
-			fileId: domain.FileId("id"),
-		}
+		})
 
 		// when
 		details, typeKey, err := f.Details(context.Background())
@@ -57,13 +56,12 @@ func TestFile_Details(t *testing.T) {
 	})
 	t.Run("audio file", func(t *testing.T) {
 		// given
-		f := &file{
-			info: &storage.FileInfo{
+		f := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
+			{
 				Name:  "file.mp3",
 				Media: "audio",
 			},
-			fileId: domain.FileId("id"),
-		}
+		})
 
 		// when
 		details, typeKey, err := f.Details(context.Background())
@@ -78,13 +76,12 @@ func TestFile_Details(t *testing.T) {
 	})
 	t.Run("video file", func(t *testing.T) {
 		// given
-		f := &file{
-			info: &storage.FileInfo{
+		f := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
+			{
 				Name:  "file.mp4",
 				Media: "video",
 			},
-			fileId: domain.FileId("id"),
-		}
+		})
 
 		// when
 		details, typeKey, err := f.Details(context.Background())
@@ -99,13 +96,12 @@ func TestFile_Details(t *testing.T) {
 	})
 	t.Run("pdf file", func(t *testing.T) {
 		// given
-		f := &file{
-			info: &storage.FileInfo{
+		f := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
+			{
 				Name:  "file.pdf",
 				Media: "application/pdf",
 			},
-			fileId: domain.FileId("id"),
-		}
+		})
 
 		// when
 		details, typeKey, err := f.Details(context.Background())

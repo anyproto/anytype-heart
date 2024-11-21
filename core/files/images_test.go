@@ -120,6 +120,8 @@ func TestImageAddReuse(t *testing.T) {
 	require.NoError(t, err)
 	got1.Commit()
 
+	fx.addImageObjectToStore(t, got1)
+
 	f.Seek(0, 0)
 	got2, err := fx.ImageAdd(context.Background(), spaceId, opts...)
 	require.NoError(t, err)

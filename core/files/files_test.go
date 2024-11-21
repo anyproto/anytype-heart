@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/globalsign/mgo/bson"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -18,14 +19,17 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
@@ -321,5 +325,34 @@ func testAddFile(t *testing.T, fx *fixture) *AddResult {
 	got, err := fx.FileAdd(context.Background(), spaceId, opts...)
 	require.NoError(t, err)
 	got.Commit()
+
+	fx.addFileObjectToStore(t, got)
+
 	return got
+}
+
+func (fx *fixture) addFileObjectToStore(t *testing.T, got *AddResult) {
+	fullFileId := domain.FullFileId{
+		SpaceId: spaceId,
+		FileId:  got.FileId,
+	}
+
+	file := NewFile(fx.Service, fullFileId, got.Variants)
+
+	objectId := bson.NewObjectId().Hex()
+	st := state.NewDoc(objectId, nil).(*state.State)
+	st.SetFileInfo(state.FileInfo{
+		FileId:         got.FileId,
+		EncryptionKeys: got.EncryptionKeys.EncryptionKeys,
+	})
+	details, _, err := file.Details(context.Background())
+	require.NoError(t, err)
+
+	st.SetDetails(details)
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(got.FileId))
+	err = filemodels.InjectVariantsToDetails(got.Variants, st)
+	require.NoError(t, err)
+
+	err = fx.objectStore.SpaceIndex(spaceId).UpdateObjectDetails(context.Background(), objectId, st.CombinedDetails())
+	require.NoError(t, err)
 }
