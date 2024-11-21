@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "44f147da7e8233e89bb42533778c305d0735a54238aa2e5ba331a3396145450d"
+const RelationChecksum = "c034a14af3fc7980c46e74d91399e0a624ae73b73976e6b452170c7cfffaee34"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -649,12 +649,14 @@ var (
 			DataSource:       model.Relation_derived,
 			Description:      "Name of profile that the user could be mentioned by",
 			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
 			Id:               "_brglobalName",
 			Key:              "globalName",
 			MaxCount:         1,
 			Name:             "Global name",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyHasChat: {
@@ -1253,12 +1255,14 @@ var (
 			DataSource:       model.Relation_derived,
 			Description:      "Link the profile object to specific Identity",
 			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
 			Id:               "_brprofileOwnerIdentity",
 			Key:              "profileOwnerIdentity",
 			MaxCount:         1,
 			Name:             "Anytype Identity",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyProgress: {
@@ -1321,12 +1325,14 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "",
 			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
 			Id:               "_brrelationDefaultValue",
 			Key:              "relationDefaultValue",
 			MaxCount:         1,
 			Name:             "Default value",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRelationFormat: {
@@ -1375,12 +1381,14 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Relation allows multi values",
 			Format:           model.RelationFormat_number,
+			Hidden:           true,
 			Id:               "_brrelationMaxCount",
 			Key:              "relationMaxCount",
 			MaxCount:         1,
 			Name:             "Max values",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRelationOptionColor: {
@@ -1456,12 +1464,14 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Point to the object types or realtions used to aggregate the set. Empty means object of all types will be aggregated ",
 			Format:           model.RelationFormat_object,
+			Hidden:           true,
 			Id:               "_brsetOf",
 			Key:              "setOf",
 			Name:             "Set of",
 			ObjectTypes:      []string{TypePrefix + "objectType"},
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeySharedSpacesLimit: {
