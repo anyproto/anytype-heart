@@ -7,6 +7,8 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 
+	domain "github.com/anyproto/anytype-heart/core/domain"
+
 	filemodels "github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 
 	fileobject "github.com/anyproto/anytype-heart/core/block/editor/fileobject"

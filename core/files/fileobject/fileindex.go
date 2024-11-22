@@ -12,7 +12,6 @@ import (
 	"github.com/cheggaaa/mb/v3"
 	format "github.com/ipfs/go-ipld-format"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -270,7 +269,7 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 }
 
 func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId, infos []*storage.FileInfo) (details *domain.Details, typeKey domain.TypeKey, err error) {
-	file := fileobject.NewFile(ind.fileService, id, infos)
+	file := files.NewFile(ind.fileService, id, infos)
 
 	if file.Mill() == mill.BlobId {
 		details, typeKey, err = file.Details(ctx)

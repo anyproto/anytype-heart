@@ -103,24 +103,24 @@ func TestSpaceOffload(t *testing.T) {
 
 	fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:               pbtypes.String("fileObjectId1"),
-			bundle.RelationKeySpaceId:          pbtypes.String("space1"),
-			bundle.RelationKeyFileId:           pbtypes.String(fileNode1.Cid().String()),
-			bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
+			bundle.RelationKeyId:               domain.String("fileObjectId1"),
+			bundle.RelationKeySpaceId:          domain.String("space1"),
+			bundle.RelationKeyFileId:           domain.String(fileNode1.Cid().String()),
+			bundle.RelationKeyFileBackupStatus: domain.Int64(int64(filesyncstatus.Synced)),
 		},
 		{
-			bundle.RelationKeyId:               pbtypes.String("fileObjectId2"),
-			bundle.RelationKeySpaceId:          pbtypes.String("space1"),
-			bundle.RelationKeyFileId:           pbtypes.String(fileNode2.Cid().String()),
-			bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
+			bundle.RelationKeyId:               domain.String("fileObjectId2"),
+			bundle.RelationKeySpaceId:          domain.String("space1"),
+			bundle.RelationKeyFileId:           domain.String(fileNode2.Cid().String()),
+			bundle.RelationKeyFileBackupStatus: domain.Int64(int64(filesyncstatus.Synced)),
 		},
 	})
 	fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:               pbtypes.String("fileObjectId3"),
-			bundle.RelationKeySpaceId:          pbtypes.String("space2"),
-			bundle.RelationKeyFileId:           pbtypes.String(fileNode2.Cid().String()),
-			bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
+			bundle.RelationKeyId:               domain.String("fileObjectId3"),
+			bundle.RelationKeySpaceId:          domain.String("space2"),
+			bundle.RelationKeyFileId:           domain.String(fileNode2.Cid().String()),
+			bundle.RelationKeyFileBackupStatus: domain.Int64(int64(filesyncstatus.Synced)),
 		},
 	})
 
