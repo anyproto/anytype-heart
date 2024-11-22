@@ -93,7 +93,6 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 	code := mapErrorCode(err,
 		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectOpenResponseError_OBJECT_DELETED),
 		errToCode(source.ErrUnknownDataFormat, pb.RpcObjectOpenResponseError_ANYTYPE_NEEDS_UPGRADE),
-		errToCode(source.ErrObjectNotFound, pb.RpcObjectOpenResponseError_NOT_FOUND),
 	)
 	return response(code, err)
 }
@@ -121,7 +120,6 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 	code := mapErrorCode(err,
 		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectShowResponseError_OBJECT_DELETED),
 		errToCode(source.ErrUnknownDataFormat, pb.RpcObjectShowResponseError_ANYTYPE_NEEDS_UPGRADE),
-		errToCode(source.ErrObjectNotFound, pb.RpcObjectShowResponseError_NOT_FOUND),
 	)
 	return response(code, err)
 }
@@ -205,7 +203,8 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 				ObjectOrigin:          objectorigin.Clipboard(),
 				ImageKind:             model.ImageKind_AutomaticallyAdded,
 			}
-			if _, err = bs.UploadBlockFile(ctx, req, groupId, false); err != nil {
+			// we shouldn't pass context here because the upload operation can rewrite original paste events
+			if _, err = bs.UploadBlockFile(nil, req, groupId, false); err != nil {
 				return err
 			}
 		}
