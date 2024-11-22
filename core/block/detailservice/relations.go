@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
+	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
 var ErrBundledTypeIsReadonly = fmt.Errorf("can't modify bundled object type")
@@ -68,18 +70,13 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 
 func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {
 	var (
-		mentionsCounter    int64 = 0
-		countersByKeys           = make(map[string]int64)
-		detailHandlesValue       = generateFilter(value)
+		countersByKeys     = make(map[string]int64)
+		detailHandlesValue = generateFilter(value)
 	)
 
 	err := s.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: nil}, func(details *types.Struct) {
 		for key, valueToCheck := range details.Fields {
 			if detailHandlesValue(valueToCheck) {
-				if key == bundle.RelationKeyMentions.String() {
-					mentionsCounter++
-					continue
-				}
 				if counter, ok := countersByKeys[key]; ok {
 					countersByKeys[key] = counter + 1
 				} else {
@@ -94,22 +91,22 @@ func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) ([]
 	}
 
 	keys := maps.Keys(countersByKeys)
-	slices.Sort(keys)
-	list := make([]*pb.RpcRelationListWithValueResponseResponseItem, len(keys))
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i] == bundle.RelationKeyMentions.String() {
+			return true
+		}
+		if keys[j] == bundle.RelationKeyMentions.String() {
+			return false
+		}
+		return keys[i] < keys[j]
+	})
 
+	list := make([]*pb.RpcRelationListWithValueResponseResponseItem, len(keys))
 	for i, key := range keys {
 		list[i] = &pb.RpcRelationListWithValueResponseResponseItem{
 			RelationKey: key,
 			Counter:     countersByKeys[key],
 		}
-	}
-
-	if mentionsCounter > 0 {
-		// we want to put mentions in 1st place, other relations sort alphabetically
-		return append([]*pb.RpcRelationListWithValueResponseResponseItem{{
-			RelationKey: bundle.RelationKeyMentions.String(),
-			Counter:     mentionsCounter,
-		}}, list...), nil
 	}
 
 	return list, nil
@@ -141,27 +138,25 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 		return equalOrHasFilter
 	}
 
+	// date object section
+
 	ts, _, err := dateutil.ParseDateId(stringValue)
 	if err != nil {
 		log.Error("failed to parse Date object id", zap.Error(err))
 		return equalOrHasFilter
 	}
 
-	shortId := dateutil.TimeToDateId(ts, false)
-
-	start, _, err := dateutil.ParseDateId(shortId)
-	if err != nil {
-		log.Error("failed to parse short Date object id", zap.Error(err))
-		return equalOrHasFilter
-	}
+	start := timeutil.CutToDay(ts)
 	end := start.Add(24 * time.Hour)
 	startTimestamp := start.Unix()
 	endTimestamp := end.Unix()
 
+	shortId := dateutil.TimeToDateId(start, false)
+
 	// filter for date objects is able to find relations with values between the borders of queried day
 	// - for relations with number format it checks timestamp value is between timestamps of this day midnights
 	// - for relations carrying string list it checks if some of the strings has day prefix, e.g.
-	// if _date_2023-12-12-08-30-50 is queried, then all relations with prefix _date_2023-12-12 will be returned
+	// if _date_2023-12-12-08-30-50Z-0200 is queried, then all relations with prefix _date_2023-12-12 will be returned
 	return func(v *types.Value) bool {
 		numberValue := int64(v.GetNumberValue())
 		if numberValue >= startTimestamp && numberValue < endTimestamp {
