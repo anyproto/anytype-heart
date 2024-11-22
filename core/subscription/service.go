@@ -343,10 +343,7 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 		Limit:   int(req.Limit),
 	}
 
-	arena := s.arenaPool.Get()
-	defer s.arenaPool.Put(arena)
-
-	f, err := database.NewFilters(q, s.objectStore, arena, &collate.Buffer{})
+	f, err := database.NewFilters(q, s.objectStore, &anyenc.Arena{}, &collate.Buffer{})
 	if err != nil {
 		return nil, fmt.Errorf("new database filters: %w", err)
 	}

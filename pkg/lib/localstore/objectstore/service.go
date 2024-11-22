@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -179,7 +180,7 @@ func (s *dsObjectStore) setDefaultConfig() {
 	if s.anyStoreConfig.SQLiteConnectionOptions == nil {
 		s.anyStoreConfig.SQLiteConnectionOptions = map[string]string{}
 	}
-
+	s.anyStoreConfig.SQLiteConnectionOptions = maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions)
 	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
 }
 
@@ -199,7 +200,7 @@ func ensureDirExists(dir string) error {
 }
 
 func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
-	store, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(ctx, path, &s.anyStoreConfig)
+	store, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(ctx, path, s.getAnyStoreConfig())
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -305,7 +306,7 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 			return spaceindex.NewInvalidStore(err)
 		}
 		store = spaceindex.New(s.componentCtx, spaceId, spaceindex.Deps{
-			AnyStoreConfig: &s.anyStoreConfig,
+			AnyStoreConfig: s.getAnyStoreConfig(),
 			SourceService:  s.sourceService,
 			OldStore:       s.oldStore,
 			Fts:            s.fts,
@@ -316,6 +317,15 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 		s.spaceIndexes[spaceId] = store
 	}
 	return store
+}
+
+func (s *dsObjectStore) getAnyStoreConfig() *anystore.Config {
+	return &anystore.Config{
+		Namespace:               s.anyStoreConfig.Namespace,
+		ReadConnections:         s.anyStoreConfig.ReadConnections,
+		SQLiteConnectionOptions: maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions),
+		SyncPoolElementMaxSize:  s.anyStoreConfig.SyncPoolElementMaxSize,
+	}
 }
 
 func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
@@ -330,10 +340,10 @@ func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
 			return nil
 		}
 		path := filepath.Join(dir, "crdt.db")
-		db, err = anystore.Open(s.componentCtx, path, &s.anyStoreConfig)
+		db, err = anystore.Open(s.componentCtx, path, s.getAnyStoreConfig())
 		if errors.Is(err, anystore.ErrIncompatibleVersion) {
 			_ = os.RemoveAll(path)
-			db, err = anystore.Open(s.componentCtx, path, &s.anyStoreConfig)
+			db, err = anystore.Open(s.componentCtx, path, s.getAnyStoreConfig())
 		}
 		if err != nil {
 			return nil
