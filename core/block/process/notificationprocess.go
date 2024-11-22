@@ -1,6 +1,8 @@
 package process
 
 import (
+	"sync"
+
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -25,8 +27,10 @@ type Notificationable interface {
 
 type notificationProcess struct {
 	*progress
-	notification        *model.Notification
 	notificationService NotificationService
+
+	lock         sync.Mutex
+	notification *model.Notification
 }
 
 func NewNotificationProcess(processMessage pb.IsModelProcessMessage, notificationService NotificationService) Notificationable {
@@ -39,15 +43,27 @@ func NewNotificationProcess(processMessage pb.IsModelProcessMessage, notificatio
 }
 
 func (n *notificationProcess) FinishWithNotification(notification *model.Notification, err error) {
-	n.notification = notification
+	n.setNotification(notification)
 	n.Finish(err)
 }
 
 func (n *notificationProcess) SendNotification() {
-	if n.notification != nil {
-		notificationSendErr := n.notificationService.CreateAndSend(n.notification)
+	if notification := n.getNotification(); notification != nil { // TODO read
+		notificationSendErr := n.notificationService.CreateAndSend(notification)
 		if notificationSendErr != nil {
 			log.Errorf("failed to send notification: %v", notificationSendErr)
 		}
 	}
+}
+
+func (n *notificationProcess) setNotification(notification *model.Notification) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	n.notification = notification
+}
+
+func (n *notificationProcess) getNotification() *model.Notification {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	return n.notification
 }
