@@ -50,8 +50,7 @@ jobs:
           cd ..
           gem install license_finder
           license_finder inherited_decisions add open/decisions.yml
-          go clean -modcache
-          license_finder --enabled-package-managers gomodules
+          GOEXPERIMENT=rangefunc license_finder --enabled-package-managers gomodules
       - name: Generate mocks
         run: |
           make download-tantivy-all
