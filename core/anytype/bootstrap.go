@@ -47,6 +47,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/block/object/idderiver"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
@@ -259,6 +260,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
+		Register(idderiver.New()).
 		Register(deletioncontroller.New()).
 		Register(invitestore.New()).
 		Register(filesync.New()).
