@@ -25,6 +25,7 @@ import (
 const (
 	collectionName = "chats"
 	descOrder      = "-_o.id"
+	ascOrder       = "_o.id"
 )
 
 type StoreObject interface {
@@ -32,13 +33,19 @@ type StoreObject interface {
 	anystoredebug.AnystoreDebug
 
 	AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error)
-	GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
+	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*model.ChatMessage, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
 	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe() error
+}
+
+type GetMessagesRequest struct {
+	AfterOrderId  string
+	BeforeOrderId string
+	Limit         int
 }
 
 type AccountService interface {
@@ -129,20 +136,26 @@ func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string)
 	return messages, txn.Commit()
 }
 
-func (s *storeObject) GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error) {
+func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) ([]*model.ChatMessage, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
 	var msgs []*model.ChatMessage
-	if beforeOrderId != "" {
-		qry := coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, beforeOrderId)}).Sort(descOrder).Limit(uint(limit))
+	if req.AfterOrderId != "" {
+		qry := coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGt, req.AfterOrderId)}).Sort(ascOrder).Limit(uint(req.Limit))
+		msgs, err = s.queryMessages(ctx, qry)
+		if err != nil {
+			return nil, fmt.Errorf("query messages: %w", err)
+		}
+	} else if req.BeforeOrderId != "" {
+		qry := coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, req.BeforeOrderId)}).Sort(descOrder).Limit(uint(req.Limit))
 		msgs, err = s.queryMessages(ctx, qry)
 		if err != nil {
 			return nil, fmt.Errorf("query messages: %w", err)
 		}
 	} else {
-		qry := coll.Find(nil).Sort(descOrder).Limit(uint(limit))
+		qry := coll.Find(nil).Sort(descOrder).Limit(uint(req.Limit))
 		msgs, err = s.queryMessages(ctx, qry)
 		if err != nil {
 			return nil, fmt.Errorf("query messages: %w", err)
