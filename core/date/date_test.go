@@ -36,14 +36,14 @@ func TestBuildDetailsFromTimestamp(t *testing.T) {
 			assert.Equal(t, spaceId, pbtypes.GetString(details, bundle.RelationKeySpaceId.String()))
 			assert.Equal(t, bundle.TypeKeyDate.URL(), pbtypes.GetString(details, bundle.RelationKeyType.String()))
 
-			tt := time.Unix(ts, 0)
-			assert.Equal(t, dateutil.TimeToDateId(tt, false), pbtypes.GetString(details, bundle.RelationKeyId.String()))
-			assert.Equal(t, dateutil.TimeToDateName(tt, false), pbtypes.GetString(details, bundle.RelationKeyName.String()))
+			dateObject := dateutil.NewDateObject(time.Unix(ts, 0), false)
+			assert.Equal(t, dateObject.Id(), pbtypes.GetString(details, bundle.RelationKeyId.String()))
+			assert.Equal(t, dateObject.Name(), pbtypes.GetString(details, bundle.RelationKeyName.String()))
 			ts2 := pbtypes.GetInt64(details, bundle.RelationKeyTimestamp.String())
-			tt2 := time.Unix(ts2, 0)
-			assert.Zero(t, tt2.Hour())
-			assert.Zero(t, tt2.Minute())
-			assert.Zero(t, tt2.Second())
+			tt := time.Unix(ts2, 0)
+			assert.Zero(t, tt.Hour())
+			assert.Zero(t, tt.Minute())
+			assert.Zero(t, tt.Second())
 		})
 	}
 }

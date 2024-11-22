@@ -939,16 +939,16 @@ func TestFilterHasPrefix_FilterObject(t *testing.T) {
 		now := time.Now()
 		f := FilterHasPrefix{
 			Key:    key,
-			Prefix: dateutil.TimeToDateId(now, false), // _date_YYYY-MM-DD
+			Prefix: dateutil.NewDateObject(now, false).Id(), // _date_YYYY-MM-DD
 		}
 		obj1 := &types.Struct{Fields: map[string]*types.Value{
-			key: pbtypes.StringList([]string{"obj2", dateutil.TimeToDateId(now.Add(30*time.Minute), true), "obj3"}), // _date_YYYY-MM-DD-hh-mm-ssZ-zzzz
+			key: pbtypes.StringList([]string{"obj2", dateutil.NewDateObject(now.Add(30*time.Minute), true).Id(), "obj3"}), // _date_YYYY-MM-DD-hh-mm-ssZ-zzzz
 		}}
 		obj2 := &types.Struct{Fields: map[string]*types.Value{
-			key: pbtypes.StringList([]string{dateutil.TimeToDateId(now.Add(24*time.Hour), true), "obj1", "obj3"}), // same format, but next day
+			key: pbtypes.StringList([]string{dateutil.NewDateObject(now.Add(24*time.Hour), true).Id(), "obj1", "obj3"}), // same format, but next day
 		}}
 		obj3 := &types.Struct{Fields: map[string]*types.Value{
-			key: pbtypes.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(30*time.Minute), true)}), // _date_YYYY-MM-DD
+			key: pbtypes.StringList([]string{"obj2", "obj3", dateutil.NewDateObject(now.Add(30*time.Minute), true).Id()}), // _date_YYYY-MM-DD
 		}}
 		assertFilter(t, f, obj1, true)
 		assertFilter(t, f, obj2, false)

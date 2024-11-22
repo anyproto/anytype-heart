@@ -140,18 +140,19 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 
 	// date object section
 
-	ts, _, err := dateutil.ParseDateId(stringValue)
+	dateObject, err := dateutil.BuildDateObjectFromId(stringValue)
 	if err != nil {
 		log.Error("failed to parse Date object id", zap.Error(err))
 		return equalOrHasFilter
 	}
 
-	start := timeutil.CutToDay(ts)
+	start := timeutil.CutToDay(dateObject.Time())
 	end := start.Add(24 * time.Hour)
 	startTimestamp := start.Unix()
 	endTimestamp := end.Unix()
 
-	shortId := dateutil.TimeToDateId(start, false)
+	startDateObject := dateutil.NewDateObject(start, false)
+	shortId := startDateObject.Id()
 
 	// filter for date objects is able to find relations with values between the borders of queried day
 	// - for relations with number format it checks timestamp value is between timestamps of this day midnights
