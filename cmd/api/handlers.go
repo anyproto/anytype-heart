@@ -124,12 +124,6 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 			return
 		}
 
-		typeName, err := a.resolveTypeToName(spaceId, "ot-space")
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve type to name."})
-			return
-		}
-
 		// TODO cleanup image logic
 		// Convert space image or option to base64 string
 		var iconBase64 string
@@ -148,7 +142,7 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 		}
 
 		space := Space{
-			Type:                   typeName,
+			Type:                   "space",
 			ID:                     spaceId,
 			Name:                   record.Fields["name"].GetStringValue(),
 			Icon:                   iconBase64,
@@ -251,14 +245,8 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 
 	members := make([]SpaceMember, 0, len(resp.Records))
 	for _, record := range resp.Records {
-		typeName, err := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve type to name."})
-			return
-		}
-
 		member := SpaceMember{
-			Type:     typeName,
+			Type:     "space_member",
 			ID:       record.Fields["id"].GetStringValue(),
 			Name:     record.Fields["name"].GetStringValue(),
 			Identity: record.Fields["identity"].GetStringValue(),
