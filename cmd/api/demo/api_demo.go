@@ -51,21 +51,21 @@ func main() {
 
 		// spaces
 		// {"POST", "/spaces", nil, map[string]interface{}{"name": "New Space"}},
-		{"GET", "/spaces?limit={limit}&offset={offset}", map[string]interface{}{"limit": 100, "offset": 0}, nil},
-		{"GET", "/spaces/{space_id}/members", map[string]interface{}{"space_id": testSpaceId}, nil},
+		// {"GET", "/spaces?limit={limit}&offset={offset}", map[string]interface{}{"limit": 100, "offset": 0}, nil},
+		// {"GET", "/spaces/{space_id}/members", map[string]interface{}{"space_id": testSpaceId}, nil},
 
 		// space_objects
-		{"GET", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
-		{"GET", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, nil},
-		{"POST", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId}, map[string]interface{}{"name": "New Object"}},
-		{"PUT", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, map[string]interface{}{"name": "Updated Object"}},
+		// {"GET", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
+		// {"GET", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, nil},
+		// {"POST", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId}, map[string]interface{}{"details": map[string]interface{}{"name": "New Object from demo", "iconEmoji": "💥"}, "template_id": "", "object_type_unique_key": "ot-page", "with_chat": false}},
+		// {"PUT", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, map[string]interface{}{"name": "Updated Object"}},
 
 		// types_and_templates
-		{"GET", "/spaces/{space_id}/objectTypes?limit={limit}&offset={offset}", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
-		{"GET", "/spaces/{space_id}/objectTypes/{type_id}/templates", map[string]interface{}{"space_id": testSpaceId, "type_id": testTypeId}, nil},
+		// {"GET", "/spaces/{space_id}/objectTypes?limit={limit}&offset={offset}", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
+		// {"GET", "/spaces/{space_id}/objectTypes/{type_id}/templates", map[string]interface{}{"space_id": testSpaceId, "type_id": testTypeId}, nil},
 
 		// search
-		{"GET", "/objects?search={search}&object_type={object_type}&limit={limit}&offset={offset}", map[string]interface{}{"search": "writing", "object_type": testTypeId, "limit": 100, "offset": 0}, nil},
+		// {"GET", "/objects?search={search}&object_type={object_type}&limit={limit}&offset={offset}", map[string]interface{}{"search": "writing", "object_type": testTypeId, "limit": 100, "offset": 0}, nil},
 	}
 
 	for _, ep := range endpoints {
@@ -102,6 +102,12 @@ func main() {
 			continue
 		}
 		defer resp.Body.Close()
+
+		// Check the status code
+		if resp.StatusCode != http.StatusOK {
+			log.Errorf("Request to %s returned status code %d\n", ep.endpoint, resp.StatusCode)
+			continue
+		}
 
 		// Read the response
 		body, err := io.ReadAll(resp.Body)

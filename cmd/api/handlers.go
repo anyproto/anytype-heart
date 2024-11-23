@@ -19,6 +19,13 @@ type NameRequest struct {
 	Name string `json:"name"`
 }
 
+type CreateObjectRequest struct {
+	Details             map[string]interface{} `json:"details"`
+	TemplateID          string                 `json:"template_id"`
+	ObjectTypeUniqueKey string                 `json:"object_type_unique_key"`
+	WithChat            bool                   `json:"with_chat"`
+}
+
 // authdisplayCodeHandler generates a new challenge and returns the challenge ID
 //
 //	@Summary	Open a modal window with a code in Anytype Desktop app
@@ -394,8 +401,49 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 //	@Router		/spaces/{space_id}/objects [post]
 func (a *ApiServer) createObjectHandler(c *gin.Context) {
 	spaceID := c.Param("space_id")
-	// TODO: Implement logic to create a new object
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet", "space_id": spaceID})
+
+	request := CreateObjectRequest{}
+	if err := c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid JSON"})
+		return
+	}
+
+	resp := a.mw.ObjectCreate(context.Background(), &pb.RpcObjectCreateRequest{
+		Details: &types.Struct{
+			Fields: map[string]*types.Value{
+				"name":      {Kind: &types.Value_StringValue{StringValue: request.Details["name"].(string)}},
+				"iconEmoji": {Kind: &types.Value_StringValue{StringValue: request.Details["iconEmoji"].(string)}},
+			},
+		},
+		// TODO figure out internal flags
+		InternalFlags: []*model.InternalFlag{
+			{Value: model.InternalFlagValue(2)},
+		},
+		TemplateId:          request.TemplateID,
+		SpaceId:             spaceID,
+		ObjectTypeUniqueKey: request.ObjectTypeUniqueKey,
+		WithChat:            request.WithChat,
+	})
+
+	if resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to create a new object."})
+		return
+	}
+
+	object := Object{
+		Type:       "object",
+		ID:         resp.ObjectId,
+		Name:       resp.Details.Fields["name"].GetStringValue(),
+		IconEmoji:  resp.Details.Fields["iconEmoji"].GetStringValue(),
+		ObjectType: request.ObjectTypeUniqueKey,
+		SpaceID:    resp.Details.Fields["spaceId"].GetStringValue(),
+		// TODO populate other fields
+		// RootID:    resp.RootId,
+		// Blocks:    []Block{},
+		// Details: []Detail{},
+	}
+
+	c.JSON(http.StatusOK, gin.H{"object": object})
 }
 
 // updateObjectHandler updates an existing object in a specific space
@@ -462,6 +510,7 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 		objectTypes = append(objectTypes, ObjectType{
 			Type:      "object_type",
 			ID:        record.Fields["id"].GetStringValue(),
+			UniqueKey: record.Fields["uniqueKey"].GetStringValue(),
 			Name:      record.Fields["name"].GetStringValue(),
 			IconEmoji: record.Fields["iconEmoji"].GetStringValue(),
 		})
