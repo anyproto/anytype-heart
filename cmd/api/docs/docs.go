@@ -714,7 +714,7 @@ const docTemplate = `{
                 "text": {
                     "$ref": "#/definitions/api.Text"
                 },
-                "verticalalign": {
+                "vertical_align": {
                     "type": "string"
                 }
             }
@@ -734,7 +734,7 @@ const docTemplate = `{
         "api.File": {
             "type": "object",
             "properties": {
-                "addedat": {
+                "added_at": {
                     "type": "integer"
                 },
                 "hash": {
@@ -755,7 +755,7 @@ const docTemplate = `{
                 "style": {
                     "type": "integer"
                 },
-                "targetobjectid": {
+                "target_object_id": {
                     "type": "string"
                 },
                 "type": {
@@ -799,8 +799,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/api.Detail"
                     }
                 },
-                "iconEmoji": {
-                    "type": "string"
+                "icon_emoji": {
+                    "type": "string",
+                    "example": "📝"
                 },
                 "id": {
                     "type": "string",
@@ -829,14 +830,16 @@ const docTemplate = `{
         "api.ObjectTemplate": {
             "type": "object",
             "properties": {
-                "iconEmoji": {
-                    "type": "string"
+                "icon_emoji": {
+                    "type": "string",
+                    "example": "📝"
                 },
                 "id": {
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Object Template Name"
                 },
                 "type": {
                     "type": "string",
@@ -847,14 +850,16 @@ const docTemplate = `{
         "api.ObjectType": {
             "type": "object",
             "properties": {
-                "iconEmoji": {
-                    "type": "string"
+                "icon_emoji": {
+                    "type": "string",
+                    "example": "📝"
                 },
                 "id": {
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Object Type Name"
                 },
                 "type": {
                     "type": "string",
@@ -898,7 +903,8 @@ const docTemplate = `{
                     "example": "bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya"
                 },
                 "icon": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "data:image/png;base64, \u003cbase64-encoded-image\u003e"
                 },
                 "id": {
                     "type": "string"
@@ -953,7 +959,7 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string",
-                    "example": ""
+                    "example": "Space Member Name"
                 },
                 "role": {
                     "type": "string"
@@ -973,10 +979,10 @@ const docTemplate = `{
                 "color": {
                     "type": "string"
                 },
-                "iconemoji": {
+                "icon_emoji": {
                     "type": "string"
                 },
-                "iconimage": {
+                "icon_image": {
                     "type": "string"
                 },
                 "style": {

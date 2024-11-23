@@ -21,7 +21,7 @@ type CreateSpaceRequest struct {
 
 type CreateObjectRequest struct {
 	Name                string `json:"name"`
-	IconEmoji           string `json:"iconEmoji"`
+	IconEmoji           string `json:"icon_emoji"`
 	TemplateID          string `json:"template_id"`
 	ObjectTypeUniqueKey string `json:"object_type_unique_key"`
 	WithChat            bool   `json:"with_chat"`

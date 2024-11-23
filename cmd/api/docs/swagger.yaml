@@ -18,7 +18,7 @@ definitions:
         $ref: '#/definitions/api.Layout'
       text:
         $ref: '#/definitions/api.Text'
-      verticalalign:
+      vertical_align:
         type: string
     type: object
   api.Detail:
@@ -31,7 +31,7 @@ definitions:
     type: object
   api.File:
     properties:
-      addedat:
+      added_at:
         type: integer
       hash:
         type: string
@@ -45,7 +45,7 @@ definitions:
         type: integer
       style:
         type: integer
-      targetobjectid:
+      target_object_id:
         type: string
       type:
         type: string
@@ -73,7 +73,8 @@ definitions:
         items:
           $ref: '#/definitions/api.Detail'
         type: array
-      iconEmoji:
+      icon_emoji:
+        example: "\U0001F4DD"
         type: string
       id:
         example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
@@ -94,11 +95,13 @@ definitions:
     type: object
   api.ObjectTemplate:
     properties:
-      iconEmoji:
+      icon_emoji:
+        example: "\U0001F4DD"
         type: string
       id:
         type: string
       name:
+        example: Object Template Name
         type: string
       type:
         example: object_template
@@ -106,11 +109,13 @@ definitions:
     type: object
   api.ObjectType:
     properties:
-      iconEmoji:
+      icon_emoji:
+        example: "\U0001F4DD"
         type: string
       id:
         type: string
       name:
+        example: Object Type Name
         type: string
       type:
         example: object_type
@@ -141,6 +146,7 @@ definitions:
         example: bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya
         type: string
       icon:
+        example: data:image/png;base64, <base64-encoded-image>
         type: string
       id:
         type: string
@@ -180,7 +186,7 @@ definitions:
         example: ""
         type: string
       name:
-        example: ""
+        example: Space Member Name
         type: string
       role:
         type: string
@@ -194,9 +200,9 @@ definitions:
         type: boolean
       color:
         type: string
-      iconemoji:
+      icon_emoji:
         type: string
-      iconimage:
+      icon_image:
         type: string
       style:
         type: string

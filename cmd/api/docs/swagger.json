@@ -708,7 +708,7 @@
                 "text": {
                     "$ref": "#/definitions/api.Text"
                 },
-                "verticalalign": {
+                "vertical_align": {
                     "type": "string"
                 }
             }
@@ -728,7 +728,7 @@
         "api.File": {
             "type": "object",
             "properties": {
-                "addedat": {
+                "added_at": {
                     "type": "integer"
                 },
                 "hash": {
@@ -749,7 +749,7 @@
                 "style": {
                     "type": "integer"
                 },
-                "targetobjectid": {
+                "target_object_id": {
                     "type": "string"
                 },
                 "type": {
@@ -793,8 +793,9 @@
                         "$ref": "#/definitions/api.Detail"
                     }
                 },
-                "iconEmoji": {
-                    "type": "string"
+                "icon_emoji": {
+                    "type": "string",
+                    "example": "📝"
                 },
                 "id": {
                     "type": "string",
@@ -823,14 +824,16 @@
         "api.ObjectTemplate": {
             "type": "object",
             "properties": {
-                "iconEmoji": {
-                    "type": "string"
+                "icon_emoji": {
+                    "type": "string",
+                    "example": "📝"
                 },
                 "id": {
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Object Template Name"
                 },
                 "type": {
                     "type": "string",
@@ -841,14 +844,16 @@
         "api.ObjectType": {
             "type": "object",
             "properties": {
-                "iconEmoji": {
-                    "type": "string"
+                "icon_emoji": {
+                    "type": "string",
+                    "example": "📝"
                 },
                 "id": {
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Object Type Name"
                 },
                 "type": {
                     "type": "string",
@@ -892,7 +897,8 @@
                     "example": "bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya"
                 },
                 "icon": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "data:image/png;base64, \u003cbase64-encoded-image\u003e"
                 },
                 "id": {
                     "type": "string"
@@ -947,7 +953,7 @@
                 },
                 "name": {
                     "type": "string",
-                    "example": ""
+                    "example": "Space Member Name"
                 },
                 "role": {
                     "type": "string"
@@ -967,10 +973,10 @@
                 "color": {
                     "type": "string"
                 },
-                "iconemoji": {
+                "icon_emoji": {
                     "type": "string"
                 },
-                "iconimage": {
+                "icon_image": {
                     "type": "string"
                 },
                 "style": {

@@ -57,7 +57,7 @@ func main() {
 		// space_objects
 		// {"GET", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
 		// {"GET", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, nil},
-		{"POST", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId}, map[string]interface{}{"name": "New Object from demo", "iconEmoji": "💥", "template_id": "", "object_type_unique_key": "ot-page", "with_chat": false}},
+		{"POST", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId}, map[string]interface{}{"name": "New Object from demo", "icon_emoji": "💥", "template_id": "", "object_type_unique_key": "ot-page", "with_chat": false}},
 		// {"PUT", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, map[string]interface{}{"name": "Updated Object"}},
 
 		// types_and_templates
