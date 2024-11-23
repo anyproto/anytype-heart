@@ -139,10 +139,15 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Total objects and object list",
+                        "description": "List of objects",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": true
+                            "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/api.Object"
+                                }
+                            }
                         }
                     },
                     "403": {
@@ -349,10 +354,12 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Total and object types",
+                        "description": "List of object types",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": true
+                            "additionalProperties": {
+                                "$ref": "#/definitions/api.ObjectType"
+                            }
                         }
                     },
                     "403": {
@@ -474,10 +481,15 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Total objects and object list",
+                        "description": "List of objects",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": true
+                            "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/api.Object"
+                                }
+                            }
                         }
                     },
                     "403": {
@@ -829,6 +841,27 @@ const docTemplate = `{
                 "type": {
                     "type": "string",
                     "example": "object_template"
+                }
+            }
+        },
+        "api.ObjectType": {
+            "type": "object",
+            "properties": {
+                "iconEmoji": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "object_type"
+                },
+                "unique_key": {
+                    "type": "string"
                 }
             }
         },

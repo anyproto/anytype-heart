@@ -104,6 +104,20 @@ definitions:
         example: object_template
         type: string
     type: object
+  api.ObjectType:
+    properties:
+      iconEmoji:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        example: object_type
+        type: string
+      unique_key:
+        type: string
+    type: object
   api.ServerError:
     properties:
       error:
@@ -298,9 +312,12 @@ paths:
       - application/json
       responses:
         "200":
-          description: Total objects and object list
+          description: List of objects
           schema:
-            additionalProperties: true
+            additionalProperties:
+              items:
+                $ref: '#/definitions/api.Object'
+              type: array
             type: object
         "403":
           description: Unauthorized
@@ -438,9 +455,10 @@ paths:
       - application/json
       responses:
         "200":
-          description: Total and object types
+          description: List of object types
           schema:
-            additionalProperties: true
+            additionalProperties:
+              $ref: '#/definitions/api.ObjectType'
             type: object
         "403":
           description: Unauthorized
@@ -522,9 +540,12 @@ paths:
       - application/json
       responses:
         "200":
-          description: Total objects and object list
+          description: List of objects
           schema:
-            additionalProperties: true
+            additionalProperties:
+              items:
+                $ref: '#/definitions/api.Object'
+              type: array
             type: object
         "403":
           description: Unauthorized

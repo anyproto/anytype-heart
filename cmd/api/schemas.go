@@ -87,6 +87,7 @@ type RelationLink struct {
 type ObjectType struct {
 	Type      string `json:"type" example:"object_type"`
 	ID        string `json:"id"`
+	UniqueKey string `json:"unique_key"`
 	Name      string `json:"name"`
 	IconEmoji string `json:"iconEmoji"`
 }

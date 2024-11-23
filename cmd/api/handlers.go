@@ -15,15 +15,16 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-type NameRequest struct {
+type CreateSpaceRequest struct {
 	Name string `json:"name"`
 }
 
 type CreateObjectRequest struct {
-	Details             map[string]interface{} `json:"details"`
-	TemplateID          string                 `json:"template_id"`
-	ObjectTypeUniqueKey string                 `json:"object_type_unique_key"`
-	WithChat            bool                   `json:"with_chat"`
+	Name                string `json:"name"`
+	IconEmoji           string `json:"iconEmoji"`
+	TemplateID          string `json:"template_id"`
+	ObjectTypeUniqueKey string `json:"object_type_unique_key"`
+	WithChat            bool   `json:"with_chat"`
 }
 
 // authdisplayCodeHandler generates a new challenge and returns the challenge ID
@@ -54,7 +55,7 @@ func (a *ApiServer) authDisplayCodeHandler(c *gin.Context) {
 //	@Accept				json
 //	@Produce			json
 //	@Param				code	query		string				true	"The code retrieved from Anytype Desktop app"
-//	@ParamchallengeId	query																																																																										string								true	"The challenge ID"
+//	@ParamchallengeId	query																																																																																								string								true	"The challenge ID"
 //	@Success			200		{object}	map[string]string	"Access and refresh tokens"
 //	@Failure			400		{object}	ValidationError		"Invalid input"
 //	@Failure			502		{object}	ServerError			"Internal server error"
@@ -177,7 +178,7 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 //	@Router		/spaces [post]
 func (a *ApiServer) createSpaceHandler(c *gin.Context) {
 	// Create new workspace with a random icon and import default usecase
-	nameRequest := NameRequest{}
+	nameRequest := CreateSpaceRequest{}
 	if err := c.BindJSON(&nameRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid JSON"})
 		return
@@ -268,7 +269,7 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 //	@Param		space_id	path		string					true	"The ID of the space"
 //	@Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
 //	@Param		limit		query		int						false	"The number of items to return"	default(100)
-//	@Success	200			{object}	map[string]interface{}	"Total objects and object list"
+//	@Success	200			{object}	map[string][]Object	 "List of objects"
 //	@Failure	403			{object}	UnauthorizedError		"Unauthorized"
 //	@Failure	404			{object}	NotFoundError			"Resource not found"
 //	@Failure	502			{object}	ServerError				"Internal server error"
@@ -399,8 +400,8 @@ func (a *ApiServer) createObjectHandler(c *gin.Context) {
 	resp := a.mw.ObjectCreate(context.Background(), &pb.RpcObjectCreateRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
-				"name":      {Kind: &types.Value_StringValue{StringValue: request.Details["name"].(string)}},
-				"iconEmoji": {Kind: &types.Value_StringValue{StringValue: request.Details["iconEmoji"].(string)}},
+				"name":      {Kind: &types.Value_StringValue{StringValue: request.Name}},
+				"iconEmoji": {Kind: &types.Value_StringValue{StringValue: request.IconEmoji}},
 			},
 		},
 		// TODO figure out internal flags
@@ -464,7 +465,7 @@ func (a *ApiServer) updateObjectHandler(c *gin.Context) {
 //	@Param		space_id	path		string					true	"The ID of the space"
 //	@Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
 //	@Param		limit		query		int						false	"The number of items to return"	default(100)
-//	@Success	200			{object}	map[string]interface{}	"Total and object types"
+//	@Success	200			{object}	map[string]ObjectType	"List of object types"
 //	@Failure	403			{object}	UnauthorizedError		"Unauthorized"
 //	@Failure	404			{object}	NotFoundError			"Resource not found"
 //	@Failure	502			{object}	ServerError				"Internal server error"
@@ -597,13 +598,13 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 //	@Tags		search
 //	@Accept		json
 //	@Produce	json
-//	@Param		search		query		string					false	"The search term to filter objects by name"
-//	@Param		object_type	query		string					false	"Specify object type for search"
-//	@Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int						false	"The number of items to return"	default(100)
-//	@Success	200			{object}	map[string]interface{}	"Total objects and object list"
-//	@Failure	403			{object}	UnauthorizedError		"Unauthorized"
-//	@Failure	502			{object}	ServerError				"Internal server error"
+//	@Param		search		query		string				false	"The search term to filter objects by name"
+//	@Param		object_type	query		string				false	"Specify object type for search"
+//	@Param		offset		query		int					false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int					false	"The number of items to return"	default(100)
+//	@Success	200			{object}	map[string][]Object	"List of objects"
+//	@Failure	403			{object}	UnauthorizedError	"Unauthorized"
+//	@Failure	502			{object}	ServerError			"Internal server error"
 //	@Router		/objects [get]
 func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	searchTerm := c.Query("search")
