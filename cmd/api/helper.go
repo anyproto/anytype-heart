@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -91,11 +90,7 @@ func (a *ApiServer) imageToBase64(imagePath string) (string, error) {
 
 // Determine gateway port based on the current process ID
 func (a *ApiServer) getGatewayURL(icon string) string {
-	pid := fmt.Sprintf("%d", os.Getpid())
-	if ports, ok := a.ports[pid]; ok && len(ports) > 1 {
-		return fmt.Sprintf("http://127.0.0.1:%s/image/%s?width=100", ports[1], icon)
-	}
-	return ""
+	return fmt.Sprintf("%s/image/%s?width=100", a.accountInfo.GatewayUrl, icon)
 }
 
 func (a *ApiServer) resolveTypeToName(spaceId string, typeId string) (string, *pb.RpcObjectSearchResponseError) {

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -22,12 +23,14 @@ const (
 )
 
 type ApiServer struct {
-	mw          service.ClientCommandsServer
-	mwInternal  core.MiddlewareInternal
-	router      *gin.Engine
-	server      *http.Server
-	accountInfo model.AccountInfo
-	ports       map[string][]string
+	mw         service.ClientCommandsServer
+	mwInternal core.MiddlewareInternal
+	router     *gin.Engine
+	server     *http.Server
+
+	// init after app start
+	app         *app.App
+	accountInfo *model.AccountInfo
 }
 
 // TODO: User represents an authenticated user with permissions
@@ -38,10 +41,9 @@ type User struct {
 
 func newApiServer(mw service.ClientCommandsServer, mwInternal core.MiddlewareInternal) *ApiServer {
 	a := &ApiServer{
-		mw:          mw,
-		mwInternal:  mwInternal,
-		router:      gin.New(),
-		accountInfo: model.AccountInfo{},
+		mw:         mw,
+		mwInternal: mwInternal,
+		router:     gin.New(),
 	}
 
 	a.server = &http.Server{
@@ -71,8 +73,7 @@ func newApiServer(mw service.ClientCommandsServer, mwInternal core.MiddlewareInt
 //	@externalDocs.url			https://swagger.io/resources/open-api/
 func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwInternal core.MiddlewareInternal) {
 	a := newApiServer(mw, mwInternal)
-	a.router.Use(a.AccountInfoMiddleware())
-	a.router.Use(a.PortsMiddleware())
+	a.router.Use(a.initAccountInfo())
 
 	// Swagger route
 	a.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

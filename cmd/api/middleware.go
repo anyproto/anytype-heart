@@ -2,38 +2,34 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 )
 
-// AccountInfoMiddleware retrieves the account information from the middleware service
-func (a *ApiServer) AccountInfoMiddleware() gin.HandlerFunc {
+// initAccountInfo retrieves the account information from the account service
+func (a *ApiServer) initAccountInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if a.accountInfo.TechSpaceId == "" {
-			accountInfo, err := a.mwInternal.GetAccountInfo(context.Background())
-			if err != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to get account info"})
+		if a.app == nil && a.accountInfo == nil {
+			app := a.mwInternal.GetApp()
+			if app == nil {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to get app instance"})
 				return
 			}
-			a.accountInfo = *accountInfo
-		}
-		c.Next()
-	}
-}
 
-// PortsMiddleware retrieves the open ports from the middleware service
-func (a *ApiServer) PortsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if len(a.ports) == 0 {
-			ports, err := getPorts()
+			accInfo, err := app.Component(account.CName).(account.Service).GetInfo(context.Background())
 			if err != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to get open ports"})
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to get account info: %v", err)})
 				return
 			}
-			a.ports = ports
+
+			a.app = app
+			a.accountInfo = accInfo
+			c.Next()
 		}
-		c.Next()
 	}
 }
 

@@ -26,6 +26,7 @@ var (
 )
 
 type MiddlewareInternal interface {
+	GetApp() *app.App
 	GetAccountInfo(ctx context.Context) (*model.AccountInfo, error)
 }
 
