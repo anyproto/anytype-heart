@@ -22,12 +22,12 @@ type CreateSpaceRequest struct {
 type CreateObjectRequest struct {
 	Name                string `json:"name"`
 	IconEmoji           string `json:"icon_emoji"`
-	TemplateID          string `json:"template_id"`
+	TemplateId          string `json:"template_id"`
 	ObjectTypeUniqueKey string `json:"object_type_unique_key"`
 	WithChat            bool   `json:"with_chat"`
 }
 
-// authdisplayCodeHandler generates a new challenge and returns the challenge ID
+// authdisplayCodeHandler generates a new challenge and returns the challenge Id
 //
 //	@Summary	Open a modal window with a code in Anytype Desktop app
 //	@Tags		auth
@@ -50,16 +50,16 @@ func (a *ApiServer) authDisplayCodeHandler(c *gin.Context) {
 
 // authTokenHandler retrieves an authentication token using a code and challenge ID
 //
-//	@Summary			Retrieve an authentication token using a code
-//	@Tags				auth
-//	@Accept				json
-//	@Produce			json
-//	@Param				code	query		string				true	"The code retrieved from Anytype Desktop app"
-//	@ParamchallengeId	query																																																																																								string								true	"The challenge ID"
-//	@Success			200		{object}	map[string]string	"Access and refresh tokens"
-//	@Failure			400		{object}	ValidationError		"Invalid input"
-//	@Failure			502		{object}	ServerError			"Internal server error"
-//	@Router				/auth/token [get]
+//	@Summary	Retrieve an authentication token using a code
+//	@Tags		auth
+//	@Accept		json
+//	@Produce	json
+//	@Param		code		query		string				true	"The code retrieved from Anytype Desktop app"
+//	@Param		challengeId	query		string				true	"The challenge ID"
+//	@Success	200			{object}	map[string]string	"Access and refresh tokens"
+//	@Failure	400			{object}	ValidationError		"Invalid input"
+//	@Failure	502			{object}	ServerError			"Internal server error"
+//	@Router		/auth/token [get]
 func (a *ApiServer) authTokenHandler(c *gin.Context) {
 	// Call AccountLocalLinkSolveChallenge to retrieve session token and app key
 	resp := a.mw.AccountLocalLinkSolveChallenge(context.Background(), &pb.RpcAccountLocalLinkSolveChallengeRequest{
@@ -155,20 +155,20 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 
 		space := Space{
 			Type:                   "space",
-			ID:                     spaceId,
+			Id:                     spaceId,
 			Name:                   record.Fields["name"].GetStringValue(),
 			Icon:                   iconBase64,
-			HomeObjectID:           record.Fields["spaceDashboardId"].GetStringValue(),
-			ArchiveObjectID:        workspaceResponse.Info.ArchiveObjectId,
-			ProfileObjectID:        workspaceResponse.Info.ProfileObjectId,
-			MarketplaceWorkspaceID: workspaceResponse.Info.MarketplaceWorkspaceId,
-			DeviceID:               workspaceResponse.Info.DeviceId,
-			AccountSpaceID:         workspaceResponse.Info.AccountSpaceId,
-			WidgetsID:              workspaceResponse.Info.WidgetsId,
-			SpaceViewID:            workspaceResponse.Info.SpaceViewId,
-			TechSpaceID:            a.accountInfo.TechSpaceId,
+			HomeObjectId:           record.Fields["spaceDashboardId"].GetStringValue(),
+			ArchiveObjectId:        workspaceResponse.Info.ArchiveObjectId,
+			ProfileObjectId:        workspaceResponse.Info.ProfileObjectId,
+			MarketplaceWorkspaceId: workspaceResponse.Info.MarketplaceWorkspaceId,
+			DeviceId:               workspaceResponse.Info.DeviceId,
+			AccountSpaceId:         workspaceResponse.Info.AccountSpaceId,
+			WidgetsId:              workspaceResponse.Info.WidgetsId,
+			SpaceViewId:            workspaceResponse.Info.SpaceViewId,
+			TechSpaceId:            a.accountInfo.TechSpaceId,
 			Timezone:               workspaceResponse.Info.TimeZone,
-			NetworkID:              workspaceResponse.Info.NetworkId,
+			NetworkId:              workspaceResponse.Info.NetworkId,
 		}
 		spaces = append(spaces, space)
 	}
@@ -277,7 +277,7 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 
 		member := SpaceMember{
 			Type:       "space_member",
-			ID:         record.Fields["id"].GetStringValue(),
+			Id:         record.Fields["id"].GetStringValue(),
 			Name:       record.Fields["name"].GetStringValue(),
 			Icon:       iconBase64,
 			Identity:   record.Fields["identity"].GetStringValue(),
@@ -297,22 +297,22 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 //	@Tags		space_objects
 //	@Accept		json
 //	@Produce	json
-//	@Param		space_id	path		string					true	"The ID of the space"
-//	@Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int						false	"The number of items to return"	default(100)
-//	@Success	200			{object}	map[string][]Object	 "List of objects"
-//	@Failure	403			{object}	UnauthorizedError		"Unauthorized"
-//	@Failure	404			{object}	NotFoundError			"Resource not found"
-//	@Failure	502			{object}	ServerError				"Internal server error"
+//	@Param		space_id	path		string				true	"The ID of the space"
+//	@Param		offset		query		int					false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int					false	"The number of items to return"	default(100)
+//	@Success	200			{object}	map[string][]Object	"List of objects"
+//	@Failure	403			{object}	UnauthorizedError	"Unauthorized"
+//	@Failure	404			{object}	NotFoundError		"Resource not found"
+//	@Failure	502			{object}	ServerError			"Internal server error"
 //	@Router		/spaces/{space_id}/objects [get]
 func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
-	spaceID := c.Param("space_id")
+	spaceId := c.Param("space_id")
 	// TODO: implement offset and limit
 	// offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	// limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
 
 	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
-		SpaceId: spaceID,
+		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -335,7 +335,7 @@ func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 
 	objects := make([]Object, 0, len(resp.Records))
 	for _, record := range resp.Records {
-		objectTypeName, err := a.resolveTypeToName(spaceID, record.Fields["type"].GetStringValue())
+		objectTypeName, err := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve object type name."})
 			return
@@ -344,17 +344,17 @@ func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 		object := Object{
 			// TODO fix type inconsistency
 			Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
-			ID:         record.Fields["id"].GetStringValue(),
+			Id:         record.Fields["id"].GetStringValue(),
 			Name:       record.Fields["name"].GetStringValue(),
 			IconEmoji:  record.Fields["iconEmoji"].GetStringValue(),
 			ObjectType: objectTypeName,
-			SpaceID:    spaceID,
+			SpaceId:    spaceId,
 			// TODO: populate other fields
-			// RootID:     record.Fields["rootId"].GetStringValue(),
+			// RootId:     record.Fields["rootId"].GetStringValue(),
 			// Blocks:  []Block{},
 			Details: []Detail{
 				{
-					ID: "lastModifiedDate",
+					Id: "lastModifiedDate",
 					Details: map[string]interface{}{
 						"lastModifiedDate": record.Fields["lastModifiedDate"].GetNumberValue(),
 					},
@@ -382,24 +382,24 @@ func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 //	@Failure	502			{object}	ServerError			"Internal server error"
 //	@Router		/spaces/{space_id}/objects/{object_id} [get]
 func (a *ApiServer) getObjectHandler(c *gin.Context) {
-	spaceID := c.Param("space_id")
-	objectID := c.Param("object_id")
+	spaceId := c.Param("space_id")
+	objectId := c.Param("object_id")
 
 	resp := a.mw.ObjectOpen(context.Background(), &pb.RpcObjectOpenRequest{
-		SpaceId:  spaceID,
-		ObjectId: objectID,
+		SpaceId:  spaceId,
+		ObjectId: objectId,
 	})
 
 	if resp.Error.Code != pb.RpcObjectOpenResponseError_NULL {
 		if resp.Error.Code == pb.RpcObjectOpenResponseError_NOT_FOUND {
-			c.JSON(http.StatusNotFound, gin.H{"message": "Object not found", "space_id": spaceID, "object_id": objectID})
+			c.JSON(http.StatusNotFound, gin.H{"message": "Object not found", "space_id": spaceId, "object_id": objectId})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve object."})
 		return
 	}
 
-	objectTypeName, err := a.resolveTypeToName(spaceID, resp.ObjectView.Details[0].Details.Fields["type"].GetStringValue())
+	objectTypeName, err := a.resolveTypeToName(spaceId, resp.ObjectView.Details[0].Details.Fields["type"].GetStringValue())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve object type name."})
 		return
@@ -407,11 +407,11 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 
 	object := Object{
 		Type:       "object",
-		ID:         objectID,
+		Id:         objectId,
 		Name:       resp.ObjectView.Details[0].Details.Fields["name"].GetStringValue(),
 		IconEmoji:  resp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(),
 		ObjectType: objectTypeName,
-		RootID:     resp.ObjectView.RootId,
+		RootId:     resp.ObjectView.RootId,
 		// TODO: populate other fields
 		Blocks:  []Block{},
 		Details: []Detail{},
@@ -433,7 +433,7 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 //	@Failure	502			{object}	ServerError			"Internal server error"
 //	@Router		/spaces/{space_id}/objects [post]
 func (a *ApiServer) createObjectHandler(c *gin.Context) {
-	spaceID := c.Param("space_id")
+	spaceId := c.Param("space_id")
 
 	request := CreateObjectRequest{}
 	if err := c.BindJSON(&request); err != nil {
@@ -452,8 +452,8 @@ func (a *ApiServer) createObjectHandler(c *gin.Context) {
 		InternalFlags: []*model.InternalFlag{
 			{Value: model.InternalFlagValue(2)},
 		},
-		TemplateId:          request.TemplateID,
-		SpaceId:             spaceID,
+		TemplateId:          request.TemplateId,
+		SpaceId:             spaceId,
 		ObjectTypeUniqueKey: request.ObjectTypeUniqueKey,
 		WithChat:            request.WithChat,
 	})
@@ -465,13 +465,13 @@ func (a *ApiServer) createObjectHandler(c *gin.Context) {
 
 	object := Object{
 		Type:       "object",
-		ID:         resp.ObjectId,
+		Id:         resp.ObjectId,
 		Name:       resp.Details.Fields["name"].GetStringValue(),
 		IconEmoji:  resp.Details.Fields["iconEmoji"].GetStringValue(),
 		ObjectType: request.ObjectTypeUniqueKey,
-		SpaceID:    resp.Details.Fields["spaceId"].GetStringValue(),
+		SpaceId:    resp.Details.Fields["spaceId"].GetStringValue(),
 		// TODO populate other fields
-		// RootID:    resp.RootId,
+		// RootId:    resp.RootId,
 		// Blocks:    []Block{},
 		// Details: []Detail{},
 	}
@@ -494,10 +494,10 @@ func (a *ApiServer) createObjectHandler(c *gin.Context) {
 //	@Failure	502			{object}	ServerError			"Internal server error"
 //	@Router		/spaces/{space_id}/objects/{object_id} [put]
 func (a *ApiServer) updateObjectHandler(c *gin.Context) {
-	spaceID := c.Param("space_id")
-	objectID := c.Param("object_id")
+	spaceId := c.Param("space_id")
+	objectId := c.Param("object_id")
 	// TODO: Implement logic to update an existing object
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet", "space_id": spaceID, "object_id": objectID})
+	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet", "space_id": spaceId, "object_id": objectId})
 }
 
 // getObjectTypesHandler retrieves object types in a specific space
@@ -506,7 +506,7 @@ func (a *ApiServer) updateObjectHandler(c *gin.Context) {
 //	@Tags		types_and_templates
 //	@Accept		json
 //	@Produce	json
-//	@Param		space_id	path		string					true	"The ID of the space"
+//	@Param		space_id	path		string					true	"The Id of the space"
 //	@Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
 //	@Param		limit		query		int						false	"The number of items to return"	default(100)
 //	@Success	200			{object}	map[string]ObjectType	"List of object types"
@@ -515,10 +515,10 @@ func (a *ApiServer) updateObjectHandler(c *gin.Context) {
 //	@Failure	502			{object}	ServerError				"Internal server error"
 //	@Router		/spaces/{space_id}/objectTypes [get]
 func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
-	spaceID := c.Param("space_id")
+	spaceId := c.Param("space_id")
 
 	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
-		SpaceId: spaceID,
+		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -548,7 +548,7 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 	for _, record := range resp.Records {
 		objectTypes = append(objectTypes, ObjectType{
 			Type:      "object_type",
-			ID:        record.Fields["id"].GetStringValue(),
+			Id:        record.Fields["id"].GetStringValue(),
 			UniqueKey: record.Fields["uniqueKey"].GetStringValue(),
 			Name:      record.Fields["name"].GetStringValue(),
 			IconEmoji: record.Fields["iconEmoji"].GetStringValue(),
@@ -572,12 +572,12 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 //	@Failure	502			{object}	ServerError					"Internal server error"
 //	@Router		/spaces/{space_id}/objectTypes/{typeId}/templates [get]
 func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
-	spaceID := c.Param("space_id")
-	typeID := c.Param("typeId")
+	spaceId := c.Param("space_id")
+	typeId := c.Param("typeId")
 
 	// First, determine the type Id of "ot-template" in the space
 	templateTypeIdResp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
-		SpaceId: spaceID,
+		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
@@ -592,16 +592,16 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 		return
 	}
 
-	templateTypeID := templateTypeIdResp.Records[0].Fields["id"].GetStringValue()
+	templateTypeId := templateTypeIdResp.Records[0].Fields["id"].GetStringValue()
 
 	// Then, search all objects of the template type and filter by the target object type
 	templateObjectsResp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
-		SpaceId: spaceID,
+		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(templateTypeID),
+				Value:       pbtypes.String(templateTypeId),
 			},
 		},
 	})
@@ -613,7 +613,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 
 	templateIds := make([]string, 0)
 	for _, record := range templateObjectsResp.Records {
-		if record.Fields["targetObjectType"].GetStringValue() == typeID {
+		if record.Fields["targetObjectType"].GetStringValue() == typeId {
 			templateIds = append(templateIds, record.Fields["id"].GetStringValue())
 		}
 	}
@@ -622,7 +622,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 	templates := make([]ObjectTemplate, 0, len(templateIds))
 	for _, templateId := range templateIds {
 		templateResp := a.mw.ObjectOpen(context.Background(), &pb.RpcObjectOpenRequest{
-			SpaceId:  spaceID,
+			SpaceId:  spaceId,
 			ObjectId: templateId,
 		})
 
@@ -633,7 +633,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 
 		templates = append(templates, ObjectTemplate{
 			Type:      "object_template",
-			ID:        templateId,
+			Id:        templateId,
 			Name:      templateResp.ObjectView.Details[0].Details.Fields["name"].GetStringValue(),
 			IconEmoji: templateResp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(),
 		})
@@ -728,8 +728,9 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 
 	searchResults := make([]Object, 0)
 	for _, spaceRecord := range resp.Records {
+		spaceId := spaceRecord.Fields["targetSpaceId"].GetStringValue()
 		objectSearchResponse := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
-			SpaceId: spaceRecord.Fields["targetSpaceId"].GetStringValue(),
+			SpaceId: spaceId,
 			Filters: filters,
 			Sorts: []*model.BlockContentDataviewSort{{
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
@@ -738,7 +739,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 		})
 
 		for _, record := range objectSearchResponse.Records {
-			objectTypeName, err := a.resolveTypeToName(spaceRecord.Fields["targetSpaceId"].GetStringValue(), record.Fields["type"].GetStringValue())
+			objectTypeName, err := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve type to name."})
 				return
@@ -746,16 +747,17 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 
 			searchResults = append(searchResults, Object{
 				Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
-				ID:         record.Fields["id"].GetStringValue(),
+				Id:         record.Fields["id"].GetStringValue(),
 				Name:       record.Fields["name"].GetStringValue(),
 				IconEmoji:  record.Fields["iconEmoji"].GetStringValue(),
 				ObjectType: objectTypeName,
+				SpaceId:    spaceId,
 				// TODO: populate other fields
-				// RootID:     record.Fields["rootId"].GetStringValue(),
+				// RootId:     record.Fields["rootId"].GetStringValue(),
 				// Blocks:     []Block{},
 				Details: []Detail{
 					{
-						ID: "lastModifiedDate",
+						Id: "lastModifiedDate",
 						Details: map[string]interface{}{
 							"lastModifiedDate": record.Fields["lastModifiedDate"].GetNumberValue(),
 						},

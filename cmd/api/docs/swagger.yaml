@@ -185,6 +185,12 @@ definitions:
     type: object
   api.SpaceMember:
     properties:
+      global_name:
+        example: john.any
+        type: string
+      icon:
+        example: data:image/png;base64, <base64-encoded-image>
+        type: string
       id:
         example: _participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ
         type: string
@@ -192,10 +198,10 @@ definitions:
         example: AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ
         type: string
       name:
-        example: Space Member Name
+        example: John Doe
         type: string
       role:
-        example: editor
+        example: Owner
         type: string
       type:
         example: space_member
@@ -276,6 +282,11 @@ paths:
       - description: The code retrieved from Anytype Desktop app
         in: query
         name: code
+        required: true
+        type: string
+      - description: The challenge ID
+        in: query
+        name: challengeId
         required: true
         type: string
       produces:
@@ -449,7 +460,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: The ID of the space
+      - description: The Id of the space
         in: path
         name: space_id
         required: true
