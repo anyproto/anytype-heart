@@ -106,6 +106,12 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
 			},
 		},
+		Sorts: []*model.BlockContentDataviewSort{
+			{
+				RelationKey: "name",
+				Type:        model.BlockContentDataviewSort_Asc,
+			},
+		},
 	})
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of spaces."})
@@ -237,6 +243,12 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
 			},
 		},
+		Sorts: []*model.BlockContentDataviewSort{
+			{
+				RelationKey: "name",
+				Type:        model.BlockContentDataviewSort_Asc,
+			},
+		},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -304,12 +316,19 @@ func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 
 	objects := make([]Object, 0, len(resp.Records))
 	for _, record := range resp.Records {
+		objectTypeName, err := a.resolveTypeToName(spaceID, record.Fields["type"].GetStringValue())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve object type name."})
+			return
+		}
+
 		object := Object{
+			// TODO fix type inconsistency
 			Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
 			ID:         record.Fields["id"].GetStringValue(),
 			Name:       record.Fields["name"].GetStringValue(),
 			IconEmoji:  record.Fields["iconEmoji"].GetStringValue(),
-			ObjectType: record.Fields["type"].GetStringValue(),
+			ObjectType: objectTypeName,
 			SpaceID:    spaceID,
 			// TODO: populate other fields
 			// RootID:     record.Fields["rootId"].GetStringValue(),
@@ -361,12 +380,18 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 		return
 	}
 
+	objectTypeName, err := a.resolveTypeToName(spaceID, resp.ObjectView.Details[0].Details.Fields["type"].GetStringValue())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve object type name."})
+		return
+	}
+
 	object := Object{
 		Type:       "object",
 		ID:         objectID,
 		Name:       resp.ObjectView.Details[0].Details.Fields["name"].GetStringValue(),
 		IconEmoji:  resp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(),
-		ObjectType: resp.ObjectView.Details[0].Details.Fields["type"].GetStringValue(),
+		ObjectType: objectTypeName,
 		RootID:     resp.ObjectView.RootId,
 		// TODO: populate other fields
 		Blocks:  []Block{},
@@ -484,7 +509,13 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 			{
 				RelationKey: bundle.RelationKeyIsHidden.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String("true"),
+				Value:       pbtypes.Bool(true),
+			},
+		},
+		Sorts: []*model.BlockContentDataviewSort{
+			{
+				RelationKey: "name",
+				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
 	})
@@ -651,7 +682,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 		{
 			RelationKey: bundle.RelationKeyIsHidden.String(),
 			Condition:   model.BlockContentDataviewFilter_NotEqual,
-			Value:       pbtypes.String("true"),
+			Value:       pbtypes.Bool(true),
 		},
 		{
 			RelationKey: bundle.RelationKeyName.String(),
