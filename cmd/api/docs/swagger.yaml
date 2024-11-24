@@ -74,7 +74,7 @@ definitions:
           $ref: '#/definitions/api.Detail'
         type: array
       icon_emoji:
-        example: "\U0001F4DD"
+        example: "\U0001F4C4"
         type: string
       id:
         example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
@@ -83,11 +83,12 @@ definitions:
         example: Object Name
         type: string
       object_type:
-        example: note
+        example: Page
         type: string
       root_id:
         type: string
       space_id:
+        example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
         type: string
       type:
         example: object
@@ -96,9 +97,10 @@ definitions:
   api.ObjectTemplate:
     properties:
       icon_emoji:
-        example: "\U0001F4DD"
+        example: "\U0001F4C4"
         type: string
       id:
+        example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
         type: string
       name:
         example: Object Template Name
@@ -110,17 +112,19 @@ definitions:
   api.ObjectType:
     properties:
       icon_emoji:
-        example: "\U0001F4DD"
+        example: "\U0001F4C4"
         type: string
       id:
+        example: bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu
         type: string
       name:
-        example: Object Type Name
+        example: Page
         type: string
       type:
         example: object_type
         type: string
       unique_key:
+        example: ot-page
         type: string
     type: object
   api.ServerError:
@@ -149,6 +153,7 @@ definitions:
         example: data:image/png;base64, <base64-encoded-image>
         type: string
       id:
+        example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
         type: string
       marketplace_workspace_id:
         example: _anytype_marketplace
@@ -181,14 +186,16 @@ definitions:
   api.SpaceMember:
     properties:
       id:
+        example: _participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ
         type: string
       identity:
-        example: ""
+        example: AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ
         type: string
       name:
         example: Space Member Name
         type: string
       role:
+        example: editor
         type: string
       type:
         example: space_member

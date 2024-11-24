@@ -801,7 +801,7 @@ const docTemplate = `{
                 },
                 "icon_emoji": {
                     "type": "string",
-                    "example": "📝"
+                    "example": "📄"
                 },
                 "id": {
                     "type": "string",
@@ -813,13 +813,14 @@ const docTemplate = `{
                 },
                 "object_type": {
                     "type": "string",
-                    "example": "note"
+                    "example": "Page"
                 },
                 "root_id": {
                     "type": "string"
                 },
                 "space_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"
                 },
                 "type": {
                     "type": "string",
@@ -832,10 +833,11 @@ const docTemplate = `{
             "properties": {
                 "icon_emoji": {
                     "type": "string",
-                    "example": "📝"
+                    "example": "📄"
                 },
                 "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"
                 },
                 "name": {
                     "type": "string",
@@ -852,21 +854,23 @@ const docTemplate = `{
             "properties": {
                 "icon_emoji": {
                     "type": "string",
-                    "example": "📝"
+                    "example": "📄"
                 },
                 "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"
                 },
                 "name": {
                     "type": "string",
-                    "example": "Object Type Name"
+                    "example": "Page"
                 },
                 "type": {
                     "type": "string",
                     "example": "object_type"
                 },
                 "unique_key": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "ot-page"
                 }
             }
         },
@@ -907,7 +911,8 @@ const docTemplate = `{
                     "example": "data:image/png;base64, \u003cbase64-encoded-image\u003e"
                 },
                 "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"
                 },
                 "marketplace_workspace_id": {
                     "type": "string",
@@ -951,18 +956,20 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "_participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ"
                 },
                 "identity": {
                     "type": "string",
-                    "example": ""
+                    "example": "AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"
                 },
                 "name": {
                     "type": "string",
                     "example": "Space Member Name"
                 },
                 "role": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "editor"
                 },
                 "type": {
                     "type": "string",
