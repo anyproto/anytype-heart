@@ -19,11 +19,13 @@ type Space struct {
 }
 
 type SpaceMember struct {
-	Type     string `json:"type" example:"space_member"`
-	ID       string `json:"id" example:"_participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ"`
-	Name     string `json:"name" example:"Space Member Name"`
-	Identity string `json:"identity" example:"AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"`
-	Role     string `json:"role" enum:"editor,viewer,owner" example:"editor"`
+	Type       string `json:"type" example:"space_member"`
+	ID         string `json:"id" example:"_participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ"`
+	Name       string `json:"name" example:"John Doe"`
+	Icon       string `json:"icon" example:"data:image/png;base64, <base64-encoded-image>"`
+	Identity   string `json:"identity" example:"AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"`
+	GlobalName string `json:"global_name" example:"john.any"`
+	Role       string `json:"role" enum:"Reader,Writer,Owner,NoPermission" example:"Owner"`
 }
 
 type Object struct {

@@ -145,7 +145,12 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 		} else {
 			iconOption := record.Fields["iconOption"].GetNumberValue()
 			// TODO figure out size
-			iconBase64 = a.spaceSvg(int(iconOption), 100, string([]rune(record.Fields["name"].GetStringValue())[0]))
+			// Prevent index out of range error for space with empty name
+			if len(record.Fields["name"].GetStringValue()) > 0 {
+				iconBase64 = a.spaceSvg(int(iconOption), 100, string([]rune(record.Fields["name"].GetStringValue())[0]))
+			} else {
+				iconBase64 = a.spaceSvg(int(iconOption), 100, "")
+			}
 		}
 
 		space := Space{
@@ -258,12 +263,26 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 
 	members := make([]SpaceMember, 0, len(resp.Records))
 	for _, record := range resp.Records {
+		// Convert iconImage to base64 string
+		iconImageId := record.Fields["iconImage"].GetStringValue()
+		iconBase64 := ""
+		if iconImageId != "" {
+			b64, err2 := a.imageToBase64(a.getGatewayURL(iconImageId))
+			if err2 != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to convert image to base64."})
+				return
+			}
+			iconBase64 = b64
+		}
+
 		member := SpaceMember{
-			Type:     "space_member",
-			ID:       record.Fields["id"].GetStringValue(),
-			Name:     record.Fields["name"].GetStringValue(),
-			Identity: record.Fields["identity"].GetStringValue(),
-			Role:     model.ParticipantPermissions_name[int32(record.Fields["participantPermissions"].GetNumberValue())],
+			Type:       "space_member",
+			ID:         record.Fields["id"].GetStringValue(),
+			Name:       record.Fields["name"].GetStringValue(),
+			Icon:       iconBase64,
+			Identity:   record.Fields["identity"].GetStringValue(),
+			GlobalName: record.Fields["globalName"].GetStringValue(),
+			Role:       model.ParticipantPermissions_name[int32(record.Fields["participantPermissions"].GetNumberValue())],
 		}
 
 		members = append(members, member)
