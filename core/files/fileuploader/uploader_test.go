@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -177,9 +178,11 @@ func TestUploader_Upload(t *testing.T) {
 		assert.Equal(t, res.Name, "filename")
 
 		fileId := domain.FileId(res.FileObjectDetails.GetString(bundle.RelationKeyFileId))
-		file, err := fx.fileService.GetFileVariants(ctx, domain.FullFileId{FileId: fileId, SpaceId: "space1"})
+		fullId := domain.FullFileId{FileId: fileId, SpaceId: "space1"}
+		variants, err := fx.fileService.GetFileVariants(ctx, fullId, res.EncryptionKeys)
 		require.NoError(t, err)
 
+		file := files.NewFile(fx.fileService, fullId, variants)
 		reader, err := file.Reader(ctx)
 		require.NoError(t, err)
 
@@ -278,6 +281,11 @@ func (fx *uplFixture) tearDown() {
 
 func (fx *uplFixture) expectCreateObject() string {
 	fileObjectId := "fileObjectId1"
-	fx.fileObjectService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return(fileObjectId, domain.NewDetails(), nil)
+
+	fx.fileObjectService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, s string, request filemodels.CreateRequest) (string, *domain.Details, error) {
+		details := domain.NewDetails()
+		details.SetString(bundle.RelationKeyFileId, request.FileId.String())
+		return fileObjectId, details, nil
+	})
 	return fileObjectId
 }

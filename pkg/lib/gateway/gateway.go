@@ -360,7 +360,8 @@ func (g *gateway) getImageReader(ctx context.Context, image files.Image, req *ht
 	query := req.URL.Query()
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
-		file, err := image.GetOriginalFile()
+		var err error
+		file, err = image.GetOriginalFile()
 		if err != nil {
 			return nil, fmt.Errorf("get image file: %w", err)
 		}

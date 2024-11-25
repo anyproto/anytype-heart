@@ -14,6 +14,7 @@ var log = logging.Logger("anytype-mw-editor-fileobject")
 type FileObject interface {
 	GetFile() files.File
 	GetImage() files.Image
+	GetFullFileId() domain.FullFileId
 }
 
 type fileObject struct {
@@ -28,7 +29,7 @@ func NewFileObject(sb smartblock.SmartBlock, fileService files.Service) FileObje
 	}
 }
 
-func (f *fileObject) getFullFileId() domain.FullFileId {
+func (f *fileObject) GetFullFileId() domain.FullFileId {
 	return domain.FullFileId{
 		SpaceId: f.SpaceID(),
 		FileId:  domain.FileId(f.Details().GetString(bundle.RelationKeyFileId)),
@@ -37,10 +38,10 @@ func (f *fileObject) getFullFileId() domain.FullFileId {
 
 func (f *fileObject) GetFile() files.File {
 	infos := filemodels.GetFileInfosFromDetails(f.Details())
-	return files.NewFile(f.fileService, f.getFullFileId(), infos)
+	return files.NewFile(f.fileService, f.GetFullFileId(), infos)
 }
 
 func (f *fileObject) GetImage() files.Image {
 	infos := filemodels.GetFileInfosFromDetails(f.Details())
-	return files.NewImage(f.fileService, f.getFullFileId(), infos)
+	return files.NewImage(f.fileService, f.GetFullFileId(), infos)
 }

@@ -115,6 +115,7 @@ type UploadResult struct {
 	Type              model.BlockContentFileType
 	FileObjectId      string
 	FileObjectDetails *domain.Details
+	EncryptionKeys    map[string]string
 	MIME              string
 	Size              int64
 	Err               error
@@ -478,6 +479,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 	result.FileObjectId = fileObjectId
 	result.FileObjectDetails = fileObjectDetails
+	result.EncryptionKeys = addResult.EncryptionKeys.EncryptionKeys
 
 	result.Type = u.fileType
 	result.Name = u.name

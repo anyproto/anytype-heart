@@ -16,6 +16,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -186,13 +187,17 @@ const testFileObjectId = "bafyreiebxsn65332wl7qavcxxkfwnsroba5x5h2sshcn7f7cr66zt
 func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 	t.Run("with invalid id expect error", func(t *testing.T) {
 		fx := newFixture(t)
-		_, err := fx.DoFileWaitLoad(context.Background(), "invalid")
+		err := fx.DoFileWaitLoad(context.Background(), "invalid", func(object fileobject.FileObject) error {
+			return nil
+		})
 		require.Error(t, err)
 	})
 
 	t.Run("with file id expect error", func(t *testing.T) {
 		fx := newFixture(t)
-		_, err := fx.DoFileWaitLoad(context.Background(), testFileId.String())
+		err := fx.DoFileWaitLoad(context.Background(), testFileId.String(), func(object fileobject.FileObject) error {
+			return nil
+		})
 		require.Error(t, err)
 	})
 
@@ -204,7 +209,9 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 
 		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).Return("", fmt.Errorf("not yet resolved"))
 
-		_, err := fx.DoFileWaitLoad(ctx, testFileObjectId)
+		err := fx.DoFileWaitLoad(ctx, testFileObjectId, func(object fileobject.FileObject) error {
+			return nil
+		})
 		require.Error(t, err)
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 	})
@@ -238,12 +245,16 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 
 		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
 
-		id, err := fx.DoFileWaitLoad(ctx, testFileObjectId)
+		var fullId domain.FullFileId
+		err := fx.DoFileWaitLoad(ctx, testFileObjectId, func(object fileobject.FileObject) error {
+			fullId = object.GetFullFileId()
+			return nil
+		})
 		require.NoError(t, err)
 		assert.Equal(t, domain.FullFileId{
 			SpaceId: spaceId,
 			FileId:  testFileId,
-		}, id)
+		}, fullId)
 	})
 
 	t.Run("with loaded object without file id expect error", func(t *testing.T) {
@@ -265,7 +276,9 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 
 		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
 
-		_, err := fx.DoFileWaitLoad(ctx, testFileObjectId)
+		err := fx.DoFileWaitLoad(ctx, testFileObjectId, func(object fileobject.FileObject) error {
+			return nil
+		})
 		require.ErrorIs(t, err, filemodels.ErrEmptyFileId)
 	})
 }
