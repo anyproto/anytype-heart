@@ -588,14 +588,7 @@ func (e FilterEmpty) FilterObject(g *types.Struct) bool {
 }
 
 var (
-	filterEqNil         = query.NewComp(query.CompOpEq, nil)
-	filterEqEmptyString = query.NewComp(query.CompOpEq, "")
-	filterEq0           = query.NewComp(query.CompOpEq, 0)
-	filterEqFalse       = query.NewComp(query.CompOpEq, false)
-	filterEqEmptyArray  = &query.Comp{
-		CompOp:  query.CompOpEq,
-		EqValue: anyenc.MustParseJson(`[]`).MarshalTo(nil),
-	}
+	emptyArrayValue = anyenc.MustParseJson(`[]`).MarshalTo(nil)
 )
 
 func (e FilterEmpty) AnystoreFilter() query.Filter {
@@ -607,23 +600,26 @@ func (e FilterEmpty) AnystoreFilter() query.Filter {
 		},
 		query.Key{
 			Path:   path,
-			Filter: filterEqNil,
+			Filter: query.NewComp(query.CompOpEq, nil),
 		},
 		query.Key{
 			Path:   path,
-			Filter: filterEqEmptyString,
+			Filter: query.NewComp(query.CompOpEq, ""),
 		},
 		query.Key{
 			Path:   path,
-			Filter: filterEq0,
+			Filter: query.NewComp(query.CompOpEq, 0),
 		},
 		query.Key{
 			Path:   path,
-			Filter: filterEqFalse,
+			Filter: query.NewComp(query.CompOpEq, false),
 		},
 		query.Key{
-			Path:   path,
-			Filter: filterEqEmptyArray,
+			Path: path,
+			Filter: &query.Comp{
+				CompOp:  query.CompOpEq,
+				EqValue: emptyArrayValue,
+			},
 		},
 	}
 }
