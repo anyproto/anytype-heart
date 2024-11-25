@@ -16,6 +16,9 @@ func (s *Service) SetWidgetBlockTargetId(ctx session.Context, req *pb.RpcBlockWi
 	return cache.Do(s, req.ContextId, func(b smartblock.SmartBlock) error {
 		st := b.NewStateCtx(ctx)
 		root := st.Get(req.BlockId)
+		if root == nil {
+			return fmt.Errorf("failed to find block '%s' in widget object", req.BlockId)
+		}
 		if len(root.Model().ChildrenIds) == 0 {
 			return fmt.Errorf("failed to get child block of widget block '%s' as ChildrenIds is empty", req.BlockId)
 		}

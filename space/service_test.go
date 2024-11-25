@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/testutil/accounttest"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -37,7 +37,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var ctx = context.Background()
@@ -46,7 +45,6 @@ const (
 	testPersonalSpaceID = "personal.12345"
 )
 
-// TODO Revive tests
 func TestService_Init(t *testing.T) {
 	t.Run("tech space getter", func(t *testing.T) {
 		serv := New().(*service)
@@ -273,11 +271,11 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 		}).Return(nil)
 
 		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, storeFixture.TechSpaceId(), []objectstore.TestObject{map[domain.RelationKey]*types.Value{
-			bundle.RelationKeyLayout:        pbtypes.Int64(int64(model.ObjectType_spaceView)),
-			bundle.RelationKeyId:            pbtypes.String("spaceViewId"),
-			bundle.RelationKeyTargetSpaceId: pbtypes.String(spaceID),
-			bundle.RelationKeyName:          pbtypes.String("Test"),
+		storeFixture.AddObjects(t, storeFixture.TechSpaceId(), []objectstore.TestObject{{
+			bundle.RelationKeyLayout:        domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyId:            domain.String("spaceViewId"),
+			bundle.RelationKeyTargetSpaceId: domain.String(spaceID),
+			bundle.RelationKeyName:          domain.String("Test"),
 		}})
 
 		s := service{
@@ -403,8 +401,13 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, f
 	if expectOldAccount == nil {
 		fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: ts}, nil)
 		prCtrl := mock_spacecontroller.NewMockSpaceController(t)
-		fx.factory.EXPECT().CreatePersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
+		prCtrl.EXPECT().SpaceId().Return(fx.spaceId)
+		commonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		commonSpace.EXPECT().Id().Return(fx.spaceId).AnyTimes()
+		fx.spaceCore.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return(&spacecore.AnySpace{Space: commonSpace}, nil)
+		fx.factory.EXPECT().CreateShareableSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
 		lw := lwMock{clientSpace}
+		clientSpace.EXPECT().Id().Return(fx.spaceId)
 		prCtrl.EXPECT().Current().Return(lw)
 		prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 		ts.EXPECT().WakeUpViews()

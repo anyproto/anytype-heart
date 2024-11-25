@@ -18,7 +18,7 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ipfs/go-cid"
 
-	"github.com/anyproto/anytype-heart/core/domain"
+	fileobject2 "github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
@@ -235,26 +235,21 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 	parts := strings.Split(fileIdAndPath, "/")
 	fileId := parts[0]
 
-	var id domain.FullFileId
-	// Treat id as fileId to allow download file directly
-	if domain.IsFileId(fileId) {
-		id = domain.FullFileId{
-			FileId: domain.FileId(fileId),
-		}
-	} else {
+	var file files.File
+	var reader io.ReadSeeker
+	err := g.fileObjectService.DoFileWaitLoad(ctx, fileId, func(object fileobject2.FileObject) error {
+		file = object.GetFile()
 		var err error
-		id, err = g.fileObjectService.GetFileIdFromObjectWaitLoad(ctx, fileId)
+		reader, err = file.Reader(ctx)
 		if err != nil {
-			return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
+			return err
 		}
-	}
-
-	file, err := g.fileService.FileByHash(ctx, id)
+		return nil
+	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("get file by hash: %w", err)
+		return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
 	}
 
-	reader, err := file.Reader(ctx)
 	return file, reader, err
 }
 
@@ -292,20 +287,6 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 	urlParts := strings.Split(r.URL.Path, "/")
 	imageId := urlParts[2]
 
-	var id domain.FullFileId
-	// Treat id as fileId. We need to handle raw fileIds for backward compatibility in case of spaceview. See editor.SpaceView for details.
-	if domain.IsFileId(imageId) {
-		id = domain.FullFileId{
-			FileId: domain.FileId(imageId),
-		}
-	} else {
-		var err error
-		id, err = g.fileObjectService.GetFileIdFromObjectWaitLoad(ctx, imageId)
-		if err != nil {
-			return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
-		}
-	}
-
 	retryOptions := []retry.Option{
 		retry.Context(ctx),
 		retry.Attempts(0),
@@ -316,10 +297,19 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 	}
 
 	result, err := retry.DoWithData(func() (*getImageReaderResult, error) {
-		res, err := g.getImageReader(ctx, id, r)
+		var res *getImageReaderResult
+		err := g.fileObjectService.DoFileWaitLoad(ctx, imageId, func(object fileobject2.FileObject) error {
+			var err error
+			res, err = g.getImageReader(ctx, object.GetImage(), r)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("get file hash from object id: %w", err)
 		}
+
 		return res, nil
 	}, retryOptions...)
 	if err != nil {
@@ -365,20 +355,17 @@ func (r *retryReadSeeker) Seek(offset int64, whence int) (int64, error) {
 	}, r.options...)
 }
 
-func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req *http.Request) (*getImageReaderResult, error) {
-	image, err := g.fileService.ImageByHash(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("get image by hash: %w", err)
-	}
+func (g *gateway) getImageReader(ctx context.Context, image files.Image, req *http.Request) (*getImageReaderResult, error) {
 	var file files.File
 	query := req.URL.Query()
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
+		var err error
 		file, err = image.GetOriginalFile()
 		if err != nil {
 			return nil, fmt.Errorf("get image file: %w", err)
 		}
-		if filepath.Ext(file.Info().Name) == constant.SvgExt {
+		if filepath.Ext(file.Name()) == constant.SvgExt {
 			return g.handleSVGFile(ctx, file)
 		}
 	} else {
@@ -390,7 +377,7 @@ func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req 
 		if err != nil {
 			return nil, fmt.Errorf("get image file: %w", err)
 		}
-		if filepath.Ext(file.Info().Name) == constant.SvgExt {
+		if filepath.Ext(file.Name()) == constant.SvgExt {
 			return g.handleSVGFile(ctx, file)
 		}
 	}

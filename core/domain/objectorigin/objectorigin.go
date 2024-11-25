@@ -1,11 +1,9 @@
 package objectorigin
 
 import (
-	"github.com/gogo/protobuf/types"
-
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type ObjectOrigin struct {
@@ -13,9 +11,9 @@ type ObjectOrigin struct {
 	ImportType model.ImportType
 }
 
-func FromDetails(details *types.Struct) ObjectOrigin {
-	origin := pbtypes.GetInt64(details, bundle.RelationKeyOrigin.String())
-	importType := pbtypes.GetInt64(details, bundle.RelationKeyImportType.String())
+func FromDetails(details *domain.Details) ObjectOrigin {
+	origin := details.GetInt64(bundle.RelationKeyOrigin)
+	importType := details.GetInt64(bundle.RelationKeyImportType)
 
 	return ObjectOrigin{
 		Origin:     model.ObjectOrigin(origin),
@@ -27,11 +25,11 @@ func (o ObjectOrigin) IsImported() bool {
 	return o.Origin == model.ObjectOrigin_import
 }
 
-func (o ObjectOrigin) AddToDetails(details *types.Struct) {
+func (o ObjectOrigin) AddToDetails(details *domain.Details) {
 	if o.Origin != model.ObjectOrigin_none {
-		details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(o.Origin))
+		details.SetInt64(bundle.RelationKeyOrigin, int64(o.Origin))
 		if o.Origin == model.ObjectOrigin_import || o.Origin == model.ObjectOrigin_usecase {
-			details.Fields[bundle.RelationKeyImportType.String()] = pbtypes.Int64(int64(o.ImportType))
+			details.SetInt64(bundle.RelationKeyImportType, int64(o.ImportType))
 		}
 	}
 }

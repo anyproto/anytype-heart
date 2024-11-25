@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
@@ -50,7 +49,6 @@ type FileSync interface {
 	UpdateNodeUsage(ctx context.Context) error
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
-	FileListStats(ctx context.Context, spaceId string, hashes []domain.FileId) ([]FileStat, error)
 	DebugQueue(*http.Request) (*QueueInfo, error)
 	SendImportEvents()
 	ClearImportEvents()
@@ -75,7 +73,6 @@ type fileSync struct {
 	loopCtx         context.Context
 	loopCancel      context.CancelFunc
 	dagService      ipld.DAGService
-	fileStore       filestore.FileStore
 	eventSender     event.Sender
 	onUploaded      []StatusCallback
 	onUploadStarted StatusCallback
@@ -104,7 +101,6 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	s.dbProvider = app.MustComponent[datastore.Datastore](a)
 	s.rpcStore = app.MustComponent[rpcstore.Service](a).NewStore()
 	s.dagService = app.MustComponent[fileservice.FileService](a).DAGService()
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.cfg = app.MustComponent[*config.Config](a)
 	db, err := s.dbProvider.LocalStorage()

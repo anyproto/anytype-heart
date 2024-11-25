@@ -715,3 +715,33 @@ func RelationIdToKey(id string) (string, error) {
 
 	return "", fmt.Errorf("incorrect id format")
 }
+
+func ProtoToAny(v *types.Value) any {
+	if v == nil {
+		return nil
+	}
+	switch v.Kind.(type) {
+	case *types.Value_StringValue:
+		return v.GetStringValue()
+	case *types.Value_NumberValue:
+		return v.GetNumberValue()
+	case *types.Value_BoolValue:
+		return v.GetBoolValue()
+	case *types.Value_ListValue:
+		listValue := v.GetListValue()
+		if listValue == nil || len(listValue.Values) == 0 {
+			return []string{}
+		}
+
+		firstValue := listValue.Values[0]
+		if _, ok := firstValue.GetKind().(*types.Value_StringValue); ok {
+			return ListValueToStrings(listValue)
+		}
+		if _, ok := firstValue.GetKind().(*types.Value_NumberValue); ok {
+			return ListValueToFloats(listValue)
+		}
+		return []string{}
+	default:
+		return nil
+	}
+}

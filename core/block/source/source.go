@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"github.com/golang/snappy"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
@@ -28,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -47,9 +47,8 @@ var (
 
 	bytesPool = sync.Pool{New: func() any { return make([]byte, poolSize) }}
 
-	ErrObjectNotFound = errors.New("object not found")
-	ErrReadOnly       = errors.New("object is read only")
-	ErrBigChangeSize  = errors.New("change size is above the limit")
+	ErrReadOnly      = errors.New("object is read only")
+	ErrBigChangeSize = errors.New("change size is above the limit")
 )
 
 func MarshalChange(change *pb.Change) (result []byte, dataType string, err error) {
@@ -150,7 +149,7 @@ type Source interface {
 
 type SourceIdEndodedDetails interface {
 	Id() string
-	DetailsFromId() (*types.Struct, error)
+	DetailsFromId() (*domain.Details, error)
 }
 
 type IDsLister interface {
@@ -189,7 +188,8 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		accountKeysService: s.accountKeysService,
 		sbtProvider:        s.sbtProvider,
 		fileService:        s.fileService,
-		objectStore:        s.objectStore.SpaceIndex(space.Id()),
+		objectStore:        s.objectStore,
+		spaceIndex:         s.objectStore.SpaceIndex(space.Id()),
 		fileObjectMigrator: s.fileObjectMigrator,
 	}
 	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
@@ -224,7 +224,8 @@ type source struct {
 	accountService     accountService
 	accountKeysService accountservice.Service
 	sbtProvider        typeprovider.SmartBlockTypeProvider
-	objectStore        spaceindex.Store
+	objectStore        objectstore.ObjectStore
+	spaceIndex         spaceindex.Store
 	fileObjectMigrator fileObjectMigrator
 }
 
@@ -327,7 +328,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
 	// TODO: we can skip migration for non-personal spaces
-	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.objectStore)
+	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.spaceIndex)
 	migration.Migrate(st)
 
 	// we need to have required internal relations for all objects, including system
@@ -422,7 +423,7 @@ func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
 		c.Snapshot = &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:                   params.State.BlocksToSave(),
-				Details:                  params.State.Details(),
+				Details:                  params.State.Details().ToProto(),
 				ObjectTypes:              domain.MarshalTypeKeys(params.State.ObjectTypeKeys()),
 				Collections:              params.State.Store(),
 				RelationLinks:            params.State.PickRelationLinks(),
@@ -527,16 +528,18 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
 	for _, h := range hashes {
-		fk, err := s.fileService.FileGetKeys(domain.FileId(h))
+		fileId := domain.FileId(h)
+		keys, err := s.objectStore.GetFileKeys(fileId)
 		if err != nil {
 			// New file
 			log.Debugf("can't get file key for hash: %v: %v", h, err)
 			continue
 		}
+
 		// Migrated file
 		fileKeys = append(fileKeys, &pb.ChangeFileKeys{
-			Hash: fk.FileId.String(),
-			Keys: fk.EncryptionKeys,
+			Hash: fileId.String(),
+			Keys: keys,
 		})
 	}
 	return fileKeys

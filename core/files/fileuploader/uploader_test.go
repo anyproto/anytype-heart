@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/gogo/protobuf/types"
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -24,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -34,11 +34,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestUploader_Upload(t *testing.T) {
@@ -179,10 +177,12 @@ func TestUploader_Upload(t *testing.T) {
 		assert.Equal(t, res.FileObjectId, fileObjectId)
 		assert.Equal(t, res.Name, "filename")
 
-		fileId := domain.FileId(pbtypes.GetString(res.FileObjectDetails, bundle.RelationKeyFileId.String()))
-		file, err := fx.fileService.FileByHash(ctx, domain.FullFileId{FileId: fileId, SpaceId: "space1"})
+		fileId := domain.FileId(res.FileObjectDetails.GetString(bundle.RelationKeyFileId))
+		fullId := domain.FullFileId{FileId: fileId, SpaceId: "space1"}
+		variants, err := fx.fileService.GetFileVariants(ctx, fullId, res.EncryptionKeys)
 		require.NoError(t, err)
 
+		file := files.NewFile(fx.fileService, fullId, variants)
 		reader, err := file.Reader(ctx)
 		require.NoError(t, err)
 
@@ -228,7 +228,6 @@ func newFileServiceFixture(t *testing.T) files.Service {
 
 	a := new(app.App)
 	a.Register(dataStoreProvider)
-	a.Register(filestore.New())
 	a.Register(commonFileService)
 	a.Register(fileSyncService)
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
@@ -282,6 +281,11 @@ func (fx *uplFixture) tearDown() {
 
 func (fx *uplFixture) expectCreateObject() string {
 	fileObjectId := "fileObjectId1"
-	fx.fileObjectService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return(fileObjectId, &types.Struct{Fields: map[string]*types.Value{}}, nil)
+
+	fx.fileObjectService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, s string, request filemodels.CreateRequest) (string, *domain.Details, error) {
+		details := domain.NewDetails()
+		details.SetString(bundle.RelationKeyFileId, request.FileId.String())
+		return fileObjectId, details, nil
+	})
 	return fileObjectId
 }

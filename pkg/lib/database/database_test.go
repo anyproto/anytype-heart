@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestDatabase(t *testing.T) {
@@ -48,21 +47,20 @@ func (s *stubSpaceObjectStore) QueryRaw(filters *Filters, limit int, offset int)
 	return s.queryRawResult, nil
 }
 
-func (s *stubSpaceObjectStore) GetRelationFormatByKey(key string) (model.RelationFormat, error) {
-	rel, err := bundle.GetRelation(domain.RelationKey(key))
+func (s *stubSpaceObjectStore) GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error) {
+	rel, err := bundle.GetRelation(key)
 	if err != nil {
 		return 0, nil
 	}
 	return rel.Format, nil
 }
 
-func (s *stubSpaceObjectStore) ListRelationOptions(relationKey string) (options []*model.RelationOption, err error) {
+func (s *stubSpaceObjectStore) ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error) {
 	return nil, nil
 }
 
 func newTestQueryBuilder(t *testing.T) queryBuilder {
 	objectStore := &stubSpaceObjectStore{}
-
 	return queryBuilder{
 		objectStore: objectStore,
 		arena:       &anyenc.Arena{},
@@ -127,33 +125,33 @@ func assertNotIncludeTime(t *testing.T, order SetOrder) {
 	assert.Equal(t, order[0].(*KeyOrder).IncludeTime, false)
 }
 
-func givenSingleDateSort() []*model.BlockContentDataviewSort {
-	sorts := make([]*model.BlockContentDataviewSort, 1)
-	sorts[0] = &model.BlockContentDataviewSort{
+func givenSingleDateSort() []SortRequest {
+	sorts := make([]SortRequest, 1)
+	sorts[0] = SortRequest{
 		Format: model.RelationFormat_date,
 	}
 	return sorts
 }
 
-func givenNotSingleDateSort() []*model.BlockContentDataviewSort {
+func givenNotSingleDateSort() []SortRequest {
 	sorts := givenSingleDateSort()
-	sorts = append(sorts, &model.BlockContentDataviewSort{
+	sorts = append(sorts, SortRequest{
 		Format: model.RelationFormat_shorttext,
 	})
 	return sorts
 }
 
-func givenSingleNotDateSort() []*model.BlockContentDataviewSort {
-	sorts := make([]*model.BlockContentDataviewSort, 1)
-	sorts[0] = &model.BlockContentDataviewSort{
+func givenSingleNotDateSort() []SortRequest {
+	sorts := make([]SortRequest, 1)
+	sorts[0] = SortRequest{
 		Format: model.RelationFormat_shorttext,
 	}
 	return sorts
 }
 
-func givenSingleIncludeTime() []*model.BlockContentDataviewSort {
-	sorts := make([]*model.BlockContentDataviewSort, 1)
-	sorts[0] = &model.BlockContentDataviewSort{
+func givenSingleIncludeTime() []SortRequest {
+	sorts := make([]SortRequest, 1)
+	sorts[0] = SortRequest{
 		Format:      model.RelationFormat_shorttext,
 		IncludeTime: true,
 	}
@@ -175,22 +173,22 @@ func Test_NewFilters(t *testing.T) {
 	t.Run("and filter with 3 default", func(t *testing.T) {
 		// given
 		mockStore := &stubSpaceObjectStore{}
-		filter := []*model.BlockContentDataviewFilter{
+		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_And,
-				NestedFilters: []*model.BlockContentDataviewFilter{
+				NestedFilters: []FilterRequest{
 					{
 						Operator:    model.BlockContentDataviewFilter_No,
 						RelationKey: "relationKey",
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String("option2"),
+						Value:       domain.String("option2"),
 						Format:      model.RelationFormat_status,
 					},
 					{
 						Operator:    model.BlockContentDataviewFilter_No,
-						RelationKey: bundle.RelationKeyName.String(),
+						RelationKey: bundle.RelationKeyName,
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String("Object 1"),
+						Value:       domain.String("Object 1"),
 						Format:      model.RelationFormat_shorttext,
 					},
 				},
@@ -209,29 +207,29 @@ func Test_NewFilters(t *testing.T) {
 	t.Run("deleted filter", func(t *testing.T) {
 		// given
 		mockStore := &stubSpaceObjectStore{}
-		filter := []*model.BlockContentDataviewFilter{
+		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_And,
-				NestedFilters: []*model.BlockContentDataviewFilter{
+				NestedFilters: []FilterRequest{
 					{
 						Operator:    model.BlockContentDataviewFilter_No,
 						RelationKey: "relationKey",
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String("option2"),
+						Value:       domain.String("option2"),
 						Format:      model.RelationFormat_status,
 					},
 					{
 						Operator:    model.BlockContentDataviewFilter_No,
-						RelationKey: bundle.RelationKeyName.String(),
+						RelationKey: bundle.RelationKeyName,
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String("Object 1"),
+						Value:       domain.String("Object 1"),
 						Format:      model.RelationFormat_shorttext,
 					},
 					{
 						Operator:    model.BlockContentDataviewFilter_No,
-						RelationKey: bundle.RelationKeyIsDeleted.String(),
+						RelationKey: bundle.RelationKeyIsDeleted,
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.Bool(true),
+						Value:       domain.Bool(true),
 					},
 				},
 			},
@@ -249,29 +247,29 @@ func Test_NewFilters(t *testing.T) {
 	t.Run("archived filter", func(t *testing.T) {
 		// given
 		mockStore := &stubSpaceObjectStore{}
-		filter := []*model.BlockContentDataviewFilter{
+		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_And,
-				NestedFilters: []*model.BlockContentDataviewFilter{
+				NestedFilters: []FilterRequest{
 					{
 						Operator:    model.BlockContentDataviewFilter_No,
 						RelationKey: "relationKey",
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String("option2"),
+						Value:       domain.String("option2"),
 						Format:      model.RelationFormat_status,
 					},
 					{
 						Operator:    model.BlockContentDataviewFilter_No,
-						RelationKey: bundle.RelationKeyName.String(),
+						RelationKey: bundle.RelationKeyName,
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String("Object 1"),
+						Value:       domain.String("Object 1"),
 						Format:      model.RelationFormat_shorttext,
 					},
 					{
 						Operator:    model.BlockContentDataviewFilter_No,
-						RelationKey: bundle.RelationKeyIsArchived.String(),
+						RelationKey: bundle.RelationKeyIsArchived,
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.Bool(true),
+						Value:       domain.Bool(true),
 					},
 				},
 			},
@@ -289,29 +287,29 @@ func Test_NewFilters(t *testing.T) {
 	t.Run("type filter", func(t *testing.T) {
 		// given
 		mockStore := &stubSpaceObjectStore{}
-		filter := []*model.BlockContentDataviewFilter{
+		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_And,
-				NestedFilters: []*model.BlockContentDataviewFilter{
+				NestedFilters: []FilterRequest{
 					{
 						Operator:    model.BlockContentDataviewFilter_No,
 						RelationKey: "relationKey",
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String("option2"),
+						Value:       domain.String("option2"),
 						Format:      model.RelationFormat_status,
 					},
 					{
 						Operator:    model.BlockContentDataviewFilter_No,
-						RelationKey: bundle.RelationKeyName.String(),
+						RelationKey: bundle.RelationKeyName,
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String("Object 1"),
+						Value:       domain.String("Object 1"),
 						Format:      model.RelationFormat_shorttext,
 					},
 					{
 						Operator:    model.BlockContentDataviewFilter_No,
-						RelationKey: bundle.RelationKeyType.String(),
+						RelationKey: bundle.RelationKeyType,
 						Condition:   model.BlockContentDataviewFilter_In,
-						Value:       pbtypes.Float64(float64(model.ObjectType_space)),
+						Value:       domain.Int64(model.ObjectType_space),
 					},
 				},
 			},
@@ -329,22 +327,22 @@ func Test_NewFilters(t *testing.T) {
 	t.Run("or filter with 3 default", func(t *testing.T) {
 		// given
 		mockStore := &stubSpaceObjectStore{}
-		filter := []*model.BlockContentDataviewFilter{
+		filter := []FilterRequest{
 			{
 				Operator: model.BlockContentDataviewFilter_Or,
-				NestedFilters: []*model.BlockContentDataviewFilter{
+				NestedFilters: []FilterRequest{
 					{
 						Operator:    model.BlockContentDataviewFilter_No,
 						RelationKey: "relationKey",
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String("option2"),
+						Value:       domain.String("option2"),
 						Format:      model.RelationFormat_status,
 					},
 					{
 						Operator:    model.BlockContentDataviewFilter_No,
-						RelationKey: bundle.RelationKeyName.String(),
+						RelationKey: bundle.RelationKeyName,
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String("Object 1"),
+						Value:       domain.String("Object 1"),
 						Format:      model.RelationFormat_shorttext,
 					},
 				},

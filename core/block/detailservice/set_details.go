@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -15,17 +14,18 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var ErrUnexpectedBlockType = errors.New("unexpected block type")
 
-func (s *service) SetSpaceInfo(spaceId string, details *types.Struct) error {
+func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
 	ctx := context.TODO()
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
@@ -33,9 +33,9 @@ func (s *service) SetSpaceInfo(spaceId string, details *types.Struct) error {
 	}
 	workspaceId := spc.DerivedIDs().Workspace
 
-	setDetails := make([]*model.Detail, 0, len(details.GetFields()))
-	for k, v := range details.GetFields() {
-		setDetails = append(setDetails, &model.Detail{
+	setDetails := make([]domain.Detail, 0, details.Len())
+	for k, v := range details.Iterate() {
+		setDetails = append(setDetails, domain.Detail{
 			Key:   k,
 			Value: v,
 		})
@@ -48,10 +48,10 @@ func (s *service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 		if ws.Type() != coresb.SmartBlockTypeWorkspace {
 			return ErrUnexpectedBlockType
 		}
-		if err = ws.SetDetails(ctx, []*model.Detail{
+		if err = ws.SetDetails(ctx, []domain.Detail{
 			{
-				Key:   bundle.RelationKeySpaceDashboardId.String(),
-				Value: pbtypes.String(id),
+				Key:   bundle.RelationKeySpaceDashboardId,
+				Value: domain.StringList([]string{id}),
 			},
 		}, false); err != nil {
 			return err
@@ -92,6 +92,9 @@ func (s *service) SetIsArchived(objectId string, isArchived bool) error {
 	spc, err := s.spaceService.Get(context.Background(), spaceID)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
+	}
+	if objectId == spc.DerivedIDs().Archive {
+		return fmt.Errorf("can't archive archive itself")
 	}
 	if err := s.checkArchivedRestriction(isArchived, objectId); err != nil {
 		return err
@@ -172,6 +175,9 @@ func (s *service) checkArchivedRestriction(isArchived bool, objectId string) err
 }
 
 func (s *service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
+	if objectId == collectionId {
+		return fmt.Errorf("can't add links collection to itself")
+	}
 	return cache.Do(s.objectGetter, collectionId, func(b smartblock.SmartBlock) error {
 		coll, ok := b.(collection.Collection)
 		if !ok {
@@ -212,6 +218,16 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 		if err != nil {
 			return err
 		}
+
+		ids = slice.Filter(ids, func(id string) bool {
+			for _, objId := range spc.DerivedIDs().IDsWithSystemTypesAndRelations() {
+				if id == objId {
+					// avoid archive system objects including archive itself
+					return false
+				}
+			}
+			return true
+		})
 		anySucceed, err := s.modifyArchiveLinks(archive, isArchived, ids...)
 
 		if err != nil {

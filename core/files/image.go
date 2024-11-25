@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
@@ -23,7 +21,7 @@ import (
 
 type Image interface {
 	FileId() domain.FileId
-	Details(ctx context.Context) (*types.Struct, error)
+	Details(ctx context.Context) (*domain.Details, error)
 	GetFileForWidth(wantWidth int) (File, error)
 	GetOriginalFile() (File, error)
 }
@@ -34,7 +32,24 @@ type image struct {
 	fileId             domain.FileId
 	spaceID            string
 	onlyResizeVariants []*storage.FileInfo
-	service            *service
+	exifVariant        *storage.FileInfo
+	fileService        Service
+}
+
+func NewImage(fileService Service, id domain.FullFileId, variants []*storage.FileInfo) Image {
+	var exifVariant *storage.FileInfo
+	for _, variant := range variants {
+		if variant.Mill == mill.ImageExifId {
+			exifVariant = variant
+		}
+	}
+	return &image{
+		fileId:             id.FileId,
+		spaceID:            id.SpaceId,
+		onlyResizeVariants: selectAndSortResizeVariants(variants),
+		exifVariant:        exifVariant,
+		fileService:        fileService,
+	}
 }
 
 func selectAndSortResizeVariants(variants []*storage.FileInfo) []*storage.FileInfo {
@@ -52,46 +67,25 @@ func selectAndSortResizeVariants(variants []*storage.FileInfo) []*storage.FileIn
 	return onlyResizeVariants
 }
 
-func (i *image) listResizeVariants() ([]*storage.FileInfo, error) {
-	if i.onlyResizeVariants != nil {
-		return i.onlyResizeVariants, nil
-	}
-	variants, err := i.service.fileStore.ListFileVariants(i.fileId)
-	if err != nil {
-		return nil, fmt.Errorf("get variants: %w", err)
-	}
-	i.onlyResizeVariants = selectAndSortResizeVariants(variants)
-	return i.onlyResizeVariants, nil
-}
-
 func (i *image) getLargestVariant() (*storage.FileInfo, error) {
-	onlyResizeVariants, err := i.listResizeVariants()
-	if err != nil {
-		return nil, fmt.Errorf("list resize variants: %w", err)
-	}
-	if len(onlyResizeVariants) == 0 {
+	if len(i.onlyResizeVariants) == 0 {
 		return nil, errors.New("no resize variants")
 	}
-	return onlyResizeVariants[len(onlyResizeVariants)-1], nil
+	return i.onlyResizeVariants[len(i.onlyResizeVariants)-1], nil
 }
 
 func (i *image) getVariantForWidth(wantWidth int) (*storage.FileInfo, error) {
-	onlyResizeVariants, err := i.listResizeVariants()
-	if err != nil {
-		return nil, fmt.Errorf("list resize variants: %w", err)
-	}
-
-	if len(onlyResizeVariants) == 0 {
+	if len(i.onlyResizeVariants) == 0 {
 		return nil, errors.New("no resize variants")
 	}
 
-	for _, variant := range onlyResizeVariants {
+	for _, variant := range i.onlyResizeVariants {
 		if getVariantWidth(variant) >= wantWidth {
 			return variant, nil
 		}
 	}
 	// return largest if no more suitable variant found
-	return onlyResizeVariants[len(onlyResizeVariants)-1], nil
+	return i.onlyResizeVariants[len(i.onlyResizeVariants)-1], nil
 }
 
 func getVariantWidth(variantInfo *storage.FileInfo) int {
@@ -104,10 +98,10 @@ func (i *image) GetFileForWidth(wantWidth int) (File, error) {
 		return nil, fmt.Errorf("get variant for width: %w", err)
 	}
 	return &file{
-		spaceID: i.spaceID,
-		fileId:  i.fileId,
-		info:    variant,
-		node:    i.service,
+		spaceID:     i.spaceID,
+		fileId:      i.fileId,
+		info:        variant,
+		fileService: i.fileService,
 	}, nil
 }
 
@@ -118,10 +112,10 @@ func (i *image) GetOriginalFile() (File, error) {
 		return nil, fmt.Errorf("get largest variant: %w", err)
 	}
 	return &file{
-		spaceID: i.spaceID,
-		fileId:  i.fileId,
-		info:    variant,
-		node:    i.service,
+		spaceID:     i.spaceID,
+		fileId:      i.fileId,
+		info:        variant,
+		fileService: i.fileService,
 	}, nil
 }
 
@@ -130,25 +124,15 @@ func (i *image) FileId() domain.FileId {
 }
 
 func (i *image) getExif(ctx context.Context) (*mill.ImageExifSchema, error) {
-	variants, err := i.service.fileStore.ListFileVariants(i.fileId)
-	if err != nil {
-		return nil, fmt.Errorf("get variants: %w", err)
-	}
-	var variant *storage.FileInfo
-	for _, v := range variants {
-		if v.Mill == mill.ImageExifId {
-			variant = v
-		}
-	}
-	if variant == nil {
+	if i.exifVariant == nil {
 		return nil, fmt.Errorf("exif variant not found")
 	}
 
 	f := &file{
-		spaceID: i.spaceID,
-		fileId:  i.fileId,
-		info:    variant,
-		node:    i.service,
+		spaceID:     i.spaceID,
+		fileId:      i.fileId,
+		info:        i.exifVariant,
+		fileService: i.fileService,
 	}
 	r, err := f.Reader(ctx)
 	if err != nil {
@@ -166,22 +150,18 @@ func (i *image) getExif(ctx context.Context) (*mill.ImageExifSchema, error) {
 	return &exif, nil
 }
 
-func (i *image) Details(ctx context.Context) (*types.Struct, error) {
+func (i *image) Details(ctx context.Context) (*domain.Details, error) {
 	imageExif, err := i.getExif(ctx)
 	if err != nil {
 		log.Errorf("failed to get exif for image: %s", err)
 		imageExif = &mill.ImageExifSchema{}
 	}
 
-	commonDetails := calculateCommonDetails(
+	details := calculateCommonDetails(
 		i.fileId,
 		model.ObjectType_image,
 		i.extractLastModifiedDate(imageExif),
 	)
-
-	details := &types.Struct{
-		Fields: commonDetails,
-	}
 
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
@@ -192,52 +172,52 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 	}
 
 	if v := pbtypes.Get(largest.GetMeta(), "width"); v != nil {
-		details.Fields[bundle.RelationKeyWidthInPixels.String()] = v
+		details.SetFloat64(bundle.RelationKeyWidthInPixels, v.GetNumberValue())
 	}
 
 	if v := pbtypes.Get(largest.GetMeta(), "height"); v != nil {
-		details.Fields[bundle.RelationKeyHeightInPixels.String()] = v
+		details.SetFloat64(bundle.RelationKeyHeightInPixels, v.GetNumberValue())
 	}
 
 	if largest.Meta != nil {
-		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(largest.Name, filepath.Ext(largest.Name)))
-		details.Fields[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(largest.Name), "."))
-		details.Fields[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(largest.Media)
-		details.Fields[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(largest.Size_))
-		details.Fields[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(largest.Added))
+		details.SetString(bundle.RelationKeyName, strings.TrimSuffix(largest.Name, filepath.Ext(largest.Name)))
+		details.SetString(bundle.RelationKeyFileExt, strings.TrimPrefix(filepath.Ext(largest.Name), "."))
+		details.SetString(bundle.RelationKeyFileMimeType, largest.Media)
+		details.SetFloat64(bundle.RelationKeySizeInBytes, float64(largest.Size_))
+		details.SetFloat64(bundle.RelationKeyAddedDate, float64(largest.Added))
 	}
 
 	if !imageExif.Created.IsZero() {
-		details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(imageExif.Created.Unix()))
+		details.SetFloat64(bundle.RelationKeyCreatedDate, float64(imageExif.Created.Unix()))
 	}
 	/*if exif.Latitude != 0.0 {
-		details.Fields["latitude"] = pbtypes.Float64(exif.Latitude)
+		details.Set("latitude",  pbtypes.Float64(exif.Latitude))
 	}
 	if exif.Longitude != 0.0 {
-		details.Fields["longitude"] = pbtypes.Float64(exif.Longitude)
+		details.Set("longitude",  pbtypes.Float64(exif.Longitude))
 	}*/
 	if imageExif.CameraModel != "" {
-		details.Fields[bundle.RelationKeyCamera.String()] = pbtypes.String(imageExif.CameraModel)
+		details.SetString(bundle.RelationKeyCamera, imageExif.CameraModel)
 	}
 	if imageExif.ExposureTime != "" {
-		details.Fields[bundle.RelationKeyExposure.String()] = pbtypes.String(imageExif.ExposureTime)
+		details.SetString(bundle.RelationKeyExposure, imageExif.ExposureTime)
 	}
 	if imageExif.FNumber != 0 {
-		details.Fields[bundle.RelationKeyFocalRatio.String()] = pbtypes.Float64(imageExif.FNumber)
+		details.SetFloat64(bundle.RelationKeyFocalRatio, imageExif.FNumber)
 	}
 	if imageExif.ISO != 0 {
-		details.Fields[bundle.RelationKeyCameraIso.String()] = pbtypes.Float64(float64(imageExif.ISO))
+		details.SetFloat64(bundle.RelationKeyCameraIso, float64(imageExif.ISO))
 	}
 	if imageExif.Description != "" {
 		// use non-empty image description as an image name, because it much uglier to use file names for objects
-		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(imageExif.Description)
+		details.SetString(bundle.RelationKeyName, imageExif.Description)
 	}
 	if imageExif.Artist != "" {
 		artistName, artistURL := unpackArtist(imageExif.Artist)
-		details.Fields[bundle.RelationKeyMediaArtistName.String()] = pbtypes.String(artistName)
+		details.SetString(bundle.RelationKeyMediaArtistName, artistName)
 
 		if artistURL != "" {
-			details.Fields[bundle.RelationKeyMediaArtistURL.String()] = pbtypes.String(artistURL)
+			details.SetString(bundle.RelationKeyMediaArtistURL, artistURL)
 		}
 	}
 	return details, nil

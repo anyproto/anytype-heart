@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -44,13 +43,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/conc"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("import")
@@ -65,10 +62,10 @@ type Import struct {
 	oc                  creator.Service
 	idProvider          objectid.IdAndKeyProvider
 	tempDirProvider     core.TempDirProvider
-	fileStore           filestore.FileStore
 	fileSync            filesync.FileSync
 	notificationService notifications.Notifications
 	eventSender         event.Sender
+	objectStore         objectstore.ObjectStore
 
 	importCtx       context.Context
 	importCtxCancel context.CancelFunc
@@ -98,15 +95,14 @@ func (i *Import) Init(a *app.App) (err error) {
 	for _, c := range converters {
 		i.converters[c.Name()] = c
 	}
-	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.fileStore = app.MustComponent[filestore.FileStore](a)
+	i.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	fileObjectService := app.MustComponent[fileobject.Service](a)
-	i.idProvider = objectid.NewIDProvider(store, spaceService, i.s, i.fileStore, fileObjectService)
+	i.idProvider = objectid.NewIDProvider(i.objectStore, spaceService, i.s, fileObjectService)
 	factory := syncer.New(syncer.NewFileSyncer(i.s, fileObjectService), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, fileObjectService))
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileObjectService)
 	objectCreator := app.MustComponent[objectcreator.Service](a)
 	detailsService := app.MustComponent[detailservice.Service](a)
-	i.oc = creator.New(detailsService, factory, store, relationSyncer, spaceService, objectCreator, i.s)
+	i.oc = creator.New(detailsService, factory, i.objectStore, relationSyncer, spaceService, objectCreator, i.s)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	i.notificationService = app.MustComponent[notifications.Notifications](a)
 	i.eventSender = app.MustComponent[event.Sender](a)
@@ -219,7 +215,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context, req *ImportRequ
 	return rootCollectionID, i.getObjectCount(details, rootCollectionID), resultErr
 }
 
-func (i *Import) getObjectCount(details map[string]*types.Struct, rootCollectionID string) int64 {
+func (i *Import) getObjectCount(details map[string]*domain.Details, rootCollectionID string) int64 {
 	objectsCount := int64(len(details))
 	if rootCollectionID != "" && objectsCount > 0 {
 		objectsCount-- // exclude root collection object from counter
@@ -233,8 +229,10 @@ func (i *Import) importFromExternalSource(ctx context.Context, req *ImportReques
 		sn := make([]*common.Snapshot, len(req.Snapshots))
 		for i, s := range req.Snapshots {
 			sn[i] = &common.Snapshot{
-				Id:       s.GetId(),
-				Snapshot: &pb.ChangeSnapshot{Data: s.Snapshot},
+				Id: s.GetId(),
+				Snapshot: &common.SnapshotModel{
+					Data: common.NewStateSnapshotFromProto(s.Snapshot),
+				},
 			}
 		}
 		res := &common.Response{
@@ -320,7 +318,7 @@ func (i *Import) ValidateNotionToken(
 	return tv.Validate(ctx, req.GetToken())
 }
 
-func (i *Import) ImportWeb(ctx context.Context, req *ImportRequest) (string, *types.Struct, error) {
+func (i *Import) ImportWeb(ctx context.Context, req *ImportRequest) (string, *domain.Details, error) {
 	if req.Progress == nil {
 		i.setupProgressBar(req)
 	}
@@ -358,7 +356,7 @@ func (i *Import) createObjects(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	allErrors *common.ConvertError,
 	origin objectorigin.ObjectOrigin,
-) (map[string]*types.Struct, string) {
+) (map[string]*domain.Details, string) {
 	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req, origin)
 	if err != nil {
 		return nil, ""
@@ -387,7 +385,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(res.Snapshots))
 	for _, snapshot := range res.Snapshots {
 		// we will get id of relation options after we figure out according relations keys
-		if lo.Contains(snapshot.Snapshot.GetData().GetObjectTypes(), bundle.TypeKeyRelationOption.String()) {
+		if lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyRelationOption.String()) {
 			relationOptions = append(relationOptions, snapshot)
 			continue
 		}
@@ -415,14 +413,14 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 }
 
 func (i *Import) replaceRelationKeyWithNew(option *common.Snapshot, oldIDToNew map[string]string) {
-	if option.Snapshot.Data.Details == nil || len(option.Snapshot.Data.Details.Fields) == 0 {
+	if option.Snapshot.Data.Details == nil || option.Snapshot.Data.Details.Len() == 0 {
 		return
 	}
-	key := pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	key := option.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey)
 	if newRelationID, ok := oldIDToNew[key]; ok {
 		key = strings.TrimPrefix(newRelationID, addr.RelationKeyToIdPrefix)
 	}
-	option.Snapshot.Data.Details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
+	option.Snapshot.Data.Details.SetString(bundle.RelationKeyRelationKey, key)
 }
 
 func (i *Import) getObjectID(
@@ -436,8 +434,8 @@ func (i *Import) getObjectID(
 ) error {
 
 	// Preload file keys
-	for _, fileKeys := range snapshot.Snapshot.GetFileKeys() {
-		err := i.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+	for _, fileKeys := range snapshot.Snapshot.FileKeys {
+		err := i.objectStore.AddFileKeys(domain.FileEncryptionKeys{
 			FileId:         domain.FileId(fileKeys.Hash),
 			EncryptionKeys: fileKeys.Keys,
 		})
@@ -445,12 +443,12 @@ func (i *Import) getObjectID(
 			return fmt.Errorf("add file keys: %w", err)
 		}
 	}
-	if fileInfo := snapshot.Snapshot.GetData().GetFileInfo(); fileInfo != nil {
+	if fileInfo := snapshot.Snapshot.Data.FileInfo; fileInfo != nil {
 		keys := make(map[string]string, len(fileInfo.EncryptionKeys))
 		for _, key := range fileInfo.EncryptionKeys {
 			keys[key.Path] = key.Key
 		}
-		err := i.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+		err := i.objectStore.AddFileKeys(domain.FileEncryptionKeys{
 			FileId:         domain.FileId(fileInfo.FileId),
 			EncryptionKeys: keys,
 		})
@@ -475,9 +473,9 @@ func (i *Import) getObjectID(
 }
 
 func (i *Import) extractInternalKey(snapshot *common.Snapshot, oldIDToNew map[string]string) error {
-	newUniqueKey := i.idProvider.GetInternalKey(snapshot.SbType)
+	newUniqueKey := i.idProvider.GetInternalKey(snapshot.Snapshot.SbType)
 	if newUniqueKey != "" {
-		oldUniqueKey := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+		oldUniqueKey := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyUniqueKey)
 		if oldUniqueKey == "" {
 			oldUniqueKey = snapshot.Snapshot.Data.Key
 		}
@@ -503,8 +501,8 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	mode pb.RpcObjectImportRequestMode,
 	allErrors *common.ConvertError,
 	progress process.Progress,
-) map[string]*types.Struct {
-	details := make(map[string]*types.Struct, 0)
+) map[string]*domain.Details {
+	details := make(map[string]*domain.Details, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(fmt.Errorf("%w: %s", common.ErrCancel, err.Error()))

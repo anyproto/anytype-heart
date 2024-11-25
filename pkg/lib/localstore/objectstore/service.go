@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -33,7 +34,6 @@ var (
 
 type CrossSpace interface {
 	QueryCrossSpace(q database.Query) (records []database.Record, err error)
-	QueryRawCrossSpace(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
 
 	ListIdsCrossSpace() ([]string, error)
@@ -53,6 +53,9 @@ type ObjectStore interface {
 
 	SpaceNameGetter
 	CrossSpace
+
+	AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error
+	GetFileKeys(fileId domain.FileId) (map[string]string, error)
 }
 
 type IndexerStore interface {
@@ -387,12 +390,6 @@ func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) ([]database.Record, er
 func (s *dsObjectStore) QueryCrossSpace(q database.Query) ([]database.Record, error) {
 	return collectCrossSpace(s, func(store spaceindex.Store) ([]database.Record, error) {
 		return store.Query(q)
-	})
-}
-
-func (s *dsObjectStore) QueryRawCrossSpace(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
-	return collectCrossSpace(s, func(store spaceindex.Store) ([]database.Record, error) {
-		return store.QueryRaw(filters, limit, offset)
 	})
 }
 

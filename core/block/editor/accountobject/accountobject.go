@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -32,7 +31,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logger.NewNamedSugared("common.editor.accountobject")
@@ -58,7 +56,7 @@ type AccountObject interface {
 
 	basic.DetailsSettable
 	SetSharedSpacesLimit(limit int) (err error)
-	SetProfileDetails(details *types.Struct) (err error)
+	SetProfileDetails(details *domain.Details) (err error)
 	MigrateIconImage(image string) (err error)
 	IsIconMigrated() (bool, error)
 	SetAnalyticsId(analyticsId string) (err error)
@@ -85,11 +83,11 @@ type accountObject struct {
 	crdtDb      anystore.DB
 }
 
-func (a *accountObject) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (a *accountObject) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	return a.bs.SetDetails(ctx, details, showEvent)
 }
 
-func (a *accountObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (a *accountObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	return a.bs.SetDetailsAndUpdateLastUsed(ctx, details, showEvent)
 }
 
@@ -148,12 +146,16 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("find id: %w", err)
 	}
 	if errors.Is(err, anystore.ErrDocNotFound) {
-		var docToInsert string
-		docToInsert, err = a.genInitialDoc(true)
+		var builder *storestate.Builder
+		builder, err = a.genInitialDoc(a.cfg.IsNewAccount())
 		if err != nil {
 			return fmt.Errorf("generate initial doc: %w", err)
 		}
-		err = coll.Insert(ctx.Ctx, anyenc.MustParseJson(docToInsert))
+		_, err = a.storeSource.PushStoreChange(ctx.Ctx, source.PushStoreChangeParams{
+			Changes: builder.ChangeSet,
+			State:   a.state,
+			Time:    time.Now(),
+		})
 		if err != nil {
 			return fmt.Errorf("insert account document: %w", err)
 		}
@@ -180,20 +182,33 @@ func (a *accountObject) GetPrivateAnalyticsId() string {
 	return string(val.GetStringBytes(privateAnalyticsIdKey))
 }
 
-func (a *accountObject) genInitialDoc(isNewAccount bool) (docToInsert string, err error) {
+func (a *accountObject) genInitialDoc(isNewAccount bool) (builder *storestate.Builder, err error) {
+	builder = &storestate.Builder{}
 	privateAnalytics, err := generatePrivateAnalyticsId()
 	if err != nil {
 		err = fmt.Errorf("generate private analytics id: %w", err)
 	}
+	var newDocument map[string]any
 	if isNewAccount {
-		docToInsert = fmt.Sprintf(
-			`{"%s":"%s","%s":"%s","%s":"true","%s":"%s"}`,
-			idKey, accountDocumentId,
-			analyticsKey, a.cfg.AnalyticsId,
-			iconMigrationKey,
-			privateAnalyticsIdKey, privateAnalytics)
+		newDocument = map[string]any{
+			idKey:                 accountDocumentId,
+			analyticsKey:          a.cfg.AnalyticsId,
+			iconMigrationKey:      "true",
+			privateAnalyticsIdKey: privateAnalytics,
+		}
 	} else {
-		docToInsert = fmt.Sprintf(`{"%s":"%s"}`, idKey, accountDocumentId)
+		newDocument = map[string]any{
+			idKey: accountDocumentId,
+		}
+	}
+	for key, val := range newDocument {
+		if str, ok := val.(string); ok {
+			val = fmt.Sprintf(`"%s"`, str)
+		}
+		err = builder.Modify(collectionName, accountDocumentId, []string{key}, pb.ModifyOp_Set, val)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
@@ -202,8 +217,8 @@ func (a *accountObject) initState(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeyProfile}),
-		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_profile))),
-		template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
+		template.WithForcedDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_profile)),
+		template.WithDetail(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter)),
 	)
 	blockId := "identity"
 	st.Set(simple.New(&model.Block{
@@ -224,7 +239,7 @@ func (a *accountObject) initState(st *state.State) error {
 	if err != nil {
 		return fmt.Errorf("insert block: %w", err)
 	}
-	st.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(true))
+	st.SetDetail(bundle.RelationKeyIsHidden, domain.Bool(true))
 	return nil
 }
 
@@ -339,19 +354,19 @@ func (a *accountObject) Close() error {
 
 func (a *accountObject) SetSharedSpacesLimit(limit int) (err error) {
 	st := a.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, pbtypes.Int64(int64(limit)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
 	return a.Apply(st)
 }
 
 func (a *accountObject) GetSharedSpacesLimit() (limit int) {
-	return int(pbtypes.GetInt64(a.CombinedDetails(), bundle.RelationKeySharedSpacesLimit.String()))
+	return int(a.CombinedDetails().GetInt64(bundle.RelationKeySharedSpacesLimit))
 }
 
-func (a *accountObject) SetProfileDetails(details *types.Struct) (err error) {
+func (a *accountObject) SetProfileDetails(details *domain.Details) (err error) {
 	st := a.NewState()
 	// we should set everything in local state, but not everything in the store (this should be filtered in OnPushChange)
-	for key, val := range details.Fields {
-		st.SetDetailAndBundledRelation(domain.RelationKey(key), val)
+	for key, value := range details.Iterate() {
+		st.SetDetailAndBundledRelation(key, value)
 	}
 	return a.Apply(st)
 }
@@ -359,7 +374,7 @@ func (a *accountObject) SetProfileDetails(details *types.Struct) (err error) {
 func (a *accountObject) MigrateIconImage(image string) (err error) {
 	if image != "" {
 		st := a.NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(image))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(image))
 		err = a.Apply(st)
 		if err != nil {
 			return fmt.Errorf("set icon image: %w", err)
@@ -381,7 +396,8 @@ func (a *accountObject) update(ctx context.Context, st *state.State) (err error)
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
-	obj, err := coll.FindId(ctx, accountDocumentId)
+	accId := accountDocumentId
+	obj, err := coll.FindId(ctx, accId)
 	if err != nil {
 		return fmt.Errorf("find id: %w", err)
 	}

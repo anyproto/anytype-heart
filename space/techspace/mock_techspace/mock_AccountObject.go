@@ -30,8 +30,6 @@ import (
 
 	time "time"
 
-	types "github.com/gogo/protobuf/types"
-
 	undo "github.com/anyproto/anytype-heart/core/block/undo"
 )
 
@@ -145,11 +143,11 @@ func (_c *MockAccountObject_AddHookOnce_Call) RunAndReturn(run func(string, smar
 	return _c
 }
 
-// AddRelationLinks provides a mock function with given fields: ctx, relationIds
-func (_m *MockAccountObject) AddRelationLinks(ctx session.Context, relationIds ...string) error {
-	_va := make([]interface{}, len(relationIds))
-	for _i := range relationIds {
-		_va[_i] = relationIds[_i]
+// AddRelationLinks provides a mock function with given fields: ctx, relationKeys
+func (_m *MockAccountObject) AddRelationLinks(ctx session.Context, relationKeys ...domain.RelationKey) error {
+	_va := make([]interface{}, len(relationKeys))
+	for _i := range relationKeys {
+		_va[_i] = relationKeys[_i]
 	}
 	var _ca []interface{}
 	_ca = append(_ca, ctx)
@@ -161,8 +159,8 @@ func (_m *MockAccountObject) AddRelationLinks(ctx session.Context, relationIds .
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(session.Context, ...string) error); ok {
-		r0 = rf(ctx, relationIds...)
+	if rf, ok := ret.Get(0).(func(session.Context, ...domain.RelationKey) error); ok {
+		r0 = rf(ctx, relationKeys...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -177,18 +175,18 @@ type MockAccountObject_AddRelationLinks_Call struct {
 
 // AddRelationLinks is a helper method to define mock.On call
 //   - ctx session.Context
-//   - relationIds ...string
-func (_e *MockAccountObject_Expecter) AddRelationLinks(ctx interface{}, relationIds ...interface{}) *MockAccountObject_AddRelationLinks_Call {
+//   - relationKeys ...domain.RelationKey
+func (_e *MockAccountObject_Expecter) AddRelationLinks(ctx interface{}, relationKeys ...interface{}) *MockAccountObject_AddRelationLinks_Call {
 	return &MockAccountObject_AddRelationLinks_Call{Call: _e.mock.On("AddRelationLinks",
-		append([]interface{}{ctx}, relationIds...)...)}
+		append([]interface{}{ctx}, relationKeys...)...)}
 }
 
-func (_c *MockAccountObject_AddRelationLinks_Call) Run(run func(ctx session.Context, relationIds ...string)) *MockAccountObject_AddRelationLinks_Call {
+func (_c *MockAccountObject_AddRelationLinks_Call) Run(run func(ctx session.Context, relationKeys ...domain.RelationKey)) *MockAccountObject_AddRelationLinks_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]string, len(args)-1)
+		variadicArgs := make([]domain.RelationKey, len(args)-1)
 		for i, a := range args[1:] {
 			if a != nil {
-				variadicArgs[i] = a.(string)
+				variadicArgs[i] = a.(domain.RelationKey)
 			}
 		}
 		run(args[0].(session.Context), variadicArgs...)
@@ -201,16 +199,16 @@ func (_c *MockAccountObject_AddRelationLinks_Call) Return(err error) *MockAccoun
 	return _c
 }
 
-func (_c *MockAccountObject_AddRelationLinks_Call) RunAndReturn(run func(session.Context, ...string) error) *MockAccountObject_AddRelationLinks_Call {
+func (_c *MockAccountObject_AddRelationLinks_Call) RunAndReturn(run func(session.Context, ...domain.RelationKey) error) *MockAccountObject_AddRelationLinks_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// AddRelationLinksToState provides a mock function with given fields: s, relationIds
-func (_m *MockAccountObject) AddRelationLinksToState(s *state.State, relationIds ...string) error {
-	_va := make([]interface{}, len(relationIds))
-	for _i := range relationIds {
-		_va[_i] = relationIds[_i]
+// AddRelationLinksToState provides a mock function with given fields: s, relationKeys
+func (_m *MockAccountObject) AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) error {
+	_va := make([]interface{}, len(relationKeys))
+	for _i := range relationKeys {
+		_va[_i] = relationKeys[_i]
 	}
 	var _ca []interface{}
 	_ca = append(_ca, s)
@@ -222,8 +220,8 @@ func (_m *MockAccountObject) AddRelationLinksToState(s *state.State, relationIds
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*state.State, ...string) error); ok {
-		r0 = rf(s, relationIds...)
+	if rf, ok := ret.Get(0).(func(*state.State, ...domain.RelationKey) error); ok {
+		r0 = rf(s, relationKeys...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -238,18 +236,18 @@ type MockAccountObject_AddRelationLinksToState_Call struct {
 
 // AddRelationLinksToState is a helper method to define mock.On call
 //   - s *state.State
-//   - relationIds ...string
-func (_e *MockAccountObject_Expecter) AddRelationLinksToState(s interface{}, relationIds ...interface{}) *MockAccountObject_AddRelationLinksToState_Call {
+//   - relationKeys ...domain.RelationKey
+func (_e *MockAccountObject_Expecter) AddRelationLinksToState(s interface{}, relationKeys ...interface{}) *MockAccountObject_AddRelationLinksToState_Call {
 	return &MockAccountObject_AddRelationLinksToState_Call{Call: _e.mock.On("AddRelationLinksToState",
-		append([]interface{}{s}, relationIds...)...)}
+		append([]interface{}{s}, relationKeys...)...)}
 }
 
-func (_c *MockAccountObject_AddRelationLinksToState_Call) Run(run func(s *state.State, relationIds ...string)) *MockAccountObject_AddRelationLinksToState_Call {
+func (_c *MockAccountObject_AddRelationLinksToState_Call) Run(run func(s *state.State, relationKeys ...domain.RelationKey)) *MockAccountObject_AddRelationLinksToState_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]string, len(args)-1)
+		variadicArgs := make([]domain.RelationKey, len(args)-1)
 		for i, a := range args[1:] {
 			if a != nil {
-				variadicArgs[i] = a.(string)
+				variadicArgs[i] = a.(domain.RelationKey)
 			}
 		}
 		run(args[0].(*state.State), variadicArgs...)
@@ -262,7 +260,7 @@ func (_c *MockAccountObject_AddRelationLinksToState_Call) Return(err error) *Moc
 	return _c
 }
 
-func (_c *MockAccountObject_AddRelationLinksToState_Call) RunAndReturn(run func(*state.State, ...string) error) *MockAccountObject_AddRelationLinksToState_Call {
+func (_c *MockAccountObject_AddRelationLinksToState_Call) RunAndReturn(run func(*state.State, ...domain.RelationKey) error) *MockAccountObject_AddRelationLinksToState_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -544,19 +542,19 @@ func (_c *MockAccountObject_Close_Call) RunAndReturn(run func() error) *MockAcco
 }
 
 // CombinedDetails provides a mock function with given fields:
-func (_m *MockAccountObject) CombinedDetails() *types.Struct {
+func (_m *MockAccountObject) CombinedDetails() *domain.Details {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for CombinedDetails")
 	}
 
-	var r0 *types.Struct
-	if rf, ok := ret.Get(0).(func() *types.Struct); ok {
+	var r0 *domain.Details
+	if rf, ok := ret.Get(0).(func() *domain.Details); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.Struct)
+			r0 = ret.Get(0).(*domain.Details)
 		}
 	}
 
@@ -580,30 +578,30 @@ func (_c *MockAccountObject_CombinedDetails_Call) Run(run func()) *MockAccountOb
 	return _c
 }
 
-func (_c *MockAccountObject_CombinedDetails_Call) Return(_a0 *types.Struct) *MockAccountObject_CombinedDetails_Call {
+func (_c *MockAccountObject_CombinedDetails_Call) Return(_a0 *domain.Details) *MockAccountObject_CombinedDetails_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockAccountObject_CombinedDetails_Call) RunAndReturn(run func() *types.Struct) *MockAccountObject_CombinedDetails_Call {
+func (_c *MockAccountObject_CombinedDetails_Call) RunAndReturn(run func() *domain.Details) *MockAccountObject_CombinedDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Details provides a mock function with given fields:
-func (_m *MockAccountObject) Details() *types.Struct {
+func (_m *MockAccountObject) Details() *domain.Details {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Details")
 	}
 
-	var r0 *types.Struct
-	if rf, ok := ret.Get(0).(func() *types.Struct); ok {
+	var r0 *domain.Details
+	if rf, ok := ret.Get(0).(func() *domain.Details); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.Struct)
+			r0 = ret.Get(0).(*domain.Details)
 		}
 	}
 
@@ -627,12 +625,12 @@ func (_c *MockAccountObject_Details_Call) Run(run func()) *MockAccountObject_Det
 	return _c
 }
 
-func (_c *MockAccountObject_Details_Call) Return(_a0 *types.Struct) *MockAccountObject_Details_Call {
+func (_c *MockAccountObject_Details_Call) Return(_a0 *domain.Details) *MockAccountObject_Details_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockAccountObject_Details_Call) RunAndReturn(run func() *types.Struct) *MockAccountObject_Details_Call {
+func (_c *MockAccountObject_Details_Call) RunAndReturn(run func() *domain.Details) *MockAccountObject_Details_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1372,19 +1370,19 @@ func (_c *MockAccountObject_Layout_Call) RunAndReturn(run func() (model.ObjectTy
 }
 
 // LocalDetails provides a mock function with given fields:
-func (_m *MockAccountObject) LocalDetails() *types.Struct {
+func (_m *MockAccountObject) LocalDetails() *domain.Details {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for LocalDetails")
 	}
 
-	var r0 *types.Struct
-	if rf, ok := ret.Get(0).(func() *types.Struct); ok {
+	var r0 *domain.Details
+	if rf, ok := ret.Get(0).(func() *domain.Details); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.Struct)
+			r0 = ret.Get(0).(*domain.Details)
 		}
 	}
 
@@ -1408,12 +1406,12 @@ func (_c *MockAccountObject_LocalDetails_Call) Run(run func()) *MockAccountObjec
 	return _c
 }
 
-func (_c *MockAccountObject_LocalDetails_Call) Return(_a0 *types.Struct) *MockAccountObject_LocalDetails_Call {
+func (_c *MockAccountObject_LocalDetails_Call) Return(_a0 *domain.Details) *MockAccountObject_LocalDetails_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockAccountObject_LocalDetails_Call) RunAndReturn(run func() *types.Struct) *MockAccountObject_LocalDetails_Call {
+func (_c *MockAccountObject_LocalDetails_Call) RunAndReturn(run func() *domain.Details) *MockAccountObject_LocalDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1878,7 +1876,7 @@ func (_c *MockAccountObject_Relations_Call) RunAndReturn(run func(*state.State) 
 }
 
 // RemoveExtraRelations provides a mock function with given fields: ctx, relationKeys
-func (_m *MockAccountObject) RemoveExtraRelations(ctx session.Context, relationKeys []string) error {
+func (_m *MockAccountObject) RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) error {
 	ret := _m.Called(ctx, relationKeys)
 
 	if len(ret) == 0 {
@@ -1886,7 +1884,7 @@ func (_m *MockAccountObject) RemoveExtraRelations(ctx session.Context, relationK
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(session.Context, []string) error); ok {
+	if rf, ok := ret.Get(0).(func(session.Context, []domain.RelationKey) error); ok {
 		r0 = rf(ctx, relationKeys)
 	} else {
 		r0 = ret.Error(0)
@@ -1902,14 +1900,14 @@ type MockAccountObject_RemoveExtraRelations_Call struct {
 
 // RemoveExtraRelations is a helper method to define mock.On call
 //   - ctx session.Context
-//   - relationKeys []string
+//   - relationKeys []domain.RelationKey
 func (_e *MockAccountObject_Expecter) RemoveExtraRelations(ctx interface{}, relationKeys interface{}) *MockAccountObject_RemoveExtraRelations_Call {
 	return &MockAccountObject_RemoveExtraRelations_Call{Call: _e.mock.On("RemoveExtraRelations", ctx, relationKeys)}
 }
 
-func (_c *MockAccountObject_RemoveExtraRelations_Call) Run(run func(ctx session.Context, relationKeys []string)) *MockAccountObject_RemoveExtraRelations_Call {
+func (_c *MockAccountObject_RemoveExtraRelations_Call) Run(run func(ctx session.Context, relationKeys []domain.RelationKey)) *MockAccountObject_RemoveExtraRelations_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].([]string))
+		run(args[0].(session.Context), args[1].([]domain.RelationKey))
 	})
 	return _c
 }
@@ -1919,7 +1917,7 @@ func (_c *MockAccountObject_RemoveExtraRelations_Call) Return(err error) *MockAc
 	return _c
 }
 
-func (_c *MockAccountObject_RemoveExtraRelations_Call) RunAndReturn(run func(session.Context, []string) error) *MockAccountObject_RemoveExtraRelations_Call {
+func (_c *MockAccountObject_RemoveExtraRelations_Call) RunAndReturn(run func(session.Context, []domain.RelationKey) error) *MockAccountObject_RemoveExtraRelations_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2250,7 +2248,7 @@ func (_c *MockAccountObject_SetLocker_Call) RunAndReturn(run func(smartblock.Loc
 }
 
 // SetProfileDetails provides a mock function with given fields: details
-func (_m *MockAccountObject) SetProfileDetails(details *types.Struct) error {
+func (_m *MockAccountObject) SetProfileDetails(details *domain.Details) error {
 	ret := _m.Called(details)
 
 	if len(ret) == 0 {
@@ -2258,7 +2256,7 @@ func (_m *MockAccountObject) SetProfileDetails(details *types.Struct) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*types.Struct) error); ok {
+	if rf, ok := ret.Get(0).(func(*domain.Details) error); ok {
 		r0 = rf(details)
 	} else {
 		r0 = ret.Error(0)
@@ -2273,14 +2271,14 @@ type MockAccountObject_SetProfileDetails_Call struct {
 }
 
 // SetProfileDetails is a helper method to define mock.On call
-//   - details *types.Struct
+//   - details *domain.Details
 func (_e *MockAccountObject_Expecter) SetProfileDetails(details interface{}) *MockAccountObject_SetProfileDetails_Call {
 	return &MockAccountObject_SetProfileDetails_Call{Call: _e.mock.On("SetProfileDetails", details)}
 }
 
-func (_c *MockAccountObject_SetProfileDetails_Call) Run(run func(details *types.Struct)) *MockAccountObject_SetProfileDetails_Call {
+func (_c *MockAccountObject_SetProfileDetails_Call) Run(run func(details *domain.Details)) *MockAccountObject_SetProfileDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*types.Struct))
+		run(args[0].(*domain.Details))
 	})
 	return _c
 }
@@ -2290,7 +2288,7 @@ func (_c *MockAccountObject_SetProfileDetails_Call) Return(err error) *MockAccou
 	return _c
 }
 
-func (_c *MockAccountObject_SetProfileDetails_Call) RunAndReturn(run func(*types.Struct) error) *MockAccountObject_SetProfileDetails_Call {
+func (_c *MockAccountObject_SetProfileDetails_Call) RunAndReturn(run func(*domain.Details) error) *MockAccountObject_SetProfileDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }

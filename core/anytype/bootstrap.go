@@ -94,7 +94,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
@@ -218,7 +217,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(oldstore.New()).
 		Register(objectstore.New()).
 		Register(backlinks.New()).
-		Register(filestore.New()).
 		// Services
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).

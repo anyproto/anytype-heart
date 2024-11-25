@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -19,12 +18,12 @@ import (
 )
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
 }
 
 type TemplateStateCreator interface {
-	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (*state.State, error)
-	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *types.Struct) *state.State
+	CreateTemplateStateWithDetails(templateId string, details *domain.Details) (*state.State, error)
+	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
@@ -94,12 +93,12 @@ func (bs *basic) prepareTargetObjectDetails(
 	spaceID string,
 	typeUniqueKey domain.UniqueKey,
 	rootBlock simple.Block,
-) (*types.Struct, error) {
+) (*domain.Details, error) {
 	objType, err := bs.objectStore.GetObjectByUniqueKey(typeUniqueKey)
 	if err != nil {
 		return nil, err
 	}
-	rawLayout := pbtypes.GetInt64(objType.GetDetails(), bundle.RelationKeyRecommendedLayout.String())
+	rawLayout := objType.GetInt64(bundle.RelationKeyRecommendedLayout)
 	details := createTargetObjectDetails(rootBlock.Model().GetText().GetText(), model.ObjectTypeLayout(rawLayout))
 	return details, nil
 }
@@ -177,17 +176,13 @@ func removeBlocks(state *state.State, descendants []simple.Block) {
 	}
 }
 
-func createTargetObjectDetails(nameText string, layout model.ObjectTypeLayout) *types.Struct {
-	fields := map[string]*types.Value{
-		bundle.RelationKeyLayout.String(): pbtypes.Int64(int64(layout)),
-	}
-
+func createTargetObjectDetails(nameText string, layout model.ObjectTypeLayout) *domain.Details {
+	details := domain.NewDetails()
+	details.SetInt64(bundle.RelationKeyLayout, int64(layout))
 	// Without this check title will be duplicated in template.WithNameToFirstBlock
 	if layout != model.ObjectType_note {
-		fields[bundle.RelationKeyName.String()] = pbtypes.String(nameText)
+		details.SetString(bundle.RelationKeyName, nameText)
 	}
-
-	details := &types.Struct{Fields: fields}
 	return details
 }
 
@@ -257,5 +252,5 @@ func copySubtreeOfBlocks(s *state.State, oldRootId string, oldBlocks []simple.Bl
 }
 
 func hasNoteLayout(s *state.State) bool {
-	return model.ObjectTypeLayout(pbtypes.GetInt64(s.Details(), bundle.RelationKeyLayout.String())) == model.ObjectType_note
+	return model.ObjectTypeLayout(s.Details().GetInt64(bundle.RelationKeyLayout)) == model.ObjectType_note
 }

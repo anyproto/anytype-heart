@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
@@ -26,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
@@ -365,7 +364,7 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest) (objectId string, details *types.Struct, err error) {
+func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest) (objectId string, details *domain.Details, err error) {
 	upl := s.fileUploaderService.NewUploader(spaceId, req.ObjectOrigin)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
@@ -375,7 +374,7 @@ func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUpload
 		upl.SetCustomEncryptionKeys(req.CustomEncryptionKeys)
 	}
 	upl.SetStyle(req.Style)
-	upl.SetAdditionalDetails(req.Details)
+	upl.SetAdditionalDetails(domain.NewDetailsFromProto(req.Details))
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
 	}
@@ -475,7 +474,7 @@ func (s *Service) AddExtraRelations(ctx session.Context, objectId string, relati
 		return nil
 	}
 	return cache.Do(s, objectId, func(b smartblock.SmartBlock) error { // TODO RQ: check if empty
-		return b.AddRelationLinks(ctx, relationIds...)
+		return b.AddRelationLinks(ctx, slice.StringsInto[domain.RelationKey](relationIds)...)
 	})
 }
 
@@ -495,7 +494,7 @@ func (s *Service) SetObjectTypes(ctx session.Context, objectId string, objectTyp
 
 func (s *Service) RemoveExtraRelations(ctx session.Context, objectTypeId string, relationKeys []string) (err error) {
 	return cache.Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
-		return b.RemoveExtraRelations(ctx, relationKeys)
+		return b.RemoveExtraRelations(ctx, slice.StringsInto[domain.RelationKey](relationKeys))
 	})
 }
 

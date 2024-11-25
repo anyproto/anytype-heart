@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -32,7 +31,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -46,9 +44,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/mutex"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 
 	_ "github.com/anyproto/anytype-heart/core/block/editor/table"
@@ -99,7 +97,6 @@ type Service struct {
 	fileObjectService    fileobject.Service
 	detailsService       detailservice.Service
 
-	fileService         files.Service
 	fileUploaderService fileuploader.Service
 
 	predefinedObjectWasMissing bool
@@ -111,8 +108,8 @@ type builtinObjects interface {
 }
 
 type templateService interface {
-	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (*state.State, error)
-	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *types.Struct) *state.State
+	CreateTemplateStateWithDetails(templateId string, details *domain.Details) (*state.State, error)
+	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State
 }
 
 type openedObjects struct {
@@ -133,7 +130,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.templateService = app.MustComponent[templateService](a)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
-	s.fileService = app.MustComponent[files.Service](a)
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.fileUploaderService = app.MustComponent[fileuploader.Service](a)
@@ -179,7 +175,7 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		afterDataviewTime := time.Now()
 		st := ob.NewState()
 
-		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
+		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, domain.Int64(time.Now().Unix()))
 		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}
@@ -222,6 +218,10 @@ func (s *Service) DoFullId(id domain.FullID, apply func(sb smartblock.SmartBlock
 
 // resolveFullId resolves missing spaceId
 func (s *Service) resolveFullId(id domain.FullID) domain.FullID {
+	// TODO: GO-4494 - Do not resolve spaceId in case of date object id. This logic should be reviewed
+	if _, parseErr := dateutil.ParseDateId(id.ObjectID); parseErr == nil && id.SpaceID != "" {
+		return id
+	}
 	// First try to resolve space. It's necessary if client accidentally passes wrong spaceId
 	spaceId, err := s.resolver.ResolveSpaceID(id.ObjectID)
 	if err == nil {
@@ -275,7 +275,7 @@ func (s *Service) SpaceInstallBundledObject(
 	ctx context.Context,
 	spaceId string,
 	sourceObjectId string,
-) (id string, object *types.Struct, err error) {
+) (id string, object *domain.Details, err error) {
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
@@ -295,7 +295,7 @@ func (s *Service) SpaceInstallBundledObjects(
 	ctx context.Context,
 	spaceId string,
 	sourceObjectIds []string,
-) (ids []string, objects []*types.Struct, err error) {
+) (ids []string, objects []*domain.Details, err error) {
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get space: %w", err)
@@ -339,8 +339,8 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 
 	err = spc.DoCtx(ctx, workspaceId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		st.SetLocalDetail(bundle.RelationKeyChatId.String(), pbtypes.String(chatId))
-		st.SetDetail(bundle.RelationKeyHasChat.String(), pbtypes.Bool(true))
+		st.SetLocalDetail(bundle.RelationKeyChatId, domain.String(chatId))
+		st.SetDetail(bundle.RelationKeyHasChat, domain.Bool(true))
 
 		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
 	})
@@ -419,6 +419,9 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
+	if id == spc.DerivedIDs().Archive {
+		return fmt.Errorf("cannot delete archive object")
+	}
 	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
@@ -444,14 +447,14 @@ func (s *Service) RemoveListOption(optionIds []string, checkInObjects bool) erro
 		if checkInObjects {
 			err := cache.Do(s, id, func(b smartblock.SmartBlock) error {
 				st := b.NewState()
-				relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
+				relKey := domain.RelationKey(st.Details().GetString(bundle.RelationKeyRelationKey))
 
 				records, err := s.objectStore.SpaceIndex(b.SpaceID()).Query(database.Query{
-					Filters: []*model.BlockContentDataviewFilter{
+					Filters: []database.FilterRequest{
 						{
 							Condition:   model.BlockContentDataviewFilter_Equal,
 							RelationKey: relKey,
-							Value:       pbtypes.String(id),
+							Value:       domain.String(id),
 						},
 					},
 				})
@@ -540,11 +543,9 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 	}
 	req := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyBookmark,
-		Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeySource.String(): pbtypes.String(url),
-			},
-		},
+		Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeySource: domain.String(url),
+		}),
 	}
 	objectId, _, err = s.objectCreator.CreateObject(ctx, spaceID, req)
 	if err != nil {
@@ -571,7 +572,7 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 }
 
 func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCreateFromUrlRequest,
-) (id string, objectDetails *types.Struct, err error) {
+) (id string, objectDetails *domain.Details, err error) {
 	url, err := uri.NormalizeURI(req.Url)
 	if err != nil {
 		return "", nil, err
@@ -580,10 +581,11 @@ func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCrea
 	if err != nil {
 		return "", nil, err
 	}
-	s.enrichDetailsWithOrigin(req.Details, model.ObjectOrigin_webclipper)
+	details := domain.NewDetailsFromProto(req.Details)
+	details = s.enrichDetailsWithOrigin(details, model.ObjectOrigin_webclipper)
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: objectTypeKey,
-		Details:       req.Details,
+		Details:       details,
 	}
 	id, objectDetails, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
 	if err != nil {
@@ -592,7 +594,7 @@ func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCrea
 
 	res := s.bookmark.FetchBookmarkContent(req.SpaceId, url, req.AddPageContent)
 	content := res()
-	shouldUpdateDetails := s.updateBookmarkContentWithUserDetails(req.Details, objectDetails, content)
+	shouldUpdateDetails := s.updateBookmarkContentWithUserDetails(details, objectDetails, content)
 	if shouldUpdateDetails {
 		err = s.bookmark.UpdateObject(id, content)
 		if err != nil {
@@ -632,25 +634,25 @@ func (s *Service) pasteBlocks(id string, content *bookmark.ObjectContent) error 
 	return nil
 }
 
-func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetails *types.Struct, content *bookmark.ObjectContent) bool {
+func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetails *domain.Details, content *bookmark.ObjectContent) bool {
 	shouldUpdate := false
-	bookmarkRelationToValue := map[string]*string{
-		bundle.RelationKeyName.String():        &content.BookmarkContent.Title,
-		bundle.RelationKeyDescription.String(): &content.BookmarkContent.Description,
-		bundle.RelationKeySource.String():      &content.BookmarkContent.Url,
-		bundle.RelationKeyPicture.String():     &content.BookmarkContent.ImageHash,
-		bundle.RelationKeyIconImage.String():   &content.BookmarkContent.FaviconHash,
+	bookmarkRelationToValue := map[domain.RelationKey]*string{
+		bundle.RelationKeyName:        &content.BookmarkContent.Title,
+		bundle.RelationKeyDescription: &content.BookmarkContent.Description,
+		bundle.RelationKeySource:      &content.BookmarkContent.Url,
+		bundle.RelationKeyPicture:     &content.BookmarkContent.ImageHash,
+		bundle.RelationKeyIconImage:   &content.BookmarkContent.FaviconHash,
 	}
 
 	for relation, valueFromBookmark := range bookmarkRelationToValue {
 		// Don't change details of the object, if they are provided by client in request
-		if userValue := pbtypes.GetString(userDetails, relation); userValue != "" {
+		if userValue := userDetails.GetString(relation); userValue != "" {
 			*valueFromBookmark = userValue
 		} else {
 			// if detail wasn't provided in request, we get it from bookmark and set it later in bookmark.UpdateObject
 			// and add to response details
 			shouldUpdate = true
-			objectDetails.Fields[relation] = pbtypes.String(*valueFromBookmark)
+			objectDetails.SetString(relation, *valueFromBookmark)
 		}
 	}
 	return shouldUpdate
@@ -670,9 +672,10 @@ func (s *Service) GetLogFields() []zap.Field {
 	return fields
 }
 
-func (s *Service) enrichDetailsWithOrigin(details *types.Struct, origin model.ObjectOrigin) {
-	if details == nil || details.Fields == nil {
-		details = &types.Struct{Fields: map[string]*types.Value{}}
+func (s *Service) enrichDetailsWithOrigin(details *domain.Details, origin model.ObjectOrigin) *domain.Details {
+	if details == nil {
+		details = domain.NewDetails()
 	}
-	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
+	details.SetInt64(bundle.RelationKeyOrigin, int64(origin))
+	return details
 }

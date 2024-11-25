@@ -23,13 +23,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 func TestCancelDeletion(t *testing.T) {
-	fileStore := filestore.New()
-
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
@@ -50,7 +47,6 @@ func TestCancelDeletion(t *testing.T) {
 
 	a := new(app.App)
 	a.Register(dataStoreProvider)
-	a.Register(fileStore)
 	a.Register(localFileStorage)
 	a.Register(fileService)
 	a.Register(testutil.PrepareMock(ctx, a, rpcStoreService))

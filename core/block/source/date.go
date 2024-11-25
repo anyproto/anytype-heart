@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -21,6 +19,8 @@ import (
 type DateSourceParams struct {
 	Id               domain.FullID
 	DateObjectTypeId string
+	// TODO: GO-4494 - Remove links relation id
+	LinksRelationId string
 }
 
 func NewDate(params DateSourceParams) (s Source) {
@@ -28,11 +28,14 @@ func NewDate(params DateSourceParams) (s Source) {
 		id:      params.Id.ObjectID,
 		spaceId: params.Id.SpaceID,
 		typeId:  params.DateObjectTypeId,
+		linksId: params.LinksRelationId,
 	}
 }
 
 type date struct {
 	id, spaceId, typeId string
+	// TODO: GO-4494 - Remove links relation id
+	linksId string
 }
 
 func (d *date) ListIds() ([]string, error) {
@@ -55,27 +58,30 @@ func (d *date) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeDate
 }
 
-func (d *date) getDetails() (*types.Struct, error) {
+func (d *date) getDetails() (*domain.Details, error) {
 	t, err := dateutil.ParseDateId(d.id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse date id: %w", err)
 	}
 
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(dateutil.TimeToDateName(t)),
-		bundle.RelationKeyId.String():         pbtypes.String(d.id),
-		bundle.RelationKeyType.String():       pbtypes.String(d.typeId),
-		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
-		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_date)),
-		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
-		bundle.RelationKeySpaceId.String():    pbtypes.String(d.SpaceID()),
-		bundle.RelationKeyTimestamp.String():  pbtypes.Int64(t.Unix()),
-	}}, nil
+	return domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+
+		bundle.RelationKeyName:       domain.String(dateutil.TimeToDateName(t)),
+		bundle.RelationKeyId:         domain.String(d.id),
+		bundle.RelationKeyType:       domain.String(d.typeId),
+		bundle.RelationKeyIsReadonly: domain.Bool(true),
+		bundle.RelationKeyIsArchived: domain.Bool(false),
+		bundle.RelationKeyIsHidden:   domain.Bool(false),
+		bundle.RelationKeyLayout:     domain.Float64(float64(model.ObjectType_date)),
+		bundle.RelationKeyIconEmoji:  domain.String("📅"),
+		bundle.RelationKeySpaceId:    domain.String(d.SpaceID()),
+		bundle.RelationKeyTimestamp:  domain.Int64(t.Unix()),
+		// TODO: GO-4494 - Remove links relation id
+		bundle.RelationKeySetOf: domain.StringList([]string{d.linksId}),
+	}), nil
 }
 
-func (d *date) DetailsFromId() (*types.Struct, error) {
+func (d *date) DetailsFromId() (*domain.Details, error) {
 	return d.getDetails()
 }
 
@@ -85,10 +91,57 @@ func (d *date) ReadDoc(context.Context, ChangeReceiver, bool) (doc state.Doc, er
 		return
 	}
 
+	dataview := &model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			RelationLinks: []*model.RelationLink{
+				{
+					Key:    bundle.RelationKeyName.String(),
+					Format: model.RelationFormat_shorttext,
+				},
+				{
+					Key:    bundle.RelationKeyLastModifiedDate.String(),
+					Format: model.RelationFormat_date,
+				},
+			},
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   "1",
+					Type: model.BlockContentDataviewView_Table,
+					Name: "Date backlinks",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+							Type:        model.BlockContentDataviewSort_Desc,
+						},
+					},
+					Filters: []*model.BlockContentDataviewFilter{
+						{
+							RelationKey: bundle.RelationKeyLinks.String(),
+							Condition:   model.BlockContentDataviewFilter_In,
+							Value:       pbtypes.String(d.id),
+						},
+					},
+					Relations: []*model.BlockContentDataviewRelation{
+						{
+							Key:       bundle.RelationKeyName.String(),
+							IsVisible: true,
+						},
+						{
+							Key:       bundle.RelationKeyLastModifiedDate.String(),
+							IsVisible: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
 	s := state.NewDoc(d.id, nil).(*state.State)
 	template.InitTemplate(s,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,
+		// TODO: GO-4494 - Remove dataview block insertion
+		template.WithDataview(dataview, true),
 		template.WithAllBlocksEditsRestricted,
 	)
 	s.SetDetails(details)

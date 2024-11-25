@@ -37,11 +37,11 @@ func EnrichRecordsWithDateSuggestion(
 	// Don't duplicate search suggestions
 	var found bool
 	for _, r := range records {
-		if r.Details == nil || r.Details.Fields == nil {
+		if r.Details == nil {
 			continue
 		}
-		if v, ok := r.Details.Fields[bundle.RelationKeyId.String()]; ok {
-			if v.GetStringValue() == id {
+		if v, ok := r.Details.TryString(bundle.RelationKeyId); ok {
+			if v == id {
 				found = true
 				break
 			}
@@ -61,7 +61,7 @@ func EnrichRecordsWithDateSuggestion(
 	if err != nil {
 		return nil, fmt.Errorf("make date record: %w", err)
 	}
-	f, _ := database.MakeFilters(req.Filters, store.SpaceIndex(req.SpaceId)) //nolint:errcheck
+	f, _ := database.MakeFilters(database.FiltersFromProto(req.Filters), store.SpaceIndex(req.SpaceId)) //nolint:errcheck
 	if f.FilterObject(rec.Details) {
 		return append([]database.Record{rec}, records...), nil
 	}
@@ -131,12 +131,19 @@ func makeSuggestedDateRecord(spc source.Space, t time.Time) (database.Record, er
 		return database.Record{}, fmt.Errorf("failed to find Date type to build Date object: %w", err)
 	}
 
+	// TODO: GO-4494 - Remove links relation id fetch
+	linksRelationId, err := spc.GetRelationIdByKey(context.Background(), bundle.RelationKeyLinks)
+	if err != nil {
+		return database.Record{}, fmt.Errorf("get links relation id: %w", err)
+	}
+
 	dateSource := source.NewDate(source.DateSourceParams{
 		Id: domain.FullID{
 			ObjectID: id,
 			SpaceID:  spc.Id(),
 		},
 		DateObjectTypeId: typeId,
+		LinksRelationId:  linksRelationId,
 	})
 
 	v, ok := dateSource.(source.SourceIdEndodedDetails)

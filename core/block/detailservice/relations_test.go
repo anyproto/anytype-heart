@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -18,16 +17,15 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/dateutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func relationObject(key domain.RelationKey, format model.RelationFormat) objectstore.TestObject {
 	return objectstore.TestObject{
-		bundle.RelationKeyId:             pbtypes.String(key.URL()),
-		bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
-		bundle.RelationKeyLayout:         pbtypes.Float64(float64(model.ObjectType_relation)),
-		bundle.RelationKeyRelationKey:    pbtypes.String(key.String()),
-		bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(format)),
+		bundle.RelationKeyId:             domain.String(key.URL()),
+		bundle.RelationKeySpaceId:        domain.String(spaceId),
+		bundle.RelationKeyLayout:         domain.Float64(float64(model.ObjectType_relation)),
+		bundle.RelationKeyRelationKey:    domain.String(key.String()),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(format)),
 	}
 }
 
@@ -47,33 +45,33 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		relationObject("daysTillSummer", model.RelationFormat_number),
 		relationObject(bundle.RelationKeyCoverX, model.RelationFormat_number),
 		{
-			bundle.RelationKeyId:               pbtypes.String("obj1"),
-			bundle.RelationKeySpaceId:          pbtypes.String(spaceId),
-			bundle.RelationKeyCreatedDate:      pbtypes.Int64(now.Add(-5 * time.Minute).Unix()),
-			bundle.RelationKeyAddedDate:        pbtypes.Int64(now.Add(-3 * time.Minute).Unix()),
-			bundle.RelationKeyLastModifiedDate: pbtypes.Int64(now.Add(-1 * time.Minute).Unix()),
-			bundle.RelationKeyIsFavorite:       pbtypes.Bool(true),
-			"daysTillSummer":                   pbtypes.Int64(300),
-			bundle.RelationKeyLinks:            pbtypes.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(-30 * time.Minute))}),
+			bundle.RelationKeyId:               domain.String("obj1"),
+			bundle.RelationKeySpaceId:          domain.String(spaceId),
+			bundle.RelationKeyCreatedDate:      domain.Int64(now.Add(-5 * time.Minute).Unix()),
+			bundle.RelationKeyAddedDate:        domain.Int64(now.Add(-3 * time.Minute).Unix()),
+			bundle.RelationKeyLastModifiedDate: domain.Int64(now.Add(-1 * time.Minute).Unix()),
+			bundle.RelationKeyIsFavorite:       domain.Bool(true),
+			"daysTillSummer":                   domain.Int64(300),
+			bundle.RelationKeyLinks:            domain.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(-30 * time.Minute))}),
 		},
 		{
-			bundle.RelationKeyId:               pbtypes.String("obj2"),
-			bundle.RelationKeySpaceId:          pbtypes.String(spaceId),
-			bundle.RelationKeyName:             pbtypes.String(dateutil.TimeToDateId(now)),
-			bundle.RelationKeyCreatedDate:      pbtypes.Int64(now.Add(-24*time.Hour - 5*time.Minute).Unix()),
-			bundle.RelationKeyAddedDate:        pbtypes.Int64(now.Add(-24*time.Hour - 3*time.Minute).Unix()),
-			bundle.RelationKeyLastModifiedDate: pbtypes.Int64(now.Add(-1 * time.Minute).Unix()),
-			bundle.RelationKeyCoverX:           pbtypes.Int64(300),
+			bundle.RelationKeyId:               domain.String("obj2"),
+			bundle.RelationKeySpaceId:          domain.String(spaceId),
+			bundle.RelationKeyName:             domain.String(dateutil.TimeToDateId(now)),
+			bundle.RelationKeyCreatedDate:      domain.Int64(now.Add(-24*time.Hour - 5*time.Minute).Unix()),
+			bundle.RelationKeyAddedDate:        domain.Int64(now.Add(-24*time.Hour - 3*time.Minute).Unix()),
+			bundle.RelationKeyLastModifiedDate: domain.Int64(now.Add(-1 * time.Minute).Unix()),
+			bundle.RelationKeyCoverX:           domain.Int64(300),
 		},
 		{
-			bundle.RelationKeyId:               pbtypes.String("obj3"),
-			bundle.RelationKeySpaceId:          pbtypes.String(spaceId),
-			bundle.RelationKeyIsHidden:         pbtypes.Bool(true),
-			bundle.RelationKeyCreatedDate:      pbtypes.Int64(now.Add(-3 * time.Minute).Unix()),
-			bundle.RelationKeyLastModifiedDate: pbtypes.Int64(now.Unix()),
-			bundle.RelationKeyIsFavorite:       pbtypes.Bool(true),
-			bundle.RelationKeyCoverX:           pbtypes.Int64(300),
-			bundle.RelationKeyMentions:         pbtypes.StringList([]string{dateutil.TimeToDateId(now), dateutil.TimeToDateId(now.Add(-24 * time.Hour))}),
+			bundle.RelationKeyId:               domain.String("obj3"),
+			bundle.RelationKeySpaceId:          domain.String(spaceId),
+			bundle.RelationKeyIsHidden:         domain.Bool(true),
+			bundle.RelationKeyCreatedDate:      domain.Int64(now.Add(-3 * time.Minute).Unix()),
+			bundle.RelationKeyLastModifiedDate: domain.Int64(now.Unix()),
+			bundle.RelationKeyIsFavorite:       domain.Bool(true),
+			bundle.RelationKeyCoverX:           domain.Int64(300),
+			bundle.RelationKeyMentions:         domain.StringList([]string{dateutil.TimeToDateId(now), dateutil.TimeToDateId(now.Add(-24 * time.Hour))}),
 		},
 	})
 
@@ -81,12 +79,12 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 
 	for _, tc := range []struct {
 		name         string
-		value        *types.Value
+		value        domain.Value
 		expectedList []*pb.RpcRelationListWithValueResponseResponseItem
 	}{
 		{
 			"date object - today",
-			pbtypes.String(dateutil.TimeToDateId(now)),
+			domain.String(dateutil.TimeToDateId(now)),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
 				{bundle.RelationKeyAddedDate.String(), 1},
 				{bundle.RelationKeyCreatedDate.String(), 2},
@@ -98,7 +96,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		},
 		{
 			"date object - yesterday",
-			pbtypes.String(dateutil.TimeToDateId(now.Add(-24 * time.Hour))),
+			domain.String(dateutil.TimeToDateId(now.Add(-24 * time.Hour))),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
 				{bundle.RelationKeyAddedDate.String(), 1},
 				{bundle.RelationKeyCreatedDate.String(), 1},
@@ -107,7 +105,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		},
 		{
 			"number",
-			pbtypes.Int64(300),
+			domain.Int64(300),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
 				{bundle.RelationKeyCoverX.String(), 2},
 				{"daysTillSummer", 1},
@@ -115,7 +113,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		},
 		{
 			"bool",
-			pbtypes.Bool(true),
+			domain.Bool(true),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
 				{bundle.RelationKeyIsFavorite.String(), 2},
 				{bundle.RelationKeyIsHidden.String(), 1},
@@ -123,7 +121,7 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 		},
 		{
 			"string list",
-			pbtypes.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(-30 * time.Minute))}),
+			domain.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(-30 * time.Minute))}),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
 				{bundle.RelationKeyLinks.String(), 1},
 			},
@@ -159,7 +157,7 @@ func TestService_ObjectTypeAddRelations(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, []string{bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL()},
-			pbtypes.GetStringList(sb.Details(), bundle.RelationKeyRecommendedRelations.String()))
+			sb.Details().GetStringList(bundle.RelationKeyRecommendedRelations))
 	})
 
 	t.Run("editing of bundled types is prohibited", func(t *testing.T) {
@@ -183,14 +181,14 @@ func TestService_ObjectTypeRemoveRelations(t *testing.T) {
 		fx := newFixture(t)
 		sb := smarttest.New(bundle.TypeKeyTask.URL())
 		sb.SetSpace(fx.space)
-		sb.Doc.(*state.State).SetDetails(&types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList([]string{
+		sb.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{
 				bundle.RelationKeyAssignee.URL(),
 				bundle.RelationKeyIsFavorite.URL(),
 				bundle.RelationKeyDone.URL(),
 				bundle.RelationKeyLinkedProjects.URL(),
 			}),
-		}})
+		}))
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
 			assert.Equal(t, bundle.TypeKeyTask.URL(), objectId)
 			return sb, nil
@@ -207,7 +205,7 @@ func TestService_ObjectTypeRemoveRelations(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, []string{bundle.RelationKeyIsFavorite.URL(), bundle.RelationKeyLinkedProjects.URL()},
-			pbtypes.GetStringList(sb.Details(), bundle.RelationKeyRecommendedRelations.String()))
+			sb.Details().GetStringList(bundle.RelationKeyRecommendedRelations))
 	})
 
 	t.Run("editing of bundled types is prohibited", func(t *testing.T) {

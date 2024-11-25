@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"github.com/adrium/goheif"
-	"github.com/disintegration/imaging"
+	"github.com/kovidgoyal/imaging"
 )
 
 func (m *ImageResize) resizeHEIC(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {

@@ -57,16 +57,16 @@ func (mw *Middleware) BlockLinkCreateWithObject(cctx context.Context, req *pb.Rp
 	}
 	var (
 		id, targetId  string
-		objectDetails *types.Struct
+		objectDetails *domain.Details
 	)
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		id, targetId, objectDetails, err = bs.CreateLinkToTheNewObject(cctx, ctx, req)
 		return
 	})
 	if err != nil {
-		return response(pb.RpcBlockLinkCreateWithObjectResponseError_UNKNOWN_ERROR, "", "", objectDetails, err)
+		return response(pb.RpcBlockLinkCreateWithObjectResponseError_UNKNOWN_ERROR, "", "", nil, err)
 	}
-	return response(pb.RpcBlockLinkCreateWithObjectResponseError_NULL, id, targetId, objectDetails, nil)
+	return response(pb.RpcBlockLinkCreateWithObjectResponseError_NULL, id, targetId, objectDetails.ToProto(), nil)
 }
 
 func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse {
@@ -93,7 +93,6 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 	code := mapErrorCode(err,
 		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectOpenResponseError_OBJECT_DELETED),
 		errToCode(source.ErrUnknownDataFormat, pb.RpcObjectOpenResponseError_ANYTYPE_NEEDS_UPGRADE),
-		errToCode(source.ErrObjectNotFound, pb.RpcObjectOpenResponseError_NOT_FOUND),
 	)
 	return response(code, err)
 }
@@ -121,7 +120,6 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 	code := mapErrorCode(err,
 		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectShowResponseError_OBJECT_DELETED),
 		errToCode(source.ErrUnknownDataFormat, pb.RpcObjectShowResponseError_ANYTYPE_NEEDS_UPGRADE),
-		errToCode(source.ErrObjectNotFound, pb.RpcObjectShowResponseError_NOT_FOUND),
 	)
 	return response(code, err)
 }

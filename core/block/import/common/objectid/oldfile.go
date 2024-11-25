@@ -17,19 +17,19 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // oldFile represents file in pre Files-as-Objects format
 type oldFile struct {
 	blockService      *block.Service
-	fileStore         filestore.FileStore
 	fileObjectService fileobject.Service
+	objectStore       objectstore.ObjectStore
 }
 
 func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *common.Snapshot, _ time.Time, _ bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
-	fileId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	fileId := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyId)
 	filesKeys := map[string]string{}
 	for _, fileKeys := range sn.Snapshot.FileKeys {
 		if fileKeys.Hash == fileId {
@@ -38,9 +38,9 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 		}
 	}
 
-	filePath := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
+	filePath := sn.Snapshot.Data.Details.GetString(bundle.RelationKeySource)
 	if filePath != "" {
-		name := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyName.String())
+		name := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 		fileObjectId, err := uploadFile(ctx, f.blockService, spaceId, name, filePath, origin, filesKeys)
 		if err != nil {
 			log.Error("handling old file object: upload file", zap.Error(err))
@@ -50,7 +50,7 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 		}
 	}
 
-	err := f.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+	err := f.objectStore.AddFileKeys(domain.FileEncryptionKeys{
 		FileId:         domain.FileId(fileId),
 		EncryptionKeys: filesKeys,
 	})

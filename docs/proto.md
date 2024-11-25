@@ -1877,6 +1877,7 @@
     - [Block.Content.Dataview.Filter.Operator](#anytype-model-Block-Content-Dataview-Filter-Operator)
     - [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption)
     - [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat)
+    - [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType)
     - [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat)
     - [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType)
     - [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type)
@@ -16187,7 +16188,7 @@ DEPRECATED, GO-1926 |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 | returnMeta | [bool](#bool) |  | add ResultMeta to each result |
 | returnMetaRelationDetails | [bool](#bool) |  | add relation option details to meta |
-| returnHTMLHighlightsInsteadOfRanges | [bool](#bool) |  |  |
+| returnHTMLHighlightsInsteadOfRanges | [bool](#bool) |  | DEPRECATED |
 
 
 
@@ -27936,7 +27937,7 @@ Contains basic information about a user account
 | marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
 | workspaceObjectId | [string](#string) |  | workspace object id. used for space-level chat |
 | deviceId | [string](#string) |  |  |
-| accountSpaceId | [string](#string) |  |  |
+| accountSpaceId | [string](#string) |  | the first created private space. It&#39;s filled only when account is created |
 | widgetsId | [string](#string) |  |  |
 | spaceViewId | [string](#string) |  |  |
 | techSpaceId | [string](#string) |  |  |
@@ -28186,6 +28187,7 @@ Bookmark is to keep a web-link and to preview a content.
 | dateIncludeTime | [bool](#bool) |  |  |
 | timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  |  |
 | dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  |  |
+| formula | [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType) |  |  |
 
 
 
@@ -29732,6 +29734,29 @@ stored |
 | Short | 2 | 30/07/2020 |
 | ShortUS | 3 | 07/30/2020 |
 | ISO | 4 | 2020-07-30 |
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Relation-FormulaType"></a>
+
+### Block.Content.Dataview.Relation.FormulaType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| None | 0 |  |
+| Count | 1 |  |
+| CountDistinct | 2 |  |
+| CountEmpty | 3 |  |
+| CountNotEmpty | 4 |  |
+| PercentEmpty | 5 |  |
+| PercentNotEmpty | 6 |  |
+| MathSum | 7 |  |
+| MathAverage | 8 |  |
+| MathMedian | 9 |  |
+| MathMin | 10 |  |
+| MathMax | 11 |  |
+| Range | 12 |  |
 
 
 
