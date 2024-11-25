@@ -131,10 +131,12 @@ func makeFileObject(dirPath, fileName string) (asset fileObject, err error) {
 
 // current structure of published ufs dir:
 // ```
-// - keys.json <- encrypted with main key, has keys for all the other files
-// - index.json <- renderer input
-// - asset1
-// - asset2....
+//   - keys.json <- encrypted with main key, has keys for all the other files
+//   - rootPath  <- contains path to root object
+//   - encrypted asset1
+//   - encrypted asset2
+//     ...
+//
 // ```
 func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res PublishResult, err error) {
 	dagService := s.dagServiceForSpace(spaceId)
@@ -255,6 +257,23 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 
 	cid := node.Cid().String()
 	err = helpers.AddLinkToDirectory(ctx, dagService, outer, "keys.json", cid)
+	if err != nil {
+		return
+	}
+
+	rootPath := filepath.Join("objects", pageId+".pb")
+	node, err = s.commonFile.AddFile(ctx, bytes.NewReader([]byte(rootPath)))
+	if err != nil {
+		return
+	}
+
+	err = dagService.Add(ctx, node)
+	if err != nil {
+		return
+	}
+
+	cid = node.Cid().String()
+	err = helpers.AddLinkToDirectory(ctx, dagService, outer, "rootPath", cid)
 	if err != nil {
 		return
 	}
