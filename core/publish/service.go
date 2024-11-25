@@ -134,7 +134,75 @@ func makeFileObject(dirPath, fileName string) (asset filedata.FileWithName, err 
 //   - encrypted asset2
 //     ...
 //
-// ```
+// ``
+
+/*
+
+	gateway(cid, mainKey)
+	mainKey is key for keys.json, everything else is already encrypted
+
+		- outer node -> publishing cid
+			- keys.json -> name => encryption key
+			- rootPath
+			- name=files/asset1.png
+			- name=files/asset2.png
+			- name=files/asset3.png
+			- name=objects/object1.pb
+			- name=objects/object2.pb
+
+*/
+
+/*
+
+	gateway(cid, mainKey)
+	mainKey is key for keys.json, everything else is already encrypted
+
+		- outer node -> publishing cid
+			- rootPath
+				- content
+				- meta
+			- name=files/asset1.png
+				- content
+				- meta
+			- name=files/asset2.png
+				- content
+				- meta
+			- name=files/asset3.png
+				- content
+				- meta
+			- name=objects/object1.pb
+				- content
+				- meta
+			- name=objects/object2.pb
+				- content
+				- meta
+
+*/
+
+/*
+	- dir (outer)
+		- dir (file)
+			- meta      <-encrypted by key0
+			- content   <-encrypted by key0
+		...
+*/
+
+/*
+	Object:
+		fileId -> - outer
+					 - file
+						- content
+							- keys.json -> name => encryption key
+						- meta
+						- files: []FileWithName
+								- rootPath
+								- name=files/asset1.png
+								- name=files/asset2.png
+								- name=files/asset3.png
+								- name=objects/object1.pb
+								- name=objects/object2.pb
+*/
+
 func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res PublishResult, err error) {
 	dagService := s.dagServiceForSpace(spaceId)
 	outer := uio.NewDirectory(dagService)
@@ -303,6 +371,45 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 	// and return node Cid and mainKey
 	res.Cid = outerNodeCid
 	res.Key = mainKeyStr
+	return
+}
+
+func (s *service) publishFileList(ctx context.Context, spaceId, pageId string) (files []filedata.FileWithName, err error) {
+	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
+	if err != nil {
+		return
+	}
+
+	for _, entry := range dirEntries {
+		var asset filedata.FileWithName
+		if entry.IsDir() {
+			var dirFiles []fs.DirEntry
+			dirName := entry.Name()
+
+			dirFiles, err = os.ReadDir(filepath.Join(exportPath, dirName))
+			if err != nil {
+				return
+			}
+
+			for _, file := range dirFiles {
+				withDirName := filepath.Join(dirName, file.Name())
+				asset, err = makeFileObject(exportPath, withDirName)
+				if err != nil {
+					return
+				}
+
+				files = append(files, asset)
+			}
+		} else {
+			asset, err = makeFileObject(exportPath, entry.Name())
+			if err != nil {
+				return
+			}
+
+			files = append(files, asset)
+		}
+	}
+
 	return
 }
 

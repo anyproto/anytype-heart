@@ -53,7 +53,7 @@ type FileWithName struct {
 type Service interface {
 	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
 	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
-	PublishingAdd(ctx context.Context, spaceId string, keys map[string]string, files []FileWithName) (*AddResult, error)
+	PublishingAdd(ctx context.Context, spaceId string, files []FileWithName) (*AddResult, error)
 
 	// SystemFileAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
 
