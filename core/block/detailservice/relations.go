@@ -66,6 +66,39 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 	})
 }
 
+func (s *service) ObjectTypeSetRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
+	return s.objectTypeSetRelations(ctx, objectTypeId, relationKeys, false)
+}
+
+func (s *service) ObjectTypeSetFeaturedRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
+	return s.objectTypeSetRelations(ctx, objectTypeId, relationKeys, true)
+}
+
+func (s *service) objectTypeSetRelations(
+	ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey, isFeatured bool,
+) error {
+	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
+		return ErrBundledTypeIsReadonly
+	}
+	relationToSet := bundle.RelationKeyRecommendedRelations
+	if isFeatured {
+		relationToSet = bundle.RelationKeyRecommendedFeaturedRelations
+	}
+	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		list := make([]string, len(relationKeys))
+		for i, relKey := range relationKeys {
+			relId, err := b.Space().GetRelationIdByKey(ctx, relKey)
+			if err != nil {
+				return fmt.Errorf("get relation id by key %s: %w", relKey, err)
+			}
+			list[i] = relId
+		}
+		st.SetDetailAndBundledRelation(relationToSet, pbtypes.StringList(list))
+		return b.Apply(st)
+	})
+}
+
 func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {
 	countersByKeys := make(map[string]int64)
 	detailHandlesValue := generateFilter(value)

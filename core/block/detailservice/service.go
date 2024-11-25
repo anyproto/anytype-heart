@@ -40,6 +40,8 @@ type Service interface {
 
 	ObjectTypeAddRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error
 	ObjectTypeRemoveRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error
+	ObjectTypeSetRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error
+	ObjectTypeSetFeaturedRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error
 
 	ListRelationsWithValue(spaceId string, value *types.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error)
 
