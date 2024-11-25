@@ -20,6 +20,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/domain"
+	filedata "github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
@@ -86,13 +87,9 @@ type keyObject struct {
 	Key string `json:"key"`
 }
 
-type fileObject struct {
-	FileName string
-	Content  []byte
-}
-
 func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirEntries []fs.DirEntry, exportPath string, err error) {
 	tempDir := os.TempDir()
+	// TODO remove tempDir
 	exportPath, _, err = s.exportService.Export(ctx, pb.RpcObjectListExportRequest{
 		SpaceId:      spaceId,
 		Format:       model.Export_Protobuf,
@@ -113,16 +110,16 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirE
 	return
 }
 
-func makeFileObject(dirPath, fileName string) (asset fileObject, err error) {
+func makeFileObject(dirPath, fileName string) (asset filedata.FileWithName, err error) {
 	var content []byte
 
 	content, err = os.ReadFile(filepath.Join(dirPath, fileName))
 	if err != nil {
 		return
 	}
-	asset = fileObject{
-		FileName: fileName,
-		Content:  content,
+	asset = filedata.FileWithName{
+		Name: fileName,
+		Data: content,
 	}
 
 	return
@@ -151,7 +148,7 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 	keys := make(map[string]keyObject, 0)
 
 	// will be added via commonFile.AddFile
-	files := make([]fileObject, 0)
+	files := make([]filedata.FileWithName, 0)
 
 	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
 	if err != nil {
@@ -159,7 +156,7 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 	}
 
 	for _, entry := range dirEntries {
-		var asset fileObject
+		var asset filedata.FileWithName
 		if entry.IsDir() {
 			var dirFiles []fs.DirEntry
 			dirName := entry.Name()
@@ -197,7 +194,7 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 		}
 
 		var encContent []byte
-		encContent, err = key.Encrypt(file.Content)
+		encContent, err = key.Encrypt(file.Data)
 		if err != nil {
 			return
 		}
@@ -214,7 +211,7 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 		}
 
 		cid := node.Cid().String()
-		err = helpers.AddLinkToDirectory(ctx, dagService, outer, file.FileName, cid)
+		err = helpers.AddLinkToDirectory(ctx, dagService, outer, file.Name, cid)
 		if err != nil {
 			return
 		}
@@ -225,7 +222,7 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 			return
 		}
 
-		keys[file.FileName] = keyObject{
+		keys[file.Name] = keyObject{
 			Cid: cid,
 			Key: keyStr,
 		}
@@ -307,6 +304,10 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 	res.Cid = outerNodeCid
 	res.Key = mainKeyStr
 	return
+}
+
+func (s *service) filesToNodes(ctx context.Context, keysJson []byte, files []filedata.FileWithName) (err error) {
+	return nil
 }
 
 func (s *service) Publish(ctx context.Context, spaceId, pageId string) (res PublishResult, err error) {

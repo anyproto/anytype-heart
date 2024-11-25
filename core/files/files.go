@@ -45,13 +45,26 @@ var log = logging.Logger("anytype-files")
 
 var _ Service = (*service)(nil)
 
+type FileWithName struct {
+	Name string
+	Data []byte
+}
+
 type Service interface {
 	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
 	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
+	PublishingAdd(ctx context.Context, spaceId string, keys map[string]string, files []FileWithName) (*AddResult, error)
+
+	// SystemFileAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
+
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
 	// GetFileVariants get file information from DAG. If file is not available locally, it fetches data from remote peer (file node or p2p peer)
 	GetFileVariants(ctx context.Context, fileId domain.FullFileId, keys map[string]string) ([]*storage.FileInfo, error)
+
+	// PublishingAdd -> info0
+	// GetFileVariants -> info0
+
 	GetContentReader(ctx context.Context, spaceID string, rawCid string, encKey string) (symmetric.ReadSeekCloser, error)
 
 	app.Component
@@ -487,7 +500,13 @@ func (s *service) GetFileVariants(ctx context.Context, id domain.FullFileId, key
 		return nil, fmt.Errorf("get inner dir node: %w", err)
 	}
 
+	// dir{name=publishing}
+	// if dir.Name == publishing {
+	//
+	// }
+
 	var files []*storage.FileInfo
+	// TODO Add third case
 	if looksLikeFileNode(dirNode) {
 		path := encryptionKeyPath(schema.LinkFile)
 		var key string
