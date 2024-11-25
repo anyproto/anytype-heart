@@ -194,12 +194,19 @@ func buildDateObject(space clientspace.Space, details *types.Struct) (string, *t
 		return "", nil, fmt.Errorf("failed to find Date type to build Date object: %w", err)
 	}
 
+	// TODO: GO-4494 - Remove links relation id fetch
+	linksRelationId, err := space.GetRelationIdByKey(context.Background(), bundle.RelationKeyLinks)
+	if err != nil {
+		return "", nil, fmt.Errorf("get links relation id: %w", err)
+	}
+
 	dateSource := source.NewDate(source.DateSourceParams{
 		Id: domain.FullID{
 			ObjectID: id,
 			SpaceID:  space.Id(),
 		},
 		DateObjectTypeId: typeId,
+		LinksRelationId:  linksRelationId,
 	})
 
 	detailsGetter, ok := dateSource.(source.SourceIdEndodedDetails)

@@ -165,7 +165,7 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 		return equalOrHasFilter
 	}
 
-	shortId := dateutil.TimeToShortDateId(ts)
+	shortId := dateutil.TimeToDateId(ts)
 
 	start := ts.Truncate(24 * time.Hour)
 	end := start.Add(24 * time.Hour)

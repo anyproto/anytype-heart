@@ -2,7 +2,7 @@
   <configuration default="false" name="Run" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="anytype-heart" />
     <working_directory value="$PROJECT_DIR$" />
-    <go_parameters value="-tags &quot;nomutexdeadlockdetector noauth nographviz&quot; -ldflags=&quot;-extldflags=-Wl,-ld_classic&quot;" />
+    <go_parameters value="-tags &quot;nomutexdeadlockdetector noauth nographviz&quot;" />
     <envs>
       <env name="ANYDEBUG" value=":6061" />
       <env name="ANYPROF" value=":6060" />
@@ -10,7 +10,9 @@
       <env name="ANYTYPE_GRPC_ADDR" value="127.0.0.1:31007" />
       <env name="ANYTYPE_GRPCWEB_ADDR" value="127.0.0.1:31008" />
       <env name="CC" value="/usr/bin/cc" />
+      <env name="CGO_CFLAGS" value="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" />
       <env name="CXX" value="/usr/bin/c++" />
+      <env name="GOEXPERIMENT" value="rangefunc" />
     </envs>
     <EXTENSION ID="net.ashald.envfile">
       <option name="IS_ENABLED" value="false" />
