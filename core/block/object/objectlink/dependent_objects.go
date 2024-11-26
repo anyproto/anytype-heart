@@ -152,7 +152,7 @@ func collectIdsFromDetail(rel *model.RelationLink, det *types.Struct, flags Flag
 		if relInt > 0 {
 			t := time.Unix(relInt, 0)
 			t = t.In(time.Local)
-			ids = append(ids, dateutil.TimeToDateId(t, false))
+			ids = append(ids, dateutil.NewDateObject(t, false).Id())
 		}
 		return
 	}

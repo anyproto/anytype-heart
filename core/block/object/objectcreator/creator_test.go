@@ -118,39 +118,20 @@ func TestService_CreateObject(t *testing.T) {
 			return bundle.TypeKeyDate.URL(), nil
 		})
 		ts := time.Now()
-		name := dateutil.TimeToDateName(ts)
+		dateObject := dateutil.NewDateObject(ts, false)
 
 		// when
 		id, details, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
 			ObjectTypeKey: bundle.TypeKeyDate,
 			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String(): pbtypes.String(name),
+				bundle.RelationKeyTimestamp.String(): pbtypes.Int64(dateObject.Time().Unix()),
 			}},
 		})
 
 		// then
 		assert.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, dateutil.TimeToDateId(ts, false)))
+		assert.True(t, strings.HasPrefix(id, dateObject.Id()))
 		assert.Equal(t, spaceId, pbtypes.GetString(details, bundle.RelationKeySpaceId.String()))
 		assert.Equal(t, bundle.TypeKeyDate.URL(), pbtypes.GetString(details, bundle.RelationKeyType.String()))
-	})
-
-	t.Run("date object creation - invalid name", func(t *testing.T) {
-		// given
-		f := newFixture(t)
-		f.spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(f.spc, nil)
-		ts := time.Now()
-		name := ts.Format(time.RFC3339)
-
-		// when
-		_, _, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
-			ObjectTypeKey: bundle.TypeKeyDate,
-			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String(): pbtypes.String(name),
-			}},
-		})
-
-		// then
-		assert.Error(t, err)
 	})
 }
