@@ -25,7 +25,6 @@ var smartBlockTypeToKey = map[smartblock.SmartBlockType]string{
 	smartblock.SmartBlockTypeNotificationObject: "notification",
 	smartblock.SmartBlockTypeDevicesObject:      "devices",
 	smartblock.SmartBlockTypeChatDerivedObject:  "chatDerived",
-	smartblock.SmartBlockTypeChatObject:         "chat", // only for space-global chat
 	smartblock.SmartBlockTypeAccountObject:      "account",
 }
 

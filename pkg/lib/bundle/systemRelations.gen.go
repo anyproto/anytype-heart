@@ -80,7 +80,6 @@ var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
 	RelationKeyLastUsedDate,
 	RelationKeyMentions,
 	RelationKeyChatId,
-	RelationKeySpaceMainChatId,
 	RelationKeyHasChat,
 	RelationKeyTimestamp,
 }...)

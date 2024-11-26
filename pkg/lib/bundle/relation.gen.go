@@ -142,7 +142,6 @@ const (
 	RelationKeySyncError                 domain.RelationKey = "syncError"
 	RelationKeyHasChat                   domain.RelationKey = "hasChat"
 	RelationKeyChatId                    domain.RelationKey = "chatId"
-	RelationKeySpaceMainChatId           domain.RelationKey = "spaceMainChatId"
 	RelationKeyMentions                  domain.RelationKey = "mentions"
 	RelationKeyTimestamp                 domain.RelationKey = "timestamp"
 )
@@ -1668,20 +1667,6 @@ var (
 			Key:              "spaceLocalStatus",
 			MaxCount:         1,
 			Name:             "Space local status",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeySpaceMainChatId: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Space main chat",
-			Format:           model.RelationFormat_object,
-			Hidden:           true,
-			Id:               "_brspaceMainChatId",
-			Key:              "spaceMainChatId",
-			MaxCount:         1,
-			Name:             "Space main chat id",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
