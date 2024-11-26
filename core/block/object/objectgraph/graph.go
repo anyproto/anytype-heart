@@ -8,7 +8,6 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -210,15 +209,16 @@ func (gr *Builder) appendLinks(
 			// ignore files because we index all file blocks as outgoing links
 			continue
 		case smartblock.SmartBlockTypeDate:
-			details, err := source.NewDate(source.DateSourceParams{
-				Id: domain.FullID{ObjectID: link, SpaceID: spaceID},
-			}).(source.SourceIdEndodedDetails).DetailsFromId()
+			details, err := gr.objectStore.SpaceIndex(spaceID).QueryByIds([]string{link})
+			if err == nil && len(details) != 1 {
+				err = fmt.Errorf("expected to get 1 date object, got %d", len(details))
+			}
 			if err != nil {
 				log.Error("get details of Date object", zap.String("objectId", link), zap.Error(err))
 				continue
 			}
 			existedNodes[link] = struct{}{}
-			nodes = append(nodes, details)
+			nodes = append(nodes, details[0].Details)
 		}
 
 		if sbType != smartblock.SmartBlockTypeFileObject {
