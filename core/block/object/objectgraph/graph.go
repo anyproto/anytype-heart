@@ -8,6 +8,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -128,7 +129,12 @@ func (gr *Builder) buildGraph(
 
 		outgoingRelationLink := make(map[string]struct{}, 10)
 		edges = gr.appendRelations(rec, relations, edges, existedNodes, sourceId, outgoingRelationLink)
-		edges = gr.appendLinks(req.SpaceId, rec, outgoingRelationLink, existedNodes, edges, sourceId)
+		nodesToAdd := make([]*types.Struct, 0)
+		nodesToAdd, edges = gr.appendLinks(req.SpaceId, rec, outgoingRelationLink, existedNodes, edges, sourceId)
+
+		if len(nodesToAdd) != 0 {
+			nodes = append(nodes, nodesToAdd...)
+		}
 	}
 	return nodes, edges
 }
@@ -191,14 +197,30 @@ func (gr *Builder) appendLinks(
 	existedNodes map[string]struct{},
 	edges []*pb.RpcObjectGraphEdge,
 	id string,
-) []*pb.RpcObjectGraphEdge {
+) (nodes []*types.Struct, resultEdges []*pb.RpcObjectGraphEdge) {
 	links := pbtypes.GetStringList(rec, bundle.RelationKeyLinks.String())
 	for _, link := range links {
 		sbType, err := gr.sbtProvider.Type(spaceID, link)
 		if err != nil {
 			log.Error("get smartblock type", zap.String("objectId", link), zap.Error(err))
 		}
-		// ignore files because we index all file blocks as outgoing links
+
+		switch sbType {
+		case smartblock.SmartBlockTypeFileObject:
+			// ignore files because we index all file blocks as outgoing links
+			continue
+		case smartblock.SmartBlockTypeDate:
+			details, err := source.NewDate(source.DateSourceParams{
+				Id: domain.FullID{ObjectID: link, SpaceID: spaceID},
+			}).(source.SourceIdEndodedDetails).DetailsFromId()
+			if err != nil {
+				log.Error("get details of Date object", zap.String("objectId", link), zap.Error(err))
+				continue
+			}
+			existedNodes[link] = struct{}{}
+			nodes = append(nodes, details)
+		}
+
 		if sbType != smartblock.SmartBlockTypeFileObject {
 			if _, exists := outgoingRelationLink[link]; !exists {
 				if _, exists := existedNodes[link]; exists {
@@ -212,5 +234,5 @@ func (gr *Builder) appendLinks(
 			}
 		}
 	}
-	return edges
+	return nodes, edges
 }
