@@ -36,7 +36,7 @@ func EnrichRecordsWithDateSuggestion(
 	// isDay := dt.Hour() == 0 && dt.Minute() == 0 && dt.Second() == 0
 	isDay := true
 
-	id := dateutil.TimeToDateId(dt, !isDay)
+	id := dateutil.NewDateObject(dt, !isDay).Id()
 
 	// Don't duplicate search suggestions
 	var found bool

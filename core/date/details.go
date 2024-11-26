@@ -30,7 +30,7 @@ func BuildDetailsFromTimestamp(
 	dateSource := source.NewDate(source.DateSourceParams{
 		Id: domain.FullID{
 			SpaceID:  spaceId,
-			ObjectID: dateutil.TimeToDateId(time.Unix(timestamp, 0), false),
+			ObjectID: dateutil.NewDateObject(time.Unix(timestamp, 0), false).Id(),
 		},
 		DateObjectTypeId: dateTypeId,
 	})
