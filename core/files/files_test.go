@@ -199,7 +199,10 @@ func assertFileMeta(t *testing.T, fileResult *AddResult, variants []*storage.Fil
 		assert.Equal(t, testFileName, v.Name)
 		assert.Equal(t, int64(len(testFileContent)), v.Size_)
 		now := time.Now()
-		assert.True(t, now.Sub(time.Unix(v.LastModifiedDate, 0)) < time.Second)
+		if !assert.True(t, now.Sub(time.Unix(v.LastModifiedDate, 0)) < time.Second) {
+			fmt.Println(now)
+			fmt.Println(time.Unix(v.LastModifiedDate, 0))
+		}
 		assert.True(t, now.Sub(time.Unix(v.Added, 0)) < time.Second)
 	}
 }
@@ -324,9 +327,10 @@ func testAddFile(t *testing.T, fx *fixture) *AddResult {
 	}
 	got, err := fx.FileAdd(context.Background(), spaceId, opts...)
 	require.NoError(t, err)
-	got.Commit()
 
 	fx.addFileObjectToStore(t, got)
+
+	got.Commit()
 
 	return got
 }
