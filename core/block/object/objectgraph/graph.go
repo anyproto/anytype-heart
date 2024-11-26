@@ -128,7 +128,7 @@ func (gr *Builder) buildGraph(
 
 		outgoingRelationLink := make(map[string]struct{}, 10)
 		edges = gr.appendRelations(rec, relations, edges, existedNodes, sourceId, outgoingRelationLink)
-		nodesToAdd := make([]*types.Struct, 0)
+		var nodesToAdd []*types.Struct
 		nodesToAdd, edges = gr.appendLinks(req.SpaceId, rec, outgoingRelationLink, existedNodes, edges, sourceId)
 
 		if len(nodesToAdd) != 0 {
