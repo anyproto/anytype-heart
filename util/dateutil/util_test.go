@@ -7,49 +7,88 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTimeToDateId(t *testing.T) {
-	assert.Equal(t, "_date_2024-11-07-12-25-59Z_0000", TimeToDateId(time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC), true))
-	assert.Equal(t, "_date_1998-01-01-00-01-01Z_0000", TimeToDateId(time.Date(1998, time.January, 1, 0, 1, 1, 0, time.UTC), true))
-	assert.Equal(t, "_date_1998-01-01-00-01-01Z_0400", TimeToDateId(time.Date(1998, time.January, 1, 0, 1, 1, 0, time.FixedZone("UTC", +4*60*60)), true))
-	assert.Equal(t, "_date_2124-12-25-23-34-00Z_0000", TimeToDateId(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC), true))
-	assert.Equal(t, "_date_2124-12-25-23-34-00Z-0200", TimeToDateId(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)), true))
-}
-
-func TestTimeToShortDateId(t *testing.T) {
-	assert.Equal(t, "_date_2024-11-07", TimeToDateId(time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC), false))
-	assert.Equal(t, "_date_1998-01-01", TimeToDateId(time.Date(1998, time.January, 1, 0, 1, 1, 0, time.UTC), false))
-	assert.Equal(t, "_date_1998-01-01", TimeToDateId(time.Date(1998, time.January, 1, 0, 1, 1, 0, time.FixedZone("UTC", +4*60*60)), false))
-	assert.Equal(t, "_date_2124-12-25", TimeToDateId(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC), false))
-	assert.Equal(t, "_date_2124-12-25", TimeToDateId(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)), false))
-}
-
-func TestTimeToDateName(t *testing.T) {
-	assert.Equal(t, "07 Nov 2024", TimeToDateName(time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC)))
-	assert.Equal(t, "01 Jan 1998", TimeToDateName(time.Date(1998, time.January, 1, 0, 1, 1, 0, time.UTC)))
-	assert.Equal(t, "01 Jan 1998", TimeToDateName(time.Date(1998, time.January, 1, 0, 1, 1, 0, time.FixedZone("UTC", +4*60*60))))
-	assert.Equal(t, "25 Dec 2124", TimeToDateName(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC)))
-	assert.Equal(t, "25 Dec 2124", TimeToDateName(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60))))
-	assert.Equal(t, "25 Dec 2124", TimeToDateName(time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60))))
-}
-
-func TestParseDateId(t *testing.T) {
-	t.Run("long date format", func(t *testing.T) {
-		for _, ts := range []time.Time{
-			time.Date(2024, time.December, 7, 12, 25, 59, 0, time.UTC),
-			time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC),
-			time.Date(1998, time.January, 1, 0, 1, 1, 0, time.UTC),
-			time.Date(1998, time.January, 1, 0, 1, 1, 0, time.FixedZone("UTC", +4*60*60)),
-			time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC),
-			time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)),
+func TestNewDateObject(t *testing.T) {
+	t.Run("include time", func(t *testing.T) {
+		for _, tc := range []struct {
+			ts           time.Time
+			expectedId   string
+			expectedName string
+		}{
+			{
+				ts:           time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC),
+				expectedId:   "_date_2024-11-07-12-25-59Z_0000",
+				expectedName: "07 Nov 2024 12:25",
+			},
+			{
+				ts:           time.Date(1998, time.January, 1, 0, 1, 1, 0, time.UTC),
+				expectedId:   "_date_1998-01-01-00-01-01Z_0000",
+				expectedName: "01 Jan 1998 00:01",
+			},
+			{
+				ts:           time.Date(1998, time.January, 1, 0, 1, 1, 0, time.FixedZone("UTC", +4*60*60)),
+				expectedId:   "_date_1998-01-01-00-01-01Z_0400",
+				expectedName: "01 Jan 1998 00:01",
+			},
+			{
+				ts:           time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC),
+				expectedId:   "_date_2124-12-25-23-34-00Z_0000",
+				expectedName: "25 Dec 2124 23:34",
+			},
+			{
+				ts:           time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)),
+				expectedId:   "_date_2124-12-25-23-34-00Z-0200",
+				expectedName: "25 Dec 2124 23:34",
+			},
 		} {
-			dateId := TimeToDateId(ts, true)
-			ts2, err := ParseDateId(dateId)
-			assert.NoError(t, err)
-			assert.Equal(t, ts.Unix(), ts2.Unix())
+			do := NewDateObject(tc.ts, true)
+			assert.Equal(t, tc.expectedId, do.Id())
+			assert.Equal(t, tc.expectedName, do.Name())
+			assert.Equal(t, tc.ts, do.Time())
 		}
 	})
 
-	t.Run("short date format", func(t *testing.T) {
+	t.Run("do not include time", func(t *testing.T) {
+		for _, tc := range []struct {
+			ts           time.Time
+			expectedId   string
+			expectedName string
+		}{
+			{
+				ts:           time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC),
+				expectedId:   "_date_2024-11-07",
+				expectedName: "07 Nov 2024",
+			},
+			{
+				ts:           time.Date(1998, time.January, 1, 0, 1, 1, 0, time.UTC),
+				expectedId:   "_date_1998-01-01",
+				expectedName: "01 Jan 1998",
+			},
+			{
+				ts:           time.Date(1998, time.January, 1, 0, 1, 1, 0, time.FixedZone("UTC", +4*60*60)),
+				expectedId:   "_date_1998-01-01",
+				expectedName: "01 Jan 1998",
+			},
+			{
+				ts:           time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC),
+				expectedId:   "_date_2124-12-25",
+				expectedName: "25 Dec 2124",
+			},
+			{
+				ts:           time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)),
+				expectedId:   "_date_2124-12-25",
+				expectedName: "25 Dec 2124",
+			},
+		} {
+			do := NewDateObject(tc.ts, false)
+			assert.Equal(t, tc.expectedId, do.Id())
+			assert.Equal(t, tc.expectedName, do.Name())
+			assert.Equal(t, tc.ts, do.Time())
+		}
+	})
+}
+
+func TestBuildDateObjectFromId(t *testing.T) {
+	t.Run("date object ids", func(t *testing.T) {
 		for _, ts := range []time.Time{
 			time.Date(2024, time.December, 7, 12, 25, 59, 0, time.UTC),
 			time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC),
@@ -58,24 +97,26 @@ func TestParseDateId(t *testing.T) {
 			time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC),
 			time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)),
 		} {
-			dateId := TimeToDateId(ts, false)
-			ts2, err := ParseDateId(dateId)
+			withTime1 := NewDateObject(ts, true)
+			withTime2, err := BuildDateObjectFromId(withTime1.Id())
 			assert.NoError(t, err)
-			assert.Equal(t, ts.Year(), ts2.Year())
-			assert.Equal(t, ts.Month(), ts2.Month())
-			assert.Equal(t, ts.Day(), ts2.Day())
-			assert.Zero(t, ts2.Hour())
-			assert.Zero(t, ts2.Minute())
-			assert.Zero(t, ts2.Second())
-			assert.Equal(t, time.Local, ts2.Location())
+			assert.Equal(t, withTime2.Time().Unix(), withTime1.Time().Unix())
+			assert.Equal(t, withTime2.Id(), withTime1.Id())
+
+			withoutTime1 := NewDateObject(ts, true)
+			withoutTime2, err := BuildDateObjectFromId(withoutTime1.Id())
+			assert.NoError(t, err)
+			assert.Equal(t, withoutTime2.Time().Unix(), withoutTime1.Time().Unix())
+			assert.Equal(t, withoutTime2.Id(), withoutTime1.Id())
 		}
 	})
 
 	t.Run("wrong format", func(t *testing.T) {
-		_, err := ParseDateId("_date_2024")
+		_, err := BuildDateObjectFromId("_date_2024")
 		assert.Error(t, err)
 
-		_, err = ParseDateId("object1")
+		_, err = BuildDateObjectFromId("object1")
 		assert.Error(t, err)
 	})
+
 }
