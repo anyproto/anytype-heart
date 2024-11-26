@@ -169,11 +169,11 @@ func GrpcAccountCreate(workspace, networkMode, staging string) string {
 		}' localhost:31007 anytype.ClientCommands.AccountCreate`
 }
 
-func GrpcMetricsSetParameters() string {
+func GrpcInitialSetParameters() string {
 	return `grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{
 		   "platform": "test",
 		   "version": "0.0.0-test"
-		}' localhost:31007 anytype.ClientCommands.MetricsSetParameters`
+		}' localhost:31007 anytype.ClientCommands.InitialSetParameters`
 }
 
 func StartAnytypeBackground() error {

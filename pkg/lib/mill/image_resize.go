@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/disintegration/imaging"
 	"github.com/dsoprea/go-exif/v3"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
+	"github.com/kovidgoyal/imaging"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/ico"
 

@@ -373,7 +373,8 @@ func TestP2pStatus_UnregisterSpace(t *testing.T) {
 		f.UnregisterSpace("spaceId")
 
 		// then
-
+		f.p2pStatus.Lock()
+		defer f.p2pStatus.Unlock()
 		status := f.p2pStatus
 		assert.Len(t, status.spaceIds, 0)
 	})
@@ -385,6 +386,8 @@ func TestP2pStatus_UnregisterSpace(t *testing.T) {
 		f.UnregisterSpace("spaceId1")
 
 		// then
+		f.p2pStatus.Lock()
+		defer f.p2pStatus.Unlock()
 		status := f.p2pStatus
 		assert.Len(t, status.spaceIds, 1)
 	})

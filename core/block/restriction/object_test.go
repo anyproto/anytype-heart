@@ -92,6 +92,12 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 		bundledRelation := givenRestrictionHolder(coresb.SmartBlockTypeBundledRelation, bundle.TypeKeyRelation)
 		assert.ErrorIs(t, rs.GetRestrictions(bundledRelation).Object.Check(objRestrictAll...), ErrRestricted)
 	})
+
+	t.Run("chat should have edit and duplication restrictions", func(t *testing.T) {
+		assert.ErrorIs(t, rs.GetRestrictions(givenRestrictionHolder(coresb.SmartBlockTypeChatObject, bundle.TypeKeyChat)).Object.Check(
+			objRestrictEditAndDuplicate...,
+		), ErrRestricted)
+	})
 }
 
 func TestTemplateRestriction(t *testing.T) {

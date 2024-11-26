@@ -19,6 +19,7 @@ import (
 	mock_ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient/mock"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/core/nameservice/mock_nameservice"
@@ -98,6 +99,7 @@ func newFixture(t *testing.T) *fixture {
 
 	fx.wallet.EXPECT().Account().Return(&ak).Maybe()
 	fx.wallet.EXPECT().GetAccountPrivkey().Return(decodedSignKey).Maybe()
+	fx.wallet.EXPECT().RepoPath().Return("repo/path")
 
 	fx.eventSender.EXPECT().Broadcast(mock.AnythingOfType("*pb.Event")).Maybe()
 
@@ -111,9 +113,11 @@ func newFixture(t *testing.T) *fixture {
 		Register(fx.identitiesUpdater).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.multiplayerLimitsUpdater)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.fileLimitsUpdater)).
-		Register(testutil.PrepareMock(ctx, fx.a, fx.ns))
+		Register(testutil.PrepareMock(ctx, fx.a, fx.ns)).
+		Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
 
 	require.NoError(t, fx.a.Start(ctx))
+
 	return fx
 }
 

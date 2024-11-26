@@ -2,13 +2,12 @@ package block
 
 import (
 	"strings"
-	"time"
 
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	textUtil "github.com/anyproto/anytype-heart/util/text"
 )
 
@@ -240,7 +239,7 @@ func (t *TextObject) handleDateMention(rt api.RichText,
 	if rt.Mention.Date.End != "" {
 		textDate = rt.Mention.Date.End
 	}
-	date, err := time.Parse(DateMentionTimeFormat, textDate)
+	date, err := dateutil.ParseDateId(textDate)
 	if err != nil {
 		return nil
 	}
@@ -253,7 +252,7 @@ func (t *TextObject) handleDateMention(rt api.RichText,
 				To:   int32(to),
 			},
 			Type:  model.BlockContentTextMark_Mention,
-			Param: addr.TimeToID(date),
+			Param: dateutil.TimeToDateId(date),
 		},
 	}
 }

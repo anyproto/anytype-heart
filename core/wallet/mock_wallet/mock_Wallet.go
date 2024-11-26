@@ -6,11 +6,7 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	accountdata "github.com/anyproto/any-sync/commonspace/object/accountdata"
 
-	common "github.com/ethereum/go-ethereum/common"
-
 	crypto "github.com/anyproto/any-sync/util/crypto"
-
-	ecdsa "crypto/ecdsa"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -78,19 +74,19 @@ func (_c *MockWallet_Account_Call) RunAndReturn(run func() *accountdata.AccountK
 }
 
 // GetAccountEthAddress provides a mock function with given fields:
-func (_m *MockWallet) GetAccountEthAddress() common.Address {
+func (_m *MockWallet) GetAccountEthAddress() wallet.EthAddress {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAccountEthAddress")
 	}
 
-	var r0 common.Address
-	if rf, ok := ret.Get(0).(func() common.Address); ok {
+	var r0 wallet.EthAddress
+	if rf, ok := ret.Get(0).(func() wallet.EthAddress); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(common.Address)
+			r0 = ret.Get(0).(wallet.EthAddress)
 		}
 	}
 
@@ -114,30 +110,30 @@ func (_c *MockWallet_GetAccountEthAddress_Call) Run(run func()) *MockWallet_GetA
 	return _c
 }
 
-func (_c *MockWallet_GetAccountEthAddress_Call) Return(_a0 common.Address) *MockWallet_GetAccountEthAddress_Call {
+func (_c *MockWallet_GetAccountEthAddress_Call) Return(_a0 wallet.EthAddress) *MockWallet_GetAccountEthAddress_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockWallet_GetAccountEthAddress_Call) RunAndReturn(run func() common.Address) *MockWallet_GetAccountEthAddress_Call {
+func (_c *MockWallet_GetAccountEthAddress_Call) RunAndReturn(run func() wallet.EthAddress) *MockWallet_GetAccountEthAddress_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetAccountEthPrivkey provides a mock function with given fields:
-func (_m *MockWallet) GetAccountEthPrivkey() *ecdsa.PrivateKey {
+func (_m *MockWallet) GetAccountEthPrivkey() wallet.EthPrivateKey {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAccountEthPrivkey")
 	}
 
-	var r0 *ecdsa.PrivateKey
-	if rf, ok := ret.Get(0).(func() *ecdsa.PrivateKey); ok {
+	var r0 wallet.EthPrivateKey
+	if rf, ok := ret.Get(0).(func() wallet.EthPrivateKey); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*ecdsa.PrivateKey)
+			r0 = ret.Get(0).(wallet.EthPrivateKey)
 		}
 	}
 
@@ -161,12 +157,12 @@ func (_c *MockWallet_GetAccountEthPrivkey_Call) Run(run func()) *MockWallet_GetA
 	return _c
 }
 
-func (_c *MockWallet_GetAccountEthPrivkey_Call) Return(_a0 *ecdsa.PrivateKey) *MockWallet_GetAccountEthPrivkey_Call {
+func (_c *MockWallet_GetAccountEthPrivkey_Call) Return(_a0 wallet.EthPrivateKey) *MockWallet_GetAccountEthPrivkey_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockWallet_GetAccountEthPrivkey_Call) RunAndReturn(run func() *ecdsa.PrivateKey) *MockWallet_GetAccountEthPrivkey_Call {
+func (_c *MockWallet_GetAccountEthPrivkey_Call) RunAndReturn(run func() wallet.EthPrivateKey) *MockWallet_GetAccountEthPrivkey_Call {
 	_c.Call.Return(run)
 	return _c
 }

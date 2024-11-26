@@ -9,6 +9,7 @@
 package debug
 
 import (
+	"context"
 	"os"
 
 	"github.com/goccy/go-graphviz"
@@ -28,6 +29,10 @@ func GraphvizSvg(gv, svgFilename string) (err error) {
 	}
 	defer f.Close()
 
-	g := graphviz.New()
-	return g.Render(gvo, graphviz.SVG, f)
+	ctx := context.Background()
+	g, err := graphviz.New(ctx)
+	if err != nil {
+		return err
+	}
+	return g.Render(ctx, gvo, graphviz.SVG, f)
 }

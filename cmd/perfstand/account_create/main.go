@@ -74,7 +74,7 @@ func iterate(prep *input, result internal.PerfResult) error {
 		return err
 	}
 
-	err = internal.ExecuteCommand(internal.GrpcMetricsSetParameters())
+	err = internal.ExecuteCommand(internal.GrpcInitialSetParameters())
 	if err != nil {
 		return err
 	}

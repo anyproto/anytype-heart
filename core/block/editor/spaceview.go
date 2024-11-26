@@ -253,7 +253,7 @@ var workspaceKeysToCopy = []string{
 	bundle.RelationKeyIconOption.String(),
 	bundle.RelationKeySpaceDashboardId.String(),
 	bundle.RelationKeyCreatedDate.String(),
-	bundle.RelationKeySpaceMainChatId.String(),
+	bundle.RelationKeyChatId.String(),
 }
 
 func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {

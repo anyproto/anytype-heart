@@ -80,6 +80,7 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 				LocalPath: imagePath,
 				Type:      model.BlockContentFile_Image,
 				Style:     model.BlockContentFile_Embed,
+				ImageKind: req.ImageKind,
 			},
 			ObjectOrigin: objectorigin.None(),
 		})

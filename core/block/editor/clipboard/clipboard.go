@@ -61,9 +61,9 @@ func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core
 type clipboard struct {
 	smartblock.SmartBlock
 	file              file.File
-	tempDirProvider core.TempDirProvider
-	objectStore     spaceindex.Store
-	fileService     files.Service
+	tempDirProvider   core.TempDirProvider
+	objectStore       spaceindex.Store
+	fileService       files.Service
 	fileObjectService fileobject.Service
 }
 
@@ -524,11 +524,13 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 			},
 		})
 		s.Add(b)
+
 		if err = cb.file.UploadState(ctx, s, b.Model().Id, file.FileSource{
-			Bytes:  fs.Data,
-			Path:   fs.LocalPath,
-			Name:   fs.Name,
-			Origin: objectorigin.Clipboard(),
+			Bytes:     fs.Data,
+			Path:      fs.LocalPath,
+			Name:      fs.Name,
+			Origin:    objectorigin.Clipboard(),
+			ImageKind: model.ImageKind_Basic,
 		}, false); err != nil {
 			return
 		}

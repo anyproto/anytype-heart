@@ -80,42 +80,33 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 }
 
 // ListRelationsWithValue provides a mock function with given fields: spaceId, value
-func (_m *MockService) ListRelationsWithValue(spaceId string, value *types.Value) ([]string, []int64, error) {
+func (_m *MockService) ListRelationsWithValue(spaceId string, value *types.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {
 	ret := _m.Called(spaceId, value)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListRelationsWithValue")
 	}
 
-	var r0 []string
-	var r1 []int64
-	var r2 error
-	if rf, ok := ret.Get(0).(func(string, *types.Value) ([]string, []int64, error)); ok {
+	var r0 []*pb.RpcRelationListWithValueResponseResponseItem
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, *types.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error)); ok {
 		return rf(spaceId, value)
 	}
-	if rf, ok := ret.Get(0).(func(string, *types.Value) []string); ok {
+	if rf, ok := ret.Get(0).(func(string, *types.Value) []*pb.RpcRelationListWithValueResponseResponseItem); ok {
 		r0 = rf(spaceId, value)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]string)
+			r0 = ret.Get(0).([]*pb.RpcRelationListWithValueResponseResponseItem)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, *types.Value) []int64); ok {
+	if rf, ok := ret.Get(1).(func(string, *types.Value) error); ok {
 		r1 = rf(spaceId, value)
 	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).([]int64)
-		}
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(string, *types.Value) error); ok {
-		r2 = rf(spaceId, value)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockService_ListRelationsWithValue_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListRelationsWithValue'
@@ -137,12 +128,12 @@ func (_c *MockService_ListRelationsWithValue_Call) Run(run func(spaceId string, 
 	return _c
 }
 
-func (_c *MockService_ListRelationsWithValue_Call) Return(keys []string, counters []int64, err error) *MockService_ListRelationsWithValue_Call {
-	_c.Call.Return(keys, counters, err)
+func (_c *MockService_ListRelationsWithValue_Call) Return(_a0 []*pb.RpcRelationListWithValueResponseResponseItem, _a1 error) *MockService_ListRelationsWithValue_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockService_ListRelationsWithValue_Call) RunAndReturn(run func(string, *types.Value) ([]string, []int64, error)) *MockService_ListRelationsWithValue_Call {
+func (_c *MockService_ListRelationsWithValue_Call) RunAndReturn(run func(string, *types.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error)) *MockService_ListRelationsWithValue_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -572,17 +563,17 @@ func (_c *MockService_SetIsArchived_Call) RunAndReturn(run func(string, bool) er
 	return _c
 }
 
-// SetIsFavorite provides a mock function with given fields: objectId, isFavorite
-func (_m *MockService) SetIsFavorite(objectId string, isFavorite bool) error {
-	ret := _m.Called(objectId, isFavorite)
+// SetIsFavorite provides a mock function with given fields: objectId, isFavorite, createWidget
+func (_m *MockService) SetIsFavorite(objectId string, isFavorite bool, createWidget bool) error {
+	ret := _m.Called(objectId, isFavorite, createWidget)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetIsFavorite")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, bool) error); ok {
-		r0 = rf(objectId, isFavorite)
+	if rf, ok := ret.Get(0).(func(string, bool, bool) error); ok {
+		r0 = rf(objectId, isFavorite, createWidget)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -598,13 +589,14 @@ type MockService_SetIsFavorite_Call struct {
 // SetIsFavorite is a helper method to define mock.On call
 //   - objectId string
 //   - isFavorite bool
-func (_e *MockService_Expecter) SetIsFavorite(objectId interface{}, isFavorite interface{}) *MockService_SetIsFavorite_Call {
-	return &MockService_SetIsFavorite_Call{Call: _e.mock.On("SetIsFavorite", objectId, isFavorite)}
+//   - createWidget bool
+func (_e *MockService_Expecter) SetIsFavorite(objectId interface{}, isFavorite interface{}, createWidget interface{}) *MockService_SetIsFavorite_Call {
+	return &MockService_SetIsFavorite_Call{Call: _e.mock.On("SetIsFavorite", objectId, isFavorite, createWidget)}
 }
 
-func (_c *MockService_SetIsFavorite_Call) Run(run func(objectId string, isFavorite bool)) *MockService_SetIsFavorite_Call {
+func (_c *MockService_SetIsFavorite_Call) Run(run func(objectId string, isFavorite bool, createWidget bool)) *MockService_SetIsFavorite_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(bool))
+		run(args[0].(string), args[1].(bool), args[2].(bool))
 	})
 	return _c
 }
@@ -614,7 +606,7 @@ func (_c *MockService_SetIsFavorite_Call) Return(_a0 error) *MockService_SetIsFa
 	return _c
 }
 
-func (_c *MockService_SetIsFavorite_Call) RunAndReturn(run func(string, bool) error) *MockService_SetIsFavorite_Call {
+func (_c *MockService_SetIsFavorite_Call) RunAndReturn(run func(string, bool, bool) error) *MockService_SetIsFavorite_Call {
 	_c.Call.Return(run)
 	return _c
 }

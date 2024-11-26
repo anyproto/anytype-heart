@@ -65,6 +65,17 @@ func IntList(ints ...int) *types.Value {
 	}
 }
 
+func Float64List(floats []float64) *types.Value {
+	var vals = make([]*types.Value, 0, len(floats))
+	for _, f := range floats {
+		vals = append(vals, Float64(f))
+	}
+
+	return &types.Value{
+		Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+	}
+}
+
 func NilToNullWrapper(v *types.Value) *types.Value {
 	if v == nil || v.Kind == nil {
 		return Null()
@@ -297,6 +308,19 @@ func ListValueToStrings(list *types.ListValue) []string {
 		}
 	}
 	return stringsSlice
+}
+
+func ListValueToFloats(list *types.ListValue) []float64 {
+	if list == nil {
+		return nil
+	}
+	res := make([]float64, 0, len(list.Values))
+	for _, v := range list.Values {
+		if _, ok := v.GetKind().(*types.Value_NumberValue); ok {
+			res = append(res, v.GetNumberValue())
+		}
+	}
+	return res
 }
 
 func HasField(st *types.Struct, key string) bool {

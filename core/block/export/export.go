@@ -60,7 +60,9 @@ const (
 	relationsDirectory        = "relations"
 	relationsOptionsDirectory = "relationsOptions"
 	templatesDirectory        = "templates"
-	filesObjects              = "filesObjects"
+
+	FilesObjects = "filesObjects"
+	Files        = "files"
 )
 
 var log = logging.Logger("anytype-mw-export")
@@ -103,9 +105,9 @@ func (e *export) Name() (name string) {
 
 func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error) {
 	queue := e.processService.NewQueue(pb.ModelProcess{
-		Id:    bson.NewObjectId().Hex(),
-		Type:  pb.ModelProcess_Export,
-		State: 0,
+		Id:      bson.NewObjectId().Hex(),
+		State:   0,
+		Message: &pb.ModelProcessMessageOfExport{Export: &pb.ModelProcessExport{}},
 	}, 4)
 	queue.SetMessage("prepare")
 
@@ -971,7 +973,7 @@ func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.S
 		}
 	}
 	origName := file.Meta().Name
-	rootPath := "files"
+	rootPath := Files
 	if exportAllSpaces {
 		rootPath = filepath.Join(spaceDirectory, fileObject.Space().Id(), rootPath)
 	}
@@ -1055,7 +1057,7 @@ func provideFileDirectory(blockType smartblock.SmartBlockType) string {
 	case smartblock.SmartBlockTypeTemplate:
 		return templatesDirectory
 	case smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeFileObject:
-		return filesObjects
+		return FilesObjects
 	default:
 		return objectsDirectory
 	}

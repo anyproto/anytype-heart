@@ -47,6 +47,7 @@ type MetricsService interface {
 	SetUserId(id string)
 	Send(ev anymetry.Event)
 	SendSampled(ev SamplableEvent)
+	SetEnabled(isEnabled bool)
 
 	Run()
 	Close()
@@ -64,13 +65,29 @@ type service struct {
 	workingDir     string
 	clients        [1]*client
 	alreadyRunning bool
+	isEnabled      bool
 }
 
 func (s *service) SendSampled(ev SamplableEvent) {
-	if ev == nil {
+	s.lock.RLock()
+	if !s.isEnabled {
+		s.lock.RUnlock()
 		return
 	}
-	s.getBackend(ev.GetBackend()).sendSampled(ev)
+	if ev == nil {
+		s.lock.RUnlock()
+		return
+	}
+	backend := s.getBackend(ev.GetBackend())
+	s.lock.RUnlock()
+
+	backend.sendSampled(ev)
+}
+
+func (s *service) SetEnabled(isEnabled bool) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.isEnabled = isEnabled
 }
 
 func NewService() MetricsService {
@@ -173,6 +190,9 @@ func (s *service) GetStartVersion() string {
 func (s *service) Run() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	if !s.isEnabled {
+		return
+	}
 	if s.alreadyRunning {
 		return
 	}
@@ -189,6 +209,9 @@ func (s *service) Run() {
 func (s *service) Close() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	if !s.isEnabled {
+		return
+	}
 	for _, c := range s.clients {
 		c.Close()
 	}
@@ -196,16 +219,22 @@ func (s *service) Close() {
 }
 
 func (s *service) Send(ev anymetry.Event) {
-	if ev == nil {
+	s.lock.RLock()
+	if !s.isEnabled {
+		s.lock.RUnlock()
 		return
 	}
-	s.getBackend(ev.GetBackend()).send(ev)
+	if ev == nil {
+		s.lock.RUnlock()
+		return
+	}
+	backend := s.getBackend(ev.GetBackend())
+	s.lock.RUnlock()
+
+	backend.send(ev)
 }
 
 func (s *service) getBackend(backend anymetry.MetricsBackend) *client {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
 	switch backend {
 	case inhouse:
 		return s.clients[inhouse]

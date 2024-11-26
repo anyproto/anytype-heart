@@ -164,6 +164,7 @@ func (s *service) GetSpaceInfo(ctx context.Context, spaceId string) (*model.Acco
 	getInfo.AccountSpaceId = spaceId
 	getInfo.SpaceViewId = spaceViewId
 	getInfo.HomeObjectId = ids.Home
+	getInfo.WorkspaceObjectId = ids.Workspace
 	getInfo.WidgetsId = ids.Widgets
 	getInfo.ArchiveObjectId = ids.Archive
 	return getInfo, nil

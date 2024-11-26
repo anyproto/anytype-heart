@@ -1330,8 +1330,9 @@ func (s *State) Copy() *State {
 }
 
 func (s *State) HasRelation(key string) bool {
-	for _, rel := range s.relationLinks {
-		if rel.Key == key {
+	links := s.GetRelationLinks()
+	for _, link := range links {
+		if link.Key == key {
 			return true
 		}
 	}

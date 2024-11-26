@@ -7,6 +7,8 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 
+	domain "github.com/anyproto/anytype-heart/core/domain"
+
 	mock "github.com/stretchr/testify/mock"
 
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -30,7 +32,7 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 }
 
 // DetailsFromIdBasedSource provides a mock function with given fields: id
-func (_m *MockService) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+func (_m *MockService) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error) {
 	ret := _m.Called(id)
 
 	if len(ret) == 0 {
@@ -39,10 +41,10 @@ func (_m *MockService) DetailsFromIdBasedSource(id string) (*types.Struct, error
 
 	var r0 *types.Struct
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (*types.Struct, error)); ok {
+	if rf, ok := ret.Get(0).(func(domain.FullID) (*types.Struct, error)); ok {
 		return rf(id)
 	}
-	if rf, ok := ret.Get(0).(func(string) *types.Struct); ok {
+	if rf, ok := ret.Get(0).(func(domain.FullID) *types.Struct); ok {
 		r0 = rf(id)
 	} else {
 		if ret.Get(0) != nil {
@@ -50,7 +52,7 @@ func (_m *MockService) DetailsFromIdBasedSource(id string) (*types.Struct, error
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
+	if rf, ok := ret.Get(1).(func(domain.FullID) error); ok {
 		r1 = rf(id)
 	} else {
 		r1 = ret.Error(1)
@@ -65,14 +67,14 @@ type MockService_DetailsFromIdBasedSource_Call struct {
 }
 
 // DetailsFromIdBasedSource is a helper method to define mock.On call
-//   - id string
+//   - id domain.FullID
 func (_e *MockService_Expecter) DetailsFromIdBasedSource(id interface{}) *MockService_DetailsFromIdBasedSource_Call {
 	return &MockService_DetailsFromIdBasedSource_Call{Call: _e.mock.On("DetailsFromIdBasedSource", id)}
 }
 
-func (_c *MockService_DetailsFromIdBasedSource_Call) Run(run func(id string)) *MockService_DetailsFromIdBasedSource_Call {
+func (_c *MockService_DetailsFromIdBasedSource_Call) Run(run func(id domain.FullID)) *MockService_DetailsFromIdBasedSource_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(domain.FullID))
 	})
 	return _c
 }
@@ -82,7 +84,7 @@ func (_c *MockService_DetailsFromIdBasedSource_Call) Return(_a0 *types.Struct, _
 	return _c
 }
 
-func (_c *MockService_DetailsFromIdBasedSource_Call) RunAndReturn(run func(string) (*types.Struct, error)) *MockService_DetailsFromIdBasedSource_Call {
+func (_c *MockService_DetailsFromIdBasedSource_Call) RunAndReturn(run func(domain.FullID) (*types.Struct, error)) *MockService_DetailsFromIdBasedSource_Call {
 	_c.Call.Return(run)
 	return _c
 }

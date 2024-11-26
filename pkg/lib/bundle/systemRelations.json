@@ -89,6 +89,6 @@
   "lastUsedDate",
   "mentions",
   "chatId",
-  "spaceMainChatId",
-  "hasChat"
+  "hasChat",
+  "timestamp"
 ]

@@ -71,19 +71,19 @@ func (_c *MockSpaceController_Close_Call) RunAndReturn(run func(context.Context)
 }
 
 // Current provides a mock function with given fields:
-func (_m *MockSpaceController) Current() interface{} {
+func (_m *MockSpaceController) Current() any {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Current")
 	}
 
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func() interface{}); ok {
+	var r0 any
+	if rf, ok := ret.Get(0).(func() any); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
+			r0 = ret.Get(0).(any)
 		}
 	}
 
@@ -107,12 +107,12 @@ func (_c *MockSpaceController_Current_Call) Run(run func()) *MockSpaceController
 	return _c
 }
 
-func (_c *MockSpaceController_Current_Call) Return(_a0 interface{}) *MockSpaceController_Current_Call {
+func (_c *MockSpaceController_Current_Call) Return(_a0 any) *MockSpaceController_Current_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockSpaceController_Current_Call) RunAndReturn(run func() interface{}) *MockSpaceController_Current_Call {
+func (_c *MockSpaceController_Current_Call) RunAndReturn(run func() any) *MockSpaceController_Current_Call {
 	_c.Call.Return(run)
 	return _c
 }

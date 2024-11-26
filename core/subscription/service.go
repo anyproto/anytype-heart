@@ -343,10 +343,7 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 		Limit:   int(req.Limit),
 	}
 
-	arena := s.arenaPool.Get()
-	defer s.arenaPool.Put(arena)
-
-	f, err := database.NewFilters(q, s.objectStore, arena, &collate.Buffer{})
+	f, err := database.NewFilters(q, s.objectStore, &anyenc.Arena{}, &collate.Buffer{})
 	if err != nil {
 		return nil, fmt.Errorf("new database filters: %w", err)
 	}
@@ -900,8 +897,10 @@ func (s *spaceSubscriptions) Close(ctx context.Context) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.recBatch.Close()
-	s.iterateSubscriptions(func(sub subscription) {
+	for subId, sub := range s.subscriptions {
 		sub.close()
-	})
+		delete(s.subscriptions, subId)
+	}
+	s.subscriptionKeys = s.subscriptionKeys[:0]
 	return
 }

@@ -381,17 +381,17 @@ func TestGetExpireTime(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		status   *model.Membership
-		duration time.Duration
+		duration time.Time
 	}{
-		{"should return 10 minutes in case of nil", nil, cacheLifetimeDurOther},
-		{"should return 24 hours in case of Explorer", &model.Membership{Tier: 1}, cacheLifetimeDurExplorer},
-		{"should return 10 minutes in case of other", &model.Membership{Tier: 3}, cacheLifetimeDurOther},
+		{"should return 10 minutes in case of nil", nil, time.Now().UTC().Add(cacheLifetimeDurOther)},
+		{"should return 24 hours in case of Explorer", &model.Membership{Tier: 1}, time.Now().UTC().Add(cacheLifetimeDurExplorer)},
+		{"should return 10 minutes in case of other", &model.Membership{Tier: 3}, time.Now().UTC().Add(cacheLifetimeDurOther)},
 		{"should return dateEnds in case it is earlier than 10 minutes",
-			&model.Membership{Tier: 4, DateEnds: uint64(time.Now().UTC().Add(3 * time.Minute).Unix())}, 3 * time.Minute},
+			&model.Membership{Tier: 4, DateEnds: uint64(time.Now().UTC().Add(3 * time.Minute).Unix())}, time.Now().UTC().Add(3 * time.Minute)},
 		{"should return 10 minutes in case dateEnds is expired",
-			&model.Membership{Tier: 3, DateEnds: uint64(time.Now().UTC().Add(-10 * time.Hour).Unix())}, cacheLifetimeDurOther},
+			&model.Membership{Tier: 3, DateEnds: uint64(time.Now().UTC().Add(-10 * time.Hour).Unix())}, time.Now().UTC().Add(cacheLifetimeDurOther)},
 		{"should return 10 minutes in case dateEnds is 0",
-			&model.Membership{Tier: 3, DateEnds: uint64(time.Unix(0, 0).Unix())}, cacheLifetimeDurOther},
+			&model.Membership{Tier: 3, DateEnds: uint64(time.Unix(0, 0).Unix())}, time.Now().UTC().Add(cacheLifetimeDurOther)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// given
@@ -402,7 +402,7 @@ func TestGetExpireTime(t *testing.T) {
 			expire := getExpireTime(tc.status)
 
 			// then
-			assert.True(t, assertTimeNear(expire, time.Now().UTC().Add(tc.duration), delta))
+			assert.True(t, assertTimeNear(expire, tc.duration, delta))
 		})
 	}
 }

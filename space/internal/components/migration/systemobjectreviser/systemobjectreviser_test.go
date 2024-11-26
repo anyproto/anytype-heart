@@ -12,9 +12,56 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+func TestMigration_Run(t *testing.T) {
+	t.Run("migrate relations with different revisions", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, "space1", []objectstore.TestObject{
+			{
+				bundle.RelationKeySpaceId:        pbtypes.String("space1"),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_checkbox)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:             pbtypes.String("id1"),
+				bundle.RelationKeyIsHidden:       pbtypes.Bool(true),
+				bundle.RelationKeyRevision:       pbtypes.Int64(1),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(bundle.RelationKeyDone.URL()),
+				bundle.RelationKeySourceObject:   pbtypes.String(bundle.RelationKeyDone.BundledURL()),
+			},
+		})
+		marketPlace := objectstore.NewStoreFixture(t)
+		marketPlace.AddObjects(t, addr.AnytypeMarketplaceWorkspace, []objectstore.TestObject{
+			{
+				bundle.RelationKeySpaceId:        pbtypes.String(addr.AnytypeMarketplaceWorkspace),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_checkbox)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:             pbtypes.String(bundle.RelationKeyDone.BundledURL()),
+				bundle.RelationKeyRevision:       pbtypes.Int64(2),
+			},
+		})
+		fixer := &Migration{}
+		ctx := context.Background()
+		log := logger.NewNamed("test")
+
+		spc := mock_space.NewMockSpace(t)
+		spc.EXPECT().Id().Return("space1").Maybe()
+
+		spc.EXPECT().DoCtx(ctx, "id1", mock.Anything).Return(nil).Times(1)
+
+		// when
+		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space1"), marketPlace.SpaceIndex(addr.AnytypeMarketplaceWorkspace), spc)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, 1, migrated)
+		assert.Equal(t, 1, toMigrate)
+	})
+}
 
 func TestReviseSystemObject(t *testing.T) {
 	ctx := context.Background()

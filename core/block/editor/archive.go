@@ -3,6 +3,7 @@ package editor
 import (
 	"errors"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/gogo/protobuf/types"
 
@@ -54,7 +55,7 @@ func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
 
 func (p *Archive) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 1,
+		Version: 2,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
 				template.WithEmpty,
@@ -62,13 +63,17 @@ func (p *Archive) CreationStateMigration(ctx *smartblock.InitContext) migration.
 				template.WithNoObjectTypes(),
 				template.WithDetailName("Archive"),
 				template.WithDetailIconEmoji("🗑"),
+				template.WithForcedDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
 			)
 		},
 	}
 }
 
 func (p *Archive) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations(nil)
+	return migration.MakeMigrations([]migration.Migration{{
+		Version: 2,
+		Proc:    template.WithForcedDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
+	}})
 }
 
 func (p *Archive) Relations(_ *state.State) relationutils.Relations {
@@ -142,6 +147,9 @@ func (p *Archive) updateInStore(archivedIds []string) error {
 
 func logArchiveError(err error) {
 	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		return
+	}
+	if errors.Is(err, treestorage.ErrUnknownTreeId) {
 		return
 	}
 	log.Errorf("archive: can't set detail to object: %v", err)

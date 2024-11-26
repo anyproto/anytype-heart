@@ -2,12 +2,15 @@ package markdown
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/test"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -19,7 +22,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// given
 		testDirectory := setupTestDirectory(t)
 		h := &Markdown{}
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewNoOp()
 
 		// when
 		sn, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
@@ -39,7 +42,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 			subPageId string
 		)
 		for _, snapshot := range sn.Snapshots {
-			if snapshot.FileName == filepath.Join(testDirectory, "test_database/test.md") {
+			if snapshot.FileName == filepath.Join(testDirectory, "test_database", "test.md") {
 				subPageId = snapshot.Id
 				break
 			}
@@ -55,12 +58,11 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		}
 		assert.True(t, found)
 	})
-
 	t.Run("no object error", func(t *testing.T) {
 		// given
 		testDirectory := t.TempDir()
 		h := &Markdown{}
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewNoOp()
 
 		// when
 		sn, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
@@ -81,7 +83,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		tempDirProvider := &MockTempDir{}
 		converter := newMDConverter(tempDirProvider)
 		h := &Markdown{blockConverter: converter}
-		p := process.NewProgress(pb.ModelProcess_Import)
+		p := process.NewNoOp()
 
 		// when
 		sn, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
@@ -112,6 +114,30 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 			}
 		}
 		assert.True(t, found)
+	})
+	t.Run("no object in archive", func(t *testing.T) {
+		// given
+		testDirectory := t.TempDir()
+		zipPath := filepath.Join(testDirectory, "empty.zip")
+		err := test.CreateEmptyZip(t, zipPath)
+		assert.Nil(t, err)
+
+		h := &Markdown{}
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
+
+		// when
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: []string{zipPath}},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.NotNil(t, ce)
+		assert.Nil(t, sn)
+		assert.True(t, errors.Is(ce.GetResultError(model.Import_Markdown), common.ErrFileImportNoObjectsInZipArchive))
 	})
 }
 

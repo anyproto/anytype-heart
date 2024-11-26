@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/chai2010/webp"
-	"github.com/disintegration/imaging"
+	"github.com/kovidgoyal/imaging"
 )
 
 func (m *ImageResize) resizeWEBP(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {

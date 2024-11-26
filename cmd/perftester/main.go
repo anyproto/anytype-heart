@@ -99,7 +99,7 @@ func makeIteration() error {
 		`grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{
 		   "platform": "test",
 		   "version": "0.0.0-test"
-		}' localhost:31007 anytype.ClientCommands.MetricsSetParameters`,
+		}' localhost:31007 anytype.ClientCommands.InitialSetParameters`,
 
 		`grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{
 		   "rootPath": "` + testRootPath + `",

@@ -3,7 +3,6 @@ package addr
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -43,8 +42,4 @@ func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {
 		return model.SmartBlockType(v), nil
 	}
 	return 0, fmt.Errorf("sb type '%s' not found", sbTypeName)
-}
-
-func TimeToID(t time.Time) string {
-	return DatePrefix + t.Format("2006-01-02")
 }

@@ -26,7 +26,7 @@ func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadReque
 	if err != nil {
 		return "", fmt.Errorf("mkdir -p: %w", anyerror.CleanupError(err))
 	}
-	progress := process.NewProgress(pb.ModelProcess_SaveFile)
+	progress := process.NewProgress(&pb.ModelProcessMessageOfSaveFile{SaveFile: &pb.ModelProcessSaveFile{}})
 	defer progress.Finish(nil)
 
 	err = s.ProcessAdd(progress)

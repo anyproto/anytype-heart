@@ -35,5 +35,7 @@ func SyncRelationsSmartblockTypes() []smartblock.SmartBlockType {
 		smartblock.SmartBlockTypePage,
 		smartblock.SmartBlockTypeTemplate,
 		smartblock.SmartBlockTypeProfilePage,
+		smartblock.SmartBlockTypeChatDerivedObject,
+		smartblock.SmartBlockTypeChatObject,
 	}
 }

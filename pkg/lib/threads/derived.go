@@ -40,8 +40,20 @@ func (d DerivedSmartblockIds) IDs() []string {
 		d.Archive,
 		d.Widgets,
 	}
+	// todo: should it include system types/relations?
 	if d.Profile != "" {
 		allIds = append(allIds, d.Profile)
+	}
+	return allIds
+}
+
+func (d DerivedSmartblockIds) IDsWithSystemTypesAndRelations() []string {
+	allIds := d.IDs()
+	for _, id := range d.SystemTypes {
+		allIds = append(allIds, id)
+	}
+	for _, id := range d.SystemRelations {
+		allIds = append(allIds, id)
 	}
 	return allIds
 }

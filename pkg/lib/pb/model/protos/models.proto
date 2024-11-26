@@ -389,6 +389,7 @@ message Block {
                 bool dateIncludeTime = 5;
                 TimeFormat timeFormat = 6;
                 DateFormat dateFormat = 7;
+                FormulaType formula = 8;
 
                 enum DateFormat {
                     MonthAbbrBeforeDay = 0; // Jul 30, 2020
@@ -401,6 +402,22 @@ message Block {
                 enum TimeFormat {
                     Format12 = 0;
                     Format24 = 1;
+                }
+
+                enum FormulaType {
+                    None				    = 0;
+                    Count				    = 1;
+                    CountDistinct		= 2;
+                    CountEmpty			= 3;
+                    CountNotEmpty		= 4;
+                    PercentEmpty		= 5;
+                    PercentNotEmpty	= 6;
+                    MathSum				  = 7;
+                    MathAverage			= 8;
+                    MathMedian			= 9;
+                    MathMin				  = 10;
+                    MathMax				  = 11;
+                    Range				    = 12;
                 }
             }
 
@@ -639,6 +656,7 @@ message Account {
         string archiveObjectId = 3; // archive block id
         string profileObjectId = 4; // profile block id
         string marketplaceWorkspaceId = 11; // marketplace workspace id
+        string workspaceObjectId = 15; // workspace object id. used for space-level chat
 
         string deviceId = 8;
         string accountSpaceId = 9;
@@ -762,7 +780,7 @@ message ObjectType {
         participant = 19;
 
         pdf = 20;
-        chat = 21;
+        chat = 21; // deprecated
         chatDerived = 22;
         tag = 23;
     }
@@ -1121,15 +1139,27 @@ message Import {
     }
 
     enum ErrorCode {
-        NULL = 0;
-        UNKNOWN_ERROR = 1;
-        BAD_INPUT = 2;
-        INTERNAL_ERROR = 3;
-        NO_OBJECTS_TO_IMPORT = 5;
-        IMPORT_IS_CANCELED = 6;
-        LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
-        FILE_LOAD_ERROR = 8;
-        INSUFFICIENT_PERMISSIONS = 9;
+      NULL = 0;
+      UNKNOWN_ERROR = 1;
+      BAD_INPUT = 2;
+      INTERNAL_ERROR = 3;
+      FILE_LOAD_ERROR = 8;
+      IMPORT_IS_CANCELED = 6;
+
+      NOTION_NO_OBJECTS_IN_INTEGRATION= 5;
+      NOTION_SERVER_IS_UNAVAILABLE = 12;
+      NOTION_RATE_LIMIT_EXCEEDED= 13;
+
+      FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE = 14;
+      FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY = 17;
+
+      HTML_WRONG_HTML_STRUCTURE = 10;
+
+      PB_NOT_ANYBLOCK_FORMAT = 11;
+
+      CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
+
+      INSUFFICIENT_PERMISSIONS = 9;
     }
 }
 
@@ -1171,6 +1201,7 @@ enum ImageKind {
     Basic = 0;
     Cover = 1;
     Icon = 2;
+    AutomaticallyAdded = 3;
 }
 
 enum FileIndexingStatus {

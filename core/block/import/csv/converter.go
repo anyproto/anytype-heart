@@ -118,13 +118,11 @@ func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	err := importSource.Initialize(importPath)
 	if err != nil {
 		allErrors.Add(fmt.Errorf("failed to extract files: %w", err))
-		if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {
-			return nil
-		}
+		return nil
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".csv"}); numberOfFiles == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(common.ErrorBySourceType(importSource))
 		return nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
@@ -150,6 +148,7 @@ func (c *CSV) getSnapshotsAndObjectsIds(importSource source.Source,
 			allErrors.Add(err)
 			return !allErrors.ShouldAbortImport(len(params.GetPath()), model.Import_Csv)
 		}
+		csvTable = normalizeCSV(csvTable)
 		if params.TransposeRowsAndColumns && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
@@ -204,4 +203,36 @@ func transpose(csvTable [][]string) [][]string {
 		}
 	}
 	return result
+}
+
+func normalizeCSV(csvTable [][]string) [][]string {
+	if isMatrix(csvTable) {
+		return csvTable
+	}
+	maxColumns := 0
+	for _, row := range csvTable {
+		if len(row) > maxColumns {
+			maxColumns = len(row)
+		}
+	}
+	for i, row := range csvTable {
+		for len(row) < maxColumns {
+			row = append(row, "")
+		}
+		csvTable[i] = row
+	}
+	return csvTable
+}
+
+func isMatrix(arr [][]string) bool {
+	if len(arr) == 0 {
+		return true
+	}
+	columnCount := len(arr[0])
+	for _, row := range arr {
+		if len(row) != columnCount {
+			return false
+		}
+	}
+	return true
 }

@@ -180,7 +180,7 @@ func (t *treeStorage) Delete() error {
 		return err
 	}
 
-	if _, err := tx.Stmt(t.service.stmt.deleteTree).Exec(t.treeId); err != nil {
+	if _, err := tx.Stmt(t.service.stmt.deleteTree).Exec(t.treeId, t.spaceStorage.spaceId); err != nil {
 		_ = tx.Rollback()
 		return err
 	}

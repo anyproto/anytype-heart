@@ -1427,7 +1427,7 @@ func Test_provideFileName(t *testing.T) {
 		fileName := makeFileName("docId", spaceId, pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypeFileObject)
 
 		// then
-		assert.Equal(t, filesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
+		assert.Equal(t, FilesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("space is not provided", func(t *testing.T) {
 		// given
@@ -1438,7 +1438,7 @@ func Test_provideFileName(t *testing.T) {
 		fileName := makeFileName("docId", "", pbjson.NewConverter(st).Ext(), st, smartblock.SmartBlockTypeFileObject)
 
 		// then
-		assert.Equal(t, spaceDirectory+string(filepath.Separator)+spaceId+string(filepath.Separator)+filesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
+		assert.Equal(t, spaceDirectory+string(filepath.Separator)+spaceId+string(filepath.Separator)+FilesObjects+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 }
 

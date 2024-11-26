@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -33,7 +34,6 @@ var (
 
 type CrossSpace interface {
 	QueryCrossSpace(q database.Query) (records []database.Record, err error)
-	QueryRawCrossSpace(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
 
 	ListIdsCrossSpace() ([]string, error)
@@ -47,6 +47,7 @@ type CrossSpace interface {
 type ObjectStore interface {
 	app.ComponentRunnable
 
+	IterateSpaceIndex(func(store spaceindex.Store) error) error
 	SpaceIndex(spaceId string) spaceindex.Store
 	GetCrdtDb(spaceId string) anystore.DB
 
@@ -58,7 +59,6 @@ type IndexerStore interface {
 	AddToIndexQueue(ctx context.Context, id ...string) error
 	ListIdsFromFullTextQueue(limit int) ([]string, error)
 	RemoveIdsFromFullTextQueue(ids []string) error
-	GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error)
 
 	// GetChecksums Used to get information about localstore state and decide do we need to reindex some objects
 	GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error)
@@ -117,6 +117,21 @@ type dsObjectStore struct {
 	componentCtxCancel context.CancelFunc
 }
 
+func (s *dsObjectStore) IterateSpaceIndex(f func(store spaceindex.Store) error) error {
+	s.Lock()
+	spaceIndexes := make([]spaceindex.Store, 0, len(s.spaceIndexes))
+	for _, store := range s.spaceIndexes {
+		spaceIndexes = append(spaceIndexes, store)
+	}
+	s.Unlock()
+	for _, store := range s.spaceIndexes {
+		if err := f(store); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func New() ObjectStore {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &dsObjectStore{
@@ -165,7 +180,7 @@ func (s *dsObjectStore) setDefaultConfig() {
 	if s.anyStoreConfig.SQLiteConnectionOptions == nil {
 		s.anyStoreConfig.SQLiteConnectionOptions = map[string]string{}
 	}
-
+	s.anyStoreConfig.SQLiteConnectionOptions = maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions)
 	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
 }
 
@@ -185,7 +200,7 @@ func ensureDirExists(dir string) error {
 }
 
 func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
-	store, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(ctx, path, &s.anyStoreConfig)
+	store, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(ctx, path, s.getAnyStoreConfig())
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -291,7 +306,7 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 			return spaceindex.NewInvalidStore(err)
 		}
 		store = spaceindex.New(s.componentCtx, spaceId, spaceindex.Deps{
-			AnyStoreConfig: &s.anyStoreConfig,
+			AnyStoreConfig: s.getAnyStoreConfig(),
 			SourceService:  s.sourceService,
 			OldStore:       s.oldStore,
 			Fts:            s.fts,
@@ -302,6 +317,15 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 		s.spaceIndexes[spaceId] = store
 	}
 	return store
+}
+
+func (s *dsObjectStore) getAnyStoreConfig() *anystore.Config {
+	return &anystore.Config{
+		Namespace:               s.anyStoreConfig.Namespace,
+		ReadConnections:         s.anyStoreConfig.ReadConnections,
+		SQLiteConnectionOptions: maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions),
+		SyncPoolElementMaxSize:  s.anyStoreConfig.SyncPoolElementMaxSize,
+	}
 }
 
 func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
@@ -316,10 +340,10 @@ func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
 			return nil
 		}
 		path := filepath.Join(dir, "crdt.db")
-		db, err = anystore.Open(s.componentCtx, path, &s.anyStoreConfig)
+		db, err = anystore.Open(s.componentCtx, path, s.getAnyStoreConfig())
 		if errors.Is(err, anystore.ErrIncompatibleVersion) {
 			_ = os.RemoveAll(path)
-			db, err = anystore.Open(s.componentCtx, path, &s.anyStoreConfig)
+			db, err = anystore.Open(s.componentCtx, path, s.getAnyStoreConfig())
 		}
 		if err != nil {
 			return nil
@@ -372,12 +396,6 @@ func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) ([]database.Record, er
 func (s *dsObjectStore) QueryCrossSpace(q database.Query) ([]database.Record, error) {
 	return collectCrossSpace(s, func(store spaceindex.Store) ([]database.Record, error) {
 		return store.Query(q)
-	})
-}
-
-func (s *dsObjectStore) QueryRawCrossSpace(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
-	return collectCrossSpace(s, func(store spaceindex.Store) ([]database.Record, error) {
-		return store.QueryRaw(filters, limit, offset)
 	})
 }
 

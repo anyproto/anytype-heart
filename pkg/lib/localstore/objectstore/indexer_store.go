@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	anystore "github.com/anyproto/any-store"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -77,6 +79,9 @@ func (s *dsObjectStore) RemoveIdsFromFullTextQueue(ids []string) error {
 	}
 	for _, id := range ids {
 		err := s.fulltextQueue.DeleteId(txn.Context(), id)
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			continue
+		}
 		if err != nil {
 			// if we have the error here we have nothing to do but retry later
 			log.Errorf("failed to remove %s from index, will redo the fulltext index: %v", id, err)
@@ -109,11 +114,4 @@ func (s *dsObjectStore) SaveChecksums(spaceId string, checksums *model.ObjectSto
 	}
 	err = s.indexerChecksums.UpsertOne(s.componentCtx, it)
 	return err
-}
-
-// GetGlobalChecksums is a migration method, it returns checksums stored before we started to store them per space
-// it will be deleted after the first SaveChecksums() call
-func (s *dsObjectStore) GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error) {
-	// TODO What to do?
-	return s.GetChecksums("global")
 }

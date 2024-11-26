@@ -2,21 +2,37 @@ package ftsearch
 
 import (
 	"fmt"
+	"sync"
 
 	tantivy "github.com/anyproto/tantivy-go"
-	"github.com/blevesearch/bleve/v2/search"
 )
 
-const docLimit = 10000
+type AutoBatcher interface {
+	// UpdateDoc adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
+	UpdateDoc(doc SearchDoc) error
+	// DeleteDoc adds a delete operation to the batcher
+	// maxSize limit check is not performed for this operation
+	DeleteDoc(id string) error
+	// Finish performs the operations
+	Finish() error
+}
 
-func (f *ftSearchTantivy) NewAutoBatcher(maxDocs int, maxSizeBytes uint64) AutoBatcher {
+func (f *ftSearchTantivy) NewAutoBatcher() AutoBatcher {
 	return &ftIndexBatcherTantivy{
 		index: f.index,
+		mu:    &f.mu,
 	}
 }
 
 func (f *ftSearchTantivy) Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error) {
-	result, err := f.index.Search(fmt.Sprintf("%s:%s", fieldId, objectId), docLimit, false, fieldId)
+	sCtx := tantivy.NewSearchContextBuilder().
+		SetQuery(fmt.Sprintf("%s:%s", fieldId, objectId)).
+		SetDocsLimit(docLimit).
+		SetWithHighlights(false).
+		AddFieldDefaultWeight(fieldId).
+		Build()
+
+	result, err := f.index.Search(sCtx)
 	if err != nil {
 		return err
 	}
@@ -26,21 +42,23 @@ func (f *ftSearchTantivy) Iterate(objectId string, fields []string, shouldContin
 	searchResult, err := tantivy.GetSearchResults(
 		result,
 		f.schema,
-		func(json string) (*search.DocumentMatch, error) {
+		func(json string) (*DocumentMatch, error) {
 			value, err := parser.Parse(json)
 			if err != nil {
 				return nil, err
 			}
-			dm := &search.DocumentMatch{
+			dm := &DocumentMatch{
 				ID: string(value.GetStringBytes(fieldId)),
 			}
 			dm.Fields = make(map[string]any)
 			dm.Fields[fieldSpace] = string(value.GetStringBytes(fieldSpace))
 			dm.Fields[fieldText] = string(value.GetStringBytes(fieldText))
+			dm.Fields[fieldTextZh] = string(value.GetStringBytes(fieldTextZh))
 			dm.Fields[fieldTitle] = string(value.GetStringBytes(fieldTitle))
+			dm.Fields[fieldTitleZh] = string(value.GetStringBytes(fieldTitleZh))
 			return dm, nil
 		},
-		fieldId, fieldSpace, fieldTitle, fieldText,
+		fieldId, fieldSpace, fieldTitle, fieldTitleZh, fieldText, fieldTextZh,
 	)
 	if err != nil {
 		return err
@@ -49,8 +67,14 @@ func (f *ftSearchTantivy) Iterate(objectId string, fields []string, shouldContin
 	var text, title, spaceId string
 	for _, hit := range searchResult {
 		if hit.Fields != nil {
+			if hit.Fields[fieldTextZh] != nil {
+				text, _ = hit.Fields[fieldTextZh].(string)
+			}
 			if hit.Fields[fieldText] != nil {
 				text, _ = hit.Fields[fieldText].(string)
+			}
+			if hit.Fields[fieldTitleZh] != nil {
+				title, _ = hit.Fields[fieldTitleZh].(string)
 			}
 			if hit.Fields[fieldTitle] != nil {
 				title, _ = hit.Fields[fieldTitle].(string)
@@ -64,7 +88,7 @@ func (f *ftSearchTantivy) Iterate(objectId string, fields []string, shouldContin
 			Id:      hit.ID,
 			Text:    text,
 			Title:   title,
-			SpaceID: spaceId,
+			SpaceId: spaceId,
 		}) {
 			break
 		}
@@ -76,6 +100,7 @@ type ftIndexBatcherTantivy struct {
 	index      *tantivy.TantivyContext
 	deleteIds  []string
 	updateDocs []*tantivy.Document
+	mu         *sync.Mutex // original mutex, temporary solution
 }
 
 // Add adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
@@ -99,7 +124,7 @@ func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
 		return err
 	}
 
-	err = doc.AddField(fieldSpace, searchDoc.SpaceID, f.index)
+	err = doc.AddField(fieldSpace, searchDoc.SpaceId, f.index)
 	if err != nil {
 		return err
 	}
@@ -109,7 +134,17 @@ func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
 		return err
 	}
 
+	err = doc.AddField(fieldTitleZh, searchDoc.Title, f.index)
+	if err != nil {
+		return err
+	}
+
 	err = doc.AddField(fieldText, searchDoc.Text, f.index)
+	if err != nil {
+		return err
+	}
+
+	err = doc.AddField(fieldTextZh, searchDoc.Text, f.index)
 	if err != nil {
 		return err
 	}
@@ -124,6 +159,8 @@ func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
 
 // Finish indexes the remaining documents in the batch.
 func (f *ftIndexBatcherTantivy) Finish() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	err := f.index.DeleteDocuments(fieldIdRaw, f.deleteIds...)
 	if err != nil {
 		return err

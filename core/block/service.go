@@ -40,11 +40,13 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/mutex"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -221,6 +223,10 @@ func (s *Service) DoFullId(id domain.FullID, apply func(sb smartblock.SmartBlock
 
 // resolveFullId resolves missing spaceId
 func (s *Service) resolveFullId(id domain.FullID) domain.FullID {
+	// TODO: GO-4494 - Do not resolve spaceId in case of date object id. This logic should be reviewed
+	if _, parseErr := dateutil.ParseDateId(id.ObjectID); parseErr == nil && id.SpaceID != "" {
+		return id
+	}
 	// First try to resolve space. It's necessary if client accidentally passes wrong spaceId
 	spaceId, err := s.resolver.ResolveSpaceID(id.ObjectID)
 	if err == nil {
@@ -302,6 +308,54 @@ func (s *Service) SpaceInstallBundledObjects(
 	return s.objectCreator.InstallBundledObjects(ctx, spc, sourceObjectIds, false)
 }
 
+func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	if spc.IsReadOnly() {
+		return nil
+	}
+	if spc.IsPersonal() {
+		return nil
+	}
+
+	workspaceId := spc.DerivedIDs().Workspace
+	chatUk, err := domain.NewUniqueKey(coresb.SmartBlockTypeChatDerivedObject, workspaceId)
+	if err != nil {
+		return err
+	}
+
+	chatId, err := spc.DeriveObjectID(context.Background(), chatUk)
+	if err != nil {
+		return err
+	}
+
+	if spaceChatExists, err := spc.Storage().HasTree(chatId); err != nil {
+		return err
+	} else if !spaceChatExists {
+		_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId)
+		if err != nil {
+			if !errors.Is(err, treestorage.ErrTreeExists) {
+				return fmt.Errorf("add chat derived object: %w", err)
+			}
+		}
+	}
+
+	err = spc.DoCtx(ctx, workspaceId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		st.SetLocalDetail(bundle.RelationKeyChatId.String(), pbtypes.String(chatId))
+		st.SetDetail(bundle.RelationKeyHasChat.String(), pbtypes.Bool(true))
+
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
+	})
+	if err != nil {
+		return fmt.Errorf("apply chatId to workspace: %w", err)
+	}
+
+	return nil
+}
+
 func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 	panic("should be removed")
 }
@@ -369,6 +423,9 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	spc, err := s.spaceService.Get(context.Background(), spaceID)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
+	}
+	if id == spc.DerivedIDs().Archive {
+		return fmt.Errorf("cannot delete archive object")
 	}
 	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
@@ -571,8 +628,12 @@ func (s *Service) pasteBlocks(id string, content *bookmark.ObjectContent) error 
 	}
 	for _, r := range uploadArr {
 		r.ContextId = id
-		uploadReq := UploadRequest{RpcBlockUploadRequest: r, ObjectOrigin: objectorigin.Webclipper()}
-		if err = s.UploadBlockFile(nil, uploadReq, groupID); err != nil {
+		uploadReq := UploadRequest{
+			RpcBlockUploadRequest: r,
+			ObjectOrigin:          objectorigin.Webclipper(),
+			ImageKind:             model.ImageKind_AutomaticallyAdded,
+		}
+		if _, err = s.UploadBlockFile(nil, uploadReq, groupID, false); err != nil {
 			return err
 		}
 	}

@@ -170,7 +170,7 @@ func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Spa
 	if req.FileId == "" {
 		return fmt.Errorf("file hash is empty")
 	}
-	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin)
+	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin, req.ImageKind)
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(details)
