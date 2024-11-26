@@ -15,11 +15,13 @@ import (
 )
 
 type CreateRequest struct {
-	FileId                domain.FileId
-	EncryptionKeys        map[string]string
-	ObjectOrigin          objectorigin.ObjectOrigin
-	ImageKind             model.ImageKind
-	AdditionalDetails     *domain.Details
+	FileId            domain.FileId
+	EncryptionKeys    map[string]string
+	ObjectOrigin      objectorigin.ObjectOrigin
+	ImageKind         model.ImageKind
+	AdditionalDetails *domain.Details
+
+	FileVariants          []*storage.FileInfo
 	AsyncMetadataIndexing bool
 }
 
@@ -67,6 +69,8 @@ func InjectVariantsToDetails(infos []*storage.FileInfo, st *state.State) error {
 func GetFileInfosFromDetails(details *domain.Details) []*storage.FileInfo {
 	variantsList := details.GetStringList(bundle.RelationKeyFileVariantIds)
 	sourceChecksum := details.GetString(bundle.RelationKeyFileSourceChecksum)
+	addedAt := details.GetInt64(bundle.RelationKeyAddedDate)
+	lastModifiedAt := details.GetInt64(bundle.RelationKeyLastModifiedDate)
 	infos := make([]*storage.FileInfo, 0, len(variantsList))
 	for i, variantId := range variantsList {
 		var meta *types.Struct
@@ -84,13 +88,15 @@ func GetFileInfosFromDetails(details *domain.Details) []*storage.FileInfo {
 			Source: sourceChecksum,
 			Media:  details.GetString(bundle.RelationKeyFileMimeType),
 
-			Hash:     variantId,
-			Checksum: details.GetStringList(bundle.RelationKeyFileVariantChecksums)[i],
-			Mill:     details.GetStringList(bundle.RelationKeyFileVariantMills)[i],
-			Meta:     meta,
-			Path:     details.GetStringList(bundle.RelationKeyFileVariantPaths)[i],
-			Key:      details.GetStringList(bundle.RelationKeyFileVariantKeys)[i],
-			Opts:     details.GetStringList(bundle.RelationKeyFileVariantOptions)[i],
+			Hash:             variantId,
+			Checksum:         details.GetStringList(bundle.RelationKeyFileVariantChecksums)[i],
+			Mill:             details.GetStringList(bundle.RelationKeyFileVariantMills)[i],
+			Meta:             meta,
+			Path:             details.GetStringList(bundle.RelationKeyFileVariantPaths)[i],
+			Key:              details.GetStringList(bundle.RelationKeyFileVariantKeys)[i],
+			Opts:             details.GetStringList(bundle.RelationKeyFileVariantOptions)[i],
+			Added:            addedAt,
+			LastModifiedDate: lastModifiedAt,
 		}
 		infos = append(infos, info)
 	}

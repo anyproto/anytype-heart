@@ -274,6 +274,10 @@ func (s *service) InitEmptyFileState(st *state.State) {
 }
 
 func (s *service) Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error) {
+	if !req.AsyncMetadataIndexing && len(req.FileVariants) == 0 {
+		return "", nil, fmt.Errorf("file variants are not provided")
+	}
+
 	space, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
@@ -317,7 +321,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		fullFileId := domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}
 		fullObjectId := domain.FullID{SpaceID: space.Id(), ObjectID: payload.RootRawChange.Id}
 
-		err = s.indexer.injectMetadataToState(ctx, createState, fullFileId, fullObjectId)
+		err = s.indexer.injectMetadataToState(ctx, createState, req.FileVariants, fullFileId, fullObjectId)
 		if err != nil {
 			return "", nil, fmt.Errorf("inject metadata to state: %w", err)
 		}

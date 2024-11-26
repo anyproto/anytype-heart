@@ -109,6 +109,9 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 		FileId:  domain.FileId(ctx.State.Details().GetString(bundle.RelationKeyFileId)),
 		SpaceId: f.SpaceID(),
 	}
+
+	// Migrate file to the new file index. The old file index was in the separate database. Now all file info is stored
+	// in the object store directly
 	if len(ctx.State.Details().GetStringList(bundle.RelationKeyFileVariantIds)) == 0 {
 		infos, err := f.fileService.GetFileVariants(ctx.Ctx, fileId, ctx.State.GetFileInfo().EncryptionKeys)
 		if err != nil {

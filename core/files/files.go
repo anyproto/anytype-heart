@@ -102,8 +102,10 @@ type AddResult struct {
 	IsExisting     bool // Is file already added by user?
 	Variants       []*storage.FileInfo
 
-	MIME string
-	Size int64
+	LastModifiedAt int64
+	AddedAt        int64
+	MIME           string
+	Size           int64
 
 	lock *sync.Mutex
 }
@@ -146,8 +148,6 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, err
 	}
 	fileId := domain.FileId(rootNode.Cid().String())
-
-	addNodeResult.variant.Targets = []string{fileId.String()}
 
 	fileKeys := domain.FileEncryptionKeys{
 		FileId:         fileId,
@@ -230,7 +230,7 @@ func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo 
 	return node, keys, nil
 }
 
-func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId domain.FileId, path string, key string) (*storage.FileInfo, error) {
+func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, path string, key string) (*storage.FileInfo, error) {
 	id, r, err := s.dataAtPath(ctx, spaceId, path+"/"+MetaLinkName)
 	if err != nil {
 		return nil, err
@@ -275,7 +275,6 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 		return nil, fmt.Errorf("failed to read file info proto with all encryption modes")
 	}
 	file.MetaHash = id.String()
-	file.Targets = []string{fileId.String()}
 	return &file, nil
 }
 
@@ -389,7 +388,6 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	}
 
 	fileInfo.Key = key.String()
-	fileInfo.EncMode = storage.FileInfo_AES_CFB
 
 	contentNode, err := s.addFileData(ctx, spaceID, contentReader)
 	if err != nil {
@@ -495,7 +493,7 @@ func (s *service) GetFileVariants(ctx context.Context, id domain.FullFileId, key
 			key = keys[path]
 		}
 
-		fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceId, id.FileId, id.FileId.String()+"/"+dirLink.Name, key)
+		fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceId, id.FileId.String()+"/"+dirLink.Name, key)
 		if err != nil {
 			return nil, fmt.Errorf("fileInfoFromPath error: %w", err)
 		}
@@ -509,7 +507,7 @@ func (s *service) GetFileVariants(ctx context.Context, id domain.FullFileId, key
 				key = keys[path]
 			}
 
-			fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceId, id.FileId, id.FileId.String()+"/"+dirLink.Name+"/"+link.Name, key)
+			fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceId, id.FileId.String()+"/"+dirLink.Name+"/"+link.Name, key)
 			if err != nil {
 				return nil, fmt.Errorf("fileInfoFromPath error: %w", err)
 			}

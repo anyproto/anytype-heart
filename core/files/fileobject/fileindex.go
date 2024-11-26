@@ -222,7 +222,11 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 	}
 	err = space.Do(id.ObjectID, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
-		err := ind.injectMetadataToState(ctx, st, fileId, id)
+		infos, err := ind.fileService.GetFileVariants(ctx, fileId, st.GetFileInfo().EncryptionKeys)
+		if err != nil {
+			return fmt.Errorf("get infos for indexing: %w", err)
+		}
+		err = ind.injectMetadataToState(ctx, st, infos, fileId, id)
 		if err != nil {
 			return fmt.Errorf("inject metadata to state: %w", err)
 		}
@@ -234,12 +238,8 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 	return nil
 }
 
-func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
-	infos, err := ind.fileService.GetFileVariants(ctx, fileId, st.GetFileInfo().EncryptionKeys)
-	if err != nil {
-		return fmt.Errorf("get infos for indexing: %w", err)
-	}
-	err = filemodels.InjectVariantsToDetails(infos, st)
+func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, infos []*storage.FileInfo, fileId domain.FullFileId, id domain.FullID) error {
+	err := filemodels.InjectVariantsToDetails(infos, st)
 	if err != nil {
 		return fmt.Errorf("inject variants: %w", err)
 	}
