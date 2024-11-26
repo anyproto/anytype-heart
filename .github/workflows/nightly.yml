@@ -191,7 +191,7 @@ jobs:
           go run cmd/iosrepack/main.go
           mv dist/ios/Lib.xcframework .
           gtar --exclude ".*" -czvf ios_framework.tar.gz Lib.xcframework protobuf json
-          gradle publish
+          #gradle publish
           mv ios_framework.tar.gz .release/ios_framework_${VERSION}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
