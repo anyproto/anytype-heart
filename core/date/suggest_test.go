@@ -5,6 +5,13 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/dateutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func Test_suggestDateForSearch(t *testing.T) {
@@ -63,4 +70,25 @@ func Test_suggestDateForSearch(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestSuggestDateObjectIdsFromFilter(t *testing.T) {
+	// given
+	dateObject1 := dateutil.NewDateObject(time.Now(), false)
+	dateObject2 := dateutil.NewDateObject(time.Now().Add(2*time.Hour), true)
+	req := &pb.RpcObjectSearchRequest{
+		Filters: []*model.BlockContentDataviewFilter{{
+			RelationKey: bundle.RelationKeyId.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.StringList([]string{dateObject1.Id(), "plainObj1", "planObj2", dateObject2.Id()}),
+		}},
+	}
+
+	// when
+	ids := suggestDateObjectIds(req)
+
+	// then
+	require.Len(t, ids, 2)
+	assert.Equal(t, dateObject1.Id(), ids[0])
+	assert.Equal(t, dateObject2.Id(), ids[1])
 }

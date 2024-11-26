@@ -102,7 +102,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	// Add dates only to the first page of search results
 	if req.Offset == 0 {
-		records, err = date.EnrichRecordsWithDateSuggestion(cctx, records, req, ds, getService[space.Service](mw))
+		records, err = date.EnrichRecordsWithDateSuggestions(cctx, records, req, ds, getService[space.Service](mw))
 		if err != nil {
 			return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 		}
