@@ -71,7 +71,7 @@ require (
 	github.com/miolini/datacounter v1.0.3
 	github.com/mr-tron/base58 v1.2.0
 	github.com/multiformats/go-base32 v0.1.0
-	github.com/multiformats/go-multiaddr-dns v0.4.0
+	github.com/multiformats/go-multiaddr-dns v0.4.1
 	github.com/multiformats/go-multibase v0.2.0
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/oov/psd v0.0.0-20220121172623-5db5eafcecbb
