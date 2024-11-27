@@ -29,7 +29,7 @@ func EnrichRecordsWithDateSuggestions(
 	spaceService space.Service,
 ) ([]database.Record, error) {
 	ids := suggestDateObjectIds(req)
-	if ids == nil {
+	if len(ids) == 0 {
 		return records, nil
 	}
 
@@ -39,7 +39,7 @@ func EnrichRecordsWithDateSuggestions(
 	}
 
 	for _, id := range ids {
-		if isRecordDuplicated(records, id) {
+		if recordsHasId(records, id) {
 			continue
 		}
 
@@ -143,7 +143,7 @@ func suggestDateForSearch(now time.Time, raw string) time.Time {
 	return t
 }
 
-func isRecordDuplicated(records []database.Record, id string) bool {
+func recordsHasId(records []database.Record, id string) bool {
 	for _, r := range records {
 		if r.Details == nil || r.Details.Fields == nil {
 			continue
