@@ -32,7 +32,10 @@ func EnrichRecordsWithDateSuggestion(
 		return records, nil
 	}
 
-	isDay := dt.Hour() == 0 && dt.Minute() == 0 && dt.Second() == 0
+	// TODO: GO-4097 Uncomment it when we will be able to support dates with seconds precision
+	// isDay := dt.Hour() == 0 && dt.Minute() == 0 && dt.Second() == 0
+	isDay := true
+
 	id := dateutil.NewDateObject(dt, !isDay).Id()
 
 	// Don't duplicate search suggestions
