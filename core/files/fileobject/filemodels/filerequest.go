@@ -67,6 +67,12 @@ func InjectVariantsToDetails(infos []*storage.FileInfo, st *state.State) error {
 }
 
 func GetFileInfosFromDetails(details *domain.Details) []*storage.FileInfo {
+	ext := details.GetString(bundle.RelationKeyFileExt)
+	name := details.GetString(bundle.RelationKeyName)
+	if ext != "" {
+		name = name + "." + ext
+	}
+
 	variantsList := details.GetStringList(bundle.RelationKeyFileVariantIds)
 	sourceChecksum := details.GetString(bundle.RelationKeyFileSourceChecksum)
 	addedAt := details.GetInt64(bundle.RelationKeyAddedDate)
@@ -78,12 +84,13 @@ func GetFileInfosFromDetails(details *domain.Details) []*storage.FileInfo {
 		if widths[i] > 0 {
 			meta = &types.Struct{
 				Fields: map[string]*types.Value{
-					"width": pbtypes.Int64(int64(widths[i])),
+					"width": pbtypes.Int64(widths[i]),
 				},
 			}
 		}
+
 		info := &storage.FileInfo{
-			Name:   details.GetString(bundle.RelationKeyName),
+			Name:   name,
 			Size_:  details.GetInt64(bundle.RelationKeySizeInBytes),
 			Source: sourceChecksum,
 			Media:  details.GetString(bundle.RelationKeyFileMimeType),
