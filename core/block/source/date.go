@@ -21,6 +21,8 @@ import (
 type DateSourceParams struct {
 	Id               domain.FullID
 	DateObjectTypeId string
+	// TODO: GO-4494 - Remove links relation id
+	LinksRelationId string
 }
 
 func NewDate(params DateSourceParams) (s Source) {
@@ -28,11 +30,14 @@ func NewDate(params DateSourceParams) (s Source) {
 		id:      params.Id.ObjectID,
 		spaceId: params.Id.SpaceID,
 		typeId:  params.DateObjectTypeId,
+		linksId: params.LinksRelationId,
 	}
 }
 
 type date struct {
 	id, spaceId, typeId string
+	// TODO: GO-4494 - Remove links relation id
+	linksId string
 }
 
 func (d *date) ListIds() ([]string, error) {
@@ -72,6 +77,8 @@ func (d *date) getDetails() (*types.Struct, error) {
 		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
 		bundle.RelationKeySpaceId.String():    pbtypes.String(d.SpaceID()),
 		bundle.RelationKeyTimestamp.String():  pbtypes.Int64(t.Unix()),
+		// TODO: GO-4494 - Remove links relation id
+		bundle.RelationKeySetOf.String(): pbtypes.StringList([]string{d.linksId}),
 	}}, nil
 }
 
@@ -85,10 +92,57 @@ func (d *date) ReadDoc(context.Context, ChangeReceiver, bool) (doc state.Doc, er
 		return
 	}
 
+	dataview := &model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			RelationLinks: []*model.RelationLink{
+				{
+					Key:    bundle.RelationKeyName.String(),
+					Format: model.RelationFormat_shorttext,
+				},
+				{
+					Key:    bundle.RelationKeyLastModifiedDate.String(),
+					Format: model.RelationFormat_date,
+				},
+			},
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   "1",
+					Type: model.BlockContentDataviewView_Table,
+					Name: "Date backlinks",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+							Type:        model.BlockContentDataviewSort_Desc,
+						},
+					},
+					Filters: []*model.BlockContentDataviewFilter{
+						{
+							RelationKey: bundle.RelationKeyLinks.String(),
+							Condition:   model.BlockContentDataviewFilter_In,
+							Value:       pbtypes.String(d.id),
+						},
+					},
+					Relations: []*model.BlockContentDataviewRelation{
+						{
+							Key:       bundle.RelationKeyName.String(),
+							IsVisible: true,
+						},
+						{
+							Key:       bundle.RelationKeyLastModifiedDate.String(),
+							IsVisible: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
 	s := state.NewDoc(d.id, nil).(*state.State)
 	template.InitTemplate(s,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,
+		// TODO: GO-4494 - Remove dataview block insertion
+		template.WithDataview(dataview, true),
 		template.WithAllBlocksEditsRestricted,
 	)
 	s.SetDetails(details)

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -65,7 +66,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) {
 	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(objectIds []string) error {
 		for _, objectId := range objectIds {
 			objDocs, err := i.prepareSearchDocument(ctx, objectId)
-			if err != nil {
+			if err != nil && !errors.Is(err, domain.ErrObjectNotFound) && !errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 				log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)
 				if errors.Is(err, context.Canceled) {
 					return err
