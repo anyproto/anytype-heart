@@ -18,41 +18,18 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/dateutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func EnrichRecordsWithDateSuggestion(
+func EnrichRecordsWithDateSuggestions(
 	ctx context.Context,
 	records []database.Record,
 	req *pb.RpcObjectSearchRequest,
 	store objectstore.ObjectStore,
 	spaceService space.Service,
 ) ([]database.Record, error) {
-	dt := suggestDateForSearch(time.Now(), req.FullText)
-	if dt.IsZero() {
-		return records, nil
-	}
-
-	// TODO: GO-4097 Uncomment it when we will be able to support dates with seconds precision
-	// isDay := dt.Hour() == 0 && dt.Minute() == 0 && dt.Second() == 0
-	isDay := true
-
-	id := dateutil.NewDateObject(dt, !isDay).Id()
-
-	// Don't duplicate search suggestions
-	var found bool
-	for _, r := range records {
-		if r.Details == nil || r.Details.Fields == nil {
-			continue
-		}
-		if v, ok := r.Details.Fields[bundle.RelationKeyId.String()]; ok {
-			if v.GetStringValue() == id {
-				found = true
-				break
-			}
-		}
-
-	}
-	if found {
+	ids := suggestDateObjectIds(req)
+	if len(ids) == 0 {
 		return records, nil
 	}
 
@@ -61,15 +38,51 @@ func EnrichRecordsWithDateSuggestion(
 		return nil, fmt.Errorf("get space: %w", err)
 	}
 
-	rec, err := makeSuggestedDateRecord(spc, id)
-	if err != nil {
-		return nil, fmt.Errorf("make date record: %w", err)
+	for _, id := range ids {
+		if recordsHasId(records, id) {
+			continue
+		}
+
+		rec, err := makeSuggestedDateRecord(ctx, spc, id)
+		if err != nil {
+			return nil, fmt.Errorf("make date record: %w", err)
+		}
+
+		f, _ := database.MakeFilters(req.Filters, store.SpaceIndex(req.SpaceId)) //nolint:errcheck
+		if f.FilterObject(rec.Details) {
+			records = append([]database.Record{rec}, records...)
+		}
 	}
-	f, _ := database.MakeFilters(req.Filters, store.SpaceIndex(req.SpaceId)) //nolint:errcheck
-	if f.FilterObject(rec.Details) {
-		return append([]database.Record{rec}, records...), nil
-	}
+
 	return records, nil
+}
+
+// suggestDateObjectIds suggests date object ids based on two fields:
+// - fullText - if naturalDate successfully parses text into date, resulting date object id is returned
+// - filter with key id
+func suggestDateObjectIds(req *pb.RpcObjectSearchRequest) []string {
+	dt := suggestDateForSearch(time.Now(), req.FullText)
+	if !dt.IsZero() {
+		// TODO: GO-4097 Uncomment it when we will be able to support dates with seconds precision
+		// isDay := dt.Hour() == 0 && dt.Minute() == 0 && dt.Second() == 0
+		isDay := true
+		return []string{dateutil.NewDateObject(dt, !isDay).Id()}
+	}
+
+	for _, filter := range req.Filters {
+		if filter.RelationKey == bundle.RelationKeyId.String() {
+			list := pbtypes.GetStringListValue(filter.Value)
+			var dateObjectIds []string
+			for _, id := range list {
+				if _, err := dateutil.BuildDateObjectFromId(id); err == nil {
+					dateObjectIds = append(dateObjectIds, id)
+				}
+			}
+			return dateObjectIds
+		}
+	}
+
+	return nil
 }
 
 func suggestDateForSearch(now time.Time, raw string) time.Time {
@@ -132,8 +145,23 @@ func suggestDateForSearch(now time.Time, raw string) time.Time {
 	return t
 }
 
-func makeSuggestedDateRecord(spc source.Space, id string) (database.Record, error) {
-	typeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyDate)
+func recordsHasId(records []database.Record, id string) bool {
+	for _, r := range records {
+		if r.Details == nil || r.Details.Fields == nil {
+			continue
+		}
+		if v, ok := r.Details.Fields[bundle.RelationKeyId.String()]; ok {
+			if v.GetStringValue() == id {
+				return true
+			}
+		}
+
+	}
+	return false
+}
+
+func makeSuggestedDateRecord(ctx context.Context, spc source.Space, id string) (database.Record, error) {
+	typeId, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyDate)
 	if err != nil {
 		return database.Record{}, fmt.Errorf("failed to find Date type to build Date object: %w", err)
 	}
