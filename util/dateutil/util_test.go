@@ -17,27 +17,27 @@ func TestNewDateObject(t *testing.T) {
 			{
 				ts:           time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC),
 				expectedId:   "_date_2024-11-07-12-25-59Z_0000",
-				expectedName: "07 Nov 2024 12:25",
+				expectedName: "Thu, Nov 07, 2024 12:25 PM",
 			},
 			{
 				ts:           time.Date(1998, time.January, 1, 0, 1, 1, 0, time.UTC),
 				expectedId:   "_date_1998-01-01-00-01-01Z_0000",
-				expectedName: "01 Jan 1998 00:01",
+				expectedName: "Thu, Jan 01, 1998 12:01 AM",
 			},
 			{
 				ts:           time.Date(1998, time.January, 1, 0, 1, 1, 0, time.FixedZone("UTC", +4*60*60)),
 				expectedId:   "_date_1998-01-01-00-01-01Z_0400",
-				expectedName: "01 Jan 1998 00:01",
+				expectedName: "Thu, Jan 01, 1998 12:01 AM",
 			},
 			{
 				ts:           time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC),
 				expectedId:   "_date_2124-12-25-23-34-00Z_0000",
-				expectedName: "25 Dec 2124 23:34",
+				expectedName: "Mon, Dec 25, 2124 11:34 PM",
 			},
 			{
 				ts:           time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)),
 				expectedId:   "_date_2124-12-25-23-34-00Z-0200",
-				expectedName: "25 Dec 2124 23:34",
+				expectedName: "Mon, Dec 25, 2124 11:34 PM",
 			},
 		} {
 			do := NewDateObject(tc.ts, true)
@@ -56,27 +56,27 @@ func TestNewDateObject(t *testing.T) {
 			{
 				ts:           time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC),
 				expectedId:   "_date_2024-11-07",
-				expectedName: "07 Nov 2024",
+				expectedName: "Thu, Nov 07, 2024",
 			},
 			{
 				ts:           time.Date(1998, time.January, 1, 0, 1, 1, 0, time.UTC),
 				expectedId:   "_date_1998-01-01",
-				expectedName: "01 Jan 1998",
+				expectedName: "Thu, Jan 01, 1998",
 			},
 			{
 				ts:           time.Date(1998, time.January, 1, 0, 1, 1, 0, time.FixedZone("UTC", +4*60*60)),
 				expectedId:   "_date_1998-01-01",
-				expectedName: "01 Jan 1998",
+				expectedName: "Thu, Jan 01, 1998",
 			},
 			{
 				ts:           time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC),
 				expectedId:   "_date_2124-12-25",
-				expectedName: "25 Dec 2124",
+				expectedName: "Mon, Dec 25, 2124",
 			},
 			{
 				ts:           time.Date(2124, time.December, 25, 23, 34, 0, 0, time.FixedZone("UTC", -2*60*60)),
 				expectedId:   "_date_2124-12-25",
-				expectedName: "25 Dec 2124",
+				expectedName: "Mon, Dec 25, 2124",
 			},
 		} {
 			do := NewDateObject(tc.ts, false)
