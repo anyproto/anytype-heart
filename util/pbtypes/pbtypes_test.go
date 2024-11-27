@@ -210,15 +210,3 @@ func TestMapN(t *testing.T) {
 	assert.Len(t, maps.Keys(mapped[1].Fields), 2)
 	assert.Len(t, maps.Keys(mapped[2].Fields), 2)
 }
-
-func TestName(t *testing.T) {
-	a := 3
-	switch a {
-	case 1:
-		fmt.Println("1")
-	case 2:
-		fmt.Println("2")
-	default:
-		fmt.Println("default")
-	}
-}
