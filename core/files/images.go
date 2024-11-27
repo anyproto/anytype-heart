@@ -61,13 +61,9 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}
 
 	dirEntries := addNodesResult.dirEntries
-	id := domain.FullFileId{SpaceId: spaceId, FileId: fileId}
-	successfullyAdded := make([]domain.FileContentId, 0, len(dirEntries))
 	variants := make([]*storage.FileInfo, 0, len(dirEntries))
 	for _, dirEntry := range dirEntries {
 		variants = append(variants, dirEntry.fileInfo)
-		dirEntry.fileInfo.Targets = []string{id.FileId.String()}
-		successfullyAdded = append(successfullyAdded, domain.FileContentId(dirEntry.fileInfo.Hash))
 	}
 
 	entry := dirEntries[0]

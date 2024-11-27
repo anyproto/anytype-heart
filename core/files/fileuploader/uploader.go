@@ -519,6 +519,7 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.A
 		ObjectOrigin:      u.origin,
 		ImageKind:         u.imageKind,
 		AdditionalDetails: u.additionalDetails,
+		FileVariants:      addResult.Variants,
 	})
 	if err != nil {
 		return "", nil, fmt.Errorf("create file object: %w", err)

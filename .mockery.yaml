@@ -146,6 +146,8 @@ packages:
   github.com/anyproto/anytype-heart/core/files:
     interfaces:
       Service:
+      File:
+      Image:
   github.com/anyproto/anytype-heart/core/files/fileacl:
     interfaces:
       Service:
