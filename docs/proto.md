@@ -1871,9 +1871,7 @@
     - [Block.Content.Dataview.Filter.Condition](#anytype-model-Block-Content-Dataview-Filter-Condition)
     - [Block.Content.Dataview.Filter.Operator](#anytype-model-Block-Content-Dataview-Filter-Operator)
     - [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption)
-    - [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat)
     - [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType)
-    - [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat)
     - [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType)
     - [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type)
     - [Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size)
@@ -28104,10 +28102,7 @@ Bookmark is to keep a web-link and to preview a content.
 | key | [string](#string) |  |  |
 | isVisible | [bool](#bool) |  |  |
 | width | [int32](#int32) |  | the displayed column % calculated based on other visible relations |
-| dateIncludeTime | [bool](#bool) |  |  |
-| timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  |  |
-| dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  |  |
-| formula | [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType) |  |  |
+| formula | [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType) |  | bool isReadOnly = 4; // deprecated bool dateIncludeTime = 5; // deprecated TimeFormat timeFormat = 6; // deprecated DateFormat dateFormat = 7; // deprecated |
 
 
 
@@ -29642,21 +29637,6 @@ stored |
 
 
 
-<a name="anytype-model-Block-Content-Dataview-Relation-DateFormat"></a>
-
-### Block.Content.Dataview.Relation.DateFormat
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| MonthAbbrBeforeDay | 0 | Jul 30, 2020 |
-| MonthAbbrAfterDay | 1 | 30 Jul 2020 |
-| Short | 2 | 30/07/2020 |
-| ShortUS | 3 | 07/30/2020 |
-| ISO | 4 | 2020-07-30 |
-
-
-
 <a name="anytype-model-Block-Content-Dataview-Relation-FormulaType"></a>
 
 ### Block.Content.Dataview.Relation.FormulaType
@@ -29677,18 +29657,6 @@ stored |
 | MathMin | 10 |  |
 | MathMax | 11 |  |
 | Range | 12 |  |
-
-
-
-<a name="anytype-model-Block-Content-Dataview-Relation-TimeFormat"></a>
-
-### Block.Content.Dataview.Relation.TimeFormat
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Format12 | 0 |  |
-| Format24 | 1 |  |
 
 
 

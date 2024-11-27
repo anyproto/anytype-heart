@@ -1360,5 +1360,15 @@
     "name": "Timestamp",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "Should time be shown for relation values with date format",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "includeTime",
+    "maxCount": 0,
+    "name": "IncludeTime",
+    "readonly": true,
+    "source": "local"
   }
 ]
