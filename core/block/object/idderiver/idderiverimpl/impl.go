@@ -12,24 +12,24 @@ import (
 
 const CName = "object-id-deriver"
 
-type DeriverImpl struct {
+type Deriver struct {
 	spaceService space.Service
 }
 
 func New() idderiver.Deriver {
-	return &DeriverImpl{}
+	return &Deriver{}
 }
 
-func (d *DeriverImpl) Name() string {
+func (d *Deriver) Name() string {
 	return CName
 }
 
-func (d *DeriverImpl) Init(a *app.App) error {
+func (d *Deriver) Init(a *app.App) error {
 	d.spaceService = app.MustComponent[space.Service](a)
 	return nil
 }
 
-func (d *DeriverImpl) DeriveObjectId(ctx context.Context, spaceId string, key domain.UniqueKey) (id string, err error) {
+func (d *Deriver) DeriveObjectId(ctx context.Context, spaceId string, key domain.UniqueKey) (id string, err error) {
 	spc, err := d.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return "", err
