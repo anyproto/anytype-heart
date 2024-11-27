@@ -6,6 +6,8 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 )
 
 func TestGet(t *testing.T) {
@@ -175,5 +177,48 @@ func TestIsEmptyValueOrAbsent(t *testing.T) {
 				t.Errorf("IsEmptyValueOrAbsent(%v, %v) = %v, want %v", tt.s, tt.fieldName, got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestMapN(t *testing.T) {
+	// given
+	structs := []*types.Struct{
+		{Fields: map[string]*types.Value{
+			"name": String("obj1"),
+			"id":   String("obj1"),
+			"key":  String("obj1"),
+		}},
+		{Fields: map[string]*types.Value{
+			"name":  String("obj2"),
+			"id":    String("obj2"),
+			"links": StringList([]string{"obj1", "obj3"}),
+		}},
+		{Fields: map[string]*types.Value{
+			"name":   String("obj3"),
+			"id":     String("obj3"),
+			"number": Int64(42),
+		}},
+	}
+	keys := []string{"name", "id"}
+
+	// when
+	mapped := MapN(structs, keys...)
+
+	// then
+	require.Len(t, mapped, 3)
+	assert.Len(t, maps.Keys(mapped[0].Fields), 2)
+	assert.Len(t, maps.Keys(mapped[1].Fields), 2)
+	assert.Len(t, maps.Keys(mapped[2].Fields), 2)
+}
+
+func TestName(t *testing.T) {
+	a := 3
+	switch a {
+	case 1:
+		fmt.Println("1")
+	case 2:
+		fmt.Println("2")
+	default:
+		fmt.Println("default")
 	}
 }

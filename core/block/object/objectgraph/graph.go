@@ -130,10 +130,7 @@ func (gr *Builder) buildGraph(
 		edges = gr.appendRelations(rec, relations, edges, existedNodes, sourceId, outgoingRelationLink)
 		var nodesToAdd []*types.Struct
 		nodesToAdd, edges = gr.appendLinks(req.SpaceId, rec, outgoingRelationLink, existedNodes, edges, sourceId)
-
-		if len(nodesToAdd) != 0 {
-			nodes = append(nodes, nodesToAdd...)
-		}
+		nodes = append(nodes, pbtypes.MapN(nodesToAdd, req.Keys...)...)
 	}
 	return nodes, edges
 }
@@ -209,29 +206,31 @@ func (gr *Builder) appendLinks(
 			// ignore files because we index all file blocks as outgoing links
 			continue
 		case smartblock.SmartBlockTypeDate:
-			details, err := gr.objectStore.SpaceIndex(spaceID).QueryByIds([]string{link})
-			if err == nil && len(details) != 1 {
-				err = fmt.Errorf("expected to get 1 date object, got %d", len(details))
+			if _, exists := existedNodes[link]; !exists {
+				details, err := gr.objectStore.SpaceIndex(spaceID).QueryByIds([]string{link})
+				if err == nil && len(details) != 1 {
+					err = fmt.Errorf("expected to get 1 date object, got %d", len(details))
+				}
+				if err != nil {
+					log.Error("get details of Date object", zap.String("objectId", link), zap.Error(err))
+					continue
+				}
+				existedNodes[link] = struct{}{}
+				nodes = append(nodes, details[0].Details)
 			}
-			if err != nil {
-				log.Error("get details of Date object", zap.String("objectId", link), zap.Error(err))
-				continue
-			}
-			existedNodes[link] = struct{}{}
-			nodes = append(nodes, details[0].Details)
 		}
 
-		if sbType != smartblock.SmartBlockTypeFileObject {
-			if _, exists := outgoingRelationLink[link]; !exists {
-				if _, exists := existedNodes[link]; exists {
-					edges = append(edges, &pb.RpcObjectGraphEdge{
-						Source: id,
-						Target: link,
-						Name:   "",
-						Type:   pb.RpcObjectGraphEdge_Link,
-					})
-				}
-			}
+		if _, exists := outgoingRelationLink[link]; exists {
+			continue
+		}
+
+		if _, exists := existedNodes[link]; exists {
+			edges = append(edges, &pb.RpcObjectGraphEdge{
+				Source: id,
+				Target: link,
+				Name:   "",
+				Type:   pb.RpcObjectGraphEdge_Link,
+			})
 		}
 	}
 	return nodes, edges
