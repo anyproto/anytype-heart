@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/idderiver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -38,10 +39,6 @@ type accountService interface {
 	AccountID() string
 	MyParticipantId(string) string
 	PersonalSpaceID() string
-}
-
-type objectIdDeriver interface {
-	DeriveObjectId(ctx context.Context, spaceId string, key domain.UniqueKey) (id string, err error)
 }
 
 type Space interface {
@@ -72,7 +69,7 @@ type service struct {
 	fileService        files.Service
 	objectStore        objectstore.ObjectStore
 	fileObjectMigrator fileObjectMigrator
-	idDeriver          objectIdDeriver
+	idDeriver          idderiver.Deriver
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -86,7 +83,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountKeysService = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.idDeriver = app.MustComponent[objectIdDeriver](a)
+	s.idDeriver = app.MustComponent[idderiver.Deriver](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
