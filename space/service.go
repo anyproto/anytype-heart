@@ -19,7 +19,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -71,11 +70,6 @@ type Service interface {
 	AccountMetadataSymKey() crypto.SymKey
 	AccountMetadataPayload() []byte
 	WaitPersonalSpaceMigration(ctx context.Context) (err error)
-
-	// TODO: GO-4494 - Remove these temporary methods
-	GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error)
-	GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error)
-
 	app.ComponentRunnable
 }
 
@@ -494,24 +488,4 @@ func (s *service) getTechSpace(ctx context.Context) (*clientspace.TechSpace, err
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-}
-
-// TODO: GO-4494 - Remove this temporary method
-func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error) {
-	spc, err := s.Get(ctx, spaceId)
-	if err != nil {
-		return "", err
-	}
-
-	return spc.GetRelationIdByKey(ctx, key)
-}
-
-// TODO: GO-4494 - Remove this temporary method
-func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error) {
-	spc, err := s.Get(ctx, spaceId)
-	if err != nil {
-		return "", err
-	}
-
-	return spc.GetTypeIdByKey(ctx, key)
 }

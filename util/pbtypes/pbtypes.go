@@ -530,6 +530,13 @@ func Map(s *types.Struct, keys ...string) *types.Struct {
 	return ns
 }
 
+func MapN(structs []*types.Struct, keys ...string) []*types.Struct {
+	for i, s := range structs {
+		structs[i] = Map(s, keys...)
+	}
+	return structs
+}
+
 func StructIterate(st *types.Struct, f func(path []string, v *types.Value)) {
 	var iterate func(s *types.Struct, f func(path []string, v *types.Value), path []string)
 	iterate = func(s *types.Struct, f func(path []string, v *types.Value), path []string) {

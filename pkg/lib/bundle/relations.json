@@ -1247,9 +1247,10 @@
     "hidden": true,
     "key": "lastUsedDate",
     "maxCount": 1,
-    "name": "Last Used date",
+    "name": "Last used date",
     "readonly": true,
-    "source": "local"
+    "source": "local",
+    "revision": 1
   },
   {
     "description": "Revision of system object",

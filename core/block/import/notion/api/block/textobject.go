@@ -239,7 +239,7 @@ func (t *TextObject) handleDateMention(rt api.RichText,
 	if rt.Mention.Date.End != "" {
 		textDate = rt.Mention.Date.End
 	}
-	date, err := dateutil.ParseDateId(textDate)
+	dateObject, err := dateutil.BuildDateObjectFromId(textDate)
 	if err != nil {
 		return nil
 	}
@@ -252,7 +252,7 @@ func (t *TextObject) handleDateMention(rt api.RichText,
 				To:   int32(to),
 			},
 			Type:  model.BlockContentTextMark_Mention,
-			Param: dateutil.TimeToDateId(date),
+			Param: dateObject.Id(),
 		},
 	}
 }

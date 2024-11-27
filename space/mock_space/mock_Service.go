@@ -10,8 +10,6 @@ import (
 
 	crypto "github.com/anyproto/any-sync/util/crypto"
 
-	domain "github.com/anyproto/anytype-heart/core/domain"
-
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -437,64 +435,6 @@ func (_c *MockService_GetPersonalSpace_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-// GetRelationIdByKey provides a mock function with given fields: ctx, spaceId, key
-func (_m *MockService) GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (string, error) {
-	ret := _m.Called(ctx, spaceId, key)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetRelationIdByKey")
-	}
-
-	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, domain.RelationKey) (string, error)); ok {
-		return rf(ctx, spaceId, key)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, domain.RelationKey) string); ok {
-		r0 = rf(ctx, spaceId, key)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string, domain.RelationKey) error); ok {
-		r1 = rf(ctx, spaceId, key)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_GetRelationIdByKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRelationIdByKey'
-type MockService_GetRelationIdByKey_Call struct {
-	*mock.Call
-}
-
-// GetRelationIdByKey is a helper method to define mock.On call
-//   - ctx context.Context
-//   - spaceId string
-//   - key domain.RelationKey
-func (_e *MockService_Expecter) GetRelationIdByKey(ctx interface{}, spaceId interface{}, key interface{}) *MockService_GetRelationIdByKey_Call {
-	return &MockService_GetRelationIdByKey_Call{Call: _e.mock.On("GetRelationIdByKey", ctx, spaceId, key)}
-}
-
-func (_c *MockService_GetRelationIdByKey_Call) Run(run func(ctx context.Context, spaceId string, key domain.RelationKey)) *MockService_GetRelationIdByKey_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(domain.RelationKey))
-	})
-	return _c
-}
-
-func (_c *MockService_GetRelationIdByKey_Call) Return(id string, err error) *MockService_GetRelationIdByKey_Call {
-	_c.Call.Return(id, err)
-	return _c
-}
-
-func (_c *MockService_GetRelationIdByKey_Call) RunAndReturn(run func(context.Context, string, domain.RelationKey) (string, error)) *MockService_GetRelationIdByKey_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetTechSpace provides a mock function with given fields: ctx
 func (_m *MockService) GetTechSpace(ctx context.Context) (clientspace.Space, error) {
 	ret := _m.Called(ctx)
@@ -549,64 +489,6 @@ func (_c *MockService_GetTechSpace_Call) Return(_a0 clientspace.Space, err error
 }
 
 func (_c *MockService_GetTechSpace_Call) RunAndReturn(run func(context.Context) (clientspace.Space, error)) *MockService_GetTechSpace_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetTypeIdByKey provides a mock function with given fields: ctx, spaceId, key
-func (_m *MockService) GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (string, error) {
-	ret := _m.Called(ctx, spaceId, key)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetTypeIdByKey")
-	}
-
-	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, domain.TypeKey) (string, error)); ok {
-		return rf(ctx, spaceId, key)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, domain.TypeKey) string); ok {
-		r0 = rf(ctx, spaceId, key)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string, domain.TypeKey) error); ok {
-		r1 = rf(ctx, spaceId, key)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_GetTypeIdByKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTypeIdByKey'
-type MockService_GetTypeIdByKey_Call struct {
-	*mock.Call
-}
-
-// GetTypeIdByKey is a helper method to define mock.On call
-//   - ctx context.Context
-//   - spaceId string
-//   - key domain.TypeKey
-func (_e *MockService_Expecter) GetTypeIdByKey(ctx interface{}, spaceId interface{}, key interface{}) *MockService_GetTypeIdByKey_Call {
-	return &MockService_GetTypeIdByKey_Call{Call: _e.mock.On("GetTypeIdByKey", ctx, spaceId, key)}
-}
-
-func (_c *MockService_GetTypeIdByKey_Call) Run(run func(ctx context.Context, spaceId string, key domain.TypeKey)) *MockService_GetTypeIdByKey_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(domain.TypeKey))
-	})
-	return _c
-}
-
-func (_c *MockService_GetTypeIdByKey_Call) Return(id string, err error) *MockService_GetTypeIdByKey_Call {
-	_c.Call.Return(id, err)
-	return _c
-}
-
-func (_c *MockService_GetTypeIdByKey_Call) RunAndReturn(run func(context.Context, string, domain.TypeKey) (string, error)) *MockService_GetTypeIdByKey_Call {
 	_c.Call.Return(run)
 	return _c
 }

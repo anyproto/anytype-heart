@@ -2,10 +2,12 @@ package objectgraph
 
 import (
 	"testing"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -17,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -86,13 +89,14 @@ func Test(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "links", req.Keys[0])
 		assert.Equal(t, 4, len(req.Keys))
-		assert.True(t, len(graph) == 0)
-		assert.True(t, len(edges) == 0)
+		assert.Empty(t, graph)
+		assert.Empty(t, edges)
 	})
 
 	t.Run("graph", func(t *testing.T) {
 		fx := newFixture(t)
 		spaceId := "space1"
+		dateObject := dateutil.NewDateObject(time.Now(), false)
 		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:             pbtypes.String("rel1"),
@@ -119,12 +123,18 @@ func Test(t *testing.T) {
 				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
 			},
 		})
+		fx.objectStoreMock.AddVirtualDetails(dateObject.Id(), &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyId.String():        pbtypes.String(dateObject.Id()),
+			bundle.RelationKeyLayout.String():    pbtypes.Int64(int64(model.ObjectType_date)),
+			bundle.RelationKeyName.String():      pbtypes.String(dateObject.Name()),
+			bundle.RelationKeyTimestamp.String(): pbtypes.Int64(dateObject.Time().Unix()),
+		}})
 		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*types.Struct{
 				{Fields: map[string]*types.Value{
 					bundle.RelationKeyId.String():       pbtypes.String("id1"),
 					bundle.RelationKeyAssignee.String(): pbtypes.String("id2"),
-					bundle.RelationKeyLinks.String():    pbtypes.StringList([]string{"id2", "id3"}),
+					bundle.RelationKeyLinks.String():    pbtypes.StringList([]string{"id2", "id3", dateObject.Id()}),
 				}},
 				{Fields: map[string]*types.Value{
 					bundle.RelationKeyId.String(): pbtypes.String("id2"),
@@ -135,19 +145,27 @@ func Test(t *testing.T) {
 			},
 		}, nil)
 		fx.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
-		fx.sbtProviderMock.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil)
+		fx.sbtProviderMock.EXPECT().Type(mock.Anything, mock.Anything).RunAndReturn(func(spcId string, id string) (smartblock.SmartBlockType, error) {
+			require.Equal(t, spcId, spaceId)
+			if _, err := dateutil.BuildDateObjectFromId(id); err == nil {
+				return smartblock.SmartBlockTypeDate, err
+			}
+			return smartblock.SmartBlockTypePage, nil
+		})
 
 		req := &pb.RpcObjectGraphRequest{
 			SpaceId: spaceId,
 		}
 		graph, edges, err := fx.ObjectGraph(req)
 		assert.NoError(t, err)
-		assert.True(t, len(graph) == 3)
-		assert.True(t, len(edges) == 2)
+		require.Len(t, graph, 4)
+		require.Len(t, edges, 3)
 		assert.Equal(t, "id1", edges[0].Source)
 		assert.Equal(t, "id2", edges[0].Target)
 		assert.Equal(t, "id1", edges[1].Source)
 		assert.Equal(t, "id3", edges[1].Target)
+		assert.Equal(t, "id1", edges[2].Source)
+		assert.Equal(t, dateObject.Id(), edges[2].Target)
 	})
 
 }
