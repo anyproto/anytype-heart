@@ -18949,8 +18949,8 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceViewId | [string](#string) |  |  |
-| previousIds | [string](#string) | repeated |  |
-| afterId | [string](#string) |  |  |
+| previousIds | [string](#string) | repeated | the ids of the views that are located before the view with spaceViewId in the resulting order |
+| afterId | [string](#string) |  | the id of the view that follows the view with spaceViewId in the resulting order |
 
 
 
