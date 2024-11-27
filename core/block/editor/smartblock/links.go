@@ -32,6 +32,7 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 		NoSystemRelations:        true,
 		NoHiddenBundledRelations: true,
 		NoImages:                 true,
+		UnifyDateObjectIds:       true,
 	})
 	links = slice.RemoveMut(links, sb.Id())
 	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))

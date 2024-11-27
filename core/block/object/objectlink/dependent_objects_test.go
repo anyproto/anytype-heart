@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -89,10 +90,12 @@ func TestState_DepSmartIdsLinks(t *testing.T) {
 
 func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 	// given
+	dateObject1 := dateutil.NewDateObject(time.Now(), true)
+	dateObject2 := dateutil.NewDateObject(time.Now(), false)
 	stateWithLinks := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Id:          "root",
-			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3", "dataview", "image", "song"},
+			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3", "dataview", "image", "song", "date1", "date2"},
 		}),
 		"childBlock": simple.New(&model.Block{Id: "childBlock",
 			Content: &model.BlockContentOfText{
@@ -154,6 +157,18 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 					Type:           model.BlockContentFile_Audio,
 				},
 			}}),
+		"date1": simple.New(&model.Block{Id: "childBlock3",
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: dateObject1.Id(),
+				},
+			}}),
+		"date2": simple.New(&model.Block{Id: "childBlock3",
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: dateObject2.Id(),
+				},
+			}}),
 	}).(*state.State)
 	converter := &fakeConverter{}
 
@@ -179,22 +194,27 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true})
-		assert.Len(t, objectIDs, 9)
+		assert.Len(t, objectIDs, 11)
 	})
 
 	t.Run("dataview only target option is turned on: get only target from blocks", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, DataviewBlockOnlyTarget: true})
-		assert.Len(t, objectIDs, 7)
+		assert.Len(t, objectIDs, 9)
 	})
 
 	t.Run("no images option is turned on: get ids from blocks except images", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, NoImages: true})
-		assert.Len(t, objectIDs, 8)
+		assert.Len(t, objectIDs, 10)
 	})
 
 	t.Run("blocks option and relations options are turned on: get ids from blocks and relations", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, Relations: true})
-		assert.Len(t, objectIDs, 13) // 9 links + 4 relations
+		assert.Len(t, objectIDs, 15) // 11 links + 4 relations
+	})
+
+	t.Run("date object ids are unified", func(t *testing.T) {
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, UnifyDateObjectIds: true})
+		assert.Len(t, objectIDs, 10)
 	})
 }
 
