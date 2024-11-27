@@ -1,6 +1,10 @@
 package editor
 
 import (
+	"errors"
+
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -52,7 +56,7 @@ func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
 
 func (p *Dashboard) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 1,
+		Version: 2,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyDashboard}, model.ObjectType_dashboard),
@@ -118,7 +122,7 @@ func (p *Dashboard) updateInStore(favoritedIds []string) error {
 				current.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
 				return current, nil
 			}); err != nil {
-				log.Errorf("favorite: can't set detail to object: %v", err)
+				logFavoriteError(err)
 			}
 		}(removedId)
 	}
@@ -133,9 +137,19 @@ func (p *Dashboard) updateInStore(favoritedIds []string) error {
 				current.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
 				return current, nil
 			}); err != nil {
-				log.Errorf("favorite: can't set detail to object: %v", err)
+				logFavoriteError(err)
 			}
 		}(addedId)
 	}
 	return nil
+}
+
+func logFavoriteError(err error) {
+	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		return
+	}
+	if errors.Is(err, treestorage.ErrUnknownTreeId) {
+		return
+	}
+	log.Errorf("favorite: can't set detail to object: %v", err)
 }

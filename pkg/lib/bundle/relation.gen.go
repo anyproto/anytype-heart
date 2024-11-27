@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "4a7e2e28786d3690057f2db5a400f3b464c2e95a15ec964da843c95ffcb4203d"
+const RelationChecksum = "0585cf84a06a32d7fa898e2d07c15cb6e3d0e2b2201fcae6125955df1f51f8f8"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -144,7 +144,6 @@ const (
 	RelationKeyChatId                    domain.RelationKey = "chatId"
 	RelationKeyMentions                  domain.RelationKey = "mentions"
 	RelationKeyTimestamp                 domain.RelationKey = "timestamp"
-	RelationKeySpaceOrder                domain.RelationKey = "spaceOrder"
 )
 
 var (
@@ -1013,9 +1012,10 @@ var (
 			Id:               "_brlastUsedDate",
 			Key:              "lastUsedDate",
 			MaxCount:         1,
-			Name:             "Last Used date",
+			Name:             "Last used date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLatestAclHeadId: {
@@ -1668,20 +1668,6 @@ var (
 			Key:              "spaceLocalStatus",
 			MaxCount:         1,
 			Name:             "Space local status",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeySpaceOrder: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Space order",
-			Format:           model.RelationFormat_longtext,
-			Hidden:           true,
-			Id:               "_brspaceOrder",
-			Key:              "spaceOrder",
-			MaxCount:         1,
-			Name:             "Space order",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

@@ -119,6 +119,7 @@ service ClientCommands {
     rpc ObjectImportNotionValidateToken (anytype.Rpc.Object.Import.Notion.ValidateToken.Request) returns (anytype.Rpc.Object.Import.Notion.ValidateToken.Response);
     rpc ObjectImportUseCase (anytype.Rpc.Object.ImportUseCase.Request) returns (anytype.Rpc.Object.ImportUseCase.Response);
     rpc ObjectImportExperience (anytype.Rpc.Object.ImportExperience.Request) returns (anytype.Rpc.Object.ImportExperience.Response);
+    rpc ObjectDateByTimestamp (anytype.Rpc.Object.DateByTimestamp.Request) returns (anytype.Rpc.Object.DateByTimestamp.Response);
 
     // Collections
     // ***
