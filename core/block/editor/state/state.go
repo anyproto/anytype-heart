@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
@@ -1104,8 +1105,8 @@ func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
 	for _, key := range s.FileRelationKeys() {
 		if key == bundle.RelationKeyCoverId {
 			v := details.GetString(bundle.RelationKeyCoverId)
-			fileId := domain.FileId(v)
-			if !fileId.Valid() {
+			_, err := cid.Decode(v)
+			if err != nil {
 				// this is an exception cause coverId can contain not a file hash but color
 				continue
 			}
