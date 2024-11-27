@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
@@ -1068,8 +1067,7 @@ func (s *State) FileRelationKeys() []domain.RelationKey {
 			}
 		}
 		if rel.Key == bundle.RelationKeyCoverId.String() {
-			coverType := s.Details().GetInt64(bundle.RelationKeyCoverType)
-			if (coverType == 1 || coverType == 4) && slice.FindPos(keys, domain.RelationKey(rel.Key)) == -1 {
+			if slice.FindPos(keys, domain.RelationKey(rel.Key)) == -1 {
 				keys = append(keys, domain.RelationKey(rel.Key))
 			}
 		}
@@ -1106,8 +1104,8 @@ func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
 	for _, key := range s.FileRelationKeys() {
 		if key == bundle.RelationKeyCoverId {
 			v := details.GetString(bundle.RelationKeyCoverId)
-			_, err := cid.Decode(v)
-			if err != nil {
+			fileId := domain.FileId(v)
+			if !fileId.Valid() {
 				// this is an exception cause coverId can contain not a file hash but color
 				continue
 			}
@@ -1132,8 +1130,15 @@ func (s *State) ModifyLinkedObjectsInDetails(modifier func(id string) string) {
 }
 
 func (s *State) modifyIdsInDetail(details *domain.Details, key domain.RelationKey, modifier func(id string) string) {
-	// TODO TryStringList in pbtypes return []string{singleValue} for string values
-	if ids := details.GetStringList(key); len(ids) > 0 {
+	ids := details.GetStringList(key)
+	// In case of coverId or iconImage we can have just string instead of []string
+	if len(ids) == 0 {
+		id, ok := details.TryString(key)
+		if ok {
+			ids = []string{id}
+		}
+	}
+	if len(ids) > 0 {
 		var anyChanges bool
 		for i, oldId := range ids {
 			if oldId == "" {
