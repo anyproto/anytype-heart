@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
@@ -183,11 +184,8 @@ func (s *service) createObjectFromTemplate(
 
 // buildDateObject does not create real date object. It just builds date object details
 func buildDateObject(space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
-	name := pbtypes.GetString(details, bundle.RelationKeyName.String())
-	id, err := dateutil.DateNameToId(name)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to build date object, as its name is invalid: %w", err)
-	}
+	ts := pbtypes.GetInt64(details, bundle.RelationKeyTimestamp.String())
+	dateObject := dateutil.NewDateObject(time.Unix(ts, 0), false)
 
 	typeId, err := space.GetTypeIdByKey(context.Background(), bundle.TypeKeyDate)
 	if err != nil {
@@ -196,7 +194,7 @@ func buildDateObject(space clientspace.Space, details *types.Struct) (string, *t
 
 	dateSource := source.NewDate(source.DateSourceParams{
 		Id: domain.FullID{
-			ObjectID: id,
+			ObjectID: dateObject.Id(),
 			SpaceID:  space.Id(),
 		},
 		DateObjectTypeId: typeId,
@@ -208,7 +206,7 @@ func buildDateObject(space clientspace.Space, details *types.Struct) (string, *t
 	}
 
 	details, err = detailsGetter.DetailsFromId()
-	return id, details, err
+	return dateObject.Id(), details, err
 }
 
 func setOriginalCreatedTimestamp(state *state.State, details *types.Struct) {

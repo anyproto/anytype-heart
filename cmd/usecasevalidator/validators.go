@@ -246,7 +246,8 @@ func validateRelationOption(s *pb.SnapshotWithType, info *useCaseInfo) error {
 
 	if _, found := info.customTypesAndRelations[key]; !found {
 		id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-		return fmt.Errorf("failed to find relation key %s of relation option %s", key, id)
+		fmt.Println("WARNING: relation key", key, "of relation option", id, "is not presented in the archive, so it will be skipped")
+		return errSkipObject
 	}
 	return nil
 }

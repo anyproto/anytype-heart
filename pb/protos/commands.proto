@@ -1811,7 +1811,7 @@ message Rpc {
                 repeated string keys = 7;
                 bool returnMeta = 8; // add ResultMeta to each result
                 bool returnMetaRelationDetails = 9; // add relation option details to meta
-                bool returnHTMLHighlightsInsteadOfRanges = 10;
+                bool returnHTMLHighlightsInsteadOfRanges = 10; //DEPRECATED
             }
 
             message Response {
@@ -2822,6 +2822,29 @@ message Rpc {
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
                         INSUFFICIENT_PERMISSION = 3;
+                    }
+                }
+            }
+        }
+
+        message DateByTimestamp {
+            message Request {
+                string spaceId = 1;
+                int64 timestamp = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                google.protobuf.Struct details = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
                     }
                 }
             }
