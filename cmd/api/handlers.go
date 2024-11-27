@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"math/big"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gogo/protobuf/types"
@@ -13,6 +14,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+)
+
+const (
+	httpTimeout     = 1 * time.Second
+	paginationLimit = 100
 )
 
 type CreateSpaceRequest struct {
@@ -25,6 +31,11 @@ type CreateObjectRequest struct {
 	TemplateId          string `json:"template_id"`
 	ObjectTypeUniqueKey string `json:"object_type_unique_key"`
 	WithChat            bool   `json:"with_chat"`
+}
+
+type AddMessageRequest struct {
+	Text  string `json:"text"`
+	Style string `json:"style"`
 }
 
 // authdisplayCodeHandler generates a new challenge and returns the challenge Id
@@ -121,15 +132,7 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 	spaces := make([]Space, 0, len(resp.Records))
 	for _, record := range resp.Records {
 		spaceId := record.Fields["targetSpaceId"].GetStringValue()
-		workspaceResponse := a.mw.WorkspaceOpen(context.Background(), &pb.RpcWorkspaceOpenRequest{
-			SpaceId:  spaceId,
-			WithChat: true,
-		})
-
-		if workspaceResponse.Error.Code != pb.RpcWorkspaceOpenResponseError_NULL {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to open workspace."})
-			return
-		}
+		workspace := a.getWorkspaceInfo(c, spaceId)
 
 		// TODO cleanup image logic
 		// Convert space image or option to base64 string
@@ -153,24 +156,9 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 			}
 		}
 
-		space := Space{
-			Type:                   "space",
-			Id:                     spaceId,
-			Name:                   record.Fields["name"].GetStringValue(),
-			Icon:                   iconBase64,
-			HomeObjectId:           record.Fields["spaceDashboardId"].GetStringValue(),
-			ArchiveObjectId:        workspaceResponse.Info.ArchiveObjectId,
-			ProfileObjectId:        workspaceResponse.Info.ProfileObjectId,
-			MarketplaceWorkspaceId: workspaceResponse.Info.MarketplaceWorkspaceId,
-			DeviceId:               workspaceResponse.Info.DeviceId,
-			AccountSpaceId:         workspaceResponse.Info.AccountSpaceId,
-			WidgetsId:              workspaceResponse.Info.WidgetsId,
-			SpaceViewId:            workspaceResponse.Info.SpaceViewId,
-			TechSpaceId:            a.accountInfo.TechSpaceId,
-			Timezone:               workspaceResponse.Info.TimeZone,
-			NetworkId:              workspaceResponse.Info.NetworkId,
-		}
-		spaces = append(spaces, space)
+		workspace.Name = record.Fields["name"].GetStringValue()
+		workspace.Icon = iconBase64
+		spaces = append(spaces, workspace)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"spaces": spaces})
@@ -766,4 +754,172 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"objects": searchResults})
+}
+
+// getChatMessagesHandler retrieves last chat messages
+//
+//	@Summary	Retrieve last chat messages
+//	@Tags		chat
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string						true	"The ID of the space"
+//	@Success	200			{object}	map[string][]ChatMessage	"List of chat messages"
+//	@Failure	502			{object}	ServerError					"Internal server error"
+//	@Router		/v1/spaces/{space_id}/chat/messages [get]
+func (a *ApiServer) getChatMessagesHandler(c *gin.Context) {
+	spaceId := c.Param("space_id")
+	chatId := a.getChatIdForSpace(c, spaceId)
+
+	lastMessages := a.mw.ChatSubscribeLastMessages(context.Background(), &pb.RpcChatSubscribeLastMessagesRequest{
+		ChatObjectId: chatId,
+		Limit:        paginationLimit,
+	})
+
+	if lastMessages.Error.Code != pb.RpcChatSubscribeLastMessagesResponseError_NULL {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve last messages."})
+	}
+
+	messages := make([]ChatMessage, 0, len(lastMessages.Messages))
+	for _, message := range lastMessages.Messages {
+
+		attachments := make([]Attachment, 0, len(message.Attachments))
+		for _, attachment := range message.Attachments {
+			target := attachment.Target
+			if attachment.Type != model.ChatMessageAttachment_LINK {
+				target = a.getGatewayURL(attachment.Target)
+			}
+			attachments = append(attachments, Attachment{
+				Target: target,
+				Type:   model.ChatMessageAttachmentAttachmentType_name[int32(attachment.Type)],
+			})
+		}
+
+		messages = append(messages, ChatMessage{
+			Type:             "chat_message",
+			Id:               message.Id,
+			Creator:          message.Creator,
+			CreatedAt:        message.CreatedAt,
+			ReplyToMessageId: message.ReplyToMessageId,
+			Message: MessageContent{
+				Text: message.Message.Text,
+				// TODO: params
+				// Style: nil,
+				// Marks: nil,
+			},
+			Attachments: attachments,
+			Reactions: Reactions{
+				ReactionsMap: func() map[string]IdentityList {
+					reactionsMap := make(map[string]IdentityList)
+					for emoji, ids := range message.Reactions.Reactions {
+						reactionsMap[emoji] = IdentityList{Ids: ids.Ids}
+					}
+					return reactionsMap
+				}(),
+			},
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"messages": messages})
+}
+
+// getChatMessageHandler retrieves a specific chat message by message_id
+//
+//	@Summary	Retrieve a specific chat message
+//	@Tags		chat
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string			true	"The ID of the space"
+//	@Param		message_id	path		string			true	"Message ID"
+//	@Success	200			{object}	ChatMessage		"Chat message"
+//	@Failure	404			{object}	NotFoundError	"Message not found"
+//	@Failure	502			{object}	ServerError		"Internal server error"
+//	@Router		/v1/spaces/{space_id}/chat/messages/{message_id} [get]
+func (a *ApiServer) getChatMessageHandler(c *gin.Context) {
+	// TODO: Implement logic to retrieve a specific chat message by message_id
+
+	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
+}
+
+// addChatMessageHandler adds a new chat message to chat
+//
+//	@Summary	Add a new chat message
+//	@Tags		chat
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string			true	"The ID of the space"
+//	@Param		message		body		ChatMessage		true	"Chat message"
+//	@Success	201			{object}	ChatMessage		"Created chat message"
+//	@Failure	400			{object}	ValidationError	"Invalid input"
+//	@Failure	502			{object}	ServerError		"Internal server error"
+//	@Router		/v1/spaces/{space_id}/chat/messages [post]
+func (a *ApiServer) addChatMessageHandler(c *gin.Context) {
+	spaceId := c.Param("space_id")
+
+	request := AddMessageRequest{}
+	if err := c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid JSON"})
+		return
+	}
+
+	chatId := a.getChatIdForSpace(c, spaceId)
+	resp := a.mw.ChatAddMessage(context.Background(), &pb.RpcChatAddMessageRequest{
+		ChatObjectId: chatId,
+		Message: &model.ChatMessage{
+			Id:               "",
+			OrderId:          "",
+			Creator:          "",
+			CreatedAt:        0,
+			ModifiedAt:       0,
+			ReplyToMessageId: "",
+			Message: &model.ChatMessageMessageContent{
+				Text: request.Text,
+				// TODO: param
+				// Style: request.Style,
+			},
+		},
+	})
+
+	if resp.Error.Code != pb.RpcChatAddMessageResponseError_NULL {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to create message."})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"messageId": resp.MessageId})
+}
+
+// updateChatMessageHandler updates an existing chat message by message_id
+//
+//	@Summary	Update an existing chat message
+//	@Tags		chat
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string			true	"The ID of the space"
+//	@Param		message_id	path		string			true	"Message ID"
+//	@Param		message		body		ChatMessage		true	"Chat message"
+//	@Success	200			{object}	ChatMessage		"Updated chat message"
+//	@Failure	400			{object}	ValidationError	"Invalid input"
+//	@Failure	404			{object}	NotFoundError	"Message not found"
+//	@Failure	502			{object}	ServerError		"Internal server error"
+//	@Router		/v1/spaces/{space_id}/chat/messages/{message_id} [put]
+func (a *ApiServer) updateChatMessageHandler(c *gin.Context) {
+	// TODO: Implement logic to update an existing chat message by message_id
+
+	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
+}
+
+// deleteChatMessageHandler deletes a chat message by message_id
+//
+//	@Summary	Delete a chat message
+//	@Tags		chat
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path	string	true	"The ID of the space"
+//	@Param		message_id	path	string	true	"Message ID"
+//	@Success	204			"Message deleted successfully"
+//	@Failure	404			{object}	NotFoundError	"Message not found"
+//	@Failure	502			{object}	ServerError		"Internal server error"
+//	@Router		/v1/spaces/{space_id}/chat/messages/{message_id} [delete]
+func (a *ApiServer) deleteChatMessageHandler(c *gin.Context) {
+	// TODO: Implement logic to delete a chat message by message_id
+
+	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
 }

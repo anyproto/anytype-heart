@@ -19,7 +19,6 @@ import (
 
 const (
 	httpPort           = ":31009"
-	httpTimeout        = 1 * time.Second
 	serverShutdownTime = 5 * time.Second
 )
 
@@ -108,6 +107,18 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwIntern
 		readWrite.POST("/spaces", a.createSpaceHandler)
 		readWrite.POST("/spaces/:space_id/objects/", a.createObjectHandler)
 		readWrite.PUT("/spaces/:space_id/objects/:object_id", a.updateObjectHandler)
+	}
+
+	// Chat routes
+	chat := a.router.Group("/v1/spaces/:space_id/chat")
+	// chat.Use(a.AuthMiddleware())
+	// chat.Use(a.PermissionMiddleware("read-write"))
+	{
+		chat.GET("/messages", a.getChatMessagesHandler)
+		chat.GET("/messages/:message_id", a.getChatMessageHandler)
+		chat.POST("/messages", a.addChatMessageHandler)
+		chat.PUT("/messages/:message_id", a.updateChatMessageHandler)
+		chat.DELETE("/messages/:message_id", a.deleteChatMessageHandler)
 	}
 
 	// Start the HTTP server

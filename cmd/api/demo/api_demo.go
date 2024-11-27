@@ -17,6 +17,8 @@ const (
 	testSpaceId  = "bafyreifymx5ucm3fdc7vupfg7wakdo5qelni3jvlmawlnvjcppurn2b3di.2lcu0r85yg10d" // dev (entry space)
 	testObjectId = "bafyreidhtlbbspxecab6xf4pi5zyxcmvwy6lqzursbjouq5fxovh6y3xwu"               // "Work Faster with Templates"
 	testTypeId   = "bafyreie3djy4mcldt3hgeet6bnjay2iajdyi2fvx556n6wcxii7brlni3i"               // Page (in dev space)
+	// chatSpaceId  = "bafyreigryvrmerbtfswwz5kav2uq5dlvx3hl45kxn4nflg7lz46lneqs7m.2nvj2qik6ctdy" // Anytype Wiki space
+	chatSpaceId = "bafyreiexhpzaf7uxzheubh7cjeusqukjnxfvvhh4at6bygljwvto2dttnm.2lcu0r85yg10d" // chat space
 )
 
 var log = logging.Logger("rest-api")
@@ -57,7 +59,7 @@ func main() {
 		// space_objects
 		// {"GET", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
 		// {"GET", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, nil},
-		{"POST", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId}, map[string]interface{}{"name": "New Object from demo", "icon_emoji": "💥", "template_id": "", "object_type_unique_key": "ot-page", "with_chat": false}},
+		// {"POST", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId}, map[string]interface{}{"name": "New Object from demo", "icon_emoji": "💥", "template_id": "", "object_type_unique_key": "ot-page", "with_chat": false}},
 		// {"PUT", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, map[string]interface{}{"name": "Updated Object"}},
 
 		// types_and_templates
@@ -66,6 +68,10 @@ func main() {
 
 		// search
 		// {"GET", "/objects?search={search}&object_type={object_type}&limit={limit}&offset={offset}", map[string]interface{}{"search": "writing", "object_type": testTypeId, "limit": 100, "offset": 0}, nil},
+
+		// chat
+		// {"GET", "/spaces/{space_id}/chat/messages?limit={limit}&offset={offset}", map[string]interface{}{"space_id": chatSpaceId, "limit": 100, "offset": 0}, nil},
+		// {"POST", "/spaces/{space_id}/chat/messages", map[string]interface{}{"space_id": chatSpaceId}, map[string]interface{}{"text": "new message from demo"}},
 	}
 
 	for _, ep := range endpoints {
@@ -105,7 +111,12 @@ func main() {
 
 		// Check the status code
 		if resp.StatusCode != http.StatusOK {
-			log.Errorf("Request to %s returned status code %d\n", ep.endpoint, resp.StatusCode)
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				log.Errorf("Failes to read response body for request to %s with code %d.", finalURL, resp.StatusCode)
+				continue
+			}
+			log.Errorf("Request to %s returned status code %d: %v\n", finalURL, resp.StatusCode, string(body))
 			continue
 		}
 

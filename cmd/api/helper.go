@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -92,9 +94,8 @@ func (a *ApiServer) imageToBase64(imagePath string) (string, error) {
 	return encoded, nil
 }
 
-// Determine gateway port based on the current process ID
-func (a *ApiServer) getGatewayURL(icon string) string {
-	return fmt.Sprintf("%s/image/%s?width=100", a.accountInfo.GatewayUrl, icon)
+func (a *ApiServer) getGatewayURL(objectId string) string {
+	return fmt.Sprintf("%s/image/%s", a.accountInfo.GatewayUrl, objectId)
 }
 
 func (a *ApiServer) resolveTypeToName(spaceId string, typeId string) (string, *pb.RpcObjectSearchResponseError) {
@@ -125,4 +126,54 @@ func (a *ApiServer) resolveTypeToName(spaceId string, typeId string) (string, *p
 	}
 
 	return resp.Records[0].Fields["name"].GetStringValue(), nil
+}
+
+func (a *ApiServer) getChatIdForSpace(c *gin.Context, spaceId string) string {
+	workspace := a.getWorkspaceInfo(c, spaceId)
+
+	resp := a.mw.ObjectOpen(context.Background(), &pb.RpcObjectOpenRequest{
+		SpaceId:  spaceId,
+		ObjectId: workspace.WorkspaceObjectId,
+	})
+
+	if resp.Error.Code != pb.RpcObjectOpenResponseError_NULL {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to open workspace object."})
+		return ""
+	}
+
+	if !resp.ObjectView.Details[0].Details.Fields["hasChat"].GetBoolValue() {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Chat not found"})
+		return ""
+	}
+
+	return resp.ObjectView.Details[0].Details.Fields["chatId"].GetStringValue()
+}
+
+func (a *ApiServer) getWorkspaceInfo(c *gin.Context, spaceId string) Space {
+	workspaceResponse := a.mw.WorkspaceOpen(context.Background(), &pb.RpcWorkspaceOpenRequest{
+		SpaceId:  spaceId,
+		WithChat: true,
+	})
+
+	if workspaceResponse.Error.Code != pb.RpcWorkspaceOpenResponseError_NULL {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to open workspace."})
+		return Space{}
+	}
+
+	return Space{
+		Type:                   "space",
+		Id:                     spaceId,
+		HomeObjectId:           workspaceResponse.Info.HomeObjectId,
+		ArchiveObjectId:        workspaceResponse.Info.ArchiveObjectId,
+		ProfileObjectId:        workspaceResponse.Info.ProfileObjectId,
+		MarketplaceWorkspaceId: workspaceResponse.Info.MarketplaceWorkspaceId,
+		WorkspaceObjectId:      workspaceResponse.Info.WorkspaceObjectId,
+		DeviceId:               workspaceResponse.Info.DeviceId,
+		AccountSpaceId:         workspaceResponse.Info.AccountSpaceId,
+		WidgetsId:              workspaceResponse.Info.WidgetsId,
+		SpaceViewId:            workspaceResponse.Info.SpaceViewId,
+		TechSpaceId:            workspaceResponse.Info.TechSpaceId,
+		Timezone:               workspaceResponse.Info.TimeZone,
+		NetworkId:              workspaceResponse.Info.NetworkId,
+	}
 }

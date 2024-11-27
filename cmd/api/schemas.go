@@ -9,6 +9,7 @@ type Space struct {
 	ArchiveObjectId        string `json:"archive_object_id" example:"bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri"`
 	ProfileObjectId        string `json:"profile_object_id" example:"bafyreiaxhwreshjqwndpwtdsu4mtihaqhhmlygqnyqpfyfwlqfq3rm3gw4"`
 	MarketplaceWorkspaceId string `json:"marketplace_workspace_id" example:"_anytype_marketplace"`
+	WorkspaceObjectId      string `json:"workspace_object_id" example:"bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y"`
 	DeviceId               string `json:"device_id" example:"12D3KooWGZMJ4kQVyQVXaj7gJPZr3RZ2nvd9M2Eq2pprEoPih9WF"`
 	AccountSpaceId         string `json:"account_space_id" example:"bafyreihpd2knon5wbljhtfeg3fcqtg3i2pomhhnigui6lrjmzcjzep7gcy.23me69r569oi1"`
 	WidgetsId              string `json:"widgets_id" example:"bafyreialj7pceh53mifm5dixlho47ke4qjmsn2uh4wsjf7xq2pnlo5xfva"`
@@ -99,6 +100,38 @@ type ObjectTemplate struct {
 	Id        string `json:"id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"`
 	Name      string `json:"name" example:"Object Template Name"`
 	IconEmoji string `json:"icon_emoji" example:"📄"`
+}
+
+type ChatMessage struct {
+	Type             string         `json:"chat_message"`
+	Id               string         `json:"id"`       // Unique message identifier
+	OrderId          string         `json:"order_id"` // Used for subscriptions
+	Creator          string         `json:"creator"`  // Identifier for the message creator
+	CreatedAt        int64          `json:"created_at"`
+	ModifiedAt       int64          `json:"modified_at"`
+	ReplyToMessageId string         `json:"reply_to_message_id"` // Identifier for the message being replied to
+	Message          MessageContent `json:"message"`             // Message content
+	Attachments      []Attachment   `json:"attachments"`         // Attachments slice
+	Reactions        Reactions      `json:"reactions"`           // Reactions to the message
+}
+
+type MessageContent struct {
+	Text  string   `json:"text"`  // The text content of the message part
+	Style string   `json:"style"` // The style/type of the message part
+	Marks []string `json:"marks"` // List of marks applied to the text
+}
+
+type Attachment struct {
+	Target string `json:"target"` // Identifier for the attachment object
+	Type   string `json:"type"`   // Type of attachment
+}
+
+type Reactions struct {
+	ReactionsMap map[string]IdentityList `json:"reactions"` // Map of emoji to list of user IDs
+}
+
+type IdentityList struct {
+	Ids []string `json:"ids"` // List of user IDs
 }
 
 type ServerError struct {

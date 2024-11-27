@@ -334,7 +334,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The Id of the space",
+                        "description": "The ID of the space",
                         "name": "space_id",
                         "in": "path",
                         "required": true
@@ -685,9 +685,273 @@
                     }
                 }
             }
+        },
+        "/v1/spaces/{space_id}/chat/messages": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Retrieve last chat messages",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The ID of the space",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of chat messages",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/api.ChatMessage"
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ServerError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Add a new chat message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The ID of the space",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Chat message",
+                        "name": "message",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ChatMessage"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created chat message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ChatMessage"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/api.ValidationError"
+                        }
+                    },
+                    "502": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/spaces/{space_id}/chat/messages/{message_id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Retrieve a specific chat message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The ID of the space",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Message ID",
+                        "name": "message_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chat message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ChatMessage"
+                        }
+                    },
+                    "404": {
+                        "description": "Message not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.NotFoundError"
+                        }
+                    },
+                    "502": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ServerError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Update an existing chat message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The ID of the space",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Message ID",
+                        "name": "message_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Chat message",
+                        "name": "message",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ChatMessage"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated chat message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ChatMessage"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/api.ValidationError"
+                        }
+                    },
+                    "404": {
+                        "description": "Message not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.NotFoundError"
+                        }
+                    },
+                    "502": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ServerError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Delete a chat message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The ID of the space",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Message ID",
+                        "name": "message_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Message deleted successfully"
+                    },
+                    "404": {
+                        "description": "Message not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.NotFoundError"
+                        }
+                    },
+                    "502": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ServerError"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "api.Attachment": {
+            "type": "object",
+            "properties": {
+                "target": {
+                    "description": "Identifier for the attachment object",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Type of attachment",
+                    "type": "string"
+                }
+            }
+        },
         "api.Block": {
             "type": "object",
             "properties": {
@@ -716,6 +980,59 @@
                     "$ref": "#/definitions/api.Text"
                 },
                 "vertical_align": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ChatMessage": {
+            "type": "object",
+            "properties": {
+                "attachments": {
+                    "description": "Attachments slice",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.Attachment"
+                    }
+                },
+                "chat_message": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "creator": {
+                    "description": "Identifier for the message creator",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Unique message identifier",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Message content",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/api.MessageContent"
+                        }
+                    ]
+                },
+                "modified_at": {
+                    "type": "integer"
+                },
+                "order_id": {
+                    "description": "Used for subscriptions",
+                    "type": "string"
+                },
+                "reactions": {
+                    "description": "Reactions to the message",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/api.Reactions"
+                        }
+                    ]
+                },
+                "reply_to_message_id": {
+                    "description": "Identifier for the message being replied to",
                     "type": "string"
                 }
             }
@@ -764,10 +1081,42 @@
                 }
             }
         },
+        "api.IdentityList": {
+            "type": "object",
+            "properties": {
+                "ids": {
+                    "description": "List of user IDs",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "api.Layout": {
             "type": "object",
             "properties": {
                 "style": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.MessageContent": {
+            "type": "object",
+            "properties": {
+                "marks": {
+                    "description": "List of marks applied to the text",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "style": {
+                    "description": "The style/type of the message part",
+                    "type": "string"
+                },
+                "text": {
+                    "description": "The text content of the message part",
                     "type": "string"
                 }
             }
@@ -875,6 +1224,18 @@
                 }
             }
         },
+        "api.Reactions": {
+            "type": "object",
+            "properties": {
+                "reactions": {
+                    "description": "Map of emoji to list of user IDs",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/api.IdentityList"
+                    }
+                }
+            }
+        },
         "api.ServerError": {
             "type": "object",
             "properties": {
@@ -950,6 +1311,10 @@
                 "widgets_id": {
                     "type": "string",
                     "example": "bafyreialj7pceh53mifm5dixlho47ke4qjmsn2uh4wsjf7xq2pnlo5xfva"
+                },
+                "workspace_object_id": {
+                    "type": "string",
+                    "example": "bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y"
                 }
             }
         },

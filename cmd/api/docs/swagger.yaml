@@ -1,5 +1,14 @@
 basePath: /v1
 definitions:
+  api.Attachment:
+    properties:
+      target:
+        description: Identifier for the attachment object
+        type: string
+      type:
+        description: Type of attachment
+        type: string
+    type: object
   api.Block:
     properties:
       align:
@@ -19,6 +28,40 @@ definitions:
       text:
         $ref: '#/definitions/api.Text'
       vertical_align:
+        type: string
+    type: object
+  api.ChatMessage:
+    properties:
+      attachments:
+        description: Attachments slice
+        items:
+          $ref: '#/definitions/api.Attachment'
+        type: array
+      chat_message:
+        type: string
+      created_at:
+        type: integer
+      creator:
+        description: Identifier for the message creator
+        type: string
+      id:
+        description: Unique message identifier
+        type: string
+      message:
+        allOf:
+        - $ref: '#/definitions/api.MessageContent'
+        description: Message content
+      modified_at:
+        type: integer
+      order_id:
+        description: Used for subscriptions
+        type: string
+      reactions:
+        allOf:
+        - $ref: '#/definitions/api.Reactions'
+        description: Reactions to the message
+      reply_to_message_id:
+        description: Identifier for the message being replied to
         type: string
     type: object
   api.Detail:
@@ -50,9 +93,31 @@ definitions:
       type:
         type: string
     type: object
+  api.IdentityList:
+    properties:
+      ids:
+        description: List of user IDs
+        items:
+          type: string
+        type: array
+    type: object
   api.Layout:
     properties:
       style:
+        type: string
+    type: object
+  api.MessageContent:
+    properties:
+      marks:
+        description: List of marks applied to the text
+        items:
+          type: string
+        type: array
+      style:
+        description: The style/type of the message part
+        type: string
+      text:
+        description: The text content of the message part
         type: string
     type: object
   api.NotFoundError:
@@ -127,6 +192,14 @@ definitions:
         example: ot-page
         type: string
     type: object
+  api.Reactions:
+    properties:
+      reactions:
+        additionalProperties:
+          $ref: '#/definitions/api.IdentityList'
+        description: Map of emoji to list of user IDs
+        type: object
+    type: object
   api.ServerError:
     properties:
       error:
@@ -181,6 +254,9 @@ definitions:
         type: string
       widgets_id:
         example: bafyreialj7pceh53mifm5dixlho47ke4qjmsn2uh4wsjf7xq2pnlo5xfva
+        type: string
+      workspace_object_id:
+        example: bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y
         type: string
     type: object
   api.SpaceMember:
@@ -460,7 +536,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: The Id of the space
+      - description: The ID of the space
         in: path
         name: space_id
         required: true
@@ -700,6 +776,172 @@ paths:
       summary: Update an existing object in a specific space
       tags:
       - space_objects
+  /v1/spaces/{space_id}/chat/messages:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of chat messages
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/api.ChatMessage'
+              type: array
+            type: object
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Retrieve last chat messages
+      tags:
+      - chat
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Chat message
+        in: body
+        name: message
+        required: true
+        schema:
+          $ref: '#/definitions/api.ChatMessage'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created chat message
+          schema:
+            $ref: '#/definitions/api.ChatMessage'
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/api.ValidationError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Add a new chat message
+      tags:
+      - chat
+  /v1/spaces/{space_id}/chat/messages/{message_id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Message ID
+        in: path
+        name: message_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Message deleted successfully
+        "404":
+          description: Message not found
+          schema:
+            $ref: '#/definitions/api.NotFoundError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Delete a chat message
+      tags:
+      - chat
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Message ID
+        in: path
+        name: message_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Chat message
+          schema:
+            $ref: '#/definitions/api.ChatMessage'
+        "404":
+          description: Message not found
+          schema:
+            $ref: '#/definitions/api.NotFoundError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Retrieve a specific chat message
+      tags:
+      - chat
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Message ID
+        in: path
+        name: message_id
+        required: true
+        type: string
+      - description: Chat message
+        in: body
+        name: message
+        required: true
+        schema:
+          $ref: '#/definitions/api.ChatMessage'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated chat message
+          schema:
+            $ref: '#/definitions/api.ChatMessage'
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/api.ValidationError'
+        "404":
+          description: Message not found
+          schema:
+            $ref: '#/definitions/api.NotFoundError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ServerError'
+      summary: Update an existing chat message
+      tags:
+      - chat
 securityDefinitions:
   BasicAuth:
     type: basic
