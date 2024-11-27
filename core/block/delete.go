@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -141,7 +143,7 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 		}
 		return nil
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 		log.With("error", err, "objectId", id.ObjectID).Error("failed to perform delete operation on object")
 	}
 	if err := s.objectStore.SpaceIndex(id.SpaceID).DeleteObject(id.ObjectID); err != nil {

@@ -8,36 +8,57 @@ import (
 )
 
 const (
-	shortDateIdLayout = "2006-01-02"
-	dateIdLayout      = "2006-01-02-15-04-05"
-	dateNameLayout    = "02 Jan 2006"
+	shortDateIdLayout   = "2006-01-02"
+	dateIdLayout        = "2006-01-02-15-04-05Z-0700"
+	shortDateNameLayout = "Mon, Jan 02, 2006"
+	dateNameLayout      = "Mon, Jan 02, 2006 3:04 PM"
 )
 
-func TimeToDateId(t time.Time) string {
-	return addr.DatePrefix + t.Format(dateIdLayout)
+type DateObject interface {
+	Id() string
+	Name() string
+	Time() time.Time
 }
 
-// TimeToShortDateId should not be used to generate Date object id. Use TimeToDateId instead
-func TimeToShortDateId(t time.Time) string {
-	return addr.DatePrefix + t.Format(shortDateIdLayout)
+type dateObject struct {
+	t           time.Time
+	includeTime bool
 }
 
-func ParseDateId(id string) (time.Time, error) {
-	t, err := time.Parse(dateIdLayout, strings.TrimPrefix(id, addr.DatePrefix))
+func NewDateObject(t time.Time, includeTime bool) DateObject {
+	return dateObject{t, includeTime}
+}
+
+func BuildDateObjectFromId(id string) (DateObject, error) {
+	formatted := strings.TrimPrefix(id, addr.DatePrefix)
+	formatted = strings.Replace(formatted, "_", "+", 1)
+	t, err := time.Parse(dateIdLayout, formatted)
 	if err == nil {
-		return t, nil
+		return dateObject{t, true}, nil
 	}
-	return time.Parse(shortDateIdLayout, strings.TrimPrefix(id, addr.DatePrefix))
+	t, err = time.ParseInLocation(shortDateIdLayout, formatted, time.Local)
+	if err == nil {
+		return dateObject{t, false}, nil
+	}
+	return dateObject{}, err
 }
 
-func TimeToDateName(t time.Time) string {
-	return t.Format(dateNameLayout)
+func (do dateObject) Id() string {
+	if do.includeTime {
+		formatted := do.t.Format(dateIdLayout)
+		formatted = strings.Replace(formatted, "+", "_", 1)
+		return addr.DatePrefix + formatted
+	}
+	return addr.DatePrefix + do.t.Format(shortDateIdLayout)
 }
 
-func DateNameToId(name string) (string, error) {
-	t, err := time.Parse(dateNameLayout, name)
-	if err != nil {
-		return "", err
+func (do dateObject) Name() string {
+	if do.includeTime {
+		return do.t.Format(dateNameLayout)
 	}
-	return TimeToDateId(t), nil
+	return do.t.Format(shortDateNameLayout)
+}
+
+func (do dateObject) Time() time.Time {
+	return do.t
 }
