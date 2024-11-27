@@ -6,13 +6,16 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/net/streampool"
+
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/metric"
-	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/rpc"
 	"github.com/anyproto/any-sync/net/rpc/debugserver"
 	"github.com/anyproto/any-sync/net/transport/quic"
@@ -67,7 +70,9 @@ type Config struct {
 	PeferYamuxTransport                    bool
 	SpaceStorageMode                       storage.SpaceStorageMode
 	NetworkMode                            pb.RpcAccountNetworkMode
-	NetworkCustomConfigFilePath            string `json:",omitempty"` // not saved to config
+	NetworkCustomConfigFilePath            string           `json:",omitempty"` // not saved to config
+	SqliteTempPath                         string           `json:",omitempty"` // not saved to config
+	AnyStoreConfig                         *anystore.Config `json:",omitempty"` // not saved to config
 
 	RepoPath    string
 	AnalyticsId string
@@ -150,13 +155,13 @@ func New(options ...func(*Config)) *Config {
 }
 
 func (c *Config) Init(a *app.App) (err error) {
-	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
+	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
 	if err = c.initFromFileAndEnv(repoPath); err != nil {
 		return
 	}
 	if !c.PeferYamuxTransport {
 		// PeferYamuxTransport is false by default and used only in case client has some problems with QUIC
-		a.MustComponent(peerservice.CName).(quicPreferenceSetter).PreferQuic(true)
+		app.MustComponent[quicPreferenceSetter](a).PreferQuic(true)
 	}
 	// check if sqlite db exists
 	if _, err2 := os.Stat(filepath.Join(repoPath, SpaceStoreSqlitePath)); err2 == nil {
@@ -179,6 +184,16 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		return fmt.Errorf("repo is missing")
 	}
 	c.RepoPath = repoPath
+	c.AnyStoreConfig = &anystore.Config{}
+	if runtime.GOOS == "android" {
+		split := strings.Split(repoPath, "/files/")
+		if len(split) == 1 {
+			return fmt.Errorf("failed to split repo path: %s", repoPath)
+		}
+		c.SqliteTempPath = filepath.Join(split[0], "cache")
+		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
+		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + c.SqliteTempPath + "'"
+	}
 
 	if !c.DisableFileConfig {
 		var confRequired ConfigRequired
@@ -284,6 +299,14 @@ func (c *Config) GetSpaceStorePath() string {
 	return filepath.Join(c.RepoPath, "spaceStore.db")
 }
 
+func (c *Config) GetTempDirPath() string {
+	return c.SqliteTempPath
+}
+
+func (c *Config) GetAnyStoreConfig() *anystore.Config {
+	return c.AnyStoreConfig
+}
+
 func (c *Config) IsNewAccount() bool {
 	return c.NewAccount
 }
@@ -387,6 +410,14 @@ func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
 
 func (c *Config) GetNodeConfStorePath() string {
 	return filepath.Join(c.RepoPath, "nodeconf")
+}
+
+func (c *Config) GetStreamConfig() streampool.StreamConfig {
+	return streampool.StreamConfig{
+		SendQueueSize:    300,
+		DialQueueWorkers: 4,
+		DialQueueSize:    300,
+	}
 }
 
 func (c *Config) GetYamux() yamux.Config {

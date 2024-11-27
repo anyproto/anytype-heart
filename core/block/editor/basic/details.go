@@ -170,7 +170,7 @@ func (bs *basic) createDetailUpdate(st *state.State, detail *model.Detail) (*det
 }
 
 func (bs *basic) validateDetailFormat(spaceID string, key string, v *types.Value) error {
-	r, err := bs.objectStore.FetchRelationByKey(spaceID, key)
+	r, err := bs.objectStore.FetchRelationByKey(key)
 	if err != nil {
 		return err
 	}
@@ -313,7 +313,7 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail *model.Detail) er
 }
 
 func (bs *basic) addRelationLink(st *state.State, relationKey string) error {
-	relLink, err := bs.objectStore.GetRelationLink(bs.SpaceID(), relationKey)
+	relLink, err := bs.objectStore.GetRelationLink(relationKey)
 	if err != nil || relLink == nil {
 		return fmt.Errorf("failed to get relation: %w", err)
 	}
@@ -321,11 +321,14 @@ func (bs *basic) addRelationLink(st *state.State, relationKey string) error {
 	return nil
 }
 
+// addRelationLinks is deprecated and will be removed in release 7
 func (bs *basic) addRelationLinks(st *state.State, relationKeys ...string) error {
 	if len(relationKeys) == 0 {
 		return nil
 	}
-	relations, err := bs.objectStore.FetchRelationByKeys(bs.SpaceID(), relationKeys...)
+	// this code depends on the objectstore being indexed, but can be run on start with empty account
+	// todo: remove this code in release because we will no longer need relationLinks
+	relations, err := bs.objectStore.FetchRelationByKeys(relationKeys...)
 	if err != nil || relations == nil {
 		return fmt.Errorf("failed to get relations: %w", err)
 	}
@@ -382,6 +385,10 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 		if err = bs.Restrictions().Object.Check(model.Restrictions_TypeChange); errors.Is(err, restriction.ErrRestricted) {
 			return fmt.Errorf("objectType change is restricted for object '%s': %w", bs.Id(), err)
 		}
+
+		if objectTypeKeys[0] == bundle.TypeKeyTemplate {
+			return fmt.Errorf("changing object type to template is restricted")
+		}
 	}
 
 	s.SetObjectTypeKeys(objectTypeKeys)
@@ -403,7 +410,7 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 	if err != nil {
 		return 0, fmt.Errorf("create unique key: %w", err)
 	}
-	typeDetails, err := bs.objectStore.GetObjectByUniqueKey(bs.SpaceID(), uk)
+	typeDetails, err := bs.objectStore.GetObjectByUniqueKey(uk)
 	if err != nil {
 		return 0, fmt.Errorf("get object by unique key: %w", err)
 	}

@@ -13,9 +13,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -152,7 +152,7 @@ func collectIdsFromDetail(rel *model.RelationLink, det *types.Struct, flags Flag
 		if relInt > 0 {
 			t := time.Unix(relInt, 0)
 			t = t.In(time.Local)
-			ids = append(ids, addr.TimeToID(t))
+			ids = append(ids, dateutil.TimeToDateId(t))
 		}
 		return
 	}

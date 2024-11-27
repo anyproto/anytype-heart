@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
@@ -686,6 +685,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 
 	msgs = s.processTrailingDuplicatedEvents(msgs)
+
+	sortEventMessages(msgs)
 	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
@@ -1087,15 +1088,21 @@ func (s *State) Snippet() string {
 		}
 		return true
 	})
-	return textutil.Truncate(builder.String(), snippetMaxSize)
+	return textutil.TruncateEllipsized(builder.String(), snippetMaxSize)
 }
 
 func (s *State) FileRelationKeys() []string {
 	var keys []string
 	for _, rel := range s.GetRelationLinks() {
 		// coverId can contain both hash or predefined cover id
-		if rel.Format == model.RelationFormat_file || rel.Key == bundle.RelationKeyCoverId.String() {
+		if rel.Format == model.RelationFormat_file {
 			if slice.FindPos(keys, rel.Key) == -1 {
+				keys = append(keys, rel.Key)
+			}
+		}
+		if rel.Key == bundle.RelationKeyCoverId.String() {
+			coverType := pbtypes.GetInt64(s.Details(), bundle.RelationKeyCoverType.String())
+			if (coverType == 1 || coverType == 4) && slice.FindPos(keys, rel.Key) == -1 {
 				keys = append(keys, rel.Key)
 			}
 		}
@@ -1130,15 +1137,6 @@ func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
 	}
 
 	for _, key := range s.FileRelationKeys() {
-		if key == bundle.RelationKeyCoverId.String() {
-			v := pbtypes.GetString(details, key)
-			_, err := cid.Decode(v)
-			if err != nil {
-				// this is an exception cause coverId can contain not a file hash but color
-				continue
-			}
-		}
-
 		s.modifyIdsInDetail(details, key, modifier)
 	}
 }
@@ -1332,8 +1330,9 @@ func (s *State) Copy() *State {
 }
 
 func (s *State) HasRelation(key string) bool {
-	for _, rel := range s.relationLinks {
-		if rel.Key == key {
+	links := s.GetRelationLinks()
+	for _, link := range links {
+		if link.Key == key {
 			return true
 		}
 	}

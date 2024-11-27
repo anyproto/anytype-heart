@@ -1,6 +1,8 @@
 package api
 
-import "sync"
+import (
+	"sync"
+)
 
 type PageTree struct {
 	ParentPageToChildIDs   map[string][]string

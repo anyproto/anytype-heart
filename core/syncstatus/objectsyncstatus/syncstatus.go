@@ -7,18 +7,16 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestate"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -28,11 +26,6 @@ const (
 )
 
 var log = logger.NewNamed(syncstatus.CName)
-
-type UpdateReceiver interface {
-	UpdateTree(ctx context.Context, treeId string, status SyncStatus) (err error)
-	UpdateNodeStatus()
-}
 
 type SyncStatus int
 
@@ -55,16 +48,9 @@ type StatusUpdater interface {
 	RemoveAllExcept(senderId string, differentRemoteIds []string)
 }
 
-type StatusWatcher interface {
-	Watch(treeId string) (err error)
-	Unwatch(treeId string)
-	SetUpdateReceiver(updater UpdateReceiver)
-}
-
 type StatusService interface {
 	app.ComponentRunnable
 	StatusUpdater
-	StatusWatcher
 }
 
 type treeStatus struct {
@@ -79,21 +65,18 @@ type Updater interface {
 
 type syncStatusService struct {
 	sync.Mutex
-	periodicSync   periodicsync.PeriodicSync
-	updateReceiver UpdateReceiver
-	storage        spacestorage.SpaceStorage
+	periodicSync periodicsync.PeriodicSync
 
-	spaceId    string
-	synced     []string
-	tempSynced map[string]struct{}
-	treeHeads  map[string]treeHeadsEntry
-	watchers   map[string]struct{}
+	spaceId         string
+	spaceSettingsId string
+	synced          []string
+	tempSynced      map[string]struct{}
+	treeHeads       map[string]treeHeadsEntry
 
 	updateIntervalSecs int
 	updateTimeout      time.Duration
 
 	syncDetailsUpdater Updater
-	nodeStatus         nodestatus.NodeStatus
 	config             *config.Config
 	nodeConfService    nodeconf.Service
 }
@@ -102,16 +85,16 @@ func NewSyncStatusService() StatusService {
 	return &syncStatusService{
 		tempSynced: map[string]struct{}{},
 		treeHeads:  map[string]treeHeadsEntry{},
-		watchers:   map[string]struct{}{},
 	}
 }
 
 func (s *syncStatusService) Init(a *app.App) (err error) {
-	sharedState := a.MustComponent(spacestate.CName).(*spacestate.SpaceState)
+	sharedState := app.MustComponent[*spacestate.SpaceState](a)
+	spaceStorage := app.MustComponent[spacestorage.SpaceStorage](a)
 	s.updateIntervalSecs = syncUpdateInterval
 	s.updateTimeout = syncTimeout
 	s.spaceId = sharedState.SpaceId
-	s.storage = app.MustComponent[spacestorage.SpaceStorage](a)
+	s.spaceSettingsId = spaceStorage.SpaceSettingsId()
 	s.periodicSync = periodicsync.NewPeriodicSync(
 		s.updateIntervalSecs,
 		s.updateTimeout,
@@ -120,19 +103,11 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 	s.syncDetailsUpdater = app.MustComponent[Updater](a)
 	s.config = app.MustComponent[*config.Config](a)
 	s.nodeConfService = app.MustComponent[nodeconf.Service](a)
-	s.nodeStatus = app.MustComponent[nodestatus.NodeStatus](a)
 	return
 }
 
 func (s *syncStatusService) Name() (name string) {
 	return syncstatus.CName
-}
-
-func (s *syncStatusService) SetUpdateReceiver(updater UpdateReceiver) {
-	s.Lock()
-	defer s.Unlock()
-
-	s.updateReceiver = updater
 }
 
 func (s *syncStatusService) Run(ctx context.Context) error {
@@ -144,6 +119,7 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 	s.Lock()
 	s.addTreeHead(treeId, heads, StatusNotSynced)
 	s.Unlock()
+
 	s.updateDetails(treeId, domain.ObjectSyncStatusSyncing)
 }
 
@@ -186,35 +162,14 @@ func (s *syncStatusService) HeadsApply(senderId, treeId string, heads []string, 
 
 func (s *syncStatusService) update(ctx context.Context) (err error) {
 	s.Lock()
-	var (
-		updateDetailsStatuses = make([]treeStatus, 0, len(s.synced))
-		updateThreadStatuses  = make([]treeStatus, 0, len(s.watchers))
-	)
-	if s.updateReceiver == nil {
-		s.Unlock()
-		return
-	}
+	var updateDetailsStatuses = make([]treeStatus, 0, len(s.synced))
 	for _, treeId := range s.synced {
 		updateDetailsStatuses = append(updateDetailsStatuses, treeStatus{treeId, StatusSynced})
 	}
-	for treeId := range s.watchers {
-		treeHeads, exists := s.treeHeads[treeId]
-		if !exists {
-			continue
-		}
-		updateThreadStatuses = append(updateThreadStatuses, treeStatus{treeId, treeHeads.syncStatus})
-	}
 	s.synced = s.synced[:0]
 	s.Unlock()
-	s.updateReceiver.UpdateNodeStatus()
 	for _, entry := range updateDetailsStatuses {
 		s.updateDetails(entry.treeId, mapStatus(entry.status))
-	}
-	for _, entry := range updateThreadStatuses {
-		err = s.updateReceiver.UpdateTree(ctx, entry.treeId, entry.status)
-		if err != nil {
-			return
-		}
 	}
 	return
 }
@@ -236,36 +191,6 @@ func (s *syncStatusService) addTreeHead(treeId string, heads []string, status Sy
 		heads:      headsCopy,
 		syncStatus: status,
 	}
-}
-
-func (s *syncStatusService) Watch(treeId string) (err error) {
-	s.Lock()
-	defer s.Unlock()
-	_, ok := s.treeHeads[treeId]
-	if !ok {
-		var (
-			st    treestorage.TreeStorage
-			heads []string
-		)
-		st, err = s.storage.TreeStorage(treeId)
-		if err != nil {
-			return
-		}
-		heads, err = st.Heads()
-		if err != nil {
-			return
-		}
-		s.addTreeHead(treeId, heads, StatusUnknown)
-	}
-
-	s.watchers[treeId] = struct{}{}
-	return
-}
-
-func (s *syncStatusService) Unwatch(treeId string) {
-	s.Lock()
-	defer s.Unlock()
-	delete(s.watchers, treeId)
 }
 
 func (s *syncStatusService) RemoveAllExcept(senderId string, differentRemoteIds []string) {
@@ -304,5 +229,7 @@ func (s *syncStatusService) isSenderResponsible(senderId string) bool {
 }
 
 func (s *syncStatusService) updateDetails(treeId string, status domain.ObjectSyncStatus) {
-	s.syncDetailsUpdater.UpdateDetails(treeId, status, s.spaceId)
+	if treeId != s.spaceSettingsId {
+		s.syncDetailsUpdater.UpdateDetails(treeId, status, s.spaceId)
+	}
 }

@@ -3,7 +3,6 @@ package payments
 import (
 	"context"
 	"errors"
-	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -15,6 +14,7 @@ import (
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/nameservice"
@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/deletioncontroller"
+	"github.com/anyproto/anytype-heart/util/contexthelper"
 )
 
 const CName = "payments"
@@ -31,8 +32,8 @@ const CName = "payments"
 var log = logging.Logger(CName).Desugar()
 
 const (
-	refreshIntervalSecs = 10
-	timeout             = 10 * time.Second
+	refreshIntervalSecs = 60
+	timeout             = 30 * time.Second
 	cacheDisableMinutes = 30
 )
 
@@ -123,14 +124,16 @@ func New() Service {
 }
 
 type service struct {
-	cache             cache.CacheService
-	ppclient          ppclient.AnyPpClientService
-	wallet            wallet.Wallet
-	mx                sync.Mutex
-	periodicGetStatus periodicsync.PeriodicSync
-	eventSender       event.Sender
-	profileUpdater    globalNamesUpdater
-	ns                nameservice.Service
+	cfg                    *config.Config
+	cache                  cache.CacheService
+	ppclient               ppclient.AnyPpClientService
+	wallet                 wallet.Wallet
+	getSubscriptionLimiter chan struct{}
+	periodicGetStatus      periodicsync.PeriodicSync
+	eventSender            event.Sender
+	profileUpdater         globalNamesUpdater
+	ns                     nameservice.Service
+	closing                chan struct{}
 
 	multiplayerLimitsUpdater deletioncontroller.DeletionController
 	fileLimitsUpdater        filesync.FileSync
@@ -141,6 +144,7 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Init(a *app.App) (err error) {
+	s.cfg = app.MustComponent[*config.Config](a)
 	s.cache = app.MustComponent[cache.CacheService](a)
 	s.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
@@ -150,6 +154,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.profileUpdater = app.MustComponent[globalNamesUpdater](a)
 	s.multiplayerLimitsUpdater = app.MustComponent[deletioncontroller.DeletionController](a)
 	s.fileLimitsUpdater = app.MustComponent[filesync.FileSync](a)
+	s.getSubscriptionLimiter = make(chan struct{}, 1)
+	s.closing = make(chan struct{})
 	return nil
 }
 
@@ -159,17 +165,23 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if val != nil && val.(bool) {
 		return nil
 	}
-
 	s.periodicGetStatus.Run()
 	return nil
 }
 
 func (s *service) Close(_ context.Context) (err error) {
+	close(s.closing)
 	s.periodicGetStatus.Close()
 	return nil
 }
 
 func (s *service) getPeriodicStatus(ctx context.Context) error {
+	// skip running loop if we are on a custom network or in local-only mode
+	if s.cfg.GetNetworkMode() != pb.RpcAccount_DefaultConfig {
+		// do not trace to log to prevent spamming
+		return nil
+	}
+
 	// get subscription status (from cache or from the PP node)
 	// if status has changed -> it will send events, etc
 	_, err := s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -190,7 +202,7 @@ func (s *service) sendMembershipUpdateEvent(status *pb.RpcMembershipGetStatusRes
 	})
 }
 
-// Logic:
+// GetSubscriptionStatus Logic:
 //
 // 1. Check in cache. if req.NoCache -> do not check in cache.
 // 2. If found in cache -> return it
@@ -203,9 +215,17 @@ func (s *service) sendMembershipUpdateEvent(status *pb.RpcMembershipGetStatusRes
 // 8. UpdateLimits
 // 9. Enable cache again if status is active
 func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error) {
-	s.mx.Lock()
-	defer s.mx.Unlock()
-
+	// wrap context to stop in-flight request in case of component close
+	ctx, cancel := contexthelper.ContextWithCloseChan(ctx, s.closing)
+	defer cancel()
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case s.getSubscriptionLimiter <- struct{}{}:
+		defer func() {
+			<-s.getSubscriptionLimiter
+		}()
+	}
 	// 1 - check in cache first
 	var (
 		cachedStatus    *pb.RpcMembershipGetStatusResponse
@@ -676,9 +696,11 @@ func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcMembershi
 	// 1 - send request
 	bsr := proto.GetVerificationEmailRequest{
 		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyId:            s.wallet.Account().SignKey.GetPublic().Account(),
-		Email:                 req.Email,
-		SubscribeToNewsletter: req.SubscribeToNewsletter,
+		OwnerAnyId:              s.wallet.Account().SignKey.GetPublic().Account(),
+		Email:                   req.Email,
+		SubscribeToNewsletter:   req.SubscribeToNewsletter,
+		InsiderTipsAndTutorials: req.InsiderTipsAndTutorials,
+		IsOnboardingList:        req.IsOnboardingList,
 	}
 
 	payload, err := bsr.Marshal()

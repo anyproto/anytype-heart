@@ -202,7 +202,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 	}
 	defer u.spaceSyncStatus.Refresh(syncStatusDetails.spaceId)
 	err = spc.DoLockedIfNotExists(objectId, func() error {
-		return u.objectStore.ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, bool, error) {
+		return u.objectStore.SpaceIndex(syncStatusDetails.spaceId).ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, bool, error) {
 			if details == nil || details.Fields == nil {
 				details = &types.Struct{Fields: map[string]*types.Value{}}
 			}
@@ -233,10 +233,10 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
 		return nil
 	}
+	st := sb.NewState()
 	if !u.isLayoutSuitableForSyncRelations(sb.Details()) {
 		return nil
 	}
-	st := sb.NewState()
 	if fileStatus, ok := st.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
 		status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus.GetNumberValue())))
 	}
@@ -263,6 +263,7 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_audio:          {},
 	model.ObjectType_video:          {},
 	model.ObjectType_pdf:            {},
+	model.ObjectType_chat:           {},
 }
 
 func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *types.Struct) bool {

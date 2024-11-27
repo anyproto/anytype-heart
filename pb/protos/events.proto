@@ -110,6 +110,30 @@ message Event {
             P2PStatus.Update p2pStatusUpdate = 120;
 
             Import.Finish importFinish = 121;
+
+            Chat.Add chatAdd = 128;
+            Chat.Update chatUpdate = 129;
+            Chat.UpdateReactions chatUpdateReactions = 130;
+            Chat.Delete chatDelete = 131;
+        }
+    }
+
+    message Chat {
+        message Add {
+            string id = 1;
+            string orderId = 2;
+            model.ChatMessage message = 3;
+        }
+        message Delete {
+            string id = 1;
+        }
+        message Update {
+            string id = 1;
+            model.ChatMessage message = 2;
+        }
+        message UpdateReactions {
+            string id = 1;
+            model.ChatMessage.Reactions reactions = 2;
         }
     }
 
@@ -1028,6 +1052,7 @@ message Event {
                 Synced = 3;
                 Failed = 4;
                 IncompatibleVersion = 5;
+                NetworkNeedsUpdate = 6;
             }
         }
     }
@@ -1113,6 +1138,7 @@ message Event {
             NotConnected = 0;
             NotPossible = 1;
             Connected = 2;
+            Restricted = 3; // only for ios for now, fallback to NotPossible if not implemented on client
         }
     }
 
@@ -1134,18 +1160,24 @@ message ResponseEvent {
 message Model {
     message Process {
         string id = 1;
-        Type type = 2;
         State state = 3;
         Progress progress = 4;
+        string spaceId = 5;
 
-        enum Type {
-            DropFiles = 0;
-            Import = 1;
-            Export = 2;
-            SaveFile = 3;
-            RecoverAccount = 4;
-            Migration = 5;
+        oneof message {
+            DropFiles dropFiles = 6;
+            Import import= 7;
+            Export export= 8;
+            SaveFile saveFile = 9;
+            Migration migration = 10;
         }
+
+        string error = 11;
+        message DropFiles {}
+        message Import {}
+        message Export {}
+        message SaveFile {}
+        message Migration {}
 
         enum State {
             None = 0;

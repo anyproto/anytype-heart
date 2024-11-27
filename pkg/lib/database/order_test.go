@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -16,18 +16,18 @@ import (
 
 func assertCompare(t *testing.T, order Order, a *types.Struct, b *types.Struct, expected int) {
 	assert.Equal(t, expected, order.Compare(a, b))
-	arena := &fastjson.Arena{}
-	aJson := pbtypes.ProtoToJson(arena, a)
-	bJson := pbtypes.ProtoToJson(arena, b)
+	arena := &anyenc.Arena{}
+	aValue := pbtypes.ProtoToAnyEnc(arena, a)
+	bValue := pbtypes.ProtoToAnyEnc(arena, b)
 	s := order.AnystoreSort()
-	aBytes := s.AppendKey(nil, aJson)
-	bBytes := s.AppendKey(nil, bJson)
+	aBytes := s.AppendKey(nil, aValue)
+	bBytes := s.AppendKey(nil, bValue)
 	got := bytes.Compare(aBytes, bBytes)
 	assert.Equal(t, expected, got)
 }
 
 func TestTextSort(t *testing.T) {
-	arena := &fastjson.Arena{}
+	arena := &anyenc.Arena{}
 	t.Run("note layout, not empty name", func(t *testing.T) {
 		a := &types.Struct{
 			Fields: map[string]*types.Value{
@@ -85,7 +85,7 @@ func TestTextSort(t *testing.T) {
 }
 
 func TestKeyOrder_Compare(t *testing.T) {
-	arena := &fastjson.Arena{}
+	arena := &anyenc.Arena{}
 	t.Run("eq", func(t *testing.T) {
 		a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("a")}}
 		b := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("a")}}
@@ -373,7 +373,7 @@ func TestKeyOrder_Compare(t *testing.T) {
 }
 
 func TestKeyUnicodeOrder_Compare(t *testing.T) {
-	arena := &fastjson.Arena{}
+	arena := &anyenc.Arena{}
 	t.Run("asc", func(t *testing.T) {
 		a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("Єгипет")}}
 		b := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("Японія")}}
@@ -390,7 +390,7 @@ func TestKeyUnicodeOrder_Compare(t *testing.T) {
 }
 
 func TestSetOrder_Compare(t *testing.T) {
-	arena := &fastjson.Arena{}
+	arena := &anyenc.Arena{}
 	so := SetOrder{
 		&KeyOrder{arena: arena, Key: "a", Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext},
 		&KeyOrder{arena: arena, Key: "b", Type: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_shorttext},
@@ -414,14 +414,15 @@ func TestSetOrder_Compare(t *testing.T) {
 }
 
 func TestCustomOrder_Compare(t *testing.T) {
+	a := &anyenc.Arena{}
 	// keys are json values
 	idxIndices := map[string]int{
-		`"b"`: 0,
-		`"c"`: 1,
-		`"d"`: 2,
-		`"a"`: 3,
+		string(a.NewString("b").MarshalTo(nil)): 0,
+		string(a.NewString("c").MarshalTo(nil)): 1,
+		string(a.NewString("d").MarshalTo(nil)): 2,
+		string(a.NewString("a").MarshalTo(nil)): 3,
 	}
-	arena := &fastjson.Arena{}
+	arena := &anyenc.Arena{}
 	co := newCustomOrder(arena, "ID", idxIndices, &KeyOrder{arena: arena, Key: "ID", Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext})
 
 	t.Run("gt", func(t *testing.T) {
@@ -474,7 +475,7 @@ func TestCustomOrder_Compare(t *testing.T) {
 }
 
 func TestTagStatusOrder_Compare(t *testing.T) {
-	arena := &fastjson.Arena{}
+	arena := &anyenc.Arena{}
 	for _, relation := range []model.RelationFormat{model.RelationFormat_tag, model.RelationFormat_status} {
 		t.Run("eq", func(t *testing.T) {
 			a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("a")}}
@@ -507,7 +508,7 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 
 func TestIncludeTime_Compare(t *testing.T) {
 	date := time.Unix(1672012800, 0)
-	arena := &fastjson.Arena{}
+	arena := &anyenc.Arena{}
 	t.Run("date only eq", func(t *testing.T) {
 		a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Int64(date.Add(time.Second * 5).Unix())}}
 		b := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Int64(date.Add(time.Second * 10).Unix())}}

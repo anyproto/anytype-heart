@@ -3,6 +3,7 @@ package syncer
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/ipfs/go-cid"
@@ -19,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
@@ -46,6 +48,9 @@ func (s *IconSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b sim
 		uplErr := s.updateTextBlock(id, "", b)
 		if uplErr != nil {
 			return fmt.Errorf("%w: %s", common.ErrFileLoad, uplErr.Error())
+		}
+		if os.IsNotExist(err) {
+			return err
 		}
 		return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
 	}
@@ -88,7 +93,7 @@ func (s *IconSyncer) handleIconImage(spaceId string, newIdsSet map[string]struct
 		return fileObjectId, nil
 	}
 
-	req := pb.RpcFileUploadRequest{LocalPath: iconImage}
+	req := pb.RpcFileUploadRequest{LocalPath: iconImage, ImageKind: model.ImageKind_Icon}
 	if strings.HasPrefix(iconImage, "http://") || strings.HasPrefix(iconImage, "https://") {
 		req = pb.RpcFileUploadRequest{Url: iconImage}
 	}

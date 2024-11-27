@@ -37,19 +37,12 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
+  github.com/anyproto/anytype-heart/core/block/editor/lastused:
+    interfaces:
+      ObjectUsageUpdater:
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
-  github.com/anyproto/anytype-heart/pkg/lib/database:
-    interfaces:
-      ObjectStore:
-        config:
-          dir: "{{.InterfaceDir}}"
-          outpkg: "{{.PackageName}}"
-          inpackage: true
-  github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore:
-    interfaces:
-      ObjectStore:
   github.com/anyproto/anytype-heart/core/block/restriction:
     interfaces:
       Service:
@@ -66,10 +59,6 @@ packages:
   github.com/anyproto/anytype-heart/core/block/import/common/objectcreator:
     interfaces:
       Service:
-      BlockService:
-        config:
-          dir: "{{.InterfaceDir}}/mock_blockservice"
-          outpkg: "mock_blockservice"
   github.com/anyproto/anytype-heart/core/block/import/common/syncer:
     interfaces:
       BlockService:
@@ -106,6 +95,7 @@ packages:
     interfaces:
       TechSpace:
       SpaceView:
+      AccountObject:
   github.com/anyproto/anytype-heart/space/spacefactory:
     interfaces:
       SpaceFactory:
@@ -116,6 +106,9 @@ packages:
   github.com/anyproto/anytype-heart/space/internal/components/spaceloader:
     interfaces:
       SpaceLoader:
+  github.com/anyproto/anytype-heart/space/internal/components/personalmigration:
+    interfaces:
+      fileObjectGetter:
   github.com/anyproto/anytype-heart/space/internal/components/participantwatcher:
     interfaces:
       ParticipantWatcher:
@@ -136,6 +129,8 @@ packages:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       Service:
+      coordinatorStatusUpdater:
+      NotificationSender:
   github.com/anyproto/anytype-heart/space/clientspace:
     interfaces:
       Space:
@@ -169,6 +164,7 @@ packages:
   github.com/anyproto/anytype-heart/core/block/source:
     interfaces:
       Service:
+      Store:
   github.com/anyproto/anytype-heart/core/block/object/idresolver:
     interfaces:
       Resolver:
@@ -184,6 +180,9 @@ packages:
   github.com/anyproto/anytype-heart/core/peerstatus:
     interfaces:
       LocalDiscoveryHook:
+  github.com/anyproto/anytype-heart/core/device:
+    interfaces:
+      NetworkState:
   github.com/anyproto/anytype-heart/space/spacecore/localdiscovery:
     interfaces:
       Notifier:
@@ -201,11 +200,6 @@ packages:
   github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus:
     interfaces:
       Updater:
-      UpdateReceiver:
-        config:
-          dir: "{{.InterfaceDir}}"
-          outpkg: "{{.PackageName}}"
-          inpackage: true
   github.com/anyproto/anytype-heart/space/spacecore/peermanager:
     interfaces:
       Updater:
@@ -219,3 +213,12 @@ packages:
       NodeUsage:
       NetworkConfig:
       Updater:
+  github.com/anyproto/anytype-heart/core/block/import/notion/api/files:
+    interfaces:
+      Downloader:
+  github.com/anyproto/anytype-heart/core/block/detailservice:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/kanban:
+    interfaces:
+      Service:

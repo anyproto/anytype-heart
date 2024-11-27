@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	trace2 "runtime/trace"
 	"strings"
 
@@ -40,9 +41,10 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		return nil, ErrEmptyAccountID
 	}
 
-	s.traceRecorder.start()
-	defer s.traceRecorder.stop()
-
+	if runtime.GOOS != "android" && runtime.GOOS != "ios" {
+		s.traceRecorder.start()
+		defer s.traceRecorder.stop()
+	}
 	s.cancelStartIfInProcess()
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -55,10 +57,9 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		// objectCache := app.MustComponent[objectcache.Cache](s.app)
 		// objectCache.CloseBlocks()
 
-		spaceID := app.MustComponent[account.Service](s.app).PersonalSpaceID()
 		acc := &model.Account{Id: req.Id}
 		var err error
-		acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, spaceID)
+		acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +153,6 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 	}
 
 	acc := &model.Account{Id: id}
-	spaceID := app.MustComponent[account.Service](s.app).PersonalSpaceID()
-	acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, spaceID)
+	acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx)
 	return acc, err
 }

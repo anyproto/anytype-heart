@@ -55,8 +55,9 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	if allErrors.ShouldAbortImport(len(paths), req.Type) {
 		return nil, allErrors
 	}
-	rootCollection := common.NewRootCollection(t.service)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil, true, true)
+	rootCollection := common.NewImportCollection(t.service)
+	settings := common.MakeImportCollectionSetting(rootCollectionName, targetObjects, "", nil, true, true, true)
+	rootCol, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(len(paths), req.Type) {
@@ -112,7 +113,7 @@ func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *common.Conve
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".txt"}); numberOfFiles == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(common.ErrorBySourceType(importSource))
 		return nil, nil
 	}
 	snapshots := make([]*common.Snapshot, 0, numberOfFiles)

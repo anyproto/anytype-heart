@@ -16,6 +16,8 @@ import (
 	"github.com/mattn/go-sqlite3"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 var ErrLocked = errors.New("space storage locked")
@@ -23,13 +25,13 @@ var ErrLocked = errors.New("space storage locked")
 var log = logger.NewNamed("sqlitestore")
 
 var (
-	ErrSpaceNotFound  = errors.New("space not found")
-	ErrTreeNotFound   = treestorage.ErrUnknownTreeId
-	ErrObjectNotFound = errors.New("object not found")
+	ErrSpaceNotFound = errors.New("space not found")
+	ErrTreeNotFound  = treestorage.ErrUnknownTreeId
 )
 
 type configGetter interface {
 	GetSpaceStorePath() string
+	GetTempDirPath() string
 }
 
 type storageService struct {
@@ -46,6 +48,7 @@ type storageService struct {
 		treeIdsBySpace,
 		updateTreeDelStatus,
 		treeDelStatus,
+		allTreeDelStatus,
 		change,
 		hasTree,
 		hasChange,
@@ -64,6 +67,7 @@ type storageService struct {
 		getBind *sql.Stmt
 	}
 	dbPath       string
+	dbTempPath   string
 	lockedSpaces map[string]*lockSpace
 
 	ctx       context.Context
@@ -88,6 +92,7 @@ func New() *storageService {
 
 func (s *storageService) Init(a *app.App) (err error) {
 	s.dbPath = a.MustComponent("config").(configGetter).GetSpaceStorePath()
+	s.dbTempPath = a.MustComponent("config").(configGetter).GetTempDirPath()
 	s.lockedSpaces = map[string]*lockSpace{}
 	if s.checkpointAfterWrite == 0 {
 		s.checkpointAfterWrite = time.Second
@@ -103,6 +108,12 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 	sql.Register(driverName,
 		&sqlite3.SQLiteDriver{
 			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+				if s.dbTempPath != "" {
+					_, err := conn.Exec("PRAGMA temp_store_directory = '"+s.dbTempPath+"';", nil)
+					if err != nil {
+						return err
+					}
+				}
 				conn.RegisterUpdateHook(func(op int, db string, table string, rowid int64) {
 					s.lastWrite.Store(time.Now())
 				})
@@ -123,6 +134,7 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 		return
 	}
 	s.writeDb.SetMaxOpenConns(1)
+
 	if _, err = s.writeDb.Exec(sqlCreateTables); err != nil {
 		log.With(zap.String("db", "spacestore_sqlite"), zap.String("type", "createtable"), zap.Error(err)).Error("failed to open db")
 		return
@@ -275,7 +287,7 @@ func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCre
 
 func (s *storageService) GetSpaceID(objectID string) (spaceID string, err error) {
 	err = s.stmt.getBind.QueryRow(objectID).Scan(&spaceID)
-	err = replaceNoRowsErr(err, ErrObjectNotFound)
+	err = replaceNoRowsErr(err, domain.ErrObjectNotFound)
 	return
 }
 

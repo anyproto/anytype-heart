@@ -9,10 +9,12 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
+	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/rpc/rpcerr"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
+	format "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 	"storj.io/drpc"
@@ -183,7 +185,11 @@ func (c *client) get(ctx context.Context, spaceID string, cd cid.Cid) (data []by
 			Cid:     cd.Bytes(),
 		})
 		if err != nil {
-			return rpcerr.Unwrap(err)
+			err = rpcerr.Unwrap(err)
+			if errors.Is(err, fileprotoerr.ErrCIDNotFound) {
+				return format.ErrNotFound{Cid: cd}
+			}
+			return err
 		}
 		log.Debug("get cid", zap.String("cid", cd.String()))
 		c.stat.Add(st, len(resp.Data))

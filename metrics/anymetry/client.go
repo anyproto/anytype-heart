@@ -97,6 +97,10 @@ func (c *Client) SendEvents(amplEvents []Event, info AppInfoProvider) error {
 		amIndex++
 	}
 
+	if amIndex == 0 {
+		return nil
+	}
+
 	reqJSON.Set("events", events)
 
 	evJSON := reqJSON.MarshalTo(nil)

@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/dgraph-io/badger/v4"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
@@ -156,9 +157,13 @@ func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCre
 }
 
 func (s *storageService) GetSpaceID(objectID string) (spaceID string, err error) {
-	return badgerhelper.GetValue(s.db, s.keys.BindObjectIDKey(objectID), func(bytes []byte) (string, error) {
+	spaceID, err = badgerhelper.GetValue(s.db, s.keys.BindObjectIDKey(objectID), func(bytes []byte) (string, error) {
 		return string(bytes), nil
 	})
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return "", domain.ErrObjectNotFound
+	}
+	return spaceID, err
 }
 
 func (s *storageService) BindSpaceID(spaceID, objectID string) (err error) {

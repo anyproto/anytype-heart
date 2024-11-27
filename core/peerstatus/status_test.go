@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/peerstatus/mock_peerstatus"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
@@ -61,7 +62,7 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 			},
 		})
 
-		f.setNotPossibleStatus()
+		f.setNotPossibleStatus(localdiscovery.DiscoveryNoInterfaces)
 
 		// then
 
@@ -82,7 +83,7 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 				},
 			},
 		})
-		f.resetNotPossibleStatus()
+		f.setNotPossibleStatus(localdiscovery.DiscoveryPossible)
 
 		err = f.refreshSpaces([]string{"spaceId"})
 		assert.Nil(t, err)
@@ -200,7 +201,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				},
 			},
 		})
-		f.setNotPossibleStatus()
+		f.setNotPossibleStatus(localdiscovery.DiscoveryNoInterfaces)
 		checkStatus(t, "spaceId", f.p2pStatus, NotPossible)
 
 		f.sender.EXPECT().Broadcast(&pb.Event{
@@ -277,11 +278,11 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				},
 			},
 		})
-		f.setNotPossibleStatus()
+		f.setNotPossibleStatus(localdiscovery.DiscoveryNoInterfaces)
 		checkStatus(t, "spaceId", f.p2pStatus, NotPossible)
 
 		// double set should not generate new event
-		f.setNotPossibleStatus()
+		f.setNotPossibleStatus(localdiscovery.DiscoveryNoInterfaces)
 		checkStatus(t, "spaceId", f.p2pStatus, NotPossible)
 
 		f.sender.EXPECT().Broadcast(&pb.Event{
@@ -298,7 +299,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 			},
 		})
 
-		f.resetNotPossibleStatus()
+		f.setNotPossibleStatus(localdiscovery.DiscoveryPossible)
 		checkStatus(t, "spaceId", f.p2pStatus, NotConnected)
 		// then
 		f.Close(nil)
@@ -310,7 +311,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 		// when
 		checkStatus(t, "spaceId", f.p2pStatus, NotConnected)
 
-		f.resetNotPossibleStatus()
+		f.setNotPossibleStatus(localdiscovery.DiscoveryPossible)
 		checkStatus(t, "spaceId", f.p2pStatus, NotConnected)
 		// then
 		f.Close(nil)
@@ -372,7 +373,8 @@ func TestP2pStatus_UnregisterSpace(t *testing.T) {
 		f.UnregisterSpace("spaceId")
 
 		// then
-
+		f.p2pStatus.Lock()
+		defer f.p2pStatus.Unlock()
 		status := f.p2pStatus
 		assert.Len(t, status.spaceIds, 0)
 	})
@@ -384,6 +386,8 @@ func TestP2pStatus_UnregisterSpace(t *testing.T) {
 		f.UnregisterSpace("spaceId1")
 
 		// then
+		f.p2pStatus.Lock()
+		defer f.p2pStatus.Unlock()
 		status := f.p2pStatus
 		assert.Len(t, status.spaceIds, 1)
 	})
@@ -401,8 +405,7 @@ func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusSta
 	pool.AddPeer(context.Background(), peer)
 	store := peerstore.New()
 	hookRegister := mock_peerstatus.NewMockLocalDiscoveryHook(t)
-	hookRegister.EXPECT().RegisterP2PNotPossible(mock.Anything).Return()
-	hookRegister.EXPECT().RegisterResetNotPossible(mock.Anything).Return()
+	hookRegister.EXPECT().RegisterDiscoveryPossibilityHook(mock.Anything).Return()
 
 	a := &app.App{}
 	ctx := context.Background()

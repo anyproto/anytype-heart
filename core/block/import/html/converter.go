@@ -2,6 +2,7 @@ package html
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"path/filepath"
 
@@ -64,8 +65,9 @@ func (h *HTML) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest,
 	if allErrors.ShouldAbortImport(len(path), req.Type) {
 		return nil, allErrors
 	}
-	rootCollection := common.NewRootCollection(h.collectionService)
-	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil, true, true)
+	rootCollection := common.NewImportCollection(h.collectionService)
+	settings := common.MakeImportCollectionSetting(rootCollectionName, targetObjects, "", nil, true, true, true)
+	rootCollectionSnapshot, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(len(path), req.Type) {
@@ -118,7 +120,7 @@ func (h *HTML) handleImportPath(path string, allErrors *common.ConvertError) ([]
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".html"}); numberOfFiles == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(common.ErrorBySourceType(importSource))
 		return nil, nil
 	}
 	return h.getSnapshotsAndRootObjects(path, allErrors, numberOfFiles, importSource)
@@ -159,7 +161,7 @@ func (h *HTML) getBlocksForSnapshot(rc io.ReadCloser, filesSource source.Source,
 	}
 	blocks, _, err := anymark.HTMLToBlocks(b, "")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", common.ErrWrongHTMLFormat, err.Error())
 	}
 	for _, block := range blocks {
 		if block.GetFile() != nil {
@@ -188,7 +190,7 @@ func (h *HTML) updateFilesInLinks(block *model.Block, filesSource source.Source,
 			if newFileName, createFileBlock, err = common.ProvideFileName(mark.Param, filesSource, path, h.tempDirProvider); err == nil {
 				mark.Param = newFileName
 				if createFileBlock {
-					anymark.ConvertTextToFile(block)
+					block.Content = anymark.ConvertTextToFile(mark.Param)
 					break
 				}
 				continue

@@ -70,7 +70,7 @@
     ],
     "emoji": "📅",
     "hidden": true,
-    "layout": "basic",
+    "layout": "date",
     "relations": [
       "tag"
     ],
@@ -268,14 +268,15 @@
     "types": [
       "Template"
     ],
-    "emoji": "",
-    "hidden": true,
+    "emoji": "\uD83E\uDDE9",
+    "hidden": false,
     "layout": "basic",
     "relations": [
       "targetObjectType",
       "templateIsBundled"
     ],
-    "description": "Sample object that has already some details in place and used to create objects from"
+    "description": "Sample object that has already some details in place and used to create objects from",
+    "revision": 1
   },
   {
     "id": "set",
@@ -455,5 +456,36 @@
       "tasks"
     ],
     "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim"
+  },
+  {
+    "id": "chat",
+    "name": "Chat [deprecated]",
+    "types": [
+      "ChatObject"
+    ],
+    "emoji": "💬",
+    "hidden": true,
+    "layout": "chat",
+    "relations": [
+        "tag",
+        "description"
+    ],
+    "description": "A chat [deprecated]"
+  },
+  {
+    "id": "chatDerived",
+    "name": "Chat Derived Object",
+    "types": [
+      "ChatDerivedObject"
+    ],
+    "emoji": "",
+    "hidden": true,
+    "layout": "chatDerived",
+    "relations": [
+      "tag",
+      "description"
+    ],
+    "description": "A chat derived object",
+    "revision": 1
   }
 ]

@@ -10,6 +10,8 @@ import (
 
 	crypto "github.com/anyproto/any-sync/util/crypto"
 
+	domain "github.com/anyproto/anytype-heart/core/domain"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -435,6 +437,64 @@ func (_c *MockService_GetPersonalSpace_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// GetRelationIdByKey provides a mock function with given fields: ctx, spaceId, key
+func (_m *MockService) GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (string, error) {
+	ret := _m.Called(ctx, spaceId, key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRelationIdByKey")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.RelationKey) (string, error)); ok {
+		return rf(ctx, spaceId, key)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.RelationKey) string); ok {
+		r0 = rf(ctx, spaceId, key)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, domain.RelationKey) error); ok {
+		r1 = rf(ctx, spaceId, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetRelationIdByKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRelationIdByKey'
+type MockService_GetRelationIdByKey_Call struct {
+	*mock.Call
+}
+
+// GetRelationIdByKey is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - key domain.RelationKey
+func (_e *MockService_Expecter) GetRelationIdByKey(ctx interface{}, spaceId interface{}, key interface{}) *MockService_GetRelationIdByKey_Call {
+	return &MockService_GetRelationIdByKey_Call{Call: _e.mock.On("GetRelationIdByKey", ctx, spaceId, key)}
+}
+
+func (_c *MockService_GetRelationIdByKey_Call) Run(run func(ctx context.Context, spaceId string, key domain.RelationKey)) *MockService_GetRelationIdByKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(domain.RelationKey))
+	})
+	return _c
+}
+
+func (_c *MockService_GetRelationIdByKey_Call) Return(id string, err error) *MockService_GetRelationIdByKey_Call {
+	_c.Call.Return(id, err)
+	return _c
+}
+
+func (_c *MockService_GetRelationIdByKey_Call) RunAndReturn(run func(context.Context, string, domain.RelationKey) (string, error)) *MockService_GetRelationIdByKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetTechSpace provides a mock function with given fields: ctx
 func (_m *MockService) GetTechSpace(ctx context.Context) (clientspace.Space, error) {
 	ret := _m.Called(ctx)
@@ -489,6 +549,64 @@ func (_c *MockService_GetTechSpace_Call) Return(_a0 clientspace.Space, err error
 }
 
 func (_c *MockService_GetTechSpace_Call) RunAndReturn(run func(context.Context) (clientspace.Space, error)) *MockService_GetTechSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetTypeIdByKey provides a mock function with given fields: ctx, spaceId, key
+func (_m *MockService) GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (string, error) {
+	ret := _m.Called(ctx, spaceId, key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTypeIdByKey")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.TypeKey) (string, error)); ok {
+		return rf(ctx, spaceId, key)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.TypeKey) string); ok {
+		r0 = rf(ctx, spaceId, key)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, domain.TypeKey) error); ok {
+		r1 = rf(ctx, spaceId, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetTypeIdByKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTypeIdByKey'
+type MockService_GetTypeIdByKey_Call struct {
+	*mock.Call
+}
+
+// GetTypeIdByKey is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - key domain.TypeKey
+func (_e *MockService_Expecter) GetTypeIdByKey(ctx interface{}, spaceId interface{}, key interface{}) *MockService_GetTypeIdByKey_Call {
+	return &MockService_GetTypeIdByKey_Call{Call: _e.mock.On("GetTypeIdByKey", ctx, spaceId, key)}
+}
+
+func (_c *MockService_GetTypeIdByKey_Call) Run(run func(ctx context.Context, spaceId string, key domain.TypeKey)) *MockService_GetTypeIdByKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(domain.TypeKey))
+	})
+	return _c
+}
+
+func (_c *MockService_GetTypeIdByKey_Call) Return(id string, err error) *MockService_GetTypeIdByKey_Call {
+	_c.Call.Return(id, err)
+	return _c
+}
+
+func (_c *MockService_GetTypeIdByKey_Call) RunAndReturn(run func(context.Context, string, domain.TypeKey) (string, error)) *MockService_GetTypeIdByKey_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -628,6 +746,51 @@ func (_c *MockService_Name_Call) Return(name string) *MockService_Name_Call {
 }
 
 func (_c *MockService_Name_Call) RunAndReturn(run func() string) *MockService_Name_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PersonalSpaceId provides a mock function with given fields:
+func (_m *MockService) PersonalSpaceId() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for PersonalSpaceId")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockService_PersonalSpaceId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PersonalSpaceId'
+type MockService_PersonalSpaceId_Call struct {
+	*mock.Call
+}
+
+// PersonalSpaceId is a helper method to define mock.On call
+func (_e *MockService_Expecter) PersonalSpaceId() *MockService_PersonalSpaceId_Call {
+	return &MockService_PersonalSpaceId_Call{Call: _e.mock.On("PersonalSpaceId")}
+}
+
+func (_c *MockService_PersonalSpaceId_Call) Run(run func()) *MockService_PersonalSpaceId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_PersonalSpaceId_Call) Return(_a0 string) *MockService_PersonalSpaceId_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_PersonalSpaceId_Call) RunAndReturn(run func() string) *MockService_PersonalSpaceId_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -881,6 +1044,52 @@ func (_c *MockService_Wait_Call) Return(sp clientspace.Space, err error) *MockSe
 }
 
 func (_c *MockService_Wait_Call) RunAndReturn(run func(context.Context, string) (clientspace.Space, error)) *MockService_Wait_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WaitPersonalSpaceMigration provides a mock function with given fields: ctx
+func (_m *MockService) WaitPersonalSpaceMigration(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WaitPersonalSpaceMigration")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_WaitPersonalSpaceMigration_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WaitPersonalSpaceMigration'
+type MockService_WaitPersonalSpaceMigration_Call struct {
+	*mock.Call
+}
+
+// WaitPersonalSpaceMigration is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockService_Expecter) WaitPersonalSpaceMigration(ctx interface{}) *MockService_WaitPersonalSpaceMigration_Call {
+	return &MockService_WaitPersonalSpaceMigration_Call{Call: _e.mock.On("WaitPersonalSpaceMigration", ctx)}
+}
+
+func (_c *MockService_WaitPersonalSpaceMigration_Call) Run(run func(ctx context.Context)) *MockService_WaitPersonalSpaceMigration_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockService_WaitPersonalSpaceMigration_Call) Return(err error) *MockService_WaitPersonalSpaceMigration_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockService_WaitPersonalSpaceMigration_Call) RunAndReturn(run func(context.Context) error) *MockService_WaitPersonalSpaceMigration_Call {
 	_c.Call.Return(run)
 	return _c
 }

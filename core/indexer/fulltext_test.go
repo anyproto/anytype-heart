@@ -61,7 +61,7 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	testApp.Register(ds)
 	testApp.Register(walletService)
 
-	testApp.Register(objectStore.FTSearch())
+	testApp.Register(objectStore.FullText)
 
 	indxr := &indexer{}
 
@@ -81,14 +81,15 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	indxr.btHash = hasher
 
 	indxr.fileStore = fileStore
-	indxr.ftsearch = objectStore.FTSearch()
+	indxr.ftsearch = objectStore.FullText
 	indexerFx.ftsearch = indxr.ftsearch
 	indexerFx.pickerFx = mock_cache.NewMockObjectGetter(t)
 	indxr.picker = indexerFx.pickerFx
-	indxr.quit = make(chan struct{})
+	indxr.spaceIndexers = make(map[string]*spaceIndexer)
 	indxr.forceFt = make(chan struct{})
 	indxr.config = &config.Config{NetworkMode: pb.RpcAccount_LocalOnly}
-
+	indxr.runCtx, indxr.runCtxCancel = context.WithCancel(ctx)
+	// go indxr.indexBatchLoop()
 	return indexerFx
 }
 
@@ -110,7 +111,7 @@ func TestPrepareSearchDocument_Success(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)
-	assert.Equal(t, "spaceId1", docs[0].SpaceID)
+	assert.Equal(t, "spaceId1", docs[0].SpaceId)
 }
 
 func TestPrepareSearchDocument_Empty_NotIndexing(t *testing.T) {
@@ -185,7 +186,7 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/name", docs[0].Id)
 	assert.Equal(t, "Title Text", docs[0].Text)
-	assert.Equal(t, "Title Text", docs[0].Title)
+	assert.Equal(t, "", docs[0].Title)
 }
 
 func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
@@ -207,7 +208,7 @@ func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/name", docs[0].Id)
 	assert.Equal(t, "Title Text", docs[0].Text)
-	assert.Equal(t, "Title Text", docs[0].Title)
+	assert.Equal(t, "", docs[0].Title)
 }
 
 func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
@@ -326,7 +327,7 @@ func TestRunFullTextIndexer(t *testing.T) {
 					blockbuilder.ID("blockId1"),
 				),
 			)))
-		indexerFx.store.AddToIndexQueue("objectId" + strconv.Itoa(i))
+		indexerFx.store.AddToIndexQueue(context.Background(), "objectId"+strconv.Itoa(i))
 		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, "objectId"+strconv.Itoa(i)).Return(smartTest, nil).Once()
 	}
 
@@ -352,7 +353,7 @@ func TestRunFullTextIndexer(t *testing.T) {
 				),
 			)))
 		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, "objectId"+strconv.Itoa(i)).Return(smartTest, nil).Once()
-		indexerFx.store.AddToIndexQueue("objectId" + strconv.Itoa(i))
+		indexerFx.store.AddToIndexQueue(context.Background(), "objectId"+strconv.Itoa(i))
 
 	}
 
@@ -365,8 +366,8 @@ func TestRunFullTextIndexer(t *testing.T) {
 
 func TestPrepareSearchDocument_Reindex_Removed(t *testing.T) {
 	indexerFx := NewIndexerFixture(t)
-	indexerFx.ftsearch.Index(ftsearch.SearchDoc{Id: "objectId1/r/blockId1", SpaceID: "spaceId1"})
-	indexerFx.ftsearch.Index(ftsearch.SearchDoc{Id: "objectId1/r/blockId2", SpaceID: "spaceId1"})
+	indexerFx.ftsearch.Index(ftsearch.SearchDoc{Id: "objectId1/r/blockId1", SpaceId: "spaceId1"})
+	indexerFx.ftsearch.Index(ftsearch.SearchDoc{Id: "objectId1/r/blockId2", SpaceId: "spaceId1"})
 
 	count, _ := indexerFx.ftsearch.DocCount()
 	assert.Equal(t, uint64(2), count)
@@ -381,7 +382,7 @@ func TestPrepareSearchDocument_Reindex_Removed(t *testing.T) {
 				blockbuilder.ID("blockId1"),
 			),
 		)))
-	indexerFx.store.AddToIndexQueue("objectId1")
+	indexerFx.store.AddToIndexQueue(context.Background(), "objectId1")
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 	indexerFx.runFullTextIndexer(context.Background())
 

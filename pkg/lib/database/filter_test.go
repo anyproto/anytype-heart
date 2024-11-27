@@ -4,22 +4,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func assertFilter(t *testing.T, f Filter, obj *types.Struct, expected bool) {
 	assert.Equal(t, expected, f.FilterObject(obj))
 	anystoreFilter := f.AnystoreFilter()
-	arena := &fastjson.Arena{}
-	val := pbtypes.ProtoToJson(arena, obj)
+	arena := &anyenc.Arena{}
+	val := pbtypes.ProtoToAnyEnc(arena, obj)
 	result := anystoreFilter.Ok(val)
 	assert.Equal(t, expected, result)
 }
@@ -310,7 +310,7 @@ func TestAllIn_FilterObject(t *testing.T) {
 }
 
 func TestMakeAndFilter(t *testing.T) {
-	store := NewMockObjectStore(t)
+	store := &stubSpaceObjectStore{}
 	t.Run("valid", func(t *testing.T) {
 		filters := []*model.BlockContentDataviewFilter{
 			{
@@ -448,9 +448,9 @@ func TestMakeAndFilter(t *testing.T) {
 
 func TestNestedFilters(t *testing.T) {
 	t.Run("equal", func(t *testing.T) {
-		store := NewMockObjectStore(t)
+		store := &stubSpaceObjectStore{}
 		// Query will occur while nested filter resolving
-		store.EXPECT().QueryRaw(mock.Anything, 0, 0).Return([]Record{
+		store.queryRawResult = []Record{
 			{
 				Details: &types.Struct{
 					Fields: map[string]*types.Value{
@@ -467,7 +467,7 @@ func TestNestedFilters(t *testing.T) {
 					},
 				},
 			},
-		}, nil)
+		}
 
 		f, err := MakeFilter("spaceId", &model.BlockContentDataviewFilter{
 			RelationKey: "type.typeKey",
@@ -483,26 +483,27 @@ func TestNestedFilters(t *testing.T) {
 	})
 
 	t.Run("not equal", func(t *testing.T) {
-		store := NewMockObjectStore(t)
+		store := &stubSpaceObjectStore{
+			queryRawResult: []Record{
+				{
+					Details: &types.Struct{
+						Fields: map[string]*types.Value{
+							bundle.RelationKeyId.String():        pbtypes.String("id1"),
+							bundle.RelationKeyUniqueKey.String(): pbtypes.String("ot-note"),
+						},
+					},
+				},
+				{
+					Details: &types.Struct{
+						Fields: map[string]*types.Value{
+							bundle.RelationKeyId.String():        pbtypes.String("id2"),
+							bundle.RelationKeyUniqueKey.String(): pbtypes.String("ot-note"),
+						},
+					},
+				},
+			},
+		}
 		// Query will occur while nested filter resolving
-		store.EXPECT().QueryRaw(mock.Anything, 0, 0).Return([]Record{
-			{
-				Details: &types.Struct{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():        pbtypes.String("id1"),
-						bundle.RelationKeyUniqueKey.String(): pbtypes.String("ot-note"),
-					},
-				},
-			},
-			{
-				Details: &types.Struct{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():        pbtypes.String("id2"),
-						bundle.RelationKeyUniqueKey.String(): pbtypes.String("ot-note"),
-					},
-				},
-			},
-		}, nil)
 
 		f, err := MakeFilter("spaceId", &model.BlockContentDataviewFilter{
 			RelationKey: "type.uniqueKey",
@@ -542,32 +543,32 @@ func TestFilterOptionsEqual(t *testing.T) {
 		"optionId3": "3",
 	}
 	t.Run("one option, ok", func(t *testing.T) {
-		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1"}).GetListValue(), optionIdToName)
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", pbtypes.StringList([]string{"optionId1"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1"})}}
 		assertFilter(t, eq, obj, true)
 	})
 	t.Run("two options, ok", func(t *testing.T) {
-		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(), optionIdToName)
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId3"})}}
 		assertFilter(t, eq, obj, true)
 	})
 	t.Run("two options, ok, not existing options are discarded", func(t *testing.T) {
-		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(), optionIdToName)
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId3", "optionId7000"})}}
 		assertFilter(t, eq, obj, true)
 	})
 	t.Run("two options, not ok", func(t *testing.T) {
-		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(), optionIdToName)
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId3"})}}
 		assertFilter(t, eq, obj, false)
 	})
 	t.Run("two options, not ok, because object has 1 option", func(t *testing.T) {
-		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(), optionIdToName)
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1"})}}
 		assertFilter(t, eq, obj, false)
 	})
 	t.Run("two options, not ok, because object has 3 options", func(t *testing.T) {
-		eq := newFilterOptionsEqual(&fastjson.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(), optionIdToName)
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(), optionIdToName)
 		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId2", "optionId3"})}}
 		assertFilter(t, eq, obj, false)
 	})
@@ -576,7 +577,7 @@ func TestFilterOptionsEqual(t *testing.T) {
 func TestMakeFilters(t *testing.T) {
 	t.Run("no filters", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 
 		// when
 		filters, err := MakeFilters(nil, mockStore)
@@ -587,7 +588,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("or filter", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []*model.BlockContentDataviewFilter{
 			{
 				Operator: model.BlockContentDataviewFilter_Or,
@@ -626,7 +627,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("and filter", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []*model.BlockContentDataviewFilter{
 			{
 				Operator: model.BlockContentDataviewFilter_And,
@@ -665,7 +666,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("none filter", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []*model.BlockContentDataviewFilter{
 			{
 				Operator:    model.BlockContentDataviewFilter_No,
@@ -689,7 +690,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("combined filter", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []*model.BlockContentDataviewFilter{
 			{
 				Operator: model.BlockContentDataviewFilter_And,
@@ -736,7 +737,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("linear and nested filters", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: "key1",
@@ -767,7 +768,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("linear and nested filters", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []*model.BlockContentDataviewFilter{
 			{
 				Operator:    model.BlockContentDataviewFilter_And,
@@ -821,7 +822,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("transform quick options", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []*model.BlockContentDataviewFilter{
 			{
 				Operator: model.BlockContentDataviewFilter_Or,
@@ -853,7 +854,7 @@ func TestMakeFilters(t *testing.T) {
 	})
 	t.Run("transform quick options", func(t *testing.T) {
 		// given
-		mockStore := NewMockObjectStore(t)
+		mockStore := &stubSpaceObjectStore{}
 		filter := []*model.BlockContentDataviewFilter{
 			{
 				Operator: model.BlockContentDataviewFilter_Or,
@@ -929,5 +930,68 @@ func TestFilter2ValuesComp_FilterObject(t *testing.T) {
 		assertFilter(t, eq, obj1, false)
 		assertFilter(t, eq, obj2, true)
 		assertFilter(t, eq, obj3, true)
+	})
+}
+
+func TestFilterHasPrefix_FilterObject(t *testing.T) {
+	t.Run("date object id", func(t *testing.T) {
+		key := bundle.RelationKeyMentions.String()
+		now := time.Now()
+		f := FilterHasPrefix{
+			Key:    key,
+			Prefix: dateutil.TimeToDateId(now), // _date_YYYY-MM-DD
+		}
+		obj1 := &types.Struct{Fields: map[string]*types.Value{
+			key: pbtypes.StringList([]string{"obj2", dateutil.TimeToDateId(now.Add(30 * time.Minute)), "obj3"}), // _date_YYYY-MM-DD-hh-mm-ss
+		}}
+		obj2 := &types.Struct{Fields: map[string]*types.Value{
+			key: pbtypes.StringList([]string{dateutil.TimeToDateId(now.Add(24 * time.Hour)), "obj1", "obj3"}), // same format, but next day
+		}}
+		obj3 := &types.Struct{Fields: map[string]*types.Value{
+			key: pbtypes.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(30 * time.Minute))}), // _date_YYYY-MM-DD
+		}}
+		assertFilter(t, f, obj1, true)
+		assertFilter(t, f, obj2, false)
+		assertFilter(t, f, obj3, true)
+	})
+
+	t.Run("string", func(t *testing.T) {
+		key := bundle.RelationKeyName.String()
+		f := FilterHasPrefix{
+			Key:    key,
+			Prefix: "Let's",
+		}
+		obj1 := &types.Struct{Fields: map[string]*types.Value{
+			key: pbtypes.String("Let's do it"),
+		}}
+		obj2 := &types.Struct{Fields: map[string]*types.Value{
+			key: pbtypes.String("Lets do it"),
+		}}
+		obj3 := &types.Struct{Fields: map[string]*types.Value{
+			key: pbtypes.String("Let's fix it :("),
+		}}
+		assertFilter(t, f, obj1, true)
+		assertFilter(t, f, obj2, false)
+		assertFilter(t, f, obj3, true)
+	})
+
+	t.Run("string list", func(t *testing.T) {
+		toys := "my favorite toys"
+		f := FilterHasPrefix{
+			Key:    toys,
+			Prefix: "Fluffy",
+		}
+		obj1 := &types.Struct{Fields: map[string]*types.Value{
+			toys: pbtypes.StringList([]string{"Teddy bear", "Fluffy giraffe"}),
+		}}
+		obj2 := &types.Struct{Fields: map[string]*types.Value{
+			toys: pbtypes.StringList([]string{"Barbie doll", "Peppa Pig"}),
+		}}
+		obj3 := &types.Struct{Fields: map[string]*types.Value{
+			toys: pbtypes.StringList([]string{"T Rex", "Fluffy Rabbit the Murderer"}),
+		}}
+		assertFilter(t, f, obj1, true)
+		assertFilter(t, f, obj2, false)
+		assertFilter(t, f, obj3, true)
 	})
 }

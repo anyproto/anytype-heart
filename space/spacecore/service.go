@@ -2,6 +2,7 @@ package spacecore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/crypto"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/treesyncer"
@@ -58,12 +58,12 @@ type SpaceCoreService interface {
 	Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
 	Derive(ctx context.Context, spaceType string) (space *AnySpace, err error)
 	DeriveID(ctx context.Context, spaceType string) (id string, err error)
-	Delete(ctx context.Context, spaceID string) (err error)
+	Delete(ctx context.Context, spaceId string) (err error)
 	Get(ctx context.Context, id string) (*AnySpace, error)
 	Pick(ctx context.Context, id string) (*AnySpace, error)
 	CloseSpace(ctx context.Context, id string) error
+	StorageExistsLocally(ctx context.Context, spaceId string) (exists bool, err error)
 
-	StreamPool() streampool.StreamPool
 	app.ComponentRunnable
 }
 
@@ -80,13 +80,6 @@ type service struct {
 	peerStore            peerstore.PeerStore
 	peerService          peerservice.PeerService
 	poolManager          PoolManager
-	streamHandler        *streamHandler
-	syncStatusService    syncStatusService
-}
-
-type syncStatusService interface {
-	RegisterSpace(space commonspace.Space, sw objectsyncstatus.StatusWatcher)
-	UnregisterSpace(space commonspace.Space)
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -101,23 +94,15 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
-	s.syncStatusService = app.MustComponent[syncStatusService](a)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
-	s.streamHandler = &streamHandler{spaceCore: s}
-
-	s.streamPool = a.MustComponent(streampool.CName).(streampool.Service).NewStreamPool(s.streamHandler, streampool.StreamConfig{
-		SendQueueSize:    300,
-		DialQueueWorkers: 4,
-		DialQueueSize:    300,
-	})
 	s.spaceCache = ocache.New(
 		s.loadSpace,
 		ocache.WithLogger(log.Sugar()),
 		ocache.WithGCPeriod(time.Minute),
 		ocache.WithTTL(time.Duration(s.conf.GCTTL)*time.Second),
 	)
-
+	s.streamPool = a.MustComponent(streampool.CName).(streampool.StreamPool)
 	err = spacesyncproto.DRPCRegisterSpaceSync(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
 	if err != nil {
 		return
@@ -205,30 +190,28 @@ func (s *service) Pick(ctx context.Context, id string) (space *AnySpace, err err
 	return v.(*AnySpace), nil
 }
 
-func (s *service) HandleMessage(ctx context.Context, senderId string, req *spacesyncproto.ObjectSyncMessage) (err error) {
-	var msg = &spacesyncproto.SpaceSubscription{}
-	if err = msg.Unmarshal(req.Payload); err != nil {
-		return
+func (s *service) StorageExistsLocally(ctx context.Context, spaceId string) (exists bool, err error) {
+	st, err := s.spaceStorageProvider.WaitSpaceStorage(ctx, spaceId)
+	if err != nil && !errors.Is(err, spacestorage.ErrSpaceStorageMissing) {
+		return false, err
 	}
-	log.InfoCtx(ctx, "got subscription message", zap.Strings("spaceIds", msg.SpaceIds))
-	if msg.Action == spacesyncproto.SpaceSubscriptionAction_Subscribe {
-		return s.streamPool.AddTagsCtx(ctx, msg.SpaceIds...)
-	} else {
-		return s.streamPool.RemoveTagsCtx(ctx, msg.SpaceIds...)
+	if errors.Is(err, spacestorage.ErrSpaceStorageMissing) {
+		return false, nil
 	}
+	err = st.Close(ctx)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-func (s *service) StreamPool() streampool.StreamPool {
-	return s.streamPool
-}
-
-func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
+func (s *service) Delete(ctx context.Context, spaceId string) (err error) {
 	networkID := s.nodeConf.Configuration().NetworkId
-	delConf, err := coordinatorproto.PrepareDeleteConfirmation(s.accountKeys.SignKey, spaceID, s.accountKeys.PeerId, networkID)
+	delConf, err := coordinatorproto.PrepareDeleteConfirmation(s.accountKeys.SignKey, spaceId, s.accountKeys.PeerId, networkID)
 	if err != nil {
 		return
 	}
-	err = s.coordinator.SpaceDelete(ctx, spaceID, delConf)
+	err = s.coordinator.SpaceDelete(ctx, spaceId, delConf)
 	if err != nil {
 		err = convertCoordError(err)
 		return
@@ -238,11 +221,14 @@ func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
 
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
 	statusService := objectsyncstatus.NewSyncStatusService()
-	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id), SyncStatus: statusService})
+	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{
+		TreeSyncer: treesyncer.NewTreeSyncer(id),
+		SyncStatus: statusService,
+	})
 	if err != nil {
 		return
 	}
-	ns, err := newAnySpace(cc, s.syncStatusService, statusService)
+	ns, err := newAnySpace(cc)
 	if err != nil {
 		return
 	}

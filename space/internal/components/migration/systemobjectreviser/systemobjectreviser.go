@@ -43,13 +43,13 @@ func (Migration) Name() string {
 	return MName
 }
 
-func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
-	spaceObjects, err := listAllTypesAndRelations(store, space.Id())
+func (Migration) Run(ctx context.Context, log logger.CtxLogger, store, marketPlace dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+	spaceObjects, err := listAllTypesAndRelations(store)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %w", err)
 	}
 
-	marketObjects, err := listAllTypesAndRelations(store, addr.AnytypeMarketplaceWorkspace)
+	marketObjects, err := listAllTypesAndRelations(marketPlace)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations from marketplace space: %w", err)
 	}
@@ -69,18 +69,13 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 	return
 }
 
-func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string) (map[string]*types.Struct, error) {
+func listAllTypesAndRelations(store dependencies.QueryableStore) (map[string]*types.Struct, error) {
 	records, err := store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       pbtypes.IntList(int(model.ObjectType_objectType), int(model.ObjectType_relation)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
 			},
 		},
 	})
@@ -149,6 +144,7 @@ func buildDiffDetails(origin, current *types.Struct) (details []*model.Detail) {
 		bundle.RelationKeyIsReadonly.String(), bundle.RelationKeyIsHidden.String(),
 		bundle.RelationKeyRevision.String(), bundle.RelationKeyRelationReadonlyValue.String(),
 		bundle.RelationKeyRelationMaxCount.String(), bundle.RelationKeyTargetObjectType.String(),
+		bundle.RelationKeyIconEmoji.String(),
 	})
 
 	for key, value := range diff.Fields {

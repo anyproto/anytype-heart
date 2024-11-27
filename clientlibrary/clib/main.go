@@ -44,11 +44,6 @@ func RunDebugServer(addr *C.char) {
 	service.RunDebugServer(C.GoString(addr))
 }
 
-//export SetLogLevels
-func SetLogLevels(levels *C.char) {
-	service.SetLogLevels(C.GoString(levels))
-}
-
 //export Command
 func Command(cmd *C.char, data unsafe.Pointer, dataLen C.int, callback C.proxyFunc, callbackContext unsafe.Pointer) {
 	service.CommandAsync(C.GoString(cmd), C.GoBytes(data, dataLen), func(data []byte) {

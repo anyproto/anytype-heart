@@ -53,7 +53,7 @@ func New() History {
 
 type History interface {
 	Show(id domain.FullID, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error)
-	Versions(id domain.FullID, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error)
+	Versions(id domain.FullID, lastVersionId string, limit int, notIncludeVersion bool) (resp []*pb.RpcHistoryVersion, err error)
 	SetVersion(id domain.FullID, versionId string) (err error)
 	DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.EventMessage, *model.ObjectView, error)
 	GetBlocksParticipants(id domain.FullID, versionId string, blocks []*model.Block) ([]*model.ObjectViewBlockParticipant, error)
@@ -102,7 +102,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		Types:     true,
 	})
 	// nolint:errcheck
-	meta, _ := h.objectStore.QueryByID(dependentObjectIDs)
+	meta, _ := h.objectStore.QueryByIdCrossSpace(dependentObjectIDs)
 
 	meta = append(meta, database.Record{Details: s.CombinedDetails()})
 	details := make([]*model.ObjectViewDetailsSet, 0, len(meta))
@@ -113,7 +113,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		})
 	}
 
-	relations, err := h.objectStore.FetchRelationByLinks(id.SpaceID, s.PickRelationLinks())
+	relations, err := h.objectStore.SpaceIndex(id.SpaceID).FetchRelationByLinks(s.PickRelationLinks())
 	if err != nil {
 		return nil, nil, fmt.Errorf("fetch relations by links: %w", err)
 	}
@@ -131,13 +131,13 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	}, ver, nil
 }
 
-func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error) {
+func (h *history) Versions(id domain.FullID, lastVersionId string, limit int, notIncludeVersion bool) (resp []*pb.RpcHistoryVersion, err error) {
 	hasher := hashersPool.Get().(*blake3.Hasher)
 	defer hashersPool.Put(hasher)
 	if limit <= 0 {
 		limit = 100
 	}
-	var includeLastId = true
+	var includeLastId = !notIncludeVersion
 
 	reverse := func(vers []*pb.RpcHistoryVersion) []*pb.RpcHistoryVersion {
 		for i, j := 0, len(vers)-1; i < j; i, j = i+1, j-1 {
@@ -263,7 +263,7 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 		Relations: false,
 		Types:     true,
 	})
-	meta, err := h.objectStore.QueryByID(dependentObjectIDs)
+	meta, err := h.objectStore.QueryByIdCrossSpace(dependentObjectIDs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get dependencies: %w", err)
 	}

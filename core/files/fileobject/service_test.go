@@ -25,11 +25,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
-	"github.com/anyproto/anytype-heart/core/session"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -71,7 +71,7 @@ func (c *dummyConfig) Name() string {
 
 type dummyObjectArchiver struct{}
 
-func (a *dummyObjectArchiver) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error {
+func (a *dummyObjectArchiver) SetListIsArchived(_ []string, _ bool) error {
 	return nil
 }
 
@@ -270,6 +270,6 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
 
 		_, err := fx.GetFileIdFromObjectWaitLoad(ctx, testFileObjectId)
-		require.ErrorIs(t, err, ErrEmptyFileId)
+		require.ErrorIs(t, err, filemodels.ErrEmptyFileId)
 	})
 }

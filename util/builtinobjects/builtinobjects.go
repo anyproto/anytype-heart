@@ -17,8 +17,8 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/miolini/datacounter"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -102,11 +102,7 @@ var (
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
-			{model.BlockContentWidget_Tree, "bafyreib54qrvlara5ickx4sk7mtdmeuwnyrmsdwrrrmvw7rhluwd3mwkg4", "", true},
-			{model.BlockContentWidget_List, "bafyreifvmvqmlmrzzdd4db5gau4fcdhxbii4pkanjdvcjbofmmywhg3zni", "f984ddde-eb13-497e-809a-2b9a96fd3503", true},
-			{model.BlockContentWidget_List, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
+			{model.BlockContentWidget_Link, "bafyreic75ulgm2yz426hjwdjkzqw3kafniknki7qkhufqgrspmxzdppixa", "", true},
 		},
 		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
@@ -146,7 +142,8 @@ type BuiltinObjects interface {
 }
 
 type builtinObjects struct {
-	blockService   *block.Service
+	objectGetter   cache.ObjectGetter
+	detailsService detailservice.Service
 	importer       importer.Importer
 	store          objectstore.ObjectStore
 	tempDirService core.TempDirProvider
@@ -160,7 +157,8 @@ func New() BuiltinObjects {
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
-	b.blockService = a.MustComponent(block.CName).(*block.Service)
+	b.objectGetter = app.MustComponent[cache.ObjectGetter](a)
+	b.detailsService = app.MustComponent[detailservice.Service](a)
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
 	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
@@ -237,10 +235,10 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
-	progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
+	progress.FinishWithNotification(b.provideNotification(spaceID, progress, importErr, title), importErr)
 
-	if err != nil {
-		log.Errorf("failed to send notification: %v", err)
+	if importErr != nil {
+		log.Errorf("failed to send notification: %v", importErr)
 	}
 
 	if isNewSpace {
@@ -261,7 +259,7 @@ func (b *builtinObjects) provideNotification(spaceID string, progress process.Pr
 		Space:   spaceID,
 		Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
 			ProcessId: progress.Id(),
-			ErrorCode: common.GetImportErrorCode(err),
+			ErrorCode: common.GetImportNotificationErrorCode(err),
 			SpaceId:   spaceID,
 			Name:      title,
 			SpaceName: spaceName,
@@ -392,7 +390,7 @@ func (b *builtinObjects) getOldHomePageId(zipReader *zip.Reader) (id string, err
 }
 
 func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id string) {
-	if err := b.blockService.SetDetails(nil,
+	if err := b.detailsService.SetDetails(nil,
 		spc.DerivedIDs().Workspace,
 		[]*model.Detail{
 			{
@@ -414,7 +412,7 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 
 	widgetObjectID := spc.DerivedIDs().Widgets
 
-	if err = cache.DoStateCtx(b.blockService, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
+	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
 		for _, param := range widgetParams[useCase] {
 			objectID := param.objectID
 			if param.isObjectIDChanged {
@@ -456,7 +454,7 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 
 func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string, err error) {
 	var ids []string
-	if ids, _, err = b.store.QueryObjectIDs(database.Query{
+	if ids, _, err = b.store.SpaceIndex(spaceID).QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -542,7 +540,7 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 }
 
 func (b *builtinObjects) setupProgress() (process.Notificationable, error) {
-	progress := process.NewNotificationProcess(pb.ModelProcess_Import, b.notifications)
+	progress := process.NewNotificationProcess(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}, b.notifications)
 	if err := b.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)
 	}

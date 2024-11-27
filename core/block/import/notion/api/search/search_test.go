@@ -7,10 +7,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/database"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/files/mock_files"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -32,10 +34,13 @@ func Test_GetDatabaseSuccess(t *testing.T) {
 	assert.Nil(t, err)
 
 	ds := database.New(nil)
-	databases, _, ce := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db, process.NewProgress(pb.ModelProcess_Import), api.NewNotionImportContext())
+	progress := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
+	downloader := mock_files.NewMockDownloader(t)
+	downloader.EXPECT().QueueFileForDownload(mock.Anything).Return(nil, true)
+	databases, _, ce := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db, progress, api.NewNotionImportContext(), downloader)
 
 	assert.NotNil(t, databases)
-	assert.Len(t, databases.Snapshots, 16) //1 database + 15 properties (name doesn't count)
+	assert.Len(t, databases.Snapshots, 16) // 1 database + 15 properties (name doesn't count)
 	assert.Nil(t, ce)
 }
 

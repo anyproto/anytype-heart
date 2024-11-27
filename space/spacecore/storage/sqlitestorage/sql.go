@@ -62,18 +62,21 @@ func initStmts(s *storageService) (err error) {
 		return
 	}
 	if s.stmt.deleteTree, err = s.writeDb.Prepare(`
-			INSERT INTO trees (id, spaceId, heads) VALUES(?, "", NULL)
+			INSERT INTO trees (id, spaceId, heads) VALUES(?, ?, NULL)
 			ON CONFLICT (id) DO UPDATE SET heads = NULL
 	`); err != nil {
 		return
 	}
 	if s.stmt.updateTreeDelStatus, err = s.writeDb.Prepare(`
-			INSERT INTO trees (id, deleteStatus, spaceId) VALUES(?, ?, "")
+			INSERT INTO trees (id, deleteStatus, spaceId) VALUES(?, ?, ?)
 			ON CONFLICT (id) DO UPDATE SET deleteStatus = ?
 	`); err != nil {
 		return
 	}
 	if s.stmt.treeDelStatus, err = s.readDb.Prepare(`SELECT deleteStatus FROM trees WHERE id = ?`); err != nil {
+		return
+	}
+	if s.stmt.allTreeDelStatus, err = s.readDb.Prepare(`SELECT id FROM trees WHERE spaceId = ? AND deleteStatus = ?`); err != nil {
 		return
 	}
 	if s.stmt.change, err = s.readDb.Prepare(`SELECT data FROM changes WHERE id = ? AND spaceId = ?`); err != nil {

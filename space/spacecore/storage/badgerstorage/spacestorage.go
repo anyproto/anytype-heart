@@ -1,6 +1,7 @@
 package badgerstorage
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -154,12 +155,6 @@ func (s *spaceStorage) WriteSpaceHash(hash string) error {
 	})
 }
 
-func (s *spaceStorage) WriteOldSpaceHash(hash string) error {
-	return s.objDb.Update(func(txn *badger.Txn) error {
-		return txn.Set(s.keys.OldSpaceHash(), []byte(hash))
-	})
-}
-
 func (s *spaceStorage) ReadSpaceHash() (hash string, err error) {
 	err = s.objDb.View(func(txn *badger.Txn) error {
 		res, err := getTxn(txn, s.keys.SpaceHash())
@@ -172,13 +167,39 @@ func (s *spaceStorage) ReadSpaceHash() (hash string, err error) {
 	return
 }
 
-func (s *spaceStorage) ReadOldSpaceHash() (hash string, err error) {
+func (s *spaceStorage) AllDeletedTreeIds() (ids []string, err error) {
 	err = s.objDb.View(func(txn *badger.Txn) error {
-		res, err := getTxn(txn, s.keys.OldSpaceHash())
-		if err != nil {
-			return err
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		opts.Prefix = s.keys.TreeDeletedPrefix()
+
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			id := make([]byte, 0, len(item.Key()))
+			id = item.KeyCopy(id)
+			if len(id) <= len(s.keys.TreeDeletedPrefix())+1 {
+				continue
+			}
+
+			var isDeleted bool
+			err = item.Value(func(val []byte) error {
+				if bytes.Equal(val, []byte(spacestorage.TreeDeletedStatusDeleted)) {
+					isDeleted = true
+				}
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("read value: %w", err)
+			}
+
+			if isDeleted {
+				id = id[len(s.keys.TreeDeletedPrefix())+1:]
+				ids = append(ids, string(id))
+			}
 		}
-		hash = string(res)
 		return nil
 	})
 	return

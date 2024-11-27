@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "8b79add6b322acbcee123ad178c1aee523a2d9b9f219c391903530b29e554a1e"
+const TypeChecksum = "5458717a4167a70b8a8e3148147e192263a645484359ec155b6856a8996e8ec8"
 const (
 	TypePrefix = "_ot"
 )
@@ -41,6 +41,8 @@ const (
 	TypeKeyGoal           domain.TypeKey = "goal"
 	TypeKeyFile           domain.TypeKey = "file"
 	TypeKeyProject        domain.TypeKey = "project"
+	TypeKeyChat           domain.TypeKey = "chat"
+	TypeKeyChatDerived    domain.TypeKey = "chatDerived"
 )
 
 var (
@@ -80,6 +82,30 @@ var (
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "bookmark",
 		},
+		TypeKeyChat: {
+
+			Description:   "A chat [deprecated]",
+			Hidden:        true,
+			IconEmoji:     "💬",
+			Layout:        model.ObjectType_chat,
+			Name:          "Chat [deprecated]",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_ChatObject},
+			Url:           TypePrefix + "chat",
+		},
+		TypeKeyChatDerived: {
+
+			Description:   "A chat derived object",
+			Hidden:        true,
+			Layout:        model.ObjectType_chatDerived,
+			Name:          "Chat Derived Object",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
+			Revision:      1,
+			Types:         []model.SmartBlockType{model.SmartBlockType_ChatDerivedObject},
+			Url:           TypePrefix + "chatDerived",
+		},
 		TypeKeyCollection: {
 
 			Description:   "Collect objects in one place, use different views to organize them",
@@ -118,7 +144,7 @@ var (
 			Description:   "Gregorian calendar date",
 			Hidden:        true,
 			IconEmoji:     "📅",
-			Layout:        model.ObjectType_basic,
+			Layout:        model.ObjectType_date,
 			Name:          "Date",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
@@ -337,11 +363,12 @@ var (
 		TypeKeyTemplate: {
 
 			Description:   "Sample object that has already some details in place and used to create objects from",
-			Hidden:        true,
+			IconEmoji:     "🧩",
 			Layout:        model.ObjectType_basic,
 			Name:          "Template",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTargetObjectType), MustGetRelationLink(RelationKeyTemplateIsBundled)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Template},
 			Url:           TypePrefix + "template",
 		},

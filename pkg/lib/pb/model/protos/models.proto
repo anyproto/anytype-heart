@@ -51,6 +51,9 @@ enum SmartBlockType {
 
     NotificationObject = 0x217;
     DevicesObject = 0x218;
+    ChatObject = 0x219; // Container for any-store based chats
+    ChatDerivedObject = 0x220; // Any-store based object for chat
+    AccountObject = 0x221; // Container for account data in tech space
 }
 
 message Search {
@@ -97,6 +100,7 @@ message Block {
         Content.TableColumn tableColumn = 27;
         Content.TableRow tableRow = 28;
         Content.Widget widget = 29;
+        Content.Chat chat = 30;
     }
 
     message Restrictions {
@@ -380,10 +384,27 @@ message Block {
                 string key = 1;
                 bool isVisible = 2;
                 int32 width = 3; // the displayed column % calculated based on other visible relations
-                bool isReadOnly = 4;
+                // bool isReadOnly = 4; // deprecated
                 // bool dateIncludeTime = 5; // deprecated
                 // TimeFormat timeFormat = 6; // deprecated
                 // DateFormat dateFormat = 7; // deprecated
+                FormulaType formula = 8;
+
+                enum FormulaType {
+                  None				    = 0;
+                  Count				    = 1;
+                  CountDistinct		= 2;
+                  CountEmpty			= 3;
+                  CountNotEmpty		= 4;
+                  PercentEmpty		= 5;
+                  PercentNotEmpty	= 6;
+                  MathSum				  = 7;
+                  MathAverage			= 8;
+                  MathMedian			= 9;
+                  MathMin				  = 10;
+                  MathMax				  = 11;
+                  Range				    = 12;
+                }
             }
 
             message Sort {
@@ -535,6 +556,10 @@ message Block {
                 Codepen = 16;
                 Bilibili = 17;
                 Excalidraw = 18;
+                Kroki = 19;
+                Graphviz = 20;
+                Sketchfab = 21;
+                Image = 22;
             }
         }
 
@@ -559,6 +584,9 @@ message Block {
                 CompactList = 3;
                 View = 4;
             }
+        }
+        message Chat {
+
         }
     }
 }
@@ -614,6 +642,7 @@ message Account {
         string archiveObjectId = 3; // archive block id
         string profileObjectId = 4; // profile block id
         string marketplaceWorkspaceId = 11; // marketplace workspace id
+        string workspaceObjectId = 15; // workspace object id. used for space-level chat
 
         string deviceId = 8;
         string accountSpaceId = 9;
@@ -737,6 +766,9 @@ message ObjectType {
         participant = 19;
 
         pdf = 20;
+        chat = 21; // deprecated
+        chatDerived = 22;
+        tag = 23;
     }
 }
 
@@ -777,7 +809,7 @@ message Relation {
     string description = 14;
 
     // on-store fields, injected only locally
-    Scope scope = 20; // scope from which this relation have been aggregated
+    Scope scope = 20; // deprecated, to be removed
     string creator = 21; // creator profile id
     int64 revision = 22; // revision of system relation. Used to check if we should change relation content or not
 
@@ -1093,15 +1125,27 @@ message Import {
     }
 
     enum ErrorCode {
-        NULL = 0;
-        UNKNOWN_ERROR = 1;
-        BAD_INPUT = 2;
-        INTERNAL_ERROR = 3;
-        NO_OBJECTS_TO_IMPORT = 5;
-        IMPORT_IS_CANCELED = 6;
-        LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
-        FILE_LOAD_ERROR = 8;
-        INSUFFICIENT_PERMISSIONS = 9;
+      NULL = 0;
+      UNKNOWN_ERROR = 1;
+      BAD_INPUT = 2;
+      INTERNAL_ERROR = 3;
+      FILE_LOAD_ERROR = 8;
+      IMPORT_IS_CANCELED = 6;
+
+      NOTION_NO_OBJECTS_IN_INTEGRATION= 5;
+      NOTION_SERVER_IS_UNAVAILABLE = 12;
+      NOTION_RATE_LIMIT_EXCEEDED= 13;
+
+      FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE = 14;
+      FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY = 17;
+
+      HTML_WRONG_HTML_STRUCTURE = 10;
+
+      PB_NOT_ANYBLOCK_FORMAT = 11;
+
+      CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
+
+      INSUFFICIENT_PERMISSIONS = 9;
     }
 }
 
@@ -1143,6 +1187,7 @@ enum ImageKind {
     Basic = 0;
     Cover = 1;
     Icon = 2;
+    AutomaticallyAdded = 3;
 }
 
 enum FileIndexingStatus {
@@ -1294,4 +1339,41 @@ message DeviceInfo {
     int64 addDate = 3;
     bool archived = 4;
     bool isConnected = 5;
+}
+
+message ChatMessage {
+    string id = 1;        // Unique message identifier
+    string orderId = 2;   // Used for subscriptions
+    string creator = 3;       // Identifier for the message creator
+    int64 createdAt = 4;
+    int64 modifiedAt = 9;
+    string replyToMessageId = 5;   // Identifier for the message being replied to
+    MessageContent message = 6;  // Message content
+    repeated Attachment attachments = 7;  // Attachments slice
+    Reactions reactions = 8;  // Reactions to the message
+
+    message MessageContent {
+        string text = 1;      // The text content of the message part
+        Block.Content.Text.Style style = 2;    // The style/type of the message part
+        repeated Block.Content.Text.Mark marks = 3; // List of marks applied to the text
+    }
+
+    message Attachment {
+        string target = 1;       // Identifier for the attachment object
+        AttachmentType type = 2; // Type of attachment
+
+        enum AttachmentType {
+            FILE = 0;   // File attachment
+            IMAGE = 1;  // Image attachment
+            LINK = 2;   // Link attachment
+        }
+    }
+
+    message Reactions {
+        map<string, IdentityList> reactions = 1; // Map of emoji to list of user IDs
+
+        message IdentityList {
+            repeated string ids = 1; // List of user IDs
+        }
+    }
 }

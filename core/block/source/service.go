@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
@@ -34,6 +35,7 @@ func New() Service {
 }
 
 type accountService interface {
+	AccountID() string
 	MyParticipantId(string) string
 	PersonalSpaceID() string
 }
@@ -53,9 +55,15 @@ type Service interface {
 	RegisterStaticSource(s Source) error
 	NewStaticSource(params StaticSourceParams) SourceWithType
 
-	DetailsFromIdBasedSource(id string) (*types.Struct, error)
+	DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error)
 	IDsListerBySmartblockType(space Space, blockType smartblock.SmartBlockType) (IDsLister, error)
 	app.Component
+}
+
+// TODO: GO-4494 - Remove this interface
+type derivedObjectIdGetter interface {
+	GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error)
+	GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error)
 }
 
 type service struct {
@@ -64,8 +72,11 @@ type service struct {
 	accountKeysService accountservice.Service
 	storageService     storage.ClientStorage
 	fileService        files.Service
-	objectStore        RelationGetter
+	objectStore        objectstore.ObjectStore
 	fileObjectMigrator fileObjectMigrator
+
+	// TODO: GO-4494 - Remove derivedObjectIdGetter
+	derivedObjectIdGetter derivedObjectIdGetter
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -78,10 +89,13 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountService = app.MustComponent[accountService](a)
 	s.accountKeysService = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
-	s.objectStore = app.MustComponent[RelationGetter](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
+
+	// TODO: GO-4494 - Remove derivedObjectIdGetter
+	s.derivedObjectIdGetter = app.MustComponent[derivedObjectIdGetter](a)
 	return
 }
 
@@ -96,11 +110,22 @@ type BuildOptions struct {
 
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	return objecttreebuilder.BuildTreeOpts{
-		Listener:    b.Listener,
-		TreeBuilder: objecttree.BuildKeyFilterableObjectTree,
-		TreeValidator: func(payload treestorage.TreeStorageCreatePayload, buildFunc objecttree.BuildObjectTreeFunc, aclList list.AclList) (retPayload treestorage.TreeStorageCreatePayload, err error) {
-			return objecttree.ValidateFilterRawTree(payload, aclList)
+		Listener: b.Listener,
+		TreeBuilder: func(treeStorage treestorage.TreeStorage, aclList list.AclList) (objecttree.ObjectTree, error) {
+			ot, err := objecttree.BuildKeyFilterableObjectTree(treeStorage, aclList)
+			if err != nil {
+				return nil, err
+			}
+			sbt, _, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
+			if err != nil {
+				return nil, err
+			}
+			if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
+				ot.SetFlusher(objecttree.MarkNewChangeFlusher())
+			}
+			return ot, nil
 		},
+		TreeValidator: objecttree.ValidateFilterRawTree,
 	}
 }
 
@@ -127,7 +152,25 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	if err == nil {
 		switch st {
 		case smartblock.SmartBlockTypeDate:
-			return NewDate(space, id), nil
+			typeId, err := space.GetTypeIdByKey(context.Background(), bundle.TypeKeyDate)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find Date type to build Date object: %w", err)
+			}
+
+			// TODO: GO-4494 - Remove links relation id fetch
+			linksRelationId, err := space.GetRelationIdByKey(context.Background(), bundle.RelationKeyLinks)
+			if err != nil {
+				return nil, fmt.Errorf("get links relation id: %w", err)
+			}
+
+			return NewDate(DateSourceParams{
+				Id: domain.FullID{
+					ObjectID: id,
+					SpaceID:  space.Id(),
+				},
+				DateObjectTypeId: typeId,
+				LinksRelationId:  linksRelationId,
+			}), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
 			return NewBundledObjectType(id), nil
 		case smartblock.SmartBlockTypeBundledRelation:
@@ -188,12 +231,28 @@ func (s *service) IDsListerBySmartblockType(space Space, blockType smartblock.Sm
 	}
 }
 
-func (s *service) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
-	if !strings.HasPrefix(id, addr.DatePrefix) {
+func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error) {
+	if !strings.HasPrefix(id.ObjectID, addr.DatePrefix) {
 		return nil, fmt.Errorf("unsupported id")
 	}
-	// TODO Fix this, but how? It's broken by design, because no one pass spaceId here
-	ss := NewDate(nil, id)
+
+	// TODO: GO-4494 - Remove date type id fetch
+	dateObjectId, err := s.derivedObjectIdGetter.GetTypeIdByKey(context.Background(), id.SpaceID, bundle.TypeKeyDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get id of Date type object: %w", err)
+	}
+
+	// TODO: GO-4494 - Remove links relation id fetch
+	linksId, err := s.derivedObjectIdGetter.GetRelationIdByKey(context.Background(), id.SpaceID, bundle.RelationKeyLinks)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get id of Links relation object: %w", err)
+	}
+
+	ss := NewDate(DateSourceParams{
+		Id:               id,
+		DateObjectTypeId: dateObjectId,
+		LinksRelationId:  linksId,
+	})
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
 		return v.DetailsFromId()
