@@ -77,6 +77,7 @@ func (ko *KeyOrder) Compare(a, b *types.Struct) int {
 	av, bv = ko.tryExtractSnippet(a, b, av, bv)
 	av, bv = ko.tryExtractDateTime(av, bv)
 	av, bv = ko.tryExtractTag(av, bv)
+	av, bv = ko.tryExtractBool(av, bv)
 
 	comp := ko.tryCompareStrings(av, bv)
 	if comp == 0 {
@@ -231,6 +232,18 @@ func (ko *KeyOrder) tryFlipComp(comp int) int {
 func (ko *KeyOrder) isSpecialSortOfEmptyValuesNeed(av *types.Value, bv *types.Value, aString bool, bString bool) bool {
 	return (ko.EmptyPlacement != model.BlockContentDataviewSort_NotSpecified) &&
 		(aString || av == nil) && (bString || bv == nil)
+}
+
+func (ko *KeyOrder) tryExtractBool(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
+	if ko.relationFormat == model.RelationFormat_checkbox {
+		if av == nil {
+			av = pbtypes.Bool(false)
+		}
+		if bv == nil {
+			bv = pbtypes.Bool(false)
+		}
+	}
+	return av, bv
 }
 
 func (ko *KeyOrder) tryExtractTag(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {

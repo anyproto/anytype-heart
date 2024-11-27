@@ -242,30 +242,5 @@ func (p *Page) StateMigrations() migration.Migrations {
 			Version: 2,
 			Proc:    template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 		},
-		{
-			Version: 3,
-			Proc:    p.setDefaultValueForBoolRelation(),
-		},
 	})
-}
-
-func (p *Page) setDefaultValueForBoolRelation() func(s *state.State) {
-	return func(s *state.State) {
-		links := s.GetRelationLinks()
-		for _, link := range links {
-			if p.shouldAddDefaultValue(s, link) {
-				s.SetDetail(link.Key, pbtypes.Bool(false))
-			}
-		}
-	}
-}
-
-func (p *Page) shouldAddDefaultValue(s *state.State, link *model.RelationLink) bool {
-	return p.isSuitableRelation(link) && pbtypes.Get(s.Details(), link.Key) == nil
-}
-
-func (p *Page) isSuitableRelation(link *model.RelationLink) bool {
-	return (!bundle.IsSystemRelation(domain.RelationKey(link.Key)) ||
-		link.Key == bundle.RelationKeyDone.String() || link.Key == bundle.RelationKeyStarred.String()) &&
-		link.Format == model.RelationFormat_checkbox
 }
