@@ -42,7 +42,7 @@ type Flags struct {
 	NoSystemRelations,
 	NoHiddenBundledRelations,
 	NoImages,
-	UnifyDateObjectIds bool
+	RoundDateIdsToDay bool
 }
 
 func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags) (ids []string) {
@@ -80,8 +80,8 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags)
 		ids = append(ids, s.GetStoreSlice(template.CollectionStoreKey)...)
 	}
 
-	if flags.UnifyDateObjectIds {
-		ids = unifyDateObjectIds(ids)
+	if flags.RoundDateIdsToDay {
+		ids = roundDateIds(ids)
 	}
 
 	ids = lo.Uniq(ids)
@@ -205,8 +205,8 @@ func collectIdsFromDetail(rel *model.RelationLink, det *types.Struct, flags Flag
 	return ids
 }
 
-// unifyDateObjectIds turns all date object ids into ids with no time included
-func unifyDateObjectIds(ids []string) []string {
+// roundDateIds turns all date object ids into ids with no time included
+func roundDateIds(ids []string) []string {
 	for i, id := range ids {
 		dateObject, err := dateutil.BuildDateObjectFromId(id)
 		if err != nil {

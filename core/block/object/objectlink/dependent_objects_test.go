@@ -212,8 +212,8 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 		assert.Len(t, objectIDs, 15) // 11 links + 4 relations
 	})
 
-	t.Run("date object ids are unified", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, UnifyDateObjectIds: true})
+	t.Run("date object ids are rounded to day", func(t *testing.T) {
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, RoundDateIdsToDay: true})
 		assert.Len(t, objectIDs, 10)
 	})
 }
