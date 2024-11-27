@@ -63,7 +63,9 @@ func EnrichRecordsWithDateSuggestions(
 func suggestDateObjectIds(req *pb.RpcObjectSearchRequest) []string {
 	dt := suggestDateForSearch(time.Now(), req.FullText)
 	if !dt.IsZero() {
-		isDay := dt.Hour() == 0 && dt.Minute() == 0 && dt.Second() == 0
+		// TODO: GO-4097 Uncomment it when we will be able to support dates with seconds precision
+		// isDay := dt.Hour() == 0 && dt.Minute() == 0 && dt.Second() == 0
+		isDay := true
 		return []string{dateutil.NewDateObject(dt, !isDay).Id()}
 	}
 
