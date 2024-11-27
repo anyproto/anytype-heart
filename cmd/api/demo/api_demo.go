@@ -98,7 +98,7 @@ func main() {
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Errorf("Failed to make request to %s: %v\n", ep.endpoint, err)
+			log.Errorf("Failed to make request to %s: %v\n", finalURL, err.Error())
 			continue
 		}
 		defer resp.Body.Close()

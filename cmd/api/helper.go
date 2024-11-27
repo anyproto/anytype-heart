@@ -74,9 +74,13 @@ func validateURL(url string) string {
 }
 
 func (a *ApiServer) imageToBase64(imagePath string) (string, error) {
-	resp, err := http.Get(validateURL(imagePath))
+	client := &http.Client{
+		Timeout: httpTimeout,
+	}
+	resp, err := client.Get(validateURL(imagePath))
 	if err != nil {
-		return "", err
+		// don't return error if image is not found
+		return "", nil
 	}
 	defer resp.Body.Close()
 

@@ -448,10 +448,6 @@ func (a *ApiServer) createObjectHandler(c *gin.Context) {
 				"iconEmoji": {Kind: &types.Value_StringValue{StringValue: request.IconEmoji}},
 			},
 		},
-		// TODO figure out internal flags
-		InternalFlags: []*model.InternalFlag{
-			{Value: model.InternalFlagValue(2)},
-		},
 		TemplateId:          request.TemplateId,
 		SpaceId:             spaceId,
 		ObjectTypeUniqueKey: request.ObjectTypeUniqueKey,
@@ -506,7 +502,7 @@ func (a *ApiServer) updateObjectHandler(c *gin.Context) {
 //	@Tags		types_and_templates
 //	@Accept		json
 //	@Produce	json
-//	@Param		space_id	path		string					true	"The Id of the space"
+//	@Param		space_id	path		string					true	"The ID of the space"
 //	@Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
 //	@Param		limit		query		int						false	"The number of items to return"	default(100)
 //	@Success	200			{object}	map[string]ObjectType	"List of object types"
@@ -691,6 +687,8 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value: pbtypes.IntList([]int{
 				int(model.ObjectType_basic),
+				int(model.ObjectType_profile),
+				int(model.ObjectType_todo),
 				int(model.ObjectType_note),
 				int(model.ObjectType_bookmark),
 				int(model.ObjectType_set),

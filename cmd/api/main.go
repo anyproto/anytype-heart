@@ -19,6 +19,7 @@ import (
 
 const (
 	httpPort           = ":31009"
+	httpTimeout        = 1 * time.Second
 	serverShutdownTime = 5 * time.Second
 )
 
