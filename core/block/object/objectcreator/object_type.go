@@ -43,9 +43,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
-	if createDate := pbtypes.GetInt64(details, bundle.RelationKeyCreatedDate.String()); createDate != 0 {
-		createState.SetOriginalCreatedTimestamp(createDate)
-	}
+	setOriginalCreatedTimestamp(createState, details)
 	id, newDetails, err = s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyObjectType}, createState)
 	if err != nil {
 		return "", nil, fmt.Errorf("create smartblock from state: %w", err)

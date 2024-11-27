@@ -133,7 +133,7 @@ type State struct {
 
 	groupId                  string
 	noObjectType             bool
-	originalCreatedTimestamp int64 // pass here from snapshots when importing objects
+	originalCreatedTimestamp int64 // pass here from snapshots when importing objects or used for derived objects such as relations, types and etc
 }
 
 func (s *State) MigrationVersion() uint32 {

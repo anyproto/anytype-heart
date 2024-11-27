@@ -210,3 +210,9 @@ func buildDateObject(space clientspace.Space, details *types.Struct) (string, *t
 	details, err = detailsGetter.DetailsFromId()
 	return id, details, err
 }
+
+func setOriginalCreatedTimestamp(state *state.State, details *types.Struct) {
+	if createDate := pbtypes.GetInt64(details, bundle.RelationKeyCreatedDate.String()); createDate != 0 {
+		state.SetOriginalCreatedTimestamp(createDate)
+	}
+}
