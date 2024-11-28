@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"math/big"
 	"net/http"
-	"sort"
 	"strconv"
 	"time"
 
@@ -677,14 +676,10 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 			Condition:   model.BlockContentDataviewFilter_NotEqual,
 			Value:       pbtypes.Bool(true),
 		},
-		{
-			RelationKey: bundle.RelationKeyName.String(),
-			Condition:   model.BlockContentDataviewFilter_Like,
-			Value:       pbtypes.String(searchTerm),
-		},
 	}
 
 	if searchTerm != "" {
+		// TODO also include snippet for notes
 		filters = append(filters, &model.BlockContentDataviewFilter{
 			RelationKey: bundle.RelationKeyName.String(),
 			Condition:   model.BlockContentDataviewFilter_Like,
@@ -710,8 +705,10 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
 				Type:        model.BlockContentDataviewSort_Desc,
 			}},
+			Keys:  []string{"id", "name", "type", "layout", "iconEmoji", "lastModifiedDate"},
+			Limit: 25,
+			// FullText: searchTerm,
 		})
-
 		for _, record := range objectSearchResponse.Records {
 			objectTypeName, err := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
 			if err != nil {
@@ -741,10 +738,6 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 		}
 	}
 
-	// Sort search results by lastModifiedDate and return the first `limit` results
-	sort.Slice(searchResults, func(i, j int) bool {
-		return searchResults[i].Details[0].Details["lastModifiedDate"].(float64) > searchResults[j].Details[0].Details["lastModifiedDate"].(float64)
-	})
 	if len(searchResults) > limit {
 		searchResults = searchResults[:limit]
 	}
