@@ -18,17 +18,15 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/idderiver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "source"
@@ -71,6 +69,7 @@ type service struct {
 	fileService        files.Service
 	objectStore        objectstore.ObjectStore
 	fileObjectMigrator fileObjectMigrator
+	idDeriver          idderiver.Deriver
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -84,6 +83,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountKeysService = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.idDeriver = app.MustComponent[idderiver.Deriver](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
@@ -219,25 +219,15 @@ func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, err
 		return nil, fmt.Errorf("unsupported id")
 	}
 
-	records, err := s.objectStore.SpaceIndex(id.SpaceID).Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{{
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeyUniqueKey.String(),
-			Value:       pbtypes.String(bundle.TypeKeyDate.URL()),
-		},
-		}})
-
-	if len(records) != 1 && err == nil {
-		err = fmt.Errorf("expected 1 record, got %d", len(records))
-	}
-
+	dateTypeId, err := s.idDeriver.DeriveObjectId(context.Background(), id.SpaceID,
+		domain.MustUniqueKey(smartblock.SmartBlockTypeObjectType, bundle.TypeKeyDate.String()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to query details of Date type object: %w", err)
+		return nil, fmt.Errorf("failed to derive id of Date type object: %w", err)
 	}
 
 	ss := NewDate(DateSourceParams{
 		Id:               id,
-		DateObjectTypeId: pbtypes.GetString(records[0].Details, bundle.RelationKeyId.String()),
+		DateObjectTypeId: dateTypeId,
 	})
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
