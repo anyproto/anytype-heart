@@ -1,34 +1,52 @@
+//go:build appdebug
+// +build appdebug
+
 package anytype
 
 import (
 	"fmt"
 	"hash/crc32"
 	"os"
+	"reflect"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/anyproto/any-sync/app"
 )
 
 /*
-How to use:
+	How to use:
 	Add the code and tun the app, login to the account
-	a = new(app.App)
-	a.SetCollect()
+	collector := newComponentCollector()
+	a.SetOnComponentListener(collector.collectInference)
 	...
 	if err = a.Start(ctx); err != nil {
 		metrics.Service.Close()
 		a = nil
 		return
 	}
-	PrintGraph(a)
+	printGraph(a)
 
 	Then type in shell:
 	dot -Tsvg graph.dot -o graph.svg && open graph.svg
 */
 
-func PrintGraph(app *app.App) {
+type componentCollector struct {
+	// key - component (package.structName), value - list of injected components
+	depsGraph map[string][]string
+	mu        sync.Mutex
+}
+
+func newComponentCollector() *componentCollector {
+	return &componentCollector{
+		depsGraph: make(map[string][]string),
+	}
+}
+
+func (cc *componentCollector) printGraph() {
 	graph := map[string][]string{}
 	nogo := []string{
 		"anytype-heart/core/block.Service",
@@ -38,7 +56,7 @@ func PrintGraph(app *app.App) {
 		"anytype-heart/pkg/lib/localstore/objectstore.dsObjectStore",
 		"anytype-heart/core/event.GrpcSender",
 	}
-	for key, values := range app.GetDepsGraph() {
+	for key, values := range cc.depsGraph {
 		for _, value := range values {
 			contains := false
 			for _, ng := range nogo {
@@ -63,6 +81,30 @@ func PrintGraph(app *app.App) {
 	}
 
 	topologicalSortAndPrint(graph)
+}
+
+func (cc *componentCollector) collectInference(found app.Component) {
+	pc, _, _, ok := runtime.Caller(2)
+	details := runtime.FuncForPC(pc)
+	if ok && details != nil {
+		fullTypeName := reflect.TypeOf(found).PkgPath() + "." + reflect.TypeOf(found).Name()
+		if len(fullTypeName) == 1 {
+			fullTypeName = reflect.TypeOf(found).Elem().PkgPath() + "." + reflect.TypeOf(found).Elem().Name()
+		}
+		calledFrom := runtime.FuncForPC(details.Entry()).Name()
+		calledForType := fullTypeName
+
+		calledFrom = strings.TrimPrefix(calledFrom, "github.com/anyproto/")
+		calledForType = strings.TrimPrefix(calledForType, "github.com/anyproto/")
+
+		if strings.Contains(calledFrom, ".(*") {
+			calledFrom = strings.Split(calledFrom, ".(*")[0] + "." + strings.Split(strings.Split(calledFrom, ".(*")[1], ").")[0]
+		}
+		calledForType = strings.Split(calledForType, ".(*")[0]
+		cc.mu.Lock()
+		cc.depsGraph[calledFrom] = append(cc.depsGraph[calledFrom], calledForType)
+		cc.mu.Unlock()
+	}
 }
 
 func dfs(
