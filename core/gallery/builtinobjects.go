@@ -16,28 +16,12 @@ import (
 //go:embed builtin/get_started.zip
 var getStartedZip []byte
 
-//go:embed builtin/personal_projects.zip
-var personalProjectsZip []byte
-
-//go:embed builtin/knowledge_base.zip
-var knowledgeBaseZip []byte
-
-//go:embed builtin/notes_diary.zip
-var notesDiaryZip []byte
-
-//go:embed builtin/strategic_writing.zip
-var strategicWritingZip []byte
-
 //go:embed builtin/empty.zip
 var emptyZip []byte
 
 var archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
-	pb.RpcObjectImportUseCaseRequest_GET_STARTED:       getStartedZip,
-	pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: personalProjectsZip,
-	pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    knowledgeBaseZip,
-	pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       notesDiaryZip,
-	pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: strategicWritingZip,
-	pb.RpcObjectImportUseCaseRequest_EMPTY:             emptyZip,
+	pb.RpcObjectImportUseCaseRequest_GET_STARTED: getStartedZip,
+	pb.RpcObjectImportUseCaseRequest_EMPTY:       emptyZip,
 }
 
 // TODO: GO-4131 Remove this method when clients support cache

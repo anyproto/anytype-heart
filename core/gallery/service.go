@@ -56,12 +56,8 @@ var (
 
 	// TODO: GO-4131 Fill in download links when built-in usecases will be downloaded to gallery
 	ucCodeToInfo = map[pb.RpcObjectImportUseCaseRequestUseCase]UseCaseInfo{
-		pb.RpcObjectImportUseCaseRequest_GET_STARTED:       {"get_started", "Get Started", "https://storage.gallery.any.coop/get_started/get_started.zip"},
-		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {"personal_projects", "Personal Projects", ""},
-		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    {"knowledge_base", "Knowledge Base", ""},
-		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       {"notes_diary", "Notes and Diary", ""},
-		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: {"strategic_writing", "Strategic Writing", ""},
-		pb.RpcObjectImportUseCaseRequest_EMPTY:             {"empty", "Empty", ""},
+		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {"get_started", "Get Started", "https://storage.gallery.any.coop/get_started/get_started.zip"},
+		pb.RpcObjectImportUseCaseRequest_EMPTY:       {"empty", "Empty", ""},
 	}
 
 	errOutdatedArchive = fmt.Errorf("archive is outdated")

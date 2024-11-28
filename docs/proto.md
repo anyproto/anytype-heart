@@ -23102,10 +23102,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NONE | 0 |  |
 | GET_STARTED | 1 |  |
-| PERSONAL_PROJECTS | 2 |  |
-| KNOWLEDGE_BASE | 3 |  |
-| NOTES_DIARY | 4 |  |
-| STRATEGIC_WRITING | 5 |  |
 | EMPTY | 6 |  |
 
 
