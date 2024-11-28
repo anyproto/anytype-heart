@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"math/big"
 	"net/http"
+	"sort"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -116,6 +118,11 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
 			},
+			{
+				RelationKey: bundle.RelationKeySpaceRemoteStatus.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+			},
 		},
 		Sorts: []*model.BlockContentDataviewSort{
 			{
@@ -133,31 +140,14 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 	for _, record := range resp.Records {
 		spaceId := record.Fields["targetSpaceId"].GetStringValue()
 		workspace := a.getWorkspaceInfo(c, spaceId)
+		workspace.Name = record.Fields["name"].GetStringValue()
 
-		// TODO cleanup image logic
-		// Convert space image or option to base64 string
-		var iconBase64 string
+		// Set space icon to gateway URL
 		iconImageId := record.Fields["iconImage"].GetStringValue()
 		if iconImageId != "" {
-			b64, err2 := a.imageToBase64(a.getGatewayURL(iconImageId))
-			if err2 != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to convert image to base64."})
-				return
-			}
-			iconBase64 = b64
-		} else {
-			iconOption := record.Fields["iconOption"].GetNumberValue()
-			// TODO figure out size
-			// Prevent index out of range error for space with empty name
-			if len(record.Fields["name"].GetStringValue()) > 0 {
-				iconBase64 = a.spaceSvg(int(iconOption), 100, string([]rune(record.Fields["name"].GetStringValue())[0]))
-			} else {
-				iconBase64 = a.spaceSvg(int(iconOption), 100, "")
-			}
+			workspace.Icon = a.getGatewayURLForMedia(iconImageId, true)
 		}
 
-		workspace.Name = record.Fields["name"].GetStringValue()
-		workspace.Icon = iconBase64
 		spaces = append(spaces, workspace)
 	}
 
@@ -251,26 +241,19 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 
 	members := make([]SpaceMember, 0, len(resp.Records))
 	for _, record := range resp.Records {
-		// Convert iconImage to base64 string
-		iconImageId := record.Fields["iconImage"].GetStringValue()
-		iconBase64 := ""
-		if iconImageId != "" {
-			b64, err2 := a.imageToBase64(a.getGatewayURL(iconImageId))
-			if err2 != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to convert image to base64."})
-				return
-			}
-			iconBase64 = b64
-		}
-
 		member := SpaceMember{
 			Type:       "space_member",
 			Id:         record.Fields["id"].GetStringValue(),
 			Name:       record.Fields["name"].GetStringValue(),
-			Icon:       iconBase64,
 			Identity:   record.Fields["identity"].GetStringValue(),
 			GlobalName: record.Fields["globalName"].GetStringValue(),
 			Role:       model.ParticipantPermissions_name[int32(record.Fields["participantPermissions"].GetNumberValue())],
+		}
+
+		// Set member icon to gateway URL
+		iconImageId := record.Fields["iconImage"].GetStringValue()
+		if iconImageId != "" {
+			member.Icon = a.getGatewayURLForMedia(iconImageId, true)
 		}
 
 		members = append(members, member)
@@ -279,7 +262,7 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"members": members})
 }
 
-// getSpaceHandler retrieves objects in a specific space
+// getSpaceObjectsHandler retrieves objects in a specific space
 //
 //	@Summary	Retrieve objects in a specific space
 //	@Tags		space_objects
@@ -645,7 +628,12 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	objectType := c.Query("object_type")
 	// TODO: implement offset and limit
 	// offset := c.DefaultQuery("offset", "0")
-	// limit := c.DefaultQuery("limit", "100")
+	l := c.DefaultQuery("limit", "100")
+	limit, err := strconv.Atoi(l)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to parse limit."})
+		return
+	}
 
 	// First, call ObjectSearch for all objects of type spaceView
 	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
@@ -753,6 +741,14 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 		}
 	}
 
+	// Sort search results by lastModifiedDate and return the first `limit` results
+	sort.Slice(searchResults, func(i, j int) bool {
+		return searchResults[i].Details[0].Details["lastModifiedDate"].(float64) > searchResults[j].Details[0].Details["lastModifiedDate"].(float64)
+	})
+	if len(searchResults) > limit {
+		searchResults = searchResults[:limit]
+	}
+
 	c.JSON(http.StatusOK, gin.H{"objects": searchResults})
 }
 
@@ -786,7 +782,7 @@ func (a *ApiServer) getChatMessagesHandler(c *gin.Context) {
 		for _, attachment := range message.Attachments {
 			target := attachment.Target
 			if attachment.Type != model.ChatMessageAttachment_LINK {
-				target = a.getGatewayURL(attachment.Target)
+				target = a.getGatewayURLForMedia(attachment.Target, false)
 			}
 			attachments = append(attachments, Attachment{
 				Target: target,

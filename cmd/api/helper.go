@@ -94,8 +94,12 @@ func (a *ApiServer) imageToBase64(imagePath string) (string, error) {
 	return encoded, nil
 }
 
-func (a *ApiServer) getGatewayURL(objectId string) string {
-	return fmt.Sprintf("%s/image/%s", a.accountInfo.GatewayUrl, objectId)
+func (a *ApiServer) getGatewayURLForMedia(objectId string, isIcon bool) string {
+	widthParam := ""
+	if isIcon {
+		widthParam = "?width=100"
+	}
+	return fmt.Sprintf("%s/image/%s%s", a.accountInfo.GatewayUrl, objectId, widthParam)
 }
 
 func (a *ApiServer) resolveTypeToName(spaceId string, typeId string) (string, *pb.RpcObjectSearchResponseError) {
