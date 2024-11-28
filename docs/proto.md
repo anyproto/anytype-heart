@@ -17647,8 +17647,8 @@ Available undo/redo operations
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectTypeId | [string](#string) |  |  |
-| relationKeys | [string](#string) | repeated |  |
+| typeObjectId | [string](#string) |  |  |
+| relationObjectIds | [string](#string) | repeated |  |
 
 
 
@@ -17704,8 +17704,8 @@ Available undo/redo operations
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectTypeId | [string](#string) |  |  |
-| relationKeys | [string](#string) | repeated |  |
+| typeObjectId | [string](#string) |  |  |
+| relationObjectIds | [string](#string) | repeated |  |
 
 
 

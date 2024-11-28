@@ -48,14 +48,9 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 	}
 }
 
-func (mw *Middleware) ObjectTypeRecommendedRelationsSet(ctx context.Context, req *pb.RpcObjectTypeRecommendedRelationsSetRequest) *pb.RpcObjectTypeRecommendedRelationsSetResponse {
+func (mw *Middleware) ObjectTypeRecommendedRelationsSet(_ context.Context, req *pb.RpcObjectTypeRecommendedRelationsSetRequest) *pb.RpcObjectTypeRecommendedRelationsSetResponse {
 	detailsService := getService[detailservice.Service](mw)
-	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
-	for _, relKey := range req.RelationKeys {
-		keys = append(keys, domain.RelationKey(relKey))
-	}
-
-	err := detailsService.ObjectTypeSetRelations(ctx, req.ObjectTypeId, keys)
+	err := detailsService.ObjectTypeSetRelations(req.TypeObjectId, req.RelationObjectIds)
 	code := mapErrorCode(err,
 		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRecommendedRelationsSetResponseError_READONLY_OBJECT_TYPE),
 	)
@@ -67,14 +62,9 @@ func (mw *Middleware) ObjectTypeRecommendedRelationsSet(ctx context.Context, req
 	}
 }
 
-func (mw *Middleware) ObjectTypeRecommendedFeaturedRelationsSet(ctx context.Context, req *pb.RpcObjectTypeRecommendedFeaturedRelationsSetRequest) *pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse {
+func (mw *Middleware) ObjectTypeRecommendedFeaturedRelationsSet(_ context.Context, req *pb.RpcObjectTypeRecommendedFeaturedRelationsSetRequest) *pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse {
 	detailsService := getService[detailservice.Service](mw)
-	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
-	for _, relKey := range req.RelationKeys {
-		keys = append(keys, domain.RelationKey(relKey))
-	}
-
-	err := detailsService.ObjectTypeSetFeaturedRelations(ctx, req.ObjectTypeId, keys)
+	err := detailsService.ObjectTypeSetFeaturedRelations(req.TypeObjectId, req.RelationObjectIds)
 	code := mapErrorCode(err,
 		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponseError_READONLY_OBJECT_TYPE),
 	)

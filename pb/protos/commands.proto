@@ -3067,8 +3067,8 @@ message Rpc {
         message Recommended {
             message RelationsSet {
                 message Request {
-                    string objectTypeId = 1;
-                    repeated string relationKeys = 2;
+                    string typeObjectId = 1;
+                    repeated string relationObjectIds = 2;
                 }
 
                 message Response {
@@ -3091,8 +3091,8 @@ message Rpc {
 
             message FeaturedRelationsSet {
                 message Request {
-                    string objectTypeId = 1;
-                    repeated string relationKeys = 2;
+                    string typeObjectId = 1;
+                    repeated string relationObjectIds = 2;
                 }
 
                 message Response {

@@ -66,16 +66,16 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 	})
 }
 
-func (s *service) ObjectTypeSetRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
-	return s.objectTypeSetRelations(ctx, objectTypeId, relationKeys, false)
+func (s *service) ObjectTypeSetRelations(objectTypeId string, relationObjectIds []string) error {
+	return s.objectTypeSetRelations(objectTypeId, relationObjectIds, false)
 }
 
-func (s *service) ObjectTypeSetFeaturedRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
-	return s.objectTypeSetRelations(ctx, objectTypeId, relationKeys, true)
+func (s *service) ObjectTypeSetFeaturedRelations(objectTypeId string, relationObjectIds []string) error {
+	return s.objectTypeSetRelations(objectTypeId, relationObjectIds, true)
 }
 
 func (s *service) objectTypeSetRelations(
-	ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey, isFeatured bool,
+	objectTypeId string, relationList []string, isFeatured bool,
 ) error {
 	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
 		return ErrBundledTypeIsReadonly
@@ -86,15 +86,7 @@ func (s *service) objectTypeSetRelations(
 	}
 	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		list := make([]string, len(relationKeys))
-		for i, relKey := range relationKeys {
-			relId, err := b.Space().GetRelationIdByKey(ctx, relKey)
-			if err != nil {
-				return fmt.Errorf("get relation id by key %s: %w", relKey, err)
-			}
-			list[i] = relId
-		}
-		st.SetDetailAndBundledRelation(relationToSet, pbtypes.StringList(list))
+		st.SetDetailAndBundledRelation(relationToSet, pbtypes.StringList(relationList))
 		return b.Apply(st)
 	})
 }

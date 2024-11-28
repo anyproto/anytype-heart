@@ -230,7 +230,6 @@ func TestService_objectTypeSetRelations(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		sb := smarttest.New(bundle.TypeKeyTask.URL())
-		sb.SetSpace(fx.space)
 		sb.Doc.(*state.State).SetDetails(&types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList([]string{
 				bundle.RelationKeyAssignee.URL(),
@@ -242,13 +241,10 @@ func TestService_objectTypeSetRelations(t *testing.T) {
 			assert.Equal(t, bundle.TypeKeyTask.URL(), objectId)
 			return sb, nil
 		})
-		fx.space.EXPECT().GetRelationIdByKey(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, key domain.RelationKey) (string, error) {
-			return key.URL(), nil
-		})
 
 		// when
-		err := fx.ObjectTypeSetRelations(nil, bundle.TypeKeyTask.URL(), []domain.RelationKey{
-			bundle.RelationKeyAssignee, bundle.RelationKeyDone,
+		err := fx.ObjectTypeSetRelations(bundle.TypeKeyTask.URL(), []string{
+			bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL(),
 		})
 
 		// then
@@ -262,8 +258,8 @@ func TestService_objectTypeSetRelations(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		err := fx.ObjectTypeSetRelations(nil, bundle.TypeKeyTask.BundledURL(), []domain.RelationKey{
-			bundle.RelationKeyAssignee, bundle.RelationKeyDone,
+		err := fx.ObjectTypeSetRelations(bundle.TypeKeyTask.BundledURL(), []string{
+			bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL(),
 		})
 
 		// then
@@ -275,7 +271,6 @@ func TestService_objectTypeSetRelations(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		sb := smarttest.New(bundle.TypeKeyTask.URL())
-		sb.SetSpace(fx.space)
 		sb.Doc.(*state.State).SetDetails(&types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyRecommendedFeaturedRelations.String(): pbtypes.StringList([]string{
 				bundle.RelationKeyAssignee.URL(),
@@ -287,13 +282,10 @@ func TestService_objectTypeSetRelations(t *testing.T) {
 			assert.Equal(t, bundle.TypeKeyTask.URL(), objectId)
 			return sb, nil
 		})
-		fx.space.EXPECT().GetRelationIdByKey(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, key domain.RelationKey) (string, error) {
-			return key.URL(), nil
-		})
 
 		// when
-		err := fx.ObjectTypeSetFeaturedRelations(nil, bundle.TypeKeyTask.URL(), []domain.RelationKey{
-			bundle.RelationKeyAssignee, bundle.RelationKeyDone,
+		err := fx.ObjectTypeSetFeaturedRelations(bundle.TypeKeyTask.URL(), []string{
+			bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL(),
 		})
 
 		// then
@@ -307,8 +299,8 @@ func TestService_objectTypeSetRelations(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		err := fx.ObjectTypeSetFeaturedRelations(nil, bundle.TypeKeyTask.BundledURL(), []domain.RelationKey{
-			bundle.RelationKeyAssignee, bundle.RelationKeyDone,
+		err := fx.ObjectTypeSetFeaturedRelations(bundle.TypeKeyTask.BundledURL(), []string{
+			bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL(),
 		})
 
 		// then
