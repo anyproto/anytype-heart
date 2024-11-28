@@ -16,6 +16,8 @@ import (
 	"github.com/mattn/go-sqlite3"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 var ErrLocked = errors.New("space storage locked")
@@ -23,9 +25,8 @@ var ErrLocked = errors.New("space storage locked")
 var log = logger.NewNamed("sqlitestore")
 
 var (
-	ErrSpaceNotFound  = errors.New("space not found")
-	ErrTreeNotFound   = treestorage.ErrUnknownTreeId
-	ErrObjectNotFound = errors.New("object not found")
+	ErrSpaceNotFound = errors.New("space not found")
+	ErrTreeNotFound  = treestorage.ErrUnknownTreeId
 )
 
 type configGetter interface {
@@ -286,7 +287,7 @@ func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCre
 
 func (s *storageService) GetSpaceID(objectID string) (spaceID string, err error) {
 	err = s.stmt.getBind.QueryRow(objectID).Scan(&spaceID)
-	err = replaceNoRowsErr(err, ErrObjectNotFound)
+	err = replaceNoRowsErr(err, domain.ErrObjectNotFound)
 	return
 }
 

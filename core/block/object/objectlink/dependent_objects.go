@@ -41,7 +41,8 @@ type Flags struct {
 	DataviewBlockOnlyTarget,
 	NoSystemRelations,
 	NoHiddenBundledRelations,
-	NoImages bool
+	NoImages,
+	RoundDateIdsToDay bool
 }
 
 func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags) (ids []string) {
@@ -77,6 +78,10 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags)
 
 	if flags.Collection {
 		ids = append(ids, s.GetStoreSlice(template.CollectionStoreKey)...)
+	}
+
+	if flags.RoundDateIdsToDay {
+		ids = roundDateIds(ids)
 	}
 
 	ids = lo.Uniq(ids)
@@ -152,7 +157,7 @@ func collectIdsFromDetail(rel *model.RelationLink, det *types.Struct, flags Flag
 		if relInt > 0 {
 			t := time.Unix(relInt, 0)
 			t = t.In(time.Local)
-			ids = append(ids, dateutil.TimeToDateId(t))
+			ids = append(ids, dateutil.NewDateObject(t, false).Id())
 		}
 		return
 	}
@@ -197,5 +202,18 @@ func collectIdsFromDetail(rel *model.RelationLink, det *types.Struct, flags Flag
 		}
 	}
 
+	return ids
+}
+
+// roundDateIds turns all date object ids into ids with no time included
+func roundDateIds(ids []string) []string {
+	for i, id := range ids {
+		dateObject, err := dateutil.BuildDateObjectFromId(id)
+		if err != nil {
+			continue
+		}
+
+		ids[i] = dateutil.NewDateObject(dateObject.Time(), false).Id()
+	}
 	return ids
 }
