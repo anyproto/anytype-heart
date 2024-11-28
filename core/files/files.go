@@ -23,9 +23,6 @@ import (
 	mh "github.com/multiformats/go-multihash"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/filestorage"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
@@ -48,8 +45,7 @@ var _ Service = (*service)(nil)
 type Service interface {
 	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
 	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
-	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
-	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
+
 	// GetFileVariants get file information from DAG. If file is not available locally, it fetches data from remote peer (file node or p2p peer)
 	GetFileVariants(ctx context.Context, fileId domain.FullFileId, keys map[string]string) ([]*storage.FileInfo, error)
 	GetContentReader(ctx context.Context, spaceID string, rawCid string, encKey string) (symmetric.ReadSeekCloser, error)
@@ -58,10 +54,10 @@ type Service interface {
 }
 
 type service struct {
-	commonFile  fileservice.FileService
-	fileSync    filesync.FileSync
-	dagService  ipld.DAGService
-	fileStorage filestorage.FileStorage
+	commonFile fileservice.FileService
+
+	dagService ipld.DAGService
+
 	objectStore objectstore.ObjectStore
 
 	lock              sync.Mutex
@@ -76,11 +72,9 @@ func New() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
-	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 
 	s.dagService = s.commonFile.DAGService()
-	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
 	return nil
 }
 

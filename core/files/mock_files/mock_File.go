@@ -181,51 +181,6 @@ func (_c *MockFile_LastModifiedDate_Call) RunAndReturn(run func() int64) *MockFi
 	return _c
 }
 
-// Media provides a mock function with given fields:
-func (_m *MockFile) Media() string {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for Media")
-	}
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
-// MockFile_Media_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Media'
-type MockFile_Media_Call struct {
-	*mock.Call
-}
-
-// Media is a helper method to define mock.On call
-func (_e *MockFile_Expecter) Media() *MockFile_Media_Call {
-	return &MockFile_Media_Call{Call: _e.mock.On("Media")}
-}
-
-func (_c *MockFile_Media_Call) Run(run func()) *MockFile_Media_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockFile_Media_Call) Return(_a0 string) *MockFile_Media_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockFile_Media_Call) RunAndReturn(run func() string) *MockFile_Media_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Meta provides a mock function with given fields:
 func (_m *MockFile) Meta() *files.FileMeta {
 	ret := _m.Called()
@@ -314,6 +269,51 @@ func (_c *MockFile_Mill_Call) Return(_a0 string) *MockFile_Mill_Call {
 }
 
 func (_c *MockFile_Mill_Call) RunAndReturn(run func() string) *MockFile_Mill_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MimeType provides a mock function with given fields:
+func (_m *MockFile) MimeType() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for MimeType")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockFile_MimeType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MimeType'
+type MockFile_MimeType_Call struct {
+	*mock.Call
+}
+
+// MimeType is a helper method to define mock.On call
+func (_e *MockFile_Expecter) MimeType() *MockFile_MimeType_Call {
+	return &MockFile_MimeType_Call{Call: _e.mock.On("MimeType")}
+}
+
+func (_c *MockFile_MimeType_Call) Run(run func()) *MockFile_MimeType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFile_MimeType_Call) Return(_a0 string) *MockFile_MimeType_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFile_MimeType_Call) RunAndReturn(run func() string) *MockFile_MimeType_Call {
 	_c.Call.Return(run)
 	return _c
 }

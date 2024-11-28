@@ -182,7 +182,8 @@ func TestUploader_Upload(t *testing.T) {
 		variants, err := fx.fileService.GetFileVariants(ctx, fullId, res.EncryptionKeys)
 		require.NoError(t, err)
 
-		file := files.NewFile(fx.fileService, fullId, variants)
+		file, err := files.NewFile(fx.fileService, fullId, variants)
+		require.NoError(t, err)
 		reader, err := file.Reader(ctx)
 		require.NoError(t, err)
 

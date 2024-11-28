@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -17,12 +18,13 @@ func TestFile_Details(t *testing.T) {
 
 	t.Run("svg details", func(t *testing.T) {
 		// given
-		f := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
+		f, err := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
 			{
 				Media: "svg+xml",
 				Name:  "image.svg",
 			},
 		})
+		require.NoError(t, err)
 
 		// when
 		details, typeKey, err := f.Details(context.Background())
@@ -37,11 +39,12 @@ func TestFile_Details(t *testing.T) {
 	})
 	t.Run("general file", func(t *testing.T) {
 		// given
-		f := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
+		f, err := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
 			{
 				Name: "file.txt",
 			},
 		})
+		require.NoError(t, err)
 
 		// when
 		details, typeKey, err := f.Details(context.Background())
@@ -56,12 +59,13 @@ func TestFile_Details(t *testing.T) {
 	})
 	t.Run("audio file", func(t *testing.T) {
 		// given
-		f := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
+		f, err := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
 			{
 				Name:  "file.mp3",
 				Media: "audio",
 			},
 		})
+		require.NoError(t, err)
 
 		// when
 		details, typeKey, err := f.Details(context.Background())
@@ -76,12 +80,13 @@ func TestFile_Details(t *testing.T) {
 	})
 	t.Run("video file", func(t *testing.T) {
 		// given
-		f := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
+		f, err := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
 			{
 				Name:  "file.mp4",
 				Media: "video",
 			},
 		})
+		require.NoError(t, err)
 
 		// when
 		details, typeKey, err := f.Details(context.Background())
@@ -96,12 +101,13 @@ func TestFile_Details(t *testing.T) {
 	})
 	t.Run("pdf file", func(t *testing.T) {
 		// given
-		f := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
+		f, err := NewFile(fx, domain.FullFileId{SpaceId: spaceId, FileId: "id"}, []*storage.FileInfo{
 			{
 				Name:  "file.pdf",
 				Media: "application/pdf",
 			},
 		})
+		require.NoError(t, err)
 
 		// when
 		details, typeKey, err := f.Details(context.Background())

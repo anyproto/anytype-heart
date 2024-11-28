@@ -269,7 +269,10 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 }
 
 func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId, infos []*storage.FileInfo) (details *domain.Details, typeKey domain.TypeKey, err error) {
-	file := files.NewFile(ind.fileService, id, infos)
+	file, err := files.NewFile(ind.fileService, id, infos)
+	if err != nil {
+		return nil, "", fmt.Errorf("new file: %w", err)
+	}
 
 	if file.Mill() == mill.BlobId {
 		details, typeKey, err = file.Details(ctx)
@@ -287,7 +290,7 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId, info
 	// Overwrite typeKey for images in case that image is uploaded as file.
 	// That can be possible because some images can't be handled properly and wee fall back to
 	// handling them as files
-	if mill.IsImage(file.Media()) {
+	if mill.IsImage(file.MimeType()) {
 		typeKey = bundle.TypeKeyImage
 	}
 

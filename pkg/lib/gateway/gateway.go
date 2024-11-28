@@ -238,11 +238,14 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 	var file files.File
 	var reader io.ReadSeeker
 	err := g.fileObjectService.DoFileWaitLoad(ctx, fileId, func(object fileobject2.FileObject) error {
-		file = object.GetFile()
 		var err error
+		file, err = object.GetFile()
+		if err != nil {
+			return fmt.Errorf("get file: %w", err)
+		}
 		reader, err = file.Reader(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("get reader: %w", err)
 		}
 		return nil
 	})
@@ -267,23 +270,23 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
 	defer cancel()
 
-	file, reader, err := g.getImage(ctx, r)
+	res, err := g.getImage(ctx, r)
 	if err != nil {
 		log.With("path", cleanUpPathForLogging(r.URL.Path)).Errorf("error getting image: %s", err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
 
-	meta := file.Meta()
-	w.Header().Set("Content-Type", meta.Media)
+	meta := res.file.Meta()
+	w.Header().Set("Content-Type", res.mimeType)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
 
 	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
 	// 	need to find a way to use ReadSeeker all the way from downloading files from IPFS to writing the decrypted chunk to the HTTP
-	http.ServeContent(w, r, meta.Name, meta.Added, reader)
+	http.ServeContent(w, r, meta.Name, meta.Added, res.reader)
 }
 
-func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
+func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReaderResult, error) {
 	urlParts := strings.Split(r.URL.Path, "/")
 	imageId := urlParts[2]
 
@@ -313,16 +316,21 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 		return res, nil
 	}, retryOptions...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get image reader: %w", err)
+		return nil, fmt.Errorf("get image reader: %w", err)
 	}
 
 	retryReader := newRetryReadSeeker(result.reader, retryOptions...)
-	return result.file, retryReader, nil
+	return &getImageReaderResult{
+		file:     result.file,
+		reader:   retryReader,
+		mimeType: result.mimeType,
+	}, nil
 }
 
 type getImageReaderResult struct {
-	file   files.File
-	reader io.ReadSeeker
+	file     files.File
+	reader   io.ReadSeeker
+	mimeType string
 }
 
 type retryReadSeeker struct {
@@ -385,15 +393,23 @@ func (g *gateway) getImageReader(ctx context.Context, image files.Image, req *ht
 	if err != nil {
 		return nil, fmt.Errorf("get image reader: %w", err)
 	}
-	return &getImageReaderResult{file: file, reader: reader}, nil
+	return &getImageReaderResult{
+		file:     file,
+		reader:   reader,
+		mimeType: file.MimeType(),
+	}, nil
 }
 
 func (g *gateway) handleSVGFile(ctx context.Context, file files.File) (*getImageReaderResult, error) {
-	reader, err := svg.ProcessSvg(ctx, file)
+	reader, mimeType, err := svg.ProcessSvg(ctx, file)
 	if err != nil {
 		return nil, err
 	}
-	return &getImageReaderResult{file, reader}, nil
+	return &getImageReaderResult{
+		file:     file,
+		reader:   reader,
+		mimeType: mimeType,
+	}, nil
 }
 
 func cleanUpPathForLogging(input string) string {

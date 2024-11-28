@@ -13,8 +13,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	pb "github.com/anyproto/anytype-heart/pb"
-
 	storage "github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 
 	symmetric "github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
@@ -224,123 +222,6 @@ func (_c *MockService_GetFileVariants_Call) Return(_a0 []*storage.FileInfo, _a1 
 }
 
 func (_c *MockService_GetFileVariants_Call) RunAndReturn(run func(context.Context, domain.FullFileId, map[string]string) ([]*storage.FileInfo, error)) *MockService_GetFileVariants_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetNodeUsage provides a mock function with given fields: ctx
-func (_m *MockService) GetNodeUsage(ctx context.Context) (*files.NodeUsageResponse, error) {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetNodeUsage")
-	}
-
-	var r0 *files.NodeUsageResponse
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (*files.NodeUsageResponse, error)); ok {
-		return rf(ctx)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context) *files.NodeUsageResponse); ok {
-		r0 = rf(ctx)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*files.NodeUsageResponse)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_GetNodeUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetNodeUsage'
-type MockService_GetNodeUsage_Call struct {
-	*mock.Call
-}
-
-// GetNodeUsage is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *MockService_Expecter) GetNodeUsage(ctx interface{}) *MockService_GetNodeUsage_Call {
-	return &MockService_GetNodeUsage_Call{Call: _e.mock.On("GetNodeUsage", ctx)}
-}
-
-func (_c *MockService_GetNodeUsage_Call) Run(run func(ctx context.Context)) *MockService_GetNodeUsage_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *MockService_GetNodeUsage_Call) Return(_a0 *files.NodeUsageResponse, _a1 error) *MockService_GetNodeUsage_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockService_GetNodeUsage_Call) RunAndReturn(run func(context.Context) (*files.NodeUsageResponse, error)) *MockService_GetNodeUsage_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetSpaceUsage provides a mock function with given fields: ctx, spaceID
-func (_m *MockService) GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error) {
-	ret := _m.Called(ctx, spaceID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetSpaceUsage")
-	}
-
-	var r0 *pb.RpcFileSpaceUsageResponseUsage
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*pb.RpcFileSpaceUsageResponseUsage, error)); ok {
-		return rf(ctx, spaceID)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *pb.RpcFileSpaceUsageResponseUsage); ok {
-		r0 = rf(ctx, spaceID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*pb.RpcFileSpaceUsageResponseUsage)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, spaceID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_GetSpaceUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSpaceUsage'
-type MockService_GetSpaceUsage_Call struct {
-	*mock.Call
-}
-
-// GetSpaceUsage is a helper method to define mock.On call
-//   - ctx context.Context
-//   - spaceID string
-func (_e *MockService_Expecter) GetSpaceUsage(ctx interface{}, spaceID interface{}) *MockService_GetSpaceUsage_Call {
-	return &MockService_GetSpaceUsage_Call{Call: _e.mock.On("GetSpaceUsage", ctx, spaceID)}
-}
-
-func (_c *MockService_GetSpaceUsage_Call) Run(run func(ctx context.Context, spaceID string)) *MockService_GetSpaceUsage_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockService_GetSpaceUsage_Call) Return(_a0 *pb.RpcFileSpaceUsageResponseUsage, _a1 error) *MockService_GetSpaceUsage_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockService_GetSpaceUsage_Call) RunAndReturn(run func(context.Context, string) (*pb.RpcFileSpaceUsageResponseUsage, error)) *MockService_GetSpaceUsage_Call {
 	_c.Call.Return(run)
 	return _c
 }

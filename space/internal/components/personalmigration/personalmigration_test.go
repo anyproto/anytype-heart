@@ -101,7 +101,7 @@ func TestRunner_Run(t *testing.T) {
 		}).Times(1)
 		fx.accountObject.EXPECT().SetAnalyticsId("analyticsId").Return(nil)
 		fx.accountObject.EXPECT().SetProfileDetails(mock.Anything).Return(nil)
-		fx.getter.EXPECT().DoFileWaitLoad(mock.Anything, "iconImage", func(_ fileobject.FileObject) error {
+		fx.getter.EXPECT().DoFileWaitLoad(mock.Anything, "iconImage", mock.Anything).RunAndReturn(func(ctx2 context.Context, s string, f func(fileobject.FileObject) error) error {
 			return nil
 		}).Return(nil)
 		fx.space.EXPECT().DoCtx(mock.Anything, "iconImage", mock.Anything).RunAndReturn(func(ctx2 context.Context, s string, f func(smartblock.SmartBlock) error) error {
@@ -175,7 +175,7 @@ func TestRunner_Run(t *testing.T) {
 		fx.space.EXPECT().DoCtx(mock.Anything, "Profile", mock.Anything).RunAndReturn(func(ctx2 context.Context, s string, f func(smartblock.SmartBlock) error) error {
 			return f(fx.smartBlock)
 		}).Times(1)
-		fx.getter.EXPECT().DoFileWaitLoad(mock.Anything, "iconImage", func(_ fileobject.FileObject) error {
+		fx.getter.EXPECT().DoFileWaitLoad(mock.Anything, "iconImage", mock.Anything).RunAndReturn(func(ctx2 context.Context, s string, f func(fileobject.FileObject) error) error {
 			return nil
 		}).Return(nil)
 		fx.space.EXPECT().DoCtx(mock.Anything, "iconImage", mock.Anything).RunAndReturn(func(ctx2 context.Context, s string, f func(smartblock.SmartBlock) error) error {

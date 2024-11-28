@@ -955,8 +955,11 @@ func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.S
 	if !ok {
 		return "", fmt.Errorf("object is not a file object")
 	}
-	file := fileObjectComponent.GetFile()
-	if strings.HasPrefix(file.Media(), "image") {
+	file, err := fileObjectComponent.GetFile()
+	if err != nil {
+		return "", fmt.Errorf("get file: %w", err)
+	}
+	if strings.HasPrefix(file.MimeType(), "image") {
 		image := fileObjectComponent.GetImage()
 		file, err = image.GetOriginalFile()
 		if err != nil {

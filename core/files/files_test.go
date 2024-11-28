@@ -341,7 +341,8 @@ func (fx *fixture) addFileObjectToStore(t *testing.T, got *AddResult) {
 		FileId:  got.FileId,
 	}
 
-	file := NewFile(fx.Service, fullFileId, got.Variants)
+	file, err := NewFile(fx.Service, fullFileId, got.Variants)
+	require.NoError(t, err)
 
 	objectId := bson.NewObjectId().Hex()
 	st := state.NewDoc(objectId, nil).(*state.State)

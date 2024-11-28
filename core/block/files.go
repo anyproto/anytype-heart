@@ -85,22 +85,9 @@ func (s *Service) getFileOrLargestImage(ctx context.Context, objectId string) (f
 		f files.File
 	)
 	err := s.fileObjectService.DoFileWaitLoad(ctx, objectId, func(object fileobject.FileObject) error {
-		f = object.GetFile()
-		return nil
+		var err error
+		f, err = object.GetFile()
+		return err
 	})
 	return f, err
-	// if err != nil {
-	// 	return nil, fmt.Errorf("get file: %w", err)
-	// }
-	// image, err := s.fileService.ImageByHash(ctx, id)
-	// if err != nil {
-	// 	return f, nil
-	// }
-	//
-	// f, err := image.GetOriginalFile()
-	// if err != nil {
-	// 	return s.fileService.FileByHash(ctx, id)
-	// }
-	//
-	// return f, nil
 }

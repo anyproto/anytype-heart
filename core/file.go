@@ -9,8 +9,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
+	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -155,7 +155,7 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 		return m
 	}
 
-	usage, err := getService[files.Service](mw).GetSpaceUsage(cctx, req.SpaceId)
+	usage, err := getService[filespaceusage.Service](mw).GetSpaceUsage(cctx, req.SpaceId)
 	if err != nil {
 		return response(pb.RpcFileSpaceUsageResponseError_UNKNOWN_ERROR, err, nil)
 	}
@@ -163,7 +163,7 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 }
 
 func (mw *Middleware) FileNodeUsage(ctx context.Context, req *pb.RpcFileNodeUsageRequest) *pb.RpcFileNodeUsageResponse {
-	usage, err := getService[files.Service](mw).GetNodeUsage(ctx)
+	usage, err := getService[filespaceusage.Service](mw).GetNodeUsage(ctx)
 	code := mapErrorCode[pb.RpcFileNodeUsageResponseErrorCode](err)
 	resp := &pb.RpcFileNodeUsageResponse{
 		Error: &pb.RpcFileNodeUsageResponseError{

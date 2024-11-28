@@ -311,7 +311,13 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 		s.Unlink(info.blockId)
 		return sf.Apply(s)
 	}
+	if info.err != nil {
+		return info.err
+	}
 	if isCollection(sf) {
+		if info.file == nil {
+			return fmt.Errorf("file block is nil")
+		}
 		s := sf.NewState()
 		if !s.HasInStore([]string{info.file.TargetObjectId}) {
 			s.UpdateStoreSlice(template.CollectionStoreKey, append(s.GetStoreSlice(template.CollectionStoreKey), info.file.TargetObjectId))

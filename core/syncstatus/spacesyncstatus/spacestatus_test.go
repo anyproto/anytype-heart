@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -140,7 +140,7 @@ func Test(t *testing.T) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
-			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
 					BytesLeft:         1000,
 					AccountBytesLimit: 1000,
@@ -169,7 +169,7 @@ func Test(t *testing.T) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
-			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
 					BytesLeft:         1000,
 					AccountBytesLimit: 1000,
@@ -200,7 +200,7 @@ func Test(t *testing.T) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
-			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
 					BytesLeft:         1000,
 					AccountBytesLimit: 1000,
@@ -252,7 +252,7 @@ func Test(t *testing.T) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
-			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
 					BytesLeft:         1,
 					AccountBytesLimit: 1000,
@@ -283,7 +283,7 @@ func Test(t *testing.T) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.ConnectionError)
-			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
 					BytesLeft:         1000,
 					AccountBytesLimit: 1000,
@@ -314,7 +314,7 @@ func Test(t *testing.T) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.ConnectionError)
-			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
 					BytesLeft:         1000,
 					AccountBytesLimit: 1000,
@@ -346,7 +346,7 @@ func Test(t *testing.T) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
-			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
 					BytesLeft:         1000,
 					AccountBytesLimit: 1000,
@@ -389,7 +389,7 @@ func Test(t *testing.T) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
-			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
 					BytesLeft:         1000,
 					AccountBytesLimit: 1000,
@@ -418,7 +418,7 @@ func Test(t *testing.T) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.ConnectionError)
-			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&files.NodeUsageResponse{
+			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
 					BytesLeft:         1000,
 					AccountBytesLimit: 1000,

@@ -2,6 +2,7 @@ package files
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
@@ -19,11 +20,11 @@ import (
 
 type File interface {
 	FileId() domain.FileId
-	Meta() *FileMeta                                   // could be taken from Details
+	Meta() *FileMeta
 	Reader(ctx context.Context) (io.ReadSeeker, error) // getNode(details.FileVariants[idx])
 	Details(ctx context.Context) (*domain.Details, domain.TypeKey, error)
 	Name() string
-	Media() string
+	MimeType() string
 	LastModifiedDate() int64
 	Mill() string
 }
@@ -120,7 +121,7 @@ func (f *file) Name() string {
 	return f.info.Name
 }
 
-func (f *file) Media() string {
+func (f *file) MimeType() string {
 	return f.info.Media
 }
 
@@ -165,11 +166,14 @@ func calculateCommonDetails(
 	return det
 }
 
-func NewFile(fileService Service, id domain.FullFileId, infos []*storage.FileInfo) File {
+func NewFile(fileService Service, id domain.FullFileId, infos []*storage.FileInfo) (File, error) {
+	if len(infos) == 0 {
+		return nil, fmt.Errorf("empty variant infos")
+	}
 	return &file{
 		spaceID:     id.SpaceId,
 		fileId:      id.FileId,
 		info:        infos[0],
 		fileService: fileService,
-	}
+	}, nil
 }

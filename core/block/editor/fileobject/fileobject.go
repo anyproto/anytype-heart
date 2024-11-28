@@ -12,7 +12,7 @@ import (
 var log = logging.Logger("anytype-mw-editor-fileobject")
 
 type FileObject interface {
-	GetFile() files.File
+	GetFile() (files.File, error)
 	GetImage() files.Image
 	GetFullFileId() domain.FullFileId
 }
@@ -36,7 +36,7 @@ func (f *fileObject) GetFullFileId() domain.FullFileId {
 	}
 }
 
-func (f *fileObject) GetFile() files.File {
+func (f *fileObject) GetFile() (files.File, error) {
 	infos := filemodels.GetFileInfosFromDetails(f.Details())
 	return files.NewFile(f.fileService, f.GetFullFileId(), infos)
 }
