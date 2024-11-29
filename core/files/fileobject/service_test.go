@@ -16,6 +16,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -239,11 +240,12 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().Do(testFileObjectId, mock.Anything).RunAndReturn(func(_ string, apply func(smartblock.SmartBlock) error) error {
 			sb := smarttest.New(testFileObjectId)
+			object := &editor.File{SmartBlock: sb}
 
 			st := sb.Doc.(*state.State)
 			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
 
-			return apply(sb)
+			return apply(object)
 		})
 
 		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
