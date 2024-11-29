@@ -11,7 +11,7 @@ require (
 	github.com/anyproto/any-sync v0.5.18
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
-	github.com/anyproto/lexid v0.0.2
+	github.com/anyproto/lexid v0.0.3-0.20241129110646-b41762d8b30f
 	github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5
 	github.com/anyproto/tantivy-go v0.2.0
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de

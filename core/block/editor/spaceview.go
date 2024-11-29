@@ -323,18 +323,15 @@ func (s *SpaceView) SetOrder(prevViewOrderId string) (string, error) {
 	return spaceOrderId, s.Apply(st)
 }
 
-func (s *SpaceView) SetAfterGivenView(viewOrderId string) (string, error) {
+func (s *SpaceView) SetAfterGivenView(viewOrderId string) error {
 	st := s.NewState()
 	spaceOrderId := pbtypes.GetString(st.Details(), bundle.RelationKeySpaceOrder.String())
-	if spaceOrderId == "" {
-		return spaceOrderId, nil
-	}
 	if viewOrderId > spaceOrderId {
 		spaceOrderId = lx.Next(viewOrderId)
 		st.SetDetail(bundle.RelationKeySpaceOrder.String(), pbtypes.String(spaceOrderId))
-		return spaceOrderId, s.Apply(st)
+		return s.Apply(st)
 	}
-	return spaceOrderId, nil
+	return nil
 }
 
 func (s *SpaceView) SetBetweenViews(prevViewOrderId, afterViewOrderId string) error {

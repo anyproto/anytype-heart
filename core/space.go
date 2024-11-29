@@ -4,18 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
-	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/editor"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
+	"github.com/anyproto/anytype-heart/core/spaceview"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/encode"
@@ -328,9 +325,8 @@ func (mw *Middleware) SpaceSetOrder(_ context.Context, request *pb.RpcSpaceSetOr
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return setSpaceViewOrder(bs, request)
-	})
+	orderService := app.MustComponent[spaceview.OrderSetter](mw.applicationService.GetApp())
+	err := orderService.SetSpaceViewOrder(request.SpaceViewId, request.GetSpaceViewOrder())
 	if err != nil {
 		return response(pb.RpcSpaceSetOrderResponseError_UNKNOWN_ERROR, err)
 	}
@@ -345,21 +341,12 @@ func (mw *Middleware) SpaceUnsetOrder(_ context.Context, request *pb.RpcSpaceUns
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return unsetOrder(bs, request)
-	})
+	orderService := app.MustComponent[spaceview.OrderSetter](mw.applicationService.GetApp())
+	err := orderService.UnsetOrder(request.SpaceViewId)
 	if err != nil {
 		return response(pb.RpcSpaceUnsetOrderResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcSpaceUnsetOrderResponseError_NULL, nil)
-}
-
-func unsetOrder(bs *block.Service, request *pb.RpcSpaceUnsetOrderRequest) error {
-	return cache.Do(bs, request.SpaceViewId, func(sb smartblock.SmartBlock) error {
-		state := sb.NewState()
-		state.RemoveDetail(bundle.RelationKeySpaceOrder.String())
-		return sb.Apply(state)
-	})
 }
 
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
@@ -427,95 +414,4 @@ func permissionsChange(ctx context.Context, spaceId string, changes []*model.Par
 		})
 	}
 	return aclService.ChangePermissions(ctx, spaceId, accPermissions)
-}
-
-func setSpaceViewOrder(og cache.ObjectGetter, request *pb.RpcSpaceSetOrderRequest) error {
-	spaceViewOrder := request.GetSpaceViewOrder()
-	if len(spaceViewOrder) < 2 {
-		return fmt.Errorf("insufficient space views for reordering")
-	}
-	spaceViewID := request.SpaceViewId
-	// given space view is the first view in the order
-	if spaceViewOrder[0] == spaceViewID {
-		return setViewAtBeginning(og, request.SpaceViewId, spaceViewOrder[1])
-	}
-	// given space view is the last view in the order
-	if spaceViewOrder[len(spaceViewOrder)-1] == spaceViewID {
-		return setViewAtEnd(og, spaceViewOrder, request.SpaceViewId, spaceViewOrder[len(spaceViewOrder)-2])
-	}
-	return adjustOrderForViews(og, spaceViewOrder, request.SpaceViewId)
-}
-
-func setViewAtBeginning(og cache.ObjectGetter, spaceViewId, afterViewId string) error {
-	var (
-		nextOrderID string
-		prevOrderId string
-		err         error
-	)
-	err = cache.Do[*editor.SpaceView](og, afterViewId, func(sv *editor.SpaceView) error {
-		nextOrderID, err = sv.SetAfterGivenView(prevOrderId)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	return cache.Do[*editor.SpaceView](og, spaceViewId, func(view *editor.SpaceView) error {
-		if nextOrderID == "" {
-			_, err = view.SetOrder(nextOrderID)
-			return err
-		}
-		return view.SetBetweenViews("", nextOrderID)
-	})
-}
-
-func setViewAtEnd(og cache.ObjectGetter, order []string, spaceViewId, afterSpaceView string) error {
-	var (
-		lastOrderId string
-		err         error
-	)
-	// get the order for the previous view in the list.
-	cacheErr := cache.Do[*editor.SpaceView](og, afterSpaceView, func(sv *editor.SpaceView) error {
-		lastOrderId, err = sv.SetAfterGivenView(lastOrderId)
-		if err != nil {
-			return fmt.Errorf("failed to update space order of view, %w", err)
-		}
-		return nil
-	})
-	if cacheErr != nil {
-		return cacheErr
-	}
-	// if view doesn't have order in details, then set it for all previous ids and get lastOrderId
-	if lastOrderId == "" {
-		return adjustOrderForViews(og, order, spaceViewId)
-	}
-	return cache.Do[*editor.SpaceView](og, spaceViewId, func(sv *editor.SpaceView) error {
-		_, err := sv.SetAfterGivenView(lastOrderId)
-		return err
-	})
-}
-
-func adjustOrderForViews(og cache.ObjectGetter, order []string, spaceViewId string) error {
-	var (
-		prevOrderId string
-		err         error
-	)
-	for _, id := range order {
-		cacheErr := cache.Do[*editor.SpaceView](og, id, func(sv *editor.SpaceView) error {
-			prevOrderId, err = sv.SetOrder(prevOrderId)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		if cacheErr != nil {
-			return cacheErr
-		}
-		if id == spaceViewId {
-			break
-		}
-	}
-	return nil
 }
