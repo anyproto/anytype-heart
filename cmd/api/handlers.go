@@ -224,6 +224,11 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
 			},
+			{
+				RelationKey: bundle.RelationKeyParticipantStatus.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Active)),
+			},
 		},
 		Sorts: []*model.BlockContentDataviewSort{
 			{
