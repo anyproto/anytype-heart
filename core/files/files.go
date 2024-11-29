@@ -474,6 +474,9 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	fileInfo.MetaHash = metaNode.Cid().String()
 
 	pairNode, err := s.addFilePairNode(ctx, spaceID, fileInfo)
+	if err != nil {
+		return nil, err
+	}
 	err = res.File.Close()
 	if err != nil {
 		log.Warnf("failed to close file: %s", err)
