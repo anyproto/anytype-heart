@@ -37,6 +37,16 @@ func (f *ftSearchTantivy) Iterate(objectId string, fields []string, shouldContin
 		return err
 	}
 
+	/*finalQuery := tantivy.NewQueryBuilder().Query(tantivy.Must, fieldId, objectId, tantivy.PhrasePrefixQuery, 1.0).Build()
+	sCtx := tantivy.NewSearchContextBuilder().
+		SetQueryFromJson(&finalQuery).
+		SetDocsLimit(docLimit).
+		SetWithHighlights(false).
+		AddFieldDefaultWeight(fieldId).
+		Build()
+
+	result, err := f.index.SearchJson(sCtx)*/
+
 	var parser = f.parserPool.Get()
 	defer f.parserPool.Put(parser)
 	searchResult, err := tantivy.GetSearchResults(
