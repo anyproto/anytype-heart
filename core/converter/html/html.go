@@ -11,7 +11,6 @@ import (
 
 	"go.uber.org/zap"
 
-	fileobject2 "github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -177,7 +176,10 @@ func (h *HTML) renderFile(b *model.Block) {
 		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_Image:
-		baseImg := h.getImageBase64(file.TargetObjectId)
+		baseImg, err := h.getImageBase64(context.Background(), file.TargetObjectId)
+		if err != nil {
+			log.Error("getImageBase64", zap.Error(err))
+		}
 		fmt.Fprintf(h.buf, `<div><img alt="%s" src="%s" />`, html.EscapeString(file.Name), baseImg)
 		h.renderChildren(b)
 		h.buf.WriteString("</div>")
@@ -470,26 +472,24 @@ func (h *HTML) writeTextToBuf(text *model.BlockContentText) {
 	}
 }
 
-func (h *HTML) getImageBase64(fileObjectId string) (res string) {
-	ctx := context.Background()
-	var encoded string
-	err := h.fileObjectService.DoFileWaitLoad(context.Background(), fileObjectId, func(object fileobject2.FileObject) error {
-		im := object.GetImage()
-		f, err := im.GetFileForWidth(1024)
-		if err != nil {
-			return err
-		}
-		rd, err := f.Reader(ctx)
-		if err != nil {
-			return err
-		}
-		data, _ := ioutil.ReadAll(rd)
-		dataBase64 := base64.StdEncoding.EncodeToString(data)
-		encoded = fmt.Sprintf("data:%s;base64, %s", f.Meta().Media, dataBase64)
-		return nil
-	})
+func (h *HTML) getImageBase64(ctx context.Context, fileObjectId string) (string, error) {
+	im, err := h.fileObjectService.GetImageData(ctx, fileObjectId)
 	if err != nil {
-		log.Error("getImageBase64", zap.Error(err))
+		return "", fmt.Errorf("get image data: %w", err)
 	}
-	return encoded
+	f, err := im.GetFileForWidth(1024)
+	if err != nil {
+		return "", fmt.Errorf("get image variant by width: %w", err)
+	}
+	rd, err := f.Reader(ctx)
+	if err != nil {
+		return "", fmt.Errorf("get reader: %w", err)
+	}
+	data, err := ioutil.ReadAll(rd)
+	if err != nil {
+		return "", fmt.Errorf("read image: %w", err)
+	}
+	dataBase64 := base64.StdEncoding.EncodeToString(data)
+	encoded := fmt.Sprintf("data:%s;base64, %s", f.Meta().Media, dataBase64)
+	return encoded, nil
 }

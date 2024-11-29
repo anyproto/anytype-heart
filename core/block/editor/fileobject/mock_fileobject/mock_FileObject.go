@@ -24,7 +24,7 @@ func (_m *MockFileObject) EXPECT() *MockFileObject_Expecter {
 }
 
 // GetFile provides a mock function with given fields:
-func (_m *MockFileObject) GetFile() files.File {
+func (_m *MockFileObject) GetFile() (files.File, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
@@ -32,6 +32,10 @@ func (_m *MockFileObject) GetFile() files.File {
 	}
 
 	var r0 files.File
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (files.File, error)); ok {
+		return rf()
+	}
 	if rf, ok := ret.Get(0).(func() files.File); ok {
 		r0 = rf()
 	} else {
@@ -40,7 +44,13 @@ func (_m *MockFileObject) GetFile() files.File {
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockFileObject_GetFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFile'
@@ -60,12 +70,12 @@ func (_c *MockFileObject_GetFile_Call) Run(run func()) *MockFileObject_GetFile_C
 	return _c
 }
 
-func (_c *MockFileObject_GetFile_Call) Return(_a0 files.File) *MockFileObject_GetFile_Call {
-	_c.Call.Return(_a0)
+func (_c *MockFileObject_GetFile_Call) Return(_a0 files.File, _a1 error) *MockFileObject_GetFile_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockFileObject_GetFile_Call) RunAndReturn(run func() files.File) *MockFileObject_GetFile_Call {
+func (_c *MockFileObject_GetFile_Call) RunAndReturn(run func() (files.File, error)) *MockFileObject_GetFile_Call {
 	_c.Call.Return(run)
 	return _c
 }

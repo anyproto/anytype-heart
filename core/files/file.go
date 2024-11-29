@@ -170,6 +170,8 @@ func NewFile(fileService Service, id domain.FullFileId, infos []*storage.FileInf
 	if len(infos) == 0 {
 		return nil, fmt.Errorf("empty variant infos")
 	}
+	// TODO Find the largest variant
+	// TODO Write a test for image, it should use original image as variant info
 	return &file{
 		spaceID:     id.SpaceId,
 		fileId:      id.FileId,

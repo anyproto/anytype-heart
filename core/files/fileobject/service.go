@@ -54,7 +54,11 @@ type Service interface {
 	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error)
 	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
 	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
+
 	DoFileWaitLoad(ctx context.Context, objectId string, proc func(object fileobject.FileObject) error) error
+	GetFileData(ctx context.Context, objectId string) (files.File, error)
+	GetImageData(ctx context.Context, objectId string) (files.Image, error)
+
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error)
 	MigrateFileIdsInDetails(st *state.State, spc source.Space)
 	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
@@ -478,6 +482,27 @@ func (s *service) DoFileWaitLoad(ctx context.Context, objectId string, proc func
 		}
 		return proc(fileObj)
 	})
+}
+
+// GetFileData waits for object to load and returns its file data
+func (s *service) GetFileData(ctx context.Context, objectId string) (files.File, error) {
+	var file files.File
+	err := s.DoFileWaitLoad(ctx, objectId, func(object fileobject.FileObject) error {
+		var err error
+		file, err = object.GetFile()
+		return err
+	})
+	return file, err
+}
+
+// GetImageData waits for object to load and returns its image data
+func (s *service) GetImageData(ctx context.Context, objectId string) (files.Image, error) {
+	var img files.Image
+	err := s.DoFileWaitLoad(ctx, objectId, func(object fileobject.FileObject) error {
+		img = object.GetImage()
+		return nil
+	})
+	return img, err
 }
 
 func (s *service) resolveSpaceIdWithRetry(ctx context.Context, objectId string) (string, error) {

@@ -18,7 +18,6 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ipfs/go-cid"
 
-	fileobject2 "github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
@@ -233,24 +232,17 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
 	fileIdAndPath := strings.TrimPrefix(r.URL.Path, "/file/")
 	parts := strings.Split(fileIdAndPath, "/")
-	fileId := parts[0]
+	objectId := parts[0]
 
 	var file files.File
 	var reader io.ReadSeeker
-	err := g.fileObjectService.DoFileWaitLoad(ctx, fileId, func(object fileobject2.FileObject) error {
-		var err error
-		file, err = object.GetFile()
-		if err != nil {
-			return fmt.Errorf("get file: %w", err)
-		}
-		reader, err = file.Reader(ctx)
-		if err != nil {
-			return fmt.Errorf("get reader: %w", err)
-		}
-		return nil
-	})
+	file, err := g.fileObjectService.GetFileData(ctx, objectId)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
+		return nil, nil, fmt.Errorf("get file data: %w", err)
+	}
+	reader, err = file.Reader(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get reader: %w", err)
 	}
 
 	return file, reader, err
@@ -300,19 +292,14 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 	}
 
 	result, err := retry.DoWithData(func() (*getImageReaderResult, error) {
-		var res *getImageReaderResult
-		err := g.fileObjectService.DoFileWaitLoad(ctx, imageId, func(object fileobject2.FileObject) error {
-			var err error
-			res, err = g.getImageReader(ctx, object.GetImage(), r)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
+		img, err := g.fileObjectService.GetImageData(ctx, imageId)
 		if err != nil {
-			return nil, fmt.Errorf("get file hash from object id: %w", err)
+			return nil, fmt.Errorf("get image data: %w", err)
 		}
-
+		res, err := g.getImageReader(ctx, img, r)
+		if err != nil {
+			return nil, fmt.Errorf("get image reader: %w", err)
+		}
 		return res, nil
 	}, retryOptions...)
 	if err != nil {

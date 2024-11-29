@@ -8,7 +8,6 @@ import (
 
 	"github.com/miolini/datacounter"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
@@ -54,7 +53,7 @@ func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadReque
 		}
 	}()
 
-	f, err := s.getFileOrLargestImage(ctx, req.ObjectId)
+	f, err := s.fileObjectService.GetFileData(ctx, req.ObjectId)
 	if err != nil {
 		return "", fmt.Errorf("get file by hash: %w", err)
 	}
@@ -78,16 +77,4 @@ func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadReque
 
 	progress.SetDone(f.Meta().Size)
 	return path, nil
-}
-
-func (s *Service) getFileOrLargestImage(ctx context.Context, objectId string) (files.File, error) {
-	var (
-		f files.File
-	)
-	err := s.fileObjectService.DoFileWaitLoad(ctx, objectId, func(object fileobject.FileObject) error {
-		var err error
-		f, err = object.GetFile()
-		return err
-	})
-	return f, err
 }

@@ -3,7 +3,6 @@
 package gateway
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"strings"
@@ -13,8 +12,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
-	"github.com/anyproto/anytype-heart/core/block/editor/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
 )
@@ -37,11 +34,7 @@ func TestGetImage_SVG(t *testing.T) {
 		image := mock_files.NewMockImage(t)
 		image.EXPECT().GetOriginalFile().Return(file, nil)
 
-		fx.fileObjectService.EXPECT().DoFileWaitLoad(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, s string, f func(fileobject.FileObject) error) error {
-			fileObject := mock_fileobject.NewMockFileObject(t)
-			fileObject.EXPECT().GetImage().Return(image)
-			return f(fileObject)
-		})
+		fx.fileObjectService.EXPECT().GetImageData(mock.Anything, mock.Anything).Return(image, nil)
 
 		path := "http://" + fx.Addr() + "/image/" + fileObjectId
 

@@ -13,6 +13,8 @@ import (
 
 	filemodels "github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 
+	files "github.com/anyproto/anytype-heart/core/files"
+
 	mock "github.com/stretchr/testify/mock"
 
 	objectorigin "github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -349,6 +351,65 @@ func (_c *MockService_EnsureFileAddedToSyncQueue_Call) RunAndReturn(run func(dom
 	return _c
 }
 
+// GetFileData provides a mock function with given fields: ctx, objectId
+func (_m *MockService) GetFileData(ctx context.Context, objectId string) (files.File, error) {
+	ret := _m.Called(ctx, objectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetFileData")
+	}
+
+	var r0 files.File
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (files.File, error)); ok {
+		return rf(ctx, objectId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) files.File); ok {
+		r0 = rf(ctx, objectId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(files.File)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, objectId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFileData'
+type MockService_GetFileData_Call struct {
+	*mock.Call
+}
+
+// GetFileData is a helper method to define mock.On call
+//   - ctx context.Context
+//   - objectId string
+func (_e *MockService_Expecter) GetFileData(ctx interface{}, objectId interface{}) *MockService_GetFileData_Call {
+	return &MockService_GetFileData_Call{Call: _e.mock.On("GetFileData", ctx, objectId)}
+}
+
+func (_c *MockService_GetFileData_Call) Run(run func(ctx context.Context, objectId string)) *MockService_GetFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_GetFileData_Call) Return(_a0 files.File, _a1 error) *MockService_GetFileData_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_GetFileData_Call) RunAndReturn(run func(context.Context, string) (files.File, error)) *MockService_GetFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetFileIdFromObject provides a mock function with given fields: objectId
 func (_m *MockService) GetFileIdFromObject(objectId string) (domain.FullFileId, error) {
 	ret := _m.Called(objectId)
@@ -401,6 +462,65 @@ func (_c *MockService_GetFileIdFromObject_Call) Return(_a0 domain.FullFileId, _a
 }
 
 func (_c *MockService_GetFileIdFromObject_Call) RunAndReturn(run func(string) (domain.FullFileId, error)) *MockService_GetFileIdFromObject_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetImageData provides a mock function with given fields: ctx, objectId
+func (_m *MockService) GetImageData(ctx context.Context, objectId string) (files.Image, error) {
+	ret := _m.Called(ctx, objectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetImageData")
+	}
+
+	var r0 files.Image
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (files.Image, error)); ok {
+		return rf(ctx, objectId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) files.Image); ok {
+		r0 = rf(ctx, objectId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(files.Image)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, objectId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetImageData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetImageData'
+type MockService_GetImageData_Call struct {
+	*mock.Call
+}
+
+// GetImageData is a helper method to define mock.On call
+//   - ctx context.Context
+//   - objectId string
+func (_e *MockService_Expecter) GetImageData(ctx interface{}, objectId interface{}) *MockService_GetImageData_Call {
+	return &MockService_GetImageData_Call{Call: _e.mock.On("GetImageData", ctx, objectId)}
+}
+
+func (_c *MockService_GetImageData_Call) Run(run func(ctx context.Context, objectId string)) *MockService_GetImageData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_GetImageData_Call) Return(_a0 files.Image, _a1 error) *MockService_GetImageData_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_GetImageData_Call) RunAndReturn(run func(context.Context, string) (files.Image, error)) *MockService_GetImageData_Call {
 	_c.Call.Return(run)
 	return _c
 }

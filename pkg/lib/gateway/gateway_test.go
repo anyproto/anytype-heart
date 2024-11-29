@@ -15,8 +15,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
-	mock_fileobject2 "github.com/anyproto/anytype-heart/core/block/editor/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
@@ -59,12 +57,9 @@ func TestGetImage(t *testing.T) {
 
 		image := mock_files.NewMockImage(t)
 		image.EXPECT().GetOriginalFile().Return(file, nil)
+		file.EXPECT().MimeType().Return("image/jpeg")
 
-		fx.fileObjectService.EXPECT().DoFileWaitLoad(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, s string, f func(fileobject.FileObject) error) error {
-			fileObject := mock_fileobject2.NewMockFileObject(t)
-			fileObject.EXPECT().GetImage().Return(image)
-			return nil
-		})
+		fx.fileObjectService.EXPECT().GetImageData(mock.Anything, mock.Anything).Return(image, nil)
 
 		path := "http://" + fx.Addr() + "/image/" + fileObjectId
 
