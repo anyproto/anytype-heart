@@ -3,6 +3,8 @@ package identity
 import (
 	"context"
 	"fmt"
+	"math"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -35,6 +37,7 @@ type fixture struct {
 	coordinatorClient *inMemoryIdentityRepo
 	spaceService      *mock_space.MockService
 	accountService    *mock_account.MockService
+	nsClient          *mock_nameserviceclient.MockAnyNsClientService
 }
 
 const (
@@ -95,6 +98,7 @@ func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 		spaceService:      spaceService,
 		accountService:    accountService,
 		coordinatorClient: identityRepoClient,
+		nsClient:          nsClient,
 	}
 	go fx.observeIdentitiesLoop()
 
@@ -249,7 +253,6 @@ func TestIdentityProfileCache(t *testing.T) {
 		time.Sleep(testObserverPeriod * 2)
 		assert.Equal(t, uint64(1), atomic.LoadUint64(&called))
 	})
-
 }
 
 func TestObservers(t *testing.T) {
@@ -331,7 +334,6 @@ func TestObservers(t *testing.T) {
 		require.NoError(t, err)
 		wg.Wait()
 	})
-
 }
 
 func TestGetIdentitiesDataFromRepo(t *testing.T) {
@@ -342,9 +344,181 @@ func TestGetIdentitiesDataFromRepo(t *testing.T) {
 		fx.coordinatorClient.setCallback(func(_ []string, _ []string, _ []*identityrepoproto.DataWithIdentity, _ error) {
 			called.Set(true)
 		})
-		list, err := fx.getIdentitiesDataFromRepo(context.Background(), nil)
+		err := fx.observeIdentities(context.Background())
 		require.NoError(t, err)
-		require.Empty(t, list)
 		require.False(t, called.Get())
+	})
+	t.Run("receive 100 identities", func(t *testing.T) {
+		// given
+		testObserverPeriod := time.Minute
+		fx := newFixture(t, testObserverPeriod)
+		nsServiceResult := make([]*nameserviceproto.NameByAddressResponse, 0, 100)
+		var (
+			wg                                 sync.WaitGroup
+			allIdentities, processedIdentities []string
+		)
+		for i := 0; i < 100; i++ {
+			identity := fmt.Sprintf("identity%d", i)
+			allIdentities = append(allIdentities, identity)
+			profileSymKey, err := crypto.NewRandomAES()
+			require.NoError(t, err)
+			wantProfile := &model.IdentityProfile{
+				Identity:   identity,
+				Name:       "name1",
+				GlobalName: globalName,
+			}
+			wantData := marshalProfile(t, wantProfile, profileSymKey)
+
+			err = fx.identityRepoClient.IdentityRepoPut(context.Background(), identity, []*identityrepoproto.Data{
+				{
+					Kind: identityRepoDataKind,
+					Data: wantData,
+				},
+			})
+			require.NoError(t, err)
+			wg.Add(1)
+			fx.identityObservers[identity] = map[string]*observer{
+				"test": {
+					callback: func(identity string, profile *model.IdentityProfile) {
+						processedIdentities = append(processedIdentities, identity)
+						wg.Done()
+					},
+				},
+			}
+			fx.identityEncryptionKeys[identity] = profileSymKey
+			nsServiceResult = append(nsServiceResult, &nameserviceproto.NameByAddressResponse{
+				Found: false,
+				Name:  "",
+			})
+		}
+		fx.nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), gomock.Any()).Return(&nameserviceproto.BatchNameByAddressResponse{Results: nsServiceResult}, nil)
+
+		// when
+		fx.identityForceUpdate <- struct{}{}
+
+		// then
+		wg.Wait()
+		slices.Sort(allIdentities)
+		slices.Sort(processedIdentities)
+		assert.Equal(t, allIdentities, processedIdentities)
+	})
+	t.Run("receive more than 100 identities", func(t *testing.T) {
+		// given
+		testObserverPeriod := time.Duration(math.MaxInt) // make sure observing won't run by ticker
+		fx := newFixture(t, testObserverPeriod)
+		nsServiceResult := make([]*nameserviceproto.NameByAddressResponse, 0, 100)
+		var (
+			wg                                 sync.WaitGroup
+			allIdentities, processedIdentities []string
+		)
+		for i := 0; i < 500; i++ {
+			identity := fmt.Sprintf("identity%d", i)
+			allIdentities = append(allIdentities, identity)
+			profileSymKey, err := crypto.NewRandomAES()
+			require.NoError(t, err)
+			wantProfile := &model.IdentityProfile{
+				Identity:   identity,
+				Name:       "name1",
+				GlobalName: globalName,
+			}
+			wantData := marshalProfile(t, wantProfile, profileSymKey)
+
+			err = fx.identityRepoClient.IdentityRepoPut(context.Background(), identity, []*identityrepoproto.Data{
+				{
+					Kind: identityRepoDataKind,
+					Data: wantData,
+				},
+			})
+			require.NoError(t, err)
+			wg.Add(1)
+			fx.identityObservers[identity] = map[string]*observer{
+				"test": {
+					callback: func(identity string, profile *model.IdentityProfile) {
+						processedIdentities = append(processedIdentities, identity)
+						wg.Done()
+					},
+				},
+			}
+			fx.identityEncryptionKeys[identity] = profileSymKey
+			nsServiceResult = append(nsServiceResult, &nameserviceproto.NameByAddressResponse{
+				Found: false,
+				Name:  "",
+			})
+		}
+		fx.nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), gomock.Any()).Return(&nameserviceproto.BatchNameByAddressResponse{Results: nsServiceResult}, nil)
+
+		// when
+		fx.identityForceUpdate <- struct{}{}
+
+		// then
+		wg.Wait()
+		slices.Sort(allIdentities)
+		slices.Sort(processedIdentities)
+		assert.Equal(t, allIdentities, processedIdentities)
+	})
+	t.Run("partly receive identity from coordinator, but it failed at some point - use cache for such identities", func(t *testing.T) {
+		// given
+		testObserverPeriod := time.Duration(math.MaxInt) // make sure observing won't run by ticker
+		fx := newFixture(t, testObserverPeriod)
+		nsServiceResult := make([]*nameserviceproto.NameByAddressResponse, 0, 100)
+		var (
+			wg                                 sync.WaitGroup
+			allIdentities, processedIdentities []string
+		)
+		for i := 0; i < 500; i++ {
+			identity := fmt.Sprintf("identity%d", i)
+			allIdentities = append(allIdentities, identity)
+			profileSymKey, err := crypto.NewRandomAES()
+			require.NoError(t, err)
+			wantProfile := &model.IdentityProfile{
+				Identity:   identity,
+				Name:       "name1",
+				GlobalName: globalName,
+			}
+			wantData := marshalProfile(t, wantProfile, profileSymKey)
+
+			err = fx.identityRepoClient.IdentityRepoPut(context.Background(), identity, []*identityrepoproto.Data{
+				{
+					Kind: identityRepoDataKind,
+					Data: wantData,
+				},
+			})
+			wg.Add(1)
+			fx.identityObservers[identity] = map[string]*observer{
+				"test": {
+					callback: func(identity string, profile *model.IdentityProfile) {
+						processedIdentities = append(processedIdentities, identity)
+						wg.Done()
+					},
+				},
+			}
+			fx.identityEncryptionKeys[identity] = profileSymKey
+			nsServiceResult = append(nsServiceResult, &nameserviceproto.NameByAddressResponse{
+				Found: false,
+				Name:  "",
+			})
+			err = badgerhelper.SetValue(fx.db, makeIdentityProfileKey(identity), wantData)
+			require.NoError(t, err)
+			err = badgerhelper.SetValue(fx.db, makeGlobalNameKey(identity), globalName)
+			require.NoError(t, err)
+		}
+		fx.nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), gomock.Any()).Return(&nameserviceproto.BatchNameByAddressResponse{Results: nsServiceResult}, nil)
+
+		// when
+		var called bool // call identity repo once and then fail it to simulate failure between identities batching call
+		fx.coordinatorClient.setCallback(func(identities []string, kinds []string, res []*identityrepoproto.DataWithIdentity, resErr error) {
+			if called {
+				fx.coordinatorClient.isUnavailable = true
+			} else {
+				called = true
+			}
+		})
+		fx.identityForceUpdate <- struct{}{}
+
+		// then
+		wg.Wait()
+		slices.Sort(allIdentities)
+		slices.Sort(processedIdentities)
+		assert.Equal(t, allIdentities, processedIdentities)
 	})
 }

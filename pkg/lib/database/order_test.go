@@ -266,6 +266,19 @@ func TestKeyOrder_Compare(t *testing.T) {
 		assertCompare(t, asc, a, b, 1)
 	})
 
+	t.Run("desc_date", func(t *testing.T) {
+		a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Int64(date.Unix())}}
+		b := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Int64(time.Now().Unix())}}
+		asc := &KeyOrder{arena: arena,
+			Key:            "k",
+			Type:           model.BlockContentDataviewSort_Desc,
+			EmptyPlacement: model.BlockContentDataviewSort_Start,
+			IncludeTime:    false,
+			relationFormat: model.RelationFormat_date,
+		}
+		assertCompare(t, asc, a, b, 1)
+	})
+
 	t.Run("asc_nil_emptylast", func(t *testing.T) {
 		a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("a")}}
 		b := &types.Struct{Fields: map[string]*types.Value{"k": nil}}
