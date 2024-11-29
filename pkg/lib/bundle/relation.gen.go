@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "ee87cfabadaa575c8e4c1a74a737cbbd8520d37dbe71668120e516db416947df"
+const RelationChecksum = "40664f94553807e45b8ad3ab00ba848505de50bd499545f42673bad8175e135d"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -1015,9 +1015,10 @@ var (
 			Id:               "_brlastUsedDate",
 			Key:              "lastUsedDate",
 			MaxCount:         1,
-			Name:             "Last Used date",
+			Name:             "Last used date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLatestAclHeadId: {
