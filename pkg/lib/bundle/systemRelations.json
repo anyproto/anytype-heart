@@ -91,5 +91,6 @@
   "chatId",
   "hasChat",
   "timestamp",
-  "recommendedFeaturedRelations"
+  "recommendedFeaturedRelations",
+  "layoutWidth"
 ]
