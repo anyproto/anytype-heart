@@ -68,6 +68,31 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 	})
 }
 
+func (s *service) ObjectTypeSetRelations(objectTypeId string, relationObjectIds []string) error {
+	return s.objectTypeSetRelations(objectTypeId, relationObjectIds, false)
+}
+
+func (s *service) ObjectTypeSetFeaturedRelations(objectTypeId string, relationObjectIds []string) error {
+	return s.objectTypeSetRelations(objectTypeId, relationObjectIds, true)
+}
+
+func (s *service) objectTypeSetRelations(
+	objectTypeId string, relationList []string, isFeatured bool,
+) error {
+	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
+		return ErrBundledTypeIsReadonly
+	}
+	relationToSet := bundle.RelationKeyRecommendedRelations
+	if isFeatured {
+		relationToSet = bundle.RelationKeyRecommendedFeaturedRelations
+	}
+	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		st.SetDetailAndBundledRelation(relationToSet, pbtypes.StringList(relationList))
+		return b.Apply(st)
+	})
+}
+
 func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {
 	var (
 		countersByKeys     = make(map[string]int64)

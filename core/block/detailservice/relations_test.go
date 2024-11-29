@@ -224,3 +224,87 @@ func TestService_ObjectTypeRemoveRelations(t *testing.T) {
 		assert.ErrorIs(t, ErrBundledTypeIsReadonly, err)
 	})
 }
+
+func TestService_objectTypeSetRelations(t *testing.T) {
+	t.Run("set recommended relations to type", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		sb := smarttest.New(bundle.TypeKeyTask.URL())
+		sb.Doc.(*state.State).SetDetails(&types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList([]string{
+				bundle.RelationKeyAssignee.URL(),
+				bundle.RelationKeyIsFavorite.URL(),
+				bundle.RelationKeyLinkedProjects.URL(),
+			}),
+		}})
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
+			assert.Equal(t, bundle.TypeKeyTask.URL(), objectId)
+			return sb, nil
+		})
+
+		// when
+		err := fx.ObjectTypeSetRelations(bundle.TypeKeyTask.URL(), []string{
+			bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL(),
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, []string{bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL()},
+			pbtypes.GetStringList(sb.Details(), bundle.RelationKeyRecommendedRelations.String()))
+	})
+
+	t.Run("setting recommended relations to bundled type is prohibited", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		// when
+		err := fx.ObjectTypeSetRelations(bundle.TypeKeyTask.BundledURL(), []string{
+			bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL(),
+		})
+
+		// then
+		assert.Error(t, err)
+		assert.ErrorIs(t, ErrBundledTypeIsReadonly, err)
+	})
+
+	t.Run("set recommended featured relations to type", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		sb := smarttest.New(bundle.TypeKeyTask.URL())
+		sb.Doc.(*state.State).SetDetails(&types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyRecommendedFeaturedRelations.String(): pbtypes.StringList([]string{
+				bundle.RelationKeyAssignee.URL(),
+				bundle.RelationKeyIsFavorite.URL(),
+				bundle.RelationKeyLinkedProjects.URL(),
+			}),
+		}})
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
+			assert.Equal(t, bundle.TypeKeyTask.URL(), objectId)
+			return sb, nil
+		})
+
+		// when
+		err := fx.ObjectTypeSetFeaturedRelations(bundle.TypeKeyTask.URL(), []string{
+			bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL(),
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, []string{bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL()},
+			pbtypes.GetStringList(sb.Details(), bundle.RelationKeyRecommendedFeaturedRelations.String()))
+	})
+
+	t.Run("setting recommended featured relations to bundled type is prohibited", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		// when
+		err := fx.ObjectTypeSetFeaturedRelations(bundle.TypeKeyTask.BundledURL(), []string{
+			bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL(),
+		})
+
+		// then
+		assert.Error(t, err)
+		assert.ErrorIs(t, ErrBundledTypeIsReadonly, err)
+	})
+}
