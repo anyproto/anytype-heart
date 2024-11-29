@@ -27,7 +27,7 @@ var spaceViewLog = logging.Logger("core.block.editor.spaceview")
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
-var lx = lexid.Must(lexid.CharsAll, 4, 1000)
+var lx = lexid.Must(lexid.CharsAlphanumericLower, 4, 1000)
 
 // required relations for spaceview beside the bundle.RequiredInternalRelations
 var spaceViewRequiredRelations = []domain.RelationKey{
