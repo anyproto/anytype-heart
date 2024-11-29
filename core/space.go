@@ -430,59 +430,92 @@ func permissionsChange(ctx context.Context, spaceId string, changes []*model.Par
 }
 
 func setSpaceViewOrder(og cache.ObjectGetter, request *pb.RpcSpaceSetOrderRequest) error {
+	spaceViewOrder := request.GetSpaceViewOrder()
+	if len(spaceViewOrder) < 2 {
+		return fmt.Errorf("insufficient space views for reordering")
+	}
+	spaceViewID := request.SpaceViewId
+	// given space view is the first view in the order
+	if spaceViewOrder[0] == spaceViewID {
+		return setViewAtBeginning(og, request.SpaceViewId, spaceViewOrder[1])
+	}
+	// given space view is the last view in the order
+	if spaceViewOrder[len(spaceViewOrder)-1] == spaceViewID {
+		return setViewAtEnd(og, spaceViewOrder, request.SpaceViewId, spaceViewOrder[len(spaceViewOrder)-2])
+	}
+	return adjustOrderForViews(og, spaceViewOrder, request.SpaceViewId)
+}
+
+func setViewAtBeginning(og cache.ObjectGetter, spaceViewId, afterViewId string) error {
 	var (
+		nextOrderID string
 		prevOrderId string
 		err         error
 	)
-	for _, id := range request.GetPreviousIds() {
-		err = cache.Do[*editor.SpaceView](og, id, func(sv *editor.SpaceView) error {
-			prevOrderId, err = sv.SetAfterGivenView(prevOrderId)
-			if err != nil {
-				return fmt.Errorf("failed to update space order of view, %w", err)
-			}
-			return nil
-		})
+	err = cache.Do[*editor.SpaceView](og, afterViewId, func(sv *editor.SpaceView) error {
+		nextOrderID, err = sv.SetAfterGivenView(prevOrderId)
 		if err != nil {
 			return err
-		}
-	}
-	if request.AfterId != "" {
-		return setViewBetween(og, request.SpaceViewId, request.AfterId, prevOrderId)
-	}
-	return setViewAfter(og, request.SpaceViewId, prevOrderId)
-}
-
-func setViewAfter(og cache.ObjectGetter, spaceViewId, prevLexId string) error {
-	err := cache.Do[*editor.SpaceView](og, spaceViewId, func(sv *editor.SpaceView) error {
-		_, err := sv.SetAfterGivenView(prevLexId)
-		return err
-	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func setViewBetween(og cache.ObjectGetter, spaceViewId, afterViewId, prevOrderId string) error {
-	var (
-		after string
-		err   error
-	)
-	err = cache.Do[*editor.SpaceView](og, afterViewId, func(sv *editor.SpaceView) error {
-		after, err = sv.SetAfterGivenView(prevOrderId)
-		if err != nil {
-			return fmt.Errorf("failed to update space order of view, %w", err)
 		}
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	err = cache.Do[*editor.SpaceView](og, spaceViewId, func(sv *editor.SpaceView) error {
-		return sv.SetBetweenViews(prevOrderId, after)
+	return cache.Do[*editor.SpaceView](og, spaceViewId, func(view *editor.SpaceView) error {
+		if nextOrderID == "" {
+			_, err = view.SetOrder(nextOrderID)
+			return err
+		}
+		return view.SetBetweenViews("", nextOrderID)
 	})
-	if err != nil {
+}
+
+func setViewAtEnd(og cache.ObjectGetter, order []string, spaceViewId, afterSpaceView string) error {
+	var (
+		lastOrderId string
+		err         error
+	)
+	// get the order for the previous view in the list.
+	cacheErr := cache.Do[*editor.SpaceView](og, afterSpaceView, func(sv *editor.SpaceView) error {
+		lastOrderId, err = sv.SetAfterGivenView(lastOrderId)
+		if err != nil {
+			return fmt.Errorf("failed to update space order of view, %w", err)
+		}
+		return nil
+	})
+	if cacheErr != nil {
+		return cacheErr
+	}
+	// if view doesn't have order in details, then set it for all previous ids and get lastOrderId
+	if lastOrderId == "" {
+		return adjustOrderForViews(og, order, spaceViewId)
+	}
+	return cache.Do[*editor.SpaceView](og, spaceViewId, func(sv *editor.SpaceView) error {
+		_, err := sv.SetAfterGivenView(lastOrderId)
 		return err
+	})
+}
+
+func adjustOrderForViews(og cache.ObjectGetter, order []string, spaceViewId string) error {
+	var (
+		prevOrderId string
+		err         error
+	)
+	for _, id := range order {
+		cacheErr := cache.Do[*editor.SpaceView](og, id, func(sv *editor.SpaceView) error {
+			prevOrderId, err = sv.SetOrder(prevOrderId)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if cacheErr != nil {
+			return cacheErr
+		}
+		if id == spaceViewId {
+			break
+		}
 	}
 	return nil
 }

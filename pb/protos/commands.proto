@@ -495,8 +495,7 @@ message Rpc {
         message SetOrder {
             message Request {
                 string spaceViewId = 1;
-                repeated string previousIds = 2; // the ids of the views that are located before the view with spaceViewId in the resulting order
-                string afterId = 3; // the id of the view that follows the view with spaceViewId in the resulting order
+                repeated string spaceViewOrder = 2; // result order of space view ids
             }
 
             message Response {

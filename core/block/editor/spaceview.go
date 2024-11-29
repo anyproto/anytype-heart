@@ -27,7 +27,7 @@ var spaceViewLog = logging.Logger("core.block.editor.spaceview")
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
-var lx = lexid.Must(lexid.CharsAll, 4, 10)
+var lx = lexid.Must(lexid.CharsAll, 4, 1000)
 
 // required relations for spaceview beside the bundle.RequiredInternalRelations
 var spaceViewRequiredRelations = []domain.RelationKey{
@@ -316,10 +316,20 @@ func (s *SpaceView) UpdateLastOpenedDate() error {
 	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
 }
 
+func (s *SpaceView) SetOrder(prevViewOrderId string) (string, error) {
+	st := s.NewState()
+	spaceOrderId := lx.Next(prevViewOrderId)
+	st.SetDetail(bundle.RelationKeySpaceOrder.String(), pbtypes.String(spaceOrderId))
+	return spaceOrderId, s.Apply(st)
+}
+
 func (s *SpaceView) SetAfterGivenView(viewOrderId string) (string, error) {
 	st := s.NewState()
 	spaceOrderId := pbtypes.GetString(st.Details(), bundle.RelationKeySpaceOrder.String())
-	if spaceOrderId == "" || viewOrderId > spaceOrderId {
+	if spaceOrderId == "" {
+		return spaceOrderId, nil
+	}
+	if viewOrderId > spaceOrderId {
 		spaceOrderId = lx.Next(viewOrderId)
 		st.SetDetail(bundle.RelationKeySpaceOrder.String(), pbtypes.String(spaceOrderId))
 		return spaceOrderId, s.Apply(st)
