@@ -6,8 +6,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
-	"github.com/anyproto/anytype-heart/core/filestorage"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/files/filestorage"
+	filesync2 "github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -20,7 +20,7 @@ type Service interface {
 }
 
 type service struct {
-	fileSync    filesync.FileSync
+	fileSync    filesync2.FileSync
 	fileStorage filestorage.FileStorage
 }
 
@@ -29,7 +29,7 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.fileSync = app.MustComponent[filesync.FileSync](a)
+	s.fileSync = app.MustComponent[filesync2.FileSync](a)
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
 	return nil
 }
@@ -65,7 +65,7 @@ func (s *service) GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFil
 }
 
 type NodeUsageResponse struct {
-	Usage           filesync.NodeUsage
+	Usage           filesync2.NodeUsage
 	LocalUsageBytes uint64
 }
 

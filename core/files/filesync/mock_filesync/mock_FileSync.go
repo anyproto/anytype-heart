@@ -9,7 +9,7 @@ import (
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
 
-	filesync "github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	filesync "github.com/anyproto/anytype-heart/core/files/filesync"
 
 	http "net/http"
 

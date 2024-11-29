@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
-	"github.com/anyproto/anytype-heart/core/filestorage"
+	filestorage2 "github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -42,7 +42,7 @@ type service struct {
 	objectStore     objectstore.ObjectStore
 	dagService      ipld.DAGService
 	commonFile      fileservice.FileService
-	fileStorage     filestorage.FileStorage
+	fileStorage     filestorage2.FileStorage
 	spaceIdResolver idresolver.Resolver
 }
 
@@ -54,7 +54,7 @@ func (s *service) Init(a *app.App) error {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
 	s.dagService = s.commonFile.DAGService()
-	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
+	s.fileStorage = app.MustComponent[filestorage2.FileStorage](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	return nil
 }
@@ -245,7 +245,7 @@ func (s *service) getAllExistingFileBlocksCids(ctx context.Context, id domain.Fu
 
 		// here we can be sure that the block is loaded to the blockstore, so 1s should be more than enough
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		ctx = context.WithValue(ctx, filestorage.CtxKeyRemoteLoadDisabled, true)
+		ctx = context.WithValue(ctx, filestorage2.CtxKeyRemoteLoadDisabled, true)
 		n, err := dagService.Get(ctx, c)
 		if err != nil {
 			log.Error("GetAllExistingFileBlocksCids: failed to get links", zap.Error(err))

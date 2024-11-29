@@ -52,10 +52,10 @@ packages:
   github.com/anyproto/anytype-heart/core/block/restriction:
     interfaces:
       Service:
-  github.com/anyproto/anytype-heart/core/filestorage/filesync:
+  github.com/anyproto/anytype-heart/core/files/filesync:
     interfaces:
       FileSync:
-  github.com/anyproto/anytype-heart/core/filestorage/rpcstore:
+  github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore:
     interfaces:
       Service:
       RpcStore:
@@ -174,7 +174,7 @@ packages:
   github.com/anyproto/anytype-heart/core/block/object/idresolver:
     interfaces:
       Resolver:
-  github.com/anyproto/anytype-heart/core/filestorage:
+  github.com/anyproto/anytype-heart/core/files/filestorage:
     interfaces:
       FileStorage:
   github.com/anyproto/anytype-heart/util/linkpreview:

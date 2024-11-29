@@ -23,9 +23,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
-	"github.com/anyproto/anytype-heart/core/filestorage"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/filestorage"
+	rpcstore2 "github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -43,7 +43,7 @@ type fixture struct {
 	eventSender       *mock_event.MockSender
 	commonFileService fileservice.FileService
 	fileSyncService   filesync.FileSync
-	rpcStore          rpcstore.RpcStore
+	rpcStore          rpcstore2.RpcStore
 	objectStore       objectstore.ObjectStore
 }
 
@@ -59,8 +59,8 @@ func newFixture(t *testing.T) *fixture {
 
 	blockStorage := filestorage.NewInMemory()
 
-	rpcStore := rpcstore.NewInMemoryStore(1024)
-	rpcStoreService := rpcstore.NewInMemoryService(rpcStore)
+	rpcStore := rpcstore2.NewInMemoryStore(1024)
+	rpcStoreService := rpcstore2.NewInMemoryService(rpcStore)
 	commonFileService := fileservice.New()
 	fileSyncService := filesync.New()
 	objectStore := objectstore.NewStoreFixture(t)

@@ -12,7 +12,7 @@ import (
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
 
-	filestorage "github.com/anyproto/anytype-heart/core/filestorage"
+	filestorage "github.com/anyproto/anytype-heart/core/files/filestorage"
 
 	mock "github.com/stretchr/testify/mock"
 )
