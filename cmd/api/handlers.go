@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gogo/protobuf/types"
@@ -18,7 +17,6 @@ import (
 )
 
 const (
-	httpTimeout     = 1 * time.Second
 	paginationLimit = 100
 )
 
@@ -188,7 +186,7 @@ func (a *ApiServer) createSpaceHandler(c *gin.Context) {
 				}},
 			},
 		},
-		UseCase:  1,
+		UseCase:  pb.RpcObjectImportUseCaseRequest_GET_STARTED,
 		WithChat: true,
 	})
 
@@ -284,7 +282,12 @@ func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 	spaceId := c.Param("space_id")
 	// TODO: implement offset and limit
 	// offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	// limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
+	l := c.DefaultQuery("limit", "100")
+	limit, err := strconv.Atoi(l)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid limit value"})
+		return
+	}
 
 	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -301,6 +304,12 @@ func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 				}...),
 			},
 		},
+		Sorts: []*model.BlockContentDataviewSort{{
+			RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+			Type:        model.BlockContentDataviewSort_Desc,
+		}},
+		Keys:  []string{"id", "name", "type", "layout", "iconEmoji", "lastModifiedDate"},
+		Limit: int32(limit),
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -338,6 +347,10 @@ func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 		}
 
 		objects = append(objects, object)
+	}
+
+	if len(objects) > limit {
+		objects = objects[:limit]
 	}
 
 	c.JSON(http.StatusOK, gin.H{"objects": objects})
@@ -813,7 +826,7 @@ func (a *ApiServer) getChatMessagesHandler(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"messages": messages})
+	c.JSON(http.StatusOK, gin.H{"chatId": chatId, "messages": messages})
 }
 
 // getChatMessageHandler retrieves a specific chat message by message_id
