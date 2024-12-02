@@ -17,7 +17,9 @@ import (
 )
 
 const (
-	paginationLimit = 100
+	paginationLimit         = "100"
+	paginationLimitPerSpace = 10
+	paginationLimitPerChat  = 100
 )
 
 type CreateSpaceRequest struct {
@@ -264,7 +266,7 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"members": members})
 }
 
-// getSpaceObjectsHandler retrieves objects in a specific space
+// getObjectsForSpaceHandler retrieves objects in a specific space
 //
 //	@Summary	Retrieve objects in a specific space
 //	@Tags		space_objects
@@ -278,11 +280,11 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 //	@Failure	404			{object}	NotFoundError		"Resource not found"
 //	@Failure	502			{object}	ServerError			"Internal server error"
 //	@Router		/spaces/{space_id}/objects [get]
-func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
+func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 	spaceId := c.Param("space_id")
 	// TODO: implement offset and limit
 	// offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	l := c.DefaultQuery("limit", "100")
+	l := c.DefaultQuery("limit", paginationLimit)
 	limit, err := strconv.Atoi(l)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid limit value"})
@@ -305,8 +307,11 @@ func (a *ApiServer) getSpaceObjectsHandler(c *gin.Context) {
 			},
 		},
 		Sorts: []*model.BlockContentDataviewSort{{
-			RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-			Type:        model.BlockContentDataviewSort_Desc,
+			RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
+			Type:           model.BlockContentDataviewSort_Desc,
+			Format:         model.RelationFormat_longtext,
+			IncludeTime:    true,
+			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 		}},
 		Keys:  []string{"id", "name", "type", "layout", "iconEmoji", "lastModifiedDate"},
 		Limit: int32(limit),
@@ -645,7 +650,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	objectType := c.Query("object_type")
 	// TODO: implement offset and limit
 	// offset := c.DefaultQuery("offset", "0")
-	l := c.DefaultQuery("limit", "100")
+	l := c.DefaultQuery("limit", paginationLimit)
 	limit, err := strconv.Atoi(l)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to parse limit."})
@@ -663,6 +668,11 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceRemoteStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
 			},
@@ -720,11 +730,14 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 			SpaceId: spaceId,
 			Filters: filters,
 			Sorts: []*model.BlockContentDataviewSort{{
-				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-				Type:        model.BlockContentDataviewSort_Desc,
+				RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
+				Type:           model.BlockContentDataviewSort_Desc,
+				Format:         model.RelationFormat_longtext,
+				IncludeTime:    true,
+				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
 			Keys:  []string{"id", "name", "type", "layout", "iconEmoji", "lastModifiedDate"},
-			Limit: 25,
+			Limit: paginationLimitPerSpace,
 			// FullText: searchTerm,
 		})
 		for _, record := range objectSearchResponse.Records {
@@ -779,7 +792,7 @@ func (a *ApiServer) getChatMessagesHandler(c *gin.Context) {
 
 	lastMessages := a.mw.ChatSubscribeLastMessages(context.Background(), &pb.RpcChatSubscribeLastMessagesRequest{
 		ChatObjectId: chatId,
-		Limit:        paginationLimit,
+		Limit:        paginationLimitPerChat,
 	})
 
 	if lastMessages.Error.Code != pb.RpcChatSubscribeLastMessagesResponseError_NULL {
