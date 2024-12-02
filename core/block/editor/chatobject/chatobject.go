@@ -141,25 +141,17 @@ func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) (
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
-	var msgs []*model.ChatMessage
+	var qry anystore.Query
 	if req.AfterOrderId != "" {
-		qry := coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGt, req.AfterOrderId)}).Sort(ascOrder).Limit(uint(req.Limit))
-		msgs, err = s.queryMessages(ctx, qry)
-		if err != nil {
-			return nil, fmt.Errorf("query messages: %w", err)
-		}
+		qry = coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGt, req.AfterOrderId)}).Sort(ascOrder).Limit(uint(req.Limit))
 	} else if req.BeforeOrderId != "" {
-		qry := coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, req.BeforeOrderId)}).Sort(descOrder).Limit(uint(req.Limit))
-		msgs, err = s.queryMessages(ctx, qry)
-		if err != nil {
-			return nil, fmt.Errorf("query messages: %w", err)
-		}
+		qry = coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, req.BeforeOrderId)}).Sort(descOrder).Limit(uint(req.Limit))
 	} else {
-		qry := coll.Find(nil).Sort(descOrder).Limit(uint(req.Limit))
-		msgs, err = s.queryMessages(ctx, qry)
-		if err != nil {
-			return nil, fmt.Errorf("query messages: %w", err)
-		}
+		qry = coll.Find(nil).Sort(descOrder).Limit(uint(req.Limit))
+	}
+	msgs, err := s.queryMessages(ctx, qry)
+	if err != nil {
+		return nil, fmt.Errorf("query messages: %w", err)
 	}
 	sort.Slice(msgs, func(i, j int) bool {
 		return msgs[i].OrderId < msgs[j].OrderId
