@@ -23093,10 +23093,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NONE | 0 |  |
 | GET_STARTED | 1 |  |
-| PERSONAL_PROJECTS | 2 |  |
-| KNOWLEDGE_BASE | 3 |  |
-| NOTES_DIARY | 4 |  |
-| STRATEGIC_WRITING | 5 |  |
 | EMPTY | 6 |  |
 
 
@@ -29743,17 +29739,18 @@ stored |
 | ---- | ------ | ----------- |
 | None | 0 |  |
 | Count | 1 |  |
-| CountDistinct | 2 |  |
-| CountEmpty | 3 |  |
-| CountNotEmpty | 4 |  |
-| PercentEmpty | 5 |  |
-| PercentNotEmpty | 6 |  |
-| MathSum | 7 |  |
-| MathAverage | 8 |  |
-| MathMedian | 9 |  |
-| MathMin | 10 |  |
-| MathMax | 11 |  |
-| Range | 12 |  |
+| CountValue | 2 |  |
+| CountDistinct | 3 |  |
+| CountEmpty | 4 |  |
+| CountNotEmpty | 5 |  |
+| PercentEmpty | 6 |  |
+| PercentNotEmpty | 7 |  |
+| MathSum | 8 |  |
+| MathAverage | 9 |  |
+| MathMedian | 10 |  |
+| MathMin | 11 |  |
+| MathMax | 12 |  |
+| Range | 13 |  |
 
 
 
