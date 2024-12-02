@@ -78,7 +78,10 @@ func (ko *KeyOrder) Compare(a, b *types.Struct) int {
 	av, bv = ko.tryExtractDateTime(av, bv)
 	av, bv = ko.tryExtractTag(av, bv)
 
-	comp := ko.tryCompareStrings(av, bv)
+	var comp int
+	if !UseUnicodeSort(ko.Key) {
+		comp = ko.tryCompareStrings(av, bv)
+	}
 	if comp == 0 {
 		comp = av.Compare(bv)
 	}
@@ -376,4 +379,8 @@ func (co customOrder) Compare(a, b *types.Struct) int {
 	}
 
 	return co.KeyOrd.Compare(a, b)
+}
+
+func UseUnicodeSort(relationKey string) bool {
+	return relationKey == bundle.RelationKeySpaceOrder.String()
 }
