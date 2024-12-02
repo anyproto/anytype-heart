@@ -194,7 +194,7 @@ func (w *watcher) updateAccumulatedBacklinks() {
 }
 
 func shouldIndexBacklinks(ids threads.DerivedSmartblockIds, id string) bool {
-	if _, parseDateErr := dateutil.BuildDateObjectFromId(id); parseDateErr != nil {
+	if _, parseDateErr := dateutil.BuildDateObjectFromId(id); parseDateErr == nil {
 		return false
 	}
 	switch id {
