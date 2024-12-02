@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "40664f94553807e45b8ad3ab00ba848505de50bd499545f42673bad8175e135d"
+const RelationChecksum = "7bebaf625f21e63f771279cca7ea7cf876bb06f3c64a5d4083a9f2fe3f824088"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -145,6 +145,7 @@ const (
 	RelationKeyMentions                     domain.RelationKey = "mentions"
 	RelationKeyTimestamp                    domain.RelationKey = "timestamp"
 	RelationKeyRecommendedFeaturedRelations domain.RelationKey = "recommendedFeaturedRelations"
+	RelationKeyLayoutWidth                  domain.RelationKey = "layoutWidth"
 )
 
 var (
@@ -1059,6 +1060,20 @@ var (
 			Key:              "layoutAlign",
 			MaxCount:         1,
 			Name:             "Layout align",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyLayoutWidth: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Width of object's layout",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brlayoutWidth",
+			Key:              "layoutWidth",
+			MaxCount:         1,
+			Name:             "Layout width",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

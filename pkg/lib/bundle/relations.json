@@ -1379,5 +1379,15 @@
     ],
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Width of object's layout",
+    "format": "number",
+    "hidden": true,
+    "key": "layoutWidth",
+    "maxCount": 1,
+    "name": "Layout width",
+    "readonly": false,
+    "source": "details"
   }
 ]
