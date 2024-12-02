@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -193,6 +194,9 @@ func (w *watcher) updateAccumulatedBacklinks() {
 }
 
 func shouldIndexBacklinks(ids threads.DerivedSmartblockIds, id string) bool {
+	if _, parseDateErr := dateutil.BuildDateObjectFromId(id); parseDateErr != nil {
+		return false
+	}
 	switch id {
 	case ids.Workspace, ids.Archive, ids.Home, ids.Widgets, ids.Profile:
 		return false
