@@ -93,7 +93,7 @@ func (s *service) InstallBundledObjects(
 		if _, ok := existingObjectMap[sourceObjectId]; ok {
 			continue
 		}
-		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, marketplaceSpace, sourceObjectId, space, isNewSpace)
+		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, marketplaceSpace, space, sourceObjectId, isNewSpace)
 		if err != nil {
 			return nil, nil, fmt.Errorf("prepare details for installing object: %w", err)
 		}
@@ -171,44 +171,24 @@ func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds 
 	return existingObjectMap, nil
 }
 
-func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clientspace.Space, space clientspace.Space, sourceObjectIDs []string) ([]string, []*types.Struct, error) {
+func (s *service) reinstallBundledObjects(
+	ctx context.Context, sourceSpace, space clientspace.Space, sourceObjectIDs []string,
+) (ids []string, objects []*types.Struct, err error) {
 	deletedObjects, err := s.queryDeletedObjects(space, sourceObjectIDs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("query deleted objects: %w", err)
 	}
 
-	var (
-		ids     []string
-		objects []*types.Struct
-	)
 	for _, rec := range deletedObjects {
-		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
-		sourceObjectId := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
-		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, sourceObjectId, space, false)
+		id, typeKey, details, err := s.reinstallObject(ctx, sourceSpace, space, rec.Details)
 		if err != nil {
-			return nil, nil, fmt.Errorf("prepare details for installing object: %w", err)
+			return nil, nil, err
 		}
 
-		var typeKey domain.TypeKey
-		err = space.Do(id, func(sb smartblock.SmartBlock) error {
-			st := sb.NewState()
-			st.SetDetails(installingDetails)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(false))
-			st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
-			st.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, pbtypes.Bool(false))
-			typeKey = domain.TypeKey(st.UniqueKeyInternal())
+		ids = append(ids, id)
+		objects = append(objects, details)
 
-			ids = append(ids, id)
-			objects = append(objects, st.CombinedDetails())
-
-			return sb.Apply(st)
-		})
-		if err != nil {
-			return nil, nil, fmt.Errorf("reinstall object %s (source object: %s): %w", id, sourceObjectId, err)
-		}
-
-		err = s.installTemplatesForObjectType(space, typeKey)
-		if err != nil {
+		if err = s.installTemplatesForObjectType(space, typeKey); err != nil {
 			return nil, nil, fmt.Errorf("install templates for object type %s: %w", typeKey, err)
 		}
 	}
@@ -216,11 +196,49 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 	return ids, objects, nil
 }
 
+func (s *service) reinstallObject(
+	ctx context.Context, sourceSpace, space clientspace.Space, currentDetails *types.Struct,
+) (id string, key domain.TypeKey, details *types.Struct, err error) {
+	id = pbtypes.GetString(currentDetails, bundle.RelationKeyId.String())
+	var (
+		sourceObjectId = pbtypes.GetString(currentDetails, bundle.RelationKeySourceObject.String())
+		isArchived     = pbtypes.GetBool(currentDetails, bundle.RelationKeyIsArchived.String())
+	)
+
+	installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, space, sourceObjectId, false)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("prepare details for installing object: %w", err)
+	}
+
+	err = space.Do(id, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		st.SetDetails(installingDetails)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(false))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
+
+		key = domain.TypeKey(st.UniqueKeyInternal())
+		details = st.CombinedDetails()
+
+		return sb.Apply(st)
+	})
+	if err != nil {
+		return "", "", nil, fmt.Errorf("reinstall object %s (source object: %s): %w", id, sourceObjectId, err)
+	}
+
+	if isArchived {
+		// we should do archive operations only via Archive object
+		if err = s.archiver.SetIsArchived(id, false); err != nil {
+			return "", "", nil, fmt.Errorf("failed to restore object %s (source object: %s) from bin: %w", id, sourceObjectId, err)
+		}
+	}
+
+	return id, key, details, nil
+}
+
 func (s *service) prepareDetailsForInstallingObject(
 	ctx context.Context,
-	sourceSpace clientspace.Space,
+	sourceSpace, spc clientspace.Space,
 	sourceObjectId string,
-	spc clientspace.Space,
 	isNewSpace bool,
 ) (*types.Struct, error) {
 	var details *types.Struct

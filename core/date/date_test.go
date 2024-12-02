@@ -44,6 +44,7 @@ func TestBuildDetailsFromTimestamp(t *testing.T) {
 			assert.Zero(t, tt.Hour())
 			assert.Zero(t, tt.Minute())
 			assert.Zero(t, tt.Second())
+			assert.Len(t, pbtypes.GetIntList(details, bundle.RelationKeyRestrictions.String()), 8)
 		})
 	}
 }

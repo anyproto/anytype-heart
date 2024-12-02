@@ -119,7 +119,6 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 		syncSubs:            syncsubscriptions.New(),
 		networkConfig:       networkConfig,
 	}
-	fx.spaceIdGetter.EXPECT().TechSpaceId().Return("techSpaceId").Maybe()
 
 	a.Register(fx.syncSubs).
 		Register(testutil.PrepareMock(ctx, a, networkConfig)).
