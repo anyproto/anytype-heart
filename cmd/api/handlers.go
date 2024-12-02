@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"math/big"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -768,6 +769,11 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 			})
 		}
 	}
+
+	// sort after lastModifiedDate to achieve descending sort order across all spaces
+	sort.Slice(searchResults, func(i, j int) bool {
+		return searchResults[i].Details[0].Details["lastModifiedDate"].(float64) > searchResults[j].Details[0].Details["lastModifiedDate"].(float64)
+	})
 
 	if len(searchResults) > limit {
 		searchResults = searchResults[:limit]
