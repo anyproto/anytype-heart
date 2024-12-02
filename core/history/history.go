@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -103,6 +104,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	})
 	// nolint:errcheck
 	meta, _ := h.objectStore.QueryByIdCrossSpace(dependentObjectIDs)
+	meta = removeInvalidVirtualObjects(id.SpaceID, meta)
 
 	meta = append(meta, database.Record{Details: s.CombinedDetails()})
 	details := make([]*model.ObjectViewDetailsSet, 0, len(meta))
@@ -267,6 +269,7 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	if err != nil {
 		return nil, nil, fmt.Errorf("get dependencies: %w", err)
 	}
+	meta = removeInvalidVirtualObjects(id.SpaceID, meta)
 
 	meta = append(meta, database.Record{Details: currState.CombinedDetails()})
 	details := make([]*model.ObjectViewDetailsSet, 0, len(meta))
@@ -560,4 +563,15 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 		}
 	}
 	return
+}
+
+func removeInvalidVirtualObjects(spaceId string, data []database.Record) []database.Record {
+	return slices.DeleteFunc(data, func(record database.Record) bool {
+		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		_, parseDateErr := dateutil.BuildDateObjectFromId(id)
+		if parseDateErr != nil {
+			return false
+		}
+		return pbtypes.GetString(record.Details, bundle.RelationKeySpaceId.String()) != spaceId
+	})
 }
