@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -30,6 +31,18 @@ func (f *fakeConverter) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) 
 
 func fakeDerivedID(key string) string {
 	return fmt.Sprintf("derivedFrom(%s)", key)
+}
+
+type fakeSpaceIdResolver struct {
+	idsToSpaceIds map[string]string
+}
+
+func (r *fakeSpaceIdResolver) ResolveSpaceID(id string) (string, error) {
+	spaceId, found := r.idsToSpaceIds[id]
+	if !found {
+		return "", fmt.Errorf("not found")
+	}
+	return spaceId, nil
 }
 
 func TestState_DepSmartIdsLinks(t *testing.T) {
@@ -218,8 +231,7 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 	})
 }
 
-func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
-	// given
+func buildStateWithLinks() *state.State {
 	stateWithLinks := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Id:          "root",
@@ -261,7 +273,6 @@ func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 				},
 			}}),
 	}).(*state.State)
-	converter := &fakeConverter{}
 
 	relations := []*model.RelationLink{
 		{
@@ -291,6 +302,14 @@ func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 	stateWithLinks.SetDetail("relation3", pbtypes.String("option2"))
 	stateWithLinks.SetDetail("relation4", pbtypes.String("option3"))
 	stateWithLinks.SetDetail("relation5", pbtypes.Int64(time.Now().Unix()))
+
+	return stateWithLinks
+}
+
+func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
+	// given
+	stateWithLinks := buildStateWithLinks()
+	converter := &fakeConverter{}
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true})
@@ -361,4 +380,40 @@ func TestState_DepSmartIdsObjectTypes(t *testing.T) {
 			fakeDerivedID(bundle.TypeKeyPage.String()),
 		}, objectIDs)
 	})
+}
+
+func TestDependentObjectIDsPerSpace(t *testing.T) {
+	// given
+	const (
+		spc1 = "space1"
+		spc2 = "space2"
+		spc3 = "space3"
+	)
+	st := buildStateWithLinks()
+	converter := &fakeConverter{}
+	resolver := &fakeSpaceIdResolver{idsToSpaceIds: map[string]string{
+		"objectID":  spc1,
+		"objectID2": spc2,
+		"objectID3": spc3,
+		"objectID4": spc1,
+		"relation1": spc1,
+		"relation2": spc1,
+		"relation3": spc1,
+		"relation4": spc1,
+		"relation5": spc1,
+		"file":      spc2,
+		// "option1": ???,
+		"option2": spc2,
+		"option3": spc3,
+		dateutil.NewDateObject(time.Now(), false).Id(): spc1,
+	}}
+
+	// when
+	ids := DependentObjectIDsPerSpace(spc1, st, converter, resolver, Flags{Blocks: true, Relations: true, Details: true})
+
+	// then
+	require.Len(t, ids, 3)
+	assert.Len(t, ids[spc1], 9)
+	assert.Len(t, ids[spc2], 3)
+	assert.Len(t, ids[spc3], 2)
 }
