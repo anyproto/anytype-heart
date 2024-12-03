@@ -172,21 +172,26 @@ func (b *queryBuilder) extractOrder(sorts []*model.BlockContentDataviewSort) Set
 			}
 
 			keyOrder := &KeyOrder{
-				SpaceID:        b.spaceId,
-				Key:            sort.RelationKey,
-				Type:           sort.Type,
-				EmptyPlacement: sort.EmptyPlacement,
-				IncludeTime:    isIncludeTime(sorts, sort),
-				relationFormat: format,
-				Store:          b.objectStore,
-				arena:          b.arena,
-				collatorBuffer: b.collatorBuffer,
+				SpaceID:         b.spaceId,
+				Key:             sort.RelationKey,
+				Type:            sort.Type,
+				EmptyPlacement:  sort.EmptyPlacement,
+				IncludeTime:     isIncludeTime(sorts, sort),
+				relationFormat:  format,
+				Store:           b.objectStore,
+				arena:           b.arena,
+				collatorBuffer:  b.collatorBuffer,
+				disableCollator: disableCollator(sort.RelationKey),
 			}
 			order = b.appendCustomOrder(sort, order, keyOrder)
 		}
 		return order
 	}
 	return nil
+}
+
+func disableCollator(relationKey string) bool {
+	return relationKey == bundle.RelationKeySpaceOrder.String()
 }
 
 func (b *queryBuilder) appendCustomOrder(sort *model.BlockContentDataviewSort, orders SetOrder, order *KeyOrder) SetOrder {

@@ -151,9 +151,6 @@ func (s textSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	}
 
 	collated := s.collator.Key(s.collatorBuffer, val)
-	if UseUnicodeSort(s.relationKey) {
-		collated = val
-	}
 	if s.reverse {
 		if s.nulls == model.BlockContentDataviewSort_Start && len(val) == 0 {
 			return tuple.Append(s.arena.NewNull())

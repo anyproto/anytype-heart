@@ -50,17 +50,18 @@ func (so SetOrder) AnystoreSort() query.Sort {
 }
 
 type KeyOrder struct {
-	SpaceID        string
-	Key            string
-	Type           model.BlockContentDataviewSortType
-	EmptyPlacement model.BlockContentDataviewSortEmptyType
-	relationFormat model.RelationFormat
-	IncludeTime    bool
-	Store          ObjectStore
-	Options        map[string]string
-	arena          *anyenc.Arena
-	collatorBuffer *collate.Buffer
-	collator       *collate.Collator
+	SpaceID         string
+	Key             string
+	Type            model.BlockContentDataviewSortType
+	EmptyPlacement  model.BlockContentDataviewSortEmptyType
+	relationFormat  model.RelationFormat
+	IncludeTime     bool
+	Store           ObjectStore
+	Options         map[string]string
+	arena           *anyenc.Arena
+	collatorBuffer  *collate.Buffer
+	collator        *collate.Collator
+	disableCollator bool
 }
 
 func (ko *KeyOrder) ensureCollator() {
@@ -78,10 +79,7 @@ func (ko *KeyOrder) Compare(a, b *types.Struct) int {
 	av, bv = ko.tryExtractDateTime(av, bv)
 	av, bv = ko.tryExtractTag(av, bv)
 
-	var comp int
-	if !UseUnicodeSort(ko.Key) {
-		comp = ko.tryCompareStrings(av, bv)
-	}
+	comp := ko.tryCompareStrings(av, bv)
 	if comp == 0 {
 		comp = av.Compare(bv)
 	}
@@ -213,7 +211,7 @@ func (ko *KeyOrder) tryCompareStrings(av *types.Value, bv *types.Value) int {
 			comp = -1
 		}
 	}
-	if aString && bString && comp == 0 {
+	if aString && bString && comp == 0 && !ko.disableCollator {
 		ko.ensureCollator()
 		comp = ko.collator.CompareString(av.GetStringValue(), bv.GetStringValue())
 	}
@@ -379,8 +377,4 @@ func (co customOrder) Compare(a, b *types.Struct) int {
 	}
 
 	return co.KeyOrd.Compare(a, b)
-}
-
-func UseUnicodeSort(relationKey string) bool {
-	return relationKey == bundle.RelationKeySpaceOrder.String()
 }
