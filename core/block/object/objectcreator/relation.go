@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -59,4 +60,25 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyRelation}, createState)
+}
+
+func fillRelationFormatObjectTypes(ctx context.Context, spc clientspace.Space, details *types.Struct) error {
+	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyRelationFormatObjectTypes.String())
+
+	for i, objectType := range objectTypes {
+		// replace object type url with id
+		uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, strings.TrimPrefix(objectType, addr.BundledObjectTypeURLPrefix))
+		if err != nil {
+			// should never happen
+			return err
+		}
+		id, err := spc.DeriveObjectID(ctx, uniqueKey)
+		if err != nil {
+			// should never happen
+			return err
+		}
+		objectTypes[i] = id
+	}
+	details.Fields[bundle.RelationKeyRelationFormatObjectTypes.String()] = pbtypes.StringList(objectTypes)
+	return nil
 }

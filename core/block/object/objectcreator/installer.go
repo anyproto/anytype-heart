@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
@@ -260,41 +259,20 @@ func (s *service) prepareDetailsForInstallingObject(
 		lastused.SetLastUsedDateForInitialObjectType(sourceId, details)
 	}
 
-	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
-	if len(bundledRelationIds) > 0 {
-		recommendedRelationKeys := make([]string, 0, len(bundledRelationIds))
-		for _, id := range bundledRelationIds {
-			key, err := bundle.RelationKeyFromID(id)
-			if err != nil {
-				return nil, fmt.Errorf("relation key from id: %w", err)
-			}
-			recommendedRelationKeys = append(recommendedRelationKeys, key.String())
-		}
-		recommendedRelationIds, err := s.prepareRecommendedRelationIds(ctx, spc, recommendedRelationKeys)
-		if err != nil {
-			return nil, fmt.Errorf("prepare recommended relation ids: %w", err)
-		}
-		details.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
+	uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String()))
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal unique key: %w", err)
 	}
 
-	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyRelationFormatObjectTypes.String())
-
-	if len(objectTypes) > 0 {
-		for i, objectType := range objectTypes {
-			// replace object type url with id
-			uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, strings.TrimPrefix(objectType, addr.BundledObjectTypeURLPrefix))
-			if err != nil {
-				// should never happen
-				return nil, err
-			}
-			id, err := spc.DeriveObjectID(ctx, uniqueKey)
-			if err != nil {
-				// should never happen
-				return nil, err
-			}
-			objectTypes[i] = id
+	switch uk.SmartblockType() {
+	case coresb.SmartBlockTypeBundledObjectType, coresb.SmartBlockTypeObjectType:
+		if err = s.fillRecommendedRelations(ctx, spc, details, false); err != nil {
+			return nil, fmt.Errorf("fill recommended relations: %w", err)
 		}
-		details.Fields[bundle.RelationKeyRelationFormatObjectTypes.String()] = pbtypes.StringList(objectTypes)
+	case coresb.SmartBlockTypeBundledRelation, coresb.SmartBlockTypeRelation:
+		if err = fillRelationFormatObjectTypes(ctx, spc, details); err != nil {
+			return nil, fmt.Errorf("fill relation format objectTypes: %w", err)
+		}
 	}
 
 	return details, nil
