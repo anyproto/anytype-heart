@@ -93,6 +93,9 @@ func (ko *KeyOrder) Compare(a, b *types.Struct) int {
 func (ko *KeyOrder) AnystoreSort() query.Sort {
 	switch ko.relationFormat {
 	case model.RelationFormat_shorttext, model.RelationFormat_longtext:
+		if ko.disableCollator {
+			return ko.basicSort(anyenc.TypeString)
+		}
 		return ko.textSort()
 	case model.RelationFormat_number:
 		return ko.basicSort(anyenc.TypeNumber)
@@ -165,13 +168,12 @@ func (ko *KeyOrder) dateOnlySort() query.Sort {
 func (ko *KeyOrder) textSort() query.Sort {
 	ko.ensureCollator()
 	return textSort{
-		arena:           ko.arena,
-		collator:        ko.collator,
-		collatorBuffer:  ko.collatorBuffer,
-		relationKey:     ko.Key,
-		reverse:         ko.Type == model.BlockContentDataviewSort_Desc,
-		nulls:           ko.EmptyPlacement,
-		disableCollator: ko.disableCollator,
+		arena:          ko.arena,
+		collator:       ko.collator,
+		collatorBuffer: ko.collatorBuffer,
+		relationKey:    ko.Key,
+		reverse:        ko.Type == model.BlockContentDataviewSort_Desc,
+		nulls:          ko.EmptyPlacement,
 	}
 }
 

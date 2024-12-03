@@ -181,17 +181,13 @@ func (b *queryBuilder) extractOrder(sorts []*model.BlockContentDataviewSort) Set
 				Store:           b.objectStore,
 				arena:           b.arena,
 				collatorBuffer:  b.collatorBuffer,
-				disableCollator: disableCollator(sort.RelationKey),
+				disableCollator: sort.NoCollate,
 			}
 			order = b.appendCustomOrder(sort, order, keyOrder)
 		}
 		return order
 	}
 	return nil
-}
-
-func disableCollator(relationKey string) bool {
-	return relationKey == bundle.RelationKeySpaceOrder.String()
 }
 
 func (b *queryBuilder) appendCustomOrder(sort *model.BlockContentDataviewSort, orders SetOrder, order *KeyOrder) SetOrder {

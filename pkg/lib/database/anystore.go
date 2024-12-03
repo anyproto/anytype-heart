@@ -120,13 +120,12 @@ func (s emptyPlacementSort) isEmpty(val *anyenc.Value) bool {
 }
 
 type textSort struct {
-	arena           *anyenc.Arena
-	collatorBuffer  *collate.Buffer
-	collator        *collate.Collator
-	relationKey     string
-	reverse         bool
-	nulls           model.BlockContentDataviewSortEmptyType
-	disableCollator bool
+	arena          *anyenc.Arena
+	collatorBuffer *collate.Buffer
+	collator       *collate.Collator
+	relationKey    string
+	reverse        bool
+	nulls          model.BlockContentDataviewSortEmptyType
 }
 
 func (s textSort) Fields() []query.SortField {
@@ -150,7 +149,8 @@ func (s textSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 			val = v.GetStringBytes(bundle.RelationKeySnippet.String())
 		}
 	}
-	collated := s.getCollatedBytes(val)
+
+	collated := s.collator.Key(s.collatorBuffer, val)
 	if s.reverse {
 		if s.nulls == model.BlockContentDataviewSort_Start && len(val) == 0 {
 			return tuple.Append(s.arena.NewNull())
@@ -164,13 +164,6 @@ func (s textSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 			return tuple.Append(s.arena.NewStringBytes(collated))
 		}
 	}
-}
-
-func (s textSort) getCollatedBytes(val []byte) []byte {
-	if s.disableCollator {
-		return val
-	}
-	return s.collator.Key(s.collatorBuffer, val)
 }
 
 type tagStatusSort struct {
