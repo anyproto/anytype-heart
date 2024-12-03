@@ -28353,6 +28353,7 @@ Bookmark is to keep a web-link and to preview a content.
 | includeTime | [bool](#bool) |  |  |
 | id | [string](#string) |  |  |
 | emptyPlacement | [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType) |  |  |
+| noCollate | [bool](#bool) |  |  |
 
 
 

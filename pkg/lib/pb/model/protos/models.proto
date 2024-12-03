@@ -430,6 +430,7 @@ message Block {
                 bool includeTime = 5;
                 string id = 6;
                 EmptyType emptyPlacement = 7;
+                bool noCollate = 8;
 
                 enum Type {
                     Asc = 0;
