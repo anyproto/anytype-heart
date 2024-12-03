@@ -158,7 +158,7 @@ func (longSpaceMigration) Name() string {
 	return "long migration"
 }
 
-func (longSpaceMigration) Run(ctx context.Context, _ logger.CtxLogger, _, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (longSpaceMigration) Run(ctx context.Context, _ logger.CtxLogger, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	for {
 		if err = space.DoCtx(ctx, "", func(smartblock.SmartBlock) error {
 			// do smth
@@ -175,6 +175,6 @@ func (instantMigration) Name() string {
 	return "instant migration"
 }
 
-func (instantMigration) Run(context.Context, logger.CtxLogger, dependencies.QueryableStore, dependencies.QueryableStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (instantMigration) Run(context.Context, logger.CtxLogger, dependencies.QueryableStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	return 0, 0, nil
 }

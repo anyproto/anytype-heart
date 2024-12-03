@@ -14,6 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -43,19 +44,14 @@ func (Migration) Name() string {
 	return MName
 }
 
-func (Migration) Run(ctx context.Context, log logger.CtxLogger, store, marketPlace dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	spaceObjects, err := listAllTypesAndRelations(store)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %w", err)
 	}
 
-	marketObjects, err := listAllTypesAndRelations(marketPlace)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get relations from marketplace space: %w", err)
-	}
-
 	for _, details := range spaceObjects {
-		shouldBeRevised, e := reviseSystemObject(ctx, log, space, details, marketObjects)
+		shouldBeRevised, e := reviseObject(ctx, log, space, details)
 		if !shouldBeRevised {
 			continue
 		}
@@ -91,15 +87,25 @@ func listAllTypesAndRelations(store dependencies.QueryableStore) (map[string]*ty
 	return details, nil
 }
 
-func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
-	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
-	marketObject, found := marketObjects[source]
-	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {
+func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *types.Struct) (toRevise bool, err error) {
+	uniqueKeyRaw := pbtypes.GetString(localObject, bundle.RelationKeyUniqueKey.String())
+
+	uk, err := domain.UnmarshalUniqueKey(uniqueKeyRaw)
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal unique key '%s': %w", uniqueKeyRaw, err)
+	}
+
+	bundleObject := getBundleSystemObjectDetails(uk)
+	if bundleObject == nil {
 		return false, nil
 	}
-	details := buildDiffDetails(marketObject, localObject)
 
-	recRelsDetail, err := checkRecommendedRelations(ctx, space, marketObject, localObject)
+	if pbtypes.GetInt64(bundleObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {
+		return false, nil
+	}
+	details := buildDiffDetails(bundleObject, localObject)
+
+	recRelsDetail, err := checkRecommendedRelations(ctx, space, bundleObject, localObject)
 	if err != nil {
 		log.Error("failed to check recommended relations", zap.Error(err))
 	}
@@ -109,32 +115,41 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 	}
 
 	if len(details) != 0 {
-		log.Debug("updating system object", zap.String("source", source), zap.String("space", space.Id()))
+		log.Debug("updating system object", zap.String("key", uk.InternalKey()), zap.String("space", space.Id()))
 		if err := space.DoCtx(ctx, pbtypes.GetString(localObject, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
 			if ds, ok := sb.(detailsSettable); ok {
 				return ds.SetDetails(nil, details, false)
 			}
 			return nil
 		}); err != nil {
-			return true, fmt.Errorf("failed to update system object %s in space %s: %w", source, space.Id(), err)
+			return true, fmt.Errorf("failed to update system object '%s' in space '%s': %w", uk.InternalKey(), space.Id(), err)
 		}
 	}
 	return true, nil
 }
 
-func isSystemObject(details *types.Struct) bool {
-	rawKey := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
-	uk, err := domain.UnmarshalUniqueKey(rawKey)
-	if err != nil {
-		return false
-	}
+// getBundleSystemObjectDetails returns nil if the object with provided unique key is not either system relation or system type
+func getBundleSystemObjectDetails(uk domain.UniqueKey) *types.Struct {
 	switch uk.SmartblockType() {
 	case coresb.SmartBlockTypeObjectType:
-		return lo.Contains(bundle.SystemTypes, domain.TypeKey(uk.InternalKey()))
+		typeKey := domain.TypeKey(uk.InternalKey())
+		if !lo.Contains(bundle.SystemTypes, typeKey) {
+			// non system object type, no need to revise
+			return nil
+		}
+		objectType := bundle.MustGetType(typeKey)
+		return (&relationutils.ObjectType{ObjectType: objectType}).BundledTypeDetails()
 	case coresb.SmartBlockTypeRelation:
-		return lo.Contains(bundle.SystemRelations, domain.RelationKey(uk.InternalKey()))
+		relationKey := domain.RelationKey(uk.InternalKey())
+		if !lo.Contains(bundle.SystemRelations, relationKey) {
+			// non system relation, no need to revise
+			return nil
+		}
+		relation := bundle.MustGetRelation(relationKey)
+		return (&relationutils.Relation{Relation: relation}).ToStruct()
+	default:
+		return nil
 	}
-	return false
 }
 
 func buildDiffDetails(origin, current *types.Struct) (details []*model.Detail) {

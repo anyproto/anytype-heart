@@ -25,23 +25,13 @@ func TestMigration_Run(t *testing.T) {
 		store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeySpaceId:        pbtypes.String("space1"),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_checkbox)),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
 				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeyId:             pbtypes.String("id1"),
-				bundle.RelationKeyIsHidden:       pbtypes.Bool(true),
-				bundle.RelationKeyRevision:       pbtypes.Int64(1),
-				bundle.RelationKeyUniqueKey:      pbtypes.String(bundle.RelationKeyDone.URL()),
-				bundle.RelationKeySourceObject:   pbtypes.String(bundle.RelationKeyDone.BundledURL()),
-			},
-		})
-		marketPlace := objectstore.NewStoreFixture(t)
-		marketPlace.AddObjects(t, addr.AnytypeMarketplaceWorkspace, []objectstore.TestObject{
-			{
-				bundle.RelationKeySpaceId:        pbtypes.String(addr.AnytypeMarketplaceWorkspace),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_checkbox)),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyId:             pbtypes.String(bundle.RelationKeyDone.BundledURL()),
-				bundle.RelationKeyRevision:       pbtypes.Int64(2),
+				bundle.RelationKeyIsHidden:       pbtypes.Bool(true), // bundle = false
+				bundle.RelationKeyRevision:       pbtypes.Int64(1),   // bundle = 3
+				bundle.RelationKeyUniqueKey:      pbtypes.String(bundle.RelationKeyBacklinks.URL()),
+				bundle.RelationKeySourceObject:   pbtypes.String(bundle.RelationKeyBacklinks.BundledURL()),
 			},
 		})
 		fixer := &Migration{}
@@ -54,7 +44,7 @@ func TestMigration_Run(t *testing.T) {
 		spc.EXPECT().DoCtx(ctx, "id1", mock.Anything).Return(nil).Times(1)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space1"), marketPlace.SpaceIndex(addr.AnytypeMarketplaceWorkspace), spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space1"), spc)
 
 		// then
 		assert.NoError(t, err)
@@ -65,7 +55,7 @@ func TestMigration_Run(t *testing.T) {
 
 func TestReviseSystemObject(t *testing.T) {
 	ctx := context.Background()
-	log := logger.NewNamed("tesr")
+	log := logger.NewNamed("test")
 	marketObjects := map[string]*types.Struct{
 		"_otnote":        {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(3)}},
 		"_otpage":        {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(2)}},
@@ -79,16 +69,19 @@ func TestReviseSystemObject(t *testing.T) {
 	t.Run("system object type is updated if revision is higher", func(t *testing.T) {
 		// given
 		objectType := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():     pbtypes.Int64(1),
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_otnote"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("ot-note"),
+			bundle.RelationKeyRevision.String():     pbtypes.Int64(bundle.MustGetType(bundle.TypeKeyFile).Revision - 1),
+			bundle.RelationKeySourceObject.String(): pbtypes.String("_otfile"),
+			bundle.RelationKeyUniqueKey.String():    pbtypes.String("ot-file"),
 		}}
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
+		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return addr.ObjectTypeKeyToIdPrefix + key.InternalKey(), nil
+		}).Maybe()
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, log, space, objectType, marketObjects)
+		toRevise, err := reviseObject(ctx, log, space, objectType)
 
 		// then
 		assert.NoError(t, err)
@@ -97,16 +90,19 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("system object type is updated if no revision is set", func(t *testing.T) {
 		// given
-		objectType := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_otpage"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("ot-page"),
+		objectType := &types.Struct{Fields: map[string]*types.Value{ // bundle Audio type revision = 1
+			bundle.RelationKeySourceObject.String(): pbtypes.String("_otaudio"),
+			bundle.RelationKeyUniqueKey.String():    pbtypes.String("ot-audio"),
 		}}
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
+		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return addr.ObjectTypeKeyToIdPrefix + key.InternalKey(), nil
+		}).Maybe()
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, log, space, objectType, marketObjects)
+		toRevise, err := reviseObject(ctx, log, space, objectType)
 
 		// then
 		assert.NoError(t, err)
@@ -121,7 +117,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, log, space, objectType, marketObjects)
+		toRevise, err := reviseObject(ctx, log, space, objectType)
 
 		// then
 		assert.NoError(t, err)
@@ -137,7 +133,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, log, space, objectType, marketObjects)
+		toRevise, err := reviseObject(ctx, log, space, objectType)
 
 		// then
 		assert.NoError(t, err)
@@ -147,14 +143,14 @@ func TestReviseSystemObject(t *testing.T) {
 	t.Run("system object type with same revision is not updated", func(t *testing.T) {
 		// given
 		objectType := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():     pbtypes.Int64(3),
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_otnote"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("ot-note"),
+			bundle.RelationKeyRevision.String():     pbtypes.Int64(bundle.MustGetType(bundle.TypeKeyImage).Revision),
+			bundle.RelationKeySourceObject.String(): pbtypes.String("_otimage"),
+			bundle.RelationKeyUniqueKey.String():    pbtypes.String("ot-image"),
 		}}
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, log, space, objectType, marketObjects)
+		toRevise, err := reviseObject(ctx, log, space, objectType)
 
 		// then
 		assert.NoError(t, err)
@@ -164,16 +160,16 @@ func TestReviseSystemObject(t *testing.T) {
 	t.Run("system relation is updated if revision is higher", func(t *testing.T) {
 		// given
 		rel := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():     pbtypes.Int64(1),
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_brdescription"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-description"),
+			bundle.RelationKeyRevision.String():     pbtypes.Int64(bundle.MustGetRelation(bundle.RelationKeyGlobalName).Revision - 1),
+			bundle.RelationKeySourceObject.String(): pbtypes.String("_brglobalName"),
+			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-globalName"),
 		}}
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
+		toRevise, err := reviseObject(ctx, log, space, rel)
 
 		// then
 		assert.NoError(t, err)
@@ -182,16 +178,16 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("system relation is updated if no revision is set", func(t *testing.T) {
 		// given
-		rel := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_brid"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-id"),
+		rel := &types.Struct{Fields: map[string]*types.Value{ // relationMaxCount revision = 1
+			bundle.RelationKeySourceObject.String(): pbtypes.String("_brrelationMaxCount"),
+			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-relationMaxCount"),
 		}}
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
+		toRevise, err := reviseObject(ctx, log, space, rel)
 
 		// then
 		assert.NoError(t, err)
@@ -206,7 +202,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
+		toRevise, err := reviseObject(ctx, log, space, rel)
 
 		// then
 		assert.NoError(t, err)
@@ -223,7 +219,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
+		toRevise, err := reviseObject(ctx, log, space, rel)
 
 		// then
 		assert.NoError(t, err)
@@ -233,14 +229,14 @@ func TestReviseSystemObject(t *testing.T) {
 	t.Run("system relation with same revision is not updated", func(t *testing.T) {
 		// given
 		rel := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():     pbtypes.Int64(3),
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_brisReadonly"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-isReadonly"),
+			bundle.RelationKeyRevision.String():     pbtypes.Int64(bundle.MustGetRelation(bundle.RelationKeyBacklinks).Revision),
+			bundle.RelationKeySourceObject.String(): pbtypes.String("_brbacklinks"),
+			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-backlinks"),
 		}}
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
+		toRevise, err := reviseObject(ctx, log, space, rel)
 
 		// then
 		assert.NoError(t, err)
@@ -250,17 +246,17 @@ func TestReviseSystemObject(t *testing.T) {
 	t.Run("relation with absent maxCount is updated", func(t *testing.T) {
 		// given
 		rel := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():         pbtypes.Int64(2),
-			bundle.RelationKeySourceObject.String():     pbtypes.String("_brisReadonly"),
-			bundle.RelationKeyUniqueKey.String():        pbtypes.String("rel-isReadonly"),
-			bundle.RelationKeyRelationMaxCount.String(): pbtypes.Int64(1),
+			bundle.RelationKeyRevision.String():         pbtypes.Int64(bundle.MustGetRelation(bundle.RelationKeyBacklinks).Revision - 1),
+			bundle.RelationKeySourceObject.String():     pbtypes.String("_brbacklinks"),
+			bundle.RelationKeyUniqueKey.String():        pbtypes.String("rel-backlinks"),
+			bundle.RelationKeyRelationMaxCount.String(): pbtypes.Int64(1), // maxCount of bundle backlinks = 0
 		}}
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
+		toRevise, err := reviseObject(ctx, log, space, rel)
 
 		// then
 		assert.NoError(t, err)
@@ -270,9 +266,9 @@ func TestReviseSystemObject(t *testing.T) {
 	t.Run("recommendedRelations list is updated", func(t *testing.T) {
 		// given
 		rel := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():             pbtypes.Int64(1),
-			bundle.RelationKeySourceObject.String():         pbtypes.String("_otpage"),
-			bundle.RelationKeyUniqueKey.String():            pbtypes.String("ot-page"),
+			bundle.RelationKeyRevision.String():             pbtypes.Int64(bundle.MustGetType(bundle.TypeKeyImage).Revision - 1),
+			bundle.RelationKeySourceObject.String():         pbtypes.String("_otimage"),
+			bundle.RelationKeyUniqueKey.String():            pbtypes.String("ot-image"),
 			bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList([]string{"rel-name"}),
 		}}
 		space := mock_space.NewMockSpace(t)
@@ -283,34 +279,11 @@ func TestReviseSystemObject(t *testing.T) {
 		}).Maybe()
 
 		// when
-		marketObjects["_otpage"].Fields["recommendedRelations"] = pbtypes.StringList([]string{"_brname", "_brorigin"})
-		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
+		toRevise, err := reviseObject(ctx, log, space, rel)
 
 		// then
 		assert.NoError(t, err)
 		assert.True(t, toRevise)
-	})
-
-	t.Run("recommendedRelations list is not updated", func(t *testing.T) {
-		// given
-		rel := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():             pbtypes.Int64(2),
-			bundle.RelationKeySourceObject.String():         pbtypes.String("_otpage"),
-			bundle.RelationKeyUniqueKey.String():            pbtypes.String("ot-page"),
-			bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList([]string{"rel-name", "rel-tag"}),
-		}}
-		space := mock_space.NewMockSpace(t)
-		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
-			return addr.ObjectTypeKeyToIdPrefix + key.InternalKey(), nil
-		}).Maybe()
-
-		// when
-		marketObjects["_otpage"].Fields["recommendedRelations"] = pbtypes.StringList([]string{"_brname", "_brtag"})
-		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
-
-		// then
-		assert.NoError(t, err)
-		assert.False(t, toRevise)
 	})
 
 	t.Run("recommendedRelations list is updated by not system relations", func(t *testing.T) {
@@ -328,7 +301,7 @@ func TestReviseSystemObject(t *testing.T) {
 
 		// when
 		marketObjects["_otpage"].Fields["recommendedRelations"] = pbtypes.StringList([]string{"_brname", "_brtag"})
-		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
+		toRevise, err := reviseObject(ctx, log, space, rel)
 
 		// then
 		assert.NoError(t, err)
