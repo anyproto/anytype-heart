@@ -40,6 +40,10 @@ type (
 	bookmarkService interface {
 		CreateObjectAndFetch(ctx context.Context, spaceId string, details *types.Struct) (objectID string, newDetails *types.Struct, err error)
 	}
+
+	objectArchiver interface {
+		SetIsArchived(objectId string, isArchived bool) error
+	}
 )
 
 const CName = "objectCreator"
@@ -65,6 +69,7 @@ type service struct {
 	spaceService      space.Service
 	templateService   templateService
 	lastUsedUpdater   lastused.ObjectUsageUpdater
+	archiver          objectArchiver
 }
 
 func NewCreator() Service {
@@ -78,6 +83,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[templateService](a)
 	s.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
+	s.archiver = app.MustComponent[objectArchiver](a)
 	return nil
 }
 
