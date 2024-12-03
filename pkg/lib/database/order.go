@@ -165,12 +165,13 @@ func (ko *KeyOrder) dateOnlySort() query.Sort {
 func (ko *KeyOrder) textSort() query.Sort {
 	ko.ensureCollator()
 	return textSort{
-		arena:          ko.arena,
-		collator:       ko.collator,
-		collatorBuffer: ko.collatorBuffer,
-		relationKey:    ko.Key,
-		reverse:        ko.Type == model.BlockContentDataviewSort_Desc,
-		nulls:          ko.EmptyPlacement,
+		arena:           ko.arena,
+		collator:        ko.collator,
+		collatorBuffer:  ko.collatorBuffer,
+		relationKey:     ko.Key,
+		reverse:         ko.Type == model.BlockContentDataviewSort_Desc,
+		nulls:           ko.EmptyPlacement,
+		disableCollator: ko.disableCollator,
 	}
 }
 

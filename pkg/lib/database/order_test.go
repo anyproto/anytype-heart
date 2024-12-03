@@ -387,7 +387,7 @@ func TestKeyOrder_Compare(t *testing.T) {
 		a := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeySpaceOrder.String(): pbtypes.String("--UK")}}
 		b := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeySpaceOrder.String(): pbtypes.String("--jc")}}
 		ko := &KeyOrder{disableCollator: true, arena: arena, Key: bundle.RelationKeySpaceOrder.String(), Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
-		assert.Equal(t, ko.Compare(a, b), -1)
+		assertCompare(t, ko, a, b, -1)
 	})
 }
 
