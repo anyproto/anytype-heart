@@ -180,7 +180,7 @@ func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSp
 		var innerErr error
 		analyticsId, innerErr = accountObject.GetAnalyticsId()
 		if innerErr != nil {
-			log.Debug("failed to get analytics id: %s", err)
+			log.Debug("failed to get analytics id: %s", innerErr)
 		}
 		return nil
 	})
@@ -217,7 +217,7 @@ func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSp
 			if persErr == nil {
 				return "", fmt.Errorf("failed to get analytics id, but migrated successfully")
 			}
-			// adding sleep just in case to avoid infinite loops if we have some unforseen issues
+			// adding sleep just in case to avoid infinite loops if we have some unforeseen issues
 			time.Sleep(time.Second)
 		}
 	} else {
