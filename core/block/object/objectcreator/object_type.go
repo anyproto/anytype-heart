@@ -105,7 +105,7 @@ func getRelationKeysFromDetails(details *types.Struct, fromLayout bool) ([]domai
 	var keys []domain.RelationKey
 	if fromLayout {
 		rawRecommendedLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())
-		recommendedLayout, err := bundle.GetLayout(model.ObjectTypeLayout(int32(rawRecommendedLayout)))
+		recommendedLayout, err := bundle.GetLayout(model.ObjectTypeLayout(rawRecommendedLayout))
 		if err != nil {
 			return nil, fmt.Errorf("invalid recommended layout %d: %w", rawRecommendedLayout, err)
 		}
