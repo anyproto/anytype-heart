@@ -1,17 +1,13 @@
 [
   {
     "id": "basic",
-    "name": "Basic",
-    "requiredRelations": [
-      "name"
-    ]
+    "name": "Basic"
   },
   {
     "id": "set",
     "name": "Set",
     "requiredRelations": [
-      "setOf",
-      "name"
+      "setOf"
     ]
   },
   {
@@ -34,8 +30,7 @@
     "id": "todo",
     "name": "to-do",
     "requiredRelations": [
-      "done",
-      "name"
+      "done"
     ]
   },
   {
@@ -63,16 +58,12 @@
   },
   {
     "id": "profile",
-    "name": "Profile",
-    "requiredRelations": [
-      "name"
-    ]
+    "name": "Profile"
   },
   {
     "id": "objectType",
     "name": "Object Type",
     "requiredRelations": [
-      "name",
       "recommendedRelations"
     ]
   },
@@ -80,22 +71,17 @@
     "id": "relationOption",
     "name": "Relation Option",
     "requiredRelations": [
-      "name",
       "relationOptionColor"
     ]
   },
   {
     "id": "collection",
-    "name": "Collection",
-    "requiredRelations": [
-      "name"
-    ]
+    "name": "Collection"
   },
   {
     "id": "tag",
     "name": "Tag",
     "requiredRelations": [
-      "name",
       "relationOptionColor"
     ]
   }

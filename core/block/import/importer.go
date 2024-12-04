@@ -30,7 +30,7 @@ import (
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/txt"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/object/installer"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -104,9 +104,9 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.idProvider = objectid.NewIDProvider(store, spaceService, i.s, i.fileStore, fileObjectService)
 	factory := syncer.New(syncer.NewFileSyncer(i.s, fileObjectService), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, fileObjectService))
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileObjectService)
-	objectCreator := app.MustComponent[objectcreator.Service](a)
+	objectInstaller := app.MustComponent[installer.BundleObjectInstaller](a)
 	detailsService := app.MustComponent[detailservice.Service](a)
-	i.oc = creator.New(detailsService, factory, store, relationSyncer, spaceService, objectCreator, i.s)
+	i.oc = creator.New(detailsService, factory, store, relationSyncer, spaceService, objectInstaller, i.s)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	i.notificationService = app.MustComponent[notifications.Notifications](a)
 	i.eventSender = app.MustComponent[event.Sender](a)

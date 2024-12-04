@@ -12,12 +12,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func TestService_fillRecommendedRelations(t *testing.T) {
-	s := service{}
+func TestFillRecommendedRelations(t *testing.T) {
 	spc := mock_clientspace.NewMockSpace(t)
 	spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, key domain.UniqueKey) (string, error) {
 		return domain.RelationKey(key.InternalKey()).URL(), nil
@@ -67,12 +67,73 @@ func TestService_fillRecommendedRelations(t *testing.T) {
 			}}
 
 			// when
-			err := s.fillRecommendedRelations(nil, spc, details, false)
+			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
 
 			// then
 			assert.NoError(t, err)
+			assert.False(t, isAlreadyFilled)
 			assert.Equal(t, tc.expected, pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()))
 			assert.Equal(t, defaultRecFeatRelIds, pbtypes.GetStringList(details, bundle.RelationKeyRecommendedFeaturedRelations.String()))
+			assert.Len(t, keys, len(tc.expected)+3)
+		})
+	}
+
+	t.Run("recommendedRelations are already filled", func(t *testing.T) {
+		// given
+		details := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList([]string{
+				"createdBy", "createdDate", "backlinks",
+			}),
+		}}
+
+		// when
+		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
+
+		// then
+		assert.NoError(t, err)
+		assert.True(t, isAlreadyFilled)
+		assert.Empty(t, keys)
+	})
+
+	for _, tc := range []struct {
+		name     string
+		layout   int64
+		expected []string
+	}{
+		{
+			"empty", int64(0), defaultRecRelIds,
+		},
+		{
+			"basic", int64(model.ObjectType_basic), defaultRecRelIds,
+		},
+		{
+			"set", int64(model.ObjectType_set), append([]string{bundle.RelationKeySetOf.URL()}, defaultRecRelIds...),
+		},
+		{
+			"to do", int64(model.ObjectType_todo), append([]string{bundle.RelationKeyDone.URL()}, defaultRecRelIds...),
+		},
+		{
+			"note", int64(model.ObjectType_note), defaultRecRelIds,
+		},
+		{
+			"collection", int64(model.ObjectType_collection), defaultRecRelIds,
+		},
+	} {
+		t.Run(fmt.Sprintf("from layout: %s", tc.name), func(t *testing.T) {
+			// given
+			details := &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyRecommendedLayout.String(): pbtypes.Int64(tc.layout),
+			}}
+
+			// when
+			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
+
+			// then
+			assert.NoError(t, err)
+			assert.False(t, isAlreadyFilled)
+			assert.Equal(t, tc.expected, pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()))
+			assert.Equal(t, defaultRecFeatRelIds, pbtypes.GetStringList(details, bundle.RelationKeyRecommendedFeaturedRelations.String()))
+			assert.Len(t, keys, len(tc.expected)+3)
 		})
 	}
 }

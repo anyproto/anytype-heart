@@ -21,7 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/syncer"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/object/installer"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -55,7 +55,7 @@ type ObjectCreator struct {
 	objectStore         objectstore.ObjectStore
 	relationSyncer      *syncer.FileRelationSyncer
 	syncFactory         *syncer.Factory
-	objectCreator       objectcreator.Service
+	objectInstaller     installer.BundleObjectInstaller
 	objectGetterDeleter ObjectGetterDeleter
 }
 
@@ -64,7 +64,7 @@ func New(detailsService detailservice.Service,
 	objectStore objectstore.ObjectStore,
 	relationSyncer *syncer.FileRelationSyncer,
 	spaceService space.Service,
-	objectCreator objectcreator.Service,
+	objectInstaller installer.BundleObjectInstaller,
 	objectGetterDeleter ObjectGetterDeleter,
 ) Service {
 	return &ObjectCreator{
@@ -73,7 +73,7 @@ func New(detailsService detailservice.Service,
 		objectStore:         objectStore,
 		relationSyncer:      relationSyncer,
 		spaceService:        spaceService,
-		objectCreator:       objectCreator,
+		objectInstaller:     objectInstaller,
 		objectGetterDeleter: objectGetterDeleter,
 	}
 }
@@ -233,7 +233,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	if err != nil {
 		return fmt.Errorf("get space %s: %w", spaceID, err)
 	}
-	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck, origin.Origin == model.ObjectOrigin_usecase)
+	_, _, err = oc.objectInstaller.InstallBundledObjects(ctx, spc, idsToCheck, origin.Origin == model.ObjectOrigin_usecase)
 	return err
 }
 

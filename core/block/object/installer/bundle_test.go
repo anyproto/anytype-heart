@@ -1,4 +1,4 @@
-package objectcreator
+package installer
 
 import (
 	"context"
@@ -26,10 +26,11 @@ type objKey interface {
 	BundledURL() string
 }
 
+const spaceId = "spaceId"
+
 func TestInstaller_queryDeletedObjects(t *testing.T) {
 	// given
 	var (
-		spaceId         = "spaceId"
 		sourceObjectIds = []string{}
 		validObjectIds  = []string{}
 	)
@@ -69,10 +70,10 @@ func TestInstaller_queryDeletedObjects(t *testing.T) {
 	spc := mock_clientspace.NewMockSpace(t)
 	spc.EXPECT().Id().Return(spaceId)
 
-	s := service{objectStore: store}
+	i := objectInstaller{store: store}
 
 	// when
-	records, err := s.queryDeletedObjects(spc, sourceObjectIds)
+	records, err := i.queryDeletedObjects(spc, sourceObjectIds)
 
 	// then
 	assert.NoError(t, err)
@@ -136,10 +137,10 @@ func TestInstaller_reinstallObject(t *testing.T) {
 			return nil
 		})
 
-		s := service{archiver: archiver}
+		i := objectInstaller{archiver: archiver}
 
 		// when
-		id, _, newDetails, err := s.reinstallObject(nil, market, spc, oldDetails)
+		id, _, newDetails, err := i.reinstallObject(nil, market, spc, oldDetails)
 
 		// then
 		assert.NoError(t, err)

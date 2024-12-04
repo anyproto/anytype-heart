@@ -41,24 +41,26 @@ type (
 		CreateObjectAndFetch(ctx context.Context, spaceId string, details *types.Struct) (objectID string, newDetails *types.Struct, err error)
 	}
 
-	objectArchiver interface {
-		SetIsArchived(objectId string, isArchived bool) error
+	installer interface {
+		InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) (ids []string, objects []*types.Struct, err error)
 	}
 )
 
 const CName = "objectCreator"
 
-var log = logging.Logger("object-service")
+var log = logging.Logger(CName)
 
 type Service interface {
 	CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *types.Struct, err error)
 	CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, objectUniqueTypeKey string, req CreateObjectRequest) (id string, details *types.Struct, err error)
+	CreateObjectInSpace(ctx context.Context, space clientspace.Space, req CreateObjectRequest) (id string, details *types.Struct, err error)
 
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 	AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string) (chatId string, err error)
 
-	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) (ids []string, objects []*types.Struct, err error)
+	CreateTemplatesForObjectType(spc clientspace.Space, typeKey domain.TypeKey) error
+
 	app.Component
 }
 
@@ -69,7 +71,7 @@ type service struct {
 	spaceService      space.Service
 	templateService   templateService
 	lastUsedUpdater   lastused.ObjectUsageUpdater
-	archiver          objectArchiver
+	installer         installer
 }
 
 func NewCreator() Service {
@@ -83,7 +85,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[templateService](a)
 	s.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
-	s.archiver = app.MustComponent[objectArchiver](a)
+	s.installer = app.MustComponent[installer](a)
 	return nil
 }
 
@@ -105,7 +107,7 @@ func (s *service) CreateObject(ctx context.Context, spaceID string, req CreateOb
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
 	}
-	return s.createObjectInSpace(ctx, space, req)
+	return s.CreateObjectInSpace(ctx, space, req)
 }
 
 func (s *service) CreateObjectUsingObjectUniqueTypeKey(
@@ -119,9 +121,9 @@ func (s *service) CreateObjectUsingObjectUniqueTypeKey(
 	return s.CreateObject(ctx, spaceID, req)
 }
 
-// createObjectInSpace is supposed to be called for user-initiated object creation requests
+// CreateObjectInSpace is supposed to be called for user-initiated object creation requests
 // will return Restricted error in case called with types like File or Participant
-func (s *service) createObjectInSpace(
+func (s *service) CreateObjectInSpace(
 	ctx context.Context, space clientspace.Space, req CreateObjectRequest,
 ) (id string, details *types.Struct, err error) {
 	details = req.Details

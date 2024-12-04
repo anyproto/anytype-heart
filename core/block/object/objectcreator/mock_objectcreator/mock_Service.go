@@ -157,6 +157,73 @@ func (_c *MockService_CreateObject_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
+// CreateObjectInSpace provides a mock function with given fields: ctx, space, req
+func (_m *MockService) CreateObjectInSpace(ctx context.Context, space clientspace.Space, req objectcreator.CreateObjectRequest) (string, *types.Struct, error) {
+	ret := _m.Called(ctx, space, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateObjectInSpace")
+	}
+
+	var r0 string
+	var r1 *types.Struct
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, objectcreator.CreateObjectRequest) (string, *types.Struct, error)); ok {
+		return rf(ctx, space, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, objectcreator.CreateObjectRequest) string); ok {
+		r0 = rf(ctx, space, req)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, clientspace.Space, objectcreator.CreateObjectRequest) *types.Struct); ok {
+		r1 = rf(ctx, space, req)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*types.Struct)
+		}
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, clientspace.Space, objectcreator.CreateObjectRequest) error); ok {
+		r2 = rf(ctx, space, req)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockService_CreateObjectInSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateObjectInSpace'
+type MockService_CreateObjectInSpace_Call struct {
+	*mock.Call
+}
+
+// CreateObjectInSpace is a helper method to define mock.On call
+//   - ctx context.Context
+//   - space clientspace.Space
+//   - req objectcreator.CreateObjectRequest
+func (_e *MockService_Expecter) CreateObjectInSpace(ctx interface{}, space interface{}, req interface{}) *MockService_CreateObjectInSpace_Call {
+	return &MockService_CreateObjectInSpace_Call{Call: _e.mock.On("CreateObjectInSpace", ctx, space, req)}
+}
+
+func (_c *MockService_CreateObjectInSpace_Call) Run(run func(ctx context.Context, space clientspace.Space, req objectcreator.CreateObjectRequest)) *MockService_CreateObjectInSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].(objectcreator.CreateObjectRequest))
+	})
+	return _c
+}
+
+func (_c *MockService_CreateObjectInSpace_Call) Return(id string, details *types.Struct, err error) *MockService_CreateObjectInSpace_Call {
+	_c.Call.Return(id, details, err)
+	return _c
+}
+
+func (_c *MockService_CreateObjectInSpace_Call) RunAndReturn(run func(context.Context, clientspace.Space, objectcreator.CreateObjectRequest) (string, *types.Struct, error)) *MockService_CreateObjectInSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateObjectUsingObjectUniqueTypeKey provides a mock function with given fields: ctx, spaceID, objectUniqueTypeKey, req
 func (_m *MockService) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, objectUniqueTypeKey string, req objectcreator.CreateObjectRequest) (string, *types.Struct, error) {
 	ret := _m.Called(ctx, spaceID, objectUniqueTypeKey, req)
@@ -361,6 +428,53 @@ func (_c *MockService_CreateSmartBlockFromStateInSpace_Call) RunAndReturn(run fu
 	return _c
 }
 
+// CreateTemplatesForObjectType provides a mock function with given fields: spc, typeKey
+func (_m *MockService) CreateTemplatesForObjectType(spc clientspace.Space, typeKey domain.TypeKey) error {
+	ret := _m.Called(spc, typeKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateTemplatesForObjectType")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(clientspace.Space, domain.TypeKey) error); ok {
+		r0 = rf(spc, typeKey)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_CreateTemplatesForObjectType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateTemplatesForObjectType'
+type MockService_CreateTemplatesForObjectType_Call struct {
+	*mock.Call
+}
+
+// CreateTemplatesForObjectType is a helper method to define mock.On call
+//   - spc clientspace.Space
+//   - typeKey domain.TypeKey
+func (_e *MockService_Expecter) CreateTemplatesForObjectType(spc interface{}, typeKey interface{}) *MockService_CreateTemplatesForObjectType_Call {
+	return &MockService_CreateTemplatesForObjectType_Call{Call: _e.mock.On("CreateTemplatesForObjectType", spc, typeKey)}
+}
+
+func (_c *MockService_CreateTemplatesForObjectType_Call) Run(run func(spc clientspace.Space, typeKey domain.TypeKey)) *MockService_CreateTemplatesForObjectType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(clientspace.Space), args[1].(domain.TypeKey))
+	})
+	return _c
+}
+
+func (_c *MockService_CreateTemplatesForObjectType_Call) Return(_a0 error) *MockService_CreateTemplatesForObjectType_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_CreateTemplatesForObjectType_Call) RunAndReturn(run func(clientspace.Space, domain.TypeKey) error) *MockService_CreateTemplatesForObjectType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Init provides a mock function with given fields: a
 func (_m *MockService) Init(a *app.App) error {
 	ret := _m.Called(a)
@@ -403,76 +517,6 @@ func (_c *MockService_Init_Call) Return(err error) *MockService_Init_Call {
 }
 
 func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockService_Init_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// InstallBundledObjects provides a mock function with given fields: ctx, space, sourceObjectIds, isNewSpace
-func (_m *MockService) InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) ([]string, []*types.Struct, error) {
-	ret := _m.Called(ctx, space, sourceObjectIds, isNewSpace)
-
-	if len(ret) == 0 {
-		panic("no return value specified for InstallBundledObjects")
-	}
-
-	var r0 []string
-	var r1 []*types.Struct
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, []string, bool) ([]string, []*types.Struct, error)); ok {
-		return rf(ctx, space, sourceObjectIds, isNewSpace)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, []string, bool) []string); ok {
-		r0 = rf(ctx, space, sourceObjectIds, isNewSpace)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]string)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, clientspace.Space, []string, bool) []*types.Struct); ok {
-		r1 = rf(ctx, space, sourceObjectIds, isNewSpace)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).([]*types.Struct)
-		}
-	}
-
-	if rf, ok := ret.Get(2).(func(context.Context, clientspace.Space, []string, bool) error); ok {
-		r2 = rf(ctx, space, sourceObjectIds, isNewSpace)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
-}
-
-// MockService_InstallBundledObjects_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InstallBundledObjects'
-type MockService_InstallBundledObjects_Call struct {
-	*mock.Call
-}
-
-// InstallBundledObjects is a helper method to define mock.On call
-//   - ctx context.Context
-//   - space clientspace.Space
-//   - sourceObjectIds []string
-//   - isNewSpace bool
-func (_e *MockService_Expecter) InstallBundledObjects(ctx interface{}, space interface{}, sourceObjectIds interface{}, isNewSpace interface{}) *MockService_InstallBundledObjects_Call {
-	return &MockService_InstallBundledObjects_Call{Call: _e.mock.On("InstallBundledObjects", ctx, space, sourceObjectIds, isNewSpace)}
-}
-
-func (_c *MockService_InstallBundledObjects_Call) Run(run func(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool)) *MockService_InstallBundledObjects_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].([]string), args[3].(bool))
-	})
-	return _c
-}
-
-func (_c *MockService_InstallBundledObjects_Call) Return(ids []string, objects []*types.Struct, err error) *MockService_InstallBundledObjects_Call {
-	_c.Call.Return(ids, objects, err)
-	return _c
-}
-
-func (_c *MockService_InstallBundledObjects_Call) RunAndReturn(run func(context.Context, clientspace.Space, []string, bool) ([]string, []*types.Struct, error)) *MockService_InstallBundledObjects_Call {
 	_c.Call.Return(run)
 	return _c
 }
