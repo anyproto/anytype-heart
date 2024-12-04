@@ -14,9 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -28,10 +26,6 @@ import (
 )
 
 type (
-	collectionService interface {
-		CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error)
-	}
-
 	templateService interface {
 		CreateTemplateStateWithDetails(templateId string, details *types.Struct) (st *state.State, err error)
 		TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
@@ -65,13 +59,12 @@ type Service interface {
 }
 
 type service struct {
-	objectStore       objectstore.ObjectStore
-	collectionService collectionService
-	bookmarkService   bookmarkService
-	spaceService      space.Service
-	templateService   templateService
-	lastUsedUpdater   lastused.ObjectUsageUpdater
-	installer         installer
+	objectStore     objectstore.ObjectStore
+	bookmarkService bookmarkService
+	spaceService    space.Service
+	templateService templateService
+	lastUsedUpdater lastused.ObjectUsageUpdater
+	installer       installer
 }
 
 func NewCreator() Service {
@@ -81,7 +74,6 @@ func NewCreator() Service {
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.bookmarkService = app.MustComponent[bookmarkService](a)
-	s.collectionService = app.MustComponent[collectionService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[templateService](a)
 	s.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
@@ -142,19 +134,8 @@ func (s *service) CreateObjectInSpace(
 		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), details)
 	case bundle.TypeKeySet:
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_set))
-		return s.createSet(ctx, space, &pb.RpcObjectCreateSetRequest{
-			Details:       details,
-			InternalFlags: req.InternalFlags,
-			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
-		})
 	case bundle.TypeKeyCollection:
-		var st *state.State
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
-		_, details, st, err = s.collectionService.CreateCollection(details, req.InternalFlags)
-		if err != nil {
-			return "", nil, err
-		}
-		return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyCollection}, st)
 	case bundle.TypeKeyObjectType:
 		return s.createObjectType(ctx, space, details)
 	case bundle.TypeKeyRelation:
