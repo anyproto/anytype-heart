@@ -118,7 +118,8 @@ func getRelationKeysFromDetails(details *types.Struct) ([]domain.RelationKey, er
 	var keys []domain.RelationKey
 	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
 	if len(bundledRelationIds) == 0 {
-		rawRecommendedLayout := int32(pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String()))
+		rawRecommendedLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())
+		// nolint: gosec
 		recommendedLayout, err := bundle.GetLayout(model.ObjectTypeLayout(rawRecommendedLayout))
 		if err != nil {
 			return nil, fmt.Errorf("invalid recommended layout %d: %w", rawRecommendedLayout, err)
@@ -131,14 +132,15 @@ func getRelationKeysFromDetails(details *types.Struct) ([]domain.RelationKey, er
 		keys = make([]domain.RelationKey, 0, len(bundledRelationIds))
 		for i, id := range bundledRelationIds {
 			key, err := bundle.RelationKeyFromID(id)
-			if err != nil {
-				if i == 0 {
-					// if we fail to parse 1st bundled relation id, details are already filled with correct ids
-					return nil, errRecommendedRelationsAlreadyFilled
-				}
-				return nil, fmt.Errorf("relation key from id: %w", err)
+			if err == nil {
+				keys = append(keys, key)
+				continue
 			}
-			keys = append(keys, key)
+			if i == 0 {
+				// if we fail to parse 1st bundled relation id, details are already filled with correct ids
+				return nil, errRecommendedRelationsAlreadyFilled
+			}
+			return nil, fmt.Errorf("relation key from id: %w", err)
 		}
 	}
 	return keys, nil
