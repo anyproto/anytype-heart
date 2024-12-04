@@ -32,6 +32,7 @@ var pageRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeySnippet,
 	bundle.RelationKeyFeaturedRelations,
 	bundle.RelationKeyLinks,
+	bundle.RelationKeyBacklinks,
 	bundle.RelationKeyLayoutAlign,
 }
 

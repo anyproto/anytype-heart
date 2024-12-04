@@ -855,6 +855,10 @@
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Request)
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response)
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error)
+    - [Rpc.Object.DateByTimestamp](#anytype-Rpc-Object-DateByTimestamp)
+    - [Rpc.Object.DateByTimestamp.Request](#anytype-Rpc-Object-DateByTimestamp-Request)
+    - [Rpc.Object.DateByTimestamp.Response](#anytype-Rpc-Object-DateByTimestamp-Response)
+    - [Rpc.Object.DateByTimestamp.Response.Error](#anytype-Rpc-Object-DateByTimestamp-Response-Error)
     - [Rpc.Object.Duplicate](#anytype-Rpc-Object-Duplicate)
     - [Rpc.Object.Duplicate.Request](#anytype-Rpc-Object-Duplicate-Request)
     - [Rpc.Object.Duplicate.Response](#anytype-Rpc-Object-Duplicate-Response)
@@ -1435,6 +1439,7 @@
     - [Rpc.Object.CreateSet.Response.Error.Code](#anytype-Rpc-Object-CreateSet-Response-Error-Code)
     - [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code)
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code)
+    - [Rpc.Object.DateByTimestamp.Response.Error.Code](#anytype-Rpc-Object-DateByTimestamp-Response-Error-Code)
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
     - [Rpc.Object.Graph.Response.Error.Code](#anytype-Rpc-Object-Graph-Response-Error-Code)
@@ -1872,6 +1877,7 @@
     - [Block.Content.Dataview.Filter.Operator](#anytype-model-Block-Content-Dataview-Filter-Operator)
     - [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption)
     - [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat)
+    - [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType)
     - [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat)
     - [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType)
     - [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type)
@@ -2038,6 +2044,7 @@
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
 | ObjectImportUseCase | [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request) | [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response) |  |
 | ObjectImportExperience | [Rpc.Object.ImportExperience.Request](#anytype-Rpc-Object-ImportExperience-Request) | [Rpc.Object.ImportExperience.Response](#anytype-Rpc-Object-ImportExperience-Response) |  |
+| ObjectDateByTimestamp | [Rpc.Object.DateByTimestamp.Request](#anytype-Rpc-Object-DateByTimestamp-Request) | [Rpc.Object.DateByTimestamp.Response](#anytype-Rpc-Object-DateByTimestamp-Response) |  |
 | ObjectCollectionAdd | [Rpc.ObjectCollection.Add.Request](#anytype-Rpc-ObjectCollection-Add-Request) | [Rpc.ObjectCollection.Add.Response](#anytype-Rpc-ObjectCollection-Add-Response) | Collections *** |
 | ObjectCollectionRemove | [Rpc.ObjectCollection.Remove.Request](#anytype-Rpc-ObjectCollection-Remove-Request) | [Rpc.ObjectCollection.Remove.Response](#anytype-Rpc-ObjectCollection-Remove-Response) |  |
 | ObjectCollectionSort | [Rpc.ObjectCollection.Sort.Request](#anytype-Rpc-ObjectCollection-Sort-Request) | [Rpc.ObjectCollection.Sort.Response](#anytype-Rpc-ObjectCollection-Sort-Response) |  |
@@ -14573,6 +14580,64 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-DateByTimestamp"></a>
+
+### Rpc.Object.DateByTimestamp
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DateByTimestamp-Request"></a>
+
+### Rpc.Object.DateByTimestamp.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| timestamp | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DateByTimestamp-Response"></a>
+
+### Rpc.Object.DateByTimestamp.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.DateByTimestamp.Response.Error](#anytype-Rpc-Object-DateByTimestamp-Response-Error) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DateByTimestamp-Response-Error"></a>
+
+### Rpc.Object.DateByTimestamp.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.DateByTimestamp.Response.Error.Code](#anytype-Rpc-Object-DateByTimestamp-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Duplicate"></a>
 
 ### Rpc.Object.Duplicate
@@ -16122,7 +16187,7 @@ DEPRECATED, GO-1926 |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 | returnMeta | [bool](#bool) |  | add ResultMeta to each result |
 | returnMetaRelationDetails | [bool](#bool) |  | add relation option details to meta |
-| returnHTMLHighlightsInsteadOfRanges | [bool](#bool) |  |  |
+| returnHTMLHighlightsInsteadOfRanges | [bool](#bool) |  | DEPRECATED |
 
 
 
@@ -22840,6 +22905,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-DateByTimestamp-Response-Error-Code"></a>
+
+### Rpc.Object.DateByTimestamp.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Object-Duplicate-Response-Error-Code"></a>
 
 ### Rpc.Object.Duplicate.Response.Error.Code
@@ -23015,10 +23093,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NONE | 0 |  |
 | GET_STARTED | 1 |  |
-| PERSONAL_PROJECTS | 2 |  |
-| KNOWLEDGE_BASE | 3 |  |
-| NOTES_DIARY | 4 |  |
-| STRATEGIC_WRITING | 5 |  |
 | EMPTY | 6 |  |
 
 
@@ -28106,6 +28180,7 @@ Bookmark is to keep a web-link and to preview a content.
 | dateIncludeTime | [bool](#bool) |  |  |
 | timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  |  |
 | dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  |  |
+| formula | [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType) |  |  |
 
 
 
@@ -29652,6 +29727,30 @@ stored |
 | Short | 2 | 30/07/2020 |
 | ShortUS | 3 | 07/30/2020 |
 | ISO | 4 | 2020-07-30 |
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Relation-FormulaType"></a>
+
+### Block.Content.Dataview.Relation.FormulaType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| None | 0 |  |
+| Count | 1 |  |
+| CountValue | 2 |  |
+| CountDistinct | 3 |  |
+| CountEmpty | 4 |  |
+| CountNotEmpty | 5 |  |
+| PercentEmpty | 6 |  |
+| PercentNotEmpty | 7 |  |
+| MathSum | 8 |  |
+| MathAverage | 9 |  |
+| MathMedian | 10 |  |
+| MathMin | 11 |  |
+| MathMax | 12 |  |
+| Range | 13 |  |
 
 
 

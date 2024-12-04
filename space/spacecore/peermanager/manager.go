@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/streampool"
 	"storj.io/drpc"
 
@@ -63,6 +64,7 @@ type clientPeerManager struct {
 	sync.Mutex
 
 	peerToPeerStatus PeerToPeerStatus
+	keepAliveMessage drpc.Message
 }
 
 func (n *clientPeerManager) Init(a *app.App) (err error) {
@@ -75,6 +77,18 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.streamPool = app.MustComponent[streampool.StreamPool](a)
 	n.spaceSyncService = app.MustComponent[Updater](a)
 	n.peerToPeerStatus = app.MustComponent[PeerToPeerStatus](a)
+
+	var keepAliveMsg = &spacesyncproto.SpaceSubscription{
+		SpaceIds: []string{n.spaceId},
+		Action:   spacesyncproto.SpaceSubscriptionAction_Subscribe,
+	}
+	payload, err := keepAliveMsg.Marshal()
+	if err != nil {
+		return
+	}
+	n.keepAliveMessage = &spacesyncproto.ObjectSyncMessage{
+		Payload: payload,
+	}
 	return
 }
 
@@ -254,6 +268,10 @@ func (n *clientPeerManager) watchPeer(p peer.Peer) {
 	case <-n.ctx.Done():
 		return
 	}
+}
+
+func (n *clientPeerManager) KeepAlive(ctx context.Context) {
+	_ = n.BroadcastMessage(ctx, n.keepAliveMessage)
 }
 
 func (n *clientPeerManager) Close(ctx context.Context) (err error) {

@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -75,7 +76,6 @@ func TestWatcher_Run(t *testing.T) {
 		f := newFixture(t, interval)
 
 		f.resolver.EXPECT().ResolveSpaceID(mock.Anything).Return(spaceId, nil)
-
 		f.updater.runFunc = func(callback func(info spaceindex.LinksUpdateInfo)) {
 			callback(spaceindex.LinksUpdateInfo{
 				LinksFromId: "obj1",
@@ -99,6 +99,9 @@ func TestWatcher_Run(t *testing.T) {
 		spc := mock_clientspace.NewMockSpace(t)
 		f.spaceService.EXPECT().Get(mock.Anything, spaceId).Return(spc, nil)
 
+		spc.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{
+			Archive: "archive",
+		})
 		spc.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).RunAndReturn(func(id string, apply func() error) error {
 			if id == "obj2" {
 				return ocache.ErrExists
@@ -140,7 +143,9 @@ func TestWatcher_updateAccumulatedBacklinks(t *testing.T) {
 
 		spc := mock_clientspace.NewMockSpace(t)
 		f.spaceService.EXPECT().Get(mock.Anything, spaceId).Return(spc, nil)
-
+		spc.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{
+			Archive: "archive",
+		})
 		spc.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).RunAndReturn(func(id string, apply func() error) error {
 			if id == "obj2" {
 				return ocache.ErrExists

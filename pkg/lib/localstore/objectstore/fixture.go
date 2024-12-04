@@ -29,11 +29,26 @@ func (fx *StoreFixture) TechSpaceId() string {
 	return fx.techSpaceIdProvider.TechSpaceId()
 }
 
+type virtualDetailsHandler interface {
+	AddVirtualDetails(id string, det *types.Struct)
+}
+
 type detailsFromId struct {
+	details map[string]*types.Struct
 }
 
 func (d *detailsFromId) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error) {
+	if det, found := d.details[id.ObjectID]; found {
+		return det, nil
+	}
 	return nil, fmt.Errorf("not found")
+}
+
+func (d *detailsFromId) AddVirtualDetails(id string, det *types.Struct) {
+	if d.details == nil {
+		d.details = map[string]*types.Struct{}
+	}
+	d.details[id] = det
 }
 
 type stubTechSpaceIdProvider struct{}
@@ -117,4 +132,10 @@ func makeDetails(fields spaceindex.TestObject) *types.Struct {
 		f[string(k)] = v
 	}
 	return &types.Struct{Fields: f}
+}
+
+func (fx *StoreFixture) AddVirtualDetails(id string, details *types.Struct) {
+	if handler := fx.sourceService.(virtualDetailsHandler); handler != nil {
+		handler.AddVirtualDetails(id, details)
+	}
 }

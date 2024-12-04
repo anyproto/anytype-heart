@@ -134,7 +134,7 @@ func TestGetImportNotificationErrorCode(t *testing.T) {
 		code := GetImportNotificationErrorCode(err)
 
 		// then
-		assert.Equal(t, model.Import_NOTION_NO_OBJECTS_IN_INTEGRATION, code)
+		assert.Equal(t, model.Import_FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY, code)
 	})
 	t.Run("GetImportNotificationErrorCode - no objects in zip", func(t *testing.T) {
 		// given
@@ -144,7 +144,7 @@ func TestGetImportNotificationErrorCode(t *testing.T) {
 		code := GetImportNotificationErrorCode(err)
 
 		// then
-		assert.Equal(t, model.Import_NOTION_NO_OBJECTS_IN_INTEGRATION, code)
+		assert.Equal(t, model.Import_FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE, code)
 	})
 	t.Run("GetImportNotificationErrorCode - not any block format", func(t *testing.T) {
 		// given
