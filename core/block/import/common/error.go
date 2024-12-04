@@ -123,9 +123,7 @@ func GetImportNotificationErrorCode(err error) model.ImportErrorCode {
 		return model.Import_NULL
 	}
 	switch {
-	case errors.Is(err, ErrNoObjectInIntegration) ||
-		errors.Is(err, ErrFileImportNoObjectsInDirectory) ||
-		errors.Is(err, ErrFileImportNoObjectsInZipArchive): // support existing protocol
+	case errors.Is(err, ErrNoObjectInIntegration):
 		return model.Import_NOTION_NO_OBJECTS_IN_INTEGRATION
 	case errors.Is(err, ErrNotionServerIsUnavailable):
 		return model.Import_NOTION_SERVER_IS_UNAVAILABLE

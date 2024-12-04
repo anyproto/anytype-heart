@@ -389,6 +389,7 @@ message Block {
                 bool dateIncludeTime = 5;
                 TimeFormat timeFormat = 6;
                 DateFormat dateFormat = 7;
+                FormulaType formula = 8;
 
                 enum DateFormat {
                     MonthAbbrBeforeDay = 0; // Jul 30, 2020
@@ -402,6 +403,23 @@ message Block {
                     Format12 = 0;
                     Format24 = 1;
                 }
+
+                enum FormulaType {
+                    None				    = 0;
+                    Count				    = 1;
+                    CountValue      = 2;
+                    CountDistinct		= 3;
+                    CountEmpty			= 4;
+                    CountNotEmpty		= 5;
+                    PercentEmpty		= 6;
+                    PercentNotEmpty	= 7;
+                    MathSum				  = 8;
+                    MathAverage			= 9;
+                    MathMedian			= 10;
+                    MathMin				  = 11;
+                    MathMax				  = 12;
+                    Range				    = 13;
+                }
             }
 
             message Sort {
@@ -412,6 +430,7 @@ message Block {
                 bool includeTime = 5;
                 string id = 6;
                 EmptyType emptyPlacement = 7;
+                bool noCollate = 8;
 
                 enum Type {
                     Asc = 0;

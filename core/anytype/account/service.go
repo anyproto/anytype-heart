@@ -2,8 +2,10 @@ package account
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -175,25 +177,52 @@ func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSp
 		return s.config.AnalyticsId, nil
 	}
 	err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
-		analyticsId, err = accountObject.GetAnalyticsId()
-		if err != nil {
-			log.Debug("failed to get analytics id: %s", err)
+		var innerErr error
+		analyticsId, innerErr = accountObject.GetAnalyticsId()
+		if innerErr != nil {
+			log.Debug("failed to get analytics id: %s", innerErr)
 		}
 		return nil
 	})
+	if err != nil {
+		return
+	}
 	if analyticsId == "" {
-		err = s.spaceService.WaitPersonalSpaceMigration(ctx)
-		if err != nil {
-			return
+		for {
+			// waiting for personal space
+			ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+			persErr := s.spaceService.WaitPersonalSpaceMigration(ctx)
+			cancel()
+			if persErr != nil && !errors.Is(persErr, ctx.Err()) {
+				return "", persErr
+			}
+			// there is also this case that account object could be unsynced on start
+			// because we can't distinguish between accounts without account object (i.e. old accounts)
+			// and new ones which have the account object
+			// so it may be the case that it will sync but a little bit later
+			err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
+				var innerErr error
+				analyticsId, innerErr = accountObject.GetAnalyticsId()
+				if innerErr != nil {
+					log.Debug("failed to get analytics id: %s", err)
+				}
+				return nil
+			})
+			if err != nil {
+				return
+			}
+			if analyticsId != "" {
+				return analyticsId, nil
+			}
+			if persErr == nil {
+				return "", fmt.Errorf("failed to get analytics id, but migrated successfully")
+			}
+			// adding sleep just in case to avoid infinite loops if we have some unforeseen issues
+			time.Sleep(time.Second)
 		}
 	} else {
 		return analyticsId, nil
 	}
-	err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
-		analyticsId, err = accountObject.GetAnalyticsId()
-		return err
-	})
-	return
 }
 
 func (s *service) getNetworkId() string {

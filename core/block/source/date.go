@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -56,22 +57,24 @@ func (d *date) Type() smartblock.SmartBlockType {
 }
 
 func (d *date) getDetails() (*types.Struct, error) {
-	t, err := dateutil.ParseDateId(d.id)
+	dateObject, err := dateutil.BuildDateObjectFromId(d.id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse date id: %w", err)
 	}
+	restrictions := restriction.GetRestrictionsBySBType(smartblock.SmartBlockTypeDate)
 
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(dateutil.TimeToDateName(t)),
-		bundle.RelationKeyId.String():         pbtypes.String(d.id),
-		bundle.RelationKeyType.String():       pbtypes.String(d.typeId),
-		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
-		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_date)),
-		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
-		bundle.RelationKeySpaceId.String():    pbtypes.String(d.SpaceID()),
-		bundle.RelationKeyTimestamp.String():  pbtypes.Int64(t.Unix()),
+		bundle.RelationKeyName.String():         pbtypes.String(dateObject.Name()),
+		bundle.RelationKeyId.String():           pbtypes.String(d.id),
+		bundle.RelationKeyType.String():         pbtypes.String(d.typeId),
+		bundle.RelationKeyIsReadonly.String():   pbtypes.Bool(true),
+		bundle.RelationKeyIsArchived.String():   pbtypes.Bool(false),
+		bundle.RelationKeyIsHidden.String():     pbtypes.Bool(false),
+		bundle.RelationKeyLayout.String():       pbtypes.Float64(float64(model.ObjectType_date)),
+		bundle.RelationKeyIconEmoji.String():    pbtypes.String("📅"),
+		bundle.RelationKeySpaceId.String():      pbtypes.String(d.SpaceID()),
+		bundle.RelationKeyTimestamp.String():    pbtypes.Int64(dateObject.Time().Unix()),
+		bundle.RelationKeyRestrictions.String(): pbtypes.IntList(restrictions...),
 	}}, nil
 }
 

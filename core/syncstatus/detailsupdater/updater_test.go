@@ -72,7 +72,6 @@ func (t *updateTester) wait() {
 
 func newUpdateDetailsFixture(t *testing.T) *fixture {
 	fx := newFixture(t)
-	fx.spaceService.EXPECT().TechSpaceId().Return("techSpace")
 	err := fx.Run(context.Background())
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -83,12 +82,6 @@ func newUpdateDetailsFixture(t *testing.T) *fixture {
 }
 
 func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
-	t.Run("ignore tech space", func(t *testing.T) {
-		fx := newUpdateDetailsFixture(t)
-
-		fx.UpdateDetails("spaceView1", domain.ObjectSyncStatusSynced, "techSpace")
-	})
-
 	t.Run("updates to the same object", func(t *testing.T) {
 		fx := newUpdateDetailsFixture(t)
 		updTester := newUpdateTester(t, 1, 4)

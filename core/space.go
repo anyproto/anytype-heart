@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
+	"github.com/anyproto/anytype-heart/core/spaceview"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -313,6 +315,38 @@ func (mw *Middleware) SpaceLeaveApprove(cctx context.Context, req *pb.RpcSpaceLe
 			Description: getErrorDescription(err),
 		},
 	}
+}
+
+func (mw *Middleware) SpaceSetOrder(_ context.Context, request *pb.RpcSpaceSetOrderRequest) *pb.RpcSpaceSetOrderResponse {
+	response := func(code pb.RpcSpaceSetOrderResponseErrorCode, err error) *pb.RpcSpaceSetOrderResponse {
+		m := &pb.RpcSpaceSetOrderResponse{Error: &pb.RpcSpaceSetOrderResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	orderService := app.MustComponent[spaceview.OrderSetter](mw.applicationService.GetApp())
+	err := orderService.SetSpaceViewOrder(request.SpaceViewId, request.GetSpaceViewOrder())
+	if err != nil {
+		return response(pb.RpcSpaceSetOrderResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcSpaceSetOrderResponseError_NULL, nil)
+}
+
+func (mw *Middleware) SpaceUnsetOrder(_ context.Context, request *pb.RpcSpaceUnsetOrderRequest) *pb.RpcSpaceUnsetOrderResponse {
+	response := func(code pb.RpcSpaceUnsetOrderResponseErrorCode, err error) *pb.RpcSpaceUnsetOrderResponse {
+		m := &pb.RpcSpaceUnsetOrderResponse{Error: &pb.RpcSpaceUnsetOrderResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	orderService := app.MustComponent[spaceview.OrderSetter](mw.applicationService.GetApp())
+	err := orderService.UnsetOrder(request.SpaceViewId)
+	if err != nil {
+		return response(pb.RpcSpaceUnsetOrderResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcSpaceUnsetOrderResponseError_NULL, nil)
 }
 
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {

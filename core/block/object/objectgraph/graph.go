@@ -128,7 +128,9 @@ func (gr *Builder) buildGraph(
 
 		outgoingRelationLink := make(map[string]struct{}, 10)
 		edges = gr.appendRelations(rec, relations, edges, existedNodes, sourceId, outgoingRelationLink)
-		edges = gr.appendLinks(req.SpaceId, rec, outgoingRelationLink, existedNodes, edges, sourceId)
+		var nodesToAdd []*types.Struct
+		nodesToAdd, edges = gr.appendLinks(req.SpaceId, rec, outgoingRelationLink, existedNodes, edges, sourceId)
+		nodes = append(nodes, pbtypes.MapN(nodesToAdd, req.Keys...)...)
 	}
 	return nodes, edges
 }
@@ -191,26 +193,45 @@ func (gr *Builder) appendLinks(
 	existedNodes map[string]struct{},
 	edges []*pb.RpcObjectGraphEdge,
 	id string,
-) []*pb.RpcObjectGraphEdge {
+) (nodes []*types.Struct, resultEdges []*pb.RpcObjectGraphEdge) {
 	links := pbtypes.GetStringList(rec, bundle.RelationKeyLinks.String())
 	for _, link := range links {
 		sbType, err := gr.sbtProvider.Type(spaceID, link)
 		if err != nil {
 			log.Error("get smartblock type", zap.String("objectId", link), zap.Error(err))
 		}
-		// ignore files because we index all file blocks as outgoing links
-		if sbType != smartblock.SmartBlockTypeFileObject {
-			if _, exists := outgoingRelationLink[link]; !exists {
-				if _, exists := existedNodes[link]; exists {
-					edges = append(edges, &pb.RpcObjectGraphEdge{
-						Source: id,
-						Target: link,
-						Name:   "",
-						Type:   pb.RpcObjectGraphEdge_Link,
-					})
+
+		switch sbType {
+		case smartblock.SmartBlockTypeFileObject:
+			// ignore files because we index all file blocks as outgoing links
+			continue
+		case smartblock.SmartBlockTypeDate:
+			if _, exists := existedNodes[link]; !exists {
+				details, err := gr.objectStore.SpaceIndex(spaceID).QueryByIds([]string{link})
+				if err == nil && len(details) != 1 {
+					err = fmt.Errorf("expected to get 1 date object, got %d", len(details))
 				}
+				if err != nil {
+					log.Error("get details of Date object", zap.String("objectId", link), zap.Error(err))
+					continue
+				}
+				existedNodes[link] = struct{}{}
+				nodes = append(nodes, details[0].Details)
 			}
 		}
+
+		if _, exists := outgoingRelationLink[link]; exists {
+			continue
+		}
+
+		if _, exists := existedNodes[link]; exists {
+			edges = append(edges, &pb.RpcObjectGraphEdge{
+				Source: id,
+				Target: link,
+				Name:   "",
+				Type:   pb.RpcObjectGraphEdge_Link,
+			})
+		}
 	}
-	return edges
+	return nodes, edges
 }
