@@ -63,6 +63,7 @@ type Service interface {
 	Delete(ctx context.Context, id string) (err error)
 	TechSpaceId() string
 	PersonalSpaceId() string
+	FirstCreatedSpaceId() string
 	TechSpace() *clientspace.TechSpace
 	GetPersonalSpace(ctx context.Context) (space clientspace.Space, err error)
 	GetTechSpace(ctx context.Context) (space clientspace.Space, err error)
@@ -107,6 +108,8 @@ type service struct {
 	ctx       context.Context // use ctx for the long operations within the lifecycle of the service, excluding Run
 	ctxCancel context.CancelFunc
 	isClosing atomic.Bool
+
+	firstCreatedSpaceId string
 }
 
 func (s *service) Delete(ctx context.Context, id string) (err error) {
@@ -276,7 +279,7 @@ func (s *service) createAccount(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("init tech space: %w", err)
 	}
-	err = s.createPersonalSpace(ctx)
+	firstSpace, err := s.create(ctx)
 	if err != nil {
 		if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
 			err = ErrSpaceNotExists
@@ -288,6 +291,9 @@ func (s *service) createAccount(ctx context.Context) (err error) {
 		}
 		return fmt.Errorf("init personal space: %w", err)
 	}
+
+	s.firstCreatedSpaceId = firstSpace.Id()
+
 	s.techSpace.WakeUpViews()
 	// only persist networkId after successful space init
 	err = s.config.PersistAccountNetworkId()
@@ -479,6 +485,10 @@ func (s *service) TechSpaceId() string {
 
 func (s *service) PersonalSpaceId() string {
 	return s.personalSpaceId
+}
+
+func (s *service) FirstCreatedSpaceId() string {
+	return s.firstCreatedSpaceId
 }
 
 func (s *service) getTechSpace(ctx context.Context) (*clientspace.TechSpace, error) {

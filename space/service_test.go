@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
@@ -46,7 +47,6 @@ const (
 	testPersonalSpaceID = "personal.12345"
 )
 
-// TODO Revive tests
 func TestService_Init(t *testing.T) {
 	t.Run("tech space getter", func(t *testing.T) {
 		serv := New().(*service)
@@ -403,8 +403,13 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, f
 	if expectOldAccount == nil {
 		fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: ts}, nil)
 		prCtrl := mock_spacecontroller.NewMockSpaceController(t)
-		fx.factory.EXPECT().CreatePersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
+		prCtrl.EXPECT().SpaceId().Return(fx.spaceId)
+		commonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		commonSpace.EXPECT().Id().Return(fx.spaceId).AnyTimes()
+		fx.spaceCore.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return(&spacecore.AnySpace{Space: commonSpace}, nil)
+		fx.factory.EXPECT().CreateShareableSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
 		lw := lwMock{clientSpace}
+		clientSpace.EXPECT().Id().Return(fx.spaceId)
 		prCtrl.EXPECT().Current().Return(lw)
 		prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 		ts.EXPECT().WakeUpViews()
