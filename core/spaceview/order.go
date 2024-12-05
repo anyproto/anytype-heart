@@ -84,7 +84,8 @@ func (o *orderSetter) setViewAtBeginning(spaceViewId, afterViewId string) error 
 	}
 	return cache.Do[*editor.SpaceView](o.objectGetter, spaceViewId, func(view *editor.SpaceView) error {
 		if nextOrderID == "" {
-			return o.setInitOrder(spaceViewId)
+			_, err = view.SetOrder("")
+			return err
 		}
 		return view.SetBetweenViews("", nextOrderID)
 	})
