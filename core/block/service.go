@@ -209,6 +209,9 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		return nil, err
 	}
 	mutex.WithLock(s.openedObjs.lock, func() any { s.openedObjs.objects[id.ObjectID] = true; return nil })
+
+	injectVirtualFileBlocks(id.ObjectID, obj)
+
 	return obj, nil
 }
 
@@ -243,6 +246,7 @@ func (s *Service) ShowBlock(id domain.FullID, includeRelationsAsDependentObjects
 		obj, err = b.Show()
 		return err
 	})
+	injectVirtualFileBlocks(id.ObjectID, obj)
 	return obj, err
 }
 

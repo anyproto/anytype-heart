@@ -6,11 +6,16 @@ import (
 	"os"
 	"time"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/miolini/datacounter"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
@@ -95,4 +100,34 @@ func (s *Service) getFileOrLargestImage(ctx context.Context, objectId string) (f
 	}
 
 	return f, nil
+}
+
+func injectVirtualFileBlocks(objectId string, view *model.ObjectView) {
+	if view.Type != model.SmartBlockType_FileObject {
+		return
+	}
+
+	var details *types.Struct
+	for _, det := range view.Details {
+		if det.Id == objectId {
+			details = det.Details
+			break
+		}
+	}
+	if details == nil {
+		return
+	}
+
+	st := state.NewDoc(objectId, nil).NewState()
+	template.InitTemplate(st,
+		template.WithEmpty,
+		template.WithTitle,
+		template.WithDefaultFeaturedRelations,
+		template.WithFeaturedRelations,
+		template.WithAllBlocksEditsRestricted,
+	)
+
+	_ = fileblocks.AddFileBlocks(st, details, objectId)
+
+	view.Blocks = st.Blocks()
 }
