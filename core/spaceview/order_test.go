@@ -20,13 +20,26 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 		o := &orderSetter{objectGetter: objGetter}
 
 		// when
-		err := o.SetSpaceViewOrder("view1", []string{"view1"})
+		err := o.SetOrder("view1", []string{})
 
 		// then
 		assert.NotNil(t, err)
 		assert.Equal(t, "insufficient space views for reordering", err.Error())
 	})
+	t.Run("single view is pinned", func(t *testing.T) {
+		// given
+		objGetter := mock_cache.NewMockObjectGetter(t)
+		mockSpaceView := &editor.SpaceView{SmartBlock: smarttest.New("view1")}
+		objGetter.EXPECT().GetObject(context.Background(), "view1").Return(mockSpaceView, nil)
+		o := &orderSetter{objectGetter: objGetter}
 
+		// when
+		err := o.SetOrder("view1", []string{"view1"})
+
+		// then
+		assert.Nil(t, err)
+		assert.NotEmpty(t, pbtypes.Get(mockSpaceView.Details(), bundle.RelationKeySpaceOrder.String()))
+	})
 	t.Run("move view at the beginning", func(t *testing.T) {
 		// given
 		objGetter := mock_cache.NewMockObjectGetter(t)
@@ -39,7 +52,7 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 		o := &orderSetter{objectGetter: objGetter}
 
 		// when
-		err := o.SetSpaceViewOrder("view1", []string{"view1", "view2"})
+		err := o.SetOrder("view1", []string{"view1", "view2"})
 
 		// then
 		assert.Nil(t, err)
@@ -60,7 +73,7 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 		o := &orderSetter{objectGetter: objGetter}
 
 		// when
-		err = o.SetSpaceViewOrder("view1", []string{"view1", "view2", "view3"})
+		err = o.SetOrder("view1", []string{"view1", "view2", "view3"})
 
 		// then
 		assert.Nil(t, err)
@@ -84,7 +97,7 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 		o := &orderSetter{objectGetter: objGetter}
 
 		// when
-		err := o.SetSpaceViewOrder("view3", []string{"view1", "view2", "view3"})
+		err := o.SetOrder("view3", []string{"view1", "view2", "view3"})
 
 		// then
 		assert.Nil(t, err)
@@ -113,7 +126,7 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 		o := &orderSetter{objectGetter: objGetter}
 
 		// when
-		err = o.SetSpaceViewOrder("view3", []string{"view1", "view2", "view3"})
+		err = o.SetOrder("view3", []string{"view1", "view2", "view3"})
 
 		// then
 		assert.Nil(t, err)
@@ -133,7 +146,7 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 		o := &orderSetter{objectGetter: objGetter}
 
 		// when
-		err := o.SetSpaceViewOrder("view3", []string{"view1", "view3", "view2"})
+		err := o.SetOrder("view3", []string{"view1", "view3", "view2"})
 
 		// then
 		assert.Nil(t, err)
@@ -161,7 +174,7 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 		o := &orderSetter{objectGetter: objGetter}
 
 		// when
-		err = o.SetSpaceViewOrder("view3", []string{"view1", "view3", "view2"})
+		err = o.SetOrder("view3", []string{"view1", "view3", "view2"})
 
 		// then
 		assert.Nil(t, err)
@@ -188,7 +201,7 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 		o := &orderSetter{objectGetter: objGetter}
 
 		// when
-		err = o.SetSpaceViewOrder("view3", []string{"view1", "view3", "view2"})
+		err = o.SetOrder("view3", []string{"view1", "view3", "view2"})
 
 		// then
 		assert.Nil(t, err)

@@ -15,7 +15,7 @@ import (
 const CName = "core.spaceview.ordersetter"
 
 type OrderSetter interface {
-	SetSpaceViewOrder(spaceViewId string, spaceViewOrder []string) error
+	SetOrder(spaceViewId string, spaceViewOrder []string) error
 	UnsetOrder(spaceViewId string) error
 	app.Component
 }
@@ -37,9 +37,12 @@ func (o *orderSetter) Name() (name string) {
 	return CName
 }
 
-func (o *orderSetter) SetSpaceViewOrder(spaceViewId string, spaceViewOrder []string) error {
-	if len(spaceViewOrder) < 2 {
+func (o *orderSetter) SetOrder(spaceViewId string, spaceViewOrder []string) error {
+	if len(spaceViewOrder) < 1 {
 		return fmt.Errorf("insufficient space views for reordering")
+	}
+	if len(spaceViewOrder) == 1 {
+		return o.setInitOrder(spaceViewId)
 	}
 	// given space view is the first view in the order
 	if spaceViewOrder[0] == spaceViewId {
@@ -50,6 +53,13 @@ func (o *orderSetter) SetSpaceViewOrder(spaceViewId string, spaceViewOrder []str
 		return o.setViewAtEnd(spaceViewOrder, spaceViewId, spaceViewOrder[len(spaceViewOrder)-2])
 	}
 	return o.setBetween(spaceViewOrder, spaceViewId)
+}
+
+func (o *orderSetter) setInitOrder(spaceViewId string) error {
+	return cache.Do[*editor.SpaceView](o.objectGetter, spaceViewId, func(sv *editor.SpaceView) error {
+		_, err := sv.SetOrder("")
+		return err
+	})
 }
 
 func (o *orderSetter) UnsetOrder(spaceViewId string) error {

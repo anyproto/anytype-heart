@@ -326,7 +326,7 @@ func (mw *Middleware) SpaceSetOrder(_ context.Context, request *pb.RpcSpaceSetOr
 		return m
 	}
 	orderService := app.MustComponent[spaceview.OrderSetter](mw.applicationService.GetApp())
-	err := orderService.SetSpaceViewOrder(request.SpaceViewId, request.GetSpaceViewOrder())
+	err := orderService.SetOrder(request.SpaceViewId, request.GetSpaceViewOrder())
 	if err != nil {
 		return response(pb.RpcSpaceSetOrderResponseError_UNKNOWN_ERROR, err)
 	}
