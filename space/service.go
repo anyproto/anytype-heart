@@ -70,7 +70,6 @@ type Service interface {
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 	AccountMetadataSymKey() crypto.SymKey
 	AccountMetadataPayload() []byte
-	WaitPersonalSpaceMigration(ctx context.Context) (err error)
 	app.ComponentRunnable
 }
 
@@ -241,25 +240,6 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 		if err != nil {
 			return fmt.Errorf("create tech space for old accounts: %w", err)
 		}
-	} else {
-		var id string
-		// have we migrated analytics id? we should have it in account object
-		err = s.techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
-			id, err = accountObject.GetAnalyticsId()
-			return err
-		})
-		// this error can arise only from database issues
-		if err != nil {
-			return fmt.Errorf("get analytics id: %w", err)
-		}
-		// we still didn't migrate analytics id, then there is a chance that space view was not created for old accounts
-		if id == "" {
-			// creating a space view under the hood
-			_, err = s.startStatus(ctx, spaceinfo.NewSpacePersistentInfo(s.personalSpaceId))
-			if err != nil {
-				return fmt.Errorf("start personal space: %w", err)
-			}
-		}
 	}
 	s.techSpace.WakeUpViews()
 	// only persist networkId after successful space init
@@ -313,18 +293,6 @@ func (s *service) Create(ctx context.Context) (clientspace.Space, error) {
 func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
 	waiter := newSpaceWaiter(s, s.ctx, waitSpaceDelay)
 	return waiter.waitSpace(ctx, spaceId)
-}
-
-func (s *service) WaitPersonalSpaceMigration(ctx context.Context) (err error) {
-	waiter := newSpaceWaiter(s, s.ctx, waitSpaceDelay)
-	_, err = waiter.waitSpace(ctx, s.personalSpaceId)
-	if err != nil {
-		return fmt.Errorf("wait personal space: %w", err)
-	}
-	s.mu.Lock()
-	ctrl := s.spaceControllers[s.personalSpaceId]
-	s.mu.Unlock()
-	return ctrl.(personalspace.Personal).WaitMigrations(ctx)
 }
 
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {

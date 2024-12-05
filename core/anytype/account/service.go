@@ -2,7 +2,6 @@ package account
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -25,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/techspace"
+	"github.com/anyproto/anytype-heart/util/metricsid"
 )
 
 const CName = "account"
@@ -173,55 +173,36 @@ func (s *service) GetSpaceInfo(ctx context.Context, spaceId string) (*model.Acco
 }
 
 func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSpace) (analyticsId string, err error) {
-	if s.config.AnalyticsId != "" {
-		return s.config.AnalyticsId, nil
-	}
-	err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
-		var innerErr error
-		analyticsId, innerErr = accountObject.GetAnalyticsId()
-		if innerErr != nil {
-			log.Debug("failed to get analytics id: %s", innerErr)
-		}
-		return nil
-	})
-	if err != nil {
-		return
-	}
-	if analyticsId == "" {
-		for {
-			// waiting for personal space
-			ctx, cancel := context.WithTimeout(ctx, time.Second*10)
-			persErr := s.spaceService.WaitPersonalSpaceMigration(ctx)
-			cancel()
-			if persErr != nil && !errors.Is(persErr, ctx.Err()) {
-				return "", persErr
+	start := time.Now()
+	for {
+		err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
+			var innerErr error
+			analyticsId, innerErr = accountObject.GetAnalyticsId()
+			if innerErr != nil {
+				log.Debug("failed to get analytics id: %s", innerErr)
 			}
-			// there is also this case that account object could be unsynced on start
-			// because we can't distinguish between accounts without account object (i.e. old accounts)
-			// and new ones which have the account object
-			// so it may be the case that it will sync but a little bit later
+			return nil
+		})
+		if err != nil {
+			return
+		}
+		if analyticsId != "" {
+			return analyticsId, nil
+		}
+		if time.Since(start) > time.Minute {
+			metricsId, err := metricsid.DeriveMetricsId(s.keyProvider.Account().SignKey)
+			if err != nil {
+				return "", err
+			}
 			err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
-				var innerErr error
-				analyticsId, innerErr = accountObject.GetAnalyticsId()
-				if innerErr != nil {
-					log.Debug("failed to get analytics id: %s", err)
-				}
-				return nil
+				return accountObject.SetAnalyticsId(metricsId)
 			})
 			if err != nil {
-				return
+				return "", err
 			}
-			if analyticsId != "" {
-				return analyticsId, nil
-			}
-			if persErr == nil {
-				return "", fmt.Errorf("failed to get analytics id, but migrated successfully")
-			}
-			// adding sleep just in case to avoid infinite loops if we have some unforeseen issues
-			time.Sleep(time.Second)
+			return metricsId, nil
 		}
-	} else {
-		return analyticsId, nil
+		time.Sleep(time.Second)
 	}
 }
 
