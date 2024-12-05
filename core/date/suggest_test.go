@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/dateutil"
@@ -76,16 +75,14 @@ func TestSuggestDateObjectIdsFromFilter(t *testing.T) {
 	// given
 	dateObject1 := dateutil.NewDateObject(time.Now(), false)
 	dateObject2 := dateutil.NewDateObject(time.Now().Add(2*time.Hour), true)
-	req := &pb.RpcObjectSearchRequest{
-		Filters: []*model.BlockContentDataviewFilter{{
-			RelationKey: bundle.RelationKeyId.String(),
-			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       pbtypes.StringList([]string{dateObject1.Id(), "plainObj1", "planObj2", dateObject2.Id()}),
-		}},
-	}
+	filters := []*model.BlockContentDataviewFilter{{
+		RelationKey: bundle.RelationKeyId.String(),
+		Condition:   model.BlockContentDataviewFilter_In,
+		Value:       pbtypes.StringList([]string{dateObject1.Id(), "plainObj1", "planObj2", dateObject2.Id()}),
+	}}
 
 	// when
-	ids := suggestDateObjectIds(req)
+	ids := suggestDateObjectIds("", filters)
 
 	// then
 	require.Len(t, ids, 2)

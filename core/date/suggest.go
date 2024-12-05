@@ -12,10 +12,10 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -23,17 +23,18 @@ import (
 
 func EnrichRecordsWithDateSuggestions(
 	ctx context.Context,
+	spaceId, fullText string,
 	records []database.Record,
-	req *pb.RpcObjectSearchRequest,
+	filters []*model.BlockContentDataviewFilter,
 	store objectstore.ObjectStore,
 	spaceService space.Service,
 ) ([]database.Record, error) {
-	ids := suggestDateObjectIds(req)
+	ids := suggestDateObjectIds(fullText, filters)
 	if len(ids) == 0 {
 		return records, nil
 	}
 
-	spc, err := spaceService.Get(ctx, req.SpaceId)
+	spc, err := spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return nil, fmt.Errorf("get space: %w", err)
 	}
@@ -48,7 +49,7 @@ func EnrichRecordsWithDateSuggestions(
 			return nil, fmt.Errorf("make date record: %w", err)
 		}
 
-		f, _ := database.MakeFilters(req.Filters, store.SpaceIndex(req.SpaceId)) //nolint:errcheck
+		f, _ := database.MakeFilters(filters, store.SpaceIndex(spaceId)) //nolint:errcheck
 		if f.FilterObject(rec.Details) {
 			records = append([]database.Record{rec}, records...)
 		}
@@ -60,8 +61,8 @@ func EnrichRecordsWithDateSuggestions(
 // suggestDateObjectIds suggests date object ids based on two fields:
 // - fullText - if naturalDate successfully parses text into date, resulting date object id is returned
 // - filter with key id
-func suggestDateObjectIds(req *pb.RpcObjectSearchRequest) []string {
-	dt := suggestDateForSearch(time.Now(), req.FullText)
+func suggestDateObjectIds(fullText string, filters []*model.BlockContentDataviewFilter) []string {
+	dt := suggestDateForSearch(time.Now(), fullText)
 	if !dt.IsZero() {
 		// TODO: GO-4097 Uncomment it when we will be able to support dates with seconds precision
 		// isDay := dt.Hour() == 0 && dt.Minute() == 0 && dt.Second() == 0
@@ -69,7 +70,7 @@ func suggestDateObjectIds(req *pb.RpcObjectSearchRequest) []string {
 		return []string{dateutil.NewDateObject(dt, !isDay).Id()}
 	}
 
-	for _, filter := range req.Filters {
+	for _, filter := range filters {
 		if filter.RelationKey == bundle.RelationKeyId.String() {
 			list := pbtypes.GetStringListValue(filter.Value)
 			var dateObjectIds []string
