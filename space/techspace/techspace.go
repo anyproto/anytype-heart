@@ -364,7 +364,7 @@ func (s *techSpace) DoAccountObject(ctx context.Context, apply func(accountObjec
 	}
 	obj, err := s.objectCache.GetObject(ctx, id)
 	if err != nil {
-		return fmt.Errorf("account object not exists: %w", err)
+		return fmt.Errorf("account object not exists %w: %w", ErrAccountObjectNotExists, err)
 	}
 	accountObject, ok := obj.(AccountObject)
 	if !ok {
