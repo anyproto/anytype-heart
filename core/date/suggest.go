@@ -21,6 +21,20 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+var literals []string
+
+func init() {
+	literals = []string{"today", "now", "yesterday", "tomorrow"}
+
+	for i := 0; i < 6; i++ {
+		literals = append(literals, strings.ToLower(time.Weekday(i).String()))
+	}
+
+	for i := 1; i < 12; i++ {
+		literals = append(literals, strings.ToLower(time.Month(i).String()))
+	}
+}
+
 func EnrichRecordsWithDateSuggestions(
 	ctx context.Context,
 	spaceId, fullText string,
@@ -92,10 +106,19 @@ func suggestDateForSearch(now time.Time, raw string) time.Time {
 		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	}
 
+	if len(raw) > 1 {
+		for _, variant := range literals {
+			if strings.Contains(variant, strings.ToLower(raw)) {
+				raw = variant
+				break
+			}
+		}
+	}
+
 	suggesters := []func() time.Time{
 		func() time.Time {
 			var exprType naturaldate.ExprType
-			t, exprType, err := naturaldate.Parse(raw, now)
+			t, exprType, err := naturaldate.Parse(raw, now, naturaldate.WithDirection(naturaldate.Future))
 			if err != nil {
 				return time.Time{}
 			}

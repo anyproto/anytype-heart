@@ -34,6 +34,22 @@ func Test_suggestDateForSearch(t *testing.T) {
 			want: time.Date(2022, 5, 18, 0, 0, 0, 0, loc),
 		},
 		{
+			raw:  "toda",
+			want: time.Date(2022, 5, 18, 0, 0, 0, 0, loc),
+		},
+		{
+			raw:  "to",
+			want: time.Date(2022, 5, 18, 0, 0, 0, 0, loc),
+		},
+		{
+			raw:  "yeste",
+			want: time.Date(2022, 5, 17, 0, 0, 0, 0, loc),
+		},
+		{
+			raw:  "NoVem",
+			want: time.Date(2022, 11, 18, 14, 56, 33, 0, loc),
+		},
+		{
 			raw:  "10 days from now",
 			want: time.Date(2022, 5, 28, 14, 56, 33, 0, loc),
 		},
