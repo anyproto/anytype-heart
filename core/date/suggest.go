@@ -26,12 +26,12 @@ var literals []string
 func init() {
 	literals = []string{"today", "now", "yesterday", "tomorrow"}
 
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 7; i++ {
 		literals = append(literals, strings.ToLower(time.Weekday(i).String()))
 	}
 
-	for i := 1; i < 12; i++ {
-		literals = append(literals, strings.ToLower(time.Month(i).String()))
+	for i := 0; i < 12; i++ {
+		literals = append(literals, strings.ToLower(time.Month(i+1).String()))
 	}
 }
 
