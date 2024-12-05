@@ -120,7 +120,10 @@ func injectVirtualFileBlocks(objectId string, view *model.ObjectView) {
 	st := state.NewDoc(objectId, nil).NewState()
 	st.SetDetails(details)
 	fileblocks.InitEmptyFileState(st)
-	_ = fileblocks.AddFileBlocks(st, details, objectId)
+	if err := fileblocks.AddFileBlocks(st, details, objectId); err != nil {
+		log.Errorf("failed to inject virtual file blocks: %v", err)
+		return
+	}
 
 	view.Blocks = st.Blocks()
 }
