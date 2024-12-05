@@ -3,6 +3,7 @@ package techspace
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -122,8 +123,11 @@ func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache
 	s.objectCache = objectCache
 	if !create {
 		exists, err := s.accountObjectExists(s.ctx)
-		if err != nil || exists {
+		if err != nil {
 			return err
+		}
+		if exists {
+			return nil
 		}
 	}
 	return s.accountObjectCreate(s.ctx)
@@ -360,7 +364,7 @@ func (s *techSpace) DoAccountObject(ctx context.Context, apply func(accountObjec
 	}
 	obj, err := s.objectCache.GetObject(ctx, id)
 	if err != nil {
-		return ErrAccountObjectNotExists
+		return fmt.Errorf("account object not exists: %w", err)
 	}
 	accountObject, ok := obj.(AccountObject)
 	if !ok {
