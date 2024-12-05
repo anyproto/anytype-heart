@@ -102,7 +102,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	// Add dates only to the first page of search results
 	if req.Offset == 0 {
-		records, err = date.EnrichRecordsWithDateSuggestions(cctx, records, req, ds, getService[space.Service](mw))
+		records, err = date.EnrichRecordsWithDateSuggestions(cctx, req.SpaceId, req.FullText, records, req.Filters, ds, getService[space.Service](mw))
 		if err != nil {
 			return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 		}
@@ -143,6 +143,14 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 		TextQuery: req.FullText,
 		SpaceId:   req.SpaceId,
 	})
+
+	// Add dates only to the first page of search results
+	if req.Offset == 0 {
+		results, err = date.EnrichRecordsWithDateSuggestions(cctx, req.SpaceId, req.FullText, results, req.Filters, ds, getService[space.Service](mw))
+		if err != nil {
+			return response(pb.RpcObjectSearchWithMetaResponseError_UNKNOWN_ERROR, nil, err)
+		}
+	}
 
 	var resultsModels = make([]*model.SearchResult, 0, len(results))
 	for i, rec := range results {
