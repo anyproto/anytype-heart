@@ -125,7 +125,7 @@ func (m *mdConverter) handleSingleMark(block *model.Block, files map[string]*Fil
 		}
 		file.HasInboundLinks = true
 	} else if wholeLineLink {
-		block.Content = m.convertTextToBookmark(txt.Marks.Marks[0].Param)
+		m.convertTextToBookmark(txt.Marks.Marks[0].Param, block)
 	}
 }
 
@@ -154,7 +154,7 @@ func (m *mdConverter) handleSingleLinkMark(block *model.Block, files map[string]
 			return true
 		}
 	} else if m.isWholeLineLink(txt.Text, mark) {
-		block.Content = m.convertTextToBookmark(mark.Param)
+		m.convertTextToBookmark(mark.Param, block)
 		return true
 	}
 	return false
@@ -238,12 +238,12 @@ func (m *mdConverter) convertTextToPageLink(block *model.Block) {
 	}
 }
 
-func (m *mdConverter) convertTextToBookmark(url string) *model.BlockContentOfBookmark {
+func (m *mdConverter) convertTextToBookmark(url string, block *model.Block) {
 	if err := uri.ValidateURI(url); err != nil {
-		return nil
+		return
 	}
 
-	return &model.BlockContentOfBookmark{
+	block.Content = &model.BlockContentOfBookmark{
 		Bookmark: &model.BlockContentBookmark{
 			Url: url,
 		},
