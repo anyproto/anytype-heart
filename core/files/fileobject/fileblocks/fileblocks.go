@@ -15,6 +15,16 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+func InitEmptyFileState(st *state.State) {
+	template.InitTemplate(st,
+		template.WithEmpty,
+		template.WithTitle,
+		template.WithDefaultFeaturedRelations,
+		template.WithFeaturedRelations,
+		template.WithAllBlocksEditsRestricted,
+	)
+}
+
 func AddFileBlocks(st *state.State, details *types.Struct, objectId string) error {
 	fname := pbtypes.GetString(details, bundle.RelationKeyName.String())
 	fileType := fileblock.DetectTypeByMIME(fname, pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()))
@@ -23,7 +33,7 @@ func AddFileBlocks(st *state.State, details *types.Struct, objectId string) erro
 		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(objectId))
 	}
 
-	blocks := BuildFileBlocks(details, objectId, fname, fileType)
+	blocks := buildFileBlocks(details, objectId, fname, fileType)
 
 	for _, b := range blocks {
 		if st.Exists(b.Id) {
@@ -40,7 +50,7 @@ func AddFileBlocks(st *state.State, details *types.Struct, objectId string) erro
 	return nil
 }
 
-func BuildFileBlocks(details *types.Struct, objectId, fname string, fileType model.BlockContentFileType) []*model.Block {
+func buildFileBlocks(details *types.Struct, objectId, fname string, fileType model.BlockContentFileType) []*model.Block {
 	var blocks []*model.Block
 	blocks = append(blocks, &model.Block{
 		Id: "file",

@@ -10,7 +10,6 @@ import (
 	"github.com/miolini/datacounter"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
@@ -119,14 +118,8 @@ func injectVirtualFileBlocks(objectId string, view *model.ObjectView) {
 	}
 
 	st := state.NewDoc(objectId, nil).NewState()
-	template.InitTemplate(st,
-		template.WithEmpty,
-		template.WithTitle,
-		template.WithDefaultFeaturedRelations,
-		template.WithFeaturedRelations,
-		template.WithAllBlocksEditsRestricted,
-	)
-
+	st.SetDetails(details)
+	fileblocks.InitEmptyFileState(st)
 	_ = fileblocks.AddFileBlocks(st, details, objectId)
 
 	view.Blocks = st.Blocks()

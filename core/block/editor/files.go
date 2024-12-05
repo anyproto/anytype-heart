@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -59,7 +60,7 @@ func (f *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			// - In background metadata indexer, if we use asynchronous metadata indexing mode
 			//
 			// See fileobject.Service
-			f.fileObjectService.InitEmptyFileState(ctx.State)
+			fileblocks.InitEmptyFileState(ctx.State)
 		},
 	}
 }
