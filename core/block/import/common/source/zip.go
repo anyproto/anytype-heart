@@ -17,13 +17,13 @@ type OriginalFileNameGetter interface {
 }
 
 type Zip struct {
-	archiveReader      *zip.ReadCloser
-	fileReaders        map[string]*zip.File
-	fileNameToOriginal map[string]string
+	archiveReader             *zip.ReadCloser
+	fileReaders               map[string]*zip.File
+	originalToNormalizedNames map[string]string
 }
 
 func NewZip() *Zip {
-	return &Zip{fileReaders: make(map[string]*zip.File), fileNameToOriginal: make(map[string]string)}
+	return &Zip{fileReaders: make(map[string]*zip.File), originalToNormalizedNames: make(map[string]string)}
 }
 
 func (z *Zip) Initialize(importPath string) error {
@@ -37,10 +37,10 @@ func (z *Zip) Initialize(importPath string) error {
 		if strings.HasPrefix(f.Name, "__MACOSX/") {
 			continue
 		}
-		newName := normalizeName(f, i)
-		fileReaders[newName] = f
-		if newName != f.Name {
-			z.fileNameToOriginal[f.Name] = newName
+		normalizedName := normalizeName(f, i)
+		fileReaders[normalizedName] = f
+		if normalizedName != f.Name {
+			z.originalToNormalizedNames[f.Name] = normalizedName
 		}
 	}
 	z.fileReaders = fileReaders
@@ -105,7 +105,7 @@ func (z *Zip) IsRootFile(fileName string) bool {
 }
 
 func (z *Zip) GetFileOriginalName(fileName string) string {
-	if originalName, ok := z.fileNameToOriginal[fileName]; ok {
+	if originalName, ok := z.originalToNormalizedNames[fileName]; ok {
 		return originalName
 	}
 	return fileName
