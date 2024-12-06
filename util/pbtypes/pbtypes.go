@@ -163,6 +163,16 @@ func IsEmptyValue(value *types.Value) bool {
 	return true
 }
 
+func IsNullValue(value *types.Value) bool {
+	if value == nil {
+		return true
+	}
+	if _, ok := value.Kind.(*types.Value_NullValue); ok {
+		return true
+	}
+	return false
+}
+
 func GetStruct(s *types.Struct, name string) *types.Struct {
 	if s == nil || s.Fields == nil {
 		return nil
