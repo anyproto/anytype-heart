@@ -10,7 +10,7 @@ import (
 
 const (
 	metricsVersionByte    strkey.VersionByte = 0xce
-	MetricsDerivationPath                    = "m/99999'/0'/0'"
+	MetricsDerivationPath                    = "m/99999'/0'"
 )
 
 func deriveFromPrivKey(path string, privKey crypto.PrivKey) (key crypto.PrivKey, err error) {

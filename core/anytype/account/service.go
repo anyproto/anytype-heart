@@ -27,7 +27,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/metricsid"
 )
 
-const CName = "account"
+const (
+	CName = "account"
+
+	analyticsWaitTimeout = time.Second * 30
+)
 
 var log = logging.Logger(CName)
 
@@ -189,7 +193,7 @@ func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSp
 		if analyticsId != "" {
 			return analyticsId, nil
 		}
-		if time.Since(start) > time.Second*30 {
+		if time.Since(start) > analyticsWaitTimeout {
 			metricsId, err := metricsid.DeriveMetricsId(s.keyProvider.Account().SignKey)
 			if err != nil {
 				return "", err
