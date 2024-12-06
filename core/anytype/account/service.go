@@ -189,7 +189,7 @@ func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSp
 		if analyticsId != "" {
 			return analyticsId, nil
 		}
-		if time.Since(start) > time.Minute {
+		if time.Since(start) > time.Second*30 {
 			metricsId, err := metricsid.DeriveMetricsId(s.keyProvider.Account().SignKey)
 			if err != nil {
 				return "", err
