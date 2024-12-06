@@ -101,6 +101,7 @@ type ftSearchTantivy struct {
 	schema     *tantivy.Schema
 	parserPool *fastjson.ParserPool
 	mu         sync.Mutex
+	blevePath  string
 }
 
 func TantivyNew() FTSearch {
@@ -140,6 +141,7 @@ func (f *ftSearchTantivy) DeleteObject(objectId string) error {
 func (f *ftSearchTantivy) Init(a *app.App) error {
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
+	f.blevePath = filepath.Join(repoPath, ftsDir)
 	f.ftsPath = filepath.Join(repoPath, ftsDir2, ftsVer)
 	return tantivy.LibInit(false, true, "release")
 }
@@ -511,7 +513,7 @@ func (f *ftSearchTantivy) Close(ctx context.Context) error {
 }
 
 func (f *ftSearchTantivy) cleanupBleve() {
-	_ = os.RemoveAll(filepath.Join(f.rootPath, ftsDir))
+	_ = os.RemoveAll(f.blevePath)
 }
 
 func prepareQuery(query string) string {
