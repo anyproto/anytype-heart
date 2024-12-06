@@ -458,7 +458,7 @@ func (f *ftSearchTantivy) Search(spaceId string, query string) (results []*Docum
 
 func containsChineseCharacters(s string) bool {
 	for _, r := range s {
-		if unicode.Is(unicode.Han, r) { // Проверка на принадлежность к диапазону Han
+		if unicode.Is(unicode.Han, r) {
 			return true
 		}
 	}
