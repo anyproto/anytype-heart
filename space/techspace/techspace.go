@@ -30,10 +30,12 @@ var log = logger.NewNamed(CName)
 const spaceViewCheckTimeout = time.Second * 15
 
 var (
-	ErrSpaceViewExists    = errors.New("spaceView exists")
-	ErrSpaceViewNotExists = errors.New("spaceView not exists")
-	ErrNotASpaceView      = errors.New("smartblock not a spaceView")
-	ErrNotStarted         = errors.New("techspace not started")
+	ErrSpaceViewExists        = errors.New("spaceView exists")
+	ErrSpaceViewNotExists     = errors.New("spaceView not exists")
+	ErrAccountObjectNotExists = errors.New("accountObject not exists")
+	ErrNotASpaceView          = errors.New("smartblock not a spaceView")
+	ErrNotAnAccountObject     = errors.New("smartblock not an accountObject")
+	ErrNotStarted             = errors.New("techspace not started")
 )
 
 type AccountObject interface {
@@ -358,12 +360,11 @@ func (s *techSpace) DoAccountObject(ctx context.Context, apply func(accountObjec
 	}
 	obj, err := s.objectCache.GetObject(ctx, id)
 	if err != nil {
-		// TODO: [PS] check specific error
-		return ErrSpaceViewNotExists
+		return ErrAccountObjectNotExists
 	}
 	accountObject, ok := obj.(AccountObject)
 	if !ok {
-		return ErrNotASpaceView
+		return ErrNotAnAccountObject
 	}
 
 	accountObject.Lock()

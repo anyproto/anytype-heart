@@ -1389,5 +1389,15 @@
     "name": "Layout width",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Space order",
+    "format": "longtext",
+    "hidden": true,
+    "key": "spaceOrder",
+    "maxCount": 1,
+    "name": "Space order",
+    "readonly": true,
+    "source": "details"
   }
 ]

@@ -63,6 +63,8 @@ service ClientCommands {
     rpc SpaceMakeShareable (anytype.Rpc.Space.MakeShareable.Request) returns (anytype.Rpc.Space.MakeShareable.Response);
     rpc SpaceParticipantRemove (anytype.Rpc.Space.ParticipantRemove.Request) returns (anytype.Rpc.Space.ParticipantRemove.Response);
     rpc SpaceParticipantPermissionsChange (anytype.Rpc.Space.ParticipantPermissionsChange.Request) returns (anytype.Rpc.Space.ParticipantPermissionsChange.Response);
+    rpc SpaceSetOrder (anytype.Rpc.Space.SetOrder.Request) returns (anytype.Rpc.Space.SetOrder.Response);
+    rpc SpaceUnsetOrder (anytype.Rpc.Space.UnsetOrder.Request) returns (anytype.Rpc.Space.UnsetOrder.Response);
 
     // Object
     // ***
