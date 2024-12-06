@@ -21,10 +21,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/anyproto/any-sync/app"
 	tantivy "github.com/anyproto/tantivy-go"
-	"github.com/samber/lo"
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -37,7 +37,7 @@ const (
 	CName    = "fts"
 	ftsDir   = "fts"
 	ftsDir2  = "fts_tantivy"
-	ftsVer   = "9"
+	ftsVer   = "10"
 	docLimit = 10000
 
 	fieldTitle   = "Title"
@@ -62,7 +62,7 @@ type FTSearch interface {
 	NewAutoBatcher() AutoBatcher
 	BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error)
 	BatchDeleteObjects(ids []string) (err error)
-	Search(spaceIds []string, query string) (results []*DocumentMatch, err error)
+	Search(spaceIds string, query string) (results []*DocumentMatch, err error)
 	Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error)
 	DeleteObject(id string) error
 	DocCount() (uint64, error)
@@ -169,7 +169,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	}
 
 	err = builder.AddTextField(
-		fieldId,
+		fieldId, // 0
 		true,
 		true,
 		false,
@@ -178,7 +178,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	)
 
 	err = builder.AddTextField(
-		fieldIdRaw,
+		fieldIdRaw, // 1
 		true,
 		true,
 		true,
@@ -187,7 +187,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	)
 
 	err = builder.AddTextField(
-		fieldSpace,
+		fieldSpace, // 2
 		true,
 		false,
 		true,
@@ -196,25 +196,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	)
 
 	err = builder.AddTextField(
-		fieldTitle,
-		true,
-		true,
-		false,
-		tantivy.IndexRecordOptionWithFreqsAndPositions,
-		tantivy.TokenizerNgram,
-	)
-
-	err = builder.AddTextField(
-		fieldTitleZh,
-		true,
-		true,
-		false,
-		tantivy.IndexRecordOptionWithFreqsAndPositions,
-		tantivy.TokenizerJieba,
-	)
-
-	err = builder.AddTextField(
-		fieldText,
+		fieldTitle, // 3
 		true,
 		true,
 		false,
@@ -223,7 +205,25 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	)
 
 	err = builder.AddTextField(
-		fieldTextZh,
+		fieldTitleZh, // 4
+		true,
+		true,
+		false,
+		tantivy.IndexRecordOptionWithFreqsAndPositions,
+		tantivy.TokenizerJieba,
+	)
+
+	err = builder.AddTextField(
+		fieldText, // 5
+		true,
+		true,
+		false,
+		tantivy.IndexRecordOptionWithFreqsAndPositions,
+		tantivy.TokenizerSimple,
+	)
+
+	err = builder.AddTextField(
+		fieldTextZh, // 6
 		true,
 		true,
 		false,
@@ -366,28 +366,52 @@ func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, dele
 	return f.index.AddAndConsumeDocuments(tantivyDocs...)
 }
 
-func (f *ftSearchTantivy) Search(spaceIds []string, query string) (results []*DocumentMatch, err error) {
-	spaceIdsQuery := getSpaceIdsQuery(spaceIds)
+func (f *ftSearchTantivy) Search(spaceId string, query string) (results []*DocumentMatch, err error) {
 	query = prepareQuery(query)
 	if query == "" {
 		return nil, nil
 	}
-	if spaceIdsQuery != "" {
-		query = fmt.Sprintf("%s AND %s", spaceIdsQuery, query)
+
+	qb := tantivy.NewQueryBuilder()
+	if len(spaceId) != 0 {
+		qb.Query(tantivy.Must, fieldSpace, spaceId, tantivy.TermQuery, 1.0)
 	}
+
+	if containsChineseCharacters(query) {
+		qb.BooleanQuery(tantivy.Must, qb.NestedBuilder().
+			Query(tantivy.Should, fieldTitleZh, query, tantivy.PhrasePrefixQuery, 5.0).
+			Query(tantivy.Should, fieldTitleZh, query, tantivy.PhraseQuery, 5.0).
+			Query(tantivy.Should, fieldTitleZh, query, tantivy.EveryTermQuery, 0.75).
+			Query(tantivy.Should, fieldTitleZh, query, tantivy.OneOfTermQuery, 0.5).
+			Query(tantivy.Should, fieldTextZh, query, tantivy.PhrasePrefixQuery, 1.0).
+			Query(tantivy.Should, fieldTextZh, query, tantivy.PhraseQuery, 1.0).
+			Query(tantivy.Should, fieldTextZh, query, tantivy.EveryTermQuery, 0.5).
+			Query(tantivy.Should, fieldTextZh, query, tantivy.OneOfTermQuery, 0.25),
+			1.0,
+		)
+	} else {
+		qb.BooleanQuery(tantivy.Must, qb.NestedBuilder().
+			Query(tantivy.Should, fieldTitle, query, tantivy.PhrasePrefixQuery, 10.0).
+			Query(tantivy.Should, fieldTitle, query, tantivy.PhraseQuery, 10.0).
+			Query(tantivy.Should, fieldTitle, query, tantivy.EveryTermQuery, 0.75).
+			Query(tantivy.Should, fieldTitle, query, tantivy.OneOfTermQuery, 0.5).
+			Query(tantivy.Should, fieldText, query, tantivy.PhrasePrefixQuery, 1.0).
+			Query(tantivy.Should, fieldText, query, tantivy.PhraseQuery, 1.0).
+			Query(tantivy.Should, fieldText, query, tantivy.EveryTermQuery, 0.5).
+			Query(tantivy.Should, fieldText, query, tantivy.OneOfTermQuery, 0.25),
+			1.0,
+		)
+	}
+
+	finalQuery := qb.Build()
 	sCtx := tantivy.NewSearchContextBuilder().
-		SetQuery(query).
+		SetQueryFromJson(&finalQuery).
 		SetDocsLimit(100).
 		SetWithHighlights(true).
-		AddFieldDefaultWeight(fieldId).
-		AddFieldDefaultWeight(fieldSpace).
-		AddField(fieldTitle, 10.0).
-		AddField(fieldTitleZh, 10.0).
-		AddFieldDefaultWeight(fieldText).
-		AddFieldDefaultWeight(fieldTextZh).
 		Build()
 
-	result, err := f.index.Search(sCtx)
+	result, err := f.index.SearchJson(sCtx)
+
 	if err != nil {
 		return nil, wrapError(err)
 	}
@@ -432,6 +456,15 @@ func (f *ftSearchTantivy) Search(spaceIds []string, query string) (results []*Do
 	)
 }
 
+func containsChineseCharacters(s string) bool {
+	for _, r := range s {
+		if unicode.Is(unicode.Han, r) { // Проверка на принадлежность к диапазону Han
+			return true
+		}
+	}
+	return false
+}
+
 func extractHighlight(object *fastjson.Object, fragments map[string]*Highlight, fieldName string) {
 	highlightObj := object.Get(fragment)
 	if highlightObj == nil {
@@ -457,26 +490,6 @@ func wrapError(err error) error {
 		return fmt.Errorf("invalid query")
 	}
 	return err
-}
-
-func getSpaceIdsQuery(ids []string) string {
-	ids = lo.Filter(ids, func(item string, index int) bool { return item != "" })
-	if len(ids) == 0 || lo.EveryBy(ids, func(id string) bool { return id == "" }) {
-		return ""
-	}
-	var builder strings.Builder
-	var sep string
-
-	builder.WriteString("(")
-	for _, id := range ids {
-		builder.WriteString(sep)
-		builder.WriteString(fieldSpace)
-		builder.WriteString(":")
-		builder.WriteString(id)
-		sep = " OR "
-	}
-	builder.WriteString(")")
-	return builder.String()
 }
 
 func (f *ftSearchTantivy) Delete(id string) error {
@@ -505,17 +518,5 @@ func prepareQuery(query string) string {
 	query = text.Truncate(query, 100, "")
 	query = strings.ToLower(query)
 	query = strings.TrimSpace(query)
-	var escapedQuery strings.Builder
-
-	for _, char := range query {
-		if _, found := specialChars[char]; !found {
-			escapedQuery.WriteRune(char)
-		}
-	}
-
-	resultQuery := escapedQuery.String()
-	if resultQuery == "" {
-		return resultQuery
-	}
-	return "(\"" + resultQuery + "\" OR " + resultQuery + ")"
+	return query
 }
