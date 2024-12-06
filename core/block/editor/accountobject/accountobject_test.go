@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/util/metricsid"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -138,6 +139,8 @@ func (fx *fixture) assertStateValue(t *testing.T, val any, extract func(str *typ
 
 func TestAccountNew(t *testing.T) {
 	fx := newFixture(t, true, nil)
+	expectedId, err := metricsid.DeriveMetricsId(fx.keys.SignKey)
+	require.NoError(t, err)
 	st := fx.SmartBlock.NewState()
 	assertBlock(t, st, "accountId1")
 	assertBlock(t, st, "title")
@@ -148,7 +151,8 @@ func TestAccountNew(t *testing.T) {
 	require.True(t, res)
 	id, err := fx.GetAnalyticsId()
 	require.NoError(t, err)
-	require.Equal(t, "analyticsId", id)
+	fmt.Println(id)
+	require.Equal(t, expectedId, id)
 }
 
 func TestAccountOldInitWithData(t *testing.T) {

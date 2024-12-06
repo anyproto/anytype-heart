@@ -75,28 +75,9 @@ func TestService_Init(t *testing.T) {
 	t.Run("new account", func(t *testing.T) {
 		newFixture(t, nil)
 	})
-	t.Run("old account, analytics id migrated", func(t *testing.T) {
+	t.Run("old account", func(t *testing.T) {
 		newFixture(t, func(t *testing.T, fx *fixture) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
-			accObject := mock_techspace.NewMockAccountObject(t)
-			accObject.EXPECT().GetAnalyticsId().Return("analyticsId", nil)
-			fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
-				return f(accObject)
-			})
-			fx.techSpace.EXPECT().WakeUpViews()
-		})
-	})
-	t.Run("old account, analytics id not migrated", func(t *testing.T) {
-		newFixture(t, func(t *testing.T, fx *fixture) {
-			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
-			accObject := mock_techspace.NewMockAccountObject(t)
-			accObject.EXPECT().GetAnalyticsId().Return("", nil)
-			fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
-				return f(accObject)
-			})
-			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
-			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
-			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 			fx.techSpace.EXPECT().WakeUpViews()
 		})
 	})
@@ -105,14 +86,6 @@ func TestService_Init(t *testing.T) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(nil, context.DeadlineExceeded).Times(1)
 			fx.spaceCore.EXPECT().StorageExistsLocally(mock.Anything, fx.spaceId).Return(false, nil)
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
-			accObject := mock_techspace.NewMockAccountObject(t)
-			accObject.EXPECT().GetAnalyticsId().Return("", nil)
-			fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
-				return f(accObject)
-			})
-			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
-			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
-			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 			fx.techSpace.EXPECT().WakeUpViews()
 		})
 	})
@@ -125,11 +98,6 @@ func TestService_Init(t *testing.T) {
 			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
 			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
 			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
-			accObject := mock_techspace.NewMockAccountObject(t)
-			accObject.EXPECT().GetAnalyticsId().Return("", nil)
-			fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
-				return f(accObject)
-			})
 			fx.techSpace.EXPECT().WakeUpViews()
 		})
 	})
