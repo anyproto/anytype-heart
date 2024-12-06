@@ -40,12 +40,11 @@ import (
 var log = logger.NewNamedSugared("common.editor.accountobject")
 
 const (
-	collectionName        = "account"
-	accountDocumentId     = "accountObject"
-	idKey                 = "id"
-	analyticsKey          = "analyticsId"
-	iconMigrationKey      = "iconMigration"
-	privateAnalyticsIdKey = "derivedAnalyticsId"
+	collectionName    = "account"
+	accountDocumentId = "accountObject"
+	idKey             = "id"
+	analyticsKey      = "analyticsId"
+	iconMigrationKey  = "iconMigration"
 )
 
 type ProfileDetails struct {
