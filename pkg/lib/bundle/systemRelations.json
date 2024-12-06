@@ -92,5 +92,6 @@
   "hasChat",
   "timestamp",
   "recommendedFeaturedRelations",
-  "layoutWidth"
+  "layoutWidth",
+  "resolvedLayout"
 ]
