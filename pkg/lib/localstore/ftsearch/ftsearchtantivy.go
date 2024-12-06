@@ -11,6 +11,7 @@ package ftsearch
 #cgo android,amd64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/android-amd64 -ltantivy_go -lm -pthread -ldl
 #cgo android,arm64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/android-arm64 -ltantivy_go -lm -pthread -ldl
 #cgo linux,amd64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/linux-amd64-musl -Wl,--allow-multiple-definition -ltantivy_go -lm
+#cgo linux,arm64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/linux-arm64-musl -Wl,--allow-multiple-definition -ltantivy_go -lm
 */
 import "C"
 import (
