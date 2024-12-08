@@ -11,6 +11,8 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	"github.com/webstradev/gin-pagination/v2/pkg/pagination"
+
 	_ "github.com/anyproto/anytype-heart/cmd/api/docs"
 	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/pb/service"
@@ -75,6 +77,16 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwIntern
 	a := newApiServer(mw, mwInternal)
 	a.router.Use(a.initAccountInfo())
 
+	// Initialize pagination middleware
+	paginator := pagination.New(
+		pagination.WithPageText("offset"),
+		pagination.WithSizeText("limit"),
+		pagination.WithDefaultPage(0),
+		pagination.WithDefaultPageSize(100),
+		pagination.WithMinPageSize(1),
+		pagination.WithMaxPageSize(1000),
+	)
+
 	// Swagger route
 	a.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -90,13 +102,13 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwIntern
 	// readOnly.Use(a.AuthMiddleware())
 	// readOnly.Use(a.PermissionMiddleware("read-only"))
 	{
-		readOnly.GET("/spaces", a.getSpacesHandler)
-		readOnly.GET("/spaces/:space_id/members", a.getSpaceMembersHandler)
-		readOnly.GET("/spaces/:space_id/objects", a.getObjectsForSpaceHandler)
+		readOnly.GET("/spaces", paginator, a.getSpacesHandler)
+		readOnly.GET("/spaces/:space_id/members", paginator, a.getSpaceMembersHandler)
+		readOnly.GET("/spaces/:space_id/objects", paginator, a.getObjectsForSpaceHandler)
 		readOnly.GET("/spaces/:space_id/objects/:object_id", a.getObjectHandler)
-		readOnly.GET("/spaces/:space_id/objectTypes", a.getObjectTypesHandler)
-		readOnly.GET("/spaces/:space_id/objectTypes/:typeId/templates", a.getObjectTypeTemplatesHandler)
-		readOnly.GET("/objects", a.getObjectsHandler)
+		readOnly.GET("/spaces/:space_id/objectTypes", paginator, a.getObjectTypesHandler)
+		readOnly.GET("/spaces/:space_id/objectTypes/:typeId/templates", paginator, a.getObjectTypeTemplatesHandler)
+		readOnly.GET("/objects", paginator, a.getObjectsHandler)
 	}
 
 	// Read-write routes
@@ -114,7 +126,7 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwIntern
 	// chat.Use(a.AuthMiddleware())
 	// chat.Use(a.PermissionMiddleware("read-write"))
 	{
-		chat.GET("/messages", a.getChatMessagesHandler)
+		chat.GET("/messages", paginator, a.getChatMessagesHandler)
 		chat.GET("/messages/:message_id", a.getChatMessageHandler)
 		chat.POST("/messages", a.addChatMessageHandler)
 		chat.PUT("/messages/:message_id", a.updateChatMessageHandler)

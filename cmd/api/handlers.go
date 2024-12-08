@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"net/http"
 	"sort"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gogo/protobuf/types"
@@ -15,12 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-)
-
-const (
-	paginationLimit         = "100"
-	paginationLimitPerSpace = 10
-	paginationLimitPerChat  = 100
 )
 
 type CreateSpaceRequest struct {
@@ -104,7 +97,10 @@ func (a *ApiServer) authTokenHandler(c *gin.Context) {
 //	@Failure	502		{object}	ServerError			"Internal server error"
 //	@Router		/spaces [get]
 func (a *ApiServer) getSpacesHandler(c *gin.Context) {
-	// Call ObjectSearch for all objects of type spaceView
+	offset := c.GetInt("offset")
+	limit := c.GetInt("limit")
+
+	// Call ObjectSearch for all objects of type spaceView with pagination
 	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: a.accountInfo.TechSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -130,7 +126,10 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
+		Offset: int32(offset),
+		Limit:  int32(limit),
 	})
+
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of spaces."})
 		return
@@ -166,7 +165,6 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 //	@Failure	502		{object}	ServerError			"Internal server error"
 //	@Router		/spaces [post]
 func (a *ApiServer) createSpaceHandler(c *gin.Context) {
-	// Create new workspace with a random icon and import default usecase
 	nameRequest := CreateSpaceRequest{}
 	if err := c.BindJSON(&nameRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid JSON"})
@@ -179,6 +177,7 @@ func (a *ApiServer) createSpaceHandler(c *gin.Context) {
 		return
 	}
 
+	// Create new workspace with a random icon and import default use case
 	resp := a.mw.WorkspaceCreate(context.Background(), &pb.RpcWorkspaceCreateRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
@@ -208,15 +207,19 @@ func (a *ApiServer) createSpaceHandler(c *gin.Context) {
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string						true	"The ID of the space"
+//	@Param		offset		query		int							false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int							false	"The number of items to return"	default(100)
 //	@Success	200			{object}	map[string][]SpaceMember	"List of members"
 //	@Failure	403			{object}	UnauthorizedError			"Unauthorized"
 //	@Failure	404			{object}	NotFoundError				"Resource not found"
 //	@Failure	502			{object}	ServerError					"Internal server error"
 //	@Router		/spaces/{space_id}/members [get]
 func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
-	// Call ObjectSearch for all objects of type participant
 	spaceId := c.Param("space_id")
+	offset := c.GetInt("offset")
+	limit := c.GetInt("limit")
 
+	// Call ObjectSearch for all objects of type participant
 	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -237,6 +240,8 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
+		Offset: int32(offset),
+		Limit:  int32(limit),
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -283,14 +288,8 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 //	@Router		/spaces/{space_id}/objects [get]
 func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 	spaceId := c.Param("space_id")
-	// TODO: implement offset and limit
-	// offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	l := c.DefaultQuery("limit", paginationLimit)
-	limit, err := strconv.Atoi(l)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid limit value"})
-		return
-	}
+	offset := c.GetInt("offset")
+	limit := c.GetInt("limit")
 
 	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -314,8 +313,9 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 			IncludeTime:    true,
 			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 		}},
-		Keys:  []string{"id", "name", "type", "layout", "iconEmoji", "lastModifiedDate"},
-		Limit: int32(limit),
+		Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "lastModifiedDate"},
+		Offset: int32(offset),
+		Limit:  int32(limit),
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -506,6 +506,8 @@ func (a *ApiServer) updateObjectHandler(c *gin.Context) {
 //	@Router		/spaces/{space_id}/objectTypes [get]
 func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 	spaceId := c.Param("space_id")
+	offset := c.GetInt("offset")
+	limit := c.GetInt("limit")
 
 	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -527,6 +529,8 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
+		Offset: int32(offset),
+		Limit:  int32(limit),
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -556,6 +560,8 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 //	@Produce	json
 //	@Param		space_id	path		string						true	"The ID of the space"
 //	@Param		typeId		path		string						true	"The ID of the object type"
+//	@Param		offset		query		int							false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int							false	"The number of items to return"	default(100)
 //	@Success	200			{object}	map[string][]ObjectTemplate	"List of templates"
 //	@Failure	403			{object}	UnauthorizedError			"Unauthorized"
 //	@Failure	404			{object}	NotFoundError				"Resource not found"
@@ -564,6 +570,8 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 	spaceId := c.Param("space_id")
 	typeId := c.Param("typeId")
+	offset := c.GetInt("offset")
+	limit := c.GetInt("limit")
 
 	// First, determine the type Id of "ot-template" in the space
 	templateTypeIdResp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
@@ -594,6 +602,8 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 				Value:       pbtypes.String(templateTypeId),
 			},
 		},
+		Offset: int32(offset),
+		Limit:  int32(limit),
 	})
 
 	if templateObjectsResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -649,14 +659,8 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	searchTerm := c.Query("search")
 	objectType := c.Query("object_type")
-	// TODO: implement offset and limit
-	// offset := c.DefaultQuery("offset", "0")
-	l := c.DefaultQuery("limit", paginationLimit)
-	limit, err := strconv.Atoi(l)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to parse limit."})
-		return
-	}
+	offset := c.GetInt("offset")
+	limit := c.GetInt("limit")
 
 	// First, call ObjectSearch for all objects of type spaceView
 	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
@@ -679,6 +683,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 			},
 		},
 	})
+
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of spaces."})
 		return
@@ -737,8 +742,11 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			Keys:  []string{"id", "name", "type", "layout", "iconEmoji", "lastModifiedDate"},
-			Limit: paginationLimitPerSpace,
+			Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "lastModifiedDate"},
+			Offset: int32(offset),
+			Limit:  int32(limit),
+			// TODO split limit between spaces
+			// Limit: paginationLimitPerSpace,
 			// FullText: searchTerm,
 		})
 		for _, record := range objectSearchResponse.Records {
@@ -775,10 +783,6 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 		return searchResults[i].Details[0].Details["lastModifiedDate"].(float64) > searchResults[j].Details[0].Details["lastModifiedDate"].(float64)
 	})
 
-	if len(searchResults) > limit {
-		searchResults = searchResults[:limit]
-	}
-
 	c.JSON(http.StatusOK, gin.H{"objects": searchResults})
 }
 
@@ -789,16 +793,21 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string						true	"The ID of the space"
+//	@Param		offset		query		int							false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int							false	"The number of items to return"	default(100)
 //	@Success	200			{object}	map[string][]ChatMessage	"List of chat messages"
 //	@Failure	502			{object}	ServerError					"Internal server error"
 //	@Router		/v1/spaces/{space_id}/chat/messages [get]
 func (a *ApiServer) getChatMessagesHandler(c *gin.Context) {
 	spaceId := c.Param("space_id")
 	chatId := a.getChatIdForSpace(c, spaceId)
+	// TODO: implement offset
+	// offset := c.GetInt("offset")
+	limit := c.GetInt("limit")
 
 	lastMessages := a.mw.ChatSubscribeLastMessages(context.Background(), &pb.RpcChatSubscribeLastMessagesRequest{
 		ChatObjectId: chatId,
-		Limit:        paginationLimitPerChat,
+		Limit:        int32(limit),
 	})
 
 	if lastMessages.Error.Code != pb.RpcChatSubscribeLastMessagesResponseError_NULL {

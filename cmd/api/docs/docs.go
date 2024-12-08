@@ -289,6 +289,19 @@ const docTemplate = `{
                         "name": "space_id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "The number of items to skip before starting to collect the result set",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "The number of items to return",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
