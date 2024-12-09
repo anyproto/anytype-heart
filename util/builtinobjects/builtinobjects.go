@@ -84,6 +84,7 @@ var (
 			{model.BlockContentWidget_Link, "bafyreic75ulgm2yz426hjwdjkzqw3kafniknki7qkhufqgrspmxzdppixa", "", true},
 		},
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
+			{model.BlockContentWidget_Link, "bafyreiccjf5vbijsmr55ypsnnzltmcvl4n63g73twwxqnfkn5usoq2iqyi", "", true},
 			{model.BlockContentWidget_View, "bafyreifjgm3iy4o6o4zyf33ld3dnweo2grhvakvr7psn5twjge3xo3627m", "66f6775526909528d002c932", true},
 			{model.BlockContentWidget_View, "bafyreihrzztw2xcmxxz5uz5xodncby23xdacalcek2dtxxu77yn6wvzsq4", "6182a74fcae0300221f9f207", true},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecentOpen, "", false},
