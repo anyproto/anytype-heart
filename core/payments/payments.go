@@ -32,8 +32,8 @@ const CName = "payments"
 var log = logging.Logger(CName).Desugar()
 
 const (
-	refreshIntervalSecs = 10
-	timeout             = 10 * time.Second
+	refreshIntervalSecs = 60
+	timeout             = 30 * time.Second
 	cacheDisableMinutes = 30
 )
 

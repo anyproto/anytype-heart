@@ -127,9 +127,6 @@ func (s *spaceSyncStatus) update(ctx context.Context) error {
 	})
 	s.mx.Unlock()
 	for _, spaceId := range statuses {
-		if spaceId == s.spaceIdGetter.TechSpaceId() {
-			continue
-		}
 		// if the there are too many updates and this hurts performance,
 		// we may skip some iterations and not do the updates for example
 		s.updateSpaceSyncStatus(spaceId)

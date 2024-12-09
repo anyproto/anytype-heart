@@ -3,7 +3,6 @@ package detailsupdater
 import (
 	"context"
 	"errors"
-	"slices"
 	"sync"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -96,9 +94,6 @@ func (u *syncStatusUpdater) Name() (name string) {
 }
 
 func (u *syncStatusUpdater) UpdateDetails(objectId string, status domain.ObjectSyncStatus, spaceId string) {
-	if spaceId == u.spaceService.TechSpaceId() {
-		return
-	}
 	err := u.addToQueue(&syncStatusDetails{
 		objectId: objectId,
 		status:   status,
@@ -143,9 +138,6 @@ func (u *syncStatusUpdater) updateSpecificObject(objectId string) {
 }
 
 func (u *syncStatusUpdater) UpdateSpaceDetails(existing, missing []string, spaceId string) {
-	if spaceId == u.spaceService.TechSpaceId() {
-		return
-	}
 	u.spaceSyncStatus.UpdateMissingIds(spaceId, missing)
 	ids := u.getSyncingObjects(spaceId)
 
@@ -228,9 +220,6 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 }
 
 func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.ObjectSyncStatus, syncError domain.SyncError) error {
-	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
-		return nil
-	}
 	st := sb.NewState()
 	if !u.isLayoutSuitableForSyncRelations(sb.Details()) {
 		return nil
@@ -262,6 +251,7 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_video:          {},
 	model.ObjectType_pdf:            {},
 	model.ObjectType_chat:           {},
+	model.ObjectType_spaceView:      {},
 }
 
 func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *domain.Details) bool {

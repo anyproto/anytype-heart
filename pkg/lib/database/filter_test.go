@@ -927,16 +927,16 @@ func TestFilterHasPrefix_FilterObject(t *testing.T) {
 		now := time.Now()
 		f := FilterHasPrefix{
 			Key:    key,
-			Prefix: dateutil.TimeToDateId(now), // _date_YYYY-MM-DD
+			Prefix: dateutil.NewDateObject(now, false).Id(), // _date_YYYY-MM-DD
 		}
 		obj1 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			key: domain.StringList([]string{"obj2", dateutil.TimeToDateId(now.Add(30 * time.Minute)), "obj3"}), // _date_YYYY-MM-DD-hh-mm-ss
+			key: domain.StringList([]string{"obj2", dateutil.NewDateObject(now.Add(30*time.Minute), true).Id(), "obj3"}), // _date_YYYY-MM-DD-hh-mm-ssZ-zzzz
 		})
 		obj2 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			key: domain.StringList([]string{dateutil.TimeToDateId(now.Add(24 * time.Hour)), "obj1", "obj3"}), // same format, but next day
+			key: domain.StringList([]string{dateutil.NewDateObject(now.Add(24*time.Hour), true).Id(), "obj1", "obj3"}), // same format, but next day
 		})
 		obj3 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			key: domain.StringList([]string{"obj2", "obj3", dateutil.TimeToDateId(now.Add(30 * time.Minute))}), // _date_YYYY-MM-DD
+			key: domain.StringList([]string{"obj2", "obj3", dateutil.NewDateObject(now.Add(30*time.Minute), true).Id()}), // _date_YYYY-MM-DD
 		})
 		assertFilter(t, f, obj1, true)
 		assertFilter(t, f, obj2, false)

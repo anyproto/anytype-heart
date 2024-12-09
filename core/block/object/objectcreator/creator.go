@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/pkg/errors"
@@ -36,6 +37,10 @@ type (
 	bookmarkService interface {
 		CreateObjectAndFetch(ctx context.Context, spaceId string, details *domain.Details) (objectID string, newDetails *domain.Details, err error)
 	}
+
+	objectArchiver interface {
+		SetIsArchived(objectId string, isArchived bool) error
+	}
 )
 
 const CName = "objectCreator"
@@ -61,6 +66,7 @@ type service struct {
 	spaceService      space.Service
 	templateService   templateService
 	lastUsedUpdater   lastused.ObjectUsageUpdater
+	archiver          objectArchiver
 }
 
 func NewCreator() Service {
@@ -74,6 +80,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[templateService](a)
 	s.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
+	s.archiver = app.MustComponent[objectArchiver](a)
 	return nil
 }
 
@@ -180,30 +187,20 @@ func (s *service) createObjectFromTemplate(
 
 // buildDateObject does not create real date object. It just builds date object details
 func buildDateObject(space clientspace.Space, details *domain.Details) (string, *domain.Details, error) {
-	name := details.GetString(bundle.RelationKeyName)
-	id, err := dateutil.DateNameToId(name)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to build date object, as its name is invalid: %w", err)
-	}
+	ts := details.GetInt64(bundle.RelationKeyTimestamp)
+	dateObject := dateutil.NewDateObject(time.Unix(ts, 0), false)
 
 	typeId, err := space.GetTypeIdByKey(context.Background(), bundle.TypeKeyDate)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to find Date type to build Date object: %w", err)
 	}
 
-	// TODO: GO-4494 - Remove links relation id fetch
-	linksRelationId, err := space.GetRelationIdByKey(context.Background(), bundle.RelationKeyLinks)
-	if err != nil {
-		return "", nil, fmt.Errorf("get links relation id: %w", err)
-	}
-
 	dateSource := source.NewDate(source.DateSourceParams{
 		Id: domain.FullID{
-			ObjectID: id,
+			ObjectID: dateObject.Id(),
 			SpaceID:  space.Id(),
 		},
 		DateObjectTypeId: typeId,
-		LinksRelationId:  linksRelationId,
 	})
 
 	detailsGetter, ok := dateSource.(source.SourceIdEndodedDetails)
@@ -212,5 +209,5 @@ func buildDateObject(space clientspace.Space, details *domain.Details) (string, 
 	}
 
 	details, err = detailsGetter.DetailsFromId()
-	return id, details, err
+	return dateObject.Id(), details, err
 }

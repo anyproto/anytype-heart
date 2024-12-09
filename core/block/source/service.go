@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/idderiver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -58,12 +59,6 @@ type Service interface {
 	app.Component
 }
 
-// TODO: GO-4494 - Remove this interface
-type derivedObjectIdGetter interface {
-	GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error)
-	GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error)
-}
-
 type service struct {
 	sbtProvider        typeprovider.SmartBlockTypeProvider
 	accountService     accountService
@@ -72,9 +67,7 @@ type service struct {
 	fileService        files.Service
 	objectStore        objectstore.ObjectStore
 	fileObjectMigrator fileObjectMigrator
-
-	// TODO: GO-4494 - Remove derivedObjectIdGetter
-	derivedObjectIdGetter derivedObjectIdGetter
+	idDeriver          idderiver.Deriver
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -88,12 +81,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountKeysService = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.idDeriver = app.MustComponent[idderiver.Deriver](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
-
-	// TODO: GO-4494 - Remove derivedObjectIdGetter
-	s.derivedObjectIdGetter = app.MustComponent[derivedObjectIdGetter](a)
 	return
 }
 
@@ -154,20 +145,12 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 			if err != nil {
 				return nil, fmt.Errorf("failed to find Date type to build Date object: %w", err)
 			}
-
-			// TODO: GO-4494 - Remove links relation id fetch
-			linksRelationId, err := space.GetRelationIdByKey(context.Background(), bundle.RelationKeyLinks)
-			if err != nil {
-				return nil, fmt.Errorf("get links relation id: %w", err)
-			}
-
 			return NewDate(DateSourceParams{
 				Id: domain.FullID{
 					ObjectID: id,
 					SpaceID:  space.Id(),
 				},
 				DateObjectTypeId: typeId,
-				LinksRelationId:  linksRelationId,
 			}), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
 			return NewBundledObjectType(id), nil
@@ -234,22 +217,15 @@ func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, e
 		return nil, fmt.Errorf("unsupported id")
 	}
 
-	// TODO: GO-4494 - Remove date type id fetch
-	dateObjectId, err := s.derivedObjectIdGetter.GetTypeIdByKey(context.Background(), id.SpaceID, bundle.TypeKeyDate)
+	dateTypeId, err := s.idDeriver.DeriveObjectId(context.Background(), id.SpaceID,
+		domain.MustUniqueKey(smartblock.SmartBlockTypeObjectType, bundle.TypeKeyDate.String()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get id of Date type object: %w", err)
-	}
-
-	// TODO: GO-4494 - Remove links relation id fetch
-	linksId, err := s.derivedObjectIdGetter.GetRelationIdByKey(context.Background(), id.SpaceID, bundle.RelationKeyLinks)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get id of Links relation object: %w", err)
+		return nil, fmt.Errorf("failed to derive id of Date type object: %w", err)
 	}
 
 	ss := NewDate(DateSourceParams{
 		Id:               id,
-		DateObjectTypeId: dateObjectId,
-		LinksRelationId:  linksId,
+		DateObjectTypeId: dateTypeId,
 	})
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
