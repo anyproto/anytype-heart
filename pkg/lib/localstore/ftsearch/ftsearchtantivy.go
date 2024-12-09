@@ -11,6 +11,7 @@ package ftsearch
 #cgo android,amd64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/android-amd64 -ltantivy_go -lm -pthread -ldl
 #cgo android,arm64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/android-arm64 -ltantivy_go -lm -pthread -ldl
 #cgo linux,amd64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/linux-amd64-musl -Wl,--allow-multiple-definition -ltantivy_go -lm
+#cgo linux,arm64 LDFLAGS:-L${SRCDIR}/../../../../deps/libs/linux-arm64-musl -Wl,--allow-multiple-definition -ltantivy_go -lm
 */
 import "C"
 import (
@@ -101,6 +102,7 @@ type ftSearchTantivy struct {
 	schema     *tantivy.Schema
 	parserPool *fastjson.ParserPool
 	mu         sync.Mutex
+	blevePath  string
 }
 
 func TantivyNew() FTSearch {
@@ -140,6 +142,7 @@ func (f *ftSearchTantivy) DeleteObject(objectId string) error {
 func (f *ftSearchTantivy) Init(a *app.App) error {
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
+	f.blevePath = filepath.Join(repoPath, ftsDir)
 	f.ftsPath = filepath.Join(repoPath, ftsDir2, ftsVer)
 	return tantivy.LibInit(false, true, "release")
 }
@@ -511,7 +514,7 @@ func (f *ftSearchTantivy) Close(ctx context.Context) error {
 }
 
 func (f *ftSearchTantivy) cleanupBleve() {
-	_ = os.RemoveAll(filepath.Join(f.rootPath, ftsDir))
+	_ = os.RemoveAll(f.blevePath)
 }
 
 func prepareQuery(query string) string {
