@@ -78,8 +78,8 @@ github.com/andybalholm/cascadia v1.3.2 h1:3Xi6Dw5lHF15JtdcmAHD3i1+T8plmv7BQ/nsVi
 github.com/andybalholm/cascadia v1.3.2/go.mod h1:7gtRlve5FxPPgIgX36uWBX58OdBsSS6lUvCFb+h7KvU=
 github.com/anyproto/any-store v0.1.3 h1:onWLP8tuWiUvYOyV3DoRODscTxAiGEjwQPm+NMxeq3M=
 github.com/anyproto/any-store v0.1.3/go.mod h1:6/0OUKgSMWF/vYGoGYzQOl2CII5OdiuXbQlGDXYcNYc=
-github.com/anyproto/any-sync v0.5.20 h1:5In7AoMBa8npGz0Zv3wEmd3jhiN6CWGiCaEmgB8rRSM=
-github.com/anyproto/any-sync v0.5.20/go.mod h1:K53/whh/9tmGbXrkPS59XyqWU3SaxhsX9g6VIYnBIlU=
+github.com/anyproto/any-sync v0.5.21 h1:+Qx69Pij3QbLh2nRZEamD2WaSSy1uWHlXGMCIFEiKW0=
+github.com/anyproto/any-sync v0.5.21/go.mod h1:K53/whh/9tmGbXrkPS59XyqWU3SaxhsX9g6VIYnBIlU=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580/go.mod h1:T/uWAYxrXdaXw64ihI++9RMbKTCpKd/yE9+saARew7k=
 github.com/anyproto/go-chash v0.1.0 h1:I9meTPjXFRfXZHRJzjOHC/XF7Q5vzysKkiT/grsogXY=
@@ -106,8 +106,8 @@ github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5 h1:aY7tBzQ+z8H
 github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5/go.mod h1:5+PHE01DgsDPkralb8MYmGg2sPQahsqEJ9ue7ciDHKg=
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c h1:GicoaTUyB2mtCIl3YMrO0OzysqRT5GA4vuvDsqEkhSM=
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
-github.com/anyproto/tantivy-go v0.2.0 h1:+b778sOPy07KpJULL4ztCc106L+zdmwKCIB5UYnWrZo=
-github.com/anyproto/tantivy-go v0.2.0/go.mod h1:MMLYW7e5SIzsHS3Q5CYiF1J7kJJaIRT+VVHGArU24IQ=
+github.com/anyproto/tantivy-go v0.3.1 h1:59XePWnHlaTOgw1jVqpKD7oyZa8nwY5+U9UKnt0HHZU=
+github.com/anyproto/tantivy-go v0.3.1/go.mod h1:7hhkPpyTq7+W1dx9Dcva4bsg4TLHq9xqmmYLCwqDq/k=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d h1:5bj7nX/AS8sxGpTIrapE7PC4oPlhkHMwMqXlJbUHBlg=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d/go.mod h1:fuJqLnUwZTshS3U/bMRJ3+ow/v9oid1n0DmyYyNO1Xs=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
@@ -649,8 +649,8 @@ github.com/logrusorgru/aurora v2.0.3+incompatible/go.mod h1:7rIyQOR62GCctdiQpZ/z
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 h1:6E+4a0GO5zZEnZ81pIr0yLvtUWk2if982qA3F3QD6H4=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0/go.mod h1:zJYVVT2jmtg6P3p1VtQj7WsuWi/y4VnjVBn7F8KPB3I=
 github.com/lyft/protoc-gen-validate v0.0.13/go.mod h1:XbGvPuh87YZc5TdIa2/I4pLk0QoUACkjt2znoq26NVQ=
-github.com/magiconair/properties v1.8.7 h1:IeQXZAiQcpL9mgcAe1Nu6cX9LLw6ExEHKjN0VQdvPDY=
-github.com/magiconair/properties v1.8.7/go.mod h1:Dhd985XPs7jluiymwWYZ0G4Z61jb3vdS329zhj2hYo0=
+github.com/magiconair/properties v1.8.9 h1:nWcCbLq1N2v/cpNsy5WvQ37Fb+YElfq20WJ/a8RkpQM=
+github.com/magiconair/properties v1.8.9/go.mod h1:Dhd985XPs7jluiymwWYZ0G4Z61jb3vdS329zhj2hYo0=
 github.com/matishsiao/goInfo v0.0.0-20240924010139-10388a85396f h1:XDrsC/9hdgiU9ecceSmYsS2E3fBtFiYc34dAMFgegnM=
 github.com/matishsiao/goInfo v0.0.0-20240924010139-10388a85396f/go.mod h1:aEt7p9Rvh67BYApmZwNDPpgircTO2kgdmDUoF/1QmwA=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
