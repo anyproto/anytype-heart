@@ -186,9 +186,20 @@ jobs:
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
         if: github.event_name == 'push'
-      - name: Pack server unix
+      - name: Pack server unix amd64
         run: |
           declare -a arr=("linux-amd64")
+          for i in "${arr[@]}"
+          do
+          OSARCH=${i%.*}
+          cp ./${i}* ./grpc-server
+          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
+          mv js_${VERSION}_${OSARCH}.tar.gz .release/
+          done
+        if: github.event_name == 'push'
+      - name: Pack server unix arm64
+        run: |
+          declare -a arr=("linux-arm64")
           for i in "${arr[@]}"
           do
           OSARCH=${i%.*}
