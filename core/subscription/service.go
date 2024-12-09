@@ -175,6 +175,12 @@ func (s *service) Close(ctx context.Context) error {
 }
 
 func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err error) {
+	// todo: removed temp fix after we will have session-scoped subscriptions
+	// this is to prevent multiple subscriptions with the same id in different spaces
+	err = s.Unsubscribe(req.SubId)
+	if err != nil {
+		return nil, err
+	}
 	spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId)
 	if err != nil {
 		return nil, err
@@ -183,6 +189,12 @@ func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err err
 }
 
 func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error) {
+	// todo: removed temp fix after we will have session-scoped subscriptions
+	// this is to prevent multiple subscriptions with the same id in different spaces
+	err = s.Unsubscribe(req.SubId)
+	if err != nil {
+		return nil, err
+	}
 	spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId)
 	if err != nil {
 		return nil, err
@@ -195,6 +207,12 @@ func (s *service) SubscribeIds(subId string, ids []string) (records []*types.Str
 }
 
 func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
+	// todo: removed temp fix after we will have session-scoped subscriptions
+	// this is to prevent multiple subscriptions with the same id in different spaces
+	err := s.Unsubscribe(req.SubId)
+	if err != nil {
+		return nil, err
+	}
 	spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId)
 	if err != nil {
 		return nil, err
