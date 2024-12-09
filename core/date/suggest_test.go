@@ -5,6 +5,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/dateutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func Test_suggestDateForSearch(t *testing.T) {
@@ -12,7 +18,6 @@ func Test_suggestDateForSearch(t *testing.T) {
 	now := time.Date(2022, 5, 18, 14, 56, 33, 0, loc)
 
 	tests := []struct {
-		now  time.Time
 		raw  string
 		want time.Time
 	}{
@@ -21,8 +26,28 @@ func Test_suggestDateForSearch(t *testing.T) {
 			want: time.Date(2022, 5, 18, 14, 56, 33, 0, loc),
 		},
 		{
+			raw:  "date",
+			want: time.Date(2022, 5, 18, 0, 0, 0, 0, loc),
+		},
+		{
 			raw:  "today",
 			want: time.Date(2022, 5, 18, 0, 0, 0, 0, loc),
+		},
+		{
+			raw:  "toda",
+			want: time.Date(2022, 5, 18, 0, 0, 0, 0, loc),
+		},
+		{
+			raw:  "to",
+			want: time.Date(2022, 5, 18, 0, 0, 0, 0, loc),
+		},
+		{
+			raw:  "yeste",
+			want: time.Date(2022, 5, 17, 0, 0, 0, 0, loc),
+		},
+		{
+			raw:  "NoVem",
+			want: time.Date(2022, 11, 18, 14, 56, 33, 0, loc),
 		},
 		{
 			raw:  "10 days from now",
@@ -60,4 +85,23 @@ func Test_suggestDateForSearch(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestSuggestDateObjectIdsFromFilter(t *testing.T) {
+	// given
+	dateObject1 := dateutil.NewDateObject(time.Now(), false)
+	dateObject2 := dateutil.NewDateObject(time.Now().Add(2*time.Hour), true)
+	filters := []*model.BlockContentDataviewFilter{{
+		RelationKey: bundle.RelationKeyId.String(),
+		Condition:   model.BlockContentDataviewFilter_In,
+		Value:       pbtypes.StringList([]string{dateObject1.Id(), "plainObj1", "planObj2", dateObject2.Id()}),
+	}}
+
+	// when
+	ids := suggestDateObjectIds("", filters)
+
+	// then
+	require.Len(t, ids, 2)
+	assert.Equal(t, dateObject1.Id(), ids[0])
+	assert.Equal(t, dateObject2.Id(), ids[1])
 }

@@ -2,11 +2,13 @@ package objectlink
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -21,15 +23,21 @@ import (
 
 var log = logging.Logger("objectlink")
 
-type KeyToIDConverter interface {
-	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
-	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
-}
+type (
+	KeyToIDConverter interface {
+		GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
+		GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
+	}
 
-type linkSource interface {
-	FillSmartIds(ids []string) []string
-	HasSmartIds() bool
-}
+	linkSource interface {
+		FillSmartIds(ids []string) []string
+		HasSmartIds() bool
+	}
+
+	spaceIdResolver interface {
+		ResolveSpaceID(id string) (spaceId string, err error)
+	}
+)
 
 type Flags struct {
 	Blocks,
@@ -41,7 +49,8 @@ type Flags struct {
 	DataviewBlockOnlyTarget,
 	NoSystemRelations,
 	NoHiddenBundledRelations,
-	NoImages bool
+	NoImages,
+	RoundDateIdsToDay bool
 }
 
 func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags) (ids []string) {
@@ -79,8 +88,37 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags)
 		ids = append(ids, s.GetStoreSlice(template.CollectionStoreKey)...)
 	}
 
+	if flags.RoundDateIdsToDay {
+		ids = roundDateIds(ids)
+	}
+
 	ids = lo.Uniq(ids)
 	return
+}
+
+func DependentObjectIDsPerSpace(rootSpaceId string, s *state.State, converter KeyToIDConverter, resolver spaceIdResolver, flags Flags) map[string][]string {
+	ids := DependentObjectIDs(s, converter, flags)
+	perSpace := map[string][]string{}
+	for _, id := range ids {
+		if dateObject, parseErr := dateutil.BuildDateObjectFromId(id); parseErr == nil {
+			perSpace[rootSpaceId] = append(perSpace[rootSpaceId], dateObject.Id())
+			continue
+		}
+
+		spaceId, err := resolver.ResolveSpaceID(id)
+		if errors.Is(err, domain.ErrObjectNotFound) {
+			perSpace[rootSpaceId] = append(perSpace[rootSpaceId], id)
+			continue
+		}
+
+		if err != nil {
+			perSpace[rootSpaceId] = append(perSpace[rootSpaceId], id)
+			log.With("id", id).Warn("resolve space id", zap.Error(err))
+			continue
+		}
+		perSpace[spaceId] = append(perSpace[spaceId], id)
+	}
+	return perSpace
 }
 
 func collectIdsFromBlocks(s *state.State, flags Flags) (ids []string) {
@@ -152,7 +190,7 @@ func collectIdsFromDetail(rel *model.RelationLink, det *types.Struct, flags Flag
 		if relInt > 0 {
 			t := time.Unix(relInt, 0)
 			t = t.In(time.Local)
-			ids = append(ids, dateutil.TimeToDateId(t))
+			ids = append(ids, dateutil.NewDateObject(t, false).Id())
 		}
 		return
 	}
@@ -197,5 +235,18 @@ func collectIdsFromDetail(rel *model.RelationLink, det *types.Struct, flags Flag
 		}
 	}
 
+	return ids
+}
+
+// roundDateIds turns all date object ids into ids with no time included
+func roundDateIds(ids []string) []string {
+	for i, id := range ids {
+		dateObject, err := dateutil.BuildDateObjectFromId(id)
+		if err != nil {
+			continue
+		}
+
+		ids[i] = dateutil.NewDateObject(dateObject.Time(), false).Id()
+	}
 	return ids
 }

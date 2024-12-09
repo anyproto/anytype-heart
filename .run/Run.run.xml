@@ -10,9 +10,8 @@
       <env name="ANYTYPE_GRPC_ADDR" value="127.0.0.1:31007" />
       <env name="ANYTYPE_GRPCWEB_ADDR" value="127.0.0.1:31008" />
       <env name="CC" value="/usr/bin/cc" />
-      <env name="CGO_CFLAGS" value="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" />
       <env name="CXX" value="/usr/bin/c++" />
-      <env name="GOEXPERIMENT" value="rangefunc" />
+      <env name="CGO_CFLAGS" value="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" />
     </envs>
     <EXTENSION ID="net.ashald.envfile">
       <option name="IS_ENABLED" value="false" />
