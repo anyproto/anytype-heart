@@ -272,6 +272,7 @@ func buildExpectedTree(fileNameToObjectId map[string]string, provider *MockTempD
 	testMdPath := filepath.Join("testdata", "test.md")
 	testCsvPath := filepath.Join("testdata", "test.csv")
 	testTxtPath := filepath.Join("testdata", "test.txt")
+	url := "http://example.com/%zz"
 	want := blockbuilder.Root(
 		blockbuilder.ID(rootId),
 		blockbuilder.Children(
@@ -295,6 +296,13 @@ func buildExpectedTree(fileNameToObjectId map[string]string, provider *MockTempD
 					Range: &model.Range{From: 17, To: 22},
 					Type:  model.BlockContentTextMark_Mention,
 					Param: fileNameToObjectId[testCsvPath],
+				},
+			}})),
+			blockbuilder.Text("Should not panic test5", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 17, To: 22},
+					Type:  model.BlockContentTextMark_Link,
+					Param: url,
 				},
 			}})),
 			blockbuilder.Text("File does not exist with bold mark test1", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
@@ -341,6 +349,17 @@ func buildExpectedTree(fileNameToObjectId map[string]string, provider *MockTempD
 					Type:  model.BlockContentTextMark_Bold,
 				},
 			}})),
+			blockbuilder.Text("Should not panic test5", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 17, To: 22},
+					Type:  model.BlockContentTextMark_Link,
+					Param: url,
+				},
+				{
+					Range: &model.Range{From: 17, To: 22},
+					Type:  model.BlockContentTextMark_Bold,
+				},
+			}})),
 			blockbuilder.Bookmark(fileMdPath),
 			blockbuilder.Text("test2", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
 				{
@@ -359,6 +378,17 @@ func buildExpectedTree(fileNameToObjectId map[string]string, provider *MockTempD
 					Range: &model.Range{From: 0, To: 5},
 					Type:  model.BlockContentTextMark_Mention,
 					Param: fileNameToObjectId[testCsvPath],
+				},
+				{
+					Range: &model.Range{From: 0, To: 5},
+					Type:  model.BlockContentTextMark_Bold,
+				},
+			}})),
+			blockbuilder.Text("test5", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 0, To: 5},
+					Type:  model.BlockContentTextMark_Link,
+					Param: url,
 				},
 				{
 					Range: &model.Range{From: 0, To: 5},
