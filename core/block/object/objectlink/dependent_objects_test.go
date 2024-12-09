@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/dateutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fakeConverter struct {

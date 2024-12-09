@@ -92,10 +92,10 @@ func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) ([]
 
 	keys := maps.Keys(countersByKeys)
 	sort.Slice(keys, func(i, j int) bool {
-		if keys[i] == bundle.RelationKeyMentions.String() {
+		if keys[i] == bundle.RelationKeyMentions {
 			return true
 		}
-		if keys[j] == bundle.RelationKeyMentions.String() {
+		if keys[j] == bundle.RelationKeyMentions {
 			return false
 		}
 		return keys[i] < keys[j]

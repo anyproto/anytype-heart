@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/dateutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fixture struct {
@@ -120,12 +119,12 @@ func Test(t *testing.T) {
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 		})
-		fx.objectStoreMock.AddVirtualDetails(dateObject.Id(), &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():        pbtypes.String(dateObject.Id()),
-			bundle.RelationKeyLayout.String():    pbtypes.Int64(int64(model.ObjectType_date)),
-			bundle.RelationKeyName.String():      pbtypes.String(dateObject.Name()),
-			bundle.RelationKeyTimestamp.String(): pbtypes.Int64(dateObject.Time().Unix()),
-		}})
+		fx.objectStoreMock.AddVirtualDetails(dateObject.Id(), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:        domain.String(dateObject.Id()),
+			bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_date)),
+			bundle.RelationKeyName:      domain.String(dateObject.Name()),
+			bundle.RelationKeyTimestamp: domain.Int64(dateObject.Time().Unix()),
+		}))
 		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{
 				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{

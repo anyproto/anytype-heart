@@ -138,9 +138,13 @@ func (gr *Builder) buildGraph(
 
 		outgoingRelationLink := make(map[string]struct{}, 10)
 		edges = gr.appendRelations(rec, relations, edges, existedNodes, sourceId, outgoingRelationLink)
-		var nodesToAdd []*types.Struct
+		var nodesToAdd []*domain.Details
 		nodesToAdd, edges = gr.appendLinks(req.SpaceId, rec, outgoingRelationLink, existedNodes, edges, sourceId)
-		nodes = append(nodes, pbtypes.MapN(nodesToAdd, req.Keys...)...)
+
+		nodesToAdd = lo.Map(nodesToAdd, func(item *domain.Details, _ int) *domain.Details {
+			return item.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...)
+		})
+		nodes = append(nodes, nodesToAdd...)
 	}
 	return nodes, edges
 }
@@ -204,7 +208,7 @@ func (gr *Builder) appendLinks(
 	existedNodes map[string]struct{},
 	edges []*pb.RpcObjectGraphEdge,
 	id string,
-) (nodes []domain.Details, resultEdges []*pb.RpcObjectGraphEdge) {
+) (nodes []*domain.Details, resultEdges []*pb.RpcObjectGraphEdge) {
 	links := rec.GetStringList(bundle.RelationKeyLinks)
 	for _, link := range links {
 		sbType, err := gr.sbtProvider.Type(spaceID, link)

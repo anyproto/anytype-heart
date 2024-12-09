@@ -28,11 +28,11 @@ func (fx *StoreFixture) TechSpaceId() string {
 }
 
 type virtualDetailsHandler interface {
-	AddVirtualDetails(id string, det *types.Struct)
+	AddVirtualDetails(id string, det *domain.Details)
 }
 
 type detailsFromId struct {
-	details map[string]*types.Struct
+	details map[string]*domain.Details
 }
 
 func (d *detailsFromId) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error) {
@@ -42,9 +42,9 @@ func (d *detailsFromId) DetailsFromIdBasedSource(id domain.FullID) (*domain.Deta
 	return nil, fmt.Errorf("not found")
 }
 
-func (d *detailsFromId) AddVirtualDetails(id string, det *types.Struct) {
+func (d *detailsFromId) AddVirtualDetails(id string, det *domain.Details) {
 	if d.details == nil {
-		d.details = map[string]*types.Struct{}
+		d.details = map[string]*domain.Details{}
 	}
 	d.details[id] = det
 }
@@ -141,7 +141,7 @@ func makeDetails(fields spaceindex.TestObject) *domain.Details {
 	return domain.NewDetailsFromMap(fields)
 }
 
-func (fx *StoreFixture) AddVirtualDetails(id string, details *types.Struct) {
+func (fx *StoreFixture) AddVirtualDetails(id string, details *domain.Details) {
 	if handler := fx.sourceService.(virtualDetailsHandler); handler != nil {
 		handler.AddVirtualDetails(id, details)
 	}

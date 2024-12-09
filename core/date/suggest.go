@@ -48,7 +48,7 @@ func EnrichRecordsWithDateSuggestions(
 			return nil, fmt.Errorf("make date record: %w", err)
 		}
 
-		f, _ := database.MakeFilters(req.Filters, store.SpaceIndex(req.SpaceId)) //nolint:errcheck
+		f, _ := database.MakeFilters(database.FiltersFromProto(req.Filters), store.SpaceIndex(req.SpaceId)) //nolint:errcheck
 		if f.FilterObject(rec.Details) {
 			records = append([]database.Record{rec}, records...)
 		}
@@ -147,11 +147,11 @@ func suggestDateForSearch(now time.Time, raw string) time.Time {
 
 func recordsHasId(records []database.Record, id string) bool {
 	for _, r := range records {
-		if r.Details == nil || r.Details.Fields == nil {
+		if r.Details == nil {
 			continue
 		}
-		if v, ok := r.Details.Fields[bundle.RelationKeyId.String()]; ok {
-			if v.GetStringValue() == id {
+		if v, ok := r.Details.TryString(bundle.RelationKeyId); ok {
+			if v == id {
 				return true
 			}
 		}

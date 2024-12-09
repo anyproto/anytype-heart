@@ -747,6 +747,6 @@ func (mw *Middleware) ObjectDateByTimestamp(ctx context.Context, req *pb.RpcObje
 	}
 
 	return &pb.RpcObjectDateByTimestampResponse{
-		Details: details,
+		Details: details.ToProto(),
 	}
 }

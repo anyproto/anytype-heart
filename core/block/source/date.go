@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/dateutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type DateSourceParams struct {
@@ -72,7 +71,7 @@ func (d *date) getDetails() (*domain.Details, error) {
 		bundle.RelationKeyIconEmoji:    domain.String("📅"),
 		bundle.RelationKeySpaceId:      domain.String(d.SpaceID()),
 		bundle.RelationKeyTimestamp:    domain.Int64(dateObject.Time().Unix()),
-		bundle.RelationKeyRestrictions: domain.Int64List(restrictions...),
+		bundle.RelationKeyRestrictions: domain.Int64List(restrictions),
 	}), nil
 }
 

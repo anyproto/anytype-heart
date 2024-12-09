@@ -13,18 +13,16 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common/objectid/mock_objectid"
-	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers/mock_parsers"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/mock_common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/objectcreator/mock_objectcreator"
-	"github.com/anyproto/anytype-heart/core/block/import/common/objectid/mock_objectid"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
-	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync/mock_filesync"
@@ -34,7 +32,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func Test_ImportSuccess(t *testing.T) {
@@ -96,8 +93,8 @@ func Test_ImportSuccess(t *testing.T) {
 
 		converter := mock_common.NewMockConverter(t)
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
+			Snapshot: &common.SnapshotModel{
+				Data: &common.StateSnapshot{
 					Blocks: []*model.Block{{
 						Id: "1",
 						Content: &model.BlockContentOfText{

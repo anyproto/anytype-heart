@@ -3,7 +3,6 @@ package objectcreator
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -11,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -82,11 +82,11 @@ func TestInstaller_queryDeletedObjects(t *testing.T) {
 func TestInstaller_reinstallObject(t *testing.T) {
 	t.Run("reinstall archived object", func(t *testing.T) {
 		// given
-		sourceDetails := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():      pbtypes.String(bundle.TypeKeyProject.BundledURL()),
-			bundle.RelationKeySpaceId.String(): pbtypes.String(addr.AnytypeMarketplaceWorkspace),
-			bundle.RelationKeyName.String():    pbtypes.String(bundle.TypeKeyProject.String()),
-		}}
+		sourceDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:      domain.String(bundle.TypeKeyProject.BundledURL()),
+			bundle.RelationKeySpaceId: domain.String(addr.AnytypeMarketplaceWorkspace),
+			bundle.RelationKeyName:    domain.String(bundle.TypeKeyProject.String()),
+		})
 
 		sourceObject := smarttest.New(bundle.TypeKeyProject.BundledURL())
 		st := sourceObject.NewState()
@@ -100,14 +100,14 @@ func TestInstaller_reinstallObject(t *testing.T) {
 			return apply(sourceObject)
 		})
 
-		oldDetails := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():           pbtypes.String(bundle.TypeKeyProject.URL()),
-			bundle.RelationKeySpaceId.String():      pbtypes.String(spaceId),
-			bundle.RelationKeySourceObject.String(): pbtypes.String(bundle.TypeKeyProject.BundledURL()),
-			bundle.RelationKeyIsArchived.String():   pbtypes.Bool(true),
-			bundle.RelationKeyIsDeleted.String():    pbtypes.Bool(false),
-			bundle.RelationKeyName.String():         pbtypes.String("Project name was edited"),
-		}}
+		oldDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:           domain.String(bundle.TypeKeyProject.URL()),
+			bundle.RelationKeySpaceId:      domain.String(spaceId),
+			bundle.RelationKeySourceObject: domain.String(bundle.TypeKeyProject.BundledURL()),
+			bundle.RelationKeyIsArchived:   domain.Bool(true),
+			bundle.RelationKeyIsDeleted:    domain.Bool(false),
+			bundle.RelationKeyName:         domain.String("Project name was edited"),
+		})
 
 		archivedObject := smarttest.New(bundle.TypeKeyProject.URL())
 		st = archivedObject.NewState()
@@ -136,6 +136,6 @@ func TestInstaller_reinstallObject(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, bundle.TypeKeyProject.URL(), id)
-		assert.Equal(t, bundle.TypeKeyProject.String(), pbtypes.GetString(newDetails, bundle.RelationKeyName.String()))
+		assert.Equal(t, bundle.TypeKeyProject.String(), newDetails.GetString(bundle.RelationKeyName))
 	})
 }

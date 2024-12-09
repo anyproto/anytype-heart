@@ -254,8 +254,8 @@ func TestKeyOrder_Compare(t *testing.T) {
 	})
 
 	t.Run("desc_date", func(t *testing.T) {
-		a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Int64(date.Unix())}}
-		b := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Int64(time.Now().Unix())}}
+		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Unix())})
+		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(time.Now().Unix())})
 		asc := &KeyOrder{arena: arena,
 			Key:            "k",
 			Type:           model.BlockContentDataviewSort_Desc,

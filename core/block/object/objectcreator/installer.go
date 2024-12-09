@@ -195,12 +195,12 @@ func (s *service) reinstallBundledObjects(
 }
 
 func (s *service) reinstallObject(
-	ctx context.Context, sourceSpace, space clientspace.Space, currentDetails *types.Struct,
-) (id string, key domain.TypeKey, details *types.Struct, err error) {
-	id = pbtypes.GetString(currentDetails, bundle.RelationKeyId.String())
+	ctx context.Context, sourceSpace, space clientspace.Space, currentDetails *domain.Details,
+) (id string, key domain.TypeKey, details *domain.Details, err error) {
+	id = currentDetails.GetString(bundle.RelationKeyId)
 	var (
-		sourceObjectId = pbtypes.GetString(currentDetails, bundle.RelationKeySourceObject.String())
-		isArchived     = pbtypes.GetBool(currentDetails, bundle.RelationKeyIsArchived.String())
+		sourceObjectId = currentDetails.GetString(bundle.RelationKeySourceObject)
+		isArchived     = currentDetails.GetBool(bundle.RelationKeyIsArchived)
 	)
 
 	installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, space, sourceObjectId, false)
@@ -211,8 +211,8 @@ func (s *service) reinstallObject(
 	err = space.Do(id, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
 		st.SetDetails(installingDetails)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(false))
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, domain.Bool(false))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, domain.Bool(false))
 
 		key = domain.TypeKey(st.UniqueKeyInternal())
 		details = st.CombinedDetails()

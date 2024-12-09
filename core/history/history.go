@@ -270,8 +270,8 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 func (h *history) buildDetails(s *state.State, spc clientspace.Space) (details []*model.ObjectViewDetailsSet, resultErr error) {
 	rootDetails := s.CombinedDetails()
 	details = []*model.ObjectViewDetailsSet{{
-		Id:      pbtypes.GetString(rootDetails, bundle.RelationKeyId.String()),
-		Details: rootDetails,
+		Id:      rootDetails.GetString(bundle.RelationKeyId),
+		Details: rootDetails.ToProto(),
 	}}
 
 	dependentObjectIds := objectlink.DependentObjectIDsPerSpace(spc.Id(), s, spc, h.resolver, objectlink.Flags{
@@ -292,8 +292,8 @@ func (h *history) buildDetails(s *state.State, spc clientspace.Space) (details [
 
 		for _, record := range records {
 			details = append(details, &model.ObjectViewDetailsSet{
-				Id:      pbtypes.GetString(record.Details, bundle.RelationKeyId.String()),
-				Details: record.Details,
+				Id:      record.Details.GetString(bundle.RelationKeyId),
+				Details: record.Details.ToProto(),
 			})
 		}
 	}

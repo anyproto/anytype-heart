@@ -121,9 +121,9 @@ func TestService_CreateObject(t *testing.T) {
 		// when
 		id, details, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
 			ObjectTypeKey: bundle.TypeKeyDate,
-			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyTimestamp.String(): pbtypes.Int64(dateObject.Time().Unix()),
-			}},
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyTimestamp: domain.Int64(dateObject.Time().Unix()),
+			}),
 		})
 
 		// then
