@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -24,9 +25,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	"github.com/anyproto/anytype-heart/util/conc"
 )
 
 const CName = "identity"
+const identityBatch = 100
 
 var (
 	log = logging.Logger("anytype-identity").Desugar()
@@ -205,23 +208,30 @@ const identityRepoDataKind = "profile"
 
 func (s *service) observeIdentities(ctx context.Context) error {
 	identities := s.listRegisteredIdentities()
+	allIdentitiesData := s.getIdentityData(ctx, identities)
 
-	identitiesData, err := s.getIdentitiesDataFromRepo(ctx, identities)
-	if err != nil {
-		return fmt.Errorf("failed to pull identity: %w", err)
-	}
-
-	if err = s.fetchGlobalNames(identities); err != nil {
+	if err := s.fetchGlobalNames(identities); err != nil {
 		log.Error("error fetching global names of guest identities from Naming Service", zap.Error(err))
 	}
 
-	for _, identityData := range identitiesData {
+	for _, identityData := range allIdentitiesData {
 		err := s.broadcastIdentityProfile(identityData)
 		if err != nil {
 			log.Error("error handling identity data", zap.Error(err))
 		}
 	}
 	return nil
+}
+
+func (s *service) getIdentityData(ctx context.Context, identities []string) []*identityrepoproto.DataWithIdentity {
+	batches := lo.Chunk(identities, identityBatch)
+	allIdentitiesData, err := conc.MapErr(batches, func(batch []string) ([]*identityrepoproto.DataWithIdentity, error) {
+		return s.getIdentitiesDataFromRepo(ctx, batch)
+	})
+	if err != nil {
+		log.Error("failed to pull identity", zap.Error(err))
+	}
+	return lo.Flatten(allIdentitiesData)
 }
 
 func (s *service) listRegisteredIdentities() []string {
@@ -242,18 +252,16 @@ func (s *service) listRegisteredIdentities() []string {
 }
 
 func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
-	if len(identities) == 0 {
-		return nil, nil
-	}
 	res, err := s.identityRepoClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
-	if err == nil {
-		return res, nil
+	if err != nil {
+		return s.processFailedIdentities(res, identities)
 	}
-	log.Info("get identities data from remote repo", zap.Error(err))
+	return res, nil
+}
 
-	res = make([]*identityrepoproto.DataWithIdentity, 0, len(identities))
-	err = s.db.View(func(txn *badger.Txn) error {
-		for _, identity := range identities {
+func (s *service) processFailedIdentities(res []*identityrepoproto.DataWithIdentity, failedIdentities []string) ([]*identityrepoproto.DataWithIdentity, error) {
+	err := s.db.View(func(txn *badger.Txn) error {
+		for _, identity := range failedIdentities {
 			rawData, err := badgerhelper.GetValueTxn(txn, makeIdentityProfileKey(identity), badgerhelper.UnmarshalBytes)
 			if badgerhelper.IsNotFound(err) {
 				continue

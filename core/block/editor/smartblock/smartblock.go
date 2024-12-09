@@ -511,8 +511,8 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 func (sb *smartBlock) partitionIdsBySpace(ids []string) map[string][]string {
 	perSpace := map[string][]string{}
 	for _, id := range ids {
-		if _, parseErr := dateutil.ParseDateId(id); parseErr == nil {
-			perSpace[sb.space.Id()] = append(perSpace[sb.space.Id()], id)
+		if dateObject, parseErr := dateutil.BuildDateObjectFromId(id); parseErr == nil {
+			perSpace[sb.space.Id()] = append(perSpace[sb.space.Id()], dateObject.Id())
 			continue
 		}
 

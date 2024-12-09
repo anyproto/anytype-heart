@@ -3,6 +3,7 @@ package history
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -20,6 +21,7 @@ import (
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	history2 "github.com/anyproto/anytype-heart/core/block/history"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -27,11 +29,11 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -64,6 +66,7 @@ type history struct {
 	picker       cache.ObjectGetter
 	objectStore  objectstore.ObjectStore
 	spaceService space.Service
+	resolver     idresolver.Resolver
 	heads        map[string]string
 }
 
@@ -71,6 +74,7 @@ func (h *history) Init(a *app.App) (err error) {
 	h.picker = app.MustComponent[cache.ObjectGetter](a)
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	h.spaceService = app.MustComponent[space.Service](a)
+	h.resolver = app.MustComponent[idresolver.Resolver](a)
 	return
 }
 
@@ -87,6 +91,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	if err != nil {
 		return
 	}
+
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String(id.ObjectID))
 	s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(id.SpaceID))
 	typeId, err := space.GetTypeIdByKey(context.Background(), s.ObjectTypeKey())
@@ -95,32 +100,21 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(typeId))
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(s, space, objectlink.Flags{
-		Blocks:    true,
-		Details:   true,
-		Relations: false,
-		Types:     true,
-	})
-	// nolint:errcheck
-	meta, _ := h.objectStore.QueryByIdCrossSpace(dependentObjectIDs)
-
-	meta = append(meta, database.Record{Details: s.CombinedDetails()})
-	details := make([]*model.ObjectViewDetailsSet, 0, len(meta))
-	for _, m := range meta {
-		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      m.Details.GetString(bundle.RelationKeyId),
-			Details: m.Details.ToProto(),
-		})
+	details, err := h.buildDetails(s, space)
+	if err != nil {
+		log.With("error", err).Errorf("failed to collect details of dependent objects")
 	}
 
 	relations, err := h.objectStore.SpaceIndex(id.SpaceID).FetchRelationByLinks(s.PickRelationLinks())
 	if err != nil {
 		return nil, nil, fmt.Errorf("fetch relations by links: %w", err)
 	}
+
 	blocksParticipants, err := h.GetBlocksParticipants(id, versionID, s.Blocks())
 	if err != nil {
 		return nil, nil, fmt.Errorf("get blocks modifiers: %w", err)
 	}
+
 	return &model.ObjectView{
 		RootId:            id.ObjectID,
 		Type:              model.SmartBlockType(sbType),
@@ -257,25 +251,12 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	if err != nil {
 		return nil, nil, fmt.Errorf("get space: %w", err)
 	}
-	dependentObjectIDs := objectlink.DependentObjectIDs(currState, spc, objectlink.Flags{
-		Blocks:    true,
-		Details:   true,
-		Relations: false,
-		Types:     true,
-	})
-	meta, err := h.objectStore.QueryByIdCrossSpace(dependentObjectIDs)
+
+	details, err := h.buildDetails(currState, spc)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get dependencies: %w", err)
+		return nil, nil, fmt.Errorf("get details: %w", err)
 	}
 
-	meta = append(meta, database.Record{Details: currState.CombinedDetails()})
-	details := make([]*model.ObjectViewDetailsSet, 0, len(meta))
-	for _, m := range meta {
-		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      m.Details.GetString(bundle.RelationKeyId),
-			Details: m.Details.ToProto(),
-		})
-	}
 	objectView := &model.ObjectView{
 		RootId:        id.ObjectID,
 		Type:          model.SmartBlockType(sbType),
@@ -284,6 +265,40 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 		RelationLinks: currState.GetRelationLinks(),
 	}
 	return historyEvents, objectView, nil
+}
+
+func (h *history) buildDetails(s *state.State, spc clientspace.Space) (details []*model.ObjectViewDetailsSet, resultErr error) {
+	rootDetails := s.CombinedDetails()
+	details = []*model.ObjectViewDetailsSet{{
+		Id:      pbtypes.GetString(rootDetails, bundle.RelationKeyId.String()),
+		Details: rootDetails,
+	}}
+
+	dependentObjectIds := objectlink.DependentObjectIDsPerSpace(spc.Id(), s, spc, h.resolver, objectlink.Flags{
+		Blocks:    true,
+		Details:   true,
+		Relations: false,
+		Types:     true,
+	})
+
+	for spaceId, perSpaceDepIds := range dependentObjectIds {
+		spaceIndex := h.objectStore.SpaceIndex(spaceId)
+
+		records, err := spaceIndex.QueryByIds(perSpaceDepIds)
+		if err != nil {
+			resultErr = errors.Join(resultErr, fmt.Errorf("failed to query dependencies for space %s: %w", spaceId, err))
+			continue
+		}
+
+		for _, record := range records {
+			details = append(details, &model.ObjectViewDetailsSet{
+				Id:      pbtypes.GetString(record.Details, bundle.RelationKeyId.String()),
+				Details: record.Details,
+			})
+		}
+	}
+
+	return details, resultErr
 }
 
 func filterHistoryEvents(msg []simple.EventMessage) []*pb.EventMessage {

@@ -1,14 +1,12 @@
 package converter
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -22,10 +20,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-const DefaultSetSource = bundle.TypeKeyPage
-
 type LayoutConverter interface {
-	Convert(space smartblock.Space, st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
+	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
 	app.Component
 }
 
@@ -48,7 +44,7 @@ func (c *layoutConverter) Name() string {
 	return "layout-converter"
 }
 
-func (c *layoutConverter) Convert(space smartblock.Space, st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
+func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
 	if fromLayout == toLayout {
 		return nil
 	}
@@ -71,10 +67,10 @@ func (c *layoutConverter) Convert(space smartblock.Space, st *state.State, fromL
 	}
 
 	if fromLayout == model.ObjectType_note && toLayout == model.ObjectType_set {
-		return c.fromNoteToSet(space, st)
+		return c.fromNoteToSet(st)
 	}
 	if toLayout == model.ObjectType_set {
-		return c.fromAnyToSet(space, st)
+		return c.fromAnyToSet(st)
 	}
 
 	if toLayout == model.ObjectType_note {
@@ -126,7 +122,7 @@ func (c *layoutConverter) fromAnyToTodo(st *state.State) error {
 	return nil
 }
 
-func (c *layoutConverter) fromNoteToSet(space smartblock.Space, st *state.State) error {
+func (c *layoutConverter) fromNoteToSet(st *state.State) error {
 	if err := c.fromNoteToAny(st); err != nil {
 		return err
 	}
@@ -134,25 +130,14 @@ func (c *layoutConverter) fromNoteToSet(space smartblock.Space, st *state.State)
 	template.InitTemplate(st,
 		template.WithTitle,
 	)
-	err2 := c.fromAnyToSet(space, st)
-	if err2 != nil {
-		return err2
-	}
-	return nil
+	return c.fromAnyToSet(st)
 }
 
-func (c *layoutConverter) fromAnyToSet(space smartblock.Space, st *state.State) error {
+func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	source := st.Details().GetStringList(bundle.RelationKeySetOf)
-	if len(source) == 0 && space != nil {
-		defaultTypeID, err := space.GetTypeIdByKey(context.Background(), DefaultSetSource)
-		if err != nil {
-			return fmt.Errorf("get default type id: %w", err)
-		}
-		source = []string{defaultTypeID}
-	}
 	addFeaturedRelationSetOf(st)
 
-	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceIndex(space.Id()), source)
+	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceIndex(st.SpaceID()), source)
 	if err != nil {
 		return err
 	}

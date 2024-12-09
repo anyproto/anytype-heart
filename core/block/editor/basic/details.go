@@ -411,7 +411,7 @@ func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayou
 
 	fromLayout, _ := s.Layout()
 	s.SetDetail(bundle.RelationKeyLayout, domain.Int64(toLayout))
-	if err = bs.layoutConverter.Convert(bs.Space(), s, fromLayout, toLayout); err != nil {
+	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
 	return nil
