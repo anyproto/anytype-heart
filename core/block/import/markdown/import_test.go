@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"archive/zip"
 	"context"
 	"errors"
 	"os"
@@ -97,7 +98,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, sn)
-		assert.Len(t, sn.Snapshots, 4)
+		assert.Len(t, sn.Snapshots, 7)
 
 		fileNameToObjectId := make(map[string]string, len(sn.Snapshots))
 		for _, snapshot := range sn.Snapshots {
@@ -119,8 +120,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// given
 		testDirectory := t.TempDir()
 		zipPath := filepath.Join(testDirectory, "empty.zip")
-		err := test.CreateEmptyZip(t, zipPath)
-		assert.Nil(t, err)
+		test.CreateEmptyZip(t, zipPath)
 
 		h := &Markdown{}
 		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
@@ -139,6 +139,132 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		assert.Nil(t, sn)
 		assert.True(t, errors.Is(ce.GetResultError(model.Import_Markdown), common.ErrFileImportNoObjectsInZipArchive))
 	})
+	t.Run("import non utf files", func(t *testing.T) {
+		// given
+		testDirectory := t.TempDir()
+		zipPath := filepath.Join(testDirectory, "nonutf.zip")
+		fileMdName := "こんにちは.md"
+		fileCsvName := "你好.csv"
+		fileWithLinksName := "nonutflinks.md"
+
+		test.CreateZipWithFiles(t, zipPath, "testdata", []*zip.FileHeader{
+			{
+				Name:   fileWithLinksName,
+				Method: zip.Deflate,
+			},
+			{
+				Name:    fileMdName,
+				Method:  zip.Deflate,
+				NonUTF8: true,
+			},
+			{
+				Name:    fileCsvName,
+				Method:  zip.Deflate,
+				NonUTF8: true,
+			},
+		})
+
+		h := &Markdown{}
+		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
+
+		// when
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: []string{zipPath}},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.Nil(t, ce)
+		assert.NotNil(t, sn)
+		assert.Len(t, sn.Snapshots, 4)
+		fileNameToObjectId := make(map[string]string, len(sn.Snapshots))
+		for _, snapshot := range sn.Snapshots {
+			fileNameToObjectId[snapshot.FileName] = snapshot.Id
+		}
+		var found bool
+		rootId := fileNameToObjectId[fileWithLinksName]
+		want := buildTreeWithNonUtfLinks(fileNameToObjectId, rootId)
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.FileName == fileWithLinksName {
+				found = true
+				blockbuilder.AssertTreesEqual(t, want.Build(), snapshot.Snapshot.Data.Blocks)
+			}
+		}
+		assert.True(t, found)
+	})
+}
+
+func buildTreeWithNonUtfLinks(fileNameToObjectId map[string]string, rootId string) *blockbuilder.Block {
+	testMdPath := fileNameToObjectId["import file 2.md"]
+	testCsvPath := fileNameToObjectId["import file 3.csv"]
+
+	want := blockbuilder.Root(
+		blockbuilder.ID(rootId),
+		blockbuilder.Children(
+			blockbuilder.Text("NonUtf 1 test6", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 9, To: 14},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: testMdPath,
+				},
+			}})),
+			blockbuilder.Text("NonUtf 2 test7", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 9, To: 14},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: testCsvPath,
+				},
+			}})),
+			blockbuilder.Text("NonUtf 1 test6", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 9, To: 14},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: testMdPath,
+				},
+				{
+					Range: &model.Range{From: 9, To: 14},
+					Type:  model.BlockContentTextMark_Bold,
+				},
+			}})),
+			blockbuilder.Text("NonUtf 2 test7", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 9, To: 14},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: testCsvPath,
+				},
+				{
+					Range: &model.Range{From: 9, To: 14},
+					Type:  model.BlockContentTextMark_Bold,
+				},
+			}})),
+			blockbuilder.Text("test6", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 0, To: 5},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: testMdPath,
+				},
+				{
+					Range: &model.Range{From: 0, To: 5},
+					Type:  model.BlockContentTextMark_Bold,
+				},
+			}})),
+			blockbuilder.Text("test7", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 0, To: 5},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: testCsvPath,
+				},
+				{
+					Range: &model.Range{From: 0, To: 5},
+					Type:  model.BlockContentTextMark_Bold,
+				},
+			}})),
+			blockbuilder.Link(rootId),
+		))
+	return want
 }
 
 func buildExpectedTree(fileNameToObjectId map[string]string, provider *MockTempDir, rootId string) *blockbuilder.Block {
