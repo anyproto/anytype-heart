@@ -932,7 +932,7 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 			Id:          tier.Id,
 			Name:        tier.Name,
 			Description: tier.Description,
-			// IsActive:              tier.IsActive,
+			// GetActive:              tier.GetActive,
 			IsTest: tier.IsTest,
 			// IsHiddenTier:          tier.IsHiddenTier,
 			PeriodType:          model.MembershipTierDataPeriodType(tier.PeriodType),

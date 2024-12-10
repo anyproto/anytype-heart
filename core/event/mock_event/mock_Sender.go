@@ -175,7 +175,7 @@ func (_m *MockSender) IsActive(token string) bool {
 	ret := _m.Called(token)
 
 	if len(ret) == 0 {
-		panic("no return value specified for IsActive")
+		panic("no return value specified for GetActive")
 	}
 
 	var r0 bool
@@ -188,7 +188,7 @@ func (_m *MockSender) IsActive(token string) bool {
 	return r0
 }
 
-// MockSender_IsActive_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsActive'
+// MockSender_IsActive_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetActive'
 type MockSender_IsActive_Call struct {
 	*mock.Call
 }
@@ -196,7 +196,7 @@ type MockSender_IsActive_Call struct {
 // IsActive is a helper method to define mock.On call
 //   - token string
 func (_e *MockSender_Expecter) IsActive(token interface{}) *MockSender_IsActive_Call {
-	return &MockSender_IsActive_Call{Call: _e.mock.On("IsActive", token)}
+	return &MockSender_IsActive_Call{Call: _e.mock.On("GetActive", token)}
 }
 
 func (_c *MockSender_IsActive_Call) Run(run func(token string)) *MockSender_IsActive_Call {

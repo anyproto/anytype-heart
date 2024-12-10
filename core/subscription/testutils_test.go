@@ -30,13 +30,10 @@ func genEntries(n int, backord bool) (res []*entry) {
 }
 
 func genEntry(id string, ord int64) *entry {
-	return &entry{
-		id: id,
-		data: &types.Struct{Fields: map[string]*types.Value{
-			"id":    pbtypes.String(id),
-			"order": pbtypes.Int64(ord),
-		}},
-	}
+	return newEntry(id, &types.Struct{Fields: map[string]*types.Value{
+		"id":    pbtypes.String(id),
+		"order": pbtypes.Int64(ord),
+	}})
 }
 
 func assertCtxAdd(t *testing.T, ctx *opCtx, id, afterId string) {
