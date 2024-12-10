@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/anyproto/anytype-heart/core/block/chats"
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -65,7 +66,11 @@ func (mw *Middleware) ChatDeleteMessage(cctx context.Context, req *pb.RpcChatDel
 func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse {
 	chatService := getService[chats.Service](mw)
 
-	messages, err := chatService.GetMessages(cctx, req.ChatObjectId, req.BeforeOrderId, int(req.Limit))
+	messages, err := chatService.GetMessages(cctx, req.ChatObjectId, chatobject.GetMessagesRequest{
+		AfterOrderId:  req.AfterOrderId,
+		BeforeOrderId: req.BeforeOrderId,
+		Limit:         int(req.Limit),
+	})
 	code := mapErrorCode[pb.RpcChatGetMessagesResponseErrorCode](err)
 	return &pb.RpcChatGetMessagesResponse{
 		Messages: messages,

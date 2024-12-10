@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const spaceId = "spaceId"
@@ -215,6 +216,31 @@ func TestService_ModifyDetailsList(t *testing.T) {
 
 		// then
 		assert.Error(t, err)
+	})
+
+	t.Run("set false value", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		object := smarttest.New("obj1")
+		err := object.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyDone, Value: domain.Bool(true)}}, false)
+		require.NoError(t, err)
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+			return object, nil
+		})
+		doneSet := []*pb.RpcObjectListModifyDetailValuesRequestOperation{{
+			RelationKey: bundle.RelationKeyDone.String(),
+			Set:         pbtypes.Bool(false),
+		}}
+
+		// when
+		err = fx.ModifyDetailsList(&pb.RpcObjectListModifyDetailValuesRequest{
+			ObjectIds:  []string{"obj1"},
+			Operations: doneSet,
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.False(t, object.Details().GetBool(bundle.RelationKeyDone))
 	})
 }
 

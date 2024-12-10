@@ -370,6 +370,12 @@ func TestKeyOrder_Compare(t *testing.T) {
 		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, 1)
 	})
+	t.Run("disable_collate", func(t *testing.T) {
+		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeySpaceOrder: domain.String("--UK")})
+		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeySpaceOrder: domain.String("--jc")})
+		ko := &KeyOrder{disableCollator: true, arena: arena, Key: bundle.RelationKeySpaceOrder, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
+		assertCompare(t, ko, a, b, -1)
+	})
 }
 
 func TestKeyUnicodeOrder_Compare(t *testing.T) {

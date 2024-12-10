@@ -84,8 +84,7 @@ func TestRunner_Run(t *testing.T) {
 		}))
 		err := fx.smartBlock.Apply(st)
 		require.NoError(t, err)
-		initDetails := domain.NewDetails()
-		fx.accountObject.EXPECT().CombinedDetails().Return(initDetails)
+		fx.accountObject.EXPECT().GetAnalyticsId().Return("", nil)
 		fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
 			return f(fx.accountObject)
 		})
@@ -122,8 +121,7 @@ func TestRunner_Run(t *testing.T) {
 		}))
 		err := fx.smartBlock.Apply(st)
 		require.NoError(t, err)
-		initDetails := domain.NewDetails()
-		fx.accountObject.EXPECT().CombinedDetails().Return(initDetails)
+		fx.accountObject.EXPECT().GetAnalyticsId().Return("", nil)
 		fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
 			return f(fx.accountObject)
 		})
@@ -160,10 +158,7 @@ func TestRunner_Run(t *testing.T) {
 		}))
 		err := fx.smartBlock.Apply(st)
 		require.NoError(t, err)
-		initDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName: domain.String("name"),
-		})
-		fx.accountObject.EXPECT().CombinedDetails().Return(initDetails)
+		fx.accountObject.EXPECT().GetAnalyticsId().Return("analyticsId", nil)
 		fx.accountObject.EXPECT().IsIconMigrated().Return(false, nil)
 		fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
 			return f(fx.accountObject)
@@ -188,10 +183,7 @@ func TestRunner_Run(t *testing.T) {
 	})
 	t.Run("already migrated fully", func(t *testing.T) {
 		fx := newFixture(t)
-		initDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName: domain.String("name"),
-		})
-		fx.accountObject.EXPECT().CombinedDetails().Return(initDetails)
+		fx.accountObject.EXPECT().GetAnalyticsId().Return("analyticsId", nil)
 		fx.accountObject.EXPECT().IsIconMigrated().Return(true, nil)
 		fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
 			return f(fx.accountObject)

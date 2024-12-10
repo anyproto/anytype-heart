@@ -17,17 +17,17 @@ func TestNewDateObject(t *testing.T) {
 			{
 				ts:           time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC),
 				expectedId:   "_date_2024-11-07-12-25-59Z_0000",
-				expectedName: "Thu, Nov 07, 2024 12:25 PM",
+				expectedName: "Thu, Nov 7, 2024 12:25 PM",
 			},
 			{
 				ts:           time.Date(1998, time.January, 1, 0, 1, 1, 0, time.UTC),
 				expectedId:   "_date_1998-01-01-00-01-01Z_0000",
-				expectedName: "Thu, Jan 01, 1998 12:01 AM",
+				expectedName: "Thu, Jan 1, 1998 12:01 AM",
 			},
 			{
 				ts:           time.Date(1998, time.January, 1, 0, 1, 1, 0, time.FixedZone("UTC", +4*60*60)),
 				expectedId:   "_date_1998-01-01-00-01-01Z_0400",
-				expectedName: "Thu, Jan 01, 1998 12:01 AM",
+				expectedName: "Thu, Jan 1, 1998 12:01 AM",
 			},
 			{
 				ts:           time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC),
@@ -56,17 +56,17 @@ func TestNewDateObject(t *testing.T) {
 			{
 				ts:           time.Date(2024, time.November, 7, 12, 25, 59, 0, time.UTC),
 				expectedId:   "_date_2024-11-07",
-				expectedName: "Thu, Nov 07, 2024",
+				expectedName: "Thu, Nov 7, 2024",
 			},
 			{
 				ts:           time.Date(1998, time.January, 1, 0, 1, 1, 0, time.UTC),
 				expectedId:   "_date_1998-01-01",
-				expectedName: "Thu, Jan 01, 1998",
+				expectedName: "Thu, Jan 1, 1998",
 			},
 			{
 				ts:           time.Date(1998, time.January, 1, 0, 1, 1, 0, time.FixedZone("UTC", +4*60*60)),
 				expectedId:   "_date_1998-01-01",
-				expectedName: "Thu, Jan 01, 1998",
+				expectedName: "Thu, Jan 1, 1998",
 			},
 			{
 				ts:           time.Date(2124, time.December, 25, 23, 34, 0, 0, time.UTC),
