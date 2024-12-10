@@ -51,13 +51,14 @@ func (e *entry) SetSub(subId string, isActive bool, isFullDetailSent bool) {
 		e.subFullDetailsSent[subId] = isFullDetailSent
 	} else {
 		e.subIsActive[subId] = isActive
+		// Don't override existing value, because if the event was already sent for the subscription during session, it should not be sent again
 		if !e.subFullDetailsSent[subId] {
 			e.subFullDetailsSent[subId] = isFullDetailSent
 		}
 	}
 }
 
-// GetActive indicates that entry is inside the current pagination window for all of provided subscription IDs
+// GetActive returns all active subscriptions for entry
 func (e *entry) GetActive() []string {
 	var subIsActive []string
 	for id, active := range e.subIsActive {
@@ -68,8 +69,7 @@ func (e *entry) GetActive() []string {
 	return subIsActive
 }
 
-// GetFullDetailsSent that in the context of ALL provided subscriptions we have previously sent the full ObjectSetDetails event
-// if event is sent, we return such sub id in slice
+// GetFullDetailsSent returns all subscriptions for entry, for which full details are already sent
 func (e *entry) GetFullDetailsSent() []string {
 	var detailsSent []string
 	for id, isFullDetailsSent := range e.subFullDetailsSent {

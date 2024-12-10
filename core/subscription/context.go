@@ -192,29 +192,27 @@ func (ctx *opCtx) addDetailsEvents(prev, curr *entry, info struct {
 	subIds []string
 	keys   []string
 }, msgs []*pb.EventMessage) []*pb.EventMessage {
-	var sentAmendDetails, sentSetDetails []string
+	var subIdsToSendAmendDetails, subIdsToSendSetDetails []string
 	if prev != nil {
 		active := prev.GetActive()
 		detailsSent := prev.GetFullDetailsSent()
-		sentAmendDetails = lo.Intersect(active, detailsSent)
+		subIdsToSendAmendDetails = lo.Intersect(active, detailsSent)
 
-		notActive := slice.Difference(info.subIds, active)
-		detailsNotSent := slice.Difference(info.subIds, detailsSent)
-		sentSetDetails = lo.Union(notActive, detailsNotSent)
-		if len(sentAmendDetails) != 0 {
+		subIdsToSendSetDetails = slice.Difference(info.subIds, subIdsToSendAmendDetails)
+		if len(subIdsToSendAmendDetails) != 0 {
 			diff := pbtypes.StructDiff(prev.data, curr.data)
-			msgs = append(msgs, state.StructDiffIntoEventsWithSubIds(info.id, diff, info.keys, sentAmendDetails)...)
+			msgs = append(msgs, state.StructDiffIntoEventsWithSubIds(info.id, diff, info.keys, subIdsToSendAmendDetails)...)
 		}
-		if len(sentSetDetails) != 0 {
-			msgs = ctx.addDetailsSentEvent(msgs, curr, sentSetDetails, info.keys)
+		if len(subIdsToSendSetDetails) != 0 {
+			msgs = ctx.appendObjectDetailsSetMessage(msgs, curr, subIdsToSendSetDetails, info.keys)
 		}
 	} else {
-		msgs = ctx.addDetailsSentEvent(msgs, curr, info.subIds, info.keys)
+		msgs = ctx.appendObjectDetailsSetMessage(msgs, curr, info.subIds, info.keys)
 	}
 	return msgs
 }
 
-func (ctx *opCtx) addDetailsSentEvent(msgs []*pb.EventMessage, curr *entry, subIds, keys []string) []*pb.EventMessage {
+func (ctx *opCtx) appendObjectDetailsSetMessage(msgs []*pb.EventMessage, curr *entry, subIds, keys []string) []*pb.EventMessage {
 	msgs = append(msgs, &pb.EventMessage{
 		Value: &pb.EventMessageValueOfObjectDetailsSet{
 			ObjectDetailsSet: &pb.EventObjectDetailsSet{
