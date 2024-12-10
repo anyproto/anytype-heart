@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -23,9 +24,14 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/techspace"
+	"github.com/anyproto/anytype-heart/util/metricsid"
 )
 
-const CName = "account"
+const (
+	CName = "account"
+
+	analyticsWaitTimeout = time.Second * 30
+)
 
 var log = logging.Logger(CName)
 
@@ -171,29 +177,37 @@ func (s *service) GetSpaceInfo(ctx context.Context, spaceId string) (*model.Acco
 }
 
 func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSpace) (analyticsId string, err error) {
-	if s.config.AnalyticsId != "" {
-		return s.config.AnalyticsId, nil
-	}
-	err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
-		analyticsId, err = accountObject.GetAnalyticsId()
-		if err != nil {
-			log.Debug("failed to get analytics id: %s", err)
-		}
-		return nil
-	})
-	if analyticsId == "" {
-		err = s.spaceService.WaitPersonalSpaceMigration(ctx)
+	start := time.Now()
+	for {
+		err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
+			var innerErr error
+			analyticsId, innerErr = accountObject.GetAnalyticsId()
+			if innerErr != nil {
+				log.Debug("failed to get analytics id: %s", innerErr)
+			}
+			return nil
+		})
 		if err != nil {
 			return
 		}
-	} else {
-		return analyticsId, nil
+		if analyticsId != "" {
+			return analyticsId, nil
+		}
+		if time.Since(start) > analyticsWaitTimeout {
+			metricsId, err := metricsid.DeriveMetricsId(s.keyProvider.Account().SignKey)
+			if err != nil {
+				return "", err
+			}
+			err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
+				return accountObject.SetAnalyticsId(metricsId)
+			})
+			if err != nil {
+				return "", err
+			}
+			return metricsId, nil
+		}
+		time.Sleep(time.Second)
 	}
-	err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
-		analyticsId, err = accountObject.GetAnalyticsId()
-		return err
-	})
-	return
 }
 
 func (s *service) getNetworkId() string {

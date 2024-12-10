@@ -817,8 +817,7 @@ func TestCSV_GetSnapshots(t *testing.T) {
 		// given
 		dir := t.TempDir()
 		zipPath := filepath.Join(dir, "empty.zip")
-		err := test.CreateEmptyZip(t, zipPath)
-		assert.Nil(t, err)
+		test.CreateEmptyZip(t, zipPath)
 		csv := CSV{}
 		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 

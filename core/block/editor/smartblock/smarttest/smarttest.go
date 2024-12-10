@@ -299,6 +299,8 @@ func (st *SmartTest) UpdateDetailsAndLastUsed(update func(current *domain.Detail
 		return nil
 	}
 
+	st.Doc.(*state.State).SetDetails(newDetails)
+
 	for k, _ := range diff.Iterate() {
 		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, string(k))
 	}

@@ -135,7 +135,7 @@ func (s *service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesReque
 		}
 		err := modifyDetailsFunc(objectId, func(current *domain.Details) (*domain.Details, error) {
 			for _, op := range req.Operations {
-				if !pbtypes.IsEmptyValue(op.Set) {
+				if !pbtypes.IsNullValue(op.Set) {
 					// Set operation has higher priority than Add and Remove, because it modifies full value
 					current.Set(domain.RelationKey(op.RelationKey), domain.ValueFromProto(op.Set))
 					continue

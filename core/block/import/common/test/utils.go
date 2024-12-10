@@ -2,18 +2,27 @@ package test
 
 import (
 	"archive/zip"
-	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func CreateEmptyZip(t *testing.T, zipFileName string) error {
+func CreateEmptyZip(t *testing.T, zipFileName string) {
 	zipFile, err := os.Create(zipFileName)
-	if err != nil {
-		return fmt.Errorf("Failed to create zip file: %w\n", err)
-	}
+	assert.NoError(t, err)
+	defer zipFile.Close()
+
+	zipWriter := zip.NewWriter(zipFile)
+	err = zipWriter.Close()
+	assert.NoError(t, err)
+}
+
+func CreateZipWithFiles(t *testing.T, zipFileName, testDataDir string, files []*zip.FileHeader) {
+	zipFile, err := os.Create(zipFileName)
+	assert.NoError(t, err)
 	defer zipFile.Close()
 
 	zipWriter := zip.NewWriter(zipFile)
@@ -21,5 +30,13 @@ func CreateEmptyZip(t *testing.T, zipFileName string) error {
 		err = zipWriter.Close()
 		assert.NoError(t, err)
 	}()
-	return nil
+
+	for _, file := range files {
+		writer, err := zipWriter.CreateHeader(file)
+		assert.NoError(t, err)
+		fileReader, err := os.Open(filepath.Join(testDataDir, file.Name))
+		assert.NoError(t, err)
+		_, err = io.Copy(writer, fileReader)
+		assert.NoError(t, err)
+	}
 }

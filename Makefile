@@ -353,6 +353,7 @@ TANTIVY_LIBS := android-386.tar.gz \
          ios-arm64.tar.gz \
          ios-arm64-sim.tar.gz \
          linux-amd64-musl.tar.gz \
+         linux-arm64-musl.tar.gz \
          windows-amd64.tar.gz
 
 define download_tantivy_lib

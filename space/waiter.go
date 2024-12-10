@@ -41,7 +41,8 @@ func (w *spaceWaiter) waitSpace(ctx context.Context, spaceId string) (sp clients
 	// if there is no such space view then there is no space
 	exists, err := techSpace.SpaceViewExists(ctx, spaceId)
 	if err != nil {
-		return nil, fmt.Errorf("space view exists error: %w", err)
+		// func returns error only on derive
+		return nil, fmt.Errorf("space view derive error: %w", err)
 	}
 	if !exists {
 		return nil, ErrSpaceNotExists
