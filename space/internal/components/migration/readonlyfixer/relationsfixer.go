@@ -27,11 +27,11 @@ const MName = "ReadonlyRelationsFixer"
 // This migration was implemented to fix relations in accounts of users that are not able to modify its value (GO-2331)
 type Migration struct{}
 
-func (Migration) Name() string {
+func (m Migration) Name() string {
 	return MName
 }
 
-func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (m Migration) Run(ctx context.Context, log logger.CtxLogger, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	spaceId := space.Id()
 
 	relations, err := listReadonlyTagAndStatusRelations(store, spaceId)
