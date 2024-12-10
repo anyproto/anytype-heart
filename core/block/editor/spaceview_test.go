@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -140,14 +139,14 @@ func TestSpaceView_SetAfterGivenView(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.NotEmpty(t, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
+		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
 	})
 	t.Run("set view after given id, order exist", func(t *testing.T) {
 		// given
 		fx := newSpaceViewFixture(t)
 		defer fx.finish()
 		state := fx.NewState()
-		state.SetDetail(bundle.RelationKeySpaceOrder.String(), pbtypes.String("spaceViewOrderId"))
+		state.SetDetail(bundle.RelationKeySpaceOrder, domain.String("spaceViewOrderId"))
 		err := fx.Apply(state)
 		require.NoError(t, err)
 
@@ -156,15 +155,15 @@ func TestSpaceView_SetAfterGivenView(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.NotEqual(t, "spaceViewOrderId", pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
-		assert.True(t, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()) > "viewOrderId")
+		assert.NotEqual(t, "spaceViewOrderId", fx.Details().GetString(bundle.RelationKeySpaceOrder))
+		assert.True(t, fx.Details().GetString(bundle.RelationKeySpaceOrder) > "viewOrderId")
 	})
 	t.Run("set view after given id, order exist, but already less than given view", func(t *testing.T) {
 		// given
 		fx := newSpaceViewFixture(t)
 		defer fx.finish()
 		state := fx.NewState()
-		state.SetDetail(bundle.RelationKeySpaceOrder.String(), pbtypes.String("viewOrderId"))
+		state.SetDetail(bundle.RelationKeySpaceOrder, domain.String("viewOrderId"))
 		err := fx.Apply(state)
 		require.NoError(t, err)
 
@@ -173,8 +172,8 @@ func TestSpaceView_SetAfterGivenView(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, "viewOrderId", pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
-		assert.True(t, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()) > "spaceViewOrderId")
+		assert.Equal(t, "viewOrderId", fx.Details().GetString(bundle.RelationKeySpaceOrder))
+		assert.True(t, fx.Details().GetString(bundle.RelationKeySpaceOrder) > "spaceViewOrderId")
 	})
 }
 
@@ -189,7 +188,7 @@ func TestSpaceView_SetBetweenViews(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.NotEmpty(t, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
+		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
 	})
 	t.Run("set view between", func(t *testing.T) {
 		// given
@@ -204,7 +203,7 @@ func TestSpaceView_SetBetweenViews(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.NotEmpty(t, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
+		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
 	})
 	t.Run("after id is empty", func(t *testing.T) {
 		// given
@@ -231,9 +230,9 @@ func TestSpaceView_SetOrder(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.NotEmpty(t, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
-		assert.Equal(t, order, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
-		assert.True(t, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()) > prevViewOrderId)
+		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
+		assert.Equal(t, order, fx.Details().GetString(bundle.RelationKeySpaceOrder))
+		assert.True(t, fx.Details().GetString(bundle.RelationKeySpaceOrder) > prevViewOrderId)
 	})
 	t.Run("set order, previous id not empty", func(t *testing.T) {
 		// given
@@ -246,9 +245,9 @@ func TestSpaceView_SetOrder(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.NotEmpty(t, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
-		assert.Equal(t, order, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()))
-		assert.True(t, pbtypes.GetString(fx.Details(), bundle.RelationKeySpaceOrder.String()) > prevViewOrderId)
+		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
+		assert.Equal(t, order, fx.Details().GetString(bundle.RelationKeySpaceOrder))
+		assert.True(t, fx.Details().GetString(bundle.RelationKeySpaceOrder) > prevViewOrderId)
 	})
 }
 

@@ -975,52 +975,6 @@ func (_c *MockService_Wait_Call) RunAndReturn(run func(context.Context, string) 
 	return _c
 }
 
-// WaitPersonalSpaceMigration provides a mock function with given fields: ctx
-func (_m *MockService) WaitPersonalSpaceMigration(ctx context.Context) error {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for WaitPersonalSpaceMigration")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = rf(ctx)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockService_WaitPersonalSpaceMigration_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WaitPersonalSpaceMigration'
-type MockService_WaitPersonalSpaceMigration_Call struct {
-	*mock.Call
-}
-
-// WaitPersonalSpaceMigration is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *MockService_Expecter) WaitPersonalSpaceMigration(ctx interface{}) *MockService_WaitPersonalSpaceMigration_Call {
-	return &MockService_WaitPersonalSpaceMigration_Call{Call: _e.mock.On("WaitPersonalSpaceMigration", ctx)}
-}
-
-func (_c *MockService_WaitPersonalSpaceMigration_Call) Run(run func(ctx context.Context)) *MockService_WaitPersonalSpaceMigration_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *MockService_WaitPersonalSpaceMigration_Call) Return(err error) *MockService_WaitPersonalSpaceMigration_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockService_WaitPersonalSpaceMigration_Call) RunAndReturn(run func(context.Context) error) *MockService_WaitPersonalSpaceMigration_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // NewMockService creates a new instance of MockService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockService(t interface {

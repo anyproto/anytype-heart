@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const spaceId = "spaceId"
@@ -221,7 +222,7 @@ func TestService_ModifyDetailsList(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		object := smarttest.New("obj1")
-		err := object.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyDone.String(), Value: pbtypes.Bool(true)}}, false)
+		err := object.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyDone, Value: domain.Bool(true)}}, false)
 		require.NoError(t, err)
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			return object, nil
@@ -239,7 +240,7 @@ func TestService_ModifyDetailsList(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.False(t, pbtypes.GetBool(object.Details(), bundle.RelationKeyDone.String()))
+		assert.False(t, object.Details().GetBool(bundle.RelationKeyDone))
 	})
 }
 

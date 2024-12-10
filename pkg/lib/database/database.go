@@ -62,6 +62,7 @@ type SortRequest struct {
 	IncludeTime    bool
 	Id             string
 	EmptyPlacement model.BlockContentDataviewSortEmptyType
+	NoCollate      bool
 }
 
 type Query struct {
@@ -208,6 +209,7 @@ func SortsFromProto(sorts []*model.BlockContentDataviewSort) []SortRequest {
 			IncludeTime:    s.IncludeTime,
 			Id:             s.Id,
 			EmptyPlacement: s.EmptyPlacement,
+			NoCollate:      s.NoCollate,
 		})
 	}
 	return res

@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/metricsid"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (

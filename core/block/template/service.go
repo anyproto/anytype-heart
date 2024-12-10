@@ -152,7 +152,7 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 			return innerErr
 		}
 		details := targetState.Details()
-		if pbtypes.GetBool(details, bundle.RelationKeyIsDeleted.String()) || pbtypes.GetBool(details, bundle.RelationKeyIsUninstalled.String()) {
+		if details.GetBool(bundle.RelationKeyIsDeleted) || details.GetBool(bundle.RelationKeyIsUninstalled) {
 			return spacestorage.ErrTreeStorageAlreadyDeleted
 		}
 		return nil

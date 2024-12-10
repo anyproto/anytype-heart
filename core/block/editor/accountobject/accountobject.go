@@ -33,7 +33,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/metricsid"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logger.NewNamedSugared("common.editor.accountobject")

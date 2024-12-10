@@ -312,16 +312,16 @@ func (s *SpaceView) UpdateLastOpenedDate() error {
 func (s *SpaceView) SetOrder(prevViewOrderId string) (string, error) {
 	st := s.NewState()
 	spaceOrderId := lx.Next(prevViewOrderId)
-	st.SetDetail(bundle.RelationKeySpaceOrder.String(), pbtypes.String(spaceOrderId))
+	st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(spaceOrderId))
 	return spaceOrderId, s.Apply(st)
 }
 
 func (s *SpaceView) SetAfterGivenView(viewOrderId string) error {
 	st := s.NewState()
-	spaceOrderId := pbtypes.GetString(st.Details(), bundle.RelationKeySpaceOrder.String())
+	spaceOrderId := st.Details().GetString(bundle.RelationKeySpaceOrder)
 	if viewOrderId > spaceOrderId {
 		spaceOrderId = lx.Next(viewOrderId)
-		st.SetDetail(bundle.RelationKeySpaceOrder.String(), pbtypes.String(spaceOrderId))
+		st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(spaceOrderId))
 		return s.Apply(st)
 	}
 	return nil
@@ -333,7 +333,7 @@ func (s *SpaceView) SetBetweenViews(prevViewOrderId, afterViewOrderId string) er
 	if err != nil {
 		return fmt.Errorf("failed to get before lexid, %w", err)
 	}
-	st.SetDetail(bundle.RelationKeySpaceOrder.String(), pbtypes.String(before))
+	st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(before))
 	return s.Apply(st)
 }
 
