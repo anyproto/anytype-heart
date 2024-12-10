@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/anyproto/any-sync/app/logger"
@@ -83,6 +84,17 @@ func (s *lumberjackSink) Sync() error {
 }
 
 func newLumberjackSink(u *url.URL) (zap.Sink, error) {
+	// if android, limit the log file size to 10MB
+	if runtime.GOOS == "android" || runtime.GOARCH == "ios" {
+		return &lumberjackSink{
+			Logger: &lumberjack.Logger{
+				Filename:   u.Path,
+				MaxSize:    10,
+				MaxBackups: 2,
+				Compress:   false,
+			},
+		}, nil
+	}
 	return &lumberjackSink{
 		Logger: &lumberjack.Logger{
 			Filename:   u.Path,
