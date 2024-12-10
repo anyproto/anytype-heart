@@ -85,9 +85,10 @@ func (s *lumberjackSink) Sync() error {
 func newLumberjackSink(u *url.URL) (zap.Sink, error) {
 	return &lumberjackSink{
 		Logger: &lumberjack.Logger{
-			Filename: u.Path,
-			MaxSize:  1,
-			MaxAge:   28,
+			Filename:   u.Path,
+			MaxSize:    100,
+			MaxBackups: 10,
+			Compress:   true,
 		},
 	}, nil
 }
@@ -95,9 +96,11 @@ func newLumberjackSink(u *url.URL) (zap.Sink, error) {
 func Init(root string, logLevels string, sendLogs bool, saveLogs bool) {
 	if root != "" {
 		environment.ROOT_PATH = filepath.Join(root, "common")
-		err := os.Mkdir(environment.ROOT_PATH, 0755)
+		err := os.MkdirAll(environment.ROOT_PATH, 0755)
 		if err != nil {
-			fmt.Println("failed to create global dir", err)
+			if !os.IsExist(err) {
+				fmt.Println("failed to create global dir", err)
+			}
 		}
 	}
 
@@ -129,15 +132,19 @@ func registerLumberjackSink(globalRoot string, config *logger.Config) {
 		fmt.Println("globalRoot dir is not set")
 		return
 	}
-	err := zap.RegisterSink(lumberjackScheme, newLumberjackSink)
+	logsDir := filepath.Join(globalRoot, "logs")
+	err := os.Mkdir(logsDir, 0755)
+	if err != nil && !os.IsExist(err) {
+		fmt.Println("failed to create logs dir", err)
+		// do not continue if logs dir can't be created
+		return
+	}
+
+	err = zap.RegisterSink(lumberjackScheme, newLumberjackSink)
 	if err != nil {
 		fmt.Println("failed to register lumberjack sink", err)
 	}
-	logsDir := filepath.Join(globalRoot, "logs")
-	err = os.Mkdir(logsDir, 0755)
-	if err != nil {
-		fmt.Println("failed to create globalRoot dir", err)
-	}
+
 	environment.LOG_PATH = filepath.Join(logsDir, "anytype.log")
 	config.AddOutputPaths = append(config.AddOutputPaths, lumberjackScheme+":"+environment.LOG_PATH)
 }
