@@ -16,7 +16,6 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -188,6 +187,11 @@ func testAddFile(t *testing.T, fx *fixture, spaceId string) *files.AddResult {
 
 const testFileObjectId = "bafyreiebxsn65332wl7qavcxxkfwnsroba5x5h2sshcn7f7cr66ztixb54"
 
+type fileObjectWrapper struct {
+	smartblock.SmartBlock
+	fileobject.FileObject
+}
+
 func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 	t.Run("with invalid id expect error", func(t *testing.T) {
 		fx := newFixture(t)
@@ -240,7 +244,7 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().Do(testFileObjectId, mock.Anything).RunAndReturn(func(_ string, apply func(smartblock.SmartBlock) error) error {
 			sb := smarttest.New(testFileObjectId)
-			object := &editor.File{SmartBlock: sb}
+			object := fileObjectWrapper{SmartBlock: sb, FileObject: fileobject.NewFileObject(sb, fx.fileService)}
 
 			st := sb.Doc.(*state.State)
 			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
