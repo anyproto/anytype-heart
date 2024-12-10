@@ -480,6 +480,10 @@ func (s *service) DoFileWaitLoad(ctx context.Context, objectId string, proc func
 		if !ok {
 			return fmt.Errorf("object is not a fileobject")
 		}
+		id := fileObj.GetFullFileId()
+		if id.FileId == "" {
+			return filemodels.ErrEmptyFileId
+		}
 		return proc(fileObj)
 	})
 }

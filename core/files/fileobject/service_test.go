@@ -192,6 +192,10 @@ type fileObjectWrapper struct {
 	fileobject.FileObject
 }
 
+func (fx *fixture) newTestFileObject(sb smartblock.SmartBlock) *fileObjectWrapper {
+	return &fileObjectWrapper{SmartBlock: sb, FileObject: fileobject.NewFileObject(sb, fx.fileService)}
+}
+
 func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 	t.Run("with invalid id expect error", func(t *testing.T) {
 		fx := newFixture(t)
@@ -244,12 +248,12 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().Do(testFileObjectId, mock.Anything).RunAndReturn(func(_ string, apply func(smartblock.SmartBlock) error) error {
 			sb := smarttest.New(testFileObjectId)
-			object := fileObjectWrapper{SmartBlock: sb, FileObject: fileobject.NewFileObject(sb, fx.fileService)}
+			sb.SetSpaceId(spaceId)
 
 			st := sb.Doc.(*state.State)
 			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
 
-			return apply(object)
+			return apply(fx.newTestFileObject(sb))
 		})
 
 		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
@@ -276,11 +280,12 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().Do(testFileObjectId, mock.Anything).RunAndReturn(func(_ string, apply func(smartblock.SmartBlock) error) error {
 			sb := smarttest.New(testFileObjectId)
+			sb.SetSpaceId(spaceId)
 
 			st := sb.Doc.(*state.State)
 			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(""))
 
-			return apply(sb)
+			return apply(fx.newTestFileObject(sb))
 		})
 
 		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
