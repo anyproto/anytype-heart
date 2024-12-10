@@ -1,7 +1,7 @@
 package subscription
 
 import (
-	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/pb"
@@ -177,22 +177,7 @@ func (ctx *opCtx) detailsEvents() {
 			continue
 		}
 		prev := ctx.c.Get(info.id)
-		var prevData *types.Struct
-		if prev != nil && prev.IsActive(info.subIds...) && prev.IsFullDetailsSent(info.subIds...) {
-			prevData = prev.data
-			diff := pbtypes.StructDiff(prevData, curr.data)
-			msgs = append(msgs, state.StructDiffIntoEventsWithSubIds(info.id, diff, info.keys, info.subIds)...)
-		} else {
-			msgs = append(msgs, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfObjectDetailsSet{
-					ObjectDetailsSet: &pb.EventObjectDetailsSet{
-						Id:      curr.id,
-						Details: pbtypes.StructFilterKeys(curr.data, info.keys),
-						SubIds:  info.subIds,
-					},
-				},
-			})
-		}
+		msgs = ctx.addDetailsEvents(prev, curr, info, msgs)
 		// save info for every sub because we don't want to send the details events again
 		for _, sub := range info.subIds {
 			curr.SetSub(sub, true, true)
@@ -200,6 +185,44 @@ func (ctx *opCtx) detailsEvents() {
 	}
 
 	ctx.groupDetailsEvents(msgs)
+}
+
+func (ctx *opCtx) addDetailsEvents(prev, curr *entry, info struct {
+	id     string
+	subIds []string
+	keys   []string
+}, msgs []*pb.EventMessage) []*pb.EventMessage {
+	var subIdsToSendAmendDetails, subIdsToSendSetDetails []string
+	if prev != nil {
+		active := prev.GetActive()
+		detailsSent := prev.GetFullDetailsSent()
+		subIdsToSendAmendDetails = lo.Intersect(active, detailsSent)
+
+		subIdsToSendSetDetails = slice.Difference(info.subIds, subIdsToSendAmendDetails)
+		if len(subIdsToSendAmendDetails) != 0 {
+			diff := pbtypes.StructDiff(prev.data, curr.data)
+			msgs = append(msgs, state.StructDiffIntoEventsWithSubIds(info.id, diff, info.keys, subIdsToSendAmendDetails)...)
+		}
+		if len(subIdsToSendSetDetails) != 0 {
+			msgs = ctx.appendObjectDetailsSetMessage(msgs, curr, subIdsToSendSetDetails, info.keys)
+		}
+	} else {
+		msgs = ctx.appendObjectDetailsSetMessage(msgs, curr, info.subIds, info.keys)
+	}
+	return msgs
+}
+
+func (ctx *opCtx) appendObjectDetailsSetMessage(msgs []*pb.EventMessage, curr *entry, subIds, keys []string) []*pb.EventMessage {
+	msgs = append(msgs, &pb.EventMessage{
+		Value: &pb.EventMessageValueOfObjectDetailsSet{
+			ObjectDetailsSet: &pb.EventObjectDetailsSet{
+				Id:      curr.id,
+				Details: pbtypes.StructFilterKeys(curr.data, keys),
+				SubIds:  subIds,
+			},
+		},
+	})
+	return msgs
 }
 
 func (ctx *opCtx) groupDetailsEvents(msgs []*pb.EventMessage) {
