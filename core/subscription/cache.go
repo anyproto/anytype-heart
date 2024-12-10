@@ -1,9 +1,10 @@
 package subscription
 
 import (
+	"maps"
+
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/util/maputils"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -29,8 +30,10 @@ func newEntry(id string, data *types.Struct) *entry {
 func (e *entry) Copy() *entry {
 	newSubIds := make([]string, len(e.subIds))
 	copy(newSubIds, e.subIds)
-	newSubIsActive := maputils.CopyMap(e.subIsActive)
-	newSubFullDetailsSent := maputils.CopyMap(e.subFullDetailsSent)
+	newSubIsActive := make(map[string]bool, len(e.subIsActive))
+	maps.Copy(newSubIsActive, e.subIsActive)
+	newSubFullDetailsSent := make(map[string]bool, len(e.subIsActive))
+	maps.Copy(newSubFullDetailsSent, e.subFullDetailsSent)
 	return &entry{
 		id:                 e.id,
 		data:               e.data,
