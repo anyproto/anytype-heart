@@ -15,7 +15,7 @@ func (mw *Middleware) BroadcastPayloadEvent(cctx context.Context, req *pb.RpcBro
 			},
 		},
 	}
-	getService[event.Sender](mw).Broadcast(&pb.Event{
+	mustService[event.Sender](mw).Broadcast(&pb.Event{
 		Messages: messages,
 	})
 	return &pb.RpcBroadcastPayloadEventResponse{

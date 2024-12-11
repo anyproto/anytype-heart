@@ -19,8 +19,8 @@ import (
 )
 
 func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRequest) *pb.RpcSpaceDeleteResponse {
-	spaceService := getService[space.Service](mw)
-	aclService := getService[acl.AclService](mw)
+	spaceService := mustService[space.Service](mw)
+	aclService := mustService[acl.AclService](mw)
 	err := aclService.Leave(cctx, req.SpaceId)
 	if err == nil {
 		err = spaceService.Delete(cctx, req.SpaceId)
@@ -41,7 +41,7 @@ func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRe
 }
 
 func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceMakeShareableRequest) *pb.RpcSpaceMakeShareableResponse {
-	aclService := getService[acl.AclService](mw)
+	aclService := mustService[acl.AclService](mw)
 	err := aclService.MakeShareable(cctx, req.SpaceId)
 	if err != nil {
 		code := mapErrorCode(err,
@@ -62,7 +62,7 @@ func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceM
 }
 
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {
-	aclService := getService[acl.AclService](mw)
+	aclService := mustService[acl.AclService](mw)
 	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId)
 	if err != nil {
 		code := mapErrorCode(err,
@@ -87,7 +87,7 @@ func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpace
 }
 
 func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpaceInviteGetCurrentRequest) *pb.RpcSpaceInviteGetCurrentResponse {
-	aclService := getService[acl.AclService](mw)
+	aclService := mustService[acl.AclService](mw)
 	inviteInfo, err := aclService.GetCurrentInvite(cctx, req.SpaceId)
 	if err != nil {
 		code := mapErrorCode(err,
@@ -126,7 +126,7 @@ func (mw *Middleware) SpaceInviteRevoke(cctx context.Context, req *pb.RpcSpaceIn
 }
 
 func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInviteViewRequest) *pb.RpcSpaceInviteViewResponse {
-	aclService := getService[acl.AclService](mw)
+	aclService := mustService[acl.AclService](mw)
 	inviteView, err := viewInvite(cctx, aclService, req)
 	if err != nil {
 		code := mapErrorCode(err,
