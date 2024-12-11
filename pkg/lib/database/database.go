@@ -25,12 +25,13 @@ type Record struct {
 }
 
 type Query struct {
-	TextQuery string
-	SpaceId   string
-	Filters   []*model.BlockContentDataviewFilter // filters results. apply sequentially
-	Sorts     []*model.BlockContentDataviewSort   // order results. apply hierarchically
-	Limit     int                                 // maximum number of results
-	Offset    int                                 // skip given number of results
+	TextQuery       string
+	SpaceId         string
+	Filters         []*model.BlockContentDataviewFilter // filters results. apply sequentially
+	Sorts           []*model.BlockContentDataviewSort   // order results. apply hierarchically
+	Limit           int                                 // maximum number of results
+	Offset          int                                 // skip given number of results
+	PrefixNameQuery bool
 }
 
 func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {

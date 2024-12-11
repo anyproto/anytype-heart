@@ -89,12 +89,13 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	records, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
-		Filters:   req.Filters,
-		SpaceId:   req.SpaceId,
-		Sorts:     req.Sorts,
-		Offset:    int(req.Offset),
-		Limit:     int(req.Limit),
-		TextQuery: req.FullText,
+		Filters:         req.Filters,
+		SpaceId:         req.SpaceId,
+		Sorts:           req.Sorts,
+		Offset:          int(req.Offset),
+		Limit:           int(req.Limit),
+		TextQuery:       req.FullText,
+		PrefixNameQuery: true,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
