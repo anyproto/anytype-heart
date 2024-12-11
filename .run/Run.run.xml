@@ -2,7 +2,7 @@
   <configuration default="false" name="Run" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="anytype-heart" />
     <working_directory value="$PROJECT_DIR$" />
-    <go_parameters value="-tags &quot;nomutexdeadlockdetector noauth nographviz&quot;" />
+    <go_parameters value="-tags &quot;nomutexdeadlockdetector noauth nographviz appdebug&quot;" />
     <envs>
       <env name="ANYDEBUG" value=":6061" />
       <env name="ANYPROF" value=":6060" />
