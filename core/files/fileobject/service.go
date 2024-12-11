@@ -166,10 +166,7 @@ type objectArchiver interface {
 }
 
 func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) error {
-	personalSpace, err := s.spaceService.GetPersonalSpace(ctx)
-	if err != nil {
-		return err
-	}
+	personalSpaceId := s.spaceService.PersonalSpaceId()
 
 	records, err := s.objectStore.QueryCrossSpace(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -184,7 +181,7 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String(personalSpace.Id()),
+				Value:       pbtypes.String(personalSpaceId),
 			},
 		},
 	})

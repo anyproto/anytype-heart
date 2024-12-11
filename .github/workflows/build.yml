@@ -59,7 +59,7 @@ jobs:
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies ./swift-protobuf.rb
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install mingw-w64
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install grpcurl
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew tap messense/macos-cross-toolchains && brew install x86_64-unknown-linux-musl
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew tap messense/macos-cross-toolchains && brew install x86_64-unknown-linux-musl && brew install aarch64-unknown-linux-musl
           npm i -g node-gyp
         if: runner.name != 'mac-mini-org-heart'
       - name: Checkout
@@ -115,6 +115,7 @@ jobs:
           GOOS="darwin" CGO_CFLAGS="-mmacosx-version-min=11" MACOSX_DEPLOYMENT_TARGET=11.0 GOARCH="arm64" CGO_ENABLED="1" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -ldflags="$FLAGS" -o darwin-arm64 github.com/anyproto/anytype-heart/cmd/grpcserver
           GOOS="windows" GOARCH="amd64" CGO_ENABLED="1" CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -ldflags="$FLAGS -linkmode external -extldflags=-static" -o windows-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
           GOOS="linux" GOARCH="amd64" CGO_ENABLED="1" CC="x86_64-linux-musl-gcc" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -ldflags="$FLAGS -linkmode external -extldflags '-static -Wl,-z stack-size=1000000'" -o linux-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
+          GOOS="linux" GOARCH="arm64" CGO_ENABLED="1" CC="aarch64-linux-musl-gcc" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -ldflags="$FLAGS -linkmode external" -o linux-arm64 github.com/anyproto/anytype-heart/cmd/grpcserver
           ls -lha .
       - name: run perf tests
         run: |
@@ -185,9 +186,20 @@ jobs:
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
         if: github.event_name == 'push'
-      - name: Pack server unix
+      - name: Pack server unix amd64
         run: |
           declare -a arr=("linux-amd64")
+          for i in "${arr[@]}"
+          do
+          OSARCH=${i%.*}
+          cp ./${i}* ./grpc-server
+          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
+          mv js_${VERSION}_${OSARCH}.tar.gz .release/
+          done
+        if: github.event_name == 'push'
+      - name: Pack server unix arm64
+        run: |
+          declare -a arr=("linux-arm64")
           for i in "${arr[@]}"
           do
           OSARCH=${i%.*}

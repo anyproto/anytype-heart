@@ -150,7 +150,14 @@ func extractTargetDetails(originDetails *types.Struct, templateDetails *types.St
 func (s *service) createCustomTemplateState(templateId string) (targetState *state.State, err error) {
 	err = cache.Do(s.picker, templateId, func(sb smartblock.SmartBlock) (innerErr error) {
 		targetState, innerErr = s.buildState(sb)
-		return
+		if innerErr != nil {
+			return innerErr
+		}
+		details := targetState.Details()
+		if pbtypes.GetBool(details, bundle.RelationKeyIsDeleted.String()) || pbtypes.GetBool(details, bundle.RelationKeyIsUninstalled.String()) {
+			return spacestorage.ErrTreeStorageAlreadyDeleted
+		}
+		return nil
 	})
 	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 		return s.createBlankTemplateState(model.ObjectType_basic), nil
