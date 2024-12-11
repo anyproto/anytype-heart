@@ -259,6 +259,7 @@ func (i *Import) finishImportProcess(returnedErr error, req *ImportRequest) {
 
 func (i *Import) provideNotification(returnedErr error, progress process.Progress, req *ImportRequest) *model.Notification {
 	return &model.Notification{
+		Id:      uuid.New().String(),
 		Status:  model.Notification_Created,
 		IsLocal: true,
 		Space:   req.SpaceId,

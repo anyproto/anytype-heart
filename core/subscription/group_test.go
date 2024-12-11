@@ -4,18 +4,19 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/collate"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-var kanbanKey = bundle.RelationKeyTag
+var kanbanKey = bundle.RelationKeyTag.String()
 
 func genTagEntries() []*entry {
 	return []*entry{
@@ -23,15 +24,15 @@ func genTagEntries() []*entry {
 		makeTag("tag_2"),
 		makeTag("tag_3"),
 
-		{id: "record_one", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			kanbanKey: domain.StringList([]string{"tag_1"}),
-		})},
-		{id: "record_two", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			kanbanKey: domain.StringList([]string{"tag_2"}),
-		})},
-		{id: "record_three", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			kanbanKey: domain.StringList([]string{"tag_1", "tag_2", "tag_3"}),
-		})},
+		newEntry("record_one", &types.Struct{Fields: map[string]*types.Value{
+			kanbanKey: pbtypes.StringList([]string{"tag_1"}),
+		}}),
+		newEntry("record_two", &types.Struct{Fields: map[string]*types.Value{
+			kanbanKey: pbtypes.StringList([]string{"tag_2"}),
+		}}),
+		newEntry("record_three", &types.Struct{Fields: map[string]*types.Value{
+			kanbanKey: pbtypes.StringList([]string{"tag_1", "tag_2", "tag_3"}),
+		}}),
 	}
 }
 
@@ -50,11 +51,11 @@ func tagEntriesToGroups(entries []*entry) []*model.BlockContentDataviewGroup {
 }
 
 func makeTag(key string) *entry {
-	return &entry{id: key, data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyId:          domain.String(key),
-		bundle.RelationKeyRelationKey: domain.String(kanbanKey),
-		bundle.RelationKeyType:        domain.String(bundle.TypeKeyRelationOption.URL()),
-	})}
+	return newEntry(key, &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyId.String():          pbtypes.String(key),
+		bundle.RelationKeyRelationKey.String(): pbtypes.String(kanbanKey),
+		bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+	}})
 }
 
 func TestGroupTag(t *testing.T) {
@@ -69,14 +70,14 @@ func TestGroupTag(t *testing.T) {
 	f.FilterObj = database.FiltersAnd{f.FilterObj, filterTag}
 	f.FilterObj = database.FiltersOr{f.FilterObj, database.FiltersAnd{
 		database.FilterEq{
-			Key:   bundle.RelationKeyRelationKey,
+			Key:   bundle.RelationKeyRelationKey.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: domain.String(kanbanKey),
+			Value: pbtypes.String(kanbanKey),
 		},
 		database.FilterEq{
-			Key:   bundle.RelationKeyType,
+			Key:   bundle.RelationKeyType.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: domain.String(bundle.TypeKeyRelationOption.URL()),
+			Value: pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 		},
 	}}
 
@@ -88,9 +89,9 @@ func TestGroupTag(t *testing.T) {
 
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
-			id: "record_three", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				kanbanKey: domain.StringList([]string{"tag_1", "tag_2"}),
-			})})
+			id: "record_three", data: &types.Struct{Fields: map[string]*types.Value{
+				kanbanKey: pbtypes.StringList([]string{"tag_1", "tag_2"}),
+			}}})
 		sub.onChange(ctx)
 
 		assertCtxGroup(t, ctx, 1, 1)
@@ -104,9 +105,9 @@ func TestGroupTag(t *testing.T) {
 
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
-			id: "record_four", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				kanbanKey: domain.StringList([]string{"tag_1", "tag_2"}),
-			})})
+			id: "record_four", data: &types.Struct{Fields: map[string]*types.Value{
+				kanbanKey: pbtypes.StringList([]string{"tag_1", "tag_2"}),
+			}}})
 		sub.onChange(ctx)
 
 		assertCtxGroup(t, ctx, 1, 0)
@@ -133,9 +134,9 @@ func TestGroupTag(t *testing.T) {
 
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
-			id: "record_three", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				kanbanKey: domain.StringList([]string{}),
-			})})
+			id: "record_three", data: &types.Struct{Fields: map[string]*types.Value{
+				kanbanKey: pbtypes.StringList([]string{}),
+			}}})
 		sub.onChange(ctx)
 
 		assertCtxGroup(t, ctx, 0, 1)
@@ -149,9 +150,9 @@ func TestGroupTag(t *testing.T) {
 
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
-			id: "record_three", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyIsArchived: domain.Bool(true),
-			})})
+			id: "record_three", data: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyIsArchived.String(): pbtypes.Bool(true),
+			}}})
 		sub.onChange(ctx)
 
 		assertCtxGroup(t, ctx, 0, 1)
@@ -165,9 +166,9 @@ func TestGroupTag(t *testing.T) {
 
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
-			id: "record_one", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				kanbanKey: domain.StringList([]string{}),
-			})})
+			id: "record_one", data: &types.Struct{Fields: map[string]*types.Value{
+				kanbanKey: pbtypes.StringList([]string{}),
+			}}})
 		sub.onChange(ctx)
 
 		assertCtxGroup(t, ctx, 0, 0)
@@ -181,9 +182,9 @@ func TestGroupTag(t *testing.T) {
 
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
-			id: "tag_1", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyIsArchived: domain.Bool(true),
-			})})
+			id: "tag_1", data: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyIsArchived.String(): pbtypes.Bool(true),
+			}}})
 		sub.onChange(ctx)
 
 		assertCtxGroup(t, ctx, 1, 2)
@@ -211,9 +212,9 @@ func TestGroupTag(t *testing.T) {
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries,
 			makeTag("tag_4"),
-			&entry{id: "record_one", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				kanbanKey: domain.StringList([]string{"tag_1", "tag_4"}),
-			})},
+			&entry{id: "record_one", data: &types.Struct{Fields: map[string]*types.Value{
+				kanbanKey: pbtypes.StringList([]string{"tag_1", "tag_4"}),
+			}}},
 		)
 		sub.onChange(ctx)
 

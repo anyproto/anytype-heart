@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 
@@ -19,7 +21,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/dateutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
+	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
 var ErrBundledTypeIsReadonly = fmt.Errorf("can't modify bundled object type")
@@ -30,7 +34,7 @@ func (s *service) ObjectTypeAddRelations(ctx context.Context, objectTypeId strin
 	}
 	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		list := st.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
+		list := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String())
 		for _, relKey := range relationKeys {
 			relId, err := b.Space().GetRelationIdByKey(ctx, relKey)
 			if err != nil {
@@ -40,7 +44,7 @@ func (s *service) ObjectTypeAddRelations(ctx context.Context, objectTypeId strin
 				list = append(list, relId)
 			}
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(list))
 		return b.Apply(st)
 	})
 }
@@ -51,7 +55,7 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 	}
 	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		list := st.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
+		list := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String())
 		for _, relKey := range relationKeys {
 			relId, err := b.Space().GetRelationIdByKey(ctx, relKey)
 			if err != nil {
@@ -59,40 +63,48 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 			}
 			list = slice.RemoveMut(list, relId)
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(list))
 		return b.Apply(st)
 	})
 }
 
-func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {
-	countersByKeys := make(map[domain.RelationKey]int64)
-	detailHandlesValue := generateFilter(value)
+func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {
+	var (
+		countersByKeys     = make(map[string]int64)
+		detailHandlesValue = generateFilter(value)
+	)
 
-	err := s.store.SpaceIndex(spaceId).QueryIterate(
-		database.Query{Filters: nil},
-		func(details *domain.Details) {
-			for key, valueToCheck := range details.Iterate() {
-				if detailHandlesValue(valueToCheck) {
-					if counter, ok := countersByKeys[key]; ok {
-						countersByKeys[key] = counter + 1
-					} else {
-						countersByKeys[key] = 1
-					}
+	err := s.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: nil}, func(details *types.Struct) {
+		for key, valueToCheck := range details.Fields {
+			if detailHandlesValue(valueToCheck) {
+				if counter, ok := countersByKeys[key]; ok {
+					countersByKeys[key] = counter + 1
+				} else {
+					countersByKeys[key] = 1
 				}
 			}
-		})
+		}
+	})
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query objects: %w", err)
 	}
 
 	keys := maps.Keys(countersByKeys)
-	slices.Sort(keys)
-	list := make([]*pb.RpcRelationListWithValueResponseResponseItem, len(keys))
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i] == bundle.RelationKeyMentions.String() {
+			return true
+		}
+		if keys[j] == bundle.RelationKeyMentions.String() {
+			return false
+		}
+		return keys[i] < keys[j]
+	})
 
+	list := make([]*pb.RpcRelationListWithValueResponseResponseItem, len(keys))
 	for i, key := range keys {
 		list[i] = &pb.RpcRelationListWithValueResponseResponseItem{
-			RelationKey: string(key),
+			RelationKey: key,
 			Counter:     countersByKeys[key],
 		}
 	}
@@ -100,10 +112,10 @@ func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) ([]
 	return list, nil
 }
 
-func generateFilter(value domain.Value) func(v domain.Value) bool {
-	equalOrHasFilter := func(v domain.Value) bool {
-		if list, ok := v.TryListValues(); ok {
-			for _, element := range list {
+func generateFilter(value *types.Value) func(v *types.Value) bool {
+	equalOrHasFilter := func(v *types.Value) bool {
+		if list := v.GetListValue(); list != nil {
+			for _, element := range list.Values {
 				if element.Equal(value) {
 					return true
 				}
@@ -112,7 +124,7 @@ func generateFilter(value domain.Value) func(v domain.Value) bool {
 		return v.Equal(value)
 	}
 
-	stringValue := value.String()
+	stringValue := value.GetStringValue()
 	if stringValue == "" {
 		return equalOrHasFilter
 	}
@@ -126,38 +138,42 @@ func generateFilter(value domain.Value) func(v domain.Value) bool {
 		return equalOrHasFilter
 	}
 
-	ts, err := dateutil.ParseDateId(stringValue)
+	// date object section
+
+	dateObject, err := dateutil.BuildDateObjectFromId(stringValue)
 	if err != nil {
 		log.Error("failed to parse Date object id", zap.Error(err))
 		return equalOrHasFilter
 	}
 
-	shortId := dateutil.TimeToDateId(ts)
-
-	start := ts.Truncate(24 * time.Hour)
+	start := timeutil.CutToDay(dateObject.Time())
 	end := start.Add(24 * time.Hour)
 	startTimestamp := start.Unix()
 	endTimestamp := end.Unix()
 
+	startDateObject := dateutil.NewDateObject(start, false)
+	shortId := startDateObject.Id()
+
 	// filter for date objects is able to find relations with values between the borders of queried day
 	// - for relations with number format it checks timestamp value is between timestamps of this day midnights
 	// - for relations carrying string list it checks if some of the strings has day prefix, e.g.
-	// if _date_2023-12-12-08-30-50 is queried, then all relations with prefix _date_2023-12-12 will be returned
-	return func(v domain.Value) bool {
-		numberValue := v.Int64()
+	// if _date_2023-12-12-08-30-50Z-0200 is queried, then all relations with prefix _date_2023-12-12 will be returned
+	return func(v *types.Value) bool {
+		numberValue := int64(v.GetNumberValue())
 		if numberValue >= startTimestamp && numberValue < endTimestamp {
 			return true
 		}
 
-		for _, element := range v.WrapToList() {
-			if element.Equal(value) {
-				return true
-			}
-			if strings.HasPrefix(element.String(), shortId) {
-				return true
+		if list := v.GetListValue(); list != nil {
+			for _, element := range list.Values {
+				if element.Equal(value) {
+					return true
+				}
+				if strings.HasPrefix(element.GetStringValue(), shortId) {
+					return true
+				}
 			}
 		}
-
 		return v.Equal(value)
 	}
 }

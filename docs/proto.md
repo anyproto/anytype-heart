@@ -855,6 +855,10 @@
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Request)
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response)
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error)
+    - [Rpc.Object.DateByTimestamp](#anytype-Rpc-Object-DateByTimestamp)
+    - [Rpc.Object.DateByTimestamp.Request](#anytype-Rpc-Object-DateByTimestamp-Request)
+    - [Rpc.Object.DateByTimestamp.Response](#anytype-Rpc-Object-DateByTimestamp-Response)
+    - [Rpc.Object.DateByTimestamp.Response.Error](#anytype-Rpc-Object-DateByTimestamp-Response-Error)
     - [Rpc.Object.Duplicate](#anytype-Rpc-Object-Duplicate)
     - [Rpc.Object.Duplicate.Request](#anytype-Rpc-Object-Duplicate-Request)
     - [Rpc.Object.Duplicate.Response](#anytype-Rpc-Object-Duplicate-Response)
@@ -1152,10 +1156,18 @@
     - [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request)
     - [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response)
     - [Rpc.Space.RequestDecline.Response.Error](#anytype-Rpc-Space-RequestDecline-Response-Error)
+    - [Rpc.Space.SetOrder](#anytype-Rpc-Space-SetOrder)
+    - [Rpc.Space.SetOrder.Request](#anytype-Rpc-Space-SetOrder-Request)
+    - [Rpc.Space.SetOrder.Response](#anytype-Rpc-Space-SetOrder-Response)
+    - [Rpc.Space.SetOrder.Response.Error](#anytype-Rpc-Space-SetOrder-Response-Error)
     - [Rpc.Space.StopSharing](#anytype-Rpc-Space-StopSharing)
     - [Rpc.Space.StopSharing.Request](#anytype-Rpc-Space-StopSharing-Request)
     - [Rpc.Space.StopSharing.Response](#anytype-Rpc-Space-StopSharing-Response)
     - [Rpc.Space.StopSharing.Response.Error](#anytype-Rpc-Space-StopSharing-Response-Error)
+    - [Rpc.Space.UnsetOrder](#anytype-Rpc-Space-UnsetOrder)
+    - [Rpc.Space.UnsetOrder.Request](#anytype-Rpc-Space-UnsetOrder-Request)
+    - [Rpc.Space.UnsetOrder.Response](#anytype-Rpc-Space-UnsetOrder-Response)
+    - [Rpc.Space.UnsetOrder.Response.Error](#anytype-Rpc-Space-UnsetOrder-Response-Error)
     - [Rpc.Template](#anytype-Rpc-Template)
     - [Rpc.Template.Clone](#anytype-Rpc-Template-Clone)
     - [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request)
@@ -1439,6 +1451,7 @@
     - [Rpc.Object.CreateSet.Response.Error.Code](#anytype-Rpc-Object-CreateSet-Response-Error-Code)
     - [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code)
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code)
+    - [Rpc.Object.DateByTimestamp.Response.Error.Code](#anytype-Rpc-Object-DateByTimestamp-Response-Error-Code)
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
     - [Rpc.Object.Graph.Response.Error.Code](#anytype-Rpc-Object-Graph-Response-Error-Code)
@@ -1514,7 +1527,9 @@
     - [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code)
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
     - [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code)
+    - [Rpc.Space.SetOrder.Response.Error.Code](#anytype-Rpc-Space-SetOrder-Response-Error-Code)
     - [Rpc.Space.StopSharing.Response.Error.Code](#anytype-Rpc-Space-StopSharing-Response-Error-Code)
+    - [Rpc.Space.UnsetOrder.Response.Error.Code](#anytype-Rpc-Space-UnsetOrder-Response-Error-Code)
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype-Rpc-Template-CreateFromObject-Response-Error-Code)
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
@@ -1998,6 +2013,8 @@
 | SpaceMakeShareable | [Rpc.Space.MakeShareable.Request](#anytype-Rpc-Space-MakeShareable-Request) | [Rpc.Space.MakeShareable.Response](#anytype-Rpc-Space-MakeShareable-Response) |  |
 | SpaceParticipantRemove | [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request) | [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response) |  |
 | SpaceParticipantPermissionsChange | [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request) | [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response) |  |
+| SpaceSetOrder | [Rpc.Space.SetOrder.Request](#anytype-Rpc-Space-SetOrder-Request) | [Rpc.Space.SetOrder.Response](#anytype-Rpc-Space-SetOrder-Response) |  |
+| SpaceUnsetOrder | [Rpc.Space.UnsetOrder.Request](#anytype-Rpc-Space-UnsetOrder-Request) | [Rpc.Space.UnsetOrder.Response](#anytype-Rpc-Space-UnsetOrder-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
@@ -2045,6 +2062,7 @@
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
 | ObjectImportUseCase | [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request) | [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response) |  |
 | ObjectImportExperience | [Rpc.Object.ImportExperience.Request](#anytype-Rpc-Object-ImportExperience-Request) | [Rpc.Object.ImportExperience.Response](#anytype-Rpc-Object-ImportExperience-Response) |  |
+| ObjectDateByTimestamp | [Rpc.Object.DateByTimestamp.Request](#anytype-Rpc-Object-DateByTimestamp-Request) | [Rpc.Object.DateByTimestamp.Response](#anytype-Rpc-Object-DateByTimestamp-Response) |  |
 | ObjectCollectionAdd | [Rpc.ObjectCollection.Add.Request](#anytype-Rpc-ObjectCollection-Add-Request) | [Rpc.ObjectCollection.Add.Response](#anytype-Rpc-ObjectCollection-Add-Response) | Collections *** |
 | ObjectCollectionRemove | [Rpc.ObjectCollection.Remove.Request](#anytype-Rpc-ObjectCollection-Remove-Request) | [Rpc.ObjectCollection.Remove.Response](#anytype-Rpc-ObjectCollection-Remove-Response) |  |
 | ObjectCollectionSort | [Rpc.ObjectCollection.Sort.Request](#anytype-Rpc-ObjectCollection-Sort-Request) | [Rpc.ObjectCollection.Sort.Response](#anytype-Rpc-ObjectCollection-Sort-Response) |  |
@@ -10123,6 +10141,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | chatObjectId | [string](#string) |  |  |
+| afterOrderId | [string](#string) |  | OrderId of the message after which to get messages |
 | beforeOrderId | [string](#string) |  | OrderId of the message before which to get messages |
 | limit | [int32](#int32) |  |  |
 
@@ -14580,6 +14599,64 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-DateByTimestamp"></a>
+
+### Rpc.Object.DateByTimestamp
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DateByTimestamp-Request"></a>
+
+### Rpc.Object.DateByTimestamp.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| timestamp | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DateByTimestamp-Response"></a>
+
+### Rpc.Object.DateByTimestamp.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.DateByTimestamp.Response.Error](#anytype-Rpc-Object-DateByTimestamp-Response-Error) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DateByTimestamp-Response-Error"></a>
+
+### Rpc.Object.DateByTimestamp.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.DateByTimestamp.Response.Error.Code](#anytype-Rpc-Object-DateByTimestamp-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Duplicate"></a>
 
 ### Rpc.Object.Duplicate
@@ -18919,6 +18996,63 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-SetOrder"></a>
+
+### Rpc.Space.SetOrder
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-SetOrder-Request"></a>
+
+### Rpc.Space.SetOrder.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceViewId | [string](#string) |  |  |
+| spaceViewOrder | [string](#string) | repeated | result order of space view ids |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-SetOrder-Response"></a>
+
+### Rpc.Space.SetOrder.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.SetOrder.Response.Error](#anytype-Rpc-Space-SetOrder-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-SetOrder-Response-Error"></a>
+
+### Rpc.Space.SetOrder.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.SetOrder.Response.Error.Code](#anytype-Rpc-Space-SetOrder-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space-StopSharing"></a>
 
 ### Rpc.Space.StopSharing
@@ -18968,6 +19102,62 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Space.StopSharing.Response.Error.Code](#anytype-Rpc-Space-StopSharing-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder"></a>
+
+### Rpc.Space.UnsetOrder
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder-Request"></a>
+
+### Rpc.Space.UnsetOrder.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceViewId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder-Response"></a>
+
+### Rpc.Space.UnsetOrder.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.UnsetOrder.Response.Error](#anytype-Rpc-Space-UnsetOrder-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder-Response-Error"></a>
+
+### Rpc.Space.UnsetOrder.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.UnsetOrder.Response.Error.Code](#anytype-Rpc-Space-UnsetOrder-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -22906,6 +23096,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-DateByTimestamp-Response-Error-Code"></a>
+
+### Rpc.Object.DateByTimestamp.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Object-Duplicate-Response-Error-Code"></a>
 
 ### Rpc.Object.Duplicate.Response.Error.Code
@@ -23081,11 +23284,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NONE | 0 |  |
 | GET_STARTED | 1 |  |
-| PERSONAL_PROJECTS | 2 |  |
-| KNOWLEDGE_BASE | 3 |  |
-| NOTES_DIARY | 4 |  |
-| STRATEGIC_WRITING | 5 |  |
-| EMPTY | 6 |  |
+| EMPTY | 2 |  |
 
 
 
@@ -23977,6 +24176,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Space-SetOrder-Response-Error-Code"></a>
+
+### Rpc.Space.SetOrder.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Space-StopSharing-Response-Error-Code"></a>
 
 ### Rpc.Space.StopSharing.Response.Error.Code
@@ -23991,6 +24203,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder-Response-Error-Code"></a>
+
+### Rpc.Space.UnsetOrder.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -28209,6 +28434,7 @@ Bookmark is to keep a web-link and to preview a content.
 | includeTime | [bool](#bool) |  |  |
 | id | [string](#string) |  |  |
 | emptyPlacement | [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType) |  |  |
+| noCollate | [bool](#bool) |  |  |
 
 
 
@@ -29746,17 +29972,18 @@ stored |
 | ---- | ------ | ----------- |
 | None | 0 |  |
 | Count | 1 |  |
-| CountDistinct | 2 |  |
-| CountEmpty | 3 |  |
-| CountNotEmpty | 4 |  |
-| PercentEmpty | 5 |  |
-| PercentNotEmpty | 6 |  |
-| MathSum | 7 |  |
-| MathAverage | 8 |  |
-| MathMedian | 9 |  |
-| MathMin | 10 |  |
-| MathMax | 11 |  |
-| Range | 12 |  |
+| CountValue | 2 |  |
+| CountDistinct | 3 |  |
+| CountEmpty | 4 |  |
+| CountNotEmpty | 5 |  |
+| PercentEmpty | 6 |  |
+| PercentNotEmpty | 7 |  |
+| MathSum | 8 |  |
+| MathAverage | 9 |  |
+| MathMedian | 10 |  |
+| MathMin | 11 |  |
+| MathMax | 12 |  |
+| Range | 13 |  |
 
 
 

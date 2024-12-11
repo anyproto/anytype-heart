@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/util/dateutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const spaceId = "spc1"
@@ -56,7 +58,7 @@ type testTemplateService struct {
 	templates map[string]*state.State
 }
 
-func (tts *testTemplateService) CreateTemplateStateWithDetails(templateId string, details *domain.Details) (*state.State, error) {
+func (tts *testTemplateService) CreateTemplateStateWithDetails(templateId string, details *types.Struct) (*state.State, error) {
 	if tts.templates != nil {
 		if st, found := tts.templates[templateId]; found {
 			return st, nil
@@ -81,9 +83,9 @@ func TestService_CreateObject(t *testing.T) {
 
 		// when
 		id, _, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
-			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyTargetObjectType: domain.String(bundle.TypeKeyTask.URL()),
-			}),
+			Details: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyTargetObjectType.String(): pbtypes.String(bundle.TypeKeyTask.URL()),
+			}},
 			ObjectTypeKey: bundle.TypeKeyTemplate,
 		})
 
@@ -115,45 +117,21 @@ func TestService_CreateObject(t *testing.T) {
 			assert.Equal(t, bundle.TypeKeyDate, key)
 			return bundle.TypeKeyDate.URL(), nil
 		})
-		// TODO: GO-4494 - Remove links relation id fetch
-		f.spc.EXPECT().GetRelationIdByKey(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, key domain.RelationKey) (string, error) {
-			assert.Equal(t, bundle.RelationKeyLinks, key)
-			return bundle.RelationKeyLinks.URL(), nil
-		})
 		ts := time.Now()
-		name := dateutil.TimeToDateName(ts)
+		dateObject := dateutil.NewDateObject(ts, false)
 
 		// when
 		id, details, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
 			ObjectTypeKey: bundle.TypeKeyDate,
-			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyName: domain.String(name),
-			}),
+			Details: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyTimestamp.String(): pbtypes.Int64(dateObject.Time().Unix()),
+			}},
 		})
 
 		// then
 		assert.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, dateutil.TimeToDateId(ts)))
-		assert.Equal(t, spaceId, details.GetString(bundle.RelationKeySpaceId))
-		assert.Equal(t, bundle.TypeKeyDate.URL(), details.GetString(bundle.RelationKeyType))
-	})
-
-	t.Run("date object creation - invalid name", func(t *testing.T) {
-		// given
-		f := newFixture(t)
-		f.spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(f.spc, nil)
-		ts := time.Now()
-		name := ts.Format(time.RFC3339)
-
-		// when
-		_, _, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
-			ObjectTypeKey: bundle.TypeKeyDate,
-			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyName: domain.String(name),
-			}),
-		})
-
-		// then
-		assert.Error(t, err)
+		assert.True(t, strings.HasPrefix(id, dateObject.Id()))
+		assert.Equal(t, spaceId, pbtypes.GetString(details, bundle.RelationKeySpaceId.String()))
+		assert.Equal(t, bundle.TypeKeyDate.URL(), pbtypes.GetString(details, bundle.RelationKeyType.String()))
 	})
 }

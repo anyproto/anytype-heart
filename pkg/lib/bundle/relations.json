@@ -1247,9 +1247,10 @@
     "hidden": true,
     "key": "lastUsedDate",
     "maxCount": 1,
-    "name": "Last Used date",
+    "name": "Last used date",
     "readonly": true,
-    "source": "local"
+    "source": "local",
+    "revision": 1
   },
   {
     "description": "Revision of system object",
@@ -1362,74 +1363,12 @@
     "source": "derived"
   },
   {
-    "format": "shorttext",
+    "description": "Space order",
+    "format": "longtext",
     "hidden": true,
-    "key": "fileVariantIds",
-    "maxCount": 0,
-    "name": "Underlying file id",
-    "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "shorttext",
-    "hidden": true,
-    "key": "fileVariantPaths",
-    "maxCount": 0,
-    "name": "Underlying file id",
-    "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "shorttext",
-    "hidden": true,
-    "key": "fileVariantKeys",
-    "maxCount": 0,
-    "name": "Underlying file id",
-    "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "number",
-    "hidden": true,
-    "key": "fileVariantWidths",
-    "maxCount": 0,
-    "name": "Underlying file id",
-    "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "shorttext",
-    "hidden": true,
-    "key": "fileVariantChecksums",
-    "maxCount": 0,
-    "name": "Underlying file id",
-    "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "shorttext",
-    "hidden": true,
-    "key": "fileVariantMills",
-    "maxCount": 0,
-    "name": "Underlying file id",
-    "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "shorttext",
-    "hidden": true,
-    "key": "fileVariantOptions",
-    "maxCount": 0,
-    "name": "Underlying file id",
-    "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "shorttext",
-    "hidden": true,
-    "key": "fileSourceChecksum",
+    "key": "spaceOrder",
     "maxCount": 1,
-    "name": "Underlying file id",
+    "name": "Space order",
     "readonly": true,
     "source": "details"
   }

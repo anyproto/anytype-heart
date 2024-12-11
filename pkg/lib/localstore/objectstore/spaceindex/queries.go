@@ -287,7 +287,7 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 }
 
 func (s *dsObjectStore) performFulltextSearch(text string, spaceId string) ([]database.FulltextResult, error) {
-	ftsResults, err := s.fts.Search([]string{spaceId}, text)
+	ftsResults, err := s.fts.Search(spaceId, text)
 	if err != nil {
 		return nil, fmt.Errorf("fullText search: %w", err)
 	}

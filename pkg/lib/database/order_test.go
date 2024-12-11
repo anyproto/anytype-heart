@@ -253,6 +253,19 @@ func TestKeyOrder_Compare(t *testing.T) {
 		assertCompare(t, asc, a, b, 1)
 	})
 
+	t.Run("desc_date", func(t *testing.T) {
+		a := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Int64(date.Unix())}}
+		b := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Int64(time.Now().Unix())}}
+		asc := &KeyOrder{arena: arena,
+			Key:            "k",
+			Type:           model.BlockContentDataviewSort_Desc,
+			EmptyPlacement: model.BlockContentDataviewSort_Start,
+			IncludeTime:    false,
+			relationFormat: model.RelationFormat_date,
+		}
+		assertCompare(t, asc, a, b, 1)
+	})
+
 	t.Run("asc_nil_emptylast", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
@@ -356,6 +369,12 @@ func TestKeyOrder_Compare(t *testing.T) {
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
 		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, 1)
+	})
+	t.Run("disable_collate", func(t *testing.T) {
+		a := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeySpaceOrder.String(): pbtypes.String("--UK")}}
+		b := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeySpaceOrder.String(): pbtypes.String("--jc")}}
+		ko := &KeyOrder{disableCollator: true, arena: arena, Key: bundle.RelationKeySpaceOrder.String(), Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
+		assertCompare(t, ko, a, b, -1)
 	})
 }
 

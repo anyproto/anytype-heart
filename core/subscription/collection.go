@@ -6,11 +6,12 @@ import (
 
 	"github.com/anyproto/any-store/query"
 	"github.com/cheggaaa/mb"
+	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -123,16 +124,16 @@ func (c *collectionObserver) updateIds(ids []string) {
 	}
 }
 
-func (c *collectionObserver) FilterObject(g *domain.Details) bool {
+func (c *collectionObserver) FilterObject(g *types.Struct) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	id := g.GetString(bundle.RelationKeyId)
+	val := pbtypes.Get(g, bundle.RelationKeyId.String())
+	id := val.GetStringValue()
 	_, ok := c.idsSet[id]
 	return ok
 }
 
 // AnystoreSort called only once when subscription is created
-// TODO make collectionObserver to satify query.Filter interface
 func (c *collectionObserver) AnystoreFilter() query.Filter {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
@@ -168,7 +169,7 @@ func (c *collectionSub) onChange(ctx *opCtx) {
 	c.sortedSub.onChange(ctx)
 }
 
-func (c *collectionSub) getActiveRecords() (res []*domain.Details) {
+func (c *collectionSub) getActiveRecords() (res []*types.Struct) {
 	return c.sortedSub.getActiveRecords()
 }
 
@@ -185,7 +186,7 @@ func (c *collectionSub) close() {
 	c.sortedSub.close()
 }
 
-func (s *spaceSubscriptions) newCollectionSub(id string, spaceId string, collectionID string, keys []domain.RelationKey, filterDepIds []string, flt database.Filter, order database.Order, limit, offset int, disableDepSub bool) (*collectionSub, error) {
+func (s *spaceSubscriptions) newCollectionSub(id string, spaceId string, collectionID string, keys, filterDepIds []string, flt database.Filter, order database.Order, limit, offset int, disableDepSub bool) (*collectionSub, error) {
 	obs, err := s.newCollectionObserver(spaceId, collectionID, id)
 	if err != nil {
 		return nil, err
@@ -245,10 +246,7 @@ func (s *spaceSubscriptions) fetchEntries(ids []string) []*entry {
 		log.Error("can't query by ids:", err)
 	}
 	for _, r := range recs {
-		e := &entry{
-			id:   r.Details.GetString(bundle.RelationKeyId),
-			data: r.Details,
-		}
+		e := newEntry(pbtypes.GetString(r.Details, bundle.RelationKeyId.String()), r.Details)
 		res = append(res, e)
 	}
 	return res

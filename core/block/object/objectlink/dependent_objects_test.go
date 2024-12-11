@@ -7,12 +7,15 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/dateutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fakeConverter struct {
@@ -28,6 +31,18 @@ func (f *fakeConverter) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) 
 
 func fakeDerivedID(key string) string {
 	return fmt.Sprintf("derivedFrom(%s)", key)
+}
+
+type fakeSpaceIdResolver struct {
+	idsToSpaceIds map[string]string
+}
+
+func (r *fakeSpaceIdResolver) ResolveSpaceID(id string) (string, error) {
+	spaceId, found := r.idsToSpaceIds[id]
+	if !found {
+		return "", fmt.Errorf("not found")
+	}
+	return spaceId, nil
 }
 
 func TestState_DepSmartIdsLinks(t *testing.T) {
@@ -88,10 +103,12 @@ func TestState_DepSmartIdsLinks(t *testing.T) {
 
 func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 	// given
+	dateObject1 := dateutil.NewDateObject(time.Now(), true)
+	dateObject2 := dateutil.NewDateObject(time.Now(), false)
 	stateWithLinks := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Id:          "root",
-			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3", "dataview", "image", "song"},
+			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3", "dataview", "image", "song", "date1", "date2"},
 		}),
 		"childBlock": simple.New(&model.Block{Id: "childBlock",
 			Content: &model.BlockContentOfText{
@@ -153,6 +170,18 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 					Type:           model.BlockContentFile_Audio,
 				},
 			}}),
+		"date1": simple.New(&model.Block{Id: "childBlock3",
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: dateObject1.Id(),
+				},
+			}}),
+		"date2": simple.New(&model.Block{Id: "childBlock3",
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: dateObject2.Id(),
+				},
+			}}),
 	}).(*state.State)
 	converter := &fakeConverter{}
 
@@ -178,27 +207,31 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true})
-		assert.Len(t, objectIDs, 9)
+		assert.Len(t, objectIDs, 11)
 	})
 
 	t.Run("dataview only target option is turned on: get only target from blocks", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, DataviewBlockOnlyTarget: true})
-		assert.Len(t, objectIDs, 7)
+		assert.Len(t, objectIDs, 9)
 	})
 
 	t.Run("no images option is turned on: get ids from blocks except images", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, NoImages: true})
-		assert.Len(t, objectIDs, 8)
+		assert.Len(t, objectIDs, 10)
 	})
 
 	t.Run("blocks option and relations options are turned on: get ids from blocks and relations", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, Relations: true})
-		assert.Len(t, objectIDs, 13) // 9 links + 4 relations
+		assert.Len(t, objectIDs, 15) // 11 links + 4 relations
+	})
+
+	t.Run("date object ids are rounded to day", func(t *testing.T) {
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, RoundDateIdsToDay: true})
+		assert.Len(t, objectIDs, 10)
 	})
 }
 
-func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
-	// given
+func buildStateWithLinks() *state.State {
 	stateWithLinks := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Id:          "root",
@@ -240,7 +273,6 @@ func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 				},
 			}}),
 	}).(*state.State)
-	converter := &fakeConverter{}
 
 	relations := []*model.RelationLink{
 		{
@@ -265,11 +297,19 @@ func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 		},
 	}
 	stateWithLinks.AddRelationLinks(relations...)
-	stateWithLinks.SetDetail("relation1", domain.StringList([]string{"file"}))
-	stateWithLinks.SetDetail("relation2", domain.StringList([]string{"option1"}))
-	stateWithLinks.SetDetail("relation3", domain.StringList([]string{"option2"}))
-	stateWithLinks.SetDetail("relation4", domain.StringList([]string{"option3"}))
-	stateWithLinks.SetDetail("relation5", domain.Int64(time.Now().Unix()))
+	stateWithLinks.SetDetail("relation1", pbtypes.String("file"))
+	stateWithLinks.SetDetail("relation2", pbtypes.String("option1"))
+	stateWithLinks.SetDetail("relation3", pbtypes.String("option2"))
+	stateWithLinks.SetDetail("relation4", pbtypes.String("option3"))
+	stateWithLinks.SetDetail("relation5", pbtypes.Int64(time.Now().Unix()))
+
+	return stateWithLinks
+}
+
+func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
+	// given
+	stateWithLinks := buildStateWithLinks()
+	converter := &fakeConverter{}
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true})
@@ -307,10 +347,10 @@ func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
 		},
 	}
 	stateWithLinks.AddRelationLinks(relations...)
-	stateWithLinks.SetDetail("relation1", domain.Int64(time.Now().Unix()))
-	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate, domain.Int64(time.Now().Unix()))
-	stateWithLinks.SetDetail(bundle.RelationKeyCreator, domain.String("creator"))
-	stateWithLinks.SetDetail(bundle.RelationKeyLastModifiedBy, domain.String("lastModifiedBy"))
+	stateWithLinks.SetDetail("relation1", pbtypes.Int64(time.Now().Unix()))
+	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(time.Now().Unix()))
+	stateWithLinks.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String("creator"))
+	stateWithLinks.SetDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String("lastModifiedBy"))
 	converter := &fakeConverter{}
 
 	t.Run("details option is turned on: get ids only from details", func(t *testing.T) {
@@ -340,4 +380,40 @@ func TestState_DepSmartIdsObjectTypes(t *testing.T) {
 			fakeDerivedID(bundle.TypeKeyPage.String()),
 		}, objectIDs)
 	})
+}
+
+func TestDependentObjectIDsPerSpace(t *testing.T) {
+	// given
+	const (
+		spc1 = "space1"
+		spc2 = "space2"
+		spc3 = "space3"
+	)
+	st := buildStateWithLinks()
+	converter := &fakeConverter{}
+	resolver := &fakeSpaceIdResolver{idsToSpaceIds: map[string]string{
+		"objectID":  spc1,
+		"objectID2": spc2,
+		"objectID3": spc3,
+		"objectID4": spc1,
+		"relation1": spc1,
+		"relation2": spc1,
+		"relation3": spc1,
+		"relation4": spc1,
+		"relation5": spc1,
+		"file":      spc2,
+		// "option1": ???,
+		"option2": spc2,
+		"option3": spc3,
+		dateutil.NewDateObject(time.Now(), false).Id(): spc1,
+	}}
+
+	// when
+	ids := DependentObjectIDsPerSpace(spc1, st, converter, resolver, Flags{Blocks: true, Relations: true, Details: true})
+
+	// then
+	require.Len(t, ids, 3)
+	assert.Len(t, ids[spc1], 9)
+	assert.Len(t, ids[spc2], 3)
+	assert.Len(t, ids[spc3], 2)
 }

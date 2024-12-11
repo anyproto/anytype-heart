@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -77,15 +76,14 @@ func TestRunner_Run(t *testing.T) {
 			},
 		}
 		st.SetFileInfo(fileInfo)
-		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:        domain.String("name"),
-			bundle.RelationKeyDescription: domain.String("description"),
-			bundle.RelationKeyIconImage:   domain.String("iconImage"),
+		st.SetDetails(pbtypes.ToStruct(map[string]any{
+			bundle.RelationKeyName.String():        "name",
+			bundle.RelationKeyDescription.String(): "description",
+			bundle.RelationKeyIconImage.String():   "iconImage",
 		}))
 		err := fx.smartBlock.Apply(st)
 		require.NoError(t, err)
-		initDetails := domain.NewDetails()
-		fx.accountObject.EXPECT().CombinedDetails().Return(initDetails)
+		fx.accountObject.EXPECT().GetAnalyticsId().Return("", nil)
 		fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
 			return f(fx.accountObject)
 		})
@@ -101,9 +99,7 @@ func TestRunner_Run(t *testing.T) {
 		}).Times(1)
 		fx.accountObject.EXPECT().SetAnalyticsId("analyticsId").Return(nil)
 		fx.accountObject.EXPECT().SetProfileDetails(mock.Anything).Return(nil)
-		fx.getter.EXPECT().DoFileWaitLoad(mock.Anything, "iconImage", func(_ fileobject.FileObject) error {
-			return nil
-		}).Return(nil)
+		fx.getter.EXPECT().GetFileIdFromObjectWaitLoad(mock.Anything, "iconImage").Return(domain.FullFileId{}, nil)
 		fx.space.EXPECT().DoCtx(mock.Anything, "iconImage", mock.Anything).RunAndReturn(func(ctx2 context.Context, s string, f func(smartblock.SmartBlock) error) error {
 			return f(fx.smartBlock)
 		}).Times(1)
@@ -116,14 +112,13 @@ func TestRunner_Run(t *testing.T) {
 		fx := newFixture(t)
 		st := fx.smartBlock.NewState()
 		st.SetSetting(state.SettingsAnalyticsId, pbtypes.String("analyticsId"))
-		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:        domain.String("name"),
-			bundle.RelationKeyDescription: domain.String("description"),
+		st.SetDetails(pbtypes.ToStruct(map[string]any{
+			bundle.RelationKeyName.String():        "name",
+			bundle.RelationKeyDescription.String(): "description",
 		}))
 		err := fx.smartBlock.Apply(st)
 		require.NoError(t, err)
-		initDetails := domain.NewDetails()
-		fx.accountObject.EXPECT().CombinedDetails().Return(initDetails)
+		fx.accountObject.EXPECT().GetAnalyticsId().Return("", nil)
 		fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
 			return f(fx.accountObject)
 		})
@@ -153,17 +148,14 @@ func TestRunner_Run(t *testing.T) {
 			},
 		}
 		st.SetFileInfo(fileInfo)
-		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:        domain.String("name"),
-			bundle.RelationKeyDescription: domain.String("description"),
-			bundle.RelationKeyIconImage:   domain.String("iconImage"),
+		st.SetDetails(pbtypes.ToStruct(map[string]any{
+			bundle.RelationKeyName.String():        "name",
+			bundle.RelationKeyDescription.String(): "description",
+			bundle.RelationKeyIconImage.String():   "iconImage",
 		}))
 		err := fx.smartBlock.Apply(st)
 		require.NoError(t, err)
-		initDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName: domain.String("name"),
-		})
-		fx.accountObject.EXPECT().CombinedDetails().Return(initDetails)
+		fx.accountObject.EXPECT().GetAnalyticsId().Return("analyticsId", nil)
 		fx.accountObject.EXPECT().IsIconMigrated().Return(false, nil)
 		fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
 			return f(fx.accountObject)
@@ -175,9 +167,7 @@ func TestRunner_Run(t *testing.T) {
 		fx.space.EXPECT().DoCtx(mock.Anything, "Profile", mock.Anything).RunAndReturn(func(ctx2 context.Context, s string, f func(smartblock.SmartBlock) error) error {
 			return f(fx.smartBlock)
 		}).Times(1)
-		fx.getter.EXPECT().DoFileWaitLoad(mock.Anything, "iconImage", func(_ fileobject.FileObject) error {
-			return nil
-		}).Return(nil)
+		fx.getter.EXPECT().GetFileIdFromObjectWaitLoad(mock.Anything, "iconImage").Return(domain.FullFileId{}, nil)
 		fx.space.EXPECT().DoCtx(mock.Anything, "iconImage", mock.Anything).RunAndReturn(func(ctx2 context.Context, s string, f func(smartblock.SmartBlock) error) error {
 			return f(fx.smartBlock)
 		}).Times(1)
@@ -188,10 +178,7 @@ func TestRunner_Run(t *testing.T) {
 	})
 	t.Run("already migrated fully", func(t *testing.T) {
 		fx := newFixture(t)
-		initDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName: domain.String("name"),
-		})
-		fx.accountObject.EXPECT().CombinedDetails().Return(initDetails)
+		fx.accountObject.EXPECT().GetAnalyticsId().Return("analyticsId", nil)
 		fx.accountObject.EXPECT().IsIconMigrated().Return(true, nil)
 		fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
 			return f(fx.accountObject)

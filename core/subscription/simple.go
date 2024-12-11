@@ -37,7 +37,7 @@ func (s *simpleSub) init(entries []*entry) (err error) {
 	for _, e := range entries {
 		e = s.cache.GetOrSet(e)
 		s.set[e.id] = struct{}{}
-		e.SetSub(s.id, true, false)
+		e.SetSub(s.id, true, true)
 	}
 	if s.ds != nil {
 		s.depKeys = s.ds.depKeys(s.spaceId, s.keys)
@@ -110,7 +110,7 @@ func (s *simpleSub) onChange(ctx *opCtx) {
 		}
 	}
 	if changed && s.depSub != nil {
-		s.ds.refillSubscription(s.spaceId, ctx, s.depSub, s.getActiveEntries(), s.depKeys)
+		s.ds.refillSubscription(ctx, s.depSub, s.getActiveEntries(), s.depKeys)
 	}
 }
 

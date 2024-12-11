@@ -6,6 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/maps"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -18,17 +21,23 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 var log = logging.Logger("anytype-mw-editor-basic")
 
-func (bs *basic) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
+type detailUpdate struct {
+	key   string
+	value *types.Value
+}
+
+func (bs *basic) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
 	_, err = bs.setDetails(ctx, details, showEvent)
 	return err
 }
 
-func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
+func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
 	var keys []domain.RelationKey
 	keys, err = bs.setDetails(ctx, details, showEvent)
 	if err != nil {
@@ -41,7 +50,7 @@ func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []doma
 	return nil
 }
 
-func (bs *basic) setDetails(ctx session.Context, details []domain.Detail, showEvent bool) (updatedKeys []domain.RelationKey, err error) {
+func (bs *basic) setDetails(ctx session.Context, details []*model.Detail, showEvent bool) (updatedKeys []domain.RelationKey, err error) {
 	s := bs.NewStateCtx(ctx)
 
 	// Collect updates handling special cases. These cases could update details themselves, so we
@@ -62,36 +71,37 @@ func (bs *basic) setDetails(ctx session.Context, details []domain.Detail, showEv
 	return updatedKeys, nil
 }
 
-func (bs *basic) UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error) {
+func (bs *basic) UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error) {
 	_, _, err = bs.updateDetails(update)
 	return err
 }
 
-func (bs *basic) UpdateDetailsAndLastUsed(update func(current *domain.Details) (*domain.Details, error)) error {
-	oldDetails, newDetails, err := bs.updateDetails(update)
+func (bs *basic) UpdateDetailsAndLastUsed(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+	var oldDetails, newDetails *types.Struct
+	oldDetails, newDetails, err = bs.updateDetails(update)
 	if err != nil {
 		return err
 	}
 
-	diff := domain.StructDiff(oldDetails, newDetails)
-	if diff.Len() == 0 {
+	diff := pbtypes.StructDiff(oldDetails, newDetails)
+	if diff == nil || diff.Fields == nil {
 		return nil
 	}
 	ts := time.Now().Unix()
-	for _, key := range diff.Keys() {
-		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), key, ts)
+	for key := range diff.Fields {
+		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), domain.RelationKey(key), ts)
 	}
 	return nil
 }
 
-func (bs *basic) updateDetails(update func(current *domain.Details) (*domain.Details, error)) (oldDetails *domain.Details, newDetails *domain.Details, err error) {
+func (bs *basic) updateDetails(update func(current *types.Struct) (*types.Struct, error)) (oldDetails, newDetails *types.Struct, err error) {
 	if update == nil {
 		return nil, nil, fmt.Errorf("update function is nil")
 	}
 	s := bs.NewState()
 
 	oldDetails = s.CombinedDetails()
-	oldDetailsCopy := oldDetails.Copy()
+	oldDetailsCopy := pbtypes.CopyStruct(oldDetails, true)
 
 	newDetails, err = update(oldDetailsCopy)
 	if err != nil {
@@ -99,21 +109,21 @@ func (bs *basic) updateDetails(update func(current *domain.Details) (*domain.Det
 	}
 	s.SetDetails(newDetails)
 
-	if err = bs.addRelationLinks(s, newDetails.Keys()...); err != nil {
+	if err = bs.addRelationLinks(s, maps.Keys(newDetails.Fields)...); err != nil {
 		return nil, nil, err
 	}
 
 	return oldDetails, newDetails, bs.Apply(s)
 }
 
-func (bs *basic) collectDetailUpdates(details []domain.Detail, s *state.State) ([]domain.Detail, []domain.RelationKey) {
-	updates := make([]domain.Detail, 0, len(details))
+func (bs *basic) collectDetailUpdates(details []*model.Detail, s *state.State) ([]*detailUpdate, []domain.RelationKey) {
+	updates := make([]*detailUpdate, 0, len(details))
 	keys := make([]domain.RelationKey, 0, len(details))
 	for _, detail := range details {
 		update, err := bs.createDetailUpdate(s, detail)
 		if err == nil {
 			updates = append(updates, update)
-			keys = append(keys, update.Key)
+			keys = append(keys, domain.RelationKey(update.key))
 		} else {
 			log.Errorf("can't set detail %s: %s", detail.Key, err)
 		}
@@ -121,128 +131,129 @@ func (bs *basic) collectDetailUpdates(details []domain.Detail, s *state.State) (
 	return updates, keys
 }
 
-func applyDetailUpdates(oldDetails *domain.Details, updates []domain.Detail) *domain.Details {
-	newDetails := oldDetails.Copy()
-	if newDetails == nil {
-		newDetails = domain.NewDetails()
+func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *types.Struct {
+	newDetails := pbtypes.CopyStruct(oldDetails, false)
+	if newDetails == nil || newDetails.Fields == nil {
+		newDetails = &types.Struct{
+			Fields: make(map[string]*types.Value),
+		}
 	}
 	for _, update := range updates {
-		if update.Value.IsNull() {
-			newDetails.Delete(update.Key)
+		if update.value == nil {
+			delete(newDetails.Fields, update.key)
 		} else {
-			newDetails.Set(update.Key, update.Value)
+			newDetails.Fields[update.key] = update.value
 		}
 	}
 	return newDetails
 }
 
-// TODO make no sense?
-func (bs *basic) createDetailUpdate(st *state.State, detail domain.Detail) (domain.Detail, error) {
-	if detail.Value.Ok() {
+func (bs *basic) createDetailUpdate(st *state.State, detail *model.Detail) (*detailUpdate, error) {
+	if detail.Value != nil {
+		if err := pbtypes.ValidateValue(detail.Value); err != nil {
+			return nil, fmt.Errorf("detail %s validation error: %w", detail.Key, err)
+		}
 		if err := bs.setDetailSpecialCases(st, detail); err != nil {
-			return domain.Detail{}, fmt.Errorf("special case: %w", err)
+			return nil, fmt.Errorf("special case: %w", err)
 		}
 		if err := bs.addRelationLink(st, detail.Key); err != nil {
-			return domain.Detail{}, err
+			return nil, err
 		}
 		if err := bs.validateDetailFormat(bs.SpaceID(), detail.Key, detail.Value); err != nil {
-			return domain.Detail{}, fmt.Errorf("failed to validate relation: %w", err)
+			return nil, fmt.Errorf("failed to validate relation: %w", err)
 		}
 	}
-	return domain.Detail{
-		Key:   detail.Key,
-		Value: detail.Value,
+	return &detailUpdate{
+		key:   detail.Key,
+		value: detail.Value,
 	}, nil
 }
 
-func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v domain.Value) error {
-	if !v.Ok() {
-		return fmt.Errorf("invalid value")
-	}
-	r, err := bs.objectStore.FetchRelationByKey(key.String())
+func (bs *basic) validateDetailFormat(spaceID string, key string, v *types.Value) error {
+	r, err := bs.objectStore.FetchRelationByKey(key)
 	if err != nil {
 		return err
 	}
-	if v.IsNull() {
+	if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
 		// allow null value for any field
 		return nil
 	}
 
 	switch r.Format {
 	case model.RelationFormat_longtext, model.RelationFormat_shorttext:
-		if !v.IsString() {
-			return fmt.Errorf("incorrect type: %v instead of string", v)
+		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
 		return nil
 	case model.RelationFormat_number:
-		if !v.IsFloat64() {
-			return fmt.Errorf("incorrect type: %v instead of number", v)
+		if _, ok := v.Kind.(*types.Value_NumberValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of number", v.Kind)
 		}
 		return nil
 	case model.RelationFormat_status:
-		vals, ok := v.TryStringList()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string list", v)
+		if _, ok := v.Kind.(*types.Value_StringValue); ok {
+
+		} else if _, ok := v.Kind.(*types.Value_ListValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of list", v.Kind)
 		}
+
+		vals := pbtypes.GetStringListValue(v)
 		if len(vals) > 1 {
 			return fmt.Errorf("status should not contain more than one value")
 		}
 		return bs.validateOptions(r, vals)
 
 	case model.RelationFormat_tag:
-		vals, ok := v.TryStringList()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string list", v)
+		if _, ok := v.Kind.(*types.Value_ListValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of list", v.Kind)
 		}
+
+		vals := pbtypes.GetStringListValue(v)
 		if r.MaxCount > 0 && len(vals) > int(r.MaxCount) {
 			return fmt.Errorf("maxCount exceeded")
 		}
 
 		return bs.validateOptions(r, vals)
 	case model.RelationFormat_date:
-		if !v.IsFloat64() {
-			return fmt.Errorf("incorrect type: %v instead of number", v)
+		if _, ok := v.Kind.(*types.Value_NumberValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of number", v.Kind)
 		}
 
 		return nil
 	case model.RelationFormat_file, model.RelationFormat_object:
-		// TODO Tell clients to use []string, but now use this hack
-		if key == bundle.RelationKeyIconImage {
-			_, ok := v.TryString()
-			if ok {
-				return nil
+		switch s := v.Kind.(type) {
+		case *types.Value_StringValue:
+			return nil
+		case *types.Value_ListValue:
+			if r.MaxCount > 0 && len(s.ListValue.Values) > int(r.MaxCount) {
+				return fmt.Errorf("relation %s(%s) has maxCount exceeded", r.Key, r.Format.String())
 			}
-		}
 
-		vals, ok := v.TryStringList()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string list", v)
-		}
-		if r.MaxCount > 0 && len(vals) > int(r.MaxCount) {
-			return fmt.Errorf("relation %s(%s) has maxCount exceeded", r.Key, r.Format.String())
-		}
-
-		for i, lv := range vals {
-			if lv == "" {
-				return fmt.Errorf("empty option at index %d", i)
+			for i, lv := range s.ListValue.Values {
+				if optId, ok := lv.Kind.(*types.Value_StringValue); !ok {
+					return fmt.Errorf("incorrect list item value at index %d: %T instead of string", i, lv.Kind)
+				} else if optId.StringValue == "" {
+					return fmt.Errorf("empty option at index %d", i)
+				}
 			}
+			return nil
+		default:
+			return fmt.Errorf("incorrect type: %T instead of list/string", v.Kind)
 		}
-		return nil
-
 	case model.RelationFormat_checkbox:
-		if !v.IsBool() {
-			return fmt.Errorf("incorrect type: %v instead of bool", v)
+		if _, ok := v.Kind.(*types.Value_BoolValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of bool", v.Kind)
 		}
 
 		return nil
 	case model.RelationFormat_url:
-		val, ok := v.TryString()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string", v)
+		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
-		s := strings.TrimSpace(val)
+
+		s := strings.TrimSpace(v.GetStringValue())
 		if s != "" {
-			err := uri.ValidateURI(s)
+			err := uri.ValidateURI(strings.TrimSpace(v.GetStringValue()))
 			if err != nil {
 				return fmt.Errorf("failed to parse URL: %w", err)
 			}
@@ -253,9 +264,8 @@ func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v 
 		// }
 		return nil
 	case model.RelationFormat_email:
-		_, ok := v.TryString()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string", v)
+		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
 		// todo: revise regexp and reimplement
 		/*valid := uri.ValidateEmail(v.GetStringValue())
@@ -264,9 +274,8 @@ func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v 
 		}*/
 		return nil
 	case model.RelationFormat_phone:
-		_, ok := v.TryString()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string", v)
+		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
 
 		// todo: revise regexp and reimplement
@@ -276,9 +285,8 @@ func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v 
 		}*/
 		return nil
 	case model.RelationFormat_emoji:
-		_, ok := v.TryString()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string", v)
+		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
 
 		// check if the symbol is emoji
@@ -293,19 +301,19 @@ func (bs *basic) validateOptions(rel *relationutils.Relation, v []string) error 
 	return nil
 }
 
-func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) error {
-	if detail.Key == bundle.RelationKeyType {
+func (bs *basic) setDetailSpecialCases(st *state.State, detail *model.Detail) error {
+	if detail.Key == bundle.RelationKeyType.String() {
 		return fmt.Errorf("can't change object type directly: %w", domain.ErrValidationFailed)
 	}
-	if detail.Key == bundle.RelationKeyLayout {
+	if detail.Key == bundle.RelationKeyLayout.String() {
 		// special case when client sets the layout detail directly instead of using SetLayoutInState command
-		return bs.SetLayoutInState(st, model.ObjectTypeLayout(detail.Value.Int64()), false)
+		return bs.SetLayoutInState(st, model.ObjectTypeLayout(detail.Value.GetNumberValue()), false)
 	}
 	return nil
 }
 
-func (bs *basic) addRelationLink(st *state.State, relationKey domain.RelationKey) error {
-	relLink, err := bs.objectStore.GetRelationLink(relationKey.String())
+func (bs *basic) addRelationLink(st *state.State, relationKey string) error {
+	relLink, err := bs.objectStore.GetRelationLink(relationKey)
 	if err != nil || relLink == nil {
 		return fmt.Errorf("failed to get relation: %w", err)
 	}
@@ -314,7 +322,7 @@ func (bs *basic) addRelationLink(st *state.State, relationKey domain.RelationKey
 }
 
 // addRelationLinks is deprecated and will be removed in release 7
-func (bs *basic) addRelationLinks(st *state.State, relationKeys ...domain.RelationKey) error {
+func (bs *basic) addRelationLinks(st *state.State, relationKeys ...string) error {
 	if len(relationKeys) == 0 {
 		return nil
 	}
@@ -386,7 +394,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 	s.SetObjectTypeKeys(objectTypeKeys)
 	removeInternalFlags(s)
 
-	if bs.CombinedDetails().GetInt64(bundle.RelationKeyOrigin) == int64(model.ObjectOrigin_none) {
+	if pbtypes.GetInt64(bs.CombinedDetails(), bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
 		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), objectTypeKeys[0], time.Now().Unix())
 	}
 
@@ -406,7 +414,7 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 	if err != nil {
 		return 0, fmt.Errorf("get object by unique key: %w", err)
 	}
-	rawLayout := typeDetails.GetInt64(bundle.RelationKeyRecommendedLayout)
+	rawLayout := pbtypes.GetInt64(typeDetails.GetDetails(), bundle.RelationKeyRecommendedLayout.String())
 	return model.ObjectTypeLayout(rawLayout), nil
 }
 
@@ -418,8 +426,8 @@ func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayou
 	}
 
 	fromLayout, _ := s.Layout()
-	s.SetDetail(bundle.RelationKeyLayout, domain.Int64(toLayout))
-	if err = bs.layoutConverter.Convert(bs.Space(), s, fromLayout, toLayout); err != nil {
+	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))
+	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
 	return nil

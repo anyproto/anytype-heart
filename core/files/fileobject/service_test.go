@@ -95,6 +95,7 @@ func newFixture(t *testing.T) *fixture {
 	fileService := files.New()
 	spaceService := mock_space.NewMockService(t)
 	spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(nil, fmt.Errorf("not needed")).Maybe()
+	spaceService.EXPECT().PersonalSpaceId().Return("personalSpaceId").Maybe()
 	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
 	svc := New(testResolveRetryDelay, testResolveRetryDelay)

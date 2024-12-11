@@ -317,6 +317,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeProfilePage).Return(idsLister{Ids: []string{}}, nil)
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatDerivedObject).Return(idsLister{Ids: []string{}}, nil)
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatObject).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeSpaceView).Return(idsLister{Ids: []string{}}, nil)
 
 		space1.EXPECT().DoLockedIfNotExists("1", mock.AnythingOfType("func() error")).Return(nil)
 		space1.EXPECT().DoLockedIfNotExists("2", mock.AnythingOfType("func() error")).Return(nil)
@@ -356,6 +357,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeProfilePage).Return(idsLister{Ids: []string{}}, nil)
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatDerivedObject).Return(idsLister{Ids: []string{}}, nil)
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatObject).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeSpaceView).Return(idsLister{Ids: []string{}}, nil)
 
 		space1.EXPECT().DoLockedIfNotExists("1", mock.AnythingOfType("func() error")).Return(nil)
 		space1.EXPECT().DoLockedIfNotExists("2", mock.AnythingOfType("func() error")).Return(nil)
