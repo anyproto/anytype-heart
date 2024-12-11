@@ -22,7 +22,7 @@ import (
 func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) *pb.RpcMembershipGetStatusResponse {
 	log.Info("payments - client asked to get a subscription status", zap.Any("req", req))
 
-	ps := getService[payments.Service](mw)
+	ps := mustService[payments.Service](mw)
 	out, err := ps.GetSubscriptionStatus(ctx, req)
 
 	if err != nil {
@@ -56,7 +56,7 @@ func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMember
 }
 
 func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) *pb.RpcMembershipIsNameValidResponse {
-	ps := getService[payments.Service](mw)
+	ps := mustService[payments.Service](mw)
 	out, err := ps.IsNameValid(ctx, req)
 
 	// 1 - check the validity first (remote call #1)
@@ -94,7 +94,7 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 }
 
 func (mw *Middleware) MembershipRegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipRegisterPaymentRequestRequest) *pb.RpcMembershipRegisterPaymentRequestResponse {
-	ps := getService[payments.Service](mw)
+	ps := mustService[payments.Service](mw)
 	out, err := ps.RegisterPaymentRequest(ctx, req)
 
 	if err != nil {
@@ -132,7 +132,7 @@ func (mw *Middleware) MembershipRegisterPaymentRequest(ctx context.Context, req 
 }
 
 func (mw *Middleware) MembershipGetPortalLinkUrl(ctx context.Context, req *pb.RpcMembershipGetPortalLinkUrlRequest) *pb.RpcMembershipGetPortalLinkUrlResponse {
-	ps := getService[payments.Service](mw)
+	ps := mustService[payments.Service](mw)
 	out, err := ps.GetPortalLink(ctx, req)
 
 	if err != nil {
@@ -163,7 +163,7 @@ func (mw *Middleware) MembershipGetPortalLinkUrl(ctx context.Context, req *pb.Rp
 }
 
 func (mw *Middleware) MembershipGetVerificationEmail(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailRequest) *pb.RpcMembershipGetVerificationEmailResponse {
-	ps := getService[payments.Service](mw)
+	ps := mustService[payments.Service](mw)
 	out, err := ps.GetVerificationEmail(ctx, req)
 
 	if err != nil {
@@ -210,7 +210,7 @@ func (mw *Middleware) MembershipGetVerificationEmailStatus(ctx context.Context, 
 }
 
 func (mw *Middleware) MembershipVerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) *pb.RpcMembershipVerifyEmailCodeResponse {
-	ps := getService[payments.Service](mw)
+	ps := mustService[payments.Service](mw)
 	out, err := ps.VerifyEmailCode(ctx, req)
 
 	if err != nil {
@@ -247,7 +247,7 @@ func (mw *Middleware) MembershipVerifyEmailCode(ctx context.Context, req *pb.Rpc
 }
 
 func (mw *Middleware) MembershipFinalize(ctx context.Context, req *pb.RpcMembershipFinalizeRequest) *pb.RpcMembershipFinalizeResponse {
-	ps := getService[payments.Service](mw)
+	ps := mustService[payments.Service](mw)
 	out, err := ps.FinalizeSubscription(ctx, req)
 
 	if err != nil {
@@ -306,7 +306,7 @@ func (mw *Middleware) MembershipGetTiers(cctx context.Context, req *pb.RpcMember
 			},
 		}
 	}
-	ps, err := optService[payments.Service](mw)
+	ps, err := getService[payments.Service](mw)
 	if err != nil {
 		return onError(err)
 	}
@@ -320,7 +320,7 @@ func (mw *Middleware) MembershipGetTiers(cctx context.Context, req *pb.RpcMember
 }
 
 func (mw *Middleware) MembershipVerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) *pb.RpcMembershipVerifyAppStoreReceiptResponse {
-	ps := getService[payments.Service](mw)
+	ps := mustService[payments.Service](mw)
 	out, err := ps.VerifyAppStoreReceipt(ctx, req)
 
 	if err != nil {
