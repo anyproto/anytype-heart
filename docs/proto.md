@@ -943,10 +943,6 @@
     - [Rpc.Object.OpenBreadcrumbs.Request](#anytype-Rpc-Object-OpenBreadcrumbs-Request)
     - [Rpc.Object.OpenBreadcrumbs.Response](#anytype-Rpc-Object-OpenBreadcrumbs-Response)
     - [Rpc.Object.OpenBreadcrumbs.Response.Error](#anytype-Rpc-Object-OpenBreadcrumbs-Response-Error)
-    - [Rpc.Object.Publish](#anytype-Rpc-Object-Publish)
-    - [Rpc.Object.Publish.Request](#anytype-Rpc-Object-Publish-Request)
-    - [Rpc.Object.Publish.Response](#anytype-Rpc-Object-Publish-Response)
-    - [Rpc.Object.Publish.Response.Error](#anytype-Rpc-Object-Publish-Response-Error)
     - [Rpc.Object.Redo](#anytype-Rpc-Object-Redo)
     - [Rpc.Object.Redo.Request](#anytype-Rpc-Object-Redo-Request)
     - [Rpc.Object.Redo.Response](#anytype-Rpc-Object-Redo-Response)
@@ -1089,6 +1085,28 @@
     - [Rpc.Process.Unsubscribe.Request](#anytype-Rpc-Process-Unsubscribe-Request)
     - [Rpc.Process.Unsubscribe.Response](#anytype-Rpc-Process-Unsubscribe-Response)
     - [Rpc.Process.Unsubscribe.Response.Error](#anytype-Rpc-Process-Unsubscribe-Response-Error)
+    - [Rpc.Publishing](#anytype-Rpc-Publishing)
+    - [Rpc.Publishing.Create](#anytype-Rpc-Publishing-Create)
+    - [Rpc.Publishing.Create.Request](#anytype-Rpc-Publishing-Create-Request)
+    - [Rpc.Publishing.Create.Response](#anytype-Rpc-Publishing-Create-Response)
+    - [Rpc.Publishing.Create.Response.Error](#anytype-Rpc-Publishing-Create-Response-Error)
+    - [Rpc.Publishing.GetStatus](#anytype-Rpc-Publishing-GetStatus)
+    - [Rpc.Publishing.GetStatus.Request](#anytype-Rpc-Publishing-GetStatus-Request)
+    - [Rpc.Publishing.GetStatus.Response](#anytype-Rpc-Publishing-GetStatus-Response)
+    - [Rpc.Publishing.GetStatus.Response.Error](#anytype-Rpc-Publishing-GetStatus-Response-Error)
+    - [Rpc.Publishing.List](#anytype-Rpc-Publishing-List)
+    - [Rpc.Publishing.List.Request](#anytype-Rpc-Publishing-List-Request)
+    - [Rpc.Publishing.List.Response](#anytype-Rpc-Publishing-List-Response)
+    - [Rpc.Publishing.List.Response.Error](#anytype-Rpc-Publishing-List-Response-Error)
+    - [Rpc.Publishing.PublishState](#anytype-Rpc-Publishing-PublishState)
+    - [Rpc.Publishing.Remove](#anytype-Rpc-Publishing-Remove)
+    - [Rpc.Publishing.Remove.Request](#anytype-Rpc-Publishing-Remove-Request)
+    - [Rpc.Publishing.Remove.Response](#anytype-Rpc-Publishing-Remove-Response)
+    - [Rpc.Publishing.Remove.Response.Error](#anytype-Rpc-Publishing-Remove-Response-Error)
+    - [Rpc.Publishing.ResolveUri](#anytype-Rpc-Publishing-ResolveUri)
+    - [Rpc.Publishing.ResolveUri.Request](#anytype-Rpc-Publishing-ResolveUri-Request)
+    - [Rpc.Publishing.ResolveUri.Response](#anytype-Rpc-Publishing-ResolveUri-Response)
+    - [Rpc.Publishing.ResolveUri.Response.Error](#anytype-Rpc-Publishing-ResolveUri-Response-Error)
     - [Rpc.Relation](#anytype-Rpc-Relation)
     - [Rpc.Relation.ListRemoveOption](#anytype-Rpc-Relation-ListRemoveOption)
     - [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request)
@@ -1476,7 +1494,6 @@
     - [Rpc.Object.ListSetObjectType.Response.Error.Code](#anytype-Rpc-Object-ListSetObjectType-Response-Error-Code)
     - [Rpc.Object.Open.Response.Error.Code](#anytype-Rpc-Object-Open-Response-Error-Code)
     - [Rpc.Object.OpenBreadcrumbs.Response.Error.Code](#anytype-Rpc-Object-OpenBreadcrumbs-Response-Error-Code)
-    - [Rpc.Object.Publish.Response.Error.Code](#anytype-Rpc-Object-Publish-Response-Error-Code)
     - [Rpc.Object.Redo.Response.Error.Code](#anytype-Rpc-Object-Redo-Response-Error-Code)
     - [Rpc.Object.Search.Response.Error.Code](#anytype-Rpc-Object-Search-Response-Error-Code)
     - [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchSubscribe-Response-Error-Code)
@@ -1511,6 +1528,12 @@
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Process.Subscribe.Response.Error.Code](#anytype-Rpc-Process-Subscribe-Response-Error-Code)
     - [Rpc.Process.Unsubscribe.Response.Error.Code](#anytype-Rpc-Process-Unsubscribe-Response-Error-Code)
+    - [Rpc.Publishing.Create.Response.Error.Code](#anytype-Rpc-Publishing-Create-Response-Error-Code)
+    - [Rpc.Publishing.GetStatus.Response.Error.Code](#anytype-Rpc-Publishing-GetStatus-Response-Error-Code)
+    - [Rpc.Publishing.List.Response.Error.Code](#anytype-Rpc-Publishing-List-Response-Error-Code)
+    - [Rpc.Publishing.PublishStatus](#anytype-Rpc-Publishing-PublishStatus)
+    - [Rpc.Publishing.Remove.Response.Error.Code](#anytype-Rpc-Publishing-Remove-Response-Error-Code)
+    - [Rpc.Publishing.ResolveUri.Response.Error.Code](#anytype-Rpc-Publishing-ResolveUri-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
@@ -2015,10 +2038,14 @@
 | SpaceParticipantPermissionsChange | [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request) | [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response) |  |
 | SpaceSetOrder | [Rpc.Space.SetOrder.Request](#anytype-Rpc-Space-SetOrder-Request) | [Rpc.Space.SetOrder.Response](#anytype-Rpc-Space-SetOrder-Response) |  |
 | SpaceUnsetOrder | [Rpc.Space.UnsetOrder.Request](#anytype-Rpc-Space-UnsetOrder-Request) | [Rpc.Space.UnsetOrder.Response](#anytype-Rpc-Space-UnsetOrder-Response) |  |
+| PublishingCreate | [Rpc.Publishing.Create.Request](#anytype-Rpc-Publishing-Create-Request) | [Rpc.Publishing.Create.Response](#anytype-Rpc-Publishing-Create-Response) | Publishing *** |
+| PublishingRemove | [Rpc.Publishing.Remove.Request](#anytype-Rpc-Publishing-Remove-Request) | [Rpc.Publishing.Remove.Response](#anytype-Rpc-Publishing-Remove-Response) |  |
+| PublishingList | [Rpc.Publishing.List.Request](#anytype-Rpc-Publishing-List-Request) | [Rpc.Publishing.List.Response](#anytype-Rpc-Publishing-List-Response) |  |
+| PublishingResolveUri | [Rpc.Publishing.ResolveUri.Request](#anytype-Rpc-Publishing-ResolveUri-Request) | [Rpc.Publishing.ResolveUri.Response](#anytype-Rpc-Publishing-ResolveUri-Response) |  |
+| PublishingGetStatus | [Rpc.Publishing.GetStatus.Request](#anytype-Rpc-Publishing-GetStatus-Request) | [Rpc.Publishing.GetStatus.Response](#anytype-Rpc-Publishing-GetStatus-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
-| ObjectPublish | [Rpc.Object.Publish.Request](#anytype-Rpc-Object-Publish-Request) | [Rpc.Object.Publish.Response](#anytype-Rpc-Object-Publish-Response) |  |
 | ObjectCreate | [Rpc.Object.Create.Request](#anytype-Rpc-Object-Create-Request) | [Rpc.Object.Create.Response](#anytype-Rpc-Object-Create-Response) | ObjectCreate just creates the new page, without adding the link to it from some other page |
 | ObjectCreateBookmark | [Rpc.Object.CreateBookmark.Request](#anytype-Rpc-Object-CreateBookmark-Request) | [Rpc.Object.CreateBookmark.Response](#anytype-Rpc-Object-CreateBookmark-Response) |  |
 | ObjectCreateFromUrl | [Rpc.Object.CreateFromUrl.Request](#anytype-Rpc-Object-CreateFromUrl-Request) | [Rpc.Object.CreateFromUrl.Response](#anytype-Rpc-Object-CreateFromUrl-Response) |  |
@@ -15923,65 +15950,6 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 
 
-<a name="anytype-Rpc-Object-Publish"></a>
-
-### Rpc.Object.Publish
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-Publish-Request"></a>
-
-### Rpc.Object.Publish.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  |  |
-| objectId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-Publish-Response"></a>
-
-### Rpc.Object.Publish.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Object.Publish.Response.Error](#anytype-Rpc-Object-Publish-Response-Error) |  |  |
-| publishCid | [string](#string) |  |  |
-| publishFileKey | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-Publish-Response-Error"></a>
-
-### Rpc.Object.Publish.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Object.Publish.Response.Error.Code](#anytype-Rpc-Object-Publish-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Object-Redo"></a>
 
 ### Rpc.Object.Redo
@@ -18034,6 +18002,325 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Process.Unsubscribe.Response.Error.Code](#anytype-Rpc-Process-Unsubscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing"></a>
+
+### Rpc.Publishing
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-Create"></a>
+
+### Rpc.Publishing.Create
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-Create-Request"></a>
+
+### Rpc.Publishing.Create.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
+| uri | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-Create-Response"></a>
+
+### Rpc.Publishing.Create.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Publishing.Create.Response.Error](#anytype-Rpc-Publishing-Create-Response-Error) |  |  |
+| uri | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-Create-Response-Error"></a>
+
+### Rpc.Publishing.Create.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Publishing.Create.Response.Error.Code](#anytype-Rpc-Publishing-Create-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-GetStatus"></a>
+
+### Rpc.Publishing.GetStatus
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-GetStatus-Request"></a>
+
+### Rpc.Publishing.GetStatus.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-GetStatus-Response"></a>
+
+### Rpc.Publishing.GetStatus.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Publishing.GetStatus.Response.Error](#anytype-Rpc-Publishing-GetStatus-Response-Error) |  |  |
+| publish | [Rpc.Publishing.PublishState](#anytype-Rpc-Publishing-PublishState) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-GetStatus-Response-Error"></a>
+
+### Rpc.Publishing.GetStatus.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Publishing.GetStatus.Response.Error.Code](#anytype-Rpc-Publishing-GetStatus-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-List"></a>
+
+### Rpc.Publishing.List
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-List-Request"></a>
+
+### Rpc.Publishing.List.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-List-Response"></a>
+
+### Rpc.Publishing.List.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Publishing.List.Response.Error](#anytype-Rpc-Publishing-List-Response-Error) |  |  |
+| publishes | [Rpc.Publishing.PublishState](#anytype-Rpc-Publishing-PublishState) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-List-Response-Error"></a>
+
+### Rpc.Publishing.List.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Publishing.List.Response.Error.Code](#anytype-Rpc-Publishing-List-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-PublishState"></a>
+
+### Rpc.Publishing.PublishState
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
+| uri | [string](#string) |  |  |
+| status | [Rpc.Publishing.PublishStatus](#anytype-Rpc-Publishing-PublishStatus) |  |  |
+| version | [string](#string) |  |  |
+| timestamp | [int64](#int64) |  |  |
+| size | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-Remove"></a>
+
+### Rpc.Publishing.Remove
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-Remove-Request"></a>
+
+### Rpc.Publishing.Remove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-Remove-Response"></a>
+
+### Rpc.Publishing.Remove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Publishing.Remove.Response.Error](#anytype-Rpc-Publishing-Remove-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-Remove-Response-Error"></a>
+
+### Rpc.Publishing.Remove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Publishing.Remove.Response.Error.Code](#anytype-Rpc-Publishing-Remove-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-ResolveUri"></a>
+
+### Rpc.Publishing.ResolveUri
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-ResolveUri-Request"></a>
+
+### Rpc.Publishing.ResolveUri.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| uri | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-ResolveUri-Response"></a>
+
+### Rpc.Publishing.ResolveUri.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Publishing.ResolveUri.Response.Error](#anytype-Rpc-Publishing-ResolveUri-Response-Error) |  |  |
+| publish | [Rpc.Publishing.PublishState](#anytype-Rpc-Publishing-PublishState) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Publishing-ResolveUri-Response-Error"></a>
+
+### Rpc.Publishing.ResolveUri.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Publishing.ResolveUri.Response.Error.Code](#anytype-Rpc-Publishing-ResolveUri-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -23434,21 +23721,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Object-Publish-Response-Error-Code"></a>
-
-### Rpc.Object.Publish.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NO_SUCH_OBJECT | 101 |  |
-| NO_SUCH_SPACE | 102 |  |
-
-
-
 <a name="anytype-Rpc-Object-Redo-Response-Error-Code"></a>
 
 ### Rpc.Object.Redo.Response.Error.Code
@@ -23895,6 +24167,91 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Publishing-Create-Response-Error-Code"></a>
+
+### Rpc.Publishing.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_OBJECT | 101 |  |
+| NO_SUCH_SPACE | 102 |  |
+
+
+
+<a name="anytype-Rpc-Publishing-GetStatus-Response-Error-Code"></a>
+
+### Rpc.Publishing.GetStatus.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_OBJECT | 101 |  |
+| NO_SUCH_SPACE | 102 |  |
+
+
+
+<a name="anytype-Rpc-Publishing-List-Response-Error-Code"></a>
+
+### Rpc.Publishing.List.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 102 |  |
+
+
+
+<a name="anytype-Rpc-Publishing-PublishStatus"></a>
+
+### Rpc.Publishing.PublishStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| PublishStatusCreated | 0 | PublishStatusCreated means publish is created but not uploaded yet |
+| PublishStatusPublished | 1 | PublishStatusCreated means publish is active |
+
+
+
+<a name="anytype-Rpc-Publishing-Remove-Response-Error-Code"></a>
+
+### Rpc.Publishing.Remove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_OBJECT | 101 |  |
+| NO_SUCH_SPACE | 102 |  |
+
+
+
+<a name="anytype-Rpc-Publishing-ResolveUri-Response-Error-Code"></a>
+
+### Rpc.Publishing.ResolveUri.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_URI | 101 |  |
 
 
 

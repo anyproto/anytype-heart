@@ -66,14 +66,13 @@ service ClientCommands {
     rpc SpaceSetOrder (anytype.Rpc.Space.SetOrder.Request) returns (anytype.Rpc.Space.SetOrder.Response);
     rpc SpaceUnsetOrder (anytype.Rpc.Space.UnsetOrder.Request) returns (anytype.Rpc.Space.UnsetOrder.Response);
 
-    // Publish
+    // Publishing
     // ***
-    // How client keeps track of publishings locally?
-    rpc PublishObject (anytype.Rpc.Publish.Create.Request) returns (anytype.Rpc.Publish.Create.Response)
-    rpc UnpublishObject (anytype.Rpc.Publish.Remove.Request) returns (anytype.Rpc.Publish.Remove.Response)
-    rpc ListPublishing (anytype.Rpc.Publish.List.Request) returns (anytype.Rpc.Publish.List.Response)
-    rpc ResolvePublishUri (anytype.Rpc.Publish.Resolve.Request) returns (anytype.Rpc.Publish.Resolve.Response)
-    rpc GetPublishingStatus (anytype.Rpc.Publish.Status.Request) returns (anytype.Rpc.Publish.Status.Response)
+    rpc PublishingCreate (anytype.Rpc.Publishing.Create.Request) returns (anytype.Rpc.Publishing.Create.Response);
+    rpc PublishingRemove (anytype.Rpc.Publishing.Remove.Request) returns (anytype.Rpc.Publishing.Remove.Response);
+    rpc PublishingList (anytype.Rpc.Publishing.List.Request) returns (anytype.Rpc.Publishing.List.Response);
+    rpc PublishingResolveUri (anytype.Rpc.Publishing.ResolveUri.Request) returns (anytype.Rpc.Publishing.ResolveUri.Response);
+    rpc PublishingGetStatus (anytype.Rpc.Publishing.GetStatus.Request) returns (anytype.Rpc.Publishing.GetStatus.Response);
 
     // Object
     // ***
