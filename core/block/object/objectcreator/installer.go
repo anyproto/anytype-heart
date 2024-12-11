@@ -256,6 +256,9 @@ func (s *service) prepareDetailsForInstallingObject(
 	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 
+	// we should delete old createdDate as it belongs to source object from marketplace
+	delete(details.Fields, bundle.RelationKeyCreatedDate.String())
+
 	if isNewSpace {
 		lastused.SetLastUsedDateForInitialObjectType(sourceId, details)
 	}
