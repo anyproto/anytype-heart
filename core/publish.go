@@ -7,7 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-func (mw *Middleware) ObjectPublish(ctx context.Context, req *pb.RpcObjectPublishRequest) *pb.RpcObjectPublishResponse {
+func (mw *Middleware) PublishObject(ctx context.Context, req *pb.RpcObjectPublishRequest) *pb.RpcObjectPublishResponse {
 	publishService := getService[publish.Service](mw)
 
 	res, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId)
@@ -24,5 +24,21 @@ func (mw *Middleware) ObjectPublish(ctx context.Context, req *pb.RpcObjectPublis
 		PublishFileKey: res.Key,
 	}
 
+	return r
+}
+
+func (mw *Middleware) UnpublishObject(ctx context.Context, req *pb.RpcObjectPublishRequest) *pb.RpcObjectPublishResponse {
+	return r
+}
+
+func (mw *Middleware) ListPublishings(ctx context.Context, req *pb.RpcObjectPublishRequest) *pb.RpcObjectPublishResponse {
+	return r
+}
+
+func (mw *Middleware) ResolvePublishUri(ctx context.Context, req *pb.RpcObjectPublishRequest) *pb.RpcObjectPublishResponse {
+	return r
+}
+
+func (mw *Middleware) GetPublishStatus(ctx context.Context, req *pb.RpcObjectPublishRequest) *pb.RpcObjectPublishResponse {
 	return r
 }
