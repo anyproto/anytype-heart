@@ -82,6 +82,15 @@ func getService[T any](mw *Middleware) T {
 	return app.MustComponent[T](a)
 }
 
+func optService[T any](mw *Middleware) (T, error) {
+	var empty T
+	a := mw.applicationService.GetApp()
+	if a == nil {
+		return empty, ErrNotLoggedIn
+	}
+	return app.ShouldComponent[T](a)
+}
+
 func requireApp(a *app.App) {
 	if a == nil {
 		panic(ErrNotLoggedIn)

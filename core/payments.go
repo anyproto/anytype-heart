@@ -282,11 +282,8 @@ func (mw *Middleware) MembershipFinalize(ctx context.Context, req *pb.RpcMembers
 	return out
 }
 
-func (mw *Middleware) MembershipGetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) *pb.RpcMembershipGetTiersResponse {
-	ps := getService[payments.Service](mw)
-	out, err := ps.GetTiers(ctx, req)
-
-	if err != nil {
+func (mw *Middleware) MembershipGetTiers(cctx context.Context, req *pb.RpcMembershipGetTiersRequest) *pb.RpcMembershipGetTiersResponse {
+	onError := func(err error) *pb.RpcMembershipGetTiersResponse {
 		code := mapErrorCode(err,
 			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipGetTiersResponseError_NOT_LOGGED_IN),
 			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipGetTiersResponseError_NOT_LOGGED_IN),
@@ -308,6 +305,15 @@ func (mw *Middleware) MembershipGetTiers(ctx context.Context, req *pb.RpcMembers
 				Description: errStr,
 			},
 		}
+	}
+	ps, err := optService[payments.Service](mw)
+	if err != nil {
+		return onError(err)
+	}
+	out, err := ps.GetTiers(cctx, req)
+
+	if err != nil {
+		return onError(err)
 	}
 
 	return out
