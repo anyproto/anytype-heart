@@ -310,6 +310,7 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 }
 
 func (s *service) Publish(ctx context.Context, spaceId, pageId string) (res PublishResult, err error) {
+	log.Info("Publish called", zap.String("pageId", pageId))
 	res, err = s.publishUfs(ctx, spaceId, pageId)
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
