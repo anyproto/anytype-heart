@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
@@ -39,6 +40,10 @@ type (
 	bookmarkService interface {
 		CreateObjectAndFetch(ctx context.Context, spaceId string, details *types.Struct) (objectID string, newDetails *types.Struct, err error)
 	}
+
+	objectArchiver interface {
+		SetIsArchived(objectId string, isArchived bool) error
+	}
 )
 
 const CName = "objectCreator"
@@ -64,6 +69,7 @@ type service struct {
 	spaceService      space.Service
 	templateService   templateService
 	lastUsedUpdater   lastused.ObjectUsageUpdater
+	archiver          objectArchiver
 }
 
 func NewCreator() Service {
@@ -77,6 +83,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[templateService](a)
 	s.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
+	s.archiver = app.MustComponent[objectArchiver](a)
 	return nil
 }
 
@@ -183,11 +190,8 @@ func (s *service) createObjectFromTemplate(
 
 // buildDateObject does not create real date object. It just builds date object details
 func buildDateObject(space clientspace.Space, details *types.Struct) (string, *types.Struct, error) {
-	name := pbtypes.GetString(details, bundle.RelationKeyName.String())
-	id, err := dateutil.DateNameToId(name)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to build date object, as its name is invalid: %w", err)
-	}
+	ts := pbtypes.GetInt64(details, bundle.RelationKeyTimestamp.String())
+	dateObject := dateutil.NewDateObject(time.Unix(ts, 0), false)
 
 	typeId, err := space.GetTypeIdByKey(context.Background(), bundle.TypeKeyDate)
 	if err != nil {
@@ -196,7 +200,7 @@ func buildDateObject(space clientspace.Space, details *types.Struct) (string, *t
 
 	dateSource := source.NewDate(source.DateSourceParams{
 		Id: domain.FullID{
-			ObjectID: id,
+			ObjectID: dateObject.Id(),
 			SpaceID:  space.Id(),
 		},
 		DateObjectTypeId: typeId,
@@ -208,5 +212,5 @@ func buildDateObject(space clientspace.Space, details *types.Struct) (string, *t
 	}
 
 	details, err = detailsGetter.DetailsFromId()
-	return id, details, err
+	return dateObject.Id(), details, err
 }

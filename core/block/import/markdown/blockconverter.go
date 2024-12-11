@@ -56,7 +56,7 @@ func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertE
 	}
 	fileInfo := m.getFileInfo(importSource, allErrors)
 	for name, file := range fileInfo {
-		m.processBlocks(name, file, fileInfo)
+		m.processBlocks(name, file, fileInfo, importSource)
 		for _, b := range file.ParsedBlocks {
 			m.processFileBlock(b, importSource, importPath)
 		}
@@ -89,72 +89,76 @@ func (m *mdConverter) fillFilesInfo(importSource source.Source, fileInfo map[str
 	return nil
 }
 
-func (m *mdConverter) processBlocks(shortPath string, file *FileInfo, files map[string]*FileInfo) {
+func (m *mdConverter) processBlocks(shortPath string, file *FileInfo, files map[string]*FileInfo, importSource source.Source) {
 	for _, block := range file.ParsedBlocks {
-		m.processTextBlock(block, files)
+		m.processTextBlock(block, files, importSource)
 	}
 	m.processLinkBlock(shortPath, file, files)
 }
 
-func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*FileInfo) {
+func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*FileInfo, importSource source.Source) {
 	txt := block.GetText()
 	if txt != nil && txt.Marks != nil {
 		if len(txt.Marks.Marks) == 1 && txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
-			m.handleSingleMark(block, files)
+			m.handleSingleMark(block, files, importSource)
 		} else {
-			m.handleMultipleMarks(block, files)
+			m.handleMultipleMarks(block, files, importSource)
 		}
 	}
 }
 
-func (m *mdConverter) handleSingleMark(block *model.Block, files map[string]*FileInfo) {
+func (m *mdConverter) handleSingleMark(block *model.Block, files map[string]*FileInfo, importSource source.Source) {
 	txt := block.GetText()
-	link := txt.Marks.Marks[0].Param
 	wholeLineLink := m.isWholeLineLink(txt.Text, txt.Marks.Marks[0])
-	ext := filepath.Ext(link)
+	ext := filepath.Ext(txt.Marks.Marks[0].Param)
+	link := m.getOriginalName(txt.Marks.Marks[0].Param, importSource)
 	if file := files[link]; file != nil {
 		if strings.EqualFold(ext, ".csv") {
+			txt.Marks.Marks[0].Param = link
 			m.processCSVFileLink(block, files, link, wholeLineLink)
 			return
 		}
 		if strings.EqualFold(ext, ".md") {
 			// only convert if this is the only link in the row
+			txt.Marks.Marks[0].Param = link
 			m.convertToAnytypeLinkBlock(block, wholeLineLink)
 		} else {
 			block.Content = anymark.ConvertTextToFile(txt.Marks.Marks[0].Param)
 		}
 		file.HasInboundLinks = true
 	} else if wholeLineLink {
-		block.Content = m.convertTextToBookmark(txt.Marks.Marks[0].Param)
+		m.convertTextToBookmark(txt.Marks.Marks[0].Param, block)
 	}
 }
 
-func (m *mdConverter) handleMultipleMarks(block *model.Block, files map[string]*FileInfo) {
+func (m *mdConverter) handleMultipleMarks(block *model.Block, files map[string]*FileInfo, importSource source.Source) {
 	txt := block.GetText()
 	for _, mark := range txt.Marks.Marks {
 		if mark.Type == model.BlockContentTextMark_Link {
-			if stop := m.handleSingleLinkMark(block, files, mark, txt); stop {
+			if stop := m.handleSingleLinkMark(block, files, mark, txt, importSource); stop {
 				return
 			}
 		}
 	}
 }
 
-func (m *mdConverter) handleSingleLinkMark(block *model.Block, files map[string]*FileInfo, mark *model.BlockContentTextMark, txt *model.BlockContentText) bool {
-	link := mark.Param
+func (m *mdConverter) handleSingleLinkMark(block *model.Block, files map[string]*FileInfo, mark *model.BlockContentTextMark, txt *model.BlockContentText, importSource source.Source) bool {
+	isWholeLink := m.isWholeLineLink(txt.Text, mark)
+	link := m.getOriginalName(mark.Param, importSource)
 	ext := filepath.Ext(link)
 	if file := files[link]; file != nil {
 		file.HasInboundLinks = true
 		if strings.EqualFold(ext, ".md") || strings.EqualFold(ext, ".csv") {
 			mark.Type = model.BlockContentTextMark_Mention
+			mark.Param = link
 			return false
 		}
-		if m.isWholeLineLink(txt.Text, mark) {
+		if isWholeLink {
 			block.Content = anymark.ConvertTextToFile(mark.Param)
 			return true
 		}
-	} else if m.isWholeLineLink(txt.Text, mark) {
-		block.Content = m.convertTextToBookmark(mark.Param)
+	} else if isWholeLink {
+		m.convertTextToBookmark(mark.Param, block)
 		return true
 	}
 	return false
@@ -238,12 +242,12 @@ func (m *mdConverter) convertTextToPageLink(block *model.Block) {
 	}
 }
 
-func (m *mdConverter) convertTextToBookmark(url string) *model.BlockContentOfBookmark {
+func (m *mdConverter) convertTextToBookmark(url string, block *model.Block) {
 	if err := uri.ValidateURI(url); err != nil {
-		return nil
+		return
 	}
 
-	return &model.BlockContentOfBookmark{
+	block.Content = &model.BlockContentOfBookmark{
 		Bookmark: &model.BlockContentBookmark{
 			Url: url,
 		},
@@ -274,4 +278,11 @@ func (m *mdConverter) createBlocksFromFile(importSource source.Source, filePath 
 		}
 	}
 	return nil
+}
+
+func (m *mdConverter) getOriginalName(link string, importSource source.Source) string {
+	if originalFileNameGetter, ok := importSource.(source.OriginalFileNameGetter); ok {
+		return originalFileNameGetter.GetFileOriginalName(link)
+	}
+	return link
 }

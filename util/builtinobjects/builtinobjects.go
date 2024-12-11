@@ -64,20 +64,8 @@ type widgetParameters struct {
 //go:embed data/get_started.zip
 var getStartedZip []byte
 
-//go:embed data/personal_projects.zip
-var personalProjectsZip []byte
-
-//go:embed data/knowledge_base.zip
-var knowledgeBaseZip []byte
-
-//go:embed data/notes_diary.zip
-var notesDiaryZip []byte
-
 //go:embed data/migration_dashboard.zip
 var migrationDashboardZip []byte
-
-//go:embed data/strategic_writing.zip
-var strategicWritingZip []byte
 
 //go:embed data/empty.zip
 var emptyZip []byte
@@ -86,49 +74,20 @@ var (
 	log = logging.Logger("anytype-mw-builtinobjects")
 
 	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
-		pb.RpcObjectImportUseCaseRequest_GET_STARTED:       getStartedZip,
-		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: personalProjectsZip,
-		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    knowledgeBaseZip,
-		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       notesDiaryZip,
-		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: strategicWritingZip,
-		pb.RpcObjectImportUseCaseRequest_EMPTY:             emptyZip,
+		pb.RpcObjectImportUseCaseRequest_GET_STARTED: getStartedZip,
+		pb.RpcObjectImportUseCaseRequest_EMPTY:       emptyZip,
 	}
 
 	// TODO: GO-2009 Now we need to create widgets by hands, widget import is not implemented yet
 	widgetParams = map[pb.RpcObjectImportUseCaseRequestUseCase][]widgetParameters{
 		pb.RpcObjectImportUseCaseRequest_EMPTY: {
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
+			{model.BlockContentWidget_Link, "bafyreic75ulgm2yz426hjwdjkzqw3kafniknki7qkhufqgrspmxzdppixa", "", true},
 		},
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
-			{model.BlockContentWidget_Link, "bafyreia4uol63iev5ywhiqdqf4trh44ep2j27rlrvmypd65adg4ntnihn4", "", true},
-		},
-		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
-			{model.BlockContentWidget_CompactList, "bafyreibdfkwnnj6xndyzazkm2gersm5fk3yg2274d5hqr6drurncxiyeoi", "", true}, // Tasks
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
-		},
-		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE: {
-			{model.BlockContentWidget_Link, "bafyreiaszkibjyfls2og3ztgxfllqlom422y5ic64z7w3k3oio6f3pc2ia", "", true},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
-		},
-		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY: {
-			{model.BlockContentWidget_Link, "bafyreiexkrata5ofvswxyisuumukmkyerdwv3xa34qkxpgx6jtl7waah34", "", true},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
-		},
-		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: {
-			{model.BlockContentWidget_List, "bafyreido5lhh4vntmlxh2hwn4b3xfmz53yw5rrfmcl22cdb4phywhjlcdu", "f984ddde-eb13-497e-809a-2b9a96fd3503", true}, // Task tracker
-			{model.BlockContentWidget_List, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_Tree, "bafyreicblsgojhhlfduz7ek4g4jh6ejy24fle2q5xjbue5kkcd7ifbc4ki", "", true}, // My Home
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
-			{model.BlockContentWidget_Link, "bafyreiaoeaxv4dkw4xgdcgubetieyuqlf24q2kg5pdysz4prun6qg5v2ru", "", true}, // About Anytype
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
+			{model.BlockContentWidget_Link, "bafyreiccjf5vbijsmr55ypsnnzltmcvl4n63g73twwxqnfkn5usoq2iqyi", "", true},
+			{model.BlockContentWidget_View, "bafyreifjgm3iy4o6o4zyf33ld3dnweo2grhvakvr7psn5twjge3xo3627m", "66f6775526909528d002c932", true},
+			{model.BlockContentWidget_View, "bafyreihrzztw2xcmxxz5uz5xodncby23xdacalcek2dtxxu77yn6wvzsq4", "6182a74fcae0300221f9f207", true},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecentOpen, "", false},
 		},
 	}
 )

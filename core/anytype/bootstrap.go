@@ -47,6 +47,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/block/object/idderiver/idderiverimpl"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
@@ -82,6 +83,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/publish"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/spaceview"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
@@ -260,6 +262,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
+		Register(idderiverimpl.New()).
 		Register(deletioncontroller.New()).
 		Register(invitestore.New()).
 		Register(filesync.New()).
@@ -316,7 +319,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(payments.New()).
 		Register(paymentscache.New()).
 		Register(peerstatus.New()).
-		Register(lastused.New())
+		Register(lastused.New()).
+		Register(spaceview.New())
 }
 
 func MiddlewareVersion() string {

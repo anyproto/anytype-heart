@@ -19,7 +19,7 @@ func Test_AutoBatcher(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 0, int(docsCount))
 
-	batcher := ft.NewAutoBatcher(30, 100000)
+	batcher := ft.NewAutoBatcher()
 	for i := 0; i < 32; i++ {
 		err = batcher.UpdateDoc(
 			SearchDoc{

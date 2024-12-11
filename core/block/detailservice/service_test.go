@@ -217,6 +217,31 @@ func TestService_ModifyDetailsList(t *testing.T) {
 		// then
 		assert.Error(t, err)
 	})
+
+	t.Run("set false value", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		object := smarttest.New("obj1")
+		err := object.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyDone.String(), Value: pbtypes.Bool(true)}}, false)
+		require.NoError(t, err)
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+			return object, nil
+		})
+		doneSet := []*pb.RpcObjectListModifyDetailValuesRequestOperation{{
+			RelationKey: bundle.RelationKeyDone.String(),
+			Set:         pbtypes.Bool(false),
+		}}
+
+		// when
+		err = fx.ModifyDetailsList(&pb.RpcObjectListModifyDetailValuesRequest{
+			ObjectIds:  []string{"obj1"},
+			Operations: doneSet,
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.False(t, pbtypes.GetBool(object.Details(), bundle.RelationKeyDone.String()))
+	})
 }
 
 func TestService_SetSpaceInfo(t *testing.T) {
@@ -476,6 +501,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		sb := smarttest.New(binId)
 		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
 		fx.store.AddObjects(t, spaceId, objects)
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
 				return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil

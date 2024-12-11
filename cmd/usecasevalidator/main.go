@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -208,7 +209,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			continue
 		}
 
-		if strings.HasPrefix(f.Name, "files") || f.FileInfo().IsDir() {
+		if (strings.HasPrefix(f.Name, export.Files) && !strings.HasPrefix(f.Name, export.FilesObjects)) || f.FileInfo().IsDir() {
 			continue
 		}
 
@@ -471,6 +472,7 @@ func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
 			bundle.RelationKeySourceFilePath.String(),
 			bundle.RelationKeyLinks.String(),
 			bundle.RelationKeyBacklinks.String(),
+			bundle.RelationKeyMentions.String(),
 			bundle.RelationKeyWorkspaceId.String(),
 			bundle.RelationKeyIdentityProfileLink.String(),
 			bundle.RelationKeyAddedDate.String(),

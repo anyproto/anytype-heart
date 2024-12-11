@@ -113,10 +113,7 @@ func TestSubscription_Change(t *testing.T) {
 		}
 		require.NoError(t, sub.init(genEntries(9, false)))
 		ctx := &opCtx{c: sub.cache}
-		ctx.entries = append(ctx.entries, &entry{
-			id:   "id4",
-			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(6)}},
-		})
+		ctx.entries = append(ctx.entries, newEntry("id4", &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(6)}}))
 		sub.onChange(ctx)
 		assertCtxPosition(t, ctx, "id5", "")
 		assertCtxChange(t, ctx, "id4")
