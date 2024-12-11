@@ -82,7 +82,7 @@ func TestService_Search(t *testing.T) {
 		require.NoError(t, err)
 
 		// Wait enough time to flush pending updates to subscriptions handler
-		time.Sleep(batchTime + time.Millisecond)
+		time.Sleep(batchTime + 3*time.Millisecond)
 
 		spaceSub.onChange([]*entry{
 			newEntry("1", &types.Struct{Fields: map[string]*types.Value{
