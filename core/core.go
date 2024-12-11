@@ -88,7 +88,7 @@ func getService[T any](mw *Middleware) (T, error) {
 	if a == nil {
 		return empty, ErrNotLoggedIn
 	}
-	return app.ShouldComponent[T](a)
+	return app.GetComponent[T](a)
 }
 
 func requireApp(a *app.App) {
