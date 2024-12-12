@@ -344,6 +344,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId st
 	if err != nil {
 		return
 	}
+	defer os.RemoveAll(exportPath)
 
 	// go through dir dirs
 	// if files/, copy them to `publishTmpFolder`
@@ -360,6 +361,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId st
 	// then, add this `index.json` in `publishTmpFolder`
 
 	tempPublishDir := filepath.Join(os.TempDir(), uniqName())
+	defer os.RemoveAll(tempPublishDir)
 
 	if err := os.MkdirAll(tempPublishDir, 0777); err != nil {
 		return err
@@ -383,6 +385,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId st
 				if err != nil {
 					return
 				}
+
 				continue
 			}
 
@@ -421,9 +424,6 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId st
 			return
 		}
 
-		// TODO: gzip file
-		// TODO: remove tmp publish, export folders
-
 		var jsonData []byte
 		jsonData, err = json.Marshal(&uberSnapshot)
 		if err != nil {
@@ -449,8 +449,13 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId st
 
 	}
 
-	// should call drpcClient.uploadDir instead
+	// TODO: should call drpcClient.uploadDir instead
 	log.Error("tempPublishDir", zap.String("tempPublishDir", tempPublishDir))
+	err = os.CopyFS(filepath.Join(os.TempDir(), "anytype-web-published", uniqName()), os.DirFS(tempPublishDir))
+	if err != nil {
+		return
+	}
+
 	return nil
 
 }
