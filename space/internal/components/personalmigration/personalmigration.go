@@ -90,7 +90,11 @@ func (r *runner) migrateProfile() (hasIcon bool, oldIcon string, err error) {
 	defer close(r.waitMigrateProfile)
 	shouldMigrateProfile := true
 	err = r.techSpace.DoAccountObject(r.ctx, func(accountObject techspace.AccountObject) error {
-		if accountObject.CombinedDetails().GetFields()[bundle.RelationKeyName.String()].GetStringValue() != "" {
+		res, err := accountObject.GetAnalyticsId()
+		if err != nil {
+			return err
+		}
+		if res != "" {
 			shouldMigrateProfile = false
 			hasIcon, err = accountObject.IsIconMigrated()
 			return err

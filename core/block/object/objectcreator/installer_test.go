@@ -3,9 +3,16 @@ package objectcreator
 import (
 	"testing"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
@@ -71,4 +78,65 @@ func TestInstaller_queryDeletedObjects(t *testing.T) {
 	for _, det := range records {
 		assert.Contains(t, validObjectIds, pbtypes.GetString(det.Details, bundle.RelationKeyId.String()))
 	}
+}
+
+func TestInstaller_reinstallObject(t *testing.T) {
+	t.Run("reinstall archived object", func(t *testing.T) {
+		// given
+		sourceDetails := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyId.String():      pbtypes.String(bundle.TypeKeyProject.BundledURL()),
+			bundle.RelationKeySpaceId.String(): pbtypes.String(addr.AnytypeMarketplaceWorkspace),
+			bundle.RelationKeyName.String():    pbtypes.String(bundle.TypeKeyProject.String()),
+		}}
+
+		sourceObject := smarttest.New(bundle.TypeKeyProject.BundledURL())
+		st := sourceObject.NewState()
+		st.SetDetails(sourceDetails)
+		require.NoError(t, sourceObject.Apply(st))
+
+		market := mock_clientspace.NewMockSpace(t)
+		market.EXPECT().Id().Return(addr.AnytypeMarketplaceWorkspace).Maybe()
+		market.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, apply func(smartblock.SmartBlock) error) error {
+			assert.Equal(t, id, bundle.TypeKeyProject.BundledURL())
+			return apply(sourceObject)
+		})
+
+		oldDetails := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyId.String():           pbtypes.String(bundle.TypeKeyProject.URL()),
+			bundle.RelationKeySpaceId.String():      pbtypes.String(spaceId),
+			bundle.RelationKeySourceObject.String(): pbtypes.String(bundle.TypeKeyProject.BundledURL()),
+			bundle.RelationKeyIsArchived.String():   pbtypes.Bool(true),
+			bundle.RelationKeyIsDeleted.String():    pbtypes.Bool(false),
+			bundle.RelationKeyName.String():         pbtypes.String("Project name was edited"),
+		}}
+
+		archivedObject := smarttest.New(bundle.TypeKeyProject.URL())
+		st = archivedObject.NewState()
+		st.SetDetails(oldDetails)
+		require.NoError(t, archivedObject.Apply(st))
+
+		spc := mock_clientspace.NewMockSpace(t)
+		spc.EXPECT().Id().Return(spaceId).Maybe()
+		spc.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, apply func(smartblock.SmartBlock) error) error {
+			assert.Equal(t, id, bundle.TypeKeyProject.URL())
+			return apply(archivedObject)
+		})
+
+		archiver := mock_detailservice.NewMockService(t)
+		archiver.EXPECT().SetIsArchived(mock.Anything, mock.Anything).RunAndReturn(func(id string, isArchived bool) error {
+			assert.Equal(t, id, bundle.TypeKeyProject.URL())
+			assert.False(t, isArchived)
+			return nil
+		})
+
+		s := service{archiver: archiver}
+
+		// when
+		id, _, newDetails, err := s.reinstallObject(nil, market, spc, oldDetails)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, bundle.TypeKeyProject.URL(), id)
+		assert.Equal(t, bundle.TypeKeyProject.String(), pbtypes.GetString(newDetails, bundle.RelationKeyName.String()))
+	})
 }
