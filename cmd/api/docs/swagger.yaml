@@ -600,6 +600,16 @@ paths:
         name: typeId
         required: true
         type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -796,6 +806,16 @@ paths:
         name: space_id
         required: true
         type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:

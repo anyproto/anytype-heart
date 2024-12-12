@@ -33,7 +33,7 @@ type AddMessageRequest struct {
 	Style string `json:"style"`
 }
 
-// authdisplayCodeHandler generates a new challenge and returns the challenge Id
+// authDisplayCodeHandler generates a new challenge and returns the challenge ID
 //
 //	@Summary	Open a modal window with a code in Anytype Desktop app
 //	@Tags		auth
@@ -137,8 +137,7 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 
 	spaces := make([]Space, 0, len(resp.Records))
 	for _, record := range resp.Records {
-		spaceId := record.Fields["targetSpaceId"].GetStringValue()
-		workspace := a.getWorkspaceInfo(c, spaceId)
+		workspace := a.getWorkspaceInfo(c, record.Fields["targetSpaceId"].GetStringValue())
 		workspace.Name = record.Fields["name"].GetStringValue()
 
 		// Set space icon to gateway URL
@@ -251,19 +250,16 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 
 	members := make([]SpaceMember, 0, len(resp.Records))
 	for _, record := range resp.Records {
+		icon := a.getIconFromEmojiOrImage(c, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
+
 		member := SpaceMember{
 			Type:       "space_member",
 			Id:         record.Fields["id"].GetStringValue(),
 			Name:       record.Fields["name"].GetStringValue(),
+			Icon:       icon,
 			Identity:   record.Fields["identity"].GetStringValue(),
 			GlobalName: record.Fields["globalName"].GetStringValue(),
 			Role:       model.ParticipantPermissions_name[int32(record.Fields["participantPermissions"].GetNumberValue())],
-		}
-
-		// Set member icon to gateway URL
-		iconImageId := record.Fields["iconImage"].GetStringValue()
-		if iconImageId != "" {
-			member.Icon = a.getGatewayURLForMedia(iconImageId, true)
 		}
 
 		members = append(members, member)
@@ -299,10 +295,13 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: pbtypes.IntList([]int{
 					int(model.ObjectType_basic),
+					int(model.ObjectType_profile),
+					int(model.ObjectType_todo),
 					int(model.ObjectType_note),
 					int(model.ObjectType_bookmark),
 					int(model.ObjectType_set),
 					int(model.ObjectType_collection),
+					int(model.ObjectType_participant),
 				}...),
 			},
 		},
@@ -313,7 +312,7 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 			IncludeTime:    true,
 			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 		}},
-		Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "lastModifiedDate"},
+		Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "iconImage", "lastModifiedDate"},
 		Offset: int32(offset),
 		Limit:  int32(limit),
 	})
@@ -325,6 +324,7 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 
 	objects := make([]Object, 0, len(resp.Records))
 	for _, record := range resp.Records {
+		icon := a.getIconFromEmojiOrImage(c, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
 		objectTypeName, err := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve object type name."})
@@ -336,7 +336,7 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 			Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
 			Id:         record.Fields["id"].GetStringValue(),
 			Name:       record.Fields["name"].GetStringValue(),
-			IconEmoji:  record.Fields["iconEmoji"].GetStringValue(),
+			IconEmoji:  icon,
 			ObjectType: objectTypeName,
 			SpaceId:    spaceId,
 			// TODO: populate other fields
@@ -353,10 +353,6 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 		}
 
 		objects = append(objects, object)
-	}
-
-	if len(objects) > limit {
-		objects = objects[:limit]
 	}
 
 	c.JSON(http.StatusOK, gin.H{"objects": objects})
@@ -742,7 +738,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "lastModifiedDate"},
+			Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "iconImage", "lastModifiedDate"},
 			Offset: int32(offset),
 			Limit:  int32(limit),
 			// TODO split limit between spaces
@@ -750,6 +746,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 			// FullText: searchTerm,
 		})
 		for _, record := range objectSearchResponse.Records {
+			icon := a.getIconFromEmojiOrImage(c, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
 			objectTypeName, err := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve type to name."})
@@ -760,7 +757,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 				Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
 				Id:         record.Fields["id"].GetStringValue(),
 				Name:       record.Fields["name"].GetStringValue(),
-				IconEmoji:  record.Fields["iconEmoji"].GetStringValue(),
+				IconEmoji:  icon,
 				ObjectType: objectTypeName,
 				SpaceId:    spaceId,
 				// TODO: populate other fields
@@ -782,6 +779,11 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	sort.Slice(searchResults, func(i, j int) bool {
 		return searchResults[i].Details[0].Details["lastModifiedDate"].(float64) > searchResults[j].Details[0].Details["lastModifiedDate"].(float64)
 	})
+
+	// TODO: solve global pagination vs per space pagination
+	if len(searchResults) > limit {
+		searchResults = searchResults[:limit]
+	}
 
 	c.JSON(http.StatusOK, gin.H{"objects": searchResults})
 }
