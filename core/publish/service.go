@@ -4,14 +4,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -29,6 +33,10 @@ import (
 	"github.com/anyproto/anytype-heart/util/encode"
 )
 
+var (
+	jsonM = jsonpb.Marshaler{Indent: "  "}
+)
+
 const CName = "common.core.publishservice"
 
 var log = logger.NewNamed(CName)
@@ -38,6 +46,22 @@ type PublishResult struct {
 	Cid string
 	Key string
 }
+
+type PublishingUberSnapshotMeta struct {
+	SpaceId    string `json:"spaceId,omitempty"`
+	RootPageId string `json:"rootPageId,omitempty"`
+	InviteLink string `json:"inviteLink,omitempty"`
+}
+
+// Contains all publishing .pb files
+// and publishing meta info
+type PublishingUberSnapshot struct {
+	Meta PublishingUberSnapshotMeta `json:"meta,omitempty"`
+
+	// A map of "dir/filename.pb -> jsonpb snapshot"
+	PbFiles map[string]string `json:"pbFiles,omitempty"`
+}
+
 type Service interface {
 	app.ComponentRunnable
 	Publish(ctx context.Context, spaceId, pageObjId string) (res PublishResult, err error)
@@ -89,6 +113,10 @@ type keyObject struct {
 type fileObject struct {
 	FileName string
 	Content  []byte
+}
+
+func uniqName() string {
+	return time.Now().Format("Anytype.WebPublish.20060102.150405.99")
 }
 
 func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirEntries []fs.DirEntry, exportPath string, err error) {
@@ -309,13 +337,117 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 	return
 }
 
+func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId string) (err error) {
+
+	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
+	if err != nil {
+		return
+	}
+
+	// go through dir dirs
+	// if files/, copy them to `publishTmpFolder`
+	// else
+	// for each file in $dir
+	// create a json in "main" map like
+	// {
+	//   pbfiles: {
+	//     "objects/arstoarseitnwfuy.pb": <jsonpb content of this file>,
+	//   }
+	// }
+	// after that, also add
+	// "meta": { "root-page", "inviteLink", and other things}
+	// then, add this `index.json` in `publishTmpFolder`
+
+	// TODO: remove tmp publish, export folders
+
+	tempPublishDir := filepath.Join(os.TempDir(), uniqName())
+
+	if err := os.MkdirAll(tempPublishDir, 0777); err != nil {
+		return err
+	}
+
+	uberSnapshot := PublishingUberSnapshot{
+		Meta: PublishingUberSnapshotMeta{
+			SpaceId:    spaceId,
+			RootPageId: pageId,
+		},
+		PbFiles: make(map[string]string),
+	}
+
+	for _, entry := range dirEntries {
+		if entry.IsDir() {
+			var dirFiles []fs.DirEntry
+			dirName := entry.Name()
+
+			if dirName == "files" {
+				err = os.CopyFS(filepath.Join(tempPublishDir, "files"), os.DirFS(filepath.Join(exportPath, "files")))
+				if err != nil {
+					return
+				}
+				continue
+			}
+
+			dirFiles, err = os.ReadDir(filepath.Join(exportPath, dirName))
+			if err != nil {
+				return
+			}
+
+			for _, file := range dirFiles {
+				withDirName := filepath.Join(dirName, file.Name())
+
+				var snapshotData []byte
+				snapshotData, err = os.ReadFile(filepath.Join(exportPath, withDirName))
+				if err != nil {
+					return
+				}
+
+				snapshot := pb.SnapshotWithType{}
+				err = proto.Unmarshal(snapshotData, &snapshot)
+				if err != nil {
+					return
+				}
+
+				var jsonData string
+				jsonData, err = jsonM.MarshalToString(&snapshot)
+				if err != nil {
+					return
+				}
+
+				fileNameKey := fmt.Sprintf("%s/%s", dirName, file.Name())
+				uberSnapshot.PbFiles[fileNameKey] = jsonData
+
+			}
+		} else {
+			err = fmt.Errorf("Unexpeted file on export root level: %s", entry.Name())
+			return
+		}
+
+		outputFile := filepath.Join(tempPublishDir, "index.json")
+		var jsonData []byte
+		jsonData, err = json.Marshal(&uberSnapshot)
+		if err := os.WriteFile(outputFile, jsonData, 0644); err != nil {
+			return err
+		}
+
+	}
+
+	// call uploadDir
+	log.Error("tempPublishDir", zap.String("tempPublishDir", tempPublishDir))
+	return nil
+
+}
+
 func (s *service) Publish(ctx context.Context, spaceId, pageId string) (res PublishResult, err error) {
 	log.Info("Publish called", zap.String("pageId", pageId))
-	res, err = s.publishUfs(ctx, spaceId, pageId)
+	err = s.publishToPublishServer(ctx, spaceId, pageId)
+
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
 	}
 
-	return
+	return PublishResult{
+		Cid: "fakecid",
+		Key: "fakekey",
+	}, nil
 
 }
