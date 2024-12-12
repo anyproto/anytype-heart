@@ -10,6 +10,7 @@ import (
 )
 
 type subscription struct {
+	spaceId     string
 	chatId      string
 	eventSender event.Sender
 
@@ -21,8 +22,9 @@ type subscription struct {
 	enabled      bool
 }
 
-func newSubscription(chatId string, eventSender event.Sender) *subscription {
+func newSubscription(spaceId string, chatId string, eventSender event.Sender) *subscription {
 	return &subscription{
+		spaceId:     spaceId,
 		chatId:      chatId,
 		eventSender: eventSender,
 	}
@@ -71,22 +73,18 @@ func (s *subscription) add(message *model.ChatMessage) {
 		Message: message,
 		OrderId: message.OrderId,
 	}
-	s.eventsBuffer = append(s.eventsBuffer, &pb.EventMessage{
-		Value: &pb.EventMessageValueOfChatAdd{
-			ChatAdd: ev,
-		},
-	})
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
+		ChatAdd: ev,
+	}))
 }
 
 func (s *subscription) delete(messageId string) {
 	ev := &pb.EventChatDelete{
 		Id: messageId,
 	}
-	s.eventsBuffer = append(s.eventsBuffer, &pb.EventMessage{
-		Value: &pb.EventMessageValueOfChatDelete{
-			ChatDelete: ev,
-		},
-	})
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatDelete{
+		ChatDelete: ev,
+	}))
 }
 
 func (s *subscription) updateFull(message *model.ChatMessage) {
@@ -97,11 +95,9 @@ func (s *subscription) updateFull(message *model.ChatMessage) {
 		Id:      message.Id,
 		Message: message,
 	}
-	s.eventsBuffer = append(s.eventsBuffer, &pb.EventMessage{
-		Value: &pb.EventMessageValueOfChatUpdate{
-			ChatUpdate: ev,
-		},
-	})
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdate{
+		ChatUpdate: ev,
+	}))
 }
 
 func (s *subscription) updateReactions(message *model.ChatMessage) {
@@ -112,11 +108,9 @@ func (s *subscription) updateReactions(message *model.ChatMessage) {
 		Id:        message.Id,
 		Reactions: message.Reactions,
 	}
-	s.eventsBuffer = append(s.eventsBuffer, &pb.EventMessage{
-		Value: &pb.EventMessageValueOfChatUpdateReactions{
-			ChatUpdateReactions: ev,
-		},
-	})
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateReactions{
+		ChatUpdateReactions: ev,
+	}))
 }
 
 func (s *subscription) canSend(message *model.ChatMessage) bool {

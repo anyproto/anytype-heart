@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -66,12 +67,12 @@ func (l *Link) SetAppearance(content *model.BlockContentLink) error {
 	return nil
 }
 
-func (l *Link) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
+func (l *Link) Diff(spaceId string, b simple.Block) (msgs []simple.EventMessage, err error) {
 	link, ok := b.(*Link)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
-	if msgs, err = l.Base.Diff(link); err != nil {
+	if msgs, err = l.Base.Diff(spaceId, link); err != nil {
 		return
 	}
 	changes := &pb.EventBlockSetLink{
@@ -109,7 +110,7 @@ func (l *Link) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	}
 
 	if hasChanges {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetLink{BlockSetLink: changes}}})
+		msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetLink{BlockSetLink: changes})})
 	}
 	return
 }

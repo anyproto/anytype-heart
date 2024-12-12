@@ -83,7 +83,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return err
 	}
-	s.subscription = newSubscription(s.Id(), s.eventSender)
+	s.subscription = newSubscription(s.SpaceID(), s.Id(), s.eventSender)
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, ChatHandler{
 		subscription: s.subscription,

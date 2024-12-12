@@ -379,14 +379,12 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {
 	sb.sendEvent(&pb.Event{
 		ContextId: sb.Id(),
-		Messages: []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfObjectClose{
+		Messages: []*pb.EventMessage{
+			event.NewMessage(sb.SpaceID(), &pb.EventMessageValueOfObjectClose{
 				ObjectClose: &pb.EventObjectClose{
 					Id: sb.Id(),
-				},
-			},
-		}},
-	})
+				}}),
+		}})
 	return nil
 }
 
@@ -397,7 +395,11 @@ func (sb *smartBlock) updateRestrictions() {
 		return
 	}
 	sb.restrictions = r
-	sb.SendEvent([]*pb.EventMessage{{Value: &pb.EventMessageValueOfObjectRestrictionsSet{ObjectRestrictionsSet: &pb.EventObjectRestrictionsSet{Id: sb.Id(), Restrictions: r.Proto()}}}})
+	sb.SendEvent([]*pb.EventMessage{
+		event.NewMessage(sb.SpaceID(), &pb.EventMessageValueOfObjectRestrictionsSet{
+			ObjectRestrictionsSet: &pb.EventObjectRestrictionsSet{Id: sb.Id(), Restrictions: r.Proto()},
+		}),
+	})
 }
 
 func (sb *smartBlock) SetIsDeleted() {
@@ -562,7 +564,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 		return
 	}
 	id := pbtypes.GetString(details, bundle.RelationKeyId.String())
-	msgs := []*pb.EventMessage{}
+	var msgs []*pb.EventMessage
 	if v, exists := sb.lastDepDetails[id]; exists {
 		diff := pbtypes.StructDiff(v.Details, details)
 		if id == sb.Id() {
@@ -570,16 +572,14 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 			diff = pbtypes.StructFilterKeys(diff, bundle.LocalRelationsKeys)
 		}
 
-		msgs = append(msgs, state.StructDiffIntoEvents(id, diff)...)
+		msgs = append(msgs, state.StructDiffIntoEvents(sb.SpaceID(), id, diff)...)
 	} else {
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectDetailsSet{
-				ObjectDetailsSet: &pb.EventObjectDetailsSet{
-					Id:      id,
-					Details: details,
-				},
+		msgs = append(msgs, event.NewMessage(sb.SpaceID(), &pb.EventMessageValueOfObjectDetailsSet{
+			ObjectDetailsSet: &pb.EventObjectDetailsSet{
+				Id:      id,
+				Details: details,
 			},
-		})
+		}))
 	}
 	sb.lastDepDetails[id] = &pb.EventObjectDetailsSet{
 		Id:      id,
