@@ -209,7 +209,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 				if index != -1 {
 					from := int32(text2.UTF16RuneCount(titleArr[:index]))
 					rec.Meta.HighlightRanges = []*model.Range{{
-						From: int32(text2.UTF16RuneCount(titleArr[:from])),
+						From: from,
 						To:   from + int32(text2.UTF16RuneCount([]byte(ftsSearch)))}}
 					rec.Meta.Highlight = title
 				}
