@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ const NetworkStaging = "staging"
 type Event struct {
 	MethodName        string `json:"method_name"`
 	Duration          int64  `json:"duration"`
+	Os                string `json:"os"`
 	MiddlewareVersion string `json:"middleware_version"`
 	Network           string `json:"network"`
 }
@@ -33,6 +35,16 @@ func GetMiddlewareVersion() (string, error) {
 	}
 	middlewareVersion := strings.Trim(string(out), "\n")
 	return middlewareVersion, nil
+}
+
+func GetOs() (string, error) {
+	if runtime.GOOS == "windows" {
+		return "windows", nil
+	}
+	if runtime.GOOS == "darwin" {
+		return "macos", nil
+	}
+	return "", fmt.Errorf("unknown os " + runtime.GOOS)
 }
 
 func SendResultsToHttp(apiKey string, events []Event) error {
@@ -242,6 +254,10 @@ func Convert(res map[string]*MethodResult) ([]Event, error) {
 	if err != nil {
 		return nil, err
 	}
+	osName, err := GetOs()
+	if err != nil {
+		return nil, err
+	}
 
 	var events []Event
 	for _, value := range res {
@@ -249,6 +265,7 @@ func Convert(res map[string]*MethodResult) ([]Event, error) {
 			events = append(events, Event{
 				MethodName:        value.MethodName,
 				Duration:          duration,
+				Os:                osName,
 				MiddlewareVersion: middlewareVersion,
 				Network:           value.NetworkMode,
 			})
