@@ -516,7 +516,7 @@ func processProfile(data []byte, info *useCaseInfo, spaceDashboardId string) ([]
 
 func listObjects(info *useCaseInfo) {
 	fmt.Println("\nUsecase '" + info.useCase + "' content:\n\n- General objects:")
-	fmt.Println("Id:  " + strings.Repeat(" ", 12) + "Smartblock Type -" + strings.Repeat(" ", 17) + "Type Key - Name")
+	fmt.Println("Id:  " + strings.Repeat(" ", 12) + "Smartblock Type -" + strings.Repeat(" ", 17) + "Type Key - name")
 	for id, obj := range info.objects {
 		if lo.Contains([]smartblock.SmartBlockType{
 			smartblock.SmartBlockTypeObjectType,
@@ -535,35 +535,35 @@ func listObjects(info *useCaseInfo) {
 	}
 
 	fmt.Println("\n- Types:")
-	fmt.Println("Id:  " + strings.Repeat(" ", 24) + "Key - Name")
+	fmt.Println("Id:  " + strings.Repeat(" ", 24) + "Key - name")
 	for id, key := range info.types {
 		obj := info.objects[id]
 		fmt.Printf("%s:\t%24s - %s\n", id[len(id)-4:], key, obj.Name)
 	}
 
 	fmt.Println("\n- Relations:")
-	fmt.Println("Id:  " + strings.Repeat(" ", 24) + "Key - Name")
+	fmt.Println("Id:  " + strings.Repeat(" ", 24) + "Key - name")
 	for id, key := range info.relations {
 		obj := info.objects[id]
 		fmt.Printf("%s:\t%24s - %s\n", id[len(id)-4:], key, obj.Name)
 	}
 
 	fmt.Println("\n- Templates:")
-	fmt.Println("Id:  " + strings.Repeat(" ", 31) + "Name - Target object type id")
+	fmt.Println("Id:  " + strings.Repeat(" ", 31) + "name - Target object type id")
 	for id, target := range info.templates {
 		obj := info.objects[id]
 		fmt.Printf("%s:\t%32s - %s\n", id[len(id)-4:], obj.Name, target)
 	}
 
 	fmt.Println("\n- Relation Options:")
-	fmt.Println("Id:  " + strings.Repeat(" ", 31) + "Name - Relation key")
+	fmt.Println("Id:  " + strings.Repeat(" ", 31) + "name - Relation key")
 	for id, key := range info.options {
 		obj := info.objects[id]
 		fmt.Printf("%s:\t%32s - %s\n", id[len(id)-4:], obj.Name, key)
 	}
 
 	fmt.Println("\n- File Objects:")
-	fmt.Println("Id:  " + strings.Repeat(" ", 31) + "Name")
+	fmt.Println("Id:  " + strings.Repeat(" ", 31) + "name")
 	for _, id := range info.files {
 		obj := info.objects[id]
 		fmt.Printf("%s:\t%32s\n", id[len(id)-4:], obj.Name)

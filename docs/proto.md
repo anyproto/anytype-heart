@@ -564,6 +564,11 @@
     - [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request)
     - [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response)
     - [Rpc.Chat.Unsubscribe.Response.Error](#anytype-Rpc-Chat-Unsubscribe-Response-Error)
+    - [Rpc.Contact](#anytype-Rpc-Contact)
+    - [Rpc.Contact.Create](#anytype-Rpc-Contact-Create)
+    - [Rpc.Contact.Create.Request](#anytype-Rpc-Contact-Create-Request)
+    - [Rpc.Contact.Create.Response](#anytype-Rpc-Contact-Create-Response)
+    - [Rpc.Contact.Create.Response.Error](#anytype-Rpc-Contact-Create-Response-Error)
     - [Rpc.Debug](#anytype-Rpc-Debug)
     - [Rpc.Debug.AccountSelectTrace](#anytype-Rpc-Debug-AccountSelectTrace)
     - [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request)
@@ -1376,6 +1381,7 @@
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
     - [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code)
+    - [Rpc.Contact.Create.Response.Error.Code](#anytype-Rpc-Contact-Create-Response-Error-Code)
     - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
     - [Rpc.Debug.AnystoreObjectChanges.Request.OrderBy](#anytype-Rpc-Debug-AnystoreObjectChanges-Request-OrderBy)
     - [Rpc.Debug.AnystoreObjectChanges.Response.Error.Code](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error-Code)
@@ -1827,6 +1833,7 @@
     - [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions)
     - [ChatMessage.Reactions.IdentityList](#anytype-model-ChatMessage-Reactions-IdentityList)
     - [ChatMessage.Reactions.ReactionsEntry](#anytype-model-ChatMessage-Reactions-ReactionsEntry)
+    - [Contact](#anytype-model-Contact)
     - [Detail](#anytype-model-Detail)
     - [DeviceInfo](#anytype-model-DeviceInfo)
     - [Export](#anytype-model-Export)
@@ -10400,6 +10407,73 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact"></a>
+
+### Rpc.Contact
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Create"></a>
+
+### Rpc.Contact.Create
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Create-Request"></a>
+
+### Rpc.Contact.Create.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [string](#string) |  |  |
+| profileSymKey | [bytes](#bytes) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Create-Response"></a>
+
+### Rpc.Contact.Create.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Contact.Create.Response.Error](#anytype-Rpc-Contact-Create-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Create-Response-Error"></a>
+
+### Rpc.Contact.Create.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Contact.Create.Response.Error.Code](#anytype-Rpc-Contact-Create-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -22020,6 +22094,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Contact-Create-Response-Error-Code"></a>
+
+### Rpc.Contact.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code"></a>
 
 ### Rpc.Debug.AccountSelectTrace.Response.Error.Code
@@ -28831,6 +28918,24 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Contact"></a>
+
+### Contact
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| icon | [string](#string) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Detail"></a>
 
 ### Detail
@@ -30519,6 +30624,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | chat | 21 | deprecated |
 | chatDerived | 22 |  |
 | tag | 23 |  |
+| contact | 24 |  |
 
 
 
@@ -30674,6 +30780,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | ChatObject | 537 | Container for any-store based chats |
 | ChatDerivedObject | 544 | Any-store based object for chat |
 | AccountObject | 545 | Container for account data in tech space |
+| UserDataObject | 546 |  |
+| ContactObject | 547 |  |
 
 
 

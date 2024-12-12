@@ -172,6 +172,16 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 				CreatorId: addr.AnytypeProfileId,
 			}
 			return s.NewStaticSource(params), nil
+		case smartblock.SmartBlockTypeContactObject:
+			params := StaticSourceParams{
+				Id: domain.FullID{
+					ObjectID: id,
+					SpaceID:  space.Id(),
+				},
+				State:  state.NewDoc(id, nil).(*state.State),
+				SbType: smartblock.SmartBlockTypeContactObject,
+			}
+			return s.NewStaticSource(params), nil
 		}
 	}
 
