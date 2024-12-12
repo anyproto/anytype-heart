@@ -375,13 +375,13 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 	spaceId := c.Param("space_id")
 	objectId := c.Param("object_id")
 
-	resp := a.mw.ObjectOpen(context.Background(), &pb.RpcObjectOpenRequest{
+	resp := a.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: objectId,
 	})
 
-	if resp.Error.Code != pb.RpcObjectOpenResponseError_NULL {
-		if resp.Error.Code == pb.RpcObjectOpenResponseError_NOT_FOUND {
+	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
 			c.JSON(http.StatusNotFound, gin.H{"message": "Object not found", "space_id": spaceId, "object_id": objectId})
 			return
 		}
@@ -569,7 +569,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 	offset := c.GetInt("offset")
 	limit := c.GetInt("limit")
 
-	// First, determine the type Id of "ot-template" in the space
+	// First, determine the type ID of "ot-template" in the space
 	templateTypeIdResp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -617,12 +617,12 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 	// Finally, open each template and populate the response
 	templates := make([]ObjectTemplate, 0, len(templateIds))
 	for _, templateId := range templateIds {
-		templateResp := a.mw.ObjectOpen(context.Background(), &pb.RpcObjectOpenRequest{
+		templateResp := a.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
 			SpaceId:  spaceId,
 			ObjectId: templateId,
 		})
 
-		if templateResp.Error.Code != pb.RpcObjectOpenResponseError_NULL {
+		if templateResp.Error.Code != pb.RpcObjectShowResponseError_NULL {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve template."})
 			return
 		}

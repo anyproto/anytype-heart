@@ -58,12 +58,12 @@ func (a *ApiServer) resolveTypeToName(spaceId string, typeId string) (string, *p
 func (a *ApiServer) getChatIdForSpace(c *gin.Context, spaceId string) string {
 	workspace := a.getWorkspaceInfo(c, spaceId)
 
-	resp := a.mw.ObjectOpen(context.Background(), &pb.RpcObjectOpenRequest{
+	resp := a.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: workspace.WorkspaceObjectId,
 	})
 
-	if resp.Error.Code != pb.RpcObjectOpenResponseError_NULL {
+	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to open workspace object."})
 		return ""
 	}
