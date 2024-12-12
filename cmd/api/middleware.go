@@ -13,23 +13,21 @@ import (
 // initAccountInfo retrieves the account information from the account service
 func (a *ApiServer) initAccountInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if a.app == nil && a.accountInfo == nil {
-			app := a.mwInternal.GetApp()
-			if app == nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to get app instance"})
-				return
-			}
-
-			accInfo, err := app.Component(account.CName).(account.Service).GetInfo(context.Background())
-			if err != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to get account info: %v", err)})
-				return
-			}
-
-			a.app = app
-			a.accountInfo = accInfo
-			c.Next()
+		// TODO: consider not fetching account info on every request; currently used to avoid inconsistencies on logout/login
+		app := a.mwInternal.GetApp()
+		if app == nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to get app instance"})
+			return
 		}
+
+		accInfo, err := app.Component(account.CName).(account.Service).GetInfo(context.Background())
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to get account info: %v", err)})
+			return
+		}
+
+		a.accountInfo = accInfo
+		c.Next()
 	}
 }
 

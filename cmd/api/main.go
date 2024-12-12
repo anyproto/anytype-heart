@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -31,7 +30,6 @@ type ApiServer struct {
 	server     *http.Server
 
 	// init after app start
-	app         *app.App
 	accountInfo *model.AccountInfo
 }
 
