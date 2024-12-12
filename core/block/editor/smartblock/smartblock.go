@@ -37,6 +37,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
@@ -1019,11 +1020,13 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 		return err
 	}
 
-	if creatorIdentityObjectId != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creatorIdentityObjectId))
-	} else {
-		// For derived objects we set current identity
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(sb.currentParticipantId))
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) != addr.AnytypeProfileId {
+		if creatorIdentityObjectId != "" {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creatorIdentityObjectId))
+		} else {
+			// For derived objects we set current identity
+			s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(sb.currentParticipantId))
+		}
 	}
 
 	if originalCreated := s.OriginalCreatedTimestamp(); originalCreated > 0 {

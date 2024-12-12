@@ -497,6 +497,7 @@ func (p *Pb) updateDetails(snapshots []*common.Snapshot) {
 		return key != bundle.RelationKeyIsFavorite.String() &&
 			key != bundle.RelationKeyIsArchived.String() &&
 			key != bundle.RelationKeyCreatedDate.String() &&
+			key != bundle.RelationKeyCreator.String() &&
 			key != bundle.RelationKeyLastModifiedDate.String() &&
 			key != bundle.RelationKeyId.String()
 	})
