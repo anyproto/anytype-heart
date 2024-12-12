@@ -94,6 +94,7 @@ func (a *ApiServer) authTokenHandler(c *gin.Context) {
 //	@Param		limit	query		int					false	"The number of items to return"	default(100)
 //	@Success	200		{object}	map[string][]Space	"List of spaces"
 //	@Failure	403		{object}	UnauthorizedError	"Unauthorized"
+//	@Failure	404		{object}	NotFoundError		"Resource not found"
 //	@Failure	502		{object}	ServerError			"Internal server error"
 //	@Router		/spaces [get]
 func (a *ApiServer) getSpacesHandler(c *gin.Context) {
@@ -132,6 +133,11 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of spaces."})
+		return
+	}
+
+	if len(resp.Records) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No spaces found."})
 		return
 	}
 
@@ -248,6 +254,11 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 		return
 	}
 
+	if len(resp.Records) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No members found."})
+		return
+	}
+
 	members := make([]SpaceMember, 0, len(resp.Records))
 	for _, record := range resp.Records {
 		icon := a.getIconFromEmojiOrImage(c, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
@@ -319,6 +330,11 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of objects."})
+		return
+	}
+
+	if len(resp.Records) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No objects found."})
 		return
 	}
 
@@ -534,6 +550,11 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 		return
 	}
 
+	if len(resp.Records) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No object types found."})
+		return
+	}
+
 	objectTypes := make([]ObjectType, 0, len(resp.Records))
 	for _, record := range resp.Records {
 		objectTypes = append(objectTypes, ObjectType{
@@ -586,6 +607,11 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 		return
 	}
 
+	if len(templateTypeIdResp.Records) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Template type not found."})
+		return
+	}
+
 	templateTypeId := templateTypeIdResp.Records[0].Fields["id"].GetStringValue()
 
 	// Then, search all objects of the template type and filter by the target object type
@@ -604,6 +630,11 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 
 	if templateObjectsResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve template objects."})
+		return
+	}
+
+	if len(templateObjectsResp.Records) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No templates found."})
 		return
 	}
 
@@ -659,7 +690,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	limit := c.GetInt("limit")
 
 	// First, call ObjectSearch for all objects of type spaceView
-	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+	spaceResp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: a.accountInfo.TechSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -680,8 +711,13 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 		},
 	})
 
-	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+	if spaceResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of spaces."})
+		return
+	}
+
+	if len(spaceResp.Records) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No spaces found."})
 		return
 	}
 
@@ -726,9 +762,9 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	}
 
 	searchResults := make([]Object, 0)
-	for _, spaceRecord := range resp.Records {
+	for _, spaceRecord := range spaceResp.Records {
 		spaceId := spaceRecord.Fields["targetSpaceId"].GetStringValue()
-		objectSearchResponse := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		objectResp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 			SpaceId: spaceId,
 			Filters: filters,
 			Sorts: []*model.BlockContentDataviewSort{{
@@ -745,7 +781,17 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 			// Limit: paginationLimitPerSpace,
 			// FullText: searchTerm,
 		})
-		for _, record := range objectSearchResponse.Records {
+
+		if objectResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of objects."})
+			return
+		}
+
+		if len(objectResp.Records) == 0 {
+			continue
+		}
+
+		for _, record := range objectResp.Records {
 			icon := a.getIconFromEmojiOrImage(c, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
 			objectTypeName, err := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
 			if err != nil {

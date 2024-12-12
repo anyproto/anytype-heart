@@ -218,6 +218,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.UnauthorizedError"
                         }
                     },
+                    "404": {
+                        "description": "Resource not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.NotFoundError"
+                        }
+                    },
                     "502": {
                         "description": "Internal server error",
                         "schema": {
