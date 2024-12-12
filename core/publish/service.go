@@ -2,6 +2,7 @@ package publish
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -358,8 +359,6 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId st
 	// "meta": { "root-page", "inviteLink", and other things}
 	// then, add this `index.json` in `publishTmpFolder`
 
-	// TODO: remove tmp publish, export folders
-
 	tempPublishDir := filepath.Join(os.TempDir(), uniqName())
 
 	if err := os.MkdirAll(tempPublishDir, 0777); err != nil {
@@ -422,16 +421,35 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId st
 			return
 		}
 
-		outputFile := filepath.Join(tempPublishDir, "index.json")
+		// TODO: gzip file
+		// TODO: remove tmp publish, export folders
+
 		var jsonData []byte
 		jsonData, err = json.Marshal(&uberSnapshot)
-		if err := os.WriteFile(outputFile, jsonData, 0644); err != nil {
-			return err
+		if err != nil {
+			return
+		}
+
+		outputFile := filepath.Join(tempPublishDir, "index.json.gz")
+
+		var file *os.File
+		file, err = os.Create(outputFile)
+		if err != nil {
+			return
+		}
+		defer file.Close()
+
+		writer := gzip.NewWriter(file)
+		defer writer.Close()
+
+		_, err = writer.Write(jsonData)
+		if err != nil {
+			return
 		}
 
 	}
 
-	// call uploadDir
+	// should call drpcClient.uploadDir instead
 	log.Error("tempPublishDir", zap.String("tempPublishDir", tempPublishDir))
 	return nil
 
