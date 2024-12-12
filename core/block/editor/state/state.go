@@ -554,11 +554,9 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 	if len(toRemove) > 0 {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{
-			Value: &pb.EventMessageValueOfBlockDelete{
-				BlockDelete: &pb.EventBlockDelete{BlockIds: toRemove},
-			},
-		}})
+		msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(s.SpaceID(), &pb.EventMessageValueOfBlockDelete{
+			BlockDelete: &pb.EventBlockDelete{BlockIds: toRemove},
+		})})
 	}
 
 	if s.parent != nil && s.relationLinks != nil {
