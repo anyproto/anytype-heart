@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -24,7 +22,7 @@ func (a *ApiServer) getGatewayURLForMedia(objectId string, isIcon bool) string {
 }
 
 // resolveTypeToName resolves the type ID to the name of the type, e.g. "ot-page" to "Page" or "bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu" to "Custom Type"
-func (a *ApiServer) resolveTypeToName(spaceId string, typeId string) (string, *pb.RpcObjectSearchResponseError) {
+func (a *ApiServer) resolveTypeToName(spaceId string, typeId string) (typeName string, statusCode int, errorMessage string) {
 	// Can't look up preinstalled types based on relation key, therefore need to use unique key
 	relKey := bundle.RelationKeyId.String()
 	if strings.Contains(typeId, "ot-") {
@@ -44,19 +42,22 @@ func (a *ApiServer) resolveTypeToName(spaceId string, typeId string) (string, *p
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return "", resp.Error
+		return "", http.StatusInternalServerError, "Failed to search for type."
 	}
 
 	if len(resp.Records) == 0 {
-		return "", &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_BAD_INPUT, Description: "Type not found"}
+		return "", http.StatusNotFound, "Type not found."
 	}
 
-	return resp.Records[0].Fields["name"].GetStringValue(), nil
+	return resp.Records[0].Fields["name"].GetStringValue(), http.StatusOK, ""
 }
 
 // getChatIdForSpace returns the chat ID for the space with the given ID
-func (a *ApiServer) getChatIdForSpace(c *gin.Context, spaceId string) string {
-	workspace := a.getWorkspaceInfo(c, spaceId)
+func (a *ApiServer) getChatIdForSpace(spaceId string) (chatId string, statusCode int, errorMessage string) {
+	workspace, statusCode, errorMessage := a.getWorkspaceInfo(spaceId)
+	if statusCode != http.StatusOK {
+		return "", statusCode, errorMessage
+	}
 
 	resp := a.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
@@ -64,28 +65,25 @@ func (a *ApiServer) getChatIdForSpace(c *gin.Context, spaceId string) string {
 	})
 
 	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to open workspace object."})
-		return ""
+		return "", http.StatusInternalServerError, "Failed to open workspace object."
 	}
 
 	if !resp.ObjectView.Details[0].Details.Fields["hasChat"].GetBoolValue() {
-		c.JSON(http.StatusNotFound, gin.H{"message": "Chat not found"})
-		return ""
+		return "", http.StatusNotFound, "Chat not found."
 	}
 
-	return resp.ObjectView.Details[0].Details.Fields["chatId"].GetStringValue()
+	return resp.ObjectView.Details[0].Details.Fields["chatId"].GetStringValue(), http.StatusOK, ""
 }
 
 // getWorkspaceInfo returns the workspace info for the space with the given ID
-func (a *ApiServer) getWorkspaceInfo(c *gin.Context, spaceId string) Space {
+func (a *ApiServer) getWorkspaceInfo(spaceId string) (space Space, statusCode int, errorMessage string) {
 	workspaceResponse := a.mw.WorkspaceOpen(context.Background(), &pb.RpcWorkspaceOpenRequest{
 		SpaceId:  spaceId,
 		WithChat: true,
 	})
 
 	if workspaceResponse.Error.Code != pb.RpcWorkspaceOpenResponseError_NULL {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to open workspace."})
-		return Space{}
+		return Space{}, http.StatusInternalServerError, "Failed to open workspace."
 	}
 
 	return Space{
@@ -103,11 +101,11 @@ func (a *ApiServer) getWorkspaceInfo(c *gin.Context, spaceId string) Space {
 		TechSpaceId:            workspaceResponse.Info.TechSpaceId,
 		Timezone:               workspaceResponse.Info.TimeZone,
 		NetworkId:              workspaceResponse.Info.NetworkId,
-	}
+	}, http.StatusOK, ""
 }
 
 // getIconFromEmojiOrImage returns the icon to use for the object, which can be either an emoji or an image url
-func (a *ApiServer) getIconFromEmojiOrImage(c *gin.Context, iconEmoji string, iconImage string) string {
+func (a *ApiServer) getIconFromEmojiOrImage(iconEmoji string, iconImage string) string {
 	if iconEmoji != "" {
 		return iconEmoji
 	}

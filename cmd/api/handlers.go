@@ -143,14 +143,14 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 
 	spaces := make([]Space, 0, len(resp.Records))
 	for _, record := range resp.Records {
-		workspace := a.getWorkspaceInfo(c, record.Fields["targetSpaceId"].GetStringValue())
-		workspace.Name = record.Fields["name"].GetStringValue()
-
-		// Set space icon to gateway URL
-		iconImageId := record.Fields["iconImage"].GetStringValue()
-		if iconImageId != "" {
-			workspace.Icon = a.getGatewayURLForMedia(iconImageId, true)
+		workspace, statusCode, errorMessage := a.getWorkspaceInfo(record.Fields["targetSpaceId"].GetStringValue())
+		if statusCode != http.StatusOK {
+			c.JSON(statusCode, gin.H{"message": errorMessage})
+			return
 		}
+
+		workspace.Name = record.Fields["name"].GetStringValue()
+		workspace.Icon = a.getIconFromEmojiOrImage(record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
 
 		spaces = append(spaces, workspace)
 	}
@@ -261,7 +261,7 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 
 	members := make([]SpaceMember, 0, len(resp.Records))
 	for _, record := range resp.Records {
-		icon := a.getIconFromEmojiOrImage(c, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
+		icon := a.getIconFromEmojiOrImage(record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
 
 		member := SpaceMember{
 			Type:       "space_member",
@@ -340,10 +340,10 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 
 	objects := make([]Object, 0, len(resp.Records))
 	for _, record := range resp.Records {
-		icon := a.getIconFromEmojiOrImage(c, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
-		objectTypeName, err := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve object type name."})
+		icon := a.getIconFromEmojiOrImage(record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
+		objectTypeName, statusCode, errorMessage := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
+		if statusCode != http.StatusOK {
+			c.JSON(statusCode, gin.H{"message": errorMessage})
 			return
 		}
 
@@ -405,9 +405,9 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 		return
 	}
 
-	objectTypeName, err := a.resolveTypeToName(spaceId, resp.ObjectView.Details[0].Details.Fields["type"].GetStringValue())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve object type name."})
+	objectTypeName, statusCode, errorMessage := a.resolveTypeToName(spaceId, resp.ObjectView.Details[0].Details.Fields["type"].GetStringValue())
+	if statusCode != http.StatusOK {
+		c.JSON(statusCode, gin.H{"message": errorMessage})
 		return
 	}
 
@@ -792,10 +792,10 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 		}
 
 		for _, record := range objectResp.Records {
-			icon := a.getIconFromEmojiOrImage(c, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
-			objectTypeName, err := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to resolve type to name."})
+			icon := a.getIconFromEmojiOrImage(record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
+			objectTypeName, statusCode, errorMessage := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
+			if statusCode != http.StatusOK {
+				c.JSON(statusCode, gin.H{"message": errorMessage})
 				return
 			}
 
@@ -848,10 +848,15 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 //	@Router		/v1/spaces/{space_id}/chat/messages [get]
 func (a *ApiServer) getChatMessagesHandler(c *gin.Context) {
 	spaceId := c.Param("space_id")
-	chatId := a.getChatIdForSpace(c, spaceId)
 	// TODO: implement offset
 	// offset := c.GetInt("offset")
 	limit := c.GetInt("limit")
+
+	chatId, statusCode, errorMessage := a.getChatIdForSpace(spaceId)
+	if statusCode != http.StatusOK {
+		c.JSON(statusCode, gin.H{"message": errorMessage})
+		return
+	}
 
 	lastMessages := a.mw.ChatSubscribeLastMessages(context.Background(), &pb.RpcChatSubscribeLastMessagesRequest{
 		ChatObjectId: chatId,
@@ -944,7 +949,12 @@ func (a *ApiServer) addChatMessageHandler(c *gin.Context) {
 		return
 	}
 
-	chatId := a.getChatIdForSpace(c, spaceId)
+	chatId, statusCode, errorMessage := a.getChatIdForSpace(spaceId)
+	if statusCode != http.StatusOK {
+		c.JSON(statusCode, gin.H{"message": errorMessage})
+		return
+	}
+
 	resp := a.mw.ChatAddMessage(context.Background(), &pb.RpcChatAddMessageRequest{
 		ChatObjectId: chatId,
 		Message: &model.ChatMessage{
