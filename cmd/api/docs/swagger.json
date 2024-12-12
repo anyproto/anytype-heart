@@ -1194,7 +1194,7 @@
                         "$ref": "#/definitions/api.Detail"
                     }
                 },
-                "icon_emoji": {
+                "icon": {
                     "type": "string",
                     "example": "📄"
                 },
@@ -1226,7 +1226,7 @@
         "api.ObjectTemplate": {
             "type": "object",
             "properties": {
-                "icon_emoji": {
+                "icon": {
                     "type": "string",
                     "example": "📄"
                 },
@@ -1247,7 +1247,7 @@
         "api.ObjectType": {
             "type": "object",
             "properties": {
-                "icon_emoji": {
+                "icon": {
                     "type": "string",
                     "example": "📄"
                 },
@@ -1405,10 +1405,7 @@
                 "color": {
                     "type": "string"
                 },
-                "icon_emoji": {
-                    "type": "string"
-                },
-                "icon_image": {
+                "icon": {
                     "type": "string"
                 },
                 "style": {

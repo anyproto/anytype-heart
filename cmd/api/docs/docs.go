@@ -1200,7 +1200,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/api.Detail"
                     }
                 },
-                "icon_emoji": {
+                "icon": {
                     "type": "string",
                     "example": "📄"
                 },
@@ -1232,7 +1232,7 @@ const docTemplate = `{
         "api.ObjectTemplate": {
             "type": "object",
             "properties": {
-                "icon_emoji": {
+                "icon": {
                     "type": "string",
                     "example": "📄"
                 },
@@ -1253,7 +1253,7 @@ const docTemplate = `{
         "api.ObjectType": {
             "type": "object",
             "properties": {
-                "icon_emoji": {
+                "icon": {
                     "type": "string",
                     "example": "📄"
                 },
@@ -1411,10 +1411,7 @@ const docTemplate = `{
                 "color": {
                     "type": "string"
                 },
-                "icon_emoji": {
-                    "type": "string"
-                },
-                "icon_image": {
+                "icon": {
                     "type": "string"
                 },
                 "style": {

@@ -33,7 +33,7 @@ type Object struct {
 	Type       string   `json:"type" example:"object"`
 	Id         string   `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`
 	Name       string   `json:"name" example:"Object Name"`
-	IconEmoji  string   `json:"icon_emoji" example:"📄"`
+	Icon       string   `json:"icon" example:"📄"`
 	ObjectType string   `json:"object_type" example:"Page"`
 	SpaceId    string   `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"`
 	RootId     string   `json:"root_id"`
@@ -57,12 +57,11 @@ type Layout struct {
 }
 
 type Text struct {
-	Text      string `json:"text"`
-	Style     string `json:"style"`
-	Checked   bool   `json:"checked"`
-	Color     string `json:"color"`
-	IconEmoji string `json:"icon_emoji"`
-	IconImage string `json:"icon_image"`
+	Text    string `json:"text"`
+	Style   string `json:"style"`
+	Checked bool   `json:"checked"`
+	Color   string `json:"color"`
+	Icon    string `json:"icon"`
 }
 
 type File struct {
@@ -82,24 +81,19 @@ type Detail struct {
 	Details map[string]interface{} `json:"details"`
 }
 
-type RelationLink struct {
-	Key    string `json:"key"`
-	Format string `json:"format"`
-}
-
 type ObjectType struct {
 	Type      string `json:"type" example:"object_type"`
 	Id        string `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"`
 	UniqueKey string `json:"unique_key" example:"ot-page"`
 	Name      string `json:"name" example:"Page"`
-	IconEmoji string `json:"icon_emoji" example:"📄"`
+	Icon      string `json:"icon" example:"📄"`
 }
 
 type ObjectTemplate struct {
-	Type      string `json:"type" example:"object_template"`
-	Id        string `json:"id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"`
-	Name      string `json:"name" example:"Object Template Name"`
-	IconEmoji string `json:"icon_emoji" example:"📄"`
+	Type string `json:"type" example:"object_template"`
+	Id   string `json:"id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"`
+	Name string `json:"name" example:"Object Template Name"`
+	Icon string `json:"icon" example:"📄"`
 }
 
 type ChatMessage struct {

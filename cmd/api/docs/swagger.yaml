@@ -138,7 +138,7 @@ definitions:
         items:
           $ref: '#/definitions/api.Detail'
         type: array
-      icon_emoji:
+      icon:
         example: "\U0001F4C4"
         type: string
       id:
@@ -161,7 +161,7 @@ definitions:
     type: object
   api.ObjectTemplate:
     properties:
-      icon_emoji:
+      icon:
         example: "\U0001F4C4"
         type: string
       id:
@@ -176,7 +176,7 @@ definitions:
     type: object
   api.ObjectType:
     properties:
-      icon_emoji:
+      icon:
         example: "\U0001F4C4"
         type: string
       id:
@@ -289,9 +289,7 @@ definitions:
         type: boolean
       color:
         type: string
-      icon_emoji:
-        type: string
-      icon_image:
+      icon:
         type: string
       style:
         type: string

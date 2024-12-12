@@ -22,7 +22,7 @@ type CreateSpaceRequest struct {
 
 type CreateObjectRequest struct {
 	Name                string `json:"name"`
-	IconEmoji           string `json:"icon_emoji"`
+	Icon                string `json:"icon"`
 	TemplateId          string `json:"template_id"`
 	ObjectTypeUniqueKey string `json:"object_type_unique_key"`
 	WithChat            bool   `json:"with_chat"`
@@ -352,7 +352,7 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 			Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
 			Id:         record.Fields["id"].GetStringValue(),
 			Name:       record.Fields["name"].GetStringValue(),
-			IconEmoji:  icon,
+			Icon:       icon,
 			ObjectType: objectTypeName,
 			SpaceId:    spaceId,
 			// TODO: populate other fields
@@ -415,7 +415,7 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 		Type:       "object",
 		Id:         objectId,
 		Name:       resp.ObjectView.Details[0].Details.Fields["name"].GetStringValue(),
-		IconEmoji:  resp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(),
+		Icon:       resp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(),
 		ObjectType: objectTypeName,
 		RootId:     resp.ObjectView.RootId,
 		// TODO: populate other fields
@@ -451,7 +451,7 @@ func (a *ApiServer) createObjectHandler(c *gin.Context) {
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				"name":      {Kind: &types.Value_StringValue{StringValue: request.Name}},
-				"iconEmoji": {Kind: &types.Value_StringValue{StringValue: request.IconEmoji}},
+				"iconEmoji": {Kind: &types.Value_StringValue{StringValue: request.Icon}},
 			},
 		},
 		TemplateId:          request.TemplateId,
@@ -469,7 +469,7 @@ func (a *ApiServer) createObjectHandler(c *gin.Context) {
 		Type:       "object",
 		Id:         resp.ObjectId,
 		Name:       resp.Details.Fields["name"].GetStringValue(),
-		IconEmoji:  resp.Details.Fields["iconEmoji"].GetStringValue(),
+		Icon:       resp.Details.Fields["iconEmoji"].GetStringValue(),
 		ObjectType: request.ObjectTypeUniqueKey,
 		SpaceId:    resp.Details.Fields["spaceId"].GetStringValue(),
 		// TODO populate other fields
@@ -562,7 +562,7 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 			Id:        record.Fields["id"].GetStringValue(),
 			UniqueKey: record.Fields["uniqueKey"].GetStringValue(),
 			Name:      record.Fields["name"].GetStringValue(),
-			IconEmoji: record.Fields["iconEmoji"].GetStringValue(),
+			Icon:      record.Fields["iconEmoji"].GetStringValue(),
 		})
 	}
 
@@ -659,10 +659,10 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 		}
 
 		templates = append(templates, ObjectTemplate{
-			Type:      "object_template",
-			Id:        templateId,
-			Name:      templateResp.ObjectView.Details[0].Details.Fields["name"].GetStringValue(),
-			IconEmoji: templateResp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(),
+			Type: "object_template",
+			Id:   templateId,
+			Name: templateResp.ObjectView.Details[0].Details.Fields["name"].GetStringValue(),
+			Icon: templateResp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(),
 		})
 	}
 
@@ -803,7 +803,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 				Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
 				Id:         record.Fields["id"].GetStringValue(),
 				Name:       record.Fields["name"].GetStringValue(),
-				IconEmoji:  icon,
+				Icon:       icon,
 				ObjectType: objectTypeName,
 				SpaceId:    spaceId,
 				// TODO: populate other fields
