@@ -22,12 +22,7 @@ type ClientStorage interface {
 	spacestorage.SpaceStorageProvider
 	app.ComponentRunnable
 	AllSpaceIds() (ids []string, err error)
-	GetSpaceID(objectID string) (spaceID string, err error)
-	BindSpaceID(spaceID, objectID string) (err error)
 	DeleteSpaceStorage(ctx context.Context, spaceId string) error
-	MarkSpaceCreated(id string) (err error)
-	UnmarkSpaceCreated(id string) (err error)
-	IsSpaceCreated(id string) (created bool)
 }
 
 // storageService is a proxy for the actual storage implementation

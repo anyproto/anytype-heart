@@ -52,6 +52,7 @@ type ObjectStore interface {
 	GetCrdtDb(spaceId string) anystore.DB
 
 	SpaceNameGetter
+	SpaceIdBinder
 	CrossSpace
 }
 
@@ -97,6 +98,7 @@ type dsObjectStore struct {
 	virtualSpaces    anystore.Collection
 	system           anystore.Collection
 	fulltextQueue    anystore.Collection
+	bindId           anystore.Collection
 
 	arenaPool *anyenc.ArenaPool
 
@@ -220,6 +222,10 @@ func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
 	if err != nil {
 		return errors.Join(store.Close(), fmt.Errorf("open virtualSpaces collection: %w", err))
 	}
+	bindId, err := store.Collection(ctx, "bindId")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open bindId collection: %w", err))
+	}
 
 	s.anyStore = store
 	s.anyStoreLockRemove = lockRemove
@@ -228,6 +234,7 @@ func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
 	s.system = system
 	s.indexerChecksums = indexerChecksums
 	s.virtualSpaces = virtualSpaces
+	s.bindId = bindId
 
 	return nil
 }

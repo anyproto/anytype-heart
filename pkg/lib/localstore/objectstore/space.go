@@ -11,6 +11,11 @@ type SpaceNameGetter interface {
 	GetSpaceName(spaceId string) string
 }
 
+type SpaceIdBinder interface {
+	BindSpaceId(spaceId, objectId string) error
+	GetSpaceId(objectId string) (spaceId string, err error)
+}
+
 func (d *dsObjectStore) GetSpaceName(spaceId string) string {
 	records, err := d.SpaceIndex(d.techSpaceId).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -34,4 +39,12 @@ func (d *dsObjectStore) GetSpaceName(spaceId string) string {
 		spaceName = pbtypes.GetString(records[0].Details, bundle.RelationKeyName.String())
 	}
 	return spaceName
+}
+
+func (d *dsObjectStore) BindSpaceId(spaceId, objectId string) error {
+	panic("implement me")
+}
+
+func (d *dsObjectStore) GetSpaceId(objectId string) (spaceId string, err error) {
+	panic("implement me")
 }
