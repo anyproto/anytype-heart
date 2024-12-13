@@ -10,6 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -107,7 +108,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 		err = fx.Unsubscribe("test")
 		require.NoError(t, err)
 
-		err = resp.Output.Add(context.Background(), &pb.EventMessage{})
+		err = resp.Output.Add(context.Background(), event.NewMessage("", nil))
 		require.True(t, errors.Is(err, mb2.ErrClosed))
 	})
 
