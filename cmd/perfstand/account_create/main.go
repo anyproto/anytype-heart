@@ -34,7 +34,6 @@ func NewResults(networkMode string) internal.PerfResult {
 	}
 }
 
-
 func main() {
 	prep := NewInput()
 	err := internal.Prepare(prep, nil)
@@ -89,13 +88,13 @@ func iterate(prep *input, result internal.PerfResult) error {
 		return err
 	}
 
-	var walletStr []byte
+	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		walletStr, err = exec.Command("powershell", "-Command", internal.GrpcWalletCreate(workspace)).Output()
+		cmd = exec.Command("powershell", "-Command", internal.GrpcWalletCreate(workspace))
 	} else {
-		walletStr, err = exec.Command("bash", "-c", internal.GrpcWalletCreate(workspace)).Output()
+		cmd = exec.Command("bash", "-c", internal.GrpcWalletCreate(workspace))
 	}
-
+	walletStr, err := cmd.Output()
 	if err != nil {
 		return err
 	}

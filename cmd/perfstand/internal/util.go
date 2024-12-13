@@ -176,7 +176,10 @@ func GrpcWorkspaceCreate() string {
 
 func GrpcAccountSelect(accHash, workspace, networkMode, staging string) string {
 	if runtime.GOOS == "windows" {
-		staging, _ = WinFixPath(staging)
+		staging, err := WinFixPath(staging)
+		if err != nil {
+			return "Error: " + err.Error()
+		}
 		return `cmd.exe /c 'grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d "{\"id\":\"` + accHash + `\",\"rootPath\":\"` + workspace + `\",\"disableLocalNetworkSync\":false,\"networkMode\":` + networkMode + `,\"networkCustomConfigFilePath\":\"` + staging + `\"}" localhost:31007 anytype.ClientCommands.AccountSelect'`
 	}
 	return `grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{
@@ -218,7 +221,10 @@ func GrpcWalletCreate(workspace string) string {
 
 func GrpcAccountCreate(workspace, networkMode, staging string) string {
 	if runtime.GOOS == "windows" {
-		staging, _ = WinFixPath(staging)
+		staging, err := WinFixPath(staging)
+		if err != nil {
+			return "Error: " + err.Error()
+		}
 		return `cmd.exe /c 'grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d "{\"icon\":13,\"networkMode\":` + networkMode + `,\"storePath\":\"` + workspace + `\",\"networkCustomConfigFilePath\":\"` + staging + `\"}" localhost:31007 anytype.ClientCommands.AccountCreate'`
 	}
 	return `grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{
