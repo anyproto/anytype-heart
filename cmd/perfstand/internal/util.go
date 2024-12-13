@@ -80,12 +80,23 @@ func SendResultsToHttp(apiKey string, events []Event) error {
 }
 
 func KillServer() error {
-	return ExecuteCommand("kill -9 $(lsof -i :31007 -t) ; echo \"Server killed\"")
+	var cmd string
+	if runtime.GOOS == "windows" {
+		cmd = `(Get-NetTCPConnection -LocalPort 31007 -State Listen | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }) ; Write-Host "Server killed"`
+	} else {
+		cmd = "kill -9 $(lsof -i :31007 -t) ; echo \"Server killed\""
+	}
+	return ExecuteCommand(cmd)
 }
 
 func ExecuteCommand(command string) error {
 	fmt.Println(command)
-	cmd := exec.Command("bash", "-c", command)
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("powershell", "-Command", command)
+	} else {
+		cmd = exec.Command("bash", "-c", command)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
@@ -96,7 +107,10 @@ func ExecuteCommand(command string) error {
 }
 
 func UnpackZip(path string, workspace string) error {
-	return ExecuteCommand("unzip -o " + path + " -d " + workspace)
+	if runtime.GOOS == "windows" {
+		return ExecuteCommand("Expand-Archive -Path " + path + " -DestinationPath " + workspace + " -Force")
+	}
+	return ExecuteCommand("unzip -qq -o " + path + " -d " + workspace)
 }
 
 func BuildAnytype(err error) error {
@@ -117,6 +131,10 @@ func LoadEnv(env string) (string, error) {
 	return res, nil
 }
 
+func WinFixPath(winPath string) (string, error) {
+	return strings.ReplaceAll(winPath, "\\", "/"), nil
+}
+
 func SetupWd() (string, error) {
 	err := os.Chdir("../../..")
 	if err != nil {
@@ -128,22 +146,39 @@ func SetupWd() (string, error) {
 		return "", err
 	}
 
+	if runtime.GOOS == "windows" {
+		getwd, err = WinFixPath(getwd)
+		if err != nil {
+			return "", err
+		}
+	}
+
 	fmt.Println("Current working directory:", getwd)
 	return getwd, nil
 }
 
 func GrpcWorkspaceOpen(workspace string) string {
+	if runtime.GOOS == "windows" {
+		return `cmd.exe /c 'grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d "{\"spaceId\":\"` + workspace + `\"}" localhost:31007 anytype.ClientCommands.WorkspaceOpen'`
+	}
 	return `grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{
 		   "spaceId": "` + workspace + `"
 		}' localhost:31007 anytype.ClientCommands.WorkspaceOpen`
 }
 
 func GrpcWorkspaceCreate() string {
+	if runtime.GOOS == "windows" {
+		return `cmd.exe /c 'grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d "{}" localhost:31007 anytype.ClientCommands.WorkspaceCreate'`
+	}
 	return `grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{
 		}' localhost:31007 anytype.ClientCommands.WorkspaceCreate`
 }
 
 func GrpcAccountSelect(accHash, workspace, networkMode, staging string) string {
+	if runtime.GOOS == "windows" {
+		staging, _ = WinFixPath(staging)
+		return `cmd.exe /c 'grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d "{\"id\":\"` + accHash + `\",\"rootPath\":\"` + workspace + `\",\"disableLocalNetworkSync\":false,\"networkMode\":` + networkMode + `,\"networkCustomConfigFilePath\":\"` + staging + `\"}" localhost:31007 anytype.ClientCommands.AccountSelect'`
+	}
 	return `grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{
 		   "id": "` + accHash + `",
 		   "rootPath": "` + workspace + `",
@@ -154,12 +189,18 @@ func GrpcAccountSelect(accHash, workspace, networkMode, staging string) string {
 }
 
 func GrpcWalletCreateSession(mnemonic string) string {
+	if runtime.GOOS == "windows" {
+		return `cmd.exe /c 'grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d "{\"mnemonic\":\"` + mnemonic + `\"}" localhost:31007 anytype.ClientCommands.WalletCreateSession'`
+	}
 	return `grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{
 		   "mnemonic": "` + mnemonic + `"
 		}' localhost:31007 anytype.ClientCommands.WalletCreateSession`
 }
 
 func GrpcWalletRecover(workspace, mnemonic string) string {
+	if runtime.GOOS == "windows" {
+		return `cmd.exe /c 'grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d "{\"rootPath\":\"` + workspace + `\",\"mnemonic\":\"` + mnemonic + `\"}" localhost:31007 anytype.ClientCommands.WalletRecover'`
+	}
 	return `grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{
 		   "rootPath": "` + workspace + `",
 		   "mnemonic": "` + mnemonic + `"
@@ -167,12 +208,19 @@ func GrpcWalletRecover(workspace, mnemonic string) string {
 }
 
 func GrpcWalletCreate(workspace string) string {
+	if runtime.GOOS == "windows" {
+		return `cmd.exe /c 'grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d "{\"rootPath\":\"` + workspace + `\"}" localhost:31007 anytype.ClientCommands.WalletCreate'`
+	}
 	return `grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{
 		   "rootPath": "` + workspace + `"
 		}' localhost:31007 anytype.ClientCommands.WalletCreate`
 }
 
 func GrpcAccountCreate(workspace, networkMode, staging string) string {
+	if runtime.GOOS == "windows" {
+		staging, _ = WinFixPath(staging)
+		return `cmd.exe /c 'grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d "{\"icon\":13,\"networkMode\":` + networkMode + `,\"storePath\":\"` + workspace + `\",\"networkCustomConfigFilePath\":\"` + staging + `\"}" localhost:31007 anytype.ClientCommands.AccountCreate'`
+	}
 	return `grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{
 		   "icon": 13,
 		   "networkMode": ` + networkMode + `,
@@ -182,6 +230,9 @@ func GrpcAccountCreate(workspace, networkMode, staging string) string {
 }
 
 func GrpcInitialSetParameters() string {
+	if runtime.GOOS == "windows" {
+		return `cmd.exe /c 'grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d "{\"platform\":\"test\",\"version\":\"0.0.0-test\"}" localhost:31007 anytype.ClientCommands.InitialSetParameters'`
+	}
 	return `grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{
 		   "platform": "test",
 		   "version": "0.0.0-test"
@@ -189,7 +240,12 @@ func GrpcInitialSetParameters() string {
 }
 
 func StartAnytypeBackground() error {
-	runServer := exec.Command("./dist/server")
+	var runServer *exec.Cmd
+	if runtime.GOOS == "windows" {
+		runServer = exec.Command("./dist/server.exe")
+	} else {
+		runServer = exec.Command("./dist/server")
+	}
 	runServer.Stdout = os.Stdout
 	runServer.Stderr = os.Stderr
 	runServer.Env = append(os.Environ(), `ANYPROF=:6060`)
@@ -200,7 +256,15 @@ func StartAnytypeBackground() error {
 
 	// Wait for the server to start
 	for {
-		err = ExecuteCommand(`pids=$(lsof -i :31007 -t) && [ -n "$pids" ] && echo "Found process: $pids" || { echo "No process found"; exit 1; }`)
+		var cmd string
+		if runtime.GOOS == "windows" {
+			cmd = `$pids = (Get-NetTCPConnection -LocalPort 31007 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess); if ($pids) { Write-Output "Found process: $pids" } else { Write-Output "No process found"; exit 1 }`
+		} else {
+			cmd = `pids=$(lsof -i :31007 -t) && [ -n "$pids" ] && echo "Found process: $pids" || { echo "No process found"; exit 1; }`
+		}
+
+		err = ExecuteCommand(cmd)
+
 		if err == nil {
 			break
 		} else {
@@ -466,8 +530,18 @@ func Prepare[T BasicInputtable](prep T, f func(T) error) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Created temporary directory:", workspace)
-	prep.SetWorkspace(workspace)
+
+	if runtime.GOOS == "windows" {
+		winWorkspace, err := WinFixPath(workspace)
+		if err != nil {
+			return err
+		}
+		fmt.Println("Created temporary directory:", winWorkspace)
+		prep.SetWorkspace(winWorkspace)
+	} else {
+		fmt.Println("Created temporary directory:", workspace)
+		prep.SetWorkspace(workspace)
+	}
 
 	_, err = SetupWd()
 	if err != nil {
@@ -486,10 +560,29 @@ func Prepare[T BasicInputtable](prep T, f func(T) error) error {
 		}
 	}
 
-	err = BuildAnytype(err)
-	if err != nil {
-		return err
+	if runtime.GOOS == "windows" {
+		fmt.Printf("Build GRPC server on Windows...")
+		command := `
+			$Env:GOOS="windows";
+			$Env:GOARCH="amd64";
+			$Env:CGO_ENABLED="1";
+			$Env:CC="x86_64-w64-mingw32-gcc";
+			$Env:CXX="x86_64-w64-mingw32-g++";
+			go build -o dist/server.exe -ldflags "$env:FLAGS -linkmode external -extldflags=-static" --tags "noauth nosigar nowatchdog" $env:BUILD_FLAGS github.com/anyproto/anytype-heart/cmd/grpcserver
+		`
+		err := ExecuteCommand(command)
+		if err != nil {
+			fmt.Printf("Error on building: %v\n", err)
+		} else {
+			fmt.Println("Build completed successfully")
+		}
+	} else {
+		err = BuildAnytype(err)
+		if err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 

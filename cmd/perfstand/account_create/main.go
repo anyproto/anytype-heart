@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 
 	"go.uber.org/atomic"
 
@@ -33,6 +34,7 @@ func NewResults(networkMode string) internal.PerfResult {
 	}
 }
 
+
 func main() {
 	prep := NewInput()
 	err := internal.Prepare(prep, nil)
@@ -58,10 +60,18 @@ func main() {
 
 func iterate(prep *input, result internal.PerfResult) error {
 	workspace, err := os.MkdirTemp("", "workspace")
-	prep.Workspace = workspace
 	if err != nil {
 		return err
 	}
+
+	if runtime.GOOS == "windows" {
+		workspace, err = internal.WinFixPath(workspace)
+		if err != nil {
+			return err
+		}
+	}
+
+	prep.Workspace = workspace
 	defer os.RemoveAll(workspace)
 	fmt.Println("Created temporary directory:", workspace)
 
@@ -79,7 +89,13 @@ func iterate(prep *input, result internal.PerfResult) error {
 		return err
 	}
 
-	walletStr, err := exec.Command("bash", "-c", internal.GrpcWalletCreate(workspace)).Output()
+	var walletStr []byte
+	if runtime.GOOS == "windows" {
+		walletStr, err = exec.Command("powershell", "-Command", internal.GrpcWalletCreate(workspace)).Output()
+	} else {
+		walletStr, err = exec.Command("bash", "-c", internal.GrpcWalletCreate(workspace)).Output()
+	}
+
 	if err != nil {
 		return err
 	}
