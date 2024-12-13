@@ -363,7 +363,7 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 		s.RemoveDetail(bundle.RelationKeyInternalFlags.String())
 	}
 
-	msgs, act, err := state.ApplyState(s, true)
+	msgs, act, err := state.ApplyState(st.SpaceID(), s, true)
 	if err != nil {
 		return
 	}
@@ -392,7 +392,7 @@ func (st *SmartTest) History() undo.History {
 
 func (st *SmartTest) StateRebuild(d state.Doc) (err error) {
 	d.(*state.State).SetParent(st.Doc.(*state.State))
-	_, _, err = state.ApplyState(d.(*state.State), false)
+	_, _, err = state.ApplyState(st.SpaceID(), d.(*state.State), false)
 	return err
 }
 

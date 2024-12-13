@@ -192,7 +192,7 @@ func TestApplyState(t *testing.T) {
 		s.InsertTo("4", model.Block_Bottom, "5")
 		s.changeId = "4"
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, hist.Add, 2)
 		assert.Len(t, hist.Change, 1)
@@ -225,7 +225,7 @@ func TestApplyState(t *testing.T) {
 				Text:    "name",
 				Checked: "done",
 			}))
-			_, _, err := ApplyState(s, true)
+			_, _, err := ApplyState("", s, true)
 			assert.Equal(t, "new name", s.Pick("title").Model().GetText().Text)
 			require.NoError(t, err)
 		})
@@ -253,7 +253,7 @@ func TestApplyState(t *testing.T) {
 					"name": pbtypes.String("new name"),
 				},
 			})
-			msgs, _, err := ApplyState(s, true)
+			msgs, _, err := ApplyState("", s, true)
 			require.NoError(t, err)
 			assert.Len(t, msgs, 2)
 		})
@@ -282,7 +282,7 @@ func TestApplyState(t *testing.T) {
 					"done": pbtypes.Bool(false),
 				},
 			})
-			msgs, _, err := ApplyState(s, true)
+			msgs, _, err := ApplyState("", s, true)
 			require.NoError(t, err)
 			assert.Len(t, msgs, 2)
 		})
@@ -307,7 +307,7 @@ func TestApplyState(t *testing.T) {
 			d.BlocksInit(d.(simple.DetailsService))
 			s := d.NewState()
 			s.Get("2").(text.Block).SetChecked(false)
-			msgs, _, err := ApplyState(s, true)
+			msgs, _, err := ApplyState("", s, true)
 			require.NoError(t, err)
 			assert.Len(t, msgs, 2)
 		})

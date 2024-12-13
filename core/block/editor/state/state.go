@@ -412,25 +412,25 @@ func (s *State) SearchText() string {
 	return builder.String()
 }
 
-func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
-	return s.apply(false, false, withLayouts)
+func ApplyState(spaceId string, s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
+	return s.apply(spaceId, false, false, withLayouts)
 }
 
-func ApplyStateFast(s *State) (msgs []simple.EventMessage, action undo.Action, err error) {
-	return s.apply(true, false, false)
+func ApplyStateFast(spaceId string, s *State) (msgs []simple.EventMessage, action undo.Action, err error) {
+	return s.apply(spaceId, true, false, false)
 }
 
-func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action undo.Action, err error) {
-	return s.apply(true, true, false)
+func ApplyStateFastOne(spaceId string, s *State) (msgs []simple.EventMessage, action undo.Action, err error) {
+	return s.apply(spaceId, true, true, false)
 }
 
-func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
+func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
 			return
 		}
-		return s.parent.apply(fast, one, withLayouts)
+		return s.parent.apply("", fast, one, withLayouts)
 	}
 	if fast {
 		return
@@ -486,8 +486,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 	flushNewBlocks := func() {
 		if len(newBlocks) > 0 {
-			// TODO: Check that the SpaceID is available here
-			msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(s.SpaceID(),
+			msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(spaceId,
 				&pb.EventMessageValueOfBlockAdd{
 					BlockAdd: &pb.EventBlockAdd{
 						Blocks: newBlocks,
@@ -517,8 +516,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 					db.DetailsInit(s)
 				}
 			}
-			// TODO: Check that the SpaceID is available here
-			diff, err := orig.Diff(s.SpaceID(), b)
+			diff, err := orig.Diff(spaceId, b)
 			if err != nil {
 				return nil, undo.Action{}, err
 			}
@@ -652,8 +650,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if s.parent != nil && s.localDetails != nil {
 		prev := s.parent.LocalDetails()
 		if diff := pbtypes.StructDiff(prev, s.localDetails); diff != nil {
-			// TODO: Check that the SpaceID is available here
-			msgs = append(msgs, WrapEventMessages(true, StructDiffIntoEvents(s.SpaceID(), s.RootId(), diff))...)
+			msgs = append(msgs, WrapEventMessages(true, StructDiffIntoEvents(spaceId, s.RootId(), diff))...)
 			s.parent.localDetails = s.localDetails
 		} else if !s.localDetails.Equal(s.parent.localDetails) {
 			s.parent.localDetails = s.localDetails
@@ -1211,8 +1208,8 @@ func (s *State) CheckRestrictions() (err error) {
 		}
 		if rest.Edit {
 			if ob := s.parent.Pick(id); ob != nil {
-				// TODO: Check that the SpaceID is available here
-				if msgs, _ := ob.Diff(s.SpaceID(), b); len(msgs) > 0 {
+				// SpaceId is empty because only the fact that there is any diff matters here
+				if msgs, _ := ob.Diff("", b); len(msgs) > 0 {
 					return ErrRestricted
 				}
 			}
