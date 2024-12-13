@@ -322,11 +322,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*
 		return messages[i].OrderId < messages[j].OrderId
 	})
 
-	var firstOrderId string
-	if len(messages) > 0 {
-		firstOrderId = messages[0].OrderId
-	}
-	s.subscription.subscribe(firstOrderId)
+	s.subscription.enable()
 
 	return messages, 0, nil
 }

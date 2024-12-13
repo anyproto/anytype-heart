@@ -18,8 +18,7 @@ type subscription struct {
 
 	eventsBuffer []*pb.EventMessage
 
-	firstOrderId string
-	enabled      bool
+	enabled bool
 }
 
 func newSubscription(spaceId string, chatId string, eventSender event.Sender) *subscription {
@@ -30,8 +29,7 @@ func newSubscription(spaceId string, chatId string, eventSender event.Sender) *s
 	}
 }
 
-func (s *subscription) subscribe(firstOrderId string) {
-	s.firstOrderId = firstOrderId
+func (s *subscription) enable() {
 	s.enabled = true
 }
 
@@ -65,7 +63,7 @@ func (s *subscription) flush() {
 }
 
 func (s *subscription) add(message *model.ChatMessage) {
-	if !s.canSend(message) {
+	if !s.canSend() {
 		return
 	}
 	ev := &pb.EventChatAdd{
@@ -88,7 +86,7 @@ func (s *subscription) delete(messageId string) {
 }
 
 func (s *subscription) updateFull(message *model.ChatMessage) {
-	if !s.canSend(message) {
+	if !s.canSend() {
 		return
 	}
 	ev := &pb.EventChatUpdate{
@@ -101,7 +99,7 @@ func (s *subscription) updateFull(message *model.ChatMessage) {
 }
 
 func (s *subscription) updateReactions(message *model.ChatMessage) {
-	if !s.canSend(message) {
+	if !s.canSend() {
 		return
 	}
 	ev := &pb.EventChatUpdateReactions{
@@ -113,14 +111,11 @@ func (s *subscription) updateReactions(message *model.ChatMessage) {
 	}))
 }
 
-func (s *subscription) canSend(message *model.ChatMessage) bool {
+func (s *subscription) canSend() bool {
 	if s.sessionContext != nil {
 		return true
 	}
 	if !s.enabled {
-		return false
-	}
-	if s.firstOrderId > message.OrderId {
 		return false
 	}
 	return true
