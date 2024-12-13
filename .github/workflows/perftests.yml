@@ -177,16 +177,6 @@ jobs:
           $TANTIVY_VERSION = (Get-Content go.mod | Select-String "github.com/anyproto/tantivy-go" | ForEach-Object { ($_ -split " ")[1] }).Trim()
 
           $TANTIVY_LIBS = @(
-            "android-386.tar.gz",
-            "android-amd64.tar.gz",
-            "android-arm.tar.gz",
-            "android-arm64.tar.gz",
-            "darwin-amd64.tar.gz",
-            "darwin-arm64.tar.gz",
-            "ios-amd64.tar.gz",
-            "ios-arm64.tar.gz",
-            "ios-arm64-sim.tar.gz",
-            "linux-amd64-musl.tar.gz",
             "windows-amd64.tar.gz"
           )
 
