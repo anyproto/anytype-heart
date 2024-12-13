@@ -33,6 +33,7 @@ type Store interface {
 	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func()) (err error)
 	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
 	SetPushChangeHook(onPushChange PushChangeHook)
+	MarkSeenHeads(heads []string)
 }
 
 type PushStoreChangeParams struct {
@@ -195,10 +196,15 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 		return errors.Join(tx.Rollback(), err)
 	}
 	err = tx.Commit()
+	s.diffManager.Update(tree)
 	if err == nil {
 		s.onUpdateHook()
 	}
 	return err
+}
+
+func (s *store) MarkSeenHeads(heads []string) {
+	s.diffManager.Remove(heads)
 }
 
 func (s *store) Update(tree objecttree.ObjectTree) error {

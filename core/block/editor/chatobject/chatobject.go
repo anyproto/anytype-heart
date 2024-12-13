@@ -39,6 +39,7 @@ type StoreObject interface {
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
 	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error)
+	MarkSeenHeads(heads []string)
 	Unsubscribe() error
 }
 
@@ -110,6 +111,10 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 func (s *storeObject) onUpdate() {
 	s.subscription.flush()
+}
+
+func (s *storeObject) MarkSeenHeads(heads []string) {
+	s.storeSource.MarkSeenHeads(heads)
 }
 
 func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error) {
