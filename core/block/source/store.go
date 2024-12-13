@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 
@@ -50,6 +51,7 @@ type store struct {
 	store        *storestate.StoreState
 	onUpdateHook func()
 	onPushChange PushChangeHook
+	diffManager  *objecttree.DiffManager
 }
 
 func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
@@ -58,6 +60,22 @@ func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 
 func (s *store) SetPushChangeHook(onPushChange PushChangeHook) {
 	s.onPushChange = onPushChange
+}
+
+func (s *store) createDiffManager(ctx context.Context, treeHeads, initHeads []string) (err error) {
+	buildTree := func(heads []string) (objecttree.ReadableObjectTree, error) {
+		return s.space.TreeBuilder().BuildHistoryTree(ctx, s.Id(), objecttreebuilder.HistoryTreeOpts{
+			Heads:   heads,
+			Include: true,
+		})
+	}
+	onRemove := func(removed []string) {
+		for _, rem := range removed {
+			fmt.Println("[x]: removed", rem)
+		}
+	}
+	s.diffManager, err = objecttree.NewDiffManager(initHeads, treeHeads, buildTree, onRemove)
+	return
 }
 
 func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
@@ -89,7 +107,10 @@ func (s *store) PushChange(params PushChangeParams) (id string, err error) {
 func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreState, onUpdateHook func()) (err error) {
 	s.onUpdateHook = onUpdateHook
 	s.store = storeState
-
+	err = s.createDiffManager(ctx, s.source.Tree().Heads(), nil)
+	if err != nil {
+		return err
+	}
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
 		return
