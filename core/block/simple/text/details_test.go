@@ -94,7 +94,7 @@ func TestTextDetails_Diff(t *testing.T) {
 		assert.Equal(t, "changed", pbtypes.GetString(ds.Struct, "title"))
 		assert.Equal(t, true, pbtypes.GetBool(ds.Struct, "checked"))
 
-		msgs, err := orig.Diff(db)
+		msgs, err := orig.Diff("", db)
 		require.NoError(t, err)
 		require.Len(t, msgs, 1)
 		assert.True(t, msgs[0].Virtual)
@@ -121,7 +121,7 @@ func TestTextDetails_Diff(t *testing.T) {
 				"keys": pbtypes.String("value"),
 			},
 		}
-		msgs, err := orig.Diff(db)
+		msgs, err := orig.Diff("", db)
 		require.NoError(t, err)
 		require.Len(t, msgs, 1)
 		assert.False(t, msgs[0].Virtual)

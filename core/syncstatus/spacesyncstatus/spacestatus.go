@@ -232,7 +232,7 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
 		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, missingObjects),
 	}
-	s.broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+	s.broadcast(event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 		SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
 	}))
 }

@@ -17,10 +17,10 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func wrapToEventMessages(vals []pb.IsEventMessageValue) []*pb.EventMessage {
+func wrapToEventMessages(spaceId string, vals []pb.IsEventMessageValue) []*pb.EventMessage {
 	msgs := make([]*pb.EventMessage, len(vals))
 	for i, v := range vals {
-		msgs[i] = &pb.EventMessage{Value: v}
+		msgs[i] = &pb.EventMessage{SpaceId: spaceId, Value: v}
 	}
 	return msgs
 }
@@ -71,7 +71,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 		msgs, err := resp.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
 
-		require.Equal(t, wrapToEventMessages(want), msgs)
+		require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 	})
 
 	t.Run("amend details related to filter -- remove from subscription", func(t *testing.T) {
@@ -100,7 +100,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 		msgs, err := resp.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
 
-		require.Equal(t, wrapToEventMessages(want), msgs)
+		require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 	})
 
 	t.Run("unsubscribe", func(t *testing.T) {
@@ -206,7 +206,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		msgs, err := resp1.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
 
-		require.Equal(t, wrapToEventMessages(want), msgs)
+		require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 
 		want = givenMessagesForFirstObject("client1", "client2")
 		fx.waitEvents(t, want...)
@@ -238,7 +238,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		msgs, err := resp1.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
 
-		require.Equal(t, wrapToEventMessages(want), msgs)
+		require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 
 		want = givenMessagesForSecondObject("client1", "client2")
 		fx.waitEvents(t, want...)
@@ -260,12 +260,12 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		want := givenMessagesForThirdObject(2, "id1", "internal1")
 		msgs, err := resp1.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
-		require.Equal(t, wrapToEventMessages(want), msgs)
+		require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 
 		want = givenMessagesForThirdObject(1, "", "internal2")
 		msgs, err = resp4.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
-		require.Equal(t, wrapToEventMessages(want), msgs)
+		require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 
 		want = givenMessagesForThirdObject(2, "id1", "client1", "client2")
 		fx.waitEvents(t, want...)
@@ -329,7 +329,7 @@ func TestInternalSubCustomQueue(t *testing.T) {
 
 	msgs, err := queue.NewCond().WithMin(len(want)).Wait(ctx)
 	require.NoError(t, err)
-	require.Equal(t, wrapToEventMessages(want), msgs)
+	require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 }
 
 func TestInternalSubAsyncInit(t *testing.T) {
@@ -388,7 +388,7 @@ func TestInternalSubAsyncInit(t *testing.T) {
 
 	msgs, err := resp.Output.NewCond().WithMin(len(want)).Wait(ctx)
 	require.NoError(t, err)
-	require.Equal(t, wrapToEventMessages(want), msgs)
+	require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 }
 
 func givenMessagesForFirstObject(subIds ...string) []pb.IsEventMessageValue {

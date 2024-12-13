@@ -84,6 +84,9 @@ func (s *crossSpaceSubscription) run() {
 }
 
 func (s *crossSpaceSubscription) patchEvent(msg *pb.EventMessage) {
+	// Remove spaceId as it's the cross space subscription
+	msg.SpaceId = ""
+
 	matcher := subscriptionservice.EventMatcher{
 		OnAdd: func(add *pb.EventObjectSubscriptionAdd) {
 			add.SubId = s.subId
