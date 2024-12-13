@@ -180,6 +180,14 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	if err == nil {
 		s.onUpdateHook()
 	}
+	ch, err := s.ObjectTree.GetChange(changeId)
+	if err != nil {
+		return "", err
+	}
+	s.diffManager.Add(&objecttree.Change{
+		Id:          changeId,
+		PreviousIds: ch.PreviousIds,
+	})
 	return changeId, err
 }
 
