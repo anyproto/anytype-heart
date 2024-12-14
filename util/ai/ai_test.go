@@ -12,202 +12,239 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-func TestWritingTools(t *testing.T) {
-	err := godotenv.Load() // Ensure dotenv is loaded for tests needing API keys
-	assert.NoError(t, err)
+func init() {
+	_ = godotenv.Load() // Ensure dotenv is loaded for tests needing API keys
+}
 
-	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
-	if openaiAPIKey == "" {
-		log.Warn("OPENAI_API_KEY not found in environment, using default invalid token")
-		openaiAPIKey = "default-invalid-token" // Fallback in case of missing API key
-	}
-
-	tests := []struct {
-		name           string
-		params         *pb.RpcAIWritingToolsRequest
-		validateResult func(t *testing.T, result Result, err error)
-	}{
-		{
-			name: "SupportedLanguage",
-			params: &pb.RpcAIWritingToolsRequest{
-				Mode:        0,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_OLLAMA,
-				Endpoint:    "http://localhost:11434/v1/chat/completions",
-				Model:       "llama3.2:3b",
-				Token:       "",
-				Temperature: 0.1,
-				Text:        "This is a test.",
-			},
-			validateResult: func(t *testing.T, result Result, err error) {
-				assert.NoError(t, err)
-			},
-		},
-		{
-			name: "UnsupportedLanguage",
-			params: &pb.RpcAIWritingToolsRequest{
-				Mode:        0,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_OLLAMA,
-				Endpoint:    "http://localhost:11434/v1/chat/completions",
-				Model:       "llama3.2:3b",
-				Token:       "",
-				Temperature: 0.1,
-				Text:        "Съешь ещё этих мягких французских булок, да выпей же чаю. Впрочем, одних слов недостаточно для демонстрации эффекта, но этот текст подходит для большинства задач. Здесь можно написать что угодно, и никто не обратит внимания на содержание.",
-			},
-			validateResult: func(t *testing.T, result Result, err error) {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, ErrUnsupportedLanguage))
-			},
-		},
-		{
-			name: "InvalidEndpoint",
-			params: &pb.RpcAIWritingToolsRequest{
-				Mode:        0,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_OLLAMA,
-				Endpoint:    "http://invalid-endpoint",
-				Model:       "llama3.2:3b",
-				Token:       "",
-				Temperature: 0.1,
-				Text:        "Can you use an invalid endpoint?",
-			},
-			validateResult: func(t *testing.T, result Result, err error) {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, ErrEndpointNotReachable))
-			},
-		},
-		{
-			name: "InvalidModel",
-			params: &pb.RpcAIWritingToolsRequest{
-				Mode:        0,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_OLLAMA,
-				Endpoint:    "http://localhost:11434/v1/chat/completions",
-				Model:       "invalid-model",
-				Token:       "",
-				Temperature: 0.1,
-				Text:        "Can you use an invalid model?",
-			},
-			validateResult: func(t *testing.T, result Result, err error) {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, ErrModelNotFound))
-			},
-		},
-		{
-			name: "UnauthorizedAccess",
-			params: &pb.RpcAIWritingToolsRequest{
-				Mode:        0,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_OPENAI,
-				Endpoint:    "https://api.openai.com/v1/chat/completions",
-				Model:       "gpt-4o-mini",
-				Token:       "invalid-token",
-				Temperature: 0.1,
-				Text:        "Can you use an invalid token?",
-			},
-			validateResult: func(t *testing.T, result Result, err error) {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, ErrAuthRequired))
-			},
-		},
-		{
-			name: "ValidResponseOllama",
-			params: &pb.RpcAIWritingToolsRequest{
-				Mode:        0,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_OLLAMA,
-				Endpoint:    "http://localhost:11434/v1/chat/completions",
-				Model:       "llama3.2:3b",
-				Token:       "",
-				Temperature: 0,
-				Text:        "What is the capital of France?",
-			},
-			validateResult: func(t *testing.T, result Result, err error) {
-				assert.NoError(t, err)
-				assert.NotEmpty(t, result.Answer)
-				assert.Contains(t, result.Answer, "Paris")
-			},
-		},
-		{
-			name: "ValidResponseOpenAI",
-			params: &pb.RpcAIWritingToolsRequest{
-				Mode:        0,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_OPENAI,
-				Endpoint:    "https://api.openai.com/v1/chat/completions",
-				Model:       "gpt-4o-mini",
-				Token:       openaiAPIKey,
-				Temperature: 0,
-				Text:        "What is the capital of France?",
-			},
-			validateResult: func(t *testing.T, result Result, err error) {
-				assert.NoError(t, err)
-				assert.NotEmpty(t, result.Answer)
-				assert.Contains(t, result.Answer, "Paris")
-			},
-		},
-		{
-			name: "ValidResponseLMStudio",
-			params: &pb.RpcAIWritingToolsRequest{
-				Mode:        0,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_LMSTUDIO,
-				Endpoint:    "http://localhost:1234/v1/chat/completions",
-				Model:       "llama-3.2-3b-instruct",
-				Token:       "",
-				Temperature: 0,
-				Text:        "What is the capital of France?",
-			},
-			validateResult: func(t *testing.T, result Result, err error) {
-				assert.NoError(t, err)
-				assert.NotEmpty(t, result.Answer)
-				assert.Contains(t, result.Answer, "Paris")
-			},
-		},
-		{
-			name: "JSONExtractionOllama",
-			params: &pb.RpcAIWritingToolsRequest{
-				Mode:        6,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_OLLAMA,
-				Endpoint:    "http://localhost:11434/v1/chat/completions",
-				Model:       "llama3.2:3b",
-				Token:       "",
-				Temperature: 0,
-				Text:        "Countries, Capitals\nFrance, Paris\nGermany, Berlin",
-			},
-			validateResult: func(t *testing.T, result Result, err error) {
-				assert.NoError(t, err)
-				assert.NotEmpty(t, result.Answer)
-				assert.Equal(t, "| Country | Capital |\n|----------|---------|\n| France   | Paris   |\n| Germany  | Berlin  |\n", result.Answer)
-			},
-		},
-		{
-			name: "JSONExtractionLMStudio",
-			params: &pb.RpcAIWritingToolsRequest{
-				Mode:        6,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_LMSTUDIO,
-				Endpoint:    "http://localhost:1234/v1/chat/completions",
-				Model:       "llama-3.2-3b-instruct",
-				Token:       "",
-				Temperature: 0,
-				Text:        "Countries, Capitals\nFrance, Paris\nGermany, Berlin",
-			},
-			validateResult: func(t *testing.T, result Result, err error) {
-				assert.NoError(t, err)
-				assert.NotEmpty(t, result.Answer)
-				assert.Equal(t, "| Country | Capital |\n| --- | --- |\n| France | Paris |\n| Germany | Berlin |", result.Answer)
-			},
-		},
+func TestOllamaWritingTools(t *testing.T) {
+	providerFilter := os.Getenv("TEST_PROVIDER")
+	if providerFilter != "" && providerFilter != pb.RpcAIWritingToolsRequest_OLLAMA.String() {
+		t.Skipf("Skipping Ollama tests, since TEST_PROVIDER=%s", providerFilter)
 	}
 
 	service := New()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.WritingTools(context.Background(), tt.params)
-			tt.validateResult(t, result, err)
-		})
+	baseParams := &pb.RpcAIWritingToolsRequest{
+		Mode:        0,
+		Language:    0,
+		Provider:    pb.RpcAIWritingToolsRequest_OLLAMA,
+		Endpoint:    "http://localhost:11434/v1/chat/completions",
+		Model:       "llama3.2:3b",
+		Token:       "",
+		Temperature: 0,
 	}
+
+	t.Run("SupportedLanguage", func(t *testing.T) {
+		params := *baseParams
+		params.Text = "This is a test."
+		result, err := service.WritingTools(context.Background(), &params)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Answer)
+	})
+
+	t.Run("UnsupportedLanguage", func(t *testing.T) {
+		params := *baseParams
+		params.Text = "Съешь ещё этих мягких французских булок, да выпей же чаю."
+		_, err := service.WritingTools(context.Background(), &params)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, ErrUnsupportedLanguage))
+	})
+
+	t.Run("InvalidEndpoint", func(t *testing.T) {
+		params := *baseParams
+		params.Endpoint = "http://invalid-endpoint"
+		params.Text = "Can you use an invalid endpoint with Ollama?"
+		_, err := service.WritingTools(context.Background(), &params)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, ErrEndpointNotReachable))
+	})
+
+	t.Run("InvalidModel", func(t *testing.T) {
+		params := *baseParams
+		params.Model = "invalid-model"
+		params.Text = "Can you use an invalid model with Ollama?"
+		_, err := service.WritingTools(context.Background(), &params)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, ErrModelNotFound))
+	})
+
+	t.Run("ValidResponse", func(t *testing.T) {
+		params := *baseParams
+		params.Text = "What is the capital of France?"
+		result, err := service.WritingTools(context.Background(), &params)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Answer)
+		assert.Contains(t, result.Answer, "Paris")
+	})
+
+	t.Run("BulletPoints", func(t *testing.T) {
+		params := *baseParams
+		params.Mode = 5
+		params.Text = "Items to buy: Milk, Eggs, Bread, and Butter. Also, consider Apples if they are on sale."
+		result, err := service.WritingTools(context.Background(), &params)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Answer)
+		assert.Equal(t, "* Milk\n* Eggs\n* Bread\n* Butter\n* Apples (if on sale)", result.Answer)
+	})
+
+	t.Run("JSONExtraction", func(t *testing.T) {
+		params := *baseParams
+		params.Mode = 6
+		params.Text = "Countries, Capitals\nFrance, Paris\nGermany, Berlin"
+		result, err := service.WritingTools(context.Background(), &params)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Answer)
+		assert.Equal(t,
+			"| Country | Capital |\n|----------|---------|\n| France   | Paris   |\n| Germany  | Berlin  |\n",
+			result.Answer)
+	})
+}
+
+func TestOpenAIWritingTools(t *testing.T) {
+	providerFilter := os.Getenv("TEST_PROVIDER")
+	if providerFilter != "" && providerFilter != pb.RpcAIWritingToolsRequest_OPENAI.String() {
+		t.Skipf("Skipping OpenAI tests, since TEST_PROVIDER=%s", providerFilter)
+	}
+
+	service := New()
+	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
+	if openaiAPIKey == "" {
+		log.Warn("OPENAI_API_KEY not found in environment, using default invalid token")
+		openaiAPIKey = "default-invalid-token"
+	}
+
+	baseParams := &pb.RpcAIWritingToolsRequest{
+		Mode:        0,
+		Language:    0,
+		Provider:    pb.RpcAIWritingToolsRequest_OPENAI,
+		Endpoint:    "https://api.openai.com/v1/chat/completions",
+		Model:       "gpt-4o-mini",
+		Token:       openaiAPIKey,
+		Temperature: 0,
+	}
+
+	t.Run("InvalidEndpoint", func(t *testing.T) {
+		params := *baseParams
+		params.Endpoint = "http://invalid-endpoint"
+		params.Text = "Can you use an invalid endpoint with OpenAI?"
+		_, err := service.WritingTools(context.Background(), &params)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, ErrEndpointNotReachable))
+	})
+
+	t.Run("InvalidModel", func(t *testing.T) {
+		params := *baseParams
+		params.Model = "invalid-model"
+		params.Text = "Can you use an invalid model with OpenAI?"
+		_, err := service.WritingTools(context.Background(), &params)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, ErrModelNotFound))
+	})
+
+	t.Run("UnauthorizedAccess", func(t *testing.T) {
+		params := *baseParams
+		params.Token = "invalid-token"
+		params.Text = "Can you use an invalid token?"
+		_, err := service.WritingTools(context.Background(), &params)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, ErrAuthRequired))
+	})
+
+	t.Run("ValidResponse", func(t *testing.T) {
+		params := *baseParams
+		params.Text = "What is the capital of France?"
+		result, err := service.WritingTools(context.Background(), &params)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Answer)
+		assert.Contains(t, result.Answer, "Paris")
+	})
+
+	t.Run("BulletPoints", func(t *testing.T) {
+		params := *baseParams
+		params.Mode = 5
+		params.Text = "Items to buy: Milk, Eggs, Bread, and Butter. Also, consider Apples if they are on sale."
+		result, err := service.WritingTools(context.Background(), &params)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Answer)
+		assert.Equal(t, "- Items to buy:\n  - Milk\n  - Eggs\n  - Bread\n  - Butter\n- Consider apples if they are on sale.\n", result.Answer)
+	})
+
+	t.Run("JSONExtraction", func(t *testing.T) {
+		params := *baseParams
+		params.Mode = 6
+		params.Text = "Countries, Capitals\nFrance, Paris\nGermany, Berlin"
+		result, err := service.WritingTools(context.Background(), &params)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Answer)
+		assert.Equal(t,
+			"| Country  | Capital |\n|----------|---------|\n| France   | Paris   |\n| Germany  | Berlin  |",
+			result.Answer)
+	})
+}
+
+func TestLMStudioWritingTools(t *testing.T) {
+	providerFilter := os.Getenv("TEST_PROVIDER")
+	if providerFilter != "" && providerFilter != pb.RpcAIWritingToolsRequest_LMSTUDIO.String() {
+		t.Skipf("Skipping LMStudio tests, since TEST_PROVIDER=%s", providerFilter)
+	}
+
+	service := New()
+	baseParams := &pb.RpcAIWritingToolsRequest{
+		Mode:        0,
+		Language:    0,
+		Provider:    pb.RpcAIWritingToolsRequest_LMSTUDIO,
+		Endpoint:    "http://localhost:1234/v1/chat/completions",
+		Model:       "llama-3.2-3b-instruct",
+		Token:       "",
+		Temperature: 0,
+	}
+
+	t.Run("InvalidEndpoint", func(t *testing.T) {
+		params := *baseParams
+		params.Endpoint = "http://invalid-endpoint"
+		params.Text = "Can you use an invalid endpoint with LMStudio?"
+		_, err := service.WritingTools(context.Background(), &params)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, ErrEndpointNotReachable))
+	})
+
+	// TODO: LMStudio doesn't return error for invalid model if one is loaded into memory
+	// t.Run("InvalidModel", func(t *testing.T) {
+	// 	params := *baseParams
+	// 	params.Model = "invalid-model"
+	// 	params.Text = "Can you use an invalid model with LMStudio?"
+	// 	_, err := service.WritingTools(context.Background(), &params)
+	// 	assert.Error(t, err)
+	// 	assert.True(t, errors.Is(err, ErrModelNotFound))
+	// })
+
+	t.Run("ValidResponse", func(t *testing.T) {
+		params := *baseParams
+		params.Text = "What is the capital of France?"
+		result, err := service.WritingTools(context.Background(), &params)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Answer)
+		assert.Contains(t, result.Answer, "Paris")
+	})
+
+	t.Run("BulletPoints", func(t *testing.T) {
+		params := *baseParams
+		params.Mode = 5
+		params.Text = "Items to buy: Milk, Eggs, Bread, and Butter. Also, consider Apples if they are on sale."
+		result, err := service.WritingTools(context.Background(), &params)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Answer)
+		assert.Equal(t, "My Shopping List:\n* Milk\n* Eggs\n* Bread\n* Butter\n* Apples (if on sale)", result.Answer)
+	})
+
+	t.Run("JSONExtraction", func(t *testing.T) {
+		params := *baseParams
+		params.Mode = 6
+		params.Text = "Countries, Capitals\nFrance, Paris\nGermany, Berlin"
+		result, err := service.WritingTools(context.Background(), &params)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Answer)
+		assert.Equal(t,
+			"| Country | Capital |\n| --- | --- |\n| France | Paris |\n| Germany | Berlin |",
+			result.Answer)
+	})
 }
