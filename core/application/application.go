@@ -50,7 +50,7 @@ func (s *Service) GetApp() *app.App {
 
 func (s *Service) requireClientWithVersion() {
 	if s.clientWithVersion == "" {
-		panic(errors.New("client platform with the version must be set using the MetricsSetParameters method"))
+		panic(errors.New("client platform with the version must be set using the InitialSetParameters method"))
 	}
 }
 

@@ -59,6 +59,10 @@ import (
 
 const CName = "block-service"
 
+type withVirtualBlocks interface {
+	InjectVirtualBlocks(objectId string, view *model.ObjectView)
+}
+
 var ErrUnknownObjectType = fmt.Errorf("unknown object type")
 
 var log = logging.Logger("anytype-mw-service")
@@ -193,6 +197,10 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 			log.Errorf("failed to watch status for object %s: %s", id, err)
 		}
 
+		if v, ok := ob.(withVirtualBlocks); ok {
+			v.InjectVirtualBlocks(id.ObjectID, obj)
+		}
+
 		afterHashesTime := time.Now()
 		metrics.Service.Send(&metrics.OpenBlockEvent{
 			ObjectId:       id.ObjectID,
@@ -222,6 +230,9 @@ func (s *Service) DoFullId(id domain.FullID, apply func(sb smartblock.SmartBlock
 
 // resolveFullId resolves missing spaceId
 func (s *Service) resolveFullId(id domain.FullID) domain.FullID {
+	if id.SpaceID != "" {
+		return id
+	}
 	// First try to resolve space. It's necessary if client accidentally passes wrong spaceId
 	spaceId, err := s.resolver.ResolveSpaceID(id.ObjectID)
 	if err == nil {
@@ -238,7 +249,15 @@ func (s *Service) ShowBlock(id domain.FullID, includeRelationsAsDependentObjects
 			b.EnabledRelationAsDependentObjects()
 		}
 		obj, err = b.Show()
-		return err
+		if err != nil {
+			return err
+		}
+
+		if v, ok := b.(withVirtualBlocks); ok {
+			v.InjectVirtualBlocks(id.ObjectID, obj)
+		}
+
+		return nil
 	})
 	return obj, err
 }
@@ -418,6 +437,9 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	spc, err := s.spaceService.Get(context.Background(), spaceID)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
+	}
+	if id == spc.DerivedIDs().Archive {
+		return fmt.Errorf("cannot delete archive object")
 	}
 	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)

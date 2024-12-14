@@ -96,7 +96,7 @@ func TestAddMessage(t *testing.T) {
 	assert.NotEmpty(t, messageId)
 	assert.NotEmpty(t, sessionCtx.GetMessages())
 
-	messages, err := fx.GetMessages(ctx, "", 0)
+	messages, err := fx.GetMessages(ctx, GetMessagesRequest{})
 	require.NoError(t, err)
 
 	require.Len(t, messages, 1)
@@ -121,20 +121,32 @@ func TestGetMessages(t *testing.T) {
 		assert.NotEmpty(t, messageId)
 	}
 
-	messages, err := fx.GetMessages(ctx, "", 5)
+	messages, err := fx.GetMessages(ctx, GetMessagesRequest{Limit: 5})
 	require.NoError(t, err)
 	wantTexts := []string{"text 6", "text 7", "text 8", "text 9", "text 10"}
 	for i, msg := range messages {
 		assert.Equal(t, wantTexts[i], msg.Message.Text)
 	}
 
-	lastOrderId := messages[0].OrderId
-	messages, err = fx.GetMessages(ctx, lastOrderId, 10)
-	require.NoError(t, err)
-	wantTexts = []string{"text 1", "text 2", "text 3", "text 4", "text 5"}
-	for i, msg := range messages {
-		assert.Equal(t, wantTexts[i], msg.Message.Text)
-	}
+	t.Run("with requested BeforeOrderId", func(t *testing.T) {
+		lastOrderId := messages[0].OrderId // text 6
+		gotMessages, err := fx.GetMessages(ctx, GetMessagesRequest{BeforeOrderId: lastOrderId, Limit: 5})
+		require.NoError(t, err)
+		wantTexts = []string{"text 1", "text 2", "text 3", "text 4", "text 5"}
+		for i, msg := range gotMessages {
+			assert.Equal(t, wantTexts[i], msg.Message.Text)
+		}
+	})
+
+	t.Run("with requested AfterOrderId", func(t *testing.T) {
+		lastOrderId := messages[0].OrderId // text 6
+		gotMessages, err := fx.GetMessages(ctx, GetMessagesRequest{AfterOrderId: lastOrderId, Limit: 2})
+		require.NoError(t, err)
+		wantTexts = []string{"text 7", "text 8"}
+		for i, msg := range gotMessages {
+			assert.Equal(t, wantTexts[i], msg.Message.Text)
+		}
+	})
 }
 
 func TestGetMessagesByIds(t *testing.T) {
@@ -177,7 +189,7 @@ func TestEditMessage(t *testing.T) {
 		err = fx.EditMessage(ctx, messageId, editedMessage)
 		require.NoError(t, err)
 
-		messages, err := fx.GetMessages(ctx, "", 0)
+		messages, err := fx.GetMessages(ctx, GetMessagesRequest{})
 		require.NoError(t, err)
 		require.Len(t, messages, 1)
 
@@ -212,7 +224,7 @@ func TestEditMessage(t *testing.T) {
 		require.Error(t, err)
 
 		// Check that nothing is changed
-		messages, err := fx.GetMessages(ctx, "", 0)
+		messages, err := fx.GetMessages(ctx, GetMessagesRequest{})
 		require.NoError(t, err)
 		require.Len(t, messages, 1)
 
@@ -268,7 +280,7 @@ func TestToggleReaction(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	messages, err := fx.GetMessages(ctx, "", 0)
+	messages, err := fx.GetMessages(ctx, GetMessagesRequest{})
 	require.NoError(t, err)
 	require.Len(t, messages, 1)
 

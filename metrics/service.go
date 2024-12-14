@@ -69,16 +69,24 @@ type service struct {
 }
 
 func (s *service) SendSampled(ev SamplableEvent) {
+	s.lock.RLock()
 	if !s.isEnabled {
+		s.lock.RUnlock()
 		return
 	}
 	if ev == nil {
+		s.lock.RUnlock()
 		return
 	}
-	s.getBackend(ev.GetBackend()).sendSampled(ev)
+	backend := s.getBackend(ev.GetBackend())
+	s.lock.RUnlock()
+
+	backend.sendSampled(ev)
 }
 
 func (s *service) SetEnabled(isEnabled bool) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	s.isEnabled = isEnabled
 }
 
@@ -211,19 +219,22 @@ func (s *service) Close() {
 }
 
 func (s *service) Send(ev anymetry.Event) {
+	s.lock.RLock()
 	if !s.isEnabled {
+		s.lock.RUnlock()
 		return
 	}
 	if ev == nil {
+		s.lock.RUnlock()
 		return
 	}
-	s.getBackend(ev.GetBackend()).send(ev)
+	backend := s.getBackend(ev.GetBackend())
+	s.lock.RUnlock()
+
+	backend.send(ev)
 }
 
 func (s *service) getBackend(backend anymetry.MetricsBackend) *client {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
 	switch backend {
 	case inhouse:
 		return s.clients[inhouse]

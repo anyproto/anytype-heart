@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -26,13 +25,13 @@ type Record struct {
 }
 
 type Query struct {
-	FullText    string
-	SpaceId     string
-	Highlighter ftsearch.HighlightFormatter         // default is json
-	Filters     []*model.BlockContentDataviewFilter // filters results. apply sequentially
-	Sorts       []*model.BlockContentDataviewSort   // order results. apply hierarchically
-	Limit       int                                 // maximum number of results
-	Offset      int                                 // skip given number of results
+	TextQuery       string
+	SpaceId         string
+	Filters         []*model.BlockContentDataviewFilter // filters results. apply sequentially
+	Sorts           []*model.BlockContentDataviewSort   // order results. apply hierarchically
+	Limit           int                                 // maximum number of results
+	Offset          int                                 // skip given number of results
+	PrefixNameQuery bool
 }
 
 func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
@@ -107,7 +106,7 @@ func injectDefaultOrder(qry Query, sorts []*model.BlockContentDataviewSort) []*m
 	var (
 		hasScoreSort bool
 	)
-	if qry.FullText == "" {
+	if qry.TextQuery == "" {
 		return sorts
 	}
 
@@ -174,15 +173,16 @@ func (b *queryBuilder) extractOrder(sorts []*model.BlockContentDataviewSort) Set
 			}
 
 			keyOrder := &KeyOrder{
-				SpaceID:        b.spaceId,
-				Key:            sort.RelationKey,
-				Type:           sort.Type,
-				EmptyPlacement: sort.EmptyPlacement,
-				IncludeTime:    isIncludeTime(sorts, sort),
-				relationFormat: format,
-				Store:          b.objectStore,
-				arena:          b.arena,
-				collatorBuffer: b.collatorBuffer,
+				SpaceID:         b.spaceId,
+				Key:             sort.RelationKey,
+				Type:            sort.Type,
+				EmptyPlacement:  sort.EmptyPlacement,
+				IncludeTime:     isIncludeTime(sorts, sort),
+				relationFormat:  format,
+				Store:           b.objectStore,
+				arena:           b.arena,
+				collatorBuffer:  b.collatorBuffer,
+				disableCollator: sort.NoCollate,
 			}
 			order = b.appendCustomOrder(sort, order, keyOrder)
 		}

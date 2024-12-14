@@ -98,9 +98,6 @@ func (u *syncStatusUpdater) Name() (name string) {
 }
 
 func (u *syncStatusUpdater) UpdateDetails(objectId string, status domain.ObjectSyncStatus, spaceId string) {
-	if spaceId == u.spaceService.TechSpaceId() {
-		return
-	}
 	err := u.addToQueue(&syncStatusDetails{
 		objectId: objectId,
 		status:   status,
@@ -145,9 +142,6 @@ func (u *syncStatusUpdater) updateSpecificObject(objectId string) {
 }
 
 func (u *syncStatusUpdater) UpdateSpaceDetails(existing, missing []string, spaceId string) {
-	if spaceId == u.spaceService.TechSpaceId() {
-		return
-	}
 	u.spaceSyncStatus.UpdateMissingIds(spaceId, missing)
 	ids := u.getSyncingObjects(spaceId)
 
@@ -264,6 +258,7 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_video:          {},
 	model.ObjectType_pdf:            {},
 	model.ObjectType_chat:           {},
+	model.ObjectType_spaceView:      {},
 }
 
 func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *types.Struct) bool {

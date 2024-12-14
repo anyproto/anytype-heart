@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -90,12 +89,13 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	records, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
-		Filters:  req.Filters,
-		SpaceId:  req.SpaceId,
-		Sorts:    req.Sorts,
-		Offset:   int(req.Offset),
-		Limit:    int(req.Limit),
-		FullText: req.FullText,
+		Filters:         req.Filters,
+		SpaceId:         req.SpaceId,
+		Sorts:           req.Sorts,
+		Offset:          int(req.Offset),
+		Limit:           int(req.Limit),
+		TextQuery:       req.FullText,
+		PrefixNameQuery: true,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
@@ -103,7 +103,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	// Add dates only to the first page of search results
 	if req.Offset == 0 {
-		records, err = date.EnrichRecordsWithDateSuggestion(cctx, records, req, ds, getService[space.Service](mw))
+		records, err = date.EnrichRecordsWithDateSuggestions(cctx, req.SpaceId, req.FullText, records, req.Filters, ds, mustService[space.Service](mw))
 		if err != nil {
 			return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 		}
@@ -136,19 +136,22 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	}
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	highlighter := ftsearch.DefaultHighlightFormatter
-	if req.ReturnHTMLHighlightsInsteadOfRanges {
-		highlighter = ftsearch.HtmlHighlightFormatter
-	}
 	results, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
-		Filters:     req.Filters,
-		Sorts:       req.Sorts,
-		Offset:      int(req.Offset),
-		Limit:       int(req.Limit),
-		FullText:    req.FullText,
-		SpaceId:     req.SpaceId,
-		Highlighter: highlighter,
+		Filters:   req.Filters,
+		Sorts:     req.Sorts,
+		Offset:    int(req.Offset),
+		Limit:     int(req.Limit),
+		TextQuery: req.FullText,
+		SpaceId:   req.SpaceId,
 	})
+
+	// Add dates only to the first page of search results
+	if req.Offset == 0 {
+		results, err = date.EnrichRecordsWithDateSuggestions(cctx, req.SpaceId, req.FullText, results, req.Filters, ds, mustService[space.Service](mw))
+		if err != nil {
+			return response(pb.RpcObjectSearchWithMetaResponseError_UNKNOWN_ERROR, nil, err)
+		}
+	}
 
 	var resultsModels = make([]*model.SearchResult, 0, len(results))
 	for i, rec := range results {
@@ -215,7 +218,7 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 }
 
 func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req *pb.RpcObjectCrossSpaceSearchSubscribeRequest) *pb.RpcObjectCrossSpaceSearchSubscribeResponse {
-	subService := getService[crossspacesub.Service](mw)
+	subService := mustService[crossspacesub.Service](mw)
 	resp, err := subService.Subscribe(subscription.SubscribeRequest{
 		SubId:             req.SubId,
 		Filters:           req.Filters,
@@ -243,7 +246,7 @@ func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req 
 }
 
 func (mw *Middleware) ObjectCrossSpaceSearchUnsubscribe(cctx context.Context, req *pb.RpcObjectCrossSpaceSearchUnsubscribeRequest) *pb.RpcObjectCrossSpaceSearchUnsubscribeResponse {
-	subService := getService[crossspacesub.Service](mw)
+	subService := mustService[crossspacesub.Service](mw)
 	err := subService.Unsubscribe(req.SubId)
 	if err != nil {
 		return &pb.RpcObjectCrossSpaceSearchUnsubscribeResponse{
@@ -347,7 +350,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 		)
 	}
 
-	nodes, edges, err := getService[objectgraph.Service](mw).ObjectGraph(req)
+	nodes, edges, err := mustService[objectgraph.Service](mw).ObjectGraph(req)
 	if err != nil {
 		return unknownError(err)
 	}
@@ -632,7 +635,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		IsSync:                 false,
 	}
 
-	getService[importer.Importer](mw).Import(cctx, importRequest)
+	mustService[importer.Importer](mw).Import(cctx, importRequest)
 	return &pb.RpcObjectImportResponse{}
 }
 
@@ -704,7 +707,7 @@ func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjec
 		return resp
 	}
 
-	objCreator := getService[builtinobjects.BuiltinObjects](mw)
+	objCreator := mustService[builtinobjects.BuiltinObjects](mw)
 	return response(objCreator.CreateObjectsForUseCase(ctx, req.SpaceId, req.UseCase))
 }
 
@@ -721,7 +724,25 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 		return resp
 	}
 
-	objCreator := getService[builtinobjects.BuiltinObjects](mw)
+	objCreator := mustService[builtinobjects.BuiltinObjects](mw)
 	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace)
 	return response(common.GetGalleryResponseCode(err), err)
+}
+
+func (mw *Middleware) ObjectDateByTimestamp(ctx context.Context, req *pb.RpcObjectDateByTimestampRequest) *pb.RpcObjectDateByTimestampResponse {
+	spaceService := mustService[space.Service](mw)
+	details, err := date.BuildDetailsFromTimestamp(ctx, spaceService, req.SpaceId, req.Timestamp)
+
+	if err != nil {
+		return &pb.RpcObjectDateByTimestampResponse{
+			Error: &pb.RpcObjectDateByTimestampResponseError{
+				Code:        pb.RpcObjectDateByTimestampResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return &pb.RpcObjectDateByTimestampResponse{
+		Details: details,
+	}
 }

@@ -29,11 +29,11 @@ import (
 
 const CName = "payments"
 
-var log = logging.Logger(CName).Desugar()
+var log = logging.Logger(CName)
 
 const (
-	refreshIntervalSecs = 10
-	timeout             = 10 * time.Second
+	refreshIntervalSecs = 60
+	timeout             = 30 * time.Second
 	cacheDisableMinutes = 30
 )
 
@@ -150,7 +150,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.ns = app.MustComponent[nameservice.Service](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
-	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log})
+	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log.Desugar()})
 	s.profileUpdater = app.MustComponent[globalNamesUpdater](a)
 	s.multiplayerLimitsUpdater = app.MustComponent[deletioncontroller.DeletionController](a)
 	s.fileLimitsUpdater = app.MustComponent[filesync.FileSync](a)
