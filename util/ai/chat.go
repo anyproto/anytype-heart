@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/anyproto/anytype-heart/pb"
 )
 
 // ChatRequest represents the structure of the request payload for the chat API.
@@ -116,32 +114,27 @@ func (ai *AIService) createChatRequest() ([]byte, error) {
 	}
 
 	if ai.promptConfig.JSONMode {
-		if ai.apiConfig.Provider == pb.RpcAIWritingToolsRequest_OLLAMA {
-			payload.ResponseFormat = map[string]interface{}{
-				"type": "json_object",
-			}
-		} else {
-			key, exists := modeToJSONKey[int(ai.promptConfig.Mode)]
-			if !exists {
-				return nil, fmt.Errorf("unknown mode: %d", ai.promptConfig.Mode)
-			}
-			// strict json schema for openai and lmstudio
-			payload.ResponseFormat = map[string]interface{}{
-				"type": "json_schema",
-				"json_schema": map[string]interface{}{
-					"name":   key + "_response",
-					"strict": "true",
-					"schema": map[string]interface{}{
-						"type": "object",
-						"properties": map[string]interface{}{
-							key: map[string]interface{}{
-								"type": "string",
-							},
+		key, exists := modeToJSONKey[int(ai.promptConfig.Mode)]
+		if !exists {
+			return nil, fmt.Errorf("unknown mode: %d", ai.promptConfig.Mode)
+		}
+
+		payload.ResponseFormat = map[string]interface{}{
+			"type": "json_schema",
+			"json_schema": map[string]interface{}{
+				"name":   key + "_response",
+				"strict": true,
+				"schema": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						key: map[string]interface{}{
+							"type": "string",
 						},
-						"required": []string{key},
 					},
+					"additionalProperties": false,
+					"required":             []string{key},
 				},
-			}
+			},
 		}
 	}
 
