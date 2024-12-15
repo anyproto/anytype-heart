@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -17,9 +16,32 @@ import (
 	"github.com/anyproto/anytype-heart/util/ai/mock_ai"
 )
 
-func newTestAIService(mockClient *mock_ai.MockHttpClient) *AIService {
-	return &AIService{
-		httpClient: mockClient,
+type fixture struct {
+	*AIService
+	mockHttpClient *mock_ai.MockHttpClient
+}
+
+func newFixture(t *testing.T) *fixture {
+	mockHttpClient := mock_ai.NewMockHttpClient(t)
+
+	aiService := &AIService{
+		httpClient: mockHttpClient,
+		apiConfig: &APIConfig{
+			Model:    "test-model",
+			Endpoint: "http://example.com",
+		},
+		promptConfig: &PromptConfig{
+			SystemPrompt: "system",
+			UserPrompt:   "user",
+			Temperature:  0.1,
+			JSONMode:     false,
+			Mode:         pb.RpcAIWritingToolsRequest_SUMMARIZE,
+		},
+	}
+
+	return &fixture{
+		AIService:      aiService,
+		mockHttpClient: mockHttpClient,
 	}
 }
 
@@ -38,7 +60,6 @@ data: {"id":"test3","content":"Final line"}
 		prefix: prefix,
 	}
 
-	// Helper to read one line at a time using psr.Read
 	readLine := func() (string, error) {
 		buf := make([]byte, 1024)
 		n, err := psr.Read(buf)
@@ -48,206 +69,197 @@ data: {"id":"test3","content":"Final line"}
 		return string(buf[:n]), nil
 	}
 
-	// 1. First call should strip the "data: " prefix
-	line, err := readLine()
-	assert.NoError(t, err)
-	assert.Equal(t, "{\"id\":\"test1\",\"content\":\"Hello!\"}\n", line)
+	t.Run("valid line with prefix", func(t *testing.T) {
+		line, err := readLine()
+		require.NoError(t, err)
+		require.Equal(t, "{\"id\":\"test1\",\"content\":\"Hello!\"}\n", line)
+	})
 
-	// 2. Next line is "data: [DONE]" which should be skipped entirely.
-	//    The next non-[DONE] line is "data: {"id":"test2","content":"How are you?"}"
-	line, err = readLine()
-	assert.NoError(t, err)
-	assert.Equal(t, "{\"id\":\"test2\",\"content\":\"How are you?\"}\n", line)
+	t.Run("skips DONE line", func(t *testing.T) {
+		line, err := readLine()
+		require.NoError(t, err)
+		require.Equal(t, "{\"id\":\"test2\",\"content\":\"How are you?\"}\n", line)
+	})
 
-	// 3. A line that doesn't start with the prefix remains the same
-	line, err = readLine()
-	assert.NoError(t, err)
-	assert.Equal(t, "no prefix line\n", line)
+	t.Run("no prefix line unchanged", func(t *testing.T) {
+		line, err := readLine()
+		require.NoError(t, err)
+		require.Equal(t, "no prefix line\n", line)
+	})
 
-	// 4. Another [DONE] line should be skipped, then the final prefixed line is returned
-	line, err = readLine()
-	assert.NoError(t, err)
-	assert.Equal(t, "{\"id\":\"test3\",\"content\":\"Final line\"}\n", line)
+	t.Run("final prefixed line", func(t *testing.T) {
+		line, err := readLine()
+		require.NoError(t, err)
+		require.Equal(t, "{\"id\":\"test3\",\"content\":\"Final line\"}\n", line)
+	})
 
-	// 5. Attempting to read again should return EOF
-	_, err = readLine()
-	assert.Equal(t, io.EOF, err)
+	t.Run("EOF after last line", func(t *testing.T) {
+		_, err := readLine()
+		require.Equal(t, io.EOF, err)
+	})
 }
 
 func TestCreateChatRequest(t *testing.T) {
-	aiService := newTestAIService(nil)
-	aiService.apiConfig = &APIConfig{
-		Model:    "test-model",
-		Endpoint: "http://example.com",
-	}
-	aiService.promptConfig = &PromptConfig{
-		SystemPrompt: "system",
-		UserPrompt:   "user",
-		Temperature:  0.7,
-		JSONMode:     false,
-		Mode:         pb.RpcAIWritingToolsRequest_SUMMARIZE,
-	}
+	t.Run("no json mode", func(t *testing.T) {
+		fx := newFixture(t)
 
-	data, err := aiService.createChatRequest()
-	require.NoError(t, err)
+		data, err := fx.createChatRequest()
+		require.NoError(t, err)
 
-	var req ChatRequest
-	err = json.Unmarshal(data, &req)
-	require.NoError(t, err)
-	assert.Equal(t, "test-model", req.Model)
-	assert.Len(t, req.Messages, 2)
-	assert.Equal(t, "system", req.Messages[0]["content"])
-	assert.Equal(t, "user", req.Messages[1]["content"])
-	assert.Equal(t, float32(0.7), req.Temperature)
-	assert.True(t, req.Stream)
-	assert.Nil(t, req.ResponseFormat)
+		var req ChatRequest
+		err = json.Unmarshal(data, &req)
+		require.NoError(t, err)
+
+		require.Equal(t, "test-model", req.Model)
+		require.Len(t, req.Messages, 2)
+		require.Equal(t, "system", req.Messages[0]["content"])
+		require.Equal(t, "user", req.Messages[1]["content"])
+		require.Equal(t, float32(0.1), req.Temperature)
+		require.True(t, req.Stream)
+		require.Nil(t, req.ResponseFormat)
+	})
+
+	t.Run("json mode", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fx.promptConfig.JSONMode = true
+
+		data, err := fx.createChatRequest()
+		require.NoError(t, err)
+
+		var req ChatRequest
+		err = json.Unmarshal(data, &req)
+		require.NoError(t, err)
+
+		require.NotNil(t, req.ResponseFormat)
+		require.Equal(t, "json_schema", req.ResponseFormat["type"])
+
+		schema, ok := req.ResponseFormat["json_schema"].(map[string]interface{})
+		require.True(t, ok)
+		require.Equal(t, "summary_response", schema["name"])
+		require.Equal(t, true, schema["strict"])
+
+		properties, ok := schema["schema"].(map[string]interface{})["properties"].(map[string]interface{})
+		require.True(t, ok)
+		require.Contains(t, properties, "summary")
+		require.Equal(t, "string", properties["summary"].(map[string]interface{})["type"])
+		require.Equal(t, false, schema["schema"].(map[string]interface{})["additionalProperties"])
+		require.Equal(t, []interface{}{"summary"}, schema["schema"].(map[string]interface{})["required"])
+	})
 }
 
-func TestCreateChatRequest_JSONMode(t *testing.T) {
-	aiService := newTestAIService(nil)
-	aiService.apiConfig = &APIConfig{
-		Model:    "test-model",
-		Endpoint: "http://example.com",
-	}
-	aiService.promptConfig = &PromptConfig{
-		SystemPrompt: "system",
-		UserPrompt:   "user",
-		Temperature:  0.7,
-		JSONMode:     true,
-		Mode:         pb.RpcAIWritingToolsRequest_SUMMARIZE,
-	}
+func TestChat(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		fx := newFixture(t)
 
-	data, err := aiService.createChatRequest()
-	require.NoError(t, err)
-
-	var req ChatRequest
-	err = json.Unmarshal(data, &req)
-	require.NoError(t, err)
-
-	assert.NotNil(t, req.ResponseFormat)
-	assert.Equal(t, "json_schema", req.ResponseFormat["type"])
-}
-
-func TestParseChatResponse_Valid(t *testing.T) {
-	aiService := newTestAIService(nil)
-
-	responseData := `data: {"id":"test1","object":"chat","created":12345,"model":"test-model","system_fingerprint":"fp","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello!"}}]}
-data: {"id":"test2","object":"chat","created":12346,"model":"test-model","system_fingerprint":"fp","choices":[{"index":0,"delta":{"role":"assistant","content":"How are you?"}}]}
-data: [DONE]
-`
-
-	responses, err := aiService.parseChatResponse(strings.NewReader(responseData))
-	require.NoError(t, err)
-	require.Len(t, *responses, 2)
-	assert.Equal(t, "test1", (*responses)[0].ID)
-	assert.Equal(t, "Hello!", (*responses)[0].Choices[0].Delta.Content)
-	assert.Equal(t, "test2", (*responses)[1].ID)
-	assert.Equal(t, "How are you?", (*responses)[1].Choices[0].Delta.Content)
-}
-
-func TestParseChatResponse_InvalidJSON(t *testing.T) {
-	aiService := newTestAIService(nil)
-
-	responseData := `data: {"id":"test1","object":"chat","created":12345,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello!"}}]}
-data: {"id":"test2"  -- invalid json --
-data: [DONE]
-`
-
-	responses, err := aiService.parseChatResponse(strings.NewReader(responseData))
-	assert.Error(t, err)
-	assert.Nil(t, responses)
-}
-
-func TestChat_Success(t *testing.T) {
-	mockClient := &mock_ai.MockHttpClient{}
-
-	responseData := `data: {"id":"test1","object":"chat","created":12345,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello"}}]}
+		responseData := `data: {"id":"test1","object":"chat","created":12345,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello"}}]}
 data: {"id":"test1","object":"chat","created":12346,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":" world!"}}]}
 data: [DONE]
 `
+		resp := &http.Response{
+			StatusCode: 200,
+			Body:       io.NopCloser(strings.NewReader(responseData)),
+		}
+		fx.mockHttpClient.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
 
-	resp := &http.Response{
-		StatusCode: 200,
-		Body:       io.NopCloser(strings.NewReader(responseData)),
-	}
+		result, err := fx.chat(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, "Hello world!", result)
+		fx.mockHttpClient.AssertExpectations(t)
+	})
 
-	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
+	t.Run("not found", func(t *testing.T) {
+		fx := newFixture(t)
 
-	aiService := newTestAIService(mockClient)
-	aiService.apiConfig = &APIConfig{
-		Model:    "test-model",
-		Endpoint: "http://example.com",
-	}
-	aiService.promptConfig = &PromptConfig{
-		SystemPrompt: "system",
-		UserPrompt:   "user",
-		Temperature:  0.7,
-		JSONMode:     false,
-		Mode:         pb.RpcAIWritingToolsRequest_SUMMARIZE,
-	}
+		resp := &http.Response{
+			StatusCode: 404,
+			Body:       io.NopCloser(strings.NewReader("not found")),
+		}
+		fx.mockHttpClient.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
 
-	result, err := aiService.chat(context.Background())
-	require.NoError(t, err)
-	assert.Equal(t, "Hello world!", result)
+		_, err := fx.chat(context.Background())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "model not found")
+		fx.mockHttpClient.AssertExpectations(t)
+	})
 
-	mockClient.AssertExpectations(t)
+	t.Run("unauthorized", func(t *testing.T) {
+		fx := newFixture(t)
+
+		resp := &http.Response{
+			StatusCode: 401,
+			Body:       io.NopCloser(strings.NewReader("unauthorized")),
+		}
+		fx.mockHttpClient.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
+
+		_, err := fx.chat(context.Background())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid for endpoint")
+		fx.mockHttpClient.AssertExpectations(t)
+	})
 }
 
-func TestChat_Non200Status(t *testing.T) {
-	mockClient := &mock_ai.MockHttpClient{}
+func TestParseChatResponse(t *testing.T) {
+	t.Run("valid response", func(t *testing.T) {
+		fx := newFixture(t)
 
-	resp := &http.Response{
-		StatusCode: 404,
-		Body:       io.NopCloser(strings.NewReader("not found")),
-	}
-	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
+		responseData := `data: {"id":"test1","object":"chat","created":12345,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello!"}}]}
+data: {"id":"test2","object":"chat","created":12346,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":"How are you?"}}]}
+data: [DONE]
+`
+		responses, err := fx.parseChatResponse(strings.NewReader(responseData))
+		require.NoError(t, err)
+		require.Len(t, *responses, 2)
+		require.Equal(t, "test1", (*responses)[0].ID)
+		require.Equal(t, "Hello!", (*responses)[0].Choices[0].Delta.Content)
+		require.Equal(t, "test2", (*responses)[1].ID)
+		require.Equal(t, "How are you?", (*responses)[1].Choices[0].Delta.Content)
+	})
 
-	aiService := newTestAIService(mockClient)
-	aiService.apiConfig = &APIConfig{
-		Model:    "test-model",
-		Endpoint: "http://example.com",
-	}
-	aiService.promptConfig = &PromptConfig{}
+	t.Run("invalid response", func(t *testing.T) {
+		fx := newFixture(t)
 
-	_, err := aiService.chat(context.Background())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "model not found")
-
-	mockClient.AssertExpectations(t)
+		responseData := `data: {"id":"test1","object":"chat","created":12345,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello!"}}]}
+data: {"id":"test2"  -- invalid json --
+data: [DONE]
+`
+		responses, err := fx.parseChatResponse(strings.NewReader(responseData))
+		require.Error(t, err)
+		require.Nil(t, responses)
+	})
 }
 
 func TestExtractAnswerByMode(t *testing.T) {
-	aiService := newTestAIService(nil)
-	aiService.promptConfig = &PromptConfig{
-		Mode: pb.RpcAIWritingToolsRequest_SUMMARIZE,
-	}
+	t.Run("valid mode", func(t *testing.T) {
+		fx := newFixture(t)
 
-	jsonData := `{"summary":"This is a summary","corrected":"This is corrected"}`
-	result, err := aiService.extractAnswerByMode(jsonData)
-	require.NoError(t, err)
-	assert.Equal(t, "This is a summary", result)
-}
+		fx.promptConfig.Mode = pb.RpcAIWritingToolsRequest_SUMMARIZE
 
-func TestExtractAnswerByMode_Empty(t *testing.T) {
-	aiService := newTestAIService(nil)
-	aiService.promptConfig = &PromptConfig{
-		Mode: pb.RpcAIWritingToolsRequest_SUMMARIZE,
-	}
+		jsonData := `{"summary":"This is a summary"}`
+		result, err := fx.extractAnswerByMode(jsonData)
+		require.NoError(t, err)
+		require.Equal(t, "This is a summary", result)
+	})
 
-	jsonData := `{"summary":""}`
-	_, err := aiService.extractAnswerByMode(jsonData)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "empty")
-}
+	t.Run("empty response", func(t *testing.T) {
+		fx := newFixture(t)
 
-func TestExtractAnswerByMode_UnknownMode(t *testing.T) {
-	aiService := newTestAIService(nil)
-	aiService.promptConfig = &PromptConfig{
-		Mode: pb.RpcAIWritingToolsRequestMode(9999),
-	}
+		fx.promptConfig.Mode = pb.RpcAIWritingToolsRequest_SUMMARIZE
 
-	jsonData := `{}`
-	_, err := aiService.extractAnswerByMode(jsonData)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown mode")
+		jsonData := `{"summary":""}`
+		_, err := fx.extractAnswerByMode(jsonData)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "empty")
+	})
+
+	t.Run("unknown mode", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fx.promptConfig.Mode = pb.RpcAIWritingToolsRequestMode(9999)
+
+		jsonData := `{}`
+		_, err := fx.extractAnswerByMode(jsonData)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unknown mode")
+	})
 }
