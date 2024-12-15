@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/pemistahl/lingua-go"
@@ -15,7 +17,8 @@ import (
 )
 
 const (
-	CName = "ai"
+	CName       = "ai"
+	httpTimeout = 30 * time.Second
 )
 
 var log = logging.Logger("ai")
@@ -33,9 +36,10 @@ type AI interface {
 }
 
 type AIService struct {
-	apiConfig    APIConfig
-	promptConfig PromptConfig
+	apiConfig    *APIConfig
+	promptConfig *PromptConfig
 	mu           sync.Mutex
+	httpClient   HttpClient
 }
 
 type APIConfig struct {
@@ -54,12 +58,18 @@ type PromptConfig struct {
 	JSONMode     bool
 }
 
+type HttpClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 type Result struct {
 	Answer string
 }
 
 func New() AI {
-	return &AIService{}
+	return &AIService{
+		httpClient: &http.Client{Timeout: httpTimeout},
+	}
 }
 
 func (ai *AIService) Init(a *app.App) (err error) {
@@ -99,7 +109,7 @@ func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingTo
 		}
 	}
 
-	ai.apiConfig = APIConfig{
+	ai.apiConfig = &APIConfig{
 		Provider:     params.Provider,
 		Endpoint:     params.Endpoint,
 		Model:        params.Model,
@@ -107,7 +117,7 @@ func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingTo
 		AuthToken:    params.Token,
 	}
 
-	ai.promptConfig = PromptConfig{
+	ai.promptConfig = &PromptConfig{
 		Mode:         params.Mode,
 		SystemPrompt: systemPrompts[params.Mode],
 		UserPrompt:   fmt.Sprintf(userPrompts[params.Mode], text),

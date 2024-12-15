@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 )
 
 // ChatRequest represents the structure of the request payload for the chat API.
@@ -153,8 +152,7 @@ func (ai *AIService) sendChatRequest(ctx context.Context, jsonData []byte) (*htt
 		req.Header.Set("Authorization", "Bearer "+ai.apiConfig.AuthToken)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
-	return client.Do(req)
+	return ai.httpClient.Do(req)
 }
 
 // parseChatResponse parses the chat API response and returns the chat response chunks.
