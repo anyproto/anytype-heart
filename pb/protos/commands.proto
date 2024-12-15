@@ -3824,6 +3824,7 @@ message Rpc {
                     OLLAMA = 0;
                     OPENAI = 1;
                     LMSTUDIO = 2;
+                    LLAMACPP = 3;
                     // ...
                 }
             }

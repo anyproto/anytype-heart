@@ -20465,7 +20465,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | OLLAMA | 0 |  |
 | OPENAI | 1 |  |
-| LMSTUDIO | 2 | ... |
+| LMSTUDIO | 2 |  |
+| LLAMACPP | 3 | ... |
 
 
 

@@ -129,6 +129,29 @@ func TestWritingTools(t *testing.T) {
 				// },
 			},
 		},
+		{
+			name:     "Llama.cpp",
+			provider: pb.RpcAIWritingToolsRequest_LLAMACPP,
+			baseParams: pb.RpcAIWritingToolsRequest{
+				Mode:        0,
+				Language:    0,
+				Provider:    pb.RpcAIWritingToolsRequest_LLAMACPP,
+				Endpoint:    "http://localhost:8080/v1/chat/completions",
+				Model:       "Llama-3.2-3B-Instruct-Q6_K_L",
+				Token:       "",
+				Temperature: 0,
+			},
+			skipInputLanguageTest: false,
+			skipAuthTest:          true,
+			models: []modelTestConfig{
+				{
+					modelName:            "Llama-3.2-3B-Instruct",
+					expectValidResponse:  "Paris",
+					expectBulletPoints:   "* Milk\n* Eggs\n* Bread\n* Butter\n* Apples (if on sale)",
+					expectJSONExtraction: "| Country | Capital |\n|----------|--------|\n| France   | Paris  |\n| Germany  | Berlin |\n",
+				},
+			},
+		},
 	}
 
 	for _, cfg := range testConfigs {
