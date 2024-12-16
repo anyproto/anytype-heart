@@ -149,7 +149,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 				bundle.RelationKeyGlobalName:  pbtypes.String("foobar"),
 				bundle.RelationKeyIconImage:   pbtypes.String("fileObjectId"),
 				bundle.RelationKeyName:        pbtypes.String("John Doe"),
-				bundle.RelationKeyDescription: pbtypes.String("description"),
+				bundle.RelationKeyDescription: pbtypes.String("Description"),
 			},
 		})
 
@@ -166,7 +166,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 			{
 				Identity:    "identity1",
 				Name:        "John Doe",
-				Description: "description",
+				Description: "Description",
 				IconCid:     "fileObjectId",
 				GlobalName:  globalName,
 			},
@@ -177,7 +177,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 		wantProfile := &model.IdentityProfile{
 			Identity:    "identity1",
 			Name:        "John Doe",
-			Description: "description",
+			Description: "Description",
 			IconCid:     "fileCid1",
 			IconEncryptionKeys: []*model.FileEncryptionKey{
 				{
@@ -273,7 +273,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 				bundle.RelationKeySpaceId:     pbtypes.String("space1"),
 				bundle.RelationKeyGlobalName:  pbtypes.String("foobar"),
 				bundle.RelationKeyName:        pbtypes.String("John Doe"),
-				bundle.RelationKeyDescription: pbtypes.String("description"),
+				bundle.RelationKeyDescription: pbtypes.String("Description"),
 			},
 		})
 		time.Sleep(testBatchTimeout / 4)
@@ -305,13 +305,13 @@ func TestOwnProfileSubscription(t *testing.T) {
 			{
 				Identity:    "identity1",
 				Name:        "John Doe",
-				Description: "description",
+				Description: "Description",
 				GlobalName:  globalName,
 			},
 			{
 				Identity:    "identity1",
 				Name:        "John Doe",
-				Description: "description",
+				Description: "Description",
 				GlobalName:  newName,
 			},
 			{
@@ -387,7 +387,7 @@ func TestWaitForDetails(t *testing.T) {
 			bundle.RelationKeyGlobalName:  pbtypes.String("foobar"),
 			bundle.RelationKeyIconImage:   pbtypes.String("fileObjectId"),
 			bundle.RelationKeyName:        pbtypes.String("John Doe"),
-			bundle.RelationKeyDescription: pbtypes.String("description"),
+			bundle.RelationKeyDescription: pbtypes.String("Description"),
 		},
 	})
 	time.Sleep(2 * testBatchTimeout)
@@ -404,7 +404,7 @@ func TestWaitForDetails(t *testing.T) {
 			Fields: map[string]*types.Value{
 				bundle.RelationKeyId.String():          pbtypes.String(testProfileObjectId),
 				bundle.RelationKeyName.String():        pbtypes.String("John Doe"),
-				bundle.RelationKeyDescription.String(): pbtypes.String("description"),
+				bundle.RelationKeyDescription.String(): pbtypes.String("Description"),
 				bundle.RelationKeyGlobalName.String():  pbtypes.String(globalName),
 				bundle.RelationKeyIconImage.String():   pbtypes.String("fileObjectId"),
 			},

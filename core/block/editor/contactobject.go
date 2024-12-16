@@ -1,4 +1,4 @@
-package userdataobject
+package editor
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/editor/userdataobject"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -68,7 +69,7 @@ func (co *ContactObject) SetDetails(ctx session.Context, details []*model.Detail
 func (co *ContactObject) updateContactInStore(combinedDetails *types.Struct) {
 	space := co.techSpaceProvider.TechSpace()
 	ctx := context.Background()
-	err := space.DoUserDataObject(ctx, func(userDataObject UserDataObject) error {
+	err := space.DoUserDataObject(ctx, func(userDataObject userdataobject.UserDataObject) error {
 		return userDataObject.UpdateContact(ctx, combinedDetails)
 	})
 	if err != nil {

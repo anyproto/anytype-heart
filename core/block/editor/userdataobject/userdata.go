@@ -12,12 +12,10 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -26,6 +24,13 @@ import (
 )
 
 var log = logging.Logger("core.block.editor.userdata")
+
+type IdentityService interface {
+	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
+	UnregisterIdentity(spaceId string, identity string)
+	AddObserver(spaceId, identity string, observer func(identity string, profile *model.IdentityProfile))
+	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
+}
 
 type UserDataObject interface {
 	smartblock.SmartBlock
@@ -37,19 +42,18 @@ type UserDataObject interface {
 
 type userDataObject struct {
 	smartblock.SmartBlock
-	basic.DetailsSettable
 	state       *storestate.StoreState
 	storeSource source.Store
 	crdtDb      anystore.DB
 	arenaPool   *anyenc.ArenaPool
 
-	identityService identity.Service
+	identityService IdentityService
 	objectCache     cache.ObjectGetter
 	ctx             context.Context
 	cancel          context.CancelFunc
 }
 
-func New(sb smartblock.SmartBlock, identityService identity.Service, crdtDb anystore.DB, objectCache cache.ObjectGetter) UserDataObject {
+func New(sb smartblock.SmartBlock, identityService IdentityService, crdtDb anystore.DB, objectCache cache.ObjectGetter) UserDataObject {
 	return &userDataObject{
 		SmartBlock:      sb,
 		identityService: identityService,
