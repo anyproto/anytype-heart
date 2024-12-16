@@ -70,7 +70,7 @@ func TestInstaller_queryDeletedObjects(t *testing.T) {
 	spc := mock_clientspace.NewMockSpace(t)
 	spc.EXPECT().Id().Return(spaceId)
 
-	i := objectInstaller{store: store}
+	i := objectInstaller{objectStore: store}
 
 	// when
 	records, err := i.queryDeletedObjects(spc, sourceObjectIds)

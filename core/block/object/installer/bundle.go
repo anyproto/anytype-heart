@@ -40,10 +40,10 @@ type BundleObjectInstaller interface {
 }
 
 type objectInstaller struct {
-	spaceService space.Service
-	store        objectstore.ObjectStore
-	archiver     objectArchiver
-	creator      objectcreator.Service
+	spaceService   space.Service
+	objectStore    objectstore.ObjectStore
+	archiver       objectArchiver
+	creatorService objectcreator.Service
 }
 
 func New() BundleObjectInstaller {
@@ -52,9 +52,9 @@ func New() BundleObjectInstaller {
 
 func (i *objectInstaller) Init(a *app.App) error {
 	i.spaceService = app.MustComponent[space.Service](a)
-	i.store = app.MustComponent[objectstore.ObjectStore](a)
+	i.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	i.archiver = app.MustComponent[objectArchiver](a)
-	i.creator = app.MustComponent[objectcreator.Service](a)
+	i.creatorService = app.MustComponent[objectcreator.Service](a)
 	return nil
 }
 
@@ -163,7 +163,7 @@ func (i *objectInstaller) installObject(ctx context.Context, space clientspace.S
 		return "", nil, fmt.Errorf("unsupported object type: %s", uk.SmartblockType())
 	}
 
-	id, newDetails, err = i.creator.CreateObjectInSpace(ctx, space, objectcreator.CreateObjectRequest{
+	id, newDetails, err = i.creatorService.CreateObjectInSpace(ctx, space, objectcreator.CreateObjectRequest{
 		Details:       installingDetails,
 		ObjectTypeKey: objectTypeKey,
 	})
@@ -177,7 +177,7 @@ func (i *objectInstaller) installObject(ctx context.Context, space clientspace.S
 }
 
 func (i *objectInstaller) listInstalledObjects(space clientspace.Space, sourceObjectIds []string) (map[string]*types.Struct, error) {
-	existingObjects, err := i.store.SpaceIndex(space.Id()).Query(database.Query{
+	existingObjects, err := i.objectStore.SpaceIndex(space.Id()).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),
@@ -228,7 +228,7 @@ func (i *objectInstaller) reinstallBundledObjects(
 		ids = append(ids, id)
 		objects = append(objects, details)
 
-		if err = i.creator.CreateTemplatesForObjectType(space, typeKey); err != nil {
+		if err = i.creatorService.CreateTemplatesForObjectType(space, typeKey); err != nil {
 			return nil, nil, fmt.Errorf("install templates for object type %s: %w", typeKey, err)
 		}
 	}
@@ -336,7 +336,7 @@ func (i *objectInstaller) queryDeletedObjects(space clientspace.Space, sourceObj
 	if err != nil {
 		return nil, err
 	}
-	return i.store.SpaceIndex(space.Id()).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+	return i.objectStore.SpaceIndex(space.Id()).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
 		database.FiltersOr{
 			database.FilterEq{
 				Key:   bundle.RelationKeyLayout.String(),
