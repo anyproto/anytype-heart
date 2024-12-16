@@ -221,9 +221,9 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeAccountObject:
 		return accountobject.New(sb, f.accountService.Keys(), store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater, f.objectStore.GetCrdtDb(space.Id()), f.config), nil
 	case coresb.SmartBlockTypeUserDataObject:
-		return userdataobject.New(sb, f.identityService, f.objectStore.GetCrdtDb(space.Id())), nil
+		return userdataobject.New(sb, f.identityService, f.objectStore.GetCrdtDb(space.Id()), f.picker), nil
 	case coresb.SmartBlockTypeContactObject:
-		return userdataobject.NewContact(sb), nil
+		return userdataobject.NewContactObject(sb, store), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

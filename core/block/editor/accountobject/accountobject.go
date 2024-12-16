@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -81,7 +82,7 @@ type accountObject struct {
 	storeSource source.Store
 	ctx         context.Context
 	cancel      context.CancelFunc
-	relMapper   *relationsMapper
+	relMapper   *editor.RelationsMapper
 	cfg         *config.Config
 	crdtDb      anystore.DB
 }
@@ -109,11 +110,11 @@ func New(
 		bs:         basic.NewBasic(sb, spaceObjects, layoutConverter, fileObjectService, lastUsedUpdater),
 		SmartBlock: sb,
 		cfg:        cfg,
-		relMapper: newRelationsMapper(map[string]KeyType{
-			bundle.RelationKeyName.String():        KeyTypeString,
-			bundle.RelationKeyDescription.String(): KeyTypeString,
-			bundle.RelationKeyIconImage.String():   KeyTypeString,
-			bundle.RelationKeyIconOption.String():  KeyTypeInt64,
+		relMapper: editor.NewRelationsMapper(map[string]editor.KeyType{
+			bundle.RelationKeyName.String():        editor.KeyTypeString,
+			bundle.RelationKeyDescription.String(): editor.KeyTypeString,
+			bundle.RelationKeyIconImage.String():   editor.KeyTypeString,
+			bundle.RelationKeyIconOption.String():  editor.KeyTypeInt64,
 		}),
 	}
 }
@@ -384,7 +385,7 @@ func (a *accountObject) update(ctx context.Context, st *state.State) (err error)
 	if err != nil {
 		return fmt.Errorf("find id: %w", err)
 	}
-	for key := range a.relMapper.keys {
+	for key := range a.relMapper.Keys() {
 		pbVal, ok := a.relMapper.GetRelationKey(key, obj.Value())
 		if !ok {
 			continue

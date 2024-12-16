@@ -1,4 +1,4 @@
-package accountobject
+package editor
 
 import (
 	"fmt"
@@ -16,17 +16,21 @@ const (
 	KeyTypeInt64
 )
 
-type relationsMapper struct {
+type RelationsMapper struct {
 	keys map[string]KeyType
 }
 
-func newRelationsMapper(keys map[string]KeyType) *relationsMapper {
-	return &relationsMapper{
+func NewRelationsMapper(keys map[string]KeyType) *RelationsMapper {
+	return &RelationsMapper{
 		keys: keys,
 	}
 }
 
-func (r *relationsMapper) GetRelationKey(key string, val *anyenc.Value) (*types.Value, bool) {
+func (r *RelationsMapper) Keys() map[string]KeyType {
+	return r.keys
+}
+
+func (r *RelationsMapper) GetRelationKey(key string, val *anyenc.Value) (*types.Value, bool) {
 	kt, ok := r.keys[key]
 	if !ok {
 		return nil, false
@@ -48,7 +52,7 @@ func (r *relationsMapper) GetRelationKey(key string, val *anyenc.Value) (*types.
 	return nil, false
 }
 
-func (r *relationsMapper) GetStoreKey(key string, val *types.Value) (res any, ok bool) {
+func (r *RelationsMapper) GetStoreKey(key string, val *types.Value) (res any, ok bool) {
 	kt, ok := r.keys[key]
 	if !ok {
 		return nil, false

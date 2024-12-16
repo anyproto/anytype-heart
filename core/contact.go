@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 
-	"github.com/anyproto/anytype-heart/core/block/contact"
+	"github.com/anyproto/anytype-heart/core/contact"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
