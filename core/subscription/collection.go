@@ -246,10 +246,7 @@ func (s *spaceSubscriptions) fetchEntries(ids []string) []*entry {
 		log.Error("can't query by ids:", err)
 	}
 	for _, r := range recs {
-		e := &entry{
-			id:   pbtypes.GetString(r.Details, bundle.RelationKeyId.String()),
-			data: r.Details,
-		}
+		e := newEntry(pbtypes.GetString(r.Details, bundle.RelationKeyId.String()), r.Details)
 		res = append(res, e)
 	}
 	return res

@@ -90,6 +90,42 @@ func TestDifferentSpaces(t *testing.T) {
 	_ = ft.Close(nil)
 }
 
+func TestNamePrefixSearch(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "")
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "id1/r/name",
+		Title: "opa",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:   "id2/r/name",
+		Text: "opa",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "id3/r/desc",
+		Title: "one",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:   "id4/r/desc",
+		Text: "opa",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:   "id5/r/desc",
+		Text: "noone",
+	}))
+
+	search, err := ft.NamePrefixSearch("", "o")
+	require.NoError(t, err)
+	require.Len(t, search, 2)
+
+	search, err = ft.NamePrefixSearch("", "n")
+	require.NoError(t, err)
+	require.Len(t, search, 0)
+
+	_ = ft.Close(nil)
+}
+
 func TestNewFTSearch(t *testing.T) {
 	testCases := []struct {
 		name   string
