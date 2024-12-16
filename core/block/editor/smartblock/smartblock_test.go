@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -290,14 +291,14 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 }
 
 func TestSmartBlock_injectCreationInfo(t *testing.T) {
-	creator := "Anytype"
+	creator := "Creator"
 	creationDate := int64(1692127254)
 
 	t.Run("both creator and creation date are already set", func(t *testing.T) {
 		// given
 		src := &sourceStub{
-			creator:     creator,
-			createdDate: creationDate,
+			creator:     "Some creator from source",
+			createdDate: creationDate + 3600,
 			err:         nil,
 		}
 		sb := &smartBlock{source: src}
@@ -350,6 +351,28 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 		// then
 		assert.True(t, errors.Is(err, srcErr))
 		assert.Nil(t, s.LocalDetails())
+	})
+
+	t.Run("creator is anytype profile", func(t *testing.T) {
+		// given
+		src := &sourceStub{
+			creator:     creator,
+			createdDate: creationDate,
+			err:         nil,
+		}
+		sb := &smartBlock{source: src}
+		s := &state.State{}
+		s.SetLocalDetails(&types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyCreator.String(): pbtypes.String(addr.AnytypeProfileId),
+		}})
+
+		// when
+		err := sb.injectCreationInfo(s)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, addr.AnytypeProfileId, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()))
+		assert.Equal(t, creationDate, pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()))
 	})
 }
 
