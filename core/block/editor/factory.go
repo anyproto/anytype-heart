@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -35,12 +36,21 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
 var log = logging.Logger("anytype-mw-editor")
 
 type ObjectDeleter interface {
 	DeleteObjectByFullID(id domain.FullID) (err error)
+}
+
+type spaceService interface {
+	OnViewUpdated(info spaceinfo.SpacePersistentInfo)
+	OnWorkspaceChanged(spaceId string, details *types.Struct)
+	PersonalSpaceId() string
+	TechSpace() *clientspace.TechSpace
 }
 
 type accountService interface {

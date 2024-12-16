@@ -3,6 +3,8 @@ package userdataobject
 import (
 	"context"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -58,15 +60,18 @@ func (co *ContactObject) SetDetails(ctx session.Context, details []*model.Detail
 	if err != nil {
 		return err
 	}
-	go func() {
-		space := co.techSpaceProvider.TechSpace()
-		ctx := context.Background()
-		err := space.DoUserDataObject(ctx, func(userDataObject UserDataObject) error {
-			return userDataObject.UpdateContact(ctx, state.CombinedDetails())
-		})
-		if err != nil {
-			log.Errorf("failed to update user data object: %v", err)
-		}
-	}()
+	combinedDetails := state.CombinedDetails()
+	go co.updateContactInStore(combinedDetails)
 	return nil
+}
+
+func (co *ContactObject) updateContactInStore(combinedDetails *types.Struct) {
+	space := co.techSpaceProvider.TechSpace()
+	ctx := context.Background()
+	err := space.DoUserDataObject(ctx, func(userDataObject UserDataObject) error {
+		return userDataObject.UpdateContact(ctx, combinedDetails)
+	})
+	if err != nil {
+		log.Errorf("failed to update user data object: %v", err)
+	}
 }
