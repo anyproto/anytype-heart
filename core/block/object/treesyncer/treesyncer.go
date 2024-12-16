@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer"
@@ -193,7 +194,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, p peer.Peer, existing, missing
 	for _, id := range missing {
 		idCopy := id
 		err = reqExec.tryAdd(idCopy, func() {
-			t.requestTree(peerId, idCopy)
+			t.requestTree(p, idCopy)
 		})
 		if err != nil {
 			log.Error("failed to add to request queue", zap.Error(err))
@@ -214,16 +215,20 @@ func (t *treeSyncer) sendDetailsUpdates(existing, missing []string) {
 	t.syncDetailsUpdater.UpdateSpaceDetails(existing, missing, t.spaceId)
 }
 
-func (t *treeSyncer) requestTree(peerId, id string) {
+func (t *treeSyncer) requestTree(p peer.Peer, id string) {
 	log := log.With(zap.String("treeId", id))
+	peerId := p.Id()
 	ctx := peer.CtxWithPeerId(t.mainCtx, peerId)
 	ctx, cancel := context.WithTimeout(ctx, t.timeout)
 	defer cancel()
-	_, err := t.treeManager.GetTree(ctx, t.spaceId, id)
+	tr, err := t.treeManager.GetTree(ctx, t.spaceId, id)
 	if err != nil {
 		log.Warn("can't load missing tree", zap.Error(err))
 	} else {
 		log.Debug("loaded missing tree")
+	}
+	if objecttree.IsEmptyDerivedTree(tr) {
+		t.pingTree(p, tr)
 	}
 }
 
@@ -236,12 +241,16 @@ func (t *treeSyncer) updateTree(p peer.Peer, id string) {
 		log.Warn("can't load existing tree", zap.Error(err))
 		return
 	}
+	t.pingTree(p, tr)
+}
+
+func (t *treeSyncer) pingTree(p peer.Peer, tr objecttree.ObjectTree) {
 	syncTree, ok := tr.(synctree.SyncTree)
 	if !ok {
 		log.Warn("not a sync tree")
 		return
 	}
-	if err = syncTree.SyncWithPeer(ctx, p); err != nil {
+	if err := syncTree.SyncWithPeer(p.Context(), p); err != nil {
 		log.Warn("synctree.SyncWithPeer error", zap.Error(err))
 	} else {
 		log.Debug("success synctree.SyncWithPeer")
