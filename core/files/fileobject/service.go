@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
@@ -23,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -260,13 +260,7 @@ func (s *service) Close(ctx context.Context) error {
 }
 
 func (s *service) InitEmptyFileState(st *state.State) {
-	template.InitTemplate(st,
-		template.WithEmpty,
-		template.WithTitle,
-		template.WithDefaultFeaturedRelations,
-		template.WithFeaturedRelations,
-		template.WithAllBlocksEditsRestricted,
-	)
+	fileblocks.InitEmptyFileState(st)
 }
 
 func (s *service) Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *types.Struct, err error) {
@@ -309,7 +303,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		EncryptionKeys: req.EncryptionKeys,
 	})
 	if !req.AsyncMetadataIndexing {
-		s.InitEmptyFileState(createState)
+		fileblocks.InitEmptyFileState(createState)
 		fullFileId := domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}
 		fullObjectId := domain.FullID{SpaceID: space.Id(), ObjectID: payload.RootRawChange.Id}
 		err := s.indexer.injectMetadataToState(ctx, createState, fullFileId, fullObjectId)

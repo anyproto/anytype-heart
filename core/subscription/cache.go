@@ -1,6 +1,8 @@
 package subscription
 
 import (
+	"maps"
+
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -17,62 +19,72 @@ type entry struct {
 	data *types.Struct
 
 	subIds             []string
-	subIsActive        []bool
-	subFullDetailsSent []bool
+	subIsActive        map[string]bool
+	subFullDetailsSent map[string]bool
+}
+
+func newEntry(id string, data *types.Struct) *entry {
+	return &entry{id: id, data: data, subIsActive: make(map[string]bool), subFullDetailsSent: make(map[string]bool)}
+}
+
+func (e *entry) Copy() *entry {
+	newSubIds := make([]string, len(e.subIds))
+	copy(newSubIds, e.subIds)
+	newSubIsActive := make(map[string]bool, len(e.subIsActive))
+	maps.Copy(newSubIsActive, e.subIsActive)
+	newSubFullDetailsSent := make(map[string]bool, len(e.subIsActive))
+	maps.Copy(newSubFullDetailsSent, e.subFullDetailsSent)
+	return &entry{
+		id:                 e.id,
+		data:               e.data,
+		subIds:             newSubIds,
+		subIsActive:        newSubIsActive,
+		subFullDetailsSent: newSubFullDetailsSent,
+	}
 }
 
 // SetSub marks provided subscription for the entry as active (within the current pagination window) or inactive
 func (e *entry) SetSub(subId string, isActive bool, isFullDetailSent bool) {
 	if pos := slice.FindPos(e.subIds, subId); pos == -1 {
 		e.subIds = append(e.subIds, subId)
-		e.subIsActive = append(e.subIsActive, isActive)
-		e.subFullDetailsSent = append(e.subFullDetailsSent, isFullDetailSent)
+		e.subIsActive[subId] = isActive
+		e.subFullDetailsSent[subId] = isFullDetailSent
 	} else {
-		e.subIsActive[pos] = isActive
-		e.subFullDetailsSent[pos] = isFullDetailSent
+		e.subIsActive[subId] = isActive
+		// Don't override existing value, because if the event was already sent for the subscription during session, it should not be sent again
+		if !e.subFullDetailsSent[subId] {
+			e.subFullDetailsSent[subId] = isFullDetailSent
+		}
 	}
 }
 
-// IsActive indicates that entry is inside the current pagination window for all of provided subscription IDs
-func (e *entry) IsActive(subIds ...string) bool {
-	if len(subIds) == 0 {
-		return false
-	}
-	for _, id := range subIds {
-		if pos := slice.FindPos(e.subIds, id); pos != -1 {
-			if !e.subIsActive[pos] {
-				return false
-			}
-		} else {
-			return false
+// GetActive returns all active subscriptions for entry
+func (e *entry) GetActive() []string {
+	var subIsActive []string
+	for id, active := range e.subIsActive {
+		if active {
+			subIsActive = append(subIsActive, id)
 		}
 	}
-	return true
+	return subIsActive
 }
 
-// IsFullDetailsSent that in the context of ALL provided subscriptions we have previously sent the full ObjectSetDetails event
-// if true this means that we can send incremental diff updates
-func (e *entry) IsFullDetailsSent(subIds ...string) bool {
-	if len(subIds) == 0 {
-		return false
-	}
-	for _, id := range subIds {
-		if pos := slice.FindPos(e.subIds, id); pos != -1 {
-			if !e.subFullDetailsSent[pos] {
-				return false
-			}
-		} else {
-			return false
+// GetFullDetailsSent returns all subscriptions for entry, for which full details are already sent
+func (e *entry) GetFullDetailsSent() []string {
+	var detailsSent []string
+	for id, isFullDetailsSent := range e.subFullDetailsSent {
+		if isFullDetailsSent {
+			detailsSent = append(detailsSent, id)
 		}
 	}
-	return true
+	return detailsSent
 }
 
 func (e *entry) RemoveSubId(subId string) {
 	if pos := slice.FindPos(e.subIds, subId); pos != -1 {
 		e.subIds = slice.RemoveMut(e.subIds, subId)
-		e.subIsActive = append(e.subIsActive[:pos], e.subIsActive[pos+1:]...)
-		e.subFullDetailsSent = append(e.subFullDetailsSent[:pos], e.subFullDetailsSent[pos+1:]...)
+		delete(e.subIsActive, subId)
+		delete(e.subFullDetailsSent, subId)
 	}
 }
 

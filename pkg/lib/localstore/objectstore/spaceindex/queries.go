@@ -209,7 +209,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 				if index != -1 {
 					from := int32(text2.UTF16RuneCount(titleArr[:index]))
 					rec.Meta.HighlightRanges = []*model.Range{{
-						From: int32(text2.UTF16RuneCount(titleArr[:from])),
+						From: from,
 						To:   from + int32(text2.UTF16RuneCount([]byte(ftsSearch)))}}
 					rec.Meta.Highlight = title
 				}
@@ -270,7 +270,17 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 		return nil, fmt.Errorf("new filters: %w", err)
 	}
 	if q.TextQuery != "" {
-		fulltextResults, err := s.performFulltextSearch(q.TextQuery, q.SpaceId)
+		var fulltextResults []database.FulltextResult
+		if q.PrefixNameQuery {
+			fulltextResults, err = s.performFulltextSearch(func() (results []*ftsearch.DocumentMatch, err error) {
+				return s.fts.NamePrefixSearch(q.SpaceId, q.TextQuery)
+			})
+		} else {
+			fulltextResults, err = s.performFulltextSearch(func() (results []*ftsearch.DocumentMatch, err error) {
+				return s.fts.Search(q.SpaceId, q.TextQuery)
+			})
+		}
+
 		if err != nil {
 			return nil, fmt.Errorf("perform fulltext search: %w", err)
 		}
@@ -280,8 +290,8 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 	return s.QueryRaw(filters, q.Limit, q.Offset)
 }
 
-func (s *dsObjectStore) performFulltextSearch(text string, spaceId string) ([]database.FulltextResult, error) {
-	ftsResults, err := s.fts.Search(spaceId, text)
+func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch.DocumentMatch, err error)) ([]database.FulltextResult, error) {
+	ftsResults, err := search()
 	if err != nil {
 		return nil, fmt.Errorf("fullText search: %w", err)
 	}

@@ -178,13 +178,16 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 				Text:    val,
 			}
 
-			layout, layoutValid := sb.Layout()
-			if layoutValid {
-				if _, contains := filesLayouts[layout]; !contains {
-					doc.Title = val
-					doc.Text = ""
+			if rel.Key == bundle.RelationKeyName.String() {
+				layout, layoutValid := sb.Layout()
+				if layoutValid {
+					if _, contains := filesLayouts[layout]; !contains {
+						doc.Title = val
+						doc.Text = ""
+					}
 				}
 			}
+
 			docs = append(docs, doc)
 		}
 
