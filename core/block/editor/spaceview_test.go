@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -257,6 +258,9 @@ type spaceServiceStub struct {
 
 func (s *spaceServiceStub) PersonalSpaceId() string {
 	return ""
+}
+func (s *spaceServiceStub) TechSpace() *clientspace.TechSpace {
+	return nil
 }
 
 func (s *spaceServiceStub) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {

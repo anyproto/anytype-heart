@@ -848,51 +848,6 @@ func (_c *MockAccountObject_GetDocInfo_Call) RunAndReturn(run func() smartblock.
 	return _c
 }
 
-// GetPrivateAnalyticsId provides a mock function with given fields:
-func (_m *MockAccountObject) GetPrivateAnalyticsId() string {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetPrivateAnalyticsId")
-	}
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
-// MockAccountObject_GetPrivateAnalyticsId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPrivateAnalyticsId'
-type MockAccountObject_GetPrivateAnalyticsId_Call struct {
-	*mock.Call
-}
-
-// GetPrivateAnalyticsId is a helper method to define mock.On call
-func (_e *MockAccountObject_Expecter) GetPrivateAnalyticsId() *MockAccountObject_GetPrivateAnalyticsId_Call {
-	return &MockAccountObject_GetPrivateAnalyticsId_Call{Call: _e.mock.On("GetPrivateAnalyticsId")}
-}
-
-func (_c *MockAccountObject_GetPrivateAnalyticsId_Call) Run(run func()) *MockAccountObject_GetPrivateAnalyticsId_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockAccountObject_GetPrivateAnalyticsId_Call) Return(_a0 string) *MockAccountObject_GetPrivateAnalyticsId_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockAccountObject_GetPrivateAnalyticsId_Call) RunAndReturn(run func() string) *MockAccountObject_GetPrivateAnalyticsId_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetRelationLinks provides a mock function with given fields:
 func (_m *MockAccountObject) GetRelationLinks() pbtypes.RelationLinks {
 	ret := _m.Called()

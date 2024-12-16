@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/userdataobject"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
@@ -26,7 +27,8 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.techSpace = app.MustComponent[techspace.TechSpace](a)
+	spaceService := app.MustComponent[space.Service](a)
+	s.techSpace = spaceService.TechSpace()
 	return
 }
 

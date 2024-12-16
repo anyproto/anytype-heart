@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -92,6 +93,15 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
+	s.myIdentity = s.accountService.AccountID()
+	techSpace, err := s.spaceService.GetTechSpace(ctx)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	id, err := techSpace.(*clientspace.TechSpace).TechSpace.AccountObjectId()
+	if err != nil {
+		return err
+	}
 
 	recordsCh := make(chan *types.Struct)
 	sub := database.NewSubscription(nil, recordsCh)
@@ -101,7 +111,7 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 		closeSub func()
 	)
 
-	records, closeSub, err = s.objectStore.SpaceIndex(s.spaceService.TechSpaceId()).QueryByIdsAndSubscribeForChanges([]string{s.myIdentity}, sub)
+	records, closeSub, err = s.objectStore.SpaceIndex(s.spaceService.TechSpaceId()).QueryByIdsAndSubscribeForChanges([]string{id}, sub)
 	if err != nil {
 		return err
 	}
