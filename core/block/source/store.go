@@ -35,9 +35,10 @@ type Store interface {
 }
 
 type PushStoreChangeParams struct {
-	State   *storestate.StoreState
-	Changes []*pb.StoreChangeContent
-	Time    time.Time // used to derive the lastModifiedDate; Default is time.Now()
+	State          *storestate.StoreState
+	Changes        []*pb.StoreChangeContent
+	Time           time.Time // used to derive the lastModifiedDate; Default is time.Now()
+	NoOnUpdateHook bool
 }
 
 var (
@@ -155,7 +156,7 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	}
 	changeId = addResult.Added[0].Id
 	err = tx.Commit()
-	if err == nil {
+	if err == nil && !params.NoOnUpdateHook {
 		s.onUpdateHook()
 	}
 	return changeId, err

@@ -9,9 +9,9 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/any-sync/util/crypto/cryptoproto"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("core.block.editor.userdata")
@@ -31,6 +32,7 @@ type UserDataObject interface {
 
 	SaveContact(ctx context.Context, identity string, profileSymKey []byte) error
 	DeleteContact(ctx context.Context, identity string) error
+	UpdateContact(ctx context.Context, details *types.Struct) error
 }
 
 type userDataObject struct {
@@ -45,7 +47,6 @@ type userDataObject struct {
 	objectCache     cache.ObjectGetter
 	ctx             context.Context
 	cancel          context.CancelFunc
-	relMapper       *editor.RelationsMapper
 }
 
 func New(sb smartblock.SmartBlock, identityService identity.Service, crdtDb anystore.DB, objectCache cache.ObjectGetter) UserDataObject {
@@ -55,12 +56,6 @@ func New(sb smartblock.SmartBlock, identityService identity.Service, crdtDb anys
 		crdtDb:          crdtDb,
 		arenaPool:       &anyenc.ArenaPool{},
 		objectCache:     objectCache,
-		relMapper: editor.NewRelationsMapper(map[string]editor.KeyType{
-			bundle.RelationKeyName.String():        editor.KeyTypeString,
-			bundle.RelationKeyIdentity.String():    editor.KeyTypeString,
-			bundle.RelationKeyDescription.String(): editor.KeyTypeString,
-			bundle.RelationKeyIconImage.String():   editor.KeyTypeString,
-		}),
 	}
 }
 
@@ -256,5 +251,30 @@ func (u *userDataObject) DeleteContact(ctx context.Context, identity string) err
 		return fmt.Errorf("push change: %w", err)
 	}
 	u.identityService.UnregisterIdentity(u.SpaceID(), identity)
+	return nil
+}
+
+func (u *userDataObject) UpdateContact(ctx context.Context, details *types.Struct) error {
+	arena := u.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		u.arenaPool.Put(arena)
+	}()
+	jsonContact := ModelToJson(arena, details)
+	builder := storestate.Builder{}
+	contactId := domain.NewContactId(pbtypes.GetString(details, bundle.RelationKeyIdentity.String()))
+	err := builder.Modify(contactsCollection, contactId, []string{identityField, nameField, iconField, descriptionField}, pb.ModifyOp_Set, jsonContact)
+	if err != nil {
+		return fmt.Errorf("modify contact: %w", err)
+	}
+	_, err = u.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
+		Changes:        builder.ChangeSet,
+		State:          u.state,
+		Time:           time.Now(),
+		NoOnUpdateHook: true,
+	})
+	if err != nil {
+		return fmt.Errorf("push change: %w", err)
+	}
 	return nil
 }

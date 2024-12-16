@@ -1,6 +1,8 @@
 package userdataobject
 
 import (
+	"context"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -9,16 +11,22 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 )
+
+type techSpaceProvider interface {
+	TechSpace() *clientspace.TechSpace
+}
 
 type ContactObject struct {
 	basic.DetailsSettable
 	smartblock.SmartBlock
-	store spaceindex.Store
+	store             spaceindex.Store
+	techSpaceProvider techSpaceProvider
 }
 
-func NewContactObject(smartBlock smartblock.SmartBlock, store spaceindex.Store) *ContactObject {
-	return &ContactObject{SmartBlock: smartBlock, store: store}
+func NewContactObject(smartBlock smartblock.SmartBlock, store spaceindex.Store, techSpaceProvider techSpaceProvider) *ContactObject {
+	return &ContactObject{SmartBlock: smartBlock, store: store, techSpaceProvider: techSpaceProvider}
 }
 
 func (co *ContactObject) Init(ctx *smartblock.InitContext) error {
@@ -42,10 +50,23 @@ func (co *ContactObject) Init(ctx *smartblock.InitContext) error {
 }
 
 func (co *ContactObject) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
-	state := co.NewState()
+	state := co.NewStateCtx(ctx)
 	for _, detail := range details {
 		state.SetDetail(detail.Key, detail.Value)
 	}
-	return co.Apply(state)
-
+	err = co.Apply(state)
+	if err != nil {
+		return err
+	}
+	go func() {
+		space := co.techSpaceProvider.TechSpace()
+		ctx := context.Background()
+		err := space.DoUserDataObject(ctx, func(userDataObject UserDataObject) error {
+			return userDataObject.UpdateContact(ctx, state.CombinedDetails())
+		})
+		if err != nil {
+			log.Errorf("failed to update user data object: %v", err)
+		}
+	}()
+	return nil
 }
