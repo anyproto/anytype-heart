@@ -224,6 +224,7 @@ func (t *treeSyncer) requestTree(p peer.Peer, id string) {
 	tr, err := t.treeManager.GetTree(ctx, t.spaceId, id)
 	if err != nil {
 		log.Warn("can't load missing tree", zap.Error(err))
+		return
 	} else {
 		log.Debug("loaded missing tree")
 	}
