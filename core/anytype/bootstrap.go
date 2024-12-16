@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 
 	"github.com/anyproto/anytype-heart/core/acl"
+	"github.com/anyproto/anytype-heart/core/ai"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -113,7 +114,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
-	"github.com/anyproto/anytype-heart/util/ai"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
