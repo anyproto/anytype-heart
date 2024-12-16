@@ -125,7 +125,7 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	activeEntries := s.getActiveEntries()
 	var activeIds = make([]string, len(activeEntries))
 	for i, ae := range activeEntries {
-		ae.SetSub(s.id, true, false)
+		ae.SetSub(s.id, true, true)
 		activeIds[i] = ae.id
 	}
 	s.diff = newListDiff(activeIds)
@@ -173,7 +173,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	}
 
 	wasAddOrRemove, ids := s.diff.diff(ctx, s.id, s.keys)
-	s.ds.depEntriesByEntries(ctx, s.spaceId, ids)
+	s.ds.depEntriesByEntries(ctx, ids)
 
 	hasChanges := false
 	for _, e := range ctx.entries {
@@ -189,7 +189,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	}
 
 	if (wasAddOrRemove || hasChanges) && s.depSub != nil {
-		s.ds.refillSubscription(s.spaceId, ctx, s.depSub, s.activeEntriesBuf, s.depKeys)
+		s.ds.refillSubscription(ctx, s.depSub, s.activeEntriesBuf, s.depKeys)
 	}
 
 	if s.parent != nil {

@@ -27,7 +27,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		return m
 	}
 
-	creator := getService[objectcreator.Service](mw)
+	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
 		Details:       domain.NewDetailsFromProto(req.Details),
 		InternalFlags: req.InternalFlags,
@@ -74,7 +74,7 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 	details := domain.NewDetailsFromProto(req.Details)
 	details.SetStringList(bundle.RelationKeySetOf, req.Source)
 
-	creator := getService[objectcreator.Service](mw)
+	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeySet,
 		InternalFlags: req.InternalFlags,
@@ -102,7 +102,7 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 		return m
 	}
 
-	creator := getService[objectcreator.Service](mw)
+	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyBookmark,
 		Details:       domain.NewDetailsFromProto(req.Details),
@@ -127,7 +127,7 @@ func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcOb
 		return m
 	}
 
-	creator := getService[objectcreator.Service](mw)
+	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyObjectType,
 		InternalFlags: req.InternalFlags,
@@ -161,7 +161,7 @@ func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObje
 			Details:  object.ToProto(),
 		}
 	}
-	creator := getService[objectcreator.Service](mw)
+	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyRelation,
 		Details:       domain.NewDetailsFromProto(req.Details),
@@ -192,7 +192,7 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 		}
 	}
 
-	creator := getService[objectcreator.Service](mw)
+	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyRelationOption,
 		Details:       domain.NewDetailsFromProto(req.Details),
@@ -209,7 +209,7 @@ func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjec
 		}
 		return m
 	}
-	bs := getService[*block.Service](mw)
+	bs := mustService[*block.Service](mw)
 
 	id, newDetails, err := bs.CreateObjectFromUrl(cctx, req)
 	if err != nil {

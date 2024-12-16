@@ -173,6 +173,12 @@ func (s *service) Close(ctx context.Context) error {
 }
 
 func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err error) {
+	// todo: removed temp fix after we will have session-scoped subscriptions
+	// this is to prevent multiple subscriptions with the same id in different spaces
+	err = s.Unsubscribe(req.SubId)
+	if err != nil {
+		return nil, err
+	}
 	spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId)
 	if err != nil {
 		return nil, err
@@ -181,6 +187,12 @@ func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err err
 }
 
 func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error) {
+	// todo: removed temp fix after we will have session-scoped subscriptions
+	// this is to prevent multiple subscriptions with the same id in different spaces
+	err = s.Unsubscribe(req.SubId)
+	if err != nil {
+		return nil, err
+	}
 	spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId)
 	if err != nil {
 		return nil, err
@@ -193,6 +205,12 @@ func (s *service) SubscribeIds(subId string, ids []string) (records []*domain.De
 }
 
 func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
+	// todo: removed temp fix after we will have session-scoped subscriptions
+	// this is to prevent multiple subscriptions with the same id in different spaces
+	err := s.Unsubscribe(req.SubId)
+	if err != nil {
+		return nil, err
+	}
 	spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId)
 	if err != nil {
 		return nil, err
@@ -480,10 +498,7 @@ func queryEntries(objectStore spaceindex.Store, f *database.Filters) ([]*entry, 
 	}
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
-		entries = append(entries, &entry{
-			id:   r.Details.GetString(bundle.RelationKeyId),
-			data: r.Details,
-		})
+		entries = append(entries, newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details))
 	}
 	return entries, nil
 }
@@ -545,10 +560,7 @@ func (s *spaceSubscriptions) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest
 	sub := s.newSimpleSub(req.SubId, req.SpaceId, slice.StringsInto[domain.RelationKey](req.Keys), !req.NoDepSubscription)
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
-		entries = append(entries, &entry{
-			id:   r.Details.GetString(bundle.RelationKeyId),
-			data: r.Details,
-		})
+		entries = append(entries, newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details))
 	}
 	if err = sub.init(entries); err != nil {
 		return
@@ -663,10 +675,7 @@ func (s *spaceSubscriptions) SubscribeGroups(req SubscribeGroupsRequest) (*pb.Rp
 
 		entries := make([]*entry, 0, len(tagGrouper.Records))
 		for _, r := range tagGrouper.Records {
-			entries = append(entries, &entry{
-				id:   r.Details.GetString(bundle.RelationKeyId),
-				data: r.Details,
-			})
+			entries = append(entries, newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details))
 		}
 
 		if err := sub.init(entries); err != nil {
@@ -771,10 +780,7 @@ func (s *spaceSubscriptions) recordsHandler() {
 			id := rec.(database.Record).Details.GetString(bundle.RelationKeyId)
 			// nil previous version
 			nilIfExists(id)
-			entries = append(entries, &entry{
-				id:   id,
-				data: rec.(database.Record).Details,
-			})
+			entries = append(entries, newEntry(id, rec.(database.Record).Details))
 		}
 		// filter nil entries
 		filtered := entries[:0]
