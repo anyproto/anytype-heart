@@ -29,13 +29,10 @@ func genEntries(n int, backord bool) (res []*entry) {
 }
 
 func genEntry(id string, ord int64) *entry {
-	return &entry{
-		id: id,
-		data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			"id":    domain.String(id),
-			"order": domain.Int64(ord),
-		}),
-	}
+	return newEntry(id, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		"id":    domain.String(id),
+		"order": domain.Int64(ord),
+	}))
 }
 
 func assertCtxAdd(t *testing.T, ctx *opCtx, id, afterId string) {

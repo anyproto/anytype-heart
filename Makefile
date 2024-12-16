@@ -137,10 +137,12 @@ endif
 	@cp pkg/lib/bundle/internal*.json dist/ios/json/
 	@go mod tidy
 	@echo 'Repacking iOS framework...'
+	chmod -R 755 dist/ios/Lib.xcframework
 	@go run cmd/iosrepack/main.go
 
 install-dev-ios: setup-go build-ios protos-swift
 	@echo 'Installing iOS framework locally at $(CLIENT_IOS_PATH)...'
+	@chmod -R 755 $(CLIENT_IOS_PATH)/Dependencies/Middleware/Lib.xcframework
 	@rm -rf $(CLIENT_IOS_PATH)/Dependencies/Middleware/*
 	@cp -r dist/ios/Lib.xcframework $(CLIENT_IOS_PATH)/Dependencies/Middleware
 	@rm -rf $(CLIENT_IOS_PATH)/Modules/ProtobufMessages/Sources/Protocol/*

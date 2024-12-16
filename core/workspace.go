@@ -58,7 +58,7 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 		}
 		return m
 	}
-	info, err := getService[account.Service](mw).GetSpaceInfo(cctx, req.SpaceId)
+	info, err := mustService[account.Service](mw).GetSpaceInfo(cctx, req.SpaceId)
 	if err != nil {
 		return response(info, pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR, err)
 	}
@@ -93,7 +93,7 @@ func (mw *Middleware) WorkspaceSetInfo(cctx context.Context, req *pb.RpcWorkspac
 		return m
 	}
 
-	err := getService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, domain.NewDetailsFromProto(req.Details))
+	err := mustService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, domain.NewDetailsFromProto(req.Details))
 	if err != nil {
 		return response(pb.RpcWorkspaceSetInfoResponseError_UNKNOWN_ERROR, err)
 	}

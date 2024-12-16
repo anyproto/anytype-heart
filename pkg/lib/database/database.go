@@ -66,12 +66,13 @@ type SortRequest struct {
 }
 
 type Query struct {
-	TextQuery string
-	SpaceId   string
-	Filters   []FilterRequest // filters results. apply sequentially
-	Sorts     []SortRequest   // order results. apply hierarchically
-	Limit     int             // maximum number of results
-	Offset    int             // skip given number of results
+	TextQuery       string
+	SpaceId         string
+	Filters         []FilterRequest // filters results. apply sequentially
+	Sorts           []SortRequest   // order results. apply hierarchically
+	Limit           int             // maximum number of results
+	Offset          int             // skip given number of results
+	PrefixNameQuery bool
 }
 
 func injectDefaultFilters(filters []FilterRequest) []FilterRequest {

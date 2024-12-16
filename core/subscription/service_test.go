@@ -83,14 +83,14 @@ func TestService_Search(t *testing.T) {
 		require.NoError(t, err)
 
 		// Wait enough time to flush pending updates to subscriptions handler
-		time.Sleep(batchTime + time.Millisecond)
+		time.Sleep(batchTime + 3*time.Millisecond)
 
 		spaceSub.onChange([]*entry{
-			{id: "1", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			newEntry("1", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				"id":     domain.String("1"),
 				"name":   domain.String("one"),
 				"author": domain.StringList([]string{"author2", "author3", "1"}),
-			})},
+			})),
 		})
 
 		assert.Equal(t, []string{"test"}, spaceSub.cache.entries["1"].SubIds())
@@ -100,10 +100,10 @@ func TestService_Search(t *testing.T) {
 		fx.events = fx.events[:0]
 
 		spaceSub.onChange([]*entry{
-			{id: "1", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			newEntry("1", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				"id":   domain.String("1"),
 				"name": domain.String("one"),
-			})},
+			})),
 		})
 
 		assert.NoError(t, fx.Unsubscribe("test"))
@@ -430,10 +430,10 @@ func TestService_Search(t *testing.T) {
 		require.NoError(t, err)
 
 		spaceSub.onChange([]*entry{
-			{id: "1", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			newEntry("1", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				"id":   domain.String("1"),
 				"name": domain.String("4"),
-			})},
+			})),
 		})
 		// should be 1,3 (2)
 		require.Len(t, fx.events[0].Messages, 3)
@@ -442,10 +442,10 @@ func TestService_Search(t *testing.T) {
 		assert.NotEmpty(t, fx.events[0].Messages[2].GetSubscriptionRemove())
 
 		spaceSub.onChange([]*entry{
-			{id: "2", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			newEntry("2", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				"id":   domain.String("2"),
 				"name": domain.String("6"),
-			})},
+			})),
 		})
 		// should be 2,1 (3)
 		t.Log(pbtypes.Sprint(fx.events[1]))
@@ -874,7 +874,33 @@ func TestService_Search(t *testing.T) {
 		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyName))
 		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyId))
 	})
+	t.Run("Search: call onChange for records", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
 
+		newSub(fx, "test")
+		newSub(fx, "test2")
+		spaceSub, err := fx.getSpaceSubscriptions(testSpaceId)
+		assert.NoError(t, err)
+		e := spaceSub.ctxBuf.c.Get("1")
+		e.subFullDetailsSent["test2"] = false
+
+		// when
+		spaceSub.onChange([]*entry{
+			newEntry("1", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"id":     domain.String("1"),
+				"name":   domain.String("one"),
+				"author": domain.StringList([]string{"author2", "author3", "1"}),
+			})),
+		})
+
+		// then
+		assert.NotNil(t, spaceSub.ctxBuf.outputs[defaultOutput][0].GetObjectDetailsAmend())
+		assert.Contains(t, spaceSub.ctxBuf.outputs[defaultOutput][0].GetObjectDetailsAmend().GetSubIds(), "test")
+		assert.Contains(t, spaceSub.ctxBuf.outputs[defaultOutput][1].GetObjectDetailsSet().GetSubIds(), "test2")
+	})
 	t.Run("SubscribeGroup: tag group", func(t *testing.T) {
 		// given
 		fx := newFixtureWithRealObjectStore(t)

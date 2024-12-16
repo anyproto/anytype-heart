@@ -25,15 +25,15 @@ type dependencyService struct {
 func (ds *dependencyService) makeSubscriptionByEntries(subId string, spaceId string, allEntries, activeEntries []*entry, keys, depKeys []domain.RelationKey, filterDepIds []string) *simpleSub {
 	depSub := ds.s.newSimpleSub(subId, spaceId, keys, true)
 	depSub.forceIds = filterDepIds
-	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, spaceId, ds.depIdsByEntries(activeEntries, depKeys, depSub.forceIds))
+	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, ds.depIdsByEntries(activeEntries, depKeys, depSub.forceIds))
 	depSub.init(depEntries)
 	return depSub
 }
 
-func (ds *dependencyService) refillSubscription(spaceId string, ctx *opCtx, sub *simpleSub, entries []*entry, depKeys []domain.RelationKey) {
+func (ds *dependencyService) refillSubscription(ctx *opCtx, sub *simpleSub, entries []*entry, depKeys []domain.RelationKey) {
 	depIds := ds.depIdsByEntries(entries, depKeys, sub.forceIds)
 	if !sub.isEqualIds(depIds) {
-		depEntries := ds.depEntriesByEntries(ctx, spaceId, depIds)
+		depEntries := ds.depEntriesByEntries(ctx, depIds)
 		sub.refill(ctx, depEntries)
 	}
 	return
@@ -53,7 +53,7 @@ func (ds *dependencyService) depIdsByEntries(entries []*entry, depKeys []domain.
 	return
 }
 
-func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, spaceId string, depIds []string) (depEntries []*entry) {
+func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (depEntries []*entry) {
 	if len(depIds) == 0 {
 		return
 	}
@@ -64,19 +64,7 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, spaceId string, dep
 		// priority: ctx.entries, cache, objectStore
 		if e = ctx.getEntry(id); e == nil {
 			if e = ds.s.cache.Get(id); e != nil {
-				newSubIds := make([]string, len(e.subIds))
-				newSubIsActive := make([]bool, len(e.subIsActive))
-				newSubFullDetailsSent := make([]bool, len(e.subFullDetailsSent))
-				copy(newSubIds, e.subIds)
-				copy(newSubIsActive, e.subIsActive)
-				copy(newSubFullDetailsSent, e.subFullDetailsSent)
-				e = &entry{
-					id:                 id,
-					data:               e.data,
-					subIds:             newSubIds,
-					subIsActive:        newSubIsActive,
-					subFullDetailsSent: newSubFullDetailsSent,
-				}
+				e = e.Copy()
 			} else {
 				missIds = append(missIds, id)
 			}
@@ -94,10 +82,7 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, spaceId string, dep
 			log.Errorf("can't query by id: %v", err)
 		}
 		for _, r := range records {
-			e := &entry{
-				id:   r.Details.GetString(bundle.RelationKeyId),
-				data: r.Details,
-			}
+			e := newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details)
 			ctx.entries = append(ctx.entries, e)
 			depEntries = append(depEntries, e)
 		}

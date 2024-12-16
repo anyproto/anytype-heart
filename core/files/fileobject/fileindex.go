@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -14,11 +13,9 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/block/simple"
-	fileblock "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -261,7 +258,7 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	details = prevDetails.Merge(details)
 	st.SetDetails(details)
 
-	err = ind.addBlocks(st, details, id.ObjectID)
+	err = fileblocks.AddFileBlocks(st, details, id.ObjectID)
 	if err != nil {
 		return fmt.Errorf("add blocks: %w", err)
 	}
@@ -296,84 +293,4 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId, info
 
 	details.SetInt64(bundle.RelationKeyFileIndexingStatus, int64(model.FileIndexingStatus_Indexed))
 	return details, typeKey, nil
-}
-
-func (ind *indexer) addBlocks(st *state.State, details *domain.Details, objectId string) error {
-	fname := details.GetString(bundle.RelationKeyName)
-	fileType := fileblock.DetectTypeByMIME(fname, details.GetString(bundle.RelationKeyFileMimeType))
-
-	ext := details.GetString(bundle.RelationKeyFileExt)
-
-	if ext != "" && !strings.HasSuffix(fname, "."+ext) {
-		fname = fname + "." + ext
-	}
-
-	var blocks []*model.Block
-	blocks = append(blocks, &model.Block{
-		Id: "file",
-		Content: &model.BlockContentOfFile{
-			File: &model.BlockContentFile{
-				Name:           fname,
-				Mime:           details.GetString(bundle.RelationKeyFileMimeType),
-				TargetObjectId: objectId,
-				Type:           fileType,
-				Size_:          int64(details.GetFloat64(bundle.RelationKeySizeInBytes)),
-				State:          model.BlockContentFile_Done,
-				AddedAt:        int64(details.GetFloat64(bundle.RelationKeyFileMimeType)),
-			},
-		}})
-
-	switch fileType {
-	case model.BlockContentFile_Image:
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(objectId))
-
-		if details.GetInt64(bundle.RelationKeyWidthInPixels) != 0 {
-			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyWidthInPixels))
-		}
-
-		if details.GetInt64(bundle.RelationKeyHeightInPixels) != 0 {
-			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyHeightInPixels))
-		}
-
-		if details.GetString(bundle.RelationKeyCamera) != "" {
-			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyCamera))
-		}
-
-		if details.GetInt64(bundle.RelationKeySizeInBytes) != 0 {
-			blocks = append(blocks, makeRelationBlock(bundle.RelationKeySizeInBytes))
-		}
-		if details.GetString(bundle.RelationKeyMediaArtistName) != "" {
-			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyMediaArtistName))
-		}
-		if details.GetString(bundle.RelationKeyMediaArtistURL) != "" {
-			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyMediaArtistURL))
-		}
-	default:
-		blocks = append(blocks, makeRelationBlock(bundle.RelationKeySizeInBytes))
-	}
-
-	for _, b := range blocks {
-		if st.Exists(b.Id) {
-			st.Set(simple.New(b))
-		} else {
-			st.Add(simple.New(b))
-			err := st.InsertTo(st.RootId(), model.Block_Inner, b.Id)
-			if err != nil {
-				return fmt.Errorf("failed to insert file block: %w", err)
-			}
-		}
-	}
-	template.WithAllBlocksEditsRestricted(st)
-	return nil
-}
-
-func makeRelationBlock(relationKey domain.RelationKey) *model.Block {
-	return &model.Block{
-		Id: relationKey.String(),
-		Content: &model.BlockContentOfRelation{
-			Relation: &model.BlockContentRelation{
-				Key: relationKey.String(),
-			},
-		},
-	}
 }

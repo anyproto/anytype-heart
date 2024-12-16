@@ -2817,7 +2817,7 @@ message Rpc {
                 enum UseCase {
                     NONE = 0;
                     GET_STARTED = 1;
-                    EMPTY = 6;
+                    EMPTY = 2;
                 }
             }
 

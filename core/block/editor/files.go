@@ -16,9 +16,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // required relations for files beside the bundle.RequiredInternalRelations
@@ -66,7 +68,7 @@ func (f *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			// - In background metadata indexer, if we use asynchronous metadata indexing mode
 			//
 			// See fileobject.Service
-			f.fileObjectService.InitEmptyFileState(ctx.State)
+			fileblocks.InitEmptyFileState(ctx.State)
 		},
 	}
 }
@@ -124,4 +126,31 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 	}
 
 	return nil
+}
+
+func (f *File) InjectVirtualBlocks(objectId string, view *model.ObjectView) {
+	if view.Type != model.SmartBlockType_FileObject {
+		return
+	}
+
+	var details *domain.Details
+	for _, det := range view.Details {
+		if det.Id == objectId {
+			details = domain.NewDetailsFromProto(det.Details)
+			break
+		}
+	}
+	if details == nil {
+		return
+	}
+
+	st := state.NewDoc(objectId, nil).NewState()
+	st.SetDetails(details)
+	fileblocks.InitEmptyFileState(st)
+	if err := fileblocks.AddFileBlocks(st, details, objectId); err != nil {
+		log.Errorf("failed to inject virtual file blocks: %v", err)
+		return
+	}
+
+	view.Blocks = st.Blocks()
 }

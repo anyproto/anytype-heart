@@ -23,15 +23,15 @@ func genTagEntries() []*entry {
 		makeTag("tag_2"),
 		makeTag("tag_3"),
 
-		{id: "record_one", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		newEntry("record_one", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			kanbanKey: domain.StringList([]string{"tag_1"}),
-		})},
-		{id: "record_two", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		})),
+		newEntry("record_two", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			kanbanKey: domain.StringList([]string{"tag_2"}),
-		})},
-		{id: "record_three", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		})),
+		newEntry("record_three", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			kanbanKey: domain.StringList([]string{"tag_1", "tag_2", "tag_3"}),
-		})},
+		})),
 	}
 }
 
@@ -50,11 +50,11 @@ func tagEntriesToGroups(entries []*entry) []*model.BlockContentDataviewGroup {
 }
 
 func makeTag(key string) *entry {
-	return &entry{id: key, data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+	return newEntry(key, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyId:          domain.String(key),
 		bundle.RelationKeyRelationKey: domain.String(kanbanKey),
 		bundle.RelationKeyType:        domain.String(bundle.TypeKeyRelationOption.URL()),
-	})}
+	}))
 }
 
 func TestGroupTag(t *testing.T) {
