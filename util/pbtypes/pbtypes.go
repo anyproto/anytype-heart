@@ -131,8 +131,9 @@ func IsEmptyValueOrAbsent(s *types.Struct, name string) bool {
 	return IsEmptyValue(value)
 }
 
+// IsEmptyValue returns true for nil, null value, unknown kind of value, empty strings and empty lists
 func IsEmptyValue(value *types.Value) bool {
-	if value == nil {
+	if IsNullValue(value) {
 		return true
 	}
 
@@ -140,20 +141,16 @@ func IsEmptyValue(value *types.Value) bool {
 		return len(v.StringValue) == 0
 	}
 
-	if v, ok := value.Kind.(*types.Value_NumberValue); ok {
-		return v.NumberValue == 0
+	if _, ok := value.Kind.(*types.Value_NumberValue); ok {
+		return false
 	}
 
-	if v, ok := value.Kind.(*types.Value_BoolValue); ok {
-		return !v.BoolValue
+	if _, ok := value.Kind.(*types.Value_BoolValue); ok {
+		return false
 	}
 
 	if _, ok := value.Kind.(*types.Value_ListValue); ok {
 		return len(GetStringListValue(value)) == 0
-	}
-
-	if _, ok := value.Kind.(*types.Value_NullValue); ok {
-		return true
 	}
 
 	if _, ok := value.Kind.(*types.Value_StructValue); ok {
@@ -161,6 +158,16 @@ func IsEmptyValue(value *types.Value) bool {
 	}
 
 	return true
+}
+
+func IsNullValue(value *types.Value) bool {
+	if value == nil {
+		return true
+	}
+	if _, ok := value.Kind.(*types.Value_NullValue); ok {
+		return true
+	}
+	return false
 }
 
 func GetStruct(s *types.Struct, name string) *types.Struct {

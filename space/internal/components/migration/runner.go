@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
@@ -27,7 +26,7 @@ const (
 var log = logger.NewNamed(CName)
 
 type Migration interface {
-	Run(context.Context, logger.CtxLogger, dependencies.QueryableStore, dependencies.QueryableStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error)
+	Run(context.Context, logger.CtxLogger, dependencies.QueryableStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error)
 	Name() string
 }
 
@@ -107,7 +106,7 @@ func (r *Runner) run(migrations ...Migration) (err error) {
 
 	start := time.Now()
 	store := r.store.SpaceIndex(spaceId)
-	marketPlaceStore := r.store.SpaceIndex(addr.AnytypeMarketplaceWorkspace)
+	// marketPlaceStore := r.store.SpaceIndex(addr.AnytypeMarketplaceWorkspace)
 	spent := time.Since(start)
 
 	for _, m := range migrations {
@@ -115,7 +114,7 @@ func (r *Runner) run(migrations ...Migration) (err error) {
 			err = errors.Join(err, e)
 			return
 		}
-		toMigrate, migrated, e := m.Run(r.ctx, log, store, marketPlaceStore, r.spc)
+		toMigrate, migrated, e := m.Run(r.ctx, log, store, r.spc)
 		if e != nil {
 			err = errors.Join(err, wrapError(e, m.Name(), spaceId, migrated, toMigrate))
 			continue

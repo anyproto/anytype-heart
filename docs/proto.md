@@ -1161,10 +1161,18 @@
     - [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request)
     - [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response)
     - [Rpc.Space.RequestDecline.Response.Error](#anytype-Rpc-Space-RequestDecline-Response-Error)
+    - [Rpc.Space.SetOrder](#anytype-Rpc-Space-SetOrder)
+    - [Rpc.Space.SetOrder.Request](#anytype-Rpc-Space-SetOrder-Request)
+    - [Rpc.Space.SetOrder.Response](#anytype-Rpc-Space-SetOrder-Response)
+    - [Rpc.Space.SetOrder.Response.Error](#anytype-Rpc-Space-SetOrder-Response-Error)
     - [Rpc.Space.StopSharing](#anytype-Rpc-Space-StopSharing)
     - [Rpc.Space.StopSharing.Request](#anytype-Rpc-Space-StopSharing-Request)
     - [Rpc.Space.StopSharing.Response](#anytype-Rpc-Space-StopSharing-Response)
     - [Rpc.Space.StopSharing.Response.Error](#anytype-Rpc-Space-StopSharing-Response-Error)
+    - [Rpc.Space.UnsetOrder](#anytype-Rpc-Space-UnsetOrder)
+    - [Rpc.Space.UnsetOrder.Request](#anytype-Rpc-Space-UnsetOrder-Request)
+    - [Rpc.Space.UnsetOrder.Response](#anytype-Rpc-Space-UnsetOrder-Response)
+    - [Rpc.Space.UnsetOrder.Response.Error](#anytype-Rpc-Space-UnsetOrder-Response-Error)
     - [Rpc.Template](#anytype-Rpc-Template)
     - [Rpc.Template.Clone](#anytype-Rpc-Template-Clone)
     - [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request)
@@ -1525,7 +1533,9 @@
     - [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code)
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
     - [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code)
+    - [Rpc.Space.SetOrder.Response.Error.Code](#anytype-Rpc-Space-SetOrder-Response-Error-Code)
     - [Rpc.Space.StopSharing.Response.Error.Code](#anytype-Rpc-Space-StopSharing-Response-Error-Code)
+    - [Rpc.Space.UnsetOrder.Response.Error.Code](#anytype-Rpc-Space-UnsetOrder-Response-Error-Code)
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype-Rpc-Template-CreateFromObject-Response-Error-Code)
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
@@ -2009,6 +2019,8 @@
 | SpaceMakeShareable | [Rpc.Space.MakeShareable.Request](#anytype-Rpc-Space-MakeShareable-Request) | [Rpc.Space.MakeShareable.Response](#anytype-Rpc-Space-MakeShareable-Response) |  |
 | SpaceParticipantRemove | [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request) | [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response) |  |
 | SpaceParticipantPermissionsChange | [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request) | [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response) |  |
+| SpaceSetOrder | [Rpc.Space.SetOrder.Request](#anytype-Rpc-Space-SetOrder-Request) | [Rpc.Space.SetOrder.Response](#anytype-Rpc-Space-SetOrder-Response) |  |
+| SpaceUnsetOrder | [Rpc.Space.UnsetOrder.Request](#anytype-Rpc-Space-UnsetOrder-Request) | [Rpc.Space.UnsetOrder.Response](#anytype-Rpc-Space-UnsetOrder-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
@@ -10136,6 +10148,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | chatObjectId | [string](#string) |  |  |
+| afterOrderId | [string](#string) |  | OrderId of the message after which to get messages |
 | beforeOrderId | [string](#string) |  | OrderId of the message before which to get messages |
 | limit | [int32](#int32) |  |  |
 
@@ -19055,6 +19068,63 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-SetOrder"></a>
+
+### Rpc.Space.SetOrder
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-SetOrder-Request"></a>
+
+### Rpc.Space.SetOrder.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceViewId | [string](#string) |  |  |
+| spaceViewOrder | [string](#string) | repeated | result order of space view ids |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-SetOrder-Response"></a>
+
+### Rpc.Space.SetOrder.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.SetOrder.Response.Error](#anytype-Rpc-Space-SetOrder-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-SetOrder-Response-Error"></a>
+
+### Rpc.Space.SetOrder.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.SetOrder.Response.Error.Code](#anytype-Rpc-Space-SetOrder-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space-StopSharing"></a>
 
 ### Rpc.Space.StopSharing
@@ -19104,6 +19174,62 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Space.StopSharing.Response.Error.Code](#anytype-Rpc-Space-StopSharing-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder"></a>
+
+### Rpc.Space.UnsetOrder
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder-Request"></a>
+
+### Rpc.Space.UnsetOrder.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceViewId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder-Response"></a>
+
+### Rpc.Space.UnsetOrder.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.UnsetOrder.Response.Error](#anytype-Rpc-Space-UnsetOrder-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder-Response-Error"></a>
+
+### Rpc.Space.UnsetOrder.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.UnsetOrder.Response.Error.Code](#anytype-Rpc-Space-UnsetOrder-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -23230,7 +23356,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NONE | 0 |  |
 | GET_STARTED | 1 |  |
-| EMPTY | 6 |  |
+| EMPTY | 2 |  |
 
 
 
@@ -24135,6 +24261,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Space-SetOrder-Response-Error-Code"></a>
+
+### Rpc.Space.SetOrder.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Space-StopSharing-Response-Error-Code"></a>
 
 ### Rpc.Space.StopSharing.Response.Error.Code
@@ -24149,6 +24288,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder-Response-Error-Code"></a>
+
+### Rpc.Space.UnsetOrder.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -28095,7 +28247,7 @@ Contains basic information about a user account
 | marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
 | workspaceObjectId | [string](#string) |  | workspace object id. used for space-level chat |
 | deviceId | [string](#string) |  |  |
-| accountSpaceId | [string](#string) |  |  |
+| accountSpaceId | [string](#string) |  | the first created private space. It&#39;s filled only when account is created |
 | widgetsId | [string](#string) |  |  |
 | spaceViewId | [string](#string) |  |  |
 | techSpaceId | [string](#string) |  |  |
@@ -28367,6 +28519,7 @@ Bookmark is to keep a web-link and to preview a content.
 | includeTime | [bool](#bool) |  |  |
 | id | [string](#string) |  |  |
 | emptyPlacement | [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType) |  |  |
+| noCollate | [bool](#bool) |  |  |
 
 
 

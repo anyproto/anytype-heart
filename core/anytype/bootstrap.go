@@ -83,6 +83,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/spaceview"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
@@ -318,7 +319,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(payments.New()).
 		Register(paymentscache.New()).
 		Register(peerstatus.New()).
-		Register(lastused.New())
+		Register(lastused.New()).
+		Register(spaceview.New())
 }
 
 func MiddlewareVersion() string {

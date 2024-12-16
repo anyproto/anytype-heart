@@ -11,7 +11,7 @@ import (
 )
 
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
-	detailsService := getService[detailservice.Service](mw)
+	detailsService := mustService[detailservice.Service](mw)
 	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
 	for _, relKey := range req.RelationKeys {
 		keys = append(keys, domain.RelationKey(relKey))
@@ -30,7 +30,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 }
 
 func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
-	detailsService := getService[detailservice.Service](mw)
+	detailsService := mustService[detailservice.Service](mw)
 	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
 	for _, relKey := range req.RelationKeys {
 		keys = append(keys, domain.RelationKey(relKey))
@@ -125,6 +125,6 @@ func (mw *Middleware) RelationListWithValue(_ context.Context, req *pb.RpcRelati
 		return m
 	}
 
-	list, err := getService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, req.Value)
+	list, err := mustService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, req.Value)
 	return response(list, err)
 }
