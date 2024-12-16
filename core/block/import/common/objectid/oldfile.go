@@ -41,7 +41,8 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 	filePath := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
 	if filePath != "" {
 		name := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyName.String())
-		fileObjectId, err := uploadFile(ctx, f.blockService, spaceId, name, filePath, origin, filesKeys)
+		creator := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyCreator.String())
+		fileObjectId, err := uploadFile(ctx, f.blockService, spaceId, name, filePath, creator, origin, filesKeys)
 		if err != nil {
 			log.Error("handling old file object: upload file", zap.Error(err))
 		}
@@ -64,12 +65,19 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 	return objectId, treestorage.TreeStorageCreatePayload{}, nil
 }
 
-func uploadFile(ctx context.Context, blockService *block.Service, spaceId string, name string, filePath string, origin objectorigin.ObjectOrigin, encryptionKeys map[string]string) (string, error) {
+func uploadFile(
+	ctx context.Context,
+	blockService *block.Service,
+	spaceId, name, filePath, creator string,
+	origin objectorigin.ObjectOrigin,
+	encryptionKeys map[string]string,
+) (string, error) {
 	params := pb.RpcFileUploadRequest{
 		SpaceId: spaceId,
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String(): pbtypes.String(name),
+				bundle.RelationKeyName.String():    pbtypes.String(name),
+				bundle.RelationKeyCreator.String(): pbtypes.String(creator),
 			},
 		},
 	}
