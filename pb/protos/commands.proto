@@ -3782,16 +3782,12 @@ message Rpc {
     message AI {
         message WritingTools {
             message Request {
-                Mode mode = 1;
-                Language language = 2;
-                Provider provider = 3;
-                string endpoint = 4;
-                string model = 5;
-                string token = 6;
-                float temperature = 7;
-                string text = 8;
+                ProviderConfig config = 1;
+                WritingMode mode = 2;
+                Language language = 3;
+                string text = 4;
 
-                enum Mode {
+                enum WritingMode {
                     DEFAULT = 0;
                     SUMMARIZE = 1;
                     GRAMMAR = 2;
@@ -3819,12 +3815,45 @@ message Rpc {
                     TH = 7;
                     // ...
                 }
+            }
 
-                enum Provider {
-                    OLLAMA = 0;
-                    OPENAI = 1;
-                    LMSTUDIO = 2;
-                    LLAMACPP = 3;
+            message Response {
+                Error error = 1;
+                string text = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        RATE_LIMIT_EXCEEDED = 100;
+                        ENDPOINT_NOT_REACHABLE = 101;
+                        MODEL_NOT_FOUND = 102;
+                        AUTH_REQUIRED = 103;
+                        LANGUAGE_NOT_SUPPORTED = 104;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message Autofill {
+            message Request {
+                ProviderConfig config = 1;
+                AutofillMode mode = 2;
+                repeated string options = 3;
+                repeated string context = 4;
+
+                enum AutofillMode {
+                    TAG = 0;
+                    RELATION = 1;
+                    TYPE = 2;
+                    TITLE = 3;
+                    DESCRIPTION = 4;
                     // ...
                 }
             }
@@ -3843,14 +3872,29 @@ message Rpc {
                         BAD_INPUT = 2;
 
                         RATE_LIMIT_EXCEEDED = 100;
-                        LANGUAGE_NOT_SUPPORTED = 101;
-                        ENDPOINT_NOT_REACHABLE = 102;
-                        MODEL_NOT_FOUND = 103;
-                        AUTH_REQUIRED = 104;
+                        ENDPOINT_NOT_REACHABLE = 101;
+                        MODEL_NOT_FOUND = 102;
+                        AUTH_REQUIRED = 103;
                         // ...
                     }
                 }
             }
+        }
+
+        message ProviderConfig {
+            Provider provider = 1;
+            string endpoint = 2;
+            string model = 3;
+            string token = 4;
+            float temperature = 5;
+        }
+
+        enum Provider {
+            OLLAMA = 0;
+            OPENAI = 1;
+            LMSTUDIO = 2;
+            LLAMACPP = 3;
+            // ...
         }
     }
 

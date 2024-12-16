@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 
@@ -24,12 +25,20 @@ type modelTestConfig struct {
 }
 
 type providerTestConfig struct {
-	name                  string
-	provider              pb.RpcAIWritingToolsRequestProvider
-	baseParams            pb.RpcAIWritingToolsRequest
-	skipInputLanguageTest bool // check supported languages for llama models
-	skipAuthTest          bool // server side providers require auth
-	models                []modelTestConfig
+	name                   string
+	provider               pb.RpcAIProvider
+	writingToolsBaseParams pb.RpcAIWritingToolsRequest
+	autofillBaseParams     pb.RpcAIAutofillRequest
+	skipInputLanguageTest  bool // check supported languages for llama models
+	skipAuthTest           bool // server side providers require auth
+	models                 []modelTestConfig
+}
+
+func copyProviderConfig(original *pb.RpcAIProviderConfig) *pb.RpcAIProviderConfig {
+	if original == nil {
+		return nil
+	}
+	return proto.Clone(original).(*pb.RpcAIProviderConfig)
 }
 
 func TestWritingTools(t *testing.T) {
@@ -44,15 +53,17 @@ func TestWritingTools(t *testing.T) {
 	testConfigs := []providerTestConfig{
 		{
 			name:     "Ollama",
-			provider: pb.RpcAIWritingToolsRequest_OLLAMA,
-			baseParams: pb.RpcAIWritingToolsRequest{
-				Mode:        0,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_OLLAMA,
-				Endpoint:    "http://localhost:11434/v1/chat/completions",
-				Model:       "llama3.2:3b",
-				Token:       "",
-				Temperature: 0,
+			provider: pb.RpcAI_OLLAMA,
+			writingToolsBaseParams: pb.RpcAIWritingToolsRequest{
+				Config: &pb.RpcAIProviderConfig{
+					Provider:    pb.RpcAI_OLLAMA,
+					Endpoint:    "http://localhost:11434/v1/chat/completions",
+					Model:       "llama3.2:3b",
+					Token:       "",
+					Temperature: 0,
+				},
+				Mode:     0,
+				Language: 0,
 			},
 			skipInputLanguageTest: false,
 			skipAuthTest:          true,
@@ -73,15 +84,17 @@ func TestWritingTools(t *testing.T) {
 		},
 		{
 			name:     "OpenAI",
-			provider: pb.RpcAIWritingToolsRequest_OPENAI,
-			baseParams: pb.RpcAIWritingToolsRequest{
-				Mode:        0,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_OPENAI,
-				Endpoint:    "https://api.openai.com/v1/chat/completions",
-				Model:       "gpt-4o-mini",
-				Token:       openaiAPIKey,
-				Temperature: 0,
+			provider: pb.RpcAI_OPENAI,
+			writingToolsBaseParams: pb.RpcAIWritingToolsRequest{
+				Config: &pb.RpcAIProviderConfig{
+					Provider:    pb.RpcAI_OPENAI,
+					Endpoint:    "https://api.openai.com/v1/chat/completions",
+					Model:       "gpt-4o-mini",
+					Token:       openaiAPIKey,
+					Temperature: 0,
+				},
+				Mode:     0,
+				Language: 0,
 			},
 			skipInputLanguageTest: true,
 			skipAuthTest:          false,
@@ -102,15 +115,17 @@ func TestWritingTools(t *testing.T) {
 		},
 		{
 			name:     "LMStudio",
-			provider: pb.RpcAIWritingToolsRequest_LMSTUDIO,
-			baseParams: pb.RpcAIWritingToolsRequest{
-				Mode:        0,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_LMSTUDIO,
-				Endpoint:    "http://localhost:1234/v1/chat/completions",
-				Model:       "llama-3.2-3b-instruct",
-				Token:       "",
-				Temperature: 0,
+			provider: pb.RpcAI_LMSTUDIO,
+			writingToolsBaseParams: pb.RpcAIWritingToolsRequest{
+				Config: &pb.RpcAIProviderConfig{
+					Provider:    pb.RpcAI_LMSTUDIO,
+					Endpoint:    "http://localhost:1234/v1/chat/completions",
+					Model:       "llama-3.2-3b-instruct",
+					Token:       "",
+					Temperature: 0,
+				},
+				Mode:     0,
+				Language: 0,
 			},
 			skipInputLanguageTest: false,
 			skipAuthTest:          true,
@@ -131,15 +146,17 @@ func TestWritingTools(t *testing.T) {
 		},
 		{
 			name:     "Llama.cpp",
-			provider: pb.RpcAIWritingToolsRequest_LLAMACPP,
-			baseParams: pb.RpcAIWritingToolsRequest{
-				Mode:        0,
-				Language:    0,
-				Provider:    pb.RpcAIWritingToolsRequest_LLAMACPP,
-				Endpoint:    "http://localhost:8080/v1/chat/completions",
-				Model:       "Llama-3.2-3B-Instruct-Q6_K_L",
-				Token:       "",
-				Temperature: 0,
+			provider: pb.RpcAI_LLAMACPP,
+			writingToolsBaseParams: pb.RpcAIWritingToolsRequest{
+				Config: &pb.RpcAIProviderConfig{
+					Provider:    pb.RpcAI_LLAMACPP,
+					Endpoint:    "http://localhost:8080/v1/chat/completions",
+					Model:       "Llama-3.2-3B-Instruct-Q6_K_L",
+					Token:       "",
+					Temperature: 0,
+				},
+				Mode:     0,
+				Language: 0,
 			},
 			skipInputLanguageTest: false,
 			skipAuthTest:          true,
@@ -166,18 +183,74 @@ func TestWritingTools(t *testing.T) {
 			for _, modelCfg := range cfg.models {
 				modelCfg := modelCfg
 				t.Run(modelCfg.modelName, func(t *testing.T) {
-					runCommonTests(t, service, cfg, modelCfg)
+					runWritingToolsTests(t, service, cfg, modelCfg)
 				})
 			}
 		})
 	}
 }
 
-func runCommonTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg modelTestConfig) {
+func TestAutofill(t *testing.T) {
+	providerFilter := os.Getenv("TEST_PROVIDER")
+
+	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
+	if openaiAPIKey == "" {
+		log.Warn("OPENAI_API_KEY not found, using default invalid token")
+		openaiAPIKey = "default-invalid-token"
+	}
+
+	testConfigs := []providerTestConfig{
+		{
+			name:     "Ollama",
+			provider: pb.RpcAI_OLLAMA,
+			autofillBaseParams: pb.RpcAIAutofillRequest{
+				Config: &pb.RpcAIProviderConfig{
+					Provider:    pb.RpcAI_OLLAMA,
+					Endpoint:    "http://localhost:11434/v1/chat/completions",
+					Model:       "llama3.2:3b",
+					Token:       "",
+					Temperature: 0,
+				},
+				Mode:    0,
+				Options: []string{"book", "movie", "song"},
+				Context: []string{"I am reading a"},
+			},
+			skipInputLanguageTest: false,
+			skipAuthTest:          true,
+			models: []modelTestConfig{
+				{
+					modelName: "llama3.2:3b",
+					// TODO: refactor types
+				},
+			},
+		},
+	}
+
+	for _, cfg := range testConfigs {
+		cfg := cfg
+		if providerFilter != "" && providerFilter != cfg.provider.String() {
+			continue
+		}
+
+		t.Run(cfg.name, func(t *testing.T) {
+			service := New()
+
+			for _, modelCfg := range cfg.models {
+				modelCfg := modelCfg
+				t.Run(modelCfg.modelName, func(t *testing.T) {
+					runAutofillTests(t, service, cfg, modelCfg)
+				})
+			}
+		})
+	}
+}
+
+func runWritingToolsTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg modelTestConfig) {
 	t.Run("InvalidEndpoint", func(t *testing.T) {
-		params := cfg.baseParams
-		params.Model = modelCfg.modelName
-		params.Endpoint = "http://invalid-endpoint"
+		params := cfg.writingToolsBaseParams
+		params.Config = copyProviderConfig(params.Config)
+		params.Config.Model = modelCfg.modelName
+		params.Config.Endpoint = "http://invalid-endpoint"
 		params.Text = "Test invalid endpoint"
 		_, err := service.WritingTools(context.Background(), &params)
 		assert.Error(t, err)
@@ -186,8 +259,8 @@ func runCommonTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg m
 
 	if !cfg.skipInputLanguageTest {
 		t.Run("UnsupportedLanguage", func(t *testing.T) {
-			params := cfg.baseParams
-			params.Model = modelCfg.modelName
+			params := cfg.writingToolsBaseParams
+			params.Config.Model = modelCfg.modelName
 			params.Text = "Съешь ещё этих мягких французских булок"
 			_, err := service.WritingTools(context.Background(), &params)
 			assert.Error(t, err)
@@ -196,23 +269,23 @@ func runCommonTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg m
 	}
 
 	t.Run("InvalidModel", func(t *testing.T) {
-		params := cfg.baseParams
-		params.Model = "invalid-model"
+		params := cfg.writingToolsBaseParams
+		params.Config.Model = "invalid-model"
 		params.Text = "Test invalid model"
 		_, err := service.WritingTools(context.Background(), &params)
 		if err != nil {
 			assert.True(t, errors.Is(err, ErrModelNotFound))
 		} else {
 			// LMSStudio doesn't return error for invalid model; instead falls back to model loaded into memory
-			t.Skipf("%s does not error out for invalid model %s", cfg.name, params.Model)
+			t.Skipf("%s does not error out for invalid model %s", cfg.name, params.Config.Model)
 		}
 	})
 
 	if !cfg.skipAuthTest {
 		t.Run("UnauthorizedAccess", func(t *testing.T) {
-			params := cfg.baseParams
-			params.Model = modelCfg.modelName
-			params.Token = "invalid-token"
+			params := cfg.writingToolsBaseParams
+			params.Config.Model = modelCfg.modelName
+			params.Config.Token = "invalid-token"
 			params.Text = "Test unauthorized access"
 			_, err := service.WritingTools(context.Background(), &params)
 			assert.Error(t, err)
@@ -221,8 +294,8 @@ func runCommonTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg m
 	}
 
 	t.Run("ValidResponse", func(t *testing.T) {
-		params := cfg.baseParams
-		params.Model = modelCfg.modelName
+		params := cfg.writingToolsBaseParams
+		params.Config.Model = modelCfg.modelName
 		params.Text = "What is the capital of France?"
 		result, err := service.WritingTools(context.Background(), &params)
 		assert.NoError(t, err)
@@ -235,8 +308,8 @@ func runCommonTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg m
 	})
 
 	t.Run("BulletPoints", func(t *testing.T) {
-		params := cfg.baseParams
-		params.Model = modelCfg.modelName
+		params := cfg.writingToolsBaseParams
+		params.Config.Model = modelCfg.modelName
 		params.Mode = 5
 		params.Text = "Items to buy: Milk, Eggs, Bread, Butter. Consider Apples if on sale."
 		result, err := service.WritingTools(context.Background(), &params)
@@ -250,8 +323,8 @@ func runCommonTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg m
 	})
 
 	t.Run("JSONExtraction", func(t *testing.T) {
-		params := cfg.baseParams
-		params.Model = modelCfg.modelName
+		params := cfg.writingToolsBaseParams
+		params.Config.Model = modelCfg.modelName
 		params.Mode = 6
 		params.Text = "Countries, Capitals\nFrance, Paris\nGermany, Berlin"
 		result, err := service.WritingTools(context.Background(), &params)
@@ -262,5 +335,19 @@ func runCommonTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg m
 		} else {
 			t.Errorf("Expected JSON extraction not provided for %s", modelCfg.modelName)
 		}
+	})
+}
+
+func runAutofillTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg modelTestConfig) {
+	t.Run("Tag Suggestions", func(t *testing.T) {
+		params := cfg.autofillBaseParams
+		params.Config.Model = modelCfg.modelName
+		params.Context = []string{"I am reading a"}
+		result, err := service.Autofill(context.Background(), &params)
+		assert.NoError(t, err)
+		assert.Empty(t, result.Answer)
+		assert.NotEmpty(t, result.Choices)
+		assert.Equal(t, 3, len(result.Choices))
+		assert.Equal(t, "book", result.Choices[0])
 	})
 }

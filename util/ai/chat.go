@@ -101,21 +101,21 @@ func (ai *AIService) createChatRequest() ([]byte, error) {
 		Messages: []map[string]string{
 			{
 				"role":    "system",
-				"content": ai.promptConfig.SystemPrompt,
+				"content": ai.writingToolsPromptConfig.SystemPrompt,
 			},
 			{
 				"role":    "user",
-				"content": ai.promptConfig.UserPrompt,
+				"content": ai.writingToolsPromptConfig.UserPrompt,
 			},
 		},
-		Temperature: ai.promptConfig.Temperature,
+		Temperature: ai.writingToolsPromptConfig.Temperature,
 		Stream:      true,
 	}
 
-	if ai.promptConfig.JSONMode {
-		key, exists := modeToJSONKey[int(ai.promptConfig.Mode)]
+	if ai.writingToolsPromptConfig.JSONMode {
+		key, exists := modeToJSONKey[int(ai.writingToolsPromptConfig.Mode)]
 		if !exists {
-			return nil, fmt.Errorf("unknown mode: %d", ai.promptConfig.Mode)
+			return nil, fmt.Errorf("unknown mode: %d", ai.writingToolsPromptConfig.Mode)
 		}
 
 		payload.ResponseFormat = map[string]interface{}{
@@ -224,31 +224,36 @@ func (ai *AIService) chat(ctx context.Context) (string, error) {
 }
 
 // extractAnswerByMode extracts the relevant content from the JSON response based on the mode.
-func (ai *AIService) extractAnswerByMode(jsonData string) (string, error) {
+func (ai *AIService) extractAnswerByMode(jsonData string, request string) (string, error) {
 	var response ContentResponse
 	err := json.Unmarshal([]byte(jsonData), &response)
 	if err != nil {
 		return "", fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
 	}
 
-	modeToContent := map[int]string{
-		1:  response.Summary,
-		2:  response.Corrected,
-		3:  response.Shortened,
-		4:  response.Expanded,
-		5:  response.Bullet,
-		6:  response.ContentAsTable,
-		7:  response.CasualContent,
-		8:  response.FunnyContent,
-		9:  response.ConfidentContent,
-		10: response.StraightforwardContent,
-		11: response.ProfessionalContent,
-		12: response.Translation,
+	modeToContent := map[string]map[int]string{
+		"writingTools": {
+			1:  response.Summary,
+			2:  response.Corrected,
+			3:  response.Shortened,
+			4:  response.Expanded,
+			5:  response.Bullet,
+			6:  response.ContentAsTable,
+			7:  response.CasualContent,
+			8:  response.FunnyContent,
+			9:  response.ConfidentContent,
+			10: response.StraightforwardContent,
+			11: response.ProfessionalContent,
+			12: response.Translation,
+		},
+		"autofill": {
+			// TODO: add options and adjust usage below
+		},
 	}
 
-	content, exists := modeToContent[int(ai.promptConfig.Mode)]
+	content, exists := modeToContent[request][int(ai.writingToolsPromptConfig.Mode)]
 	if !exists {
-		return "", fmt.Errorf("unknown mode: %d", ai.promptConfig.Mode)
+		return "", fmt.Errorf("unknown mode: %d", ai.writingToolsPromptConfig.Mode)
 	}
 	if content == "" {
 		return "", fmt.Errorf("response content is empty")

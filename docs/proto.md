@@ -50,6 +50,11 @@
     - [Empty](#anytype-Empty)
     - [Rpc](#anytype-Rpc)
     - [Rpc.AI](#anytype-Rpc-AI)
+    - [Rpc.AI.Autofill](#anytype-Rpc-AI-Autofill)
+    - [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request)
+    - [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response)
+    - [Rpc.AI.Autofill.Response.Error](#anytype-Rpc-AI-Autofill-Response-Error)
+    - [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig)
     - [Rpc.AI.WritingTools](#anytype-Rpc-AI-WritingTools)
     - [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request)
     - [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response)
@@ -1257,9 +1262,11 @@
     - [Rpc.Workspace.SetInfo.Response.Error](#anytype-Rpc-Workspace-SetInfo-Response-Error)
     - [StreamRequest](#anytype-StreamRequest)
   
+    - [Rpc.AI.Autofill.Request.AutofillMode](#anytype-Rpc-AI-Autofill-Request-AutofillMode)
+    - [Rpc.AI.Autofill.Response.Error.Code](#anytype-Rpc-AI-Autofill-Response-Error-Code)
+    - [Rpc.AI.Provider](#anytype-Rpc-AI-Provider)
     - [Rpc.AI.WritingTools.Request.Language](#anytype-Rpc-AI-WritingTools-Request-Language)
-    - [Rpc.AI.WritingTools.Request.Mode](#anytype-Rpc-AI-WritingTools-Request-Mode)
-    - [Rpc.AI.WritingTools.Request.Provider](#anytype-Rpc-AI-WritingTools-Request-Provider)
+    - [Rpc.AI.WritingTools.Request.WritingMode](#anytype-Rpc-AI-WritingTools-Request-WritingMode)
     - [Rpc.AI.WritingTools.Response.Error.Code](#anytype-Rpc-AI-WritingTools-Response-Error-Code)
     - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
@@ -2916,6 +2923,85 @@ Response – message from a middleware.
 
 
 
+<a name="anytype-Rpc-AI-Autofill"></a>
+
+### Rpc.AI.Autofill
+
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-Autofill-Request"></a>
+
+### Rpc.AI.Autofill.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
+| mode | [Rpc.AI.Autofill.Request.AutofillMode](#anytype-Rpc-AI-Autofill-Request-AutofillMode) |  |  |
+| options | [string](#string) | repeated |  |
+| context | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-Autofill-Response"></a>
+
+### Rpc.AI.Autofill.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.AI.Autofill.Response.Error](#anytype-Rpc-AI-Autofill-Response-Error) |  |  |
+| text | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-Autofill-Response-Error"></a>
+
+### Rpc.AI.Autofill.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.AI.Autofill.Response.Error.Code](#anytype-Rpc-AI-Autofill-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ProviderConfig"></a>
+
+### Rpc.AI.ProviderConfig
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| provider | [Rpc.AI.Provider](#anytype-Rpc-AI-Provider) |  |  |
+| endpoint | [string](#string) |  |  |
+| model | [string](#string) |  |  |
+| token | [string](#string) |  |  |
+| temperature | [float](#float) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-AI-WritingTools"></a>
 
 ### Rpc.AI.WritingTools
@@ -2934,13 +3020,9 @@ Response – message from a middleware.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| mode | [Rpc.AI.WritingTools.Request.Mode](#anytype-Rpc-AI-WritingTools-Request-Mode) |  |  |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
+| mode | [Rpc.AI.WritingTools.Request.WritingMode](#anytype-Rpc-AI-WritingTools-Request-WritingMode) |  |  |
 | language | [Rpc.AI.WritingTools.Request.Language](#anytype-Rpc-AI-WritingTools-Request-Language) |  |  |
-| provider | [Rpc.AI.WritingTools.Request.Provider](#anytype-Rpc-AI-WritingTools-Request-Provider) |  |  |
-| endpoint | [string](#string) |  |  |
-| model | [string](#string) |  |  |
-| token | [string](#string) |  |  |
-| temperature | [float](#float) |  |  |
 | text | [string](#string) |  |  |
 
 
@@ -20415,6 +20497,52 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
  
 
 
+<a name="anytype-Rpc-AI-Autofill-Request-AutofillMode"></a>
+
+### Rpc.AI.Autofill.Request.AutofillMode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| TAG | 0 |  |
+| RELATION | 1 |  |
+| TYPE | 2 |  |
+| TITLE | 3 |  |
+| DESCRIPTION | 4 | ... |
+
+
+
+<a name="anytype-Rpc-AI-Autofill-Response-Error-Code"></a>
+
+### Rpc.AI.Autofill.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 |  |
+| ENDPOINT_NOT_REACHABLE | 101 |  |
+| MODEL_NOT_FOUND | 102 |  |
+| AUTH_REQUIRED | 103 | ... |
+
+
+
+<a name="anytype-Rpc-AI-Provider"></a>
+
+### Rpc.AI.Provider
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| OLLAMA | 0 |  |
+| OPENAI | 1 |  |
+| LMSTUDIO | 2 |  |
+| LLAMACPP | 3 | ... |
+
+
+
 <a name="anytype-Rpc-AI-WritingTools-Request-Language"></a>
 
 ### Rpc.AI.WritingTools.Request.Language
@@ -20433,9 +20561,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-AI-WritingTools-Request-Mode"></a>
+<a name="anytype-Rpc-AI-WritingTools-Request-WritingMode"></a>
 
-### Rpc.AI.WritingTools.Request.Mode
+### Rpc.AI.WritingTools.Request.WritingMode
 
 
 | Name | Number | Description |
@@ -20456,20 +20584,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-AI-WritingTools-Request-Provider"></a>
-
-### Rpc.AI.WritingTools.Request.Provider
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| OLLAMA | 0 |  |
-| OPENAI | 1 |  |
-| LMSTUDIO | 2 |  |
-| LLAMACPP | 3 | ... |
-
-
-
 <a name="anytype-Rpc-AI-WritingTools-Response-Error-Code"></a>
 
 ### Rpc.AI.WritingTools.Response.Error.Code
@@ -20481,10 +20595,10 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | RATE_LIMIT_EXCEEDED | 100 |  |
-| LANGUAGE_NOT_SUPPORTED | 101 |  |
-| ENDPOINT_NOT_REACHABLE | 102 |  |
-| MODEL_NOT_FOUND | 103 |  |
-| AUTH_REQUIRED | 104 | ... |
+| ENDPOINT_NOT_REACHABLE | 101 |  |
+| MODEL_NOT_FOUND | 102 |  |
+| AUTH_REQUIRED | 103 |  |
+| LANGUAGE_NOT_SUPPORTED | 104 | ... |
 
 
 

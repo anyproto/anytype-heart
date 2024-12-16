@@ -30,7 +30,7 @@ func newFixture(t *testing.T) *fixture {
 			Model:    "test-model",
 			Endpoint: "http://example.com",
 		},
-		promptConfig: &PromptConfig{
+		writingToolsPromptConfig: &WritingToolsPromptConfig{
 			SystemPrompt: "system",
 			UserPrompt:   "user",
 			Temperature:  0.1,
@@ -122,7 +122,7 @@ func TestCreateChatRequest(t *testing.T) {
 	t.Run("json mode", func(t *testing.T) {
 		fx := newFixture(t)
 
-		fx.promptConfig.JSONMode = true
+		fx.writingToolsPromptConfig.JSONMode = true
 
 		data, err := fx.createChatRequest()
 		require.NoError(t, err)
@@ -233,10 +233,10 @@ func TestExtractAnswerByMode(t *testing.T) {
 	t.Run("valid mode", func(t *testing.T) {
 		fx := newFixture(t)
 
-		fx.promptConfig.Mode = pb.RpcAIWritingToolsRequest_SUMMARIZE
+		fx.writingToolsPromptConfig.Mode = pb.RpcAIWritingToolsRequest_SUMMARIZE
 
 		jsonData := `{"summary":"This is a summary"}`
-		result, err := fx.extractAnswerByMode(jsonData)
+		result, err := fx.extractAnswerByMode(jsonData, "writingTools")
 		require.NoError(t, err)
 		require.Equal(t, "This is a summary", result)
 	})
@@ -244,10 +244,10 @@ func TestExtractAnswerByMode(t *testing.T) {
 	t.Run("empty response", func(t *testing.T) {
 		fx := newFixture(t)
 
-		fx.promptConfig.Mode = pb.RpcAIWritingToolsRequest_SUMMARIZE
+		fx.writingToolsPromptConfig.Mode = pb.RpcAIWritingToolsRequest_SUMMARIZE
 
 		jsonData := `{"summary":""}`
-		_, err := fx.extractAnswerByMode(jsonData)
+		_, err := fx.extractAnswerByMode(jsonData, "writingTools")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "empty")
 	})
@@ -255,10 +255,10 @@ func TestExtractAnswerByMode(t *testing.T) {
 	t.Run("unknown mode", func(t *testing.T) {
 		fx := newFixture(t)
 
-		fx.promptConfig.Mode = pb.RpcAIWritingToolsRequestMode(9999)
+		fx.writingToolsPromptConfig.Mode = pb.RpcAIWritingToolsRequestWritingMode(-1)
 
 		jsonData := `{}`
-		_, err := fx.extractAnswerByMode(jsonData)
+		_, err := fx.extractAnswerByMode(jsonData, "writingTools")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "unknown mode")
 	})
