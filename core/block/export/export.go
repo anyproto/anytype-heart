@@ -1067,7 +1067,7 @@ func objectValid(sbType smartblock.SmartBlockType, info *model.ObjectInfo, inclu
 	if info.Id == addr.AnytypeProfileId {
 		return false
 	}
-	if !isProtobuf && !validTypeForNonProtobuf(sbType) && !validLayoutForNonProtobuf(info.Details) {
+	if !isProtobuf && (!validTypeForNonProtobuf(sbType) || !validLayoutForNonProtobuf(info.Details)) {
 		return false
 	}
 	if isProtobuf && !validType(sbType) {
