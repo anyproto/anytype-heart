@@ -217,40 +217,38 @@ jobs:
         run: |
           echo "Running perf tests in staging mode..."
           $RUN_COUNT = ${{ github.event.inputs.perf-test }}
-          if ($env:GITHUB_EVENT_NAME -eq "schedule") {
+          if ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch") {
             $RUN_COUNT = 10
           }
-          $RUN_COUNT = 2
           echo " "
           echo $env:GITHUB_EVENT_NAME
           echo $RUN_COUNT
           echo " "
-          Set-Content -Path config.json -Value $env:PERF_CONFIG_STAGING
-          (Get-Content config.json).Replace('"/Users/user1/account30000"', '"C:/Users/' + $env:USERNAME + '"') | Set-Content -Path config.json
-          Move-Item -Path .\.github\staging_fake.yml -Destination .\staging_fake.yml -Force
-          $PERF_CONFIG = ((Get-Location).Path -replace '\\', '/') + "/config.json"
-          Set-Location cmd\perfstand\account_create
-          $env:CGO_ENABLED = "1"
-          go run main.go $PERF_CONFIG $RUN_COUNT
-          Set-Location ..\account_select
-          go run main.go $PERF_CONFIG $RUN_COUNT
-          echo "Perf test with staging - done"
+        #   Set-Content -Path config.json -Value $env:PERF_CONFIG_STAGING
+        #   (Get-Content config.json).Replace('"/Users/user1/account30000"', '"C:/Users/' + $env:USERNAME + '"') | Set-Content -Path config.json
+        #   Move-Item -Path .\.github\staging_fake.yml -Destination .\staging_fake.yml -Force
+        #   $PERF_CONFIG = ((Get-Location).Path -replace '\\', '/') + "/config.json"
+        #   Set-Location cmd\perfstand\account_create
+        #   $env:CGO_ENABLED = "1"
+        #   go run main.go $PERF_CONFIG $RUN_COUNT
+        #   Set-Location ..\account_select
+        #   go run main.go $PERF_CONFIG $RUN_COUNT
+        #   echo "Perf test with staging - done"
 
-          echo "Running perf tests in local mode..."
-          Set-Location (Resolve-Path "../../..")
-          Set-Content -Path config.json -Value $env:PERF_CONFIG_LOCAL
-          (Get-Content config.json).Replace('"/Users/user1/account30000"', '"C:/Users/' + $env:USERNAME + '"') | Set-Content -Path config.json
-          Set-Location cmd\perfstand\account_create
-          $env:CGO_ENABLED = "1"
-          go run main.go $PERF_CONFIG $RUN_COUNT
-          Set-Location ..\account_select
-          go run main.go $PERF_CONFIG $RUN_COUNT
-          echo "Perf test in local mode - done"
-
-        env:
-          PERF_CONFIG_STAGING: ${{ secrets.PERF_CONFIG_STAGING }}
-          PERF_CONFIG_LOCAL: ${{ secrets.PERF_CONFIG_LOCAL }}
-          CH_API_KEY: ${{ secrets.CH_PERF_API_KEY }}
+        #   echo "Running perf tests in local mode..."
+        #   Set-Location (Resolve-Path "../../..")
+        #   Set-Content -Path config.json -Value $env:PERF_CONFIG_LOCAL
+        #   (Get-Content config.json).Replace('"/Users/user1/account30000"', '"C:/Users/' + $env:USERNAME + '"') | Set-Content -Path config.json
+        #   Set-Location cmd\perfstand\account_create
+        #   $env:CGO_ENABLED = "1"
+        #   go run main.go $PERF_CONFIG $RUN_COUNT
+        #   Set-Location ..\account_select
+        #   go run main.go $PERF_CONFIG $RUN_COUNT
+        #   echo "Perf test in local mode - done"
+        # env:
+        #   PERF_CONFIG_STAGING: ${{ secrets.PERF_CONFIG_STAGING }}
+        #   PERF_CONFIG_LOCAL: ${{ secrets.PERF_CONFIG_LOCAL }}
+        #   CH_API_KEY: ${{ secrets.CH_PERF_API_KEY }}
 
       - name: Clean /tmp
         run: |
