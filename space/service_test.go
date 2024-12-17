@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
@@ -46,7 +47,6 @@ const (
 	testPersonalSpaceID = "personal.12345"
 )
 
-// TODO Revive tests
 func TestService_Init(t *testing.T) {
 	t.Run("tech space getter", func(t *testing.T) {
 		serv := New().(*service)
@@ -75,28 +75,9 @@ func TestService_Init(t *testing.T) {
 	t.Run("new account", func(t *testing.T) {
 		newFixture(t, nil)
 	})
-	t.Run("old account, analytics id migrated", func(t *testing.T) {
+	t.Run("old account", func(t *testing.T) {
 		newFixture(t, func(t *testing.T, fx *fixture) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
-			accObject := mock_techspace.NewMockAccountObject(t)
-			accObject.EXPECT().GetAnalyticsId().Return("analyticsId", nil)
-			fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
-				return f(accObject)
-			})
-			fx.techSpace.EXPECT().WakeUpViews()
-		})
-	})
-	t.Run("old account, analytics id not migrated", func(t *testing.T) {
-		newFixture(t, func(t *testing.T, fx *fixture) {
-			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
-			accObject := mock_techspace.NewMockAccountObject(t)
-			accObject.EXPECT().GetAnalyticsId().Return("", nil)
-			fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
-				return f(accObject)
-			})
-			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
-			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
-			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 			fx.techSpace.EXPECT().WakeUpViews()
 		})
 	})
@@ -105,14 +86,6 @@ func TestService_Init(t *testing.T) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(nil, context.DeadlineExceeded).Times(1)
 			fx.spaceCore.EXPECT().StorageExistsLocally(mock.Anything, fx.spaceId).Return(false, nil)
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
-			accObject := mock_techspace.NewMockAccountObject(t)
-			accObject.EXPECT().GetAnalyticsId().Return("", nil)
-			fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
-				return f(accObject)
-			})
-			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
-			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
-			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 			fx.techSpace.EXPECT().WakeUpViews()
 		})
 	})
@@ -125,11 +98,6 @@ func TestService_Init(t *testing.T) {
 			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
 			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
 			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
-			accObject := mock_techspace.NewMockAccountObject(t)
-			accObject.EXPECT().GetAnalyticsId().Return("", nil)
-			fx.techSpace.EXPECT().DoAccountObject(mock.Anything, mock.Anything).RunAndReturn(func(ctx2 context.Context, f func(techspace.AccountObject) error) error {
-				return f(accObject)
-			})
 			fx.techSpace.EXPECT().WakeUpViews()
 		})
 	})
@@ -403,8 +371,13 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, f
 	if expectOldAccount == nil {
 		fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: ts}, nil)
 		prCtrl := mock_spacecontroller.NewMockSpaceController(t)
-		fx.factory.EXPECT().CreatePersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
+		prCtrl.EXPECT().SpaceId().Return(fx.spaceId)
+		commonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		commonSpace.EXPECT().Id().Return(fx.spaceId).AnyTimes()
+		fx.spaceCore.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return(&spacecore.AnySpace{Space: commonSpace}, nil)
+		fx.factory.EXPECT().CreateShareableSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
 		lw := lwMock{clientSpace}
+		clientSpace.EXPECT().Id().Return(fx.spaceId)
 		prCtrl.EXPECT().Current().Return(lw)
 		prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 		ts.EXPECT().WakeUpViews()

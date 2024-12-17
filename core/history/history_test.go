@@ -14,8 +14,10 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -1132,6 +1134,8 @@ func newFixtureDiffVersions(t *testing.T,
 	space := mock_clientspace.NewMockSpace(t)
 	ctrl := gomock.NewController(t)
 	treeBuilder := mock_objecttreebuilder.NewMockTreeBuilder(ctrl)
+	resolver := mock_idresolver.NewMockResolver(t)
+	resolver.EXPECT().ResolveSpaceID(mock.Anything).Return(spaceID, nil).Maybe()
 	if len(currChanges) > 0 {
 		configureTreeBuilder(treeBuilder, objectId, currVersionId, spaceID, currChanges, space, spaceService)
 	}
@@ -1142,6 +1146,7 @@ func newFixtureDiffVersions(t *testing.T,
 		objectStore:  objectstore.NewStoreFixture(t),
 		spaceService: spaceService,
 		heads:        map[string]string{},
+		resolver:     resolver,
 	}
 	return &historyFixture{
 		history:     history,
@@ -1164,6 +1169,7 @@ func configureTreeBuilder(treeBuilder *mock_objecttreebuilder.MockTreeBuilder,
 		changes:  expectedChanges,
 	}, nil)
 	space.EXPECT().TreeBuilder().Return(treeBuilder)
+	space.EXPECT().Id().Return(spaceID).Maybe()
 	spaceService.EXPECT().Get(context.Background(), spaceID).Return(space, nil)
 }
 
