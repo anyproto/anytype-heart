@@ -112,6 +112,8 @@ func (ko *KeyOrder) AnystoreSort() query.Sort {
 		return ko.basicSort(anyenc.TypeString)
 	case model.RelationFormat_tag, model.RelationFormat_status:
 		return ko.tagStatusSort()
+	case model.RelationFormat_checkbox:
+		return ko.boolSort()
 	default:
 		return ko.basicSort(anyenc.TypeString)
 	}
@@ -175,6 +177,14 @@ func (ko *KeyOrder) textSort() query.Sort {
 		relationKey:    ko.Key,
 		reverse:        ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:          ko.EmptyPlacement,
+	}
+}
+
+func (ko *KeyOrder) boolSort() query.Sort {
+	return boolSort{
+		arena:       ko.arena,
+		relationKey: ko.Key,
+		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 	}
 }
 

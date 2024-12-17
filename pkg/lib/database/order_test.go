@@ -389,6 +389,36 @@ func TestKeyOrder_Compare(t *testing.T) {
 		ko := &KeyOrder{disableCollator: true, arena: arena, Key: bundle.RelationKeySpaceOrder.String(), Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, ko, a, b, -1)
 	})
+	t.Run("compare_bool_false_null", func(t *testing.T) {
+		a := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyDone.String(): pbtypes.Bool(false)}}
+		b := &types.Struct{Fields: map[string]*types.Value{}}
+		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone.String(), Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
+		assertCompare(t, ko, a, b, 0)
+	})
+	t.Run("compare_bool_true_null", func(t *testing.T) {
+		a := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyDone.String(): pbtypes.Bool(true)}}
+		b := &types.Struct{Fields: map[string]*types.Value{}}
+		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone.String(), Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
+		assertCompare(t, ko, a, b, 1)
+	})
+	t.Run("compare_bool_true_null_desc", func(t *testing.T) {
+		a := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyDone.String(): pbtypes.Bool(true)}}
+		b := &types.Struct{Fields: map[string]*types.Value{}}
+		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone.String(), Type: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_checkbox}
+		assertCompare(t, ko, a, b, -1)
+	})
+	t.Run("compare_bool_true_false", func(t *testing.T) {
+		a := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyDone.String(): pbtypes.Bool(true)}}
+		b := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyDone.String(): pbtypes.Bool(false)}}
+		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone.String(), Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
+		assertCompare(t, ko, a, b, 1)
+	})
+	t.Run("compare_bool_true_true", func(t *testing.T) {
+		a := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyDone.String(): pbtypes.Bool(true)}}
+		b := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyDone.String(): pbtypes.Bool(true)}}
+		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone.String(), Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
+		assertCompare(t, ko, a, b, 0)
+	})
 }
 
 func TestKeyUnicodeOrder_Compare(t *testing.T) {
