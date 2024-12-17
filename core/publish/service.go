@@ -424,29 +424,33 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId st
 			return
 		}
 
-		var jsonData []byte
-		jsonData, err = json.Marshal(&uberSnapshot)
-		if err != nil {
-			return
-		}
+	}
 
-		outputFile := filepath.Join(tempPublishDir, "index.json.gz")
+	var jsonData []byte
+	jsonData, err = json.Marshal(&uberSnapshot)
+	if err != nil {
+		return
+	}
 
-		var file *os.File
-		file, err = os.Create(outputFile)
-		if err != nil {
-			return
-		}
-		defer file.Close()
+	outputFile := filepath.Join(tempPublishDir, "index.json.gz")
 
-		writer := gzip.NewWriter(file)
-		defer writer.Close()
+	var file *os.File
+	file, err = os.Create(outputFile)
+	if err != nil {
+		return
+	}
 
-		_, err = writer.Write(jsonData)
-		if err != nil {
-			return
-		}
+	writer := gzip.NewWriter(file)
+	_, err = writer.Write(jsonData)
+	err = writer.Close()
+	if err != nil {
+		file.Close()
+		return
+	}
 
+	err = file.Close()
+	if err != nil {
+		return
 	}
 
 	// TODO: should call drpcClient.uploadDir instead
