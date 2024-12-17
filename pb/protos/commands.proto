@@ -7725,7 +7725,7 @@ message Rpc {
         message Create {
             message Request {
                 string identity = 1;
-                bytes profileSymKey =2;
+                string profileSymKey =2;
             }
             message Response {
                 Error error = 1;

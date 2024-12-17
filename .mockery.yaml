@@ -222,3 +222,6 @@ packages:
   github.com/anyproto/anytype-heart/core/kanban:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/contact:
+    interfaces:
+      identityService:

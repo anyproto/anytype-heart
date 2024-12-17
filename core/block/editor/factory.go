@@ -29,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
-	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -88,7 +87,6 @@ type ObjectFactory struct {
 	deviceService       deviceService
 	lastUsedUpdater     lastused.ObjectUsageUpdater
 	spaceIdResolver     idresolver.Resolver
-	identityService     identity.Service
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -122,7 +120,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.deviceService = app.MustComponent[deviceService](a)
 	f.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
 	f.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
-	f.identityService = app.MustComponent[identity.Service](a)
 	return nil
 }
 
@@ -231,7 +228,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeAccountObject:
 		return accountobject.New(sb, f.accountService.Keys(), store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater, f.objectStore.GetCrdtDb(space.Id()), f.config), nil
 	case coresb.SmartBlockTypeUserDataObject:
-		return userdataobject.New(sb, f.identityService, f.objectStore.GetCrdtDb(space.Id()), f.picker), nil
+		return userdataobject.New(sb, f.objectStore.GetCrdtDb(space.Id()), f.picker), nil
 	case coresb.SmartBlockTypeContactObject:
 		return NewContactObject(sb, store, f.spaceService), nil
 	default:

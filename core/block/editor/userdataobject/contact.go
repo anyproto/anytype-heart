@@ -54,12 +54,3 @@ func (c *Contact) ToJson(arena *anyenc.Arena) *anyenc.Value {
 	contact.Set(descriptionField, arena.NewString(c.description))
 	return contact
 }
-
-func ModelToJson(arena *anyenc.Arena, details *types.Struct) *anyenc.Value {
-	contact := arena.NewObject()
-	contact.Set(identityField, arena.NewString(pbtypes.GetString(details, bundle.RelationKeyIdentity.String())))
-	contact.Set(nameField, arena.NewString(pbtypes.GetString(details, bundle.RelationKeyName.String())))
-	contact.Set(iconField, arena.NewString(pbtypes.GetString(details, bundle.RelationKeyIconImage.String())))
-	contact.Set(descriptionField, arena.NewString(pbtypes.GetString(details, bundle.RelationKeyDescription.String())))
-	return contact
-}

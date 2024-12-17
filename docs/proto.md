@@ -10443,7 +10443,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | identity | [string](#string) |  |  |
-| profileSymKey | [bytes](#bytes) |  |  |
+| profileSymKey | [string](#string) |  |  |
 
 
 

@@ -7,8 +7,6 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
-	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/anyproto/any-sync/util/crypto/cryptoproto"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -25,19 +23,13 @@ import (
 
 var log = logging.Logger("core.block.editor.userdata")
 
-type IdentityService interface {
-	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
-	UnregisterIdentity(spaceId string, identity string)
-	AddObserver(spaceId, identity string, observer func(identity string, profile *model.IdentityProfile))
-	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
-}
-
 type UserDataObject interface {
 	smartblock.SmartBlock
 
-	SaveContact(ctx context.Context, identity string, profileSymKey []byte) error
+	SaveContact(ctx context.Context, profile *model.IdentityProfile) error
 	DeleteContact(ctx context.Context, identity string) error
-	UpdateContact(ctx context.Context, details *types.Struct) error
+	UpdateContactByDetails(ctx context.Context, id string, details *types.Struct) error
+	UpdateContactByIdentity(ctx context.Context, profile *model.IdentityProfile) (err error)
 }
 
 type userDataObject struct {
@@ -47,19 +39,17 @@ type userDataObject struct {
 	crdtDb      anystore.DB
 	arenaPool   *anyenc.ArenaPool
 
-	identityService IdentityService
-	objectCache     cache.ObjectGetter
-	ctx             context.Context
-	cancel          context.CancelFunc
+	objectCache cache.ObjectGetter
+	ctx         context.Context
+	cancel      context.CancelFunc
 }
 
-func New(sb smartblock.SmartBlock, identityService IdentityService, crdtDb anystore.DB, objectCache cache.ObjectGetter) UserDataObject {
+func New(sb smartblock.SmartBlock, crdtDb anystore.DB, objectCache cache.ObjectGetter) UserDataObject {
 	return &userDataObject{
-		SmartBlock:      sb,
-		identityService: identityService,
-		crdtDb:          crdtDb,
-		arenaPool:       &anyenc.ArenaPool{},
-		objectCache:     objectCache,
+		SmartBlock:  sb,
+		crdtDb:      crdtDb,
+		arenaPool:   &anyenc.ArenaPool{},
+		objectCache: objectCache,
 	}
 }
 
@@ -107,7 +97,7 @@ func (u *userDataObject) onUpdate() {
 }
 
 func (u *userDataObject) listContacts(ctx context.Context) ([]*Contact, error) {
-	coll, err := u.state.Collection(ctx, contactsCollection)
+	coll, err := u.state.Collection(ctx, ContactsCollection)
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
@@ -143,92 +133,24 @@ func (u *userDataObject) Close() error {
 	return u.SmartBlock.Close()
 }
 
-func (u *userDataObject) SaveContact(ctx context.Context, identity string, profileSymKey []byte) error {
-	err := u.registerIdentity(identity, profileSymKey)
-	if err != nil {
-		return err
-	}
-	profile := u.identityService.WaitProfile(ctx, identity)
-	if profile == nil {
-		return fmt.Errorf("no profile for identity %s", identity)
-	}
+func (u *userDataObject) SaveContact(ctx context.Context, profile *model.IdentityProfile) error {
 	arena := u.arenaPool.Get()
 	defer func() {
 		arena.Reset()
 		u.arenaPool.Put(arena)
 	}()
-	err = u.saveContactInStore(ctx, identity, profile, arena)
+	err := u.saveContactInStore(ctx, profile, arena)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (u *userDataObject) registerIdentity(identity string, profileSymKey []byte) error {
-	handleIdentityUpdate := func(identity string, identityProfile *model.IdentityProfile) {
-		err := u.update(u.ctx, identityProfile)
-		if err != nil {
-			log.Errorf("update contact for identity %s: %v", identity, err)
-		}
-	}
-	if len(profileSymKey) == 0 {
-		u.identityService.AddObserver(u.SpaceID(), identity, handleIdentityUpdate)
-	} else {
-		key, err := getAesKey(profileSymKey)
-		if err != nil {
-			return fmt.Errorf("get aes key for identity %s: %w", identity, err)
-		}
-		err = u.identityService.RegisterIdentity(u.SpaceID(), identity, key, handleIdentityUpdate)
-		if err != nil {
-			return fmt.Errorf("register identity %s: %v", identity, err)
-		}
-	}
-	return nil
-}
-
-func (u *userDataObject) update(ctx context.Context, profile *model.IdentityProfile) (err error) {
-	arena := u.arenaPool.Get()
-	defer func() {
-		arena.Reset()
-		u.arenaPool.Put(arena)
-	}()
+func (u *userDataObject) saveContactInStore(ctx context.Context, profile *model.IdentityProfile, arena *anyenc.Arena) error {
+	contact := NewContact(profile.Identity, profile.Name, profile.Description, profile.IconCid)
 
 	builder := storestate.Builder{}
-	contactId := domain.NewContactId(profile.Identity)
-	err = builder.Modify(contactsCollection, contactId, []string{nameField}, pb.ModifyOp_Set, profile.Name)
-	err = builder.Modify(contactsCollection, contactId, []string{iconField}, pb.ModifyOp_Set, profile.IconCid)
-	if err != nil {
-		return fmt.Errorf("modify contact: %w", err)
-	}
-	_, err = u.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
-		Changes: builder.ChangeSet,
-		State:   u.state,
-		Time:    time.Now(),
-	})
-	if err != nil {
-		return fmt.Errorf("push change: %w", err)
-	}
-	return nil
-}
-
-func getAesKey(profileSymKey []byte) (*crypto.AESKey, error) {
-	keyProto := &cryptoproto.Key{}
-	err := keyProto.Unmarshal(profileSymKey)
-	if err != nil {
-		return nil, err
-	}
-	key, err := crypto.UnmarshallAESKey(keyProto.Data)
-	if err != nil {
-		return nil, err
-	}
-	return key, nil
-}
-
-func (u *userDataObject) saveContactInStore(ctx context.Context, identity string, profile *model.IdentityProfile, arena *anyenc.Arena) error {
-	contact := NewContact(identity, profile.Identity, profile.Description, profile.IconCid)
-
-	builder := storestate.Builder{}
-	err := builder.Create(contactsCollection, domain.NewContactId(identity), contact.ToJson(arena))
+	err := builder.Create(ContactsCollection, domain.NewContactId(profile.Identity), contact.ToJson(arena))
 	if err != nil {
 		return fmt.Errorf("create chat: %w", err)
 	}
@@ -243,9 +165,51 @@ func (u *userDataObject) saveContactInStore(ctx context.Context, identity string
 	return nil
 }
 
+func (u *userDataObject) UpdateContactByIdentity(ctx context.Context, profile *model.IdentityProfile) error {
+	arena := u.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		u.arenaPool.Put(arena)
+	}()
+
+	builder := storestate.Builder{}
+
+	err := u.updateContactFields(profile, &builder)
+	if err != nil {
+		return err
+	}
+	_, err = u.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
+		Changes: builder.ChangeSet,
+		State:   u.state,
+		Time:    time.Now(),
+	})
+	if err != nil {
+		return fmt.Errorf("push change: %w", err)
+	}
+	return nil
+}
+
+func (u *userDataObject) updateContactFields(profile *model.IdentityProfile, builder *storestate.Builder) error {
+	contactId := domain.NewContactId(profile.Identity)
+
+	err := builder.Modify(ContactsCollection, contactId, []string{nameField}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, profile.Name))
+	if err != nil {
+		return fmt.Errorf("modify contact: %w", err)
+	}
+	err = builder.Modify(ContactsCollection, contactId, []string{iconField}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, profile.IconCid))
+	if err != nil {
+		return fmt.Errorf("modify contact: %w", err)
+	}
+	err = builder.Modify(ContactsCollection, contactId, []string{descriptionField}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, profile.Description))
+	if err != nil {
+		return fmt.Errorf("modify contact: %w", err)
+	}
+	return nil
+}
+
 func (u *userDataObject) DeleteContact(ctx context.Context, identity string) error {
 	builder := storestate.Builder{}
-	builder.Delete(contactsCollection, identity)
+	builder.Delete(ContactsCollection, identity)
 	_, err := u.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
 		State:   u.state,
@@ -254,22 +218,20 @@ func (u *userDataObject) DeleteContact(ctx context.Context, identity string) err
 	if err != nil {
 		return fmt.Errorf("push change: %w", err)
 	}
-	u.identityService.UnregisterIdentity(u.SpaceID(), identity)
 	return nil
 }
 
-func (u *userDataObject) UpdateContact(ctx context.Context, details *types.Struct) error {
+func (u *userDataObject) UpdateContactByDetails(ctx context.Context, contactId string, details *types.Struct) error {
 	arena := u.arenaPool.Get()
 	defer func() {
 		arena.Reset()
 		u.arenaPool.Put(arena)
 	}()
-	jsonContact := ModelToJson(arena, details)
 	builder := storestate.Builder{}
-	contactId := domain.NewContactId(pbtypes.GetString(details, bundle.RelationKeyIdentity.String()))
-	err := builder.Modify(contactsCollection, contactId, []string{identityField, nameField, iconField, descriptionField}, pb.ModifyOp_Set, jsonContact)
+
+	err := u.updateContactFieldsFromDetails(details, &builder, contactId)
 	if err != nil {
-		return fmt.Errorf("modify contact: %w", err)
+		return err
 	}
 	_, err = u.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes:        builder.ChangeSet,
@@ -279,6 +241,28 @@ func (u *userDataObject) UpdateContact(ctx context.Context, details *types.Struc
 	})
 	if err != nil {
 		return fmt.Errorf("push change: %w", err)
+	}
+	return nil
+}
+
+func (u *userDataObject) updateContactFieldsFromDetails(details *types.Struct, builder *storestate.Builder, contactId string) error {
+	if nameVal := pbtypes.Get(details, bundle.RelationKeyName.String()); nameVal != nil {
+		err := builder.Modify(ContactsCollection, contactId, []string{nameField}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, nameVal.GetStringValue()))
+		if err != nil {
+			return fmt.Errorf("modify contact: %w", err)
+		}
+	}
+	if descriptionVal := pbtypes.Get(details, bundle.RelationKeyDescription.String()); descriptionVal != nil {
+		err := builder.Modify(ContactsCollection, contactId, []string{descriptionField}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, descriptionVal.GetStringValue()))
+		if err != nil {
+			return fmt.Errorf("modify contact: %w", err)
+		}
+	}
+	if iconVal := pbtypes.Get(details, bundle.RelationKeyIconImage.String()); iconVal != nil {
+		err := builder.Modify(ContactsCollection, contactId, []string{iconField}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, iconVal.GetStringValue()))
+		if err != nil {
+			return fmt.Errorf("modify contact: %w", err)
+		}
 	}
 	return nil
 }

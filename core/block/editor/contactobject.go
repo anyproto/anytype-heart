@@ -70,7 +70,7 @@ func (co *ContactObject) updateContactInStore(combinedDetails *types.Struct) {
 	space := co.techSpaceProvider.TechSpace()
 	ctx := context.Background()
 	err := space.DoUserDataObject(ctx, func(userDataObject userdataobject.UserDataObject) error {
-		return userDataObject.UpdateContact(ctx, combinedDetails)
+		return userDataObject.UpdateContactByDetails(ctx, co.Id(), combinedDetails)
 	})
 	if err != nil {
 		log.Errorf("failed to update user data object: %v", err)
