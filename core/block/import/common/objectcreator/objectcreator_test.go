@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
-	"github.com/anyproto/anytype-heart/core/block/object/installer"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
@@ -79,7 +79,7 @@ func TestObjectCreator_Create(t *testing.T) {
 			participantId: testParticipant,
 		})
 
-		service := New(detailsService, nil, nil, nil, mockService, installer.New(), getter)
+		service := New(detailsService, nil, nil, nil, mockService, objectcreator.NewCreator(), getter)
 
 		// when
 		create, id, err := service.Create(dataObject, sn)

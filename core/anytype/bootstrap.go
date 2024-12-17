@@ -49,7 +49,6 @@ import (
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/object/idderiver/idderiverimpl"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/block/object/installer"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/block/object/treemanager"
@@ -303,7 +302,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(importer.New()).
 		Register(decorator.New()).
 		Register(objectcreator.NewCreator()).
-		Register(installer.New()).
 		Register(kanban.New()).
 		Register(device.NewDevices()).
 		Register(editor.NewObjectFactory()).

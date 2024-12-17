@@ -28,7 +28,7 @@ func (s *service) AddChatDerivedObject(ctx context.Context, space clientspace.Sp
 		Details:       chatDetails,
 	}
 
-	chatId, _, err = s.CreateObjectInSpace(ctx, space, chatReq)
+	chatId, _, err = s.createObjectInSpace(ctx, space, chatReq)
 	if err != nil {
 		return "", fmt.Errorf("create object: %w", err)
 	}

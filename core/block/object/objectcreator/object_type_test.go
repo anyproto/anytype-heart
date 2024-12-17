@@ -67,7 +67,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 			}}
 
 			// when
-			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
+			keys, isAlreadyFilled, err := fillRecommendedRelations(nil, spc, details)
 
 			// then
 			assert.NoError(t, err)
@@ -87,7 +87,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 		}}
 
 		// when
-		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
+		keys, isAlreadyFilled, err := fillRecommendedRelations(nil, spc, details)
 
 		// then
 		assert.NoError(t, err)
@@ -126,7 +126,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 			}}
 
 			// when
-			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
+			keys, isAlreadyFilled, err := fillRecommendedRelations(nil, spc, details)
 
 			// then
 			assert.NoError(t, err)

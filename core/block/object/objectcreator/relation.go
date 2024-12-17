@@ -54,7 +54,7 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 		object.Fields[bundle.RelationKeyRelationMaxCount.String()] = pbtypes.Int64(1)
 	}
 
-	if err = FillRelationFormatObjectTypes(ctx, space, object); err != nil {
+	if err = fillRelationFormatObjectTypes(ctx, space, object); err != nil {
 		return "", nil, fmt.Errorf("failed to fill relation format object types: %w", err)
 	}
 	// todo: check the existence of objectTypes in space. InstallBundledObjects should be called same as for recommendedRelations on type creation
@@ -66,7 +66,7 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyRelation}, createState)
 }
 
-func FillRelationFormatObjectTypes(ctx context.Context, spc clientspace.Space, details *types.Struct) error {
+func fillRelationFormatObjectTypes(ctx context.Context, spc clientspace.Space, details *types.Struct) error {
 	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyRelationFormatObjectTypes.String())
 
 	for i, objectType := range objectTypes {

@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/block/object/installer"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -96,7 +95,6 @@ type Service struct {
 	restriction          restriction.Service
 	bookmark             bookmarksvc.Service
 	objectCreator        objectcreator.Service
-	objectInstaller      installer.BundleObjectInstaller
 	templateService      templateService
 	resolver             idresolver.Resolver
 	spaceService         space.Service
@@ -137,7 +135,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
-	s.objectInstaller = app.MustComponent[installer.BundleObjectInstaller](a)
 	s.templateService = app.MustComponent[templateService](a)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.fileService = app.MustComponent[files.Service](a)
@@ -302,7 +299,7 @@ func (s *Service) SpaceInstallBundledObject(
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
 	}
-	ids, details, err := s.objectInstaller.InstallBundledObjects(ctx, spc, []string{sourceObjectId}, false)
+	ids, details, err := s.objectCreator.InstallBundledObjects(ctx, spc, []string{sourceObjectId}, false)
 	if err != nil {
 		return "", nil, err
 	}
@@ -322,7 +319,7 @@ func (s *Service) SpaceInstallBundledObjects(
 	if err != nil {
 		return nil, nil, fmt.Errorf("get space: %w", err)
 	}
-	return s.objectInstaller.InstallBundledObjects(ctx, spc, sourceObjectIds, false)
+	return s.objectCreator.InstallBundledObjects(ctx, spc, sourceObjectIds, false)
 }
 
 func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {

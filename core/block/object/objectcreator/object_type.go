@@ -53,7 +53,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 		object.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(model.ObjectType_basic))
 	}
 
-	keys, isAlreadyFilled, err := FillRecommendedRelations(ctx, space, object)
+	keys, isAlreadyFilled, err := fillRecommendedRelations(ctx, space, object)
 	if err != nil {
 		return "", nil, fmt.Errorf("fill recommended relations: %w", err)
 	}
@@ -75,16 +75,16 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	}
 
 	installingObjectTypeKey := domain.TypeKey(uniqueKey.InternalKey())
-	err = s.CreateTemplatesForObjectType(space, installingObjectTypeKey)
+	err = s.createTemplatesForObjectType(space, installingObjectTypeKey)
 	if err != nil {
 		log.With("spaceID", space.Id(), "objectTypeKey", installingObjectTypeKey).Errorf("error while installing templates: %s", err)
 	}
 	return id, newDetails, nil
 }
 
-// FillRecommendedRelations fills recommendedRelations and recommendedFeaturedRelations based on object's details
+// fillRecommendedRelations fills recommendedRelations and recommendedFeaturedRelations based on object's details
 // If these relations are already filled with correct ids, isAlreadyFilled = true is returned
-func FillRecommendedRelations(ctx context.Context, spc clientspace.Space, details *types.Struct) (keys []domain.RelationKey, isAlreadyFilled bool, err error) {
+func fillRecommendedRelations(ctx context.Context, spc clientspace.Space, details *types.Struct) (keys []domain.RelationKey, isAlreadyFilled bool, err error) {
 	keys, err = getRelationKeysFromDetails(details)
 	if err != nil {
 		if errors.Is(err, errRecommendedRelationsAlreadyFilled) {
@@ -167,11 +167,11 @@ func (s *service) installRecommendedRelations(ctx context.Context, space clients
 	for i, key := range relationKeys {
 		bundledRelationIds[i] = key.BundledURL()
 	}
-	_, _, err := s.installer.InstallBundledObjects(ctx, space, bundledRelationIds, false)
+	_, _, err := s.InstallBundledObjects(ctx, space, bundledRelationIds, false)
 	return err
 }
 
-func (s *service) CreateTemplatesForObjectType(spc clientspace.Space, typeKey domain.TypeKey) error {
+func (s *service) createTemplatesForObjectType(spc clientspace.Space, typeKey domain.TypeKey) error {
 	bundledTemplates, err := s.objectStore.SpaceIndex(spc.Id()).Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
