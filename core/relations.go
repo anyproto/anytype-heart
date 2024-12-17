@@ -49,7 +49,7 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 }
 
 func (mw *Middleware) ObjectTypeRecommendedRelationsSet(_ context.Context, req *pb.RpcObjectTypeRecommendedRelationsSetRequest) *pb.RpcObjectTypeRecommendedRelationsSetResponse {
-	detailsService := getService[detailservice.Service](mw)
+	detailsService := mustService[detailservice.Service](mw)
 	err := detailsService.ObjectTypeSetRelations(req.TypeObjectId, req.RelationObjectIds)
 	code := mapErrorCode(err,
 		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRecommendedRelationsSetResponseError_READONLY_OBJECT_TYPE),
@@ -63,7 +63,7 @@ func (mw *Middleware) ObjectTypeRecommendedRelationsSet(_ context.Context, req *
 }
 
 func (mw *Middleware) ObjectTypeRecommendedFeaturedRelationsSet(_ context.Context, req *pb.RpcObjectTypeRecommendedFeaturedRelationsSetRequest) *pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse {
-	detailsService := getService[detailservice.Service](mw)
+	detailsService := mustService[detailservice.Service](mw)
 	err := detailsService.ObjectTypeSetFeaturedRelations(req.TypeObjectId, req.RelationObjectIds)
 	code := mapErrorCode(err,
 		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponseError_READONLY_OBJECT_TYPE),
