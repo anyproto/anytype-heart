@@ -301,6 +301,8 @@ func (st *SmartTest) UpdateDetailsAndLastUsed(update func(current *types.Struct)
 		return nil
 	}
 
+	st.Doc.(*state.State).SetDetails(newDetails)
+
 	for key := range diff.Fields {
 		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, key)
 	}

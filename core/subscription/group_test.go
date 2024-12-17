@@ -24,15 +24,15 @@ func genTagEntries() []*entry {
 		makeTag("tag_2"),
 		makeTag("tag_3"),
 
-		{id: "record_one", data: &types.Struct{Fields: map[string]*types.Value{
+		newEntry("record_one", &types.Struct{Fields: map[string]*types.Value{
 			kanbanKey: pbtypes.StringList([]string{"tag_1"}),
-		}}},
-		{id: "record_two", data: &types.Struct{Fields: map[string]*types.Value{
+		}}),
+		newEntry("record_two", &types.Struct{Fields: map[string]*types.Value{
 			kanbanKey: pbtypes.StringList([]string{"tag_2"}),
-		}}},
-		{id: "record_three", data: &types.Struct{Fields: map[string]*types.Value{
+		}}),
+		newEntry("record_three", &types.Struct{Fields: map[string]*types.Value{
 			kanbanKey: pbtypes.StringList([]string{"tag_1", "tag_2", "tag_3"}),
-		}}},
+		}}),
 	}
 }
 
@@ -51,11 +51,11 @@ func tagEntriesToGroups(entries []*entry) []*model.BlockContentDataviewGroup {
 }
 
 func makeTag(key string) *entry {
-	return &entry{id: key, data: &types.Struct{Fields: map[string]*types.Value{
+	return newEntry(key, &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyId.String():          pbtypes.String(key),
 		bundle.RelationKeyRelationKey.String(): pbtypes.String(kanbanKey),
 		bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
-	}}}
+	}})
 }
 
 func TestGroupTag(t *testing.T) {

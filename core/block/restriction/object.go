@@ -149,6 +149,15 @@ var (
 	}
 )
 
+func GetRestrictionsBySBType(sbType smartblock.SmartBlockType) []int {
+	restrictions := objectRestrictionsBySBType[sbType]
+	result := make([]int, len(restrictions))
+	for i, restriction := range restrictions {
+		result[i] = int(restriction)
+	}
+	return result
+}
+
 type ObjectRestrictions []model.RestrictionsObjectRestriction
 
 func (or ObjectRestrictions) Check(cr ...model.RestrictionsObjectRestriction) (err error) {
