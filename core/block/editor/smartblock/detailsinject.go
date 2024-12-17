@@ -233,12 +233,15 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 
 	typeObjectId := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyType.String())
 
-	// I have no clue when lastDepDetails are filled, so maybe we need to call metaListener directly
 	typeDetails, found := sb.lastDepDetails[typeObjectId]
 	if !found {
-		log.Errorf("failed to find details of type in smartblock dependencies")
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
-		return
+		sb.CheckSubscriptions()
+		typeDetails, found = sb.lastDepDetails[typeObjectId]
+		if !found {
+			log.Errorf("failed to find details of type in smartblock dependencies")
+			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
+			return
+		}
 	}
 
 	rawValue = typeDetails.Details.Fields[bundle.RelationKeyRecommendedLayout.String()]
