@@ -30,6 +30,7 @@ type UserDataObject interface {
 	DeleteContact(ctx context.Context, identity string) error
 	UpdateContactByDetails(ctx context.Context, id string, details *types.Struct) error
 	UpdateContactByIdentity(ctx context.Context, profile *model.IdentityProfile) (err error)
+	ListContacts(ctx context.Context) ([]*Contact, error)
 }
 
 type userDataObject struct {
@@ -67,27 +68,30 @@ func (u *userDataObject) Init(ctx *smartblock.InitContext) error {
 
 	storeSource, ok := ctx.Source.(source.Store)
 	if !ok {
-		return fmt.Errorf("source is not u store")
+		return fmt.Errorf("source is not store")
 	}
 	u.storeSource = storeSource
 	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore, u.onUpdate)
 	if err != nil {
 		return fmt.Errorf("read store doc: %w", err)
 	}
-	u.onUpdate()
+	go u.onUpdate()
 	return nil
 }
 
 func (u *userDataObject) onUpdate() {
-	contacts, err := u.listContacts(u.ctx)
+	contacts, err := u.ListContacts(u.ctx)
 	if err != nil {
 		log.Errorf("list contacts: %v", err)
 		return
 	}
 	for _, contact := range contacts {
-		err = cache.Do(u.objectCache, domain.NewContactId(contact.identity), func(contactObject smartblock.SmartBlock) error {
+		err = cache.DoContextFullID(u.objectCache, u.ctx, domain.FullID{
+			ObjectID: domain.NewContactId(contact.identity),
+			SpaceID:  u.SpaceID(),
+		}, func(contactObject smartblock.SmartBlock) error {
 			state := contactObject.NewState()
-			state.SetDetails(contact.Details())
+			state.SetDetails(pbtypes.StructMerge(state.Details(), contact.Details(), false))
 			return contactObject.Apply(state)
 		})
 		if err != nil {
@@ -96,7 +100,7 @@ func (u *userDataObject) onUpdate() {
 	}
 }
 
-func (u *userDataObject) listContacts(ctx context.Context) ([]*Contact, error) {
+func (u *userDataObject) ListContacts(ctx context.Context) ([]*Contact, error) {
 	coll, err := u.state.Collection(ctx, ContactsCollection)
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)

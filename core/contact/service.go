@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 var log = logging.Logger(CName)
@@ -33,14 +32,31 @@ type identityService interface {
 }
 
 type service struct {
-	techSpace       techspace.TechSpace
 	identityService identityService
 	ctx             context.Context
 	cancel          context.CancelFunc
+	spaceService    space.Service
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+	var (
+		contacts []*userdataobject.Contact
+		listErr  error
+	)
+	err = s.spaceService.TechSpace().DoUserDataObject(ctx, func(userDataObject userdataobject.UserDataObject) error {
+		contacts, listErr = userDataObject.ListContacts(ctx)
+		if listErr != nil {
+			return listErr
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	for _, contact := range contacts {
+		s.identityService.AddObserver(s.spaceService.TechSpaceId(), contact.Identity(), s.handleIdentityUpdate)
+	}
 	return
 }
 
@@ -56,8 +72,7 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	spaceService := app.MustComponent[space.Service](a)
-	s.techSpace = spaceService.TechSpace()
+	s.spaceService = app.MustComponent[space.Service](a)
 	s.identityService = app.MustComponent[identityService](a)
 	return
 }
@@ -75,28 +90,20 @@ func (s *service) SaveContact(ctx context.Context, identity string, profileSymKe
 	if profile == nil {
 		return fmt.Errorf("no profile for identity %s", identity)
 	}
-	return s.techSpace.DoUserDataObject(ctx, func(userDataObject userdataobject.UserDataObject) error {
+	return s.spaceService.TechSpace().DoUserDataObject(ctx, func(userDataObject userdataobject.UserDataObject) error {
 		return userDataObject.SaveContact(ctx, profile)
 	})
 }
 
 func (s *service) registerIdentity(identity string, profileSymKey string) error {
-	handleIdentityUpdate := func(identity string, identityProfile *model.IdentityProfile) {
-		err := s.techSpace.DoUserDataObject(s.ctx, func(userDataObject userdataobject.UserDataObject) error {
-			return userDataObject.UpdateContactByIdentity(s.ctx, identityProfile)
-		})
-		if err != nil {
-			log.Errorf("failed to update user data object for identity %s: %v", identity, err)
-		}
-	}
 	if len(profileSymKey) == 0 {
-		s.identityService.AddObserver(s.techSpace.TechSpaceId(), identity, handleIdentityUpdate)
+		s.identityService.AddObserver(s.spaceService.TechSpaceId(), identity, s.handleIdentityUpdate)
 	} else {
 		key, err := getAesKey(profileSymKey)
 		if err != nil {
 			return fmt.Errorf("get aes key for identity %s: %w", identity, err)
 		}
-		err = s.identityService.RegisterIdentity(s.techSpace.TechSpaceId(), identity, key, handleIdentityUpdate)
+		err = s.identityService.RegisterIdentity(s.spaceService.TechSpaceId(), identity, key, s.handleIdentityUpdate)
 		if err != nil {
 			return fmt.Errorf("register identity %s: %v", identity, err)
 		}
@@ -113,12 +120,21 @@ func getAesKey(profileSymKey string) (*crypto.AESKey, error) {
 }
 
 func (s *service) DeleteContact(ctx context.Context, identity string) error {
-	err := s.techSpace.DoUserDataObject(ctx, func(userDataObject userdataobject.UserDataObject) error {
+	err := s.spaceService.TechSpace().DoUserDataObject(ctx, func(userDataObject userdataobject.UserDataObject) error {
 		return userDataObject.DeleteContact(ctx, identity)
 	})
 	if err != nil {
 		return err
 	}
-	s.identityService.UnregisterIdentity(s.techSpace.TechSpaceId(), identity)
+	s.identityService.UnregisterIdentity(s.spaceService.TechSpaceId(), identity)
 	return nil
+}
+
+func (s *service) handleIdentityUpdate(identity string, identityProfile *model.IdentityProfile) {
+	err := s.spaceService.TechSpace().DoUserDataObject(s.ctx, func(userDataObject userdataobject.UserDataObject) error {
+		return userDataObject.UpdateContactByIdentity(s.ctx, identityProfile)
+	})
+	if err != nil {
+		log.Errorf("failed to update user data object for identity %s: %v", identity, err)
+	}
 }

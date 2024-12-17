@@ -22,6 +22,10 @@ type Contact struct {
 	description string
 }
 
+func (c *Contact) Identity() string {
+	return c.identity
+}
+
 func NewContact(identity, name, description, icon string) *Contact {
 	return &Contact{description: description, icon: icon, name: name, identity: identity}
 }

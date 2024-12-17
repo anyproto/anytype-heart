@@ -115,7 +115,7 @@ func TestUserDataObject_SaveContact(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		contacts, err := fx.listContacts(context.Background())
+		contacts, err := fx.ListContacts(context.Background())
 		require.NoError(t, err)
 		assert.Len(t, contacts, 1)
 	})
@@ -152,7 +152,7 @@ func TestUserDataObject_DeleteContact(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		contacts, err := fx.listContacts(context.Background())
+		contacts, err := fx.ListContacts(context.Background())
 		require.NoError(t, err)
 		assert.Len(t, contacts, 0)
 	})
@@ -244,7 +244,7 @@ func TestUserDataObject_UpdateContactByIdentity(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		contacts, err := fx.listContacts(context.Background())
+		contacts, err := fx.ListContacts(context.Background())
 		require.NoError(t, err)
 		assert.Len(t, contacts, 0)
 	})
@@ -358,7 +358,7 @@ func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		contacts, err := fx.listContacts(context.Background())
+		contacts, err := fx.ListContacts(context.Background())
 		require.NoError(t, err)
 		assert.Len(t, contacts, 0)
 	})

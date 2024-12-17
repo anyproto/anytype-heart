@@ -185,7 +185,7 @@ func (s *service) getProfileFromCache(identity string) *model.IdentityProfile {
 	return nil
 }
 
-func (s *service) AddObserver(identity, spaceId string, observerCallback func(identity string, profile *model.IdentityProfile)) {
+func (s *service) AddObserver(spaceId, identity string, observerCallback func(identity string, profile *model.IdentityProfile)) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	observers := s.identityObservers[identity]

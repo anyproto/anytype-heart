@@ -379,4 +379,5 @@ service ClientCommands {
     rpc ChatUnsubscribe (anytype.Rpc.Chat.Unsubscribe.Request) returns (anytype.Rpc.Chat.Unsubscribe.Response);
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
 
+    rpc ContactCreate (anytype.Rpc.Contact.Create.Request) returns (anytype.Rpc.Contact.Create.Response);
 }
