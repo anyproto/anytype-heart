@@ -23,7 +23,7 @@ func TestLink_Diff(t *testing.T) {
 	t.Run("type error", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := base.NewBase(&model.Block{})
-		_, err := b1.Diff(b2)
+		_, err := b1.Diff("", b2)
 		assert.Error(t, err)
 	})
 	t.Run("no diff", func(t *testing.T) {
@@ -31,7 +31,7 @@ func TestLink_Diff(t *testing.T) {
 		b2 := testBlock()
 		b1.content.TargetBlockId = "1"
 		b2.content.TargetBlockId = "1"
-		d, err := b1.Diff(b2)
+		d, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		assert.Len(t, d, 0)
 	})
@@ -39,7 +39,7 @@ func TestLink_Diff(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 		b2.Restrictions.Read = true
-		d, err := b1.Diff(b2)
+		d, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		assert.Len(t, d, 1)
 	})
@@ -55,7 +55,7 @@ func TestLink_Diff(t *testing.T) {
 		b2.content.IconSize = model.BlockContentLink_SizeMedium
 		b2.content.Description = model.BlockContentLink_Content
 
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -78,7 +78,7 @@ func TestLink_Diff(t *testing.T) {
 
 		// when
 		b2.content.Relations = append(b2.content.Relations, "cover")
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)

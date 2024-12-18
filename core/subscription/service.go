@@ -275,7 +275,7 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 			kanban:            s.kanban,
 			collectionService: s.collectionService,
 			eventSender:       s.eventSender,
-			ctxBuf:            &opCtx{c: cache},
+			ctxBuf:            &opCtx{spaceId: spaceId, c: cache},
 			arenaPool:         s.arenaPool,
 		}
 		spaceSubs.ds = newDependencyService(spaceSubs)

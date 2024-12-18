@@ -55,7 +55,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 	if err != nil {
 		return err
 	}
-	sendOnRemoveEvent(s.eventSender, id.ObjectID)
+	s.sendOnRemoveEvent(id.SpaceID, id.ObjectID)
 	// Remove from cache
 	err = spc.Remove(context.Background(), id.ObjectID)
 	if err != nil {
@@ -152,16 +152,10 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 	return nil
 }
 
-func sendOnRemoveEvent(eventSender event.Sender, ids ...string) {
-	eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfObjectRemove{
-					ObjectRemove: &pb.EventObjectRemove{
-						Ids: ids,
-					},
-				},
-			},
+func (s *Service) sendOnRemoveEvent(spaceId string, id string) {
+	s.eventSender.Broadcast(event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfObjectRemove{
+		ObjectRemove: &pb.EventObjectRemove{
+			Ids: []string{id},
 		},
-	})
+	}))
 }

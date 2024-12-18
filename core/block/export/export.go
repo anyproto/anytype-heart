@@ -1064,7 +1064,7 @@ func objectValid(sbType smartblock.SmartBlockType, info *database.ObjectInfo, in
 	if info.Id == addr.AnytypeProfileId {
 		return false
 	}
-	if !isProtobuf && !validTypeForNonProtobuf(sbType) && !validLayoutForNonProtobuf(info.Details) {
+	if !isProtobuf && (!validTypeForNonProtobuf(sbType) || !validLayoutForNonProtobuf(info.Details)) {
 		return false
 	}
 	if isProtobuf && !validType(sbType) {
@@ -1120,10 +1120,8 @@ func (fn *namer) Get(path, hash, title, ext string) (name string) {
 }
 
 func validType(sbType smartblock.SmartBlockType) bool {
-	return sbType == smartblock.SmartBlockTypeHome ||
-		sbType == smartblock.SmartBlockTypeProfilePage ||
+	return sbType == smartblock.SmartBlockTypeProfilePage ||
 		sbType == smartblock.SmartBlockTypePage ||
-		sbType == smartblock.SmartBlockTypeSubObject ||
 		sbType == smartblock.SmartBlockTypeTemplate ||
 		sbType == smartblock.SmartBlockTypeWorkspace ||
 		sbType == smartblock.SmartBlockTypeWidget ||

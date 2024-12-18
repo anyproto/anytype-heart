@@ -25,7 +25,7 @@ func TestDiff(t *testing.T) {
 
 		// when
 		b2.content.IsHeader = true
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)

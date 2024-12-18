@@ -241,7 +241,7 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	}
 
 	currState.SetParent(previousState)
-	msg, _, err := state.ApplyState(currState, false)
+	msg, _, err := state.ApplyState(req.SpaceId, currState, false)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get history events for versions %s, %s: %w", req.CurrentVersion, req.PreviousVersion, err)
 	}
@@ -560,7 +560,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 	if err != nil {
 		return
 	}
-	if _, _, err = state.ApplyStateFast(st); err != nil {
+	if _, _, err = state.ApplyStateFast(id.SpaceID, st); err != nil {
 		return
 	}
 

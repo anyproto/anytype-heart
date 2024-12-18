@@ -25,7 +25,7 @@ type dependencyService struct {
 func (ds *dependencyService) makeSubscriptionByEntries(subId string, spaceId string, allEntries, activeEntries []*entry, keys, depKeys []domain.RelationKey, filterDepIds []string) *simpleSub {
 	depSub := ds.s.newSimpleSub(subId, spaceId, keys, true)
 	depSub.forceIds = filterDepIds
-	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, ds.depIdsByEntries(activeEntries, depKeys, depSub.forceIds))
+	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries, spaceId: spaceId}, ds.depIdsByEntries(activeEntries, depKeys, depSub.forceIds))
 	depSub.init(depEntries)
 	return depSub
 }

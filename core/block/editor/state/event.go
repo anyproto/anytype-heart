@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/table"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/simple/widget"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -313,12 +314,12 @@ func WrapEventMessages(virtual bool, msgs []*pb.EventMessage) []simple.EventMess
 	return wmsgs
 }
 
-func StructDiffIntoEvents(contextId string, diff *domain.Details) (msgs []*pb.EventMessage) {
-	return StructDiffIntoEventsWithSubIds(contextId, diff, nil, nil)
+func StructDiffIntoEvents(spaceId string, contextId string, diff *domain.Details) (msgs []*pb.EventMessage) {
+	return StructDiffIntoEventsWithSubIds(spaceId, contextId, diff, nil, nil)
 }
 
 // StructDiffIntoEvents converts map into events. nil map value converts to Remove event
-func StructDiffIntoEventsWithSubIds(contextId string, diff *domain.Details, keys []domain.RelationKey, subIds []string) (msgs []*pb.EventMessage) {
+func StructDiffIntoEventsWithSubIds(spaceId string, contextId string, diff *domain.Details, keys []domain.RelationKey, subIds []string) (msgs []*pb.EventMessage) {
 	if diff.Len() == 0 {
 		return nil
 	}
@@ -341,28 +342,23 @@ func StructDiffIntoEventsWithSubIds(contextId string, diff *domain.Details, keys
 	}
 
 	if len(details) > 0 {
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectDetailsAmend{
-				ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
-					Id:      contextId,
-					Details: details,
-					SubIds:  subIds,
-				},
+		msgs = append(msgs, event.NewMessage(spaceId, &pb.EventMessageValueOfObjectDetailsAmend{
+			ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+				Id:      contextId,
+				Details: details,
+				SubIds:  subIds,
 			},
-		})
+		}))
 	}
 	if len(removed) > 0 {
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectDetailsUnset{
-				ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
-					Id:     contextId,
-					Keys:   removed,
-					SubIds: subIds,
-				},
+		msgs = append(msgs, event.NewMessage(spaceId, &pb.EventMessageValueOfObjectDetailsUnset{
+			ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
+				Id:     contextId,
+				Keys:   removed,
+				SubIds: subIds,
 			},
-		})
+		}))
 	}
-
 	return
 }
 

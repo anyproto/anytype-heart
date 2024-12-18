@@ -26805,6 +26805,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | accountShow | [Event.Account.Show](#anytype-Event-Account-Show) |  |  |
 | accountDetails | [Event.Account.Details](#anytype-Event-Account-Details) |  |  |
 | accountConfigUpdate | [Event.Account.Config.Update](#anytype-Event-Account-Config-Update) |  |  |
