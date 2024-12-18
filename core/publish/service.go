@@ -15,6 +15,8 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/anytype-publish-server/publishclient"
+	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
@@ -69,11 +71,12 @@ type Service interface {
 }
 
 type service struct {
-	commonFile      fileservice.FileService
-	fileSyncService filesync.FileSync
-	spaceService    space.Service
-	dagService      ipld.DAGService
-	exportService   export.Export
+	commonFile           fileservice.FileService
+	fileSyncService      filesync.FileSync
+	spaceService         space.Service
+	dagService           ipld.DAGService
+	exportService        export.Export
+	publishClientService publishclient.Client
 }
 
 func New() Service {
@@ -86,6 +89,7 @@ func (s *service) Init(a *app.App) error {
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.exportService = app.MustComponent[export.Export](a)
+	s.publishClientService = app.MustComponent[publishclient.Client](a)
 
 	return nil
 }
@@ -456,6 +460,21 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId st
 	// TODO: should call drpcClient.uploadDir instead
 	log.Error("tempPublishDir", zap.String("tempPublishDir", tempPublishDir))
 	err = os.CopyFS(filepath.Join(os.TempDir(), "anytype-web-published", uniqName()), os.DirFS(tempPublishDir))
+	if err != nil {
+		return
+	}
+	publishReq := &publishapi.PublishRequest{
+		SpaceId:  spaceId,
+		ObjectId: pageId,
+		Uri:      pageId,
+		Version:  "fake-ver-" + uniqName(),
+	}
+	uploadUrl, err := s.publishClientService.Publish(ctx, publishReq)
+	if err != nil {
+		return
+	}
+
+	err = s.publishClientService.UploadDir(ctx, uploadUrl, tempPublishDir)
 	if err != nil {
 		return
 	}

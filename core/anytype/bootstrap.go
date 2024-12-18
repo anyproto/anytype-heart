@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/any-sync/util/syncqueues"
+	"github.com/anyproto/anytype-publish-server/publishclient"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
@@ -270,6 +271,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
 		Register(inviteservice.New()).
 		Register(publish.New()).
+		Register(publishclient.New()).
 		Register(acl.New()).
 		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
