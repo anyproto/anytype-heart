@@ -18,7 +18,7 @@ func (mw *Middleware) PublishingCreate(ctx context.Context, req *pb.RpcPublishin
 	log.Error("PublishingCreate called", zap.String("objectId", req.ObjectId))
 	publishService := getService[publish.Service](mw)
 
-	_, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId)
+	res, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId, req.Uri)
 	log.Error("PublishingCreate called", zap.String("objectId", req.ObjectId))
 	code := mapErrorCode(err,
 		errToCode(nil, pb.RpcPublishingCreateResponseError_NULL))
@@ -28,7 +28,7 @@ func (mw *Middleware) PublishingCreate(ctx context.Context, req *pb.RpcPublishin
 			Code:        code,
 			Description: getErrorDescription(nil),
 		},
-		Uri: req.Uri,
+		Uri: res.Cid,
 		// PublishCid:     res.Cid,
 		// PublishFileKey: res.Key,
 

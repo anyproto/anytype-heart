@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
@@ -67,7 +68,7 @@ type PublishingUberSnapshot struct {
 
 type Service interface {
 	app.ComponentRunnable
-	Publish(ctx context.Context, spaceId, pageObjId string) (res PublishResult, err error)
+	Publish(ctx context.Context, spaceId, pageObjId, uri string) (res PublishResult, err error)
 }
 
 type service struct {
@@ -77,6 +78,7 @@ type service struct {
 	dagService           ipld.DAGService
 	exportService        export.Export
 	publishClientService publishclient.Client
+	accountService       accountservice.Service
 }
 
 func New() Service {
@@ -90,6 +92,7 @@ func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.exportService = app.MustComponent[export.Export](a)
 	s.publishClientService = app.MustComponent[publishclient.Client](a)
+	s.accountService = app.MustComponent[accountservice.Service](a)
 
 	return nil
 }
@@ -342,7 +345,7 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 	return
 }
 
-func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId string) (err error) {
+func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri string) (err error) {
 
 	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
 	if err != nil {
@@ -424,7 +427,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId st
 
 			}
 		} else {
-			err = fmt.Errorf("Unexpeted file on export root level: %s", entry.Name())
+			err = fmt.Errorf("unexpeted file on export root level: %s", entry.Name())
 			return
 		}
 
@@ -457,42 +460,46 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId st
 		return
 	}
 
-	// TODO: should call drpcClient.uploadDir instead
-	log.Error("tempPublishDir", zap.String("tempPublishDir", tempPublishDir))
-	err = os.CopyFS(filepath.Join(os.TempDir(), "anytype-web-published", uniqName()), os.DirFS(tempPublishDir))
-	if err != nil {
-		return
-	}
+	log.Error("publishing started", zap.String("pageid", pageId), zap.String("uri", uri))
 	publishReq := &publishapi.PublishRequest{
 		SpaceId:  spaceId,
 		ObjectId: pageId,
-		Uri:      pageId,
+		Uri:      uri,
 		Version:  "fake-ver-" + uniqName(),
 	}
+
 	uploadUrl, err := s.publishClientService.Publish(ctx, publishReq)
 	if err != nil {
 		return
 	}
 
+	log.Error("publishing upload started", zap.String("pageid", pageId), zap.String("uploadUrl", uploadUrl))
 	err = s.publishClientService.UploadDir(ctx, uploadUrl, tempPublishDir)
 	if err != nil {
 		return
 	}
 
+	log.Error("publishing finished", zap.String("pageid", pageId))
 	return nil
 
 }
 
-func (s *service) Publish(ctx context.Context, spaceId, pageId string) (res PublishResult, err error) {
+func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string) (res PublishResult, err error) {
 	log.Info("Publish called", zap.String("pageId", pageId))
-	err = s.publishToPublishServer(ctx, spaceId, pageId)
+	err = s.publishToPublishServer(ctx, spaceId, pageId, uri)
 
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
 	}
 
+	// for now: staging-url/identity/pageid
+	// will be fixed in GO-4758
+	stagingUrl := "https://publishing-stage.any.coop"
+	identity := s.accountService.Account().SignKey.GetPublic().Account()
+	url := fmt.Sprintf("%s/%s/%s", stagingUrl, identity, uri)
+
 	return PublishResult{
-		Cid: "fakecid",
+		Cid: url,
 		Key: "fakekey",
 	}, nil
 
