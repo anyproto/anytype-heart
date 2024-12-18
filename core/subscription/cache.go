@@ -3,8 +3,7 @@ package subscription
 import (
 	"maps"
 
-	"github.com/gogo/protobuf/types"
-
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -16,14 +15,14 @@ func newCache() *cache {
 
 type entry struct {
 	id   string
-	data *types.Struct
+	data *domain.Details
 
 	subIds             []string
 	subIsActive        map[string]bool
 	subFullDetailsSent map[string]bool
 }
 
-func newEntry(id string, data *types.Struct) *entry {
+func newEntry(id string, data *domain.Details) *entry {
 	return &entry{id: id, data: data, subIsActive: make(map[string]bool), subFullDetailsSent: make(map[string]bool)}
 }
 
@@ -92,9 +91,9 @@ func (e *entry) SubIds() []string {
 	return e.subIds
 }
 
-func (e *entry) Get(key string) *types.Value {
-	return e.data.Fields[key]
-}
+// func (e *entry) Get(key string) *types.Value {
+// 	return e.data.Fields[key]
+// }
 
 type cache struct {
 	entries map[string]*entry

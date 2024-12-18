@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -15,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func NewBundledRelation(id string) (s Source) {
@@ -46,7 +43,7 @@ func (v *bundledRelation) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeBundledRelation
 }
 
-func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
+func (v *bundledRelation) getDetails(id string) (p *domain.Details, err error) {
 	if !strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return nil, fmt.Errorf("incorrect relation id: not a bundled relation id")
 	}
@@ -57,12 +54,12 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 	}
 	rel.Creator = addr.AnytypeProfileId
 	wrapperRelation := relationutils.Relation{Relation: rel}
-	details := wrapperRelation.ToStruct() // bundle.GetDetailsForBundledRelation(rel)
-	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
-	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)
-	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.BundledURL())
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(model.ObjectOrigin_builtin))
+	details := wrapperRelation.ToDetails() // bundle.GetDetailsForBundledRelation(rel)
+	details.SetString(bundle.RelationKeySpaceId, addr.AnytypeMarketplaceWorkspace)
+	details.SetBool(bundle.RelationKeyIsReadonly, true)
+	details.SetString(bundle.RelationKeyType, bundle.TypeKeyRelation.BundledURL())
+	details.SetString(bundle.RelationKeyId, id)
+	details.SetInt64(bundle.RelationKeyOrigin, int64(model.ObjectOrigin_builtin))
 
 	return details, nil
 }
@@ -80,8 +77,8 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 	if err != nil {
 		return nil, err
 	}
-	for k, v := range d.Fields {
-		s.SetDetailAndBundledRelation(domain.RelationKey(k), v)
+	for k, v := range d.Iterate() {
+		s.SetDetailAndBundledRelation(k, v)
 	}
 	s.SetObjectTypeKey(bundle.TypeKeyRelation)
 	return s, nil

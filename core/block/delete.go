@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
@@ -72,9 +71,9 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 	)
 	err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(true))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, domain.Bool(true))
 		if sbType == coresb.SmartBlockTypeRelation {
-			relationKey = pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
+			relationKey = st.Details().GetString(bundle.RelationKeyRelationKey)
 		}
 		return b.Apply(st)
 	})
@@ -96,16 +95,16 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 
 func (s *Service) deleteRelationOptions(spaceId string, relationKey string) error {
 	relationOptions, _, err := s.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				Value:       domain.Int64(model.ObjectType_relationOption),
 			},
 			{
-				RelationKey: bundle.RelationKeyRelationKey.String(),
+				RelationKey: bundle.RelationKeyRelationKey,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(relationKey),
+				Value:       domain.String(relationKey),
 			},
 		},
 	})
@@ -133,7 +132,7 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectCloseAllSessions()
 		st := b.NewState()
-		isFavorite := pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
+		isFavorite := st.LocalDetails().GetBool(bundle.RelationKeyIsFavorite)
 		if err := s.detailsService.SetIsFavorite(id.ObjectID, isFavorite, false); err != nil {
 			log.With("objectId", id).Errorf("failed to favorite object: %v", err)
 		}

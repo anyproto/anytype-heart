@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -15,17 +16,17 @@ const DetailsKeyFieldName = "_detailsKey"
 func newDetailKeys(keysList []string) DetailsKeys {
 	keys := DetailsKeys{}
 	if len(keysList) > 0 {
-		keys.Text = keysList[0]
+		keys.Text = domain.RelationKey(keysList[0])
 		if len(keysList) > 1 {
-			keys.Checked = keysList[1]
+			keys.Checked = domain.RelationKey(keysList[1])
 		}
 	}
 	return keys
 }
 
 type DetailsKeys struct {
-	Text    string
-	Checked string
+	Text    domain.RelationKey
+	Checked domain.RelationKey
 }
 
 func NewDetails(block *model.Block, keys DetailsKeys) simple.Block {
@@ -52,10 +53,10 @@ type textDetails struct {
 func (td *textDetails) DetailsInit(s simple.DetailsService) {
 	td.keys = newDetailKeys(pbtypes.GetStringList(td.Fields, DetailsKeyFieldName))
 	if td.keys.Text != "" {
-		td.SetText(pbtypes.GetString(s.Details(), td.keys.Text), nil)
+		td.SetText(s.Details().GetString(td.keys.Text), nil)
 	}
-	if td.keys.Checked != "" && pbtypes.Exists(s.Details(), td.keys.Checked) {
-		checked := pbtypes.GetBool(s.Details(), td.keys.Checked)
+	if td.keys.Checked != "" && s.Details().Has(td.keys.Checked) {
+		checked := s.Details().GetBool(td.keys.Checked)
 		td.SetChecked(checked)
 	}
 	return
@@ -66,14 +67,14 @@ func (td *textDetails) ApplyToDetails(prevBlock simple.Block, s simple.DetailsSe
 	prev, _ = prevBlock.(Block)
 
 	if td.keys.Text != "" {
-		if prev == nil && !pbtypes.HasField(s.Details(), td.keys.Text) || prev != nil && prev.GetText() != td.GetText() {
-			s.SetDetail(td.keys.Text, pbtypes.String(td.GetText()))
+		if prev == nil && !s.Details().Has(td.keys.Text) || prev != nil && prev.GetText() != td.GetText() {
+			s.SetDetail(td.keys.Text, domain.String(td.GetText()))
 			ok = true
 		}
 	}
 	if td.keys.Checked != "" {
-		if prev == nil && !pbtypes.HasField(s.Details(), td.keys.Text) || prev != nil && prev.GetChecked() != td.GetChecked() {
-			s.SetDetail(td.keys.Checked, pbtypes.Bool(td.GetChecked()))
+		if prev == nil && !s.Details().Has(td.keys.Text) || prev != nil && prev.GetChecked() != td.GetChecked() {
+			s.SetDetail(td.keys.Checked, domain.Bool(td.GetChecked()))
 			ok = true
 		}
 	}

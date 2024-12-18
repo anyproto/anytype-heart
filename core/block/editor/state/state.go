@@ -7,7 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
@@ -50,9 +52,9 @@ type Doc interface {
 	NewStateCtx(ctx session.Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
-	Details() *types.Struct
-	CombinedDetails() *types.Struct
-	LocalDetails() *types.Struct
+	Details() *domain.Details
+	CombinedDetails() *domain.Details
+	LocalDetails() *domain.Details
 
 	GetRelationLinks() pbtypes.RelationLinks
 
@@ -114,8 +116,8 @@ type State struct {
 	changes           []*pb.ChangeContent
 	fileInfo          FileInfo
 	fileKeys          []pb.ChangeFileKeys // Deprecated
-	details           *types.Struct
-	localDetails      *types.Struct
+	details           *domain.Details
+	localDetails      *domain.Details
 	relationLinks     pbtypes.RelationLinks
 	notifications     map[string]*model.Notification
 	deviceStore       map[string]*model.DeviceInfo
@@ -195,7 +197,7 @@ func (s *State) GroupId() string {
 }
 
 func (s *State) SpaceID() string {
-	return pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String())
+	return s.LocalDetails().GetString(bundle.RelationKeySpaceId)
 }
 
 func (s *State) Add(b simple.Block) (ok bool) {
@@ -453,7 +455,7 @@ func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simpl
 
 		// apply snippet
 		if s.Snippet() != s.parent.Snippet() {
-			s.SetLocalDetail(bundle.RelationKeySnippet.String(), pbtypes.String(s.Snippet()))
+			s.SetLocalDetail(bundle.RelationKeySnippet, domain.String(s.Snippet()))
 		}
 	}
 
@@ -618,8 +620,8 @@ func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simpl
 	}
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
-		if diff := pbtypes.StructDiff(prev, s.details); diff != nil {
-			action.Details = &undo.Details{Before: pbtypes.CopyStruct(prev, false), After: pbtypes.CopyStruct(s.details, false)}
+		if diff := domain.StructDiff(prev, s.details); diff != nil {
+			action.Details = &undo.Details{Before: prev.Copy(), After: s.details.Copy()}
 			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.SpaceID(), s.RootId(), diff))...)
 			s.parent.details = s.details
 		} else if !s.details.Equal(s.parent.details) {
@@ -649,7 +651,7 @@ func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simpl
 
 	if s.parent != nil && s.localDetails != nil {
 		prev := s.parent.LocalDetails()
-		if diff := pbtypes.StructDiff(prev, s.localDetails); diff != nil {
+		if diff := domain.StructDiff(prev, s.localDetails); diff != nil {
 			msgs = append(msgs, WrapEventMessages(true, StructDiffIntoEvents(spaceId, s.RootId(), diff))...)
 			s.parent.localDetails = s.localDetails
 		} else if !s.localDetails.Equal(s.parent.localDetails) {
@@ -815,13 +817,16 @@ func (s *State) StringDebug() string {
 	}
 
 	fmt.Fprintf(buf, "\nDetails:\n")
-	pbtypes.SortedRange(s.Details(), func(k string, v *types.Value) {
-		fmt.Fprintf(buf, "\t%s:\t%v\n", k, pbtypes.Sprint(v))
-	})
+	arena := &anyenc.Arena{}
+	for k, v := range s.Details().IterateSorted() {
+		raw := string(v.ToAnyEnc(arena).MarshalTo(nil))
+		fmt.Fprintf(buf, "\t%s:\t%v\n", k, raw)
+	}
 	fmt.Fprintf(buf, "\nLocal details:\n")
-	pbtypes.SortedRange(s.LocalDetails(), func(k string, v *types.Value) {
-		fmt.Fprintf(buf, "\t%s:\t%v\n", k, pbtypes.Sprint(v))
-	})
+	for k, v := range s.LocalDetails().IterateSorted() {
+		raw := string(v.ToAnyEnc(arena).MarshalTo(nil))
+		fmt.Fprintf(buf, "\t%s:\t%v\n", k, raw)
+	}
 	fmt.Fprintf(buf, "\nBlocks:\n")
 	s.writeString(buf, 0, s.RootId())
 	fmt.Fprintf(buf, "\nCollection:\n")
@@ -836,17 +841,18 @@ func (s *State) StringDebug() string {
 	return buf.String()
 }
 
-func (s *State) SetDetails(d *types.Struct) *State {
+func (s *State) SetDetails(d *domain.Details) *State {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// if d != nil && d.Fields != nil {
 	//	shortenDetailsToLimit(s.rootId, d.Fields)
 	// }
-	local := pbtypes.StructFilterKeys(d, bundle.LocalAndDerivedRelationKeys)
-	if local != nil && local.GetFields() != nil && len(local.GetFields()) > 0 {
-		for k, v := range local.Fields {
+
+	local := d.CopyOnlyKeys(bundle.LocalAndDerivedRelationKeys...)
+	if local != nil && local.Len() > 0 {
+		for k, v := range local.Iterate() {
 			s.SetLocalDetail(k, v)
 		}
-		s.details = pbtypes.StructCutKeys(d, bundle.LocalAndDerivedRelationKeys)
+		s.details = d.CopyWithoutKeys(bundle.LocalAndDerivedRelationKeys...)
 		return s
 	}
 	s.details = d
@@ -854,56 +860,41 @@ func (s *State) SetDetails(d *types.Struct) *State {
 }
 
 // SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
-func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value *types.Value) {
+func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value domain.Value) {
 	s.AddBundledRelationLinks(key)
-	s.SetDetail(key.String(), value)
+	s.SetDetail(key, value)
 	return
 }
 
-func (s *State) SetLocalDetail(key string, value *types.Value) {
+func (s *State) SetLocalDetail(key domain.RelationKey, value domain.Value) {
 	if s.localDetails == nil && s.parent != nil {
 		d := s.parent.Details()
-		if d.GetFields() != nil {
+		if d != nil {
 			// optimisation so we don't need to copy the struct if nothing has changed
-			if prev, exists := d.Fields[key]; exists && prev.Equal(value) {
+			if prev := d.Get(key); prev.Ok() && prev.Equal(value) {
 				return
 			}
 		}
-		s.localDetails = pbtypes.CopyStruct(s.parent.LocalDetails(), false)
+		s.localDetails = s.parent.LocalDetails().Copy()
 	}
-	if s.localDetails == nil || s.localDetails.Fields == nil {
-		s.localDetails = &types.Struct{Fields: map[string]*types.Value{}}
+	if s.localDetails == nil {
+		s.localDetails = domain.NewDetails()
 	}
-
-	if value == nil {
-		delete(s.localDetails.Fields, key)
-		return
-	}
-
-	if err := pbtypes.ValidateValue(value); err != nil {
-		log.Errorf("invalid value for pb %s: %v", key, err)
-	}
-
-	s.localDetails.Fields[key] = value
+	s.localDetails.Set(key, value)
 	return
 }
 
-func (s *State) SetLocalDetails(d *types.Struct) {
-	for k, v := range d.GetFields() {
-		if v == nil {
-			delete(d.Fields, k)
-		}
-	}
+func (s *State) SetLocalDetails(d *domain.Details) {
 	s.localDetails = d
 }
 
-func (s *State) AddDetails(details *types.Struct) {
-	for k, v := range details.GetFields() {
+func (s *State) AddDetails(details *domain.Details) {
+	for k, v := range details.Iterate() {
 		s.SetDetail(k, v)
 	}
 }
 
-func (s *State) SetDetail(key string, value *types.Value) {
+func (s *State) SetDetail(key domain.RelationKey, value domain.Value) {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// value = shortenValueToLimit(s.rootId, key, value)
 
@@ -914,34 +905,24 @@ func (s *State) SetDetail(key string, value *types.Value) {
 
 	if s.details == nil && s.parent != nil {
 		d := s.parent.Details()
-		if d.GetFields() != nil {
+		if d != nil {
 			// optimisation so we don't need to copy the struct if nothing has changed
-			if prev, exists := d.Fields[key]; exists && prev.Equal(value) {
+			if prev := d.Get(key); prev.Ok() && prev.Equal(value) {
 				return
 			}
+			s.details = d.Copy()
 		}
-		s.details = pbtypes.CopyStruct(d, false)
 	}
-	if s.details == nil || s.details.Fields == nil {
-		s.details = &types.Struct{Fields: map[string]*types.Value{}}
+	if s.details == nil {
+		s.details = domain.NewDetails()
 	}
-
-	if value == nil {
-		delete(s.details.Fields, key)
-		return
-	}
-
-	if err := pbtypes.ValidateValue(value); err != nil {
-		log.Errorf("invalid value for pb %s: %v", key, err)
-	}
-
-	s.details.Fields[key] = value
+	s.details.Set(key, value)
 	return
 }
 
 func (s *State) SetAlign(align model.BlockAlign, ids ...string) (err error) {
 	if len(ids) == 0 {
-		s.SetDetail(bundle.RelationKeyLayoutAlign.String(), pbtypes.Int64(int64(align)))
+		s.SetDetail(bundle.RelationKeyLayoutAlign, domain.Int64(align))
 		ids = []string{TitleBlockID, DescriptionBlockID, FeaturedRelationsID}
 	}
 	for _, id := range ids {
@@ -995,19 +976,13 @@ func (s *State) SetObjectTypeKeys(objectTypeKeys []domain.TypeKey) *State {
 	return s
 }
 
-func (s *State) InjectLocalDetails(localDetails *types.Struct) {
-	for key, v := range localDetails.GetFields() {
-		if v == nil {
-			continue
-		}
-		if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
-			continue
-		}
-		s.SetDetailAndBundledRelation(domain.RelationKey(key), v)
+func (s *State) InjectLocalDetails(localDetails *domain.Details) {
+	for k, v := range localDetails.Iterate() {
+		s.SetDetailAndBundledRelation(k, v)
 	}
 }
 
-func (s *State) LocalDetails() *types.Struct {
+func (s *State) LocalDetails() *domain.Details {
 	if s.localDetails == nil && s.parent != nil {
 		return s.parent.LocalDetails()
 	}
@@ -1015,21 +990,12 @@ func (s *State) LocalDetails() *types.Struct {
 	return s.localDetails
 }
 
-func (s *State) CombinedDetails() *types.Struct {
-	return pbtypes.StructMerge(s.Details(), s.LocalDetails(), false)
+func (s *State) CombinedDetails() *domain.Details {
+	// TODO Implement combined details struct with two underlying details
+	return s.Details().Merge(s.LocalDetails())
 }
 
-func (s *State) HasCombinedDetailsKey(key string) bool {
-	if pbtypes.HasField(s.Details(), key) {
-		return true
-	}
-	if pbtypes.HasField(s.LocalDetails(), key) {
-		return true
-	}
-	return false
-}
-
-func (s *State) Details() *types.Struct {
+func (s *State) Details() *domain.Details {
 	if s.details == nil && s.parent != nil {
 		return s.parent.Details()
 	}
@@ -1052,7 +1018,7 @@ func (s *State) ObjectTypeKey() domain.TypeKey {
 	if len(objTypes) == 0 && !s.noObjectType {
 		log.Debugf("object %s (%s) has %d object types instead of 1",
 			s.RootId(),
-			pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()),
+			s.Details().GetString(bundle.RelationKeyName),
 			len(objTypes),
 		)
 	}
@@ -1088,19 +1054,20 @@ func (s *State) Snippet() string {
 	return textutil.TruncateEllipsized(builder.String(), snippetMaxSize)
 }
 
-func (s *State) FileRelationKeys() []string {
-	var keys []string
+func (s *State) FileRelationKeys() []domain.RelationKey {
+	var keys []domain.RelationKey
 	for _, rel := range s.GetRelationLinks() {
 		// coverId can contain both hash or predefined cover id
 		if rel.Format == model.RelationFormat_file {
-			if slice.FindPos(keys, rel.Key) == -1 {
-				keys = append(keys, rel.Key)
+			key := domain.RelationKey(rel.Key)
+			if slice.FindPos(keys, key) == -1 {
+				keys = append(keys, key)
 			}
 		}
 		if rel.Key == bundle.RelationKeyCoverId.String() {
-			coverType := pbtypes.GetInt64(s.Details(), bundle.RelationKeyCoverType.String())
-			if (coverType == 1 || coverType == 4) && slice.FindPos(keys, rel.Key) == -1 {
-				keys = append(keys, rel.Key)
+			coverType := s.Details().GetInt64(bundle.RelationKeyCoverType)
+			if (coverType == 1 || coverType == 4) && slice.FindPos(keys, domain.RelationKey(rel.Key)) == -1 {
+				keys = append(keys, domain.RelationKey(rel.Key))
 			}
 		}
 	}
@@ -1129,11 +1096,20 @@ func (s *State) IterateLinkedFilesInDetails(proc func(id string)) {
 // Detail is saved only if at least one id is changed
 func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
 	details := s.Details()
-	if details == nil || details.Fields == nil {
+	if details == nil {
 		return
 	}
 
 	for _, key := range s.FileRelationKeys() {
+		if key == bundle.RelationKeyCoverId {
+			v := details.GetString(bundle.RelationKeyCoverId)
+			_, err := cid.Decode(v)
+			if err != nil {
+				// this is an exception cause coverId can contain not a file hash but color
+				continue
+			}
+		}
+
 		s.modifyIdsInDetail(details, key, modifier)
 	}
 }
@@ -1142,18 +1118,19 @@ func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
 // Detail is saved only if at least one id is changed
 func (s *State) ModifyLinkedObjectsInDetails(modifier func(id string) string) {
 	details := s.Details()
-	if details == nil || details.Fields == nil {
+	if details == nil {
 		return
 	}
 	for _, rel := range s.GetRelationLinks() {
 		if rel.Format == model.RelationFormat_object {
-			s.modifyIdsInDetail(details, rel.Key, modifier)
+			s.modifyIdsInDetail(details, domain.RelationKey(rel.Key), modifier)
 		}
 	}
 }
 
-func (s *State) modifyIdsInDetail(details *types.Struct, key string, modifier func(id string) string) {
-	if ids := pbtypes.GetStringList(details, key); len(ids) > 0 {
+func (s *State) modifyIdsInDetail(details *domain.Details, key domain.RelationKey, modifier func(id string) string) {
+	// TODO TryStringList in pbtypes return []string{singleValue} for string values
+	if ids := details.GetStringList(key); len(ids) > 0 {
 		var anyChanges bool
 		for i, oldId := range ids {
 			if oldId == "" {
@@ -1166,11 +1143,11 @@ func (s *State) modifyIdsInDetail(details *types.Struct, key string, modifier fu
 			}
 		}
 		if anyChanges {
-			switch details.Fields[key].Kind.(type) {
-			case *types.Value_StringValue:
-				s.SetDetail(key, pbtypes.String(ids[0]))
-			case *types.Value_ListValue:
-				s.SetDetail(key, pbtypes.StringList(ids))
+			v := details.Get(key)
+			if _, ok := v.TryString(); ok {
+				s.SetDetail(key, domain.String(ids[0]))
+			} else if _, ok := v.TryStringList(); ok {
+				s.SetDetail(key, domain.StringList(ids))
 			}
 		}
 	}
@@ -1251,7 +1228,7 @@ func (s *State) Validate() (err error) {
 
 // IsEmpty returns whether state has any blocks beside template blocks(root, header, title, etc)
 func (s *State) IsEmpty(checkTitle bool) bool {
-	if checkTitle && pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()) != "" {
+	if checkTitle && s.Details().GetString(bundle.RelationKeyName) != "" {
 		return false
 	}
 	var emptyTextFound bool
@@ -1265,7 +1242,7 @@ func (s *State) IsEmpty(checkTitle bool) bool {
 		emptyTextFound = true
 	}
 
-	if pbtypes.GetString(s.Details(), bundle.RelationKeyDescription.String()) != "" {
+	if s.Details().GetString(bundle.RelationKeyDescription) != "" {
 		return false
 	}
 
@@ -1309,8 +1286,8 @@ func (s *State) Copy() *State {
 		ctx:                      s.ctx,
 		blocks:                   blocks,
 		rootId:                   s.rootId,
-		details:                  pbtypes.CopyStruct(s.Details(), false),
-		localDetails:             pbtypes.CopyStruct(s.LocalDetails(), false),
+		details:                  s.Details().Copy(),
+		localDetails:             s.LocalDetails().Copy(),
 		relationLinks:            s.GetRelationLinks(), // Get methods copy inside
 		objectTypeKeys:           objTypes,
 		noObjectType:             s.noObjectType,
@@ -1373,12 +1350,13 @@ func (s *State) IsTheHeaderChange() bool {
 	return s.changeId == s.rootId || s.changeId == "" && s.parent == nil
 }
 
-func (s *State) RemoveDetail(keys ...string) (ok bool) {
-	det := pbtypes.CopyStruct(s.Details(), false)
-	if det != nil && det.Fields != nil {
+func (s *State) RemoveDetail(keys ...domain.RelationKey) (ok bool) {
+	// TODO It could be lazily copied only if actual deletion is happened
+	det := s.Details().Copy()
+	if det != nil {
 		for _, key := range keys {
-			if _, ex := det.Fields[key]; ex {
-				delete(det.Fields, key)
+			if det.Has(key) {
+				det.Delete(key)
 				ok = true
 			}
 		}
@@ -1389,12 +1367,13 @@ func (s *State) RemoveDetail(keys ...string) (ok bool) {
 	return s.RemoveLocalDetail(keys...) || ok
 }
 
-func (s *State) RemoveLocalDetail(keys ...string) (ok bool) {
-	det := pbtypes.CopyStruct(s.LocalDetails(), false)
-	if det != nil && det.Fields != nil {
+func (s *State) RemoveLocalDetail(keys ...domain.RelationKey) (ok bool) {
+	// TODO It could be lazily copied only if actual deletion is happened
+	det := s.LocalDetails().Copy()
+	if det != nil {
 		for _, key := range keys {
-			if _, ex := det.Fields[key]; ex {
-				delete(det.Fields, key)
+			if det.Has(key) {
+				det.Delete(key)
 				ok = true
 			}
 		}
@@ -1705,9 +1684,9 @@ func (s *State) GetChangedStoreKeys(prefixPath ...string) (paths [][]string) {
 }
 
 func (s *State) Layout() (model.ObjectTypeLayout, bool) {
-	if det := s.Details(); det != nil && det.Fields != nil {
-		if _, ok := det.Fields[bundle.RelationKeyLayout.String()]; ok {
-			return model.ObjectTypeLayout(pbtypes.GetInt64(det, bundle.RelationKeyLayout.String())), true
+	if det := s.Details(); det != nil {
+		if det.Has(bundle.RelationKeyLayout) {
+			return model.ObjectTypeLayout(det.GetInt64(bundle.RelationKeyLayout)), true
 		}
 	}
 	return 0, false
@@ -1750,11 +1729,11 @@ func (s *State) GetRelationLinks() pbtypes.RelationLinks {
 	return nil
 }
 
-func (s *State) RemoveRelation(keys ...string) {
+func (s *State) RemoveRelation(keys ...domain.RelationKey) {
 	relLinks := s.GetRelationLinks()
 	relLinksFiltered := make(pbtypes.RelationLinks, 0, len(relLinks))
 	for _, link := range relLinks {
-		if slice.FindPos(keys, link.Key) >= 0 {
+		if slice.FindPos(keys, domain.RelationKey(link.Key)) >= 0 {
 			continue
 		}
 		relLinksFiltered = append(relLinksFiltered, &model.RelationLink{
@@ -1766,16 +1745,16 @@ func (s *State) RemoveRelation(keys ...string) {
 	s.RemoveDetail(keys...)
 	// remove from the list of featured relations
 	var foundInFeatured bool
-	featuredList := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+	featuredList := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	featuredList = slice.Filter(featuredList, func(s string) bool {
-		if slice.FindPos(keys, s) == -1 {
+		if slice.FindPos(keys, domain.RelationKey(s)) == -1 {
 			return true
 		}
 		foundInFeatured = true
 		return false
 	})
 	if foundInFeatured {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(featuredList))
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(featuredList))
 	}
 	s.relationLinks = relLinksFiltered
 	return

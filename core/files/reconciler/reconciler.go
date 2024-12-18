@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -22,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
@@ -134,24 +132,24 @@ func (r *reconciler) FileObjectHook(id domain.FullID) func(applyInfo smartblock.
 			return fmt.Errorf("need to rebind: %w", err)
 		}
 		if ok {
-			fileId := domain.FileId(pbtypes.GetString(applyInfo.State.Details(), bundle.RelationKeyFileId.String()))
+			fileId := domain.FileId(applyInfo.State.Details().GetString(bundle.RelationKeyFileId))
 			return r.rebindQueue.Add(&queueItem{ObjectId: id.ObjectID, FileId: domain.FullFileId{FileId: fileId, SpaceId: id.SpaceID}})
 		}
 		return nil
 	}
 }
 
-func (r *reconciler) needToRebind(details *types.Struct) (bool, error) {
-	if pbtypes.GetBool(details, bundle.RelationKeyIsDeleted.String()) {
+func (r *reconciler) needToRebind(details *domain.Details) (bool, error) {
+	if details.GetBool(bundle.RelationKeyIsDeleted) {
 		return false, nil
 	}
-	backupStatus := filesyncstatus.Status(pbtypes.GetInt64(details, bundle.RelationKeyFileBackupStatus.String()))
+	backupStatus := filesyncstatus.Status(details.GetInt64(bundle.RelationKeyFileBackupStatus))
 	// It makes no sense to rebind file that hasn't been uploaded yet, because this file could be uploading
 	// by another client. When another client will upload this file, FileObjectHook will be called with FileBackupStatus == Synced
 	if backupStatus != filesyncstatus.Synced {
 		return false, nil
 	}
-	fileId := domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String()))
+	fileId := domain.FileId(details.GetString(bundle.RelationKeyFileId))
 	return r.deletedFiles.Has(fileId.String())
 }
 
@@ -179,15 +177,15 @@ func (r *reconciler) markAsReconciled(fileObjectId string, fileId domain.FullFil
 
 func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
 	records, err := r.objectStore.QueryCrossSpace(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				RelationKey: bundle.RelationKeyIsDeleted,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Bool(true),
+				Value:       domain.Bool(true),
 			},
 		},
 	})
@@ -197,7 +195,7 @@ func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
 
 	haveIds := map[domain.FileId]struct{}{}
 	for _, rec := range records {
-		fileId := domain.FileId(pbtypes.GetString(rec.Details, bundle.RelationKeyFileId.String()))
+		fileId := domain.FileId(rec.Details.GetString(bundle.RelationKeyFileId))
 		if fileId.Valid() {
 			haveIds[fileId] = struct{}{}
 		}

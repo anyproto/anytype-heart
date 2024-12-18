@@ -4,18 +4,17 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -26,9 +25,9 @@ const (
 func TestLayoutConverter_Convert(t *testing.T) {
 	store := objectstore.NewStoreFixture(t)
 	store.AddObjects(t, spaceId, []spaceindex.TestObject{{
-		bundle.RelationKeyId:        pbtypes.String(bundle.TypeKeyTask.URL()),
-		bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
-		bundle.RelationKeyUniqueKey: pbtypes.String(bundle.TypeKeyTask.URL()),
+		bundle.RelationKeyId:        domain.String(bundle.TypeKeyTask.URL()),
+		bundle.RelationKeySpaceId:   domain.String(spaceId),
+		bundle.RelationKeyUniqueKey: domain.String(bundle.TypeKeyTask.URL()),
 	}})
 
 	for _, from := range []model.ObjectTypeLayout{
@@ -43,12 +42,10 @@ func TestLayoutConverter_Convert(t *testing.T) {
 			st := state.NewDoc(root, map[string]simple.Block{
 				root: simple.New(&model.Block{Id: root, ChildrenIds: []string{}}),
 			}).NewState()
-			st.SetDetails(&types.Struct{
-				Fields: map[string]*types.Value{
-					bundle.RelationKeySpaceId.String(): pbtypes.String(spaceId),
-					bundle.RelationKeySetOf.String():   pbtypes.StringList([]string{bundle.TypeKeyTask.URL()}),
-				},
-			})
+			st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+				bundle.RelationKeySetOf:   domain.StringList([]string{bundle.TypeKeyTask.URL()}),
+			}))
 
 			lc := layoutConverter{objectStore: store}
 

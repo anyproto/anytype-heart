@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type Template struct {
@@ -41,7 +40,7 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 		Version: 1,
 		Proc: func(s *state.State) {
 			if t.Type() == coresb.SmartBlockTypeTemplate && (len(t.ObjectTypeKeys()) != 2) {
-				targetObjectTypeId := pbtypes.GetString(s.Details(), bundle.RelationKeyTargetObjectType.String())
+				targetObjectTypeId := s.Details().GetString(bundle.RelationKeyTargetObjectType)
 				if targetObjectTypeId != "" {
 					uniqueKey, err := t.objectStore.GetUniqueKeyById(targetObjectTypeId)
 					if err == nil && uniqueKey.SmartblockType() != coresb.SmartBlockTypeObjectType {

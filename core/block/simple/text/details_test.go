@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -31,31 +32,27 @@ func TestNewDetails(t *testing.T) {
 
 func TestTextDetails_DetailsInit(t *testing.T) {
 	db := simple.New(testBlock).Copy().(DetailsBlock)
-	db.DetailsInit(&testDetailsService{Struct: &types.Struct{
-		Fields: map[string]*types.Value{
-			"title": pbtypes.String("titleFromDetails"),
-		},
-	}})
+	db.DetailsInit(&testDetailsService{details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		"title": domain.String("titleFromDetails"),
+	}),
+	})
 	assert.Equal(t, "titleFromDetails", db.GetText())
 }
 
 func TestTextDetails_DetailsInit_DoNotChangeCheckedStateIfNotPresent(t *testing.T) {
 	db := simple.New(testBlock).Copy().(DetailsBlock)
 	db.SetChecked(true)
-	db.DetailsInit(&testDetailsService{Struct: &types.Struct{
-		Fields: map[string]*types.Value{},
-	}})
+	db.DetailsInit(&testDetailsService{details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})})
 	assert.Equal(t, db.GetChecked(), true)
 }
 
 func TestTextDetails_ApplyToDetails(t *testing.T) {
 	orig := simple.New(testBlock).Copy().(DetailsBlock)
 	db := orig.Copy().(DetailsBlock)
-	ds := &testDetailsService{Struct: &types.Struct{
-		Fields: map[string]*types.Value{
-			"title": pbtypes.String("titleFromDetails"),
-		},
-	}}
+	ds := &testDetailsService{details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		"title": domain.String("titleFromDetails"),
+	}),
+	}
 	db.DetailsInit(ds)
 	db.SetText("changed", nil)
 	ok, err := db.ApplyToDetails(orig, ds)
@@ -79,11 +76,10 @@ func TestTextDetails_Diff(t *testing.T) {
 	t.Run("events", func(t *testing.T) {
 		orig := simple.New(testBlock).Copy().(DetailsBlock)
 		db := orig.Copy().(DetailsBlock)
-		ds := &testDetailsService{Struct: &types.Struct{
-			Fields: map[string]*types.Value{
-				"title": pbtypes.String("titleFromDetails"),
-			},
-		}}
+		ds := &testDetailsService{details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"title": domain.String("titleFromDetails"),
+		}),
+		}
 		db.DetailsInit(ds)
 		db.SetText("changed", nil)
 		db.SetChecked(true)
@@ -91,8 +87,8 @@ func TestTextDetails_Diff(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, ok)
 
-		assert.Equal(t, "changed", pbtypes.GetString(ds.Struct, "title"))
-		assert.Equal(t, true, pbtypes.GetBool(ds.Struct, "checked"))
+		assert.Equal(t, "changed", ds.details.GetString("title"))
+		assert.Equal(t, true, ds.details.GetBool("checked"))
 
 		msgs, err := orig.Diff("", db)
 		require.NoError(t, err)
@@ -106,11 +102,10 @@ func TestTextDetails_Diff(t *testing.T) {
 		assert.Equal(t, true, setText.Checked.Value)
 	})
 	t.Run("change fields only", func(t *testing.T) {
-		ds := &testDetailsService{Struct: &types.Struct{
-			Fields: map[string]*types.Value{
-				"title": pbtypes.String("titleFromDetails"),
-			},
-		}}
+		ds := &testDetailsService{details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"title": domain.String("titleFromDetails"),
+		}),
+		}
 		orig := simple.New(testBlock).Copy().(DetailsBlock)
 		orig.DetailsInit(ds)
 		db := orig.Copy().(DetailsBlock)
@@ -129,18 +124,16 @@ func TestTextDetails_Diff(t *testing.T) {
 }
 
 type testDetailsService struct {
-	*types.Struct
+	details *domain.Details
 }
 
-func (t *testDetailsService) Details() *types.Struct {
-	return t.Struct
+func (t *testDetailsService) Details() *domain.Details {
+	return t.details
 }
 
-func (t *testDetailsService) SetDetail(key string, value *types.Value) {
-	if t.Struct == nil || t.Struct.Fields == nil {
-		t.Struct = &types.Struct{
-			Fields: map[string]*types.Value{},
-		}
+func (t *testDetailsService) SetDetail(key domain.RelationKey, value domain.Value) {
+	if t.details == nil {
+		t.details = domain.NewDetails()
 	}
-	t.Struct.Fields[key] = value
+	t.details.Set(key, value)
 }

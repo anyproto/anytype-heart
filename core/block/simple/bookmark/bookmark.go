@@ -3,10 +3,9 @@ package bookmark
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
@@ -38,7 +37,7 @@ type Block interface {
 	simple.Block
 	simple.FileHashes
 	GetContent() *model.BlockContentBookmark
-	ToDetails(origin objectorigin.ObjectOrigin) *types.Struct
+	ToDetails(origin objectorigin.ObjectOrigin) *domain.Details
 	SetState(s model.BlockContentBookmarkState)
 	UpdateContent(func(content *ObjectContent))
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
@@ -53,12 +52,9 @@ func (b *Bookmark) GetContent() *model.BlockContentBookmark {
 	return b.content
 }
 
-func (b *Bookmark) ToDetails(origin objectorigin.ObjectOrigin) *types.Struct {
-	details := &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeySource.String(): pbtypes.String(b.content.Url),
-		},
-	}
+func (b *Bookmark) ToDetails(origin objectorigin.ObjectOrigin) *domain.Details {
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeySource, b.content.Url)
 	origin.AddToDetails(details)
 	return details
 }

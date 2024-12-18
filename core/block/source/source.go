@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"github.com/golang/snappy"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
@@ -149,7 +148,7 @@ type Source interface {
 
 type SourceIdEndodedDetails interface {
 	Id() string
-	DetailsFromId() (*types.Struct, error)
+	DetailsFromId() (*domain.Details, error)
 }
 
 type IDsLister interface {
@@ -421,7 +420,7 @@ func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
 		c.Snapshot = &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:                   params.State.BlocksToSave(),
-				Details:                  params.State.Details(),
+				Details:                  params.State.Details().ToProto(),
 				ObjectTypes:              domain.MarshalTypeKeys(params.State.ObjectTypeKeys()),
 				Collections:              params.State.Store(),
 				RelationLinks:            params.State.PickRelationLinks(),

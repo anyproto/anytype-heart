@@ -6,14 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -448,7 +447,7 @@ func (t *textImpl) TurnInto(ctx session.Context, style model.BlockContentTextSty
 		textBlock, ok = b.(text.Block)
 		if !ok {
 			if linkBlock, ok := b.(link.Block); ok {
-				var targetDetails *types.Struct
+				var targetDetails *domain.Details
 				if targetId := linkBlock.Model().GetLink().TargetBlockId; targetId != "" {
 					// nolint:errcheck
 					result, _ := t.objectStore.QueryByIds([]string{targetId})

@@ -3,12 +3,13 @@ package subscription
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 func TestEntry_SubIds(t *testing.T) {
-	e := newEntry("id", &types.Struct{})
+	e := newEntry("id", domain.NewDetails())
 	e.SetSub("1", true, false)
 	assert.Len(t, e.SubIds(), 1)
 	e.SetSub("2", false, false)
