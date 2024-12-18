@@ -8,6 +8,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -40,18 +41,21 @@ type userDataObject struct {
 	crdtDb      anystore.DB
 	arenaPool   *anyenc.ArenaPool
 
-	objectCache cache.ObjectGetter
-	ctx         context.Context
-	cancel      context.CancelFunc
+	objectCache      cache.ObjectGetter
+	ctx              context.Context
+	cancel           context.CancelFunc
+	onUpdateCallback func()
 }
 
 func New(sb smartblock.SmartBlock, crdtDb anystore.DB, objectCache cache.ObjectGetter) UserDataObject {
-	return &userDataObject{
+	u := &userDataObject{
 		SmartBlock:  sb,
 		crdtDb:      crdtDb,
 		arenaPool:   &anyenc.ArenaPool{},
 		objectCache: objectCache,
 	}
+	u.onUpdateCallback = u.onUpdate
+	return u
 }
 
 func (u *userDataObject) Init(ctx *smartblock.InitContext) error {
@@ -71,11 +75,11 @@ func (u *userDataObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("source is not store")
 	}
 	u.storeSource = storeSource
-	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore, u.onUpdate)
+	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore, u.onUpdateCallback)
 	if err != nil {
 		return fmt.Errorf("read store doc: %w", err)
 	}
-	go u.onUpdate()
+	go u.onUpdateCallback()
 	return nil
 }
 
@@ -86,26 +90,30 @@ func (u *userDataObject) onUpdate() {
 		return
 	}
 	for _, contact := range contacts {
-		err = cache.DoContextFullID(u.objectCache, u.ctx, domain.FullID{
-			ObjectID: domain.NewContactId(contact.identity),
-			SpaceID:  u.SpaceID(),
-		}, func(contactObject smartblock.SmartBlock) error {
-			state := contactObject.NewState()
-			state.SetDetails(pbtypes.StructMerge(state.Details(), contact.Details(), false))
-			return contactObject.Apply(state)
-		})
-		if err != nil {
-			log.Errorf("update contact: %v", err)
-		}
+		u.createContactAndUpdateDetails(err, contact)
+	}
+}
+
+func (u *userDataObject) createContactAndUpdateDetails(err error, contact *Contact) {
+	err = cache.DoContextFullID(u.objectCache, u.ctx, domain.FullID{
+		ObjectID: domain.NewContactId(contact.identity),
+		SpaceID:  u.SpaceID(),
+	}, func(contactObject smartblock.SmartBlock) error {
+		state := contactObject.NewState()
+		state.SetDetails(pbtypes.StructMerge(state.Details(), contact.Details(), false))
+		return contactObject.Apply(state)
+	})
+	if err != nil {
+		log.Errorf("update contact: %v", err)
 	}
 }
 
 func (u *userDataObject) ListContacts(ctx context.Context) ([]*Contact, error) {
-	coll, err := u.state.Collection(ctx, ContactsCollection)
+	collection, err := u.state.Collection(ctx, ContactsCollection)
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
-	qry := coll.Find(nil)
+	qry := collection.Find(nil)
 	contacts, err := u.queryContacts(ctx, qry)
 	if err != nil {
 		return nil, fmt.Errorf("query messages: %w", err)
@@ -143,17 +151,13 @@ func (u *userDataObject) SaveContact(ctx context.Context, profile *model.Identit
 		arena.Reset()
 		u.arenaPool.Put(arena)
 	}()
-	err := u.saveContactInStore(ctx, profile, arena)
-	if err != nil {
-		return err
-	}
-	return nil
+	return u.saveContactInStore(ctx, profile, arena)
 }
 
 func (u *userDataObject) saveContactInStore(ctx context.Context, profile *model.IdentityProfile, arena *anyenc.Arena) error {
 	contact := NewContact(profile.Identity, profile.Name, profile.Description, profile.IconCid)
 
-	builder := storestate.Builder{}
+	builder := &storestate.Builder{}
 	err := builder.Create(ContactsCollection, domain.NewContactId(profile.Identity), contact.ToJson(arena))
 	if err != nil {
 		return fmt.Errorf("create chat: %w", err)
@@ -176,9 +180,8 @@ func (u *userDataObject) UpdateContactByIdentity(ctx context.Context, profile *m
 		u.arenaPool.Put(arena)
 	}()
 
-	builder := storestate.Builder{}
-
-	err := u.updateContactFields(profile, &builder)
+	builder := &storestate.Builder{}
+	err := u.updateContactFields(profile, builder)
 	if err != nil {
 		return err
 	}
@@ -196,15 +199,15 @@ func (u *userDataObject) UpdateContactByIdentity(ctx context.Context, profile *m
 func (u *userDataObject) updateContactFields(profile *model.IdentityProfile, builder *storestate.Builder) error {
 	contactId := domain.NewContactId(profile.Identity)
 
-	err := builder.Modify(ContactsCollection, contactId, []string{nameField}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, profile.Name))
+	err := builder.Modify(ContactsCollection, contactId, []string{bundle.RelationKeyName.String()}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, profile.Name))
 	if err != nil {
 		return fmt.Errorf("modify contact: %w", err)
 	}
-	err = builder.Modify(ContactsCollection, contactId, []string{iconField}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, profile.IconCid))
+	err = builder.Modify(ContactsCollection, contactId, []string{bundle.RelationKeyIconImage.String()}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, profile.IconCid))
 	if err != nil {
 		return fmt.Errorf("modify contact: %w", err)
 	}
-	err = builder.Modify(ContactsCollection, contactId, []string{descriptionField}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, profile.Description))
+	err = builder.Modify(ContactsCollection, contactId, []string{bundle.RelationKeyDescription.String()}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, profile.Description))
 	if err != nil {
 		return fmt.Errorf("modify contact: %w", err)
 	}
@@ -212,7 +215,7 @@ func (u *userDataObject) updateContactFields(profile *model.IdentityProfile, bui
 }
 
 func (u *userDataObject) DeleteContact(ctx context.Context, identity string) error {
-	builder := storestate.Builder{}
+	builder := &storestate.Builder{}
 	builder.Delete(ContactsCollection, identity)
 	_, err := u.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
@@ -231,9 +234,9 @@ func (u *userDataObject) UpdateContactByDetails(ctx context.Context, contactId s
 		arena.Reset()
 		u.arenaPool.Put(arena)
 	}()
-	builder := storestate.Builder{}
 
-	err := u.updateContactFieldsFromDetails(details, &builder, contactId)
+	builder := &storestate.Builder{}
+	err := u.updateContactFieldsFromDetails(details, builder, contactId)
 	if err != nil {
 		return err
 	}
@@ -250,20 +253,11 @@ func (u *userDataObject) UpdateContactByDetails(ctx context.Context, contactId s
 }
 
 func (u *userDataObject) updateContactFieldsFromDetails(details *types.Struct, builder *storestate.Builder, contactId string) error {
-	if nameVal := pbtypes.Get(details, bundle.RelationKeyName.String()); nameVal != nil {
-		err := builder.Modify(ContactsCollection, contactId, []string{nameField}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, nameVal.GetStringValue()))
-		if err != nil {
-			return fmt.Errorf("modify contact: %w", err)
+	for key, value := range details.Fields {
+		if !slices.Contains([]string{bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(), bundle.RelationKeyIconImage.String()}, key) {
+			continue
 		}
-	}
-	if descriptionVal := pbtypes.Get(details, bundle.RelationKeyDescription.String()); descriptionVal != nil {
-		err := builder.Modify(ContactsCollection, contactId, []string{descriptionField}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, descriptionVal.GetStringValue()))
-		if err != nil {
-			return fmt.Errorf("modify contact: %w", err)
-		}
-	}
-	if iconVal := pbtypes.Get(details, bundle.RelationKeyIconImage.String()); iconVal != nil {
-		err := builder.Modify(ContactsCollection, contactId, []string{iconField}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, iconVal.GetStringValue()))
+		err := builder.Modify(ContactsCollection, contactId, []string{key}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, value.GetStringValue()))
 		if err != nil {
 			return fmt.Errorf("modify contact: %w", err)
 		}

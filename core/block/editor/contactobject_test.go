@@ -2,8 +2,6 @@ package editor
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -13,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -34,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/techspace"
+	"github.com/anyproto/anytype-heart/tests/storechanges"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -110,7 +108,7 @@ func TestContactObject_SetDetails(t *testing.T) {
 		fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, params source.PushStoreChangeParams) (string, error) {
 			defer wg.Done()
 			collection = params.State
-			return fx.pushStoreChanges(ctx, params)
+			return storechanges.PushStoreChanges(ctx, params)
 		})
 		err = fx.userDataObject.SaveContact(context.Background(), &model.IdentityProfile{Identity: id})
 		require.NoError(t, err)
@@ -143,6 +141,54 @@ func TestContactObject_SetDetails(t *testing.T) {
 		assert.Equal(t, userdataobject.NewContact(id, name, description, ""), contact)
 	})
 }
+
+func TestContactObject_SetDetailsAndUpdateLastUsed(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		err := fx.ContactObject.Init(&smartblock.InitContext{})
+		require.NoError(t, err)
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		var collection *storestate.StoreState
+		fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, params source.PushStoreChangeParams) (string, error) {
+			defer wg.Done()
+			collection = params.State
+			return storechanges.PushStoreChanges(ctx, params)
+		})
+		err = fx.userDataObject.SaveContact(context.Background(), &model.IdentityProfile{Identity: id})
+		require.NoError(t, err)
+
+		// when
+		fx.callTechSpace(t)
+		err = fx.ContactObject.SetDetailsAndUpdateLastUsed(nil, []*model.Detail{
+			{
+				Key:   bundle.RelationKeyName.String(),
+				Value: pbtypes.String(name),
+			},
+			{
+				Key:   bundle.RelationKeyDescription.String(),
+				Value: pbtypes.String(description),
+			},
+		}, false)
+
+		// then
+		wg.Wait()
+		require.NoError(t, err)
+		details := fx.ContactObject.CombinedDetails()
+		assert.Equal(t, name, pbtypes.GetString(details, bundle.RelationKeyName.String()))
+		assert.Equal(t, description, pbtypes.GetString(details, bundle.RelationKeyDescription.String()))
+
+		c, err := collection.Collection(context.Background(), "contacts")
+		require.NoError(t, err)
+		jsonContact, err := c.FindId(context.Background(), contactId)
+		require.NoError(t, err)
+		contact := userdataobject.NewContactFromJson(jsonContact.Value())
+		assert.Equal(t, userdataobject.NewContact(id, name, description, ""), contact)
+	})
+}
+
 func newFixture(t *testing.T) *fixture {
 	techSpace := techspace.New()
 
@@ -197,24 +243,4 @@ func (fx *fixture) callTechSpace(t *testing.T) {
 		AccountService: wallet,
 		TechSpace:      fx.techSpace,
 	}))
-}
-
-func (fx *fixture) pushStoreChanges(ctx context.Context, params source.PushStoreChangeParams) (string, error) {
-	changeId := bson.NewObjectId().Hex()
-	tx, err := params.State.NewTx(ctx)
-	if err != nil {
-		return "", fmt.Errorf("new tx: %w", err)
-	}
-	order := tx.NextOrder(tx.GetMaxOrder())
-	err = tx.ApplyChangeSet(storestate.ChangeSet{
-		Id:        changeId,
-		Order:     order,
-		Changes:   params.Changes,
-		Creator:   "creator",
-		Timestamp: params.Time.Unix(),
-	})
-	if err != nil {
-		return "", errors.Join(tx.Rollback(), fmt.Errorf("apply change set: %w", err))
-	}
-	return changeId, tx.Commit()
 }

@@ -62,8 +62,12 @@ func (co *ContactObject) SetDetails(ctx session.Context, details []*model.Detail
 		return err
 	}
 	combinedDetails := state.CombinedDetails()
-	go co.updateContactInStore(combinedDetails)
+	co.updateContactInStore(combinedDetails)
 	return nil
+}
+
+func (co *ContactObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+	return co.SetDetails(ctx, details, showEvent)
 }
 
 func (co *ContactObject) updateContactInStore(combinedDetails *types.Struct) {

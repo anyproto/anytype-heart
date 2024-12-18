@@ -8,22 +8,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const (
-	identityField    = "identity"
-	nameField        = "name"
-	iconField        = "icon"
-	descriptionField = "description"
-)
-
 type Contact struct {
 	identity    string
 	name        string
 	icon        string
 	description string
-}
-
-func (c *Contact) Identity() string {
-	return c.identity
 }
 
 func NewContact(identity, name, description, icon string) *Contact {
@@ -32,10 +21,10 @@ func NewContact(identity, name, description, icon string) *Contact {
 
 func NewContactFromJson(value *anyenc.Value) *Contact {
 	return &Contact{
-		identity:    string(value.GetStringBytes(identityField)),
-		name:        string(value.GetStringBytes(nameField)),
-		icon:        string(value.GetStringBytes(iconField)),
-		description: string(value.GetStringBytes(descriptionField)),
+		identity:    string(value.GetStringBytes(bundle.RelationKeyIdentity.String())),
+		name:        string(value.GetStringBytes(bundle.RelationKeyName.String())),
+		icon:        string(value.GetStringBytes(bundle.RelationKeyIconImage.String())),
+		description: string(value.GetStringBytes(bundle.RelationKeyDescription.String())),
 	}
 }
 
@@ -52,9 +41,25 @@ func (c *Contact) Details() *types.Struct {
 
 func (c *Contact) ToJson(arena *anyenc.Arena) *anyenc.Value {
 	contact := arena.NewObject()
-	contact.Set(identityField, arena.NewString(c.identity))
-	contact.Set(nameField, arena.NewString(c.name))
-	contact.Set(iconField, arena.NewString(c.icon))
-	contact.Set(descriptionField, arena.NewString(c.description))
+	contact.Set(bundle.RelationKeyIdentity.String(), arena.NewString(c.identity))
+	contact.Set(bundle.RelationKeyName.String(), arena.NewString(c.name))
+	contact.Set(bundle.RelationKeyIconImage.String(), arena.NewString(c.icon))
+	contact.Set(bundle.RelationKeyDescription.String(), arena.NewString(c.description))
 	return contact
+}
+
+func (c *Contact) Description() string {
+	return c.description
+}
+
+func (c *Contact) Icon() string {
+	return c.icon
+}
+
+func (c *Contact) Name() string {
+	return c.name
+}
+
+func (c *Contact) Identity() string {
+	return c.identity
 }

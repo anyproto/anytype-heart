@@ -40,11 +40,15 @@ type service struct {
 
 func (s *service) Run(ctx context.Context) (err error) {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+	return s.addObserversForExistingContacts(ctx)
+}
+
+func (s *service) addObserversForExistingContacts(ctx context.Context) error {
 	var (
 		contacts []*userdataobject.Contact
 		listErr  error
 	)
-	err = s.spaceService.TechSpace().DoUserDataObject(ctx, func(userDataObject userdataobject.UserDataObject) error {
+	err := s.spaceService.TechSpace().DoUserDataObject(ctx, func(userDataObject userdataobject.UserDataObject) error {
 		contacts, listErr = userDataObject.ListContacts(ctx)
 		if listErr != nil {
 			return listErr
@@ -57,7 +61,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 	for _, contact := range contacts {
 		s.identityService.AddObserver(s.spaceService.TechSpaceId(), contact.Identity(), s.handleIdentityUpdate)
 	}
-	return
+	return err
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
@@ -124,7 +128,7 @@ func (s *service) DeleteContact(ctx context.Context, identity string) error {
 		return userDataObject.DeleteContact(ctx, identity)
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete contact: %w", err)
 	}
 	s.identityService.UnregisterIdentity(s.spaceService.TechSpaceId(), identity)
 	return nil
@@ -135,6 +139,6 @@ func (s *service) handleIdentityUpdate(identity string, identityProfile *model.I
 		return userDataObject.UpdateContactByIdentity(s.ctx, identityProfile)
 	})
 	if err != nil {
-		log.Errorf("failed to update user data object for identity %s: %v", identity, err)
+		log.Errorf("failed to update contact for identity %s: %v", identity, err)
 	}
 }

@@ -2,13 +2,10 @@ package userdataobject
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"path/filepath"
 	"testing"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -17,19 +14,19 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
-	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/tests/storechanges"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestUserDataObject_Init(t *testing.T) {
 	t.Run("success init", func(t *testing.T) {
 		// given
-		fx := newFixture(t)
+		fx := newFixture(t, make(chan struct{}))
 
 		// when
 		fx.source.EXPECT().ReadStoreDoc(context.Background(), mock.Anything, mock.Anything).Return(nil)
@@ -47,7 +44,8 @@ func TestUserDataObject_Init(t *testing.T) {
 func TestUserDataObject_SaveContact(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		fx := newFixture(t)
+		initChan := make(chan struct{})
+		fx := newFixture(t, initChan)
 		fx.source.EXPECT().ReadStoreDoc(context.Background(), mock.Anything, mock.Anything).Return(nil)
 		fx.source.EXPECT().PushStoreChange(context.Background(), mock.Anything).RunAndReturn(fx.pushStoreChanges)
 		err := fx.Init(&smartblock.InitContext{
@@ -55,11 +53,12 @@ func TestUserDataObject_SaveContact(t *testing.T) {
 			Source: fx.source,
 		})
 		require.NoError(t, err)
+		<-initChan
 
 		identity := "identity"
 		contactId := domain.NewContactId(identity)
 		test := smarttest.New(contactId)
-		fx.objectGetter.EXPECT().GetObject(context.Background(), contactId).Return(test, nil)
+		fx.objectGetter.EXPECT().GetObjectByFullID(mock.Anything, domain.FullID{ObjectID: contactId}).Return(test, nil)
 		name := "name"
 		iconCid := "cid"
 		description := "description"
@@ -82,7 +81,8 @@ func TestUserDataObject_SaveContact(t *testing.T) {
 	})
 	t.Run("contact exists", func(t *testing.T) {
 		// given
-		fx := newFixture(t)
+		initChan := make(chan struct{})
+		fx := newFixture(t, initChan)
 		fx.source.EXPECT().ReadStoreDoc(context.Background(), mock.Anything, mock.Anything).Return(nil)
 		fx.source.EXPECT().PushStoreChange(context.Background(), mock.Anything).RunAndReturn(fx.pushStoreChanges).Times(2)
 		err := fx.Init(&smartblock.InitContext{
@@ -90,11 +90,11 @@ func TestUserDataObject_SaveContact(t *testing.T) {
 			Source: fx.source,
 		})
 		require.NoError(t, err)
-
+		<-initChan
 		identity := "identity"
 		contactId := domain.NewContactId(identity)
 		test := smarttest.New(contactId)
-		fx.objectGetter.EXPECT().GetObject(context.Background(), contactId).Return(test, nil)
+		fx.objectGetter.EXPECT().GetObjectByFullID(mock.Anything, domain.FullID{ObjectID: contactId}).Return(test, nil)
 		name := "name"
 		iconCid := "cid"
 		description := "description"
@@ -124,7 +124,8 @@ func TestUserDataObject_SaveContact(t *testing.T) {
 func TestUserDataObject_DeleteContact(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		fx := newFixture(t)
+		initChan := make(chan struct{})
+		fx := newFixture(t, initChan)
 		fx.source.EXPECT().ReadStoreDoc(context.Background(), mock.Anything, mock.Anything).Return(nil)
 		fx.source.EXPECT().PushStoreChange(context.Background(), mock.Anything).RunAndReturn(fx.pushStoreChanges)
 		err := fx.Init(&smartblock.InitContext{
@@ -132,10 +133,11 @@ func TestUserDataObject_DeleteContact(t *testing.T) {
 			Source: fx.source,
 		})
 		require.NoError(t, err)
+		<-initChan
 		identity := "identity"
 		contactId := domain.NewContactId(identity)
 		test := smarttest.New(contactId)
-		fx.objectGetter.EXPECT().GetObject(context.Background(), contactId).Return(test, nil)
+		fx.objectGetter.EXPECT().GetObjectByFullID(mock.Anything, domain.FullID{ObjectID: contactId}).Return(test, nil)
 		name := "name"
 		iconCid := "cid"
 		description := "description"
@@ -158,7 +160,8 @@ func TestUserDataObject_DeleteContact(t *testing.T) {
 	})
 	t.Run("contact not exists", func(t *testing.T) {
 		// given
-		fx := newFixture(t)
+		initChan := make(chan struct{})
+		fx := newFixture(t, initChan)
 		fx.source.EXPECT().ReadStoreDoc(context.Background(), mock.Anything, mock.Anything).Return(nil)
 		fx.source.EXPECT().PushStoreChange(context.Background(), mock.Anything).RunAndReturn(fx.pushStoreChanges)
 
@@ -167,6 +170,7 @@ func TestUserDataObject_DeleteContact(t *testing.T) {
 			Source: fx.source,
 		})
 		require.NoError(t, err)
+		<-initChan
 		contactId := domain.NewContactId("identity")
 
 		// when
@@ -181,19 +185,20 @@ func TestUserDataObject_DeleteContact(t *testing.T) {
 func TestUserDataObject_UpdateContactByIdentity(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		fx := newFixture(t)
+		initChan := make(chan struct{})
+		fx := newFixture(t, initChan)
 		fx.source.EXPECT().ReadStoreDoc(context.Background(), mock.Anything, mock.Anything).Return(nil)
 		fx.source.EXPECT().PushStoreChange(context.Background(), mock.Anything).RunAndReturn(fx.pushStoreChanges).Times(2)
+		identity := "identity"
+		contactId := domain.NewContactId(identity)
+		test := smarttest.New(contactId)
+		fx.objectGetter.EXPECT().GetObjectByFullID(mock.Anything, domain.FullID{ObjectID: contactId}).Return(test, nil).Times(2)
 		err := fx.Init(&smartblock.InitContext{
 			Ctx:    context.Background(),
 			Source: fx.source,
 		})
 		require.NoError(t, err)
-
-		identity := "identity"
-		contactId := domain.NewContactId(identity)
-		test := smarttest.New(contactId)
-		fx.objectGetter.EXPECT().GetObject(context.Background(), contactId).Return(test, nil).Times(2)
+		<-initChan
 		name := "name"
 		iconCid := "cid"
 		description := "description"
@@ -222,7 +227,8 @@ func TestUserDataObject_UpdateContactByIdentity(t *testing.T) {
 	})
 	t.Run("contact not exists", func(t *testing.T) {
 		// given
-		fx := newFixture(t)
+		initChan := make(chan struct{})
+		fx := newFixture(t, initChan)
 		fx.source.EXPECT().ReadStoreDoc(context.Background(), mock.Anything, mock.Anything).Return(nil)
 		fx.source.EXPECT().PushStoreChange(context.Background(), mock.Anything).RunAndReturn(fx.pushStoreChanges).Times(1)
 		err := fx.Init(&smartblock.InitContext{
@@ -230,7 +236,7 @@ func TestUserDataObject_UpdateContactByIdentity(t *testing.T) {
 			Source: fx.source,
 		})
 		require.NoError(t, err)
-
+		<-initChan
 		identity := "identity"
 		newName := "newName"
 		newCid := "newCid"
@@ -253,7 +259,8 @@ func TestUserDataObject_UpdateContactByIdentity(t *testing.T) {
 func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		fx := newFixture(t)
+		initChan := make(chan struct{})
+		fx := newFixture(t, initChan)
 		fx.source.EXPECT().ReadStoreDoc(context.Background(), mock.Anything, mock.Anything).Return(nil)
 		fx.source.EXPECT().PushStoreChange(context.Background(), mock.Anything).RunAndReturn(fx.pushStoreChanges).Times(2)
 		err := fx.Init(&smartblock.InitContext{
@@ -261,11 +268,11 @@ func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 			Source: fx.source,
 		})
 		require.NoError(t, err)
-
+		<-initChan
 		identity := "identity"
 		contactId := domain.NewContactId(identity)
 		test := smarttest.New(contactId)
-		fx.objectGetter.EXPECT().GetObject(context.Background(), contactId).Return(test, nil).Times(2)
+		fx.objectGetter.EXPECT().GetObjectByFullID(mock.Anything, domain.FullID{ObjectID: contactId}).Return(test, nil).Times(1)
 		name := "name"
 		iconCid := "cid"
 		description := "description"
@@ -289,14 +296,16 @@ func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		details := test.CombinedDetails()
-		assert.Equal(t, newName, pbtypes.GetString(details, bundle.RelationKeyName.String()))
-		assert.Equal(t, newCid, pbtypes.GetString(details, bundle.RelationKeyIconImage.String()))
-		assert.Equal(t, description, pbtypes.GetString(details, bundle.RelationKeyDescription.String()))
+		contacts, err := fx.ListContacts(context.Background())
+		assert.Len(t, contacts, 1)
+		assert.Equal(t, newName, contacts[0].name)
+		assert.Equal(t, newCid, contacts[0].icon)
+		assert.Equal(t, description, contacts[0].description)
 	})
 	t.Run("update description", func(t *testing.T) {
 		// given
-		fx := newFixture(t)
+		initChan := make(chan struct{})
+		fx := newFixture(t, initChan)
 		fx.source.EXPECT().ReadStoreDoc(context.Background(), mock.Anything, mock.Anything).Return(nil)
 		fx.source.EXPECT().PushStoreChange(context.Background(), mock.Anything).RunAndReturn(fx.pushStoreChanges).Times(2)
 		err := fx.Init(&smartblock.InitContext{
@@ -304,11 +313,11 @@ func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 			Source: fx.source,
 		})
 		require.NoError(t, err)
-
+		<-initChan
 		identity := "identity"
 		contactId := domain.NewContactId(identity)
 		test := smarttest.New(contactId)
-		fx.objectGetter.EXPECT().GetObject(context.Background(), contactId).Return(test, nil).Times(2)
+		fx.objectGetter.EXPECT().GetObjectByFullID(mock.Anything, domain.FullID{ObjectID: contactId}).Return(test, nil).Times(1)
 		name := "name"
 		iconCid := "cid"
 		description := "description"
@@ -330,14 +339,16 @@ func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		details := test.CombinedDetails()
-		assert.Equal(t, name, pbtypes.GetString(details, bundle.RelationKeyName.String()))
-		assert.Equal(t, iconCid, pbtypes.GetString(details, bundle.RelationKeyIconImage.String()))
-		assert.Equal(t, newDescription, pbtypes.GetString(details, bundle.RelationKeyDescription.String()))
+		contacts, err := fx.ListContacts(context.Background())
+		assert.Len(t, contacts, 1)
+		assert.Equal(t, name, contacts[0].name)
+		assert.Equal(t, iconCid, contacts[0].icon)
+		assert.Equal(t, newDescription, contacts[0].description)
 	})
 	t.Run("contact not exists", func(t *testing.T) {
 		// given
-		fx := newFixture(t)
+		initChan := make(chan struct{})
+		fx := newFixture(t, initChan)
 		fx.source.EXPECT().ReadStoreDoc(context.Background(), mock.Anything, mock.Anything).Return(nil)
 		fx.source.EXPECT().PushStoreChange(context.Background(), mock.Anything).RunAndReturn(fx.pushStoreChanges).Times(1)
 		err := fx.Init(&smartblock.InitContext{
@@ -345,7 +356,7 @@ func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 			Source: fx.source,
 		})
 		require.NoError(t, err)
-
+		<-initChan
 		identity := "identity"
 		newName := "newName"
 
@@ -371,7 +382,7 @@ type fixture struct {
 	objectGetter *mock_cache.MockObjectGetter
 }
 
-func newFixture(t *testing.T) *fixture {
+func newFixture(t *testing.T, initChan chan struct{}) *fixture {
 	ctx := context.Background()
 	db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "crdt.db"), nil)
 	require.NoError(t, err)
@@ -384,9 +395,14 @@ func newFixture(t *testing.T) *fixture {
 	objectGetter := mock_cache.NewMockObjectGetter(t)
 	source := mock_source.NewMockStore(t)
 	object := New(sb, db, objectGetter)
+	dataObject := object.(*userDataObject)
+	dataObject.onUpdateCallback = func() {
+		dataObject.onUpdate()
+		close(initChan)
+	}
 	fx := &fixture{
 		db:             db,
-		userDataObject: object.(*userDataObject),
+		userDataObject: dataObject,
 		source:         source,
 		objectGetter:   objectGetter,
 	}
@@ -395,26 +411,12 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func (fx *fixture) pushStoreChanges(ctx context.Context, params source.PushStoreChangeParams) (string, error) {
-	changeId := bson.NewObjectId().Hex()
-	tx, err := params.State.NewTx(ctx)
-	if err != nil {
-		return "", fmt.Errorf("new tx: %w", err)
-	}
-	order := tx.NextOrder(tx.GetMaxOrder())
-	err = tx.ApplyChangeSet(storestate.ChangeSet{
-		Id:        changeId,
-		Order:     order,
-		Changes:   params.Changes,
-		Creator:   "creator",
-		Timestamp: params.Time.Unix(),
-	})
-	if err != nil {
-		return "", errors.Join(tx.Rollback(), fmt.Errorf("apply change set: %w", err))
-	}
-	err = tx.Commit()
+	changeId, err := storechanges.PushStoreChanges(ctx, params)
 	if err != nil {
 		return "", err
 	}
-	fx.onUpdate()
+	if !params.NoOnUpdateHook {
+		fx.onUpdate()
+	}
 	return changeId, nil
 }
