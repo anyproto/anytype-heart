@@ -3,8 +3,6 @@ package editor
 import (
 	"context"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -52,7 +50,7 @@ func (co *ContactObject) Init(ctx *smartblock.InitContext) error {
 	return nil
 }
 
-func (co *ContactObject) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (co *ContactObject) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	state := co.NewStateCtx(ctx)
 	for _, detail := range details {
 		state.SetDetail(detail.Key, detail.Value)
@@ -66,11 +64,11 @@ func (co *ContactObject) SetDetails(ctx session.Context, details []*model.Detail
 	return nil
 }
 
-func (co *ContactObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (co *ContactObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	return co.SetDetails(ctx, details, showEvent)
 }
 
-func (co *ContactObject) updateContactInStore(combinedDetails *types.Struct) {
+func (co *ContactObject) updateContactInStore(combinedDetails *domain.Details) {
 	space := co.techSpaceProvider.TechSpace()
 	ctx := context.Background()
 	err := space.DoUserDataObject(ctx, func(userDataObject userdataobject.UserDataObject) error {

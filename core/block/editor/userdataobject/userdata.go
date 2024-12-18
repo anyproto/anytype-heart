@@ -7,7 +7,6 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -19,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("core.block.editor.userdata")
@@ -29,7 +27,7 @@ type UserDataObject interface {
 
 	SaveContact(ctx context.Context, profile *model.IdentityProfile) error
 	DeleteContact(ctx context.Context, identity string) error
-	UpdateContactByDetails(ctx context.Context, id string, details *types.Struct) error
+	UpdateContactByDetails(ctx context.Context, id string, details *domain.Details) error
 	UpdateContactByIdentity(ctx context.Context, profile *model.IdentityProfile) (err error)
 	ListContacts(ctx context.Context) ([]*Contact, error)
 }
@@ -100,7 +98,9 @@ func (u *userDataObject) createContactAndUpdateDetails(err error, contact *Conta
 		SpaceID:  u.SpaceID(),
 	}, func(contactObject smartblock.SmartBlock) error {
 		state := contactObject.NewState()
-		state.SetDetails(pbtypes.StructMerge(state.Details(), contact.Details(), false))
+		for key, value := range contact.Details().Iterate() {
+			state.SetDetailAndBundledRelation(key, value)
+		}
 		return contactObject.Apply(state)
 	})
 	if err != nil {
@@ -228,7 +228,7 @@ func (u *userDataObject) DeleteContact(ctx context.Context, identity string) err
 	return nil
 }
 
-func (u *userDataObject) UpdateContactByDetails(ctx context.Context, contactId string, details *types.Struct) error {
+func (u *userDataObject) UpdateContactByDetails(ctx context.Context, contactId string, details *domain.Details) error {
 	arena := u.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -252,12 +252,12 @@ func (u *userDataObject) UpdateContactByDetails(ctx context.Context, contactId s
 	return nil
 }
 
-func (u *userDataObject) updateContactFieldsFromDetails(details *types.Struct, builder *storestate.Builder, contactId string) error {
-	for key, value := range details.Fields {
-		if !slices.Contains([]string{bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(), bundle.RelationKeyIconImage.String()}, key) {
+func (u *userDataObject) updateContactFieldsFromDetails(details *domain.Details, builder *storestate.Builder, contactId string) error {
+	for key, value := range details.Iterate() {
+		if !slices.Contains([]domain.RelationKey{bundle.RelationKeyName, bundle.RelationKeyDescription, bundle.RelationKeyIconImage}, key) {
 			continue
 		}
-		err := builder.Modify(ContactsCollection, contactId, []string{key}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, value.GetStringValue()))
+		err := builder.Modify(ContactsCollection, contactId, []string{key.String()}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, value.String()))
 		if err != nil {
 			return fmt.Errorf("modify contact: %w", err)
 		}

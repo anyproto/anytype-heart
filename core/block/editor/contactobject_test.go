@@ -32,7 +32,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/tests/storechanges"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -66,18 +65,18 @@ func TestContactObject_Init(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, int64(model.ObjectType_contact), pbtypes.GetInt64(initContext.State.Details(), bundle.RelationKeyLayout.String()))
+		assert.Equal(t, int64(model.ObjectType_contact), initContext.State.Details().GetInt64(bundle.RelationKeyLayout))
 		assert.Equal(t, bundle.TypeKeyContact, initContext.State.ObjectTypeKey())
 	})
 	t.Run("contact exist in store", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.storeFixture.AddObjects(t, []spaceindex.TestObject{{
-			bundle.RelationKeyId:          pbtypes.String(contactId),
-			bundle.RelationKeySpaceId:     pbtypes.String(spaceId),
-			bundle.RelationKeyName:        pbtypes.String(name),
-			bundle.RelationKeyDescription: pbtypes.String(description),
-			bundle.RelationKeyIdentity:    pbtypes.String(id),
+			bundle.RelationKeyId:          domain.String(contactId),
+			bundle.RelationKeySpaceId:     domain.String(spaceId),
+			bundle.RelationKeyName:        domain.String(name),
+			bundle.RelationKeyDescription: domain.String(description),
+			bundle.RelationKeyIdentity:    domain.String(id),
 		},
 		})
 		// when
@@ -89,9 +88,9 @@ func TestContactObject_Init(t *testing.T) {
 		err = fx.ContactObject.Apply(ctx.State)
 		require.NoError(t, err)
 		details := fx.ContactObject.CombinedDetails()
-		assert.Equal(t, name, pbtypes.GetString(details, bundle.RelationKeyName.String()))
-		assert.Equal(t, description, pbtypes.GetString(details, bundle.RelationKeyDescription.String()))
-		assert.Equal(t, id, pbtypes.GetString(details, bundle.RelationKeyIdentity.String()))
+		assert.Equal(t, name, details.GetString(bundle.RelationKeyName))
+		assert.Equal(t, description, details.GetString(bundle.RelationKeyDescription))
+		assert.Equal(t, id, details.GetString(bundle.RelationKeyIdentity))
 	})
 }
 
@@ -115,14 +114,14 @@ func TestContactObject_SetDetails(t *testing.T) {
 
 		// when
 		fx.callTechSpace(t)
-		err = fx.ContactObject.SetDetails(nil, []*model.Detail{
+		err = fx.ContactObject.SetDetails(nil, []domain.Detail{
 			{
-				Key:   bundle.RelationKeyName.String(),
-				Value: pbtypes.String(name),
+				Key:   bundle.RelationKeyName,
+				Value: domain.String(name),
 			},
 			{
-				Key:   bundle.RelationKeyDescription.String(),
-				Value: pbtypes.String(description),
+				Key:   bundle.RelationKeyDescription,
+				Value: domain.String(description),
 			},
 		}, false)
 
@@ -130,8 +129,8 @@ func TestContactObject_SetDetails(t *testing.T) {
 		wg.Wait()
 		require.NoError(t, err)
 		details := fx.ContactObject.CombinedDetails()
-		assert.Equal(t, name, pbtypes.GetString(details, bundle.RelationKeyName.String()))
-		assert.Equal(t, description, pbtypes.GetString(details, bundle.RelationKeyDescription.String()))
+		assert.Equal(t, name, details.GetString(bundle.RelationKeyName))
+		assert.Equal(t, description, details.GetString(bundle.RelationKeyDescription))
 
 		c, err := collection.Collection(context.Background(), "contacts")
 		require.NoError(t, err)
@@ -162,14 +161,14 @@ func TestContactObject_SetDetailsAndUpdateLastUsed(t *testing.T) {
 
 		// when
 		fx.callTechSpace(t)
-		err = fx.ContactObject.SetDetailsAndUpdateLastUsed(nil, []*model.Detail{
+		err = fx.ContactObject.SetDetailsAndUpdateLastUsed(nil, []domain.Detail{
 			{
-				Key:   bundle.RelationKeyName.String(),
-				Value: pbtypes.String(name),
+				Key:   bundle.RelationKeyName,
+				Value: domain.String(name),
 			},
 			{
-				Key:   bundle.RelationKeyDescription.String(),
-				Value: pbtypes.String(description),
+				Key:   bundle.RelationKeyDescription,
+				Value: domain.String(description),
 			},
 		}, false)
 
@@ -177,8 +176,8 @@ func TestContactObject_SetDetailsAndUpdateLastUsed(t *testing.T) {
 		wg.Wait()
 		require.NoError(t, err)
 		details := fx.ContactObject.CombinedDetails()
-		assert.Equal(t, name, pbtypes.GetString(details, bundle.RelationKeyName.String()))
-		assert.Equal(t, description, pbtypes.GetString(details, bundle.RelationKeyDescription.String()))
+		assert.Equal(t, name, details.GetString(bundle.RelationKeyName))
+		assert.Equal(t, description, details.GetString(bundle.RelationKeyDescription))
 
 		c, err := collection.Collection(context.Background(), "contacts")
 		require.NoError(t, err)

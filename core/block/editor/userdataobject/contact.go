@@ -2,10 +2,9 @@ package userdataobject
 
 import (
 	"github.com/anyproto/any-store/anyenc"
-	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type Contact struct {
@@ -28,15 +27,13 @@ func NewContactFromJson(value *anyenc.Value) *Contact {
 	}
 }
 
-func (c *Contact) Details() *types.Struct {
-	return &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyIdentity.String():    pbtypes.String(c.identity),
-			bundle.RelationKeyDescription.String(): pbtypes.String(c.description),
-			bundle.RelationKeyIconImage.String():   pbtypes.String(c.icon),
-			bundle.RelationKeyName.String():        pbtypes.String(c.name),
-		},
-	}
+func (c *Contact) Details() *domain.Details {
+	return domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyIdentity:    domain.String(c.identity),
+		bundle.RelationKeyDescription: domain.String(c.description),
+		bundle.RelationKeyIconImage:   domain.String(c.icon),
+		bundle.RelationKeyName:        domain.String(c.name),
+	})
 }
 
 func (c *Contact) ToJson(arena *anyenc.Arena) *anyenc.Value {

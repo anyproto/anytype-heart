@@ -6,7 +6,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -47,7 +46,7 @@ type ObjectDeleter interface {
 
 type spaceService interface {
 	OnViewUpdated(info spaceinfo.SpacePersistentInfo)
-	OnWorkspaceChanged(spaceId string, details *types.Struct)
+	OnWorkspaceChanged(spaceId string, details *domain.Details)
 	PersonalSpaceId() string
 	TechSpace() *clientspace.TechSpace
 }

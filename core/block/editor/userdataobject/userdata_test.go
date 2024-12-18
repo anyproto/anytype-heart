@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -20,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/storechanges"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestUserDataObject_Init(t *testing.T) {
@@ -74,10 +72,10 @@ func TestUserDataObject_SaveContact(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		details := test.CombinedDetails()
-		assert.Equal(t, name, pbtypes.GetString(details, bundle.RelationKeyName.String()))
-		assert.Equal(t, description, pbtypes.GetString(details, bundle.RelationKeyDescription.String()))
-		assert.Equal(t, identity, pbtypes.GetString(details, bundle.RelationKeyIdentity.String()))
-		assert.Equal(t, iconCid, pbtypes.GetString(details, bundle.RelationKeyIconImage.String()))
+		assert.Equal(t, name, details.GetString(bundle.RelationKeyName))
+		assert.Equal(t, description, details.GetString(bundle.RelationKeyDescription))
+		assert.Equal(t, identity, details.GetString(bundle.RelationKeyIdentity))
+		assert.Equal(t, iconCid, details.GetString(bundle.RelationKeyIconImage))
 	})
 	t.Run("contact exists", func(t *testing.T) {
 		// given
@@ -222,8 +220,8 @@ func TestUserDataObject_UpdateContactByIdentity(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		details := test.CombinedDetails()
-		assert.Equal(t, newName, pbtypes.GetString(details, bundle.RelationKeyName.String()))
-		assert.Equal(t, newCid, pbtypes.GetString(details, bundle.RelationKeyIconImage.String()))
+		assert.Equal(t, newName, details.GetString(bundle.RelationKeyName))
+		assert.Equal(t, newCid, details.GetString(bundle.RelationKeyIconImage))
 	})
 	t.Run("contact not exists", func(t *testing.T) {
 		// given
@@ -287,12 +285,10 @@ func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 		// when
 		newName := "newName"
 		newCid := "newCid"
-		err = fx.UpdateContactByDetails(context.Background(), contactId, &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String():      pbtypes.String(newName),
-				bundle.RelationKeyIconImage.String(): pbtypes.String(newCid),
-			},
-		})
+		err = fx.UpdateContactByDetails(context.Background(), contactId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:      domain.String(newName),
+			bundle.RelationKeyIconImage: domain.String(newCid),
+		}))
 
 		// then
 		require.NoError(t, err)
@@ -331,11 +327,9 @@ func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 
 		// when
 		newDescription := "newDescription"
-		err = fx.UpdateContactByDetails(context.Background(), contactId, &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyDescription.String(): pbtypes.String(newDescription),
-			},
-		})
+		err = fx.UpdateContactByDetails(context.Background(), contactId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyDescription: domain.String(newDescription),
+		}))
 
 		// then
 		require.NoError(t, err)
@@ -361,11 +355,9 @@ func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 		newName := "newName"
 
 		// when
-		err = fx.UpdateContactByDetails(context.Background(), domain.NewContactId(identity), &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String(): pbtypes.String(newName),
-			},
-		})
+		err = fx.UpdateContactByDetails(context.Background(), domain.NewContactId(identity), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String(newName),
+		}))
 
 		// then
 		require.NoError(t, err)
