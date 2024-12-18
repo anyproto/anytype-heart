@@ -43,7 +43,7 @@ func newApiServer(mw service.ClientCommandsServer, mwInternal core.MiddlewareInt
 	a := &ApiServer{
 		mw:         mw,
 		mwInternal: mwInternal,
-		router:     gin.New(),
+		router:     gin.Default(),
 	}
 
 	a.server = &http.Server{
